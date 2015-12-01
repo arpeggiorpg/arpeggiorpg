@@ -1,9 +1,9 @@
 name:                pandt
 version:             0.1.0.0
-synopsis:            Initial project template from stack
+synopsis:            Phone-and-Tablet Roleplaying Game
 description:         Please see README.md
 homepage:            http://github.com/radix/pandt#readme
-license:             BSD3
+license:             AllRightsReserved
 license-file:        LICENSE
 author:              Christopher Armstrong
 maintainer:          radix@twistedmatrix.com

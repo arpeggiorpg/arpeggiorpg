@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module PandT.Types where
 
@@ -89,3 +90,6 @@ creat = Creature
     , health=Health 100
     , abilitySets=[AbilitySet [punch]]
     }
+
+applyEffect :: Creature r -> Effect -> Creature r
+applyEffect creature (ApplyCondition condition) = creature {conditions=condition : (conditions creature)}
