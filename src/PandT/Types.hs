@@ -8,7 +8,6 @@ import Data.Text
 data DamageSeverity = Low | Medium | High
     deriving (Show, Eq, Ord)
 
-
 newtype Range = Range Int
     deriving (Show, Eq, Ord)
 
@@ -22,6 +21,12 @@ newtype CastTime = CastTime Int
     deriving (Show, Eq, Ord)
 
 newtype Health = Health Int -- Or... hm.
+    deriving (Show, Eq, Ord)
+
+newtype Mana = Mana Int
+    deriving (Show, Eq, Ord)
+
+newtype Energy = Energy Int
     deriving (Show, Eq, Ord)
 
 
@@ -53,6 +58,7 @@ data Ability resourceType = Ability
     , effects :: [Effect]
     , target :: TargetSystem
     , castTime :: CastTime
+    , cooldown :: Cooldown
     }
     deriving (Show, Eq)
 
@@ -71,11 +77,11 @@ data Creature resourceType = Creature
     deriving (Show, Eq)
 
 
-data Mana = Mana Int
-    deriving (Show, Eq, Ord)
+data Combat = Combat
+    { creatures :: [Creature]
+    }
+    deriving (Show, Eq)
 
-data Energy = Energy Int
-    deriving (Show, Eq, Ord)
 
 punch = Ability
     { name="Punch"
