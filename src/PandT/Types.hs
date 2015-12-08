@@ -23,11 +23,12 @@ newtype CastTime = CastTime Int
 newtype Health = Health Int -- Or... hm.
     deriving (Show, Eq, Ord)
 
-newtype Mana = Mana Int
+newtype Cooldown = Cooldown Int
     deriving (Show, Eq, Ord)
 
-newtype Energy = Energy Int
-    deriving (Show, Eq, Ord)
+
+data Resource = Mana Int | Energy Int
+    deriving (Show, Eq)
 
 
 data Condition
@@ -52,9 +53,9 @@ data TargetSystem
     deriving (Show, Eq)
 
 
-data Ability resourceType = Ability
+data Ability = Ability
     { name :: Text
-    , cost :: resourceType
+    , cost :: Resource
     , effects :: [Effect]
     , target :: TargetSystem
     , castTime :: CastTime
@@ -63,16 +64,16 @@ data Ability resourceType = Ability
     deriving (Show, Eq)
 
 
-data AbilitySet resourceType = AbilitySet -- aka "class"
-    { abilities :: [Ability resourceType] }
+data AbilitySet = AbilitySet -- aka "class"
+    { abilities :: [Ability] }
     deriving (Show, Eq)
 
 
-data Creature resourceType = Creature
+data Creature = Creature
     { conditions :: [Condition]
-    , resource :: resourceType
+    , resource :: Resource
     , health :: Health
-    , abilitySets :: [AbilitySet resourceType]
+    , abilitySets :: [AbilitySet]
     }
     deriving (Show, Eq)
 
@@ -89,6 +90,7 @@ punch = Ability
     , effects=[Damage High, ApplyCondition (DamageOverTime Low (Duration 3))]
     , target=TargetCreature (Range 1)
     , castTime = CastTime 0
+    , cooldown = Cooldown 0
     }
 creat = Creature
     { conditions=[]
@@ -97,5 +99,5 @@ creat = Creature
     , abilitySets=[AbilitySet [punch]]
     }
 
-applyEffect :: Creature r -> Effect -> Creature r
+applyEffect :: Creature -> Effect -> Creature
 applyEffect creature (ApplyCondition condition) = creature {conditions=condition : (conditions creature)}
