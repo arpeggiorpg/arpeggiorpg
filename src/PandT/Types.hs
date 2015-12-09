@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module PandT.Types where
 
+import Control.Lens
 import Data.Text
 
 data DamageSeverity = Low | Medium | High
@@ -54,15 +56,16 @@ data TargetSystem
 
 
 data Ability = Ability
-    { name :: Text
-    , cost :: Resource
-    , effects :: [Effect]
-    , target :: TargetSystem
-    , castTime :: CastTime
-    , cooldown :: Cooldown
+    { _name :: Text
+    , _cost :: Resource
+    , _effects :: [Effect]
+    , _target :: TargetSystem
+    , _castTime :: CastTime
+    , _cooldown :: Cooldown
     }
     deriving (Show, Eq)
 
+makeLenses ''Ability
 
 data AbilitySet = AbilitySet -- aka "class"
     { abilities :: [Ability] }
@@ -70,13 +73,14 @@ data AbilitySet = AbilitySet -- aka "class"
 
 
 data Creature = Creature
-    { conditions :: [Condition]
-    , resource :: Resource
-    , health :: Health
-    , abilitySets :: [AbilitySet]
+    { _conditions :: [Condition]
+    , _resource :: Resource
+    , _health :: Health
+    , _abilitySets :: [AbilitySet]
     }
     deriving (Show, Eq)
 
+makeLenses ''Creature
 
 data Combat = Combat
     { creatures :: [Creature]
@@ -85,19 +89,19 @@ data Combat = Combat
 
 
 punch = Ability
-    { name="Punch"
-    , cost=Energy 10
-    , effects=[Damage High, ApplyCondition (DamageOverTime Low (Duration 3))]
-    , target=TargetCreature (Range 1)
-    , castTime = CastTime 0
-    , cooldown = Cooldown 0
+    { _name="Punch"
+    , _cost=Energy 10
+    , _effects=[Damage High, ApplyCondition (DamageOverTime Low (Duration 3))]
+    , _target=TargetCreature (Range 1)
+    , _castTime = CastTime 0
+    , _cooldown = Cooldown 0
     }
 creat = Creature
-    { conditions=[]
-    , resource=Energy 100
-    , health=Health 100
-    , abilitySets=[AbilitySet [punch]]
+    { _conditions=[]
+    , _resource=Energy 100
+    , _health=Health 100
+    , _abilitySets=[AbilitySet [punch]]
     }
 
 applyEffect :: Creature -> Effect -> Creature
-applyEffect creature (ApplyCondition condition) = creature {conditions=condition : (conditions creature)}
+applyEffect creature (ApplyCondition condition) = over conditions (condition:) creature
