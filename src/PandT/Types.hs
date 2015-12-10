@@ -4,8 +4,9 @@
 
 module PandT.Types where
 
-import Control.Lens
-import Data.Text
+import Control.Lens ((^.), over, makeLenses)
+import Data.Text (Text)
+import Data.Foldable (foldl')
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -112,12 +113,12 @@ _staminaToHealth (Stamina Medium) = Health 50
 _staminaToHealth (Stamina Low) = Health 25
 
 makeCreature :: Resource -> Stamina -> [Ability] -> Creature
-makeCreature res sta abs = Creature
+makeCreature res sta creatAbilities = Creature
     { _conditions=[]
     , _resource=res
     , _stamina=sta
     , _health=staminaToHealth sta
-    , _abilities=abs}
+    , _abilities=creatAbilities}
 
 data Combat = Combat
     { creatures :: [Creature]
@@ -136,27 +137,51 @@ damageToHealthVal (DamageIntensity Medium) = 25
 damageToHealthVal (DamageIntensity Low) = 10
 
 healthMinusDamage :: Health -> DamageIntensity -> Health
-healthMinusDamage (Health health) dmg = Health (health - (damageToHealthVal dmg))
+healthMinusDamage (Health healthVal) dmg = Health (healthVal - (damageToHealthVal dmg))
 
-makeDotEffect :: Text -> Intensity -> ConditionDuration -> Effect
-makeDotEffect name int dur
+healthPlusDamage :: Health -> DamageIntensity -> Health
+healthPlusDamage (Health healthVal) dmg = Health (healthVal + (damageToHealthVal dmg))
+
+makeDotEffect :: Text -> Intensity -> ConditionDuration -> Period -> Effect
+makeDotEffect newConditionName int dur per
     = ApplyCondition
         (Condition
-            { _conditionName=name
-            , _conditionValue=RecurringEffect (Period 1) (Damage (DamageIntensity int))
+            { _conditionName=newConditionName
+            , _conditionValue=RecurringEffect per (Damage (DamageIntensity int))
             , _conditionDuration=dur})
 
-immolation = makeDotEffect "Immolation" Medium (TimedCondition (Duration 3))
+bleed :: Effect
+bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
 
-punch = Ability
-    { _name="Punch"
+stab :: Ability
+stab = Ability
+    { _name="Stab"
     , _cost=Energy 10
-    , _effects=[Damage (DamageIntensity High), immolation]
+    , _effects=[Damage (DamageIntensity Medium), bleed]
     , _target=TargetCreature (Range 1)
     , _castTime = CastTime 0
     , _cooldown = Cooldown 0
     }
-creat = makeCreature (Energy 100) (Stamina High) [punch]
+
+creat :: Creature
+creat = makeCreature (Energy 100) (Stamina High) [stab]
 
 applyEffect :: Creature -> Effect -> Creature
-applyEffect creature (ApplyCondition condition) = over conditions (condition:) creature
+applyEffect creature effect = go effect
+    where
+        go (ApplyCondition condition) = over conditions (condition:) creature
+        go (Damage amt) = over health (flip healthMinusDamage amt) creature
+        go (Heal amt) = over health (flip healthPlusDamage amt) creature
+
+applyAbility :: Ability -> Creature -> Creature
+applyAbility abil creatu
+    = foldl' applyEffect creatu (abil^.effects)
+
+dotted :: Creature
+dotted = applyEffect creat bleed
+
+damaged :: Creature
+damaged = applyEffect creat (Damage (DamageIntensity Medium))
+
+healed :: Creature
+healed = applyEffect damaged (Heal (DamageIntensity Low))
