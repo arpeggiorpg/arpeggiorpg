@@ -42,15 +42,7 @@ data Resource = Mana Int | Energy Int
     deriving (Show, Eq)
 
 
--- a condition
--- 1. has a name
--- 2. either has a duration or is infinite
--- 3. has a summy "value":
---    a. RecurringEffect Effect Period
---    b. SomeThing
---    c. OtherThing
-
-data ConditionDuration -- maybe add an Ord instance
+data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
     | UnlimitedDuration
     deriving (Show, Eq)
@@ -107,25 +99,6 @@ data Creature = Creature
 
 makeLenses ''Creature
 
-_staminaToHealth :: Stamina -> Health
-_staminaToHealth (Stamina High) = Health 100
-_staminaToHealth (Stamina Medium) = Health 50
-_staminaToHealth (Stamina Low) = Health 25
-
-makeCreature :: Resource -> Stamina -> [Ability] -> Creature
-makeCreature res sta creatAbilities = Creature
-    { _conditions=[]
-    , _resource=res
-    , _stamina=sta
-    , _health=staminaToHealth sta
-    , _abilities=creatAbilities}
-
-data Combat = Combat
-    { creatures :: [Creature]
-    }
-    deriving (Show, Eq)
-
-
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 100
 staminaToHealth (Stamina Medium) = Health 50
@@ -141,6 +114,14 @@ healthMinusDamage (Health healthVal) dmg = Health (healthVal - (damageToHealthVa
 
 healthPlusDamage :: Health -> DamageIntensity -> Health
 healthPlusDamage (Health healthVal) dmg = Health (healthVal + (damageToHealthVal dmg))
+
+makeCreature :: Resource -> Stamina -> [Ability] -> Creature
+makeCreature res sta creatAbilities = Creature
+    { _conditions=[]
+    , _resource=res
+    , _stamina=sta
+    , _health=staminaToHealth sta
+    , _abilities=creatAbilities}
 
 makeDotEffect :: Text -> Intensity -> ConditionDuration -> Period -> Effect
 makeDotEffect newConditionName int dur per
