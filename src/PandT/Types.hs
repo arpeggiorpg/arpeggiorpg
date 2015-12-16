@@ -94,6 +94,7 @@ data Creature = Creature
     , _stamina :: Stamina
     , _health :: Health
     , _abilities :: [Ability]
+    , _casting :: Maybe Ability
     }
     deriving (Show, Eq)
 
@@ -121,7 +122,8 @@ makeCreature res sta creatAbilities = Creature
     , _resource=res
     , _stamina=sta
     , _health=staminaToHealth sta
-    , _abilities=creatAbilities}
+    , _abilities=creatAbilities
+    , _casting=Nothing}
 
 makeDotEffect :: Text -> Intensity -> ConditionDuration -> Period -> Effect
 makeDotEffect newConditionName int dur per
@@ -166,3 +168,16 @@ damaged = applyEffect creat (Damage (DamageIntensity Medium))
 
 healed :: Creature
 healed = applyEffect damaged (Heal (DamageIntensity Low))
+
+{-
+abilities I want
+- basic damage attack
+- damage + dot
+- damage + heal a target. target both distinctly!
+- heal
+- heal over time
+- buff to damage
+- debuff to damage
+
+
+-}
