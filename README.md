@@ -89,7 +89,7 @@ eventually.
 - Figure out the non-mapped model for geometry/space
 - Implement basic combat stuff:
   - damage [CHECK]
-  - healing
+  - healing [CHECK]
   - movement
   - death
 - model/workflow for abilities being "constructed"

@@ -7,6 +7,7 @@ module PandT.Types where
 import Control.Lens ((^.), over, makeLenses)
 import Data.Text (Text)
 import Data.Foldable (foldl')
+import Data.Map (Map)
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -181,3 +182,47 @@ abilities I want
 
 
 -}
+
+
+-- Workflow
+
+newtype Player = Player { playerName :: Text }
+    deriving (Show, Eq)
+
+data PlayerActivity
+    = PlayerChoosingAbility Player Creature
+    | PlayerChoosingTargets Player Creature Ability
+    | GMVettingAction Player Creature Ability [Creature] -- ^ XXX Actually [Creature] is no good
+    deriving (Show, Eq)
+
+
+data PlayerChoosingAbility
+data PlayerChoosingTargets
+data GMVettingAction
+
+data GameState status = GameState
+    { stateLog :: [PlayerActivity] -- first state is current
+    , playerCharacters :: Map Player [Creature]
+    , gmCreatures :: [Creature]
+    }
+    deriving (Show, Eq)
+
+
+chooseAbility :: GameState PlayerChoosingAbility -> Ability
+              -> GameState PlayerChoosingTargets
+chooseAbility = undefined
+
+-- ^ XXX [Creature] should be replaced by a map of effects to lists of
+-- creatures? or something...
+chooseTargets :: GameState PlayerChoosingTargets -> [Creature]
+              -> GameState GMVettingAction
+chooseTargets = undefined
+
+vetAction :: GameState GMVettingAction -> GameState PlayerChoosingAbility
+vetAction = undefined -- this is where applyAbility actually gets called
+
+denyAction :: GameState GMVettingAction -> GameState PlayerChoosingTargets
+denyAction gs = case stateLog gs of
+    [] -> error "Argh! You called denyAction in the wrong state! My types suck!"
+    (x:[]) -> error "Still not enough elements on the log to call denyAction..."
+    (x:y:_) ->  gs { stateLog=(head (tail $ stateLog gs)):(stateLog gs) }
