@@ -4,10 +4,10 @@
 
 module PandT.Types where
 
-import Control.Lens ((^.), over, makeLenses)
+import Control.Lens ((^.), over, makeLenses, set)
 import Data.Text (Text)
 import Data.Foldable (foldl')
-import Data.Map (Map)
+import Data.Map (Map, fromList)
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -52,6 +52,7 @@ data ConditionValue
     = RecurringEffect Period Effect
     | DamageAbsorb DamageIntensity
     | DamageBuff DamageIntensity
+    | Incapacitated
     deriving (Show, Eq)
 
 data Condition
@@ -67,6 +68,7 @@ data Effect
     | ApplyCondition Condition
     | Heal DamageIntensity
     | Damage DamageIntensity
+    | MultiEffect Effect Effect
     deriving (Show, Eq)
 
 
@@ -74,14 +76,78 @@ data TargetSystem
     = TargetCreature Range
     | TargetCircle Range Radius
     | TargetLineFromSource Range
+    | TargetCone Range
     deriving (Show, Eq)
 
 
+data TargetedEffect = TargetedEffect
+    { _targetSystem :: TargetSystem
+    , _targetedEffect :: Effect
+    } deriving (Show, Eq)
+
+
+makeTimedEOT :: Text -> Int -> Effect -> Effect
+makeTimedEOT cname cdur ceff = ApplyCondition Condition
+    { _conditionName=cname
+    , _conditionDuration=TimedCondition (Duration cdur)
+    , _conditionValue=RecurringEffect (Period 1) ceff
+    }
+
+-- Tera-style multi-healing
+healTwoTargets :: [TargetedEffect]
+healTwoTargets = take 2 . repeat $ TargetedEffect
+        { _targetSystem=TargetCreature (Range 5)
+        , _targetedEffect=Heal (DamageIntensity Medium)
+        }
+
+-- basic damage+dot attack
+immolate :: TargetedEffect
+immolate = TargetedEffect
+    { _targetSystem=TargetCreature (Range 5)
+    , _targetedEffect=MultiEffect directDamage dot
+    } where
+        directDamage = Damage (DamageIntensity Medium)
+        dot = makeTimedEOT "Immolation" 3 dotTick
+        dotTick = Damage (DamageIntensity Low)
+
+
+mistPunch :: [TargetedEffect]
+mistPunch =
+    [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=Damage (DamageIntensity Low)}
+    , TargetedEffect { _targetSystem=TargetCreature (Range 4), _targetedEffect=Heal (DamageIntensity Low)}
+    ]
+
+-- ok this won't work, because the secondary effect will apply to the primary target.
+-- fistsOfFury :: [TargetedEffect]
+-- fistsOfFury =
+--     [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=stunAndMediumDamage}
+--     , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
+--     ]
+
+stun :: Duration -> Effect
+stun dur = ApplyCondition Condition
+    { _conditionName = "Stunned"
+    , _conditionValue = Incapacitated
+    , _conditionDuration = TimedCondition dur
+    }
+
+-- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
+fistsOfFury :: [TargetedEffect]
+fistsOfFury =
+    [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=lowDamage}
+    , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
+    ]
+    where
+        lowDamage = Damage (DamageIntensity Medium)
+        stunAndLowDamage = MultiEffect stunEff lowDamage
+        stunEff = stun (Duration 1)
+
+
+
 data Ability = Ability
-    { _name :: Text
+    { _abilityName :: Text
     , _cost :: Resource
-    , _effects :: [Effect]
-    , _target :: TargetSystem
+    , _effects :: [TargetedEffect]
     , _castTime :: CastTime
     , _cooldown :: Cooldown
     }
@@ -90,7 +156,8 @@ data Ability = Ability
 makeLenses ''Ability
 
 data Creature = Creature
-    { _conditions :: [Condition]
+    { _creatureName :: Text
+    , _conditions :: [Condition]
     , _resource :: Resource
     , _stamina :: Stamina
     , _health :: Health
@@ -117,9 +184,10 @@ healthMinusDamage (Health healthVal) dmg = Health (healthVal - (damageToHealthVa
 healthPlusDamage :: Health -> DamageIntensity -> Health
 healthPlusDamage (Health healthVal) dmg = Health (healthVal + (damageToHealthVal dmg))
 
-makeCreature :: Resource -> Stamina -> [Ability] -> Creature
-makeCreature res sta creatAbilities = Creature
-    { _conditions=[]
+makeCreature :: Text -> Resource -> Stamina -> [Ability] -> Creature
+makeCreature cname res sta creatAbilities = Creature
+    { _creatureName=cname
+    , _conditions=[]
     , _resource=res
     , _stamina=sta
     , _health=staminaToHealth sta
@@ -135,20 +203,31 @@ makeDotEffect newConditionName int dur per
             , _conditionDuration=dur})
 
 bleed :: Effect
-bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
+-- bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
+bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Medium))
 
-stab :: Ability
-stab = Ability
-    { _name="Stab"
-    , _cost=Energy 10
-    , _effects=[Damage (DamageIntensity Medium), bleed]
-    , _target=TargetCreature (Range 1)
-    , _castTime = CastTime 0
-    , _cooldown = Cooldown 0
-    }
+{-
+- fists of fury:
+  - effect 1: TARGETED high damage + stun
+  - effect 2: CONE medium damage + stun
+- Immolate:
+  - effect 1: medium damage to target
+  - effect 2: medium damage to SAME target
 
-creat :: Creature
-creat = makeCreature (Energy 100) (Stamina High) [stab]
+-}
+
+-- stab :: Ability
+-- stab = Ability
+--     { _abilityName="Stab"
+--     , _cost=Energy 10
+--     , _effects=[Damage (DamageIntensity Medium), bleed]
+--     , _target=TargetCreature (Range 1)
+--     , _castTime = CastTime 0
+--     , _cooldown = Cooldown 0
+--     }
+
+-- creat :: Creature
+-- creat = makeCreature "Creat" (Energy 100) (Stamina High) [stab]
 
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = go effect
@@ -157,18 +236,18 @@ applyEffect creature effect = go effect
         go (Damage amt) = over health (flip healthMinusDamage amt) creature
         go (Heal amt) = over health (flip healthPlusDamage amt) creature
 
-applyAbility :: Ability -> Creature -> Creature
-applyAbility abil creatu
-    = foldl' applyEffect creatu (abil^.effects)
+-- applyAbility :: Ability -> Creature -> Creature
+-- applyAbility abil creatu
+--     = foldl' applyEffect creatu (abil^.effects)
 
-dotted :: Creature
-dotted = applyEffect creat bleed
-
-damaged :: Creature
-damaged = applyEffect creat (Damage (DamageIntensity Medium))
-
-healed :: Creature
-healed = applyEffect damaged (Heal (DamageIntensity Low))
+-- dotted :: Creature
+-- dotted = applyEffect creat bleed
+--
+-- damaged :: Creature
+-- damaged = applyEffect creat (Damage (DamageIntensity Medium))
+--
+-- healed :: Creature
+-- healed = applyEffect damaged (Heal (DamageIntensity Low))
 
 {-
 abilities I want
@@ -187,42 +266,68 @@ abilities I want
 -- Workflow
 
 newtype Player = Player { playerName :: Text }
-    deriving (Show, Eq)
+    deriving (Show, Ord, Eq)
 
-data PlayerActivity
+-- ^ XXX Actually [Creature] is no good for GMVettingAction
+data GameState
     = PlayerChoosingAbility Player Creature
     | PlayerChoosingTargets Player Creature Ability
-    | GMVettingAction Player Creature Ability [Creature] -- ^ XXX Actually [Creature] is no good
+    | GMVettingAction Player Creature Ability [Creature]
     deriving (Show, Eq)
-
 
 data PlayerChoosingAbility
 data PlayerChoosingTargets
 data GMVettingAction
 
-data GameState status = GameState
-    { stateLog :: [PlayerActivity] -- first state is current
-    , playerCharacters :: Map Player [Creature]
-    , gmCreatures :: [Creature]
+data Game status = Game
+    { _state :: GameState
+    , _playerCharacters :: Map Player Creature
+    , _currentCreature :: Creature
+    , _currentPlayer :: Player
+    , _creaturesInPlay :: [Creature]
     }
     deriving (Show, Eq)
 
+makeLenses ''Game
 
-chooseAbility :: GameState PlayerChoosingAbility -> Ability
-              -> GameState PlayerChoosingTargets
-chooseAbility = undefined
+chooseAbility :: Game PlayerChoosingAbility -> Ability
+              -> Game PlayerChoosingTargets
+chooseAbility game ability =
+    set state newState game
+    where newState = PlayerChoosingTargets
+                        (_currentPlayer game)
+                        (_currentCreature game)
+                        ability
 
 -- ^ XXX [Creature] should be replaced by a map of effects to lists of
 -- creatures? or something...
-chooseTargets :: GameState PlayerChoosingTargets -> [Creature]
-              -> GameState GMVettingAction
+chooseTargets :: Game PlayerChoosingTargets -> [Creature]
+              -> Game GMVettingAction
 chooseTargets = undefined
 
-vetAction :: GameState GMVettingAction -> GameState PlayerChoosingAbility
+vetAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 vetAction = undefined -- this is where applyAbility actually gets called
 
-denyAction :: GameState GMVettingAction -> GameState PlayerChoosingTargets
-denyAction gs = case stateLog gs of
-    [] -> error "Argh! You called denyAction in the wrong state! My types suck!"
-    (x:[]) -> error "Still not enough elements on the log to call denyAction..."
-    (x:y:_) ->  gs { stateLog=(head (tail $ stateLog gs)):(stateLog gs) }
+denyAction :: Game GMVettingAction -> Game PlayerChoosingTargets
+denyAction gs = undefined
+
+-- test data
+chris :: Player
+chris = Player "Chris"
+
+jah :: Player
+jah = Player "Jah"
+
+-- radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab]
+-- aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
+--
+-- myGame1 :: Game PlayerChoosingAbility
+-- myGame1 = Game
+--     { _state=PlayerChoosingAbility chris radorg
+--     , _playerCharacters=fromList [(chris, radorg), (jah, aspyr)]
+--     , _currentCreature=radorg
+--     , _currentPlayer=chris
+--     , _creaturesInPlay=[]
+--     }
+--
+-- myGame2 = chooseAbility myGame1 stab
