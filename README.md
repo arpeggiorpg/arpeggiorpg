@@ -83,15 +83,12 @@ targeting.
 
 # Roadmap
 
-I'd like to avoid needing a map for the game, though I would like to have one
-eventually.
-
-- Figure out the non-mapped model for geometry/space
+- Figure out the non-mapped model for geometry/space [CHECK]
 - Implement basic combat stuff:
   - damage [CHECK]
   - healing [CHECK]
-  - movement
   - death
+  - movement
 - model/workflow for abilities being "constructed"
   - player choose ability
   - player choose target(s)

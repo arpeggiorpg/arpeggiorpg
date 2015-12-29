@@ -81,7 +81,8 @@ data TargetSystem
 
 
 data TargetedEffect = TargetedEffect
-    { _targetSystem :: TargetSystem
+    { _targetName :: Text -- ^ Used for prompting the user for the target
+    , _targetSystem :: TargetSystem
     , _targetedEffect :: Effect
     } deriving (Show, Eq)
 
@@ -96,14 +97,16 @@ makeTimedEOT cname cdur ceff = ApplyCondition Condition
 -- Tera-style multi-healing
 healTwoTargets :: [TargetedEffect]
 healTwoTargets = take 2 . repeat $ TargetedEffect
-        { _targetSystem=TargetCreature (Range 5)
+        { _targetName="Heal"
+        , _targetSystem=TargetCreature (Range 5)
         , _targetedEffect=Heal (DamageIntensity Medium)
         }
 
 -- basic damage+dot attack
 immolate :: TargetedEffect
 immolate = TargetedEffect
-    { _targetSystem=TargetCreature (Range 5)
+    { _targetName="Immolate"
+    , _targetSystem=TargetCreature (Range 5)
     , _targetedEffect=MultiEffect directDamage dot
     } where
         directDamage = Damage (DamageIntensity Medium)
@@ -113,8 +116,16 @@ immolate = TargetedEffect
 
 mistPunch :: [TargetedEffect]
 mistPunch =
-    [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=Damage (DamageIntensity Low)}
-    , TargetedEffect { _targetSystem=TargetCreature (Range 4), _targetedEffect=Heal (DamageIntensity Low)}
+    [ TargetedEffect
+        { _targetName="MistPunch Damage"
+        , _targetSystem=TargetCreature (Range 1)
+        , _targetedEffect=Damage (DamageIntensity Low)
+        }
+    , TargetedEffect
+        { _targetName="MistPunch Heal"
+        , _targetSystem=TargetCreature (Range 4)
+        , _targetedEffect=Heal (DamageIntensity Low)
+        }
     ]
 
 -- ok this won't work, because the secondary effect will apply to the primary target.
@@ -134,8 +145,16 @@ stun dur = ApplyCondition Condition
 -- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
 fistsOfFury :: [TargetedEffect]
 fistsOfFury =
-    [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=lowDamage}
-    , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
+    [ TargetedEffect
+        { _targetName="Fists of Fury Primary"
+        , _targetSystem=TargetCreature (Range 1)
+        , _targetedEffect=lowDamage
+        }
+    , TargetedEffect
+        { _targetName="Fists of Fury Area"
+        , _targetSystem=TargetCone (Range 1)
+        , _targetedEffect=stunAndLowDamage
+        }
     ]
     where
         lowDamage = Damage (DamageIntensity Medium)
@@ -204,7 +223,8 @@ makeDotEffect newConditionName int dur per
 
 bleed :: Effect
 -- bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
-bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Medium))
+bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
+
 
 {-
 - fists of fury:
@@ -216,18 +236,26 @@ bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Medium))
 
 -}
 
--- stab :: Ability
--- stab = Ability
---     { _abilityName="Stab"
---     , _cost=Energy 10
---     , _effects=[Damage (DamageIntensity Medium), bleed]
---     , _target=TargetCreature (Range 1)
---     , _castTime = CastTime 0
---     , _cooldown = Cooldown 0
---     }
+stab :: Ability
+stab = Ability
+    { _abilityName="Stab"
+    , _cost=Energy 10
+    , _effects=[stabTargetedEffect]
+    , _castTime = CastTime 0
+    , _cooldown = Cooldown 0
+    }
+    where
+        stabTargetedEffect =
+            TargetedEffect
+                { _targetName = "Stab"
+                , _targetSystem = TargetCreature (Range 1)
+                , _targetedEffect = stabEffect
+                }
+        stabEffect = MultiEffect stabDirectDamage bleed
+        stabDirectDamage = Damage (DamageIntensity Medium)
 
--- creat :: Creature
--- creat = makeCreature "Creat" (Energy 100) (Stamina High) [stab]
+creat :: Creature
+creat = makeCreature "Creat" (Energy 100) (Stamina High) [stab]
 
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = go effect
