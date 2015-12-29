@@ -4,6 +4,8 @@
 
 module PandT.Types where
 
+import ClassyPrelude
+
 import Control.Lens ((^.), over, makeLenses, set)
 import Data.Text (Text)
 import Data.Foldable (foldl')
@@ -329,15 +331,15 @@ chooseAbility game ability =
 
 -- ^ XXX [Creature] should be replaced by a map of effects to lists of
 -- creatures? or something...
-chooseTargets :: Game PlayerChoosingTargets -> [Creature]
-              -> Game GMVettingAction
-chooseTargets = undefined
-
-vetAction :: Game GMVettingAction -> Game PlayerChoosingAbility
-vetAction = undefined -- this is where applyAbility actually gets called
-
-denyAction :: Game GMVettingAction -> Game PlayerChoosingTargets
-denyAction gs = undefined
+-- chooseTargets :: Game PlayerChoosingTargets -> [Creature]
+--               -> Game GMVettingAction
+-- chooseTargets = undefined
+--
+-- vetAction :: Game GMVettingAction -> Game PlayerChoosingAbility
+-- vetAction = undefined -- this is where applyAbility actually gets called
+--
+-- denyAction :: Game GMVettingAction -> Game PlayerChoosingTargets
+-- denyAction gs = undefined
 
 -- test data
 chris :: Player
