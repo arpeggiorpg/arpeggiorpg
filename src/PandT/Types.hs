@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GADTs #-}
 
 module PandT.Types where
 
 import ClassyPrelude
 
-import Control.Lens ((^.), over, makeLenses, set)
+import Control.Lens ((^.), (^?), (^..), at, over, view, preview, makeLenses, set, firstOf, _head)
 import Data.Text (Text)
-import Data.Foldable (foldl')
-import Data.Map (Map, fromList)
+import Data.Map (Map)
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -44,6 +44,10 @@ newtype Health = Health Int
 data Resource = Mana Int | Energy Int
     deriving (Show, Eq)
 
+newtype Player = Player { playerName :: Text }
+    deriving (Show, Ord, Eq)
+
+type CreatureName = Text -- this should probably be a newtype
 
 data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
@@ -54,6 +58,7 @@ data ConditionValue
     = RecurringEffect Period Effect
     | DamageAbsorb DamageIntensity
     | DamageBuff DamageIntensity
+    | DamageDebuff DamageIntensity
     | Incapacitated
     deriving (Show, Eq)
 
@@ -83,7 +88,7 @@ data TargetSystem
 
 
 data TargetedEffect = TargetedEffect
-    { _targetName :: Text -- ^ Used for prompting the user for the target
+    { _targetName :: CreatureName -- ^ Used for prompting the user for the target
     , _targetSystem :: TargetSystem
     , _targetedEffect :: Effect
     } deriving (Show, Eq)
@@ -177,7 +182,7 @@ data Ability = Ability
 makeLenses ''Ability
 
 data Creature = Creature
-    { _creatureName :: Text
+    { _creatureName :: CreatureName
     , _conditions :: [Condition]
     , _resource :: Resource
     , _stamina :: Stamina
@@ -205,7 +210,7 @@ healthMinusDamage (Health healthVal) dmg = Health (healthVal - (damageToHealthVa
 healthPlusDamage :: Health -> DamageIntensity -> Health
 healthPlusDamage (Health healthVal) dmg = Health (healthVal + (damageToHealthVal dmg))
 
-makeCreature :: Text -> Resource -> Stamina -> [Ability] -> Creature
+makeCreature :: CreatureName -> Resource -> Stamina -> [Ability] -> Creature
 makeCreature cname res sta creatAbilities = Creature
     { _creatureName=cname
     , _conditions=[]
@@ -266,43 +271,22 @@ applyEffect creature effect = go effect
         go (Damage amt) = over health (flip healthMinusDamage amt) creature
         go (Heal amt) = over health (flip healthPlusDamage amt) creature
 
--- applyAbility :: Ability -> Creature -> Creature
--- applyAbility abil creatu
---     = foldl' applyEffect creatu (abil^.effects)
+dotted :: Creature
+dotted = applyEffect creat bleed
 
--- dotted :: Creature
--- dotted = applyEffect creat bleed
---
--- damaged :: Creature
--- damaged = applyEffect creat (Damage (DamageIntensity Medium))
---
--- healed :: Creature
--- healed = applyEffect damaged (Heal (DamageIntensity Low))
+damaged :: Creature
+damaged = applyEffect creat (Damage (DamageIntensity Medium))
 
-{-
-abilities I want
-- basic damage attack
-- damage + dot
-- damage + heal a target. target both distinctly!
-- heal
-- heal over time
-- buff to damage
-- debuff to damage
-
-
--}
-
+healed :: Creature
+healed = applyEffect damaged (Heal (DamageIntensity Low))
 
 -- Workflow
 
-newtype Player = Player { playerName :: Text }
-    deriving (Show, Ord, Eq)
-
 -- ^ XXX Actually [Creature] is no good for GMVettingAction
 data GameState
-    = PlayerChoosingAbility Player Creature
-    | PlayerChoosingTargets Player Creature Ability
-    | GMVettingAction Player Creature Ability [Creature]
+    = PlayerChoosingAbility Player CreatureName
+    | PlayerChoosingTargets Player CreatureName Ability
+    | GMVettingAction Player CreatureName Ability [Creature]
     deriving (Show, Eq)
 
 data PlayerChoosingAbility
@@ -311,14 +295,30 @@ data GMVettingAction
 
 data Game status = Game
     { _state :: GameState
-    , _playerCharacters :: Map Player Creature
-    , _currentCreature :: Creature
+    , _playerCharacters :: Map Player CreatureName
+    , _currentCreature :: CreatureName
     , _currentPlayer :: Player
-    , _creaturesInPlay :: [Creature]
+    , _creaturesInPlay :: Map CreatureName Creature
     }
     deriving (Show, Eq)
 
 makeLenses ''Game
+
+creatureInGame :: CreatureName -> Game a -> Maybe Creature
+creatureInGame n g = view (creaturesInPlay . at n) g
+
+applyAbility
+    :: Ability -> [[CreatureName]] -- not cool
+    -> Game GMVettingAction
+    -> Maybe (Game GMVettingAction)
+applyAbility ability selections game
+    = foldM appEffs game $ zip (_effects ability) selections
+    where
+        appEffs game (targetedEffect, creatureNames) = foldM (appEff targetedEffect) game creatureNames
+        appEff targetedEffect game creatName = do
+            let applyEffect' = flip applyEffect (_targetedEffect targetedEffect)
+            over (creaturesInPlay . at creatName) () game
+            return game
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
               -> Game PlayerChoosingTargets
@@ -348,16 +348,16 @@ chris = Player "Chris"
 jah :: Player
 jah = Player "Jah"
 
--- radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab]
--- aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
---
--- myGame1 :: Game PlayerChoosingAbility
--- myGame1 = Game
---     { _state=PlayerChoosingAbility chris radorg
---     , _playerCharacters=fromList [(chris, radorg), (jah, aspyr)]
---     , _currentCreature=radorg
---     , _currentPlayer=chris
---     , _creaturesInPlay=[]
---     }
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab]
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
+
+myGame1 :: Game PlayerChoosingAbility
+myGame1 = Game
+    { _state=PlayerChoosingAbility chris "Radorg"
+    , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
+    , _currentCreature="Radorg"
+    , _currentPlayer=chris
+    , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
+    }
 --
 -- myGame2 = chooseAbility myGame1 stab
