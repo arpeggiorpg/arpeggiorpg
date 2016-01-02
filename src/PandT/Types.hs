@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module PandT.Types where
 
@@ -313,6 +314,28 @@ data Game status = Game
     deriving (Show, Eq)
 
 makeLenses ''Game
+
+renderState :: GameState a -> Text
+renderState PlayerChoosingAbility = "PlayerChoosingAbility"
+renderState (PlayerChoosingTargets ability)
+    = "PlayerChoosingTargets: " ++ _abilityName ability
+renderState (GMVettingAction ability targets)
+    = "GMVettingAction: " ++ _abilityName ability ++ " -> " ++ tshow targets
+
+
+renderCreaturesInPlay :: CreatureName -> [CreatureName] -> Text
+renderCreaturesInPlay current all = concat $ intersperse ", " $ map rend all
+    where
+        rend :: CreatureName -> Text
+        rend name = if name == current then "*" ++ name else name
+
+render :: Game a -> Text
+render (Game {..}) = unlines
+    [ "# Game"
+    , "Current player: " ++ (playerName _currentPlayer) ++ " (" ++ _currentCreature ++ ") "
+    , renderState _state
+    , renderCreaturesInPlay _currentCreature (keys _creaturesInPlay)
+    ]
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
               -> Game PlayerChoosingTargets
