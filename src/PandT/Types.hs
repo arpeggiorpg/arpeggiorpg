@@ -270,6 +270,7 @@ applyEffect creature effect = go effect
         go (ApplyCondition condition) = over conditions (condition:) creature
         go (Damage amt) = over health (flip healthMinusDamage amt) creature
         go (Heal amt) = over health (flip healthPlusDamage amt) creature
+        go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
 
 dotted :: Creature
 dotted = applyEffect creat bleed
@@ -282,19 +283,28 @@ healed = applyEffect damaged (Heal (DamageIntensity Low))
 
 -- Workflow
 
--- ^ XXX Actually [Creature] is no good for GMVettingAction
-data GameState
-    = PlayerChoosingAbility Player CreatureName
-    | PlayerChoosingTargets Player CreatureName Ability
-    | GMVettingAction Player CreatureName Ability [Creature]
-    deriving (Show, Eq)
-
 data PlayerChoosingAbility
 data PlayerChoosingTargets
 data GMVettingAction
 
+data GameState a where
+    PlayerChoosingAbility :: GameState PlayerChoosingAbility
+    PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
+    GMVettingAction :: Ability -> [[CreatureName]] -> GameState GMVettingAction
+
+instance Show (GameState a) where
+    show PlayerChoosingAbility = "PlayerChoosingAbility"
+    show (PlayerChoosingTargets ability) = "PlayerChoosingTargets " ++ show ability
+    show (GMVettingAction ability targets) = "GMVettingAction " ++ show ability ++ " " ++ show targets
+
+instance Eq (GameState a) where
+    PlayerChoosingAbility == PlayerChoosingAbility = True
+    (PlayerChoosingTargets ab1) == (PlayerChoosingTargets ab2) = ab1 == ab2
+    (GMVettingAction ab1 targ1) == (GMVettingAction ab2 targ2) = (ab1 == ab2) && (targ1 == targ2)
+
+
 data Game status = Game
-    { _state :: GameState
+    { _state :: GameState status
     , _playerCharacters :: Map Player CreatureName
     , _currentCreature :: CreatureName
     , _currentPlayer :: Player
@@ -304,11 +314,22 @@ data Game status = Game
 
 makeLenses ''Game
 
+chooseAbility :: Game PlayerChoosingAbility -> Ability
+              -> Game PlayerChoosingTargets
+chooseAbility game ability =
+    set state newState game
+    where newState = PlayerChoosingTargets ability
+
+chooseTargets :: Game PlayerChoosingTargets -> [[CreatureName]] -> Game GMVettingAction
+chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) creatures =
+    set state newState game
+    where newState = GMVettingAction ability creatures
+
+
 applyAbility
-    :: Ability -> [[CreatureName]] -- not cool
-    -> Game GMVettingAction
+    :: Game GMVettingAction
     -> Maybe (Game GMVettingAction)
-applyAbility ability selections game
+applyAbility game@(Game {_state=GMVettingAction ability selections})
     = foldM appEffs game $ zip (_effects ability) selections
     where
         appEffs game (targetedEffect, creatureNames) = foldM (appEff targetedEffect) game creatureNames
@@ -316,15 +337,6 @@ applyAbility ability selections game
         appEff targetedEffect game creatName = do
             let applyEffect' = fmap $ flip applyEffect (_targetedEffect targetedEffect)
             return $ over (creaturesInPlay . at creatName) applyEffect' game
-
-chooseAbility :: Game PlayerChoosingAbility -> Ability
-              -> Game PlayerChoosingTargets
-chooseAbility game ability =
-    set state newState game
-    where newState = PlayerChoosingTargets
-                        (_currentPlayer game)
-                        (_currentCreature game)
-                        ability
 
 -- ^ XXX [Creature] should be replaced by a map of effects to lists of
 -- creatures? or something...
@@ -350,11 +362,14 @@ aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
 
 myGame1 :: Game PlayerChoosingAbility
 myGame1 = Game
-    { _state=PlayerChoosingAbility chris "Radorg"
+    { _state=PlayerChoosingAbility
     , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
     , _currentCreature="Radorg"
     , _currentPlayer=chris
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
     }
---
--- myGame2 = chooseAbility myGame1 stab
+
+myGame2 = chooseAbility myGame1 stab
+myGame3 = chooseTargets myGame2 [["Aspyr"]]
+
+(Just myGame4) = applyAbility myGame3
