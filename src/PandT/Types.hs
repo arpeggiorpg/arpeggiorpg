@@ -304,9 +304,6 @@ data Game status = Game
 
 makeLenses ''Game
 
-creatureInGame :: CreatureName -> Game a -> Maybe Creature
-creatureInGame n g = view (creaturesInPlay . at n) g
-
 applyAbility
     :: Ability -> [[CreatureName]] -- not cool
     -> Game GMVettingAction
@@ -315,10 +312,10 @@ applyAbility ability selections game
     = foldM appEffs game $ zip (_effects ability) selections
     where
         appEffs game (targetedEffect, creatureNames) = foldM (appEff targetedEffect) game creatureNames
+        appEff :: TargetedEffect -> Game GMVettingAction -> CreatureName -> Maybe (Game GMVettingAction)
         appEff targetedEffect game creatName = do
-            let applyEffect' = flip applyEffect (_targetedEffect targetedEffect)
-            over (creaturesInPlay . at creatName) () game
-            return game
+            let applyEffect' = fmap $ flip applyEffect (_targetedEffect targetedEffect)
+            return $ over (creaturesInPlay . at creatName) applyEffect' game
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
               -> Game PlayerChoosingTargets
