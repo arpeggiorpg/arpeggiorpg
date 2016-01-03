@@ -90,11 +90,12 @@ targeting.
   - death
   - movement
 - model/workflow for abilities being "constructed"
-  - player choose ability
-  - player choose target(s)
-  - GM vets
-  - GM executes
-- Implement a basic web UI
+  - player choose ability [DONE]
+  - player choose target(s) [DONE]
+  - GM vets [DONE]
+  - GM executes [DONE]
+- Implement a basic text UI
+- Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
   - passage of time
