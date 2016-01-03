@@ -293,16 +293,23 @@ renderState (PlayerChoosingTargets ability)
 renderState (GMVettingAction ability targets)
     = "GMVettingAction: " ++ _abilityName ability ++ " -> " ++ tshow targets
 
+
+renderCreatureStatus :: Creature -> Text
+renderCreatureStatus creature =
+    line
+    where
+        hp = tshow $ creature^.health
+        conds = tshow $ creature^.conditions
+        line = unwords [creature^.creatureName, hp, conds]
+
 renderInitiative :: Game a -> Text
 renderInitiative game
     = let
         currentName = (_currentCreature game)
-        pfx name = if name == currentName then "*" else " "
-        creature :: CreatureName -> Maybe Creature
         creature name = view (creaturesInPlay . at name) game
-        hp name = unwords . toList $ tshow <$> (preview (_Just.health) $ creature name)
-        conds name = unwords . toList $ tshow <$> (preview (_Just.conditions) $ creature name)
-        rend name = unwords [pfx name ++ name, hp name, conds name]
+        pfx name = if name == currentName then "*" else " "
+        statusLine name = unwords.toList $ renderCreatureStatus <$> creature name
+        rend name = pfx name ++ statusLine name
     in
         unlines $ map rend (_initiative game)
 

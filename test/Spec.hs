@@ -10,14 +10,20 @@ import ClassyPrelude
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [unitTests]
+tests = testGroup "Tests" [effectTests, abilityTests]
 
-unitTests :: TestTree
-unitTests = testGroup "unitTests"
+effectTests :: TestTree
+effectTests = testGroup "Effect Tests"
     [ testCase "Dead creature is dead" $
         [dead] @=? deadCreature^.conditions
     , testCase "Damage to dead creature does not ause additional Dead condition" $
         [dead] @=? deadTwice^.conditions
+    ]
+
+abilityTests :: TestTree
+abilityTests = testGroup "Ability Tests"
+    [ testCase "Ability damage takes effect" $
+        Just (Health 75) @=? myGame4^.creaturesInPlay.at "Aspyr"^?_Just.health
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
@@ -31,7 +37,6 @@ chris = Player "Chris"
 jah = Player "Jah"
 
 bleed :: Effect
--- bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
 stab :: Ability
