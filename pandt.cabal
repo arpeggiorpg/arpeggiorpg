@@ -19,10 +19,10 @@ library
   build-depends:       base-noprelude
                      , classy-prelude
                      , containers
-                     , text
                      , lens
+                     , text
   default-language:    Haskell2010
-  extensions: NoImplicitPrelude
+  default-extensions: NoImplicitPrelude
 
 executable pandt-exe
   hs-source-dirs:      app
@@ -32,7 +32,7 @@ executable pandt-exe
                      , classy-prelude
                      , pandt
   default-language:    Haskell2010
-  extensions: NoImplicitPrelude
+  default-extensions: NoImplicitPrelude
 
 test-suite pandt-test
   type:                exitcode-stdio-1.0
