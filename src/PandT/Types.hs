@@ -8,7 +8,8 @@ module PandT.Types where
 
 import ClassyPrelude
 
-import Control.Lens ((^.), (^?), (^..), at, over, view, preview, makeLenses, set, firstOf, _head)
+import Control.Lens ((^.), (^?), (^..), at, over, view, preview, makeLenses, set, firstOf, _head,
+                     _Just)
 import Data.Text (Text)
 import Data.Map (Map)
 
@@ -61,6 +62,7 @@ data ConditionValue
     | DamageBuff DamageIntensity
     | DamageDebuff DamageIntensity
     | Incapacitated
+    | Dead
     deriving (Show, Eq)
 
 data Condition
@@ -69,6 +71,13 @@ data Condition
     , _conditionDuration :: ConditionDuration
     , _conditionValue :: ConditionValue
     } deriving (Show, Eq)
+
+dead :: Condition
+dead = Condition
+    { _conditionName="Dead"
+    , _conditionDuration=UnlimitedDuration
+    , _conditionValue=Dead
+    }
 
 
 data Effect
@@ -263,24 +272,21 @@ stab = Ability
         stabDirectDamage = Damage (DamageIntensity Medium)
 
 creat :: Creature
-creat = makeCreature "Creat" (Energy 100) (Stamina High) [stab]
+creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
+
+checkDead :: Creature -> Creature
+checkDead creat
+    = if (_health creat < Health 0)
+        then over conditions (dead:) creat
+        else creat
 
 applyEffect :: Creature -> Effect -> Creature
-applyEffect creature effect = go effect
+applyEffect creature effect = checkDead $ go effect
     where
         go (ApplyCondition condition) = over conditions (condition:) creature
         go (Damage amt) = over health (flip healthMinusDamage amt) creature
         go (Heal amt) = over health (flip healthPlusDamage amt) creature
         go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
-
-dotted :: Creature
-dotted = applyEffect creat bleed
-
-damaged :: Creature
-damaged = applyEffect creat (Damage (DamageIntensity Medium))
-
-healed :: Creature
-healed = applyEffect damaged (Heal (DamageIntensity Low))
 
 -- Workflow
 
@@ -323,19 +329,25 @@ renderState (PlayerChoosingTargets ability)
 renderState (GMVettingAction ability targets)
     = "GMVettingAction: " ++ _abilityName ability ++ " -> " ++ tshow targets
 
-
-renderInitiative :: CreatureName -> [CreatureName] -> Text
-renderInitiative current all = concat $ intersperse ", " $ map rend all
-    where
-        rend :: CreatureName -> Text
-        rend name = if name == current then "*" ++ name else name
+renderInitiative :: Game a -> Text
+renderInitiative game
+    = let
+        currentName = (_currentCreature game)
+        pfx name = if name == currentName then "*" else " "
+        creature :: CreatureName -> Maybe Creature
+        creature name = view (creaturesInPlay . at name) game
+        hp name = unwords . toList $ tshow <$> (preview (_Just.health) $ creature name)
+        conds name = unwords . toList $ tshow <$> (preview (_Just.conditions) $ creature name)
+        rend name = unwords [pfx name ++ name, hp name, conds name]
+    in
+        unlines $ map rend (_initiative game)
 
 render :: Game a -> Text
-render (Game {..}) = unlines
+render game@(Game {..}) = unlines
     [ "# Game"
     , "Current player: " ++ (playerName _currentPlayer) ++ " (" ++ _currentCreature ++ ") "
     , renderState _state
-    , renderInitiative _currentCreature (_initiative)
+    , renderInitiative game
     ]
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
@@ -368,6 +380,7 @@ getNextCircular el l = go $ snd $ partition (==el) l
 
 acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 acceptAction game = do
+    -- TODO: "tick" the time
     newGame <- applyAbility game
     let newGame' = set state PlayerChoosingAbility game
         nextCreature = getNextCircular (_currentCreature newGame') (keys $ _creaturesInPlay newGame')
@@ -378,28 +391,3 @@ denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game =
     set state newState game
     where newState = PlayerChoosingAbility
-
--- test data
-chris :: Player
-chris = Player "Chris"
-
-jah :: Player
-jah = Player "Jah"
-
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
-
-myGame1 :: Game PlayerChoosingAbility
-myGame1 = Game
-    { _state=PlayerChoosingAbility
-    , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
-    , _currentCreature="Radorg"
-    , _currentPlayer=chris
-    , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
-    , _initiative=["Radorg", "Aspyr"]
-    }
-
-myGame2 = chooseAbility myGame1 stab
-myGame3 = chooseTargets myGame2 [["Aspyr"]]
-(Just myGame4) = acceptAction myGame3
-myGame5 = denyAction myGame3

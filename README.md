@@ -100,6 +100,7 @@ targeting.
 - Advanced combat mechanics, in rough order of interest:
   - passage of time
   - DOTs and HOTs
+  - stacking vs refreshing conditions
   - cast times
   - interrupts
   - incapacitation
