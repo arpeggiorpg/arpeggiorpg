@@ -310,6 +310,7 @@ data Game status = Game
     , _currentCreature :: CreatureName
     , _currentPlayer :: Player
     , _creaturesInPlay :: Map CreatureName Creature
+    , _initiative :: [CreatureName]
     }
     deriving (Show, Eq)
 
@@ -323,8 +324,8 @@ renderState (GMVettingAction ability targets)
     = "GMVettingAction: " ++ _abilityName ability ++ " -> " ++ tshow targets
 
 
-renderCreaturesInPlay :: CreatureName -> [CreatureName] -> Text
-renderCreaturesInPlay current all = concat $ intersperse ", " $ map rend all
+renderInitiative :: CreatureName -> [CreatureName] -> Text
+renderInitiative current all = concat $ intersperse ", " $ map rend all
     where
         rend :: CreatureName -> Text
         rend name = if name == current then "*" ++ name else name
@@ -334,20 +335,16 @@ render (Game {..}) = unlines
     [ "# Game"
     , "Current player: " ++ (playerName _currentPlayer) ++ " (" ++ _currentCreature ++ ") "
     , renderState _state
-    , renderCreaturesInPlay _currentCreature (keys _creaturesInPlay)
+    , renderInitiative _currentCreature (_initiative)
     ]
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
               -> Game PlayerChoosingTargets
-chooseAbility game ability =
-    set state newState game
-    where newState = PlayerChoosingTargets ability
+chooseAbility game ability = set state (PlayerChoosingTargets ability) game
 
 chooseTargets :: Game PlayerChoosingTargets -> [[CreatureName]] -> Game GMVettingAction
-chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) creatures =
-    set state newState game
-    where newState = GMVettingAction ability creatures
-
+chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) creatures
+    = set state (GMVettingAction ability creatures) game
 
 applyAbility
     :: Game GMVettingAction
@@ -361,17 +358,26 @@ applyAbility game@(Game {_state=GMVettingAction ability selections})
             let applyEffect' = fmap $ flip applyEffect (_targetedEffect targetedEffect)
             return $ over (creaturesInPlay . at creatName) applyEffect' game
 
--- ^ XXX [Creature] should be replaced by a map of effects to lists of
--- creatures? or something...
--- chooseTargets :: Game PlayerChoosingTargets -> [Creature]
---               -> Game GMVettingAction
--- chooseTargets = undefined
---
--- vetAction :: Game GMVettingAction -> Game PlayerChoosingAbility
--- vetAction = undefined -- this is where applyAbility actually gets called
---
--- denyAction :: Game GMVettingAction -> Game PlayerChoosingTargets
--- denyAction gs = undefined
+
+getNextCircular :: Eq a => a -> [a] -> a
+getNextCircular el l = go $ snd $ partition (==el) l
+    where
+        go (_:[]) = headEx l
+        go (_:two:_) = two
+        go _ = error "u sux"
+
+acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+acceptAction game = do
+    newGame <- applyAbility game
+    let newGame' = set state PlayerChoosingAbility game
+        nextCreature = getNextCircular (_currentCreature newGame') (keys $ _creaturesInPlay newGame')
+        newGame'' = set currentCreature nextCreature newGame'
+    return newGame''
+
+denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
+denyAction game =
+    set state newState game
+    where newState = PlayerChoosingAbility
 
 -- test data
 chris :: Player
@@ -390,9 +396,10 @@ myGame1 = Game
     , _currentCreature="Radorg"
     , _currentPlayer=chris
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
+    , _initiative=["Radorg", "Aspyr"]
     }
 
 myGame2 = chooseAbility myGame1 stab
 myGame3 = chooseTargets myGame2 [["Aspyr"]]
-
-(Just myGame4) = applyAbility myGame3
+(Just myGame4) = acceptAction myGame3
+myGame5 = denyAction myGame3
