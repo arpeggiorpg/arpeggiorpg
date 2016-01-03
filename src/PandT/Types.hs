@@ -238,42 +238,6 @@ makeDotEffect newConditionName int dur per
             , _conditionValue=RecurringEffect per (Damage (DamageIntensity int))
             , _conditionDuration=dur})
 
-bleed :: Effect
--- bleed = makeDotEffect "Bleeding" Medium (TimedCondition (Duration 2)) (Period 1)
-bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
-
-
-{-
-- fists of fury:
-  - effect 1: TARGETED high damage + stun
-  - effect 2: CONE medium damage + stun
-- Immolate:
-  - effect 1: medium damage to target
-  - effect 2: medium damage to SAME target
-
--}
-
-stab :: Ability
-stab = Ability
-    { _abilityName="Stab"
-    , _cost=Energy 10
-    , _effects=[stabTargetedEffect]
-    , _castTime = CastTime 0
-    , _cooldown = Cooldown 0
-    }
-    where
-        stabTargetedEffect =
-            TargetedEffect
-                { _targetName = "Stab"
-                , _targetSystem = TargetCreature (Range 1)
-                , _targetedEffect = stabEffect
-                }
-        stabEffect = MultiEffect stabDirectDamage bleed
-        stabDirectDamage = Damage (DamageIntensity Medium)
-
-creat :: Creature
-creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
-
 checkDead :: Creature -> Creature
 checkDead creat
     = if (_health creat < Health 0)
