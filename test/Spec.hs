@@ -41,6 +41,7 @@ jah = Player "Jah"
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
+bleedCondition :: Condition
 (Just bleedCondition) = bleed^?_ApplyCondition
 
 stab :: Ability
@@ -78,3 +79,73 @@ myGame2 = chooseAbility myGame1 stab
 myGame3 = chooseTargets myGame2 [["Aspyr"]]
 (Just myGame4) = acceptAction myGame3
 myGame5 = denyAction myGame3
+
+
+-- following test data still unused
+
+-- Tera-style multi-healing
+healTwoTargets :: [TargetedEffect]
+healTwoTargets = take 2 . repeat $ TargetedEffect
+        { _targetName="Heal"
+        , _targetSystem=TargetCreature (Range 5)
+        , _targetedEffect=Heal (DamageIntensity Medium)
+        }
+
+-- basic damage+dot attack
+immolate :: TargetedEffect
+immolate = TargetedEffect
+    { _targetName="Immolate"
+    , _targetSystem=TargetCreature (Range 5)
+    , _targetedEffect=MultiEffect directDamage dot
+    } where
+        directDamage = Damage (DamageIntensity Medium)
+        dot = makeTimedEOT "Immolation" 3 dotTick
+        dotTick = Damage (DamageIntensity Low)
+
+
+mistPunch :: [TargetedEffect]
+mistPunch =
+    [ TargetedEffect
+        { _targetName="MistPunch Damage"
+        , _targetSystem=TargetCreature (Range 1)
+        , _targetedEffect=Damage (DamageIntensity Low)
+        }
+    , TargetedEffect
+        { _targetName="MistPunch Heal"
+        , _targetSystem=TargetCreature (Range 4)
+        , _targetedEffect=Heal (DamageIntensity Low)
+        }
+    ]
+
+-- ok this won't work, because the secondary effect will apply to the primary target.
+-- fistsOfFury :: [TargetedEffect]
+-- fistsOfFury =
+--     [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=stunAndMediumDamage}
+--     , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
+--     ]
+
+stun :: Duration -> Effect
+stun dur = ApplyCondition Condition
+    { _conditionName = "Stunned"
+    , _conditionValue = Incapacitated
+    , _conditionDuration = TimedCondition dur
+    }
+
+-- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
+fistsOfFury :: [TargetedEffect]
+fistsOfFury =
+    [ TargetedEffect
+        { _targetName="Fists of Fury Primary"
+        , _targetSystem=TargetCreature (Range 1)
+        , _targetedEffect=lowDamage
+        }
+    , TargetedEffect
+        { _targetName="Fists of Fury Area"
+        , _targetSystem=TargetCone (Range 1)
+        , _targetedEffect=stunAndLowDamage
+        }
+    ]
+    where
+        lowDamage = Damage (DamageIntensity Medium)
+        stunAndLowDamage = MultiEffect stunEff lowDamage
+        stunEff = stun (Duration 1)

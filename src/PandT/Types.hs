@@ -57,6 +57,8 @@ data ConditionDuration -- this could have a reasonable Ord instance
     | UnlimitedDuration
     deriving (Show, Eq)
 
+makePrisms ''ConditionDuration
+
 data ConditionValue
     = RecurringEffect Period Effect
     | DamageAbsorb DamageIntensity
@@ -66,19 +68,13 @@ data ConditionValue
     | Dead
     deriving (Show, Eq)
 
+
 data Condition
     = Condition
     { _conditionName :: Text
     , _conditionDuration :: ConditionDuration
     , _conditionValue :: ConditionValue
     } deriving (Show, Eq)
-
-dead :: Condition
-dead = Condition
-    { _conditionName="Dead"
-    , _conditionDuration=UnlimitedDuration
-    , _conditionValue=Dead
-    }
 
 
 data Effect
@@ -89,6 +85,8 @@ data Effect
     | MultiEffect Effect Effect
     deriving (Show, Eq)
 
+makePrisms ''ConditionValue
+makeLenses ''Condition
 makePrisms ''Effect
 
 data TargetSystem
@@ -98,6 +96,7 @@ data TargetSystem
     | TargetCone Range
     deriving (Show, Eq)
 
+makePrisms ''TargetSystem
 
 data TargetedEffect = TargetedEffect
     { _targetName :: CreatureName -- ^ Used for prompting the user for the target
@@ -105,6 +104,7 @@ data TargetedEffect = TargetedEffect
     , _targetedEffect :: Effect
     } deriving (Show, Eq)
 
+makeLenses ''TargetedEffect
 
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff = ApplyCondition Condition
@@ -112,74 +112,6 @@ makeTimedEOT cname cdur ceff = ApplyCondition Condition
     , _conditionDuration=TimedCondition (Duration cdur)
     , _conditionValue=RecurringEffect (Period 1) ceff
     }
-
--- Tera-style multi-healing
-healTwoTargets :: [TargetedEffect]
-healTwoTargets = take 2 . repeat $ TargetedEffect
-        { _targetName="Heal"
-        , _targetSystem=TargetCreature (Range 5)
-        , _targetedEffect=Heal (DamageIntensity Medium)
-        }
-
--- basic damage+dot attack
-immolate :: TargetedEffect
-immolate = TargetedEffect
-    { _targetName="Immolate"
-    , _targetSystem=TargetCreature (Range 5)
-    , _targetedEffect=MultiEffect directDamage dot
-    } where
-        directDamage = Damage (DamageIntensity Medium)
-        dot = makeTimedEOT "Immolation" 3 dotTick
-        dotTick = Damage (DamageIntensity Low)
-
-
-mistPunch :: [TargetedEffect]
-mistPunch =
-    [ TargetedEffect
-        { _targetName="MistPunch Damage"
-        , _targetSystem=TargetCreature (Range 1)
-        , _targetedEffect=Damage (DamageIntensity Low)
-        }
-    , TargetedEffect
-        { _targetName="MistPunch Heal"
-        , _targetSystem=TargetCreature (Range 4)
-        , _targetedEffect=Heal (DamageIntensity Low)
-        }
-    ]
-
--- ok this won't work, because the secondary effect will apply to the primary target.
--- fistsOfFury :: [TargetedEffect]
--- fistsOfFury =
---     [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=stunAndMediumDamage}
---     , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
---     ]
-
-stun :: Duration -> Effect
-stun dur = ApplyCondition Condition
-    { _conditionName = "Stunned"
-    , _conditionValue = Incapacitated
-    , _conditionDuration = TimedCondition dur
-    }
-
--- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
-fistsOfFury :: [TargetedEffect]
-fistsOfFury =
-    [ TargetedEffect
-        { _targetName="Fists of Fury Primary"
-        , _targetSystem=TargetCreature (Range 1)
-        , _targetedEffect=lowDamage
-        }
-    , TargetedEffect
-        { _targetName="Fists of Fury Area"
-        , _targetSystem=TargetCone (Range 1)
-        , _targetedEffect=stunAndLowDamage
-        }
-    ]
-    where
-        lowDamage = Damage (DamageIntensity Medium)
-        stunAndLowDamage = MultiEffect stunEff lowDamage
-        stunEff = stun (Duration 1)
-
 
 
 data Ability = Ability
@@ -205,6 +137,41 @@ data Creature = Creature
     deriving (Show, Eq)
 
 makeLenses ''Creature
+
+data PlayerChoosingAbility
+data PlayerChoosingTargets
+data GMVettingAction
+
+data GameState a where
+    PlayerChoosingAbility :: GameState PlayerChoosingAbility
+    PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
+    GMVettingAction :: Ability -> [[CreatureName]] -> GameState GMVettingAction
+
+makePrisms ''GameState
+
+instance Show (GameState a) where
+    show PlayerChoosingAbility = "PlayerChoosingAbility"
+    show (PlayerChoosingTargets ability) = "PlayerChoosingTargets " ++ show ability
+    show (GMVettingAction ability targets) = "GMVettingAction " ++ show ability ++ " " ++ show targets
+
+instance Eq (GameState a) where
+    PlayerChoosingAbility == PlayerChoosingAbility = True
+    (PlayerChoosingTargets ab1) == (PlayerChoosingTargets ab2) = ab1 == ab2
+    (GMVettingAction ab1 targ1) == (GMVettingAction ab2 targ2) = (ab1 == ab2) && (targ1 == targ2)
+
+
+data Game status = Game
+    { _state :: GameState status
+    , _playerCharacters :: Map Player CreatureName
+    , _currentCreature :: CreatureName
+    , _currentPlayer :: Player
+    , _creaturesInPlay :: Map CreatureName Creature
+    , _initiative :: [CreatureName]
+    }
+    deriving (Show, Eq)
+
+makeLenses ''Game
+
 
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 100
@@ -240,6 +207,13 @@ makeDotEffect newConditionName intensity duration period
             , _conditionValue=RecurringEffect period (Damage (DamageIntensity intensity))
             , _conditionDuration=duration})
 
+dead :: Condition
+dead = Condition
+    { _conditionName="Dead"
+    , _conditionDuration=UnlimitedDuration
+    , _conditionValue=Dead
+    }
+
 checkDead :: Creature -> Creature
 checkDead creat
     = if (_health creat <= Health 0)
@@ -255,38 +229,6 @@ applyEffect creature effect = checkDead $ go effect
         go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
 
 -- Workflow
-
-data PlayerChoosingAbility
-data PlayerChoosingTargets
-data GMVettingAction
-
-data GameState a where
-    PlayerChoosingAbility :: GameState PlayerChoosingAbility
-    PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
-    GMVettingAction :: Ability -> [[CreatureName]] -> GameState GMVettingAction
-
-instance Show (GameState a) where
-    show PlayerChoosingAbility = "PlayerChoosingAbility"
-    show (PlayerChoosingTargets ability) = "PlayerChoosingTargets " ++ show ability
-    show (GMVettingAction ability targets) = "GMVettingAction " ++ show ability ++ " " ++ show targets
-
-instance Eq (GameState a) where
-    PlayerChoosingAbility == PlayerChoosingAbility = True
-    (PlayerChoosingTargets ab1) == (PlayerChoosingTargets ab2) = ab1 == ab2
-    (GMVettingAction ab1 targ1) == (GMVettingAction ab2 targ2) = (ab1 == ab2) && (targ1 == targ2)
-
-
-data Game status = Game
-    { _state :: GameState status
-    , _playerCharacters :: Map Player CreatureName
-    , _currentCreature :: CreatureName
-    , _currentPlayer :: Player
-    , _creaturesInPlay :: Map CreatureName Creature
-    , _initiative :: [CreatureName]
-    }
-    deriving (Show, Eq)
-
-makeLenses ''Game
 
 renderState :: GameState a -> Text
 renderState PlayerChoosingAbility = "PlayerChoosingAbility"
