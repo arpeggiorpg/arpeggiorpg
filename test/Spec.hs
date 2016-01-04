@@ -10,22 +10,30 @@ import ClassyPrelude
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [effectTests, abilityTests]
+tests = testGroup "Tests" [effectTests, conditionTests, abilityTests]
 
 effectTests :: TestTree
 effectTests = testGroup "Effect Tests"
     [ testCase "Dead creature is dead" $
         deadCreature^.conditions @?= [dead]
-    , testCase "Damage to dead creature does not ause additional Dead condition" $
+    , testCase "Damage to dead creature does not cause additional Dead condition" $
         deadTwice^.conditions @?= [dead]
     ]
 
+conditionTests :: TestTree
+conditionTests = testGroup "Condition Tests"
+    [ testCase "RecurringEffect recurs on start of character's turn" $
+        myGame7^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 50)
+    ]
+
 abilityTests :: TestTree
-abilityTests = testGroup "Ability Tests"
+abilityTests =
+    let (Just aspyr4) = myGame4^.creaturesInPlay.at "Aspyr" in
+    testGroup "Ability Tests"
     [ testCase "Ability damage takes effect" $
-        myGame4^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 75)
+        aspyr4^.health @?= (Health 75)
     , testCase "Ability condition in multi-effect adds condition" $
-        myGame4^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [bleedCondition]
+        aspyr4^.conditions @?= [bleedCondition]
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
@@ -78,7 +86,10 @@ myGame1 = Game
 myGame2 = chooseAbility myGame1 stab
 myGame3 = chooseTargets myGame2 [["Aspyr"]]
 (Just myGame4) = acceptAction myGame3
-myGame5 = denyAction myGame3
+myGameDenied = denyAction myGame3
+myGame5 = chooseAbility myGame4 stab
+myGame6 = chooseTargets myGame5 [["Radorg"]]
+(Just myGame7) = acceptAction myGame6
 
 
 -- following test data still unused
