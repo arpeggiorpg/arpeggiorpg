@@ -15,22 +15,22 @@ tests = testGroup "Tests" [effectTests, abilityTests]
 effectTests :: TestTree
 effectTests = testGroup "Effect Tests"
     [ testCase "Dead creature is dead" $
-        [dead] @=? deadCreature^.conditions
+        deadCreature^.conditions @?= [dead]
     , testCase "Damage to dead creature does not ause additional Dead condition" $
-        [dead] @=? deadTwice^.conditions
+        deadTwice^.conditions @?= [dead]
     ]
 
 abilityTests :: TestTree
 abilityTests = testGroup "Ability Tests"
     [ testCase "Ability damage takes effect" $
-        Just (Health 75) @=? myGame4^.creaturesInPlay.at "Aspyr"^?_Just.health
+        myGame4^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 75)
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
 dotted = applyEffect creat bleed
 damaged = applyEffect creat (Damage (DamageIntensity Medium))
 healed = applyEffect damaged (Heal (DamageIntensity Low))
-deadCreature = foldl' applyEffect creat (take 3 $ repeat (Damage (DamageIntensity High)))
+deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage (DamageIntensity High)))
 deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
 
 chris = Player "Chris"

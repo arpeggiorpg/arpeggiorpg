@@ -231,16 +231,16 @@ makeCreature cname res sta creatAbilities = Creature
     , _casting=Nothing}
 
 makeDotEffect :: Text -> Intensity -> ConditionDuration -> Period -> Effect
-makeDotEffect newConditionName int dur per
+makeDotEffect newConditionName intensity duration period
     = ApplyCondition
         (Condition
             { _conditionName=newConditionName
-            , _conditionValue=RecurringEffect per (Damage (DamageIntensity int))
-            , _conditionDuration=dur})
+            , _conditionValue=RecurringEffect period (Damage (DamageIntensity intensity))
+            , _conditionDuration=duration})
 
 checkDead :: Creature -> Creature
 checkDead creat
-    = if (_health creat < Health 0)
+    = if (_health creat <= Health 0)
         then over conditions (dead:) creat
         else creat
 
@@ -339,7 +339,8 @@ applyAbility game@(Game {_state=GMVettingAction ability selections})
         appEff :: TargetedEffect -> Game GMVettingAction -> CreatureName -> Maybe (Game GMVettingAction)
         appEff targetedEffect game creatName = do
             let applyEffect' = fmap $ flip applyEffect (_targetedEffect targetedEffect)
-            return $ over (creaturesInPlay . at creatName) applyEffect' game
+            let applied = over (creaturesInPlay . at creatName) applyEffect' game
+            return $ applied
 
 
 getNextCircular :: Eq a => a -> [a] -> a
@@ -353,7 +354,7 @@ acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 acceptAction game = do
     -- TODO: "tick" the time
     newGame <- applyAbility game
-    let newGame' = set state PlayerChoosingAbility game
+    let newGame' = set state PlayerChoosingAbility newGame
         nextCreature = getNextCircular (_currentCreature newGame') (keys $ _creaturesInPlay newGame')
         newGame'' = set currentCreature nextCreature newGame'
     return newGame''
