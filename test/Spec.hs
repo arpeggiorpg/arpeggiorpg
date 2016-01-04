@@ -24,6 +24,8 @@ abilityTests :: TestTree
 abilityTests = testGroup "Ability Tests"
     [ testCase "Ability damage takes effect" $
         myGame4^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 75)
+    , testCase "Ability condition in multi-effect adds condition" $
+        myGame4^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [bleedCondition]
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
@@ -38,6 +40,8 @@ jah = Player "Jah"
 
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
+
+(Just bleedCondition) = bleed^?_ApplyCondition
 
 stab :: Ability
 stab = Ability

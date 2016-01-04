@@ -8,7 +8,8 @@ module PandT.Types where
 
 import ClassyPrelude
 
-import Control.Lens ((^.), (^?), (^..), at, over, view, preview, makeLenses, set, firstOf, _head,
+import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
+                     makeLenses, makePrisms, set, firstOf, _head,
                      _Just)
 import Data.Text (Text)
 import Data.Map (Map)
@@ -88,6 +89,7 @@ data Effect
     | MultiEffect Effect Effect
     deriving (Show, Eq)
 
+makePrisms ''Effect
 
 data TargetSystem
     = TargetCreature Range
