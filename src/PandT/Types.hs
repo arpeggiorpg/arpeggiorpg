@@ -218,9 +218,9 @@ dead = AppliedDead UnlimitedDuration $ MkDead "Dead" UnlimitedDuration
 
 checkDead :: Creature -> Creature
 checkDead creat
-    = if (_health creat <= Health 0)
-        then over conditions (dead:) creat
-        else creat
+    | elem dead (_conditions creat) = creat
+    | _health creat <= Health 0 = over conditions (dead:) creat
+    | otherwise = creat
 
 applyCondition :: ConditionCase -> AppliedCondition
 applyCondition (SomeRecurringEffect cdef@(MkRecurringEffect _ dur _)) =
