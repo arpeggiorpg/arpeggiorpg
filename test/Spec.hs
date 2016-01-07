@@ -49,7 +49,7 @@ jah = Player "Jah"
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
-bleedCondition :: Condition
+bleedCondition :: ConditionDef
 (Just bleedCondition) = bleed^?_ApplyCondition
 
 stab :: Ability
@@ -136,7 +136,7 @@ mistPunch =
 --     ]
 
 stun :: Duration -> Effect
-stun dur = ApplyCondition Condition
+stun dur = ApplyCondition ConditionDef
     { _conditionName = "Stunned"
     , _conditionValue = Incapacitated
     , _conditionDuration = TimedCondition dur
