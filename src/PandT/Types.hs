@@ -306,10 +306,7 @@ tick startingCreature = foldl' checkCondition startingCreature (startingCreature
         checkCondition :: Creature -> AppliedCondition -> Creature
         checkCondition
             creat
-            (AppliedRecurringEffect
-                durLeft
-                (RecurringEffect _ _ eff)
-                durSinceLastTick)
+            (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
             = -- todo: only apply when durSinceLastTick appropriate
                 -- todo: decrement durSinceLastTick
                 trace ("***Applying Effect due to tick " ++ show eff ++ show (creat^.creatureName))

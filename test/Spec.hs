@@ -23,17 +23,19 @@ effectTests = testGroup "Effect Tests"
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
     [ testCase "RecurringEffect recurs on start of character's turn" $
-        myGame7^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 50)
+        stabAccepted^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 50)
     ]
 
 abilityTests :: TestTree
 abilityTests =
-    let (Just aspyr4) = myGame4^.creaturesInPlay.at "Aspyr" in
+    let (Just aspyrPunched) = punchAccepted^.creaturesInPlay.at "Aspyr"
+        (Just aspyrStabbed) = stabAccepted^.creaturesInPlay.at "Aspyr"
+    in
     testGroup "Ability Tests"
     [ testCase "Ability damage takes effect" $
-        aspyr4^.health @?= (Health 75)
+        aspyrPunched^.health @?= (Health 75)
     , testCase "Ability condition in multi-effect adds condition" $
-        aspyr4^.conditions @?= [appliedBleed]
+        aspyrStabbed^.conditions @?= [appliedBleed]
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
@@ -45,6 +47,14 @@ deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
 
 chris = Player "Chris"
 jah = Player "Jah"
+
+
+punch :: Ability
+punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
+    where
+        punchTEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) punchEffect
+        punchEffect = Damage (DamageIntensity Medium)
+
 
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
@@ -73,11 +83,18 @@ stab = Ability
         stabEffect = MultiEffect stabDirectDamage bleed
         stabDirectDamage = Damage (DamageIntensity Medium)
 
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab]
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch]
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch]
 
-myGame1 :: Game PlayerChoosingAbility
-myGame1 = Game
+simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
+simulateMove game ability target =
+    let targeting = chooseAbility game ability
+        vetting = chooseTargets targeting [[target]]
+        (Just accepted) = acceptAction vetting
+    in (targeting, vetting, accepted)
+
+myGame :: Game PlayerChoosingAbility
+myGame = Game
     { _state=PlayerChoosingAbility
     , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
     , _currentCreature="Radorg"
@@ -86,13 +103,9 @@ myGame1 = Game
     , _initiative=["Radorg", "Aspyr"]
     }
 
-myGame2 = chooseAbility myGame1 stab
-myGame3 = chooseTargets myGame2 [["Aspyr"]]
-(Just myGame4) = acceptAction myGame3
-myGameDenied = denyAction myGame3
-myGame5 = chooseAbility myGame4 stab
-myGame6 = chooseTargets myGame5 [["Radorg"]]
-(Just myGame7) = acceptAction myGame6
+(punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
+-- myGameDenied = denyAction punchVetting
+(stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
 
 
 -- following test data still unused
