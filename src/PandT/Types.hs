@@ -63,8 +63,8 @@ makePrisms ''ConditionDuration
 
 data RecurringEffectDef = RecurringEffectDef { _recurringEffectPeriod :: Period, _recurringEffectEffect :: Effect } deriving (Show, Eq)
 data DamageIncreaseDef = DamageIncreaseDef { _damageIncrease :: DamageIntensity } deriving (Show, Eq)
-data DamageDecreaseDef = DamageDecreaseDef { _damageDecrease :: DamageDecrease } deriving (Show, Eq)
-data DamageAbsorbDef = DamageAbsorbDef { _damageAbsorbIntensity :: DamageIntensity } deriving (Show, Eq) deriving (Show, Eq)
+data DamageDecreaseDef = DamageDecreaseDef { _damageDecrease :: DamageIntensity } deriving (Show, Eq)
+data DamageAbsorbDef = DamageAbsorbDef { _damageAbsorbIntensity :: DamageIntensity } deriving (Show, Eq)
 data IncapacitatedDef = IncapacitatedDef deriving (Show, Eq)
 data DeadDef = DeadDef deriving (Show, Eq)
 
@@ -76,8 +76,8 @@ data ConditionDef a where
     MkDamageIncrease :: Text -> ConditionDuration -> DamageIncreaseDef -> ConditionDef DamageIncreaseDef
     MkDamageDecrease :: Text -> ConditionDuration -> DamageDecreaseDef -> ConditionDef DamageDecreaseDef
     MkDamageAbsorb :: Text -> ConditionDuration -> DamageAbsorbDef -> ConditionDef DamageAbsorbDef
-    MkIncapacitated :: Text -> ConditionDuration -> IncapacitatedDef -> ConditionDef IncapacitatedDef
-    MkDead :: Text -> ConditionDuration -> DeadDef -> ConditionDef DeadDef
+    MkIncapacitated :: Text -> ConditionDuration -> ConditionDef IncapacitatedDef
+    MkDead :: Text -> ConditionDuration -> ConditionDef DeadDef
 
 deriving instance Show (ConditionDef a)
 deriving instance Eq (ConditionDef a)
@@ -96,12 +96,12 @@ data ConditionCase
 -- types that ensure the appropriate runtime data types are associated with the
 -- appropriate condition definition types.
 data AppliedCondition
-    = AppliedRecurringEffect {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef RecurringEffectDef, _conditionData :: RecurringEffectData }
-    | AppliedDamageAbsorb {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef DamageAbsorbDef, _conditionData :: DamageAbsorbData }
-    | AppliedDamageIncrease {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef DamageIncreaseDef, _conditionData :: ()}
-    | AppliedDamageDecrease {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef DamageDecreaseDef, _conditionData :: ()}
-    | AppliedIncapacitated {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef IncapacitatedDef, _conditionData :: ()}
-    | AppliedDead {_durationLeft :: ConditionDuration, _conditionDef :: ConditionDef DeadDef, _conditionData :: ()}
+    = AppliedRecurringEffect ConditionDuration (ConditionDef RecurringEffectDef) RecurringEffectData
+    | AppliedDamageAbsorb ConditionDuration (ConditionDef DamageAbsorbDef) DamageAbsorbData
+    | AppliedDamageIncrease ConditionDuration (ConditionDef DamageIncreaseDef)
+    | AppliedDamageDecrease ConditionDuration (ConditionDef DamageDecreaseDef)
+    | AppliedIncapacitated ConditionDuration (ConditionDef IncapacitatedDef)
+    | AppliedDead ConditionDuration (ConditionDef DeadDef)
     deriving (Show, Eq)
 
 data Effect
@@ -116,7 +116,6 @@ deriving instance Eq Effect
 
 makePrisms ''ConditionDef
 makeLenses ''ConditionDef
-makeLenses ''AppliedCondition
 makePrisms ''AppliedCondition
 makePrisms ''Effect
 
@@ -215,11 +214,7 @@ makeCreature cname res sta creatAbilities = Creature
     , _casting=Nothing}
 
 dead :: AppliedCondition
-dead = AppliedDead
-    { _durationLeft = UnlimitedDuration
-    , _conditionDef = MkDead
-    , _conditionData = ()
-    }
+dead = AppliedDead UnlimitedDuration $ MkDead "Dead" UnlimitedDuration
 
 checkDead :: Creature -> Creature
 checkDead creat
@@ -230,18 +225,14 @@ checkDead creat
 applyCondition :: ConditionCase -> AppliedCondition
 applyCondition (SomeRecurringEffect cdef@(MkRecurringEffect _ dur _)) =
     let condData=RecurringEffectData {_durationSinceLastTick=(Duration 0)}
-    in AppliedRecurringEffect {_durationLeft=dur, _conditionDef=cdef, _conditionData=condData}
-applyCondition (SomeDamageIncrease cdef@(MkDamageIncrease _ dur _)) =
-    AppliedDamageIncrease {_durationLeft=dur, _conditionDef=cdef, _conditionData=()}
-applyCondition (SomeDamageDecrease cdef@(MkDamageDecrease _ dur _)) =
-    AppliedDamageDecrease {_durationLeft=dur, _conditionDef=cdef, _conditionData=()}
+    in AppliedRecurringEffect dur cdef condData
+applyCondition (SomeDamageIncrease cdef@(MkDamageIncrease _ dur _)) = AppliedDamageIncrease dur cdef
+applyCondition (SomeDamageDecrease cdef@(MkDamageDecrease _ dur _)) = AppliedDamageDecrease dur cdef
 applyCondition (SomeDamageAbsorb cdef@(MkDamageAbsorb _ dur _)) =
     let condData=DamageAbsorbData {_damageAbsorbed=0}
-    in AppliedDamageAbsorb {_durationLeft=dur, _conditionDef=cdef, _conditionData=condData}
-applyCondition (SomeIncapacitated cdef@(MkIncapacitated _ dur _)) =
-    AppliedIncapacitated {_durationLeft=dur, _conditionDef=cdef, _conditionData=()}
-applyCondition (SomeDead cdef@(MkDead _ dur _ )) =
-    AppliedDead {_durationLeft=dur, _conditionDef=cdef, _conditionData=()}
+    in AppliedDamageAbsorb dur cdef condData
+applyCondition (SomeIncapacitated cdef@(MkIncapacitated _ dur)) = AppliedIncapacitated dur cdef
+applyCondition (SomeDead cdef@(MkDead _ dur)) = AppliedDead dur cdef
 
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = checkDead $ go effect

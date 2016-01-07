@@ -33,7 +33,7 @@ abilityTests =
     [ testCase "Ability damage takes effect" $
         aspyr4^.health @?= (Health 75)
     , testCase "Ability condition in multi-effect adds condition" $
-        aspyr4^.conditions @?= [bleedCondition]
+        aspyr4^.conditions @?= [appliedBleed]
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
@@ -49,8 +49,11 @@ jah = Player "Jah"
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
-bleedCondition :: ConditionDef
+bleedCondition :: ConditionCase
 (Just bleedCondition) = bleed^?_ApplyCondition
+
+appliedBleed :: AppliedCondition
+appliedBleed = applyCondition bleedCondition
 
 stab :: Ability
 stab = Ability
@@ -136,11 +139,8 @@ mistPunch =
 --     ]
 
 stun :: Duration -> Effect
-stun dur = ApplyCondition ConditionDef
-    { _conditionName = "Stunned"
-    , _conditionValue = Incapacitated
-    , _conditionDuration = TimedCondition dur
-    }
+stun dur = ApplyCondition $ SomeIncapacitated $
+    MkIncapacitated "Stunned" (TimedCondition dur)
 
 -- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
 fistsOfFury :: [TargetedEffect]
