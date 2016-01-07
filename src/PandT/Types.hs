@@ -308,14 +308,19 @@ getNextCircular el l = go $ snd $ partition (==el) l
         go (_:two:_) = two
         go _ = error "u sux"
 
+
+nextTurn :: Game GMVettingAction -> Game PlayerChoosingAbility
+nextTurn game =
+    let stateUpdated = set state PlayerChoosingAbility game
+        nextCreature = getNextCircular (_currentCreature stateUpdated) (keys $ _creaturesInPlay stateUpdated)
+    in set currentCreature nextCreature stateUpdated
+
+
 acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 acceptAction game = do
-    -- TODO: "tick" the time
     newGame <- applyAbility game
-    let newGame' = set state PlayerChoosingAbility newGame
-        nextCreature = getNextCircular (_currentCreature newGame') (keys $ _creaturesInPlay newGame')
-        newGame'' = set currentCreature nextCreature newGame'
-    return newGame''
+    return $ nextTurn newGame
+
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game =
