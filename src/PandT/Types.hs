@@ -34,9 +34,6 @@ newtype Radius = Radius Int
 newtype Duration = Duration Int
     deriving (Show, Eq, Ord)
 
-newtype Period = Period Int
-    deriving (Show, Eq, Ord)
-
 newtype CastTime = CastTime Int
     deriving (Show, Eq, Ord)
 
@@ -61,34 +58,31 @@ data ConditionDuration -- this could have a reasonable Ord instance
 
 makePrisms ''ConditionDuration
 
-data RecurringEffectDef = RecurringEffectDef { _recurringEffectPeriod :: Period, _recurringEffectEffect :: Effect } deriving (Show, Eq)
-data DamageIncreaseDef = DamageIncreaseDef { _damageIncrease :: DamageIntensity } deriving (Show, Eq)
-data DamageDecreaseDef = DamageDecreaseDef { _damageDecrease :: DamageIntensity } deriving (Show, Eq)
-data DamageAbsorbDef = DamageAbsorbDef { _damageAbsorbIntensity :: DamageIntensity } deriving (Show, Eq)
-data IncapacitatedDef = IncapacitatedDef deriving (Show, Eq)
-data DeadDef = DeadDef deriving (Show, Eq)
-
-data RecurringEffectData = RecurringEffectData { _durationSinceLastTick :: Duration } deriving (Show, Eq)
-data DamageAbsorbData = DamageAbsorbData { _damageAbsorbed :: Int } deriving (Show, Eq)
+data RecurringEffect
+data DamageIncrease
+data DamageDecrease
+data DamageAbsorb
+data Incapacitated
+data Dead
 
 data ConditionDef a where
-    MkRecurringEffect :: Text -> ConditionDuration -> RecurringEffectDef -> ConditionDef RecurringEffectDef
-    MkDamageIncrease :: Text -> ConditionDuration -> DamageIncreaseDef -> ConditionDef DamageIncreaseDef
-    MkDamageDecrease :: Text -> ConditionDuration -> DamageDecreaseDef -> ConditionDef DamageDecreaseDef
-    MkDamageAbsorb :: Text -> ConditionDuration -> DamageAbsorbDef -> ConditionDef DamageAbsorbDef
-    MkIncapacitated :: Text -> ConditionDuration -> ConditionDef IncapacitatedDef
-    MkDead :: Text -> ConditionDuration -> ConditionDef DeadDef
+    RecurringEffect :: Text -> ConditionDuration -> Effect -> ConditionDef RecurringEffect
+    DamageIncrease :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageIncrease
+    DamageDecrease :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageDecrease
+    DamageAbsorb :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageAbsorb
+    Incapacitated :: Text -> ConditionDuration -> ConditionDef Incapacitated
+    Dead :: Text -> ConditionDuration -> ConditionDef Dead
 
 deriving instance Show (ConditionDef a)
 deriving instance Eq (ConditionDef a)
 
 data ConditionCase
-    = SomeRecurringEffect (ConditionDef RecurringEffectDef)
-    | SomeDamageAbsorb (ConditionDef DamageAbsorbDef)
-    | SomeDamageIncrease (ConditionDef DamageIncreaseDef)
-    | SomeDamageDecrease (ConditionDef DamageDecreaseDef)
-    | SomeIncapacitated (ConditionDef IncapacitatedDef)
-    | SomeDead (ConditionDef DeadDef)
+    = SomeRecurringEffect (ConditionDef RecurringEffect)
+    | SomeDamageAbsorb (ConditionDef DamageAbsorb)
+    | SomeDamageIncrease (ConditionDef DamageIncrease)
+    | SomeDamageDecrease (ConditionDef DamageDecrease)
+    | SomeIncapacitated (ConditionDef Incapacitated)
+    | SomeDead (ConditionDef Dead)
     deriving (Show, Eq)
 
 -- A condition at runtime: contains a condition definition and the necessary
@@ -96,12 +90,12 @@ data ConditionCase
 -- types that ensure the appropriate runtime data types are associated with the
 -- appropriate condition definition types.
 data AppliedCondition
-    = AppliedRecurringEffect ConditionDuration (ConditionDef RecurringEffectDef) RecurringEffectData
-    | AppliedDamageAbsorb ConditionDuration (ConditionDef DamageAbsorbDef) DamageAbsorbData
-    | AppliedDamageIncrease ConditionDuration (ConditionDef DamageIncreaseDef)
-    | AppliedDamageDecrease ConditionDuration (ConditionDef DamageDecreaseDef)
-    | AppliedIncapacitated ConditionDuration (ConditionDef IncapacitatedDef)
-    | AppliedDead ConditionDuration (ConditionDef DeadDef)
+    = AppliedRecurringEffect ConditionDuration (ConditionDef RecurringEffect) Duration
+    | AppliedDamageAbsorb ConditionDuration (ConditionDef DamageAbsorb) Int
+    | AppliedDamageIncrease ConditionDuration (ConditionDef DamageIncrease)
+    | AppliedDamageDecrease ConditionDuration (ConditionDef DamageDecrease)
+    | AppliedIncapacitated ConditionDuration (ConditionDef Incapacitated)
+    | AppliedDead ConditionDuration (ConditionDef Dead)
     deriving (Show, Eq)
 
 data Effect
@@ -115,7 +109,6 @@ deriving instance Show Effect
 deriving instance Eq Effect
 
 makePrisms ''ConditionDef
-makeLenses ''ConditionDef
 makePrisms ''AppliedCondition
 makePrisms ''Effect
 
@@ -214,7 +207,7 @@ makeCreature cname res sta creatAbilities = Creature
     , _casting=Nothing}
 
 dead :: AppliedCondition
-dead = AppliedDead UnlimitedDuration $ MkDead "Dead" UnlimitedDuration
+dead = AppliedDead UnlimitedDuration $ Dead "Dead" UnlimitedDuration
 
 checkDead :: Creature -> Creature
 checkDead creat
@@ -223,16 +216,12 @@ checkDead creat
     | otherwise = creat
 
 applyCondition :: ConditionCase -> AppliedCondition
-applyCondition (SomeRecurringEffect cdef@(MkRecurringEffect _ dur _)) =
-    let condData=RecurringEffectData {_durationSinceLastTick=(Duration 0)}
-    in AppliedRecurringEffect dur cdef condData
-applyCondition (SomeDamageIncrease cdef@(MkDamageIncrease _ dur _)) = AppliedDamageIncrease dur cdef
-applyCondition (SomeDamageDecrease cdef@(MkDamageDecrease _ dur _)) = AppliedDamageDecrease dur cdef
-applyCondition (SomeDamageAbsorb cdef@(MkDamageAbsorb _ dur _)) =
-    let condData=DamageAbsorbData {_damageAbsorbed=0}
-    in AppliedDamageAbsorb dur cdef condData
-applyCondition (SomeIncapacitated cdef@(MkIncapacitated _ dur)) = AppliedIncapacitated dur cdef
-applyCondition (SomeDead cdef@(MkDead _ dur)) = AppliedDead dur cdef
+applyCondition (SomeRecurringEffect cdef@(RecurringEffect _ dur _)) = AppliedRecurringEffect dur cdef (Duration 0)
+applyCondition (SomeDamageIncrease cdef@(DamageIncrease _ dur _)) = AppliedDamageIncrease dur cdef
+applyCondition (SomeDamageDecrease cdef@(DamageDecrease _ dur _)) = AppliedDamageDecrease dur cdef
+applyCondition (SomeDamageAbsorb cdef@(DamageAbsorb _ dur _)) = AppliedDamageAbsorb dur cdef 0
+applyCondition (SomeIncapacitated cdef@(Incapacitated _ dur)) = AppliedIncapacitated dur cdef
+applyCondition (SomeDead cdef@(Dead _ dur)) = AppliedDead dur cdef
 
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = checkDead $ go effect
@@ -309,17 +298,40 @@ getNextCircular el l = go $ snd $ partition (==el) l
         go _ = error "u sux"
 
 
-nextTurn :: Game GMVettingAction -> Game PlayerChoosingAbility
-nextTurn game =
+tick :: Creature -> Creature
+tick startingCreature = foldl' checkCondition startingCreature (startingCreature^.conditions)
+    -- decrement durLeft
+    -- todo: expire conditions when durLeft=0
+    where
+        checkCondition :: Creature -> AppliedCondition -> Creature
+        checkCondition
+            creat
+            (AppliedRecurringEffect
+                durLeft
+                (RecurringEffect _ _ eff)
+                durSinceLastTick)
+            = -- todo: only apply when durSinceLastTick appropriate
+                -- todo: decrement durSinceLastTick
+                trace ("***Applying Effect due to tick " ++ show eff ++ show (creat^.creatureName))
+                    $ applyEffect creat eff
+        checkCondition creat _ = creat
+
+
+nextTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+nextTurn game = do
+    -- TODO: update currentPlayer!
     let stateUpdated = set state PlayerChoosingAbility game
-        nextCreature = getNextCircular (_currentCreature stateUpdated) (keys $ _creaturesInPlay stateUpdated)
-    in set currentCreature nextCreature stateUpdated
+        nextCreatureName = getNextCircular (_currentCreature stateUpdated) (keys $ _creaturesInPlay stateUpdated)
+    nextCreature <- stateUpdated^.creaturesInPlay.at nextCreatureName
+    let creatureTicked = tick nextCreature
+        gameWithCreatureUpdated = set (creaturesInPlay.at nextCreatureName) (Just creatureTicked) stateUpdated
+    return $ set currentCreature nextCreatureName gameWithCreatureUpdated
 
 
 acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 acceptAction game = do
     newGame <- applyAbility game
-    return $ nextTurn newGame
+    nextTurn newGame
 
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
@@ -331,9 +343,7 @@ denyAction game =
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
     = ApplyCondition $ SomeRecurringEffect $
-        MkRecurringEffect
+        RecurringEffect
             cname
             (TimedCondition (Duration cdur))
-            (RecurringEffectDef
-                { _recurringEffectPeriod=(Period 1)
-                , _recurringEffectEffect=ceff})
+            ceff

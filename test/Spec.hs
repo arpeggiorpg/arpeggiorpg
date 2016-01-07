@@ -140,7 +140,7 @@ mistPunch =
 
 stun :: Duration -> Effect
 stun dur = ApplyCondition $ SomeIncapacitated $
-    MkIncapacitated "Stunned" (TimedCondition dur)
+    Incapacitated "Stunned" (TimedCondition dur)
 
 -- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
 fistsOfFury :: [TargetedEffect]
@@ -160,3 +160,11 @@ fistsOfFury =
         lowDamage = Damage (DamageIntensity Medium)
         stunAndLowDamage = MultiEffect stunEff lowDamage
         stunEff = stun (Duration 1)
+
+{-
+durations! ticks!
+
+fists of fury: incapacitate lasts until the beginning of the caster's next turn.
+rain of fire: lasts for 3 rounds, burns any creature entering or starting their turn in the area effected
+
+-}
