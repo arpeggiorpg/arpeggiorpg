@@ -87,20 +87,25 @@ targeting.
 - Implement basic combat stuff:
   - damage [CHECK]
   - healing [CHECK]
-  - death
+  - death [CHECK]
   - movement
 - model/workflow for abilities being "constructed"
   - player choose ability [DONE]
   - player choose target(s) [DONE]
+  - GM modifies targets
   - GM vets [DONE]
   - GM executes [DONE]
+  - GM skips
+  - update currentPlayer
 - Implement a basic text UI
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
+  - DOTs and HOTs (RecurringConditions that trigger on caster's turn)
   - passage of time
-  - DOTs and HOTs
   - stacking vs refreshing conditions
+  - area effects with duration
+  - effects that have a duration ending on caster's next turn
   - cast times
   - interrupts
   - incapacitation
