@@ -178,6 +178,43 @@ fistsOfFury =
 durations! ticks!
 
 fists of fury: incapacitate lasts until the beginning of the caster's next turn.
+
+    ignoring the area-effect of this: this can be implemented as, of course, the
+    Incapacitated condition on the target, along with a condition or native
+    concept of "Channeling" on the caster. When ticking over to the caster, we
+    can see that the channel is ending and remove the condition from the target.
+    This, of course, requires some way to link the particular spell being cast
+    by the caster to the particular Incapacitated condition on the target.
+
 rain of fire: lasts for 3 rounds, burns any creature entering or starting their turn in the area effected
+
+    Argh AE.
+
+dancing sword: summons a sword that attacks an enemy target on the casting player's turn
+
+    This should probably just be implemented as an ability that summons a creature.
+
+illness: lasts five rounds, deals 1 damage per turn at the end of the target's turn
+
+    This can be a basic-ish condition.
+
+Burning arrow: strikes the target for damage, and then burns the target at the end of each of his turn
+
+FoF:...
+
+Creature.channeling :: Bool ???
+Condition.channelingCreature :: CreatureName ??
+
+or Creature.
+
+RecurringEffect = RecurringEffect {
+    effect :: Effect,
+    when :: WhenEffectHappens
+}
+
+data WhenEffectHappens
+    = EndOfTargetTurn
+    | BeginningOfTargetTurn
+
 
 -}
