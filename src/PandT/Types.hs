@@ -297,17 +297,18 @@ getNextCircular el l = go $ snd $ partition (==el) l
         go _ = error "u sux"
 
 
+tickCondition :: Creature -> AppliedCondition -> Creature
+-- decrement durLeft
+-- todo: expire conditions when durLeft=0
+tickCondition
+    creat
+    (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
+    = applyEffect creat eff
+tickCondition creat _ = creat
+
+
 endTurnFor :: Creature -> Creature
-endTurnFor unaffected = foldl' checkCondition unaffected (unaffected^.conditions)
-    -- decrement durLeft
-    -- todo: expire conditions when durLeft=0
-    where
-        checkCondition :: Creature -> AppliedCondition -> Creature
-        checkCondition
-            creat
-            (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
-            = applyEffect creat eff
-        checkCondition creat _ = creat
+endTurnFor unaffected = foldl' tickCondition unaffected (unaffected^.conditions)
 
 
 nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
