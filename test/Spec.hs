@@ -12,6 +12,8 @@ main = defaultMain tests
 tests :: TestTree
 tests = testGroup "Tests" [effectTests, conditionTests, abilityTests]
 
+-- test: currentPlayer is updated
+
 effectTests :: TestTree
 effectTests = testGroup "Effect Tests"
     [ testCase "Dead creature is dead" $
@@ -24,6 +26,7 @@ conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
     [ testCase "RecurringEffect recurs on end of target's turn" $
         radorgSecondTurnAfterStabbingAspyr^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
+    -- test: conditions END
     ]
 
 abilityTests :: TestTree

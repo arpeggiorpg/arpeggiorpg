@@ -307,9 +307,7 @@ endTurnFor unaffected = foldl' checkCondition unaffected (unaffected^.conditions
         checkCondition
             creat
             (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
-            =
-                trace ("***Applying Effect due to tick " ++ show eff ++ show (creat^.creatureName))
-                    $ applyEffect creat eff
+            = applyEffect creat eff
         checkCondition creat _ = creat
 
 
