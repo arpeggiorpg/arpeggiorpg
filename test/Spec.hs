@@ -12,8 +12,6 @@ main = defaultMain tests
 tests :: TestTree
 tests = testGroup "Tests" [effectTests, conditionTests, abilityTests]
 
--- test: currentPlayer is updated
-
 effectTests :: TestTree
 effectTests = testGroup "Effect Tests"
     [ testCase "Dead creature is dead" $
@@ -101,7 +99,6 @@ myGame = Game
     { _state=PlayerChoosingAbility
     , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
     , _currentCreature="Radorg"
-    , _currentPlayer=chris
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
     , _initiative=["Radorg", "Aspyr"]
     }

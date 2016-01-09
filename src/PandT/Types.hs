@@ -171,7 +171,6 @@ data Game status = Game
     { _state :: GameState status
     , _playerCharacters :: Map Player CreatureName
     , _currentCreature :: CreatureName
-    , _currentPlayer :: Player
     , _creaturesInPlay :: Map CreatureName Creature
     , _initiative :: [CreatureName]
     }
@@ -263,7 +262,7 @@ renderInitiative game
 render :: Game a -> Text
 render game@(Game {..}) = unlines
     [ "# Game"
-    , "Current player: " ++ (playerName _currentPlayer) ++ " (" ++ _currentCreature ++ ") "
+    , "Current creature: " ++ " (" ++ _currentCreature ++ ") "
     , renderState _state
     , renderInitiative game
     ]
@@ -313,7 +312,6 @@ endTurnFor unaffected = foldl' checkCondition unaffected (unaffected^.conditions
 
 nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
 nextTurn game = do
-    -- TODO: update currentPlayer!
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let stateUpdated = set state PlayerChoosingAbility game
         previousCreatureName = stateUpdated^.currentCreature
