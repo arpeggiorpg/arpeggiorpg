@@ -304,7 +304,7 @@ tickCondition
     creat
     (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
     = applyEffect creat eff
-tickCondition creat _ = creat
+tickCondition creat _ = error "Unimplemented condition"
 
 
 endTurnFor :: Creature -> Creature
