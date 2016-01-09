@@ -298,8 +298,8 @@ getNextCircular el l = go $ snd $ partition (==el) l
         go _ = error "u sux"
 
 
-tick :: Creature -> Creature
-tick startingCreature = foldl' checkCondition startingCreature (startingCreature^.conditions)
+endTurnFor :: Creature -> Creature
+endTurnFor unaffected = foldl' checkCondition unaffected (unaffected^.conditions)
     -- decrement durLeft
     -- todo: expire conditions when durLeft=0
     where
@@ -307,28 +307,31 @@ tick startingCreature = foldl' checkCondition startingCreature (startingCreature
         checkCondition
             creat
             (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
-            = -- todo: only apply when durSinceLastTick appropriate
-                -- todo: decrement durSinceLastTick
+            =
                 trace ("***Applying Effect due to tick " ++ show eff ++ show (creat^.creatureName))
                     $ applyEffect creat eff
         checkCondition creat _ = creat
 
 
-nextTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
 nextTurn game = do
     -- TODO: update currentPlayer!
+    -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let stateUpdated = set state PlayerChoosingAbility game
-        nextCreatureName = getNextCircular (_currentCreature stateUpdated) (keys $ _creaturesInPlay stateUpdated)
-    nextCreature <- stateUpdated^.creaturesInPlay.at nextCreatureName
-    let creatureTicked = tick nextCreature
-        gameWithCreatureUpdated = set (creaturesInPlay.at nextCreatureName) (Just creatureTicked) stateUpdated
-    return $ set currentCreature nextCreatureName gameWithCreatureUpdated
+        previousCreatureName = stateUpdated^.currentCreature
+        nextCreatureName = getNextCircular previousCreatureName (keys $ _creaturesInPlay stateUpdated)
+    prevCreature <- stateUpdated^.creaturesInPlay.at previousCreatureName
+    let previousCreatureTicked = endTurnFor prevCreature
+        gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) stateUpdated
+    return $ set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
 
+completeTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+completeTurn = nextTurn
 
 acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 acceptAction game = do
     newGame <- applyAbility game
-    nextTurn newGame
+    completeTurn newGame
 
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility

@@ -22,8 +22,8 @@ effectTests = testGroup "Effect Tests"
 
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
-    [ testCase "RecurringEffect recurs on start of character's turn" $
-        stabAccepted^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 50)
+    [ testCase "RecurringEffect recurs on end of target's turn" $
+        radorgSecondTurnAfterStabbingAspyr^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
     ]
 
 abilityTests :: TestTree
@@ -106,6 +106,7 @@ myGame = Game
 (punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
 -- myGameDenied = denyAction punchVetting
 (stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
+(Just radorgSecondTurnAfterStabbingAspyr) = nextTurn stabAccepted
 
 
 -- following test data still unused
