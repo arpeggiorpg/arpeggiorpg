@@ -10,22 +10,34 @@ import ClassyPrelude
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [conditionTests, abilityTests]
+tests = testGroup "Tests" [turnTests, conditionTests, abilityTests]
+
+turnTests :: TestTree
+turnTests = testGroup "Turn Tests"
+    [ testCase "After Radorg acts, Aspyr goes" $
+        stabAccepted^.currentCreature @?= "Aspyr"
+    , testCase "After Aspyr acts, Ulsoga goes" $
+        (nextTurn stabAccepted)^?_Just.currentCreature @?= Just "Ulsoga"
+    , testCase "After Ulsoga acts, Radorg goes" $
+        (nextTurn =<< nextTurn stabAccepted)^?_Just.currentCreature @?= Just "Radorg"
+    ]
 
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
     [ testCase "RecurringEffect recurs on end of target's turn" $
-        radorgSecondTurnAfterStabbingAspyr^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
+        afterBleedTick^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
     , testCase "Conditions end" $
-        bleedEndedRadorgTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
+        afterBleedEnd^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     , testCase "Dead creature is dead" $
         deadCreature^.conditions @?= [dead]
     , testCase "Damage to dead creature does not cause additional Dead condition" $
         deadTwice^.conditions @?= [dead]
     , testCase "Dead creature doesn't get a turn" $
-        killAccepted^.currentCreature @?= "Radorg"
+        killAccepted^.currentCreature @?= "Ulsoga"
     , testCase "Incapacitated creature doesn't get a turn" $
-        bonkAccepted^.currentCreature @?= "Radorg"
+        bonkAccepted^.currentCreature @?= "Ulsoga"
+    , testCase "Incapacitated creature has conditions ticked" $
+        bonkAccepted^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     -- TODO incap creatures STILL HAVE CONDITIONS TICKED! (for example SO THAT STUNS FALL OFF)
     ]
 
@@ -47,10 +59,6 @@ damaged = applyEffect creat (Damage (DamageIntensity Medium))
 healed = applyEffect damaged (Heal (DamageIntensity Low))
 deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage (DamageIntensity High)))
 deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
-
-chris = Player "Chris"
-jah = Player "Jah"
-
 
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
@@ -102,10 +110,16 @@ bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
         bonkTEffect = TargetedEffect "Bonk" (TargetCreature (Range 1)) bonkEffect
         bonkEffect = ApplyCondition (SomeIncapacitated (Incapacitated "Bonked" (TimedCondition (Duration 1))))
 
+chris = Player "Chris"
+jah = Player "Jah"
+beth = Player "Beth"
+
 radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
 aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk]
+ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
 
-simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
+simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
+             -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
 simulateMove game ability target =
     let targeting = chooseAbility game ability
         vetting = chooseTargets targeting [[target]]
@@ -115,18 +129,18 @@ simulateMove game ability target =
 myGame :: Game PlayerChoosingAbility
 myGame = Game
     { _state=PlayerChoosingAbility
-    , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr")]
+    , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr"), (beth, "Ulsoga")]
     , _currentCreature="Radorg"
-    , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr)]
-    , _initiative=["Radorg", "Aspyr"]
+    , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr), ("Ulsoga", ulsoga)]
+    , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }
 
 (punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
 (stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
+(Just afterBleedTick) = nextTurn =<< nextTurn stabAccepted
 (killTargeting, killVetting, killAccepted) = simulateMove myGame kill "Aspyr"
+(Just afterBleedEnd) = nextTurn =<< nextTurn afterBleedTick
 (bonkTargeting, bonkVetting, bonkAccepted) = simulateMove myGame bonk "Aspyr"
-(Just radorgSecondTurnAfterStabbingAspyr) = nextTurn stabAccepted
-(Just bleedEndedRadorgTurn) = nextTurn radorgSecondTurnAfterStabbingAspyr
 
 
 -- following test data still unused

@@ -306,11 +306,14 @@ applyAbility game@(Game {_state=GMVettingAction ability selections})
             return $ applied
 
 
-getNextCircular :: Eq a => a -> [a] -> a
-getNextCircular el l = go $ snd $ partition (==el) l
+traceShowMessage message obj =
+    trace (message ++ show obj ++ ": ") obj
+
+getNextCircular :: (Eq a, Show a) => a -> [a] -> a
+getNextCircular el l = go $ splitWhen (==el) l
     where
-        go (_:[]) = headEx l
-        go (_:two:_) = two
+        go [first:_, []] = first
+        go [_, next:_] = next
         go _ = error "u sux"
 
 hasCondition :: Prism' AppliedCondition a -> Creature -> Bool
@@ -348,15 +351,17 @@ nextTurn game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let stateUpdated = set state PlayerChoosingAbility game
         previousCreatureName = stateUpdated^.currentCreature
-        nextCreatureName = getNextCircular previousCreatureName (keys $ _creaturesInPlay stateUpdated)
+        nextCreatureName = getNextCircular previousCreatureName (stateUpdated^.initiative)
     prevCreature <- stateUpdated^.creaturesInPlay.at previousCreatureName
     let previousCreatureTicked = endTurnFor prevCreature
         gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) stateUpdated
     nextCreature <- gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
+    let nextCreatureTurn = set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
+    -- This is all wrong. If all creatures are dead, we don't want to go into an infinite loop!
     if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
-        return gameWithPreviousCreatureUpdated
+        nextTurn nextCreatureTurn
     else
-        return $ set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
+        return nextCreatureTurn
 
 completeTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 completeTurn = nextTurn
