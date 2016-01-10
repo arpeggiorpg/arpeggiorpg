@@ -333,7 +333,6 @@ cleanUpConditions = over conditions (filter isConditionExpired)
 endTurnFor :: Creature -> Creature
 endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCondition unaffected (unaffected^.conditions))
 
-
 nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
 nextTurn game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
@@ -343,7 +342,11 @@ nextTurn game = do
     prevCreature <- stateUpdated^.creaturesInPlay.at previousCreatureName
     let previousCreatureTicked = endTurnFor prevCreature
         gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) stateUpdated
-    return $ set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
+    nextCreature <- gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
+    if elem dead (nextCreature^.conditions) then
+        return gameWithPreviousCreatureUpdated
+    else
+        return $ set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
 
 completeTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
 completeTurn = nextTurn

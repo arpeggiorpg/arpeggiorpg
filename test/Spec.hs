@@ -10,15 +10,7 @@ import ClassyPrelude
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [effectTests, conditionTests, abilityTests]
-
-effectTests :: TestTree
-effectTests = testGroup "Effect Tests"
-    [ testCase "Dead creature is dead" $
-        deadCreature^.conditions @?= [dead]
-    , testCase "Damage to dead creature does not cause additional Dead condition" $
-        deadTwice^.conditions @?= [dead]
-    ]
+tests = testGroup "Tests" [conditionTests, abilityTests]
 
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
@@ -26,7 +18,12 @@ conditionTests = testGroup "Condition Tests"
         radorgSecondTurnAfterStabbingAspyr^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
     , testCase "Conditions end" $
         bleedEndedRadorgTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
-
+    , testCase "Dead creature is dead" $
+        deadCreature^.conditions @?= [dead]
+    , testCase "Damage to dead creature does not cause additional Dead condition" $
+        deadTwice^.conditions @?= [dead]
+    , testCase "Dead creature does not get a turn" $
+        killAccepted^.currentCreature @?= "Radorg"
     ]
 
 abilityTests :: TestTree
@@ -86,8 +83,16 @@ stab = Ability
         stabEffect = MultiEffect stabDirectDamage bleed
         stabDirectDamage = Damage (DamageIntensity Medium)
 
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch]
+kill :: Ability
+kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
+    where
+        killTargetedEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) killEffect
+        killEffect = MultiEffect (MultiEffect (MultiEffect hiDamage hiDamage) hiDamage) hiDamage -- overkill?
+        hiDamage = Damage (DamageIntensity High)
+
+
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill]
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill]
 
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
 simulateMove game ability target =
@@ -106,8 +111,8 @@ myGame = Game
     }
 
 (punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
--- myGameDenied = denyAction punchVetting
 (stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
+(killTargeting, killVetting, killAccepted) = simulateMove myGame kill "Aspyr"
 (Just radorgSecondTurnAfterStabbingAspyr) = nextTurn stabAccepted
 (Just bleedEndedRadorgTurn) = nextTurn radorgSecondTurnAfterStabbingAspyr
 

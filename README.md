@@ -95,20 +95,20 @@ targeting.
   - GM modifies targets
   - GM vets [DONE]
   - GM executes [DONE]
-  - GM skips
-  - update currentPlayer
+  - GM skips [DONE]
+  - update currentPlayer [OBSOLETE]
 - Implement a basic text UI
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
-  - DOTs and HOTs (RecurringConditions that trigger on caster's turn)
-  - passage of time
+  - DOTs and HOTs [DONE]
+  - passage of time [DONE]
+  - incapacitation
   - stacking vs refreshing conditions
   - area effects with duration
   - effects that have a duration ending on caster's next turn
   - cast times
   - interrupts
-  - incapacitation
   - randomization
   - crits
 - Design three classes:
