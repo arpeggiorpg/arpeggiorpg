@@ -5,12 +5,14 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module PandT.Types where
 
 import ClassyPrelude
 
 import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
+                     mapped,
                      makeLenses, makePrisms, set, firstOf, _head,
                      _Just)
 import Data.Text (Text)
@@ -32,7 +34,7 @@ newtype Radius = Radius Int
     deriving (Show, Eq, Ord)
 
 newtype Duration = Duration Int
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Enum)
 
 newtype CastTime = CastTime Int
     deriving (Show, Eq, Ord)
@@ -90,12 +92,25 @@ data ConditionCase
 -- types that ensure the appropriate runtime data types are associated with the
 -- appropriate condition definition types.
 data AppliedCondition
-    = AppliedRecurringEffect ConditionDuration (ConditionDef RecurringEffect) Duration
-    | AppliedDamageAbsorb ConditionDuration (ConditionDef DamageAbsorb) Int
-    | AppliedDamageIncrease ConditionDuration (ConditionDef DamageIncrease)
-    | AppliedDamageDecrease ConditionDuration (ConditionDef DamageDecrease)
-    | AppliedIncapacitated ConditionDuration (ConditionDef Incapacitated)
-    | AppliedDead ConditionDuration (ConditionDef Dead)
+    = AppliedRecurringEffect
+        { _durationLeft :: ConditionDuration
+        , _recurringEffectDef :: ConditionDef RecurringEffect}
+    | AppliedDamageAbsorb
+        { _durationLeft :: ConditionDuration
+        , _damageAbsorbDef :: ConditionDef DamageAbsorb
+        , _absorbed :: Int}
+    | AppliedDamageIncrease
+        { _durationLeft :: ConditionDuration
+        , _damageIncreaseDef :: ConditionDef DamageIncrease}
+    | AppliedDamageDecrease
+        { _durationLeft :: ConditionDuration
+        , _damageDecreaseDef :: ConditionDef DamageDecrease}
+    | AppliedIncapacitated
+        { _durationLeft :: ConditionDuration
+        , _incapacitatedDef :: ConditionDef Incapacitated}
+    | AppliedDead
+        { _durationLeft :: ConditionDuration
+        , _deadDef :: ConditionDef Dead}
     deriving (Show, Eq)
 
 data Effect
@@ -110,6 +125,7 @@ deriving instance Eq Effect
 
 makePrisms ''ConditionDef
 makePrisms ''AppliedCondition
+makeLenses ''AppliedCondition
 makePrisms ''Effect
 
 data TargetSystem
@@ -215,7 +231,7 @@ checkDead creat
     | otherwise = creat
 
 applyCondition :: ConditionCase -> AppliedCondition
-applyCondition (SomeRecurringEffect cdef@(RecurringEffect _ dur _)) = AppliedRecurringEffect dur cdef (Duration 0)
+applyCondition (SomeRecurringEffect cdef@(RecurringEffect _ dur _)) = AppliedRecurringEffect dur cdef
 applyCondition (SomeDamageIncrease cdef@(DamageIncrease _ dur _)) = AppliedDamageIncrease dur cdef
 applyCondition (SomeDamageDecrease cdef@(DamageDecrease _ dur _)) = AppliedDamageDecrease dur cdef
 applyCondition (SomeDamageAbsorb cdef@(DamageAbsorb _ dur _)) = AppliedDamageAbsorb dur cdef 0
@@ -302,13 +318,16 @@ tickCondition :: Creature -> AppliedCondition -> Creature
 -- todo: expire conditions when durLeft=0
 tickCondition
     creat
-    (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff) durSinceLastTick)
+    (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff))
     = applyEffect creat eff
 tickCondition creat _ = error "Unimplemented condition"
 
 
+decrementConditions :: Creature -> Creature
+decrementConditions creature = over (conditions.mapped.durationLeft._TimedCondition) pred creature
+
 endTurnFor :: Creature -> Creature
-endTurnFor unaffected = foldl' tickCondition unaffected (unaffected^.conditions)
+endTurnFor unaffected = decrementConditions (foldl' tickCondition unaffected (unaffected^.conditions))
 
 
 nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
