@@ -314,20 +314,24 @@ getNextCircular el l = go $ snd $ partition (==el) l
 
 
 tickCondition :: Creature -> AppliedCondition -> Creature
--- decrement durLeft
--- todo: expire conditions when durLeft=0
 tickCondition
     creat
     (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff))
     = applyEffect creat eff
 tickCondition creat _ = error "Unimplemented condition"
 
-
+-- There's a bunch of re-iterating here
 decrementConditions :: Creature -> Creature
 decrementConditions creature = over (conditions.mapped.durationLeft._TimedCondition) pred creature
 
+isConditionExpired :: AppliedCondition -> Bool
+isConditionExpired x = False
+
+cleanUpConditions :: Creature -> Creature
+cleanUpConditions = over conditions (filter isConditionExpired)
+
 endTurnFor :: Creature -> Creature
-endTurnFor unaffected = decrementConditions (foldl' tickCondition unaffected (unaffected^.conditions))
+endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCondition unaffected (unaffected^.conditions))
 
 
 nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
