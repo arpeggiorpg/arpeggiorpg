@@ -22,8 +22,10 @@ conditionTests = testGroup "Condition Tests"
         deadCreature^.conditions @?= [dead]
     , testCase "Damage to dead creature does not cause additional Dead condition" $
         deadTwice^.conditions @?= [dead]
-    , testCase "Dead creature does not get a turn" $
+    , testCase "Dead creature doesn't get a turn" $
         killAccepted^.currentCreature @?= "Radorg"
+    , testCase "Incapacitated creature doesn't get a turn" $
+        bonkAccepted^.currentCreature @?= "Radorg"
     ]
 
 abilityTests :: TestTree
@@ -87,12 +89,20 @@ kill :: Ability
 kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
     where
         killTargetedEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) killEffect
-        killEffect = MultiEffect (MultiEffect (MultiEffect hiDamage hiDamage) hiDamage) hiDamage -- overkill?
-        hiDamage = Damage (DamageIntensity High)
+        killEffect = ApplyCondition (SomeDead (Dead "Dead" UnlimitedDuration))
 
+mkStun :: Duration -> Effect
+mkStun dur = ApplyCondition $ SomeIncapacitated $
+    Incapacitated "Stunned" (TimedCondition dur)
 
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill]
+bonk :: Ability
+bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
+    where
+        bonkTEffect = TargetedEffect "Bonk" (TargetCreature (Range 1)) bonkEffect
+        bonkEffect = ApplyCondition (SomeIncapacitated (Incapacitated "Bonked" (TimedCondition (Duration 1))))
+
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk]
 
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
 simulateMove game ability target =
@@ -113,6 +123,7 @@ myGame = Game
 (punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
 (stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
 (killTargeting, killVetting, killAccepted) = simulateMove myGame kill "Aspyr"
+(bonkTargeting, bonkVetting, bonkAccepted) = simulateMove myGame bonk "Aspyr"
 (Just radorgSecondTurnAfterStabbingAspyr) = nextTurn stabAccepted
 (Just bleedEndedRadorgTurn) = nextTurn radorgSecondTurnAfterStabbingAspyr
 
@@ -160,10 +171,6 @@ mistPunch =
 --     , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
 --     ]
 
-stun :: Duration -> Effect
-stun dur = ApplyCondition $ SomeIncapacitated $
-    Incapacitated "Stunned" (TimedCondition dur)
-
 -- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
 fistsOfFury :: [TargetedEffect]
 fistsOfFury =
@@ -181,7 +188,7 @@ fistsOfFury =
     where
         lowDamage = Damage (DamageIntensity Medium)
         stunAndLowDamage = MultiEffect stunEff lowDamage
-        stunEff = stun (Duration 1)
+        stunEff = mkStun (Duration 1)
 
 {-
 durations! ticks!
