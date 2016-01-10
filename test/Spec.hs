@@ -26,6 +26,7 @@ conditionTests = testGroup "Condition Tests"
         killAccepted^.currentCreature @?= "Radorg"
     , testCase "Incapacitated creature doesn't get a turn" $
         bonkAccepted^.currentCreature @?= "Radorg"
+    -- TODO incap creatures STILL HAVE CONDITIONS TICKED! (for example SO THAT STUNS FALL OFF)
     ]
 
 abilityTests :: TestTree
