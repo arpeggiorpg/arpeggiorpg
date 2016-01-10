@@ -12,6 +12,7 @@ module PandT.Types where
 import ClassyPrelude
 
 import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
+                     Prism',
                      mapped,
                      makeLenses, makePrisms, set, firstOf, _head,
                      _Just)
@@ -312,6 +313,9 @@ getNextCircular el l = go $ snd $ partition (==el) l
         go (_:two:_) = two
         go _ = error "u sux"
 
+hasCondition :: Prism' AppliedCondition a -> Creature -> Bool
+hasCondition prism creature = any match (creature^.conditions)
+    where match ac = maybe False (const True) (ac ^? prism)
 
 tickCondition :: Creature -> AppliedCondition -> Creature
 tickCondition
@@ -343,7 +347,7 @@ nextTurn game = do
     let previousCreatureTicked = endTurnFor prevCreature
         gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) stateUpdated
     nextCreature <- gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
-    if elem dead (nextCreature^.conditions) then
+    if hasCondition _AppliedDead nextCreature || hasCondition _AppliedIncapacitated nextCreature then
         return gameWithPreviousCreatureUpdated
     else
         return $ set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
