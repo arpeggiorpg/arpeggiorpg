@@ -325,7 +325,7 @@ tickCondition
     creat
     (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff))
     = applyEffect creat eff
-tickCondition creat _ = error "Unimplemented condition"
+tickCondition creat _ = creat
 
 -- There's a bunch of re-iterating here
 decrementConditions :: Creature -> Creature
