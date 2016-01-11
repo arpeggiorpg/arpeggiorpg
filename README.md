@@ -88,7 +88,7 @@ targeting.
   - damage [CHECK]
   - healing [CHECK]
   - death [CHECK]
-  - movement
+  - reporting of events
 - model/workflow for abilities being "constructed"
   - player choose ability [DONE]
   - player choose target(s) [DONE]
@@ -103,7 +103,7 @@ targeting.
 - Advanced combat mechanics, in rough order of interest:
   - DOTs and HOTs [DONE]
   - passage of time [DONE]
-  - incapacitation
+  - incapacitation [DONE]
   - stacking vs refreshing conditions
   - area effects with duration
   - effects that have a duration ending on caster's next turn
@@ -111,6 +111,7 @@ targeting.
   - interrupts
   - randomization
   - crits
+  - movement / geography
 - Design three classes:
   - Warrior
   - Mage

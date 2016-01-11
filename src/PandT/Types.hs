@@ -173,9 +173,11 @@ makeLenses ''Creature
 
 data PlayerChoosingAbility
 data PlayerChoosingTargets
+data PlayerIncapacitated
 data GMVettingAction
 
 data GameState a where
+    PlayerIncapacitated :: GameState PlayerIncapacitated
     PlayerChoosingAbility :: GameState PlayerChoosingAbility
     PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
     GMVettingAction :: Ability -> [[CreatureName]] -> GameState GMVettingAction
@@ -305,9 +307,7 @@ applyAbility game@(Game {_state=GMVettingAction ability selections})
             let applied = over (creaturesInPlay . at creatName) applyEffect' game
             return $ applied
 
-
-traceShowMessage message obj =
-    trace (message ++ show obj ++ ": ") obj
+traceShowMessage message obj = trace (message ++ show obj ++ ": ") obj
 
 getNextCircular :: (Eq a, Show a) => a -> [a] -> a
 getNextCircular el l = go $ splitWhen (==el) l
@@ -346,27 +346,26 @@ endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCo
 (<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<&&>) = liftA2 (&&)
 
-nextTurn :: Game a -> Maybe (Game PlayerChoosingAbility)
+nextTurn :: Game a -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
 nextTurn game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
-    let stateUpdated = set state PlayerChoosingAbility game
-        previousCreatureName = stateUpdated^.currentCreature
-        nextCreatureName = getNextCircular previousCreatureName (stateUpdated^.initiative)
-    prevCreature <- stateUpdated^.creaturesInPlay.at previousCreatureName
+    let previousCreatureName = game^.currentCreature
+        nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
+    prevCreature <- game^.creaturesInPlay.at previousCreatureName
     let previousCreatureTicked = endTurnFor prevCreature
-        gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) stateUpdated
+        gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
     nextCreature <- gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
     let nextCreatureTurn = set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
     -- This is all wrong. If all creatures are dead, we don't want to go into an infinite loop!
     if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
-        nextTurn nextCreatureTurn
+        return (Left (set state PlayerIncapacitated nextCreatureTurn))
     else
-        return nextCreatureTurn
+        return (Right (set state PlayerChoosingAbility nextCreatureTurn))
 
-completeTurn :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+completeTurn :: Game GMVettingAction -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
 completeTurn = nextTurn
 
-acceptAction :: Game GMVettingAction -> Maybe (Game PlayerChoosingAbility)
+acceptAction :: Game GMVettingAction -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
 acceptAction game = do
     newGame <- applyAbility game
     completeTurn newGame

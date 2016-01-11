@@ -17,9 +17,9 @@ turnTests = testGroup "Turn Tests"
     [ testCase "After Radorg acts, Aspyr goes" $
         stabAccepted^.currentCreature @?= "Aspyr"
     , testCase "After Aspyr acts, Ulsoga goes" $
-        (nextTurn stabAccepted)^?_Just.currentCreature @?= Just "Ulsoga"
+        (nextTurn stabAccepted)^?_Just._Right.currentCreature @?= Just "Ulsoga"
     , testCase "After Ulsoga acts, Radorg goes" $
-        (nextTurn =<< nextTurn stabAccepted)^?_Just.currentCreature @?= Just "Radorg"
+        (nextTurn =<< (nextTurn stabAccepted)^?_Just._Right)^?_Just._Right.currentCreature @?= Just "Radorg"
     ]
 
 conditionTests :: TestTree
@@ -32,13 +32,12 @@ conditionTests = testGroup "Condition Tests"
         deadCreature^.conditions @?= [dead]
     , testCase "Damage to dead creature does not cause additional Dead condition" $
         deadTwice^.conditions @?= [dead]
-    , testCase "Dead creature doesn't get a turn" $
-        killAccepted^.currentCreature @?= "Ulsoga"
-    , testCase "Incapacitated creature doesn't get a turn" $
-        bonkAccepted^.currentCreature @?= "Ulsoga"
+    , testCase "Dead creature gets a turn" $
+        killAccepted^.currentCreature @?= "Aspyr"
+    , testCase "Incapacitated creature gets a turn" $
+        bonkAccepted^.currentCreature @?= "Aspyr"
     , testCase "Incapacitated creature has conditions ticked" $
-        bonkAccepted^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
-    -- TODO incap creatures STILL HAVE CONDITIONS TICKED! (for example SO THAT STUNS FALL OFF)
+        afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     ]
 
 abilityTests :: TestTree
@@ -119,7 +118,9 @@ aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk]
 ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
 
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
-             -> (Game PlayerChoosingTargets, Game GMVettingAction, Game PlayerChoosingAbility)
+             -> (Game PlayerChoosingTargets,
+                 Game GMVettingAction,
+                 Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
 simulateMove game ability target =
     let targeting = chooseAbility game ability
         vetting = chooseTargets targeting [[target]]
@@ -135,12 +136,13 @@ myGame = Game
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }
 
-(punchTargeting, punchVetting, punchAccepted) = simulateMove myGame punch "Aspyr"
-(stabTargeting, stabVetting, stabAccepted) = simulateMove myGame stab "Aspyr"
-(Just afterBleedTick) = nextTurn =<< nextTurn stabAccepted
-(killTargeting, killVetting, killAccepted) = simulateMove myGame kill "Aspyr"
-(Just afterBleedEnd) = nextTurn =<< nextTurn afterBleedTick
-(bonkTargeting, bonkVetting, bonkAccepted) = simulateMove myGame bonk "Aspyr"
+(punchTargeting, punchVetting, (Right punchAccepted)) = simulateMove myGame punch "Aspyr"
+(stabTargeting, stabVetting, (Right stabAccepted)) = simulateMove myGame stab "Aspyr"
+(Just (Right afterBleedTick)) = nextTurn =<< (nextTurn stabAccepted)^?_Just._Right
+(killTargeting, killVetting, (Left killAccepted)) = simulateMove myGame kill "Aspyr"
+(Just (Right afterBleedEnd)) = nextTurn =<< (nextTurn afterBleedTick)^?_Just._Right
+(bonkTargeting, bonkVetting, (Left bonkAccepted)) = simulateMove myGame bonk "Aspyr"
+(Just (Right afterBonk)) = nextTurn bonkAccepted
 
 
 -- following test data still unused
