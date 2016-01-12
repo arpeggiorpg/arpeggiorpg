@@ -323,16 +323,19 @@ chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) creatures
 
 applyAbility
     :: Game GMVettingAction
-    -> Maybe (Game GMVettingAction)
+    -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbility game@(Game {_state=GMVettingAction ability selections})
-    = foldM appEffs game $ zip (_effects ability) selections
+    = do
+        (newGame, log) <- foldM appEffs (game, []) $ zip (_effects ability) selections
+        return (newGame, AbilityUsed ability (game^.currentCreature) (reverse log))
     where
-        appEffs game (targetedEffect, creatureNames) = foldM (appEff targetedEffect) game creatureNames
-        appEff :: TargetedEffect -> Game GMVettingAction -> CreatureName -> Maybe (Game GMVettingAction)
-        appEff targetedEffect game creatName = do
-            let applyEffect' = fmap $ flip applyEffect (_targetedEffect targetedEffect)
+        appEffs gameAndLog (targetedEffect, creatureNames) = foldM (appEff targetedEffect) gameAndLog creatureNames
+        appEff :: TargetedEffect -> (Game GMVettingAction, EffectOccurrence) -> CreatureName -> Maybe (Game GMVettingAction, EffectOccurrence)
+        appEff targetedEffect (game, log) creatName = do
+            let effect = (_targetedEffect targetedEffect)
+            let applyEffect' = fmap $ flip applyEffect effect
             let applied = over (creaturesInPlay . at creatName) applyEffect' game
-            return $ applied
+            return $ (applied, ((effect, creatName):log))
 
 traceShowMessage message obj = trace (message ++ show obj ++ ": ") obj
 
@@ -412,7 +415,10 @@ skipIncapacitatedPlayer_ = nextTurn_
 skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
 
 acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-acceptAction_ game = nextTurn_ =<< (lift $ applyAbility game)
+acceptAction_ game = do
+    (newGame, event) <- lift $ applyAbility game
+    tell [event]
+    nextTurn_ newGame
 
 acceptAction = ignoreLog . acceptAction_
 
