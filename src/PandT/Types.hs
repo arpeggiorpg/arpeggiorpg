@@ -215,10 +215,9 @@ data CombatEvent
         , _combatEventRecurringEventTarget :: CreatureName
         , _combatEventRecurringEventEffect :: EffectOccurrence
         }
-    | SkippedIncapacitatedCreatureTurn
-        { _combatEventIncapacitated :: CreatureName }
-    | CreatureTurnStarted
-        { _combatEventTurnStarted :: CreatureName }
+    | SkippedIncapacitatedCreatureTurn CreatureName
+    | SkippedTurn CreatureName
+    | CreatureTurnStarted CreatureName
     deriving (Show, Eq)
 
 makeLenses ''CombatEvent
@@ -393,19 +392,27 @@ nextTurn_ game = do
     else
         return (Right (set state PlayerChoosingAbility nextCreatureTurn))
 
+
 nextTurn :: Game a -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-nextTurn game = do
-    (game, log) <- runWriterT $ nextTurn_ game
-    return game
+nextTurn = ignoreLog . nextTurn_
 
-skipTurn :: Game PlayerChoosingAbility -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-skipTurn = nextTurn
+ignoreLog :: Monad m => WriterT w m a -> m a
+ignoreLog writer = (runWriterT writer) >>= (return . fst)
 
-skipIncapacitatedPlayer :: Game PlayerIncapacitated -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-skipIncapacitatedPlayer = nextTurn
+skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipTurn_ = nextTurn_
 
-acceptAction :: Game GMVettingAction -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-acceptAction game = nextTurn =<< applyAbility game
+skipTurn = ignoreLog . skipTurn_
+
+skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipIncapacitatedPlayer_ = nextTurn_
+
+skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
+
+acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+acceptAction_ game = nextTurn_ =<< (lift $ applyAbility game)
+
+acceptAction = ignoreLog . acceptAction_
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game =
