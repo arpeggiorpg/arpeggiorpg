@@ -18,6 +18,7 @@ import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
                      _Just)
 import Data.Text (Text)
 import Data.Map (Map)
+import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -197,6 +198,31 @@ data Game status = Game
 
 makeLenses ''Game
 
+data EffectOccurrence = EffectOccurrence
+    { _effectOccurred :: TargetedEffect
+    , _occurredEffectTargets :: [[CreatureName]]
+    }
+    deriving (Show, Eq)
+
+data CombatEvent
+    = AbilityUsed
+        { _combatEventAbilityUsed :: Ability
+        , _combatEventAbilityOrigin :: CreatureName
+        , _combatEventAbilityEffects :: [EffectOccurrence]
+        }
+    | RecurringEffectOccurred
+        { _combatEventRecurringEventOrigin :: CreatureName
+        , _combatEventRecurringEventTarget :: CreatureName
+        , _combatEventRecurringEventEffect :: EffectOccurrence
+        }
+    | SkippedIncapacitatedCreatureTurn
+        { _combatEventIncapacitated :: CreatureName }
+    | CreatureTurnStarted
+        { _combatEventTurnStarted :: CreatureName }
+    deriving (Show, Eq)
+
+makeLenses ''CombatEvent
+makePrisms ''CombatEvent
 
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 100
@@ -346,30 +372,40 @@ endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCo
 (<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<&&>) = liftA2 (&&)
 
-nextTurn :: Game a -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-nextTurn game = do
+
+-- | Advance the game so it's the next creature's turn.
+-- This function should not be invoked directly, since it ignores the type of
+-- the input state; instead acceptAction or skipTurn should be used to advance
+-- the game.
+nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+nextTurn_ game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let previousCreatureName = game^.currentCreature
         nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
-    prevCreature <- game^.creaturesInPlay.at previousCreatureName
+    prevCreature <- lift $ game^.creaturesInPlay.at previousCreatureName
     let previousCreatureTicked = endTurnFor prevCreature
         gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
-    nextCreature <- gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
+    nextCreature <- lift $ gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
     let nextCreatureTurn = set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
-    -- This is all wrong. If all creatures are dead, we don't want to go into an infinite loop!
+    tell [CreatureTurnStarted nextCreatureName]
     if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
         return (Left (set state PlayerIncapacitated nextCreatureTurn))
     else
         return (Right (set state PlayerChoosingAbility nextCreatureTurn))
 
-completeTurn :: Game GMVettingAction -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-completeTurn = nextTurn
+nextTurn :: Game a -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+nextTurn game = do
+    (game, log) <- runWriterT $ nextTurn_ game
+    return game
+
+skipTurn :: Game PlayerChoosingAbility -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipTurn = nextTurn
+
+skipIncapacitatedPlayer :: Game PlayerIncapacitated -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipIncapacitatedPlayer = nextTurn
 
 acceptAction :: Game GMVettingAction -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
-acceptAction game = do
-    newGame <- applyAbility game
-    completeTurn newGame
-
+acceptAction game = nextTurn =<< applyAbility game
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game =

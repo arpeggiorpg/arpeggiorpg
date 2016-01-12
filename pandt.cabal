@@ -20,7 +20,9 @@ library
                      , classy-prelude
                      , containers
                      , lens
+                     , mtl
                      , text
+                     , transformers
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
 
