@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Lens
+import Control.Monad.Writer.Strict
 import Test.Tasty (defaultMain, testGroup, TestTree)
 import Test.Tasty.HUnit
 import PandT.Types
@@ -10,7 +11,14 @@ import ClassyPrelude
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [turnTests, conditionTests, abilityTests]
+tests = testGroup "Tests" [turnTests, conditionTests, abilityTests, logTests]
+
+logTests :: TestTree
+logTests = testGroup "Log Tests"
+    [ testCase "punch log" $
+        punchLog @?= [AbilityUsed punch "Radorg" [(punchEffect, "Aspyr")]
+                     ,CreatureTurnStarted "Aspyr"]
+    ]
 
 turnTests :: TestTree
 turnTests = testGroup "Turn Tests"
@@ -59,11 +67,15 @@ healed = applyEffect damaged (Heal (DamageIntensity Low))
 deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage (DamageIntensity High)))
 deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
 
+
+punchTEffect :: TargetedEffect
+punchTEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) punchEffect
+
+punchEffect :: Effect
+punchEffect = Damage (DamageIntensity Medium)
+
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
-    where
-        punchTEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) punchEffect
-        punchEffect = Damage (DamageIntensity Medium)
 
 
 bleed :: Effect
@@ -120,12 +132,13 @@ ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, b
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
              -> (Game PlayerChoosingTargets,
                  Game GMVettingAction,
-                 Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+                 Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility),
+                 [CombatEvent])
 simulateMove game ability target =
     let targeting = chooseAbility game ability
         vetting = chooseTargets targeting [[target]]
-        (Just accepted) = acceptAction vetting
-    in (targeting, vetting, accepted)
+        (Just (accepted, log)) = runWriterT $ acceptAction_ vetting
+    in (targeting, vetting, accepted, log)
 
 myGame :: Game PlayerChoosingAbility
 myGame = Game
@@ -136,12 +149,12 @@ myGame = Game
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }
 
-(punchTargeting, punchVetting, (Right punchAccepted)) = simulateMove myGame punch "Aspyr"
-(stabTargeting, stabVetting, (Right stabAccepted)) = simulateMove myGame stab "Aspyr"
+(punchTargeting, punchVetting, (Right punchAccepted), punchLog) = simulateMove myGame punch "Aspyr"
+(stabTargeting, stabVetting, (Right stabAccepted), stabLog) = simulateMove myGame stab "Aspyr"
 (Just (Right afterBleedTick)) = nextTurn =<< (nextTurn stabAccepted)^?_Just._Right
-(killTargeting, killVetting, (Left killAccepted)) = simulateMove myGame kill "Aspyr"
+(killTargeting, killVetting, (Left killAccepted), killLog) = simulateMove myGame kill "Aspyr"
 (Just (Right afterBleedEnd)) = nextTurn =<< (nextTurn afterBleedTick)^?_Just._Right
-(bonkTargeting, bonkVetting, (Left bonkAccepted)) = simulateMove myGame bonk "Aspyr"
+(bonkTargeting, bonkVetting, (Left bonkAccepted), bonkLog) = simulateMove myGame bonk "Aspyr"
 (Just (Right afterBonk)) = nextTurn bonkAccepted
 
 

@@ -198,17 +198,19 @@ data Game status = Game
 
 makeLenses ''Game
 
-data EffectOccurrence = EffectOccurrence
-    { _effectOccurred :: TargetedEffect
-    , _occurredEffectTargets :: [[CreatureName]]
-    }
-    deriving (Show, Eq)
+
+{-
+Radix used DoubleHeal.
+  - Target: Aspyr, healing: High.
+  - Target: Ulsoga, healing: Medium.
+-}
+type EffectOccurrence = [(Effect, CreatureName)]
 
 data CombatEvent
     = AbilityUsed
         { _combatEventAbilityUsed :: Ability
         , _combatEventAbilityOrigin :: CreatureName
-        , _combatEventAbilityEffects :: [EffectOccurrence]
+        , _combatEventAbilityEffects :: EffectOccurrence
         }
     | RecurringEffectOccurred
         { _combatEventRecurringEventOrigin :: CreatureName
