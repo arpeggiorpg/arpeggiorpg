@@ -2,7 +2,7 @@ module Main where
 
 import ClassyPrelude
 
-import Lib
+import PandT.Interaction (runConsoleGame)
 
 main :: IO ()
-main = someFunc
+main = runConsoleGame

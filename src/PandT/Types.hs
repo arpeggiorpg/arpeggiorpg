@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -203,6 +201,10 @@ makeLenses ''Game
 Radix used DoubleHeal.
   - Target: Aspyr, healing: High.
   - Target: Ulsoga, healing: Medium.
+
+TODO: "dynamic" damage numbers here -- we may do less or more damage than what
+is defined by the Effect, because of things like damage absorbs.
+
 -}
 type EffectOccurrence = [(Effect, CreatureName)]
 
