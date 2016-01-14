@@ -2,6 +2,7 @@ module PandT.Interaction where
 
 import ClassyPrelude
 
+import Control.Monad.Trans.Maybe
 import System.IO (hSetBuffering, BufferMode(NoBuffering))
 
 import PandT.Types
@@ -29,42 +30,47 @@ runForever :: Monad m => (a -> m a) -> a -> m ()
 runForever go start = go start >>= runForever go
 
 lookupAbility :: Text -> Maybe Ability
-lookupAbility = error "Lookup Ability"
+lookupAbility abilityName = Nothing
 
-promptForAbility :: Game PlayerChoosingAbility -> IO (Maybe (Game PlayerChoosingTargets))
+promptForAbility :: Game PlayerChoosingAbility -> MaybeT IO (Game PlayerChoosingTargets)
 promptForAbility game = do
     putStr "Enter ability name> "
     abilityName <- hGetLine stdin
-    let mAbility = lookupAbility abilityName
-    maybe (promptForAbility game) (return . Just .  (chooseAbility game)) mAbility
+    case lookupAbility abilityName of
+        Nothing -> do
+            liftIO $ putStrLn "Not found"
+            promptForAbility game
+        Just ability -> do
+            return $ chooseAbility game ability
 
-promptForTargets :: Game PlayerChoosingTargets -> IO (Maybe (Game GMVettingAction))
+promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
 promptForTargets = error "prompt for targets"
 
-promptForVet :: Game GMVettingAction -> IO (Maybe ModifiedGame)
+promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
 promptForVet = error "Prompt for vet"
 
+-- why do I have to define this
+liftMaybe :: Monad m => Maybe a -> MaybeT m a
+liftMaybe = MaybeT . return
+
+runIterationT :: Maybe ModifiedGame -> MaybeT IO ModifiedGame
+runIterationT mGame = do
+    game <- liftMaybe mGame
+    case game of
+        Left incap -> do
+            liftIO . putStrLn $ render incap
+            nextTurn <- liftMaybe $ skipIncapacitatedPlayer incap
+            runIterationT (Just nextTurn)
+        Right choosingAbility -> do
+            liftIO . putStrLn $ render choosingAbility
+            choosingTargets <- promptForAbility choosingAbility
+            vetting <- promptForTargets choosingTargets
+            vetted <- promptForVet vetting
+            runIterationT (Just vetted)
+
+
 runIteration :: Maybe ModifiedGame -> IO (Maybe ModifiedGame)
-runIteration mGame = do
-    case mGame of
-        Nothing -> error "Internal error"
-        Just game ->
-            case game of
-                Left incap -> do
-                    putStrLn $ render incap
-                    maybe (error "Internal error") (runIteration . Just) (skipIncapacitatedPlayer incap)
-                Right choosingAbility -> do
-                    putStrLn $ render choosingAbility
-                    maybeChoosingTargets <- promptForAbility choosingAbility
-                    case maybeChoosingTargets of
-                        Nothing -> error "Internal error"
-                        Just choosingTargets -> do
-                            maybeVetting <- promptForTargets choosingTargets
-                            case maybeVetting of
-                                Nothing -> error "Internal error"
-                                Just vetting -> do
-                                    maybeVetting <- promptForVet vetting
-                                    runIteration maybeVetting
+runIteration mGame = runMaybeT . runIterationT $ mGame
 
 runConsoleGame :: IO ()
 runConsoleGame = do
