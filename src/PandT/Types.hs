@@ -379,11 +379,13 @@ endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCo
 (<&&>) = liftA2 (&&)
 
 
+type ModifiedGame = Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility)
+
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
 -- the input state; instead acceptAction or skipTurn should be used to advance
 -- the game.
-nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe ModifiedGame
 nextTurn_ game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let previousCreatureName = game^.currentCreature
@@ -400,23 +402,23 @@ nextTurn_ game = do
         return (Right (set state PlayerChoosingAbility nextCreatureTurn))
 
 
-nextTurn :: Game a -> Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+nextTurn :: Game a -> Maybe ModifiedGame
 nextTurn = ignoreLog . nextTurn_
 
 ignoreLog :: Monad m => WriterT w m a -> m a
 ignoreLog writer = (runWriterT writer) >>= (return . fst)
 
-skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe ModifiedGame
 skipTurn_ = nextTurn_
 
 skipTurn = ignoreLog . skipTurn_
 
-skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe ModifiedGame
 skipIncapacitatedPlayer_ = nextTurn_
 
 skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
 
-acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe (Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility))
+acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe ModifiedGame
 acceptAction_ game = do
     (newGame, event) <- lift $ applyAbility game
     tell [event]
