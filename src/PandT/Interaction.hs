@@ -20,7 +20,7 @@ myGame :: Game PlayerChoosingAbility
 myGame = Game
     { _state=PlayerChoosingAbility
     , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr"), (beth, "Ulsoga")]
-    , _currentCreature="Radorg"
+    , _currentCreatureName="Radorg"
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr), ("Ulsoga", ulsoga)]
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }

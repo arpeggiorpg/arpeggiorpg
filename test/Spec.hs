@@ -24,11 +24,11 @@ logTests = testGroup "Log Tests"
 turnTests :: TestTree
 turnTests = testGroup "Turn Tests"
     [ testCase "After Radorg acts, Aspyr goes" $
-        stabAccepted^.currentCreature @?= "Aspyr"
+        stabAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "After Aspyr acts, Ulsoga goes" $
-        (nextTurn stabAccepted)^?_Just._Right.currentCreature @?= Just "Ulsoga"
+        (nextTurn stabAccepted)^?_Just._Right.currentCreatureName @?= Just "Ulsoga"
     , testCase "After Ulsoga acts, Radorg goes" $
-        (nextTurn =<< (nextTurn stabAccepted)^?_Just._Right)^?_Just._Right.currentCreature @?= Just "Radorg"
+        (nextTurn =<< (nextTurn stabAccepted)^?_Just._Right)^?_Just._Right.currentCreatureName @?= Just "Radorg"
     ]
 
 conditionTests :: TestTree
@@ -42,9 +42,9 @@ conditionTests = testGroup "Condition Tests"
     , testCase "Damage to dead creature does not cause additional Dead condition" $
         deadTwice^.conditions @?= [dead]
     , testCase "Dead creature gets a turn" $
-        killAccepted^.currentCreature @?= "Aspyr"
+        killAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature gets a turn" $
-        bonkAccepted^.currentCreature @?= "Aspyr"
+        bonkAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature has conditions ticked" $
         afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     ]
@@ -92,7 +92,7 @@ myGame :: Game PlayerChoosingAbility
 myGame = Game
     { _state=PlayerChoosingAbility
     , _playerCharacters=mapFromList [(chris, "Radorg"), (jah, "Aspyr"), (beth, "Ulsoga")]
-    , _currentCreature="Radorg"
+    , _currentCreatureName="Radorg"
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr), ("Ulsoga", ulsoga)]
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }

@@ -188,7 +188,7 @@ makePrisms ''GameState
 data Game status = Game
     { _state :: GameState status
     , _playerCharacters :: Map Player CreatureName
-    , _currentCreature :: CreatureName
+    , _currentCreatureName :: CreatureName
     , _creaturesInPlay :: Map CreatureName Creature
     , _initiative :: [CreatureName]
     }
@@ -299,7 +299,7 @@ renderCreatureStatus creature =
 renderInitiative :: Game a -> Text
 renderInitiative game
     = let
-        currentName = (_currentCreature game)
+        currentName = (_currentCreatureName game)
         creature name = view (creaturesInPlay . at name) game
         pfx name = if name == currentName then "*" else " "
         statusLine name = unwords.toList $ renderCreatureStatus <$> creature name
@@ -310,7 +310,7 @@ renderInitiative game
 render :: Game a -> Text
 render game@(Game {..}) = unlines
     [ "# Game"
-    , "Current creature: " ++ " (" ++ _currentCreature ++ ") "
+    , "Current creature: " ++ " (" ++ _currentCreatureName ++ ") "
     , renderState _state
     , renderInitiative game
     ]
@@ -329,7 +329,7 @@ applyAbility
 applyAbility game@(Game {_state=GMVettingAction ability selections})
     = do
         (newGame, log) <- foldM appEffs (game, []) $ zip (_effects ability) selections
-        return (newGame, AbilityUsed ability (game^.currentCreature) (reverse log))
+        return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))
     where
         appEffs gameAndLog (targetedEffect, creatureNames) = foldM (appEff targetedEffect) gameAndLog creatureNames
         appEff :: TargetedEffect -> (Game GMVettingAction, EffectOccurrence) -> CreatureName -> Maybe (Game GMVettingAction, EffectOccurrence)
@@ -388,13 +388,13 @@ type ModifiedGame = Either (Game PlayerIncapacitated) (Game PlayerChoosingAbilit
 nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe ModifiedGame
 nextTurn_ game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
-    let previousCreatureName = game^.currentCreature
+    let previousCreatureName = game^.currentCreatureName
         nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
     prevCreature <- lift $ game^.creaturesInPlay.at previousCreatureName
     let previousCreatureTicked = endTurnFor prevCreature
         gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
     nextCreature <- lift $ gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
-    let nextCreatureTurn = set currentCreature nextCreatureName gameWithPreviousCreatureUpdated
+    let nextCreatureTurn = set currentCreatureName nextCreatureName gameWithPreviousCreatureUpdated
     tell [CreatureTurnStarted nextCreatureName]
     if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
         return (Left (set state PlayerIncapacitated nextCreatureTurn))
