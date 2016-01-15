@@ -50,25 +50,26 @@ promptForAbility game = do
 
 promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
 promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do
-    putStr ("Select Targets for " ++ tshow (ability^.abilityName))
     creatureNameses <- mapM promptTEffect (ability^.effects)
-    -- return (chooseTargets game creatureNameses)
-    error "boo"
+    return (chooseTargets game creatureNameses)
     where
-        promptTEffect :: TargetedEffect -> MaybeT IO [CreatureName]
+        promptTEffect :: TargetedEffect -> MaybeT IO (TargetedEffect, [CreatureName])
         promptTEffect teffect =
             case teffect^.targetSystem of
                 (TargetCreature range) -> do
                     lift $ putStr ("Single target for " ++ (teffect^.targetName) ++ " range: " ++ (tshow range) ++ "> ")
                     creatureName <- lift $ hGetLine stdin
                     -- XXX TODO: check if creatureName is in game^.creaturesInPlay
-                    return [creatureName]
-                (TargetCircle range radius) ->
-                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
-                (TargetLineFromSource range) ->
-                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Line range: " ++ (tshow range))
-                (TargetCone range) ->
-                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Cone range: " ++ (tshow range))
+                    return (teffect, [creatureName])
+                (TargetCircle range radius) -> do
+                    creatureNames <- promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
+                    return (teffect, creatureNames)
+                (TargetLineFromSource range) -> do
+                    creatureNames <- promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Line range: " ++ (tshow range))
+                    return (teffect, creatureNames)
+                (TargetCone range) -> do
+                    creatureNames <- promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Cone range: " ++ (tshow range))
+                    return (teffect, creatureNames)
 
         promptMultiTarget :: [CreatureName] -> Text -> MaybeT IO [CreatureName]
         promptMultiTarget sofar prompt = do
