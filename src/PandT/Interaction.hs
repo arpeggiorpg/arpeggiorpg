@@ -80,7 +80,13 @@ promptMultiTarget sofar targetName prompt = do
 
 
 promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
-promptForVet = error "Prompt for vet"
+promptForVet game = do
+    putStr "GM! Is this okay? Y or N> "
+    input <- (lift (hGetLine stdin) :: MaybeT IO Text)
+    if (toCaseFold input) == (toCaseFold "y") then
+        liftMaybe (acceptAction game)
+    else
+        return (Right (denyAction game))
 
 -- why do I have to define this
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
@@ -91,7 +97,8 @@ runIterationT mGame = do
     game <- liftMaybe mGame
     case game of
         Left incap -> do
-            liftIO . putStrLn $ render incap
+            liftIO (putStrLn (render incap))
+            liftIO (putStrLn "Skipping turn because player is incapacitated!")
             nextTurn <- liftMaybe $ skipIncapacitatedPlayer incap
             runIterationT (Just nextTurn)
         Right choosingAbility -> do

@@ -164,6 +164,7 @@ makePrisms ''TargetedEffect
 makeLenses ''SelectedTargetedEffect
 makePrisms ''SelectedTargetedEffect
 
+
 data Ability = Ability
     { _abilityName :: Text
     , _cost :: Resource
@@ -302,6 +303,7 @@ applyEffect creature effect = checkDead $ go effect
 
 renderState :: GameState a -> Text
 renderState PlayerChoosingAbility = "PlayerChoosingAbility"
+renderState PlayerIncapacitated = "PlayerIncapacitated"
 renderState (PlayerChoosingTargets ability)
     = "PlayerChoosingTargets: " ++ _abilityName ability
 renderState (GMVettingAction ability targets)
