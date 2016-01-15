@@ -3,6 +3,7 @@ module PandT.Interaction where
 import ClassyPrelude
 
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Writer.Strict (runWriterT)
 import Control.Lens
 import System.IO (hSetBuffering, BufferMode(NoBuffering))
 
@@ -83,8 +84,10 @@ promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
 promptForVet game = do
     putStr "GM! Is this okay? Y or N> "
     input <- (lift (hGetLine stdin) :: MaybeT IO Text)
-    if (toCaseFold input) == (toCaseFold "y") then
-        liftMaybe (acceptAction game)
+    if (toCaseFold input) == (toCaseFold "y") then do
+        (nextGame, log) <- liftMaybe (runWriterT (acceptAction_ game))
+        mapM_ (putStrLn . renderCombatEvent) log
+        return nextGame
     else
         return (Right (denyAction game))
 

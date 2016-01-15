@@ -237,7 +237,6 @@ data CombatEvent
         }
     | RecurringEffectOccurred
         { _combatEventRecurringEventOrigin :: CreatureName
-        , _combatEventRecurringEventTarget :: CreatureName
         , _combatEventRecurringEventEffect :: EffectOccurrence
         }
     | SkippedIncapacitatedCreatureTurn CreatureName
@@ -247,6 +246,35 @@ data CombatEvent
 
 makeLenses ''CombatEvent
 makePrisms ''CombatEvent
+
+renderConditionCase :: ConditionCase -> Text
+renderConditionCase (SomeRecurringEffect (RecurringEffect name duration eff))
+    = name ++ " (Recurring Effect) for " ++ (tshow duration) ++ " rounds"
+renderConditionCase (SomeDamageAbsorb (DamageAbsorb name duration (DamageIntensity int)))
+    = name ++ " (Damage Absorb) for " ++ (tshow duration) ++ " rounds"
+renderConditionCase (SomeDamageIncrease (DamageIncrease name duration (DamageIntensity int)))
+    = name ++ " (Damage Increase) for " ++ (tshow duration) ++ " rounds"
+renderConditionCase (SomeDamageDecrease (DamageDecrease name duration (DamageIntensity int)))
+    = name ++ " (Damage Decrease) for " ++ (tshow duration) ++ " rounds"
+renderConditionCase (SomeIncapacitated (Incapacitated name duration))
+    = name ++ " (Incapacitate) for " ++ (tshow duration) ++ " rounds"
+renderConditionCase (SomeDead (Dead name duration))
+    = name ++ " (Dead) for " ++ (tshow duration) ++ " rounds"
+
+renderEffectOccurrence :: EffectOccurrence -> Text
+renderEffectOccurrence = unlines . (map go)
+    where
+        go (Interrupt, cname) = "interrupting " ++ cname
+        go ((Heal (DamageIntensity int)), cname) = tshow int ++ " healing to " ++ cname
+        go ((Damage (DamageIntensity int)), cname) = tshow int ++ " damage to " ++ cname
+        go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
+        go ((ApplyCondition ccase), cname) = "Applying condition " ++ (renderConditionCase ccase) ++ " to " ++ cname
+
+renderCombatEvent :: CombatEvent -> Text
+renderCombatEvent (AbilityUsed {..}) =
+    _combatEventAbilityOrigin ++ " used " ++ (_combatEventAbilityUsed^.abilityName) ++ ", causing:\n"
+    ++ (renderEffectOccurrence _combatEventAbilityEffects) ++ ".\n"
+renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn stared."
 
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 100
@@ -455,9 +483,7 @@ acceptAction_ game = do
 acceptAction = ignoreLog . acceptAction_
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
-denyAction game =
-    set state newState game
-    where newState = PlayerChoosingAbility
+denyAction game = set state PlayerChoosingAbility game
 
 
 makeTimedEOT :: Text -> Int -> Effect -> Effect
