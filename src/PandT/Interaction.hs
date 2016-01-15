@@ -52,35 +52,31 @@ promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingActio
 promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do
     creatureNameses <- mapM promptTEffect (ability^.abilityEffects)
     return (chooseTargets game creatureNameses)
-    where
-        promptTEffect :: TargetedEffect -> MaybeT IO SelectedTargetedEffect
-        promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetCreature range) _)) = do
-            lift $ putStr ("Single target for " ++ targetName ++ " range: " ++ (tshow range) ++ "> ")
-            creatureName <- lift $ hGetLine stdin
-            -- XXX TODO: check if creatureName is in game^.creaturesInPlay
-            return (SelectedSingleTargetedEffect creatureName teffect)
-        promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName (TargetCircle range radius) _)) = do
-            creatureNames <- promptMultiTarget [] ("Target for " ++ targetName ++ " Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
-            return (SelectedMultiTargetedEffect creatureNames teffect)
-        promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName (TargetLineFromSource range) _)) = do
-            creatureNames <- promptMultiTarget [] ("Target for " ++ targetName ++ " Line range: " ++ (tshow range))
-            return (SelectedMultiTargetedEffect creatureNames teffect)
-        promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName (TargetCone range) _)) = do
-            creatureNames <- promptMultiTarget [] ("Target for " ++ targetName ++ " Cone range: " ++ (tshow range))
-            return (SelectedMultiTargetedEffect creatureNames teffect)
 
-        promptMultiTarget :: [CreatureName] -> Text -> MaybeT IO [CreatureName]
-        promptMultiTarget sofar prompt = do
-            lift $ putStr (prompt ++ " (enter DONE when done)> ")
-            creatureName <- lift $ hGetLine stdin
-            if creatureName == "DONE" then
-                return sofar
-            else
-                promptMultiTarget (creatureName:sofar) prompt
+promptTEffect :: TargetedEffect -> MaybeT IO SelectedTargetedEffect
+promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetCreature range) _)) = do
+    lift $ putStr ("Single target for " ++ targetName ++ " range: " ++ (tshow range) ++ "> ")
+    creatureName <- lift $ hGetLine stdin
+    -- XXX TODO: check if creatureName is in game^.creaturesInPlay
+    return (SelectedSingleTargetedEffect creatureName teffect)
+promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName system _)) = do
+    creatureNames <- case system of
+        (TargetCircle range radius) ->
+            promptMultiTarget [] targetName (" Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
+        (TargetLineFromSource range) ->
+            promptMultiTarget [] targetName (" Line range: " ++ (tshow range))
+        (TargetCone range) ->
+            promptMultiTarget [] targetName (" Cone range: " ++ (tshow range))
+    return (SelectedMultiTargetedEffect creatureNames teffect)
 
-
-
-
+promptMultiTarget :: [CreatureName] -> Text -> Text -> MaybeT IO [CreatureName]
+promptMultiTarget sofar targetName prompt = do
+    lift $ putStr ("Target for " ++ targetName ++ prompt ++ " (enter DONE when done)> ")
+    creatureName <- lift $ hGetLine stdin
+    if creatureName == "DONE" then
+        return sofar
+    else
+        promptMultiTarget (creatureName:sofar) targetName prompt
 
 
 promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
