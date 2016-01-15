@@ -128,31 +128,46 @@ makePrisms ''AppliedCondition
 makeLenses ''AppliedCondition
 makePrisms ''Effect
 
-data TargetSystem
-    = TargetCreature Range
-    | TargetCircle Range Radius
-    | TargetLineFromSource Range
-    | TargetCone Range
-    deriving (Show, Eq)
+data SingleTarget
+data MultiTarget
+
+data TargetSystem a where
+    TargetCreature :: Range -> TargetSystem SingleTarget
+    TargetCircle :: Range -> Radius -> TargetSystem MultiTarget
+    TargetLineFromSource :: Range -> TargetSystem MultiTarget
+    TargetCone :: Range -> TargetSystem MultiTarget
+
+deriving instance Show (TargetSystem a)
+deriving instance Eq (TargetSystem a)
 
 makePrisms ''TargetSystem
 
-data TargetedEffect = TargetedEffect
-    { _targetName :: CreatureName -- ^ Used for prompting the user for the target
-    , _targetSystem :: TargetSystem
-    , _targetedEffect :: Effect
+data TargetedEffectP a = TargetedEffectP
+    { _targetedEffectName :: Text -- ^ Used for prompting the user for the target
+    , _targetedEffectSystem :: TargetSystem a
+    , _targetedEffectEffect :: Effect
     } deriving (Show, Eq)
 
-makeLenses ''TargetedEffect
+data TargetedEffect
+    = SingleTargetedEffect (TargetedEffectP SingleTarget)
+    | MultiTargetedEffect (TargetedEffectP MultiTarget)
+    deriving (Show, Eq)
 
--- I could make a more typesafe representation of this by doing something
--- similar to the way I did Condition types
-type SelectedTargetedEffect = (TargetedEffect, [CreatureName])
+data SelectedTargetedEffect
+    = SelectedMultiTargetedEffect [CreatureName] (TargetedEffectP MultiTarget)
+    | SelectedSingleTargetedEffect CreatureName (TargetedEffectP SingleTarget)
+    deriving (Show, Eq)
+
+makeLenses ''TargetedEffectP
+makeLenses ''TargetedEffect
+makePrisms ''TargetedEffect
+makeLenses ''SelectedTargetedEffect
+makePrisms ''SelectedTargetedEffect
 
 data Ability = Ability
     { _abilityName :: Text
     , _cost :: Resource
-    , _effects :: [TargetedEffect]
+    , _abilityEffects :: [TargetedEffect]
     , _castTime :: CastTime
     , _cooldown :: Cooldown
     }
@@ -336,14 +351,19 @@ applyAbility game@(Game {_state=GMVettingAction ability selections})
         (newGame, log) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))
     where
-        appEffs gameAndLog (targetedEffect, creatureNames) = foldM (appEff targetedEffect) gameAndLog creatureNames
-        appEff :: TargetedEffect -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
+        -- appEffs :: (Game GMVettingAction, ()) -> SelectedTargetedEffect -> Maybe (Game GMVettingAction, CombatEvent)
+        appEffs gameAndLog (SelectedSingleTargetedEffect creatureName targetedEffect)
+            = appEff targetedEffect gameAndLog creatureName
+        appEffs gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
+            = foldM (appEff targetedEffect) gameAndLog creatureNames
+
+        appEff :: TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
             -> Maybe (Game GMVettingAction, EffectOccurrence)
         appEff targetedEffect (game, log) creatName = do
-            let effect = (_targetedEffect targetedEffect)
-            let applyEffect' = fmap $ flip applyEffect effect
-            let applied = over (creaturesInPlay . at creatName) applyEffect' game
-            return $ (applied, ((effect, creatName):log))
+            let effect = targetedEffect^.targetedEffectEffect
+                applyEffect' = fmap $ flip applyEffect effect
+                applied = over (creaturesInPlay . at creatName) applyEffect' game
+            return (applied, ((effect, creatName):log))
 
 traceShowMessage message obj = trace (message ++ show obj ++ ": ") obj
 

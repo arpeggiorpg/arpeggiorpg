@@ -5,7 +5,7 @@ import Control.Lens
 import PandT.Types
 
 punchTEffect :: TargetedEffect
-punchTEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) punchEffect
+punchTEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) punchEffect
 
 punchEffect :: Effect
 punchEffect = Damage (DamageIntensity Medium)
@@ -27,16 +27,16 @@ stab :: Ability
 stab = Ability
     { _abilityName="Stab"
     , _cost=Energy 10
-    , _effects=[stabTargetedEffect]
+    , _abilityEffects=[stabTargetedEffect]
     , _castTime = CastTime 0
     , _cooldown = Cooldown 0
     }
     where
         stabTargetedEffect =
-            TargetedEffect
-                { _targetName = "Stab"
-                , _targetSystem = TargetCreature (Range 1)
-                , _targetedEffect = stabEffect
+            SingleTargetedEffect $ TargetedEffectP
+                { _targetedEffectName = "Stab"
+                , _targetedEffectSystem = TargetCreature (Range 1)
+                , _targetedEffectEffect = stabEffect
                 }
         stabEffect = MultiEffect stabDirectDamage bleed
         stabDirectDamage = Damage (DamageIntensity Medium)
@@ -44,7 +44,7 @@ stab = Ability
 kill :: Ability
 kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
     where
-        killTargetedEffect = TargetedEffect "Stab" (TargetCreature (Range 1)) killEffect
+        killTargetedEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) killEffect
         killEffect = ApplyCondition (SomeDead (Dead "Dead" UnlimitedDuration))
 
 mkStun :: Duration -> Effect
@@ -54,5 +54,5 @@ mkStun dur = ApplyCondition $ SomeIncapacitated $
 bonk :: Ability
 bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
     where
-        bonkTEffect = TargetedEffect "Bonk" (TargetCreature (Range 1)) bonkEffect
+        bonkTEffect = SingleTargetedEffect $ TargetedEffectP "Bonk" (TargetCreature (Range 1)) bonkEffect
         bonkEffect = ApplyCondition (SomeIncapacitated (Incapacitated "Bonked" (TimedCondition (Duration 1))))

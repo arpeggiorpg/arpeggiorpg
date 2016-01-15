@@ -74,8 +74,8 @@ simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
                  [CombatEvent])
 simulateMove game ability target =
     let targeting = chooseAbility game ability
-        firstTEffect = headEx (ability^.effects)
-        vetting = chooseTargets targeting [(firstTEffect, [target])]
+        (SingleTargetedEffect firstTEffect) = headEx (ability^.abilityEffects)
+        vetting = chooseTargets targeting [SelectedSingleTargetedEffect target firstTEffect]
         (Just (accepted, log)) = runWriterT $ acceptAction_ vetting
     in (targeting, vetting, accepted, log)
 
@@ -103,111 +103,3 @@ myGame = Game
 (Just (Right afterBleedEnd)) = nextTurn =<< (nextTurn afterBleedTick)^?_Just._Right
 (bonkTargeting, bonkVetting, (Left bonkAccepted), bonkLog) = simulateMove myGame bonk "Aspyr"
 (Just (Right afterBonk)) = nextTurn bonkAccepted
-
-
--- following test data still unused
-
--- Tera-style multi-healing
-healTwoTargets :: [TargetedEffect]
-healTwoTargets = take 2 . repeat $ TargetedEffect
-        { _targetName="Heal"
-        , _targetSystem=TargetCreature (Range 5)
-        , _targetedEffect=Heal (DamageIntensity Medium)
-        }
-
--- basic damage+dot attack
-immolate :: TargetedEffect
-immolate = TargetedEffect
-    { _targetName="Immolate"
-    , _targetSystem=TargetCreature (Range 5)
-    , _targetedEffect=MultiEffect directDamage dot
-    } where
-        directDamage = Damage (DamageIntensity Medium)
-        dot = makeTimedEOT "Immolation" 3 dotTick
-        dotTick = Damage (DamageIntensity Low)
-
-
-mistPunch :: [TargetedEffect]
-mistPunch =
-    [ TargetedEffect
-        { _targetName="MistPunch Damage"
-        , _targetSystem=TargetCreature (Range 1)
-        , _targetedEffect=Damage (DamageIntensity Low)
-        }
-    , TargetedEffect
-        { _targetName="MistPunch Heal"
-        , _targetSystem=TargetCreature (Range 4)
-        , _targetedEffect=Heal (DamageIntensity Low)
-        }
-    ]
-
--- ok this won't work, because the secondary effect will apply to the primary target.
--- fistsOfFury :: [TargetedEffect]
--- fistsOfFury =
---     [ TargetedEffect { _targetSystem=TargetCreature (Range 1), _targetedEffect=stunAndMediumDamage}
---     , TargetedEffect { _targetSystem=TargetCone (Range 1), _targetedEffect=stunAndLowDamage}
---     ]
-
--- but, I guess, on the other hand, we can just deal two amounts of low damage to the main target...
-fistsOfFury :: [TargetedEffect]
-fistsOfFury =
-    [ TargetedEffect
-        { _targetName="Fists of Fury Primary"
-        , _targetSystem=TargetCreature (Range 1)
-        , _targetedEffect=lowDamage
-        }
-    , TargetedEffect
-        { _targetName="Fists of Fury Area"
-        , _targetSystem=TargetCone (Range 1)
-        , _targetedEffect=stunAndLowDamage
-        }
-    ]
-    where
-        lowDamage = Damage (DamageIntensity Medium)
-        stunAndLowDamage = MultiEffect stunEff lowDamage
-        stunEff = mkStun (Duration 1)
-
-{-
-durations! ticks!
-
-fists of fury: incapacitate lasts until the beginning of the caster's next turn.
-
-    ignoring the area-effect of this: this can be implemented as, of course, the
-    Incapacitated condition on the target, along with a condition or native
-    concept of "Channeling" on the caster. When ticking over to the caster, we
-    can see that the channel is ending and remove the condition from the target.
-    This, of course, requires some way to link the particular spell being cast
-    by the caster to the particular Incapacitated condition on the target.
-
-rain of fire: lasts for 3 rounds, burns any creature entering or starting their turn in the area effected
-
-    Argh AE.
-
-dancing sword: summons a sword that attacks an enemy target on the casting player's turn
-
-    This should probably just be implemented as an ability that summons a creature.
-
-illness: lasts five rounds, deals 1 damage per turn at the end of the target's turn
-
-    This can be a basic-ish condition.
-
-Burning arrow: strikes the target for damage, and then burns the target at the end of each of his turn
-
-FoF:...
-
-Creature.channeling :: Bool ???
-Condition.channelingCreature :: CreatureName ??
-
-or Creature.
-
-RecurringEffect = RecurringEffect {
-    effect :: Effect,
-    when :: WhenEffectHappens
-}
-
-data WhenEffectHappens
-    = EndOfTargetTurn
-    | BeginningOfTargetTurn
-
-
--}
