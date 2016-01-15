@@ -10,6 +10,7 @@ module PandT.Types where
 import ClassyPrelude
 
 import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
+                     Getter, to,
                      Prism',
                      mapped,
                      makeLenses, makePrisms, set, firstOf, _head,
@@ -196,6 +197,8 @@ data Game status = Game
 
 makeLenses ''Game
 
+currentCreature :: Getter (Game a) (Maybe Creature)
+currentCreature = to (\game -> game^.creaturesInPlay.at (game^.currentCreatureName))
 
 {-
 Radix used DoubleHeal.
@@ -299,7 +302,7 @@ renderCreatureStatus creature =
 renderInitiative :: Game a -> Text
 renderInitiative game
     = let
-        currentName = (_currentCreatureName game)
+        currentName = game^.currentCreatureName
         creature name = view (creaturesInPlay . at name) game
         pfx name = if name == currentName then "*" else " "
         statusLine name = unwords.toList $ renderCreatureStatus <$> creature name

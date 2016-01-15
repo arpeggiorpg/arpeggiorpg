@@ -3,6 +3,7 @@ module PandT.Interaction where
 import ClassyPrelude
 
 import Control.Monad.Trans.Maybe
+import Control.Lens
 import System.IO (hSetBuffering, BufferMode(NoBuffering))
 
 import PandT.Types
@@ -29,14 +30,17 @@ myGame = Game
 runForever :: Monad m => (a -> m a) -> a -> m ()
 runForever go start = go start >>= runForever go
 
-lookupAbility :: Text -> Maybe Ability
-lookupAbility abilityName = Nothing
+lookupAbility :: Creature -> Text -> Maybe Ability
+lookupAbility creature abName = find (\ab -> (ab^.abilityName) == abName) (creature^.abilities)
 
 promptForAbility :: Game PlayerChoosingAbility -> MaybeT IO (Game PlayerChoosingTargets)
 promptForAbility game = do
-    putStr "Enter ability name> "
+    creature <- liftMaybe (game^.currentCreature)
+    putStr "Abilities: "
+    forM_ (creature^.abilities) (\ab -> putStr $ (ab^.abilityName) ++ " ")
+    putStr "\nEnter ability name> "
     abilityName <- hGetLine stdin
-    case lookupAbility abilityName of
+    case lookupAbility creature abilityName of
         Nothing -> do
             liftIO $ putStrLn "Not found"
             promptForAbility game
