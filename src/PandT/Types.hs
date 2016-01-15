@@ -392,10 +392,10 @@ decrementConditions :: Creature -> Creature
 decrementConditions creature = over (conditions.mapped.durationLeft._TimedCondition) pred creature
 
 isConditionExpired :: AppliedCondition -> Bool
-isConditionExpired x = False
+isConditionExpired ac = maybe False (== Duration 0) (ac^.durationLeft^?_TimedCondition)
 
 cleanUpConditions :: Creature -> Creature
-cleanUpConditions = over conditions (filter isConditionExpired)
+cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
 endTurnFor :: Creature -> Creature
 endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCondition unaffected (unaffected^.conditions))

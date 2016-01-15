@@ -24,9 +24,9 @@ turnTests = testGroup "Turn Tests"
     [ testCase "After Radorg acts, Aspyr goes" $
         stabAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "After Aspyr acts, Ulsoga goes" $
-        (nextTurn stabAccepted)^?_Just._Right.currentCreatureName @?= Just "Ulsoga"
+        (forceNextTurn stabAccepted)^.currentCreatureName @?= "Ulsoga"
     , testCase "After Ulsoga acts, Radorg goes" $
-        (nextTurn =<< (nextTurn stabAccepted)^?_Just._Right)^?_Just._Right.currentCreatureName @?= Just "Radorg"
+        (forceNextTurn (forceNextTurn stabAccepted))^.currentCreatureName @?= "Radorg"
     ]
 
 conditionTests :: TestTree
@@ -45,6 +45,9 @@ conditionTests = testGroup "Condition Tests"
         bonkAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature has conditions ticked" $
         afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
+    , testCase "UnlimitedDuration conditions never expire" $
+        let afterSecondDeadTurn = (forceNextTurn . forceNextTurnIncap . forceNextTurn . forceNextTurn $ killAccepted)
+            in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [dead]
     ]
 
 abilityTests :: TestTree
@@ -96,10 +99,19 @@ myGame = Game
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
     }
 
+forceNextTurn :: Game a -> Game PlayerChoosingAbility
+forceNextTurn game = let (Just (Right g)) = nextTurn game in g
+
+forceNextTurnIncap :: Game a -> Game PlayerIncapacitated
+forceNextTurnIncap game =
+    case nextTurn game of
+        (Just (Left g)) -> g
+        (Just (Right g)) -> terror ("Expected incapacitated player when moving from " ++ game^.currentCreatureName ++ " to " ++ g^.currentCreatureName)
+
 (punchTargeting, punchVetting, (Right punchAccepted), punchLog) = simulateMove myGame punch "Aspyr"
 (stabTargeting, stabVetting, (Right stabAccepted), stabLog) = simulateMove myGame stab "Aspyr"
-(Just (Right afterBleedTick)) = nextTurn =<< (nextTurn stabAccepted)^?_Just._Right
+afterBleedTick = forceNextTurn (forceNextTurn stabAccepted)
 (killTargeting, killVetting, (Left killAccepted), killLog) = simulateMove myGame kill "Aspyr"
-(Just (Right afterBleedEnd)) = nextTurn =<< (nextTurn afterBleedTick)^?_Just._Right
+afterBleedEnd = forceNextTurn (forceNextTurn afterBleedTick)
 (bonkTargeting, bonkVetting, (Left bonkAccepted), bonkLog) = simulateMove myGame bonk "Aspyr"
-(Just (Right afterBonk)) = nextTurn bonkAccepted
+afterBonk = forceNextTurn bonkAccepted
