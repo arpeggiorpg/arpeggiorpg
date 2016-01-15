@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 import Control.Lens
 import Control.Monad.Writer.Strict
 import Test.Tasty (defaultMain, testGroup, TestTree)
@@ -76,7 +74,8 @@ simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
                  [CombatEvent])
 simulateMove game ability target =
     let targeting = chooseAbility game ability
-        vetting = chooseTargets targeting [[target]]
+        firstTEffect = headEx (ability^.effects)
+        vetting = chooseTargets targeting [(firstTEffect, [target])]
         (Just (accepted, log)) = runWriterT $ acceptAction_ vetting
     in (targeting, vetting, accepted, log)
 

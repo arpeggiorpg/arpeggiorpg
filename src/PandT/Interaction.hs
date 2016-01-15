@@ -31,7 +31,8 @@ runForever :: Monad m => (a -> m a) -> a -> m ()
 runForever go start = go start >>= runForever go
 
 lookupAbility :: Creature -> Text -> Maybe Ability
-lookupAbility creature abName = find (\ab -> toCaseFold (ab^.abilityName) == toCaseFold abName) (creature^.abilities)
+lookupAbility creature abName = find matchName (creature^.abilities)
+    where matchName ab = toCaseFold (ab^.abilityName) == toCaseFold abName
 
 promptForAbility :: Game PlayerChoosingAbility -> MaybeT IO (Game PlayerChoosingTargets)
 promptForAbility game = do
@@ -48,7 +49,40 @@ promptForAbility game = do
             return $ chooseAbility game ability
 
 promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
-promptForTargets = error "prompt for targets"
+promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do
+    putStr ("Select Targets for " ++ tshow (ability^.abilityName))
+    creatureNameses <- mapM promptTEffect (ability^.effects)
+    -- return (chooseTargets game creatureNameses)
+    error "boo"
+    where
+        promptTEffect :: TargetedEffect -> MaybeT IO [CreatureName]
+        promptTEffect teffect =
+            case teffect^.targetSystem of
+                (TargetCreature range) -> do
+                    lift $ putStr ("Single target for " ++ (teffect^.targetName) ++ " range: " ++ (tshow range) ++ "> ")
+                    creatureName <- lift $ hGetLine stdin
+                    -- XXX TODO: check if creatureName is in game^.creaturesInPlay
+                    return [creatureName]
+                (TargetCircle range radius) ->
+                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
+                (TargetLineFromSource range) ->
+                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Line range: " ++ (tshow range))
+                (TargetCone range) ->
+                    promptMultiTarget [] ("Target for " ++ (teffect^.targetName) ++ " Cone range: " ++ (tshow range))
+
+        promptMultiTarget :: [CreatureName] -> Text -> MaybeT IO [CreatureName]
+        promptMultiTarget sofar prompt = do
+            lift $ putStr (prompt ++ " (enter DONE when done)> ")
+            creatureName <- lift $ hGetLine stdin
+            if creatureName == "DONE" then
+                return sofar
+            else
+                promptMultiTarget (creatureName:sofar) prompt
+
+
+
+
+
 
 promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
 promptForVet = error "Prompt for vet"

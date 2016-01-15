@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes #-}
@@ -146,6 +145,9 @@ data TargetedEffect = TargetedEffect
 
 makeLenses ''TargetedEffect
 
+-- I could make a more typesafe representation of this by doing something
+-- similar to the way I did Condition types
+type SelectedTargetedEffect = (TargetedEffect, [CreatureName])
 
 data Ability = Ability
     { _abilityName :: Text
@@ -180,7 +182,7 @@ data GameState a where
     PlayerIncapacitated :: GameState PlayerIncapacitated
     PlayerChoosingAbility :: GameState PlayerChoosingAbility
     PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
-    GMVettingAction :: Ability -> [[CreatureName]] -> GameState GMVettingAction
+    GMVettingAction :: Ability -> [SelectedTargetedEffect] -> GameState GMVettingAction
 
 deriving instance Show (GameState a)
 deriving instance Eq (GameState a)
@@ -322,20 +324,21 @@ chooseAbility :: Game PlayerChoosingAbility -> Ability
               -> Game PlayerChoosingTargets
 chooseAbility game ability = set state (PlayerChoosingTargets ability) game
 
-chooseTargets :: Game PlayerChoosingTargets -> [[CreatureName]] -> Game GMVettingAction
-chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) creatures
-    = set state (GMVettingAction ability creatures) game
+chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
+chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
+    = set state (GMVettingAction ability selections) game
 
 applyAbility
     :: Game GMVettingAction
     -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbility game@(Game {_state=GMVettingAction ability selections})
     = do
-        (newGame, log) <- foldM appEffs (game, []) $ zip (_effects ability) selections
+        (newGame, log) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))
     where
         appEffs gameAndLog (targetedEffect, creatureNames) = foldM (appEff targetedEffect) gameAndLog creatureNames
-        appEff :: TargetedEffect -> (Game GMVettingAction, EffectOccurrence) -> CreatureName -> Maybe (Game GMVettingAction, EffectOccurrence)
+        appEff :: TargetedEffect -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
+            -> Maybe (Game GMVettingAction, EffectOccurrence)
         appEff targetedEffect (game, log) creatName = do
             let effect = (_targetedEffect targetedEffect)
             let applyEffect' = fmap $ flip applyEffect effect
