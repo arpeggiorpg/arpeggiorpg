@@ -31,7 +31,7 @@ runForever :: Monad m => (a -> m a) -> a -> m ()
 runForever go start = go start >>= runForever go
 
 lookupAbility :: Creature -> Text -> Maybe Ability
-lookupAbility creature abName = find (\ab -> (ab^.abilityName) == abName) (creature^.abilities)
+lookupAbility creature abName = find (\ab -> toCaseFold (ab^.abilityName) == toCaseFold abName) (creature^.abilities)
 
 promptForAbility :: Game PlayerChoosingAbility -> MaybeT IO (Game PlayerChoosingTargets)
 promptForAbility game = do
