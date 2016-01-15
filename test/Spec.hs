@@ -15,8 +15,8 @@ tests = testGroup "Tests" [turnTests, conditionTests, abilityTests, logTests]
 logTests :: TestTree
 logTests = testGroup "Log Tests"
     [ testCase "punch log" $
-        punchLog @?= [AbilityUsed punch "Radorg" [(punchEffect, "Aspyr")]
-                     ,CreatureTurnStarted "Aspyr"]
+        punchLog @?= [ AbilityUsed punch "Radorg" [(punchEffect, "Aspyr")]
+                     , CreatureTurnStarted "Aspyr"]
     ]
 
 turnTests :: TestTree
@@ -47,7 +47,10 @@ conditionTests = testGroup "Condition Tests"
         afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     , testCase "UnlimitedDuration conditions never expire" $
         let afterSecondDeadTurn = (forceNextTurn . forceNextTurnIncap . forceNextTurn . forceNextTurn $ killAccepted)
-            in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [dead]
+        in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [dead]
+    , testCase "Timed conditions expire when duration reaches 0" $
+        let afterSecondBleedTurn = (forceNextTurn . forceNextTurn . forceNextTurn . forceNextTurn $ stabAccepted)
+        in afterSecondBleedTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     ]
 
 abilityTests :: TestTree
@@ -100,7 +103,10 @@ myGame = Game
     }
 
 forceNextTurn :: Game a -> Game PlayerChoosingAbility
-forceNextTurn game = let (Just (Right g)) = nextTurn game in g
+forceNextTurn game =
+    case nextTurn game of
+        (Just (Left g)) -> terror ("Expected player choosing ability when moving from " ++ game^.currentCreatureName ++ " to " ++ g^.currentCreatureName)
+        (Just (Right g)) -> g
 
 forceNextTurnIncap :: Game a -> Game PlayerIncapacitated
 forceNextTurnIncap game =
