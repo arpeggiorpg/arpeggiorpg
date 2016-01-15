@@ -88,16 +88,19 @@ targeting.
   - damage [CHECK]
   - healing [CHECK]
   - death [CHECK]
-  - reporting of events
+  - reporting of events [DONE]
 - model/workflow for abilities being "constructed"
   - player choose ability [DONE]
   - player choose target(s) [DONE]
   - GM modifies targets
+  - GM modifies effects on targets
   - GM vets [DONE]
   - GM executes [DONE]
   - GM skips [DONE]
-  - update currentPlayer [OBSOLETE]
 - Implement a basic text UI
+  - allow skipping turn
+  - check if targets exist
+  - cancel an ability
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
@@ -106,12 +109,12 @@ targeting.
   - incapacitation [DONE]
   - stacking vs refreshing conditions
   - area effects with duration
-  - effects that have a duration ending on caster's next turn
   - cast times
   - interrupts
   - randomization
   - crits
   - movement / geography
+  - creature visibility
 - Design three classes:
   - Warrior
   - Mage
