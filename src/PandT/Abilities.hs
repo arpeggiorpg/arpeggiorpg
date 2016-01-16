@@ -13,7 +13,6 @@ punchEffect = Damage (DamageIntensity Medium)
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
 
-
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
@@ -40,6 +39,12 @@ stab = Ability
                 }
         stabEffect = MultiEffect stabDirectDamage bleed
         stabDirectDamage = Damage (DamageIntensity Medium)
+
+wrath :: Ability
+wrath = Ability "Wrath" (Mana 10) [wrathTEffect] (CastTime 1) (Cooldown 0)
+    where
+        wrathTEffect = SingleTargetedEffect $ TargetedEffectP "Wrath" (TargetCreature (Range 1)) wrathEffect
+        wrathEffect = Damage (DamageIntensity High)
 
 kill :: Ability
 kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)

@@ -8,12 +8,7 @@ module PandT.Types where
 
 import ClassyPrelude
 
-import Control.Lens ((^.), (^?), (^..), at, over, view, preview,
-                     Getter, to,
-                     Prism',
-                     mapped,
-                     makeLenses, makePrisms, set, firstOf, _head,
-                     _Just)
+import Control.Lens
 import Data.Text (Text)
 import Data.Map (Map)
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
@@ -183,7 +178,7 @@ data Creature = Creature
     , _stamina :: Stamina
     , _health :: Health
     , _abilities :: [Ability]
-    , _casting :: Maybe Ability
+    , _casting :: Maybe (Ability, Duration)
     }
     deriving (Show, Eq)
 
@@ -230,7 +225,8 @@ is defined by the Effect, because of things like damage absorbs.
 type EffectOccurrence = [(Effect, CreatureName)]
 
 data CombatEvent
-    = AbilityUsed
+    = AbilityStartCast CreatureName Ability
+    | AbilityUsed
         { _combatEventAbilityUsed :: Ability
         , _combatEventAbilityOrigin :: CreatureName
         , _combatEventAbilityEffects :: EffectOccurrence
@@ -275,6 +271,7 @@ renderCombatEvent (AbilityUsed {..}) =
     _combatEventAbilityOrigin ++ " used " ++ (_combatEventAbilityUsed^.abilityName) ++ ", causing:\n"
     ++ (renderEffectOccurrence _combatEventAbilityEffects) ++ ".\n"
 renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn stared."
+renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
 
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 100
@@ -344,7 +341,11 @@ renderCreatureStatus creature =
     where
         hp = tshow $ creature^.health
         conds = tshow $ creature^.conditions
-        line = unwords [creature^.creatureName, hp, conds]
+        castSumm = case creature^.casting of
+            Nothing -> ""
+            Just (ability, (Duration duration)) ->
+                "(casting " ++ (ability^.abilityName) ++ " for " ++ (tshow duration) ++ " more rounds)"
+        line = unwords [creature^.creatureName, hp, castSumm, conds]
 
 renderInitiative :: Game a -> Text
 renderInitiative game
@@ -373,10 +374,20 @@ chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game 
 chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
     = set state (GMVettingAction ability selections) game
 
-applyAbility
+applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
+applyAbility game@(Game {_state=GMVettingAction ability selections}) =
+    case ability^.castTime of
+        (CastTime 0) -> applyAbilityEffects game
+        (CastTime castTime) -> do
+            creature <- game^.currentCreature
+            let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
+                newGame = (set (currentCreatureLens._Just.casting) (Just (ability, (Duration castTime))) game)
+            return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
+
+applyAbilityEffects
     :: Game GMVettingAction
     -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbility game@(Game {_state=GMVettingAction ability selections})
+applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
     = do
         (newGame, log) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))

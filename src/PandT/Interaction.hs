@@ -14,9 +14,9 @@ chris = Player "Chris"
 jah = Player "Jah"
 beth = Player "Beth"
 
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk]
-ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath]
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk, wrath]
+ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath]
 
 myGame :: Game PlayerChoosingAbility
 myGame = Game
