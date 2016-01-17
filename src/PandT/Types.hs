@@ -187,10 +187,12 @@ makeLenses ''Creature
 data PlayerChoosingAbility
 data PlayerChoosingTargets
 data PlayerIncapacitated
+data PlayerCasting
 data GMVettingAction
 
 data GameState a where
     PlayerIncapacitated :: GameState PlayerIncapacitated
+    PlayerCasting :: GameState PlayerCasting
     PlayerChoosingAbility :: GameState PlayerChoosingAbility
     PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
     GMVettingAction :: Ability -> [SelectedTargetedEffect] -> GameState GMVettingAction
@@ -446,13 +448,19 @@ endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCo
 (<&&>) = liftA2 (&&)
 
 
-type ModifiedGame = Either (Game PlayerIncapacitated) (Game PlayerChoosingAbility)
+-- | A game at the start of a turn -- represents the subset of states that a
+-- game can be in when a player starts their turn.
+data GameStartTurn
+    = GSTPlayerChoosingAbility (Game PlayerChoosingAbility)
+    | GSTPlayerIncapacitated (Game PlayerIncapacitated)
+    | GSTPlayerCasting (Game PlayerCasting)
+    deriving (Show, Eq)
 
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
 -- the input state; instead acceptAction or skipTurn should be used to advance
 -- the game.
-nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe ModifiedGame
+nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe GameStartTurn
 nextTurn_ game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let previousCreatureName = game^.currentCreatureName
@@ -464,28 +472,28 @@ nextTurn_ game = do
     let nextCreatureTurn = set currentCreatureName nextCreatureName gameWithPreviousCreatureUpdated
     tell [CreatureTurnStarted nextCreatureName]
     if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
-        return (Left (set state PlayerIncapacitated nextCreatureTurn))
+        return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
     else
-        return (Right (set state PlayerChoosingAbility nextCreatureTurn))
+        return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
 
-nextTurn :: Game a -> Maybe ModifiedGame
+nextTurn :: Game a -> Maybe GameStartTurn
 nextTurn = ignoreLog . nextTurn_
 
 ignoreLog :: Monad m => WriterT w m a -> m a
 ignoreLog writer = (runWriterT writer) >>= (return . fst)
 
-skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe ModifiedGame
+skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
 skipTurn_ = nextTurn_
 
 skipTurn = ignoreLog . skipTurn_
 
-skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe ModifiedGame
+skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
 skipIncapacitatedPlayer_ = nextTurn_
 
 skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
 
-acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe ModifiedGame
+acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe GameStartTurn
 acceptAction_ game = do
     (newGame, event) <- lift $ applyAbility game
     tell [event]

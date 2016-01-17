@@ -80,7 +80,7 @@ promptMultiTarget sofar targetName prompt = do
         promptMultiTarget (creatureName:sofar) targetName prompt
 
 
-promptForVet :: Game GMVettingAction -> MaybeT IO ModifiedGame
+promptForVet :: Game GMVettingAction -> MaybeT IO GameStartTurn
 promptForVet game = do
     putStr "GM! Is this okay? Y or N> "
     input <- (lift (hGetLine stdin) :: MaybeT IO Text)
@@ -89,22 +89,22 @@ promptForVet game = do
         mapM_ (putStrLn . renderCombatEvent) log
         return nextGame
     else
-        return (Right (denyAction game))
+        return (GSTPlayerChoosingAbility (denyAction game))
 
 -- why do I have to define this
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
-runIterationT :: Maybe ModifiedGame -> MaybeT IO ModifiedGame
+runIterationT :: Maybe GameStartTurn -> MaybeT IO GameStartTurn
 runIterationT mGame = do
     game <- liftMaybe mGame
     case game of
-        Left incap -> do
+        GSTPlayerIncapacitated incap -> do
             liftIO (putStrLn (render incap))
             liftIO (putStrLn "Skipping turn because player is incapacitated!")
             nextTurn <- liftMaybe $ skipIncapacitatedPlayer incap
             runIterationT (Just nextTurn)
-        Right choosingAbility -> do
+        GSTPlayerChoosingAbility choosingAbility -> do
             liftIO . putStrLn $ render choosingAbility
             choosingTargets <- promptForAbility choosingAbility
             vetting <- promptForTargets choosingTargets
@@ -112,10 +112,10 @@ runIterationT mGame = do
             runIterationT (Just vetted)
 
 
-runIteration :: Maybe ModifiedGame -> IO (Maybe ModifiedGame)
+runIteration :: Maybe GameStartTurn -> IO (Maybe GameStartTurn)
 runIteration mGame = runMaybeT . runIterationT $ mGame
 
 runConsoleGame :: IO ()
 runConsoleGame = do
     hSetBuffering stdout NoBuffering
-    runForever runIteration (Just . Right $ myGame)
+    runForever runIteration (Just . GSTPlayerChoosingAbility $ myGame)
