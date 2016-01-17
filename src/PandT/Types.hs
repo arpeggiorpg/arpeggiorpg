@@ -188,11 +188,13 @@ data PlayerChoosingAbility
 data PlayerChoosingTargets
 data PlayerIncapacitated
 data PlayerCasting
+data PlayerFinishingCast
 data GMVettingAction
 
 data GameState a where
     PlayerIncapacitated :: GameState PlayerIncapacitated
     PlayerCasting :: GameState PlayerCasting
+    PlayerFinishingCast :: GameState PlayerFinishingCast
     PlayerChoosingAbility :: GameState PlayerChoosingAbility
     PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
     GMVettingAction :: Ability -> [SelectedTargetedEffect] -> GameState GMVettingAction
@@ -212,8 +214,12 @@ data Game status = Game
 
 makeLenses ''Game
 
-currentCreature :: Getter (Game a) (Maybe Creature)
-currentCreature = to (\game -> game^.creaturesInPlay.at (game^.currentCreatureName))
+currentCreature :: Lens' (Game a) (Maybe Creature)
+currentCreature = lens getter setter
+    where
+        getter game = game^.creaturesInPlay.at (game^.currentCreatureName)
+        setter game value = set (creaturesInPlay.at (game^.currentCreatureName)) value game
+
 
 {-
 Radix used DoubleHeal.
@@ -454,7 +460,9 @@ data GameStartTurn
     = GSTPlayerChoosingAbility (Game PlayerChoosingAbility)
     | GSTPlayerIncapacitated (Game PlayerIncapacitated)
     | GSTPlayerCasting (Game PlayerCasting)
+    | GSTPlayerFinishingCast (Game PlayerFinishingCast)
     deriving (Show, Eq)
+
 
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
@@ -474,8 +482,11 @@ nextTurn_ game = do
     if
         | hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature ->
             return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
-        | not (isNothing (nextCreature^.casting)) ->
+        -- | not (isNothing (nextCreature^.casting)) ->
+        | maybe False (> (Duration 0)) (nextCreature^.casting^?_Just._2) ->
             return (GSTPlayerCasting (set state PlayerCasting nextCreatureTurn))
+        | (nextCreature^.casting^?_Just._2) == Just (Duration 0) ->
+            return (GSTPlayerFinishingCast (set state PlayerFinishingCast nextCreatureTurn))
         | otherwise ->
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
@@ -507,6 +518,21 @@ acceptAction = ignoreLog . acceptAction_
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game = set state PlayerChoosingAbility game
 
+class CancelCast a where
+    cancelCast :: Game a -> Game PlayerChoosingAbility
+    cancelCast game =
+        set state PlayerChoosingAbility $
+            set (currentCreature._Just.casting) Nothing game
+
+instance CancelCast PlayerFinishingCast where
+instance CancelCast PlayerCasting where
+
+
+finishCast :: Game PlayerFinishingCast -> [SelectedTargetedEffect] -> Maybe (Game GMVettingAction)
+finishCast game selections = do
+    creature <- game^.currentCreature
+    (ability, duration) <- creature^.casting
+    return (set state (GMVettingAction ability selections) game)
 
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
