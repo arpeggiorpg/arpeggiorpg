@@ -471,10 +471,13 @@ nextTurn_ game = do
     nextCreature <- lift $ gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
     let nextCreatureTurn = set currentCreatureName nextCreatureName gameWithPreviousCreatureUpdated
     tell [CreatureTurnStarted nextCreatureName]
-    if hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature then
-        return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
-    else
-        return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
+    if
+        | hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature ->
+            return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
+        | not (isNothing (nextCreature^.casting)) ->
+            return (GSTPlayerCasting (set state PlayerCasting nextCreatureTurn))
+        | otherwise ->
+            return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
 
 nextTurn :: Game a -> Maybe GameStartTurn
