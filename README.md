@@ -101,6 +101,9 @@ targeting.
   - allow skipping turn
   - check if targets exist
   - cancel an ability
+- implement persistence
+  - should be a simple auto-deriving of FromJSON/ToJSON
+  - except, you know, backwards compatibility
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
