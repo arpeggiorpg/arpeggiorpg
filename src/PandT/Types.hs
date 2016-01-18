@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes #-}
@@ -62,25 +63,38 @@ data DamageAbsorb
 data Incapacitated
 data Dead
 
-data ConditionDef a where
-    RecurringEffect :: Text -> ConditionDuration -> Effect -> ConditionDef RecurringEffect
-    DamageIncrease :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageIncrease
-    DamageDecrease :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageDecrease
-    DamageAbsorb :: Text -> ConditionDuration -> DamageIntensity -> ConditionDef DamageAbsorb
-    Incapacitated :: Text -> ConditionDuration -> ConditionDef Incapacitated
-    Dead :: Text -> ConditionDuration -> ConditionDef Dead
+data ConditionP a where
+    RecurringEffectP :: Text -> ConditionDuration -> Effect -> ConditionP RecurringEffect
+    DamageIncreaseP :: Text -> ConditionDuration -> DamageIntensity -> ConditionP DamageIncrease
+    DamageDecreaseP :: Text -> ConditionDuration -> DamageIntensity -> ConditionP DamageDecrease
+    DamageAbsorbP :: Text -> ConditionDuration -> DamageIntensity -> ConditionP DamageAbsorb
+    IncapacitatedP :: Text -> ConditionDuration -> ConditionP Incapacitated
+    DeadP :: Text -> ConditionDuration -> ConditionP Dead
 
-deriving instance Show (ConditionDef a)
-deriving instance Eq (ConditionDef a)
+deriving instance Show (ConditionP a)
+deriving instance Eq (ConditionP a)
 
-data ConditionCase
-    = SomeRecurringEffect (ConditionDef RecurringEffect)
-    | SomeDamageAbsorb (ConditionDef DamageAbsorb)
-    | SomeDamageIncrease (ConditionDef DamageIncrease)
-    | SomeDamageDecrease (ConditionDef DamageDecrease)
-    | SomeIncapacitated (ConditionDef Incapacitated)
-    | SomeDead (ConditionDef Dead)
+data ConditionC
+    = RecurringEffectC (ConditionP RecurringEffect)
+    | DamageAbsorbC (ConditionP DamageAbsorb)
+    | DamageIncreaseC (ConditionP DamageIncrease)
+    | DamageDecreaseC (ConditionP DamageDecrease)
+    | IncapacitatedC (ConditionP Incapacitated)
+    | DeadC (ConditionP Dead)
     deriving (Show, Eq)
+
+pattern RecurringEffect name duration effect =
+    RecurringEffectC (RecurringEffectP name duration effect)
+pattern DamageAbsorb name duration intensity =
+    DamageAbsorbC (DamageAbsorbP name duration intensity)
+pattern DamageIncrease name duration intensity =
+    DamageIncreaseC (DamageIncreaseP name duration intensity)
+pattern DamageDecrease name duration intensity =
+    DamageDecreaseC (DamageDecreaseP name duration intensity)
+pattern Incapacitated name duration =
+    IncapacitatedC (IncapacitatedP name duration)
+pattern Dead name duration =
+    DeadC (DeadP name duration)
 
 -- A condition at runtime: contains a condition definition and the necessary
 -- runtime data for that condition. This does the important job of declaring
@@ -89,28 +103,28 @@ data ConditionCase
 data AppliedCondition
     = AppliedRecurringEffect
         { _durationLeft :: ConditionDuration
-        , _recurringEffectDef :: ConditionDef RecurringEffect}
+        , _recurringEffectDef :: ConditionP RecurringEffect}
     | AppliedDamageAbsorb
         { _durationLeft :: ConditionDuration
-        , _damageAbsorbDef :: ConditionDef DamageAbsorb
+        , _damageAbsorbDef :: ConditionP DamageAbsorb
         , _absorbed :: Int}
     | AppliedDamageIncrease
         { _durationLeft :: ConditionDuration
-        , _damageIncreaseDef :: ConditionDef DamageIncrease}
+        , _damageIncreaseDef :: ConditionP DamageIncrease}
     | AppliedDamageDecrease
         { _durationLeft :: ConditionDuration
-        , _damageDecreaseDef :: ConditionDef DamageDecrease}
+        , _damageDecreaseDef :: ConditionP DamageDecrease}
     | AppliedIncapacitated
         { _durationLeft :: ConditionDuration
-        , _incapacitatedDef :: ConditionDef Incapacitated}
+        , _incapacitatedDef :: ConditionP Incapacitated}
     | AppliedDead
         { _durationLeft :: ConditionDuration
-        , _deadDef :: ConditionDef Dead}
+        , _deadDef :: ConditionP Dead}
     deriving (Show, Eq)
 
 data Effect
     = Interrupt
-    | ApplyCondition ConditionCase
+    | ApplyCondition ConditionC
     | Heal DamageIntensity
     | Damage DamageIntensity
     | MultiEffect Effect Effect
@@ -118,7 +132,7 @@ data Effect
 deriving instance Show Effect
 deriving instance Eq Effect
 
-makePrisms ''ConditionDef
+makePrisms ''ConditionP
 makePrisms ''AppliedCondition
 makeLenses ''AppliedCondition
 makePrisms ''Effect
@@ -251,19 +265,32 @@ data CombatEvent
 makeLenses ''CombatEvent
 makePrisms ''CombatEvent
 
-renderConditionCase :: ConditionCase -> Text
-renderConditionCase (SomeRecurringEffect (RecurringEffect name duration eff))
+renderConditionC :: ConditionC -> Text
+renderConditionC (RecurringEffect name duration eff)
     = name ++ " (Recurring Effect) for " ++ (tshow duration) ++ " rounds"
-renderConditionCase (SomeDamageAbsorb (DamageAbsorb name duration (DamageIntensity int)))
+renderConditionC (DamageAbsorb name duration (DamageIntensity int))
     = name ++ " (Damage Absorb) for " ++ (tshow duration) ++ " rounds"
-renderConditionCase (SomeDamageIncrease (DamageIncrease name duration (DamageIntensity int)))
+renderConditionC (DamageIncrease name duration (DamageIntensity int))
     = name ++ " (Damage Increase) for " ++ (tshow duration) ++ " rounds"
-renderConditionCase (SomeDamageDecrease (DamageDecrease name duration (DamageIntensity int)))
+renderConditionC (DamageDecrease name duration (DamageIntensity int))
     = name ++ " (Damage Decrease) for " ++ (tshow duration) ++ " rounds"
-renderConditionCase (SomeIncapacitated (Incapacitated name duration))
+renderConditionC (Incapacitated name duration)
     = name ++ " (Incapacitate) for " ++ (tshow duration) ++ " rounds"
-renderConditionCase (SomeDead (Dead name duration))
+renderConditionC (Dead name duration)
     = name ++ " (Dead) for " ++ (tshow duration) ++ " rounds"
+
+-- renderConditionC someCase =
+--     someCase^.conditionName ++ " (" ++ (conditionCaseName someCase) ++ ") for " ++ (tshow (someCase^.conditionDuration)) ++ " rounds"
+--
+-- conditionCaseName :: ConditionC -> Text
+-- conditionCaseName = n
+--     where
+--         n (SomeRecurringEffect _) = "Recurring Effect"
+--         n (SomeDamageAbsorb _) = "Damage Absorb"
+--         n (SomeDamageIncrease _) = "Damage Increase"
+--         n (SomeDamageDecrease _) = "Damage Decrease"
+--         n (SomeIncapacitated _)  = "Incapacitation"
+--         n (SomeDead _) = "Death"
 
 renderEffectOccurrence :: EffectOccurrence -> Text
 renderEffectOccurrence = unlines . (map go)
@@ -272,7 +299,7 @@ renderEffectOccurrence = unlines . (map go)
         go ((Heal (DamageIntensity int)), cname) = tshow int ++ " healing to " ++ cname
         go ((Damage (DamageIntensity int)), cname) = tshow int ++ " damage to " ++ cname
         go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
-        go ((ApplyCondition ccase), cname) = "Applying condition " ++ (renderConditionCase ccase) ++ " to " ++ cname
+        go ((ApplyCondition ccase), cname) = "Applying condition " ++ (renderConditionC ccase) ++ " to " ++ cname
 
 renderCombatEvent :: CombatEvent -> Text
 renderCombatEvent (AbilityUsed {..}) =
@@ -308,7 +335,7 @@ makeCreature cname res sta creatAbilities = Creature
     , _casting=Nothing}
 
 dead :: AppliedCondition
-dead = AppliedDead UnlimitedDuration $ Dead "Dead" UnlimitedDuration
+dead = AppliedDead UnlimitedDuration $ DeadP "Dead" UnlimitedDuration
 
 checkDead :: Creature -> Creature
 checkDead creat
@@ -316,13 +343,13 @@ checkDead creat
     | _health creat <= Health 0 = over conditions (dead:) creat
     | otherwise = creat
 
-applyCondition :: ConditionCase -> AppliedCondition
-applyCondition (SomeRecurringEffect cdef@(RecurringEffect _ dur _)) = AppliedRecurringEffect dur cdef
-applyCondition (SomeDamageIncrease cdef@(DamageIncrease _ dur _)) = AppliedDamageIncrease dur cdef
-applyCondition (SomeDamageDecrease cdef@(DamageDecrease _ dur _)) = AppliedDamageDecrease dur cdef
-applyCondition (SomeDamageAbsorb cdef@(DamageAbsorb _ dur _)) = AppliedDamageAbsorb dur cdef 0
-applyCondition (SomeIncapacitated cdef@(Incapacitated _ dur)) = AppliedIncapacitated dur cdef
-applyCondition (SomeDead cdef@(Dead _ dur)) = AppliedDead dur cdef
+applyCondition :: ConditionC -> AppliedCondition
+applyCondition (RecurringEffectC cdef@(RecurringEffectP _ dur _)) = AppliedRecurringEffect dur cdef
+applyCondition (DamageIncreaseC cdef@(DamageIncreaseP _ dur _)) = AppliedDamageIncrease dur cdef
+applyCondition (DamageDecreaseC cdef@(DamageDecreaseP _ dur _)) = AppliedDamageDecrease dur cdef
+applyCondition (DamageAbsorbC cdef@(DamageAbsorbP _ dur _)) = AppliedDamageAbsorb dur cdef 0
+applyCondition (IncapacitatedC cdef@(IncapacitatedP _ dur)) = AppliedIncapacitated dur cdef
+applyCondition (DeadC cdef@(DeadP _ dur)) = AppliedDead dur cdef
 
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = checkDead $ go effect
@@ -430,7 +457,7 @@ hasCondition prism creature = any match (creature^.conditions)
 tickCondition :: Creature -> AppliedCondition -> Creature
 tickCondition
     creat
-    (AppliedRecurringEffect durLeft (RecurringEffect _ _ eff))
+    (AppliedRecurringEffect durLeft (RecurringEffectP _ _ eff))
     = applyEffect creat eff
 tickCondition creat _ = creat
 
@@ -536,7 +563,7 @@ finishCast game selections = do
 
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
-    = ApplyCondition $ SomeRecurringEffect $
+    = ApplyCondition $
         RecurringEffect
             cname
             (TimedCondition (Duration cdur))

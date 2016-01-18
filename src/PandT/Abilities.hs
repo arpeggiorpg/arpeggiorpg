@@ -16,7 +16,7 @@ punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
 
-bleedCondition :: ConditionCase
+bleedCondition :: ConditionC
 (Just bleedCondition) = bleed^?_ApplyCondition
 
 appliedBleed :: AppliedCondition
@@ -50,14 +50,13 @@ kill :: Ability
 kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
     where
         killTargetedEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) killEffect
-        killEffect = ApplyCondition (SomeDead (Dead "Dead" UnlimitedDuration))
+        killEffect = ApplyCondition (Dead "Dead" UnlimitedDuration)
 
 mkStun :: Duration -> Effect
-mkStun dur = ApplyCondition $ SomeIncapacitated $
-    Incapacitated "Stunned" (TimedCondition dur)
+mkStun dur = ApplyCondition (Incapacitated "Stunned" (TimedCondition dur))
 
 bonk :: Ability
 bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
     where
         bonkTEffect = SingleTargetedEffect $ TargetedEffectP "Bonk" (TargetCreature (Range 1)) bonkEffect
-        bonkEffect = ApplyCondition (SomeIncapacitated (Incapacitated "Bonked" (TimedCondition (Duration 1))))
+        bonkEffect = ApplyCondition (Incapacitated "Bonked" (TimedCondition (Duration 1)))
