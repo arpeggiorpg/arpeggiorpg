@@ -72,18 +72,12 @@ data ConditionC
     | DeadC Dead
     deriving (Show, Eq)
 
-pattern RecurringEffect effect =
-    RecurringEffectC (RecurringEffectT effect)
-pattern DamageAbsorb intensity =
-    DamageAbsorbC (DamageAbsorbT intensity)
-pattern DamageIncrease intensity =
-    DamageIncreaseC (DamageIncreaseT intensity)
-pattern DamageDecrease intensity =
-    DamageDecreaseC (DamageDecreaseT intensity)
-pattern Incapacitated =
-    IncapacitatedC IncapacitatedT
-pattern Dead =
-    DeadC DeadT
+pattern MkRecurringEffectC effect = RecurringEffectC (RecurringEffectT effect)
+pattern MkDamageAbsorbC intensity = DamageAbsorbC (DamageAbsorbT intensity)
+pattern MkDamageIncreaseC intensity = DamageIncreaseC (DamageIncreaseT intensity)
+pattern MkDamageDecreaseC intensity = DamageDecreaseC (DamageDecreaseT intensity)
+pattern MkIncapacitatedC = IncapacitatedC IncapacitatedT
+pattern MkDeadC = DeadC DeadT
 
 data ConditionMeta = ConditionMeta
     { _conditionMetaName :: Text
@@ -336,7 +330,7 @@ makeCreature cname res sta creatAbilities = Creature
 
 
 deadDef :: ConditionDef
-deadDef = MkConditionDef "Dead" UnlimitedDuration Dead
+deadDef = MkConditionDef "Dead" UnlimitedDuration MkDeadC
 
 appliedDead :: AppliedCondition
 appliedDead = applyCondition deadDef
@@ -571,4 +565,4 @@ makeTimedEOT cname cdur ceff
         MkConditionDef
             cname
             (TimedCondition (Duration cdur))
-            (RecurringEffect ceff))
+            (MkRecurringEffectC ceff))
