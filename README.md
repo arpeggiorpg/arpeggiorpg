@@ -86,7 +86,7 @@ targeting.
 - Figure out the non-mapped model for geometry/space [CHECK]
 - Implement basic combat stuff:
   - damage [CHECK]
-  - healing [CHECK]
+  - healing
   - death [CHECK]
   - reporting of events [DONE]
 - model/workflow for abilities being "constructed"
@@ -110,6 +110,9 @@ targeting.
   - DOTs and HOTs [DONE]
   - passage of time [DONE]
   - incapacitation [DONE]
+  - Dispels! (how to target an effect???)
+  - damage buff/debuff
+  - damage absorb
   - stacking vs refreshing conditions
   - area effects with duration
   - cast times
