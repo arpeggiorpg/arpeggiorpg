@@ -55,20 +55,20 @@ data ConditionDuration -- this could have a reasonable Ord instance
 
 makePrisms ''ConditionDuration
 
-data RecurringEffect = RecurringEffectT Effect deriving (Show, Eq)
-data DamageIncrease = DamageIncreaseT DamageIntensity deriving (Show, Eq)
-data DamageDecrease = DamageDecreaseT DamageIntensity deriving (Show, Eq)
-data DamageAbsorb = DamageAbsorbT DamageIntensity deriving (Show, Eq)
-data Incapacitated = IncapacitatedT deriving (Show, Eq)
-data Dead = DeadT deriving (Show, Eq)
+data RecurringEffectT = RecurringEffectT Effect deriving (Show, Eq)
+data DamageIncreaseT = DamageIncreaseT DamageIntensity deriving (Show, Eq)
+data DamageDecreaseT = DamageDecreaseT DamageIntensity deriving (Show, Eq)
+data DamageAbsorbT = DamageAbsorbT DamageIntensity deriving (Show, Eq)
+data IncapacitatedT = IncapacitatedT deriving (Show, Eq)
+data DeadT = DeadT deriving (Show, Eq)
 
 data ConditionC
-    = RecurringEffectC RecurringEffect
-    | DamageAbsorbC DamageAbsorb
-    | DamageIncreaseC DamageIncrease
-    | DamageDecreaseC DamageDecrease
-    | IncapacitatedC Incapacitated
-    | DeadC Dead
+    = RecurringEffectC RecurringEffectT
+    | DamageAbsorbC DamageAbsorbT
+    | DamageIncreaseC DamageIncreaseT
+    | DamageDecreaseC DamageDecreaseT
+    | IncapacitatedC IncapacitatedT
+    | DeadC DeadT
     deriving (Show, Eq)
 
 pattern MkRecurringEffectC effect = RecurringEffectC (RecurringEffectT effect)
@@ -95,14 +95,14 @@ pattern MkConditionDef name duration c = ConditionDef (ConditionMeta name durati
 -- declaring types that ensure the appropriate runtime data types are associated
 -- with the appropriate condition definition types.
 data AppliedC
-    = AppliedRecurringEffect RecurringEffect
+    = AppliedRecurringEffect RecurringEffectT
     | AppliedDamageAbsorb
-        DamageAbsorb
+        DamageAbsorbT
         Int -- ^ Amount of damage absorbed so far
-    | AppliedDamageIncrease DamageIncrease
-    | AppliedDamageDecrease DamageDecrease
-    | AppliedIncapacitated Incapacitated
-    | AppliedDead Dead
+    | AppliedDamageIncrease DamageIncreaseT
+    | AppliedDamageDecrease DamageDecreaseT
+    | AppliedIncapacitated IncapacitatedT
+    | AppliedDead DeadT
     deriving (Show, Eq)
 
 data AppliedCondition = AppliedCondition
