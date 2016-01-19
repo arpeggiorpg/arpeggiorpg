@@ -10,6 +10,7 @@ import System.IO (hSetBuffering, BufferMode(NoBuffering))
 import PandT.Types
 import PandT.Abilities
 import PandT.Render
+import PandT.Sim
 
 chris = Player "Chris"
 jah = Player "Jah"

@@ -2,8 +2,10 @@ import Control.Lens
 import Control.Monad.Writer.Strict
 import Test.Tasty (defaultMain, testGroup, TestTree)
 import Test.Tasty.HUnit
+
 import PandT.Types
 import PandT.Abilities
+import PandT.Sim
 
 import ClassyPrelude
 

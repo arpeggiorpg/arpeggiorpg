@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib, PandT.Types, PandT.Interaction, PandT.Abilities, PandT.Render
+  exposed-modules:     Lib, PandT.Types, PandT.Interaction, PandT.Abilities, PandT.Render, PandT.Sim
   build-depends:       base-noprelude
                      , classy-prelude
                      , containers

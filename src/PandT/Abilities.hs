@@ -3,6 +3,7 @@ module PandT.Abilities where
 import ClassyPrelude
 import Control.Lens
 import PandT.Types
+import PandT.Sim
 
 punchTEffect :: TargetedEffect
 punchTEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) punchEffect
@@ -12,6 +13,14 @@ punchEffect = Damage (DamageIntensity Medium)
 
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
+
+makeTimedEOT :: Text -> Int -> Effect -> Effect
+makeTimedEOT cname cdur ceff
+    = ApplyCondition (
+        MkConditionDef
+            cname
+            (TimedCondition (Duration cdur))
+            (MkRecurringEffectC ceff))
 
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
