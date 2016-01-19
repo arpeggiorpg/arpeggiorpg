@@ -96,7 +96,9 @@ pattern MkConditionDef name duration c = ConditionDef (ConditionMeta name durati
 -- with the appropriate condition definition types.
 data AppliedC
     = AppliedRecurringEffect RecurringEffect
-    | AppliedDamageAbsorb DamageAbsorb Int
+    | AppliedDamageAbsorb
+        DamageAbsorb
+        Int -- ^ Amount of damage absorbed so far
     | AppliedDamageIncrease DamageIncrease
     | AppliedDamageDecrease DamageDecrease
     | AppliedIncapacitated Incapacitated
@@ -115,9 +117,7 @@ data Effect
     | Heal DamageIntensity
     | Damage DamageIntensity
     | MultiEffect Effect Effect
-
-deriving instance Show Effect
-deriving instance Eq Effect
+    deriving (Show, Eq)
 
 makePrisms ''ConditionC
 makePrisms ''AppliedC
