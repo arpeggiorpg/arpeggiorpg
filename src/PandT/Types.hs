@@ -72,16 +72,6 @@ data ConditionC
     | DeadC Dead
     deriving (Show, Eq)
 
-data ConditionMeta = ConditionMeta
-    { _conditionMetaName :: Text
-    , _conditionMetaDuration :: ConditionDuration
-    } deriving (Show, Eq)
-
-data ConditionDef = ConditionDef
-    { _conditionDefMeta :: ConditionMeta
-    , _conditionDefC :: ConditionC }
-    deriving (Show, Eq)
-
 pattern RecurringEffect effect =
     RecurringEffectC (RecurringEffectT effect)
 pattern DamageAbsorb intensity =
@@ -94,6 +84,19 @@ pattern Incapacitated =
     IncapacitatedC IncapacitatedT
 pattern Dead =
     DeadC DeadT
+
+data ConditionMeta = ConditionMeta
+    { _conditionMetaName :: Text
+    , _conditionMetaDuration :: ConditionDuration
+    } deriving (Show, Eq)
+
+data ConditionDef = ConditionDef
+    { _conditionDefMeta :: ConditionMeta
+    , _conditionDefC :: ConditionC }
+    deriving (Show, Eq)
+
+pattern MkConditionDef name duration c =
+    ConditionDef (ConditionMeta name duration) c
 
 -- A condition at runtime: contains a value of a condition type, and the
 -- necessary runtime data for that condition. This does the important job of
@@ -333,7 +336,7 @@ makeCreature cname res sta creatAbilities = Creature
 
 
 deadDef :: ConditionDef
-deadDef = ConditionDef (ConditionMeta "Dead" UnlimitedDuration) Dead
+deadDef = MkConditionDef "Dead" UnlimitedDuration Dead
 
 appliedDead :: AppliedCondition
 appliedDead = applyCondition deadDef
@@ -565,6 +568,7 @@ finishCast game selections = do
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
     = ApplyCondition (
-        ConditionDef
-            (ConditionMeta cname (TimedCondition (Duration cdur)))
+        MkConditionDef
+            cname
+            (TimedCondition (Duration cdur))
             (RecurringEffect ceff))

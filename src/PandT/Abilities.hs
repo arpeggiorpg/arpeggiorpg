@@ -47,7 +47,7 @@ kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
         killEffect = ApplyCondition deadDef
 
 mkStun :: Text -> Duration -> Effect
-mkStun name dur = ApplyCondition (ConditionDef (ConditionMeta name (TimedCondition dur)) Incapacitated)
+mkStun name dur = ApplyCondition (MkConditionDef name (TimedCondition dur) Incapacitated)
 
 bonk :: Ability
 bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
