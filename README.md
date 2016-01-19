@@ -113,6 +113,8 @@ targeting.
   - Dispels! (how to target an effect???)
   - damage buff/debuff
   - damage absorb
+  - resource consumption
+  - cooldown
   - stacking vs refreshing conditions
   - area effects with duration
   - cast times

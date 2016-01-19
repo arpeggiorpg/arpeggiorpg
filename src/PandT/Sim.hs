@@ -95,7 +95,8 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
         (newGame, log) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))
     where
-        -- appEffs :: (Game GMVettingAction, ()) -> SelectedTargetedEffect -> Maybe (Game GMVettingAction, CombatEvent)
+        appEffs :: (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
+                -> Maybe (Game GMVettingAction, EffectOccurrence)
         appEffs gameAndLog (SelectedSingleTargetedEffect creatureName targetedEffect)
             = appEff targetedEffect gameAndLog creatureName
         appEffs gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
@@ -137,7 +138,7 @@ cleanUpConditions :: Creature -> Creature
 cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
 endTurnFor :: Creature -> Creature
-endTurnFor unaffected = cleanUpConditions . decrementConditions $ (foldl' tickCondition unaffected (unaffected^.conditions))
+endTurnFor creature = cleanUpConditions . decrementConditions $ (foldl' tickCondition creature (creature^.conditions))
 
 (<||>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<||>) = liftA2 (||)
