@@ -36,18 +36,18 @@ conditionTests = testGroup "Condition Tests"
     , testCase "Conditions end" $
         afterBleedEnd^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     , testCase "Dead creature is dead" $
-        deadCreature^.conditions @?= [dead]
+        deadCreature^.conditions @?= [appliedDead]
     , testCase "Damage to dead creature does not cause additional Dead condition" $
-        deadTwice^.conditions @?= [dead]
+        deadTwice^.conditions @?= [appliedDead]
     , testCase "Dead creature gets a turn" $
         killAccepted^.currentCreatureName @?= "Aspyr"
-    , testCase "Incapacitated creature gets a turn" $
+    , testCase "Incapacitated creature getsp a turn" $
         bonkAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature has conditions ticked" $
         afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     , testCase "UnlimitedDuration conditions never expire" $
         let afterSecondDeadTurn = (forceNextTurn . forceNextTurnIncap . forceNextTurn . forceNextTurn $ killAccepted)
-        in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [dead]
+        in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [appliedDead]
     , testCase "Timed conditions expire when duration reaches 0" $
         let afterSecondBleedTurn = (forceNextTurn . forceNextTurn . forceNextTurn . forceNextTurn $ stabAccepted)
         in afterSecondBleedTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
@@ -72,6 +72,11 @@ healed = applyEffect damaged (Heal (DamageIntensity Low))
 deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage (DamageIntensity High)))
 deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
 
+bleedCondition :: ConditionDef
+(Just bleedCondition) = bleed^?_ApplyCondition
+
+appliedBleed :: AppliedCondition
+appliedBleed = applyCondition bleedCondition
 
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
              -> (Game PlayerChoosingTargets,
