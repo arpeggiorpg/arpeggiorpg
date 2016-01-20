@@ -12,10 +12,12 @@ import PandT.Abilities
 import PandT.Render
 import PandT.Sim
 
+chris, jah, beth :: Player
 chris = Player "Chris"
 jah = Player "Jah"
 beth = Player "Beth"
 
+radorg, aspyr, ulsoga :: Creature
 radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath]
 aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk, wrath]
 ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath]
@@ -43,8 +45,8 @@ promptForAbility game = do
     putStr "Abilities: "
     forM_ (creature^.abilities) (\ab -> putStr $ (ab^.abilityName) ++ " ")
     putStr "\nEnter ability name> "
-    abilityName <- hGetLine stdin
-    case lookupAbility creature abilityName of
+    abName <- hGetLine stdin
+    case lookupAbility creature abName of
         Nothing -> do
             liftIO $ putStrLn "Not found"
             promptForAbility game
@@ -59,9 +61,9 @@ promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do
 promptTEffect :: TargetedEffect -> MaybeT IO SelectedTargetedEffect
 promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetCreature range) _)) = do
     lift $ putStr ("Single target for " ++ targetName ++ " range: " ++ (tshow range) ++ "> ")
-    creatureName <- lift $ hGetLine stdin
-    -- XXX TODO: check if creatureName is in game^.creaturesInPlay
-    return (SelectedSingleTargetedEffect creatureName teffect)
+    target <- lift $ hGetLine stdin
+    -- XXX TODO: check if name is in game^.creaturesInPlay
+    return (SelectedSingleTargetedEffect target teffect)
 promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName system _)) = do
     creatureNames <- case system of
         (TargetCircle range radius) ->
@@ -75,11 +77,11 @@ promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName system _)
 promptMultiTarget :: [CreatureName] -> Text -> Text -> MaybeT IO [CreatureName]
 promptMultiTarget sofar targetName prompt = do
     lift $ putStr ("Target for " ++ targetName ++ prompt ++ " (enter DONE when done)> ")
-    creatureName <- lift $ hGetLine stdin
-    if creatureName == "DONE" then
+    target <- lift $ hGetLine stdin
+    if target == "DONE" then
         return sofar
     else
-        promptMultiTarget (creatureName:sofar) targetName prompt
+        promptMultiTarget (target:sofar) targetName prompt
 
 
 promptForVet :: Game GMVettingAction -> MaybeT IO GameStartTurn
@@ -87,11 +89,14 @@ promptForVet game = do
     putStr "GM! Is this okay? Y or N> "
     input <- (lift (hGetLine stdin) :: MaybeT IO Text)
     if (toCaseFold input) == (toCaseFold "y") then do
-        (nextGame, log) <- liftMaybe (runWriterT (acceptAction_ game))
-        mapM_ (putStrLn . renderCombatEvent) log
+        (nextGame, combatLog) <- liftMaybe (runWriterT (acceptAction_ game))
+        mapM_ (putStrLn . renderCombatEvent) combatLog
         return nextGame
     else
         return (GSTPlayerChoosingAbility (denyAction game))
+
+promptForCasting :: Game PlayerCasting -> MaybeT IO GameStartTurn
+promptForCasting = undefined
 
 -- why do I have to define this
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
@@ -104,14 +109,20 @@ runIterationT mGame = do
         GSTPlayerIncapacitated incap -> do
             liftIO (putStrLn (render incap))
             liftIO (putStrLn "Skipping turn because player is incapacitated!")
-            nextTurn <- liftMaybe $ skipIncapacitatedPlayer incap
-            runIterationT (Just nextTurn)
+            next <- liftMaybe $ skipIncapacitatedPlayer incap
+            runIterationT (Just next)
         GSTPlayerChoosingAbility choosingAbility -> do
             liftIO . putStrLn $ render choosingAbility
             choosingTargets <- promptForAbility choosingAbility
             vetting <- promptForTargets choosingTargets
             vetted <- promptForVet vetting
             runIterationT (Just vetted)
+        -- GSTPlayerCasting asting -> do
+        --     liftIO (putStrLn "You are casting a spell.")
+        --     next <- promptForCasting casting
+        --     runIterationT (Just next)
+        -- GSTPlayerFinishingCast -> do
+        --     liftIO (putStrLn )
 
 
 runIteration :: Maybe GameStartTurn -> IO (Maybe GameStartTurn)

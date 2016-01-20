@@ -8,10 +8,7 @@
 module PandT.Types where
 
 import ClassyPrelude
-
 import Control.Lens
-import Data.Text (Text)
-import Data.Map (Map)
 
 data Intensity = Low | Medium | High
     deriving (Show, Eq, Ord)
@@ -234,6 +231,13 @@ data Game status = Game
 makeLenses ''Game
 
 class CancelCast a where
+    -- cancelCast :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
+    -- cancelCast game = do
+    --     ability <- lift (game^?currentCreature._Just.casting._Just._1)
+    --     tell ([CanceledCast (game^.currentCreatureName) ability])
+    --     return (set
+    --     nextTurn_ game
+
     cancelCast :: Game a -> Game PlayerChoosingAbility
     cancelCast game =
         set state PlayerChoosingAbility $
@@ -273,11 +277,13 @@ data CombatEvent
         }
     | RecurringEffectOccurred
         { _combatEventRecurringEventOrigin :: CreatureName
+        , _combatEventRecurringEventTarget :: CreatureName
         , _combatEventRecurringEventEffect :: EffectOccurrence
         }
     | SkippedIncapacitatedCreatureTurn CreatureName
     | SkippedTurn CreatureName
     | CreatureTurnStarted CreatureName
+    | CanceledCast CreatureName Ability
     deriving (Show, Eq)
 
 makeLenses ''CombatEvent

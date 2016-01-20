@@ -36,20 +36,25 @@ renderEffectOccurrence = unlines . (map go)
         go ((ApplyCondition cdef), cname) = "Applying condition " ++ (renderConditionDef cdef) ++ " to " ++ cname
 
 renderCombatEvent :: CombatEvent -> Text
-renderCombatEvent (AbilityUsed {..}) =
-    _combatEventAbilityOrigin ++ " used " ++ (_combatEventAbilityUsed^.abilityName) ++ ", causing:\n"
-    ++ (renderEffectOccurrence _combatEventAbilityEffects) ++ ".\n"
+renderCombatEvent (AbilityUsed abil source occurrences) =
+    source ++ " used " ++ (abil^.abilityName) ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
 renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn stared."
 renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
+renderCombatEvent (RecurringEffectOccurred source target occurrences) =
+    source ++ "'s recurring effect ticked on " ++ target ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
+renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = creatName ++ " is incapacitated."
+renderCombatEvent (SkippedTurn creatName) = creatName ++ " skipped their turn."
 
 
 renderState :: GameState a -> Text
-renderState PlayerChoosingAbility = "PlayerChoosingAbility"
-renderState PlayerIncapacitated = "PlayerIncapacitated"
+renderState PlayerChoosingAbility = "Choosing ability"
+renderState PlayerIncapacitated = "Incapacitated"
 renderState (PlayerChoosingTargets ability)
-    = "PlayerChoosingTargets: " ++ _abilityName ability
+    = "Choosing targets for " ++ _abilityName ability
 renderState (GMVettingAction ability targets)
-    = "GMVettingAction: " ++ _abilityName ability ++ " -> " ++ tshow targets
+    = "GM vetting action for " ++ _abilityName ability ++ " -> " ++ tshow targets
+renderState PlayerCasting = "Casting"
+renderState PlayerFinishingCast = "Finishing cast"
 
 
 renderCreatureStatus :: Creature -> Text
@@ -65,7 +70,7 @@ renderCreatureStatus creature =
         line = unwords [creature^.creatureName, hp, castSumm, conds]
 
 renderAppliedCondition :: AppliedCondition -> Text
-renderAppliedCondition (AppliedCondition duration meta appliedC) =
+renderAppliedCondition (AppliedCondition duration meta _) =
     (meta^.conditionName) ++ " (" ++ (renderConditionDuration duration) ++ ")"
 
 

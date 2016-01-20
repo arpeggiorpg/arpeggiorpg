@@ -49,7 +49,7 @@ checkDead creat
     | otherwise = creat
 
 applyConditionC :: ConditionC -> AppliedC
-applyConditionC (RecurringEffectC re) = AppliedRecurringEffect re
+applyConditionC (RecurringEffectC reff) = AppliedRecurringEffect reff
 applyConditionC (DamageIncreaseC di) = AppliedDamageIncrease di
 applyConditionC (DamageDecreaseC dd) = AppliedDamageDecrease dd
 applyConditionC (DamageAbsorbC da) = AppliedDamageAbsorb da 0
@@ -62,6 +62,7 @@ applyCondition cd = AppliedCondition (cd^.conditionDuration) (cd^.conditionDefMe
 applyEffect :: Creature -> Effect -> Creature
 applyEffect creature effect = checkDead $ go effect
     where
+        go Interrupt = set casting Nothing creature
         go (ApplyCondition cdef) = over conditions (applyCondition cdef:) creature
         go (Damage amt) = over health (flip healthMinusDamage amt) creature
         go (Heal amt) = over health (flip healthPlusDamage amt) creature
@@ -78,13 +79,12 @@ chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
     = set state (GMVettingAction ability selections) game
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbility game@(Game {_state=GMVettingAction ability selections}) =
+applyAbility game@(Game {_state=GMVettingAction ability _}) =
     case ability^.castTime of
         (CastTime 0) -> applyAbilityEffects game
-        (CastTime castTime) -> do
-            creature <- game^.currentCreature
+        (CastTime timeLeft) -> do
             let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
-                newGame = (set (currentCreatureLens._Just.casting) (Just (ability, (Duration castTime))) game)
+                newGame = (set (currentCreatureLens._Just.casting) (Just (ability, (Duration timeLeft))) game)
             return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
 
 applyAbilityEffects
@@ -92,36 +92,37 @@ applyAbilityEffects
     -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
     = do
-        (newGame, log) <- foldM appEffs (game, []) selections
-        return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse log))
+        (newGame, combatLog) <- foldM appEffs (game, []) selections
+        return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
         appEffs :: (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
                 -> Maybe (Game GMVettingAction, EffectOccurrence)
-        appEffs gameAndLog (SelectedSingleTargetedEffect creatureName targetedEffect)
-            = appEff targetedEffect gameAndLog creatureName
+        appEffs gameAndLog (SelectedSingleTargetedEffect name targetedEffect)
+            = appTEff targetedEffect gameAndLog name
         appEffs gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
-            = foldM (appEff targetedEffect) gameAndLog creatureNames
+            = foldM (appTEff targetedEffect) gameAndLog creatureNames
 
-        appEff :: TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
-            -> Maybe (Game GMVettingAction, EffectOccurrence)
-        appEff targetedEffect (game, log) creatName = do
-            let effect = targetedEffect^.targetedEffectEffect
-                applyEffect' = fmap $ flip applyEffect effect
-                applied = over (creaturesInPlay . at creatName) applyEffect' game
-            return (applied, ((effect, creatName):log))
+appTEff :: TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
+    -> Maybe (Game GMVettingAction, EffectOccurrence)
+appTEff targetedEffect (game, combatLog) creatName = do
+    let effect = targetedEffect^.targetedEffectEffect
+        applyEffect' = fmap $ flip applyEffect effect
+        applied = over (creaturesInPlay . at creatName) applyEffect' game
+    return (applied, ((effect, creatName):combatLog))
 
-traceShowMessage message obj = trace (message ++ show obj ++ ": ") obj
+traceShowMessage :: Show a => String -> a -> a
+traceShowMessage message obj = trace (message ++ (show obj) ++ ": ") obj
 
 getNextCircular :: (Eq a, Show a) => a -> [a] -> a
 getNextCircular el l = go $ splitWhen (==el) l
     where
-        go [first:_, []] = first
+        go [firstEl:_, []] = firstEl
         go [_, next:_] = next
         go _ = error "u sux"
 
 hasCondition :: Prism' AppliedC a -> Creature -> Bool
-hasCondition prism creature = any match (map _appliedConditionC (creature^.conditions))
-    where match ac = maybe False (const True) (ac ^? prism)
+hasCondition appliedCPrism creature = any match (map _appliedConditionC (creature^.conditions))
+    where match ac = maybe False (const True) (ac ^? appliedCPrism)
 
 tickCondition :: Creature -> AppliedCondition -> Creature
 tickCondition creat (AppliedCondition _ _ (AppliedRecurringEffect (RecurringEffectT eff))) = applyEffect creat eff
@@ -182,11 +183,13 @@ ignoreLog writer = (runWriterT writer) >>= (return . fst)
 skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
 skipTurn_ = nextTurn_
 
+skipTurn :: Game PlayerChoosingAbility -> Maybe GameStartTurn
 skipTurn = ignoreLog . skipTurn_
 
 skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
 skipIncapacitatedPlayer_ = nextTurn_
 
+skipIncapacitatedPlayer :: Game PlayerIncapacitated -> Maybe GameStartTurn
 skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
 
 acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe GameStartTurn
@@ -195,6 +198,7 @@ acceptAction_ game = do
     tell [event]
     nextTurn_ newGame
 
+acceptAction :: Game GMVettingAction -> Maybe GameStartTurn
 acceptAction = ignoreLog . acceptAction_
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
@@ -203,5 +207,5 @@ denyAction game = set state PlayerChoosingAbility game
 finishCast :: Game PlayerFinishingCast -> [SelectedTargetedEffect] -> Maybe (Game GMVettingAction)
 finishCast game selections = do
     creature <- game^.currentCreature
-    (ability, duration) <- creature^.casting
+    (ability, _) <- creature^.casting
     return (set state (GMVettingAction ability selections) game)

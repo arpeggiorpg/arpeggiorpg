@@ -1,7 +1,6 @@
 module PandT.Abilities where
 
 import ClassyPrelude
-import Control.Lens
 import PandT.Types
 import PandT.Sim
 
