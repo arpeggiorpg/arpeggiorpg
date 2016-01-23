@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module PandT.Interaction where
 
 import ClassyPrelude
@@ -83,22 +84,49 @@ promptMultiTarget sofar targetName prompt = do
     else
         promptMultiTarget (target:sofar) targetName prompt
 
-
 promptForVet :: Game GMVettingAction -> MaybeT IO GameStartTurn
 promptForVet game = do
-    putStr "GM! Is this okay? Y or N> "
-    input <- (lift (hGetLine stdin) :: MaybeT IO Text)
-    if (toCaseFold input) == (toCaseFold "y") then do
+    yes <- promptYesNo "GM! Is this okay?"
+    if yes then do
         (nextGame, combatLog) <- liftMaybe (runWriterT (acceptAction_ game))
-        mapM_ (putStrLn . renderCombatEvent) combatLog
+        displayCombatLog combatLog
         return nextGame
     else
         return (GSTPlayerChoosingAbility (denyAction game))
 
 promptForCasting :: Game PlayerCasting -> MaybeT IO GameStartTurn
-promptForCasting = undefined
+promptForCasting game = do
+    castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
+    yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
+    if yes then do
+        -- NO!!!!!
+        error "CRAP! No! Must GM-Vet this!"
+    else do
+        return (GSTPlayerChoosingAbility (cancelCast game))
 
--- why do I have to define this
+promptForFinishingCast :: Game PlayerFinishingCast -> MaybeT IO GameStartTurn
+promptForFinishingCast game = do
+    castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
+    yes <- promptYesNo ("Would you like to let your " ++ castingAbName ++ " fly?")
+    if yes then do
+        error "CRAP! GM-Vet this!"
+    else do
+        return (GSTPlayerChoosingAbility (cancelCast game))
+
+promptYesNo :: Text -> MaybeT IO Bool
+promptYesNo prompt = do
+    putStrLn (prompt ++ " [enter y/n] ")
+
+    (input :: Text) <- lift (hGetLine stdin)
+    case (toCaseFold input) of
+        "y" -> return True
+        "n" -> return False
+        _ -> promptYesNo prompt
+
+displayCombatLog :: [CombatEvent] -> MaybeT IO ()
+displayCombatLog = mapM_ (putStrLn . renderCombatEvent)
+
+-- why do I have to define this :(
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
@@ -117,12 +145,12 @@ runIterationT mGame = do
             vetting <- promptForTargets choosingTargets
             vetted <- promptForVet vetting
             runIterationT (Just vetted)
-        -- GSTPlayerCasting asting -> do
-        --     liftIO (putStrLn "You are casting a spell.")
-        --     next <- promptForCasting casting
-        --     runIterationT (Just next)
-        -- GSTPlayerFinishingCast -> do
-        --     liftIO (putStrLn )
+        GSTPlayerCasting gameCasting -> do
+            next <- promptForCasting gameCasting
+            runIterationT (Just next)
+        GSTPlayerFinishingCast gameFinishingCast -> do
+            next <- promptForFinishingCast gameFinishingCast
+            runIterationT (Just next)
 
 
 runIteration :: Maybe GameStartTurn -> IO (Maybe GameStartTurn)
