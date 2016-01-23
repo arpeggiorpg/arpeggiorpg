@@ -34,9 +34,9 @@ turnTests = testGroup "Turn Tests"
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
     [ testCase "RecurringEffect recurs on end of target's turn" $
-        afterBleedTick^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 5)
+        afterBleedTick^?creaturesInPlay.at "Aspyr"._Just.health @?= Just (Health 5)
     , testCase "Conditions end" $
-        afterBleedEnd^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
+        afterBleedEnd^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
     , testCase "Dead creature is dead" $
         deadCreature^.conditions @?= [appliedDead]
     , testCase "Damage to dead creature does not cause additional Dead condition" $
@@ -46,13 +46,13 @@ conditionTests = testGroup "Condition Tests"
     , testCase "Incapacitated creature getsp a turn" $
         bonkAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature has conditions ticked" $
-        afterBonk^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
+        afterBonk^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
     , testCase "UnlimitedDuration conditions never expire" $
         let afterSecondDeadTurn = (forceNextTurn . forceNextTurnIncap . forceNextTurn . forceNextTurn $ killAccepted)
-        in afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just [appliedDead]
+        in afterSecondDeadTurn^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just [appliedDead]
     , testCase "Timed conditions expire when duration reaches 0" $
         let afterSecondBleedTurn = (forceNextTurn . forceNextTurn . forceNextTurn . forceNextTurn $ stabAccepted)
-        in afterSecondBleedTurn^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
+        in afterSecondBleedTurn^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
     ]
 
 abilityTests :: TestTree

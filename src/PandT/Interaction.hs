@@ -119,7 +119,7 @@ promptForFinishingCast game = do
 
 promptYesNo :: Text -> MaybeT IO Bool
 promptYesNo prompt = do
-    putStrLn (prompt ++ " [enter y/n] ")
+    putStr (prompt ++ " [enter y/n] ")
 
     (input :: Text) <- lift (hGetLine stdin)
     case (toCaseFold input) of

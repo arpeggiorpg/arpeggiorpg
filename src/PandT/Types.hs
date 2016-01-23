@@ -127,7 +127,8 @@ data MultiTarget
 data TargetSystem a where
     TargetCreature :: Range -> TargetSystem SingleTarget
     TargetCircle :: Range -> Radius -> TargetSystem MultiTarget
-    TargetLineFromSource :: Range -> TargetSystem MultiTarget -- ^ Umm, this probably needs the origin too...
+    -- Umm, this probably needs the origin too...
+    TargetLineFromSource :: Range -> TargetSystem MultiTarget
     TargetCone :: Range -> TargetSystem MultiTarget
 
 deriving instance Show (TargetSystem a)

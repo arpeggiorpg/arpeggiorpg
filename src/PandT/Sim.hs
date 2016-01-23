@@ -32,7 +32,6 @@ makeCreature cname res sta creatAbilities = Creature
     , _abilities=creatAbilities
     , _casting=Nothing}
 
-
 deadDef :: ConditionDef
 deadDef = MkConditionDef "Dead" UnlimitedDuration MkDeadC
 
@@ -88,6 +87,10 @@ applyAbilityEffects
     :: Game GMVettingAction
     -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
+    -- XXX TODO FIXME: Handle conditions here
+    -- - DamageIncrease on caster
+    -- - DamageDecrease on caster
+    -- -
     = do
         (newGame, combatLog) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
@@ -130,7 +133,7 @@ decrementConditions :: Creature -> Creature
 decrementConditions creature = over (conditions.mapped.appliedConditionDurationLeft._TimedCondition) pred creature
 
 isConditionExpired :: AppliedCondition -> Bool
-isConditionExpired ac = maybe False (== Duration 0) (ac^.appliedConditionDurationLeft^?_TimedCondition)
+isConditionExpired ac = maybe False (== Duration 0) (ac^?appliedConditionDurationLeft._TimedCondition)
 
 cleanUpConditions :: Creature -> Creature
 cleanUpConditions = over conditions (filter (not . isConditionExpired))
@@ -162,10 +165,9 @@ nextTurn_ game = do
     if
         | hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature ->
             return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
-        -- | not (isNothing (nextCreature^.casting)) ->
-        | maybe False (> (Duration 0)) (nextCreature^.casting^?_Just._2) ->
+        | maybe False (> (Duration 0)) (nextCreature^?casting._Just._2) ->
             return (GSTPlayerCasting (set state PlayerCasting nextCreatureTurn))
-        | (nextCreature^.casting^?_Just._2) == Just (Duration 0) ->
+        | (nextCreature^?casting._Just._2) == Just (Duration 0) ->
             return (GSTPlayerFinishingCast (set state PlayerFinishingCast nextCreatureTurn))
         | otherwise ->
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
