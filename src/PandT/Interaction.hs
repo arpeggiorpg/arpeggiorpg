@@ -1,4 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
+-- | A console-based UI for P&T. Pretty much just for testing, though it may be useful as a very
+-- crude, GM-only UI at some point.
+
 module PandT.Interaction where
 
 import ClassyPrelude

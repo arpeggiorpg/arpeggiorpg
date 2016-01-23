@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
+-- we should just be serializing data to JSON and have the client render it, but some bits might
+-- remain.
 
 module PandT.Render where
 

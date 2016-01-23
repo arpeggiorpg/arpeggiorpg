@@ -1,5 +1,7 @@
 {-# LANGUAGE RankNTypes #-}
 
+-- | All the core simulation code for P&T. Pure functions on the data in the PandT.Types module.
+
 module PandT.Sim where
 
 import ClassyPrelude

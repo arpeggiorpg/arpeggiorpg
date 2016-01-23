@@ -5,6 +5,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
+-- | All the PandT types.
+
 module PandT.Types where
 
 import ClassyPrelude
@@ -200,6 +202,8 @@ data Creature = Creature
 
 makeLenses ''Creature
 
+
+-- TODO: These shouldn't be phantoms, just get rid of GameState.
 data PlayerChoosingAbility
 data PlayerChoosingTargets
 data PlayerIncapacitated
@@ -219,6 +223,10 @@ deriving instance Show (GameState a)
 deriving instance Eq (GameState a)
 makePrisms ''GameState
 
+-- The toplevel data type representing a game. It's parameterized by a state variable so that we can
+-- safely transition from state to state -- e.g., a `Game PlayerChoosingAbility` must transition to
+-- a `Game PlayerChoosingTargets` and nothing else -- so we write functions that accept and return
+-- these specific Game types.
 data Game status = Game
     { _state :: GameState status
     , _playerCharacters :: Map Player CreatureName

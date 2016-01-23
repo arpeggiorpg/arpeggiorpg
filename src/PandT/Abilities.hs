@@ -1,3 +1,5 @@
+-- | A bunch of abilities. This module should probably go in a GameDesign sub-module or something.
+
 module PandT.Abilities where
 
 import ClassyPrelude
