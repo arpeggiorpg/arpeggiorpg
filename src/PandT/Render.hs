@@ -44,6 +44,7 @@ renderCombatEvent (RecurringEffectOccurred source target occurrences) =
     source ++ "'s recurring effect ticked on " ++ target ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
 renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = creatName ++ " is incapacitated."
 renderCombatEvent (SkippedTurn creatName) = creatName ++ " skipped their turn."
+renderCombatEvent (CanceledCast creatName ability) = creatName ++ " stopped casting " ++ (ability^.abilityName)
 
 
 renderState :: GameState a -> Text
