@@ -12,46 +12,25 @@ module PandT.Types where
 import ClassyPrelude
 import Control.Lens
 
-data Intensity = Low | Medium | High
-    deriving (Show, Eq, Ord)
-
-newtype DamageIntensity = DamageIntensity Intensity
-    deriving (Show, Eq, Ord)
-
-newtype Stamina = Stamina Intensity
-    deriving (Show, Eq, Ord)
-
-newtype Range = Range Int
-    deriving (Show, Eq, Ord)
-
-newtype Radius = Radius Int
-    deriving (Show, Eq, Ord)
-
-newtype Duration = Duration Int
-    deriving (Show, Eq, Ord, Enum)
-
-newtype CastTime = CastTime Int
-    deriving (Show, Eq, Ord)
-
-newtype Cooldown = Cooldown Int
-    deriving (Show, Eq, Ord)
-
-newtype Health = Health Int
-    deriving (Show, Eq, Ord)
-
-data Resource = Mana Int | Energy Int
-    deriving (Show, Eq)
-
-newtype Player = Player { playerName :: Text }
-    deriving (Show, Ord, Eq)
+newtype DamageIntensity = DamageIntensity Intensity deriving (Show, Eq, Ord)
+newtype Stamina = Stamina Intensity deriving (Show, Eq, Ord)
+newtype Range = Range Int deriving (Show, Eq, Ord)
+newtype Radius = Radius Int deriving (Show, Eq, Ord)
+newtype Duration = Duration Int deriving (Show, Eq, Ord, Enum)
+newtype CastTime = CastTime Int deriving (Show, Eq, Ord)
+newtype Cooldown = Cooldown Int deriving (Show, Eq, Ord)
+newtype Health = Health Int deriving (Show, Eq, Ord)
+newtype Player = Player Text deriving (Show, Ord, Eq)
 
 type CreatureName = Text -- this should probably be a newtype
+
+data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
+data Resource = Mana Int | Energy Int deriving (Show, Eq)
 
 data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
     | UnlimitedDuration
     deriving (Show, Eq)
-
 makePrisms ''ConditionDuration
 
 data RecurringEffectT = RecurringEffectT Effect deriving (Show, Eq)
@@ -144,10 +123,11 @@ instance HasConditionMeta AppliedCondition where
 data SingleTarget
 data MultiTarget
 
+-- | Various ways in which effects can be targeted.
 data TargetSystem a where
     TargetCreature :: Range -> TargetSystem SingleTarget
     TargetCircle :: Range -> Radius -> TargetSystem MultiTarget
-    TargetLineFromSource :: Range -> TargetSystem MultiTarget
+    TargetLineFromSource :: Range -> TargetSystem MultiTarget -- ^ Umm, this probably needs the origin too...
     TargetCone :: Range -> TargetSystem MultiTarget
 
 deriving instance Show (TargetSystem a)
@@ -177,7 +157,8 @@ makePrisms ''TargetedEffect
 makeLenses ''SelectedTargetedEffect
 makePrisms ''SelectedTargetedEffect
 
-
+-- | Something that a creature can do. (contrast with Effects, which are something that can *happen*
+-- to a creature or the world)
 data Ability = Ability
     { _abilityName :: Text
     , _cost :: Resource
@@ -192,27 +173,27 @@ makeLenses ''Ability
 data Creature = Creature
     { _creatureName :: CreatureName
     , _conditions :: [AppliedCondition]
+    -- ^ Buffs and debuffs that are applied to this creature.
     , _resource :: Resource
+    -- ^ What kind of resource the creature uses.
     , _stamina :: Stamina
+    -- ^ The stamina determines the maximum amount of health a creature can hav.
     , _health :: Health
+    -- ^ *Current* health.
     , _abilities :: [Ability]
+    -- ^ All the abilities that a creature can use.
     , _casting :: Maybe (Ability, Duration)
+    -- ^ The ability that a creature is "casting", if it has a cast time, and the duration
+    -- *reaining* in the cast time.
     }
     deriving (Show, Eq)
 
 makeLenses ''Creature
 
-data PlayerChoosingAbility = PlayerChoosingAbility deriving (Show, Eq)
-data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
-data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
-data PlayerCasting = PlayerCasting deriving (Show, Eq)
-data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
-data GMVettingAction = GMVettingAction Ability [SelectedTargetedEffect] deriving (Show, Eq)
-
--- The toplevel data type representing a game. It's parameterized by a state variable so that we can
--- safely transition from state to state -- e.g., a `Game PlayerChoosingAbility` must transition to
--- a `Game PlayerChoosingTargets` and nothing else -- so we write functions that accept and return
--- these specific Game types.
+-- | The toplevel data type representing a game. It's parameterized by a state variable so that we
+-- can safely transition from state to state -- e.g., a `Game PlayerChoosingAbility` must transition
+-- to a `Game PlayerChoosingTargets` and nothing else -- so we write functions that accept and
+-- return these specific Game types.
 data Game status = Game
     { _state :: status
     , _playerCharacters :: Map Player CreatureName
@@ -224,8 +205,16 @@ data Game status = Game
 
 makeLenses ''Game
 
--- | A game at the start of a turn -- represents the subset of states that a
--- game can be in when a player starts their turn.
+-- | All the various states that the game can be in.
+data PlayerChoosingAbility = PlayerChoosingAbility deriving (Show, Eq)
+data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
+data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
+data PlayerCasting = PlayerCasting deriving (Show, Eq)
+data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
+data GMVettingAction = GMVettingAction Ability [SelectedTargetedEffect] deriving (Show, Eq)
+
+-- | A game at the start of a turn -- represents the subset of states that a game can be in when a
+-- player starts their turn.
 data GameStartTurn
     = GSTPlayerChoosingAbility (Game PlayerChoosingAbility)
     | GSTPlayerIncapacitated (Game PlayerIncapacitated)
