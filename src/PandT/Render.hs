@@ -49,17 +49,21 @@ renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = creatName ++ " 
 renderCombatEvent (SkippedTurn creatName) = creatName ++ " skipped their turn."
 renderCombatEvent (CanceledCast creatName ability) = creatName ++ " stopped casting " ++ (ability^.abilityName)
 
+class RenderState a where
+    renderState :: a -> Text
 
-renderState :: GameState a -> Text
-renderState PlayerChoosingAbility = "Choosing ability"
-renderState PlayerIncapacitated = "Incapacitated"
-renderState (PlayerChoosingTargets ability)
-    = "Choosing targets for " ++ _abilityName ability
-renderState (GMVettingAction ability targets)
-    = "GM vetting action for " ++ _abilityName ability ++ " -> " ++ tshow targets
-renderState PlayerCasting = "Casting"
-renderState PlayerFinishingCast = "Finishing cast"
-
+instance RenderState PlayerChoosingAbility where
+    renderState PlayerChoosingAbility = "Choosing ability"
+instance RenderState PlayerIncapacitated where
+    renderState PlayerIncapacitated = "Incapacitated"
+instance RenderState PlayerChoosingTargets where
+    renderState (PlayerChoosingTargets ability) = "Choosing targets for " ++ _abilityName ability
+instance RenderState GMVettingAction where
+    renderState (GMVettingAction ability targets) = "GM vetting action for " ++ _abilityName ability ++ " -> " ++ tshow targets
+instance RenderState PlayerCasting where
+    renderState PlayerCasting = "Casting"
+instance RenderState PlayerFinishingCast where
+    renderState PlayerFinishingCast = "Finishing cast"
 
 renderCreatureStatus :: Creature -> Text
 renderCreatureStatus creature =
@@ -89,7 +93,7 @@ renderInitiative game
     in
         unlines $ map rend (_initiative game)
 
-render :: Game a -> Text
+render :: RenderState a => Game a -> Text
 render game@(Game {..}) = unlines
     [ "# Game"
     , "Current creature: " ++ " (" ++ _currentCreatureName ++ ") "

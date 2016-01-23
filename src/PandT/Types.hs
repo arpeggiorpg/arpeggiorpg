@@ -202,33 +202,19 @@ data Creature = Creature
 
 makeLenses ''Creature
 
-
--- TODO: These shouldn't be phantoms, just get rid of GameState.
-data PlayerChoosingAbility
-data PlayerChoosingTargets
-data PlayerIncapacitated
-data PlayerCasting
-data PlayerFinishingCast
-data GMVettingAction
-
-data GameState a where
-    PlayerIncapacitated :: GameState PlayerIncapacitated
-    PlayerCasting :: GameState PlayerCasting
-    PlayerFinishingCast :: GameState PlayerFinishingCast
-    PlayerChoosingAbility :: GameState PlayerChoosingAbility
-    PlayerChoosingTargets :: Ability -> GameState PlayerChoosingTargets
-    GMVettingAction :: Ability -> [SelectedTargetedEffect] -> GameState GMVettingAction
-
-deriving instance Show (GameState a)
-deriving instance Eq (GameState a)
-makePrisms ''GameState
+data PlayerChoosingAbility = PlayerChoosingAbility deriving (Show, Eq)
+data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
+data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
+data PlayerCasting = PlayerCasting deriving (Show, Eq)
+data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
+data GMVettingAction = GMVettingAction Ability [SelectedTargetedEffect] deriving (Show, Eq)
 
 -- The toplevel data type representing a game. It's parameterized by a state variable so that we can
 -- safely transition from state to state -- e.g., a `Game PlayerChoosingAbility` must transition to
 -- a `Game PlayerChoosingTargets` and nothing else -- so we write functions that accept and return
 -- these specific Game types.
 data Game status = Game
-    { _state :: GameState status
+    { _state :: status
     , _playerCharacters :: Map Player CreatureName
     , _currentCreatureName :: CreatureName
     , _creaturesInPlay :: Map CreatureName Creature
