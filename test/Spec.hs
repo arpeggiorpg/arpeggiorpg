@@ -34,7 +34,7 @@ turnTests = testGroup "Turn Tests"
 conditionTests :: TestTree
 conditionTests = testGroup "Condition Tests"
     [ testCase "RecurringEffect recurs on end of target's turn" $
-        afterBleedTick^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 65)
+        afterBleedTick^.creaturesInPlay.at "Aspyr"^?_Just.health @?= Just (Health 5)
     , testCase "Conditions end" $
         afterBleedEnd^.creaturesInPlay.at "Aspyr"^?_Just.conditions @?= Just []
     , testCase "Dead creature is dead" $
@@ -62,17 +62,17 @@ abilityTests =
     in
     testGroup "Ability Tests"
     [ testCase "Ability damage takes effect" $
-        aspyrPunched^.health @?= (Health 75)
+        aspyrPunched^.health @?= (Health 7)
     , testCase "Ability condition in multi-effect adds condition" $
         aspyrStabbed^.conditions @?= [appliedBleed]
     ]
 
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
 dotted = applyEffect creat bleed
-damaged = applyEffect creat (Damage (DamageIntensity Medium))
-healed = applyEffect damaged (Heal (DamageIntensity Low))
-deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage (DamageIntensity High)))
-deadTwice = (applyEffect deadCreature (Damage (DamageIntensity Low)))
+damaged = applyEffect creat (Damage 3)
+healed = applyEffect damaged (Heal 2)
+deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage 5))
+deadTwice = (applyEffect deadCreature (Damage 2))
 
 bleedCondition :: ConditionDef
 (Just bleedCondition) = bleed^?_ApplyCondition

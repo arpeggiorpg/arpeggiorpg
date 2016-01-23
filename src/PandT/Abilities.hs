@@ -10,7 +10,7 @@ punchTEffect :: TargetedEffect
 punchTEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) punchEffect
 
 punchEffect :: Effect
-punchEffect = Damage (DamageIntensity Medium)
+punchEffect = Damage 3
 
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
@@ -24,7 +24,7 @@ makeTimedEOT cname cdur ceff
             (MkRecurringEffectC ceff))
 
 bleed :: Effect
-bleed = makeTimedEOT "Bleeding" 2 (Damage (DamageIntensity Low))
+bleed = makeTimedEOT "Bleeding" 2 (Damage 2)
 
 stab :: Ability
 stab = Ability
@@ -42,13 +42,13 @@ stab = Ability
                 , _targetedEffectEffect = stabEffect
                 }
         stabEffect = MultiEffect stabDirectDamage bleed
-        stabDirectDamage = Damage (DamageIntensity Medium)
+        stabDirectDamage = Damage 3
 
 wrath :: Ability
 wrath = Ability "Wrath" (Mana 10) [wrathTEffect] (CastTime 1) (Cooldown 0)
     where
         wrathTEffect = SingleTargetedEffect $ TargetedEffectP "Wrath" (TargetCreature (Range 1)) wrathEffect
-        wrathEffect = Damage (DamageIntensity High)
+        wrathEffect = Damage 5
 
 kill :: Ability
 kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)

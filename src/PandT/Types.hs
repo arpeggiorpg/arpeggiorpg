@@ -12,7 +12,6 @@ module PandT.Types where
 import ClassyPrelude
 import Control.Lens
 
-newtype DamageIntensity = DamageIntensity Intensity deriving (Show, Eq, Ord)
 newtype Stamina = Stamina Intensity deriving (Show, Eq, Ord)
 newtype Range = Range Int deriving (Show, Eq, Ord)
 newtype Radius = Radius Int deriving (Show, Eq, Ord)
@@ -22,7 +21,8 @@ newtype Cooldown = Cooldown Int deriving (Show, Eq, Ord)
 newtype Health = Health Int deriving (Show, Eq, Ord)
 newtype Player = Player Text deriving (Show, Ord, Eq)
 
-type CreatureName = Text -- this should probably be a newtype
+type CreatureName = Text -- XXX TODO: newype?
+type DamageIntensity = Int -- XXX TODO: newtype?
 
 data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
 data Resource = Mana Int | Energy Int deriving (Show, Eq)

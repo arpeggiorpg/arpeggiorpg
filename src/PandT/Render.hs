@@ -33,8 +33,8 @@ renderEffectOccurrence :: EffectOccurrence -> Text
 renderEffectOccurrence = unlines . (map go)
     where
         go (Interrupt, cname) = "interrupting " ++ cname
-        go ((Heal (DamageIntensity int)), cname) = tshow int ++ " healing to " ++ cname
-        go ((Damage (DamageIntensity int)), cname) = tshow int ++ " damage to " ++ cname
+        go ((Heal int), cname) = tshow int ++ " healing to " ++ cname
+        go ((Damage int), cname) = tshow int ++ " damage to " ++ cname
         go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
         go ((ApplyCondition cdef), cname) = "Applying condition " ++ (renderConditionDef cdef) ++ " to " ++ cname
 

@@ -12,20 +12,15 @@ import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 import PandT.Types
 
 staminaToHealth :: Stamina -> Health
-staminaToHealth (Stamina High) = Health 100
-staminaToHealth (Stamina Medium) = Health 50
-staminaToHealth (Stamina Low) = Health 25
+staminaToHealth (Stamina High) = Health 10
+staminaToHealth (Stamina Medium) = Health 5
+staminaToHealth (Stamina Low) = Health 3
 
-damageToHealthVal :: DamageIntensity -> Int
-damageToHealthVal (DamageIntensity High) = 50
-damageToHealthVal (DamageIntensity Medium) = 25
-damageToHealthVal (DamageIntensity Low) = 10
+decreaseHealth :: Health -> DamageIntensity -> Health
+decreaseHealth (Health healthVal) dmg = Health (healthVal -  dmg)
 
-healthMinusDamage :: Health -> DamageIntensity -> Health
-healthMinusDamage (Health healthVal) dmg = Health (healthVal - (damageToHealthVal dmg))
-
-healthPlusDamage :: Health -> DamageIntensity -> Health
-healthPlusDamage (Health healthVal) dmg = Health (healthVal + (damageToHealthVal dmg))
+increaseHealth :: Health -> DamageIntensity -> Health
+increaseHealth (Health healthVal) dmg = Health (healthVal + dmg)
 
 makeCreature :: CreatureName -> Resource -> Stamina -> [Ability] -> Creature
 makeCreature cname res sta creatAbilities = Creature
@@ -66,8 +61,8 @@ applyEffect creature effect = checkDead $ go effect
     where
         go Interrupt = set casting Nothing creature
         go (ApplyCondition cdef) = over conditions (applyCondition cdef:) creature
-        go (Damage amt) = over health (flip healthMinusDamage amt) creature
-        go (Heal amt) = over health (flip healthPlusDamage amt) creature
+        go (Damage amt) = over health (flip decreaseHealth amt) creature
+        go (Heal amt) = over health (flip increaseHealth amt) creature
         go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
 
 -- Workflow
