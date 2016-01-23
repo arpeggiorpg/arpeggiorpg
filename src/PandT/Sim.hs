@@ -1,6 +1,21 @@
 {-# LANGUAGE RankNTypes #-}
 
 -- | All the core simulation code for P&T. Pure functions on the data in the PandT.Types module.
+-- Note: Way too many functions here use Maybe, and when game objects are inconsistent, Nothing will
+-- be returned. It should be possible to get rid of pretty much all of it. Here are some ideas how:
+-- A. have smart constructors and use straight-up partial functions, assuming the state is
+--    consistent
+-- B. use some LiquidHaskell so we can prove that those partial functions aren't really partial
+-- C. use (multi-)zippers to represent things like the current creature, and creature selections.
+--    i.e.,
+--    1. drop Game.initiative, and make creaturesInPlay a list/zipper/multizipper, with each
+--       element tagged with info about whether they're in the initiative order
+--    2. Instead of having Game.currentCreatureName be a thing, the "creaturesInPlay" should be a
+--       zipper with a single selected creature.
+--    3. Instead of passing in a [CreatureName] with a chooseTargets, encode those selections *in*
+--       the Game object as a multi-zipper on creaturesInPlay.
+--   This would make creaturesInPlay a rather complicated data structure, so I'm not sure if all of
+--   this is worth it, other than as an educational exercise.
 
 module PandT.Sim where
 
@@ -61,6 +76,7 @@ applyEffect creature effect = checkDead $ go effect
         go Interrupt = set casting Nothing creature
         go (ApplyCondition cdef) = over conditions (applyCondition cdef:) creature
         go (Damage amt) = over health (flip decreaseHealth amt) creature
+        -- XXX TODO FIXME: don't allow overhealing
         go (Heal amt) = over health (flip increaseHealth amt) creature
         go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
 
@@ -87,10 +103,6 @@ applyAbilityEffects
     :: Game GMVettingAction
     -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
-    -- XXX TODO FIXME: Handle conditions here
-    -- - DamageIncrease on caster
-    -- - DamageDecrease on caster
-    -- -
     = do
         (newGame, combatLog) <- foldM appEffs (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
@@ -103,8 +115,17 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
             = foldM (appTEff targetedEffect) gameAndLog creatureNames
 
 appTEff :: TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
-    -> Maybe (Game GMVettingAction, EffectOccurrence)
+        -> Maybe (Game GMVettingAction, EffectOccurrence)
 appTEff targetedEffect (game, combatLog) creatName = do
+    creature <- game^.currentCreature
+
+    let damageIncreases = getAppliedConditionsMatching _AppliedDamageIncrease creature
+        damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease creature
+        sumIncreases = sum (map _intensityIncrease damageIncreases)
+        sumDecreases = sum (map _intensityDecrease damageDecreases)
+        damageDelta = sumIncreases + (negate sumDecreases)
+    -- XXX FIXME TODO - do something with damageDelta!
+
     let effect = targetedEffect^.targetedEffectEffect
         applyEffect' = fmap $ flip applyEffect effect
         applied = over (creaturesInPlay . at creatName) applyEffect' game
@@ -120,9 +141,12 @@ getNextCircular el l = go $ splitWhen (==el) l
         go [_, next:_] = next
         go _ = error "u sux"
 
+getAppliedConditionsMatching :: Prism' AppliedC a -> Creature -> [a]
+getAppliedConditionsMatching appliedCPrism creature =
+    mapMaybe (\cond -> cond^?appliedConditionC.appliedCPrism) (creature^.conditions)
+
 hasCondition :: Prism' AppliedC a -> Creature -> Bool
-hasCondition appliedCPrism creature = any match (map _appliedConditionC (creature^.conditions))
-    where match ac = maybe False (const True) (ac ^? appliedCPrism)
+hasCondition appliedCPrism creature = (not.null) (getAppliedConditionsMatching appliedCPrism creature)
 
 tickCondition :: Creature -> AppliedCondition -> Creature
 tickCondition creat (AppliedCondition _ _ (AppliedRecurringEffect (RecurringEffectT eff))) = applyEffect creat eff

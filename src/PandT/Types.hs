@@ -34,8 +34,8 @@ data ConditionDuration -- this could have a reasonable Ord instance
 makePrisms ''ConditionDuration
 
 data RecurringEffectT = RecurringEffectT Effect deriving (Show, Eq)
-data DamageIncreaseT = DamageIncreaseT DamageIntensity deriving (Show, Eq)
-data DamageDecreaseT = DamageDecreaseT DamageIntensity deriving (Show, Eq)
+data DamageIncreaseT = DamageIncreaseT {_intensityIncrease :: DamageIntensity} deriving (Show, Eq)
+data DamageDecreaseT = DamageDecreaseT {_intensityDecrease :: DamageIntensity} deriving (Show, Eq)
 data DamageAbsorbT = DamageAbsorbT DamageIntensity deriving (Show, Eq)
 data IncapacitatedT = IncapacitatedT deriving (Show, Eq)
 data DeadT = DeadT deriving (Show, Eq)
