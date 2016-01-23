@@ -15,6 +15,12 @@ punchEffect = Damage 3
 punch :: Ability
 punch = Ability "Punch" (Energy 10) [punchTEffect] (CastTime 0) (Cooldown 0)
 
+sootheTEffect :: TargetedEffect
+sootheTEffect = SingleTargetedEffect $ TargetedEffectP "Soothe" (TargetCreature (Range 5)) (Heal 1)
+
+soothe :: Ability
+soothe = Ability "Soothe" (Mana 10) [sootheTEffect] (CastTime 0) (Cooldown 0)
+
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
     = ApplyCondition (
