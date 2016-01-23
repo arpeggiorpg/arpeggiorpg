@@ -20,10 +20,12 @@ tests (which use a lot of partial functions).
 
 # Roadmap
 
+Also grep the code for XXX, FIXME, or TODO.
+
 - Implement basic combat stuff:
-  - damage [CHECK]
-  - healing
-  - death [CHECK]
+  - damage [DONE]
+  - healing [DONE]
+  - death [DONE]
   - reporting of events [DONE]
 - model/workflow for abilities being "constructed"
   - player choose ability [DONE]
@@ -46,6 +48,7 @@ tests (which use a lot of partial functions).
   - DOTs and HOTs [DONE]
   - passage of time [DONE]
   - incapacitation [DONE]
+  - abilities that apply a condition to the caster (without explicit targeting)
   - Dispels! (how to target an effect???)
   - damage buff/debuff
   - damage absorb
