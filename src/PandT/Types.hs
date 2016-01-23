@@ -230,22 +230,6 @@ data Game status = Game
 
 makeLenses ''Game
 
-class CancelCast a where
-    -- cancelCast :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
-    -- cancelCast game = do
-    --     ability <- lift (game^?currentCreature._Just.casting._Just._1)
-    --     tell ([CanceledCast (game^.currentCreatureName) ability])
-    --     return (set
-    --     nextTurn_ game
-
-    cancelCast :: Game a -> Game PlayerChoosingAbility
-    cancelCast game =
-        set state PlayerChoosingAbility $
-            set (currentCreature._Just.casting) Nothing game
-
-instance CancelCast PlayerFinishingCast where
-instance CancelCast PlayerCasting where
-
 -- | A game at the start of a turn -- represents the subset of states that a
 -- game can be in when a player starts their turn.
 data GameStartTurn

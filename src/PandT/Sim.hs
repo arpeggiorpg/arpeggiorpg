@@ -204,6 +204,25 @@ acceptAction = ignoreLog . acceptAction_
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game = set state PlayerChoosingAbility game
 
+class CancelCast a where
+    -- cancelCast :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
+    -- cancelCast game = do
+    --     ability <- lift (game^?currentCreature._Just.casting._Just._1)
+    --     tell ([CanceledCast (game^.currentCreatureName) ability])
+    --     return (set
+    --     nextTurn_ game
+
+    cancelCast :: Game a -> Game PlayerChoosingAbility
+    cancelCast game =
+        set state PlayerChoosingAbility $
+            set (currentCreature._Just.casting) Nothing game
+
+instance CancelCast PlayerFinishingCast where
+instance CancelCast PlayerCasting where
+
+continueCasting_ :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
+continueCasting_ = nextTurn_
+
 finishCast :: Game PlayerFinishingCast -> [SelectedTargetedEffect] -> Maybe (Game GMVettingAction)
 finishCast game selections = do
     creature <- game^.currentCreature
