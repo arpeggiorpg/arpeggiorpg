@@ -38,9 +38,9 @@ conditionTests = testGroup "Condition Tests"
     , testCase "Conditions end" $
         afterBleedEnd^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
     , testCase "Dead creature is dead" $
-        deadCreature^.conditions @?= [appliedDead]
+        isDead deadCreature @?= True
     , testCase "Damage to dead creature does not cause additional Dead condition" $
-        deadTwice^.conditions @?= [appliedDead]
+        length (getAppliedConditionsMatching _AppliedDead deadTwice) @?= 1
     , testCase "Dead creature gets a turn" $
         killAccepted^.currentCreatureName @?= "Aspyr"
     , testCase "Incapacitated creature getsp a turn" $
@@ -49,7 +49,8 @@ conditionTests = testGroup "Condition Tests"
         afterBonk^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
     , testCase "UnlimitedDuration conditions never expire" $
         let afterSecondDeadTurn = (forceNextTurn . forceNextTurnIncap . forceNextTurn . forceNextTurn $ killAccepted)
-        in afterSecondDeadTurn^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just [appliedDead]
+            (Just deadAspyr) = afterSecondDeadTurn^.creaturesInPlay.at "Aspyr"
+        in isDead deadAspyr @?= True
     , testCase "Timed conditions expire when duration reaches 0" $
         let afterSecondBleedTurn = (forceNextTurn . forceNextTurn . forceNextTurn . forceNextTurn $ stabAccepted)
         in afterSecondBleedTurn^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
@@ -64,21 +65,22 @@ abilityTests =
     [ testCase "Ability damage takes effect" $
         aspyrPunched^.health @?= (Health 7)
     , testCase "Ability condition in multi-effect adds condition" $
-        aspyrStabbed^.conditions @?= [appliedBleed]
+        aspyrStabbed^.conditions @?= [appliedBleed "Radorg"]
     ]
 
+creat, dotted, damaged, healed, deadCreature, deadTwice :: Creature
 creat = makeCreature "Creat the Geat" (Energy 100) (Stamina High) [stab]
-dotted = applyEffect creat bleed
-damaged = applyEffect creat (Damage 3)
-healed = applyEffect damaged (Heal 2)
-deadCreature = foldl' applyEffect creat (take 2 $ repeat (Damage 5))
-deadTwice = (applyEffect deadCreature (Damage 2))
+dotted = applyEffect creat bleed creat
+damaged = applyEffect creat (Damage 3) creat
+healed = applyEffect creat (Heal 2) damaged
+deadCreature = foldl' (\tmpcreat eff -> applyEffect creat eff tmpcreat) creat (take 2 $ repeat (Damage 5))
+deadTwice = applyEffect creat (Damage 2) deadCreature
 
 bleedCondition :: ConditionDef
 (Just bleedCondition) = bleed^?_ApplyCondition
 
-appliedBleed :: AppliedCondition
-appliedBleed = applyCondition bleedCondition
+appliedBleed :: CreatureName -> AppliedCondition
+appliedBleed creatName = applyCondition creatName bleedCondition
 
 simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
              -> (Game PlayerChoosingTargets,

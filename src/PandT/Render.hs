@@ -78,8 +78,8 @@ renderCreatureStatus creature =
         line = unwords [creature^.creatureName, hp, castSumm, conds]
 
 renderAppliedCondition :: AppliedCondition -> Text
-renderAppliedCondition (AppliedCondition duration meta _) =
-    (meta^.conditionName) ++ " (" ++ (renderConditionDuration duration) ++ ")"
+renderAppliedCondition (AppliedCondition originCreatureName duration meta _) =
+    originCreatureName ++ "'s " ++ (meta^.conditionName) ++ " (" ++ (renderConditionDuration duration) ++ ")"
 
 
 renderInitiative :: Game a -> Text

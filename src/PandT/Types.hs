@@ -84,7 +84,8 @@ data AppliedC
     deriving (Show, Eq)
 
 data AppliedCondition = AppliedCondition
-    { _appliedConditionDurationLeft :: ConditionDuration
+    { _appliedConditionOriginator :: CreatureName
+    , _appliedConditionDurationLeft :: ConditionDuration
     , _appliedConditionMeta :: ConditionMeta
     , _appliedConditionC :: AppliedC }
     deriving (Show, Eq)

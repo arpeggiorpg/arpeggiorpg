@@ -50,13 +50,13 @@ makeCreature cname res sta creatAbilities = Creature
 deadDef :: ConditionDef
 deadDef = MkConditionDef "Dead" UnlimitedDuration MkDeadC
 
-appliedDead :: AppliedCondition
-appliedDead = applyCondition deadDef
+applyDead :: CreatureName -> AppliedCondition
+applyDead killerName = applyCondition killerName deadDef
 
-checkDead :: Creature -> Creature
-checkDead creat
+checkDead :: CreatureName -> Creature -> Creature
+checkDead originCreatureName creat
     | hasCondition _AppliedDead creat = creat
-    | _health creat <= Health 0 = over conditions (appliedDead:) creat
+    | _health creat <= Health 0 = over conditions ((applyDead originCreatureName):) creat
     | otherwise = creat
 
 applyConditionC :: ConditionC -> AppliedC
@@ -67,28 +67,19 @@ applyConditionC (DamageAbsorbC da) = AppliedDamageAbsorb da 0
 applyConditionC (IncapacitatedC i) = AppliedIncapacitated i
 applyConditionC (DeadC d) = AppliedDead d
 
-applyCondition :: ConditionDef -> AppliedCondition
-applyCondition cd = AppliedCondition (cd^.conditionDuration) (cd^.conditionDefMeta) (applyConditionC (cd^.conditionDefC))
+applyCondition :: CreatureName -> ConditionDef -> AppliedCondition
+applyCondition originCreatureName cd = AppliedCondition originCreatureName (cd^.conditionDuration) (cd^.conditionDefMeta) (applyConditionC (cd^.conditionDefC))
 
-applyEffect :: Creature -> Effect -> Creature
-applyEffect creature effect = checkDead $ go effect
+applyEffect :: Creature -> Effect -> Creature -> Creature
+applyEffect originCreature effect targetCreature = (checkDead originCreatureName) $ go effect
     where
-        go Interrupt = set casting Nothing creature
-        go (ApplyCondition cdef) = over conditions (applyCondition cdef:) creature
-        go (Damage amt) = over health (flip decreaseHealth amt) creature
+        originCreatureName = (originCreature^.creatureName)
+        go Interrupt = set casting Nothing targetCreature
+        go (ApplyCondition cdef) = over conditions (applyCondition originCreatureName cdef:) targetCreature
+        go (Damage amt) = over health (flip decreaseHealth amt) targetCreature
         -- XXX TODO FIXME: don't allow overhealing
-        go (Heal amt) = over health (flip increaseHealth amt) creature
-        go (MultiEffect e1 e2) = applyEffect (applyEffect creature e1) e2
-
--- Workflow
-
-chooseAbility :: Game PlayerChoosingAbility -> Ability
-              -> Game PlayerChoosingTargets
-chooseAbility game ability = set state (PlayerChoosingTargets ability) game
-
-chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
-chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
-    = set state (GMVettingAction ability selections) game
+        go (Heal amt) = over health (flip increaseHealth amt) targetCreature
+        go (MultiEffect e1 e2) = applyEffect originCreature e2 (applyEffect originCreature e1 targetCreature)
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbility game@(Game {_state=GMVettingAction ability _}) =
@@ -104,30 +95,30 @@ applyAbilityEffects
     -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
     = do
-        (newGame, combatLog) <- foldM appEffs (game, []) selections
+        originCreature <- game^.currentCreature
+        (newGame, combatLog) <- foldM (appEffs originCreature) (game, []) selections
         return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
-        appEffs :: (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
+        appEffs :: Creature -> (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
                 -> Maybe (Game GMVettingAction, EffectOccurrence)
-        appEffs gameAndLog (SelectedSingleTargetedEffect name targetedEffect)
-            = appTEff targetedEffect gameAndLog name
-        appEffs gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
-            = foldM (appTEff targetedEffect) gameAndLog creatureNames
+        appEffs originCreature gameAndLog (SelectedSingleTargetedEffect name targetedEffect)
+            = appTEff originCreature targetedEffect gameAndLog name
+        appEffs originCreature gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
+            = foldM (appTEff originCreature targetedEffect) gameAndLog creatureNames
 
-appTEff :: TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
+appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
         -> Maybe (Game GMVettingAction, EffectOccurrence)
-appTEff targetedEffect (game, combatLog) creatName = do
-    creature <- game^.currentCreature
-
-    let damageIncreases = getAppliedConditionsMatching _AppliedDamageIncrease creature
-        damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease creature
-        sumIncreases = sum (map _intensityIncrease damageIncreases)
-        sumDecreases = sum (map _intensityDecrease damageDecreases)
-        damageDelta = sumIncreases + (negate sumDecreases)
-    -- XXX FIXME TODO - do something with damageDelta!
+appTEff originCreature targetedEffect (game, combatLog) creatName = do
+    -- creature <- game^.currentCreature
+    --
+    -- let damageIncreases = getAppliedConditionsMatching _AppliedDamageIncrease creature
+    --     damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease creature
+    --     sumIncreases = sum (map _intensityIncrease damageIncreases)
+    --     sumDecreases = sum (map _intensityDecrease damageDecreases)
+    --     damageDelta = sumIncreases + (negate sumDecreases)
 
     let effect = targetedEffect^.targetedEffectEffect
-        applyEffect' = fmap $ flip applyEffect effect
+        applyEffect' = fmap (applyEffect originCreature effect)
         applied = over (creaturesInPlay . at creatName) applyEffect' game
     return (applied, ((effect, creatName):combatLog))
 
@@ -148,9 +139,16 @@ getAppliedConditionsMatching appliedCPrism creature =
 hasCondition :: Prism' AppliedC a -> Creature -> Bool
 hasCondition appliedCPrism creature = (not.null) (getAppliedConditionsMatching appliedCPrism creature)
 
-tickCondition :: Creature -> AppliedCondition -> Creature
-tickCondition creat (AppliedCondition _ _ (AppliedRecurringEffect (RecurringEffectT eff))) = applyEffect creat eff
-tickCondition creat _ = creat
+isDead :: Creature -> Bool
+isDead = hasCondition _AppliedDead
+
+-- | tickCondition returns Maybe because it needs to look up the origin creature by name in the
+-- game.
+tickCondition :: Game a -> Creature -> AppliedCondition -> Maybe Creature
+tickCondition game creat (AppliedCondition originCreatureName _ _ (AppliedRecurringEffect (RecurringEffectT eff))) = do
+    originCreature <- game^.creaturesInPlay.at originCreatureName
+    return (applyEffect originCreature eff creat)
+tickCondition _ creat _ = Just creat
 
 -- There's a bunch of re-iterating here
 decrementConditions :: Creature -> Creature
@@ -162,14 +160,27 @@ isConditionExpired ac = maybe False (== Duration 0) (ac^?appliedConditionDuratio
 cleanUpConditions :: Creature -> Creature
 cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
-endTurnFor :: Creature -> Creature
-endTurnFor creature = cleanUpConditions . decrementConditions $ (foldl' tickCondition creature (creature^.conditions))
+endTurnFor :: Game a -> Creature -> Maybe Creature
+endTurnFor game creature = do
+    messedUpCreature <- foldM (tickCondition game) creature (creature^.conditions)
+    return (cleanUpConditions (decrementConditions messedUpCreature))
 
 (<||>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<||>) = liftA2 (||)
 
 (<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<&&>) = liftA2 (&&)
+
+
+-- The workflow: functions that transition between types of Game.
+
+chooseAbility :: Game PlayerChoosingAbility -> Ability
+              -> Game PlayerChoosingTargets
+chooseAbility game ability = set state (PlayerChoosingTargets ability) game
+
+chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
+chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
+    = set state (GMVettingAction ability selections) game
 
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
@@ -181,8 +192,8 @@ nextTurn_ game = do
     let previousCreatureName = game^.currentCreatureName
         nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
     prevCreature <- lift $ game^.creaturesInPlay.at previousCreatureName
-    let previousCreatureTicked = endTurnFor prevCreature
-        gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
+    previousCreatureTicked <- lift (endTurnFor game prevCreature)
+    let gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
     nextCreature <- lift $ gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
     let nextCreatureTurn = set currentCreatureName nextCreatureName gameWithPreviousCreatureUpdated
     tell [CreatureTurnStarted nextCreatureName]
