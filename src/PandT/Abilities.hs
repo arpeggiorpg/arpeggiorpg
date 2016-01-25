@@ -2,7 +2,7 @@
 
 module PandT.Abilities where
 
-import ClassyPrelude
+import PandT.Prelude
 import PandT.Types
 import PandT.Sim
 

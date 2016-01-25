@@ -9,8 +9,7 @@
 
 module PandT.Types where
 
-import ClassyPrelude
-import Control.Lens
+import PandT.Prelude
 
 newtype Stamina = Stamina Intensity deriving (Show, Eq, Ord)
 newtype Range = Range Int deriving (Show, Eq, Ord)

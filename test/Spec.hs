@@ -3,11 +3,11 @@ import Control.Monad.Writer.Strict
 import Test.Tasty (defaultMain, testGroup, TestTree)
 import Test.Tasty.HUnit
 
+import PandT.Prelude
 import PandT.Types
 import PandT.Abilities
 import PandT.Sim
 
-import ClassyPrelude
 
 main = defaultMain tests
 

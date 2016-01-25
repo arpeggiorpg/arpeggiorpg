@@ -19,12 +19,11 @@
 
 module PandT.Sim where
 
-import ClassyPrelude
+import PandT.Prelude
+import PandT.Types
 
-import Control.Lens
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
-import PandT.Types
 
 staminaToHealth :: Stamina -> Health
 staminaToHealth (Stamina High) = Health 10
@@ -164,12 +163,6 @@ endTurnFor :: Game a -> Creature -> Maybe Creature
 endTurnFor game creature = do
     messedUpCreature <- foldM (tickCondition game) creature (creature^.conditions)
     return (cleanUpConditions (decrementConditions messedUpCreature))
-
-(<||>) :: Applicative f => f Bool -> f Bool -> f Bool
-(<||>) = liftA2 (||)
-
-(<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
-(<&&>) = liftA2 (&&)
 
 
 -- The workflow: functions that transition between types of Game.

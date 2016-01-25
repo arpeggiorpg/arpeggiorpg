@@ -6,9 +6,8 @@
 
 module PandT.Render where
 
-import ClassyPrelude
+import PandT.Prelude
 import PandT.Types
-import Control.Lens
 
 
 renderConditionDef :: ConditionDef -> Text
