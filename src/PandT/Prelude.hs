@@ -1,14 +1,13 @@
 module PandT.Prelude
 ( module ClassyPrelude
 , module PandT.Prelude
-, (^.), (^?), at, makePrisms, makeLenses, Lens, Lens', Prism, Prism', view, over, set, lens, mapped
-, _Just, _1, _2, _Left, _Right
 ) where
 
 import ClassyPrelude
-import Control.Lens (
+import Control.Lens as PandT.Prelude (
     (^.), (^?), at, makePrisms, makeLenses, Lens, Lens', Prism, Prism', view, over, set, lens,
-    mapped, _Just, _1, _2, _Left, _Right)
+    mapped, _Just, _1, _2, _Left, _Right
+    )
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
 
