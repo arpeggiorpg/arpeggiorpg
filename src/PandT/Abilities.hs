@@ -21,6 +21,28 @@ sootheTEffect = SingleTargetedEffect $ TargetedEffectP "Soothe" (TargetCreature 
 soothe :: Ability
 soothe = Ability "Soothe" (Mana 10) [sootheTEffect] (CastTime 0) (Cooldown 0)
 
+
+bloodlustCondition :: ConditionDef
+bloodlustCondition = MkConditionDef "Bloodlust" (TimedCondition (Duration 3)) (MkDamageIncreaseC 1)
+
+bloodlustTEffect :: TargetedEffect
+bloodlustTEffect = SingleTargetedEffect $ TargetedEffectP "Bloodlust" (TargetCreature (Range 5)) (ApplyCondition bloodlustCondition)
+
+bloodlust :: Ability
+bloodlust = Ability "Bloodlust" (Energy 10) [bloodlustTEffect] (CastTime 0) (Cooldown 0)
+
+
+weakenCondition :: ConditionDef
+weakenCondition = MkConditionDef "Weaken" (TimedCondition (Duration 3)) (MkDamageDecreaseC 1)
+
+weakenTEffect :: TargetedEffect
+weakenTEffect = SingleTargetedEffect $ TargetedEffectP "Weaken" (TargetCreature (Range 5)) (ApplyCondition weakenCondition)
+
+weaken :: Ability
+weaken = Ability "Weaken" (Energy 10) [weakenTEffect] (CastTime 0) (Cooldown 0)
+
+
+
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
     = ApplyCondition (

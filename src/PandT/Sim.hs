@@ -75,10 +75,20 @@ applyEffect originCreature effect targetCreature = (checkDead originCreatureName
         originCreatureName = (originCreature^.creatureName)
         go Interrupt = set casting Nothing targetCreature
         go (ApplyCondition cdef) = over conditions (applyCondition originCreatureName cdef:) targetCreature
-        go (Damage amt) = over health (flip decreaseHealth amt) targetCreature
+        go (Damage amt) = applyDamage originCreature amt targetCreature
         -- XXX TODO FIXME: don't allow overhealing
         go (Heal amt) = over health (flip increaseHealth amt) targetCreature
         go (MultiEffect e1 e2) = applyEffect originCreature e2 (applyEffect originCreature e1 targetCreature)
+
+applyDamage :: Creature -> DamageIntensity -> Creature -> Creature
+applyDamage originCreature amt targetCreature =
+    let damageIncreases = getAppliedConditionsMatching _AppliedDamageIncrease originCreature
+        damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease originCreature
+        sumIncreases = sum (map _intensityIncrease damageIncreases)
+        sumDecreases = sum (map _intensityDecrease damageDecreases)
+        damageDelta = sumIncreases + (negate sumDecreases)
+    in
+        over health (flip decreaseHealth (amt+damageDelta)) targetCreature
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbility game@(Game {_state=GMVettingAction ability _}) =
@@ -108,14 +118,6 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
 appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
         -> Maybe (Game GMVettingAction, EffectOccurrence)
 appTEff originCreature targetedEffect (game, combatLog) creatName = do
-    -- creature <- game^.currentCreature
-    --
-    -- let damageIncreases = getAppliedConditionsMatching _AppliedDamageIncrease creature
-    --     damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease creature
-    --     sumIncreases = sum (map _intensityIncrease damageIncreases)
-    --     sumDecreases = sum (map _intensityDecrease damageDecreases)
-    --     damageDelta = sumIncreases + (negate sumDecreases)
-
     let effect = targetedEffect^.targetedEffectEffect
         applyEffect' = fmap (applyEffect originCreature effect)
         applied = over (creaturesInPlay . at creatName) applyEffect' game

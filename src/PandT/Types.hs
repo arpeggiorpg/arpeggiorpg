@@ -84,6 +84,8 @@ data AppliedC
 
 data AppliedCondition = AppliedCondition
     { _appliedConditionOriginator :: CreatureName
+    -- ^ Mechanically we only need this for RecurringEffect (so far), but informationally it's
+    -- useful to show to players who caused a condition
     , _appliedConditionDurationLeft :: ConditionDuration
     , _appliedConditionMeta :: ConditionMeta
     , _appliedConditionC :: AppliedC }

@@ -54,6 +54,14 @@ conditionTests = testGroup "Condition Tests"
     , testCase "Timed conditions expire when duration reaches 0" $
         let afterSecondBleedTurn = (forceNextTurn . forceNextTurn . forceNextTurn . forceNextTurn $ stabAccepted)
         in afterSecondBleedTurn^?creaturesInPlay.at "Aspyr"._Just.conditions @?= Just []
+    , testCase "DamageIncrease applies to direct damage" $
+        blStabAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 6)
+    , testCase "DamageIncrease applies to RecurringEffect damage" $
+        afterBLBleedTick^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 3)
+    , testCase "DamageDecrease applies to direct damage" $
+        weakStabAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 8)
+    , testCase "DamageDecrease applies to RecurringEffect damage" $
+        afterWeakBleedTick^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 7)
     ]
 
 abilityTests :: TestTree
@@ -98,9 +106,10 @@ chris = Player "Chris"
 jah = Player "Jah"
 beth = Player "Beth"
 
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk]
-ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk]
+allAbilities = [stab, punch, kill, bonk, bloodlust, soothe, weaken]
+radorg = makeCreature "Radorg" (Energy 100) (Stamina High) allAbilities
+aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) allAbilities
+ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) allAbilities
 
 myGame :: Game PlayerChoosingAbility
 myGame = Game
@@ -130,3 +139,11 @@ afterBleedTick = forceNextTurn (forceNextTurn stabAccepted)
 afterBleedEnd = forceNextTurn (forceNextTurn afterBleedTick)
 (bonkTargeting, bonkVetting, (GSTPlayerIncapacitated bonkAccepted), bonkLog) = simulateMove myGame bonk "Aspyr"
 afterBonk = forceNextTurn bonkAccepted
+
+(_, _, (GSTPlayerChoosingAbility blAccepted), _) = simulateMove myGame bloodlust "Aspyr"
+(_, _, (GSTPlayerChoosingAbility blStabAccepted), _) = simulateMove blAccepted stab "Radorg" -- hm! stabbing the hand that feeds you!
+afterBLBleedTick = forceNextTurn (forceNextTurn blStabAccepted)
+
+(_, _, (GSTPlayerChoosingAbility weakenAccepted), _) = simulateMove myGame weaken "Aspyr"
+(_, _, (GSTPlayerChoosingAbility weakStabAccepted), _) = simulateMove weakenAccepted stab "Radorg"
+afterWeakBleedTick = forceNextTurn (forceNextTurn weakStabAccepted)
