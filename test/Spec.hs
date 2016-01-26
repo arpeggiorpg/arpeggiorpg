@@ -64,7 +64,7 @@ conditionTests = testGroup "Condition Tests"
         weakStabAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 8)
     , testCase "DamageDecrease applies to RecurringEffect damage" $
         afterWeakBleedTick^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 7)
-    -- block reduces damage by 2
+    -- block reduces damage by 3, but min damage is 1
     , testCase "IncomingDamageReduction reduces incoming damage" $
         stabThroughBlockAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 9)
     , testCase "IncomingDamageReduction reduces recurring damage" $
