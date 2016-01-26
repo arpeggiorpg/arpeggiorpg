@@ -50,13 +50,17 @@ block = Ability "Block" (Energy 0) [blockTEffect] (CastTime 0) (Cooldown 0)
         blockTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf blockEffect)
         blockEffect = ApplyCondition (MkConditionDef "Blocking" (condDur 2) (MkIncomingDamageReductionC 3))
 
+sacrificialStrike :: Ability
+sacrificialStrike = Ability "Sacrificial Strike" (Energy 0) [selfTEff, targetTEff] (CastTime 0) (Cooldown 0)
+    where
+        selfTEff = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf selfDamageEff)
+        selfDamageEff = Damage 3
+        targetTEff = SingleTargetedEffect (TargetedEffectP "Strike" (TargetCreature (Range 5)) targetDamageEff)
+        targetDamageEff = Damage 5
+
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
-    = ApplyCondition (
-        MkConditionDef
-            cname
-            (condDur cdur)
-            (MkRecurringEffectC ceff))
+    = ApplyCondition (MkConditionDef cname (condDur cdur) (MkRecurringEffectC ceff))
 
 bleed :: Effect
 bleed = makeTimedEOT "Bleeding" 2 (Damage 2)
