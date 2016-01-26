@@ -35,13 +35,13 @@ makePrisms ''ConditionDuration
 data RecurringEffectT = RecurringEffectT Effect deriving (Show, Eq)
 data DamageIncreaseT = DamageIncreaseT {_intensityIncrease :: DamageIntensity} deriving (Show, Eq)
 data DamageDecreaseT = DamageDecreaseT {_intensityDecrease :: DamageIntensity} deriving (Show, Eq)
-data DamageAbsorbT = DamageAbsorbT DamageIntensity deriving (Show, Eq)
+data IncomingDamageReductionT = IncomingDamageReductionT {_intensityReduce :: DamageIntensity} deriving (Show, Eq)
 data IncapacitatedT = IncapacitatedT deriving (Show, Eq)
 data DeadT = DeadT deriving (Show, Eq)
 
 data ConditionC
     = RecurringEffectC RecurringEffectT
-    | DamageAbsorbC DamageAbsorbT
+    | IncomingDamageReductionC IncomingDamageReductionT
     | DamageIncreaseC DamageIncreaseT
     | DamageDecreaseC DamageDecreaseT
     | IncapacitatedC IncapacitatedT
@@ -49,7 +49,7 @@ data ConditionC
     deriving (Show, Eq)
 
 pattern MkRecurringEffectC effect = RecurringEffectC (RecurringEffectT effect)
-pattern MkDamageAbsorbC intensity = DamageAbsorbC (DamageAbsorbT intensity)
+pattern MkIncomingDamageReductionC intensity = IncomingDamageReductionC (IncomingDamageReductionT intensity)
 pattern MkDamageIncreaseC intensity = DamageIncreaseC (DamageIncreaseT intensity)
 pattern MkDamageDecreaseC intensity = DamageDecreaseC (DamageDecreaseT intensity)
 pattern MkIncapacitatedC = IncapacitatedC IncapacitatedT
@@ -67,15 +67,13 @@ data ConditionDef = ConditionDef
 
 pattern MkConditionDef name duration c = ConditionDef (ConditionMeta name duration) c
 
--- A condition at runtime: contains a value of a condition type, and the
--- necessary runtime data for that condition. This does the important job of
--- declaring types that ensure the appropriate runtime data types are associated
--- with the appropriate condition definition types.
+-- A condition at runtime: contains a value of a condition type, and the necessary runtime data for
+-- that condition. This does the important job of declaring types that ensure the appropriate
+-- runtime data types are associated with the appropriate condition definition types. of course,
+-- right now there is no dynamic data specific to a condition, but there _could_ be...
 data AppliedC
     = AppliedRecurringEffect RecurringEffectT
-    | AppliedDamageAbsorb
-        DamageAbsorbT
-        Int -- ^ Amount of damage absorbed so far
+    | AppliedIncomingDamageReduction IncomingDamageReductionT
     | AppliedDamageIncrease DamageIncreaseT
     | AppliedDamageDecrease DamageDecreaseT
     | AppliedIncapacitated IncapacitatedT
@@ -122,8 +120,12 @@ instance HasConditionMeta AppliedCondition where
     conditionName = appliedConditionMeta . conditionName
     conditionDuration = appliedConditionMeta . conditionDuration
 
+
+-- XXX FIXME TODO - I may be able to replace this with typeclasses. Should I?
+
 data SingleTarget
 data MultiTarget
+data SelfTarget
 
 -- | Various ways in which effects can be targeted.
 data TargetSystem a where
@@ -132,6 +134,7 @@ data TargetSystem a where
     -- Umm, this probably needs the origin too...
     TargetLineFromSource :: Range -> TargetSystem MultiTarget
     TargetCone :: Range -> TargetSystem MultiTarget
+    TargetSelf :: TargetSystem SelfTarget
 
 deriving instance Show (TargetSystem a)
 deriving instance Eq (TargetSystem a)
@@ -147,11 +150,13 @@ data TargetedEffectP a = TargetedEffectP
 data TargetedEffect
     = SingleTargetedEffect (TargetedEffectP SingleTarget)
     | MultiTargetedEffect (TargetedEffectP MultiTarget)
+    | SelfTargetedEffect (TargetedEffectP SelfTarget)
     deriving (Show, Eq)
 
 data SelectedTargetedEffect
     = SelectedMultiTargetedEffect [CreatureName] (TargetedEffectP MultiTarget)
     | SelectedSingleTargetedEffect CreatureName (TargetedEffectP SingleTarget)
+    | SelectedSelfTargetedEffect (TargetedEffectP SelfTarget)
     deriving (Show, Eq)
 
 makeLenses ''TargetedEffectP
@@ -234,7 +239,7 @@ currentCreature = lens getter setter
 
 {-
 TODO: "dynamic" damage numbers here -- we may do less or more damage than what
-is defined by the Effect, because of things like damage absorbs.
+is defined by the Effect, because of things like damage reduction
 -}
 type EffectOccurrence = [(Effect, CreatureName)]
 

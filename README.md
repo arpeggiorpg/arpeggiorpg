@@ -50,8 +50,8 @@ Also grep the code for XXX, FIXME, or TODO.
   - incapacitation [DONE]
   - abilities that apply a condition to the caster (without explicit targeting)
   - Dispels! (how to target an effect???)
-  - damage buff/debuff
-  - damage absorb
+  - damage buff/debuff [DONE]
+  - damage reduction [DONE]
   - resource consumption
   - cooldown
   - stacking vs refreshing conditions

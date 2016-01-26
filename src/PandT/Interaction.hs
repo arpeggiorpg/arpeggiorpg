@@ -73,6 +73,7 @@ promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName system _)
         (TargetCone range) ->
             promptMultiTarget [] targetName (" Cone range: " ++ (tshow range))
     return (SelectedMultiTargetedEffect creatureNames teffect)
+promptTEffect (SelfTargetedEffect teffectp) = return (SelectedSelfTargetedEffect teffectp)
 
 promptMultiTarget :: [CreatureName] -> Text -> Text -> MaybeT IO [CreatureName]
 promptMultiTarget sofar targetName prompt = do

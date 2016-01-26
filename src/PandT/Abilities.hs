@@ -6,6 +6,9 @@ import PandT.Prelude
 import PandT.Types
 import PandT.Sim
 
+condDur :: Int -> ConditionDuration
+condDur dur = TimedCondition (Duration dur)
+
 punchTEffect :: TargetedEffect
 punchTEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) punchEffect
 
@@ -21,9 +24,8 @@ sootheTEffect = SingleTargetedEffect $ TargetedEffectP "Soothe" (TargetCreature 
 soothe :: Ability
 soothe = Ability "Soothe" (Mana 10) [sootheTEffect] (CastTime 0) (Cooldown 0)
 
-
 bloodlustCondition :: ConditionDef
-bloodlustCondition = MkConditionDef "Bloodlust" (TimedCondition (Duration 3)) (MkDamageIncreaseC 1)
+bloodlustCondition = MkConditionDef "Bloodlust" (condDur 3) (MkDamageIncreaseC 1)
 
 bloodlustTEffect :: TargetedEffect
 bloodlustTEffect = SingleTargetedEffect $ TargetedEffectP "Bloodlust" (TargetCreature (Range 5)) (ApplyCondition bloodlustCondition)
@@ -33,7 +35,7 @@ bloodlust = Ability "Bloodlust" (Energy 10) [bloodlustTEffect] (CastTime 0) (Coo
 
 
 weakenCondition :: ConditionDef
-weakenCondition = MkConditionDef "Weaken" (TimedCondition (Duration 3)) (MkDamageDecreaseC 1)
+weakenCondition = MkConditionDef "Weakened" (condDur 3) (MkDamageDecreaseC 1)
 
 weakenTEffect :: TargetedEffect
 weakenTEffect = SingleTargetedEffect $ TargetedEffectP "Weaken" (TargetCreature (Range 5)) (ApplyCondition weakenCondition)
@@ -41,14 +43,19 @@ weakenTEffect = SingleTargetedEffect $ TargetedEffectP "Weaken" (TargetCreature 
 weaken :: Ability
 weaken = Ability "Weaken" (Energy 10) [weakenTEffect] (CastTime 0) (Cooldown 0)
 
-
+block :: Ability
+block = Ability "Block" (Energy 0) [blockTEffect] (CastTime 0) (Cooldown 0)
+    -- this is hella OP
+    where
+        blockTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf blockEffect)
+        blockEffect = ApplyCondition (MkConditionDef "Blocking" (condDur 2) (MkIncomingDamageReductionC 3))
 
 makeTimedEOT :: Text -> Int -> Effect -> Effect
 makeTimedEOT cname cdur ceff
     = ApplyCondition (
         MkConditionDef
             cname
-            (TimedCondition (Duration cdur))
+            (condDur cdur)
             (MkRecurringEffectC ceff))
 
 bleed :: Effect
@@ -84,11 +91,11 @@ kill = Ability "Kill" (Energy 10) [killTargetedEffect] (CastTime 0) (Cooldown 0)
         killTargetedEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) killEffect
         killEffect = ApplyCondition deadDef
 
-mkStun :: Text -> Duration -> Effect
-mkStun name dur = ApplyCondition (MkConditionDef name (TimedCondition dur) MkIncapacitatedC)
+mkStun :: Text -> ConditionDuration -> Effect
+mkStun name dur = ApplyCondition (MkConditionDef name dur MkIncapacitatedC)
 
 bonk :: Ability
 bonk = Ability "Bonk" (Energy 10) [bonkTEffect] (CastTime 0) (Cooldown 0)
     where
         bonkTEffect = SingleTargetedEffect $ TargetedEffectP "Bonk" (TargetCreature (Range 1)) bonkEffect
-        bonkEffect = mkStun "Bonked" (Duration 1)
+        bonkEffect = mkStun "Bonked" (condDur 1)

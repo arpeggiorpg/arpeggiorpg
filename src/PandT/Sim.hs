@@ -62,7 +62,7 @@ applyConditionC :: ConditionC -> AppliedC
 applyConditionC (RecurringEffectC reff) = AppliedRecurringEffect reff
 applyConditionC (DamageIncreaseC di) = AppliedDamageIncrease di
 applyConditionC (DamageDecreaseC dd) = AppliedDamageDecrease dd
-applyConditionC (DamageAbsorbC da) = AppliedDamageAbsorb da 0
+applyConditionC (IncomingDamageReductionC da) = AppliedIncomingDamageReduction da
 applyConditionC (IncapacitatedC i) = AppliedIncapacitated i
 applyConditionC (DeadC d) = AppliedDead d
 
@@ -86,9 +86,13 @@ applyDamage originCreature amt targetCreature =
         damageDecreases = getAppliedConditionsMatching _AppliedDamageDecrease originCreature
         sumIncreases = sum (map _intensityIncrease damageIncreases)
         sumDecreases = sum (map _intensityDecrease damageDecreases)
-        damageDelta = sumIncreases + (negate sumDecreases)
+        damageReductions = getAppliedConditionsMatching _AppliedIncomingDamageReduction targetCreature
+        sumReductions = sum (map _intensityReduce damageReductions)
+        damageDelta = sumIncreases + (negate sumDecreases) + (negate sumReductions)
+        damage = amt + damageDelta
+        minDamage = if damage <= 0 then 1 else damage
     in
-        over health (flip decreaseHealth (amt+damageDelta)) targetCreature
+        over health (flip decreaseHealth minDamage) targetCreature
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbility game@(Game {_state=GMVettingAction ability _}) =
@@ -114,6 +118,9 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
             = appTEff originCreature targetedEffect gameAndLog name
         appEffs originCreature gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
             = foldM (appTEff originCreature targetedEffect) gameAndLog creatureNames
+        appEffs originCreature gameAndLog (SelectedSelfTargetedEffect targetedEffect)
+            -- XXX FIXME TODO: I'm passing the creature name when I already have the Creature
+            = foldM (appTEff originCreature targetedEffect) gameAndLog [(originCreature^.creatureName)]
 
 appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
         -> Maybe (Game GMVettingAction, EffectOccurrence)

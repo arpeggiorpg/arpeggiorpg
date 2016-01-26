@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes, PartialTypeSignatures, NoMonomorphismRestriction #-}
+
 import Control.Lens
 import Control.Monad.Writer.Strict
 import Test.Tasty (defaultMain, testGroup, TestTree)
@@ -62,6 +64,11 @@ conditionTests = testGroup "Condition Tests"
         weakStabAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 8)
     , testCase "DamageDecrease applies to RecurringEffect damage" $
         afterWeakBleedTick^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 7)
+    -- block reduces damage by 2
+    , testCase "IncomingDamageReduction reduces incoming damage" $
+        stabThroughBlockAccepted^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 9)
+    , testCase "IncomingDamageReduction reduces recurring damage" $
+        afterBlockedBleedTick^?creaturesInPlay.at "Radorg"._Just.health @?= Just (Health 8)
     ]
 
 abilityTests :: TestTree
@@ -97,8 +104,9 @@ simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
                  [CombatEvent])
 simulateMove game ability target =
     let targeting = chooseAbility game ability
-        (SingleTargetedEffect firstTEffect) = headEx (ability^.abilityEffects)
-        vetting = chooseTargets targeting [SelectedSingleTargetedEffect target firstTEffect]
+        vetting = case ability^.abilityEffects of
+            [(SingleTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSingleTargetedEffect target firstTEffect]
+            [(SelfTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSelfTargetedEffect firstTEffect]
         (Just (accepted, log)) = runWriterT $ acceptAction_ vetting
     in (targeting, vetting, accepted, log)
 
@@ -147,3 +155,7 @@ afterBLBleedTick = forceNextTurn (forceNextTurn blStabAccepted)
 (_, _, (GSTPlayerChoosingAbility weakenAccepted), _) = simulateMove myGame weaken "Aspyr"
 (_, _, (GSTPlayerChoosingAbility weakStabAccepted), _) = simulateMove weakenAccepted stab "Radorg"
 afterWeakBleedTick = forceNextTurn (forceNextTurn weakStabAccepted)
+
+(_, _, (GSTPlayerChoosingAbility blockAccepted), _) = simulateMove myGame block "unused"
+(_, _, (GSTPlayerChoosingAbility stabThroughBlockAccepted), _) = simulateMove blockAccepted stab "Radorg"
+afterBlockedBleedTick = forceNextTurn (forceNextTurn stabThroughBlockAccepted)

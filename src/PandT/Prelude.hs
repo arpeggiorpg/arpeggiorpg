@@ -19,11 +19,10 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 (<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
 (<&&>) = liftA2 (&&)
 
--- why do I have to define this :(
+-- The "why do I have to define these myself" functions
+
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
 liftMaybe = MaybeT . return
 
-
--- This must exist somewhere
 runForeverM :: Monad m => (a -> m a) -> a -> m ()
 runForeverM go start = go start >>= runForeverM go

@@ -22,7 +22,7 @@ renderConditionCaseName :: ConditionC -> Text
 renderConditionCaseName = n
     where
         n (RecurringEffectC _) = "Recurring Effect"
-        n (DamageAbsorbC _) = "Damage Absorb"
+        n (IncomingDamageReductionC _) = "Incoming Damage Reduction"
         n (DamageIncreaseC _) = "Damage Increase"
         n (DamageDecreaseC _) = "Damage Decrease"
         n (IncapacitatedC _)  = "Incapacitation"
