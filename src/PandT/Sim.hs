@@ -36,11 +36,11 @@ decreaseHealth (Health healthVal) dmg = Health (healthVal -  dmg)
 increaseHealth :: Health -> DamageIntensity -> Health
 increaseHealth (Health healthVal) dmg = Health (healthVal + dmg)
 
-makeCreature :: CreatureName -> Resource -> Stamina -> [Ability] -> Creature
-makeCreature cname res sta creatAbilities = Creature
+makeCreature :: CreatureName -> Energy -> Stamina -> [Ability] -> Creature
+makeCreature cname nrg sta creatAbilities = Creature
     { _creatureName=cname
     , _conditions=[]
-    , _resource=res
+    , _energy=nrg
     , _stamina=sta
     , _health=staminaToHealth sta
     , _abilities=creatAbilities

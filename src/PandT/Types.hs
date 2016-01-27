@@ -24,7 +24,7 @@ type CreatureName = Text -- XXX TODO: newype?
 type DamageIntensity = Int -- XXX TODO: newtype?
 
 data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
-data Resource = Mana Int | Energy Int deriving (Show, Eq)
+newtype Energy = Energy Int deriving (Show, Eq, Ord, Enum)
 
 data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
@@ -169,7 +169,7 @@ makePrisms ''SelectedTargetedEffect
 -- to a creature or the world)
 data Ability = Ability
     { _abilityName :: Text
-    , _cost :: Resource
+    , _cost :: Energy
     , _abilityEffects :: [TargetedEffect]
     , _castTime :: CastTime
     , _cooldown :: Cooldown
@@ -182,8 +182,8 @@ data Creature = Creature
     { _creatureName :: CreatureName
     , _conditions :: [AppliedCondition]
     -- ^ Buffs and debuffs that are applied to this creature.
-    , _resource :: Resource
-    -- ^ What kind of resource the creature uses.
+    , _energy :: Energy
+    -- ^ energy that the creature has
     , _stamina :: Stamina
     -- ^ The stamina determines the maximum amount of health a creature can hav.
     , _health :: Health
@@ -197,6 +197,11 @@ data Creature = Creature
     deriving (Show, Eq)
 
 makeLenses ''Creature
+
+-- | mkGame -- Smart constructor for Games
+-- What can this help with?
+-- 1. ensure all named creatures are in play
+
 
 -- | The toplevel data type representing a game. It's parameterized by a state variable so that we
 -- can safely transition from state to state -- e.g., a `Game PlayerChoosingAbility` must transition

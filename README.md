@@ -48,11 +48,12 @@ Also grep the code for XXX, FIXME, or TODO.
   - DOTs and HOTs [DONE]
   - passage of time [DONE]
   - incapacitation [DONE]
-  - abilities that apply a condition to the caster (without explicit targeting)
+  - abilities that apply a condition to the caster (without explicit targeting) [DONE]
   - Dispels! (how to target an effect???)
   - damage buff/debuff [DONE]
   - damage reduction [DONE]
   - resource consumption
+  - resource generation
   - cooldown
   - stacking vs refreshing conditions
   - area effects with duration

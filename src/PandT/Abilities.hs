@@ -22,7 +22,7 @@ sootheTEffect :: TargetedEffect
 sootheTEffect = SingleTargetedEffect $ TargetedEffectP "Soothe" (TargetCreature (Range 5)) (Heal 1)
 
 soothe :: Ability
-soothe = Ability "Soothe" (Mana 10) [sootheTEffect] (CastTime 0) (Cooldown 0)
+soothe = Ability "Soothe" (Energy 10) [sootheTEffect] (CastTime 0) (Cooldown 0)
 
 bloodlustCondition :: ConditionDef
 bloodlustCondition = MkConditionDef "Bloodlust" (condDur 3) (MkDamageIncreaseC 1)
@@ -84,7 +84,7 @@ stab = Ability
         stabDirectDamage = Damage 3
 
 wrath :: Ability
-wrath = Ability "Wrath" (Mana 10) [wrathTEffect] (CastTime 1) (Cooldown 0)
+wrath = Ability "Wrath" (Energy 10) [wrathTEffect] (CastTime 1) (Cooldown 0)
     where
         wrathTEffect = SingleTargetedEffect $ TargetedEffectP "Wrath" (TargetCreature (Range 1)) wrathEffect
         wrathEffect = Damage 5

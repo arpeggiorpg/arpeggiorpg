@@ -116,7 +116,7 @@ beth = Player "Beth"
 
 allAbilities = [stab, punch, kill, bonk, bloodlust, soothe, weaken]
 radorg = makeCreature "Radorg" (Energy 100) (Stamina High) allAbilities
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) allAbilities
+aspyr = makeCreature "Aspyr" (Energy 100) (Stamina High) allAbilities
 ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) allAbilities
 
 myGame :: Game PlayerChoosingAbility

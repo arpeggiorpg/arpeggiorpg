@@ -22,9 +22,9 @@ jah = Player "Jah"
 beth = Player "Beth"
 
 radorg, aspyr, ulsoga :: Creature
-radorg = makeCreature "Radorg" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
-aspyr = makeCreature "Aspyr" (Mana 100) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
-ulsoga = makeCreature "Ulsoga" (Energy 100) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
+radorg = makeCreature "Radorg" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
+aspyr = makeCreature "Aspyr" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
+ulsoga = makeCreature "Ulsoga" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
 
 myGame :: Game PlayerChoosingAbility
 myGame = Game
