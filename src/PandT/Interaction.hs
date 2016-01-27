@@ -22,7 +22,7 @@ jah = Player "Jah"
 beth = Player "Beth"
 
 radorg, aspyr, ulsoga :: Creature
-radorg = makeCreature "Radorg" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
+radorg = makeCreature "Radorg" (Energy 1) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
 aspyr = makeCreature "Aspyr" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
 ulsoga = makeCreature "Ulsoga" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
 
@@ -50,8 +50,10 @@ promptForAbility game = do
         Nothing -> do
             liftIO $ putStrLn "Not found"
             promptForAbility game
-        Just ability -> do
-            return $ chooseAbility game ability
+        Just ability ->
+            case chooseAbility game ability of
+                Nothing -> (liftIO (putStrLn "Couldn't use that ability!")) >> promptForAbility game
+                Just game' -> return game'
 
 promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
 promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do

@@ -70,7 +70,7 @@ renderCreatureStatus :: Creature -> Text
 renderCreatureStatus creature =
     line
     where
-        hp = tshow $ creature^.health
+        hp = creature^.health.unHealth
         conds = concat (intersperse "; " (map renderAppliedCondition (creature^.conditions)))
         castSumm :: Text
         castSumm = case creature^.casting of
@@ -97,8 +97,7 @@ renderInitiative game
 
 render :: RenderState a => Game a -> Text
 render game@(Game {..}) = unlines
-    [ "# Game"
-    , "Current creature: " ++ " (" ++ _currentCreatureName ++ ") "
+    [ [i|# #{_currentCreatureName}'s turn|]
     , renderState _state
     , renderInitiative game
     ]

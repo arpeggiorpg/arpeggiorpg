@@ -178,8 +178,15 @@ endTurnFor game creature = do
 -- The workflow: functions that transition between types of Game.
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
-              -> Game PlayerChoosingTargets
-chooseAbility game ability = set state (PlayerChoosingTargets ability) game
+              -> Maybe (Game PlayerChoosingTargets)
+chooseAbility game ability =
+    case game^.currentCreature of
+        Nothing -> Nothing
+        Just cc -> do
+            if (ability^.cost) > (cc^.creatureEnergy) then
+                Nothing
+            else
+                return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
 chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections

@@ -17,7 +17,7 @@ newtype Radius = Radius Int deriving (Show, Eq, Ord)
 newtype Duration = Duration Int deriving (Show, Eq, Ord, Enum)
 newtype CastTime = CastTime Int deriving (Show, Eq, Ord)
 newtype Cooldown = Cooldown Int deriving (Show, Eq, Ord)
-newtype Health = Health Int deriving (Show, Eq, Ord)
+newtype Health = Health {_unHealth :: Int} deriving (Show, Eq, Ord)
 newtype Player = Player Text deriving (Show, Ord, Eq)
 
 type CreatureName = Text -- XXX TODO: newype?
@@ -25,6 +25,8 @@ type DamageIntensity = Int -- XXX TODO: newtype?
 
 data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
 newtype Energy = Energy {_unEnergy :: Int} deriving (Show, Eq, Ord, Enum, Num)
+
+makeLenses ''Health
 makeLenses ''Energy
 
 data ConditionDuration -- this could have a reasonable Ord instance
