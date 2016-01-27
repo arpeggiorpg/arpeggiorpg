@@ -22,19 +22,9 @@ tests (which use a lot of partial functions).
 
 Also grep the code for XXX, FIXME, or TODO.
 
-- Implement basic combat stuff:
-  - damage [DONE]
-  - healing [DONE]
-  - death [DONE]
-  - reporting of events [DONE]
 - model/workflow for abilities being "constructed"
-  - player choose ability [DONE]
-  - player choose target(s) [DONE]
   - GM modifies targets
   - GM modifies effects on targets
-  - GM vets [DONE]
-  - GM executes [DONE]
-  - GM skips [DONE]
 - Implement a basic text UI
   - allow skipping turn
   - check if targets exist
@@ -45,16 +35,10 @@ Also grep the code for XXX, FIXME, or TODO.
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
-  - DOTs and HOTs [DONE]
-  - passage of time [DONE]
-  - incapacitation [DONE]
-  - abilities that apply a condition to the caster (without explicit targeting) [DONE]
+  - combat log should show *adjusted* damage, not ability damage
   - Dispels! (how to target an effect???)
-  - damage buff/debuff [DONE]
-  - damage reduction [DONE]
+  - resurrection
   - damage absorption
-  - resource consumption [DONE]
-  - resource generation [DONE]
   - cooldown
   - stacking vs refreshing conditions
   - area effects with duration
