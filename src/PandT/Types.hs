@@ -24,7 +24,8 @@ type CreatureName = Text -- XXX TODO: newype?
 type DamageIntensity = Int -- XXX TODO: newtype?
 
 data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
-newtype Energy = Energy Int deriving (Show, Eq, Ord, Enum)
+newtype Energy = Energy {_unEnergy :: Int} deriving (Show, Eq, Ord, Enum, Num)
+makeLenses ''Energy
 
 data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
@@ -182,7 +183,7 @@ data Creature = Creature
     { _creatureName :: CreatureName
     , _conditions :: [AppliedCondition]
     -- ^ Buffs and debuffs that are applied to this creature.
-    , _energy :: Energy
+    , _creatureEnergy :: Energy
     -- ^ energy that the creature has
     , _stamina :: Stamina
     -- ^ The stamina determines the maximum amount of health a creature can hav.

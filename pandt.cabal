@@ -24,6 +24,7 @@ library
   build-depends:      base-noprelude
                     , classy-prelude
                     , containers
+                    , interpolate
                     , lens
                     , mtl
                     , text

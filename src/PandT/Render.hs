@@ -1,10 +1,12 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, QuasiQuotes #-}
 
 -- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
 -- we should just be serializing data to JSON and have the client render it, but some bits might
 -- remain.
 
 module PandT.Render where
+
+import Data.String.Interpolate.IsString (i)
 
 import PandT.Prelude
 import PandT.Types
@@ -70,11 +72,12 @@ renderCreatureStatus creature =
     where
         hp = tshow $ creature^.health
         conds = concat (intersperse "; " (map renderAppliedCondition (creature^.conditions)))
+        castSumm :: Text
         castSumm = case creature^.casting of
             Nothing -> ""
             Just (ability, (Duration duration)) ->
-                "(casting " ++ (ability^.abilityName) ++ " for " ++ (tshow duration) ++ " more rounds)"
-        line = unwords [creature^.creatureName, hp, castSumm, conds]
+                [i|(casting #{ability^.abilityName} for #{tshow duration} more rounds)|]
+        line = [i|#{creature^.creatureName} (#{hp} HP, #{creature^.creatureEnergy.unEnergy} NRG) #{castSumm} #{conds}|]
 
 renderAppliedCondition :: AppliedCondition -> Text
 renderAppliedCondition (AppliedCondition originCreatureName duration meta _) =

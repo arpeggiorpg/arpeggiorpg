@@ -40,7 +40,7 @@ makeCreature :: CreatureName -> Energy -> Stamina -> [Ability] -> Creature
 makeCreature cname nrg sta creatAbilities = Creature
     { _creatureName=cname
     , _conditions=[]
-    , _energy=nrg
+    , _creatureEnergy=nrg
     , _stamina=sta
     , _health=staminaToHealth sta
     , _abilities=creatAbilities
@@ -110,7 +110,8 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
     = do
         originCreature <- game^.currentCreature
         (newGame, combatLog) <- foldM (appEffs originCreature) (game, []) selections
-        return (newGame, AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
+        let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> (x - (ability^.cost))) newGame
+        return (newGame', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
         appEffs :: Creature -> (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
                 -> Maybe (Game GMVettingAction, EffectOccurrence)
