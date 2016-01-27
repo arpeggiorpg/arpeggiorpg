@@ -103,3 +103,9 @@ bonk = Ability "Bonk" (Energy 1) [bonkTEffect] (CastTime 0) (Cooldown 0)
     where
         bonkTEffect = SingleTargetedEffect $ TargetedEffectP "Bonk" (TargetCreature (Range 1)) bonkEffect
         bonkEffect = mkStun "Bonked" (condDur 1)
+
+meditate :: Ability
+meditate = Ability "Meditate" (Energy 0) [medTEffect] (CastTime 0) (Cooldown 0)
+    where
+        medTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf medEffect)
+        medEffect = GenerateEnergy 3

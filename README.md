@@ -52,8 +52,9 @@ Also grep the code for XXX, FIXME, or TODO.
   - Dispels! (how to target an effect???)
   - damage buff/debuff [DONE]
   - damage reduction [DONE]
-  - resource consumption
-  - resource generation
+  - damage absorption
+  - resource consumption [DONE]
+  - resource generation [DONE]
   - cooldown
   - stacking vs refreshing conditions
   - area effects with duration

@@ -21,10 +21,13 @@ chris = Player "Chris"
 jah = Player "Jah"
 beth = Player "Beth"
 
+allAbs :: [Ability]
+allAbs = [stab, punch, kill, bonk, wrath, soothe, block, meditate, sacrificialStrike]
+
 radorg, aspyr, ulsoga :: Creature
-radorg = makeCreature "Radorg" (Energy 1) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
-aspyr = makeCreature "Aspyr" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
-ulsoga = makeCreature "Ulsoga" (Energy 10) (Stamina High) [stab, punch, kill, bonk, wrath, soothe]
+radorg = makeCreature "Radorg" (Energy 1) (Stamina High) allAbs
+aspyr = makeCreature "Aspyr" (Energy 10) (Stamina High) allAbs
+ulsoga = makeCreature "Ulsoga" (Energy 10) (Stamina High) allAbs
 
 myGame :: Game PlayerChoosingAbility
 myGame = Game

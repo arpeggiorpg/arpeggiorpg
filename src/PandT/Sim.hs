@@ -74,6 +74,7 @@ applyEffect originCreature effect targetCreature = (checkDead originCreatureName
     where
         originCreatureName = (originCreature^.creatureName)
         go Interrupt = set casting Nothing targetCreature
+        go (GenerateEnergy nrg) = over creatureEnergy (+ nrg) targetCreature
         go (ApplyCondition cdef) = over conditions (applyCondition originCreatureName cdef:) targetCreature
         go (Damage amt) = applyDamage originCreature amt targetCreature
         -- XXX TODO FIXME: don't allow overhealing
