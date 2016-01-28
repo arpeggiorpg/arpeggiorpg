@@ -37,7 +37,7 @@ Also grep the code for XXX, FIXME, or TODO.
 - Advanced combat mechanics, in rough order of interest:
   - combat log should show *adjusted* damage, not ability damage
   - Dispels! (how to target an effect???)
-  - resurrection
+  - resurrection [DONE]
   - damage absorption
   - cooldown
   - stacking vs refreshing conditions
