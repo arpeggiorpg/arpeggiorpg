@@ -74,6 +74,7 @@ applyEffect originCreature effect targetCreature = (checkDead originCreatureName
     where
         originCreatureName = (originCreature^.creatureName)
         go Interrupt = set casting Nothing targetCreature
+        go Resurrect = removeConditions _AppliedDead targetCreature
         go (GenerateEnergy nrg) = over creatureEnergy (+ nrg) targetCreature
         go (ApplyCondition cdef) = over conditions (applyCondition originCreatureName cdef:) targetCreature
         go (Damage amt) = applyDamage originCreature amt targetCreature
@@ -151,6 +152,11 @@ hasCondition appliedCPrism creature = (not.null) (getAppliedConditionsMatching a
 
 isDead :: Creature -> Bool
 isDead = hasCondition _AppliedDead
+
+removeConditions :: Prism' AppliedC a -> Creature -> Creature
+removeConditions appliedCPrism creature = creature {_conditions=filter predic (creature^.conditions)}
+    where
+        predic cond = isNothing (cond^?appliedConditionC.appliedCPrism)
 
 -- | tickCondition returns Maybe because it needs to look up the origin creature by name in the
 -- game.

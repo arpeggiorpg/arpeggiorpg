@@ -37,6 +37,7 @@ renderEffectOccurrence = unlines . (map go)
         go ((Heal int), cname) = tshow int ++ " healing to " ++ cname
         go ((Damage int), cname) = tshow int ++ " damage to " ++ cname
         go ((GenerateEnergy nrg), cname) = [i|generating #{nrg^.unEnergy} energy for #{cname}|]
+        go (Resurrect, cname) = "resurrecting " ++ cname
         go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
         go ((ApplyCondition cdef), cname) = "Applying condition " ++ (renderConditionDef cdef) ++ " to " ++ cname
 

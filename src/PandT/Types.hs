@@ -99,6 +99,7 @@ data Effect
     | Damage DamageIntensity
     | MultiEffect Effect Effect
     | GenerateEnergy Energy
+    | Resurrect
     deriving (Show, Eq)
 
 makePrisms ''ConditionC

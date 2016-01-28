@@ -109,3 +109,8 @@ meditate = Ability "Meditate" (Energy 0) [medTEffect] (CastTime 0) (Cooldown 0)
     where
         medTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf medEffect)
         medEffect = GenerateEnergy 3
+
+rebirth :: Ability
+rebirth = Ability "Rebirth" (Energy 5) [rebirthTEffect] (CastTime 0) (Cooldown 0)
+    where
+        rebirthTEffect = SingleTargetedEffect $ TargetedEffectP "Resurrect" (TargetCreature (Range 10)) Resurrect
