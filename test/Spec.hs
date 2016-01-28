@@ -103,7 +103,7 @@ simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
                  GameStartTurn,
                  [CombatEvent])
 simulateMove game ability target =
-    let targeting = chooseAbility game ability
+    let (Just targeting) = chooseAbility game ability
         vetting = case ability^.abilityEffects of
             [(SingleTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSingleTargetedEffect target firstTEffect]
             [(SelfTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSelfTargetedEffect firstTEffect]
