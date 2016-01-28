@@ -22,7 +22,7 @@ jah = Player "Jah"
 beth = Player "Beth"
 
 allAbs :: [Ability]
-allAbs = [stab, punch, kill, bonk, wrath, soothe, block, meditate, sacrificialStrike, rebirth]
+allAbs = [stab, punch, kill, bonk, wrath, soothe, block, meditate, sacrificialStrike, rebirth, pummel]
 
 radorg, aspyr, ulsoga :: Creature
 radorg = makeCreature "Radorg" (Energy 1) (Stamina High) allAbs

@@ -22,9 +22,14 @@ tests (which use a lot of partial functions).
 
 Also grep the code for XXX, FIXME, or TODO.
 
-- model/workflow for abilities being "constructed"
-  - GM modifies targets
-  - GM modifies effects on targets
+- creature construction?
+- GM actions
+  - during action vetting:
+    - modify targets
+    - modify effects
+  - add/remove conditions
+  - add creature (from... what?)
+  - remove creature (make sure to remove all references!)
 - Implement a basic text UI
   - allow skipping turn
   - check if targets exist
@@ -35,15 +40,12 @@ Also grep the code for XXX, FIXME, or TODO.
 - Implement a basic web UI (GHCJS oh boooy)
 - Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
-  - combat log should show *adjusted* damage, not ability damage
-  - Dispels! (how to target an effect???)
-  - resurrection [DONE]
-  - damage absorption
+  - combat log should show actual damage, not ability damage
+  - Dispels! (how to target an effect? Or maybe it should be chosen for you?)
+  - damage absorption (temporary hitpoints)
   - cooldown
   - stacking vs refreshing conditions
   - area effects with duration
-  - cast times
-  - interrupts
   - randomization
   - crits
   - movement / geography

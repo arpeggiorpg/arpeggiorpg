@@ -107,10 +107,14 @@ bonk = Ability "Bonk" (Energy 1) [bonkTEffect] (CastTime 0) (Cooldown 0)
 meditate :: Ability
 meditate = Ability "Meditate" (Energy 0) [medTEffect] (CastTime 0) (Cooldown 0)
     where
-        medTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf medEffect)
-        medEffect = GenerateEnergy 3
+        medTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf (GenerateEnergy 3))
 
 rebirth :: Ability
 rebirth = Ability "Rebirth" (Energy 5) [rebirthTEffect] (CastTime 0) (Cooldown 0)
     where
         rebirthTEffect = SingleTargetedEffect $ TargetedEffectP "Resurrect" (TargetCreature (Range 10)) Resurrect
+
+pummel :: Ability
+pummel = Ability "Pummel" (Energy 1) [pummelTEffect] (CastTime 0) (Cooldown 0)
+    where
+        pummelTEffect = SingleTargetedEffect $ TargetedEffectP "Pummel" (TargetCreature (Range 1)) Interrupt
