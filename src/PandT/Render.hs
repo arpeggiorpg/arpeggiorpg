@@ -14,7 +14,10 @@ import PandT.Types
 
 renderConditionDef :: ConditionDef -> Text
 renderConditionDef (ConditionDef meta condc) =
-    meta^.conditionName ++ " (" ++ (renderConditionCaseName condc) ++ ", " ++ (renderConditionDuration (meta^.conditionDuration)) ++ ")"
+    let cName=meta^.conditionName
+        cType=renderConditionCaseName condc
+        dur=renderConditionDuration (meta^.conditionDuration)
+    in [i|#{cName} (#{cType}, #{dur})|]
 
 renderConditionDuration :: ConditionDuration -> Text
 renderConditionDuration UnlimitedDuration = "unlimited"
@@ -33,17 +36,17 @@ renderConditionCaseName = n
 renderEffectOccurrence :: EffectOccurrence -> Text
 renderEffectOccurrence = unlines . (map go)
     where
-        go (Interrupt, cname) = "interrupting " ++ cname
-        go ((Heal int), cname) = tshow int ++ " healing to " ++ cname
-        go ((Damage int), cname) = tshow int ++ " damage to " ++ cname
-        go ((GenerateEnergy nrg), cname) = [i|generating #{nrg^.unEnergy} energy for #{cname}|]
-        go (Resurrect, cname) = "resurrecting " ++ cname
+        go (Interrupt, cname) = [i|- interrupted #{cname}|]
+        go ((Heal int), cname) = [i|- healed #{cname} for #{int}|]
+        go ((Damage int), cname) = [i|- damaged #{cname} for #{int}|]
+        go ((GenerateEnergy nrg), cname) = [i|- generated #{nrg^.unEnergy} energy for #{cname}|]
+        go (Resurrect, cname) = [i|- resurrected #{cname}|]
         go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
-        go ((ApplyCondition cdef), cname) = "Applying condition " ++ (renderConditionDef cdef) ++ " to " ++ cname
+        go ((ApplyCondition cdef), cname) = [i|- applied condition #{renderConditionDef cdef} to #{cname}|]
 
 renderCombatEvent :: CombatEvent -> Text
 renderCombatEvent (AbilityUsed abil source occurrences) =
-    source ++ " used " ++ (abil^.abilityName) ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
+    [i|### #{source} used #{abil^.abilityName} ###\n#{renderEffectOccurrence occurrences}|]
 renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn stared."
 renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
 renderCombatEvent (RecurringEffectOccurred source target occurrences) =

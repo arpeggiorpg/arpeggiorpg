@@ -22,6 +22,7 @@ tests (which use a lot of partial functions).
 
 Also grep the code for XXX, FIXME, or TODO.
 
+- nothing is done with the combat log from recurring effects
 - creature construction?
 - GM actions
   - during action vetting:
