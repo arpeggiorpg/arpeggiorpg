@@ -21,6 +21,7 @@ module PandT.Sim where
 
 import PandT.Prelude
 import PandT.Types
+import Data.Map (insert)
 
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
@@ -44,7 +45,8 @@ makeCreature cname nrg sta creatAbilities = Creature
     , _stamina=sta
     , _health=staminaToHealth sta
     , _abilities=creatAbilities
-    , _casting=Nothing}
+    , _casting=Nothing
+    , _cooldowns=mapFromList []}
 
 deadDef :: ConditionDef
 deadDef = MkConditionDef "Dead" UnlimitedDuration MkDeadC
@@ -113,7 +115,10 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
         originCreature <- game^.currentCreature
         (newGame, combatLog) <- foldM (appEffs originCreature) (game, []) selections
         let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> (x - (ability^.cost))) newGame
-        return (newGame', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
+            newGame'' = case ability^.cooldown of
+                            (Cooldown 0) -> newGame'
+                            n -> over (currentCreature._Just.cooldowns) (insert (ability^.abilityName) n) newGame'
+        return (newGame'', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
         appEffs :: Creature -> (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
                 -> Maybe (Game GMVettingAction, EffectOccurrence)
@@ -184,16 +189,22 @@ endTurnFor game creature = do
 
 -- The workflow: functions that transition between types of Game.
 
+data ChooseAbilityError
+    = InconsistentError -- ^ ok this is dumb but it's basically when our creature name lookups fail
+    | NotEnoughEnergyError
+    | AbilityOnCooldownError
+    deriving (Show, Eq)
+
 chooseAbility :: Game PlayerChoosingAbility -> Ability
-              -> Maybe (Game PlayerChoosingTargets)
+              -> Either ChooseAbilityError (Game PlayerChoosingTargets)
 chooseAbility game ability =
     case game^.currentCreature of
-        Nothing -> Nothing
+        Nothing -> Left InconsistentError
         Just cc -> do
-            if (ability^.cost) > (cc^.creatureEnergy) then
-                Nothing
-            else
-                return (set state (PlayerChoosingTargets ability) game)
+            if
+                | (ability^.cost) > (cc^.creatureEnergy) -> Left NotEnoughEnergyError
+                | (member (ability^.abilityName) (cc^.cooldowns)) -> Left AbilityOnCooldownError
+                | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
 chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections

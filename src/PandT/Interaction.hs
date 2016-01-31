@@ -55,8 +55,10 @@ promptForAbility game = do
             promptForAbility game
         Just ability ->
             case chooseAbility game ability of
-                Nothing -> (liftIO (putStrLn "Couldn't use that ability!")) >> promptForAbility game
-                Just game' -> return game'
+                Left e -> do
+                    liftIO (putStrLn ("Couldn't use that ability! " ++ tshow e))
+                    promptForAbility game
+                Right game' -> return game'
 
 promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
 promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do

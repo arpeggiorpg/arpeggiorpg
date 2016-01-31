@@ -44,14 +44,14 @@ weaken :: Ability
 weaken = Ability "Weaken" (Energy 1) [weakenTEffect] (CastTime 0) (Cooldown 0)
 
 block :: Ability
-block = Ability "Block" (Energy 0) [blockTEffect] (CastTime 0) (Cooldown 0)
+block = Ability "Block" (Energy 0) [blockTEffect] (CastTime 0) (Cooldown 4)
     -- this is hella OP
     where
         blockTEffect = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf blockEffect)
         blockEffect = ApplyCondition (MkConditionDef "Blocking" (condDur 2) (MkIncomingDamageReductionC 3))
 
 sacrificialStrike :: Ability
-sacrificialStrike = Ability "Sacrificial Strike" (Energy 0) [selfTEff, targetTEff] (CastTime 0) (Cooldown 0)
+sacrificialStrike = Ability "Sacrificial Strike" (Energy 0) [selfTEff, targetTEff] (CastTime 0) (Cooldown 1)
     where
         selfTEff = SelfTargetedEffect (TargetedEffectP "(always self)" TargetSelf selfDamageEff)
         selfDamageEff = Damage 3
@@ -71,7 +71,7 @@ stab = Ability
     , _cost=Energy 1
     , _abilityEffects=[stabTargetedEffect]
     , _castTime = CastTime 0
-    , _cooldown = Cooldown 0
+    , _cooldown = Cooldown 1
     }
     where
         stabTargetedEffect =
@@ -90,7 +90,7 @@ wrath = Ability "Wrath" (Energy 1) [wrathTEffect] (CastTime 1) (Cooldown 0)
         wrathEffect = Damage 5
 
 kill :: Ability
-kill = Ability "Kill" (Energy 1) [killTargetedEffect] (CastTime 0) (Cooldown 0)
+kill = Ability "Kill" (Energy 1) [killTargetedEffect] (CastTime 0) (Cooldown 100)
     where
         killTargetedEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) killEffect
         killEffect = ApplyCondition deadDef

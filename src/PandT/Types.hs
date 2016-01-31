@@ -198,6 +198,8 @@ data Creature = Creature
     , _casting :: Maybe (Ability, Duration)
     -- ^ The ability that a creature is "casting", if it has a cast time, and the duration
     -- *reaining* in the cast time.
+    , _cooldowns :: Map Text Cooldown
+    -- ^ A map of ability names to amount of time left for that ability to cool down.
     }
     deriving (Show, Eq)
 
