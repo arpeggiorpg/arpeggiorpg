@@ -26,3 +26,6 @@ liftMaybe = MaybeT . return
 
 runForeverM :: Monad m => (a -> m a) -> a -> m ()
 runForeverM go start = go start >>= runForeverM go
+
+traceShowMessage :: Show a => String -> a -> a
+traceShowMessage message obj = trace (message ++ (show obj) ++ ": ") obj

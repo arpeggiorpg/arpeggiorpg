@@ -138,9 +138,6 @@ appTEff originCreature targetedEffect (game, combatLog) creatName = do
         applied = over (creaturesInPlay . at creatName) applyEffect' game
     return (applied, ((effect, creatName):combatLog))
 
-traceShowMessage :: Show a => String -> a -> a
-traceShowMessage message obj = trace (message ++ (show obj) ++ ": ") obj
-
 getNextCircular :: (Eq a, Show a) => a -> [a] -> a
 getNextCircular el l = go $ splitWhen (==el) l
     where
