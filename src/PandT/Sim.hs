@@ -1,21 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 
 -- | All the core simulation code for P&T. Pure functions on the data in the PandT.Types module.
--- Note: Way too many functions here use Maybe, and when game objects are inconsistent, Nothing will
--- be returned. It should be possible to get rid of pretty much all of it. Here are some ideas how:
--- A. have smart constructors and use straight-up partial functions, assuming the state is
---    consistent
--- B. use some LiquidHaskell so we can prove that those partial functions aren't really partial
--- C. use (multi-)zippers to represent things like the current creature, and creature selections.
---    i.e.,
---    1. drop Game.initiative, and make creaturesInPlay a list/zipper/multizipper, with each
---       element tagged with info about whether they're in the initiative order
---    2. Instead of having Game.currentCreatureName be a thing, the "creaturesInPlay" should be a
---       zipper with a single selected creature.
---    3. Instead of passing in a [CreatureName] with a chooseTargets, encode those selections *in*
---       the Game object as a multi-zipper on creaturesInPlay.
---   This would make creaturesInPlay a rather complicated data structure, so I'm not sure if all of
---   this is worth it, other than as an educational exercise.
+-- These functions are meant to be game-agnostic, inasmuch as the core PandT.Types model is
+-- game-agnostic (not very).
 
 module PandT.Sim where
 
@@ -77,12 +64,17 @@ applyEffect originCreature effect targetCreature = (checkDead originCreatureName
         originCreatureName = (originCreature^.creatureName)
         go Interrupt = set casting Nothing targetCreature
         go Resurrect = removeConditions _AppliedDead targetCreature
-        go (GenerateEnergy nrg) = over creatureEnergy (+ nrg) targetCreature
+        go (GenerateEnergy nrg) = over creatureEnergy (regEnergy nrg) targetCreature
         go (ApplyCondition cdef) = over conditions (applyCondition originCreatureName cdef:) targetCreature
         go (Damage amt) = applyDamage originCreature amt targetCreature
-        -- XXX TODO FIXME: don't allow overhealing
-        go (Heal amt) = over health (flip increaseHealth amt) targetCreature
+        go (Heal amt) = over health (heal targetCreature amt) targetCreature
         go (MultiEffect e1 e2) = applyEffect originCreature e2 (applyEffect originCreature e1 targetCreature)
+
+heal :: Creature -> DamageIntensity -> Health -> Health
+heal target amt oldHealth = min (increaseHealth oldHealth amt) (staminaToHealth (target^.stamina))
+
+regEnergy :: Energy -> Energy -> Energy
+regEnergy increase oldEnergy = min (oldEnergy + increase) 10
 
 applyDamage :: Creature -> DamageIntensity -> Creature -> Creature
 applyDamage originCreature amt targetCreature =
