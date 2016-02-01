@@ -21,7 +21,7 @@ module PandT.Sim where
 
 import PandT.Prelude
 import PandT.Types
-import Data.Map (insert)
+import qualified Data.Map as DM
 
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
@@ -117,7 +117,7 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
         let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> (x - (ability^.cost))) newGame
             newGame'' = case ability^.cooldown of
                             (Cooldown 0) -> newGame'
-                            n -> over (currentCreature._Just.cooldowns) (insert (ability^.abilityName) n) newGame'
+                            n -> over (currentCreature._Just.cooldowns) (insertMap (ability^.abilityName) n) newGame'
         return (newGame'', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
         appEffs :: Creature -> (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
@@ -180,9 +180,13 @@ cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
 endTurnFor :: Game a -> Creature -> Maybe Creature
 endTurnFor game creature = do
-    messedUpCreature <- foldM (tickCondition game) creature (creature^.conditions)
-    return (cleanUpConditions (decrementConditions messedUpCreature))
+    conditionsTicked <- foldM (tickCondition game) creature (creature^.conditions)
+    let cooldownsTicked = over cooldowns (DM.mapMaybe tickCooldown) conditionsTicked
+    return (cleanUpConditions (decrementConditions cooldownsTicked))
 
+tickCooldown :: Cooldown -> Maybe Cooldown
+tickCooldown (Cooldown 0) = Nothing
+tickCooldown (Cooldown n) = Just (Cooldown (n-1))
 
 -- The workflow: functions that transition between types of Game.
 
@@ -190,7 +194,7 @@ usableAbilities :: Creature -> [Ability]
 usableAbilities c = filter (offCooldown c <&&> enoughEnergy c) (c^.abilities)
 
 offCooldown :: Creature -> Ability -> Bool
-offCooldown c ab = not (member (ab^.abilityName) (c^.cooldowns))
+offCooldown c ab = notMember (ab^.abilityName) (c^.cooldowns)
 
 enoughEnergy :: Creature -> Ability -> Bool
 enoughEnergy c ab = (ab^.cost) <= (c^.creatureEnergy)

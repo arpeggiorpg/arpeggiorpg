@@ -2,6 +2,7 @@
 
 import Control.Lens
 import Control.Monad.Writer.Strict
+import Data.Either
 import Test.Tasty (defaultMain, testGroup, TestTree)
 import Test.Tasty.HUnit
 
@@ -81,6 +82,10 @@ abilityTests =
         aspyrPunched^.health @?= (Health 7)
     , testCase "Ability condition in multi-effect adds condition" $
         aspyrStabbed^.conditions @?= [appliedBleed "Radorg"]
+    , testCase "Ability on cooldown can't be used" $
+        chooseAbility stabOnCooldown stab @?= Left AbilityOnCooldownError
+    , testCase "Abilities eventually cool down" $
+        isRight (chooseAbility stabOffCooldown stab) @?= True
     ]
 
 creat, dotted, damaged, healed, deadCreature, deadTwice :: Creature
@@ -141,10 +146,14 @@ forceNextTurnIncap game =
         (Just (GSTPlayerChoosingAbility g)) -> terror ("Expected incapacitated player when moving from " ++ game^.currentCreatureName ++ " to " ++ g^.currentCreatureName)
 
 (_, _, (GSTPlayerChoosingAbility punchAccepted), punchLog) = simulateMove myGame punch "Aspyr"
+
 (_, _, (GSTPlayerChoosingAbility stabAccepted), _) = simulateMove myGame stab "Aspyr"
-afterBleedTick = forceNextTurn (forceNextTurn stabAccepted)
+afterBleedTick = forceNextTurn stabAccepted
 (_, _, (GSTPlayerIncapacitated killAccepted), _) = simulateMove myGame kill "Aspyr"
-afterBleedEnd = forceNextTurn (forceNextTurn afterBleedTick)
+stabOnCooldown = forceNextTurn afterBleedTick
+afterBleedEnd = forceNextTurn (forceNextTurn stabOnCooldown)
+stabOffCooldown = forceNextTurn afterBleedEnd
+
 (_, _, (GSTPlayerIncapacitated bonkAccepted), _) = simulateMove myGame bonk "Aspyr"
 afterBonk = forceNextTurn bonkAccepted
 
