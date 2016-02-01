@@ -103,7 +103,7 @@ simulateMove :: Game PlayerChoosingAbility -> Ability -> CreatureName
                  GameStartTurn,
                  [CombatEvent])
 simulateMove game ability target =
-    let (Just targeting) = chooseAbility game ability
+    let (Right targeting) = chooseAbility game ability
         vetting = case ability^.abilityEffects of
             [(SingleTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSingleTargetedEffect target firstTEffect]
             [(SelfTargetedEffect firstTEffect)] -> chooseTargets targeting [SelectedSelfTargetedEffect firstTEffect]
@@ -140,12 +140,12 @@ forceNextTurnIncap game =
         (Just (GSTPlayerIncapacitated g)) -> g
         (Just (GSTPlayerChoosingAbility g)) -> terror ("Expected incapacitated player when moving from " ++ game^.currentCreatureName ++ " to " ++ g^.currentCreatureName)
 
-(punchTargeting, punchVetting, (GSTPlayerChoosingAbility punchAccepted), punchLog) = simulateMove myGame punch "Aspyr"
-(stabTargeting, stabVetting, (GSTPlayerChoosingAbility stabAccepted), stabLog) = simulateMove myGame stab "Aspyr"
+(_, _, (GSTPlayerChoosingAbility punchAccepted), punchLog) = simulateMove myGame punch "Aspyr"
+(_, _, (GSTPlayerChoosingAbility stabAccepted), _) = simulateMove myGame stab "Aspyr"
 afterBleedTick = forceNextTurn (forceNextTurn stabAccepted)
-(killTargeting, killVetting, (GSTPlayerIncapacitated killAccepted), killLog) = simulateMove myGame kill "Aspyr"
+(_, _, (GSTPlayerIncapacitated killAccepted), _) = simulateMove myGame kill "Aspyr"
 afterBleedEnd = forceNextTurn (forceNextTurn afterBleedTick)
-(bonkTargeting, bonkVetting, (GSTPlayerIncapacitated bonkAccepted), bonkLog) = simulateMove myGame bonk "Aspyr"
+(_, _, (GSTPlayerIncapacitated bonkAccepted), _) = simulateMove myGame bonk "Aspyr"
 afterBonk = forceNextTurn bonkAccepted
 
 (_, _, (GSTPlayerChoosingAbility blAccepted), _) = simulateMove myGame bloodlust "Aspyr"
