@@ -46,7 +46,7 @@ promptForAbility :: Game PlayerChoosingAbility -> MaybeT IO (Game PlayerChoosing
 promptForAbility game = do
     creature <- liftMaybe (game^.currentCreature)
     putStr "Abilities: "
-    forM_ (creature^.abilities) (\ab -> putStr $ (ab^.abilityName) ++ " ")
+    forM_ (usableAbilities creature) (\ab -> putStr $ (ab^.abilityName) ++ " ")
     putStr "\nEnter ability name> "
     abName <- hGetLine stdin
     case lookupAbility creature abName of

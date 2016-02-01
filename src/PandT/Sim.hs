@@ -186,6 +186,15 @@ endTurnFor game creature = do
 
 -- The workflow: functions that transition between types of Game.
 
+usableAbilities :: Creature -> [Ability]
+usableAbilities c = filter (offCooldown c <&&> enoughEnergy c) (c^.abilities)
+
+offCooldown :: Creature -> Ability -> Bool
+offCooldown c ab = not (member (ab^.abilityName) (c^.cooldowns))
+
+enoughEnergy :: Creature -> Ability -> Bool
+enoughEnergy c ab = (ab^.cost) <= (c^.creatureEnergy)
+
 data ChooseAbilityError
     = InconsistentError -- ^ ok this is dumb but it's basically when our creature name lookups fail
     | NotEnoughEnergyError
@@ -199,8 +208,8 @@ chooseAbility game ability =
         Nothing -> Left InconsistentError
         Just cc -> do
             if
-                | (ability^.cost) > (cc^.creatureEnergy) -> Left NotEnoughEnergyError
-                | (member (ability^.abilityName) (cc^.cooldowns)) -> Left AbilityOnCooldownError
+                | not (enoughEnergy cc ability) -> Left NotEnoughEnergyError
+                | not (offCooldown cc ability) -> Left AbilityOnCooldownError
                 | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction

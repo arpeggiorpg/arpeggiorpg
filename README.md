@@ -23,6 +23,7 @@ tests (which use a lot of partial functions).
 Also grep the code for XXX, FIXME, or TODO.
 
 - nothing is done with the combat log from recurring effects
+- disallow overhealing / overgenerating energy
 - creature construction?
 - GM actions
   - during action vetting:
@@ -39,7 +40,6 @@ Also grep the code for XXX, FIXME, or TODO.
   - should be a simple auto-deriving of FromJSON/ToJSON
   - except, you know, backwards compatibility
 - Implement a basic web UI (GHCJS oh boooy)
-- Think more about damage/healing severity
 - Advanced combat mechanics, in rough order of interest:
   - combat log should show actual damage, not ability damage
   - Dispels! (how to target an effect? Or maybe it should be chosen for you?)
