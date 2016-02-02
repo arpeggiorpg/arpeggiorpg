@@ -26,9 +26,10 @@ tests (which use a lot of partial functions).
 
 Also grep the code for XXX, FIXME, or TODO.
 
+- fix casting (see promptForCasting and promptForFinishingCast in Interaction.hs)
+- combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
 - add undo/game history
-- creature construction?
 - GM actions
   - during action vetting:
     - modify targets
@@ -45,15 +46,13 @@ Also grep the code for XXX, FIXME, or TODO.
   - except, you know, backwards compatibility
 - Implement a basic web UI (GHCJS oh boooy)
 - Advanced combat mechanics, in rough order of interest:
-  - casting, for real (see promptForCasting and promptForFinishingCast in Interaction.hs)
-  - combat log should show actual damage, not ability damage
-  - Dispels! (how to target an effect? Or maybe it should be chosen for you?)
+  - random ability activation
   - damage absorption (temporary hitpoints)
-  - cooldown
+  - Dispels! (how to target an effect? Or maybe it should be chosen for you?)
+  - creature construction?
   - stacking vs refreshing conditions
   - area effects with duration
-  - randomization
-  - crits
+  - randomization/crits (but still allow entering a value, so players can roll their own dice)
   - movement / geography
   - creature visibility
 - Implement three example classes:
@@ -61,6 +60,5 @@ Also grep the code for XXX, FIXME, or TODO.
   - Mage
   - Cleric
 - Example enemies
-- Support for some sort of character progression
 - Character balance tester using generative testing to see how builds perform
   in combat vs 1/N enemies, and with 1/N allies
