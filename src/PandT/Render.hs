@@ -32,6 +32,7 @@ renderConditionCaseName = n
         n (DamageDecreaseC _) = "Damage Decrease"
         n (IncapacitatedC _)  = "Incapacitation"
         n (DeadC _) = "Death"
+        n (ActivatedAbilityC _) = "Activated Ability"
 
 renderEffectOccurrence :: EffectOccurrence -> Text
 renderEffectOccurrence = unlines . (map go)

@@ -22,7 +22,7 @@ jah = Player "Jah"
 beth = Player "Beth"
 
 allAbs :: [Ability]
-allAbs = [stab, punch, kill, bonk, wrath, soothe, block, meditate, sacrificialStrike, rebirth, pummel]
+allAbs = [stab, punch, kill, bonk, wrath, soothe, block, meditate, sacrificialStrike, rebirth, pummel, one, two]
 
 radorg, aspyr, ulsoga :: Creature
 radorg = makeCreature "Radorg" (Energy 1) (Stamina High) allAbs
@@ -107,6 +107,7 @@ promptForCasting game = do
     yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
     if yes then do
         -- NO!!!!!
+        -- XXX TODO FIXME
         error "CRAP! No! Must GM-Vet this!"
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))
@@ -116,6 +117,7 @@ promptForFinishingCast game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("Would you like to let your " ++ castingAbName ++ " fly?")
     if yes then do
+        -- XXX TODO FIXME
         error "CRAP! GM-Vet this!"
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))

@@ -21,6 +21,7 @@ newtype Health = Health {_unHealth :: Int} deriving (Show, Eq, Ord)
 newtype Player = Player Text deriving (Show, Ord, Eq)
 
 type CreatureName = Text -- XXX TODO: newype?
+type AbilityName = Text -- XXX TODO: newtype?
 type DamageIntensity = Int -- XXX TODO: newtype?
 
 data Intensity = Low | Medium | High deriving (Show, Eq, Ord)
@@ -29,11 +30,24 @@ newtype Energy = Energy {_unEnergy :: Int} deriving (Show, Eq, Ord, Enum, Num)
 makeLenses ''Health
 makeLenses ''Energy
 
+staminaToHealth :: Stamina -> Health
+staminaToHealth (Stamina High) = Health 10
+staminaToHealth (Stamina Medium) = Health 5
+staminaToHealth (Stamina Low) = Health 3
+
 data ConditionDuration -- this could have a reasonable Ord instance
     = TimedCondition Duration
     | UnlimitedDuration
     deriving (Show, Eq)
 makePrisms ''ConditionDuration
+
+
+-- CONDITIONS
+
+-- so this section of the code is kind of a mess.
+-- A lot of repitition: *T types, ConditionC cases, AppliedC cases, and patterns.
+-- It's also a closed data type when I think it probably ought to be open.
+-- So: consider Data types a la carte.
 
 data RecurringEffectT = RecurringEffectT Effect deriving (Show, Eq)
 data DamageIncreaseT = DamageIncreaseT {_intensityIncrease :: DamageIntensity} deriving (Show, Eq)
@@ -41,6 +55,7 @@ data DamageDecreaseT = DamageDecreaseT {_intensityDecrease :: DamageIntensity} d
 data IncomingDamageReductionT = IncomingDamageReductionT {_intensityReduce :: DamageIntensity} deriving (Show, Eq)
 data IncapacitatedT = IncapacitatedT deriving (Show, Eq)
 data DeadT = DeadT deriving (Show, Eq)
+data ActivatedAbilityT = ActivatedAbilityT {_activatedAbilityName :: AbilityName} deriving (Show, Eq)
 
 data ConditionC
     = RecurringEffectC RecurringEffectT
@@ -49,6 +64,7 @@ data ConditionC
     | DamageDecreaseC DamageDecreaseT
     | IncapacitatedC IncapacitatedT
     | DeadC DeadT
+    | ActivatedAbilityC ActivatedAbilityT
     deriving (Show, Eq)
 
 pattern MkRecurringEffectC effect = RecurringEffectC (RecurringEffectT effect)
@@ -57,6 +73,7 @@ pattern MkDamageIncreaseC intensity = DamageIncreaseC (DamageIncreaseT intensity
 pattern MkDamageDecreaseC intensity = DamageDecreaseC (DamageDecreaseT intensity)
 pattern MkIncapacitatedC = IncapacitatedC IncapacitatedT
 pattern MkDeadC = DeadC DeadT
+pattern MkActivatedAbilityC name = ActivatedAbilityC (ActivatedAbilityT name)
 
 data ConditionMeta = ConditionMeta
     { _conditionMetaName :: Text
@@ -81,6 +98,7 @@ data AppliedC
     | AppliedDamageDecrease DamageDecreaseT
     | AppliedIncapacitated IncapacitatedT
     | AppliedDead DeadT
+    | AppliedActivatedAbility ActivatedAbilityT
     deriving (Show, Eq)
 
 data AppliedCondition = AppliedCondition
@@ -108,6 +126,7 @@ makePrisms ''Effect
 makeLenses ''AppliedCondition
 makeLenses ''ConditionMeta
 makeLenses ''ConditionDef
+makeLenses ''ActivatedAbilityT
 
 class HasConditionMeta a where
     conditionName :: Lens' a Text
@@ -153,9 +172,9 @@ data TargetedEffectP a = TargetedEffectP
     } deriving (Show, Eq)
 
 data TargetedEffect
-    = SingleTargetedEffect (TargetedEffectP SingleTarget)
-    | MultiTargetedEffect (TargetedEffectP MultiTarget)
-    | SelfTargetedEffect (TargetedEffectP SelfTarget)
+    = SingleTargetedEffect {_singleTE :: (TargetedEffectP SingleTarget)}
+    | MultiTargetedEffect {_multiTE :: (TargetedEffectP MultiTarget)}
+    | SelfTargetedEffect {_selfTE :: (TargetedEffectP SelfTarget)}
     deriving (Show, Eq)
 
 data SelectedTargetedEffect
@@ -173,15 +192,19 @@ makePrisms ''SelectedTargetedEffect
 -- | Something that a creature can do. (contrast with Effects, which are something that can *happen*
 -- to a creature or the world)
 data Ability = Ability
-    { _abilityName :: Text
+    { _abilityName :: AbilityName
     , _cost :: Energy
     , _abilityEffects :: [TargetedEffect]
     , _castTime :: CastTime
     , _cooldown :: Cooldown
+    , _abilityRequiresActivation :: Bool
     }
     deriving (Show, Eq)
 
 makeLenses ''Ability
+
+makeAbility :: AbilityName -> Energy -> [TargetedEffect] -> CastTime -> Cooldown -> Ability
+makeAbility n e ts ct cd = Ability n e ts ct cd False
 
 data Creature = Creature
     { _creatureName :: CreatureName
@@ -198,12 +221,23 @@ data Creature = Creature
     , _casting :: Maybe (Ability, Duration)
     -- ^ The ability that a creature is "casting", if it has a cast time, and the duration
     -- *reaining* in the cast time.
-    , _cooldowns :: Map Text Cooldown
+    , _cooldowns :: Map AbilityName Cooldown
     -- ^ A map of ability names to amount of time left for that ability to cool down.
     }
     deriving (Show, Eq)
 
 makeLenses ''Creature
+
+makeCreature :: CreatureName -> Energy -> Stamina -> [Ability] -> Creature
+makeCreature cname nrg sta creatAbilities = Creature
+    { _creatureName=cname
+    , _conditions=[]
+    , _creatureEnergy=nrg
+    , _stamina=sta
+    , _health=staminaToHealth sta
+    , _abilities=creatAbilities
+    , _casting=Nothing
+    , _cooldowns=mapFromList []}
 
 -- | mkGame -- Smart constructor for Games
 -- What can this help with?

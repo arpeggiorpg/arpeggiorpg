@@ -45,6 +45,7 @@ Also grep the code for XXX, FIXME, or TODO.
   - except, you know, backwards compatibility
 - Implement a basic web UI (GHCJS oh boooy)
 - Advanced combat mechanics, in rough order of interest:
+  - casting, for real (see promptForCasting and promptForFinishingCast in Interaction.hs)
   - combat log should show actual damage, not ability damage
   - Dispels! (how to target an effect? Or maybe it should be chosen for you?)
   - damage absorption (temporary hitpoints)

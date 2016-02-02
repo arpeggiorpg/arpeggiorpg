@@ -13,27 +13,11 @@ import qualified Data.Map as DM
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
 
-staminaToHealth :: Stamina -> Health
-staminaToHealth (Stamina High) = Health 10
-staminaToHealth (Stamina Medium) = Health 5
-staminaToHealth (Stamina Low) = Health 3
-
 decreaseHealth :: Health -> DamageIntensity -> Health
 decreaseHealth (Health healthVal) dmg = Health (healthVal -  dmg)
 
 increaseHealth :: Health -> DamageIntensity -> Health
 increaseHealth (Health healthVal) dmg = Health (healthVal + dmg)
-
-makeCreature :: CreatureName -> Energy -> Stamina -> [Ability] -> Creature
-makeCreature cname nrg sta creatAbilities = Creature
-    { _creatureName=cname
-    , _conditions=[]
-    , _creatureEnergy=nrg
-    , _stamina=sta
-    , _health=staminaToHealth sta
-    , _abilities=creatAbilities
-    , _casting=Nothing
-    , _cooldowns=mapFromList []}
 
 deadDef :: ConditionDef
 deadDef = MkConditionDef "Dead" UnlimitedDuration MkDeadC
@@ -54,6 +38,7 @@ applyConditionC (DamageDecreaseC dd) = AppliedDamageDecrease dd
 applyConditionC (IncomingDamageReductionC da) = AppliedIncomingDamageReduction da
 applyConditionC (IncapacitatedC i) = AppliedIncapacitated i
 applyConditionC (DeadC d) = AppliedDead d
+applyConditionC (ActivatedAbilityC ab) = AppliedActivatedAbility ab
 
 applyCondition :: CreatureName -> ConditionDef -> AppliedCondition
 applyCondition originCreatureName cd = AppliedCondition originCreatureName (cd^.conditionDuration) (cd^.conditionDefMeta) (applyConditionC (cd^.conditionDefC))
@@ -119,7 +104,8 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
         appEffs originCreature gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
             = foldM (appTEff originCreature targetedEffect) gameAndLog creatureNames
         appEffs originCreature gameAndLog (SelectedSelfTargetedEffect targetedEffect)
-            -- XXX FIXME TODO: I'm passing the creature name when I already have the Creature
+            -- XXX FIXME TODO: I'm passing the creature name when I already have the Creature: maybe
+            -- appTEff should take a Creature instead
             = foldM (appTEff originCreature targetedEffect) gameAndLog [(originCreature^.creatureName)]
 
 appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
@@ -183,7 +169,7 @@ tickCooldown (Cooldown n) = Just (Cooldown (n-1))
 -- The workflow: functions that transition between types of Game.
 
 usableAbilities :: Creature -> [Ability]
-usableAbilities c = filter (offCooldown c <&&> enoughEnergy c) (c^.abilities)
+usableAbilities c = filter (offCooldown c <&&> enoughEnergy c <&&> abilityActive c) (c^.abilities)
 
 offCooldown :: Creature -> Ability -> Bool
 offCooldown c ab = notMember (ab^.abilityName) (c^.cooldowns)
@@ -191,10 +177,17 @@ offCooldown c ab = notMember (ab^.abilityName) (c^.cooldowns)
 enoughEnergy :: Creature -> Ability -> Bool
 enoughEnergy c ab = (ab^.cost) <= (c^.creatureEnergy)
 
+abilityActive :: Creature -> Ability -> Bool
+abilityActive c ab = if ab^.abilityRequiresActivation
+    then hasCondition (_AppliedActivatedAbility.activatedAbilityName.filtered (== ab^.abilityName)) c
+    else True
+
+
 data ChooseAbilityError
     = InconsistentError -- ^ ok this is dumb but it's basically when our creature name lookups fail
     | NotEnoughEnergyError
     | AbilityOnCooldownError
+    | AbilityRequiresActivation
     deriving (Show, Eq)
 
 chooseAbility :: Game PlayerChoosingAbility -> Ability
@@ -206,6 +199,7 @@ chooseAbility game ability =
             if
                 | not (enoughEnergy cc ability) -> Left NotEnoughEnergyError
                 | not (offCooldown cc ability) -> Left AbilityOnCooldownError
+                | not (abilityActive cc ability) -> Left AbilityRequiresActivation
                 | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
