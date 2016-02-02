@@ -1,7 +1,11 @@
 # Phone-and-Tablet Roleplaying Game
 
-This is a project to implement a from-scratch tabletop roleplaying game that
-uses electronic modeling for the boring parts of game simulation.
+This is a project to implement a somewhat general game simulation library for turn-based tabletop
+games.
+
+# License
+
+MIT-licensed: http://opensource.org/licenses/MIT
 
 # Building/testing/etc
 
@@ -18,7 +22,7 @@ To run the tests:
 If you make changes to the code, I recommend using --pedantic to run the builds, except for the
 tests (which use a lot of partial functions).
 
-# Roadmap
+# TODO
 
 Also grep the code for XXX, FIXME, or TODO.
 
@@ -51,11 +55,11 @@ Also grep the code for XXX, FIXME, or TODO.
   - crits
   - movement / geography
   - creature visibility
-- Design three classes:
+- Implement three example classes:
   - Warrior
   - Mage
   - Cleric
-- Design a bunch of enemies
-- Implement a progression system?
+- Example enemies
+- Support for some sort of character progression
 - Character balance tester using generative testing to see how builds perform
   in combat vs 1/N enemies, and with 1/N allies

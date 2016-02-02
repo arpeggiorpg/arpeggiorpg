@@ -3,12 +3,11 @@ version:             0.1.0.0
 synopsis:            Phone-and-Tablet Roleplaying Game
 description:         Please see README.md
 homepage:            http://github.com/radix/pandt#readme
-license:             AllRightsReserved
-license-file:        LICENSE
+license:             MIT
 author:              Christopher Armstrong
 maintainer:          radix@twistedmatrix.com
-copyright:           all rights reserved
-category:            ???
+copyright:           2016 Christopher Armstrong
+category:            Games
 build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
