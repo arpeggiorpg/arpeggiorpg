@@ -6,6 +6,9 @@ import Data.Either
 import Test.Tasty (defaultMain, testGroup, TestTree)
 import Test.Tasty.HUnit
 
+import Math.Geometry.Grid.Octagonal (UnboundedOctGrid(..))
+import Math.Geometry.GridMap.Lazy (lazyGridMapIndexed)
+
 import PandT.Prelude
 import PandT.Types
 import PandT.Abilities
@@ -131,6 +134,7 @@ myGame = Game
     , _currentCreatureName="Radorg"
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr), ("Ulsoga", ulsoga)]
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
+    , _gameGeo=lazyGridMapIndexed UnboundedOctGrid []
     }
 
 forceNextTurn :: Game a -> Game PlayerChoosingAbility

@@ -23,6 +23,7 @@ library
   build-depends:      base-noprelude
                     , classy-prelude
                     , containers
+                    , grid
                     , interpolate
                     , lens
                     , mtl
@@ -47,6 +48,7 @@ test-suite pandt-test
   main-is:             Spec.hs
   build-depends:       base-noprelude
                      , classy-prelude
+                     , grid
                      , HUnit
                      , lens
                      , mtl

@@ -29,7 +29,6 @@ Also grep the code for XXX, FIXME, or TODO.
 - fix casting (see promptForCasting and promptForFinishingCast in Interaction.hs)
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
-- add undo/game history
 - GM actions
   - during action vetting:
     - modify targets
@@ -37,6 +36,10 @@ Also grep the code for XXX, FIXME, or TODO.
   - add/remove conditions
   - add creature (from... what?)
   - remove creature (make sure to remove all references!)
+  - undo/game history
+  - ability to revert ANY effect/ability/condition in history, reversing its effect on the current
+    state of the game. Imagine being able to click "x" next to any previous move in
+    Hearthstone-style History UI.
 - Implement a basic text UI
   - allow skipping turn
   - check if targets exist
@@ -62,3 +65,11 @@ Also grep the code for XXX, FIXME, or TODO.
 - Example enemies
 - Character balance tester using generative testing to see how builds perform
   in combat vs 1/N enemies, and with 1/N allies
+- Geography
+  - Represent geography in Game
+  - Turn phase when players can move
+  - Conditions which trigger an effect when the target moves
+  - Abilities that move the caster to a location (in a straight line? within a range?)
+  - Abilities that move a target to a location (in a straight line? Within a range?)
+  - How to implement Swapblast???
+  - Abilities that allow movement vs abilities that instantly move

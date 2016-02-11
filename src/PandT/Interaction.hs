@@ -15,6 +15,9 @@ import PandT.Types
 import PandT.Abilities
 import PandT.Render
 import PandT.Sim
+import Math.Geometry.Grid.Octagonal (UnboundedOctGrid(..))
+import Math.Geometry.GridMap.Lazy (lazyGridMapIndexed)
+
 
 chris, jah, beth :: Player
 chris = Player "Chris"
@@ -36,6 +39,7 @@ myGame = Game
     , _currentCreatureName="Radorg"
     , _creaturesInPlay=mapFromList [("Radorg", radorg), ("Aspyr", aspyr), ("Ulsoga", ulsoga)]
     , _initiative=["Radorg", "Aspyr", "Ulsoga"]
+    , _gameGeo=lazyGridMapIndexed UnboundedOctGrid [((0,0), "Radorg"), ((0,1), "Aspyr"), ((1,0), "Ulsoga")]
     }
 
 lookupAbility :: Creature -> Text -> Maybe Ability

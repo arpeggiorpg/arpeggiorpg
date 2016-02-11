@@ -11,6 +11,9 @@ module PandT.Types where
 
 import PandT.Prelude
 
+import Math.Geometry.Grid.Octagonal (UnboundedOctGrid)
+import Math.Geometry.GridMap.Lazy (LGridMap)
+
 newtype Stamina = Stamina Intensity deriving (Show, Eq, Ord)
 newtype Range = Range Int deriving (Show, Eq, Ord)
 newtype Radius = Radius Int deriving (Show, Eq, Ord)
@@ -254,6 +257,8 @@ data Game status = Game
     , _currentCreatureName :: CreatureName
     , _creaturesInPlay :: Map CreatureName Creature
     , _initiative :: [CreatureName]
+    , _gameGeo :: LGridMap UnboundedOctGrid CreatureName
+    -- ^ Perhaps we should parameterize the grid type but eh
     }
     deriving (Show, Eq)
 

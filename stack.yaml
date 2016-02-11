@@ -6,6 +6,10 @@ resolver: lts-5.1
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
+- extra-dep: true
+  location:
+    git: git@github.com:radix/grid.git
+    commit: 433fb0cf6c8f8b50e7afeedc7561d35f2f31ab15
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: []
