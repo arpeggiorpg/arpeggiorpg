@@ -48,7 +48,7 @@ renderEffectOccurrence = unlines . (map go)
 renderCombatEvent :: CombatEvent -> Text
 renderCombatEvent (AbilityUsed abil source occurrences) =
     [i|### #{source} used #{abil^.abilityName} ###\n#{renderEffectOccurrence occurrences}|]
-renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn stared."
+renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn started."
 renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
 renderCombatEvent (RecurringEffectOccurred source target occurrences) =
     source ++ "'s recurring effect ticked on " ++ target ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
