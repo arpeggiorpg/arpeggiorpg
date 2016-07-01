@@ -27,10 +27,11 @@ library
                     , interpolate
                     , lens
                     , mtl
+                    , template-haskell
                     , text
                     , transformers
   default-language:    Haskell2010
-  default-extensions: NoImplicitPrelude, OverloadedStrings, GADTs, MultiWayIf
+  default-extensions: NoImplicitPrelude, OverloadedStrings, GADTs, MultiWayIf, QuasiQuotes
 
 executable pandt-exe
   hs-source-dirs:      app

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
 -- we should just be serializing data to JSON and have the client render it, but some bits might
@@ -7,11 +7,8 @@
 -- But we'll need to generate HTML-ish stuff instead of just plain Text.
 
 module PandT.Render where
-
-import Data.String.Interpolate.IsString (i)
-
-import PandT.Prelude
-import PandT.Types
+import           PandT.Prelude
+import           PandT.Types
 
 
 renderConditionDef :: ConditionDef -> Text
@@ -19,11 +16,11 @@ renderConditionDef (ConditionDef meta condc) =
     let cName = meta^.conditionName
         cType = renderConditionCaseName condc
         dur = renderConditionDuration (meta^.conditionDuration)
-    in [i|#{cName} (#{cType}, #{dur})|]
+    in [ui|#{cName} (#{cType}, #{dur})|]
 
 renderConditionDuration :: ConditionDuration -> Text
 renderConditionDuration UnlimitedDuration = "unlimited"
-renderConditionDuration (TimedCondition (Duration n)) = (tshow n) ++ " rounds"
+renderConditionDuration (TimedCondition (Duration n)) = [ui|#{n} rounds|]
 
 renderConditionCaseName :: ConditionC -> Text
 renderConditionCaseName = n
@@ -37,19 +34,21 @@ renderConditionCaseName = n
         n (ActivatedAbilityC _) = "Activated Ability"
 
 renderEffectOccurrence :: EffectOccurrence -> Text
-renderEffectOccurrence = unlines . (map go)
+renderEffectOccurrence = unlines . map go
     where
-        go (Interrupt, cname) = [i|- interrupted #{cname}|]
-        go ((Heal int), cname) = [i|- healed #{cname} for #{int}|]
-        go ((Damage int), cname) = [i|- damaged #{cname} for #{int}|]
-        go ((GenerateEnergy nrg), cname) = [i|- generated #{nrg^.unEnergy} energy for #{cname}|]
-        go (Resurrect, cname) = [i|- resurrected #{cname}|]
-        go ((MultiEffect eff1 eff2), cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
-        go ((ApplyCondition cdef), cname) = [i|- applied condition #{renderConditionDef cdef} to #{cname}|]
+        go (Interrupt, cname) = [ui|- interrupted #{cname}|]
+        go (Heal int, cname) = [ui|- healed #{cname} for #{int}|]
+        go (Damage int, cname) = [ui|- damaged #{cname} for #{int}|]
+        go (GenerateEnergy nrg, cname) = [ui|- generated #{nrg^.unEnergy} energy for #{cname}|]
+        go (Resurrect, cname) = [ui|- resurrected #{cname}|]
+        go (MultiEffect eff1 eff2, cname) = renderEffectOccurrence [(eff1, cname), (eff2, cname)]
+        go (ApplyCondition cdef, cname) = [ui|- applied condition #{renderConditionDef cdef} to #{cname}|]
 
 renderCombatEvent :: CombatEvent -> Text
 renderCombatEvent (AbilityUsed abil source occurrences) =
-    [i|### #{source} used #{abil^.abilityName} ###\n#{renderEffectOccurrence occurrences}|]
+    [ui|
+        ### #{source} used #{abil^.abilityName} ###
+        #{renderEffectOccurrence occurrences}|]
 renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn started."
 renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
 renderCombatEvent (RecurringEffectOccurred source target occurrences) =
@@ -84,8 +83,8 @@ renderCreatureStatus creature =
         castSumm = case creature^.casting of
             Nothing -> ""
             Just (ability, (Duration duration)) ->
-                [i|(casting #{ability^.abilityName} for #{tshow duration} more rounds)|]
-        line = [i|#{creature^.creatureName} (#{hp} HP, #{creature^.creatureEnergy.unEnergy} NRG) #{castSumm} #{conds}|]
+                [ui|(casting #{ability^.abilityName} for #{tshow duration} more rounds)|]
+        line = [ui|#{creature^.creatureName} (#{hp} HP, #{creature^.creatureEnergy.unEnergy} NRG) #{castSumm} #{conds}|]
 
 renderAppliedCondition :: AppliedCondition -> Text
 renderAppliedCondition (AppliedCondition originCreatureName duration meta _) =
@@ -105,7 +104,7 @@ renderInitiative game
 
 render :: RenderState a => Game a -> Text
 render game@(Game {..}) = unlines
-    [ [i|# #{_currentCreatureName}'s turn|]
+    [ [ui|# #{_currentCreatureName}'s turn|]
     , renderState _state
     , renderInitiative game
     ]
