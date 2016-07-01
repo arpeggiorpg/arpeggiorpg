@@ -3,6 +3,8 @@
 -- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
 -- we should just be serializing data to JSON and have the client render it, but some bits might
 -- remain.
+-- Except... the client will be implemented in GHCJS, probably, so maybe we will need to keep this.
+-- But we'll need to generate HTML-ish stuff instead of just plain Text.
 
 module PandT.Render where
 
@@ -14,9 +16,9 @@ import PandT.Types
 
 renderConditionDef :: ConditionDef -> Text
 renderConditionDef (ConditionDef meta condc) =
-    let cName=meta^.conditionName
-        cType=renderConditionCaseName condc
-        dur=renderConditionDuration (meta^.conditionDuration)
+    let cName = meta^.conditionName
+        cType = renderConditionCaseName condc
+        dur = renderConditionDuration (meta^.conditionDuration)
     in [i|#{cName} (#{cType}, #{dur})|]
 
 renderConditionDuration :: ConditionDuration -> Text

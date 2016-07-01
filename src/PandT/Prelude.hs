@@ -10,15 +10,6 @@ import Control.Lens as PandT.Prelude (
     )
 import Control.Monad.Trans.Maybe (MaybeT(..))
 
-
-
--- TBD in ClassyPrelude
-(<||>) :: Applicative f => f Bool -> f Bool -> f Bool
-(<||>) = liftA2 (||)
-
-(<&&>) :: Applicative f => f Bool -> f Bool -> f Bool
-(<&&>) = liftA2 (&&)
-
 -- The "why do I have to define these myself" functions
 
 liftMaybe :: Monad m => Maybe a -> MaybeT m a
