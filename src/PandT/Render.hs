@@ -49,13 +49,15 @@ renderCombatEvent (AbilityUsed abil source occurrences) =
     [ui|
         ### #{source} used #{abil^.abilityName} ###
         #{renderEffectOccurrence occurrences}|]
-renderCombatEvent (CreatureTurnStarted name) = name ++ "'s turn started."
-renderCombatEvent (AbilityStartCast cname ab) = cname ++ " started casting " ++ (ab^.abilityName) ++ "."
+renderCombatEvent (CreatureTurnStarted name) = [ui|#{name}'s turn started|]
+renderCombatEvent (AbilityStartCast cname ab) = [ui|#{cname} started casting #{ab^.abilityName}.|]
 renderCombatEvent (RecurringEffectOccurred source target occurrences) =
-    source ++ "'s recurring effect ticked on " ++ target ++ ", causing:\n" ++ (renderEffectOccurrence occurrences) ++ "."
-renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = creatName ++ " is incapacitated."
-renderCombatEvent (SkippedTurn creatName) = creatName ++ " skipped their turn."
-renderCombatEvent (CanceledCast creatName ability) = creatName ++ " stopped casting " ++ (ability^.abilityName)
+    [ui|
+        #{source}'s recurring effect ticked on #{target}, causing:
+        #{renderEffectOccurrence occurrences}.|]
+renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = [ui|#{creatName} is incapacitated.|]
+renderCombatEvent (SkippedTurn creatName) = [ui|#{creatName} skipped their turn.|]
+renderCombatEvent (CanceledCast creatName ability) = [ui|#{creatName} stopped casting #{ability^.abilityName}|]
 
 class RenderState a where
     renderState :: a -> Text
@@ -65,9 +67,9 @@ instance RenderState PlayerChoosingAbility where
 instance RenderState PlayerIncapacitated where
     renderState PlayerIncapacitated = "Incapacitated"
 instance RenderState PlayerChoosingTargets where
-    renderState (PlayerChoosingTargets ability) = "Choosing targets for " ++ _abilityName ability
+    renderState (PlayerChoosingTargets ability) = [ui|Choosing targets for #{ability^.abilityName}|]
 instance RenderState GMVettingAction where
-    renderState (GMVettingAction ability targets) = "GM vetting action for " ++ _abilityName ability ++ " -> " ++ tshow targets
+    renderState (GMVettingAction ability targets) = [ui|GM vetting action for #{ability^.abilityName} -> #{targets}|]
 instance RenderState PlayerCasting where
     renderState PlayerCasting = "Casting"
 instance RenderState PlayerFinishingCast where
@@ -88,8 +90,7 @@ renderCreatureStatus creature =
 
 renderAppliedCondition :: AppliedCondition -> Text
 renderAppliedCondition (AppliedCondition originCreatureName duration meta _) =
-    originCreatureName ++ "'s " ++ (meta^.conditionName) ++ " (" ++ (renderConditionDuration duration) ++ ")"
-
+    [ui|#{originCreatureName}'s #{meta^.conditionName} (#{renderConditionDuration duration})|]
 
 renderInitiative :: Game a -> Text
 renderInitiative game
