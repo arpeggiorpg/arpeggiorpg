@@ -4,16 +4,6 @@
 -- These functions are meant to be game-agnostic, inasmuch as the core PandT.Types model is
 -- game-agnostic (not very).
 
--- Consider:
-
--- - instead of having (hypothetical)
---     executeRound :: EffectsAndConditions -> GameState -> ([CombatEvent], GameState)
---   do
---    calculateDelta :: EffectsAndConditions -> GameState -> [CombatEvent]
---   and then separate
---     executeRound :: [CombatEvent] -> GameState -> GameState
---     renderDelta :: [CombatEvent] -> Text
-
 module PandT.Sim where
 
 import PandT.Prelude
@@ -94,9 +84,7 @@ applyAbility game@Game {_state=GMVettingAction ability _} =
                 newGame = set (currentCreatureLens._Just.casting) (Just (ability, Duration timeLeft)) game
             return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
 
-applyAbilityEffects
-    :: Game GMVettingAction
-    -> Maybe (Game GMVettingAction, CombatEvent)
+applyAbilityEffects :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
 applyAbilityEffects game@Game {_state=GMVettingAction ability selections}
     = do
         originCreature <- game^.currentCreature
@@ -272,14 +260,8 @@ acceptAction = ignoreLog . acceptAction_
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game = set state PlayerChoosingAbility game
 
+-- | A class of game states that can be canceled.
 class CancelCast a where
-    -- cancelCast :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
-    -- cancelCast game = do
-    --     ability <- lift (game^?currentCreature._Just.casting._Just._1)
-    --     tell ([CanceledCast (game^.currentCreatureName) ability])
-    --     return (set
-    --     nextTurn_ game
-
     cancelCast :: Game a -> Game PlayerChoosingAbility
     cancelCast game =
         set state PlayerChoosingAbility $

@@ -1,8 +1,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 
--- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
--- we should be rendering these objects as HTML, not text. The objects will be serialized over an
--- HTTP connection as JSON and GHCJS on the client side will take them to HTML.
+-- | Text renderers for stuff that needs rendered.
+
+-- TODO: we should be rendering these objects as HTML, not text. The objects will be serialized over
+--       an HTTP connection as JSON and GHCJS on the client side will take them to HTML.
 
 module PandT.Render where
 import           PandT.Prelude
@@ -43,19 +44,18 @@ renderEffectOccurrence = unlines . map go
         go (ApplyCondition cdef, cname) = [ui|- applied condition #{renderConditionDef cdef} to #{cname}|]
 
 renderCombatEvent :: CombatEvent -> Text
-renderCombatEvent (AbilityUsed abil source occurrences) =
-    [ui|
+renderCombatEvent = \case
+    AbilityUsed abil source occurrences -> [ui|
         ### #{source} used #{abil^.abilityName} ###
         #{renderEffectOccurrence occurrences}|]
-renderCombatEvent (CreatureTurnStarted name) = [ui|#{name}'s turn started|]
-renderCombatEvent (AbilityStartCast cname ab) = [ui|#{cname} started casting #{ab^.abilityName}.|]
-renderCombatEvent (RecurringEffectOccurred source target occurrences) =
-    [ui|
+    CreatureTurnStarted name -> [ui|#{name}'s turn started|]
+    AbilityStartCast cname ab -> [ui|#{cname} started casting #{ab^.abilityName}.|]
+    RecurringEffectOccurred source target occurrences -> [ui|
         #{source}'s recurring effect ticked on #{target}, causing:
         #{renderEffectOccurrence occurrences}.|]
-renderCombatEvent (SkippedIncapacitatedCreatureTurn creatName) = [ui|#{creatName} is incapacitated.|]
-renderCombatEvent (SkippedTurn creatName) = [ui|#{creatName} skipped their turn.|]
-renderCombatEvent (CanceledCast creatName ability) = [ui|#{creatName} stopped casting #{ability^.abilityName}|]
+    SkippedIncapacitatedCreatureTurn creatName -> [ui|#{creatName} is incapacitated.|]
+    SkippedTurn creatName -> [ui|#{creatName} skipped their turn.|]
+    CanceledCast creatName ability -> [ui|#{creatName} stopped casting #{ability^.abilityName}|]
 
 class RenderState a where
     renderState :: a -> Text
@@ -78,11 +78,11 @@ renderCreatureStatus creature =
     line
     where
         hp = creature^.health.unHealth
-        conds = concat (intersperse "; " (map renderAppliedCondition (creature^.conditions)))
+        conds = intercalate "; " (map renderAppliedCondition (creature^.conditions))
         castSumm :: Text
         castSumm = case creature^.casting of
             Nothing -> ""
-            Just (ability, (Duration duration)) ->
+            Just (ability, Duration duration) ->
                 [ui|(casting #{ability^.abilityName} for #{tshow duration} more rounds)|]
         line = [ui|#{creature^.creatureName} (#{hp} HP, #{creature^.creatureEnergy.unEnergy} NRG) #{castSumm} #{conds}|]
 
@@ -102,7 +102,7 @@ renderInitiative game
         unlines $ map rend (_initiative game)
 
 render :: RenderState a => Game a -> Text
-render game@(Game {..}) = unlines
+render game@Game {..} = unlines
     [ [ui|# #{_currentCreatureName}'s turn|]
     , renderState _state
     , renderInitiative game

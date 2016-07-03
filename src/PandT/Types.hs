@@ -215,7 +215,7 @@ data Creature = Creature
     , _creatureEnergy :: Energy
     -- ^ energy that the creature has
     , _stamina :: Stamina
-    -- ^ The stamina determines the maximum amount of health a creature can hav.
+    -- ^ The stamina determines the maximum amount of health a creature can have.
     , _health :: Health
     -- ^ *Current* health.
     , _abilities :: [Ability]
@@ -287,12 +287,17 @@ currentCreature = lens getter setter
         getter game = game^.creaturesInPlay.at (game^.currentCreatureName)
         setter game value = set (creaturesInPlay.at (game^.currentCreatureName)) value game
 
-{-
-TODO: "dynamic" damage numbers here -- we may do less or more damage than what
-is defined by the Effect, because of things like damage reduction
--}
+
 type EffectOccurrence = [(Effect, CreatureName)]
 
+{-
+| A data structure that encodes things that have happened in combat. This is used to render a log of
+events.
+
+TODO: we must encode the fully-calculated numbers in this data structure, and not simply link to the
+Effects that are being applied, in order to support dynamic damage numbers -- we may do less or more
+damage than what is defined by the Effect, because of things like damage reduction or randomization.
+-}
 data CombatEvent
     = AbilityStartCast CreatureName Ability
     | AbilityUsed
