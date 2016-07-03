@@ -1,10 +1,8 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- | Text renderers for stuff that needs rendered. Much of this should be obsolete in the long term:
--- we should just be serializing data to JSON and have the client render it, but some bits might
--- remain.
--- Except... the client will be implemented in GHCJS, probably, so maybe we will need to keep this.
--- But we'll need to generate HTML-ish stuff instead of just plain Text.
+-- we should be rendering these objects as HTML, not text. The objects will be serialized over an
+-- HTTP connection as JSON and GHCJS on the client side will take them to HTML.
 
 module PandT.Render where
 import           PandT.Prelude

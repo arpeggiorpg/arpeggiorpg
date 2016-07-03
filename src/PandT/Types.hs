@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -23,7 +22,7 @@ newtype Cooldown = Cooldown Int deriving (Show, Eq, Ord)
 newtype Health = Health {_unHealth :: Int} deriving (Show, Eq, Ord)
 newtype Player = Player Text deriving (Show, Ord, Eq)
 
-type CreatureName = Text -- XXX TODO: newype?
+type CreatureName = Text -- XXX TODO: newtype?
 type AbilityName = Text -- XXX TODO: newtype?
 type DamageIntensity = Int -- XXX TODO: newtype?
 

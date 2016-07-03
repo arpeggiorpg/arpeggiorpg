@@ -4,6 +4,16 @@
 -- These functions are meant to be game-agnostic, inasmuch as the core PandT.Types model is
 -- game-agnostic (not very).
 
+-- Consider:
+
+-- - instead of having (hypothetical)
+--     executeRound :: EffectsAndConditions -> GameState -> ([CombatEvent], GameState)
+--   do
+--    calculateDelta :: EffectsAndConditions -> GameState -> [CombatEvent]
+--   and then separate
+--     executeRound :: [CombatEvent] -> GameState -> GameState
+--     renderDelta :: [CombatEvent] -> Text
+
 module PandT.Sim where
 
 import PandT.Prelude
@@ -13,8 +23,8 @@ import qualified Data.Map as DM
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 
 
-decreaseHealth :: Health -> DamageIntensity -> Health
-decreaseHealth (Health healthVal) dmg = Health (healthVal -  dmg)
+decreaseHealth :: DamageIntensity -> Health -> Health
+decreaseHealth dmg (Health healthVal) = Health (healthVal -  dmg)
 
 increaseHealth :: Health -> DamageIntensity -> Health
 increaseHealth (Health healthVal) dmg = Health (healthVal + dmg)
@@ -28,7 +38,7 @@ applyDead killerName = applyCondition killerName deadDef
 checkDead :: CreatureName -> Creature -> Creature
 checkDead originCreatureName creat
     | hasCondition _AppliedDead creat = creat
-    | _health creat <= Health 0 = over conditions ((applyDead originCreatureName):) creat
+    | _health creat <= Health 0 = over conditions (applyDead originCreatureName :) creat
     | otherwise = creat
 
 applyConditionC :: ConditionC -> AppliedC
@@ -44,9 +54,9 @@ applyCondition :: CreatureName -> ConditionDef -> AppliedCondition
 applyCondition originCreatureName cd = AppliedCondition originCreatureName (cd^.conditionDuration) (cd^.conditionDefMeta) (applyConditionC (cd^.conditionDefC))
 
 applyEffect :: Creature -> Effect -> Creature -> Creature
-applyEffect originCreature effect targetCreature = (checkDead originCreatureName) $ go effect
+applyEffect originCreature effect targetCreature = checkDead originCreatureName $ go effect
     where
-        originCreatureName = (originCreature^.creatureName)
+        originCreatureName = originCreature^.creatureName
         go Interrupt = set casting Nothing targetCreature
         go Resurrect = removeConditions _AppliedDead targetCreature
         go (GenerateEnergy nrg) = over creatureEnergy (regEnergy nrg) targetCreature
@@ -73,25 +83,25 @@ applyDamage originCreature amt targetCreature =
         damage = amt + damageDelta
         minDamage = if damage <= 0 then 1 else damage
     in
-        over health (flip decreaseHealth minDamage) targetCreature
+        over health (decreaseHealth minDamage) targetCreature
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbility game@(Game {_state=GMVettingAction ability _}) =
+applyAbility game@Game {_state=GMVettingAction ability _} =
     case ability^.castTime of
         (CastTime 0) -> applyAbilityEffects game
         (CastTime timeLeft) -> do
             let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
-                newGame = (set (currentCreatureLens._Just.casting) (Just (ability, (Duration timeLeft))) game)
+                newGame = set (currentCreatureLens._Just.casting) (Just (ability, Duration timeLeft)) game
             return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
 
 applyAbilityEffects
     :: Game GMVettingAction
     -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
+applyAbilityEffects game@Game {_state=GMVettingAction ability selections}
     = do
         originCreature <- game^.currentCreature
         (newGame, combatLog) <- foldM (appEffs originCreature) (game, []) selections
-        let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> (x - (ability^.cost))) newGame
+        let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> x - (ability^.cost)) newGame
             newGame'' = case ability^.cooldown of
                             (Cooldown 0) -> newGame'
                             n -> over (currentCreature._Just.cooldowns) (insertMap (ability^.abilityName) n) newGame'
@@ -106,7 +116,7 @@ applyAbilityEffects game@(Game {_state=GMVettingAction ability selections})
         appEffs originCreature gameAndLog (SelectedSelfTargetedEffect targetedEffect)
             -- XXX FIXME TODO: I'm passing the creature name when I already have the Creature: maybe
             -- appTEff should take a Creature instead
-            = foldM (appTEff originCreature targetedEffect) gameAndLog [(originCreature^.creatureName)]
+            = foldM (appTEff originCreature targetedEffect) gameAndLog [originCreature^.creatureName]
 
 appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
         -> Maybe (Game GMVettingAction, EffectOccurrence)
@@ -114,7 +124,7 @@ appTEff originCreature targetedEffect (game, combatLog) creatName = do
     let effect = targetedEffect^.targetedEffectEffect
         applyEffect' = fmap (applyEffect originCreature effect)
         applied = over (creaturesInPlay . at creatName) applyEffect' game
-    return (applied, ((effect, creatName):combatLog))
+    return (applied, (effect, creatName) : combatLog)
 
 getNextCircular :: (Eq a, Show a) => a -> [a] -> a
 getNextCircular el l = go $ splitWhen (==el) l
@@ -195,7 +205,7 @@ chooseAbility :: Game PlayerChoosingAbility -> Ability
 chooseAbility game ability =
     case game^.currentCreature of
         Nothing -> Left InconsistentError
-        Just cc -> do
+        Just cc ->
             if
                 | not (enoughEnergy cc ability) -> Left NotEnoughEnergyError
                 | not (offCooldown cc ability) -> Left AbilityOnCooldownError
@@ -203,7 +213,7 @@ chooseAbility game ability =
                 | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
-chooseTargets game@(Game {_state=(PlayerChoosingTargets ability)}) selections
+chooseTargets game@Game {_state=(PlayerChoosingTargets ability)} selections
     = set state (GMVettingAction ability selections) game
 
 -- | Advance the game so it's the next creature's turn.
@@ -224,7 +234,7 @@ nextTurn_ game = do
     if
         | hasCondition _AppliedDead <||> hasCondition _AppliedIncapacitated $ nextCreature ->
             return (GSTPlayerIncapacitated (set state PlayerIncapacitated nextCreatureTurn))
-        | maybe False (> (Duration 0)) (nextCreature^?casting._Just._2) ->
+        | maybe False (> Duration 0) (nextCreature^?casting._Just._2) ->
             return (GSTPlayerCasting (set state PlayerCasting nextCreatureTurn))
         | (nextCreature^?casting._Just._2) == Just (Duration 0) ->
             return (GSTPlayerFinishingCast (set state PlayerFinishingCast nextCreatureTurn))
@@ -236,7 +246,7 @@ nextTurn :: Game a -> Maybe GameStartTurn
 nextTurn = ignoreLog . nextTurn_
 
 ignoreLog :: Monad m => WriterT w m a -> m a
-ignoreLog writer = (runWriterT writer) >>= (return . fst)
+ignoreLog writer = fst <$> runWriterT writer
 
 skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
 skipTurn_ = nextTurn_

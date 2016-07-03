@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 module PandT.Interpolate (ui) where
 
-import ClassyPrelude
-import qualified Data.String.Interpolate as Interpolate (i)
+import           ClassyPrelude
+import qualified Data.String.Interpolate      as Interpolate (i)
 import qualified Data.String.Interpolate.Util as Interpolate (unindent)
-import Language.Haskell.TH.Quote (QuasiQuoter(..))
+import           Language.Haskell.TH.Quote    (QuasiQuoter (..))
 
 ui :: QuasiQuoter
 ui = QuasiQuoter {
