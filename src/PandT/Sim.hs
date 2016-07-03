@@ -14,18 +14,7 @@
 --     executeRound :: [CombatEvent] -> GameState -> GameState
 --     renderDelta :: [CombatEvent] -> Text
 
-module PandT.Sim
-    ( acceptAction_
-    , cancelCast
-    , chooseAbility
-    , chooseTargets
-    , deadDef
-    , denyAction
-    , makeCreature
-    , skipIncapacitatedPlayer
-    , usableAbilities
-    )
-where
+module PandT.Sim where
 
 import PandT.Prelude
 import PandT.Types
@@ -137,9 +126,7 @@ appTEff originCreature targetedEffect (game, combatLog) creatName = do
         applied = over (creaturesInPlay . at creatName) applyEffect' game
     return (applied, (effect, creatName) : combatLog)
 
--- | Get the element "after" the given element in the given list. Assumes unique elements. Cycles
--- back to the beginning when the given element is at the end.
-getNextCircular :: Eq a => a -> [a] -> a
+getNextCircular :: (Eq a, Show a) => a -> [a] -> a
 getNextCircular el l = go $ splitWhen (==el) l
     where
         go [firstEl:_, []] = firstEl
@@ -152,6 +139,9 @@ getAppliedConditionsMatching appliedCPrism creature =
 
 hasCondition :: Prism' AppliedC a -> Creature -> Bool
 hasCondition appliedCPrism creature = (not.null) (getAppliedConditionsMatching appliedCPrism creature)
+
+isDead :: Creature -> Bool
+isDead = hasCondition _AppliedDead
 
 removeConditions :: Prism' AppliedC a -> Creature -> Creature
 removeConditions appliedCPrism creature = creature {_conditions=filter predic (creature^.conditions)}
@@ -252,8 +242,17 @@ nextTurn_ game = do
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
 
+nextTurn :: Game a -> Maybe GameStartTurn
+nextTurn = ignoreLog . nextTurn_
+
 ignoreLog :: Monad m => WriterT w m a -> m a
 ignoreLog writer = fst <$> runWriterT writer
+
+skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
+skipTurn_ = nextTurn_
+
+skipTurn :: Game PlayerChoosingAbility -> Maybe GameStartTurn
+skipTurn = ignoreLog . skipTurn_
 
 skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
 skipIncapacitatedPlayer_ = nextTurn_
@@ -266,6 +265,9 @@ acceptAction_ game = do
     (newGame, event) <- lift $ applyAbility game
     tell [event]
     nextTurn_ newGame
+
+acceptAction :: Game GMVettingAction -> Maybe GameStartTurn
+acceptAction = ignoreLog . acceptAction_
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
 denyAction game = set state PlayerChoosingAbility game
@@ -285,3 +287,12 @@ class CancelCast a where
 
 instance CancelCast PlayerFinishingCast where
 instance CancelCast PlayerCasting where
+
+continueCasting_ :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
+continueCasting_ = nextTurn_
+
+finishCast :: Game PlayerFinishingCast -> [SelectedTargetedEffect] -> Maybe (Game GMVettingAction)
+finishCast game selections = do
+    creature <- game^.currentCreature
+    (ability, _) <- creature^.casting
+    return (set state (GMVettingAction ability selections) game)
