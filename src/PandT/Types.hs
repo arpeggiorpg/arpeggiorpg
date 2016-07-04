@@ -174,9 +174,9 @@ data TargetedEffectP a = TargetedEffectP
     } deriving (Show, Eq)
 
 data TargetedEffect
-    = SingleTargetedEffect {_singleTE :: (TargetedEffectP SingleTarget)}
-    | MultiTargetedEffect {_multiTE :: (TargetedEffectP MultiTarget)}
-    | SelfTargetedEffect {_selfTE :: (TargetedEffectP SelfTarget)}
+    = SingleTargetedEffect {_singleTE :: TargetedEffectP SingleTarget}
+    | MultiTargetedEffect {_multiTE :: TargetedEffectP MultiTarget}
+    | SelfTargetedEffect {_selfTE :: TargetedEffectP SelfTarget}
     deriving (Show, Eq)
 
 data SelectedTargetedEffect

@@ -5,16 +5,49 @@
 
 module PandT.Interaction where
 
-
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Writer.Strict (runWriterT)
 import System.IO (hSetBuffering, BufferMode(NoBuffering))
 
 import PandT.Prelude
-import PandT.Types
+-- imports from PandT.Types and Sim are an indication of either what needs to be exposed through the
+-- API, or what needs to be factored into the API code and have something simpler exposed.
+import PandT.Types ( Ability(..)
+                   , CombatEvent(..)
+                   , Creature(..)
+                   , CreatureName
+                   , Energy(..)
+                   , GMVettingAction(..)
+                   , Game(..)
+                   , GameStartTurn(..)
+                   , Intensity(..)
+                   , Player(..)
+                   , PlayerCasting(..)
+                   , PlayerChoosingAbility(..)
+                   , PlayerChoosingTargets(..)
+                   , PlayerFinishingCast(..)
+                   , SelectedTargetedEffect(..)
+                   , Stamina(..)
+                   , TargetSystem(..)
+                   , TargetedEffect(..)
+                   , TargetedEffectP(..)
+                   , abilities
+                   , abilityEffects
+                   , abilityName
+                   , casting
+                   , currentCreature
+                   , makeCreature
+                   )
 import PandT.Abilities
 import PandT.Render
-import PandT.Sim
+import PandT.Sim ( usableAbilities
+                 , chooseAbility
+                 , chooseTargets
+                 , acceptAction_
+                 , denyAction
+                 , cancelCast
+                 , skipIncapacitatedPlayer
+                 )
 import Math.Geometry.Grid.Octagonal (UnboundedOctGrid(..))
 import Math.Geometry.GridMap.Lazy (lazyGridMapIndexed)
 
