@@ -30,9 +30,11 @@ Also grep the code for XXX, FIXME, or TODO.
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
 - GM actions
-  - during action vetting:
+  - during GMVettingAction (or, actually, during _any_ state?)
     - modify targets
     - modify effects
+    - allow editing absolutely anything contained in a Game structure. All data inside must
+      implement a GMEdit typeclass?
   - add/remove conditions
   - add creature (from... what?)
   - remove creature (make sure to remove all references!)
@@ -73,3 +75,4 @@ Also grep the code for XXX, FIXME, or TODO.
   - Abilities that move a target to a location (in a straight line? Within a range?)
   - How to implement Swapblast???
   - Abilities that allow movement vs abilities that instantly move
+- combat log analysis: show dpr, total damage done/received/healed per character in encounter

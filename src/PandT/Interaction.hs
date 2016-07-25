@@ -145,6 +145,7 @@ promptForCasting game = do
     if yes then do
         -- NO!!!!!
         -- XXX TODO FIXME
+        -- fixing this means that promptForCasting needs to return Game GMVettingAction.
         error "CRAP! No! Must GM-Vet this!"
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))

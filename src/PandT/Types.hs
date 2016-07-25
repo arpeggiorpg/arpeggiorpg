@@ -280,7 +280,6 @@ data GameStartTurn
     | GSTPlayerFinishingCast (Game PlayerFinishingCast)
     deriving (Show, Eq)
 
-
 currentCreature :: Lens' (Game a) (Maybe Creature)
 currentCreature = lens getter setter
     where
