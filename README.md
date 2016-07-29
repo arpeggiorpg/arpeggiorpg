@@ -27,7 +27,13 @@ tests (which use a lot of partial functions).
 Also grep the code for XXX, FIXME, or TODO.
 
 - fix casting (see promptForCasting and promptForFinishingCast in Interaction.hs)
-    - actually the big problem here is how targeting works for casting! is it determined at cast time, or the time at which the spell is let to fly?
+  - Casts can't finish because 
+- Redesign GM-vetting
+  - Actions/Abilities should not be vetted; game states should be.
+    - At the end of each player interaction (turn), effects should be applied to a *tentative* game state
+    - that game state should be provided to the GM (only!) to be vetted
+    - the GM should have the opportunity to make arbitrary changes to that state at will
+    - vetting the state means accepting the tentative state as the current state
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
 - GM actions
