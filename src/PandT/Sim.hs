@@ -263,7 +263,7 @@ acceptAction :: Game GMVettingAction -> Maybe GameStartTurn
 acceptAction = ignoreLog . acceptAction_
 
 denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
-denyAction game = set state PlayerChoosingAbility game
+denyAction = set state PlayerChoosingAbility
 
 -- | A class of game states that can be canceled.
 class CancelCast a where

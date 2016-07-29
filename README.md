@@ -27,13 +27,15 @@ tests (which use a lot of partial functions).
 Also grep the code for XXX, FIXME, or TODO.
 
 - fix casting (see promptForCasting and promptForFinishingCast in Interaction.hs)
-  - Casts can't finish because 
+  - Casts can't finish because there's no distinction between the "cast" ability and the "effect" ability
 - Redesign GM-vetting
   - Actions/Abilities should not be vetted; game states should be.
     - At the end of each player interaction (turn), effects should be applied to a *tentative* game state
     - that game state should be provided to the GM (only!) to be vetted
     - the GM should have the opportunity to make arbitrary changes to that state at will
     - vetting the state means accepting the tentative state as the current state
+- stuns should probably interrupt casting
+- should there be D&D-style "concentration"?
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
 - GM actions
@@ -83,3 +85,4 @@ Also grep the code for XXX, FIXME, or TODO.
   - How to implement Swapblast???
   - Abilities that allow movement vs abilities that instantly move
 - combat log analysis: show dpr, total damage done/received/healed per character in encounter
+- probably give creatures an ID separate from their name, and target based on IDs

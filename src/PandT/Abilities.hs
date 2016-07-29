@@ -10,7 +10,7 @@ condDur :: Int -> ConditionDuration
 condDur dur = TimedCondition (Duration dur)
 
 punchTEffect :: TargetedEffect
-punchTEffect = SingleTargetedEffect $ TargetedEffectP "Stab" (TargetCreature (Range 1)) punchEffect
+punchTEffect = SingleTargetedEffect $ TargetedEffectP "Punch" (TargetCreature (Range 1)) (Damage 3)
 
 punchEffect :: Effect
 punchEffect = Damage 3

@@ -168,7 +168,7 @@ deriving instance Eq (TargetSystem a)
 makePrisms ''TargetSystem
 
 data TargetedEffectP a = TargetedEffectP
-    { _targetedEffectName :: Text -- ^ Used for prompting the user for the target
+    { _targetedEffectName :: Text -- ^ Abstract name for the target. Used for prompting.
     , _targetedEffectSystem :: TargetSystem a
     , _targetedEffectEffect :: Effect
     } deriving (Show, Eq)
@@ -294,6 +294,24 @@ type EffectOccurrence = [(Effect, CreatureName)]
 {-
 | A data structure that encodes things that have happened in combat. This is used to render a log of
 events.
+
+NOTE (Historical): Once, I considered using this data structure not just for logging, but also for the
+core of the simulation loop; these values would represent deltas applied to a state, by having
+functions like:
+
+    applyAbility :: Game a -> Abilities -> [CombatEvent]
+
+and
+
+    applyEvents :: [CombatEvent] -> Game a -> Game a
+
+however, this *can't* work, because the creation of certain CombatEvents are dependent upon the game
+state *as modified by previous CombatEvents* -- for example, if a CombatEvent does damage, that
+damage *may* then create a CreatureDied CombatEvent, if the state indicates that the target
+creature's new hit points are <= 0.
+
+Therefore you can't go from [CombatEvent] -> Game a -> Game a; an alternative design that might work
+would be incrementally apply individual CombatEvents to get further CombatEvents.
 
 TODO: we must encode the fully-calculated numbers in this data structure, and not simply link to the
 Effects that are being applied, in order to support dynamic damage numbers -- we may do less or more
