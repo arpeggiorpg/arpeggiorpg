@@ -220,9 +220,9 @@ data Creature = Creature
     -- ^ *Current* health.
     , _abilities :: [Ability]
     -- ^ All the abilities that a creature can use.
-    , _casting :: Maybe (Ability, Duration)
+    , _casting :: Maybe (Ability, Duration, [SelectedTargetedEffect])
     -- ^ The ability that a creature is "casting", if it has a cast time, and the duration
-    -- *reaining* in the cast time.
+    -- *remaining* in the cast time.
     , _cooldowns :: Map AbilityName Cooldown
     -- ^ A map of ability names to amount of time left for that ability to cool down.
     }
@@ -269,6 +269,9 @@ data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
 data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
 data PlayerCasting = PlayerCasting deriving (Show, Eq)
 data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
+-- XXX FIXME: I think I want to redesign the GMVetting state... It might make sense for a GM to vet
+-- a *game state* more than an *action*. There are many things that change the Game, not just
+-- casting of Abilities.
 data GMVettingAction = GMVettingAction Ability [SelectedTargetedEffect] deriving (Show, Eq)
 
 -- | A game at the start of a turn -- represents the subset of states that a game can be in when a
@@ -285,7 +288,6 @@ currentCreature = lens getter setter
     where
         getter game = game^.creaturesInPlay.at (game^.currentCreatureName)
         setter game value = set (creaturesInPlay.at (game^.currentCreatureName)) value game
-
 
 type EffectOccurrence = [(Effect, CreatureName)]
 

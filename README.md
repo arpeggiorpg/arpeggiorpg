@@ -27,6 +27,7 @@ tests (which use a lot of partial functions).
 Also grep the code for XXX, FIXME, or TODO.
 
 - fix casting (see promptForCasting and promptForFinishingCast in Interaction.hs)
+    - actually the big problem here is how targeting works for casting! is it determined at cast time, or the time at which the spell is let to fly?
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
 - GM actions

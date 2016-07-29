@@ -78,7 +78,7 @@ stab = makeAbility "Stab" (Energy 1) [stabTargetedEffect] (CastTime 0) (Cooldown
         stabDirectDamage = Damage 3
 
 wrath :: Ability
-wrath = makeAbility "Wrath" (Energy 1) [wrathTEffect] (CastTime 1) (Cooldown 0)
+wrath = makeAbility "Wrath" (Energy 1) [wrathTEffect] (CastTime 2) (Cooldown 0)
     where
         wrathTEffect = SingleTargetedEffect $ TargetedEffectP "Wrath" (TargetCreature (Range 1)) wrathEffect
         wrathEffect = Damage 5
@@ -114,6 +114,7 @@ pummel = makeAbility "Pummel" (Energy 1) [pummelTEffect] (CastTime 0) (Cooldown 
         pummelTEffect = SingleTargetedEffect $ TargetedEffectP "Pummel" (TargetCreature (Range 1)) Interrupt
 
 
+-- A "one-two punch" set of combo abilities. Casting one enables the casting of two for a single round.
 one :: Ability
 one = makeAbility "One" (Energy 1) [oneTEffect, oneActivateTwo] (CastTime 0) (Cooldown 1)
     where

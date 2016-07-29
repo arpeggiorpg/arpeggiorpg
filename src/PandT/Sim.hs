@@ -76,12 +76,14 @@ applyDamage originCreature amt targetCreature =
         over health (decreaseHealth minDamage) targetCreature
 
 applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbility game@Game {_state=GMVettingAction ability _} =
+applyAbility game@Game {_state=GMVettingAction ability selections} =
     case ability^.castTime of
         (CastTime 0) -> applyAbilityEffects game
         (CastTime timeLeft) -> do
             let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
-                newGame = set (currentCreatureLens._Just.casting) (Just (ability, Duration timeLeft)) game
+                newGame = set (currentCreatureLens._Just.casting)
+                              (Just (ability, Duration timeLeft, selections))
+                              game
             return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
 
 applyAbilityEffects :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
@@ -154,11 +156,14 @@ isConditionExpired ac = maybe False (== Duration 0) (ac^?appliedConditionDuratio
 cleanUpConditions :: Creature -> Creature
 cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
+tickCastTime :: Creature -> Creature
+tickCastTime = over (casting._Just._2) pred
+
 endTurnFor :: Game a -> Creature -> Maybe Creature
 endTurnFor game creature = do
     conditionsTicked <- foldM (tickCondition game) creature (creature^.conditions)
     let cooldownsTicked = over cooldowns (DM.mapMaybe tickCooldown) conditionsTicked
-    return (cleanUpConditions (decrementConditions cooldownsTicked))
+    return (tickCastTime (cleanUpConditions (decrementConditions cooldownsTicked)))
 
 tickCooldown :: Cooldown -> Maybe Cooldown
 tickCooldown (Cooldown 0) = Nothing
@@ -270,11 +275,13 @@ class CancelCast a where
 instance CancelCast PlayerFinishingCast where
 instance CancelCast PlayerCasting where
 
+-- FIXME: this is weird because it's a thing that doesn't go through GM vetting. It can't, because
+-- GMVettingAction is designed for vetting of *actions*, not *outcomes*, which it should be doing.
 continueCasting_ :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
 continueCasting_ = nextTurn_
 
-finishCast :: Game PlayerFinishingCast -> [SelectedTargetedEffect] -> Maybe (Game GMVettingAction)
-finishCast game selections = do
+finishCast :: Game PlayerFinishingCast -> Maybe (Game GMVettingAction)
+finishCast game = do
     creature <- game^.currentCreature
-    (ability, _) <- creature^.casting
+    (ability, _, selections) <- creature^.casting
     return (set state (GMVettingAction ability selections) game)

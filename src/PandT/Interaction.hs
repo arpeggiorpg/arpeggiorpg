@@ -46,6 +46,8 @@ import PandT.Sim ( usableAbilities
                  , acceptAction_
                  , denyAction
                  , cancelCast
+                 , continueCasting_
+                 , finishCast
                  , skipIncapacitatedPlayer
                  )
 import Math.Geometry.Grid.Octagonal (UnboundedOctGrid(..))
@@ -111,17 +113,17 @@ promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetC
 promptTEffect (MultiTargetedEffect teffect@(TargetedEffectP targetName system _)) = do
     creatureNames <- case system of
         (TargetCircle range radius) ->
-            promptMultiTarget [] targetName (" Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
+            promptMultiTarget [] targetName ("Circle range: " ++ (tshow range) ++ " radius: " ++ (tshow radius))
         (TargetLineFromSource range) ->
-            promptMultiTarget [] targetName (" Line range: " ++ (tshow range))
+            promptMultiTarget [] targetName ("Line range: " ++ (tshow range))
         (TargetCone range) ->
-            promptMultiTarget [] targetName (" Cone range: " ++ (tshow range))
+            promptMultiTarget [] targetName ("Cone range: " ++ (tshow range))
     return (SelectedMultiTargetedEffect creatureNames teffect)
 promptTEffect (SelfTargetedEffect teffectp) = return (SelectedSelfTargetedEffect teffectp)
 
 promptMultiTarget :: [CreatureName] -> Text -> Text -> MaybeT IO [CreatureName]
 promptMultiTarget sofar targetName prompt = do
-    lift $ putStr ("Target for " ++ targetName ++ prompt ++ " (enter DONE when done)> ")
+    lift $ putStr ("Target for " ++ targetName ++ " " ++ prompt ++ " (enter DONE when done)> ")
     target <- lift $ hGetLine stdin
     if target == "DONE" then
         return sofar
@@ -143,10 +145,15 @@ promptForCasting game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
     if yes then do
-        -- NO!!!!!
-        -- XXX TODO FIXME
-        -- fixing this means that promptForCasting needs to return Game GMVettingAction.
-        error "CRAP! No! Must GM-Vet this!"
+        -- this avoids using the GMVettingAction state because there's not actually an *action* to
+        -- vet.
+        yesGM <- promptYesNo "GM! Is this okay?"
+        if yesGM then do
+            (nextGame, combatLog) <- liftMaybe (runWriterT (continueCasting_ game))
+            displayCombatLog combatLog
+            return nextGame
+        else
+            return (GSTPlayerChoosingAbility (cancelCast game))
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))
 
@@ -155,15 +162,14 @@ promptForFinishingCast game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("Would you like to let your " ++ castingAbName ++ " fly?")
     if yes then do
-        -- XXX TODO FIXME
-        error "CRAP! GM-Vet this!"
+        vettingGame <- liftMaybe (finishCast game)
+        promptForVet vettingGame
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))
 
 promptYesNo :: Text -> MaybeT IO Bool
 promptYesNo prompt = do
     putStr (prompt ++ " [enter y/n] ")
-
     (input :: Text) <- lift (hGetLine stdin)
     case (toCaseFold input) of
         "y" -> return True
@@ -194,7 +200,6 @@ runIterationT mGame = do
         GSTPlayerFinishingCast gameFinishingCast -> do
             next <- promptForFinishingCast gameFinishingCast
             runIterationT (Just next)
-
 
 runIteration :: Maybe GameStartTurn -> IO (Maybe GameStartTurn)
 runIteration mGame = runMaybeT . runIterationT $ mGame

@@ -82,8 +82,8 @@ renderCreatureStatus creature =
         castSumm :: Text
         castSumm = case creature^.casting of
             Nothing -> ""
-            Just (ability, Duration duration) ->
-                [ui|(casting #{ability^.abilityName} for #{tshow duration} more rounds)|]
+            Just (ability, Duration duration, selections) ->
+                [ui|(casting #{ability^.abilityName} at #{selections} for #{tshow duration} more rounds)|]
         line = [ui|#{creature^.creatureName} (#{hp} HP, #{creature^.creatureEnergy.unEnergy} NRG) #{castSumm} #{conds}|]
 
 renderAppliedCondition :: AppliedCondition -> Text
