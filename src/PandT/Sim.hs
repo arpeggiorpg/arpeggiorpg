@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
 -- | All the core simulation code for P&T. Pure functions on the data in the PandT.Types module.
 -- These functions are meant to be game-agnostic, inasmuch as the core PandT.Types model is
@@ -75,30 +75,29 @@ applyDamage originCreature amt targetCreature =
     in
         over health (decreaseHealth minDamage) targetCreature
 
-applyAbility :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbility game@Game {_state=GMVettingAction ability selections} =
+applyAbility :: Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game GMVetting, CombatEvent)
+applyAbility game ability selections =
     case ability^.castTime of
-        (CastTime 0) -> applyAbilityEffects game
+        (CastTime 0) -> applyAbilityEffects game ability selections
         (CastTime timeLeft) -> do
             let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
-                newGame = set (currentCreatureLens._Just.casting)
-                              (Just (ability, Duration timeLeft, selections))
-                              game
+                newGame = game & (currentCreatureLens._Just.casting) .~ Just (ability, Duration timeLeft, selections)
+                               & state .~ GMVetting
             return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
 
-applyAbilityEffects :: Game GMVettingAction -> Maybe (Game GMVettingAction, CombatEvent)
-applyAbilityEffects game@Game {_state=GMVettingAction ability selections}
+applyAbilityEffects :: forall a. Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game GMVetting, CombatEvent)
+applyAbilityEffects game ability selections
     = do
         originCreature <- game^.currentCreature
         (newGame, combatLog) <- foldM (appEffs originCreature) (game, []) selections
-        let newGame' = over (currentCreature._Just.creatureEnergy) (\x -> x - (ability^.cost)) newGame
+        let newGame' = over (currentCreature._Just.creatureEnergy) (subtract (ability^.cost)) newGame
             newGame'' = case ability^.cooldown of
                             (Cooldown 0) -> newGame'
                             n -> over (currentCreature._Just.cooldowns) (insertMap (ability^.abilityName) n) newGame'
-        return (newGame'', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
+        return (set state GMVetting newGame'', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
     where
-        appEffs :: Creature -> (Game GMVettingAction, EffectOccurrence) -> SelectedTargetedEffect
-                -> Maybe (Game GMVettingAction, EffectOccurrence)
+        appEffs :: Creature -> (Game a, EffectOccurrence) -> SelectedTargetedEffect
+                -> Maybe (Game a, EffectOccurrence)
         appEffs originCreature gameAndLog (SelectedSingleTargetedEffect name targetedEffect)
             = appTEff originCreature targetedEffect gameAndLog name
         appEffs originCreature gameAndLog (SelectedMultiTargetedEffect creatureNames targetedEffect)
@@ -108,8 +107,8 @@ applyAbilityEffects game@Game {_state=GMVettingAction ability selections}
             -- appTEff should take a Creature instead
             = foldM (appTEff originCreature targetedEffect) gameAndLog [originCreature^.creatureName]
 
-appTEff :: Creature -> TargetedEffectP a -> (Game GMVettingAction, EffectOccurrence) -> CreatureName
-        -> Maybe (Game GMVettingAction, EffectOccurrence)
+appTEff :: Creature -> TargetedEffectP a -> (Game state, EffectOccurrence) -> CreatureName
+        -> Maybe (Game state, EffectOccurrence)
 appTEff originCreature targetedEffect (game, combatLog) creatName = do
     let effect = targetedEffect^.targetedEffectEffect
         applyEffect' = fmap (applyEffect originCreature effect)
@@ -148,7 +147,7 @@ tickCondition _ creat _ = Just creat
 
 -- There's a bunch of re-iterating here
 decrementConditions :: Creature -> Creature
-decrementConditions creature = over (conditions.mapped.appliedConditionDurationLeft._TimedCondition) pred creature
+decrementConditions = over (conditions.mapped.appliedConditionDurationLeft._TimedCondition) pred
 
 isConditionExpired :: AppliedCondition -> Bool
 isConditionExpired ac = maybe False (== Duration 0) (ac^?appliedConditionDurationLeft._TimedCondition)
@@ -156,14 +155,11 @@ isConditionExpired ac = maybe False (== Duration 0) (ac^?appliedConditionDuratio
 cleanUpConditions :: Creature -> Creature
 cleanUpConditions = over conditions (filter (not . isConditionExpired))
 
-tickCastTime :: Creature -> Creature
-tickCastTime = over (casting._Just._2) pred
-
 endTurnFor :: Game a -> Creature -> Maybe Creature
 endTurnFor game creature = do
     conditionsTicked <- foldM (tickCondition game) creature (creature^.conditions)
     let cooldownsTicked = over cooldowns (DM.mapMaybe tickCooldown) conditionsTicked
-    return (tickCastTime (cleanUpConditions (decrementConditions cooldownsTicked)))
+    return (cleanUpConditions (decrementConditions cooldownsTicked))
 
 tickCooldown :: Cooldown -> Maybe Cooldown
 tickCooldown (Cooldown 0) = Nothing
@@ -181,7 +177,8 @@ enoughEnergy :: Creature -> Ability -> Bool
 enoughEnergy c ab = (ab^.cost) <= (c^.creatureEnergy)
 
 abilityActive :: Creature -> Ability -> Bool
-abilityActive c ab = if ab^.abilityRequiresActivation
+abilityActive c ab =
+    if ab^.abilityRequiresActivation
     then hasCondition (_AppliedActivatedAbility.activatedAbilityName.filtered (== ab^.abilityName)) c
     else True
 
@@ -205,22 +202,23 @@ chooseAbility game ability =
                 | not (abilityActive cc ability) -> Left AbilityRequiresActivation
                 | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
-chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect] -> Game GMVettingAction
-chooseTargets game@Game {_state=(PlayerChoosingTargets ability)} selections
-    = set state (GMVettingAction ability selections) game
+chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect]
+              -> Maybe (Game GMVetting, CombatEvent)
+chooseTargets game@Game {_state=(PlayerChoosingTargets ability)} = applyAbility game ability
 
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
--- the input state; instead acceptAction or skipTurn should be used to advance
+-- the input state; instead vetGame or skipTurn should be used to advance
 -- the game.
-nextTurn_ :: Game a -> WriterT [CombatEvent] Maybe GameStartTurn
-nextTurn_ game = do
+nextTurn :: Game a -> WriterT [CombatEvent] Maybe GameStartTurn
+nextTurn game = do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let previousCreatureName = game^.currentCreatureName
         nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
     prevCreature <- lift $ game^.creaturesInPlay.at previousCreatureName
     previousCreatureTicked <- lift (endTurnFor game prevCreature)
-    let gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName) (Just previousCreatureTicked) game
+    let gameWithPreviousCreatureUpdated = set (creaturesInPlay.at previousCreatureName)
+                                              (Just previousCreatureTicked) game
     nextCreature <- lift $ gameWithPreviousCreatureUpdated^.creaturesInPlay.at nextCreatureName
     let nextCreatureTurn = set currentCreatureName nextCreatureName gameWithPreviousCreatureUpdated
     tell [CreatureTurnStarted nextCreatureName]
@@ -234,36 +232,17 @@ nextTurn_ game = do
         | otherwise ->
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
-
-nextTurn :: Game a -> Maybe GameStartTurn
-nextTurn = ignoreLog . nextTurn_
-
 ignoreLog :: Monad m => WriterT w m a -> m a
 ignoreLog writer = fst <$> runWriterT writer
 
-skipTurn_ :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
-skipTurn_ = nextTurn_
+skipTurn :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
+skipTurn = nextTurn
 
-skipTurn :: Game PlayerChoosingAbility -> Maybe GameStartTurn
-skipTurn = ignoreLog . skipTurn_
+skipIncapacitatedPlayer :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
+skipIncapacitatedPlayer = nextTurn
 
-skipIncapacitatedPlayer_ :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
-skipIncapacitatedPlayer_ = nextTurn_
-
-skipIncapacitatedPlayer :: Game PlayerIncapacitated -> Maybe GameStartTurn
-skipIncapacitatedPlayer = ignoreLog . skipIncapacitatedPlayer_
-
-acceptAction_ :: Game GMVettingAction -> WriterT [CombatEvent] Maybe GameStartTurn
-acceptAction_ game = do
-    (newGame, event) <- lift $ applyAbility game
-    tell [event]
-    nextTurn_ newGame
-
-acceptAction :: Game GMVettingAction -> Maybe GameStartTurn
-acceptAction = ignoreLog . acceptAction_
-
-denyAction :: Game GMVettingAction -> Game PlayerChoosingAbility
-denyAction = set state PlayerChoosingAbility
+vetGame :: Game GMVetting -> Game PlayerChoosingAbility
+vetGame = set state PlayerChoosingAbility
 
 -- | A class of game states that can be canceled.
 class CancelCast a where
@@ -275,13 +254,12 @@ class CancelCast a where
 instance CancelCast PlayerFinishingCast where
 instance CancelCast PlayerCasting where
 
--- FIXME: this is weird because it's a thing that doesn't go through GM vetting. It can't, because
--- GMVettingAction is designed for vetting of *actions*, not *outcomes*, which it should be doing.
-continueCasting_ :: Game PlayerCasting -> WriterT [CombatEvent] Maybe GameStartTurn
-continueCasting_ = nextTurn_
+continueCasting :: Game PlayerCasting -> Game GMVetting
+continueCasting game = game & state .~ GMVetting
+                            & over (currentCreature._Just.casting._Just._2) pred
 
-finishCast :: Game PlayerFinishingCast -> Maybe (Game GMVettingAction)
+finishCast :: Game PlayerFinishingCast -> Maybe (Game GMVetting, CombatEvent)
 finishCast game = do
     creature <- game^.currentCreature
     (ability, _, selections) <- creature^.casting
-    return (set state (GMVettingAction ability selections) game)
+    applyAbilityEffects game ability selections

@@ -269,10 +269,7 @@ data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
 data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
 data PlayerCasting = PlayerCasting deriving (Show, Eq)
 data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
--- XXX FIXME: I think I want to redesign the GMVetting state... It might make sense for a GM to vet
--- a *game state* more than an *action*. There are many things that change the Game, not just
--- casting of Abilities.
-data GMVettingAction = GMVettingAction Ability [SelectedTargetedEffect] deriving (Show, Eq)
+data GMVetting = GMVetting deriving (Show, Eq)
 
 -- | A game at the start of a turn -- represents the subset of states that a game can be in when a
 -- player starts their turn.

@@ -6,7 +6,7 @@ module PandT.Prelude
 
 import ClassyPrelude
 import Control.Lens as PandT.Prelude (
-    (^.), (^?), at, makePrisms, makeLenses, Lens, Lens', Prism, Prism', view, over, set, lens,
+    (&), (^.), (^?), (.~), (%~), at, makePrisms, makeLenses, Lens, Lens', Prism, Prism', view, over, set, lens,
     mapped, _Just, _1, _2, _Left, _Right, filtered
     )
 import Control.Monad.Trans.Maybe (MaybeT(..))

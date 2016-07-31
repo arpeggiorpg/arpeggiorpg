@@ -66,8 +66,8 @@ instance RenderState PlayerIncapacitated where
     renderState PlayerIncapacitated = "Incapacitated"
 instance RenderState PlayerChoosingTargets where
     renderState (PlayerChoosingTargets ability) = [ui|Choosing targets for #{ability^.abilityName}|]
-instance RenderState GMVettingAction where
-    renderState (GMVettingAction ability targets) = [ui|GM vetting action for #{ability^.abilityName} -> #{targets}|]
+instance RenderState GMVetting where
+    renderState GMVetting = [ui|GM vetting new state|]
 instance RenderState PlayerCasting where
     renderState PlayerCasting = "Casting"
 instance RenderState PlayerFinishingCast where

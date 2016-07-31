@@ -17,7 +17,7 @@ import PandT.Types ( Ability(..)
                    , Creature(..)
                    , CreatureName
                    , Energy(..)
-                   , GMVettingAction(..)
+                   , GMVetting(..)
                    , Game(..)
                    , GameStartTurn(..)
                    , Intensity(..)
@@ -43,10 +43,9 @@ import PandT.Render
 import PandT.Sim ( usableAbilities
                  , chooseAbility
                  , chooseTargets
-                 , acceptAction_
-                 , denyAction
+                 , vetGame
                  , cancelCast
-                 , continueCasting_
+                 , continueCasting
                  , finishCast
                  , skipIncapacitatedPlayer
                  )
@@ -99,8 +98,8 @@ promptForAbility game = do
                     promptForAbility game
                 Right game' -> return game'
 
-promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVettingAction)
-promptForTargets game@(Game {_state=PlayerChoosingTargets ability}) = do
+promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVetting, CombatEvent)
+promptForTargets game@Game {_state=PlayerChoosingTargets ability} = do
     creatureNameses <- mapM promptTEffect (ability^.abilityEffects)
     return (chooseTargets game creatureNameses)
 
@@ -130,26 +129,26 @@ promptMultiTarget sofar targetName prompt = do
     else
         promptMultiTarget (target:sofar) targetName prompt
 
-promptForVet :: Game GMVettingAction -> MaybeT IO GameStartTurn
-promptForVet game = do
+promptForVet :: GameStartTurn -> Game GMVetting -> [CombatEvent] -> MaybeT IO GameStartTurn
+promptForVet prevGame game combatLog = do
     yes <- promptYesNo "GM! Is this okay?"
     if yes then do
-        (nextGame, combatLog) <- liftMaybe (runWriterT (acceptAction_ game))
+        let nextGame = vetGame game
         displayCombatLog combatLog
         return nextGame
     else
-        return (GSTPlayerChoosingAbility (denyAction game))
+        return prevGame
 
 promptForCasting :: Game PlayerCasting -> MaybeT IO GameStartTurn
 promptForCasting game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
     if yes then do
-        -- this avoids using the GMVettingAction state because there's not actually an *action* to
-        -- vet.
+        -- this avoids using the GMVetting state because there's not actually an *action* to
+        -- vet. FIXME RADIX TODO XXX this can use it now
         yesGM <- promptYesNo "GM! Is this okay?"
         if yesGM then do
-            (nextGame, combatLog) <- liftMaybe (runWriterT (continueCasting_ game))
+            let nextGame = continueCasting game
             displayCombatLog combatLog
             return nextGame
         else
@@ -191,8 +190,8 @@ runIterationT mGame = do
         GSTPlayerChoosingAbility choosingAbility -> do
             liftIO . putStrLn $ render choosingAbility
             choosingTargets <- promptForAbility choosingAbility
-            vetting <- promptForTargets choosingTargets
-            vetted <- promptForVet vetting
+            (vetting, combatLog) <- promptForTargets choosingTargets
+            vetted <- promptForVet game vetting [combatLog]
             runIterationT (Just vetted)
         GSTPlayerCasting gameCasting -> do
             next <- promptForCasting gameCasting
