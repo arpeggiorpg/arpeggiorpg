@@ -101,7 +101,7 @@ promptForAbility game = do
 promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVetting, CombatEvent)
 promptForTargets game@Game {_state=PlayerChoosingTargets ability} = do
     creatureNameses <- mapM promptTEffect (ability^.abilityEffects)
-    return (chooseTargets game creatureNameses)
+    liftMaybe (chooseTargets game creatureNameses)
 
 promptTEffect :: TargetedEffect -> MaybeT IO SelectedTargetedEffect
 promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetCreature range) _)) = do
@@ -129,40 +129,27 @@ promptMultiTarget sofar targetName prompt = do
     else
         promptMultiTarget (target:sofar) targetName prompt
 
-promptForVet :: GameStartTurn -> Game GMVetting -> [CombatEvent] -> MaybeT IO GameStartTurn
-promptForVet prevGame game combatLog = do
+promptForVet :: GameStartTurn -> Game GMVetting -> MaybeT IO GameStartTurn
+promptForVet prevGame game = do
     yes <- promptYesNo "GM! Is this okay?"
-    if yes then do
-        let nextGame = vetGame game
-        displayCombatLog combatLog
-        return nextGame
-    else
-        return prevGame
+    if yes then return (vetGame game)
+    else return prevGame
 
 promptForCasting :: Game PlayerCasting -> MaybeT IO GameStartTurn
 promptForCasting game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
-    if yes then do
-        -- this avoids using the GMVetting state because there's not actually an *action* to
-        -- vet. FIXME RADIX TODO XXX this can use it now
-        yesGM <- promptYesNo "GM! Is this okay?"
-        if yesGM then do
-            let nextGame = continueCasting game
-            displayCombatLog combatLog
-            return nextGame
-        else
-            return (GSTPlayerChoosingAbility (cancelCast game))
-    else do
-        return (GSTPlayerChoosingAbility (cancelCast game))
+    if yes then promptForVet (GSTPlayerCasting game) (continueCasting game)
+    else return (GSTPlayerChoosingAbility (cancelCast game))
 
 promptForFinishingCast :: Game PlayerFinishingCast -> MaybeT IO GameStartTurn
 promptForFinishingCast game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("Would you like to let your " ++ castingAbName ++ " fly?")
     if yes then do
-        vettingGame <- liftMaybe (finishCast game)
-        promptForVet vettingGame
+        (vetMe, _) <- liftMaybe (finishCast game)
+        -- FIXME TODO RADIX XXX: log combatEvents
+        promptForVet (GSTPlayerFinishingCast game) vetMe
     else do
         return (GSTPlayerChoosingAbility (cancelCast game))
 
@@ -170,7 +157,7 @@ promptYesNo :: Text -> MaybeT IO Bool
 promptYesNo prompt = do
     putStr (prompt ++ " [enter y/n] ")
     (input :: Text) <- lift (hGetLine stdin)
-    case (toCaseFold input) of
+    case toCaseFold input of
         "y" -> return True
         "n" -> return False
         _ -> promptYesNo prompt
@@ -185,13 +172,15 @@ runIterationT mGame = do
         GSTPlayerIncapacitated incap -> do
             liftIO (putStrLn (render incap))
             liftIO (putStrLn "Skipping turn because player is incapacitated!")
-            next <- liftMaybe $ skipIncapacitatedPlayer incap
+            -- XXX FIXME TODO RADIX: log combat events
+            (next, _) <- liftMaybe $ runWriterT (skipIncapacitatedPlayer incap)
             runIterationT (Just next)
         GSTPlayerChoosingAbility choosingAbility -> do
             liftIO . putStrLn $ render choosingAbility
             choosingTargets <- promptForAbility choosingAbility
-            (vetting, combatLog) <- promptForTargets choosingTargets
-            vetted <- promptForVet game vetting [combatLog]
+            -- XXX FIXME TODO RADIX: log combat events
+            (vetting, _) <- promptForTargets choosingTargets
+            vetted <- promptForVet game vetting
             runIterationT (Just vetted)
         GSTPlayerCasting gameCasting -> do
             next <- promptForCasting gameCasting

@@ -232,6 +232,9 @@ nextTurn game = do
         | otherwise ->
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
+-- | A utility function (for tests) that throws out the combat log.
+-- (actually, a general WriterT function that throws out any written value, only returning the
+-- normal result of the monadic action)
 ignoreLog :: Monad m => WriterT w m a -> m a
 ignoreLog writer = fst <$> runWriterT writer
 
@@ -241,8 +244,8 @@ skipTurn = nextTurn
 skipIncapacitatedPlayer :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
 skipIncapacitatedPlayer = nextTurn
 
-vetGame :: Game GMVetting -> Game PlayerChoosingAbility
-vetGame = set state PlayerChoosingAbility
+vetGame :: Game GMVetting -> GameStartTurn
+vetGame game = GSTPlayerChoosingAbility (set state PlayerChoosingAbility game)
 
 -- | A class of game states that can be canceled.
 class CancelCast a where

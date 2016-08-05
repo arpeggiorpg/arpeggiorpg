@@ -35,6 +35,14 @@ Also grep the code for XXX, FIXME, or TODO.
     - the GM should have the opportunity to make arbitrary changes to that state at will
     - vetting the state means accepting the tentative state as the current state
 - stuns should probably interrupt casting
+- Action Economy, e.g.: how to implement movement and casting in the same turn?
+  - currently we only allow one "ability" per turn; the player needs to be able to move and act.
+  - probably have each turn be "10 seconds", declare number of seconds used per ability?
+  - D&D restricts/specializes this by separating "Action" from "movement" into separate concepts
+    - if they didn't, a player who chooses to be stationary would be able very powerful that turn
+      - balancing that would require making movement a very valuable thing on average
+      - e.g. make most spells have a range shorter than the average movement distance in half a turn, or whatever.
+      - alternatively most abilities could use >5 seconds? that way even stationary characters can't do multiple attacks
 - should there be D&D-style "concentration"?
 - combat log should show actual damage, not ability damage
 - nothing is done with the combat log from recurring effects
