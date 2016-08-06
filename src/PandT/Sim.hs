@@ -10,7 +10,7 @@ import PandT.Prelude
 import PandT.Types
 import qualified Data.Map as DM
 
-import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
+import Control.Monad.Writer.Strict (runWriterT, tell)
 
 
 decreaseHealth :: DamageIntensity -> Health -> Health
@@ -75,17 +75,16 @@ applyDamage originCreature amt targetCreature =
     in
         over health (decreaseHealth minDamage) targetCreature
 
-applyAbility :: Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game GMVetting, CombatEvent)
+applyAbility :: Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game a, [CombatEvent])
 applyAbility game ability selections =
     case ability^.castTime of
         (CastTime 0) -> applyAbilityEffects game ability selections
         (CastTime timeLeft) -> do
             let currentCreatureLens = creaturesInPlay.at (game^.currentCreatureName)
                 newGame = game & (currentCreatureLens._Just.casting) .~ Just (ability, Duration timeLeft, selections)
-                               & state .~ GMVetting
-            return (newGame, AbilityStartCast (game^.currentCreatureName) ability)
+            return (newGame, [AbilityStartCast (game^.currentCreatureName) ability])
 
-applyAbilityEffects :: forall a. Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game GMVetting, CombatEvent)
+applyAbilityEffects :: forall a. Game a -> Ability -> [SelectedTargetedEffect] -> Maybe (Game a, [CombatEvent])
 applyAbilityEffects game ability selections
     = do
         originCreature <- game^.currentCreature
@@ -94,7 +93,7 @@ applyAbilityEffects game ability selections
             newGame'' = case ability^.cooldown of
                             (Cooldown 0) -> newGame'
                             n -> over (currentCreature._Just.cooldowns) (insertMap (ability^.abilityName) n) newGame'
-        return (set state GMVetting newGame'', AbilityUsed ability (game^.currentCreatureName) (reverse combatLog))
+        return (newGame'', [AbilityUsed ability (game^.currentCreatureName) (reverse combatLog)])
     where
         appEffs :: Creature -> (Game a, EffectOccurrence) -> SelectedTargetedEffect
                 -> Maybe (Game a, EffectOccurrence)
@@ -203,15 +202,22 @@ chooseAbility game ability =
                 | otherwise -> return (set state (PlayerChoosingTargets ability) game)
 
 chooseTargets :: Game PlayerChoosingTargets -> [SelectedTargetedEffect]
-              -> Maybe (Game GMVetting, CombatEvent)
-chooseTargets game@Game {_state=(PlayerChoosingTargets ability)} = applyAbility game ability
+              -> Game PlayerDone
+chooseTargets game@Game {_state=PlayerChoosingTargets ability} selections =
+    set state (PlayerDone ability selections) game
+
+acceptAction :: Game PlayerDone -> Maybe GMVetting
+acceptAction game@Game {_state=PlayerDone ability selections} = do
+    (newGame, events) <- applyAbility game ability selections
+    (gst, events') <- nextTurn newGame
+    return (GMVetting gst (events ++ events'))
 
 -- | Advance the game so it's the next creature's turn.
 -- This function should not be invoked directly, since it ignores the type of
 -- the input state; instead vetGame or skipTurn should be used to advance
 -- the game.
-nextTurn :: Game a -> WriterT [CombatEvent] Maybe GameStartTurn
-nextTurn game = do
+nextTurn :: Game a -> Maybe (GameStartTurn, [CombatEvent])
+nextTurn game = runWriterT $ do
     -- TODO: This is getting confusing even with as little logic as it has. Refactor!
     let previousCreatureName = game^.currentCreatureName
         nextCreatureName = getNextCircular previousCreatureName (game^.initiative)
@@ -232,20 +238,14 @@ nextTurn game = do
         | otherwise ->
             return (GSTPlayerChoosingAbility (set state PlayerChoosingAbility nextCreatureTurn))
 
--- | A utility function (for tests) that throws out the combat log.
--- (actually, a general WriterT function that throws out any written value, only returning the
--- normal result of the monadic action)
-ignoreLog :: Monad m => WriterT w m a -> m a
-ignoreLog writer = fst <$> runWriterT writer
-
-skipTurn :: Game PlayerChoosingAbility -> WriterT [CombatEvent] Maybe GameStartTurn
+skipTurn :: Game PlayerChoosingAbility -> Maybe (GameStartTurn, [CombatEvent])
 skipTurn = nextTurn
 
-skipIncapacitatedPlayer :: Game PlayerIncapacitated -> WriterT [CombatEvent] Maybe GameStartTurn
+skipIncapacitatedPlayer :: Game PlayerIncapacitated -> Maybe (GameStartTurn, [CombatEvent])
 skipIncapacitatedPlayer = nextTurn
 
-vetGame :: Game GMVetting -> GameStartTurn
-vetGame game = GSTPlayerChoosingAbility (set state PlayerChoosingAbility game)
+vetGame :: GMVetting -> GameStartTurn
+vetGame (GMVetting gst _) = gst
 
 -- | A class of game states that can be canceled.
 class CancelCast a where
@@ -257,12 +257,19 @@ class CancelCast a where
 instance CancelCast PlayerFinishingCast where
 instance CancelCast PlayerCasting where
 
-continueCasting :: Game PlayerCasting -> Game GMVetting
-continueCasting game = game & state .~ GMVetting
-                            & over (currentCreature._Just.casting._Just._2) pred
+-- Perhaps it would make more sense to have this go to Game PlayerDone, but there's not anything
+-- else that the player can do anyway? Until we implement Action Economy.
+continueCasting :: Game PlayerCasting -> Maybe GMVetting
+continueCasting game = do
+    let castingReduced = over (currentCreature._Just.casting._Just._2) pred game
+    uncurry GMVetting <$> nextTurn castingReduced
 
-finishCast :: Game PlayerFinishingCast -> Maybe (Game GMVetting, CombatEvent)
+-- Perhaps it would make more sense to have this go to Game PlayerDone, but there's not anything
+-- else that the player can do anyway? Until we implement Action Economy.
+finishCast :: Game PlayerFinishingCast -> Maybe GMVetting
 finishCast game = do
     creature <- game^.currentCreature
     (ability, _, selections) <- creature^.casting
-    applyAbilityEffects game ability selections
+    (newGame, events) <- applyAbilityEffects game ability selections
+    (done, events') <- nextTurn newGame
+    return (GMVetting done (events ++ events'))

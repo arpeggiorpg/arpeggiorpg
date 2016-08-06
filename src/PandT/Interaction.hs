@@ -6,7 +6,6 @@
 module PandT.Interaction where
 
 import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.Writer.Strict (runWriterT)
 import System.IO (hSetBuffering, BufferMode(NoBuffering))
 
 import PandT.Prelude
@@ -25,6 +24,7 @@ import PandT.Types ( Ability(..)
                    , PlayerCasting(..)
                    , PlayerChoosingAbility(..)
                    , PlayerChoosingTargets(..)
+                   , PlayerDone(..)
                    , PlayerFinishingCast(..)
                    , SelectedTargetedEffect(..)
                    , Stamina(..)
@@ -98,10 +98,10 @@ promptForAbility game = do
                     promptForAbility game
                 Right game' -> return game'
 
-promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game GMVetting, CombatEvent)
+promptForTargets :: Game PlayerChoosingTargets -> MaybeT IO (Game PlayerDone)
 promptForTargets game@Game {_state=PlayerChoosingTargets ability} = do
     creatureNameses <- mapM promptTEffect (ability^.abilityEffects)
-    liftMaybe (chooseTargets game creatureNameses)
+    return (chooseTargets game creatureNameses)
 
 promptTEffect :: TargetedEffect -> MaybeT IO SelectedTargetedEffect
 promptTEffect (SingleTargetedEffect teffect@(TargetedEffectP targetName (TargetCreature range) _)) = do
@@ -129,17 +129,23 @@ promptMultiTarget sofar targetName prompt = do
     else
         promptMultiTarget (target:sofar) targetName prompt
 
-promptForVet :: GameStartTurn -> Game GMVetting -> MaybeT IO GameStartTurn
-promptForVet prevGame game = do
+promptForVet :: GameStartTurn -> GMVetting -> MaybeT IO GameStartTurn
+promptForVet prevGame vetting = do
     yes <- promptYesNo "GM! Is this okay?"
-    if yes then return (vetGame game)
+    if yes then return (vetGame vetting)
     else return prevGame
 
-promptForCasting :: Game PlayerCasting -> MaybeT IO GameStartTurn
+promptForCasting :: Game PlayerCasting -> MaybeT IO GMVetting
 promptForCasting game = do
     castingAbName <- liftMaybe (game^?currentCreature._Just.casting._Just._1.abilityName)
     yes <- promptYesNo ("You are casting " ++ castingAbName ++ ". Would you like to continue casting?")
-    if yes then promptForVet (GSTPlayerCasting game) (continueCasting game)
+    if yes then liftMaybe (continueCasting game)
+    -- FIXME XXX TODO RADIX: the dilemma here is that this function returns GMVetting, but if the
+    -- player cancels their cast, they should have an opportunity to choose an ability and targets
+    -- before the GM needs to vet again.
+    -- So: do we recurse into that interaction, of asking the player what they want to do instead of
+    -- casting? Or do we change the type of this function to allow returning non-GMVettings (with an
+    -- Either GMVetting (Game PlayerChoosingAbility)), and have the caller perform that interaction?
     else return (GSTPlayerChoosingAbility (cancelCast game))
 
 promptForFinishingCast :: Game PlayerFinishingCast -> MaybeT IO GameStartTurn
@@ -173,7 +179,7 @@ runIterationT mGame = do
             liftIO (putStrLn (render incap))
             liftIO (putStrLn "Skipping turn because player is incapacitated!")
             -- XXX FIXME TODO RADIX: log combat events
-            (next, _) <- liftMaybe $ runWriterT (skipIncapacitatedPlayer incap)
+            (next, _) <- liftMaybe (skipIncapacitatedPlayer incap)
             runIterationT (Just next)
         GSTPlayerChoosingAbility choosingAbility -> do
             liftIO . putStrLn $ render choosingAbility

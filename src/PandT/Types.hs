@@ -266,10 +266,14 @@ makeLenses ''Game
 -- | All the various states that the game can be in.
 data PlayerChoosingAbility = PlayerChoosingAbility deriving (Show, Eq)
 data PlayerChoosingTargets = PlayerChoosingTargets Ability deriving (Show, Eq)
+data PlayerDone = PlayerDone Ability [SelectedTargetedEffect] deriving (Show, Eq)
 data PlayerIncapacitated = PlayerIncapacitated deriving (Show, Eq)
 data PlayerCasting = PlayerCasting deriving (Show, Eq)
 data PlayerFinishingCast = PlayerFinishingCast deriving (Show, Eq)
-data GMVetting = GMVetting deriving (Show, Eq)
+
+-- | GMVetting is a wrapper for any GameStartTurn that indicates it needs to be vetted by the GM.
+-- In order to do this, simply unwrap it.
+data GMVetting = GMVetting GameStartTurn [CombatEvent]
 
 -- | A game at the start of a turn -- represents the subset of states that a game can be in when a
 -- player starts their turn.
