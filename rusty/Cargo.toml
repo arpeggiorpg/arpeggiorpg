@@ -1,0 +1,10 @@
+[package]
+name = "pandt"
+version = "0.1.0"
+authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
+
+[lib]
+name = "pandt"
+path = "src/lib.rs"
+
+[dependencies]
