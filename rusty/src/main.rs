@@ -13,4 +13,5 @@ fn main() {
     let game2 = game.start();
     println!("Game2: {:?}", game2);
     println!("Current creature name: {:?}", game2.current_creature());
+    println!("And we can still print the old game? {:?}", game)
 }
