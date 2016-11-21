@@ -1,7 +1,11 @@
 extern crate pandt;
 
-fn main()  {
-    let creat = pandt::Creature { name: "Bob".to_string(), energy: 10, abilities: vec![]};
+fn main() {
+    let creat = pandt::Creature {
+        name: "Bob".to_string(),
+        energy: 10,
+        abilities: vec![],
+    };
     println!("Creature: {:?}", creat);
     let creatures = vec![&creat];
     let game = pandt::Game::new(&creatures);
