@@ -6,50 +6,25 @@ Using "owned" fields means that to purely manipulate a game we must either:
    if we want to keep track of history.
 so, we should _probably_ use references for the fields, but then we have to keep track of
 lifetimes...
-
-Turns out avoiding owned fields is pretty dang easy (???), see GameR.
 */
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Game<S> {
-    pub state: S,
-    current_creature: usize,
-    pub creatures: Vec<Creature>
-}
-
-impl Game<GameStarting> {
-    pub fn new(creatures: Vec<Creature>) -> Game<GameStarting> {
-        Game {state: GameStarting, current_creature: 0, creatures: creatures}
-    }
-
-    pub fn start(self) -> Game<PlayerChoosingAbility> {
-        Game {state: PlayerChoosingAbility, creatures: self.creatures, current_creature: 0}
-    }
-}
-
-impl<T> Game<T> {
-    pub fn current_creature_name(self) -> String {
-       self.creatures[self.current_creature].name.clone()
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct GameR<'a, S> {
+pub struct Game<'a, S> {
     pub state: S,
     pub creatures: &'a Vec<&'a Creature>,
     current_creature: usize
 }
 
-impl<'a> GameR<'a, GameStarting> {
-    pub fn new(creatures: &'a Vec<&'a Creature>) -> GameR<'a, GameStarting> {
-        GameR {state: GameStarting, creatures: creatures, current_creature: 0}
+impl<'a> Game<'a, GameStarting> {
+    pub fn new(creatures: &'a Vec<&'a Creature>) -> Game<'a, GameStarting> {
+        Game {state: GameStarting, creatures: creatures, current_creature: 0}
     }
-    pub fn start(&self) -> GameR<PlayerChoosingAbility> {
-        GameR {state: PlayerChoosingAbility, creatures: self.creatures, current_creature: 0}
+    pub fn start(&self) -> Game<PlayerChoosingAbility> {
+        Game {state: PlayerChoosingAbility, creatures: self.creatures, current_creature: 0}
     }
 }
 
-impl<'a, T> GameR<'a, T> {
+impl<'a, T> Game<'a, T> {
     pub fn current_creature(self) -> &'a Creature {
         self.creatures[self.current_creature]
     }
