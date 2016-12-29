@@ -1,21 +1,15 @@
 
-// Using "owned" fields means that to purely manipulate a game we must either:
-// 1. destroy the old one, thus preventing keeping track of game history
-// 2. clone the ENTIRE game, including all of its contents, in a memory-inefficient way,
-// if we want to keep track of history.
-// so, we should _probably_ use references for the fields, but then we have to keep track of
-// lifetimes...
-//
+use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Game<'a, S> {
+pub struct Game<S> {
     pub state: S,
-    pub creatures: &'a Vec<&'a Creature>,
+    pub creatures: Vec<Rc<Creature>>,
     current_creature: usize,
 }
 
-impl<'a> Game<'a, GameStarting> {
-    pub fn new(creatures: &'a Vec<&'a Creature>) -> Game<'a, GameStarting> {
+impl Game<GameStarting> {
+    pub fn new(creatures: Vec<Rc<Creature>>) -> Game<GameStarting> {
         Game {
             state: GameStarting,
             creatures: creatures,
@@ -25,16 +19,23 @@ impl<'a> Game<'a, GameStarting> {
     pub fn start(&self) -> Game<PlayerChoosingAbility> {
         Game {
             state: PlayerChoosingAbility,
-            creatures: self.creatures,
+            creatures: self.creatures.clone(),
             current_creature: 0,
         }
     }
 }
 
-impl<'a, T> Game<'a, T> {
-    pub fn current_creature(self) -> &'a Creature {
-        self.creatures[self.current_creature]
+impl<T> Game<T> {
+    pub fn current_creature(self) -> Rc<Creature> {
+        self.creatures[self.current_creature].clone()
     }
+}
+
+#[derive(Debug)]
+pub enum GameWithState {
+    GS(Game<GameStarting>),
+    PCA(Game<PlayerChoosingAbility>),
+    PCT(Game<PlayerChoosingTargets>),
 }
 
 
