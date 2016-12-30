@@ -25,7 +25,7 @@ impl Game {
         }
     }
 
-    pub fn current_creature(self) -> Rc<Creature> {
+    pub fn current_creature(&self) -> Rc<Creature> {
         self.creatures[self.current_creature].clone()
     }
 }

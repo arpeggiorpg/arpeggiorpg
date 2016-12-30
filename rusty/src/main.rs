@@ -21,5 +21,6 @@ fn main() {
         newgame
     };
     games.push(anothergame);
-    println!("And we can still print the old game? {:?}", games[0])
+    println!("And we can still print the old game? {:?}", games[0]);
+    println!("current creature: {:?}", games[1].current_creature());
 }
