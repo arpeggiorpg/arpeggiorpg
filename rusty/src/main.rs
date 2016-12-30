@@ -13,14 +13,12 @@ fn main() {
     let mut games = vec![];
 
     let creatures = vec![Rc::new(creat)];
-    games.push(pandt::GameWithState::GS(pandt::Game::new(creatures)));
+    games.push(pandt::Game::new(creatures));
     println!("Game: {:?}", games[0]);
     let anothergame = {
-        if let pandt::GameWithState::GS(ref game0) = games[0] {
-            let newgame = pandt::GameWithState::PCA(game0.start());
-            println!("Game2: {:?}", newgame);
-            newgame
-        } else { panic!();}
+        let newgame = games[0].start();
+        println!("Game2: {:?}", newgame);
+        newgame
     };
     games.push(anothergame);
     println!("And we can still print the old game? {:?}", games[0])

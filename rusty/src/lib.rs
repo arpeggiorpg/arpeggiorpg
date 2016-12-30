@@ -2,50 +2,39 @@
 use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Game<S> {
-    pub state: S,
+pub struct Game {
+    pub state: GameState,
     pub creatures: Vec<Rc<Creature>>,
     current_creature: usize,
 }
 
-impl Game<GameStarting> {
-    pub fn new(creatures: Vec<Rc<Creature>>) -> Game<GameStarting> {
+impl Game {
+    pub fn new(creatures: Vec<Rc<Creature>>) -> Game {
         Game {
-            state: GameStarting,
+            state: GameState::GameStarting,
             creatures: creatures,
             current_creature: 0,
         }
     }
-    pub fn start(&self) -> Game<PlayerChoosingAbility> {
+
+    pub fn start(&self) -> Game {
         Game {
-            state: PlayerChoosingAbility,
+            state: GameState::PlayerChoosingAbility,
             creatures: self.creatures.clone(),
             current_creature: 0,
         }
     }
-}
 
-impl<T> Game<T> {
     pub fn current_creature(self) -> Rc<Creature> {
         self.creatures[self.current_creature].clone()
     }
 }
 
-#[derive(Debug)]
-pub enum GameWithState {
-    GS(Game<GameStarting>),
-    PCA(Game<PlayerChoosingAbility>),
-    PCT(Game<PlayerChoosingTargets>),
-}
-
-
-#[derive(Eq, PartialEq, Debug)]
-pub struct GameStarting;
-#[derive(Eq, PartialEq, Debug)]
-pub struct PlayerChoosingAbility;
-#[derive(Eq, PartialEq, Debug)]
-pub struct PlayerChoosingTargets {
-    pub ability: Ability,
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum GameState {
+    GameStarting,
+    PlayerChoosingAbility,
+    PlayerChoosingTargets { ability: Ability },
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
