@@ -20,15 +20,20 @@ impl App {
         App { game_history: vec![Game::new(creatures)] }
     }
 
-    pub fn choose_ability(&mut self, ability_name: String) -> Result<(), GameError> {
-        // last.unwwrap: App is always initialized with a game
-        let next = self.game_history.last().unwrap().choose_ability(ability_name);
-        match next {
+    fn perform_op<F>(&mut self, op: F) -> Result<(), GameError>
+        where F: FnOnce(&Game) -> Result<Game, GameError>
+    {
+        match op(self.game_history.last().unwrap()) {
             Ok(g) => {
                 self.game_history.push(g);
                 Ok(())
             }
             Err(x) => Err(x),
         }
+    }
+
+    pub fn choose_ability(&mut self, ability_name: String) -> Result<(), GameError> {
+        // last.unwwrap: App is always initialized with a game
+        self.perform_op(move |game| game.choose_ability(ability_name))
     }
 }
