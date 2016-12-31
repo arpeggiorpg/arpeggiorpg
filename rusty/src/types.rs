@@ -1,3 +1,7 @@
+/// Core simulation types, all immutable.
+
+use std::error::Error;
+use std::fmt;
 use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
@@ -30,6 +34,40 @@ impl Game {
     pub fn current_creature(&self) -> Rc<Creature> {
         self.creatures[self.current_creature].clone()
     }
+
+    pub fn choose_ability(&self, ability_name: String) -> Result<Game, GameError> {
+        match self.state {
+            GameState::PlayerChoosingAbility => {
+                let creature = self.current_creature();
+                if creature.has_ability(ability_name.clone()) {
+                    let mut newgame = self.clone();
+                    newgame.state =
+                        GameState::PlayerChoosingTargets { ability: ability_name.clone() };
+                    Ok(newgame)
+                } else {
+                    Err(GameError::InvalidAbility)
+                }
+            }
+            _ => Err(GameError::InvalidState),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum GameError {
+    InvalidState,
+    InvalidAbility,
+}
+impl fmt::Display for GameError {
+    fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmter, "{}", format!("{:?}", self))
+    }
+}
+
+impl Error for GameError {
+    fn description(&self) -> &str {
+        "A Game Error occurred"
+    }
 }
 
 /// A state that the game can be in.
@@ -47,7 +85,7 @@ impl Game {
 pub enum GameState {
     GameStarting,
     PlayerChoosingAbility,
-    PlayerChoosingTargets { ability: Ability },
+    PlayerChoosingTargets { ability: String },
 }
 
 
@@ -76,6 +114,14 @@ impl Creature {
                 })
                 .collect(),
         }
+    }
+    pub fn has_ability(&self, ability_name: String) -> bool {
+        for ability in self.abilities.iter() {
+            if ability.ability.name == ability_name {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

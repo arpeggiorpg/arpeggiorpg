@@ -1,13 +1,17 @@
 {
-  "state": "PlayerChoosingAbility",
-  "current_creature": 0,
-  "creatures": [
+  "game_history": [
     {
-      "name": "Bob",
-      "energy":10,
-      "abilities": [],
-      "max_health": 10,
-      "cur_health": 10
-      }
-    ]
+      "state": "PlayerChoosingAbility",
+      "current_creature": 0,
+      "creatures": [
+        {
+          "name": "Bob",
+          "energy":10,
+          "abilities": [{"cooldown": 0, "ability": {"name": "Punch", "cost": 0, "effects": [{"Damage": 3}]}}],
+          "max_health": 10,
+          "cur_health": 10
+          }
+        ]
+    }
+  ]
 }

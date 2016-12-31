@@ -9,12 +9,23 @@ use std::io::Read;
 
 mod types;
 
+fn load_json() -> serde_json::error::Result<pandt::App> {
+    let mut gamefile = File::open("game.json").unwrap();
+    let mut data = "".to_owned();
+    let _ = gamefile.read_to_string(&mut data);
+    serde_json::from_str(&data)
+}
+
 fn main() {
-    let game1: types::Game = {
-        let mut gamefile = File::open("game.json").unwrap();
-        let mut data = "".to_owned();
-        let _ = gamefile.read_to_string(&mut data);
-        serde_json::from_str(&data).unwrap()
-    };
-    println!("{:?}", game1);
+    match load_json() {
+        Ok(mut app) => {
+            println!("{:?}", app);
+
+            let r = app.choose_ability("Punch".to_string());
+            println!("Result of choosing ability: {:?}", r);
+            println!("Current json: {}",
+                     serde_json::to_string_pretty(&app).unwrap());
+        }
+        Err(e) => println!("Sorry, error loading json: {}", e),
+    }
 }
