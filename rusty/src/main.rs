@@ -1,26 +1,15 @@
 extern crate pandt;
+extern crate serde_json;
 
-use std::rc::Rc;
+use std::fs::File;
+use std::io::Read;
 
 fn main() {
-    let creat = pandt::Creature {
-        name: "Bob".to_string(),
-        energy: 10,
-        abilities: vec![],
+    let game1: pandt::Game = {
+        let mut gamefile = File::open("game.json").unwrap();
+        let mut data = "".to_owned();
+        let _ = gamefile.read_to_string(&mut data);
+        serde_json::from_str(&data).unwrap()
     };
-    println!("Creature: {:?}", creat);
-
-    let mut games = vec![];
-
-    let creatures = vec![Rc::new(creat)];
-    games.push(pandt::Game::new(creatures));
-    println!("Game: {:?}", games[0]);
-    let anothergame = {
-        let newgame = games[0].start();
-        println!("Game2: {:?}", newgame);
-        newgame
-    };
-    games.push(anothergame);
-    println!("And we can still print the old game? {:?}", games[0]);
-    println!("current creature: {:?}", games[1].current_creature());
+    println!("{:?}", game1);
 }

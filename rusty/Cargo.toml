@@ -2,9 +2,23 @@
 name = "pandt"
 version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
+build = "build.rs" # TODO: disable when we switch to rust 1.15
+
 
 [lib]
 name = "pandt"
 path = "src/lib.rs"
 
+[features]
+# TODO: just always use serde_derive in rust 1.15
+default = ["serde_codegen"]
+unstable = ["serde_derive"]
+
+[build-dependencies]
+# TODO remove with 1.15
+serde_codegen = { version = "0.8", optional = true }
+
 [dependencies]
+serde = "0.8"
+serde_derive = { version = "0.8", optional = true } # TODO: remove optional with 1.15
+serde_json = "0.8"
