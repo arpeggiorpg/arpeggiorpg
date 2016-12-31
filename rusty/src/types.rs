@@ -2,54 +2,38 @@
 
 use std::error::Error;
 use std::fmt;
-use std::rc::Rc;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(u8);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
-    pub state: GameState,
-    pub creatures: Vec<Rc<Creature>>,
+    // Since we serialize a whole history of Games to JSON, using Rc<Creature> pointless after we
+    // load data back in, because serde doesn't (currently) have any way to know that multiple
+    // Rc-wrapped values should be unified. See
+    // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
+    //
+    // A simpler way to share these references would probably be to store a Vec<Creature> on App,
+    // and then either have Vec<&Creature> here, or Vec<CreatureID>.
+    pub creatures: Vec<Creature>,
     current_creature: usize,
 }
 
 impl Game {
-    pub fn new(creatures: Vec<Rc<Creature>>) -> Game {
+    pub fn new(creatures: Vec<Creature>) -> Game {
         Game {
-            state: GameState::GameStarting,
             creatures: creatures,
             current_creature: 0,
         }
     }
 
-    pub fn start(&self) -> Game {
-        Game {
-            state: GameState::PlayerChoosingAbility,
-            creatures: self.creatures.clone(),
-            current_creature: 0,
-        }
+    pub fn current_creature(&self) -> &Creature {
+        &self.creatures[self.current_creature]
     }
 
-    pub fn current_creature(&self) -> Rc<Creature> {
-        self.creatures[self.current_creature].clone()
-    }
-
-    pub fn choose_ability(&self, ability_name: String) -> Result<Game, GameError> {
-        match self.state {
-            GameState::PlayerChoosingAbility => {
-                let creature = self.current_creature();
-                if creature.has_ability(ability_name.clone()) {
-                    let mut newgame = self.clone();
-                    newgame.state =
-                        GameState::PlayerChoosingTargets { ability: ability_name.clone() };
-                    Ok(newgame)
-                } else {
-                    Err(GameError::InvalidAbility)
-                }
-            }
-            _ => Err(GameError::InvalidState),
-        }
+    /// Cause the current creature to act.
+    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<Game, GameError> {
+        Ok(self.clone())
     }
 }
 
@@ -70,25 +54,6 @@ impl Error for GameError {
     }
 }
 
-/// A state that the game can be in.
-///
-// It'd be nice to also have types representing each of these states, so we can write functions
-// that are statically verified as only callable in certain states. This enum would then need to
-// wrap those types, like: "GameStarting(GameStarting),
-// PlayerChoosingTargets(PlayerChoosingTargets)".
-//
-// If Niko Matsakis's idea of enum variant subtyping[1] ever happens, we'll be able to have nice
-// type safe state machine functions without having to write tons of type boilerplate.
-//
-// [1] http://smallcultfollowing.com/babysteps/blog/2015/08/20/virtual-structs-part-3-bringing-enums-and-structs-together/
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum GameState {
-    GameStarting,
-    PlayerChoosingAbility,
-    PlayerChoosingTargets { ability: String },
-}
-
-
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
     name: String,
@@ -96,11 +61,13 @@ pub struct Creature {
     abilities: Vec<AbilityStatus>,
     max_health: u8,
     cur_health: u8, // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
+    pos: (u32, u32, u32),
 }
 
 impl Creature {
     pub fn new(name: String, energy: Energy, abilities: Vec<Ability>) -> Creature {
         Creature {
+            pos: (0, 0, 0),
             name: name,
             energy: energy,
             max_health: 10,
@@ -108,20 +75,18 @@ impl Creature {
             abilities: abilities.iter()
                 .map(|ab| {
                     AbilityStatus {
-                        ability: ab.clone(),
+                        ability: ab.name.clone(),
                         cooldown: 0,
                     }
                 })
                 .collect(),
         }
     }
+
     pub fn has_ability(&self, ability_name: String) -> bool {
-        for ability in self.abilities.iter() {
-            if ability.ability.name == ability_name {
-                return true;
-            }
-        }
-        return false;
+        self.abilities
+            .iter()
+            .any(|&AbilityStatus { ability: ref ab, cooldown: _ }| ab == &ability_name)
     }
 }
 
@@ -160,6 +125,6 @@ pub struct AppliedCondition {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
-    ability: Ability,
+    ability: String,
     cooldown: u8,
 }
