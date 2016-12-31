@@ -10,7 +10,7 @@ fn main() {
     let src = Path::new("src/types.in.rs");
     let dst = Path::new(&out_dir).join("types.rs");
 
-    serde_codegen::expand(&src, &dst).unwrap();
+    serde_codegen::expand(&src, &dst).expect("Probably had a compilation error in types.in.rs")
 }
 
 #[cfg(not(feature = "serde_codegen"))]

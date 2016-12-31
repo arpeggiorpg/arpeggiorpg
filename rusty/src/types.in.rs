@@ -1,6 +1,8 @@
 // TODO Just move this to types.rs when we switch to rust 1.15
 
 use std::rc::Rc;
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+pub struct Energy(u8);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -31,6 +33,17 @@ impl Game {
     }
 }
 
+/// A state that the game can be in.
+///
+// It'd be nice to also have types representing each of these states, so we can write functions
+// that are statically verified as only callable in certain states. This enum would then need to
+// wrap those types, like: "GameStarting(GameStarting),
+// PlayerChoosingTargets(PlayerChoosingTargets)".
+//
+// If Niko Matsakis's idea of enum variant subtyping[1] ever happens, we'll be able to have nice
+// type safe state machine functions without having to write tons of type boilerplate.
+//
+// [1] http://smallcultfollowing.com/babysteps/blog/2015/08/20/virtual-structs-part-3-bringing-enums-and-structs-together/
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameState {
     GameStarting,
@@ -39,17 +52,17 @@ pub enum GameState {
 }
 
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
     name: String,
-    energy: u8,
+    energy: Energy,
     abilities: Vec<AbilityStatus>,
     max_health: u8,
     cur_health: u8, // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
 }
 
 impl Creature {
-    pub fn new(name: String, energy: u8, abilities: Vec<Ability>) -> Creature {
+    pub fn new(name: String, energy: Energy, abilities: Vec<Ability>) -> Creature {
         Creature {
             name: name,
             energy: energy,
@@ -67,13 +80,40 @@ impl Creature {
     }
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Ability {
     pub name: String,
+    cost: Energy,
+    effects: Vec<Effect>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum Effect {
+    Interrupt,
+    ApplyCondition(Condition),
+    Heal(u8),
+    Damage(u8),
+    MultiEffect(Vec<Effect>),
+    GenerateEnergy(Energy),
+    Resurrect,
 }
 
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum Condition {
+    RecurringEffect(Box<Effect>),
+    Dead,
+    Incapacitated,
+    DamageBuff(u8),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AppliedCondition {
+    remaning: u8,
+    condition: Condition,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
     ability: Ability,
     cooldown: u8,
