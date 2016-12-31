@@ -1,6 +1,5 @@
-// TODO Just move this to types.rs when we switch to rust 1.15
-
 use std::rc::Rc;
+
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(u8);
 
