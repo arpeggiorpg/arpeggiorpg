@@ -32,6 +32,27 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    pub fn get_current_mut(&mut self) -> &mut T {
+        let i = self.cursor;
+        self.get_mut(i).unwrap()
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&T> {
+        if idx == 0 {
+            Some(&self.head)
+        } else {
+            self.most.get(idx - 1)
+        }
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
+        if idx == 0 {
+            Some(&mut self.head)
+        } else {
+            self.most.get_mut(idx - 1)
+        }
+    }
+
     pub fn push(&mut self, t: T) {
         self.most.push(t)
     }

@@ -3,6 +3,8 @@
 use std::error::Error;
 use std::fmt;
 
+use nonempty;
+
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(u8);
 
@@ -15,20 +17,12 @@ pub struct Game {
     //
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-    pub creatures: Vec<Creature>,
-    current_creature: usize,
+    pub creatures: nonempty::NonEmptyWithCursor<Creature>,
 }
 
 impl Game {
-    pub fn new(creatures: Vec<Creature>) -> Game {
-        Game {
-            creatures: creatures,
-            current_creature: 0,
-        }
-    }
-
     pub fn current_creature(&self) -> &Creature {
-        &self.creatures[self.current_creature]
+        self.creatures.get_current()
     }
 
     /// Cause the current creature to act.

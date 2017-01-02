@@ -23,13 +23,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(creatures: Vec<Creature>) -> App {
-        App {
-            abilities: HashMap::new(),
-            game_history: VecDeque::with_capacity(1000),
-            current_game: Game::new(creatures),
-        }
-    }
+    // pub fn new(creatures: Vec<Creature>) -> App {
+    //     App {
+    //         abilities: HashMap::new(),
+    //         game_history: VecDeque::with_capacity(1000),
+    //         current_game: Game::new(creatures),
+    //     }
+    // }
 
     fn perform_op<F>(&mut self, op: F) -> Result<(), GameError>
         where F: FnOnce(&Game) -> Result<Game, GameError>

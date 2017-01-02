@@ -4,24 +4,25 @@
   "current_game":
     {
       "state": "PlayerChoosingAbility",
-      "current_creature": 0,
-      "creatures": [
-        {
-          "name": "Bob",
-          "energy":10,
-          "abilities": [{"cooldown": 0, "ability": "Punch"}],
-          "max_health": 10,
-          "cur_health": 10,
-          "pos": [0, 0, 0]
-        },
-        {
-          "name": "Chris",
-          "energy": 20,
-          "abilities": [{"cooldown": 0, "ability": "Punch"}],
-          "max_health": 20,
-          "cur_health": 5,
-          "pos": [1, 0, 0]
-        }
-      ]
+      "creatures": {
+        "cursor": 0, "data": [
+          {
+            "name": "Bob",
+            "energy":10,
+            "abilities": [{"cooldown": 0, "ability": "Punch"}],
+            "max_health": 10,
+            "cur_health": 10,
+            "pos": [0, 0, 0]
+          },
+          {
+            "name": "Chris",
+            "energy": 20,
+            "abilities": [{"cooldown": 0, "ability": "Punch"}],
+            "max_health": 20,
+            "cur_health": 5,
+            "pos": [1, 0, 0]
+          }
+        ]
+      }
     }
 }
