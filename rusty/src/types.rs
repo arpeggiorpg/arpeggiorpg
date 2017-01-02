@@ -20,6 +20,11 @@ pub struct Game {
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
 }
 
+#[deprecated(since="0", note="Unhandled match case")]
+fn unhandled(x: &str) {
+    panic!("{}", x);
+}
+
 impl Game {
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
@@ -40,7 +45,7 @@ impl Game {
                             .cur_health -= amt as i16;
                     }
                 }
-                x => panic!("Unimplemented effect: {:?}", x),
+                x => unhandled(&format!("Unimplemented effect: {:?}", x)),
             }
         }
         newgame.creatures.next_circle();

@@ -25,17 +25,13 @@ impl App {
     fn perform_op<F>(&mut self, op: F) -> Result<(), GameError>
         where F: FnOnce(&Game) -> Result<Game, GameError>
     {
-        match op(&self.current_game) {
-            Ok(g) => {
-                if self.game_history.len() >= 1000 {
-                    let _ = self.game_history.pop_front();
-                }
-                self.game_history.push_back(self.current_game.clone());
-                self.current_game = g;
-                Ok(())
-            }
-            Err(x) => Err(x),
+        let g = op(&self.current_game)?;
+        if self.game_history.len() >= 1000 {
+            let _ = self.game_history.pop_front();
         }
+        self.game_history.push_back(self.current_game.clone());
+        self.current_game = g;
+        Ok(())
     }
 
     fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
