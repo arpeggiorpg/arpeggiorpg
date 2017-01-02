@@ -1,15 +1,6 @@
-#![feature(proc_macro)]
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
-
 use std::collections::VecDeque;
 use std::collections::HashMap;
-use std::error::Error;
 
-mod nonempty;
-mod types;
 use types::*;
 
 /// A data structure maintaining state for the whole app. While the types in types.rs are all

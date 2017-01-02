@@ -50,7 +50,6 @@ impl Game {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
-    InvalidState,
     InvalidAbility,
     InvalidTarget,
 }
@@ -77,23 +76,23 @@ pub struct Creature {
 }
 
 impl Creature {
-    pub fn new(name: String, energy: Energy, abilities: Vec<Ability>) -> Creature {
-        Creature {
-            pos: (0, 0, 0),
-            name: name,
-            energy: energy,
-            max_health: 10,
-            cur_health: 10,
-            abilities: abilities.iter()
-                .map(|ab| {
-                    AbilityStatus {
-                        ability: ab.name.clone(),
-                        cooldown: 0,
-                    }
-                })
-                .collect(),
-        }
-    }
+    // pub fn new(name: String, energy: Energy, abilities: Vec<Ability>) -> Creature {
+    //     Creature {
+    //         pos: (0, 0, 0),
+    //         name: name,
+    //         energy: energy,
+    //         max_health: 10,
+    //         cur_health: 10,
+    //         abilities: abilities.iter()
+    //             .map(|ab| {
+    //                 AbilityStatus {
+    //                     ability: ab.name.clone(),
+    //                     cooldown: 0,
+    //                 }
+    //             })
+    //             .collect(),
+    //     }
+    // }
 
     pub fn has_ability(&self, ability_name: &str) -> bool {
         self.abilities

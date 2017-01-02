@@ -1,5 +1,4 @@
 #![feature(proc_macro)]
-extern crate pandt;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
@@ -8,10 +7,11 @@ extern crate serde;
 use std::fs::File;
 use std::io::Read;
 
+mod app;
 mod types;
 mod nonempty;
 
-fn load_json() -> serde_json::error::Result<pandt::App> {
+fn load_json() -> serde_json::error::Result<app::App> {
     let mut gamefile = File::open("game.json").unwrap();
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);

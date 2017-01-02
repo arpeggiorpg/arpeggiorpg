@@ -7,9 +7,9 @@ use serde_json;
 #[cfg(test)]
 use serde_json::error as SJE;
 
+
+// TODO: implement iter() etc, and ... ALL the rest of the Vec methods... :(
 #[derive(Clone, Eq, PartialEq, Debug)]
-// TODO: Serialize as {"cursor": 0, "data": [...]} and deserialize same, and ensure that data is
-// always non-empty
 pub struct NonEmptyWithCursor<T> {
     most: Vec<T>,
     head: T,
