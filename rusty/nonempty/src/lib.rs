@@ -96,20 +96,31 @@ impl<T> Serialize for NonEmptyWithCursor<T>
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: Serializer
     {
+        // We have to make a helper struct to serialize the value of `data`, because we have to
+        // have something to pass to `serialize_map_value`.
+        struct Data<'a, T2>(&'a NonEmptyWithCursor<T2>) where T2: 'a;
+        impl<'a, T2> Serialize for Data<'a, T2>
+            where T2: Serialize
+        {
+            fn serialize<S2>(&self, serializer: &mut S2) -> Result<(), S2::Error>
+                where S2: Serializer
+            {
+                let mut state = serializer.serialize_seq(Some(self.0.len()))?;
+                serializer.serialize_seq_elt(&mut state, &self.0.head)?;
+                for elt in self.0.most.iter() {
+                    serializer.serialize_seq_elt(&mut state, elt)?;
+                }
+                serializer.serialize_seq_end(state)
+            }
+        }
         let mut state = serializer.serialize_map(Some(2))?;
         serializer.serialize_map_key(&mut state, "cursor")?;
         serializer.serialize_map_value(&mut state, self.cursor)?;
         serializer.serialize_map_key(&mut state, "data")?;
-        let mut seqstate = serializer.serialize_seq(Some(self.len()))?;
-        serializer.serialize_seq_elt(&mut seqstate, &self.head)?;
-        for elt in self.most.iter() {
-            serializer.serialize_seq_elt(&mut seqstate, elt)?;
-        }
-        serializer.serialize_seq_end(seqstate)?;
+        serializer.serialize_map_value(&mut state, Data(&self))?;
         serializer.serialize_map_end(state)
     }
 }
-
 
 #[derive(Deserialize)]
 struct SerializedNE<T> {
