@@ -45,10 +45,14 @@ impl App {
         }
     }
 
+    fn get_ability(&self, ability_name: &str) -> Result<Ability, GameError> {
+        Ok(self.abilities.get(ability_name).ok_or(GameError::InvalidAbility)?.clone())
+    }
+
     pub fn act(&mut self, ability_name: String, targets: Vec<usize>) -> Result<(), GameError> {
-        let ability = self.abilities.get(&ability_name).ok_or(GameError::InvalidAbility)?.clone();
+        let ability = self.get_ability(&ability_name)?;
         self.perform_op(move |g| {
-            if g.current_creature().has_ability(ability_name) {
+            if g.current_creature().has_ability(&ability_name) {
                 g.act(&ability, targets)
             } else {
                 Err(GameError::InvalidAbility)
@@ -57,15 +61,6 @@ impl App {
     }
 }
 
-
-fn opt2res<T, E>(opt: Option<T>, error: E) -> Result<T, E>
-    where E: Error
-{
-    match opt {
-        Some(x) => Ok(x),
-        None => return Err(error),
-    }
-}
 
 #[test]
 fn test_history() {

@@ -33,7 +33,21 @@ impl Game {
 
     /// Cause the current creature to act.
     pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<Game, GameError> {
-        Ok(self.clone())
+        let mut newgame = self.clone();
+        for effect in ability.effects.iter() {
+            match effect {
+                &Effect::Damage(amt) => {
+                    for &tidx in targets.iter() {
+                        newgame.creatures
+                            .get_mut(tidx)
+                            .ok_or(GameError::InvalidTarget)?
+                            .cur_health -= amt;
+                    }
+                }
+                x => panic!("Unimplemented effect: {:?}", x),
+            }
+        }
+        Ok(newgame)
     }
 }
 
@@ -41,6 +55,7 @@ impl Game {
 pub enum GameError {
     InvalidState,
     InvalidAbility,
+    InvalidTarget,
 }
 impl fmt::Display for GameError {
     fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
@@ -83,10 +98,10 @@ impl Creature {
         }
     }
 
-    pub fn has_ability(&self, ability_name: String) -> bool {
+    pub fn has_ability(&self, ability_name: &str) -> bool {
         self.abilities
             .iter()
-            .any(|&AbilityStatus { ability: ref ab, cooldown: _ }| ab == &ability_name)
+            .any(|&AbilityStatus { ability: ref ab, cooldown: _ }| ab == ability_name)
     }
 }
 
