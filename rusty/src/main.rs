@@ -25,6 +25,8 @@ fn main() {
 
             let r = app.act("Punch".to_string(), vec![1]);
             println!("Result of choosing ability: {:?}", r);
+            let r = app.act("Punch".to_string(), vec![1]);
+            println!("Result of choosing ability: {:?}", r);
             println!("Current json: {}",
                      serde_json::to_string_pretty(&app).unwrap());
         }

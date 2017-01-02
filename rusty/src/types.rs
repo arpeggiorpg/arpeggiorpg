@@ -37,12 +37,13 @@ impl Game {
                         newgame.creatures
                             .get_mut(tidx)
                             .ok_or(GameError::InvalidTarget)?
-                            .cur_health -= amt;
+                            .cur_health -= amt as i16;
                     }
                 }
                 x => panic!("Unimplemented effect: {:?}", x),
             }
         }
+        newgame.creatures.next_circle();
         Ok(newgame)
     }
 }
@@ -71,7 +72,7 @@ pub struct Creature {
     energy: Energy,
     abilities: Vec<AbilityStatus>,
     max_health: u8,
-    cur_health: u8, // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
+    cur_health: i16, // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
     pos: (u32, u32, u32),
 }
 

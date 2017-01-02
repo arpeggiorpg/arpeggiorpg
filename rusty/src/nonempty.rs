@@ -65,6 +65,16 @@ impl<T> NonEmptyWithCursor<T> {
             Some(())
         }
     }
+
+    pub fn next_circle(&mut self) {
+        let newcursor = self.cursor + 1;
+        self.cursor = if newcursor > self.most.len() {
+            0
+        } else {
+            newcursor
+        }
+    }
+
     pub fn get_cursor(&self) -> usize {
         self.cursor
     }
