@@ -1,0 +1,27 @@
+game_history: []
+current_game:
+  creatures:
+    cursor: 0
+    data:
+      - name: Bob
+        energy: 10
+        abilities:
+          - ability: Punch
+            cooldown: 0
+        max_health: 10
+        cur_health: 10
+        pos: [0, 0, 0]
+      - name: Chris
+        energy: 20
+        abilities:
+          - ability: Punch
+            cooldown: 0
+        max_health: 20
+        cur_health: 10
+        pos: [1, 0, 0]
+abilities:
+  Punch:
+    name: Punch
+    cost: 0
+    effects:
+      - Damage: 3

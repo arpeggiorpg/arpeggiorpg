@@ -1,5 +1,5 @@
 #![feature(proc_macro)]
-extern crate serde_json;
+extern crate serde_yaml;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -12,15 +12,15 @@ use std::io::Read;
 mod app;
 mod types;
 
-fn load_json() -> serde_json::error::Result<app::App> {
-    let mut gamefile = File::open("game.json").unwrap();
+fn load_game() -> serde_yaml::Result<app::App> {
+    let mut gamefile = File::open("game.yaml").unwrap();
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);
-    serde_json::from_str(&data)
+    serde_yaml::from_str(&data)
 }
 
 fn main() {
-    match load_json() {
+    match load_game() {
         Ok(mut app) => {
             println!("{:?}", app);
 
@@ -28,9 +28,9 @@ fn main() {
             println!("Result of choosing ability: {:?}", r);
             let r = app.act("Punch".to_string(), vec![1]);
             println!("Result of choosing ability: {:?}", r);
-            println!("Current json: {}",
-                     serde_json::to_string_pretty(&app).unwrap());
+            println!("YAML: App");
+            println!("{}", serde_yaml::to_string(&app).unwrap());
         }
-        Err(e) => println!("Sorry, error loading json: {}", e),
+        Err(e) => println!("Sorry, error loading game file: {}", e),
     }
 }
