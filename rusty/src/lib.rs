@@ -7,6 +7,8 @@ extern crate serde_json;
 use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::error::Error;
+
+mod nonempty;
 mod types;
 use types::*;
 
@@ -59,10 +61,4 @@ impl App {
             }
         })
     }
-}
-
-
-#[test]
-fn test_history() {
-    ap
 }

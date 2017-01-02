@@ -33,6 +33,8 @@ impl Game {
 
     /// Cause the current creature to act.
     pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<Game, GameError> {
+        // I could write this in an Actually Functional style, but I really don't care as long as
+        // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
         for effect in ability.effects.iter() {
             match effect {

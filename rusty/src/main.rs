@@ -3,11 +3,13 @@ extern crate pandt;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde;
 
 use std::fs::File;
 use std::io::Read;
 
 mod types;
+mod nonempty;
 
 fn load_json() -> serde_json::error::Result<pandt::App> {
     let mut gamefile = File::open("game.json").unwrap();
