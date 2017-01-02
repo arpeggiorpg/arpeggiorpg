@@ -4,12 +4,13 @@ extern crate serde_json;
 extern crate serde_derive;
 extern crate serde;
 
+extern crate nonempty;
+
 use std::fs::File;
 use std::io::Read;
 
 mod app;
 mod types;
-mod nonempty;
 
 fn load_json() -> serde_json::error::Result<app::App> {
     let mut gamefile = File::open("game.json").unwrap();

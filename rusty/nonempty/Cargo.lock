@@ -1,8 +1,7 @@
 [root]
-name = "pandt"
+name = "nonempty"
 version = "0.1.0"
 dependencies = [
- "nonempty 0.1.0",
  "serde 0.8.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.8.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.8.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -17,14 +16,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "itoa"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "nonempty"
-version = "0.1.0"
-dependencies = [
- "serde 0.8.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 0.8.21 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "num-traits"

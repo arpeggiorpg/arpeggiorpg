@@ -1,7 +1,13 @@
+#![feature(proc_macro)]
 // use std::fmt;
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+#[cfg(test)]
+extern crate serde_json;
+
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use serde;
 #[cfg(test)]
 use serde_json;
 #[cfg(test)]

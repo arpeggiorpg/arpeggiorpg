@@ -1,13 +1,11 @@
 [package]
-name = "pandt"
+name = "nonempty"
 version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
-[[bin]]
-name = "pandt-cli"
+[dev-dependencies]
+serde_json = "0.8"
 
 [dependencies]
 serde = "0.8"
 serde_derive = "0.8"
-serde_json = "0.8"
-nonempty = {version = "*", path = "nonempty"}
