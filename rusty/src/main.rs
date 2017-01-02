@@ -13,7 +13,7 @@ mod app;
 mod types;
 
 fn load_game() -> serde_yaml::Result<app::App> {
-    let mut gamefile = File::open("game.yaml").unwrap();
+    let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);
     serde_yaml::from_str(&data)
@@ -24,9 +24,9 @@ fn main() {
         Ok(mut app) => {
             println!("{:?}", app);
 
-            let r = app.act("Punch".to_string(), vec![1]);
+            let r = app.act(types::AbilityID("punch".to_string()), vec![1]);
             println!("Result of choosing ability: {:?}", r);
-            let r = app.act("Punch".to_string(), vec![1]);
+            let r = app.act(types::AbilityID("punch".to_string()), vec![1]);
             println!("Result of choosing ability: {:?}", r);
             println!("YAML: App");
             println!("{}", serde_yaml::to_string(&app).unwrap());

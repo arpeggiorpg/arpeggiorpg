@@ -94,10 +94,10 @@ impl Creature {
     //     }
     // }
 
-    pub fn has_ability(&self, ability_name: &str) -> bool {
+    pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
         self.abilities
             .iter()
-            .any(|&AbilityStatus { ability: ref ab, cooldown: _ }| ab == ability_name)
+            .any(|&AbilityStatus { ability_id: ref abid, cooldown: _ }| abid == ability_id)
     }
 }
 
@@ -134,8 +134,12 @@ pub struct AppliedCondition {
     condition: Condition,
 }
 
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct AbilityID(pub String);
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
-    ability: String,
+    ability_id: AbilityID,
     cooldown: u8,
 }
