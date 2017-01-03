@@ -4,24 +4,37 @@ current_game:
     cursor: 0
     data:
       - name: Bob
-        energy: 10
+        max_energy: 10
+        cur_energy: 10
         abilities:
           - ability_id: punch
+            cooldown: 0
+          - ability_id: layonhands
             cooldown: 0
         max_health: 10
         cur_health: 10
         pos: [0, 0, 0]
+        conditions: []
       - name: Chris
-        energy: 20
+        max_energy: 20
+        cur_energy: 15
         abilities:
           - ability_id: punch
+            cooldown: 0
+          - ability_id: layonhands
             cooldown: 0
         max_health: 20
         cur_health: 10
         pos: [1, 0, 0]
+        conditions: []
 abilities:
   punch:
     name: Punch
     cost: 0
     effects:
       - Damage: 3
+  layonhands:
+    name: Lay on Hands
+    cost: 0
+    effects:
+      - Heal: 3

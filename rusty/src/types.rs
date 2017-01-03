@@ -2,10 +2,11 @@
 
 use std::error::Error;
 use std::fmt;
+use std::cmp;
 
 use nonempty;
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(u8);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -20,6 +21,7 @@ pub struct Game {
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
 }
 
+#[allow(dead_code)]
 #[deprecated(since="0", note="Unhandled match case")]
 fn unhandled(x: &str) {
     panic!("{}", x);
@@ -35,23 +37,18 @@ impl Game {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
+        // newgame.tick();
         for effect in ability.effects.iter() {
-            match effect {
-                &Effect::Damage(amt) => {
-                    for &tidx in targets.iter() {
-                        newgame.creatures
-                            .get_mut(tidx)
-                            .ok_or(GameError::InvalidTarget)?
-                            .cur_health -= amt as i16;
-                    }
-                }
-                x => unhandled(&format!("Unimplemented effect: {:?}", x)),
+            for &tidx in targets.iter() {
+                let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
+                creature.apply_effect(effect);
             }
         }
         newgame.creatures.next_circle();
         Ok(newgame)
     }
 }
+
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
@@ -72,32 +69,43 @@ impl Error for GameError {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
+    // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
     name: String,
-    energy: Energy,
+    max_energy: Energy,
+    cur_energy: Energy,
     abilities: Vec<AbilityStatus>,
     max_health: u8,
-    cur_health: i16, // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
+    cur_health: u8,
     pos: (u32, u32, u32),
+    conditions: Vec<AppliedCondition>,
 }
 
 impl Creature {
-    // pub fn new(name: String, energy: Energy, abilities: Vec<Ability>) -> Creature {
-    //     Creature {
-    //         pos: (0, 0, 0),
-    //         name: name,
-    //         energy: energy,
-    //         max_health: 10,
-    //         cur_health: 10,
-    //         abilities: abilities.iter()
-    //             .map(|ab| {
-    //                 AbilityStatus {
-    //                     ability: ab.name.clone(),
-    //                     cooldown: 0,
-    //                 }
-    //             })
-    //             .collect(),
-    //     }
-    // }
+    /// Note that this function is private.
+    fn apply_effect(&mut self, effect: &Effect) {
+        match effect {
+            &Effect::Damage(amt) => self.cur_health = self.cur_health.saturating_sub(amt),
+            &Effect::Heal(amt) => {
+                self.cur_health = cmp::min(self.max_health, self.cur_health.saturating_add(amt))
+            }
+            &Effect::GenerateEnergy(amt) => {
+                self.cur_energy = Energy(cmp::min(self.max_energy.0,
+                                                  self.cur_energy.0.saturating_add(amt.0)))
+            }
+            &Effect::MultiEffect(ref effects) => {
+                for effect in effects {
+                    self.apply_effect(&effect)
+                }
+            }
+            &Effect::ApplyCondition(duration, ref condition) => {
+                self.conditions.push(AppliedCondition {
+                    remaining: duration,
+                    condition: condition.clone(),
+                });
+            }
+        }
+    }
+
 
     pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
         self.abilities
@@ -115,13 +123,13 @@ pub struct Ability {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 enum Effect {
-    Interrupt,
-    ApplyCondition(Condition),
+    // Interrupt,
+    // Resurrect,
+    ApplyCondition(u8, Condition),
     Heal(u8),
     Damage(u8),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
-    Resurrect,
 }
 
 
@@ -135,7 +143,7 @@ enum Condition {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AppliedCondition {
-    remaning: u8,
+    remaining: u8,
     condition: Condition,
 }
 

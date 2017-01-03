@@ -9,8 +9,6 @@ extern crate serde_json;
 
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 #[cfg(test)]
-use serde_json;
-#[cfg(test)]
 use serde_json::error as SJE;
 
 
@@ -30,6 +28,14 @@ impl<T> NonEmptyWithCursor<T> {
             cursor: 0,
         }
     }
+
+    pub fn iter(&self) -> NEIter<T> {
+        NEIter {
+            necurs: self,
+            current: 0,
+        }
+    }
+
     pub fn get_current(&self) -> &T {
         if self.cursor == 0 {
             &self.head
@@ -178,6 +184,22 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
 }
 
 
+pub struct NEIter<'a, T: 'a> {
+    necurs: &'a NonEmptyWithCursor<T>,
+    current: usize,
+}
+
+impl<'a, T> Iterator for NEIter<'a, T> {
+    type Item = &'a T;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a T> {
+        let r = self.necurs.get(self.current);
+        self.current += 1;
+        r
+    }
+}
+
 #[test]
 fn test_nonempty_set_cursor() {
     let mut ne: NonEmptyWithCursor<i32> = NonEmptyWithCursor::new(1);
@@ -200,7 +222,6 @@ fn test_nonempty_set_cursor() {
     assert_eq!(ne.get_cursor(), 1);
     assert_eq!(ne.get_current(), &5);
 }
-
 
 #[test]
 fn test_nonempty_serialize_deserialize() {
@@ -238,4 +259,14 @@ fn test_deserialize_invalid_empty() {
         Err(SJE::Error::Syntax(SJE::ErrorCode::InvalidLength(0), 0, 0)) => {}
         Err(e) => panic!("Should not have got any other error: {}", e),
     }
+}
+
+#[test]
+fn test_iter() {
+    let mut ne: NonEmptyWithCursor<i32> = NonEmptyWithCursor::new(5);
+    ne.push(50);
+    ne.push(55);
+    ne.set_cursor(2); // the cursor does not affect iteration
+    let v: Vec<&i32> = ne.iter().collect();
+    assert_eq!(v, vec![&5, &50, &55]);
 }

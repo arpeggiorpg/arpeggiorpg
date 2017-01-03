@@ -28,6 +28,10 @@ fn main() {
             println!("Result of choosing ability: {:?}", r);
             let r = app.act(types::AbilityID("punch".to_string()), vec![1]);
             println!("Result of choosing ability: {:?}", r);
+            let r = app.act(types::AbilityID("layonhands".to_string()), vec![0]);
+            println!("Result of choosing ability: {:?}", r);
+            let r = app.act(types::AbilityID("layonhands".to_string()), vec![1]);
+            println!("Result of choosing ability: {:?}", r);
             println!("YAML: App");
             println!("{}", serde_yaml::to_string(&app).unwrap());
         }
