@@ -3,6 +3,7 @@ extern crate serde_yaml;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate odds;
 
 extern crate nonempty;
 

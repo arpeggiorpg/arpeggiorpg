@@ -5,7 +5,7 @@ use types::*;
 
 /// A data structure maintaining state for the whole app. While the types in types.rs are all
 /// operated on immutably, this is the mutable top-level type. It keeps track of the history of the
-/// whole game, and exposes the top-level methods that will traverse the state machine of the game.
+/// whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App {
     game_history: VecDeque<Game>,

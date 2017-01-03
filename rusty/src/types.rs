@@ -4,6 +4,8 @@ use std::error::Error;
 use std::fmt;
 use std::cmp;
 
+use odds::vec::VecExt;
+
 use nonempty;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
@@ -84,7 +86,7 @@ pub struct Creature {
     abilities: Vec<AbilityStatus>,
     max_health: u8,
     cur_health: u8,
-    pos: (u32, u32, u32),
+    pos: Point3,
     conditions: Vec<AppliedCondition>,
 }
 
@@ -117,24 +119,26 @@ impl Creature {
     /// Note that this is private.
     fn tick(&mut self) {
         let mut effs = vec![];
-        self.conditions.retain(|el| match el.remaining {
-            ConditionDuration::Interminate => true,
-            ConditionDuration::Duration(remaining) => remaining > 0,
-        });
-
-        for &mut AppliedCondition { ref condition, ref mut remaining } in
-            self.conditions.iter_mut() {
-            match remaining {
-                &mut ConditionDuration::Interminate => {}
-                &mut ConditionDuration::Duration(ref mut remaining) => *remaining -= 1,
+        self.conditions.retain_mut(|&mut AppliedCondition { ref condition, ref mut remaining }| {
+            if let &mut ConditionDuration::Duration(k) = remaining {
+                // this shouldn't happen normally, since we remove conditions as soon as they reach
+                // remaining = 0, but handle it just in case
+                if k <= 0 {
+                    return false;
+                }
             }
             match condition {
                 &Condition::RecurringEffect(ref eff) => effs.push(eff.clone()),
-                &Condition::Incapacitated |
-                &Condition::Dead |
-                &Condition::DamageBuff(_) => {}
+                _ => {}
             }
-        }
+            match remaining {
+                &mut ConditionDuration::Interminate => true,
+                &mut ConditionDuration::Duration(ref mut remaining) => {
+                    *remaining -= 1;
+                    remaining > &mut 0
+                }
+            }
+        });
 
         for eff in effs {
             self.apply_effect(&eff);
@@ -197,8 +201,29 @@ fn test_recurring_effect() {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+enum Target {
+    Melee,
+    Range(u8),
+    CircleWithinRange(u8, u8), // radius, distance
+    ConeFromCaster(u8, u8), // distance, radians of angle of cone
+    LineFromCaster(u8), // distance
+}
+
+type Point3 = (i16, i16, i16);
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum DecidedTarget {
+    Melee,
+    Range(Point3),
+    CircleWithinRange(Point3, u8), // radius
+    ConeFromCaster(u8, u8), // distance, radians
+    LineFromCaster(Point3),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Ability {
     pub name: String,
+    target: Target,
     cost: Energy,
     effects: Vec<Effect>,
 }
@@ -234,7 +259,6 @@ pub struct AppliedCondition {
     remaining: ConditionDuration,
     condition: Condition,
 }
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(pub String);

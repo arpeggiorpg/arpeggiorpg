@@ -11,3 +11,4 @@ serde = "0.8"
 serde_derive = "0.8"
 nonempty = {version = "*", path = "nonempty"}
 serde_yaml = "0.5"
+odds = "0.2.25"
