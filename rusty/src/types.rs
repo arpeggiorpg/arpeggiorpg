@@ -105,9 +105,9 @@ impl Creature {
                     self.apply_effect(&effect)
                 }
             }
-            &Effect::ApplyCondition(duration, ref condition) => {
+            &Effect::ApplyCondition(ref duration, ref condition) => {
                 self.conditions.push(AppliedCondition {
-                    remaining: duration,
+                    remaining: duration.clone(),
                     condition: condition.clone(),
                 });
             }
@@ -117,11 +117,17 @@ impl Creature {
     /// Note that this is private.
     fn tick(&mut self) {
         let mut effs = vec![];
-        self.conditions.retain(|el| el.remaining > 0);
+        self.conditions.retain(|el| match el.remaining {
+            ConditionDuration::Interminate => true,
+            ConditionDuration::Duration(remaining) => remaining > 0,
+        });
 
         for &mut AppliedCondition { ref condition, ref mut remaining } in
             self.conditions.iter_mut() {
-            *remaining -= 1;
+            match remaining {
+                &mut ConditionDuration::Interminate => {}
+                &mut ConditionDuration::Duration(ref mut remaining) => *remaining -= 1,
+            }
             match condition {
                 &Condition::RecurringEffect(ref eff) => effs.push(eff.clone()),
                 &Condition::Incapacitated |
@@ -155,18 +161,26 @@ fn test_tick_and_expire_condition_remaining() {
         pos: (0, 0, 0),
         conditions: vec![AppliedCondition {
                              condition: Condition::Dead,
-                             remaining: 0,
+                             remaining: ConditionDuration::Duration(0),
                          },
                          AppliedCondition {
                              condition: Condition::Incapacitated,
-                             remaining: 5,
+                             remaining: ConditionDuration::Duration(5),
+                         },
+                         AppliedCondition {
+                             condition: Condition::Incapacitated,
+                             remaining: ConditionDuration::Interminate,
                          }],
     };
     c.tick();
     assert_eq!(c.conditions,
                vec![AppliedCondition {
                         condition: Condition::Incapacitated,
-                        remaining: 4,
+                        remaining: ConditionDuration::Duration(4),
+                    },
+                    AppliedCondition {
+                        condition: Condition::Incapacitated,
+                        remaining: ConditionDuration::Interminate,
                     }]);
 }
 
@@ -181,7 +195,7 @@ pub struct Ability {
 enum Effect {
     // Interrupt,
     // Resurrect,
-    ApplyCondition(u8, Condition),
+    ApplyCondition(ConditionDuration, Condition),
     Heal(u8),
     Damage(u8),
     MultiEffect(Vec<Effect>),
@@ -198,8 +212,14 @@ enum Condition {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ConditionDuration {
+    Interminate,
+    Duration(u8),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AppliedCondition {
-    remaining: u8,
+    remaining: ConditionDuration,
     condition: Condition,
 }
 
