@@ -1,6 +1,7 @@
 #![feature(proc_macro)]
+/// A non-empty vector with a cursor.
+// This should probably be refactored so that NonEmpty is a separate data type.
 // use std::fmt;
-
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -11,7 +12,8 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 #[cfg(test)]
 use serde_json::error as SJE;
 
-
+/// A non-empty vector with a cursor. NO operations panic.
+/// Has Serde serialization implementations that serialize to e.g. {"current": 0, "data": [...]}
 // TODO: implement iter() etc, and ... ALL the rest of the Vec methods... :(
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct NonEmptyWithCursor<T> {
@@ -29,6 +31,7 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Iterate immutable references to the elements.
     pub fn iter(&self) -> NEIter<T> {
         NEIter {
             necurs: self,
@@ -36,6 +39,12 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Iterate mutable references to the elements.
+    pub fn iter_mut(&mut self) -> NEIterMut<T> {
+        NEIterMut { iter: std::iter::once(&mut self.head).chain(self.most.iter_mut()) }
+    }
+
+    /// Get the current element, as determined by the cursor.
     pub fn get_current(&self) -> &T {
         if self.cursor == 0 {
             &self.head
@@ -44,11 +53,13 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Get a mutable reference to the current element.
     pub fn get_current_mut(&mut self) -> &mut T {
         let i = self.cursor;
         self.get_mut(i).unwrap()
     }
 
+    /// Get an immutable reference to an arbitrary element, by index.
     pub fn get(&self, idx: usize) -> Option<&T> {
         if idx == 0 {
             Some(&self.head)
@@ -57,6 +68,7 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Get a mutable reference to an arbitrary element, by index.
     pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
         if idx == 0 {
             Some(&mut self.head)
@@ -65,10 +77,12 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Append an element.
     pub fn push(&mut self, t: T) {
         self.most.push(t)
     }
 
+    /// Set the cursor. Returns None if the cursor is out of bounds.
     pub fn set_cursor(&mut self, cursor: usize) -> Option<()> {
         if self.most.len() < cursor {
             None
@@ -78,6 +92,7 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Increment the cursor by one, and wrap around to 0 if it goes past the end of the vector.
     pub fn next_circle(&mut self) {
         let newcursor = self.cursor + 1;
         self.cursor = if newcursor > self.most.len() {
@@ -87,10 +102,12 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Get the current cursor.
     pub fn get_cursor(&self) -> usize {
         self.cursor
     }
 
+    /// Return the total length.
     pub fn len(&self) -> usize {
         1 + self.most.len()
     }
@@ -197,6 +214,24 @@ impl<'a, T> Iterator for NEIter<'a, T> {
         let r = self.necurs.get(self.current);
         self.current += 1;
         r
+    }
+}
+
+
+pub struct NEIterMut<'a, T: 'a> {
+    iter: std::iter::Chain<std::iter::Once<&'a mut T>, std::slice::IterMut<'a, T>>,
+}
+
+impl<'a, T> Iterator for NEIterMut<'a, T> {
+    type Item = &'a mut T;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut T> {
+        self.iter.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
     }
 }
 

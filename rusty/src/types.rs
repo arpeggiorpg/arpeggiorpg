@@ -51,8 +51,7 @@ impl Game {
 
     /// Private
     fn tick(&mut self) {
-        for i in 0..self.creatures.len() {
-            let mut creature = self.creatures.get_mut(i).unwrap();
+        for creature in self.creatures.iter_mut() {
             creature.tick();
         }
     }
