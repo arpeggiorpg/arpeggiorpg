@@ -45,7 +45,16 @@ impl Game {
             }
         }
         newgame.creatures.next_circle();
+        newgame.tick();
         Ok(newgame)
+    }
+
+    /// Private
+    fn tick(&mut self) {
+        for i in 0..self.creatures.len() {
+            let mut creature = self.creatures.get_mut(i).unwrap();
+            creature.tick();
+        }
     }
 }
 
@@ -106,6 +115,24 @@ impl Creature {
         }
     }
 
+    /// Note that this is private.
+    fn tick(&mut self) {
+        let mut effs = vec![];
+
+        for &AppliedCondition { ref remaining, ref condition } in self.conditions.iter() {
+            if *remaining == 0 {
+                // delete?
+            }
+            match condition {
+                &Condition::RecurringEffect(ref eff) => effs.push(eff.clone()),
+                x => unhandled(&format!("{:?}", x)),
+            }
+        }
+
+        for eff in effs {
+            self.apply_effect(&eff);
+        }
+    }
 
     pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
         self.abilities
