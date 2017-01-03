@@ -149,9 +149,9 @@ impl Creature {
     }
 }
 
-#[test]
-fn test_tick_and_expire_condition_remaining() {
-    let mut c = Creature {
+#[cfg(test)]
+fn t_creature() -> Creature {
+    Creature {
         name: "Bob".to_string(),
         abilities: vec![],
         max_energy: Energy(10),
@@ -159,29 +159,41 @@ fn test_tick_and_expire_condition_remaining() {
         max_health: 10,
         cur_health: 10,
         pos: (0, 0, 0),
-        conditions: vec![AppliedCondition {
-                             condition: Condition::Dead,
-                             remaining: ConditionDuration::Duration(0),
-                         },
-                         AppliedCondition {
-                             condition: Condition::Incapacitated,
-                             remaining: ConditionDuration::Duration(5),
-                         },
-                         AppliedCondition {
-                             condition: Condition::Incapacitated,
-                             remaining: ConditionDuration::Interminate,
-                         }],
-    };
+        conditions: vec![],
+    }
+}
+
+#[cfg(test)]
+fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
+    AppliedCondition {
+        condition: c,
+        remaining: r,
+    }
+}
+
+#[test]
+fn test_tick_and_expire_condition_remaining() {
+    let mut c = t_creature();
+    c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
+                        app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
+                        app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
     c.tick();
     assert_eq!(c.conditions,
-               vec![AppliedCondition {
-                        condition: Condition::Incapacitated,
-                        remaining: ConditionDuration::Duration(4),
-                    },
-                    AppliedCondition {
-                        condition: Condition::Incapacitated,
-                        remaining: ConditionDuration::Interminate,
-                    }]);
+               vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
+                    app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
+}
+
+#[test]
+fn test_recurring_effect() {
+    let mut c = t_creature();
+    c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(1))),
+                                 ConditionDuration::Duration(2))];
+    c.tick();
+    assert_eq!(c.cur_health, 9);
+    c.tick();
+    assert_eq!(c.cur_health, 8);
+    c.tick();
+    assert_eq!(c.cur_health, 8);
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
