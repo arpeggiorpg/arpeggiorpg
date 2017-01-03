@@ -117,14 +117,16 @@ impl Creature {
     /// Note that this is private.
     fn tick(&mut self) {
         let mut effs = vec![];
+        self.conditions.retain(|el| el.remaining > 0);
 
-        for &AppliedCondition { ref remaining, ref condition } in self.conditions.iter() {
-            if *remaining == 0 {
-                // delete?
-            }
+        for &mut AppliedCondition { ref condition, ref mut remaining } in
+            self.conditions.iter_mut() {
+            *remaining -= 1;
             match condition {
                 &Condition::RecurringEffect(ref eff) => effs.push(eff.clone()),
-                x => unhandled(&format!("{:?}", x)),
+                &Condition::Incapacitated |
+                &Condition::Dead |
+                &Condition::DamageBuff(_) => {}
             }
         }
 
@@ -133,11 +135,39 @@ impl Creature {
         }
     }
 
+    /// Check if a creature has the given ability.
     pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
         self.abilities
             .iter()
             .any(|&AbilityStatus { ability_id: ref abid, cooldown: _ }| abid == ability_id)
     }
+}
+
+#[test]
+fn test_tick_and_expire_condition_remaining() {
+    let mut c = Creature {
+        name: "Bob".to_string(),
+        abilities: vec![],
+        max_energy: Energy(10),
+        cur_energy: Energy(10),
+        max_health: 10,
+        cur_health: 10,
+        pos: (0, 0, 0),
+        conditions: vec![AppliedCondition {
+                             condition: Condition::Dead,
+                             remaining: 0,
+                         },
+                         AppliedCondition {
+                             condition: Condition::Incapacitated,
+                             remaining: 5,
+                         }],
+    };
+    c.tick();
+    assert_eq!(c.conditions,
+               vec![AppliedCondition {
+                        condition: Condition::Incapacitated,
+                        remaining: 4,
+                    }]);
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
