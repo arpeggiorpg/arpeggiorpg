@@ -54,13 +54,13 @@ impl<PlayerState> Game<PlayerState> {
         self.creatures.get_current()
     }
 
-    /// Private
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
             creature.tick();
         }
     }
 
+    /// Consume this game and wrap it in an `ActorGame`.
     pub fn to_actor_game(self) -> ActorGame {
         if self.current_creature().can_act() {
             ActorGame::Able(Game {

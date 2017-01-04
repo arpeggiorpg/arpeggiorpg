@@ -3,7 +3,8 @@ use std::collections::HashMap;
 
 use types::*;
 
-/// See `types::ActorGame`.
+/// Similar to `types::ActorGame`, but for an [App](struct.App.html) instead of a
+/// [Game](../types/struct.Game.html)
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ActorApp {
     Incap(App<Incap>),

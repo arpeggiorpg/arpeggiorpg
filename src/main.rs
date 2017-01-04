@@ -1,4 +1,6 @@
 #![feature(proc_macro)]
+//! Phone and Tablet.
+
 extern crate serde_yaml;
 #[macro_use]
 extern crate serde_derive;
@@ -10,8 +12,8 @@ extern crate nonempty;
 use std::fs::File;
 use std::io::Read;
 
-mod app;
-mod types;
+pub mod app;
+pub mod types;
 
 fn load_game() -> serde_yaml::Result<app::ActorApp> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
