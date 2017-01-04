@@ -36,19 +36,23 @@ impl Game {
 
     /// Cause the current creature to act.
     pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<Game, GameError> {
-        // I could write this in an Actually Functional style, but I really don't care as long as
-        // the function doesn't have side effects (and the type signature proves it!)
-        let mut newgame = self.clone();
-        // newgame.tick();
-        for effect in ability.effects.iter() {
-            for &tidx in targets.iter() {
-                let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
-                creature.apply_effect(effect);
+        if self.current_creature().can_act() {
+            // I could write this in an Actually Functional style, but I really don't care as long as
+            // the function doesn't have side effects (and the type signature proves it!)
+            let mut newgame = self.clone();
+            // newgame.tick();
+            for effect in ability.effects.iter() {
+                for &tidx in targets.iter() {
+                    let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
+                    creature.apply_effect(effect);
+                }
             }
+            newgame.creatures.next_circle();
+            newgame.tick();
+            Ok(newgame)
+        } else {
+            Err(GameError::InvalidPlayerState)
         }
-        newgame.creatures.next_circle();
-        newgame.tick();
-        Ok(newgame)
     }
 
     /// Private
@@ -60,11 +64,32 @@ impl Game {
 }
 
 
+#[cfg(test)]
+fn t_ability() -> Ability {
+    Ability {
+        name: "Test Ability".to_string(),
+        target: Target::Melee,
+        cost: Energy(0),
+        effects: vec![],
+    }
+}
+#[test]
+fn test_incap() {
+    let mut c = t_creature();
+    c.conditions = vec![app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
+    let game = Game { creatures: nonempty::NonEmptyWithCursor::new(c) };
+    assert_eq!(game.act(&t_ability(), vec![]),
+               Err(GameError::InvalidPlayerState));
+
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
     InvalidAbility,
     InvalidTarget,
+    InvalidPlayerState,
 }
+
 impl fmt::Display for GameError {
     fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
         write!(fmter, "{}", format!("{:?}", self))
@@ -91,6 +116,15 @@ pub struct Creature {
 }
 
 impl Creature {
+    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
+    pub fn can_act(&self) -> bool {
+        !self.conditions
+            .iter()
+            .any(|&AppliedCondition { ref condition, .. }| {
+                condition == &Condition::Incapacitated || condition == &Condition::Dead
+            })
+    }
+
     /// Note that this function is private.
     fn apply_effect(&mut self, effect: &Effect) {
         match effect {
