@@ -112,15 +112,6 @@ fn t_ability() -> Ability {
         effects: vec![],
     }
 }
-#[test]
-fn test_incap() {
-    let mut c = t_creature();
-    c.conditions = vec![app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-    let game = Game { creatures: nonempty::NonEmptyWithCursor::new(c) };
-    assert_eq!(game.act(&t_ability(), vec![]),
-               Err(GameError::InvalidPlayerState));
-
-}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
