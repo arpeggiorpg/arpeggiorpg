@@ -3,20 +3,26 @@
 //! A non-empty vector with a cursor.
 
 // use std::fmt;
+#[cfg(feature="use_serde")]
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature="use_serde")]
 extern crate serde;
+#[cfg(feature="use_serde")]
 #[cfg(test)]
 extern crate serde_json;
 
+#[cfg(feature="use_serde")]
 use serde::{Deserialize, Deserializer};
+#[cfg(feature="use_serde")]
 #[cfg(test)]
 use serde_json::error as SJE;
 
 
 /// A non-empty vector with a cursor. NO operations panic.
 /// Has Serde serialization implementations that serialize to e.g. `{"cursor": 0, "data": [...]}`
-#[derive(Clone, Eq, PartialEq, Debug, Serialize)]
+#[derive(Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature="use_serde", derive(Serialize))]
 pub struct NonEmptyWithCursor<T> {
     cursor: usize,
     data: NonEmpty<T>,
@@ -124,7 +130,8 @@ impl<T> NonEmptyWithCursor<T> {
 /// A non-empty vector. NO operations panic.
 // The canonical representation is something like (A, Vec<A>), but this layout actually makes
 // it MUCH easier to implement the various methods, and perhaps more optimized.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize)]
+#[derive(Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature="use_serde", derive(Serialize))]
 pub struct NonEmpty<T>(Vec<T>);
 
 impl<T> NonEmpty<T> {
@@ -194,12 +201,14 @@ impl<T> NonEmpty<T> {
 // This is way more work than it should be. We just want to *validate* the data after parsing,
 // while using the normal parser. It'd be nice to just pass off a derived Deserialize, but we have
 // no way to do that.
+#[cfg(feature="use_serde")]
 #[derive(Deserialize)]
 struct FakeNEC<T> {
     cursor: usize,
     data: Vec<T>,
 }
 
+#[cfg(feature="use_serde")]
 impl<T> Deserialize for NonEmptyWithCursor<T>
     where T: Deserialize
 {
@@ -225,6 +234,7 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
 }
 
 // *** Likewise for NonEmpty
+#[cfg(feature="use_serde")]
 impl<T> Deserialize for NonEmpty<T>
     where T: Deserialize
 {
@@ -241,6 +251,7 @@ impl<T> Deserialize for NonEmpty<T>
 }
 
 
+#[cfg(feature="use_serde")]
 #[test]
 fn test_serialize_deserialize_nonempty() {
     let ne: NonEmpty<i32> = NonEmpty::new_with_rest(5, vec![50, 55]);
@@ -249,6 +260,7 @@ fn test_serialize_deserialize_nonempty() {
     assert_eq!(parsed.unwrap(), ne);
 }
 
+#[cfg(feature="use_serde")]
 #[test]
 fn test_deserialize_invalid_nonempty() {
     let parsed: Result<NonEmpty<i32>, _> = serde_json::from_str("[]");
@@ -283,6 +295,7 @@ fn test_set_cursor() {
     assert_eq!(ne.get_current(), &5);
 }
 
+#[cfg(feature="use_serde")]
 #[test]
 fn test_serialize_deserialize_with_cursor() {
     let ne: NonEmptyWithCursor<i32> = NonEmptyWithCursor::new_with_rest(5, vec![50, 55]);
@@ -294,6 +307,7 @@ fn test_serialize_deserialize_with_cursor() {
     }
 }
 
+#[cfg(feature="use_serde")]
 #[test]
 fn test_deserialize_invalid_cursor() {
     let res: Result<NonEmptyWithCursor<i32>, _> = serde_json::from_str("{\"cursor\":1,\"data\":\
@@ -307,6 +321,7 @@ fn test_deserialize_invalid_cursor() {
     }
 }
 
+#[cfg(feature="use_serde")]
 #[test]
 fn test_deserialize_invalid_empty() {
     let res: Result<NonEmptyWithCursor<i32>, _> = serde_json::from_str("{\"cursor\":0,\"data\":\
