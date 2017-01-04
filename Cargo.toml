@@ -9,6 +9,6 @@ name = "pandt-cli"
 [dependencies]
 serde = "0.8"
 serde_derive = "0.8"
-nonempty = {version = "*", path = "nonempty"}
+nonempty = {version = "*", path = "nonempty", features = ["use_serde"]}
 serde_yaml = "0.5"
 odds = "0.2.25"
