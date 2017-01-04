@@ -1,6 +1,7 @@
 #![feature(proc_macro)]
-/// A non-empty vector with a cursor.
-// This should probably be refactored so that NonEmpty is a separate data type.
+#![deny(missing_docs)]
+//! A non-empty vector with a cursor.
+
 // use std::fmt;
 #[macro_use]
 extern crate serde_derive;
@@ -13,8 +14,8 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde_json::error as SJE;
 
 /// A non-empty vector with a cursor. NO operations panic.
-/// Has Serde serialization implementations that serialize to e.g. {"current": 0, "data": [...]}
-// TODO: implement iter() etc, and ... ALL the rest of the Vec methods... :(
+/// Has Serde serialization implementations that serialize to e.g. `{"current": 0, "data": [...]}`
+// This should probably be refactored so that NonEmpty is a separate data type.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct NonEmptyWithCursor<T> {
     most: Vec<T>,
@@ -23,6 +24,7 @@ pub struct NonEmptyWithCursor<T> {
 }
 
 impl<T> NonEmptyWithCursor<T> {
+    /// Construct a new NonEmptyWithCursor. The first element is necessary.
     pub fn new(head: T) -> NonEmptyWithCursor<T> {
         NonEmptyWithCursor {
             most: vec![],
@@ -31,7 +33,7 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
-    /// Iterate immutable references to the elements.
+    /// Iterate over the elements, providing &T.
     pub fn iter(&self) -> NEIter<T> {
         NEIter {
             necurs: self,
@@ -39,7 +41,7 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
-    /// Iterate mutable references to the elements.
+    /// Iterate over the elements, providing &mut T.
     pub fn iter_mut(&mut self) -> NEIterMut<T> {
         NEIterMut { iter: std::iter::once(&mut self.head).chain(self.most.iter_mut()) }
     }
@@ -93,7 +95,7 @@ impl<T> NonEmptyWithCursor<T> {
     }
 
     /// Increment the cursor by one, and wrap around to 0 if it goes past the end of the vector.
-    pub fn next_circle(&mut self) {
+    pub fn next_circular(&mut self) {
         let newcursor = self.cursor + 1;
         self.cursor = if newcursor > self.most.len() {
             0
@@ -200,7 +202,7 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
     }
 }
 
-
+/// An iterator of `&T` to the contents of a `NonEmptyWithCursor<T>`.
 pub struct NEIter<'a, T: 'a> {
     necurs: &'a NonEmptyWithCursor<T>,
     current: usize,
@@ -215,9 +217,14 @@ impl<'a, T> Iterator for NEIter<'a, T> {
         self.current += 1;
         r
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let l = self.necurs.len();
+        (l, Some(l))
+    }
 }
 
-
+/// An iterator of `&mut T` to the contents of a `NonEmptyWithCursor<T>`
 pub struct NEIterMut<'a, T: 'a> {
     iter: std::iter::Chain<std::iter::Once<&'a mut T>, std::slice::IterMut<'a, T>>,
 }
