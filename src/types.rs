@@ -1,5 +1,5 @@
-/// Core simulation types, all immutable.
-
+//! Core simulation types, all immutable.
+use std;
 use std::error::Error;
 use std::fmt;
 use std::cmp;
@@ -11,8 +11,33 @@ use nonempty;
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(u8);
 
+#[allow(dead_code)]
+#[deprecated(since="0", note="Unhandled match case")]
+fn unhandled(x: &str) {
+    panic!("{}", x);
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Game {
+pub struct Incap;
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Casting;
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Able;
+
+/// An ActorGame must be pattern-matched to determine which operations we can perform on behalf of
+/// the current creature. Each variant contains a different type of Game, and each of those
+/// different types provide different methods for doing only what is possible. For example,
+/// ActorGame::Incap wraps Game<Incap>, which only has a `skip` method, since incapacitated
+/// creatures cannot act, whereas ActorGame::Able(Game<Able>) allows use of the `act` method.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum ActorGame {
+    Incap(Game<Incap>),
+    Casting(Game<Casting>),
+    Able(Game<Able>),
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Game<PlayerState> {
     // Since we serialize a whole history of Games to JSON, using Rc<Creature> pointless after we
     // load data back in, because serde doesn't (currently) have any way to know that multiple
     // Rc-wrapped values should be unified. See
@@ -21,38 +46,12 @@ pub struct Game {
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
+    _p: std::marker::PhantomData<PlayerState>,
 }
 
-#[allow(dead_code)]
-#[deprecated(since="0", note="Unhandled match case")]
-fn unhandled(x: &str) {
-    panic!("{}", x);
-}
-
-impl Game {
+impl<PlayerState> Game<PlayerState> {
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
-    }
-
-    /// Cause the current creature to act.
-    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<Game, GameError> {
-        if self.current_creature().can_act() {
-            // I could write this in an Actually Functional style, but I really don't care as long as
-            // the function doesn't have side effects (and the type signature proves it!)
-            let mut newgame = self.clone();
-            // newgame.tick();
-            for effect in ability.effects.iter() {
-                for &tidx in targets.iter() {
-                    let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
-                    creature.apply_effect(effect);
-                }
-            }
-            newgame.creatures.next_circle();
-            newgame.tick();
-            Ok(newgame)
-        } else {
-            Err(GameError::InvalidPlayerState)
-        }
     }
 
     /// Private
@@ -61,8 +60,48 @@ impl Game {
             creature.tick();
         }
     }
+
+    pub fn to_actor_game(self) -> ActorGame {
+        if self.current_creature().can_act() {
+            ActorGame::Able(Game {
+                creatures: self.creatures,
+                _p: std::marker::PhantomData,
+            })
+        } else {
+            ActorGame::Incap(Game {
+                creatures: self.creatures,
+                _p: std::marker::PhantomData,
+            })
+        }
+    }
 }
 
+impl Game<Incap> {
+    pub fn skip(&self) -> ActorGame {
+        let mut newgame = self.clone();
+        newgame.tick();
+        newgame.to_actor_game()
+    }
+}
+
+impl Game<Able> {
+    /// Cause the current creature to act.
+    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<ActorGame, GameError> {
+        // I could write this in an Actually Functional style, but I really don't care as long as
+        // the function doesn't have side effects (and the type signature proves it!)
+        let mut newgame = self.clone();
+        // newgame.tick();
+        for effect in ability.effects.iter() {
+            for &tidx in targets.iter() {
+                let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
+                creature.apply_effect(effect);
+            }
+        }
+        newgame.creatures.next_circular();
+        newgame.tick();
+        Ok(newgame.to_actor_game())
+    }
+}
 
 #[cfg(test)]
 fn t_ability() -> Ability {

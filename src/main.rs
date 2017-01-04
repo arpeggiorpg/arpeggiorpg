@@ -13,26 +13,33 @@ use std::io::Read;
 mod app;
 mod types;
 
-fn load_game() -> serde_yaml::Result<app::App> {
+fn load_game() -> serde_yaml::Result<app::ActorApp> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);
     serde_yaml::from_str(&data)
 }
 
+fn aapp(app: app::ActorApp) -> app::App<types::Able> {
+    match app {
+        app::ActorApp::Able(a) => a,
+        _ => panic!(),
+    }
+}
+
 fn main() {
     match load_game() {
-        Ok(mut app) => {
+        Ok(app) => {
             println!("{:?}", app);
-
-            let r = app.act(types::AbilityID("punch".to_string()), vec![1]);
-            println!("Result of choosing ability: {:?}", r);
-            let r = app.act(types::AbilityID("punch".to_string()), vec![1]);
-            println!("Result of choosing ability: {:?}", r);
-            let r = app.act(types::AbilityID("layonhands".to_string()), vec![0]);
-            println!("Result of choosing ability: {:?}", r);
-            let r = app.act(types::AbilityID("layonhands".to_string()), vec![1]);
-            println!("Result of choosing ability: {:?}", r);
+            let app = aapp(app);
+            let app = aapp(app.act(types::AbilityID("punch".to_string()), vec![1]).unwrap());
+            println!("Result of choosing ability: {:?}", app);
+            let app = aapp(app.act(types::AbilityID("punch".to_string()), vec![1]).unwrap());
+            println!("Result of choosing ability: {:?}", app);
+            let app = aapp(app.act(types::AbilityID("layonhands".to_string()), vec![0]).unwrap());
+            println!("Result of choosing ability: {:?}", app);
+            let app = aapp(app.act(types::AbilityID("layonhands".to_string()), vec![1]).unwrap());
+            println!("Result of choosing ability: {:?}", app);
             println!("YAML: App");
             println!("{}", serde_yaml::to_string(&app).unwrap());
         }
