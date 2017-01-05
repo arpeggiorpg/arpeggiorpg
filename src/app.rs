@@ -1,6 +1,6 @@
-use std;
 use std::collections::VecDeque;
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 use types::*;
 
@@ -18,19 +18,23 @@ pub enum AppVari {
 
 // CombatType is a type-level function mapping our CreatureState types (Able, Incap, etc) to a
 // representation for Combat.
-pub trait CombatType {
+pub trait CombatTypeFn {
     type Type;
 }
-impl CombatType for NoCurrentCreature {
+/// A nicer syntax for calling the type-level function: `CombatType<T>` instead of `<T as
+/// CombatType>::Type`
+type CombatType<CS> = <CS as CombatTypeFn>::Type;
+
+impl CombatTypeFn for NoCurrentCreature {
     type Type = ();
 }
-impl CombatType for Incap {
+impl CombatTypeFn for Incap {
     type Type = Combat<Incap>;
 }
-impl CombatType for Able {
+impl CombatTypeFn for Able {
     type Type = Combat<Able>;
 }
-impl CombatType for Casting {
+impl CombatTypeFn for Casting {
     type Type = Combat<Casting>;
 }
 
@@ -40,31 +44,32 @@ impl CombatType for Casting {
 /// The CreatureState type parameter is one of the types we use for representing what state the
 /// "current creature" is in (Incap, Able, etc), with the addition of NoCurrentCreature, which is
 /// used when there's no current combat. This CreatureState parameter effects the type of the
-/// `current_combat` field, which is usually some Game<T> (Game<Incap>, Game<Able>...) but in the
-/// case of NoCurrentCreature, it's () -- so that we don't have any current_combat at all inside of
-/// the App.
+/// `current_combat` field, which is usually some Combat<T> (Combat<Incap>, Combat<Able>...) but in
+/// the case of NoCurrentCreature, it's () -- so that we don't have any current_combat at all
+/// inside of the App.
 ///
-/// This is basically all an alternative to having current_combat be an Option<Game<CreatureState>>,
-/// which would require me to pattern match at runtime when looking at current_combat.
+/// This is basically all an alternative to having current_combat be an
+/// Option<Combat<CreatureState>>, which would require me to pattern match at runtime when looking
+/// at current_combat.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct App<CreatureState: CombatType>
-    where <CreatureState as CombatType>::Type: Serialize + Deserialize + Clone + Eq + PartialEq + std::fmt::Debug
+pub struct App<CreatureState: CombatTypeFn>
+    where CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     // more state might need to go into the history... not sure
     game_history: VecDeque<CombatVari>,
-    current_combat: <CreatureState as CombatType>::Type,
+    current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
 }
 
 impl<CreatureState> App<CreatureState>
-    where CreatureState: CombatType,
-          <CreatureState as CombatType>::Type: Serialize + Deserialize + Clone + Eq + PartialEq + std::fmt::Debug
+    where CreatureState: CombatTypeFn,
+          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
         Ok(self.abilities.get(&ability_id).ok_or(GameError::InvalidAbility)?.clone())
     }
 
-/// Consume this App, and consume an CombatVari, to return a new AppVari.
+    /// Consume this App, and consume an CombatVari, to return a new AppVari.
     fn to_app_vari(self, combat: CombatVari) -> AppVari {
         match combat {
             CombatVari::Incap(incap_game) => {
