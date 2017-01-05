@@ -22,27 +22,10 @@ fn load_game() -> serde_yaml::Result<app::AppVari> {
     serde_yaml::from_str(&data)
 }
 
-fn aapp(app: app::AppVari) -> app::App<types::Able> {
-    match app {
-        app::AppVari::Able(a) => a,
-        _ => panic!(),
-    }
-}
-
 fn main() {
     match load_game() {
         Ok(app) => {
             println!("{:?}", app);
-            let app = aapp(app);
-            let app = aapp(app.act(types::AbilityID("punch".to_string()), vec![1]).unwrap());
-            println!("Result of choosing ability: {:?}", app);
-            let app = aapp(app.act(types::AbilityID("punch".to_string()), vec![1]).unwrap());
-            println!("Result of choosing ability: {:?}", app);
-            let app = aapp(app.act(types::AbilityID("layonhands".to_string()), vec![0]).unwrap());
-            println!("Result of choosing ability: {:?}", app);
-            let app = aapp(app.act(types::AbilityID("layonhands".to_string()), vec![1]).unwrap());
-            println!("Result of choosing ability: {:?}", app);
-            println!("YAML: App");
             println!("{}", serde_yaml::to_string(&app).unwrap());
         }
         Err(e) => println!("Sorry, error loading game file: {}", e),

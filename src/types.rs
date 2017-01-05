@@ -160,7 +160,73 @@ pub struct Creature {
     conditions: Vec<AppliedCondition>,
 }
 
+#[derive(Default)]
+pub struct CreatureBuilder {
+    name: String,
+    max_energy: Option<Energy>,
+    cur_energy: Option<Energy>,
+    abilities: Vec<AbilityID>,
+    max_health: Option<u8>,
+    cur_health: Option<u8>,
+    pos: Option<Point3>,
+    conditions: Vec<AppliedCondition>,
+}
+
+impl CreatureBuilder {
+    pub fn build(self) -> Creature {
+        Creature {
+            name: self.name,
+            max_energy: self.max_energy.unwrap_or(Energy(10)),
+            cur_energy: self.cur_energy.unwrap_or(Energy(10)),
+            abilities: self.abilities
+                .iter()
+                .map(|ab| {
+                    AbilityStatus {
+                        ability_id: ab.clone(),
+                        cooldown: 0,
+                    }
+                })
+                .collect(),
+            max_health: self.max_health.unwrap_or(10),
+            cur_health: self.cur_health.unwrap_or(10),
+            pos: self.pos.unwrap_or((0, 0, 0)),
+            conditions: self.conditions,
+        }
+    }
+    pub fn max_energy(mut self, me: Energy) -> Self {
+        self.max_energy = Some(me);
+        self
+    }
+    pub fn cur_energy(mut self, ce: Energy) -> Self {
+        self.cur_energy = Some(ce);
+        self
+    }
+    pub fn abilities(mut self, abs: Vec<AbilityID>) -> Self {
+        self.abilities = abs;
+        self
+    }
+    pub fn max_health(mut self, mh: u8) -> Self {
+        self.max_health = Some(mh);
+        self
+    }
+    pub fn cur_health(mut self, ch: u8) -> Self {
+        self.cur_health = Some(ch);
+        self
+    }
+    pub fn pos(mut self, pos: Point3) -> Self {
+        self.pos = Some(pos);
+        self
+    }
+    pub fn conditions(mut self, conds: Vec<AppliedCondition>) -> Self {
+        self.conditions = conds;
+        self
+    }
+}
+
 impl Creature {
+    pub fn build(name: &str) -> CreatureBuilder {
+        CreatureBuilder { name: name.to_string(), ..CreatureBuilder::default() }
+    }
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
     pub fn can_act(&self) -> bool {
         !self.conditions

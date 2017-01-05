@@ -21,8 +21,8 @@ pub enum AppVari {
 pub trait CombatTypeFn {
     type Type;
 }
-/// A nicer syntax for calling the type-level function: `CombatType<T>` instead of `<T as
-/// CombatType>::Type`
+/// A nicer syntax for calling the type-level function: `CombatType<T>` instead of
+/// `<T as CombatType>::Type`
 type CombatType<CS> = <CS as CombatTypeFn>::Type;
 
 impl CombatTypeFn for NoCombat {
@@ -37,6 +37,12 @@ impl CombatTypeFn for Able {
 impl CombatTypeFn for Casting {
     type Type = Combat<Casting>;
 }
+
+/// Indicates that a type is in combat.
+pub trait IsInCombat {}
+impl IsInCombat for Incap {}
+impl IsInCombat for Able {}
+impl IsInCombat for Casting {}
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
 /// whole game, and exposes the top-level methods that run simulations on the game.
@@ -56,12 +62,13 @@ pub struct App<CreatureState: CombatTypeFn>
     where CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     // more state might need to go into the history... not sure
-    game_history: VecDeque<CombatVari>,
+    combat_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
     creatures: HashMap<CreatureID, Creature>,
 }
 
+// Generic methods for any kind of App regardless of the CreatureState.
 impl<CreatureState> App<CreatureState>
     where CreatureState: CombatTypeFn,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
@@ -78,7 +85,7 @@ impl<CreatureState> App<CreatureState>
                     current_combat: incap_game,
                     creatures: self.creatures,
                     abilities: self.abilities,
-                    game_history: self.game_history,
+                    combat_history: self.combat_history,
                 })
             }
             CombatVari::Able(able_game) => {
@@ -86,7 +93,7 @@ impl<CreatureState> App<CreatureState>
                     current_combat: able_game,
                     creatures: self.creatures,
                     abilities: self.abilities,
-                    game_history: self.game_history,
+                    combat_history: self.combat_history,
                 })
             }
             CombatVari::Casting(casting_game) => {
@@ -94,16 +101,35 @@ impl<CreatureState> App<CreatureState>
                     current_combat: casting_game,
                     creatures: self.creatures,
                     abilities: self.abilities,
-                    game_history: self.game_history,
+                    combat_history: self.combat_history,
                 })
             }
         }
     }
 }
 
+// Methods for App in any combat state.
+impl<T, CreatureState> App<CreatureState>
+    where CreatureState: IsInCombat,
+          // this took a minute to figure out. We need this <Type=Combat<T>> part to prove to rust
+          // that our current_combat is actually a Combat, and not ().
+          CreatureState: CombatTypeFn<Type = Combat<T>>,
+          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
+{
+    pub fn stop_combat(mut self) -> App<NoCombat> {
+        self.combat_history.push_back(self.current_combat.clone().to_combat_vari());
+        App {
+            current_combat: (),
+            creatures: self.creatures,
+            abilities: self.abilities,
+            combat_history: self.combat_history,
+        }
+    }
+}
+
 impl App<NoCombat> {
     /// Create a Combat and return a new App with it.
-    fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
+    pub fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
         let combatant_objs: Vec<Creature> =
             combatants.iter().flat_map(|cid| self.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
@@ -119,11 +145,11 @@ impl App<Able> {
         where F: FnOnce(&Combat<Able>) -> Result<CombatVari, GameError>
     {
         let g = op(&self.current_combat)?;
-        if self.game_history.len() >= 1000 {
-            let _ = self.game_history.pop_front();
+        if self.combat_history.len() >= 1000 {
+            let _ = self.combat_history.pop_front();
         }
         /// FIXME XXX ugh having to_combat_vari as public is gross
-        self.game_history.push_back((&self.current_combat).clone().to_combat_vari());
+        self.combat_history.push_back((&self.current_combat).clone().to_combat_vari());
         Ok(self.to_app_vari(g))
     }
 
@@ -139,18 +165,32 @@ impl App<Able> {
     }
 }
 
+#[cfg(test)]
+fn able_app(app: AppVari) -> App<Able> {
+    match app {
+        AppVari::Able(a) => a,
+        _ => panic!(),
+    }
+}
 
 #[test]
 fn workflow() {
     let mut creatures = HashMap::new();
-    let creature = t_creature();
+    let punch = t_ability();
+    let creature = Creature::build("Bob").abilities(vec![AbilityID("punch".to_string())]).build();
     creatures.insert(CreatureID("bob".to_string()), creature);
+    let mut abilities = HashMap::new();
+    abilities.insert(AbilityID("punch".to_string()), punch);
     let app: App<NoCombat> = App {
-        game_history: VecDeque::new(),
-        abilities: HashMap::new(),
+        combat_history: VecDeque::new(),
+        abilities: abilities,
         current_combat: (),
         creatures: creatures,
     };
     let app = app.start_combat(vec![CreatureID("bob".to_string())])
         .expect("start_combat didn't return Some");
+    let next = able_app(app).act(AbilityID("punch".to_string()), vec![0]);
+    let next: AppVari = next.expect("punch did not succeed");
+    let next = able_app(next);
+    let _: App<NoCombat> = next.stop_combat();
 }
