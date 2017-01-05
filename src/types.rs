@@ -23,6 +23,8 @@ pub struct Incap;
 pub struct Casting;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Able;
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct NoCurrentCreature;
 
 /// An CombatVari must be pattern-matched to determine which operations we can perform on behalf of
 /// the current creature. Each variant contains a different type of Game, and each of those
@@ -37,7 +39,7 @@ pub enum CombatVari {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Combat<PlayerState> {
+pub struct Combat<CreatureState> {
     // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless after we
     // load data back in, because serde doesn't (currently) have any way to know that multiple
     // Rc-wrapped values should be unified. See
@@ -46,10 +48,10 @@ pub struct Combat<PlayerState> {
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
-    _p: std::marker::PhantomData<PlayerState>,
+    _p: std::marker::PhantomData<CreatureState>,
 }
 
-impl<PlayerState> Combat<PlayerState> {
+impl<CreatureState> Combat<CreatureState> {
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
     }
@@ -117,7 +119,7 @@ fn t_ability() -> Ability {
 pub enum GameError {
     InvalidAbility,
     InvalidTarget,
-    InvalidPlayerState,
+    InvalidCreatureState,
 }
 
 impl fmt::Display for GameError {

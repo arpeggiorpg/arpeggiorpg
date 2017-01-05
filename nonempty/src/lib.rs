@@ -20,7 +20,6 @@ use serde_json::error as SJE;
 
 
 /// A non-empty vector with a cursor. NO operations panic.
-/// Has Serde serialization implementations that serialize to e.g. `{"cursor": 0, "data": [...]}`
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature="use_serde", derive(Serialize))]
 pub struct NonEmptyWithCursor<T> {
