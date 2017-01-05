@@ -24,21 +24,21 @@ pub struct Casting;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Able;
 
-/// An ActorGame must be pattern-matched to determine which operations we can perform on behalf of
+/// An CombatVari must be pattern-matched to determine which operations we can perform on behalf of
 /// the current creature. Each variant contains a different type of Game, and each of those
 /// different types provide different methods for doing only what is possible. For example,
-/// ActorGame::Incap wraps Game<Incap>, which only has a `skip` method, since incapacitated
-/// creatures cannot act, whereas ActorGame::Able(Game<Able>) allows use of the `act` method.
+/// CombatVari::Incap wraps Combat<Incap>, which only has a `skip` method, since incapacitated
+/// creatures cannot act, whereas CombatVari::Able(Combat<Able>) allows use of the `act` method.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum ActorGame {
-    Incap(Game<Incap>),
-    Casting(Game<Casting>),
-    Able(Game<Able>),
+pub enum CombatVari {
+    Incap(Combat<Incap>),
+    Casting(Combat<Casting>),
+    Able(Combat<Able>),
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Game<PlayerState> {
-    // Since we serialize a whole history of Games to JSON, using Rc<Creature> pointless after we
+pub struct Combat<PlayerState> {
+    // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless after we
     // load data back in, because serde doesn't (currently) have any way to know that multiple
     // Rc-wrapped values should be unified. See
     // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
@@ -49,7 +49,7 @@ pub struct Game<PlayerState> {
     _p: std::marker::PhantomData<PlayerState>,
 }
 
-impl<PlayerState> Game<PlayerState> {
+impl<PlayerState> Combat<PlayerState> {
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
     }
@@ -60,15 +60,15 @@ impl<PlayerState> Game<PlayerState> {
         }
     }
 
-    /// Consume this game and wrap it in an `ActorGame`.
-    pub fn to_actor_game(self) -> ActorGame {
+    /// Consume this game and wrap it in an `CombatVari`.
+    pub fn to_combat_vari(self) -> CombatVari {
         if self.current_creature().can_act() {
-            ActorGame::Able(Game {
+            CombatVari::Able(Combat {
                 creatures: self.creatures,
                 _p: std::marker::PhantomData,
             })
         } else {
-            ActorGame::Incap(Game {
+            CombatVari::Incap(Combat {
                 creatures: self.creatures,
                 _p: std::marker::PhantomData,
             })
@@ -76,17 +76,17 @@ impl<PlayerState> Game<PlayerState> {
     }
 }
 
-impl Game<Incap> {
-    pub fn skip(&self) -> ActorGame {
+impl Combat<Incap> {
+    pub fn skip(&self) -> CombatVari {
         let mut newgame = self.clone();
         newgame.tick();
-        newgame.to_actor_game()
+        newgame.to_combat_vari()
     }
 }
 
-impl Game<Able> {
+impl Combat<Able> {
     /// Cause the current creature to act.
-    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<ActorGame, GameError> {
+    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<CombatVari, GameError> {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
@@ -99,7 +99,7 @@ impl Game<Able> {
         }
         newgame.creatures.next_circular();
         newgame.tick();
-        Ok(newgame.to_actor_game())
+        Ok(newgame.to_combat_vari())
     }
 }
 

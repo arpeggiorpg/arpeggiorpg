@@ -3,10 +3,10 @@ use std::collections::HashMap;
 
 use types::*;
 
-/// Similar to `types::ActorGame`, but for an [App](struct.App.html) instead of a
-/// [Game](../types/struct.Game.html)
+/// Similar to `types::CombatVari`, but for an [App](struct.App.html) instead of a
+/// [Combat](../types/struct.Combat.html)
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum ActorApp {
+pub enum AppVari {
     Incap(App<Incap>),
     Casting(App<Casting>),
     Able(App<Able>),
@@ -16,8 +16,8 @@ pub enum ActorApp {
 /// whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App<PlayerState> {
-    game_history: VecDeque<ActorGame>,
-    current_game: Game<PlayerState>,
+    game_history: VecDeque<CombatVari>,
+    current_game: Combat<PlayerState>,
     abilities: HashMap<AbilityID, Ability>,
 }
 
@@ -26,25 +26,25 @@ impl<PlayerState> App<PlayerState> {
         Ok(self.abilities.get(&ability_id).ok_or(GameError::InvalidAbility)?.clone())
     }
 
-    /// Consume this App, and consume an ActorGame, to return a new ActorApp.
-    fn to_actor_app(self, game: ActorGame) -> ActorApp {
-        match game {
-            ActorGame::Incap(incap_game) => {
-                ActorApp::Incap(App {
+    /// Consume this App, and consume an CombatVari, to return a new AppVari.
+    fn to_app_vari(self, combat: CombatVari) -> AppVari {
+        match combat {
+            CombatVari::Incap(incap_game) => {
+                AppVari::Incap(App {
                     current_game: incap_game,
                     abilities: self.abilities,
                     game_history: self.game_history,
                 })
             }
-            ActorGame::Able(able_game) => {
-                ActorApp::Able(App {
+            CombatVari::Able(able_game) => {
+                AppVari::Able(App {
                     current_game: able_game,
                     abilities: self.abilities,
                     game_history: self.game_history,
                 })
             }
-            ActorGame::Casting(casting_game) => {
-                ActorApp::Casting(App {
+            CombatVari::Casting(casting_game) => {
+                AppVari::Casting(App {
                     current_game: casting_game,
                     abilities: self.abilities,
                     game_history: self.game_history,
@@ -55,18 +55,18 @@ impl<PlayerState> App<PlayerState> {
 }
 
 impl App<Able> {
-    fn perform_able_op<F>(mut self, op: F) -> Result<ActorApp, GameError>
-        where F: FnOnce(&Game<Able>) -> Result<ActorGame, GameError>
+    fn perform_able_op<F>(mut self, op: F) -> Result<AppVari, GameError>
+        where F: FnOnce(&Combat<Able>) -> Result<CombatVari, GameError>
     {
         let g = op(&self.current_game)?;
         if self.game_history.len() >= 1000 {
             let _ = self.game_history.pop_front();
         }
-        self.game_history.push_back(self.current_game.clone().to_actor_game());
-        Ok(self.to_actor_app(g))
+        self.game_history.push_back(self.current_game.clone().to_combat_vari());
+        Ok(self.to_app_vari(g))
     }
 
-    pub fn act(self, ability_id: AbilityID, targets: Vec<usize>) -> Result<ActorApp, GameError> {
+    pub fn act(self, ability_id: AbilityID, targets: Vec<usize>) -> Result<AppVari, GameError> {
         let ability = self.get_ability(&ability_id)?;
         self.perform_able_op(move |g| {
             if g.current_creature().has_ability(&ability_id) {

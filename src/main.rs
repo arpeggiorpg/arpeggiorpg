@@ -15,16 +15,16 @@ use std::io::Read;
 pub mod app;
 pub mod types;
 
-fn load_game() -> serde_yaml::Result<app::ActorApp> {
+fn load_game() -> serde_yaml::Result<app::AppVari> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);
     serde_yaml::from_str(&data)
 }
 
-fn aapp(app: app::ActorApp) -> app::App<types::Able> {
+fn aapp(app: app::AppVari) -> app::App<types::Able> {
     match app {
-        app::ActorApp::Able(a) => a,
+        app::AppVari::Able(a) => a,
         _ => panic!(),
     }
 }
