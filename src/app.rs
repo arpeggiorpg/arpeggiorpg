@@ -13,7 +13,7 @@ pub enum AppVari {
     Incap(App<Incap>),
     Casting(App<Casting>),
     Able(App<Able>),
-    NoCombat(App<NoCurrentCreature>),
+    NoCombat(App<NoCombat>),
 }
 
 // CombatType is a type-level function mapping our CreatureState types (Able, Incap, etc) to a
@@ -25,7 +25,7 @@ pub trait CombatTypeFn {
 /// CombatType>::Type`
 type CombatType<CS> = <CS as CombatTypeFn>::Type;
 
-impl CombatTypeFn for NoCurrentCreature {
+impl CombatTypeFn for NoCombat {
     type Type = ();
 }
 impl CombatTypeFn for Incap {
@@ -42,10 +42,10 @@ impl CombatTypeFn for Casting {
 /// whole game, and exposes the top-level methods that run simulations on the game.
 ///
 /// The CreatureState type parameter is one of the types we use for representing what state the
-/// "current creature" is in (Incap, Able, etc), with the addition of NoCurrentCreature, which is
+/// "current creature" is in (Incap, Able, etc), with the addition of NoCombat, which is
 /// used when there's no current combat. This CreatureState parameter effects the type of the
 /// `current_combat` field, which is usually some Combat<T> (Combat<Incap>, Combat<Able>...) but in
-/// the case of NoCurrentCreature, it's () -- so that we don't have any current_combat at all
+/// the case of NoCombat, it's () -- so that we don't have any current_combat at all
 /// inside of the App.
 ///
 /// This is basically all an alternative to having current_combat be an
@@ -59,6 +59,7 @@ pub struct App<CreatureState: CombatTypeFn>
     game_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
+    creatures: HashMap<CreatureID, Creature>,
 }
 
 impl<CreatureState> App<CreatureState>
@@ -75,6 +76,7 @@ impl<CreatureState> App<CreatureState>
             CombatVari::Incap(incap_game) => {
                 AppVari::Incap(App {
                     current_combat: incap_game,
+                    creatures: self.creatures,
                     abilities: self.abilities,
                     game_history: self.game_history,
                 })
@@ -82,6 +84,7 @@ impl<CreatureState> App<CreatureState>
             CombatVari::Able(able_game) => {
                 AppVari::Able(App {
                     current_combat: able_game,
+                    creatures: self.creatures,
                     abilities: self.abilities,
                     game_history: self.game_history,
                 })
@@ -89,10 +92,24 @@ impl<CreatureState> App<CreatureState>
             CombatVari::Casting(casting_game) => {
                 AppVari::Casting(App {
                     current_combat: casting_game,
+                    creatures: self.creatures,
                     abilities: self.abilities,
                     game_history: self.game_history,
                 })
             }
+        }
+    }
+}
+
+impl App<NoCombat> {
+    /// Create a Combat and return a new App with it.
+    fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
+        let combatant_objs: Vec<Creature> =
+            combatants.iter().flat_map(|cid| self.creatures.get(cid)).cloned().collect();
+        if combatant_objs.len() != combatants.len() {
+            None
+        } else {
+            CombatVari::new(combatant_objs).map(|cv| self.to_app_vari(cv))
         }
     }
 }
@@ -105,6 +122,7 @@ impl App<Able> {
         if self.game_history.len() >= 1000 {
             let _ = self.game_history.pop_front();
         }
+        /// FIXME XXX ugh having to_combat_vari as public is gross
         self.game_history.push_back((&self.current_combat).clone().to_combat_vari());
         Ok(self.to_app_vari(g))
     }
@@ -119,4 +137,20 @@ impl App<Able> {
             }
         })
     }
+}
+
+
+#[test]
+fn workflow() {
+    let mut creatures = HashMap::new();
+    let creature = t_creature();
+    creatures.insert(CreatureID("bob".to_string()), creature);
+    let app: App<NoCombat> = App {
+        game_history: VecDeque::new(),
+        abilities: HashMap::new(),
+        current_combat: (),
+        creatures: creatures,
+    };
+    let app = app.start_combat(vec![CreatureID("bob".to_string())])
+        .expect("start_combat didn't return Some");
 }

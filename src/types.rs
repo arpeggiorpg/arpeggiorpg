@@ -24,7 +24,7 @@ pub struct Casting;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Able;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct NoCurrentCreature;
+pub struct NoCombat;
 
 /// An CombatVari must be pattern-matched to determine which operations we can perform on behalf of
 /// the current creature. Each variant contains a different type of Game, and each of those
@@ -36,6 +36,19 @@ pub enum CombatVari {
     Incap(Combat<Incap>),
     Casting(Combat<Casting>),
     Able(Combat<Able>),
+}
+
+
+impl CombatVari {
+    pub fn new(combatants: Vec<Creature>) -> Option<CombatVari> {
+        nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
+            Combat::<NoCombat> {
+                    creatures: ne,
+                    _p: std::marker::PhantomData,
+                }
+                .to_combat_vari()
+        })
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -106,7 +119,7 @@ impl Combat<Able> {
 }
 
 #[cfg(test)]
-fn t_ability() -> Ability {
+pub fn t_ability() -> Ability {
     Ability {
         name: "Test Ability".to_string(),
         target: Target::Melee,
@@ -220,7 +233,7 @@ impl Creature {
 }
 
 #[cfg(test)]
-fn t_creature() -> Creature {
+pub fn t_creature() -> Creature {
     Creature {
         name: "Bob".to_string(),
         abilities: vec![],
@@ -234,7 +247,7 @@ fn t_creature() -> Creature {
 }
 
 #[cfg(test)]
-fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
+pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
     AppliedCondition {
         condition: c,
         remaining: r,
@@ -295,7 +308,7 @@ pub struct Ability {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum Effect {
+pub enum Effect {
     // Interrupt,
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
@@ -307,7 +320,7 @@ enum Effect {
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-enum Condition {
+pub enum Condition {
     RecurringEffect(Box<Effect>),
     Dead,
     Incapacitated,
@@ -334,3 +347,6 @@ pub struct AbilityStatus {
     ability_id: AbilityID,
     cooldown: u8,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct CreatureID(pub String);

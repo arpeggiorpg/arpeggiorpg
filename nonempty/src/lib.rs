@@ -31,6 +31,7 @@ pub struct NonEmptyWithCursor<T> {
 impl<T> NonEmptyWithCursor<T> {
     // *** Cursor methods
     /// Create a new NonEmptyWithCursor with a single element and cursor set to 0.
+    #[inline]
     pub fn new(head: T) -> Self {
         NonEmptyWithCursor {
             cursor: 0,
@@ -40,11 +41,23 @@ impl<T> NonEmptyWithCursor<T> {
 
     /// Construct a new NonEmptyWithCursor from the first element and a vector of the rest of the
     /// elements.
+    #[inline]
     pub fn new_with_rest(head: T, rest: Vec<T>) -> Self {
         NonEmptyWithCursor {
             cursor: 0,
             data: NonEmpty::new_with_rest(head, rest),
         }
+    }
+
+    /// Construct a NonEmptyWithCursor from a vector. Returns None if the vector is empty.
+    #[inline]
+    pub fn from_vec(vec: Vec<T>) -> Option<Self> {
+        NonEmpty::from_vec(vec).map(|ne| {
+            NonEmptyWithCursor {
+                cursor: 0,
+                data: ne,
+            }
+        })
     }
 
     /// Get the current element, as determined by the cursor.
