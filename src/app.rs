@@ -19,7 +19,7 @@ pub enum AppVari {
 // CombatType is a type-level function mapping our CreatureState types (Able, Incap, etc) to a
 // representation for Combat.
 pub trait CombatTypeFn {
-    type Type;
+    type Type: Serialize + Deserialize + Clone + Eq + PartialEq + Debug;
 }
 /// A nicer syntax for calling the type-level function: `CombatType<T>` instead of
 /// `<T as CombatType>::Type`
@@ -58,9 +58,7 @@ impl IsInCombat for Casting {}
 /// Option<Combat<CreatureState>>, which would require me to pattern match at runtime when looking
 /// at current_combat.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct App<CreatureState: CombatTypeFn>
-    where CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
-{
+pub struct App<CreatureState: CombatTypeFn> {
     // more state might need to go into the history... not sure
     combat_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
@@ -70,8 +68,7 @@ pub struct App<CreatureState: CombatTypeFn>
 
 // Generic methods for any kind of App regardless of the CreatureState.
 impl<CreatureState> App<CreatureState>
-    where CreatureState: CombatTypeFn,
-          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
+    where CreatureState: CombatTypeFn
 {
     fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
         Ok(self.abilities.get(&ability_id).ok_or(GameError::InvalidAbility)?.clone())
@@ -109,11 +106,10 @@ impl<CreatureState> App<CreatureState>
 }
 
 // Methods for App in any combat state.
+// We need this <Type=Combat<T>> part to prove to rust that our current_combat is actually a
+// Combat, and not ().
 impl<T, CreatureState> App<CreatureState>
-    where CreatureState: IsInCombat,
-          // this took a minute to figure out. We need this <Type=Combat<T>> part to prove to rust
-          // that our current_combat is actually a Combat, and not ().
-          CreatureState: CombatTypeFn<Type = Combat<T>>,
+    where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<T>>,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
