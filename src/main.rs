@@ -1,4 +1,3 @@
-#![feature(proc_macro)]
 //! Phone and Tablet.
 
 extern crate serde_yaml;

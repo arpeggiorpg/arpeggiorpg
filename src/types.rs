@@ -12,7 +12,7 @@ use nonempty;
 pub struct Energy(u8);
 
 #[allow(dead_code)]
-#[deprecated(since="0", note="Unhandled match case")]
+#[deprecated(since="0.0.0", note="Unhandled match case")]
 fn unhandled(x: &str) {
     panic!("{}", x);
 }
@@ -26,11 +26,11 @@ pub struct Able;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct NoCombat;
 
-/// An CombatVari must be pattern-matched to determine which operations we can perform on behalf of
-/// the current creature. Each variant contains a different type of Game, and each of those
+/// A `CombatVari` must be pattern-matched to determine which operations we can perform on behalf
+/// of the current creature. Each variant contains a different type of `Combat`, and each of those
 /// different types provide different methods for doing only what is possible. For example,
-/// CombatVari::Incap wraps Combat<Incap>, which only has a `skip` method, since incapacitated
-/// creatures cannot act, whereas CombatVari::Able(Combat<Able>) allows use of the `act` method.
+/// `CombatVari::Incap` wraps `Combat<Incap>`, which only has a `skip` method, since incapacitated
+/// creatures cannot act, whereas `CombatVari::Able(Combat<Able>)` allows use of the `act` method.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CombatVari {
     Incap(Combat<Incap>),
@@ -46,7 +46,7 @@ impl CombatVari {
                     creatures: ne,
                     _p: std::marker::PhantomData,
                 }
-                .to_combat_vari()
+                .into_combat_vari()
         })
     }
 }
@@ -76,7 +76,7 @@ impl<CreatureState> Combat<CreatureState> {
     }
 
     /// Consume this game and wrap it in an `CombatVari`.
-    pub fn to_combat_vari(self) -> CombatVari {
+    pub fn into_combat_vari(self) -> CombatVari {
         if self.current_creature().can_act() {
             CombatVari::Able(Combat {
                 creatures: self.creatures,
@@ -95,7 +95,7 @@ impl Combat<Incap> {
     pub fn skip(&self) -> CombatVari {
         let mut newgame = self.clone();
         newgame.tick();
-        newgame.to_combat_vari()
+        newgame.into_combat_vari()
     }
 }
 
@@ -106,15 +106,15 @@ impl Combat<Able> {
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
         // newgame.tick();
-        for effect in ability.effects.iter() {
-            for &tidx in targets.iter() {
+        for effect in &ability.effects {
+            for &tidx in &targets {
                 let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
                 creature.apply_effect(effect);
             }
         }
         newgame.creatures.next_circular();
         newgame.tick();
-        Ok(newgame.to_combat_vari())
+        Ok(newgame.into_combat_vari())
     }
 }
 
@@ -238,21 +238,21 @@ impl Creature {
 
     /// Note that this function is private.
     fn apply_effect(&mut self, effect: &Effect) {
-        match effect {
-            &Effect::Damage(amt) => self.cur_health = self.cur_health.saturating_sub(amt),
-            &Effect::Heal(amt) => {
+        match *effect {
+            Effect::Damage(amt) => self.cur_health = self.cur_health.saturating_sub(amt),
+            Effect::Heal(amt) => {
                 self.cur_health = cmp::min(self.max_health, self.cur_health.saturating_add(amt))
             }
-            &Effect::GenerateEnergy(amt) => {
+            Effect::GenerateEnergy(amt) => {
                 self.cur_energy = Energy(cmp::min(self.max_energy.0,
                                                   self.cur_energy.0.saturating_add(amt.0)))
             }
-            &Effect::MultiEffect(ref effects) => {
+            Effect::MultiEffect(ref effects) => {
                 for effect in effects {
-                    self.apply_effect(&effect)
+                    self.apply_effect(effect)
                 }
             }
-            &Effect::ApplyCondition(ref duration, ref condition) => {
+            Effect::ApplyCondition(ref duration, ref condition) => {
                 self.conditions.push(AppliedCondition {
                     remaining: duration.clone(),
                     condition: condition.clone(),
@@ -261,26 +261,24 @@ impl Creature {
         }
     }
 
-    /// Note that this is private.
     fn tick(&mut self) {
         let mut effs = vec![];
         self.conditions.retain_mut(|&mut AppliedCondition { ref condition, ref mut remaining }| {
-            if let &mut ConditionDuration::Duration(k) = remaining {
+            if let ConditionDuration::Duration(k) = *remaining {
                 // this shouldn't happen normally, since we remove conditions as soon as they reach
                 // remaining = 0, but handle it just in case
-                if k <= 0 {
+                if k == 0 {
                     return false;
                 }
             }
-            match condition {
-                &Condition::RecurringEffect(ref eff) => effs.push(eff.clone()),
-                _ => {}
+            if let Condition::RecurringEffect(ref eff) = *condition {
+                effs.push(eff.clone())
             }
-            match remaining {
-                &mut ConditionDuration::Interminate => true,
-                &mut ConditionDuration::Duration(ref mut remaining) => {
+            match *remaining {
+                ConditionDuration::Interminate => true,
+                ConditionDuration::Duration(ref mut remaining) => {
                     *remaining -= 1;
-                    remaining > &mut 0
+                    *remaining > 0
                 }
             }
         });
@@ -294,7 +292,7 @@ impl Creature {
     pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
         self.abilities
             .iter()
-            .any(|&AbilityStatus { ability_id: ref abid, cooldown: _ }| abid == ability_id)
+            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
     }
 }
 

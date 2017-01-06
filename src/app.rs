@@ -47,16 +47,16 @@ impl IsInCombat for Casting {}
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
 /// whole game, and exposes the top-level methods that run simulations on the game.
 ///
-/// The CreatureState type parameter is one of the types we use for representing what state the
-/// "current creature" is in (Incap, Able, etc), with the addition of NoCombat, which is
-/// used when there's no current combat. This CreatureState parameter effects the type of the
-/// `current_combat` field, which is usually some Combat<T> (Combat<Incap>, Combat<Able>...) but in
-/// the case of NoCombat, it's () -- so that we don't have any current_combat at all
-/// inside of the App.
+/// The `CreatureState` type parameter is one of the types we use for representing what state the
+/// "current creature" is in (`Incap`, `Able`, etc), with the addition of `NoCombat`, which is
+/// used when there's no current combat. This `CreatureState` parameter effects the type of the
+/// `current_combat` field, which is usually some `Combat<T>` (`Combat<Incap>`, `Combat<Able>`...)
+/// but in the case of `NoCombat`, it's `()` -- so that we don't have any `current_combat` at all
+/// inside of the `App`.
 ///
-/// This is basically all an alternative to having current_combat be an
-/// Option<Combat<CreatureState>>, which would require me to pattern match at runtime when looking
-/// at current_combat.
+/// This is basically all an alternative to having `current_combat` be an
+/// `Option<Combat<CreatureState>>`, which would require me to pattern match at runtime when
+/// looking at `current_combat`.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App<CreatureState: CombatTypeFn> {
     // more state might need to go into the history... not sure
@@ -71,11 +71,11 @@ impl<CreatureState> App<CreatureState>
     where CreatureState: CombatTypeFn
 {
     fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
-        Ok(self.abilities.get(&ability_id).ok_or(GameError::InvalidAbility)?.clone())
+        Ok(self.abilities.get(ability_id).ok_or(GameError::InvalidAbility)?.clone())
     }
 
     /// Consume this App, and consume an CombatVari, to return a new AppVari.
-    fn to_app_vari(self, combat: CombatVari) -> AppVari {
+    fn into_app_vari(self, combat: CombatVari) -> AppVari {
         match combat {
             CombatVari::Incap(incap_game) => {
                 AppVari::Incap(App {
@@ -113,7 +113,7 @@ impl<T, CreatureState> App<CreatureState>
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
-        self.combat_history.push_back(self.current_combat.clone().to_combat_vari());
+        self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
         App {
             current_combat: (),
             creatures: self.creatures,
@@ -131,7 +131,7 @@ impl App<NoCombat> {
         if combatant_objs.len() != combatants.len() {
             None
         } else {
-            CombatVari::new(combatant_objs).map(|cv| self.to_app_vari(cv))
+            CombatVari::new(combatant_objs).map(|cv| self.into_app_vari(cv))
         }
     }
 }
@@ -144,9 +144,9 @@ impl App<Able> {
         if self.combat_history.len() >= 1000 {
             let _ = self.combat_history.pop_front();
         }
-        /// FIXME XXX ugh having to_combat_vari as public is gross
-        self.combat_history.push_back((&self.current_combat).clone().to_combat_vari());
-        Ok(self.to_app_vari(g))
+        /// FIXME XXX ugh having into_combat_vari as public is gross
+        self.combat_history.push_back((&self.current_combat).clone().into_combat_vari());
+        Ok(self.into_app_vari(g))
     }
 
     pub fn act(self, ability_id: AbilityID, targets: Vec<usize>) -> Result<AppVari, GameError> {
