@@ -8,6 +8,7 @@ use types::*;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature<CreatureState> {
     // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
+    id: CreatureID,
     name: String,
     max_energy: Energy,
     cur_energy: Energy,
@@ -20,12 +21,23 @@ pub struct Creature<CreatureState> {
 }
 
 impl<A> Creature<A> {
-    pub fn build(name: &str) -> CreatureBuilder {
-        CreatureBuilder { name: name.to_string(), ..CreatureBuilder::default() }
+    pub fn build(id: &str) -> CreatureBuilder {
+        CreatureBuilder {
+            id: CreatureID(id.to_string()),
+            name: None,
+            max_energy: None,
+            cur_energy: None,
+            abilities: vec![],
+            max_health: None,
+            cur_health: None,
+            pos: None,
+            conditions: vec![],
+        }
     }
 
     fn into_other<B>(self) -> Creature<B> {
         Creature::<B> {
+            id: self.id,
             name: self.name,
             max_energy: self.max_energy,
             cur_energy: self.cur_energy,
@@ -111,9 +123,9 @@ impl<A> Creature<A> {
     }
 }
 
-#[derive(Default)]
 pub struct CreatureBuilder {
-    name: String,
+    id: CreatureID,
+    name: Option<String>,
     max_energy: Option<Energy>,
     cur_energy: Option<Energy>,
     abilities: Vec<AbilityID>,
@@ -127,7 +139,8 @@ impl CreatureBuilder {
     pub fn build(self) -> Option<Creature<Able>> {
         if conditions_able(&self.conditions) {
             Some(Creature {
-                name: self.name,
+                id: self.id.clone(),
+                name: self.name.unwrap_or(self.id.clone().0),
                 max_energy: self.max_energy.unwrap_or(Energy(10)),
                 cur_energy: self.cur_energy.unwrap_or(Energy(10)),
                 abilities: self.abilities
@@ -195,6 +208,14 @@ pub enum CreatureVari {
 }
 
 impl CreatureVari {
+    // god damnit these methods suck
+    pub fn id(&self) -> CreatureID {
+        match *self {
+            CreatureVari::Incap(ref c) => c.id.clone(),
+            CreatureVari::Casting(ref c) => c.id.clone(),
+            CreatureVari::Able(ref c) => c.id.clone(),
+        }
+    }
     pub fn tick(self) -> Self {
         match self {
             CreatureVari::Incap(mut c) => {

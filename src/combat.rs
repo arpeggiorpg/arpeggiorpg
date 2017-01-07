@@ -97,20 +97,43 @@ impl Combat<Incap> {
 }
 
 impl Combat<Able> {
-    /// Cause the current creature to act.
-    pub fn act(&self, ability: &Ability, targets: Vec<usize>) -> Result<CombatVari, GameError> {
+    /// Make the current creature use an ability.
+    pub fn act(&self, ability: &Ability, target: DecidedTarget) -> Result<CombatVari, GameError> {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
+        let mut targets = newgame.resolve_targets(target)?;
         for effect in &ability.effects {
-            for &tidx in &targets {
-                let creature = newgame.creatures.get_mut(tidx).ok_or(GameError::InvalidTarget)?;
+            for creature_id in targets.drain(..) {
+                let mut creature = newgame.resolve_creature_id_mut(creature_id)?;
                 take(creature, |c| c.apply_effect(effect));
             }
         }
         newgame.creatures.next_circular();
         newgame.tick();
         Ok(newgame.into_combat_vari())
+    }
+
+    fn resolve_creature_id_mut(&mut self,
+                               creature_id: CreatureID)
+                               -> Result<&mut CreatureVari, GameError> {
+        for creature in self.creatures.iter_mut() {
+            if creature.id() == creature_id {
+                return Ok(creature);
+            }
+        }
+        Err(GameError::InvalidTarget)
+    }
+
+    fn resolve_targets(&self, target: DecidedTarget) -> Result<Vec<CreatureID>, GameError> {
+        Ok(match target {
+            DecidedTarget::Melee(cid) => vec![cid],
+            DecidedTarget::Range(cid) => vec![cid],
+            _ => {
+                let unhandled = true;
+                panic!("Unhandled decided target!")
+            }
+        })
     }
 }
 

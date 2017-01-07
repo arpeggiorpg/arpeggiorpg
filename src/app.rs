@@ -142,11 +142,11 @@ impl App<Able> {
         Ok(self.into_app_vari(g))
     }
 
-    pub fn act(self, ability_id: AbilityID, targets: Vec<usize>) -> Result<AppVari, GameError> {
+    pub fn act(self, ability_id: AbilityID, target: DecidedTarget) -> Result<AppVari, GameError> {
         let ability = self.get_ability(&ability_id)?;
         self.perform_able_op(move |g| {
             if g.current_creature().has_ability(&ability_id) {
-                g.act(&ability, targets)
+                g.act(&ability, target)
             } else {
                 Err(GameError::InvalidAbility)
             }
@@ -192,7 +192,8 @@ fn workflow() {
     };
     let app = app.start_combat(vec![CreatureID("bob".to_string())])
         .expect("start_combat didn't return Some");
-    let next = able_app(app).act(AbilityID("punch".to_string()), vec![0]);
+    let next = able_app(app).act(AbilityID("punch".to_string()),
+                                 DecidedTarget::Melee(CreatureID("bob".to_string())));
     let next: AppVari = next.expect("punch did not succeed");
     let next = able_app(next);
     let _: App<NoCombat> = next.stop_combat();
