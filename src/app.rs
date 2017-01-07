@@ -110,7 +110,7 @@ impl<CreatureState> App<CreatureState>
 // Combat, and not ().
 impl<T, CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<T>>,
-          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug + HasCreature<CreatureState>,
+          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
           Combat<T>: HasCreature<T>
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
