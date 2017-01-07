@@ -223,17 +223,20 @@ impl CreatureBuilder {
     }
 }
 
+fn conditions_able(conditions: &Vec<AppliedCondition>) -> bool {
+    !conditions.iter()
+        .any(|&AppliedCondition { ref condition, .. }| {
+            condition == &Condition::Incapacitated || condition == &Condition::Dead
+        })
+}
+
 impl Creature {
     pub fn build(name: &str) -> CreatureBuilder {
         CreatureBuilder { name: name.to_string(), ..CreatureBuilder::default() }
     }
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
     pub fn can_act(&self) -> bool {
-        !self.conditions
-            .iter()
-            .any(|&AppliedCondition { ref condition, .. }| {
-                condition == &Condition::Incapacitated || condition == &Condition::Dead
-            })
+        conditions_able(&self.conditions)
     }
 
     /// Note that this function is private.
