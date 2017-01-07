@@ -63,7 +63,7 @@ pub struct App<CreatureState: CombatTypeFn> {
     combat_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
-    creatures: HashMap<CreatureID, Creature<()>>,
+    creatures: HashMap<CreatureID, CreatureVari>, // representable invalid: Creature<Casting>
 }
 
 // Generic methods for any kind of App regardless of the CreatureState.
@@ -110,7 +110,8 @@ impl<CreatureState> App<CreatureState>
 // Combat, and not ().
 impl<T, CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<T>>,
-          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
+          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug + HasCreature<CreatureState>,
+          Combat<T>: HasCreature<T>
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
@@ -126,7 +127,7 @@ impl<T, CreatureState> App<CreatureState>
 impl App<NoCombat> {
     /// Create a Combat and return a new App with it.
     pub fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
-        let combatant_objs: Vec<Creature<()>> =
+        let combatant_objs: Vec<CreatureVari> =
             combatants.iter().flat_map(|cid| self.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
             None
@@ -173,10 +174,11 @@ fn able_app(app: AppVari) -> App<Able> {
 fn workflow() {
     let mut creatures = HashMap::new();
     let punch = t_ability();
-    let creature = Creature::<()>::build("Bob")
+    let creature = Creature::<Able>::build("Bob")
         .abilities(vec![AbilityID("punch".to_string())])
         .build()
-        .unwrap();
+        .unwrap()
+        .into_vari();
     creatures.insert(CreatureID("bob".to_string()), creature);
     let mut abilities = HashMap::new();
     abilities.insert(AbilityID("punch".to_string()), punch);

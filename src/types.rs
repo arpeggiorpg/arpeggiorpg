@@ -38,16 +38,55 @@ pub enum CombatVari {
     Able(Combat<Able>),
 }
 
-
 impl CombatVari {
-    pub fn new(combatants: Vec<Creature<()>>) -> Option<CombatVari> {
+    pub fn new(combatants: Vec<CreatureVari>) -> Option<CombatVari> {
         nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
-            Combat::<NoCombat> {
-                    creatures: ne,
-                    _p: PhantomData,
+            match *ne.get_current() {
+                CreatureVari::Able(_) => {
+                    CombatVari::Able(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
                 }
-                .into_combat_vari()
+                CreatureVari::Casting(_) => {
+                    CombatVari::Casting(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
+                }
+                CreatureVari::Incap(_) => {
+                    CombatVari::Incap(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
+                }
+            }
         })
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum CreatureVari {
+    Incap(Creature<Incap>),
+    Casting(Creature<Casting>),
+    Able(Creature<Able>),
+}
+
+impl CreatureVari {
+    // whatttt this should be a trait !!!!
+    fn tick(&mut self) {
+        match *self {
+            CreatureVari::Incap(ref mut c) => c.tick(),
+            CreatureVari::Able(ref mut c) => c.tick(),
+            CreatureVari::Casting(ref mut c) => c.tick(),
+        }
+    }
+    fn apply_effect(&mut self, effect: &Effect) {
+        match *self {
+            CreatureVari::Incap(ref mut c) => c.apply_effect(effect),
+            CreatureVari::Casting(ref mut c) => c.apply_effect(effect),
+            CreatureVari::Able(ref mut c) => c.apply_effect(effect),
+        }
     }
 }
 
@@ -60,15 +99,54 @@ pub struct Combat<CreatureState> {
     //
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-    pub creatures: nonempty::NonEmptyWithCursor<Creature<()>>,
+    pub creatures: nonempty::NonEmptyWithCursor<CreatureVari>,
     _p: PhantomData<CreatureState>,
 }
 
-impl<CreatureState> Combat<CreatureState> {
-    pub fn current_creature(&self) -> &Creature<()> {
-        self.creatures.get_current()
-    }
+pub trait HasCreature<T> {
+    fn current_creature(&self) -> &Creature<T>;
+}
 
+impl HasCreature<Able> for Combat<Able> {
+    fn current_creature(&self) -> &Creature<Able> {
+        match *self.creatures.get_current() {
+            CreatureVari::Able(ref c) => c,
+            _ => {
+                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
+                       self)
+            }
+        }
+    }
+}
+
+impl HasCreature<Incap> for Combat<Incap> {
+    fn current_creature(&self) -> &Creature<Incap> {
+        match *self.creatures.get_current() {
+            CreatureVari::Incap(ref c) => c,
+            _ => {
+                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
+                       self)
+            }
+        }
+    }
+}
+
+impl HasCreature<Casting> for Combat<Casting> {
+    fn current_creature(&self) -> &Creature<Casting> {
+        match *self.creatures.get_current() {
+            CreatureVari::Casting(ref c) => c,
+            _ => {
+                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
+                       self)
+            }
+        }
+    }
+}
+
+
+impl<CreatureState> Combat<CreatureState>
+    where Combat<CreatureState>: HasCreature<CreatureState>
+{
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
             creature.tick();
@@ -174,26 +252,30 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Option<Creature<()>> {
-        Some(Creature {
-            name: self.name,
-            max_energy: self.max_energy.unwrap_or(Energy(10)),
-            cur_energy: self.cur_energy.unwrap_or(Energy(10)),
-            abilities: self.abilities
-                .iter()
-                .map(|ab| {
-                    AbilityStatus {
-                        ability_id: ab.clone(),
-                        cooldown: 0,
-                    }
-                })
-                .collect(),
-            max_health: self.max_health.unwrap_or(10),
-            cur_health: self.cur_health.unwrap_or(10),
-            pos: self.pos.unwrap_or((0, 0, 0)),
-            conditions: self.conditions,
-            _p: PhantomData,
-        })
+    pub fn build(self) -> Option<Creature<Able>> {
+        if conditions_able(&self.conditions) {
+            Some(Creature {
+                name: self.name,
+                max_energy: self.max_energy.unwrap_or(Energy(10)),
+                cur_energy: self.cur_energy.unwrap_or(Energy(10)),
+                abilities: self.abilities
+                    .iter()
+                    .map(|ab| {
+                        AbilityStatus {
+                            ability_id: ab.clone(),
+                            cooldown: 0,
+                        }
+                    })
+                    .collect(),
+                max_health: self.max_health.unwrap_or(10),
+                cur_health: self.cur_health.unwrap_or(10),
+                pos: self.pos.unwrap_or((0, 0, 0)),
+                conditions: self.conditions,
+                _p: PhantomData,
+            })
+        } else {
+            None
+        }
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);
@@ -236,6 +318,29 @@ impl<A> Creature<A> {
     pub fn build(name: &str) -> CreatureBuilder {
         CreatureBuilder { name: name.to_string(), ..CreatureBuilder::default() }
     }
+
+    fn into_other<B>(self) -> Creature<B> {
+        Creature::<B> {
+            name: self.name,
+            max_energy: self.max_energy,
+            cur_energy: self.cur_energy,
+            abilities: self.abilities,
+            max_health: self.max_health,
+            cur_health: self.cur_health,
+            pos: self.pos,
+            conditions: self.conditions,
+            _p: PhantomData,
+        }
+    }
+
+    pub fn into_vari(self) -> CreatureVari {
+        if conditions_able(&self.conditions) {
+            CreatureVari::Able(self.into_other())
+        } else {
+            CreatureVari::Incap(self.into_other())
+        }
+    }
+
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
     pub fn can_act(&self) -> bool {
         conditions_able(&self.conditions)
@@ -302,8 +407,8 @@ impl<A> Creature<A> {
 }
 
 #[cfg(test)]
-pub fn t_creature() -> Creature<()> {
-    Creature::<()>::build("Bob").build().unwrap()
+pub fn t_creature() -> Creature<Able> {
+    Creature::<Able>::build("Bob").build().unwrap()
 }
 
 #[cfg(test)]
