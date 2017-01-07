@@ -1,5 +1,5 @@
 //! Core simulation types, all immutable.
-use std;
+use std::marker::PhantomData;
 use std::error::Error;
 use std::fmt;
 use std::cmp;
@@ -40,11 +40,11 @@ pub enum CombatVari {
 
 
 impl CombatVari {
-    pub fn new(combatants: Vec<Creature>) -> Option<CombatVari> {
+    pub fn new(combatants: Vec<Creature<()>>) -> Option<CombatVari> {
         nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
             Combat::<NoCombat> {
                     creatures: ne,
-                    _p: std::marker::PhantomData,
+                    _p: PhantomData,
                 }
                 .into_combat_vari()
         })
@@ -60,12 +60,12 @@ pub struct Combat<CreatureState> {
     //
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-    pub creatures: nonempty::NonEmptyWithCursor<Creature>,
-    _p: std::marker::PhantomData<CreatureState>,
+    pub creatures: nonempty::NonEmptyWithCursor<Creature<()>>,
+    _p: PhantomData<CreatureState>,
 }
 
 impl<CreatureState> Combat<CreatureState> {
-    pub fn current_creature(&self) -> &Creature {
+    pub fn current_creature(&self) -> &Creature<()> {
         self.creatures.get_current()
     }
 
@@ -80,12 +80,12 @@ impl<CreatureState> Combat<CreatureState> {
         if self.current_creature().can_act() {
             CombatVari::Able(Combat {
                 creatures: self.creatures,
-                _p: std::marker::PhantomData,
+                _p: PhantomData,
             })
         } else {
             CombatVari::Incap(Combat {
                 creatures: self.creatures,
-                _p: std::marker::PhantomData,
+                _p: PhantomData,
             })
         }
     }
@@ -148,7 +148,7 @@ impl Error for GameError {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Creature {
+pub struct Creature<CreatureState> {
     // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
     name: String,
     max_energy: Energy,
@@ -158,6 +158,7 @@ pub struct Creature {
     cur_health: u8,
     pos: Point3,
     conditions: Vec<AppliedCondition>,
+    _p: PhantomData<CreatureState>,
 }
 
 #[derive(Default)]
@@ -173,7 +174,7 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Option<Creature> {
+    pub fn build(self) -> Option<Creature<()>> {
         Some(Creature {
             name: self.name,
             max_energy: self.max_energy.unwrap_or(Energy(10)),
@@ -191,6 +192,7 @@ impl CreatureBuilder {
             cur_health: self.cur_health.unwrap_or(10),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
+            _p: PhantomData,
         })
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
@@ -230,7 +232,7 @@ fn conditions_able(conditions: &Vec<AppliedCondition>) -> bool {
         })
 }
 
-impl Creature {
+impl<A> Creature<A> {
     pub fn build(name: &str) -> CreatureBuilder {
         CreatureBuilder { name: name.to_string(), ..CreatureBuilder::default() }
     }
@@ -300,17 +302,8 @@ impl Creature {
 }
 
 #[cfg(test)]
-pub fn t_creature() -> Creature {
-    Creature {
-        name: "Bob".to_string(),
-        abilities: vec![],
-        max_energy: Energy(10),
-        cur_energy: Energy(10),
-        max_health: 10,
-        cur_health: 10,
-        pos: (0, 0, 0),
-        conditions: vec![],
-    }
+pub fn t_creature() -> Creature<()> {
+    Creature::<()>::build("Bob").build().unwrap()
 }
 
 #[cfg(test)]

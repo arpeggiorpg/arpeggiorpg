@@ -63,7 +63,7 @@ pub struct App<CreatureState: CombatTypeFn> {
     combat_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
-    creatures: HashMap<CreatureID, Creature>,
+    creatures: HashMap<CreatureID, Creature<()>>,
 }
 
 // Generic methods for any kind of App regardless of the CreatureState.
@@ -126,7 +126,7 @@ impl<T, CreatureState> App<CreatureState>
 impl App<NoCombat> {
     /// Create a Combat and return a new App with it.
     pub fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
-        let combatant_objs: Vec<Creature> =
+        let combatant_objs: Vec<Creature<()>> =
             combatants.iter().flat_map(|cid| self.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
             None
@@ -173,8 +173,10 @@ fn able_app(app: AppVari) -> App<Able> {
 fn workflow() {
     let mut creatures = HashMap::new();
     let punch = t_ability();
-    let creature =
-        Creature::build("Bob").abilities(vec![AbilityID("punch".to_string())]).build().unwrap();
+    let creature = Creature::<()>::build("Bob")
+        .abilities(vec![AbilityID("punch".to_string())])
+        .build()
+        .unwrap();
     creatures.insert(CreatureID("bob".to_string()), creature);
     let mut abilities = HashMap::new();
     abilities.insert(AbilityID("punch".to_string()), punch);
