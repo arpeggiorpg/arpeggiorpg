@@ -173,8 +173,8 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Creature {
-        Creature {
+    pub fn build(self) -> Option<Creature> {
+        Some(Creature {
             name: self.name,
             max_energy: self.max_energy.unwrap_or(Energy(10)),
             cur_energy: self.cur_energy.unwrap_or(Energy(10)),
@@ -191,7 +191,7 @@ impl CreatureBuilder {
             cur_health: self.cur_health.unwrap_or(10),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
-        }
+        })
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);

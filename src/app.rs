@@ -173,7 +173,8 @@ fn able_app(app: AppVari) -> App<Able> {
 fn workflow() {
     let mut creatures = HashMap::new();
     let punch = t_ability();
-    let creature = Creature::build("Bob").abilities(vec![AbilityID("punch".to_string())]).build();
+    let creature =
+        Creature::build("Bob").abilities(vec![AbilityID("punch".to_string())]).build().unwrap();
     creatures.insert(CreatureID("bob".to_string()), creature);
     let mut abilities = HashMap::new();
     abilities.insert(AbilityID("punch".to_string()), punch);
