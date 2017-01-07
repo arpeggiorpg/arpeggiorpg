@@ -1,21 +1,19 @@
 //! Core simulation types, all immutable.
-use std::marker::PhantomData;
 use std::error::Error;
 use std::fmt;
 
-use nonempty;
 
+// aliases and newtypes
+pub type Point3 = (i16, i16, i16);
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(pub u8);
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct CreatureID(pub String);
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct AbilityID(pub String);
 
-#[allow(dead_code)]
-#[deprecated(since="0.0.0", note="Unhandled match case")]
-fn unhandled(x: &str) {
-    panic!("{}", x);
-}
 
 // A set of phantom types that are used as arguments to Creature, Combat, and App.
-
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Incap;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -25,15 +23,6 @@ pub struct Able;
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct NoCombat;
 
-#[cfg(test)]
-pub fn t_ability() -> Ability {
-    Ability {
-        name: "Test Ability".to_string(),
-        target: Target::Melee,
-        cost: Energy(0),
-        effects: vec![],
-    }
-}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
@@ -54,14 +43,6 @@ impl Error for GameError {
     }
 }
 
-#[cfg(test)]
-pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
-    AppliedCondition {
-        condition: c,
-        remaining: r,
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Target {
     Melee,
@@ -70,8 +51,6 @@ pub enum Target {
     ConeFromCaster(u8, u8), // distance, radians of angle of cone
     LineFromCaster(u8), // distance
 }
-
-pub type Point3 = (i16, i16, i16);
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DecidedTarget {
@@ -122,8 +101,6 @@ pub struct AppliedCondition {
     pub condition: Condition,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct AbilityID(pub String);
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
@@ -131,5 +108,20 @@ pub struct AbilityStatus {
     pub cooldown: u8,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct CreatureID(pub String);
+#[cfg(test)]
+pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
+    AppliedCondition {
+        condition: c,
+        remaining: r,
+    }
+}
+
+#[cfg(test)]
+pub fn t_ability() -> Ability {
+    Ability {
+        name: "Test Ability".to_string(),
+        target: Target::Melee,
+        cost: Energy(0),
+        effects: vec![],
+    }
+}

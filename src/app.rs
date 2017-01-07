@@ -8,16 +8,6 @@ use combat::*;
 
 use serde::{Serialize, Deserialize};
 
-/// Similar to `types::CombatVari`, but for an [App](struct.App.html) instead of a
-/// [Combat](../types/struct.Combat.html)
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum AppVari {
-    Incap(App<Incap>),
-    Casting(App<Casting>),
-    Able(App<Able>),
-    NoCombat(App<NoCombat>),
-}
-
 // CombatType is a type-level function mapping our CreatureState types (Able, Incap, etc) to a
 // representation for Combat.
 pub trait CombatTypeFn {
@@ -45,6 +35,16 @@ pub trait IsInCombat {}
 impl IsInCombat for Incap {}
 impl IsInCombat for Able {}
 impl IsInCombat for Casting {}
+
+/// Similar to `types::CombatVari`, but for an [App](struct.App.html) instead of a
+/// [Combat](../types/struct.Combat.html)
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum AppVari {
+    Incap(App<Incap>),
+    Casting(App<Casting>),
+    Able(App<Able>),
+    NoCombat(App<NoCombat>),
+}
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
 /// whole game, and exposes the top-level methods that run simulations on the game.
@@ -108,12 +108,13 @@ impl<CreatureState> App<CreatureState>
 }
 
 // Methods for App in any combat state.
-// We need this <Type=Combat<T>> part to prove to rust that our current_combat is actually a
-// Combat, and not ().
-impl<T, CreatureState> App<CreatureState>
-    where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<T>>,
+// We need this CombatTypeFn<Type=Combat<CreatureState>> part to prove to rust that our
+// current_combat is actually a Combat, and not ().
+// I still don't know how to get rid of the big trait list for CombatType<CreatureState>.
+impl<CreatureState> App<CreatureState>
+    where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<CreatureState>>,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
-          Combat<T>: HasCreature<T>
+          Combat<CreatureState>: HasCreature<CreatureState>
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
@@ -147,7 +148,6 @@ impl App<Able> {
         if self.combat_history.len() >= 1000 {
             let _ = self.combat_history.pop_front();
         }
-        /// FIXME XXX ugh having into_combat_vari as public is gross
         self.combat_history.push_back((&self.current_combat).clone().into_combat_vari());
         Ok(self.into_app_vari(g))
     }

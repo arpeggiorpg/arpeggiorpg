@@ -4,7 +4,6 @@ use std::cmp;
 use odds::vec::VecExt;
 
 use types::*;
-use combat::*;
 
 /// An enum wrapping all the valid types of `Creature`. See `CombatVari` for a better explanation.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -223,7 +222,7 @@ impl CreatureBuilder {
     }
 }
 
-fn conditions_able(conditions: &Vec<AppliedCondition>) -> bool {
+fn conditions_able(conditions: &[AppliedCondition]) -> bool {
     !conditions.iter()
         .any(|&AppliedCondition { ref condition, .. }| {
             condition == &Condition::Incapacitated || condition == &Condition::Dead
