@@ -1,7 +1,6 @@
-//! Core simulation types, all immutable.
+//! Basic simulation types, with pure operations.
 use std::error::Error;
 use std::fmt;
-
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
@@ -11,7 +10,6 @@ pub struct Energy(pub u8);
 pub struct CreatureID(pub String);
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(pub String);
-
 
 // A set of phantom types that are used as arguments to Creature, Combat, and App.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

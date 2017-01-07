@@ -5,49 +5,6 @@ use odds::vec::VecExt;
 
 use types::*;
 
-/// An enum wrapping all the valid types of `Creature`. See `CombatVari` for a better explanation.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum CreatureVari {
-    Incap(Creature<Incap>),
-    Casting(Creature<Casting>),
-    Able(Creature<Able>),
-}
-
-impl CreatureVari {
-    pub fn tick(self) -> Self {
-        match self {
-            CreatureVari::Incap(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-            CreatureVari::Able(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-            CreatureVari::Casting(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-        }
-    }
-    pub fn apply_effect(self, effect: &Effect) -> Self {
-        match self {
-            CreatureVari::Incap(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
-            CreatureVari::Casting(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
-            CreatureVari::Able(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
-        }
-    }
-}
-
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature<CreatureState> {
     // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
@@ -229,6 +186,48 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
         })
 }
 
+/// An enum wrapping all the valid types of `Creature`. See `CombatVari` for a better explanation.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum CreatureVari {
+    Incap(Creature<Incap>),
+    Casting(Creature<Casting>),
+    Able(Creature<Able>),
+}
+
+impl CreatureVari {
+    pub fn tick(self) -> Self {
+        match self {
+            CreatureVari::Incap(mut c) => {
+                c.tick();
+                c.into_vari()
+            }
+            CreatureVari::Able(mut c) => {
+                c.tick();
+                c.into_vari()
+            }
+            CreatureVari::Casting(mut c) => {
+                c.tick();
+                c.into_vari()
+            }
+        }
+    }
+    pub fn apply_effect(self, effect: &Effect) -> Self {
+        match self {
+            CreatureVari::Incap(mut c) => {
+                c.apply_effect(effect);
+                c.into_vari()
+            }
+            CreatureVari::Casting(mut c) => {
+                c.apply_effect(effect);
+                c.into_vari()
+            }
+            CreatureVari::Able(mut c) => {
+                c.apply_effect(effect);
+                c.into_vari()
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 pub fn t_creature() -> Creature<Able> {

@@ -36,16 +36,6 @@ impl IsInCombat for Incap {}
 impl IsInCombat for Able {}
 impl IsInCombat for Casting {}
 
-/// Similar to `types::CombatVari`, but for an [App](struct.App.html) instead of a
-/// [Combat](../types/struct.Combat.html)
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum AppVari {
-    Incap(App<Incap>),
-    Casting(App<Casting>),
-    Able(App<Able>),
-    NoCombat(App<NoCombat>),
-}
-
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
 /// whole game, and exposes the top-level methods that run simulations on the game.
 ///
@@ -164,8 +154,18 @@ impl App<Able> {
     }
 }
 
+/// Similar to `combat::CombatVari`, but for an [App](struct.App.html) instead of a
+/// [Combat](../types/struct.Combat.html)
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum AppVari {
+    Incap(App<Incap>),
+    Casting(App<Casting>),
+    Able(App<Able>),
+    NoCombat(App<NoCombat>),
+}
+
 #[cfg(test)]
-fn able_app(app: AppVari) -> App<Able> {
+pub fn able_app(app: AppVari) -> App<Able> {
     match app {
         AppVari::Able(a) => a,
         _ => panic!(),

@@ -1,48 +1,13 @@
+//! Representation and simulation of combat.
+//! Many simple combat-oriented types are in `types.rs`, but this module implements the
+//! CombatVari/Combat types. The most interesting top-level method is `Combat<A>::act`.
+
 use std::marker::PhantomData;
 use nonempty;
 
 use creature::*;
 use types::*;
 use take_mut::take;
-
-/// A `CombatVari` must be pattern-matched to determine which operations we can perform on behalf
-/// of the current creature. Each variant contains a different type of `Combat`, and each of those
-/// different types provide different methods for doing only what is possible. For example,
-/// `CombatVari::Incap` wraps `Combat<Incap>`, which only has a `skip` method, since incapacitated
-/// creatures cannot act, whereas `CombatVari::Able(Combat<Able>)` allows use of the `act` method.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum CombatVari {
-    Incap(Combat<Incap>),
-    Casting(Combat<Casting>),
-    Able(Combat<Able>),
-}
-
-impl CombatVari {
-    pub fn new(combatants: Vec<CreatureVari>) -> Option<CombatVari> {
-        nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
-            match *ne.get_current() {
-                CreatureVari::Able(_) => {
-                    CombatVari::Able(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-                CreatureVari::Casting(_) => {
-                    CombatVari::Casting(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-                CreatureVari::Incap(_) => {
-                    CombatVari::Incap(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-            }
-        })
-    }
-}
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat<CreatureState> {
@@ -146,5 +111,44 @@ impl Combat<Able> {
         newgame.creatures.next_circular();
         newgame.tick();
         Ok(newgame.into_combat_vari())
+    }
+}
+
+/// A `CombatVari` must be pattern-matched to determine which operations we can perform on behalf
+/// of the current creature. Each variant contains a different type of `Combat`, and each of those
+/// different types provide different methods for doing only what is possible. For example,
+/// `CombatVari::Incap` wraps `Combat<Incap>`, which only has a `skip` method, since incapacitated
+/// creatures cannot act, whereas `CombatVari::Able(Combat<Able>)` allows use of the `act` method.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum CombatVari {
+    Incap(Combat<Incap>),
+    Casting(Combat<Casting>),
+    Able(Combat<Able>),
+}
+
+impl CombatVari {
+    pub fn new(combatants: Vec<CreatureVari>) -> Option<CombatVari> {
+        nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
+            match *ne.get_current() {
+                CreatureVari::Able(_) => {
+                    CombatVari::Able(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
+                }
+                CreatureVari::Casting(_) => {
+                    CombatVari::Casting(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
+                }
+                CreatureVari::Incap(_) => {
+                    CombatVari::Incap(Combat {
+                        creatures: ne,
+                        _p: PhantomData,
+                    })
+                }
+            }
+        })
     }
 }
