@@ -12,3 +12,4 @@ serde_derive = "0.8"
 nonempty = {version = "*", path = "nonempty", features = ["use_serde"]}
 serde_yaml = "0.5"
 odds = "0.2.25"
+take_mut = "0.1.3"

@@ -5,6 +5,7 @@ extern crate serde_yaml;
 extern crate serde_derive;
 extern crate serde;
 extern crate odds;
+extern crate take_mut;
 
 extern crate nonempty;
 
@@ -13,6 +14,8 @@ use std::io::Read;
 
 pub mod app;
 pub mod types;
+pub mod creature;
+pub mod combat;
 
 fn load_game() -> serde_yaml::Result<app::AppVari> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");

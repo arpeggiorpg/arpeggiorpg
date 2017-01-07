@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use types::*;
+use creature::*;
+use combat::*;
 
 use serde::{Serialize, Deserialize};
 
