@@ -8,6 +8,11 @@ use nonempty;
 use creature::*;
 use types::*;
 use take_mut::take;
+use grid::distance;
+
+/// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
+/// diagonally!
+const MELEE_RANGE: f32 = 1.5;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat<CreatureState> {
@@ -102,11 +107,14 @@ impl Combat<Able> {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
-        let mut targets = newgame.resolve_targets(target)?;
-        for effect in &ability.effects {
-            for creature_id in targets.drain(..) {
-                let mut creature = newgame.resolve_creature_id_mut(creature_id)?;
-                take(creature, |c| c.apply_effect(effect));
+        {
+            let mut targets = newgame.resolve_targets(target)?;
+            for effect in &ability.effects {
+                for creature_id in targets.drain(..) {
+                    let mut creature = newgame.get_creature_mut(creature_id.clone())
+                        .ok_or_else(|| GameError::InvalidTargetNoSense(creature_id.clone()))?;
+                    take(creature, |c| c.apply_effect(effect));
+                }
             }
         }
         newgame.creatures.next_circular();
@@ -114,26 +122,50 @@ impl Combat<Able> {
         Ok(newgame.into_combat_vari())
     }
 
-    fn resolve_creature_id_mut(&mut self,
-                               creature_id: CreatureID)
-                               -> Result<&mut CreatureVari, GameError> {
-        for creature in self.creatures.iter_mut() {
-            if creature.id() == creature_id {
-                return Ok(creature);
-            }
-        }
-        Err(GameError::InvalidTarget)
-    }
-
     fn resolve_targets(&self, target: DecidedTarget) -> Result<Vec<CreatureID>, GameError> {
-        Ok(match target {
-            DecidedTarget::Melee(cid) => vec![cid],
-            DecidedTarget::Range(cid) => vec![cid],
+        // FIXME: This doesn't take into consideration the actual target system used by the
+        // ability. IIRC, the Haskell version used a typesafe approach to ensure that actual target
+        // matched up with spec target.
+        match target {
+            DecidedTarget::Melee(cid) => {
+                let target_creature = self.get_creature(cid.clone())
+                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
+                if distance(self.creatures.get_current(), target_creature) <= MELEE_RANGE {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::TargetOutOfRange)
+                }
+            }
+            DecidedTarget::Range(cid) => Ok(vec![cid]),
             _ => {
                 let unhandled = true;
                 panic!("Unhandled decided target!")
             }
-        })
+        }
+    }
+}
+
+impl<T> Combat<T> {
+    // This is inefficient. Two options:
+    // 1. Store an additional HashMap<CreatureID, Idx> here on Combat
+    // 2. Implement a NonEmptyLinkedHashMapWithCursor (https://crates.io/crates/linked-hash-map)
+    //    (though that may not be efficient either)
+    pub fn get_creature(&self, cid: CreatureID) -> Option<&CreatureVari> {
+        for creature in self.creatures.iter() {
+            if creature.id() == cid {
+                return Some(creature);
+            }
+        }
+        None
+    }
+
+    pub fn get_creature_mut(&mut self, cid: CreatureID) -> Option<&mut CreatureVari> {
+        for creature in self.creatures.iter_mut() {
+            if creature.id() == cid {
+                return Some(creature);
+            }
+        }
+        None
     }
 }
 
@@ -174,4 +206,27 @@ impl CombatVari {
             }
         })
     }
+}
+
+
+#[cfg(test)]
+pub fn t_combat() -> Combat<Able> {
+    let bob = t_rogue("bob");
+    let chris = t_rogue("chris");
+    Combat {
+        creatures: nonempty::NonEmptyWithCursor::from_vec(vec![bob.into_vari(), chris.into_vari()])
+            .unwrap(),
+        _p: PhantomData,
+    }
+}
+
+#[test]
+fn target_melee_non_adjacent() {
+    let mut combat = t_combat();
+    let melee = t_melee();
+    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+         |c| c.set_pos((2, 0, 0)));
+    assert_eq!(combat.act(&melee,
+                          DecidedTarget::Melee(CreatureID("chris".to_string()))),
+               Err(GameError::TargetOutOfRange));
 }

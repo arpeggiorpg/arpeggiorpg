@@ -209,6 +209,30 @@ pub enum CreatureVari {
 
 impl CreatureVari {
     // god damnit these methods suck
+    // how about pub fn gen(self) -> Box<CreatureT>
+    pub fn get_pos(&self) -> Point3 {
+        match *self {
+            CreatureVari::Incap(ref c) => c.pos,
+            CreatureVari::Casting(ref c) => c.pos,
+            CreatureVari::Able(ref c) => c.pos,
+        }
+    }
+    pub fn set_pos(self, pos: Point3) -> Self {
+        match self {
+            CreatureVari::Incap(mut c) => {
+                c.pos = pos;
+                c.into_vari()
+            }
+            CreatureVari::Casting(mut c) => {
+                c.pos = pos;
+                c.into_vari()
+            }
+            CreatureVari::Able(mut c) => {
+                c.pos = pos;
+                c.into_vari()
+            }
+        }
+    }
     pub fn id(&self) -> CreatureID {
         match *self {
             CreatureVari::Incap(ref c) => c.id.clone(),
@@ -254,6 +278,15 @@ impl CreatureVari {
 pub fn t_creature() -> Creature<Able> {
     Creature::<Able>::build("Bob").build().unwrap()
 }
+
+#[cfg(test)]
+pub fn t_rogue(name: &str) -> Creature<Able> {
+    Creature::<Able>::build(name)
+        .abilities(vec![AbilityID("Test Ability".to_string())])
+        .build()
+        .unwrap()
+}
+
 
 #[test]
 fn test_tick_and_expire_condition_remaining() {

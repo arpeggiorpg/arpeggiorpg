@@ -23,8 +23,11 @@ pub struct NoCombat;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
-    InvalidAbility,
-    InvalidTarget,
+    NoAbility(AbilityID),
+    CreatureLacksAbility(AbilityID),
+    InvalidTarget(CreatureID),
+    InvalidTargetNoSense(CreatureID),
+    TargetOutOfRange,
     InvalidCreatureState,
 }
 
@@ -124,7 +127,7 @@ pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
 }
 
 #[cfg(test)]
-pub fn t_ability() -> Ability {
+pub fn t_melee() -> Ability {
     Ability {
         name: "Test Ability".to_string(),
         target: Target::Melee,

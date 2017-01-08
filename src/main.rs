@@ -13,9 +13,10 @@ use std::fs::File;
 use std::io::Read;
 
 pub mod app;
-pub mod types;
-pub mod creature;
 pub mod combat;
+pub mod creature;
+pub mod grid;
+pub mod types;
 
 fn load_game() -> serde_yaml::Result<app::AppVari> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");

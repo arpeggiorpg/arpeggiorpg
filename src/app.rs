@@ -63,7 +63,7 @@ impl<CreatureState> App<CreatureState>
     where CreatureState: CombatTypeFn
 {
     fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
-        Ok(self.abilities.get(ability_id).ok_or(GameError::InvalidAbility)?.clone())
+        Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
     }
 
     /// Consume this App, and consume an CombatVari, to return a new AppVari.
@@ -148,7 +148,7 @@ impl App<Able> {
             if g.current_creature().has_ability(&ability_id) {
                 g.act(&ability, target)
             } else {
-                Err(GameError::InvalidAbility)
+                Err(GameError::CreatureLacksAbility(ability_id.clone()))
             }
         })
     }
@@ -175,25 +175,26 @@ pub fn able_app(app: AppVari) -> App<Able> {
 #[test]
 fn workflow() {
     let mut creatures = HashMap::new();
-    let punch = t_ability();
-    let creature = Creature::<Able>::build("Bob")
-        .abilities(vec![AbilityID("punch".to_string())])
+    let punch = t_melee();
+    let punch_id = AbilityID("punch".to_string());
+    let bob_id = CreatureID("bob".to_string());
+    let creature = Creature::<Able>::build("bob")
+        .abilities(vec![punch_id.clone()])
         .build()
         .unwrap()
         .into_vari();
-    creatures.insert(CreatureID("bob".to_string()), creature);
+    creatures.insert(bob_id.clone(), creature);
     let mut abilities = HashMap::new();
-    abilities.insert(AbilityID("punch".to_string()), punch);
+    abilities.insert(punch_id.clone(), punch);
     let app: App<NoCombat> = App {
         combat_history: VecDeque::new(),
         abilities: abilities,
         current_combat: (),
         creatures: creatures,
     };
-    let app = app.start_combat(vec![CreatureID("bob".to_string())])
+    let app = app.start_combat(vec![bob_id.clone()])
         .expect("start_combat didn't return Some");
-    let next = able_app(app).act(AbilityID("punch".to_string()),
-                                 DecidedTarget::Melee(CreatureID("bob".to_string())));
+    let next = able_app(app).act(punch_id.clone(), DecidedTarget::Melee(bob_id.clone()));
     let next: AppVari = next.expect("punch did not succeed");
     let next = able_app(next);
     let _: App<NoCombat> = next.stop_combat();
