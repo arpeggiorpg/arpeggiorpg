@@ -1,11 +1,11 @@
 extern crate nalgebra as na;
 extern crate ncollide as nc;
 
-use self::na::{Isometry3, Vector3, Point3};
+use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
-use types;
+use types::*;
 use creature::*;
 
 // I got curious about how to implement this in integer math.
@@ -13,22 +13,27 @@ use creature::*;
 // √((x₂ - x₁)² + (y₂ - y₁)² + (z₂ - z₁)²)
 // √((32767 - −32768)² + (32767 - −32768)² + (32767 - −32768)²)
 // √(65535² + 65535² + 65535²)
-// √(4,294,836,225 + 4,294,836,225 + 4,294,836,225) (very close to the limit of 32-bit integers)
+// √(4,294,836,225 + 4,294,836,225 + 4,294,836,225) (each close to the limit of 32-bit integers)
 // √(12,884,901,888) // NOTE! This number requires a (signed-ok) 64-bit integer to store!
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn point3_distance(pos1: types::Point3, pos2: types::Point3) -> f32 {
+fn point3_distance(pos1: Point3, pos2: Point3) -> f32 {
     let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
     let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
                                 na::zero());
-    let ncpos2 = Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
+    let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
     let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
     distance
 }
 
-pub fn distance(c1: &CreatureVari, c2: &CreatureVari) -> f32 {
-    point3_distance(c1.get_pos(), c2.get_pos())
+/// Get the distance between two creatures as a floating point number.
+pub fn creature_distance(c1: &CreatureVari, c2: &CreatureVari) -> Distance {
+    Distance(point3_distance(c1.get_pos(), c2.get_pos()) as u32)
+}
+
+pub fn creature_within_distance(c1: &CreatureVari, c2: &CreatureVari, d: Distance) -> bool {
+    point3_distance(c1.get_pos(), c2.get_pos()).round() as u32 <= d.0 / 100
 }
 
 #[test]

@@ -10,6 +10,16 @@ pub struct Energy(pub u8);
 pub struct CreatureID(pub String);
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(pub String);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct Distance(pub u32);
+impl Distance {
+    pub fn new(x: f32) -> Distance {
+        Distance((x * 100.0) as u32)
+    }
+    pub fn f32(&self) -> f32 {
+        self.0 as f32 / 100.0
+    }
+}
 
 // A set of phantom types that are used as arguments to Creature, Combat, and App.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -29,6 +39,7 @@ pub enum GameError {
     InvalidTargetNoSense(CreatureID),
     TargetOutOfRange,
     InvalidCreatureState,
+    BuggyProgram(String),
 }
 
 impl fmt::Display for GameError {
@@ -47,13 +58,13 @@ impl Error for GameError {
 /// targeting for an ability definition, not the choice of a specific target during gameplay. See
 /// `DecidedTarget` for that. The parameters of these variants indicate things like how far an
 /// arrow can travel or what the radius of an AoE is.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Target {
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TargetSpec {
     Melee,
-    Range(u8),
-    CircleWithinRange(u8, u8), // radius, distance
-    Cone(u8, u8), // distance, radians of angle of cone
-    Line(u8), // distance
+    Range(Distance),
+    CircleWithinRange(Distance, u8), // radius
+    Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
+    Line(Distance),
     LineToFirstHit(),
 }
 
@@ -65,8 +76,8 @@ pub enum Target {
 pub enum DecidedTarget {
     Melee(CreatureID),
     Range(CreatureID),
-    CircleWithinRange(Point3, u8), // radius
-    Cone(u8, u8), // distance, radians
+    CircleWithinRange(Point3),
+    Cone(u8, u8), // radians (oh shit this needs to be 3d!!!!)
     Line(Point3),
     LineToFirstHit(Point3),
 }
@@ -74,7 +85,7 @@ pub enum DecidedTarget {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Ability {
     pub name: String,
-    pub target: Target,
+    pub target: TargetSpec,
     pub cost: Energy,
     pub effects: Vec<Effect>,
 }
@@ -130,7 +141,17 @@ pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
 pub fn t_melee() -> Ability {
     Ability {
         name: "Test Ability".to_string(),
-        target: Target::Melee,
+        target: TargetSpec::Melee,
+        cost: Energy(0),
+        effects: vec![],
+    }
+}
+
+#[cfg(test)]
+pub fn t_ranged() -> Ability {
+    Ability {
+        name: "Ranged Ability".to_string(),
+        target: TargetSpec::Range(Distance::new(5.0)),
         cost: Energy(0),
         effects: vec![],
     }

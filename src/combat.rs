@@ -8,11 +8,11 @@ use nonempty;
 use creature::*;
 use types::*;
 use take_mut::take;
-use grid::distance;
+use grid::creature_within_distance;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-const MELEE_RANGE: f32 = 1.5;
+const MELEE_RANGE: Distance = Distance(150);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat<CreatureState> {
@@ -108,7 +108,7 @@ impl Combat<Able> {
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.clone();
         {
-            let mut targets = newgame.resolve_targets(target)?;
+            let mut targets = newgame.resolve_targets(ability.target, target)?;
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
@@ -122,21 +122,31 @@ impl Combat<Able> {
         Ok(newgame.into_combat_vari())
     }
 
-    fn resolve_targets(&self, target: DecidedTarget) -> Result<Vec<CreatureID>, GameError> {
-        // FIXME: This doesn't take into consideration the actual target system used by the
-        // ability. IIRC, the Haskell version used a typesafe approach to ensure that actual target
-        // matched up with spec target.
-        match target {
-            DecidedTarget::Melee(cid) => {
+    fn resolve_targets(&self,
+                       target: TargetSpec,
+                       decision: DecidedTarget)
+                       -> Result<Vec<CreatureID>, GameError> {
+        match (target, decision) {
+            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
                 let target_creature = self.get_creature(cid.clone())
                     .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
-                if distance(self.creatures.get_current(), target_creature) <= MELEE_RANGE {
+                if creature_within_distance(self.creatures.get_current(),
+                                            target_creature,
+                                            MELEE_RANGE) {
                     Ok(vec![cid])
                 } else {
                     Err(GameError::TargetOutOfRange)
                 }
             }
-            DecidedTarget::Range(cid) => Ok(vec![cid]),
+            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+                let target_creature = self.get_creature(cid.clone())
+                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
+                if creature_within_distance(self.creatures.get_current(), target_creature, max) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::TargetOutOfRange)
+                }
+            }
             _ => {
                 let unhandled = true;
                 panic!("Unhandled decided target!")
@@ -228,5 +238,34 @@ fn target_melee_non_adjacent() {
          |c| c.set_pos((2, 0, 0)));
     assert_eq!(combat.act(&melee,
                           DecidedTarget::Melee(CreatureID("chris".to_string()))),
+               Err(GameError::TargetOutOfRange));
+}
+
+#[test]
+fn target_range() {
+    let mut combat = t_combat();
+    let range_ab = t_ranged();
+    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+         |c| c.set_pos((5, 0, 0)));
+    let _: CombatVari = combat.act(&range_ab,
+             DecidedTarget::Range(CreatureID("chris".to_string())))
+        .unwrap();
+}
+
+#[test]
+fn target_out_of_range() {
+    let mut combat = t_combat();
+    let range_ab = t_ranged();
+    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+         |c| c.set_pos((6, 0, 0)));
+    assert_eq!(combat.act(&range_ab,
+                          DecidedTarget::Range(CreatureID("chris".to_string()))),
+               Err(GameError::TargetOutOfRange));
+
+    // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
+    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+         |c| c.set_pos((5, 3, 0)));
+    assert_eq!(combat.act(&range_ab,
+                          DecidedTarget::Range(CreatureID("chris".to_string()))),
                Err(GameError::TargetOutOfRange));
 }
