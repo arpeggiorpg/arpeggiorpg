@@ -66,30 +66,34 @@ impl Combat {
 
     pub fn capability(&self) -> CombatCapability {
         if self.current_creature().can_act() {
-            CombatCapability::Able(CombatAble(self))
+            CombatCapability::Able(CombatAble { combat: self })
         } else {
-            CombatCapability::Incap(CombatIncap(self))
+            CombatCapability::Incap(CombatIncap { combat: self })
         }
     }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatIncap<'a>(&'a Combat);
+pub struct CombatIncap<'a> {
+    pub combat: &'a Combat,
+}
 impl<'a> CombatIncap<'a> {
     pub fn skip(&self) -> Combat {
-        let mut newgame = self.0.clone();
+        let mut newgame = self.combat.clone();
         newgame.tick()
     }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatAble<'a>(&'a Combat);
+pub struct CombatAble<'a> {
+    pub combat: &'a Combat,
+}
 impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
     pub fn act(&self, ability: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
-        let mut newgame = self.0.clone();
+        let mut newgame = self.combat.clone();
         {
             let mut targets = Self::resolve_targets(&newgame, ability.target, target)?;
             for effect in &ability.effects {

@@ -18,7 +18,7 @@ pub mod creature;
 pub mod grid;
 pub mod types;
 
-fn load_game() -> serde_yaml::Result<app::AppVari> {
+fn load_game() -> serde_yaml::Result<app::App> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
     let mut data = "".to_owned();
     let _ = gamefile.read_to_string(&mut data);

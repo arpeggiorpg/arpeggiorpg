@@ -40,6 +40,7 @@ pub struct NoCombat;
 pub enum GameError {
     NoAbility(AbilityID),
     CreatureLacksAbility(AbilityID),
+    // CreatureNotFound(CreatureID),
     InvalidTarget(CreatureID),
     InvalidTargetNoSense(CreatureID),
     TargetOutOfRange,
