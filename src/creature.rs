@@ -182,10 +182,9 @@ pub trait CreatureT {
     fn pos(&self) -> Point3;
     fn id(&self) -> CreatureID;
     fn set_pos(&self, Point3) -> CreatureVari;
-    // These methods could feasibly return a different Creature<T> (e.g. Creature<Able> ->
-    // Creature<Incap>)
     fn tick(&self) -> CreatureVari;
     fn apply_effect(&self, &Effect) -> CreatureVari;
+    /// Convert any CreatureT into a CreatureVari for storage and whatnot.
     fn into_vari(&self) -> CreatureVari;
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
     fn can_act(&self) -> bool;
@@ -244,34 +243,8 @@ pub enum CreatureVari {
     Able(Creature<Able>),
 }
 
-impl CreatureT for CreatureVari {
-    fn can_act(&self) -> bool {
-        self.tref().can_act()
-    }
-    fn has_ability(&self, abid: &AbilityID) -> bool {
-        self.tref().has_ability(abid)
-    }
-    fn pos(&self) -> Point3 {
-        self.tref().pos()
-    }
-    fn id(&self) -> CreatureID {
-        self.tref().id()
-    }
-    fn apply_effect(&self, effect: &Effect) -> CreatureVari {
-        self.tref().apply_effect(effect)
-    }
-    fn tick(&self) -> CreatureVari {
-        self.tref().tick()
-    }
-    fn set_pos(&self, pt: Point3) -> CreatureVari {
-        self.tref().set_pos(pt)
-    }
-    fn into_vari(&self) -> CreatureVari {
-        self.clone()
-    }
-}
-
 impl CreatureVari {
+    /// Get a CreatureT implementation for this Creature.
     pub fn tref(&self) -> &CreatureT {
         match *self {
             CreatureVari::Incap(ref c) => c,

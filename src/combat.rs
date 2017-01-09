@@ -70,11 +70,11 @@ impl HasCreature<Casting> for Combat<Casting> {
 
 impl<CreatureState> Combat<CreatureState>
     where Combat<CreatureState>: HasCreature<CreatureState>,
-          Creature<CreatureState>: Clone
+          Creature<CreatureState>: CreatureT
 {
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
-            take(creature, |c: CreatureVari| c.tick());
+            take(creature, |c: CreatureVari| c.tref().tick());
         }
     }
 
@@ -114,7 +114,7 @@ impl Combat<Able> {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
                         .ok_or_else(|| GameError::InvalidTargetNoSense(creature_id.clone()))?;
-                    take(creature, |c| c.apply_effect(effect));
+                    take(creature, |c| c.tref().apply_effect(effect));
                 }
             }
         }
@@ -163,7 +163,7 @@ impl<T> Combat<T> {
     //    (though that may not be efficient either)
     pub fn get_creature(&self, cid: CreatureID) -> Option<&CreatureVari> {
         for creature in self.creatures.iter() {
-            if creature.id() == cid {
+            if creature.tref().id() == cid {
                 return Some(creature);
             }
         }
@@ -172,7 +172,7 @@ impl<T> Combat<T> {
 
     pub fn get_creature_mut(&mut self, cid: CreatureID) -> Option<&mut CreatureVari> {
         for creature in self.creatures.iter_mut() {
-            if creature.id() == cid {
+            if creature.tref().id() == cid {
                 return Some(creature);
             }
         }
@@ -235,7 +235,7 @@ fn target_melee_non_adjacent() {
     let mut combat = t_combat();
     let melee = t_melee();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((2, 0, 0)));
+         |c| c.tref().set_pos((2, 0, 0)));
     assert_eq!(combat.act(&melee, DecidedTarget::Melee(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }
@@ -245,7 +245,7 @@ fn target_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((5, 0, 0)));
+         |c| c.tref().set_pos((5, 0, 0)));
     let _: CombatVari = combat.act(&range_ab, DecidedTarget::Range(cid("chris")))
         .unwrap();
 }
@@ -255,13 +255,13 @@ fn target_out_of_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((6, 0, 0)));
+         |c| c.tref().set_pos((6, 0, 0)));
     assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 
     // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((5, 3, 0)));
+         |c| c.tref().set_pos((5, 3, 0)));
     assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }

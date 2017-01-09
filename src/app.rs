@@ -105,7 +105,7 @@ impl<CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<CreatureState>>,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
           Combat<CreatureState>: HasCreature<CreatureState>,
-          Creature<CreatureState>: Clone
+          Creature<CreatureState>: CreatureT
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
