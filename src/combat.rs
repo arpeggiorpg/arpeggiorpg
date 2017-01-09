@@ -71,38 +71,6 @@ impl Combat {
             CombatCapability::Incap(CombatIncap(self))
         }
     }
-
-    fn resolve_targets(&self,
-                       target: TargetSpec,
-                       decision: DecidedTarget)
-                       -> Result<Vec<CreatureID>, GameError> {
-        match (target, decision) {
-            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
-                let target_creature = self.get_creature(cid.clone())
-                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
-                if creature_within_distance(self.creatures.get_current(),
-                                            target_creature,
-                                            MELEE_RANGE) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::TargetOutOfRange)
-                }
-            }
-            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
-                let target_creature = self.get_creature(cid.clone())
-                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
-                if creature_within_distance(self.creatures.get_current(), target_creature, max) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::TargetOutOfRange)
-                }
-            }
-            _ => {
-                let unhandled = true;
-                panic!("Unhandled decided target!")
-            }
-        }
-    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -123,7 +91,7 @@ impl<'a> CombatAble<'a> {
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.0.clone();
         {
-            let mut targets = newgame.resolve_targets(ability.target, target)?;
+            let mut targets = Self::resolve_targets(&newgame, ability.target, target)?;
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
@@ -134,6 +102,38 @@ impl<'a> CombatAble<'a> {
         }
         newgame.creatures.next_circular();
         Ok(newgame.tick())
+    }
+
+    fn resolve_targets(combat: &Combat,
+                       target: TargetSpec,
+                       decision: DecidedTarget)
+                       -> Result<Vec<CreatureID>, GameError> {
+        match (target, decision) {
+            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
+                let target_creature = combat.get_creature(cid.clone())
+                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
+                if creature_within_distance(combat.creatures.get_current(),
+                                            target_creature,
+                                            MELEE_RANGE) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::TargetOutOfRange)
+                }
+            }
+            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+                let target_creature = combat.get_creature(cid.clone())
+                    .ok_or_else(|| GameError::InvalidTarget(cid.clone()))?;
+                if creature_within_distance(combat.creatures.get_current(), target_creature, max) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::TargetOutOfRange)
+                }
+            }
+            _ => {
+                let unhandled = true;
+                panic!("Unhandled decided target!")
+            }
+        }
     }
 }
 
