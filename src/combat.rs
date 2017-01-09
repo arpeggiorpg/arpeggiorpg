@@ -27,32 +27,11 @@ pub struct Combat<CreatureState> {
     _p: PhantomData<CreatureState>,
 }
 
-pub trait HasCreature<T> {
-    fn current_creature(&self) -> &Creature;
-}
-
-impl HasCreature<Able> for Combat<Able> {
-    fn current_creature(&self) -> &Creature {
+impl<CreatureState> Combat<CreatureState> {
+    pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
     }
-}
 
-impl HasCreature<Incap> for Combat<Incap> {
-    fn current_creature(&self) -> &Creature {
-        self.creatures.get_current()
-    }
-}
-
-impl HasCreature<Casting> for Combat<Casting> {
-    fn current_creature(&self) -> &Creature {
-        self.creatures.get_current()
-    }
-}
-
-
-impl<CreatureState> Combat<CreatureState>
-    where Combat<CreatureState>: HasCreature<CreatureState>
-{
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
             take(creature, |c: Creature| c.tick());

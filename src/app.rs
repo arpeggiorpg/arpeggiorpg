@@ -103,8 +103,7 @@ impl<CreatureState> App<CreatureState>
 // I still don't know how to get rid of the big trait list for CombatType<CreatureState>.
 impl<CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<CreatureState>>,
-          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
-          Combat<CreatureState>: HasCreature<CreatureState>
+          CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
