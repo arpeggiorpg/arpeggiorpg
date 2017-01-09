@@ -104,7 +104,8 @@ impl<CreatureState> App<CreatureState>
 impl<CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<CreatureState>>,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
-          Combat<CreatureState>: HasCreature<CreatureState>
+          Combat<CreatureState>: HasCreature<CreatureState>,
+          Creature<CreatureState>: Clone
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
@@ -176,8 +177,8 @@ pub fn able_app(app: AppVari) -> App<Able> {
 fn workflow() {
     let mut creatures = HashMap::new();
     let punch = t_melee();
-    let punch_id = AbilityID("punch".to_string());
-    let bob_id = CreatureID("bob".to_string());
+    let punch_id = abid("punch");
+    let bob_id = cid("bob");
     let creature = Creature::<Able>::build("bob")
         .abilities(vec![punch_id.clone()])
         .build()

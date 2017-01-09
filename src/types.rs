@@ -8,16 +8,21 @@ pub type Point3 = (i16, i16, i16);
 pub struct Energy(pub u8);
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct CreatureID(pub String);
+#[cfg(test)]
+pub fn cid(s: &str) -> CreatureID {
+    CreatureID(s.to_string())
+}
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(pub String);
+#[cfg(test)]
+pub fn abid(s: &str) -> AbilityID {
+    AbilityID(s.to_string())
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
     pub fn new(x: f32) -> Distance {
         Distance((x * 100.0) as u32)
-    }
-    pub fn f32(&self) -> f32 {
-        self.0 as f32 / 100.0
     }
 }
 

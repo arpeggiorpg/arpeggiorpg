@@ -69,7 +69,8 @@ impl HasCreature<Casting> for Combat<Casting> {
 
 
 impl<CreatureState> Combat<CreatureState>
-    where Combat<CreatureState>: HasCreature<CreatureState>
+    where Combat<CreatureState>: HasCreature<CreatureState>,
+          Creature<CreatureState>: Clone
 {
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
@@ -223,10 +224,9 @@ impl CombatVari {
 pub fn t_combat() -> Combat<Able> {
     let bob = t_rogue("bob");
     let chris = t_rogue("chris");
-    Combat {
-        creatures: nonempty::NonEmptyWithCursor::from_vec(vec![bob.into_vari(), chris.into_vari()])
-            .unwrap(),
-        _p: PhantomData,
+    match CombatVari::new(vec![bob.into_vari(), chris.into_vari()]) {
+        Some(CombatVari::Able(x)) => x,
+        _ => panic!(),
     }
 }
 
@@ -234,10 +234,9 @@ pub fn t_combat() -> Combat<Able> {
 fn target_melee_non_adjacent() {
     let mut combat = t_combat();
     let melee = t_melee();
-    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+    take(combat.get_creature_mut(cid("chris")).unwrap(),
          |c| c.set_pos((2, 0, 0)));
-    assert_eq!(combat.act(&melee,
-                          DecidedTarget::Melee(CreatureID("chris".to_string()))),
+    assert_eq!(combat.act(&melee, DecidedTarget::Melee(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }
 
@@ -245,10 +244,9 @@ fn target_melee_non_adjacent() {
 fn target_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
-    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+    take(combat.get_creature_mut(cid("chris")).unwrap(),
          |c| c.set_pos((5, 0, 0)));
-    let _: CombatVari = combat.act(&range_ab,
-             DecidedTarget::Range(CreatureID("chris".to_string())))
+    let _: CombatVari = combat.act(&range_ab, DecidedTarget::Range(cid("chris")))
         .unwrap();
 }
 
@@ -256,16 +254,14 @@ fn target_range() {
 fn target_out_of_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
-    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+    take(combat.get_creature_mut(cid("chris")).unwrap(),
          |c| c.set_pos((6, 0, 0)));
-    assert_eq!(combat.act(&range_ab,
-                          DecidedTarget::Range(CreatureID("chris".to_string()))),
+    assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 
     // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
-    take(combat.get_creature_mut(CreatureID("chris".to_string())).unwrap(),
+    take(combat.get_creature_mut(cid("chris")).unwrap(),
          |c| c.set_pos((5, 3, 0)));
-    assert_eq!(combat.act(&range_ab,
-                          DecidedTarget::Range(CreatureID("chris".to_string()))),
+    assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }

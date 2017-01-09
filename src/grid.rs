@@ -29,11 +29,11 @@ fn point3_distance(pos1: Point3, pos2: Point3) -> f32 {
 
 /// Get the distance between two creatures as a floating point number.
 pub fn creature_distance(c1: &CreatureVari, c2: &CreatureVari) -> Distance {
-    Distance(point3_distance(c1.get_pos(), c2.get_pos()) as u32)
+    Distance(point3_distance(c1.pos(), c2.pos()) as u32)
 }
 
 pub fn creature_within_distance(c1: &CreatureVari, c2: &CreatureVari, d: Distance) -> bool {
-    point3_distance(c1.get_pos(), c2.get_pos()).round() as u32 <= d.0 / 100
+    point3_distance(c1.pos(), c2.pos()).round() as u32 <= d.0 / 100
 }
 
 #[test]

@@ -35,36 +35,22 @@ impl<A> Creature<A> {
         }
     }
 
-    fn into_other<B>(self) -> Creature<B> {
+    fn into_other<B>(&self) -> Creature<B> {
         Creature::<B> {
-            id: self.id,
-            name: self.name,
+            id: self.id.clone(),
+            name: self.name.clone(),
             max_energy: self.max_energy,
             cur_energy: self.cur_energy,
-            abilities: self.abilities,
+            abilities: self.abilities.clone(),
             max_health: self.max_health,
             cur_health: self.cur_health,
             pos: self.pos,
-            conditions: self.conditions,
+            conditions: self.conditions.clone(),
             _p: PhantomData,
         }
     }
 
-    pub fn into_vari(self) -> CreatureVari {
-        if conditions_able(&self.conditions) {
-            CreatureVari::Able(self.into_other())
-        } else {
-            CreatureVari::Incap(self.into_other())
-        }
-    }
-
-    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
-    pub fn can_act(&self) -> bool {
-        conditions_able(&self.conditions)
-    }
-
-    /// Note that this function is private.
-    fn apply_effect(&mut self, effect: &Effect) {
+    fn apply_effect_mut(&mut self, effect: &Effect) {
         match *effect {
             Effect::Damage(amt) => self.cur_health = self.cur_health.saturating_sub(amt),
             Effect::Heal(amt) => {
@@ -76,7 +62,7 @@ impl<A> Creature<A> {
             }
             Effect::MultiEffect(ref effects) => {
                 for effect in effects {
-                    self.apply_effect(effect)
+                    self.apply_effect_mut(effect)
                 }
             }
             Effect::ApplyCondition(ref duration, ref condition) => {
@@ -88,7 +74,7 @@ impl<A> Creature<A> {
         }
     }
 
-    fn tick(&mut self) {
+    fn tick_mut(&mut self) {
         let mut effs = vec![];
         self.conditions.retain_mut(|&mut AppliedCondition { ref condition, ref mut remaining }| {
             if let ConditionDuration::Duration(k) = *remaining {
@@ -111,15 +97,8 @@ impl<A> Creature<A> {
         });
 
         for eff in effs {
-            self.apply_effect(&eff);
+            self.apply_effect_mut(&eff);
         }
-    }
-
-    /// Check if a creature has the given ability.
-    pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
-        self.abilities
-            .iter()
-            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
     }
 }
 
@@ -199,6 +178,64 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
         })
 }
 
+pub trait CreatureT {
+    fn pos(&self) -> Point3;
+    fn id(&self) -> CreatureID;
+    fn set_pos(&self, Point3) -> CreatureVari;
+    // These methods could feasibly return a different Creature<T> (e.g. Creature<Able> ->
+    // Creature<Incap>)
+    fn tick(&self) -> CreatureVari;
+    fn apply_effect(&self, &Effect) -> CreatureVari;
+    fn into_vari(&self) -> CreatureVari;
+    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
+    fn can_act(&self) -> bool;
+    /// Check if a creature has the given ability.
+    fn has_ability(&self, &AbilityID) -> bool;
+}
+
+impl<A> CreatureT for Creature<A>
+    where Creature<A>: Clone
+{
+    fn can_act(&self) -> bool {
+        conditions_able(&self.conditions)
+    }
+
+    fn has_ability(&self, ability_id: &AbilityID) -> bool {
+        self.abilities
+            .iter()
+            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
+    }
+
+    fn pos(&self) -> Point3 {
+        self.pos
+    }
+    fn id(&self) -> CreatureID {
+        self.id.clone()
+    }
+    fn apply_effect(&self, effect: &Effect) -> CreatureVari {
+        let mut newc = self.clone();
+        newc.apply_effect_mut(effect);
+        newc.into_vari()
+    }
+    fn tick(&self) -> CreatureVari {
+        let mut newc = self.clone();
+        newc.tick_mut();
+        newc.into_vari()
+    }
+    fn set_pos(&self, pt: Point3) -> CreatureVari {
+        let mut newc = self.clone();
+        newc.pos = pt;
+        newc.into_vari()
+    }
+    fn into_vari(&self) -> CreatureVari {
+        if conditions_able(&self.conditions) {
+            CreatureVari::Able(self.clone().into_other())
+        } else {
+            CreatureVari::Incap(self.clone().into_other())
+        }
+    }
+}
+
 /// An enum wrapping all the valid types of `Creature`. See `CombatVari` for a better explanation.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CreatureVari {
@@ -207,69 +244,39 @@ pub enum CreatureVari {
     Able(Creature<Able>),
 }
 
+impl CreatureT for CreatureVari {
+    fn can_act(&self) -> bool {
+        self.tref().can_act()
+    }
+    fn has_ability(&self, abid: &AbilityID) -> bool {
+        self.tref().has_ability(abid)
+    }
+    fn pos(&self) -> Point3 {
+        self.tref().pos()
+    }
+    fn id(&self) -> CreatureID {
+        self.tref().id()
+    }
+    fn apply_effect(&self, effect: &Effect) -> CreatureVari {
+        self.tref().apply_effect(effect)
+    }
+    fn tick(&self) -> CreatureVari {
+        self.tref().tick()
+    }
+    fn set_pos(&self, pt: Point3) -> CreatureVari {
+        self.tref().set_pos(pt)
+    }
+    fn into_vari(&self) -> CreatureVari {
+        self.clone()
+    }
+}
+
 impl CreatureVari {
-    // god damnit these methods suck
-    // how about pub fn gen(self) -> Box<CreatureT>
-    pub fn get_pos(&self) -> Point3 {
+    pub fn tref(&self) -> &CreatureT {
         match *self {
-            CreatureVari::Incap(ref c) => c.pos,
-            CreatureVari::Casting(ref c) => c.pos,
-            CreatureVari::Able(ref c) => c.pos,
-        }
-    }
-    pub fn set_pos(self, pos: Point3) -> Self {
-        match self {
-            CreatureVari::Incap(mut c) => {
-                c.pos = pos;
-                c.into_vari()
-            }
-            CreatureVari::Casting(mut c) => {
-                c.pos = pos;
-                c.into_vari()
-            }
-            CreatureVari::Able(mut c) => {
-                c.pos = pos;
-                c.into_vari()
-            }
-        }
-    }
-    pub fn id(&self) -> CreatureID {
-        match *self {
-            CreatureVari::Incap(ref c) => c.id.clone(),
-            CreatureVari::Casting(ref c) => c.id.clone(),
-            CreatureVari::Able(ref c) => c.id.clone(),
-        }
-    }
-    pub fn tick(self) -> Self {
-        match self {
-            CreatureVari::Incap(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-            CreatureVari::Able(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-            CreatureVari::Casting(mut c) => {
-                c.tick();
-                c.into_vari()
-            }
-        }
-    }
-    pub fn apply_effect(self, effect: &Effect) -> Self {
-        match self {
-            CreatureVari::Incap(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
-            CreatureVari::Casting(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
-            CreatureVari::Able(mut c) => {
-                c.apply_effect(effect);
-                c.into_vari()
-            }
+            CreatureVari::Incap(ref c) => c,
+            CreatureVari::Able(ref c) => c,
+            CreatureVari::Casting(ref c) => c,
         }
     }
 }
@@ -282,7 +289,7 @@ pub fn t_creature() -> Creature<Able> {
 #[cfg(test)]
 pub fn t_rogue(name: &str) -> Creature<Able> {
     Creature::<Able>::build(name)
-        .abilities(vec![AbilityID("Test Ability".to_string())])
+        .abilities(vec![abid("Test Ability")])
         .build()
         .unwrap()
 }
@@ -294,7 +301,7 @@ fn test_tick_and_expire_condition_remaining() {
     c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
                         app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
                         app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-    c.tick();
+    c.tick_mut();
     assert_eq!(c.conditions,
                vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
                     app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
@@ -305,10 +312,10 @@ fn test_recurring_effect() {
     let mut c = t_creature();
     c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(1))),
                                  ConditionDuration::Duration(2))];
-    c.tick();
+    c.tick_mut();
     assert_eq!(c.cur_health, 9);
-    c.tick();
+    c.tick_mut();
     assert_eq!(c.cur_health, 8);
-    c.tick();
+    c.tick_mut();
     assert_eq!(c.cur_health, 8);
 }
