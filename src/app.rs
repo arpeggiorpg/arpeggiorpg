@@ -55,7 +55,7 @@ pub struct App<CreatureState: CombatTypeFn> {
     combat_history: VecDeque<CombatVari>,
     current_combat: CombatType<CreatureState>,
     abilities: HashMap<AbilityID, Ability>,
-    creatures: HashMap<CreatureID, CreatureVari>, // representable invalid: Creature<Casting>
+    creatures: HashMap<CreatureID, Creature>,
 }
 
 // Generic methods for any kind of App regardless of the CreatureState.
@@ -104,8 +104,7 @@ impl<CreatureState> App<CreatureState>
 impl<CreatureState> App<CreatureState>
     where CreatureState: IsInCombat + CombatTypeFn<Type = Combat<CreatureState>>,
           CombatType<CreatureState>: Serialize + Deserialize + Clone + Eq + PartialEq + Debug,
-          Combat<CreatureState>: HasCreature<CreatureState>,
-          Creature<CreatureState>: CreatureT
+          Combat<CreatureState>: HasCreature<CreatureState>
 {
     pub fn stop_combat(mut self) -> App<NoCombat> {
         self.combat_history.push_back(self.current_combat.clone().into_combat_vari());
@@ -121,7 +120,7 @@ impl<CreatureState> App<CreatureState>
 impl App<NoCombat> {
     /// Create a Combat and return a new App with it.
     pub fn start_combat(self, combatants: Vec<CreatureID>) -> Option<AppVari> {
-        let combatant_objs: Vec<CreatureVari> =
+        let combatant_objs: Vec<Creature> =
             combatants.iter().flat_map(|cid| self.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
             None
@@ -179,11 +178,10 @@ fn workflow() {
     let punch = t_melee();
     let punch_id = abid("punch");
     let bob_id = cid("bob");
-    let creature = Creature::<Able>::build("bob")
+    let creature = Creature::build("bob")
         .abilities(vec![punch_id.clone()])
         .build()
-        .unwrap()
-        .into_vari();
+        .unwrap();
     creatures.insert(bob_id.clone(), creature);
     let mut abilities = HashMap::new();
     abilities.insert(punch_id.clone(), punch);

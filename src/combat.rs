@@ -23,58 +23,39 @@ pub struct Combat<CreatureState> {
     //
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-    pub creatures: nonempty::NonEmptyWithCursor<CreatureVari>,
+    pub creatures: nonempty::NonEmptyWithCursor<Creature>,
     _p: PhantomData<CreatureState>,
 }
 
 pub trait HasCreature<T> {
-    fn current_creature(&self) -> &Creature<T>;
+    fn current_creature(&self) -> &Creature;
 }
 
 impl HasCreature<Able> for Combat<Able> {
-    fn current_creature(&self) -> &Creature<Able> {
-        match *self.creatures.get_current() {
-            CreatureVari::Able(ref c) => c,
-            _ => {
-                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
-                       self)
-            }
-        }
+    fn current_creature(&self) -> &Creature {
+        self.creatures.get_current()
     }
 }
 
 impl HasCreature<Incap> for Combat<Incap> {
-    fn current_creature(&self) -> &Creature<Incap> {
-        match *self.creatures.get_current() {
-            CreatureVari::Incap(ref c) => c,
-            _ => {
-                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
-                       self)
-            }
-        }
+    fn current_creature(&self) -> &Creature {
+        self.creatures.get_current()
     }
 }
 
 impl HasCreature<Casting> for Combat<Casting> {
-    fn current_creature(&self) -> &Creature<Casting> {
-        match *self.creatures.get_current() {
-            CreatureVari::Casting(ref c) => c,
-            _ => {
-                panic!("Somehow the current creature of a Combat<Able> was not Able! {:?}",
-                       self)
-            }
-        }
+    fn current_creature(&self) -> &Creature {
+        self.creatures.get_current()
     }
 }
 
 
 impl<CreatureState> Combat<CreatureState>
-    where Combat<CreatureState>: HasCreature<CreatureState>,
-          Creature<CreatureState>: CreatureT
+    where Combat<CreatureState>: HasCreature<CreatureState>
 {
     fn tick(&mut self) {
         for creature in self.creatures.iter_mut() {
-            take(creature, |c: CreatureVari| c.tref().tick());
+            take(creature, |c: Creature| c.tick());
         }
     }
 
@@ -114,7 +95,7 @@ impl Combat<Able> {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
                         .ok_or_else(|| GameError::InvalidTargetNoSense(creature_id.clone()))?;
-                    take(creature, |c| c.tref().apply_effect(effect));
+                    take(creature, |c| c.apply_effect(effect));
                 }
             }
         }
@@ -161,18 +142,18 @@ impl<T> Combat<T> {
     // 1. Store an additional HashMap<CreatureID, Idx> here on Combat
     // 2. Implement a NonEmptyLinkedHashMapWithCursor (https://crates.io/crates/linked-hash-map)
     //    (though that may not be efficient either)
-    pub fn get_creature(&self, cid: CreatureID) -> Option<&CreatureVari> {
+    pub fn get_creature(&self, cid: CreatureID) -> Option<&Creature> {
         for creature in self.creatures.iter() {
-            if creature.tref().id() == cid {
+            if creature.id() == cid {
                 return Some(creature);
             }
         }
         None
     }
 
-    pub fn get_creature_mut(&mut self, cid: CreatureID) -> Option<&mut CreatureVari> {
+    pub fn get_creature_mut(&mut self, cid: CreatureID) -> Option<&mut Creature> {
         for creature in self.creatures.iter_mut() {
-            if creature.tref().id() == cid {
+            if creature.id() == cid {
                 return Some(creature);
             }
         }
@@ -193,28 +174,13 @@ pub enum CombatVari {
 }
 
 impl CombatVari {
-    pub fn new(combatants: Vec<CreatureVari>) -> Option<CombatVari> {
+    pub fn new(combatants: Vec<Creature>) -> Option<CombatVari> {
         nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| {
-            match *ne.get_current() {
-                CreatureVari::Able(_) => {
-                    CombatVari::Able(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-                CreatureVari::Casting(_) => {
-                    CombatVari::Casting(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-                CreatureVari::Incap(_) => {
-                    CombatVari::Incap(Combat {
-                        creatures: ne,
-                        _p: PhantomData,
-                    })
-                }
-            }
+            CombatVari::Able(Combat {
+                creatures: ne,
+                _p: PhantomData,
+            })
+
         })
     }
 }
@@ -224,7 +190,7 @@ impl CombatVari {
 pub fn t_combat() -> Combat<Able> {
     let bob = t_rogue("bob");
     let chris = t_rogue("chris");
-    match CombatVari::new(vec![bob.into_vari(), chris.into_vari()]) {
+    match CombatVari::new(vec![bob, chris]) {
         Some(CombatVari::Able(x)) => x,
         _ => panic!(),
     }
@@ -235,7 +201,7 @@ fn target_melee_non_adjacent() {
     let mut combat = t_combat();
     let melee = t_melee();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.tref().set_pos((2, 0, 0)));
+         |c| c.set_pos((2, 0, 0)));
     assert_eq!(combat.act(&melee, DecidedTarget::Melee(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }
@@ -245,7 +211,7 @@ fn target_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.tref().set_pos((5, 0, 0)));
+         |c| c.set_pos((5, 0, 0)));
     let _: CombatVari = combat.act(&range_ab, DecidedTarget::Range(cid("chris")))
         .unwrap();
 }
@@ -255,13 +221,13 @@ fn target_out_of_range() {
     let mut combat = t_combat();
     let range_ab = t_ranged();
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.tref().set_pos((6, 0, 0)));
+         |c| c.set_pos((6, 0, 0)));
     assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 
     // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
     take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.tref().set_pos((5, 3, 0)));
+         |c| c.set_pos((5, 3, 0)));
     assert_eq!(combat.act(&range_ab, DecidedTarget::Range(cid("chris"))),
                Err(GameError::TargetOutOfRange));
 }

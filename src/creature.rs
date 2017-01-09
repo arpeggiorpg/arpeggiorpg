@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::cmp;
 
 use odds::vec::VecExt;
@@ -6,7 +5,7 @@ use odds::vec::VecExt;
 use types::*;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Creature<CreatureState> {
+pub struct Creature {
     // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
     id: CreatureID,
     name: String,
@@ -17,10 +16,9 @@ pub struct Creature<CreatureState> {
     cur_health: u8,
     pos: Point3,
     conditions: Vec<AppliedCondition>,
-    _p: PhantomData<CreatureState>,
 }
 
-impl<A> Creature<A> {
+impl Creature {
     pub fn build(id: &str) -> CreatureBuilder {
         CreatureBuilder {
             id: CreatureID(id.to_string()),
@@ -32,21 +30,6 @@ impl<A> Creature<A> {
             cur_health: None,
             pos: None,
             conditions: vec![],
-        }
-    }
-
-    fn into_other<B>(&self) -> Creature<B> {
-        Creature::<B> {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            max_energy: self.max_energy,
-            cur_energy: self.cur_energy,
-            abilities: self.abilities.clone(),
-            max_health: self.max_health,
-            cur_health: self.cur_health,
-            pos: self.pos,
-            conditions: self.conditions.clone(),
-            _p: PhantomData,
         }
     }
 
@@ -100,6 +83,40 @@ impl<A> Creature<A> {
             self.apply_effect_mut(&eff);
         }
     }
+
+    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
+    pub fn can_act(&self) -> bool {
+        conditions_able(&self.conditions)
+    }
+
+    /// Check if a creature has the given ability.
+    pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
+        self.abilities
+            .iter()
+            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
+    }
+
+    pub fn pos(&self) -> Point3 {
+        self.pos
+    }
+    pub fn id(&self) -> CreatureID {
+        self.id.clone()
+    }
+    pub fn apply_effect(&self, effect: &Effect) -> Creature {
+        let mut newc = self.clone();
+        newc.apply_effect_mut(effect);
+        newc
+    }
+    pub fn tick(&self) -> Creature {
+        let mut newc = self.clone();
+        newc.tick_mut();
+        newc
+    }
+    pub fn set_pos(&self, pt: Point3) -> Creature {
+        let mut newc = self.clone();
+        newc.pos = pt;
+        newc
+    }
 }
 
 pub struct CreatureBuilder {
@@ -115,7 +132,7 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Option<Creature<Able>> {
+    pub fn build(self) -> Option<Creature> {
         if conditions_able(&self.conditions) {
             Some(Creature {
                 id: self.id.clone(),
@@ -135,7 +152,6 @@ impl CreatureBuilder {
                 cur_health: self.cur_health.unwrap_or(10),
                 pos: self.pos.unwrap_or((0, 0, 0)),
                 conditions: self.conditions,
-                _p: PhantomData,
             })
         } else {
             None
@@ -178,90 +194,15 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
         })
 }
 
-pub trait CreatureT {
-    fn pos(&self) -> Point3;
-    fn id(&self) -> CreatureID;
-    fn set_pos(&self, Point3) -> CreatureVari;
-    fn tick(&self) -> CreatureVari;
-    fn apply_effect(&self, &Effect) -> CreatureVari;
-    /// Convert any CreatureT into a CreatureVari for storage and whatnot.
-    fn into_vari(&self) -> CreatureVari;
-    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
-    fn can_act(&self) -> bool;
-    /// Check if a creature has the given ability.
-    fn has_ability(&self, &AbilityID) -> bool;
-}
 
-impl<A> CreatureT for Creature<A>
-    where Creature<A>: Clone
-{
-    fn can_act(&self) -> bool {
-        conditions_able(&self.conditions)
-    }
-
-    fn has_ability(&self, ability_id: &AbilityID) -> bool {
-        self.abilities
-            .iter()
-            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
-    }
-
-    fn pos(&self) -> Point3 {
-        self.pos
-    }
-    fn id(&self) -> CreatureID {
-        self.id.clone()
-    }
-    fn apply_effect(&self, effect: &Effect) -> CreatureVari {
-        let mut newc = self.clone();
-        newc.apply_effect_mut(effect);
-        newc.into_vari()
-    }
-    fn tick(&self) -> CreatureVari {
-        let mut newc = self.clone();
-        newc.tick_mut();
-        newc.into_vari()
-    }
-    fn set_pos(&self, pt: Point3) -> CreatureVari {
-        let mut newc = self.clone();
-        newc.pos = pt;
-        newc.into_vari()
-    }
-    fn into_vari(&self) -> CreatureVari {
-        if conditions_able(&self.conditions) {
-            CreatureVari::Able(self.clone().into_other())
-        } else {
-            CreatureVari::Incap(self.clone().into_other())
-        }
-    }
-}
-
-/// An enum wrapping all the valid types of `Creature`. See `CombatVari` for a better explanation.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum CreatureVari {
-    Incap(Creature<Incap>),
-    Casting(Creature<Casting>),
-    Able(Creature<Able>),
-}
-
-impl CreatureVari {
-    /// Get a CreatureT implementation for this Creature.
-    pub fn tref(&self) -> &CreatureT {
-        match *self {
-            CreatureVari::Incap(ref c) => c,
-            CreatureVari::Able(ref c) => c,
-            CreatureVari::Casting(ref c) => c,
-        }
-    }
+#[cfg(test)]
+pub fn t_creature() -> Creature {
+    Creature::build("Bob").build().unwrap()
 }
 
 #[cfg(test)]
-pub fn t_creature() -> Creature<Able> {
-    Creature::<Able>::build("Bob").build().unwrap()
-}
-
-#[cfg(test)]
-pub fn t_rogue(name: &str) -> Creature<Able> {
-    Creature::<Able>::build(name)
+pub fn t_rogue(name: &str) -> Creature {
+    Creature::build(name)
         .abilities(vec![abid("Test Ability")])
         .build()
         .unwrap()
