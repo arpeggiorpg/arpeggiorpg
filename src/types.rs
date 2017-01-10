@@ -39,6 +39,7 @@ pub struct NoCombat;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
     NoAbility(AbilityID),
+    CombatMustHaveCreatures,
     CreatureLacksAbility(AbilityID),
     CreatureNotFound(CreatureID),
     InvalidTarget(CreatureID),

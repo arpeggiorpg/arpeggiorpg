@@ -26,8 +26,10 @@ pub struct Combat {
 }
 
 impl Combat {
-    pub fn new(combatants: Vec<Creature>) -> Option<Combat> {
-        nonempty::NonEmptyWithCursor::from_vec(combatants).map(|ne| Combat { creatures: ne })
+    pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
+        nonempty::NonEmptyWithCursor::from_vec(combatants)
+            .map(|ne| Combat { creatures: ne })
+            .ok_or(GameError::CombatMustHaveCreatures)
     }
 
     pub fn current_creature(&self) -> &Creature {

@@ -18,6 +18,15 @@ pub struct App {
 
 // Generic methods for any kind of App regardless of the CreatureState.
 impl App {
+    pub fn new() -> Self {
+        App {
+            combat_history: VecDeque::new(),
+            abilities: HashMap::new(),
+            current_combat: None,
+            creatures: HashMap::new(),
+        }
+    }
+
     pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
         Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
     }
@@ -130,18 +139,19 @@ impl AppNoCombat {
     /// Create a Combat and return a new App with it. Returns None if there aren't enough
     /// combatants to start a combat, or if any combatants can't be found.
     pub fn start_combat(&mut self, combatants: Vec<CreatureID>) -> Result<(), GameError> {
-        // for cid in &combatants {
-        //     let creature = self.app
-        //         .creatures
-        //         .get(cid)
-        //         .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?;
-        // }
-        let combatant_objs: Vec<Creature> =
-            combatants.iter().flat_map(|cid| self.app.creatures.get(cid)).cloned().collect();
+        //        combatants.iter().fold_while(Err(GameError::CombatMustHaveCreatures))
+        let mut combatant_objs = vec![];
+        for cid in &combatants {
+            combatant_objs.push(self.app
+                .creatures
+                .get(cid)
+                .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?
+                .clone());
+        }
         if combatant_objs.len() != combatants.len() {
             Err(GameError::BuggyProgram(":(".to_string()))
         } else {
-            self.app.current_combat = Combat::new(combatant_objs);
+            self.app.current_combat = Some(Combat::new(combatant_objs)?);
             Ok(())
         }
     }
@@ -167,12 +177,16 @@ pub fn t_able_app<'a>(app: App) -> AppAble {
 
 #[cfg(test)]
 pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
+    let mut nocomb = t_nocombat(app);
+    nocomb.start_combat(combatants).unwrap();
+    nocomb.done()
+}
+
+#[cfg(test)]
+pub fn t_nocombat<'a>(app: App) -> AppNoCombat {
     match app.capability() {
-        AppCapability::NoCombat(mut a) => {
-            a.start_combat(combatants).unwrap();
-            a.done()
-        }
-        _ => panic!("Tried to start combat on already-Combative app"),
+        AppCapability::NoCombat(a) => a,
+        _ => panic!("App is not in NoCombat state"),
     }
 }
 
@@ -200,4 +214,20 @@ fn workflow() {
     let next: App = next.expect("punch did not succeed");
     let next = t_able_app(next);
     let _: App = next.stop_combat();
+}
+
+
+#[test]
+fn start_combat_not_found() {
+    let app = App::new();
+    let non = cid("nonexistent");
+    assert_eq!(t_nocombat(app).start_combat(vec![non.clone()]),
+               Err(GameError::CreatureNotFound(non)));
+}
+
+#[test]
+fn combat_must_have_creatures() {
+    let app = App::new();
+    assert_eq!(t_nocombat(app).start_combat(vec![]),
+               Err(GameError::CombatMustHaveCreatures));
 }
