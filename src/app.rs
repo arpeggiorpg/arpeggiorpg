@@ -18,12 +18,12 @@ pub struct App {
 
 // Generic methods for any kind of App regardless of the CreatureState.
 impl App {
-    fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
+    pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
         Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
     }
 
-    /// Consume this App, and consume an Combat, to return a new AppVari.
-    fn capability<'a>(self) -> AppCapability {
+    /// Return an AppCapability according to the current state of the app.
+    pub fn capability(self) -> AppCapability {
         enum X {
             Able,
             Incap,
@@ -74,6 +74,12 @@ impl AppIncap {
         self.app.current_combat = Some(newcombat);
         self.app
     }
+    pub fn done(self) -> App {
+        self.app
+    }
+    pub fn stop_combat(self) -> App {
+        self.app.stop_combat()
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -81,9 +87,6 @@ pub struct AppAble {
     app: App,
 }
 impl AppAble {
-    pub fn stop_combat(self) -> App {
-        self.app.stop_combat()
-    }
     fn perform_able_op<F>(mut self, op: F) -> Result<App, GameError>
         where F: FnOnce(&CombatAble) -> Result<Combat, GameError>
     {
@@ -91,6 +94,7 @@ impl AppAble {
             CombatCapability::Able(able) => op(&able)?,
             _ => panic!("AppAble contained something other than CombatAble"),
         };
+        // FIXME bring back history
         // if self.app.combat_history.len() >= 1000 {
         //     let _ = self.app.combat_history.pop_front();
         // }
@@ -109,6 +113,12 @@ impl AppAble {
             }
         })
     }
+    pub fn done(self) -> App {
+        self.app
+    }
+    pub fn stop_combat(self) -> App {
+        self.app.stop_combat()
+    }
 }
 
 
@@ -118,16 +128,25 @@ pub struct AppNoCombat {
 }
 impl AppNoCombat {
     /// Create a Combat and return a new App with it. Returns None if there aren't enough
-    /// combatants to start a combat, or if any combatants can't be found. (FIXME: Result!)
-    pub fn start_combat(mut self, combatants: Vec<CreatureID>) -> (App, Result<(), GameError>) {
+    /// combatants to start a combat, or if any combatants can't be found.
+    pub fn start_combat(&mut self, combatants: Vec<CreatureID>) -> Result<(), GameError> {
+        for cid in &combatants {
+            let creature = self.app
+                .creatures
+                .get(cid)
+                .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?;
+        }
         let combatant_objs: Vec<Creature> =
             combatants.iter().flat_map(|cid| self.app.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
-            (self.app, Err(GameError::BuggyProgram(":(".to_string())))
+            Err(GameError::BuggyProgram(":(".to_string()))
         } else {
             self.app.current_combat = Combat::new(combatant_objs);
-            (self.app, Ok(()))
+            Ok(())
         }
+    }
+    pub fn done(self) -> App {
+        self.app
     }
 }
 
@@ -149,7 +168,10 @@ pub fn t_able_app<'a>(app: App) -> AppAble {
 #[cfg(test)]
 pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
     match app.capability() {
-        AppCapability::NoCombat(a) => a.start_combat(combatants).0,
+        AppCapability::NoCombat(mut a) => {
+            a.start_combat(combatants).unwrap();
+            a.done()
+        }
         _ => panic!("Tried to start combat on already-Combative app"),
     }
 }
