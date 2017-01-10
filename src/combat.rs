@@ -1,6 +1,6 @@
 //! Representation and simulation of combat.
 //! Many simple combat-oriented types are in `types.rs`, but this module implements the
-//! Combat and CombatCapability types. The most interesting top-level method is `Combat::act`.
+//! Combat and CombatCap types. The most interesting top-level method is `Combat::act`.
 
 use nonempty;
 
@@ -66,11 +66,11 @@ impl Combat {
         None
     }
 
-    pub fn capability(&self) -> CombatCapability {
+    pub fn capability(&self) -> CombatCap {
         if self.current_creature().can_act() {
-            CombatCapability::Able(CombatAble { combat: self })
+            CombatCap::Able(CombatAble { combat: self })
         } else {
-            CombatCapability::Incap(CombatIncap { combat: self })
+            CombatCap::Incap(CombatIncap { combat: self })
         }
     }
 
@@ -148,14 +148,14 @@ impl<'a> CombatAble<'a> {
     }
 }
 
-/// A `CombatCapability` must be pattern-matched to determine which operations we can perform on
+/// A `CombatCap` must be pattern-matched to determine which operations we can perform on
 /// behalf of the current creature. Each variant contains a different wrapper of `Combat`, and each
 /// of those different types provide different methods for doing only what is possible. For
-/// example, `CombatCapability::Incap` wraps `CombatIncap`, which only has a `skip` method, since
-/// incapacitated creatures cannot act, whereas `CombatCapability::Able(CombatAble)` allows use of
+/// example, `CombatCap::Incap` wraps `CombatIncap`, which only has a `skip` method, since
+/// incapacitated creatures cannot act, whereas `CombatCap::Able(CombatAble)` allows use of
 /// the `act` method.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum CombatCapability<'a> {
+pub enum CombatCap<'a> {
     Incap(CombatIncap<'a>),
     Able(CombatAble<'a>),
 }
@@ -178,7 +178,7 @@ mod tests {
 
     pub fn t_act(c: &Combat, ab: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
         match c.capability() {
-            CombatCapability::Able(able) => able.act(ab, target),
+            CombatCap::Able(able) => able.act(ab, target),
             _ => panic!("Not an Able combat"),
         }
     }

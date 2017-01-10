@@ -31,8 +31,8 @@ impl App {
         Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
     }
 
-    /// Return an AppCapability according to the current state of the app.
-    pub fn capability(self) -> AppCapability {
+    /// Return an AppCap according to the current state of the app.
+    pub fn capability(self) -> AppCap {
         enum X {
             Able,
             Incap,
@@ -42,16 +42,16 @@ impl App {
         let x = match self.current_combat {
             Some(ref combat) => {
                 match combat.capability() {
-                    CombatCapability::Able(_) => X::Able,
-                    CombatCapability::Incap(_) => X::Incap,
+                    CombatCap::Able(_) => X::Able,
+                    CombatCap::Incap(_) => X::Incap,
                 }
             }
             None => X::NoCombat,
         };
         match x {
-            X::Able => AppCapability::Able(AppAble { app: self }),
-            X::Incap => AppCapability::Incap(AppIncap { app: self }),
-            X::NoCombat => AppCapability::NoCombat(AppNoCombat { app: self }),
+            X::Able => AppCap::Able(AppAble { app: self }),
+            X::Incap => AppCap::Incap(AppIncap { app: self }),
+            X::NoCombat => AppCap::NoCombat(AppNoCombat { app: self }),
         }
     }
 
@@ -81,7 +81,7 @@ pub struct AppIncap {
 impl AppIncap {
     pub fn skip(mut self) -> App {
         let newcombat = match self.app.current_combat.unwrap().capability() {
-            CombatCapability::Incap(incap) => incap.skip(),
+            CombatCap::Incap(incap) => incap.skip(),
             _ => panic!("AppIncap contained something other than CombatIncap"),
         };
         self.app.current_combat = Some(newcombat);
@@ -104,15 +104,15 @@ impl AppAble {
     fn perform_able_op<F>(mut self, op: F) -> Result<App, GameError>
         where F: FnOnce(&CombatAble) -> Result<Combat, GameError>
     {
+        let prev_combat = self.app.current_combat.clone().unwrap();
         let g = match self.app.current_combat.unwrap().capability() {
-            CombatCapability::Able(able) => op(&able)?,
+            CombatCap::Able(able) => op(&able)?,
             _ => panic!("AppAble contained something other than CombatAble"),
         };
-        // FIXME bring back history
-        // if self.app.combat_history.len() >= 1000 {
-        //     let _ = self.app.combat_history.pop_front();
-        // }
-        // self.app.combat_history.push_back((&self.app.current_combat).clone());
+        if self.app.combat_history.len() >= 1000 {
+            let _ = self.app.combat_history.pop_front();
+        }
+        self.app.combat_history.push_back(prev_combat);
         self.app.current_combat = Some(g);
         Ok(self.app)
     }
@@ -127,6 +127,7 @@ impl AppAble {
             }
         })
     }
+    /// End the capability mutation phase and return ownership of the App.
     pub fn done(self) -> App {
         self.app
     }
@@ -154,7 +155,7 @@ impl AppNoCombat {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum AppCapability {
+pub enum AppCap {
     Incap(AppIncap),
     Able(AppAble),
     NoCombat(AppNoCombat),
@@ -163,7 +164,7 @@ pub enum AppCapability {
 #[cfg(test)]
 pub fn t_able_app<'a>(app: App) -> AppAble {
     match app.capability() {
-        AppCapability::Able(a) => a,
+        AppCap::Able(a) => a,
         _ => panic!("Not an Able App"),
     }
 }
@@ -178,7 +179,7 @@ pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
 #[cfg(test)]
 pub fn t_nocombat<'a>(app: App) -> AppNoCombat {
     match app.capability() {
-        AppCapability::NoCombat(a) => a,
+        AppCap::NoCombat(a) => a,
         _ => panic!("App is not in NoCombat state"),
     }
 }
