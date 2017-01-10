@@ -68,6 +68,10 @@ impl App {
             combat_history: self.combat_history,
         }
     }
+
+    pub fn get_creature(&self, cid: &CreatureID) -> Result<&Creature, GameError> {
+        self.creatures.get(cid).ok_or(GameError::CreatureNotFound(cid.clone()))
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -136,24 +140,13 @@ pub struct AppNoCombat {
     pub app: App,
 }
 impl AppNoCombat {
-    /// Create a Combat and return a new App with it. Returns None if there aren't enough
-    /// combatants to start a combat, or if any combatants can't be found.
-    pub fn start_combat(&mut self, combatants: Vec<CreatureID>) -> Result<(), GameError> {
-        //        combatants.iter().fold_while(Err(GameError::CombatMustHaveCreatures))
-        let mut combatant_objs = vec![];
-        for cid in &combatants {
-            combatant_objs.push(self.app
-                .creatures
-                .get(cid)
-                .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?
-                .clone());
-        }
-        if combatant_objs.len() != combatants.len() {
-            Err(GameError::BuggyProgram(":(".to_string()))
-        } else {
-            self.app.current_combat = Some(Combat::new(combatant_objs)?);
-            Ok(())
-        }
+    /// Create a Combat and return a new App with it.
+    pub fn start_combat(&mut self, cids: Vec<CreatureID>) -> Result<(), GameError> {
+        let combatants: Vec<Creature> = cids.iter()
+            .map(|cid| self.app.get_creature(cid).map(Clone::clone))
+            .collect::<Result<_, GameError>>()?;
+        self.app.current_combat = Some(Combat::new(combatants)?);
+        Ok(())
     }
     pub fn done(self) -> App {
         self.app
