@@ -86,6 +86,7 @@ impl AppIncap {
 pub struct AppAble {
     app: App,
 }
+
 impl AppAble {
     fn perform_able_op<F>(mut self, op: F) -> Result<App, GameError>
         where F: FnOnce(&CombatAble) -> Result<Combat, GameError>
@@ -121,7 +122,6 @@ impl AppAble {
     }
 }
 
-
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AppNoCombat {
     pub app: App,
@@ -130,12 +130,12 @@ impl AppNoCombat {
     /// Create a Combat and return a new App with it. Returns None if there aren't enough
     /// combatants to start a combat, or if any combatants can't be found.
     pub fn start_combat(&mut self, combatants: Vec<CreatureID>) -> Result<(), GameError> {
-        for cid in &combatants {
-            let creature = self.app
-                .creatures
-                .get(cid)
-                .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?;
-        }
+        // for cid in &combatants {
+        //     let creature = self.app
+        //         .creatures
+        //         .get(cid)
+        //         .ok_or_else(|| GameError::CreatureNotFound(cid.clone()))?;
+        // }
         let combatant_objs: Vec<Creature> =
             combatants.iter().flat_map(|cid| self.app.creatures.get(cid)).cloned().collect();
         if combatant_objs.len() != combatants.len() {
@@ -176,11 +176,10 @@ pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
     }
 }
 
-
 #[test]
 fn workflow() {
     let mut creatures = HashMap::new();
-    let punch = t_melee();
+    let punch = t_punch();
     let punch_id = abid("punch");
     let bob_id = cid("bob");
     let creature = Creature::build("bob")

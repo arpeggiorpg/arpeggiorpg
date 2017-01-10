@@ -144,21 +144,31 @@ pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
 }
 
 #[cfg(test)]
-pub fn t_melee() -> Ability {
+pub fn t_punch() -> Ability {
     Ability {
-        name: "Test Ability".to_string(),
+        name: "Punch".to_string(),
         target: TargetSpec::Melee,
         cost: Energy(0),
-        effects: vec![],
+        effects: vec![Effect::Damage(3)],
     }
 }
 
 #[cfg(test)]
-pub fn t_ranged() -> Ability {
+pub fn t_shoot() -> Ability {
     Ability {
-        name: "Ranged Ability".to_string(),
+        name: "Shoot".to_string(),
         target: TargetSpec::Range(Distance::new(5.0)),
         cost: Energy(0),
-        effects: vec![],
+        effects: vec![Effect::Damage(3)],
+    }
+}
+
+#[cfg(test)]
+pub fn t_heal() -> Ability {
+    Ability {
+        name: "Heal".to_string(),
+        target: TargetSpec::Range(Distance::new(5.0)),
+        cost: Energy(0),
+        effects: vec![Effect::Heal(3)],
     }
 }

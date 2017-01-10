@@ -203,10 +203,25 @@ pub fn t_creature() -> Creature {
 #[cfg(test)]
 pub fn t_rogue(name: &str) -> Creature {
     Creature::build(name)
-        .abilities(vec![abid("Test Ability")])
+        .abilities(vec![abid("punch")])
         .build()
         .unwrap()
 }
+#[cfg(test)]
+pub fn t_ranger(name: &str) -> Creature {
+    Creature::build(name)
+        .abilities(vec![abid("shoot")])
+        .build()
+        .unwrap()
+}
+#[cfg(test)]
+pub fn t_cleric(name: &str) -> Creature {
+    Creature::build(name)
+        .abilities(vec![abid("heal")])
+        .build()
+        .unwrap()
+}
+
 
 
 #[test]

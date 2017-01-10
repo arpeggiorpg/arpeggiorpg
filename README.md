@@ -83,12 +83,13 @@ pub fn capability(self) -> GameCapability;
 ```
 
 Note that this method doesn't take a reference to `self` (the Game value), but
-rather it *consumes* self. Then, each variant of GameCapability would wrap a
+rather it *consumes* self. Then, each variant of `GameCapability` would wrap a
 type that has methods like:
 
 ```rust
 pub fn act(&mut self) -> Result<(), GameError>
 ```
+
 
 and also a method called `done`, which gives back ownership of the Game object:
 

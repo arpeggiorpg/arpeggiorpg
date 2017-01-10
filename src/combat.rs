@@ -71,6 +71,12 @@ impl Combat {
             CombatCapability::Incap(CombatIncap { combat: self })
         }
     }
+
+    /// Skip or end the current player's turn.
+    // I don't *think* there's every a state where this would be invalid...
+    pub fn skip(&self) -> Combat {
+        self.clone().tick()
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -79,8 +85,7 @@ pub struct CombatIncap<'a> {
 }
 impl<'a> CombatIncap<'a> {
     pub fn skip(&self) -> Combat {
-        let mut newgame = self.combat.clone();
-        newgame.tick()
+        self.combat.skip()
     }
 }
 
@@ -153,52 +158,84 @@ pub enum CombatCapability<'a> {
     Able(CombatAble<'a>),
 }
 
-#[cfg(test)]
-pub fn t_combat() -> Combat {
-    let bob = t_rogue("bob");
-    let chris = t_rogue("chris");
-    Combat::new(vec![bob, chris]).unwrap()
-}
 
 #[cfg(test)]
-pub fn t_act(c: &Combat, ab: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
-    match c.capability() {
-        CombatCapability::Able(able) => able.act(ab, target),
-        _ => panic!("Not an Able combat"),
+mod tests {
+    extern crate test;
+    use self::test::Bencher;
+
+    use combat::*;
+
+    /// Create a Test combat. Combat order is rogue, ranger, then cleric.
+    pub fn t_combat() -> Combat {
+        let rogue = t_rogue("rogue");
+        let ranger = t_ranger("ranger");
+        let cleric = t_cleric("cleric");
+        Combat::new(vec![rogue, ranger, cleric]).unwrap()
     }
-}
 
-#[test]
-fn target_melee_non_adjacent() {
-    let mut combat = t_combat();
-    let melee = t_melee();
-    take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((2, 0, 0)));
-    assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("chris"))),
-               Err(GameError::TargetOutOfRange));
-}
+    pub fn t_act(c: &Combat, ab: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
+        match c.capability() {
+            CombatCapability::Able(able) => able.act(ab, target),
+            _ => panic!("Not an Able combat"),
+        }
+    }
 
-#[test]
-fn target_range() {
-    let mut combat = t_combat();
-    let range_ab = t_ranged();
-    take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((5, 0, 0)));
-    let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("chris"))).unwrap();
-}
+    /// Try to melee-atack the ranger when the ranger is out of melee range.
+    #[test]
+    fn target_melee_out_of_range() {
+        let mut combat = t_combat();
+        let melee = t_punch();
+        take(combat.get_creature_mut(cid("ranger")).unwrap(),
+             |c| c.set_pos((2, 0, 0)));
+        assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
+                   Err(GameError::TargetOutOfRange));
+    }
 
-#[test]
-fn target_out_of_range() {
-    let mut combat = t_combat();
-    let range_ab = t_ranged();
-    take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((6, 0, 0)));
-    assert_eq!(t_act(&combat, &range_ab, DecidedTarget::Range(cid("chris"))),
-               Err(GameError::TargetOutOfRange));
+    /// Ranged attacks against targets (just) within range are successful.
+    #[test]
+    fn target_range() {
+        let mut combat = t_combat();
+        let range_ab = t_shoot();
+        take(combat.get_creature_mut(cid("ranger")).unwrap(),
+             |c| c.set_pos((5, 0, 0)));
+        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap();
+    }
 
-    // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
-    take(combat.get_creature_mut(cid("chris")).unwrap(),
-         |c| c.set_pos((5, 3, 0)));
-    assert_eq!(t_act(&combat, &range_ab, DecidedTarget::Range(cid("chris"))),
-               Err(GameError::TargetOutOfRange));
+    /// Ranged attacks against targets outside of range return `TargetOutOfRange`
+    #[test]
+    fn target_out_of_range() {
+        let mut combat = t_combat();
+        let shoot = t_shoot();
+        take(combat.get_creature_mut(cid("ranger")).unwrap(),
+             |c| c.set_pos((6, 0, 0)));
+        assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
+                   Err(GameError::TargetOutOfRange));
+
+        // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
+        take(combat.get_creature_mut(cid("ranger")).unwrap(),
+             |c| c.set_pos((5, 3, 0)));
+        assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
+                   Err(GameError::TargetOutOfRange));
+    }
+
+    #[bench]
+    fn three_char_infinite_combat(bencher: &mut Bencher) {
+        let mut combat = t_combat();
+        let punch = t_punch();
+        let heal = t_heal();
+        let iter = |combat: &Combat| -> Result<Combat, GameError> {
+            let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?;
+            let combat = combat.skip();
+            let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?;
+            Ok(combat)
+        };
+        bencher.iter(|| {
+            for _ in 0..1000 {
+                combat = iter(&combat).unwrap();
+            }
+            combat.clone()
+        });
+
+    }
 }

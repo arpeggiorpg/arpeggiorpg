@@ -1,3 +1,4 @@
+#![feature(test)]
 //! Phone and Tablet.
 
 extern crate serde_yaml;
