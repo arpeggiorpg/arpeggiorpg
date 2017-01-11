@@ -18,22 +18,17 @@ use creature::*;
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn point3_distance(pos1: Point3, pos2: Point3) -> f32 {
+fn point3_distance(pos1: Point3, pos2: Point3) -> Distance {
     let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
     let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
                                 na::zero());
     let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
     let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-    distance
-}
-
-/// Get the distance between two creatures as a floating point number.
-pub fn creature_distance(c1: &Creature, c2: &Creature) -> Distance {
-    Distance(point3_distance(c1.pos(), c2.pos()) as u32)
+    Distance::new(distance)
 }
 
 pub fn creature_within_distance(c1: &Creature, c2: &Creature, d: Distance) -> bool {
-    point3_distance(c1.pos(), c2.pos()).round() as u32 <= d.0 / 100
+    point3_distance(c1.pos(), c2.pos()) <= d
 }
 
 #[test]
@@ -48,13 +43,13 @@ fn test_biggest_distance() {
                          (pos1p.2 - pos2p.2).powi(2))
         .sqrt();
     println!("My calculated distance: {:?};", test_distance);
-    assert_eq!((point3_distance(pos1, pos2) as f64).round(),
-               test_distance.round());
+    assert_eq!((point3_distance(pos1, pos2)),
+               Distance::new(test_distance as f32));
 }
 
 #[test]
 fn test_diagonal_distance() {
     let pos1 = (0, 0, 0);
     let pos2 = (1, 1, 0);
-    assert_eq!(point3_distance(pos1, pos2), 2.0f32.sqrt());
+    assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
 }

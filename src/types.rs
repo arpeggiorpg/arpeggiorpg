@@ -5,7 +5,7 @@ use std::fmt;
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
 
-#[derive(Add, Sub, Mul, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct HP(pub u8);
 impl HP {
     pub fn saturating_add(self, other: Self) -> Self {
@@ -16,7 +16,7 @@ impl HP {
     }
 }
 
-#[derive(Add, Sub, Mul, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
     pub fn saturating_add(self, other: Self) -> Self {
@@ -33,13 +33,16 @@ pub struct CreatureID(pub String);
 pub fn cid(s: &str) -> CreatureID {
     CreatureID(s.to_string())
 }
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(pub String);
+
 #[cfg(test)]
 pub fn abid(s: &str) -> AbilityID {
     AbilityID(s.to_string())
 }
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
     pub fn new(x: f32) -> Distance {
