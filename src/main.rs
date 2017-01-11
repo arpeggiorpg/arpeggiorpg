@@ -1,6 +1,7 @@
 #![feature(test)]
 //! Phone and Tablet.
-
+#[macro_use]
+extern crate derive_more;
 extern crate serde_yaml;
 #[macro_use]
 extern crate serde_derive;

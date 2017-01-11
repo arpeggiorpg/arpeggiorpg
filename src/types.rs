@@ -4,9 +4,29 @@ use std::fmt;
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
-pub type Damage = u8; // TODO: Convert this to newtype
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+
+#[derive(Add, Sub, Mul, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+pub struct HP(pub u8);
+impl HP {
+    pub fn saturating_add(self, other: Self) -> Self {
+        HP(self.0.saturating_add(other.0))
+    }
+    pub fn saturating_sub(self, other: Self) -> Self {
+        HP(self.0.saturating_sub(other.0))
+    }
+}
+
+#[derive(Add, Sub, Mul, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(pub u8);
+impl Energy {
+    pub fn saturating_add(self, other: Self) -> Self {
+        Energy(self.0.saturating_add(other.0))
+    }
+    pub fn saturating_sub(self, other: Self) -> Self {
+        Energy(self.0.saturating_sub(other.0))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct CreatureID(pub String);
 #[cfg(test)]
@@ -93,8 +113,8 @@ pub enum Effect {
     // Interrupt,
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
-    Heal(Damage),
-    Damage(Damage),
+    Heal(HP),
+    Damage(HP),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
 }
@@ -105,7 +125,7 @@ pub enum Condition {
     RecurringEffect(Box<Effect>),
     Dead,
     Incapacitated,
-    AddDamageBuff(Damage),
+    AddDamageBuff(HP),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -141,7 +161,7 @@ pub fn t_punch() -> Ability {
         name: "Punch".to_string(),
         target: TargetSpec::Melee,
         cost: Energy(0),
-        effects: vec![Effect::Damage(3)],
+        effects: vec![Effect::Damage(HP(3))],
     }
 }
 
@@ -151,7 +171,7 @@ pub fn t_shoot() -> Ability {
         name: "Shoot".to_string(),
         target: TargetSpec::Range(Distance::new(5.0)),
         cost: Energy(0),
-        effects: vec![Effect::Damage(3)],
+        effects: vec![Effect::Damage(HP(3))],
     }
 }
 
@@ -161,6 +181,6 @@ pub fn t_heal() -> Ability {
         name: "Heal".to_string(),
         target: TargetSpec::Range(Distance::new(5.0)),
         cost: Energy(0),
-        effects: vec![Effect::Heal(3)],
+        effects: vec![Effect::Heal(HP(3))],
     }
 }

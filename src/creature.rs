@@ -12,8 +12,8 @@ pub struct Creature {
     max_energy: Energy,
     cur_energy: Energy,
     abilities: Vec<AbilityStatus>,
-    max_health: u8,
-    cur_health: u8,
+    max_health: HP,
+    cur_health: HP,
     pos: Point3,
     conditions: Vec<AppliedCondition>,
 }
@@ -40,8 +40,7 @@ impl Creature {
                 self.cur_health = cmp::min(self.max_health, self.cur_health.saturating_add(amt))
             }
             Effect::GenerateEnergy(amt) => {
-                self.cur_energy = Energy(cmp::min(self.max_energy.0,
-                                                  self.cur_energy.0.saturating_add(amt.0)))
+                self.cur_energy = cmp::min(self.max_energy, self.cur_energy.saturating_add(amt))
             }
             Effect::MultiEffect(ref effects) => {
                 for effect in effects {
@@ -125,8 +124,8 @@ pub struct CreatureBuilder {
     max_energy: Option<Energy>,
     cur_energy: Option<Energy>,
     abilities: Vec<AbilityID>,
-    max_health: Option<u8>,
-    cur_health: Option<u8>,
+    max_health: Option<HP>,
+    cur_health: Option<HP>,
     pos: Option<Point3>,
     conditions: Vec<AppliedCondition>,
 }
@@ -148,8 +147,8 @@ impl CreatureBuilder {
                         }
                     })
                     .collect(),
-                max_health: self.max_health.unwrap_or(10),
-                cur_health: self.cur_health.unwrap_or(10),
+                max_health: self.max_health.unwrap_or(HP(10)),
+                cur_health: self.cur_health.unwrap_or(HP(10)),
                 pos: self.pos.unwrap_or((0, 0, 0)),
                 conditions: self.conditions,
             })
@@ -169,11 +168,11 @@ impl CreatureBuilder {
         self.abilities = abs;
         self
     }
-    pub fn max_health(mut self, mh: u8) -> Self {
+    pub fn max_health(mut self, mh: HP) -> Self {
         self.max_health = Some(mh);
         self
     }
-    pub fn cur_health(mut self, ch: u8) -> Self {
+    pub fn cur_health(mut self, ch: HP) -> Self {
         self.cur_health = Some(ch);
         self
     }
@@ -217,7 +216,7 @@ pub fn t_ranger(name: &str) -> Creature {
 #[cfg(test)]
 pub fn t_cleric(name: &str) -> Creature {
     Creature::build(name)
-        .abilities(vec![abid("heal")])
+        .abilities(vec![abid("shoot")])
         .build()
         .unwrap()
 }
@@ -239,12 +238,12 @@ fn test_tick_and_expire_condition_remaining() {
 #[test]
 fn test_recurring_effect() {
     let mut c = t_creature();
-    c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(1))),
+    c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                                  ConditionDuration::Duration(2))];
     c.tick_mut();
-    assert_eq!(c.cur_health, 9);
+    assert_eq!(c.cur_health, HP(9));
     c.tick_mut();
-    assert_eq!(c.cur_health, 8);
+    assert_eq!(c.cur_health, HP(8));
     c.tick_mut();
-    assert_eq!(c.cur_health, 8);
+    assert_eq!(c.cur_health, HP(8));
 }
