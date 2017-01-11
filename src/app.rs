@@ -85,26 +85,15 @@ impl App {
         }
     }
 
-    pub fn perform<F: Fn(Combat) -> Combat>(mut self, f: F) {
-        let prev_combat = self.current_combat.clone();
-        if let Some(c) = prev_combat {
-            self.combat_history.push_back(c);
-        }
-        self.current_combat = self.current_combat.map(f)
-    }
-
-    fn stop_combat(mut self) -> App {
+    fn stop_combat(&self) -> App {
         // TODO: Either copy all the creatures out of current_combat and back into self.creatures,
         // or ... something else.
-        if let Some(c) = self.current_combat {
-            self.combat_history.push_back(c.clone());
+        let mut newapp = self.clone();
+        if let Some(c) = newapp.current_combat {
+            newapp.combat_history.push_back(c.clone());
         }
-        App {
-            current_combat: None,
-            creatures: self.creatures,
-            abilities: self.abilities,
-            combat_history: self.combat_history,
-        }
+        newapp.current_combat = None;
+        newapp
     }
 
     pub fn get_creature(&self, cid: &CreatureID) -> Result<&Creature, GameError> {
@@ -130,7 +119,7 @@ impl<'a> AppIncap<'a> {
         App { current_combat: Some(newcombat), ..self.app.clone() }
     }
     pub fn stop_combat(&self) -> App {
-        App { current_combat: None, ..self.app.clone() }
+        self.app.stop_combat()
     }
 }
 
@@ -174,7 +163,7 @@ impl<'a> AppAble<'a> {
         })
     }
     pub fn stop_combat(&self) -> App {
-        App { current_combat: None, ..self.app.clone() }
+        self.app.stop_combat()
     }
 }
 
@@ -209,7 +198,7 @@ pub fn t_able_app<'a>(app: &'a App) -> AppAble<'a> {
 
 #[cfg(test)]
 pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
-    let mut nocomb = t_nocombat(&app);
+    let nocomb = t_nocombat(&app);
     nocomb.start_combat(combatants).unwrap()
 }
 
