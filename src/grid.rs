@@ -31,25 +31,29 @@ pub fn creature_within_distance(c1: &Creature, c2: &Creature, d: Distance) -> bo
     point3_distance(c1.pos(), c2.pos()) <= d
 }
 
-#[test]
-fn test_biggest_distance() {
-    let pos1 = (i16::min_value(), i16::min_value(), i16::min_value());
-    let pos2 = (i16::max_value(), i16::max_value(), i16::max_value());
-    println!("pos1: {:?};\npos2: {:?}", pos1, pos2);
+#[cfg(test)]
+pub mod test {
+    use grid::*;
+    #[test]
+    fn test_biggest_distance() {
+        let pos1 = (i16::min_value(), i16::min_value(), i16::min_value());
+        let pos2 = (i16::max_value(), i16::max_value(), i16::max_value());
+        println!("pos1: {:?};\npos2: {:?}", pos1, pos2);
 
-    let pos1p = (pos1.0 as f64, pos1.1 as f64, pos1.2 as f64);
-    let pos2p = (pos2.0 as f64, pos2.1 as f64, pos2.2 as f64);
-    let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2) +
-                         (pos1p.2 - pos2p.2).powi(2))
-        .sqrt();
-    println!("My calculated distance: {:?};", test_distance);
-    assert_eq!((point3_distance(pos1, pos2)),
-               Distance::new(test_distance as f32));
-}
+        let pos1p = (pos1.0 as f64, pos1.1 as f64, pos1.2 as f64);
+        let pos2p = (pos2.0 as f64, pos2.1 as f64, pos2.2 as f64);
+        let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2) +
+                             (pos1p.2 - pos2p.2).powi(2))
+            .sqrt();
+        println!("My calculated distance: {:?};", test_distance);
+        assert_eq!((point3_distance(pos1, pos2)),
+                   Distance::new(test_distance as f32));
+    }
 
-#[test]
-fn test_diagonal_distance() {
-    let pos1 = (0, 0, 0);
-    let pos2 = (1, 1, 0);
-    assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
+    #[test]
+    fn test_diagonal_distance() {
+        let pos1 = (0, 0, 0);
+        let pos2 = (1, 1, 0);
+        assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
+    }
 }

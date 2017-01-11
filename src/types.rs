@@ -157,39 +157,44 @@ pub struct AbilityStatus {
 }
 
 #[cfg(test)]
-pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
-    AppliedCondition {
-        condition: c,
-        remaining: r,
-    }
-}
+pub mod test {
+    use types::*;
 
-#[cfg(test)]
-pub fn t_punch() -> Ability {
-    Ability {
-        name: "Punch".to_string(),
-        target: TargetSpec::Melee,
-        cost: Energy(0),
-        effects: vec![Effect::Damage(HP(3))],
+    #[cfg(test)]
+    pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
+        AppliedCondition {
+            condition: c,
+            remaining: r,
+        }
     }
-}
 
-#[cfg(test)]
-pub fn t_shoot() -> Ability {
-    Ability {
-        name: "Shoot".to_string(),
-        target: TargetSpec::Range(Distance::new(5.0)),
-        cost: Energy(0),
-        effects: vec![Effect::Damage(HP(3))],
+    #[cfg(test)]
+    pub fn t_punch() -> Ability {
+        Ability {
+            name: "Punch".to_string(),
+            target: TargetSpec::Melee,
+            cost: Energy(0),
+            effects: vec![Effect::Damage(HP(3))],
+        }
     }
-}
 
-#[cfg(test)]
-pub fn t_heal() -> Ability {
-    Ability {
-        name: "Heal".to_string(),
-        target: TargetSpec::Range(Distance::new(5.0)),
-        cost: Energy(0),
-        effects: vec![Effect::Heal(HP(3))],
+    #[cfg(test)]
+    pub fn t_shoot() -> Ability {
+        Ability {
+            name: "Shoot".to_string(),
+            target: TargetSpec::Range(Distance::new(5.0)),
+            cost: Energy(0),
+            effects: vec![Effect::Damage(HP(3))],
+        }
+    }
+
+    #[cfg(test)]
+    pub fn t_heal() -> Ability {
+        Ability {
+            name: "Heal".to_string(),
+            target: TargetSpec::Range(Distance::new(5.0)),
+            cost: Energy(0),
+            effects: vec![Effect::Heal(HP(3))],
+        }
     }
 }

@@ -194,56 +194,59 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
 }
 
 
-#[cfg(test)]
-pub fn t_creature() -> Creature {
-    Creature::build("Bob").build().unwrap()
-}
 
 #[cfg(test)]
-pub fn t_rogue(name: &str) -> Creature {
-    Creature::build(name)
-        .abilities(vec![abid("punch")])
-        .build()
-        .unwrap()
-}
-#[cfg(test)]
-pub fn t_ranger(name: &str) -> Creature {
-    Creature::build(name)
-        .abilities(vec![abid("shoot")])
-        .build()
-        .unwrap()
-}
-#[cfg(test)]
-pub fn t_cleric(name: &str) -> Creature {
-    Creature::build(name)
-        .abilities(vec![abid("shoot")])
-        .build()
-        .unwrap()
-}
+pub mod test {
+    use creature::*;
+    use types::test::*;
 
+    pub fn t_creature() -> Creature {
+        Creature::build("Bob").build().unwrap()
+    }
 
+    pub fn t_rogue(name: &str) -> Creature {
+        Creature::build(name)
+            .abilities(vec![abid("punch")])
+            .build()
+            .unwrap()
+    }
 
-#[test]
-fn test_tick_and_expire_condition_remaining() {
-    let mut c = t_creature();
-    c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
-                        app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
-                        app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-    c.tick_mut();
-    assert_eq!(c.conditions,
-               vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
-                    app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
-}
+    pub fn t_ranger(name: &str) -> Creature {
+        Creature::build(name)
+            .abilities(vec![abid("shoot")])
+            .build()
+            .unwrap()
+    }
 
-#[test]
-fn test_recurring_effect() {
-    let mut c = t_creature();
-    c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
-                                 ConditionDuration::Duration(2))];
-    c.tick_mut();
-    assert_eq!(c.cur_health, HP(9));
-    c.tick_mut();
-    assert_eq!(c.cur_health, HP(8));
-    c.tick_mut();
-    assert_eq!(c.cur_health, HP(8));
+    pub fn t_cleric(name: &str) -> Creature {
+        Creature::build(name)
+            .abilities(vec![abid("shoot")])
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_tick_and_expire_condition_remaining() {
+        let mut c = t_creature();
+        c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
+                            app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
+                            app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
+        c.tick_mut();
+        assert_eq!(c.conditions,
+                   vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
+                        app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
+    }
+
+    #[test]
+    fn test_recurring_effect() {
+        let mut c = t_creature();
+        c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
+                                     ConditionDuration::Duration(2))];
+        c.tick_mut();
+        assert_eq!(c.cur_health, HP(9));
+        c.tick_mut();
+        assert_eq!(c.cur_health, HP(8));
+        c.tick_mut();
+        assert_eq!(c.cur_health, HP(8));
+    }
 }

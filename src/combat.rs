@@ -15,9 +15,9 @@ const MELEE_RANGE: Distance = Distance(150);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
-    // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless after we
-    // load data back in, because serde doesn't (currently) have any way to know that multiple
-    // Rc-wrapped values should be unified. See
+    // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
+    // after we load data back in, because serde doesn't (currently) have any way to know that
+    // multiple Rc-wrapped values should be unified. See
     // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
     //
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
@@ -163,11 +163,13 @@ pub enum CombatCap<'a> {
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     extern crate test;
     use self::test::Bencher;
 
     use combat::*;
+    use creature::test::*;
+    use types::test::*;
 
     /// Create a Test combat. Combat order is rogue, ranger, then cleric.
     pub fn t_combat() -> Combat {

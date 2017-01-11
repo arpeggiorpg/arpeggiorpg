@@ -188,66 +188,70 @@ pub enum AppCap<'a> {
     NoCombat(AppNoCombat<'a>),
 }
 
+
 #[cfg(test)]
-pub fn t_able_app<'a>(app: &'a App) -> AppAble<'a> {
-    match app.capability() {
-        AppCap::Able(a) => a,
-        _ => panic!("Not an Able App"),
+pub mod test {
+    use app::*;
+    use types::test::*;
+
+    pub fn t_able_app<'a>(app: &'a App) -> AppAble<'a> {
+        match app.capability() {
+            AppCap::Able(a) => a,
+            _ => panic!("Not an Able App"),
+        }
     }
-}
 
-#[cfg(test)]
-pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
-    let nocomb = t_nocombat(&app);
-    nocomb.start_combat(combatants).unwrap()
-}
-
-#[cfg(test)]
-pub fn t_nocombat<'a>(app: &'a App) -> AppNoCombat<'a> {
-    match app.capability() {
-        AppCap::NoCombat(a) => a,
-        _ => panic!("App is not in NoCombat state"),
+    pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
+        let nocomb = t_nocombat(&app);
+        nocomb.start_combat(combatants).unwrap()
     }
-}
 
-#[test]
-fn workflow() {
-    let mut creatures = HashMap::new();
-    let punch = t_punch();
-    let punch_id = abid("punch");
-    let bob_id = cid("bob");
-    let creature = Creature::build("bob")
-        .abilities(vec![punch_id.clone()])
-        .build()
-        .unwrap();
-    creatures.insert(bob_id.clone(), creature);
-    let mut abilities = HashMap::new();
-    abilities.insert(punch_id.clone(), punch);
-    let app = App {
-        combat_history: VecDeque::new(),
-        abilities: abilities,
-        current_combat: None,
-        creatures: creatures,
-    };
-    let app = t_start_combat(app, vec![bob_id.clone()]);
-    let next = t_able_app(&app).act(punch_id.clone(), DecidedTarget::Melee(bob_id.clone()));
-    let next: App = next.expect("punch did not succeed");
-    let next = t_able_app(&next);
-    let _: App = next.stop_combat();
-}
+    pub fn t_nocombat<'a>(app: &'a App) -> AppNoCombat<'a> {
+        match app.capability() {
+            AppCap::NoCombat(a) => a,
+            _ => panic!("App is not in NoCombat state"),
+        }
+    }
+
+    #[test]
+    fn workflow() {
+        let mut creatures = HashMap::new();
+        let punch = t_punch();
+        let punch_id = abid("punch");
+        let bob_id = cid("bob");
+        let creature = Creature::build("bob")
+            .abilities(vec![punch_id.clone()])
+            .build()
+            .unwrap();
+        creatures.insert(bob_id.clone(), creature);
+        let mut abilities = HashMap::new();
+        abilities.insert(punch_id.clone(), punch);
+        let app = App {
+            combat_history: VecDeque::new(),
+            abilities: abilities,
+            current_combat: None,
+            creatures: creatures,
+        };
+        let app = t_start_combat(app, vec![bob_id.clone()]);
+        let next = t_able_app(&app).act(punch_id.clone(), DecidedTarget::Melee(bob_id.clone()));
+        let next: App = next.expect("punch did not succeed");
+        let next = t_able_app(&next);
+        let _: App = next.stop_combat();
+    }
 
 
-#[test]
-fn start_combat_not_found() {
-    let app = App::new();
-    let non = cid("nonexistent");
-    assert_eq!(t_nocombat(&app).start_combat(vec![non.clone()]),
-               Err(GameError::CreatureNotFound(non)));
-}
+    #[test]
+    fn start_combat_not_found() {
+        let app = App::new();
+        let non = cid("nonexistent");
+        assert_eq!(t_nocombat(&app).start_combat(vec![non.clone()]),
+                   Err(GameError::CreatureNotFound(non)));
+    }
 
-#[test]
-fn combat_must_have_creatures() {
-    let app = App::new();
-    assert_eq!(t_nocombat(&app).start_combat(vec![]),
-               Err(GameError::CombatMustHaveCreatures));
+    #[test]
+    fn combat_must_have_creatures() {
+        let app = App::new();
+        assert_eq!(t_nocombat(&app).start_combat(vec![]),
+                   Err(GameError::CombatMustHaveCreatures));
+    }
 }
