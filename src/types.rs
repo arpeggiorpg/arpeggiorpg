@@ -57,7 +57,18 @@ impl Distance {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AppCommand {
+    StartCombat(Vec<CreatureID>),
+    Act(AbilityID, DecidedTarget),
+    Move(Point3),
+    // RetrieveFromInventory(ThingID),
+    // StowInInventory(ThingID),
+    Done,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
+    InvalidCommand(AppCommand),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
     CreatureLacksAbility(AbilityID),
