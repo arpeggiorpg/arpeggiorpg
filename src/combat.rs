@@ -44,6 +44,7 @@ impl Combat {
         newgame
 
     }
+
     // This is inefficient. Two options:
     // 1. Store an additional HashMap<CreatureID, Idx> here on Combat
     // 2. Implement a NonEmptyLinkedHashMapWithCursor (https://crates.io/crates/linked-hash-map)

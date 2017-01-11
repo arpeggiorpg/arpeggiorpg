@@ -5,7 +5,8 @@ use std::fmt;
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize,
+         Deserialize)]
 pub struct HP(pub u8);
 impl HP {
     pub fn saturating_add(self, other: Self) -> Self {
@@ -16,7 +17,8 @@ impl HP {
     }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize,
+         Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
     pub fn saturating_add(self, other: Self) -> Self {
@@ -42,9 +44,13 @@ pub fn abid(s: &str) -> AbilityID {
     AbilityID(s.to_string())
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+/// A type representing distance. The wrapped value is in centimeters, but should not normally be
+/// accessed.
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
+         Serialize, Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
+    /// Convert meters as a f32 to a Distance.
     pub fn new(x: f32) -> Distance {
         Distance((x * 100.0) as u32)
     }
