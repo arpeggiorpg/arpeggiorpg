@@ -39,12 +39,6 @@ pub struct App {
 //     StopCombat,
 // }
 //
-// pub enum CreatureCommand {
-//     Act(AbilityID, DecidedTarget),
-//     Move(Point3),
-//     RetrieveFromInventory(ThingID),
-//     StowInInventory(ThingID),
-// }
 
 // Generic methods for any kind of App regardless of the CreatureState.
 impl App {
@@ -59,6 +53,35 @@ impl App {
 
     pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
         Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
+    }
+
+    /// Perform an AppCommand on the current app.
+    pub fn perform_unchecked(&self, cmd: AppCommand) -> Result<App, GameError> {
+        fn disallowed<T>(cmd: AppCommand) -> Result<T, GameError> {
+            Err(GameError::InvalidCommand(cmd))
+        }
+        match self.capability() {
+            AppCap::Incap(_) => {
+                match cmd {
+                    AppCommand::Done => Ok(self.done()),
+                    _ => disallowed(cmd),
+                }
+            }
+            AppCap::Able(able) => {
+                match cmd {
+                    AppCommand::Done => Ok(self.done()),
+                    AppCommand::Act(abid, dtarget) => able.act(abid, dtarget),
+                    AppCommand::Move(pt) => able.move_creature(pt),
+                    _ => disallowed(cmd),
+                }
+            }
+            AppCap::NoCombat(nocom) => {
+                match cmd {
+                    AppCommand::StartCombat(cids) => nocom.start_combat(cids),
+                    _ => disallowed(cmd),
+                }
+            }
+        }
     }
 
     /// Return an AppCap according to the current state of the app.
@@ -99,6 +122,20 @@ impl App {
     pub fn get_creature(&self, cid: &CreatureID) -> Result<&Creature, GameError> {
         self.creatures.get(cid).ok_or(GameError::CreatureNotFound(cid.clone()))
     }
+
+    /// this panics if not in combat
+    fn done(&self) -> App {
+        let newcombat = match self.current_combat {
+            Some(ref combat) => {
+                match combat.capability() {
+                    CombatCap::Incap(ref incap) => incap.done(),
+                    _ => panic!("AppIncap contained something other than CombatIncap"),
+                }
+            }
+            _ => panic!("AppIncap contained something other than CombatIncap"),
+        };
+        App { current_combat: Some(newcombat), ..self.clone() }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -106,18 +143,6 @@ pub struct AppIncap<'a> {
     app: &'a App,
 }
 impl<'a> AppIncap<'a> {
-    pub fn skip(&self) -> App {
-        let newcombat = match self.app.current_combat {
-            Some(ref combat) => {
-                match combat.capability() {
-                    CombatCap::Incap(ref incap) => incap.skip(),
-                    _ => panic!("AppIncap contained something other than CombatIncap"),
-                }
-            }
-            _ => panic!("AppIncap contained something other than CombatIncap"),
-        };
-        App { current_combat: Some(newcombat), ..self.app.clone() }
-    }
     pub fn stop_combat(&self) -> App {
         self.app.stop_combat()
     }
@@ -161,6 +186,16 @@ impl<'a> AppAble<'a> {
                 Err(GameError::CreatureLacksAbility(ability_id.clone()))
             }
         })
+    }
+
+    pub fn move_creature(&self, pt: Point3) -> Result<App, GameError> {
+        let cur = self.app.current_combat.clone().unwrap();
+        let cap = cur.capability();
+        let combat = match cap {
+            CombatCap::Able(able) => able.move_creature(pt)?,
+            _ => panic!(),
+        };
+        Ok(App { current_combat: Some(combat), ..self.app.clone() })
     }
     pub fn stop_combat(&self) -> App {
         self.app.stop_combat()
