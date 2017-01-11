@@ -1,9 +1,10 @@
-//! Basic simulation types, with pure operations.
+//! Simple types, with pure operations.
 use std::error::Error;
 use std::fmt;
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
+pub type Damage = u8; // TODO: Convert this to newtype
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct Energy(pub u8);
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -25,16 +26,6 @@ impl Distance {
         Distance((x * 100.0) as u32)
     }
 }
-
-// A set of phantom types that are used as arguments to Creature, Combat, and App.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Incap;
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Casting;
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Able;
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct NoCombat;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
@@ -102,8 +93,8 @@ pub enum Effect {
     // Interrupt,
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
-    Heal(u8),
-    Damage(u8),
+    Heal(Damage),
+    Damage(Damage),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
 }
@@ -114,7 +105,7 @@ pub enum Condition {
     RecurringEffect(Box<Effect>),
     Dead,
     Incapacitated,
-    DamageBuff(u8),
+    AddDamageBuff(Damage),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

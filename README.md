@@ -100,6 +100,26 @@ pub fn done(self) -> Game;
 I've found this to be the easiest way to allow mutable capability types without
 finding myself in borrow-hell.
 
+### Multiple capabilities
+
+- What about multiple caps? capabilities() -> Vec<Cap>
+- This is already incompatible with the "Mutable Capabilities" as described
+  above, since we can't have each of these capabilities own the Game object at
+  the same time.
+- However, it may be important to only allow one Cap at once -- perhaps you have
+  a choice in which capability you make use of. It should be enforced with the
+  types and structure.
+
+- With immutable reference-based caps, this is Pretty Okay -- each cap's methods
+  would return a different copy of the Game as a result. "accidentally" calling
+  multiple copies wouldn't allow "cheating" in the sense of doing two things you
+  shouldn't be able to do in sequence, since they would be operating on the same
+  initial state instead of sequentially.
+  - But it would still be a bug. It would be *nice* if there were ownership
+    involved which consumed all the other capabilities when you perform an
+    action.
+
+
 # Phone-and-Tablet Roleplaying Game
 
 This is a project to implement a somewhat general game simulation library for turn-based tabletop
