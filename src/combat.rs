@@ -40,7 +40,7 @@ impl Combat {
                 *c = c.apply_log(cl)?;
             }
             CombatLog::EndTurn(ref cid) => {
-                assert_eq!(*cid, new.current_creature().id());
+                debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
             }
         }

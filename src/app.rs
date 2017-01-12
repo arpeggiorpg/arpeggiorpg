@@ -60,7 +60,9 @@ impl App {
                 }
             }
         }?;
-        assert_eq!(newapp, self.apply_logs(logs.clone())?);
+        // Design challenge: figure out a way to make this assertion unnecessary or at least less
+        // necessary.
+        debug_assert!(newapp == self.apply_logs(logs.clone())?);
         Ok((newapp, logs))
     }
 
