@@ -118,9 +118,10 @@ impl<'a> CombatAble<'a> {
 
     /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
     pub fn move_creature(&self, pt: Point3) -> Result<Combat, GameError> {
-        let mut new = self.combat.clone();
-        new.current_creature().set_pos(pt);
-        Ok(new)
+        panic!("This is not implemented properly. It's throwing away the new Creature.");
+        // let new = self.combat.clone();
+        // new.current_creature().set_pos(pt);
+        // Ok(new)
     }
 
     fn resolve_targets(combat: &Combat,

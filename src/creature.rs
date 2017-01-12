@@ -112,9 +112,7 @@ impl Creature {
         newc
     }
     pub fn set_pos(&self, pt: Point3) -> Creature {
-        let mut newc = self.clone();
-        newc.pos = pt;
-        newc
+        Creature { pos: pt, ..self.clone() }
     }
 }
 
@@ -231,8 +229,7 @@ pub mod test {
         c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-        c.tick_mut();
-        assert_eq!(c.conditions,
+        assert_eq!(c.tick().conditions,
                    vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
                         app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
     }
@@ -242,11 +239,11 @@ pub mod test {
         let mut c = t_creature();
         c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                                      ConditionDuration::Duration(2))];
-        c.tick_mut();
+        let c = c.tick();
         assert_eq!(c.cur_health, HP(9));
-        c.tick_mut();
+        let c = c.tick();
         assert_eq!(c.cur_health, HP(8));
-        c.tick_mut();
+        let c = c.tick();
         assert_eq!(c.cur_health, HP(8));
     }
 }

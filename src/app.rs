@@ -9,8 +9,6 @@ use combat::*;
 /// whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App {
-    // We need to keep track of the history of more things.
-    combat_history: VecDeque<Combat>,
     current_combat: Option<Combat>,
     abilities: HashMap<AbilityID, Ability>,
     creatures: HashMap<CreatureID, Creature>,
@@ -44,7 +42,6 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
-            combat_history: VecDeque::new(),
             abilities: HashMap::new(),
             current_combat: None,
             creatures: HashMap::new(),
@@ -112,9 +109,6 @@ impl App {
         // TODO: Either copy all the creatures out of current_combat and back into self.creatures,
         // or ... something else.
         let mut newapp = self.clone();
-        if let Some(c) = newapp.current_combat {
-            newapp.combat_history.push_back(c.clone());
-        }
         newapp.current_combat = None;
         newapp
     }
@@ -157,7 +151,6 @@ impl<'a> AppAble<'a> {
     fn perform_able_op<F>(&self, op: F) -> Result<App, GameError>
         where F: FnOnce(&CombatAble) -> Result<Combat, GameError>
     {
-        let prev_combat = self.app.current_combat.clone().unwrap();
         let g = match self.app.current_combat {
             Some(ref combat) => {
                 match combat.capability() {
@@ -167,14 +160,7 @@ impl<'a> AppAble<'a> {
             }
             _ => panic!("AppAble contained something other than CombatAble!"),
         };
-        let mut newapp = self.app.clone();
-        if newapp.combat_history.len() >= 1000 {
-            let _ = newapp.combat_history.pop_front();
-        }
-
-        newapp.combat_history.push_back(prev_combat);
-        newapp.current_combat = Some(g);
-        Ok(newapp)
+        Ok(App { current_combat: Some(g), ..self.app.clone() })
     }
 
     pub fn act(&self, ability_id: AbilityID, target: DecidedTarget) -> Result<App, GameError> {
@@ -262,7 +248,6 @@ pub mod test {
         let mut abilities = HashMap::new();
         abilities.insert(punch_id.clone(), punch);
         let app = App {
-            combat_history: VecDeque::new(),
             abilities: abilities,
             current_combat: None,
             creatures: creatures,
