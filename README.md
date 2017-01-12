@@ -1,10 +1,30 @@
-# "Capability Types"?
+# Phone-and-Tablet Roleplaying Game
 
-I have learned a few things. Briefly:
+This is a project to implement a digital, turn-based, tabletop RPG system (or
+maybe just the core engine for such a system).
+
+# License
+
+MIT-licensed: http://opensource.org/licenses/MIT
+
+# Building/testing/etc
+
+cargo test
+
+# TODO
+
+Also grep the code for XXX, FIXME, or TODO.
+
+
+
+# Notes
+
+## "Capability Types"?
+
+I have learned a few things (over and over). Briefly:
 
 - Don't put the same thing in different enum variants.
-- Don't put phantom types on types with lots of data that will be relevant no
-  matter the type parameter.
+- You probably don't want a phantom type parameter.
 - Instead, put specific methods on types that are wrapped by variants in a
   "Capability" enum.
 
@@ -47,7 +67,7 @@ The problem was this was that even if I wanted to deal with data that was
 available for any type of Game, I had to pattern match. This got to be extremely
 annoying.
 
-## Capability Types
+### Capability Types
 
 I eventually figured out a much better design, which I called "capability
 types". It no longer uses any phantom types, which feels a lot better.
@@ -124,21 +144,3 @@ Cap::ActionCap(ActionCap(num_actions: u8))
 
 MoveCap implements move(self, Point3) -> Result<MoveCap, GameError>. This way
 the original movement capability is consumed
-
-
-# Phone-and-Tablet Roleplaying Game
-
-This is a project to implement a somewhat general game simulation library for turn-based tabletop
-games.
-
-# License
-
-MIT-licensed: http://opensource.org/licenses/MIT
-
-# Building/testing/etc
-
-cargo test
-
-# TODO
-
-Also grep the code for XXX, FIXME, or TODO.
