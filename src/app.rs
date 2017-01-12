@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::collections::HashMap;
 
 use types::*;
@@ -77,7 +76,7 @@ impl App {
         if able.combat.current_creature().has_ability(&abid) {
             Ok(App { current_combat: Some(able.act(&ability, target)?), ..self.clone() })
         } else {
-            Err(GameError::CreatureLacksAbility(abid.clone()))
+            Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid.clone()))
         }
     }
 
@@ -99,10 +98,10 @@ impl App {
             Some(ref combat) => {
                 match combat.capability() {
                     CombatCap::Incap(ref incap) => incap.done(),
-                    _ => panic!("AppIncap contained something other than CombatIncap"),
+                    CombatCap::Able(ref able) => able.done(),
                 }
             }
-            _ => panic!("AppIncap contained something other than CombatIncap"),
+            None => panic!("No current combat when running done"),
         };
         App { current_combat: Some(newcombat), ..self.clone() }
     }
@@ -118,8 +117,11 @@ impl App {
 
 #[cfg(test)]
 pub mod test {
+    extern crate test;
     use app::*;
     use types::test::*;
+    use creature::test::*;
+    use self::test::Bencher;
 
     pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
         app.start_combat(combatants).unwrap()
@@ -165,4 +167,35 @@ pub mod test {
         assert_eq!(app.start_combat(vec![]),
                    Err(GameError::CombatMustHaveCreatures));
     }
+
+    #[bench]
+    fn three_char_infinite_combat(bencher: &mut Bencher) {
+        let punch = t_punch();
+        let heal = t_heal();
+        let mut app = App::new();
+        app.creatures.insert(cid("rogue"), t_rogue("rogue"));
+        app.creatures.insert(cid("ranger"), t_ranger("ranger"));
+        app.creatures.insert(cid("cleric"), t_cleric("cleric"));
+        app.abilities.insert(abid("punch"), punch);
+        app.abilities.insert(abid("heal"), heal);
+        let mut app = app.perform_unchecked(AppCommand::StartCombat(vec![cid("rogue"),
+                                                            cid("ranger"),
+                                                            cid("cleric")]))
+            .unwrap();
+        let iter = |app: &App| -> Result<App, GameError> {
+            let app = app.perform_unchecked(AppCommand::Act(abid("punch"),
+                                                   DecidedTarget::Melee(cid("ranger"))))?;
+            let app = app.perform_unchecked(AppCommand::Done)?;
+            let app = app.perform_unchecked(AppCommand::Act(abid("heal"),
+                                                   DecidedTarget::Range(cid("ranger"))))?;
+            Ok(app)
+        };
+        bencher.iter(|| {
+            for _ in 0..1000 {
+                app = iter(&app).unwrap();
+            }
+            app.clone()
+        });
+    }
+
 }

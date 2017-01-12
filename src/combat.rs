@@ -36,8 +36,9 @@ impl Combat {
         self.creatures.get_current()
     }
 
-    fn tick(&mut self) -> Combat {
+    fn next_turn(&mut self) -> Combat {
         let mut newgame = self.clone();
+        newgame.creatures.next_circular();
         for creature in newgame.creatures.iter_mut() {
             take(creature, |c: Creature| c.tick());
         }
@@ -78,7 +79,7 @@ impl Combat {
     /// End the current player's turn.
     // I don't *think* there's every a state where this would be invalid...
     pub fn done(&self) -> Combat {
-        self.clone().tick()
+        self.clone().next_turn()
     }
 }
 
@@ -112,8 +113,7 @@ impl<'a> CombatAble<'a> {
                 }
             }
         }
-        newgame.creatures.next_circular();
-        Ok(newgame.tick())
+        Ok(newgame.next_turn())
     }
 
     /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
@@ -122,6 +122,10 @@ impl<'a> CombatAble<'a> {
         // let new = self.combat.clone();
         // new.current_creature().set_pos(pt);
         // Ok(new)
+    }
+
+    pub fn done(&self) -> Combat {
+        self.combat.done()
     }
 
     fn resolve_targets(combat: &Combat,
@@ -249,6 +253,5 @@ pub mod tests {
             }
             combat.clone()
         });
-
     }
 }

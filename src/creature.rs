@@ -217,7 +217,7 @@ pub mod test {
 
     pub fn t_cleric(name: &str) -> Creature {
         Creature::build(name)
-            .abilities(vec![abid("shoot")])
+            .abilities(vec![abid("heal")])
             .build()
             .unwrap()
     }

@@ -71,7 +71,7 @@ pub enum GameError {
     InvalidCommand(AppCommand),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
-    CreatureLacksAbility(AbilityID),
+    CreatureLacksAbility(CreatureID, AbilityID),
     CreatureNotFound(CreatureID),
     InvalidTarget(CreatureID),
     InvalidTargetNoSense(CreatureID),
