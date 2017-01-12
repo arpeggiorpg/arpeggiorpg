@@ -31,6 +31,22 @@ impl Combat {
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
+    pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
+        let mut new = self.clone();
+        match *l {
+            CombatLog::CreatureLog(ref cid, ref cl) => {
+                let mut c = new.get_creature_mut(cid.clone())
+                    .ok_or(GameError::CreatureNotFound(cid.clone()))?;
+                *c = c.apply_log(cl)?;
+            }
+            CombatLog::EndTurn(ref cid) => {
+                assert_eq!(*cid, new.current_creature().id());
+                new.creatures.next_circular();
+            }
+        }
+        Ok(new)
+    }
+
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
     }
@@ -41,36 +57,23 @@ impl Combat {
 
     pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newgame = self.clone();
-        newgame.creatures.next_circular();
         let mut all_logs = vec![];
         for creature in newgame.creatures.iter_mut() {
             let (newcreat, logs) = creature.tick()?;
             *creature = newcreat;
             all_logs.extend(creature_logs_into_combat_logs(creature.id(), logs));
         }
+        newgame.creatures.next_circular();
+        all_logs.push(CombatLog::EndTurn(newgame.current_creature().id()));
         Ok((newgame, all_logs))
     }
 
-    // This is inefficient. Two options:
-    // 1. Store an additional HashMap<CreatureID, Idx> here on Combat
-    // 2. Implement a NonEmptyLinkedHashMapWithCursor (https://crates.io/crates/linked-hash-map)
-    //    (though that may not be efficient either)
     pub fn get_creature(&self, cid: CreatureID) -> Option<&Creature> {
-        for creature in self.creatures.iter() {
-            if creature.id() == cid {
-                return Some(creature);
-            }
-        }
-        None
+        self.creatures.iter().find(|c| c.id() == cid)
     }
 
     pub fn get_creature_mut(&mut self, cid: CreatureID) -> Option<&mut Creature> {
-        for creature in self.creatures.iter_mut() {
-            if creature.id() == cid {
-                return Some(creature);
-            }
-        }
-        None
+        self.creatures.iter_mut().find(|c| c.id() == cid)
     }
 
     pub fn capability(&self) -> CombatCap {

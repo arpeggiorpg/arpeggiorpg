@@ -4,6 +4,7 @@ use std::fmt;
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
+pub type ConditionID = usize;
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize,
          Deserialize)]
@@ -59,15 +60,13 @@ impl Distance {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum AppCommand {
     StartCombat(Vec<CreatureID>),
+    StopCombat,
     Act(AbilityID, DecidedTarget),
     Move(Point3),
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
     Done,
 }
-
-
-type ConditionID = usize;
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
 /// values. Note that these represent *concrete* changes to the Creature, which will have
@@ -87,10 +86,22 @@ pub enum CreatureLog {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
     CreatureLog(CreatureID, CreatureLog),
+    EndTurn(CreatureID), // the end of this creature's turn
 }
 
 pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<CombatLog> {
     ls.into_iter().map(|l| CombatLog::CreatureLog(cid.clone(), l)).collect()
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum AppLog {
+    CombatLog(CombatLog),
+    StartCombat(Vec<CreatureID>),
+    StopCombat,
+}
+
+pub fn combat_logs_into_app_logs(ls: Vec<CombatLog>) -> Vec<AppLog> {
+    ls.into_iter().map(|l| AppLog::CombatLog(l)).collect()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
