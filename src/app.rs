@@ -60,7 +60,7 @@ impl App {
                 }
             }
         }?;
-        // assert_eq!(newapp, self.apply_logs(logs.clone())?);
+        assert_eq!(newapp, self.apply_logs(logs.clone())?);
         Ok((newapp, logs))
     }
 

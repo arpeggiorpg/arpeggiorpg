@@ -63,8 +63,8 @@ impl Combat {
             *creature = newcreat;
             all_logs.extend(creature_logs_into_combat_logs(creature.id(), logs));
         }
-        newgame.creatures.next_circular();
         all_logs.push(CombatLog::EndTurn(newgame.current_creature().id()));
+        newgame.creatures.next_circular();
         Ok((newgame, all_logs))
     }
 
