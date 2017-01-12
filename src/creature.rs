@@ -6,7 +6,6 @@ use types::*;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
-    // casting: Option<(Ability, u8, SelectedTargetedEffect)> // yowza
     id: CreatureID,
     name: String,
     max_energy: Energy,

@@ -14,30 +14,6 @@ pub struct App {
     creatures: HashMap<CreatureID, Creature>,
 }
 
-// type GMID = String;
-// type PlayerID = String;
-//
-// pub struct GMCommand {
-//     gm_id: GMID,
-//     command: Command,
-// }
-//
-// pub struct PlayerCommand {
-//     player_id: PlayerID,
-//     command: Command,
-// }
-//
-// enum Command {
-//     CreatureCommand(CreatureID, CreatureCommand),
-//     ControlCommand(ControlCommand),
-// }
-//
-// enum ControlCommand {
-//     StartCombat,
-//     StopCombat,
-// }
-//
-
 // Generic methods for any kind of App regardless of the CreatureState.
 impl App {
     pub fn new() -> Self {
@@ -57,51 +33,51 @@ impl App {
         fn disallowed<T>(cmd: AppCommand) -> Result<T, GameError> {
             Err(GameError::InvalidCommand(cmd))
         }
-        match self.capability() {
-            AppCap::Incap(_) => {
+        // Is there a way I can get rid of this clone()
+        match self.current_combat.clone() {
+            None => {
                 match cmd {
-                    AppCommand::Done => Ok(self.done()),
+                    AppCommand::StartCombat(cids) => self.start_combat(cids),
                     _ => disallowed(cmd),
                 }
             }
-            AppCap::Able(able) => {
-                match cmd {
-                    AppCommand::Done => Ok(self.done()),
-                    AppCommand::Act(abid, dtarget) => able.act(abid, dtarget),
-                    AppCommand::Move(pt) => able.move_creature(pt),
-                    _ => disallowed(cmd),
-                }
-            }
-            AppCap::NoCombat(nocom) => {
-                match cmd {
-                    AppCommand::StartCombat(cids) => nocom.start_combat(cids),
-                    _ => disallowed(cmd),
+            Some(com) => {
+                match com.capability() {
+                    CombatCap::Incap(_) => {
+                        match cmd {
+                            AppCommand::Done => Ok(self.done()),
+                            _ => disallowed(cmd),
+                        }
+                    }
+                    CombatCap::Able(able) => {
+                        match cmd {
+                            AppCommand::Done => Ok(self.done()),
+                            AppCommand::Act(abid, dtarget) => self.act(&able, abid, dtarget),
+                            AppCommand::Move(pt) => self.move_creature(&able, pt),
+                            _ => disallowed(cmd),
+                        }
+                    }
                 }
             }
         }
     }
 
-    /// Return an AppCap according to the current state of the app.
-    pub fn capability(&self) -> AppCap {
-        enum X {
-            Able,
-            Incap,
-            NoCombat,
-        }
+    fn move_creature(&self, able: &CombatAble, pt: Point3) -> Result<App, GameError> {
+        Ok(App { current_combat: Some(able.move_creature(pt)?), ..self.clone() })
+    }
 
-        let x = match self.current_combat {
-            Some(ref combat) => {
-                match combat.capability() {
-                    CombatCap::Able(_) => X::Able,
-                    CombatCap::Incap(_) => X::Incap,
-                }
-            }
-            None => X::NoCombat,
-        };
-        match x {
-            X::Able => AppCap::Able(AppAble { app: self }),
-            X::Incap => AppCap::Incap(AppIncap { app: self }),
-            X::NoCombat => AppCap::NoCombat(AppNoCombat { app: self }),
+    fn act(&self,
+           able: &CombatAble,
+           abid: AbilityID,
+           target: DecidedTarget)
+           -> Result<App, GameError> {
+        let ability = self.get_ability(&abid)?;
+        // checking if the creature has this AbilityID is dumb here, it should probably be in
+        // Creature, but Creature::act just takes &Ability not &AbilityID
+        if able.combat.current_creature().has_ability(&abid) {
+            Ok(App { current_combat: Some(able.act(&ability, target)?), ..self.clone() })
+        } else {
+            Err(GameError::CreatureLacksAbility(abid.clone()))
         }
     }
 
@@ -130,83 +106,13 @@ impl App {
         };
         App { current_combat: Some(newcombat), ..self.clone() }
     }
-}
 
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct AppIncap<'a> {
-    app: &'a App,
-}
-impl<'a> AppIncap<'a> {
-    pub fn stop_combat(&self) -> App {
-        self.app.stop_combat()
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct AppAble<'a> {
-    app: &'a App,
-}
-
-impl<'a> AppAble<'a> {
-    fn perform_able_op<F>(&self, op: F) -> Result<App, GameError>
-        where F: FnOnce(&CombatAble) -> Result<Combat, GameError>
-    {
-        let g = match self.app.current_combat {
-            Some(ref combat) => {
-                match combat.capability() {
-                    CombatCap::Able(ref able) => op(able)?,
-                    _ => panic!("AppAble contained something other than CombatAble!"),
-                }
-            }
-            _ => panic!("AppAble contained something other than CombatAble!"),
-        };
-        Ok(App { current_combat: Some(g), ..self.app.clone() })
-    }
-
-    pub fn act(&self, ability_id: AbilityID, target: DecidedTarget) -> Result<App, GameError> {
-        let ability = self.app.get_ability(&ability_id)?;
-        self.perform_able_op(move |able| {
-            if able.combat.current_creature().has_ability(&ability_id) {
-                able.act(&ability, target)
-            } else {
-                Err(GameError::CreatureLacksAbility(ability_id.clone()))
-            }
-        })
-    }
-
-    pub fn move_creature(&self, pt: Point3) -> Result<App, GameError> {
-        let cur = self.app.current_combat.clone().unwrap();
-        let cap = cur.capability();
-        let combat = match cap {
-            CombatCap::Able(able) => able.move_creature(pt)?,
-            _ => panic!(),
-        };
-        Ok(App { current_combat: Some(combat), ..self.app.clone() })
-    }
-    pub fn stop_combat(&self) -> App {
-        self.app.stop_combat()
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct AppNoCombat<'a> {
-    pub app: &'a App,
-}
-impl<'a> AppNoCombat<'a> {
-    /// Create a Combat and return a new App with it.
-    pub fn start_combat(&self, cids: Vec<CreatureID>) -> Result<App, GameError> {
+    fn start_combat(&self, cids: Vec<CreatureID>) -> Result<App, GameError> {
         let combatants: Vec<Creature> = cids.iter()
-            .map(|cid| self.app.get_creature(cid).map(Clone::clone))
+            .map(|cid| self.get_creature(cid).map(Clone::clone))
             .collect::<Result<_, GameError>>()?;
-        Ok(App { current_combat: Some(Combat::new(combatants)?), ..self.app.clone() })
+        Ok(App { current_combat: Some(Combat::new(combatants)?), ..self.clone() })
     }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub enum AppCap<'a> {
-    Incap(AppIncap<'a>),
-    Able(AppAble<'a>),
-    NoCombat(AppNoCombat<'a>),
 }
 
 
@@ -215,23 +121,8 @@ pub mod test {
     use app::*;
     use types::test::*;
 
-    pub fn t_able_app<'a>(app: &'a App) -> AppAble<'a> {
-        match app.capability() {
-            AppCap::Able(a) => a,
-            _ => panic!("Not an Able App"),
-        }
-    }
-
     pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
-        let nocomb = t_nocombat(&app);
-        nocomb.start_combat(combatants).unwrap()
-    }
-
-    pub fn t_nocombat<'a>(app: &'a App) -> AppNoCombat<'a> {
-        match app.capability() {
-            AppCap::NoCombat(a) => a,
-            _ => panic!("App is not in NoCombat state"),
-        }
+        app.start_combat(combatants).unwrap()
     }
 
     #[test]
@@ -253,9 +144,9 @@ pub mod test {
             creatures: creatures,
         };
         let app = t_start_combat(app, vec![bob_id.clone()]);
-        let next = t_able_app(&app).act(punch_id.clone(), DecidedTarget::Melee(bob_id.clone()));
+        let next = app.perform_unchecked(AppCommand::Act(punch_id.clone(),
+                                                         DecidedTarget::Melee(bob_id.clone())));
         let next: App = next.expect("punch did not succeed");
-        let next = t_able_app(&next);
         let _: App = next.stop_combat();
     }
 
@@ -264,14 +155,14 @@ pub mod test {
     fn start_combat_not_found() {
         let app = App::new();
         let non = cid("nonexistent");
-        assert_eq!(t_nocombat(&app).start_combat(vec![non.clone()]),
+        assert_eq!(app.start_combat(vec![non.clone()]),
                    Err(GameError::CreatureNotFound(non)));
     }
 
     #[test]
     fn combat_must_have_creatures() {
         let app = App::new();
-        assert_eq!(t_nocombat(&app).start_combat(vec![]),
+        assert_eq!(app.start_combat(vec![]),
                    Err(GameError::CombatMustHaveCreatures));
     }
 }
