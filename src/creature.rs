@@ -1,9 +1,17 @@
 use std::cmp;
+use std::sync::atomic;
+use std::sync::atomic::Ordering;
 
 use odds::vec::VecExt;
 
 use types::*;
 
+/// A Creature.
+///
+/// A very important thing about how we deal with creatures is that whenever we change
+/// a creature, we get back both a new creature *and* a log of all things that happened to that
+/// creature. That log is deterministic and complete enough for us to reply it on a snapshot of a
+/// creature and get an identical creature.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
     id: CreatureID,
@@ -32,32 +40,67 @@ impl Creature {
         }
     }
 
-    fn apply_effect_mut(&mut self, effect: &Effect) {
-        match *effect {
-            Effect::Damage(amt) => self.cur_health = self.cur_health.saturating_sub(amt),
-            Effect::Heal(amt) => {
-                self.cur_health = cmp::min(self.max_health, self.cur_health.saturating_add(amt))
+    pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
+        let mut new = self.clone();
+        match *item {
+            CreatureLog::Damage(ref dmg) => new.cur_health = new.cur_health.saturating_sub(*dmg),
+            CreatureLog::Heal(ref dmg) => {
+                new.cur_health = cmp::min(new.cur_health.saturating_add(*dmg), new.max_health)
             }
-            Effect::GenerateEnergy(amt) => {
-                self.cur_energy = cmp::min(self.max_energy, self.cur_energy.saturating_add(amt))
+            CreatureLog::GenerateEnergy(ref nrg) => {
+                new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
             }
-            Effect::MultiEffect(ref effects) => {
-                for effect in effects {
-                    self.apply_effect_mut(effect)
-                }
+            CreatureLog::ReduceEnergy(ref nrg) => {
+                new.cur_energy = new.cur_energy.saturating_sub(*nrg)
             }
-            Effect::ApplyCondition(ref duration, ref condition) => {
-                self.conditions.push(AppliedCondition {
-                    remaining: duration.clone(),
-                    condition: condition.clone(),
-                });
+            CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
+                new.conditions.push(AppliedCondition {
+                    remaining: *dur,
+                    condition: con.clone(),
+                    id: *id,
+                })
             }
+            CreatureLog::RemoveCondition(ref id) => {
+                let pos = new.conditions
+                    .iter()
+                    .position(|c| c.id == *id)
+                    .ok_or(GameError::ConditionNotFound(*id))?;
+                new.conditions.remove(pos);
+            }
+            CreatureLog::MoveCreature(ref pt) => new.pos = *pt,
         }
+        Ok(new)
     }
 
-    fn tick_mut(&mut self) {
+    pub fn apply_effect(&self, effect: &Effect) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+        static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        // it's unlikely we'll be able to rely on having a simple mapping of Effect to
+        // Vec<CreatureLog> forever
+        fn eff2log(effect: &Effect) -> Vec<CreatureLog> {
+            match *effect {
+                Effect::Damage(amt) => vec![CreatureLog::Damage(amt)],
+                Effect::Heal(amt) => vec![CreatureLog::Heal(amt)],
+                Effect::GenerateEnergy(amt) => vec![CreatureLog::GenerateEnergy(amt)],
+                Effect::MultiEffect(ref effects) => effects.iter().flat_map(eff2log).collect(),
+                Effect::ApplyCondition(ref duration, ref condition) => {
+                    vec![CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
+                                                     duration.clone(),
+                                                     condition.clone())]
+                }
+            }
+        }
+        let ops = eff2log(effect);
+        let mut creature = self.clone();
+        for op in &ops {
+            creature = self.apply_log(op)?;
+        }
+        Ok((creature, ops))
+    }
+
+    pub fn tick(&self) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+        let mut new = self.clone();
         let mut effs = vec![];
-        self.conditions.retain_mut(|&mut AppliedCondition { ref condition, ref mut remaining }| {
+        new.conditions.retain_mut(|&mut AppliedCondition { id: _, ref condition, ref mut remaining }| {
             if let ConditionDuration::Duration(k) = *remaining {
                 // this shouldn't happen normally, since we remove conditions as soon as they reach
                 // remaining = 0, but handle it just in case
@@ -77,9 +120,13 @@ impl Creature {
             }
         });
 
+        let mut all_logs = vec![];
         for eff in effs {
-            self.apply_effect_mut(&eff);
+            let res = new.apply_effect(&eff)?;
+            new = res.0;
+            all_logs.extend(res.1);
         }
+        Ok((new, all_logs))
     }
 
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
@@ -99,16 +146,6 @@ impl Creature {
     }
     pub fn id(&self) -> CreatureID {
         self.id.clone()
-    }
-    pub fn apply_effect(&self, effect: &Effect) -> Creature {
-        let mut newc = self.clone();
-        newc.apply_effect_mut(effect);
-        newc
-    }
-    pub fn tick(&self) -> Creature {
-        let mut newc = self.clone();
-        newc.tick_mut();
-        newc
     }
     pub fn set_pos(&self, pt: Point3) -> Creature {
         Creature { pos: pt, ..self.clone() }
@@ -228,7 +265,7 @@ pub mod test {
         c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-        assert_eq!(c.tick().conditions,
+        assert_eq!(c.tick().unwrap().0.conditions,
                    vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
                         app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
     }
@@ -238,11 +275,11 @@ pub mod test {
         let mut c = t_creature();
         c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                                      ConditionDuration::Duration(2))];
-        let c = c.tick();
+        let c = c.tick().unwrap().0;
         assert_eq!(c.cur_health, HP(9));
-        let c = c.tick();
+        let c = c.tick().unwrap().0;
         assert_eq!(c.cur_health, HP(8));
-        let c = c.tick();
+        let c = c.tick().unwrap().0;
         assert_eq!(c.cur_health, HP(8));
     }
 }

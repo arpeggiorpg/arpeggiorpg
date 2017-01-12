@@ -44,13 +44,13 @@ impl App {
                 match com.capability() {
                     CombatCap::Incap(_) => {
                         match cmd {
-                            AppCommand::Done => Ok(self.next_turn()),
+                            AppCommand::Done => self.next_turn(),
                             _ => disallowed(cmd),
                         }
                     }
                     CombatCap::Able(able) => {
                         match cmd {
-                            AppCommand::Done => Ok(self.next_turn()),
+                            AppCommand::Done => self.next_turn(),
                             AppCommand::Act(abid, dtarget) => self.act(&able, abid, dtarget),
                             AppCommand::Move(pt) => self.move_creature(&able, pt),
                             _ => disallowed(cmd),
@@ -92,18 +92,10 @@ impl App {
         self.creatures.get(cid).ok_or(GameError::CreatureNotFound(cid.clone()))
     }
 
-    /// this panics if not in combat
-    fn next_turn(&self) -> App {
-        let newcombat = match self.current_combat {
-            Some(ref combat) => {
-                match combat.capability() {
-                    CombatCap::Incap(ref incap) => incap.next_turn(),
-                    CombatCap::Able(ref able) => able.next_turn(),
-                }
-            }
-            None => panic!("No current combat when running next_turn"),
-        };
-        App { current_combat: Some(newcombat), ..self.clone() }
+    fn next_turn(&self) -> Result<App, GameError> {
+        // I don't know why I need to current_combat.clone()
+        let newcombat = self.current_combat.clone().ok_or(GameError::NotInCombat)?.next_turn()?;
+        Ok(App { current_combat: Some(newcombat), ..self.clone() })
     }
 
     fn start_combat(&self, cids: Vec<CreatureID>) -> Result<App, GameError> {

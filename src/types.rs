@@ -66,8 +66,26 @@ pub enum AppCommand {
     Done,
 }
 
+
+type ConditionID = usize;
+
+/// A representation of state change in a Creature. All change to a Creature happens via these
+/// values. Note that these represent *concrete* changes to the Creature, which will have
+/// deterministic results.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum CreatureLog {
+    Damage(HP),
+    Heal(HP),
+    GenerateEnergy(Energy),
+    ReduceEnergy(Energy),
+    ApplyCondition(ConditionID, ConditionDuration, Condition),
+    RemoveCondition(ConditionID),
+    MoveCreature(Point3),
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
+    ConditionNotFound(ConditionID),
     InvalidCommand(AppCommand),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
@@ -78,6 +96,7 @@ pub enum GameError {
     TargetOutOfRange,
     InvalidCreatureState,
     BuggyProgram(String),
+    NotInCombat,
 }
 
 impl fmt::Display for GameError {
@@ -148,7 +167,7 @@ pub enum Condition {
     AddDamageBuff(HP),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ConditionDuration {
     Interminate,
     Duration(u8),
@@ -156,6 +175,7 @@ pub enum ConditionDuration {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AppliedCondition {
+    pub id: ConditionID,
     pub remaining: ConditionDuration,
     pub condition: Condition,
 }
@@ -174,6 +194,7 @@ pub mod test {
     #[cfg(test)]
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
         AppliedCondition {
+            id: 0,
             condition: c,
             remaining: r,
         }

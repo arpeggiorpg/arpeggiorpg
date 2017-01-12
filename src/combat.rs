@@ -36,14 +36,18 @@ impl Combat {
         self.creatures.get_current()
     }
 
-    pub fn next_turn(&self) -> Combat {
+    fn current_creature_mut(&mut self) -> &mut Creature {
+        self.creatures.get_current_mut()
+    }
+
+    pub fn next_turn(&self) -> Result<Combat, GameError> {
         let mut newgame = self.clone();
         newgame.creatures.next_circular();
         for creature in newgame.creatures.iter_mut() {
-            take(creature, |c: Creature| c.tick());
+            // TODO: propagate CombatLog
+            *creature = creature.tick()?.0;
         }
-        newgame
-
+        Ok(newgame)
     }
 
     // This is inefficient. Two options:
@@ -82,7 +86,7 @@ pub struct CombatIncap<'a> {
     pub combat: &'a Combat,
 }
 impl<'a> CombatIncap<'a> {
-    pub fn next_turn(&self) -> Combat {
+    pub fn next_turn(&self) -> Result<Combat, GameError> {
         self.combat.next_turn()
     }
 }
@@ -103,7 +107,8 @@ impl<'a> CombatAble<'a> {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
                         .ok_or_else(|| GameError::InvalidTargetNoSense(creature_id.clone()))?;
-                    take(creature, |c| c.apply_effect(effect));
+                    // TODO: propagate CombatLog
+                    *creature = creature.apply_effect(effect)?.0;
                 }
             }
         }
@@ -113,13 +118,12 @@ impl<'a> CombatAble<'a> {
 
     /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
     pub fn move_creature(&self, pt: Point3) -> Result<Combat, GameError> {
-        panic!("This is not implemented properly. It's throwing away the new Creature.");
-        // let new = self.combat.clone();
-        // new.current_creature().set_pos(pt);
-        // Ok(new)
+        let mut new = self.combat.clone();
+        new.current_creature_mut().set_pos(pt);
+        Ok(new)
     }
 
-    pub fn next_turn(&self) -> Combat {
+    pub fn next_turn(&self) -> Result<Combat, GameError> {
         self.combat.next_turn()
     }
 
@@ -238,9 +242,9 @@ pub mod tests {
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {
             let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?;
-            let combat = combat.next_turn().next_turn();
+            let combat = combat.next_turn()?.next_turn()?;
             let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?;
-            let combat = combat.next_turn();
+            let combat = combat.next_turn()?;
             Ok(combat)
         };
         bencher.iter(|| {
