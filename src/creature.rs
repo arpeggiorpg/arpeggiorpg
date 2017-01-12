@@ -97,14 +97,21 @@ impl Creature {
         Ok((creature, ops))
     }
 
+    pub fn set_pos(&self, pt: Point3) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+        let log = CreatureLog::MoveCreature(pt);
+        Ok((self.apply_log(&log)?, vec![log]))
+    }
+
     pub fn tick(&self) -> Result<(Creature, Vec<CreatureLog>), GameError> {
         let mut new = self.clone();
         let mut effs = vec![];
-        new.conditions.retain_mut(|&mut AppliedCondition { id: _, ref condition, ref mut remaining }| {
+        let mut all_logs = vec![];
+        new.conditions.retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
             if let ConditionDuration::Duration(k) = *remaining {
                 // this shouldn't happen normally, since we remove conditions as soon as they reach
                 // remaining = 0, but handle it just in case
                 if k == 0 {
+                    all_logs.push(CreatureLog::RemoveCondition(id));
                     return false;
                 }
             }
@@ -120,7 +127,6 @@ impl Creature {
             }
         });
 
-        let mut all_logs = vec![];
         for eff in effs {
             let res = new.apply_effect(&eff)?;
             new = res.0;
@@ -146,9 +152,6 @@ impl Creature {
     }
     pub fn id(&self) -> CreatureID {
         self.id.clone()
-    }
-    pub fn set_pos(&self, pt: Point3) -> Creature {
-        Creature { pos: pt, ..self.clone() }
     }
 }
 

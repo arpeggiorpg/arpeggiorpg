@@ -6,7 +6,6 @@ use nonempty;
 
 use creature::*;
 use types::*;
-use take_mut::take;
 use grid::creature_within_distance;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
@@ -40,14 +39,16 @@ impl Combat {
         self.creatures.get_current_mut()
     }
 
-    pub fn next_turn(&self) -> Result<Combat, GameError> {
+    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newgame = self.clone();
         newgame.creatures.next_circular();
+        let mut all_logs = vec![];
         for creature in newgame.creatures.iter_mut() {
-            // TODO: propagate CombatLog
-            *creature = creature.tick()?.0;
+            let (newcreat, logs) = creature.tick()?;
+            *creature = newcreat;
+            all_logs.extend(creature_logs_into_combat_logs(creature.id(), logs));
         }
-        Ok(newgame)
+        Ok((newgame, all_logs))
     }
 
     // This is inefficient. Two options:
@@ -86,7 +87,7 @@ pub struct CombatIncap<'a> {
     pub combat: &'a Combat,
 }
 impl<'a> CombatIncap<'a> {
-    pub fn next_turn(&self) -> Result<Combat, GameError> {
+    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
         self.combat.next_turn()
     }
 }
@@ -97,10 +98,14 @@ pub struct CombatAble<'a> {
 }
 impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
-    pub fn act(&self, ability: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
+    pub fn act(&self,
+               ability: &Ability,
+               target: DecidedTarget)
+               -> Result<(Combat, Vec<CombatLog>), GameError> {
         // I could write this in an Actually Functional style, but I really don't care as long as
         // the function doesn't have side effects (and the type signature proves it!)
         let mut newgame = self.combat.clone();
+        let mut all_logs = vec![];
         {
             let mut targets = Self::resolve_targets(&newgame, ability.target, target)?;
             for effect in &ability.effects {
@@ -108,22 +113,29 @@ impl<'a> CombatAble<'a> {
                     let mut creature = newgame.get_creature_mut(creature_id.clone())
                         .ok_or_else(|| GameError::InvalidTargetNoSense(creature_id.clone()))?;
                     // TODO: propagate CombatLog
-                    *creature = creature.apply_effect(effect)?.0;
+                    let (newcreat, logs) = creature.apply_effect(effect)?;
+                    *creature = newcreat;
+                    all_logs.extend(creature_logs_into_combat_logs(creature_id, logs));
                 }
             }
         }
-        Ok(newgame)
-
+        Ok((newgame, all_logs))
     }
 
     /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
-    pub fn move_creature(&self, pt: Point3) -> Result<Combat, GameError> {
+    pub fn move_creature(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut new = self.combat.clone();
-        new.current_creature_mut().set_pos(pt);
-        Ok(new)
+        let logs = {
+            let mut c = new.current_creature_mut();
+            let (newc, logs) = c.set_pos(pt)?;
+            *c = newc;
+            logs
+        };
+        let cid = new.current_creature().id();
+        Ok((new, creature_logs_into_combat_logs(cid, logs)))
     }
 
-    pub fn next_turn(&self) -> Result<Combat, GameError> {
+    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
         self.combat.next_turn()
     }
 
@@ -190,7 +202,10 @@ pub mod tests {
         Combat::new(vec![rogue, ranger, cleric]).unwrap()
     }
 
-    pub fn t_act(c: &Combat, ab: &Ability, target: DecidedTarget) -> Result<Combat, GameError> {
+    pub fn t_act(c: &Combat,
+                 ab: &Ability,
+                 target: DecidedTarget)
+                 -> Result<(Combat, Vec<CombatLog>), GameError> {
         match c.capability() {
             CombatCap::Able(able) => able.act(ab, target),
             _ => panic!("Not an Able combat"),
@@ -202,8 +217,10 @@ pub mod tests {
     fn target_melee_out_of_range() {
         let mut combat = t_combat();
         let melee = t_punch();
-        take(combat.get_creature_mut(cid("ranger")).unwrap(),
-             |c| c.set_pos((2, 0, 0)));
+        {
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
+            *creature = creature.set_pos((2, 0, 0)).unwrap().0;
+        }
         assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
     }
@@ -213,9 +230,11 @@ pub mod tests {
     fn target_range() {
         let mut combat = t_combat();
         let range_ab = t_shoot();
-        take(combat.get_creature_mut(cid("ranger")).unwrap(),
-             |c| c.set_pos((5, 0, 0)));
-        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap();
+        {
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
+            *creature = creature.set_pos((5, 0, 0)).unwrap().0;
+        }
+        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().0;
     }
 
     /// Ranged attacks against targets outside of range return `TargetOutOfRange`
@@ -223,14 +242,18 @@ pub mod tests {
     fn target_out_of_range() {
         let mut combat = t_combat();
         let shoot = t_shoot();
-        take(combat.get_creature_mut(cid("ranger")).unwrap(),
-             |c| c.set_pos((6, 0, 0)));
+        {
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
+            *creature = creature.set_pos((6, 0, 0)).unwrap().0;
+        }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
 
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
-        take(combat.get_creature_mut(cid("ranger")).unwrap(),
-             |c| c.set_pos((5, 3, 0)));
+        {
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
+            *creature = creature.set_pos((5, 3, 0)).unwrap().0;
+        }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
     }
@@ -241,10 +264,10 @@ pub mod tests {
         let punch = t_punch();
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {
-            let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?;
-            let combat = combat.next_turn()?.next_turn()?;
-            let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?;
-            let combat = combat.next_turn()?;
+            let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?.0;
+            let combat = combat.next_turn()?.0.next_turn()?.0;
+            let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?.0;
+            let combat = combat.next_turn()?.0;
             Ok(combat)
         };
         bencher.iter(|| {

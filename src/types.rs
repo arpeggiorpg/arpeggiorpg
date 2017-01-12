@@ -83,6 +83,16 @@ pub enum CreatureLog {
     MoveCreature(Point3),
 }
 
+/// Rerpesentation of state changes in a Combat. See `CreatureLog`.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum CombatLog {
+    CreatureLog(CreatureID, CreatureLog),
+}
+
+pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<CombatLog> {
+    ls.into_iter().map(|l| CombatLog::CreatureLog(cid.clone(), l)).collect()
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
     ConditionNotFound(ConditionID),

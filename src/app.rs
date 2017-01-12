@@ -62,7 +62,7 @@ impl App {
     }
 
     fn move_creature(&self, able: &CombatAble, pt: Point3) -> Result<App, GameError> {
-        Ok(App { current_combat: Some(able.move_creature(pt)?), ..self.clone() })
+        Ok(App { current_combat: Some(able.move_creature(pt)?.0), ..self.clone() })
     }
 
     fn act(&self,
@@ -74,7 +74,7 @@ impl App {
         // checking if the creature has this AbilityID is dumb here, it should probably be in
         // Creature, but Creature::act just takes &Ability not &AbilityID
         if able.combat.current_creature().has_ability(&abid) {
-            Ok(App { current_combat: Some(able.act(&ability, target)?), ..self.clone() })
+            Ok(App { current_combat: Some(able.act(&ability, target)?.0), ..self.clone() })
         } else {
             Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid.clone()))
         }
@@ -94,7 +94,7 @@ impl App {
 
     fn next_turn(&self) -> Result<App, GameError> {
         // I don't know why I need to current_combat.clone()
-        let newcombat = self.current_combat.clone().ok_or(GameError::NotInCombat)?.next_turn()?;
+        let newcombat = self.current_combat.clone().ok_or(GameError::NotInCombat)?.next_turn()?.0;
         Ok(App { current_combat: Some(newcombat), ..self.clone() })
     }
 

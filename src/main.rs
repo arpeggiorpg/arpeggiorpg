@@ -7,7 +7,6 @@ extern crate serde_yaml;
 extern crate serde_derive;
 extern crate serde;
 extern crate odds;
-extern crate take_mut;
 
 extern crate nonempty;
 
