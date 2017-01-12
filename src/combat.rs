@@ -1,6 +1,6 @@
 //! Representation and simulation of combat.
 //! Many simple combat-oriented types are in `types.rs`, but this module implements the
-//! Combat and CombatCap types. The most interesting top-level method is `Combat::act`.
+//! Combat types. The most interesting top-level method is `Combat::act`.
 
 use nonempty;
 
@@ -80,12 +80,15 @@ impl Combat {
         self.creatures.iter().collect()
     }
 
-    pub fn capability(&self) -> CombatCap {
+    pub fn get_able(&self) -> Result<CombatAble, GameError> {
         if self.current_creature().can_act() {
-            CombatCap::Able(CombatAble { combat: self })
+            Ok(CombatAble { combat: self })
         } else {
-            CombatCap::Incap(CombatIncap { combat: self })
+            Err(GameError::CannotAct(self.current_creature().id()))
         }
+    }
+    pub fn get_movement(&self) -> Result<CombatMove, GameError> {
+        Ok(CombatMove { combat: self })
     }
 }
 
@@ -99,6 +102,26 @@ impl<'a> CombatIncap<'a> {
     }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct CombatMove<'a> {
+    pub combat: &'a Combat,
+}
+
+impl<'a> CombatMove<'a> {
+    pub fn move_creature(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
+        let mut new = self.combat.clone();
+        let logs = {
+            let mut c = new.current_creature_mut();
+            let (newc, logs) = c.set_pos(pt)?;
+            *c = newc;
+            logs
+        };
+        let cid = new.current_creature().id();
+        Ok((new, creature_logs_into_combat_logs(cid, logs)))
+    }
+}
+
+/// The ability to act in combat.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatAble<'a> {
     pub combat: &'a Combat,
@@ -127,19 +150,6 @@ impl<'a> CombatAble<'a> {
             }
         }
         Ok((newgame, all_logs))
-    }
-
-    /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
-    pub fn move_creature(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let mut new = self.combat.clone();
-        let logs = {
-            let mut c = new.current_creature_mut();
-            let (newc, logs) = c.set_pos(pt)?;
-            *c = newc;
-            logs
-        };
-        let cid = new.current_creature().id();
-        Ok((new, creature_logs_into_combat_logs(cid, logs)))
     }
 
     pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
@@ -179,19 +189,6 @@ impl<'a> CombatAble<'a> {
     }
 }
 
-/// A `CombatCap` must be pattern-matched to determine which operations we can perform on
-/// behalf of the current creature. Each variant contains a different wrapper of `Combat`, and each
-/// of those different types provide different methods for doing only what is possible. For
-/// example, `CombatCap::Incap` wraps `CombatIncap`, which only has a `next_turn` method, since
-/// incapacitated creatures cannot act, whereas `CombatCap::Able(CombatAble)` allows use of
-/// the `act` method.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub enum CombatCap<'a> {
-    Incap(CombatIncap<'a>),
-    Able(CombatAble<'a>),
-}
-
-
 #[cfg(test)]
 pub mod tests {
     extern crate test;
@@ -213,10 +210,7 @@ pub mod tests {
                  ab: &Ability,
                  target: DecidedTarget)
                  -> Result<(Combat, Vec<CombatLog>), GameError> {
-        match c.capability() {
-            CombatCap::Able(able) => able.act(ab, target),
-            _ => panic!("Not an Able combat"),
-        }
+        c.get_able()?.act(ab, target)
     }
 
     /// Try to melee-atack the ranger when the ranger is out of melee range.

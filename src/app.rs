@@ -32,6 +32,7 @@ impl App {
         fn disallowed<T>(cmd: AppCommand) -> Result<T, GameError> {
             Err(GameError::InvalidCommand(cmd))
         }
+
         // Is there a way I can get rid of this clone()
         let (newapp, logs) = match self.current_combat.clone() {
             None => {
@@ -41,23 +42,12 @@ impl App {
                 }
             }
             Some(com) => {
-                match com.capability() {
-                    CombatCap::Incap(_) => {
-                        match cmd {
-                            AppCommand::StopCombat => Ok(self.stop_combat()),
-                            AppCommand::Done => self.next_turn(&com),
-                            _ => disallowed(cmd),
-                        }
-                    }
-                    CombatCap::Able(able) => {
-                        match cmd {
-                            AppCommand::StopCombat => Ok(self.stop_combat()),
-                            AppCommand::Done => self.next_turn(&com),
-                            AppCommand::Act(abid, dtarget) => self.act(&able, abid, dtarget),
-                            AppCommand::Move(pt) => self.move_creature(&able, pt),
-                            _ => disallowed(cmd),
-                        }
-                    }
+                match cmd {
+                    AppCommand::StopCombat => Ok(self.stop_combat(&com)),
+                    AppCommand::Move(pt) => self.move_creature(&com, pt),
+                    AppCommand::Done => self.next_turn(&com),
+                    AppCommand::Act(abid, dtarget) => self.act(&com, abid, dtarget),
+                    _ => disallowed(cmd),
                 }
             }
         }?;
@@ -90,23 +80,27 @@ impl App {
                 })
             }
             AppLog::StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
-            AppLog::StopCombat => Ok(self.stop_combat().0),
+            AppLog::StopCombat => {
+                self.current_combat
+                    .clone()
+                    .map(|c| self.stop_combat(&c).0)
+                    .ok_or(GameError::NotInCombat)
+            }
         }
     }
 
-    fn move_creature(&self,
-                     able: &CombatAble,
-                     pt: Point3)
-                     -> Result<(App, Vec<AppLog>), GameError> {
-        let (next, logs) = able.move_creature(pt)?;
+    fn move_creature(&self, combat: &Combat, pt: Point3) -> Result<(App, Vec<AppLog>), GameError> {
+        let movement = combat.get_movement()?;
+        let (next, logs) = movement.move_creature(pt)?;
         Ok((App { current_combat: Some(next), ..self.clone() }, combat_logs_into_app_logs(logs)))
     }
 
     fn act(&self,
-           able: &CombatAble,
+           combat: &Combat,
            abid: AbilityID,
            target: DecidedTarget)
            -> Result<(App, Vec<AppLog>), GameError> {
+        let able = combat.get_able()?;
         let ability = self.get_ability(&abid)?;
         // checking if the creature has this AbilityID is dumb here, it should probably be in
         // Creature, but Creature::act just takes &Ability not &AbilityID
@@ -119,10 +113,9 @@ impl App {
         }
     }
 
-    fn stop_combat(&self) -> (App, Vec<AppLog>) {
+    fn stop_combat(&self, combat: &Combat) -> (App, Vec<AppLog>) {
         let mut newapp = self.clone();
-        let comb = newapp.current_combat.unwrap();
-        for creature in comb.get_creatures() {
+        for creature in combat.get_creatures() {
             newapp.creatures.insert(creature.id(), creature.clone());
         }
         newapp.current_combat = None;
@@ -158,8 +151,12 @@ pub mod test {
     use creature::test::*;
     use self::test::Bencher;
 
-    pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
+    pub fn t_start_combat(app: &App, combatants: Vec<CreatureID>) -> App {
         app.perform_unchecked(AppCommand::StartCombat(combatants)).unwrap().0
+    }
+
+    pub fn t_app_act(app: &App, ability_id: &AbilityID, target: DecidedTarget) -> App {
+        app.perform_unchecked(AppCommand::Act(ability_id.clone(), target)).unwrap().0
     }
 
     pub fn t_app() -> App {
@@ -192,11 +189,11 @@ pub mod test {
             current_combat: None,
             creatures: creatures,
         };
-        let app = t_start_combat(app, vec![bob_id.clone()]);
+        let app = t_start_combat(&app, vec![bob_id.clone()]);
         let next = app.perform_unchecked(AppCommand::Act(punch_id.clone(),
                                                          DecidedTarget::Melee(bob_id.clone())));
         let next: App = next.expect("punch did not succeed").0;
-        let _: App = next.stop_combat().0;
+        let _: App = next.stop_combat(&next.current_combat.clone().unwrap()).0;
     }
 
 
@@ -218,7 +215,7 @@ pub mod test {
     #[test]
     fn stop_combat() {
         let app = t_app();
-        let app = t_start_combat(app, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+        let app = t_start_combat(&app, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
         let app =
             app.perform_unchecked(AppCommand::Act(abid("punch"),
                                                    DecidedTarget::Melee(cid("ranger"))))
@@ -236,6 +233,13 @@ pub mod test {
                    HP(7));
     }
 
+    #[test]
+    fn movement() {
+        let app = t_app();
+        let app = t_start_combat(&app, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+        app.perform_unchecked(AppCommand::Move((1, 0, 0))).unwrap();
+    }
+
     #[bench]
     fn three_char_infinite_combat(bencher: &mut Bencher) {
         let app = t_app();
@@ -245,14 +249,10 @@ pub mod test {
             .unwrap()
             .0;
         let iter = |app: &App| -> Result<App, GameError> {
-            let app = app.perform_unchecked(AppCommand::Act(abid("punch"),
-                                                   DecidedTarget::Melee(cid("ranger"))))?
-                .0;
+            let app = t_app_act(app, &abid("punch"), DecidedTarget::Melee(cid("ranger")));
             let app = app.perform_unchecked(AppCommand::Done)?.0;
             let app = app.perform_unchecked(AppCommand::Done)?.0;
-            let app = app.perform_unchecked(AppCommand::Act(abid("heal"),
-                                                   DecidedTarget::Range(cid("ranger"))))?
-                .0;
+            let app = t_app_act(&app, &abid("heal"), DecidedTarget::Range(cid("ranger")));
             let app = app.perform_unchecked(AppCommand::Done)?.0;
             Ok(app)
         };

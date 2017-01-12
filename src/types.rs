@@ -118,6 +118,9 @@ pub enum GameError {
     InvalidCreatureState,
     BuggyProgram(String),
     NotInCombat,
+    AlreadyInCombat,
+    CannotMove(CreatureID),
+    CannotAct(CreatureID),
 }
 
 impl fmt::Display for GameError {
