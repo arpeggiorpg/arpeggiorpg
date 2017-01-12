@@ -36,7 +36,7 @@ impl Combat {
         self.creatures.get_current()
     }
 
-    fn next_turn(&mut self) -> Combat {
+    pub fn next_turn(&self) -> Combat {
         let mut newgame = self.clone();
         newgame.creatures.next_circular();
         for creature in newgame.creatures.iter_mut() {
@@ -75,12 +75,6 @@ impl Combat {
             CombatCap::Incap(CombatIncap { combat: self })
         }
     }
-
-    /// End the current player's turn.
-    // I don't *think* there's every a state where this would be invalid...
-    pub fn done(&self) -> Combat {
-        self.clone().next_turn()
-    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -88,8 +82,8 @@ pub struct CombatIncap<'a> {
     pub combat: &'a Combat,
 }
 impl<'a> CombatIncap<'a> {
-    pub fn done(&self) -> Combat {
-        self.combat.done()
+    pub fn next_turn(&self) -> Combat {
+        self.combat.next_turn()
     }
 }
 
@@ -113,7 +107,8 @@ impl<'a> CombatAble<'a> {
                 }
             }
         }
-        Ok(newgame.next_turn())
+        Ok(newgame)
+
     }
 
     /// FIXME TODO: This needs to take into consideration movement budget and return a GameError
@@ -124,8 +119,8 @@ impl<'a> CombatAble<'a> {
         // Ok(new)
     }
 
-    pub fn done(&self) -> Combat {
-        self.combat.done()
+    pub fn next_turn(&self) -> Combat {
+        self.combat.next_turn()
     }
 
     fn resolve_targets(combat: &Combat,
@@ -164,7 +159,7 @@ impl<'a> CombatAble<'a> {
 /// A `CombatCap` must be pattern-matched to determine which operations we can perform on
 /// behalf of the current creature. Each variant contains a different wrapper of `Combat`, and each
 /// of those different types provide different methods for doing only what is possible. For
-/// example, `CombatCap::Incap` wraps `CombatIncap`, which only has a `done` method, since
+/// example, `CombatCap::Incap` wraps `CombatIncap`, which only has a `next_turn` method, since
 /// incapacitated creatures cannot act, whereas `CombatCap::Able(CombatAble)` allows use of
 /// the `act` method.
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -243,8 +238,9 @@ pub mod tests {
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {
             let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?;
-            let combat = combat.done();
+            let combat = combat.next_turn().next_turn();
             let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?;
+            let combat = combat.next_turn();
             Ok(combat)
         };
         bencher.iter(|| {

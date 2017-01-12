@@ -44,13 +44,13 @@ impl App {
                 match com.capability() {
                     CombatCap::Incap(_) => {
                         match cmd {
-                            AppCommand::Done => Ok(self.done()),
+                            AppCommand::Done => Ok(self.next_turn()),
                             _ => disallowed(cmd),
                         }
                     }
                     CombatCap::Able(able) => {
                         match cmd {
-                            AppCommand::Done => Ok(self.done()),
+                            AppCommand::Done => Ok(self.next_turn()),
                             AppCommand::Act(abid, dtarget) => self.act(&able, abid, dtarget),
                             AppCommand::Move(pt) => self.move_creature(&able, pt),
                             _ => disallowed(cmd),
@@ -93,15 +93,15 @@ impl App {
     }
 
     /// this panics if not in combat
-    fn done(&self) -> App {
+    fn next_turn(&self) -> App {
         let newcombat = match self.current_combat {
             Some(ref combat) => {
                 match combat.capability() {
-                    CombatCap::Incap(ref incap) => incap.done(),
-                    CombatCap::Able(ref able) => able.done(),
+                    CombatCap::Incap(ref incap) => incap.next_turn(),
+                    CombatCap::Able(ref able) => able.next_turn(),
                 }
             }
-            None => panic!("No current combat when running done"),
+            None => panic!("No current combat when running next_turn"),
         };
         App { current_combat: Some(newcombat), ..self.clone() }
     }
@@ -186,8 +186,10 @@ pub mod test {
             let app = app.perform_unchecked(AppCommand::Act(abid("punch"),
                                                    DecidedTarget::Melee(cid("ranger"))))?;
             let app = app.perform_unchecked(AppCommand::Done)?;
+            let app = app.perform_unchecked(AppCommand::Done)?;
             let app = app.perform_unchecked(AppCommand::Act(abid("heal"),
                                                    DecidedTarget::Range(cid("ranger"))))?;
+            let app = app.perform_unchecked(AppCommand::Done)?;
             Ok(app)
         };
         bencher.iter(|| {

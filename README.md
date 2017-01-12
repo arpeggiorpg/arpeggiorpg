@@ -119,6 +119,12 @@ finding myself in borrow-hell.
     involved which consumed all the other capabilities when you perform an
     action.
 
+How about you get a set of caps like Cap::MoveCap(MoveCap(Distance)) and
+Cap::ActionCap(ActionCap(num_actions: u8))
+
+MoveCap implements move(self, Point3) -> Result<MoveCap, GameError>. This way
+the original movement capability is consumed
+
 
 # Phone-and-Tablet Roleplaying Game
 
