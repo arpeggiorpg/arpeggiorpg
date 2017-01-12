@@ -16,6 +16,7 @@ use types::*;
 pub struct Creature {
     id: CreatureID,
     name: String,
+    speed: Distance,
     max_energy: Energy,
     cur_energy: Energy,
     abilities: Vec<AbilityStatus>,
@@ -37,6 +38,7 @@ impl Creature {
             cur_health: None,
             pos: None,
             conditions: vec![],
+            speed: None,
         }
     }
 
@@ -157,6 +159,10 @@ impl Creature {
     pub fn cur_health(&self) -> HP {
         self.cur_health
     }
+
+    pub fn speed(&self) -> Distance {
+        self.speed
+    }
 }
 
 pub struct CreatureBuilder {
@@ -169,6 +175,7 @@ pub struct CreatureBuilder {
     cur_health: Option<HP>,
     pos: Option<Point3>,
     conditions: Vec<AppliedCondition>,
+    speed: Option<Distance>,
 }
 
 impl CreatureBuilder {
@@ -177,6 +184,7 @@ impl CreatureBuilder {
             Some(Creature {
                 id: self.id.clone(),
                 name: self.name.unwrap_or(self.id.clone().0),
+                speed: self.speed.unwrap_or(Distance::new(10.0)),
                 max_energy: self.max_energy.unwrap_or(Energy(10)),
                 cur_energy: self.cur_energy.unwrap_or(Energy(10)),
                 abilities: self.abilities
@@ -223,6 +231,10 @@ impl CreatureBuilder {
     }
     pub fn conditions(mut self, conds: Vec<AppliedCondition>) -> Self {
         self.conditions = conds;
+        self
+    }
+    pub fn speed(mut self, s: Distance) -> Self {
+        self.speed = Some(s);
         self
     }
 }

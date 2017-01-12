@@ -46,7 +46,7 @@ pub fn abid(s: &str) -> AbilityID {
 }
 
 /// A type representing distance. The wrapped value is in centimeters, but should not normally be
-/// accessed.
+/// accessed. Note that distances cannot be negative.
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
          Serialize, Deserialize)]
 pub struct Distance(pub u32);
@@ -121,6 +121,13 @@ pub enum GameError {
     AlreadyInCombat,
     CannotMove(CreatureID),
     CannotAct(CreatureID),
+    NotFastEnough {
+        creature: CreatureID,
+        speed: Distance,
+        from: Point3,
+        to: Point3,
+        distance: Distance,
+    },
 }
 
 impl fmt::Display for GameError {

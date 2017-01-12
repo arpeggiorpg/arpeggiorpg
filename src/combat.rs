@@ -6,7 +6,7 @@ use nonempty;
 
 use creature::*;
 use types::*;
-use grid::creature_within_distance;
+use grid::{creature_within_distance, point3_distance};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -22,12 +22,18 @@ pub struct Combat {
     // A simpler way to share these references would probably be to store a Vec<Creature> on App,
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
+    movement_used: Distance,
 }
 
 impl Combat {
     pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
         nonempty::NonEmptyWithCursor::from_vec(combatants)
-            .map(|ne| Combat { creatures: ne })
+            .map(|ne| {
+                Combat {
+                    creatures: ne,
+                    movement_used: Distance::new(0.0),
+                }
+            })
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
@@ -88,7 +94,10 @@ impl Combat {
         }
     }
     pub fn get_movement(&self) -> Result<CombatMove, GameError> {
-        Ok(CombatMove { combat: self })
+        Ok(CombatMove {
+            combat: self,
+            movement_left: self.current_creature().speed() - self.movement_used,
+        })
     }
 }
 
@@ -104,20 +113,37 @@ impl<'a> CombatIncap<'a> {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatMove<'a> {
+    movement_left: Distance,
     pub combat: &'a Combat,
 }
 
 impl<'a> CombatMove<'a> {
+    pub fn movement_left(&self) -> Distance {
+        self.movement_left
+    }
     pub fn move_creature(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let mut new = self.combat.clone();
-        let logs = {
-            let mut c = new.current_creature_mut();
-            let (newc, logs) = c.set_pos(pt)?;
-            *c = newc;
-            logs
-        };
-        let cid = new.current_creature().id();
-        Ok((new, creature_logs_into_combat_logs(cid, logs)))
+        let c = self.combat.current_creature();
+        let distance = point3_distance(c.pos(), pt);
+        if distance > self.movement_left {
+            Err(GameError::NotFastEnough {
+                creature: c.id(),
+                speed: c.speed(),
+                distance: distance,
+                from: c.pos(),
+                to: pt,
+            })
+        } else {
+            let mut new = self.combat.clone();
+            new.movement_used = new.movement_used + distance;
+            let logs = {
+                let mut c = new.current_creature_mut();
+                let (newc, logs) = c.set_pos(pt)?;
+                *c = newc;
+                logs
+            };
+            let cid = new.current_creature().id();
+            Ok((new, creature_logs_into_combat_logs(cid, logs)))
+        }
     }
 }
 
@@ -257,6 +283,36 @@ pub mod tests {
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
+    }
+
+    #[test]
+    fn move_too_far() {
+        let combat = t_combat();
+        assert_eq!(combat.get_movement().unwrap().move_creature((11, 0, 0)),
+                   Err(GameError::NotFastEnough {
+                       creature: cid("rogue"),
+                       speed: Distance::new(10.0),
+                       distance: Distance::new(11.0),
+                       from: (0, 0, 0),
+                       to: (11, 0, 0),
+                   }))
+    }
+
+    #[test]
+    fn move_some_at_a_time() {
+        let combat = t_combat();
+        let combat = combat.get_movement().unwrap().move_creature((5, 0, 0)).unwrap().0;
+        assert_eq!(combat.current_creature().pos(), (5, 0, 0));
+        let combat = combat.get_movement().unwrap().move_creature((10, 0, 0)).unwrap().0;
+        assert_eq!(combat.current_creature().pos(), (10, 0, 0));
+        assert_eq!(combat.get_movement().unwrap().move_creature((11, 0, 0)),
+                   Err(GameError::NotFastEnough {
+                       creature: cid("rogue"),
+                       speed: Distance::new(10.0),
+                       distance: Distance::new(1.0),
+                       from: (10, 0, 0),
+                       to: (11, 0, 0),
+                   }))
     }
 
     #[bench]

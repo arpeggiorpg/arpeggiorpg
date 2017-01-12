@@ -18,7 +18,7 @@ use creature::*;
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn point3_distance(pos1: Point3, pos2: Point3) -> Distance {
+pub fn point3_distance(pos1: Point3, pos2: Point3) -> Distance {
     let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
     let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
                                 na::zero());
