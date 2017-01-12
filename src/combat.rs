@@ -76,6 +76,10 @@ impl Combat {
         self.creatures.iter_mut().find(|c| c.id() == cid)
     }
 
+    pub fn get_creatures(&self) -> Vec<&Creature> {
+        self.creatures.iter().collect()
+    }
+
     pub fn capability(&self) -> CombatCap {
         if self.current_creature().can_act() {
             CombatCap::Able(CombatAble { combat: self })

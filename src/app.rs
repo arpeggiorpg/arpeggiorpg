@@ -51,6 +51,7 @@ impl App {
                     }
                     CombatCap::Able(able) => {
                         match cmd {
+                            AppCommand::StopCombat => Ok(self.stop_combat()),
                             AppCommand::Done => self.next_turn(&com),
                             AppCommand::Act(abid, dtarget) => self.act(&able, abid, dtarget),
                             AppCommand::Move(pt) => self.move_creature(&able, pt),
@@ -62,7 +63,10 @@ impl App {
         }?;
         // Design challenge: figure out a way to make this assertion unnecessary or at least less
         // necessary.
-        debug_assert!(newapp == self.apply_logs(logs.clone())?);
+        debug_assert!(newapp == self.apply_logs(logs.clone())?,
+                      "newapp = {:?}, logapp = {:?}",
+                      newapp,
+                      self.apply_logs(logs.clone())?);
         Ok((newapp, logs))
     }
 
@@ -116,9 +120,11 @@ impl App {
     }
 
     fn stop_combat(&self) -> (App, Vec<AppLog>) {
-        // TODO: Either copy all the creatures out of current_combat and back into self.creatures,
-        // or ... something else.
         let mut newapp = self.clone();
+        let comb = newapp.current_combat.unwrap();
+        for creature in comb.get_creatures() {
+            newapp.creatures.insert(creature.id(), creature.clone());
+        }
         newapp.current_combat = None;
         (newapp, vec![AppLog::StopCombat])
     }
@@ -153,7 +159,19 @@ pub mod test {
     use self::test::Bencher;
 
     pub fn t_start_combat<'a>(app: App, combatants: Vec<CreatureID>) -> App {
-        app.start_combat(combatants).unwrap().0
+        app.perform_unchecked(AppCommand::StartCombat(combatants)).unwrap().0
+    }
+
+    pub fn t_app() -> App {
+        let punch = t_punch();
+        let heal = t_heal();
+        let mut app = App::new();
+        app.creatures.insert(cid("rogue"), t_rogue("rogue"));
+        app.creatures.insert(cid("ranger"), t_ranger("ranger"));
+        app.creatures.insert(cid("cleric"), t_cleric("cleric"));
+        app.abilities.insert(abid("punch"), punch);
+        app.abilities.insert(abid("heal"), heal);
+        app
     }
 
     #[test]
@@ -186,27 +204,41 @@ pub mod test {
     fn start_combat_not_found() {
         let app = App::new();
         let non = cid("nonexistent");
-        assert_eq!(app.start_combat(vec![non.clone()]),
+        assert_eq!(app.perform_unchecked(AppCommand::StartCombat(vec![non.clone()])),
                    Err(GameError::CreatureNotFound(non)));
     }
 
     #[test]
     fn combat_must_have_creatures() {
         let app = App::new();
-        assert_eq!(app.start_combat(vec![]),
+        assert_eq!(app.perform_unchecked(AppCommand::StartCombat(vec![])),
                    Err(GameError::CombatMustHaveCreatures));
+    }
+
+    #[test]
+    fn stop_combat() {
+        let app = t_app();
+        let app = t_start_combat(app, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+        let app =
+            app.perform_unchecked(AppCommand::Act(abid("punch"),
+                                                   DecidedTarget::Melee(cid("ranger"))))
+                .unwrap()
+                .0;
+        assert_eq!(app.clone()
+                       .current_combat
+                       .unwrap()
+                       .get_creature(cid("ranger"))
+                       .unwrap()
+                       .cur_health(),
+                   HP(7));
+        let app = app.perform_unchecked(AppCommand::StopCombat).unwrap().0;
+        assert_eq!(app.get_creature(&cid("ranger")).unwrap().cur_health(),
+                   HP(7));
     }
 
     #[bench]
     fn three_char_infinite_combat(bencher: &mut Bencher) {
-        let punch = t_punch();
-        let heal = t_heal();
-        let mut app = App::new();
-        app.creatures.insert(cid("rogue"), t_rogue("rogue"));
-        app.creatures.insert(cid("ranger"), t_ranger("ranger"));
-        app.creatures.insert(cid("cleric"), t_cleric("cleric"));
-        app.abilities.insert(abid("punch"), punch);
-        app.abilities.insert(abid("heal"), heal);
+        let app = t_app();
         let mut app = app.perform_unchecked(AppCommand::StartCombat(vec![cid("rogue"),
                                                             cid("ranger"),
                                                             cid("cleric")]))

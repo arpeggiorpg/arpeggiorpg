@@ -153,6 +153,10 @@ impl Creature {
     pub fn id(&self) -> CreatureID {
         self.id.clone()
     }
+
+    pub fn cur_health(&self) -> HP {
+        self.cur_health
+    }
 }
 
 pub struct CreatureBuilder {
