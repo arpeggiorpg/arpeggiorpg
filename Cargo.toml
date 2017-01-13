@@ -15,4 +15,8 @@ odds = "0.2.25"
 nalgebra = "0.9.0"
 ncollide = "0.10.0"
 derive_more = "0.4.0"
-string-wrapper = { version = "0.1.5", path = "../rust-std-candidates/string-wrapper"}
+
+[dependencies.string-wrapper]
+version = "0.1.5"
+git = "https://github.com/radix/rust-std-candidates.git"
+branch="eq-ord"

@@ -1,4 +1,3 @@
-#![feature(proc_macro)]
 #![deny(missing_docs)]
 //! A non-empty vector with a cursor.
 
