@@ -17,8 +17,10 @@ impl SmallString {
         SmallString(s)
     }
 
+    /// Convert a SmallString to a String.
     pub fn to_string(&self) -> String {
-        String::from_utf8(self.0.buffer().to_vec()).unwrap()
+        // This *shouldn't* panic since we ensure SmallStrings are only created from Strings.
+        self.0.to_string()
     }
 }
 
