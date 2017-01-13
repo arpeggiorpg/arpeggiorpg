@@ -24,6 +24,7 @@ impl App {
     }
 
     pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
+        // maybe this should just return &Ability?
         Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
     }
 
@@ -33,8 +34,7 @@ impl App {
             Err(GameError::InvalidCommand(cmd))
         }
 
-        // Is there a way I can get rid of this clone()
-        let (newapp, logs) = match self.current_combat.clone() {
+        let (newapp, logs) = match self.current_combat.as_ref() {
             None => {
                 match cmd {
                     AppCommand::StartCombat(cids) => self.start_combat(cids),
@@ -73,7 +73,7 @@ impl App {
             AppLog::CombatLog(ref cl) => {
                 Ok(App {
                     current_combat: Some(self.current_combat
-                        .clone()
+                        .as_ref()
                         .ok_or(GameError::NotInCombat)?
                         .apply_log(cl)?),
                     ..self.clone()
@@ -82,7 +82,7 @@ impl App {
             AppLog::StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
             AppLog::StopCombat => {
                 self.current_combat
-                    .clone()
+                    .as_ref()
                     .map(|c| self.stop_combat(&c).0)
                     .ok_or(GameError::NotInCombat)
             }
@@ -127,7 +127,6 @@ impl App {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(App, Vec<AppLog>), GameError> {
-        // I don't know why I need to current_combat.clone()
         let (newcombat, logs) = combat.next_turn()?;
         Ok((App { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_app_logs(logs)))
@@ -193,7 +192,7 @@ pub mod test {
         let next = app.perform_unchecked(AppCommand::Act(punch_id.clone(),
                                                          DecidedTarget::Melee(bob_id.clone())));
         let next: App = next.expect("punch did not succeed").0;
-        let _: App = next.stop_combat(&next.current_combat.clone().unwrap()).0;
+        let _: App = next.stop_combat(&next.current_combat.as_ref().unwrap()).0;
     }
 
 
@@ -221,8 +220,8 @@ pub mod test {
                                                    DecidedTarget::Melee(cid("ranger"))))
                 .unwrap()
                 .0;
-        assert_eq!(app.clone()
-                       .current_combat
+        assert_eq!(app.current_combat
+                       .as_ref()
                        .unwrap()
                        .get_creature(&cid("ranger"))
                        .unwrap()
