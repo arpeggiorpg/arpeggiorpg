@@ -109,7 +109,7 @@ impl App {
             Ok((App { current_combat: Some(next), ..self.clone() },
                 combat_logs_into_app_logs(logs)))
         } else {
-            Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid.clone()))
+            Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid))
         }
     }
 
@@ -122,8 +122,8 @@ impl App {
         (newapp, vec![AppLog::StopCombat])
     }
 
-    pub fn get_creature(&self, cid: &CreatureID) -> Result<&Creature, GameError> {
-        self.creatures.get(cid).ok_or(GameError::CreatureNotFound(cid.clone()))
+    pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
+        self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid))
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(App, Vec<AppLog>), GameError> {
@@ -134,7 +134,7 @@ impl App {
 
     fn start_combat(&self, cids: Vec<CreatureID>) -> Result<(App, Vec<AppLog>), GameError> {
         let combatants: Vec<Creature> = cids.iter()
-            .map(|cid| self.get_creature(cid).map(Clone::clone))
+            .map(|cid| self.get_creature(*cid).map(Clone::clone))
             .collect::<Result<_, GameError>>()?;
         Ok((App { current_combat: Some(Combat::new(combatants)?), ..self.clone() },
             vec![AppLog::StartCombat(cids)]))
@@ -154,8 +154,8 @@ pub mod test {
         app.perform_unchecked(AppCommand::StartCombat(combatants)).unwrap().0
     }
 
-    pub fn t_app_act(app: &App, ability_id: &AbilityID, target: DecidedTarget) -> App {
-        app.perform_unchecked(AppCommand::Act(ability_id.clone(), target)).unwrap().0
+    pub fn t_app_act(app: &App, ability_id: AbilityID, target: DecidedTarget) -> App {
+        app.perform_unchecked(AppCommand::Act(ability_id, target)).unwrap().0
     }
 
     pub fn t_app() -> App {
@@ -180,7 +180,7 @@ pub mod test {
             .abilities(vec![punch_id.clone()])
             .build()
             .unwrap();
-        creatures.insert(bob_id.clone(), creature);
+        creatures.insert(bob_id, creature);
         let mut abilities = HashMap::new();
         abilities.insert(punch_id.clone(), punch);
         let app = App {
@@ -188,9 +188,9 @@ pub mod test {
             current_combat: None,
             creatures: creatures,
         };
-        let app = t_start_combat(&app, vec![bob_id.clone()]);
-        let next = app.perform_unchecked(AppCommand::Act(punch_id.clone(),
-                                                         DecidedTarget::Melee(bob_id.clone())));
+        let app = t_start_combat(&app, vec![bob_id]);
+        let next = app.perform_unchecked(AppCommand::Act(punch_id,
+                                                         DecidedTarget::Melee(bob_id)));
         let next: App = next.expect("punch did not succeed").0;
         let _: App = next.stop_combat(&next.current_combat.as_ref().unwrap()).0;
     }
@@ -200,7 +200,7 @@ pub mod test {
     fn start_combat_not_found() {
         let app = App::new();
         let non = cid("nonexistent");
-        assert_eq!(app.perform_unchecked(AppCommand::StartCombat(vec![non.clone()])),
+        assert_eq!(app.perform_unchecked(AppCommand::StartCombat(vec![non])),
                    Err(GameError::CreatureNotFound(non)));
     }
 
@@ -223,12 +223,12 @@ pub mod test {
         assert_eq!(app.current_combat
                        .as_ref()
                        .unwrap()
-                       .get_creature(&cid("ranger"))
+                       .get_creature(cid("ranger"))
                        .unwrap()
                        .cur_health(),
                    HP(7));
         let app = app.perform_unchecked(AppCommand::StopCombat).unwrap().0;
-        assert_eq!(app.get_creature(&cid("ranger")).unwrap().cur_health(),
+        assert_eq!(app.get_creature(cid("ranger")).unwrap().cur_health(),
                    HP(7));
     }
 
@@ -248,10 +248,10 @@ pub mod test {
             .unwrap()
             .0;
         let iter = |app: &App| -> Result<App, GameError> {
-            let app = t_app_act(app, &abid("punch"), DecidedTarget::Melee(cid("ranger")));
+            let app = t_app_act(app, abid("punch"), DecidedTarget::Melee(cid("ranger")));
             let app = app.perform_unchecked(AppCommand::Done)?.0;
             let app = app.perform_unchecked(AppCommand::Done)?.0;
-            let app = t_app_act(&app, &abid("heal"), DecidedTarget::Range(cid("ranger")));
+            let app = t_app_act(&app, abid("heal"), DecidedTarget::Range(cid("ranger")));
             let app = app.perform_unchecked(AppCommand::Done)?.0;
             Ok(app)
         };

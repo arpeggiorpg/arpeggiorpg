@@ -29,7 +29,7 @@ pub struct Creature {
 impl Creature {
     pub fn build(id: &str) -> CreatureBuilder {
         CreatureBuilder {
-            id: CreatureID(id.to_string()),
+            id: CreatureID::new(id),
             name: None,
             max_energy: None,
             cur_energy: None,
@@ -153,7 +153,7 @@ impl Creature {
         self.pos
     }
     pub fn id(&self) -> CreatureID {
-        self.id.clone()
+        self.id
     }
 
     pub fn cur_health(&self) -> HP {
@@ -182,16 +182,16 @@ impl CreatureBuilder {
     pub fn build(self) -> Option<Creature> {
         if conditions_able(&self.conditions) {
             Some(Creature {
-                id: self.id.clone(),
-                name: self.name.unwrap_or(self.id.clone().0),
+                id: self.id,
+                name: self.name.unwrap_or(self.id.to_string()),
                 speed: self.speed.unwrap_or(Distance::new(10.0)),
                 max_energy: self.max_energy.unwrap_or(Energy(10)),
                 cur_energy: self.cur_energy.unwrap_or(Energy(10)),
                 abilities: self.abilities
-                    .iter()
+                    .into_iter()
                     .map(|ab| {
                         AbilityStatus {
-                            ability_id: ab.clone(),
+                            ability_id: ab,
                             cooldown: 0,
                         }
                     })

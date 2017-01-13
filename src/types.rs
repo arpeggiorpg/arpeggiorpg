@@ -1,6 +1,7 @@
 //! Simple types, with pure operations.
 use std::error::Error;
 use std::fmt;
+use smallstring::SmallString;
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
@@ -30,19 +31,36 @@ impl Energy {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct CreatureID(pub String);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct CreatureID(SmallString);
+impl CreatureID {
+    pub fn new(s: &str) -> Self {
+        CreatureID(SmallString::new(s))
+    }
+    pub fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 #[cfg(test)]
 pub fn cid(s: &str) -> CreatureID {
-    CreatureID(s.to_string())
+    CreatureID::new(s)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct AbilityID(pub String);
+pub struct AbilityID(SmallString);
+impl AbilityID {
+    pub fn new(s: &str) -> Self {
+        AbilityID(SmallString::new(s))
+    }
+    pub fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
 
 #[cfg(test)]
 pub fn abid(s: &str) -> AbilityID {
-    AbilityID(s.to_string())
+    AbilityID::new(s)
 }
 
 /// A type representing distance. The wrapped value is in centimeters, but should not normally be

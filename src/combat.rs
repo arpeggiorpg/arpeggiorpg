@@ -46,7 +46,7 @@ impl Combat {
                 // want GM-overridden movement. OTOH that could just be
                 // CreatureLog::AssignPosition...
                 let (c_pos, c_id) = {
-                    let mut c = new.get_creature_mut(&cid)?;
+                    let mut c = new.get_creature_mut(*cid)?;
                     let c_pos = c.pos();
                     *c = c.apply_log(&CreatureLog::MoveCreature(*pt))?;
                     (c_pos, c.id())
@@ -57,7 +57,7 @@ impl Combat {
                 }
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
-                let mut c = new.get_creature_mut(&cid)?;
+                let mut c = new.get_creature_mut(*cid)?;
                 *c = c.apply_log(cl)?;
             }
             CombatLog::EndTurn(ref cid) => {
@@ -89,18 +89,18 @@ impl Combat {
         Ok((newgame, all_logs))
     }
 
-    pub fn get_creature(&self, cid: &CreatureID) -> Result<&Creature, GameError> {
+    pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
         self.creatures
             .iter()
-            .find(|c| c.id() == *cid)
-            .ok_or(GameError::CreatureNotFound(cid.clone()))
+            .find(|c| c.id() == cid)
+            .ok_or(GameError::CreatureNotFound(cid))
     }
 
-    pub fn get_creature_mut(&mut self, cid: &CreatureID) -> Result<&mut Creature, GameError> {
+    pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
         self.creatures
             .iter_mut()
-            .find(|c| c.id() == *cid)
-            .ok_or(GameError::CreatureNotFound(cid.clone()))
+            .find(|c| c.id() == cid)
+            .ok_or(GameError::CreatureNotFound(cid))
     }
 
     pub fn get_creatures(&self) -> Vec<&Creature> {
@@ -187,7 +187,7 @@ impl<'a> CombatAble<'a> {
             let mut targets = Self::resolve_targets(&newgame, ability.target, target)?;
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
-                    let mut creature = newgame.get_creature_mut(&creature_id)?;
+                    let mut creature = newgame.get_creature_mut(creature_id)?;
                     let (newcreat, logs) = creature.apply_effect(effect)?;
                     *creature = newcreat;
                     all_logs.extend(creature_logs_into_combat_logs(creature_id, logs));
@@ -207,7 +207,7 @@ impl<'a> CombatAble<'a> {
                        -> Result<Vec<CreatureID>, GameError> {
         match (target, decision) {
             (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
-                let target_creature = combat.get_creature(&cid)?;
+                let target_creature = combat.get_creature(cid)?;
                 if creature_within_distance(combat.creatures.get_current(),
                                             target_creature,
                                             MELEE_RANGE) {
@@ -217,7 +217,7 @@ impl<'a> CombatAble<'a> {
                 }
             }
             (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
-                let target_creature = combat.get_creature(&cid)?;
+                let target_creature = combat.get_creature(cid)?;
                 if creature_within_distance(combat.creatures.get_current(), target_creature, max) {
                     Ok(vec![cid])
                 } else {
@@ -262,7 +262,7 @@ pub mod tests {
         let mut combat = t_combat();
         let melee = t_punch();
         {
-            let mut creature = combat.get_creature_mut(&cid("ranger")).unwrap();
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((2, 0, 0)).unwrap().0;
         }
         assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
@@ -275,7 +275,7 @@ pub mod tests {
         let mut combat = t_combat();
         let range_ab = t_shoot();
         {
-            let mut creature = combat.get_creature_mut(&cid("ranger")).unwrap();
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 0, 0)).unwrap().0;
         }
         let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().0;
@@ -287,7 +287,7 @@ pub mod tests {
         let mut combat = t_combat();
         let shoot = t_shoot();
         {
-            let mut creature = combat.get_creature_mut(&cid("ranger")).unwrap();
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((6, 0, 0)).unwrap().0;
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
@@ -295,7 +295,7 @@ pub mod tests {
 
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
         {
-            let mut creature = combat.get_creature_mut(&cid("ranger")).unwrap();
+            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 3, 0)).unwrap().0;
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
