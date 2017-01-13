@@ -224,7 +224,7 @@ pub mod test {
         assert_eq!(app.clone()
                        .current_combat
                        .unwrap()
-                       .get_creature(cid("ranger"))
+                       .get_creature(&cid("ranger"))
                        .unwrap()
                        .cur_health(),
                    HP(7));
