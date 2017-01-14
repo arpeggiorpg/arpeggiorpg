@@ -32,7 +32,7 @@ impl Energy {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct CreatureID(StringWrapper<[u8; 32]>);
+pub struct CreatureID(StringWrapper<[u8; 64]>);
 impl CreatureID {
     pub fn new(s: &str) -> Self {
         CreatureID(StringWrapper::from_str(s))
@@ -48,7 +48,7 @@ pub fn cid(s: &str) -> CreatureID {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct AbilityID(StringWrapper<[u8; 32]>);
+pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
     pub fn new(s: &str) -> Self {
         AbilityID(StringWrapper::from_str(s))

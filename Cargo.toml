@@ -15,9 +15,4 @@ odds = "0.2.25"
 nalgebra = "0.9.0"
 ncollide = "0.10.0"
 derive_more = "0.4.0"
-
-[dependencies.string-wrapper]
-version = "0.1.6"
-git = "https://github.com/radix/string-wrapper"
-branch="serde"
-features = ["use_serde"]
+string-wrapper = {version = "0.1.6", features = ["use_serde"]}
