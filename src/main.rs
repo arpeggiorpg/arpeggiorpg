@@ -9,30 +9,22 @@ extern crate serde;
 extern crate odds;
 extern crate string_wrapper;
 
+#[cfg(test)]
+extern crate test;
+
 extern crate nonempty;
 
 use std::fs::File;
 use std::io::Read;
 
+pub mod game;
 pub mod app;
 pub mod combat;
 pub mod creature;
 pub mod grid;
 pub mod types;
 
-fn load_game() -> serde_yaml::Result<app::App> {
-    let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
-    let mut data = "".to_owned();
-    let _ = gamefile.read_to_string(&mut data);
-    serde_yaml::from_str(&data)
-}
 
 fn main() {
-    match load_game() {
-        Ok(app) => {
-            println!("{:?}", app);
-            println!("{}", serde_yaml::to_string(&app).unwrap());
-        }
-        Err(e) => println!("Sorry, error loading game file: {}", e),
-    }
+    println!("Sorry no game yet")
 }
