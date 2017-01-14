@@ -24,7 +24,13 @@ use types::*;
 // pending game state until vetted
 // editable logs
 // vetting creates a snapshot?
-// when editing a log it may invalidate later logs. you can edit it, but a big red "X" will appear where an error occurred later on.
+
+// When editing a log it may invalidate later logs. you can edit it, but a big red "X" will appear
+// where an error occurred later on. This will require some model for ephemeral, uncommitted game
+// modifications...
+// I *think* that will need to be stored in the model (though perhaps not on disk), since we
+// probably don't want to just accept a modify Game back from the client...
+// But maybe that's okay actually, we would only be sending it to the GM.
 
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
