@@ -1,0 +1,15 @@
+[package]
+name = "pandt"
+version = "0.1.0"
+authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
+
+[dependencies]
+serde = "0.8"
+serde_derive = "0.8"
+nonempty = {version = "*", path = "../nonempty", features = ["use_serde"]}
+serde_yaml = "0.5"
+odds = "0.2.25"
+nalgebra = "0.9.0"
+ncollide = "0.10.0"
+derive_more = "0.4.0"
+string-wrapper = {version = "0.1.6", features = ["use_serde"]}
