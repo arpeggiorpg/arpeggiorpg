@@ -3,9 +3,6 @@ name = "pandt"
 version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
-[[bin]]
-name = "pandt-cli"
-
 [dependencies]
 serde = "0.8"
 serde_derive = "0.8"

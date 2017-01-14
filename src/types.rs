@@ -100,7 +100,7 @@ pub enum CreatureLog {
     MoveCreature(Point3),
 }
 
-/// Rerpesentation of state changes in a Combat. See `CreatureLog`.
+/// Representation of state changes in a Combat. See `CreatureLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
     CreatureLog(CreatureID, CreatureLog),

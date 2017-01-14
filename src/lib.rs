@@ -14,17 +14,9 @@ extern crate test;
 
 extern crate nonempty;
 
-use std::fs::File;
-use std::io::Read;
-
 pub mod game;
 pub mod app;
 pub mod combat;
 pub mod creature;
 pub mod grid;
 pub mod types;
-
-
-fn main() {
-    println!("Sorry no game yet")
-}

@@ -24,6 +24,7 @@ use types::*;
 // pending game state until vetted
 // editable logs
 // vetting creates a snapshot?
+// when editing a log it may invalidate later logs. you can edit it, but a big red "X" will appear where an error occurred later on.
 
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -66,7 +67,7 @@ impl App {
     }
 }
 
-
+#[cfg(test)]
 mod test {
     use app::*;
     use test::Bencher;
