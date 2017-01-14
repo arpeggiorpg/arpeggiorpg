@@ -1,7 +1,7 @@
 //! Simple types, with pure operations.
 use std::error::Error;
 use std::fmt;
-use smallstring::SmallString;
+use string_wrapper::StringWrapper;
 
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
@@ -32,10 +32,10 @@ impl Energy {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct CreatureID(SmallString);
+pub struct CreatureID(StringWrapper<[u8; 32]>);
 impl CreatureID {
     pub fn new(s: &str) -> Self {
-        CreatureID(SmallString::new(s))
+        CreatureID(StringWrapper::from_str(s))
     }
     pub fn to_string(&self) -> String {
         self.0.to_string()
@@ -48,10 +48,10 @@ pub fn cid(s: &str) -> CreatureID {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct AbilityID(SmallString);
+pub struct AbilityID(StringWrapper<[u8; 32]>);
 impl AbilityID {
     pub fn new(s: &str) -> Self {
-        AbilityID(SmallString::new(s))
+        AbilityID(StringWrapper::from_str(s))
     }
     pub fn to_string(&self) -> String {
         self.0.to_string()
@@ -240,6 +240,8 @@ pub struct AbilityStatus {
 pub mod test {
     use types::*;
 
+    use serde_yaml;
+
     #[cfg(test)]
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
         AppliedCondition {
@@ -277,5 +279,11 @@ pub mod test {
             cost: Energy(0),
             effects: vec![Effect::Heal(HP(3))],
         }
+    }
+
+    #[test]
+    fn serde() {
+        let id = abid("foobar");
+        assert_eq!(serde_yaml::to_string(&id).unwrap(), "---\nfoobar");
     }
 }

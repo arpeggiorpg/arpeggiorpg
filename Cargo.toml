@@ -17,6 +17,7 @@ ncollide = "0.10.0"
 derive_more = "0.4.0"
 
 [dependencies.string-wrapper]
-version = "0.1.5"
-git = "https://github.com/radix/rust-std-candidates.git"
-branch="eq-ord"
+version = "0.1.6"
+git = "https://github.com/radix/string-wrapper"
+branch="serde"
+features = ["use_serde"]

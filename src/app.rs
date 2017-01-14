@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::VecDeque;
 
 use types::*;
 use creature::*;
@@ -8,6 +9,7 @@ use combat::*;
 /// whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App {
+    history: VecDeque<AppLog>,
     current_combat: Option<Combat>,
     abilities: HashMap<AbilityID, Ability>,
     creatures: HashMap<CreatureID, Creature>,
@@ -17,6 +19,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         App {
+            history: VecDeque::with_capacity(1000),
             abilities: HashMap::new(),
             current_combat: None,
             creatures: HashMap::new(),
@@ -34,7 +37,7 @@ impl App {
             Err(GameError::InvalidCommand(cmd))
         }
 
-        let (newapp, logs) = match self.current_combat.as_ref() {
+        let (mut newapp, logs) = match self.current_combat.as_ref() {
             None => {
                 match cmd {
                     AppCommand::StartCombat(cids) => self.start_combat(cids),
@@ -57,6 +60,10 @@ impl App {
                       "newapp = {:?}, logapp = {:?}",
                       newapp,
                       self.apply_logs(logs.clone())?);
+        newapp.history.extend(logs.clone());
+        while newapp.history.len() >= 1000 {
+            newapp.history.pop_front();
+        }
         Ok((newapp, logs))
     }
 
@@ -184,13 +191,13 @@ pub mod test {
         let mut abilities = HashMap::new();
         abilities.insert(punch_id.clone(), punch);
         let app = App {
+            history: VecDeque::new(),
             abilities: abilities,
             current_combat: None,
             creatures: creatures,
         };
         let app = t_start_combat(&app, vec![bob_id]);
-        let next = app.perform_unchecked(AppCommand::Act(punch_id,
-                                                         DecidedTarget::Melee(bob_id)));
+        let next = app.perform_unchecked(AppCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));
         let next: App = next.expect("punch did not succeed").0;
         let _: App = next.stop_combat(&next.current_combat.as_ref().unwrap()).0;
     }
@@ -228,8 +235,7 @@ pub mod test {
                        .cur_health(),
                    HP(7));
         let app = app.perform_unchecked(AppCommand::StopCombat).unwrap().0;
-        assert_eq!(app.get_creature(cid("ranger")).unwrap().cur_health(),
-                   HP(7));
+        assert_eq!(app.get_creature(cid("ranger")).unwrap().cur_health(), HP(7));
     }
 
     #[test]

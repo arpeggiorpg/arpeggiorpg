@@ -1,7 +1,6 @@
 #![deny(missing_docs)]
 //! A non-empty vector with a cursor.
 
-// use std::fmt;
 #[cfg(feature="use_serde")]
 #[macro_use]
 extern crate serde_derive;

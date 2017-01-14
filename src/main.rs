@@ -19,7 +19,6 @@ pub mod combat;
 pub mod creature;
 pub mod grid;
 pub mod types;
-pub mod smallstring;
 
 fn load_game() -> serde_yaml::Result<app::App> {
     let mut gamefile = File::open("game.yaml").expect("Couldn't find game.yaml");
