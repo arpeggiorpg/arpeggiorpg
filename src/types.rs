@@ -76,7 +76,7 @@ impl Distance {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum AppCommand {
+pub enum GameCommand {
     StartCombat(Vec<CreatureID>),
     StopCombat,
     Act(AbilityID, DecidedTarget),
@@ -112,20 +112,20 @@ pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> 
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum AppLog {
+pub enum GameLog {
     CombatLog(CombatLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
 }
 
-pub fn combat_logs_into_app_logs(ls: Vec<CombatLog>) -> Vec<AppLog> {
-    ls.into_iter().map(|l| AppLog::CombatLog(l)).collect()
+pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
+    ls.into_iter().map(|l| GameLog::CombatLog(l)).collect()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum GameError {
     ConditionNotFound(ConditionID),
-    InvalidCommand(AppCommand),
+    InvalidCommand(GameCommand),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
     CreatureLacksAbility(CreatureID, AbilityID),
