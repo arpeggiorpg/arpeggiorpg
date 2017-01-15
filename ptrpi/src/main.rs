@@ -5,7 +5,7 @@ extern crate serde_json;
 extern crate pandt;
 
 use std::env;
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 
 use futures::{finished, Stream, Future};
 
@@ -13,8 +13,10 @@ use hyper::{Get, Post, StatusCode};
 use hyper::header::ContentType;
 use hyper::server::{Server, Service, Request, Response};
 
+use pandt::types::GameCommand;
+
 #[derive(Clone)]
-struct PT(RefCell<pandt::app::App>);
+struct PT(Arc<Mutex<pandt::app::App>>);
 
 impl Service for PT {
     type Request = Request;
@@ -27,19 +29,41 @@ impl Service for PT {
             (&Get, Some("/")) => {
                 finished(Response::new()
                         .with_header(ContentType::json())
-                        .with_body(serde_json::to_string(&*self.0.borrow()).unwrap()))
+                        // TODO: is there a Future-based mutex yet? this .unwrap()
+                        // sux
+                        .with_body(serde_json::to_string(&*self.0.lock().unwrap()).unwrap()))
                     .boxed()
             }
             (&Post, Some("/")) => {
                 let body_stream = req.body();
-                Stream::collect(body_stream)
-                    .and_then(|chunks| {
+                // we need to clone here so that we don't move a &ref into the closure below, which
+                // causes havoc
+                let ARMUT = self.0.clone();
+                body_stream.collect()
+                    .and_then(move |chunks| {
                         let vecu8: Vec<u8> =
                             chunks.iter().flat_map(|c| c.as_ref().to_vec()).collect();
                         let json = String::from_utf8(vecu8);
                         match json {
-                            Ok(json) => finished(Response::new().with_body(json)),
-                            Err(_) => finished(Response::new().with_body("BAD JSON YALL")),
+                            Ok(json) => {
+                                let command: Result<GameCommand, _> = serde_json::from_str(&json);
+                                match command {
+                                    Ok(command) => {
+                                        // TODO: is there a Future-based mutex yet? this .unwrap()
+                                        // sux
+                                        ARMUT.lock().unwrap().perform_unchecked(command);
+                                        finished(Response::new()
+                                                .with_header(ContentType::json())
+                                                .with_body("OK GOT THE COMMAND"))
+                                            .boxed()
+                                    }
+                                    Err(_) => {
+                                        finished(Response::new().with_body("NOT A COMMAND YALL"))
+                                            .boxed()
+                                    }
+                                }
+                            }
+                            Err(_) => finished(Response::new().with_body("BAD JSON YALL")).boxed(),
                         }
                     })
                     .boxed()
@@ -55,7 +79,7 @@ fn main() {
         .parse()
         .unwrap();
     let app = pandt::app::App::new(pandt::game::Game::new());
-    let pt = PT(RefCell::new(app));
+    let pt = PT(Arc::new(Mutex::new(app)));
     let (listening, server) = Server::standalone(|tokio| {
             let pt = pt.clone();
             Server::http(&addr, tokio)
