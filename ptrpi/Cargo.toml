@@ -7,7 +7,7 @@ authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 serde = "0.8"
 serde_derive = "0.8"
 serde_json = "0.8"
-futures = "0.1.7"
+futures = "0.1.8"
 
 [dependencies.pandt]
 path = "../pandt"

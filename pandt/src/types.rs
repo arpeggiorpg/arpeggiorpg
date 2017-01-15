@@ -75,7 +75,7 @@ impl Distance {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
     StartCombat(Vec<CreatureID>),
     StopCombat,
@@ -122,7 +122,7 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
     ls.into_iter().map(|l| GameLog::CombatLog(l)).collect()
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
