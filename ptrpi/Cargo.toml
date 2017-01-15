@@ -1,0 +1,17 @@
+[package]
+name = "ptrpi"
+version = "0.1.0"
+authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
+
+[dependencies]
+serde = "0.8"
+serde_derive = "0.8"
+serde_json = "0.8"
+futures = "0.1.7"
+
+[dependencies.pandt]
+path = "../pandt"
+
+[dependencies.hyper]
+branch = "tokio"
+git = "https://github.com/hyperium/hyper"
