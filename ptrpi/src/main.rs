@@ -7,7 +7,7 @@ extern crate pandt;
 use std::env;
 use std::sync::{Arc, Mutex};
 
-use futures::{finished, Stream, Future};
+use futures::{finished, Stream, Future, BoxFuture};
 
 use hyper::{Get, Post, StatusCode};
 use hyper::header::ContentType;
@@ -22,54 +22,58 @@ impl Service for PT {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = futures::BoxFuture<Response, hyper::Error>;
+    type Future = BoxFuture<Response, hyper::Error>;
 
     fn call(&self, req: Request) -> Self::Future {
         match (req.method(), req.path()) {
-            (&Get, Some("/")) => {
-                finished(Response::new()
-                        .with_header(ContentType::json())
-                        // TODO: is there a Future-based mutex yet? this .unwrap()
-                        // sux
-                        .with_body(serde_json::to_string(&*self.0.lock().unwrap()).unwrap()))
-                    .boxed()
-            }
-            (&Post, Some("/")) => {
-                let body_stream = req.body();
-                // we need to clone here so that we don't move a &ref into the closure below, which
-                // causes havoc
-                let ARMUT = self.0.clone();
-                body_stream.collect()
-                    .and_then(move |chunks| {
-                        let vecu8: Vec<u8> =
-                            chunks.iter().flat_map(|c| c.as_ref().to_vec()).collect();
-                        let json = String::from_utf8(vecu8);
-                        match json {
-                            Ok(json) => {
-                                let command: Result<GameCommand, _> = serde_json::from_str(&json);
-                                match command {
-                                    Ok(command) => {
-                                        // TODO: is there a Future-based mutex yet? this .unwrap()
-                                        // sux
-                                        ARMUT.lock().unwrap().perform_unchecked(command);
-                                        finished(Response::new()
-                                                .with_header(ContentType::json())
-                                                .with_body("OK GOT THE COMMAND"))
-                                            .boxed()
-                                    }
-                                    Err(_) => {
-                                        finished(Response::new().with_body("NOT A COMMAND YALL"))
-                                            .boxed()
-                                    }
-                                }
-                            }
-                            Err(_) => finished(Response::new().with_body("BAD JSON YALL")).boxed(),
-                        }
-                    })
-                    .boxed()
-            }
+            (&Get, Some("/")) => self.get_app(),
+            (&Post, Some("/")) => self.post_app(req),
             _ => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
         }
+    }
+}
+
+impl PT {
+    fn get_app(&self) -> BoxFuture<Response, hyper::Error> {
+        finished(Response::new()
+                .with_header(ContentType::json())
+                // TODO: is there a Future-based mutex yet? this .unwrap()
+                // sux
+                .with_body(serde_json::to_string(&*self.0.lock().unwrap()).unwrap()))
+            .boxed()
+    }
+
+    fn post_app(&self, req: Request) -> BoxFuture<Response, hyper::Error> {
+        let body_stream = req.body();
+        // we need to clone here so that we don't move a &ref into the closure below, which
+        // causes havoc
+        let ARMUT = self.0.clone();
+        body_stream.collect()
+            .and_then(move |chunks| {
+                let vecu8: Vec<u8> = chunks.iter().flat_map(|c| c.as_ref().to_vec()).collect();
+                let json = String::from_utf8(vecu8);
+                match json {
+                    Ok(json) => {
+                        let command: Result<GameCommand, _> = serde_json::from_str(&json);
+                        match command {
+                            Ok(command) => {
+                                // TODO: is there a Future-based mutex yet? this .unwrap()
+                                // sux
+                                ARMUT.lock().unwrap().perform_unchecked(command);
+                                finished(Response::new()
+                                        .with_header(ContentType::json())
+                                        .with_body("OK GOT THE COMMAND"))
+                                    .boxed()
+                            }
+                            Err(_) => {
+                                finished(Response::new().with_body("NOT A COMMAND YALL")).boxed()
+                            }
+                        }
+                    }
+                    Err(_) => finished(Response::new().with_body("BAD JSON YALL")).boxed(),
+                }
+            })
+            .boxed()
     }
 }
 
