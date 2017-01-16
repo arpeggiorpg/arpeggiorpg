@@ -1,0 +1,8 @@
+{
+  "name": "ajax",
+  "private": true,
+  "dependencies": {
+    "purescript-affjax": "^3.0.0",
+    "purescript-halogen": "../../purescript-halogen#615bde109269124af0f01e8917c320a9f5193dcc"
+  }
+}
