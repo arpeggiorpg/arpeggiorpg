@@ -2,9 +2,10 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
+import Control.Monad.Aff (Aff, attempt)
 import Control.Monad.Eff (Eff)
 
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 
 import Halogen as H
@@ -74,8 +75,10 @@ eval = case _ of
   MakeRequest next -> do
     username <- H.gets _.username
     H.modify (_ { busy = true })
-    response <- H.liftAff $ AX.get ("https://api.github.com/users/" <> username)
-    H.modify (_ { busy = false, result = Just response.response })
+    response <- H.liftAff $ (attempt $ AX.get "/")
+    H.modify (_ { busy = false, result = Just (
+      case response of Left e -> show e
+                       Right a -> a.response) })
     pure next
 
 -- | The main UI component.
