@@ -33,23 +33,19 @@ impl Game {
             Err(GameError::InvalidCommand(cmd))
         }
 
-        let (newgame, logs) = match self.current_combat.as_ref() {
-            None => {
-                match cmd {
-                    GameCommand::StartCombat(cids) => self.start_combat(cids),
-                    _ => disallowed(cmd),
-                }
-            }
-            Some(com) => {
-                match cmd {
-                    GameCommand::StopCombat => Ok(self.stop_combat(&com)),
-                    GameCommand::Move(pt) => self.move_creature(&com, pt),
-                    GameCommand::Done => self.next_turn(&com),
-                    GameCommand::Act(abid, dtarget) => self.act(&com, abid, dtarget),
-                    _ => disallowed(cmd),
-                }
-            }
+        use self::GameCommand::*;
+
+        let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
+            (GameCommand::CreateCreature(c), _) => self.add_creature(c),
+            (StartCombat(cids), None) => self.start_combat(cids),
+            (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
+            (Move(pt), Some(com)) => self.move_creature(&com, pt),
+            (Done, Some(com)) => self.next_turn(&com),
+            (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
+
+            _ => disallowed(cmd),
         }?;
+
         // Design challenge: figure out a way to make this assertion unnecessary or at least less
         // necessary.
         debug_assert!(newgame == self.apply_logs(logs.clone())?,
@@ -58,6 +54,17 @@ impl Game {
                       self.apply_logs(logs.clone())?);
         Ok((newgame, logs))
     }
+
+    fn add_creature(&self, creature: Creature) -> Result<(Game, Vec<GameLog>), GameError> {
+        let mut newgame = self.clone();
+        if newgame.creatures.contains_key(&creature.id()) {
+            Err(GameError::CreatureAlreadyExists(creature.id()))
+        } else {
+            newgame.creatures.insert(creature.id(), creature.clone());
+            Ok((newgame, vec![GameLog::AddCreature(creature)]))
+        }
+    }
+
 
     fn apply_logs(&self, logs: Vec<GameLog>) -> Result<Game, GameError> {
         let mut newgame = self.clone();
@@ -69,6 +76,7 @@ impl Game {
 
     pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
         match *log {
+            GameLog::AddCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
             GameLog::CombatLog(ref cl) => {
                 Ok(Game {
                     current_combat: Some(self.current_combat

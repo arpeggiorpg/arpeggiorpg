@@ -3,6 +3,8 @@ use std::error::Error;
 use std::fmt;
 use string_wrapper::StringWrapper;
 
+use creature::Creature;
+
 // aliases and newtypes
 pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
@@ -85,7 +87,7 @@ pub enum GameCommand {
     StopCombat,
     Act(AbilityID, DecidedTarget),
     Move(Point3),
-    //    CreateCreature(Creature),
+    CreateCreature(Creature),
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
     Done,
@@ -121,6 +123,7 @@ pub enum GameLog {
     CombatLog(CombatLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
+    AddCreature(Creature),
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
@@ -129,6 +132,7 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
+    CreatureAlreadyExists(CreatureID),
     CreatureIDTooLong(String),
     AbilityIDTooLong(String),
     ConditionNotFound(ConditionID),
