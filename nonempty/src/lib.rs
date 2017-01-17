@@ -199,11 +199,57 @@ impl<T> NonEmpty<T> {
         self.0.push(t)
     }
 
+    /// Remove a single element matching a predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nonempty::{NonEmpty, Error};
+    ///
+    /// let mut ne = NonEmpty::new_with_rest(1, vec![2]);
+    /// // Removing an existing element:
+    /// ne.remove(0).unwrap();
+    /// assert_eq!(ne, NonEmpty::new(2));
+    /// // Removing a non-existent element:
+    /// assert_eq!(ne.remove(1), Err(Error::OutOfBounds{index: 1, length: 1}));
+    /// // Removing the last element:
+    /// assert_eq!(ne.remove(0), Err(Error::RemoveLastElement));
+    ///
+    /// assert_eq!(ne, NonEmpty::new(2)); // The NonEmpty is unchanged
+    /// ```
+    pub fn remove(&mut self, idx: usize) -> Result<(), Error> {
+        if idx == 0 && self.len() == 1 {
+            Err(Error::RemoveLastElement)
+        } else if idx >= self.len() {
+            Err(Error::OutOfBounds {
+                index: idx,
+                length: self.len(),
+            })
+        } else {
+            self.0.remove(idx);
+            Ok(())
+        }
+    }
+
     /// Return the total length.
     #[inline]
     pub fn len(&self) -> usize {
         self.0.len()
     }
+}
+
+/// An Error that may be returned by some operations on NonEmpty.
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    /// Tried to access an element outside the bounds of the NonEmpty.
+    OutOfBounds {
+        /// The attempted index
+        index: usize,
+        /// The length of the NonEmpty
+        length: usize,
+    },
+    /// Tried to remove the last element of the NonEmpty.
+    RemoveLastElement,
 }
 
 
