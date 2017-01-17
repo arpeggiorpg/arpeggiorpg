@@ -88,6 +88,9 @@ pub enum GameCommand {
     Act(AbilityID, DecidedTarget),
     Move(Point3),
     CreateCreature(Creature),
+    RemoveCreature(CreatureID),
+    AddCreatureToCombat(CreatureID),
+    RemoveCreatureFromCombat(CreatureID),
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
     Done,
@@ -124,6 +127,9 @@ pub enum GameLog {
     StartCombat(Vec<CreatureID>),
     StopCombat,
     AddCreature(Creature),
+    RemoveCreature(CreatureID),
+    AddCreatureToCombat(CreatureID),
+    RemoveCreatureFromCombat(CreatureID),
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {

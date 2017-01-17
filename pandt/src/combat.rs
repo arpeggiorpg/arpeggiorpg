@@ -120,6 +120,23 @@ impl Combat {
             movement_left: self.current_creature().speed() - self.movement_used,
         })
     }
+
+    pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
+        let mut combat = self.clone();
+        let idx = combat.creatures
+            .iter()
+            .position(|c| c.id() == cid)
+            .ok_or(GameError::CreatureNotFound(cid))?;
+        match combat.creatures.remove(idx) {
+            Err(nonempty::Error::OutOfBounds { .. }) => {
+                Err(GameError::BuggyProgram("can't remove index THAT WE FOUND in \
+                                             remove_from_combat"
+                    .to_string()))
+            }
+            Err(nonempty::Error::RemoveLastElement) => Ok(None),
+            Ok(_) => Ok(Some(combat)),
+        }
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]

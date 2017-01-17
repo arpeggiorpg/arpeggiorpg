@@ -35,9 +35,12 @@ impl Game {
 
         use self::GameCommand::*;
         let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
-            (GameCommand::CreateCreature(c), _) => self.add_creature(c),
+            (CreateCreature(c), _) => self.add_creature(c),
+            (RemoveCreature(cid), _) => self.remove_creature(cid),
             (StartCombat(cids), None) => self.start_combat(cids),
             (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
+            (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
+            (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
             (Move(pt), Some(com)) => self.move_creature(&com, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
@@ -63,6 +66,36 @@ impl Game {
         }
     }
 
+    fn remove_creature(&self, cid: CreatureID) -> Result<(Game, Vec<GameLog>), GameError> {
+        let mut newgame = self.clone();
+        newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+        Ok((newgame, vec![GameLog::RemoveCreature(cid)]))
+    }
+
+    fn add_to_combat(&self,
+                     combat: &Combat,
+                     cid: CreatureID)
+                     -> Result<(Game, Vec<GameLog>), GameError> {
+        // TODO: this should probably take an initiative!
+        let mut newgame = self.clone();
+        let mut combat = combat.clone();
+        let creature =
+            newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+        combat.creatures.push(creature);
+        newgame.current_combat = Some(combat);
+        Ok((newgame, vec![GameLog::AddCreatureToCombat(cid)]))
+    }
+
+    /// Remove a creature from combat. If it's the last creature, the Combat will be ended.
+    fn remove_from_combat(&self,
+                          combat: &Combat,
+                          cid: CreatureID)
+                          -> Result<(Game, Vec<GameLog>), GameError> {
+        let mut newgame = self.clone();
+        let combat = combat.remove_from_combat(cid)?;
+        newgame.current_combat = combat;
+        Ok((newgame, vec![GameLog::RemoveCreatureFromCombat(cid)]))
+    }
 
     fn apply_logs(&self, logs: Vec<GameLog>) -> Result<Game, GameError> {
         let mut newgame = self.clone();
@@ -72,10 +105,20 @@ impl Game {
         Ok(newgame)
     }
 
+    pub fn maybe_combat(&self) -> Result<&Combat, GameError> {
+        self.current_combat.as_ref().ok_or(GameError::NotInCombat)
+    }
+
     pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
+        use self::GameLog::*;
         match *log {
-            GameLog::AddCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
-            GameLog::CombatLog(ref cl) => {
+            AddCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
+            RemoveCreature(cid) => Ok(self.remove_creature(cid)?.0),
+            AddCreatureToCombat(cid) => Ok(self.add_to_combat(self.maybe_combat()?, cid)?.0),
+            RemoveCreatureFromCombat(cid) => {
+                Ok(self.remove_from_combat(self.maybe_combat()?, cid)?.0)
+            }
+            CombatLog(ref cl) => {
                 Ok(Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
@@ -84,8 +127,8 @@ impl Game {
                     ..self.clone()
                 })
             }
-            GameLog::StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
-            GameLog::StopCombat => {
+            StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
+            StopCombat => {
                 self.current_combat
                     .as_ref()
                     .map(|c| self.stop_combat(&c).0)
