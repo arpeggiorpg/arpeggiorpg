@@ -136,6 +136,8 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
     ls.into_iter().map(|l| GameLog::CombatLog(l)).collect()
 }
 
+/// An error in P&T.
+// TODO: look into using error-chain which hopefully gives us a nice way to hierarchicalize this.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
     CreatureAlreadyExists(CreatureID),
@@ -233,6 +235,7 @@ pub enum Condition {
     AddDamageBuff(HP),
 }
 
+/// Serializes as either "Interminate" or {"Duration": 0}
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ConditionDuration {
     Interminate,
@@ -258,6 +261,7 @@ pub mod test {
     use types::*;
 
     use serde_yaml;
+    use serde_json;
 
     #[cfg(test)]
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
@@ -299,8 +303,16 @@ pub mod test {
     }
 
     #[test]
-    fn serde() {
+    fn serde_ids() {
         let id = abid("foobar");
         assert_eq!(serde_yaml::to_string(&id).unwrap(), "---\nfoobar");
+    }
+
+    #[test]
+    fn serde_condition_duration() {
+        let cd = ConditionDuration::Interminate;
+        assert_eq!(serde_json::to_string(&cd).unwrap(), "\"Interminate\"");
+        let cd = ConditionDuration::Duration(3);
+        assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Duration\":3}");
     }
 }

@@ -3,6 +3,9 @@ name = "pandt"
 version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
+[dev-dependencies]
+serde_json = "0.8"
+
 [dependencies]
 serde = "0.8"
 serde_derive = "0.8"

@@ -10,6 +10,9 @@ extern crate odds;
 extern crate string_wrapper;
 
 #[cfg(test)]
+extern crate serde_json;
+
+#[cfg(test)]
 extern crate test;
 
 extern crate nonempty;
