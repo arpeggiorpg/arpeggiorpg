@@ -4,3 +4,4 @@ node_modules
 output
 dist/main.js
 .psc-ide-port
+elm-stuff
