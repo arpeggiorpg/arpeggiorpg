@@ -34,7 +34,6 @@ impl Game {
         }
 
         use self::GameCommand::*;
-
         let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
             (GameCommand::CreateCreature(c), _) => self.add_creature(c),
             (StartCombat(cids), None) => self.start_combat(cids),
@@ -42,7 +41,6 @@ impl Game {
             (Move(pt), Some(com)) => self.move_creature(&com, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
-
             _ => disallowed(cmd),
         }?;
 
@@ -171,11 +169,14 @@ pub mod test {
         let punch = t_punch();
         let heal = t_heal();
         let mut game = Game::new();
-        game.creatures.insert(cid("rogue"), t_rogue("rogue"));
-        game.creatures.insert(cid("ranger"), t_ranger("ranger"));
-        game.creatures.insert(cid("cleric"), t_cleric("cleric"));
         game.abilities.insert(abid("punch"), punch);
         game.abilities.insert(abid("heal"), heal);
+
+        let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue("rogue"))).unwrap().0;
+        let game =
+            game.perform_unchecked(GameCommand::CreateCreature(t_ranger("ranger"))).unwrap().0;
+        let game =
+            game.perform_unchecked(GameCommand::CreateCreature(t_cleric("cleric"))).unwrap().0;
         game
     }
 
