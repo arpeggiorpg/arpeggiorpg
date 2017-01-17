@@ -10,6 +10,9 @@ extern crate serde;
 #[cfg(test)]
 extern crate serde_json;
 
+use std::error;
+use std::fmt;
+
 #[cfg(feature="use_serde")]
 use serde::{Deserialize, Deserializer};
 #[cfg(feature="use_serde")]
@@ -97,6 +100,42 @@ impl<T> NonEmptyWithCursor<T> {
     #[inline]
     pub fn get_cursor(&self) -> usize {
         self.cursor
+    }
+
+    /// Remove an element by index, adjusting the cursor so that it points at the same element.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nonempty::NonEmptyWithCursor;
+    /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
+    /// ne.remove(1).unwrap();
+    /// assert_eq!(ne.get_cursor(), 0); // No adjustment needed for cursor
+    /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(1, vec![3, 4]));
+    /// ```
+    ///
+    /// ```
+    /// use nonempty::NonEmptyWithCursor;
+    /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
+    /// ne.set_cursor(1);
+    /// ne.remove(0).unwrap();
+    /// assert_eq!(ne.get_cursor(), 0); // Cursor adjusted left
+    /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(2, vec![3, 4]));
+    /// ```
+    ///
+    /// ```
+    /// use nonempty::NonEmptyWithCursor;
+    /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
+    /// ne.set_cursor(1);
+    /// ne.remove(1).unwrap();
+    /// assert_eq!(ne.get_cursor(), 0); // Cursor remained the same, pointing at the next element
+    /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(1, vec![3, 4]));
+    /// ```
+    pub fn remove(&mut self, index: usize) -> Result<(), Error> {
+        if index <= self.cursor {
+            self.cursor -= 1;
+        }
+        self.data.remove(index)
     }
 
     // *** Pass-through methods
@@ -252,6 +291,17 @@ pub enum Error {
     RemoveLastElement,
 }
 
+impl fmt::Display for Error {
+    fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmter, "{}", format!("{:?}", self))
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        "A Game Error occurred"
+    }
+}
 
 // *** Deserializing NonEmptyWithCursor.
 // This is way more work than it should be. We just want to *validate* the data after parsing,
