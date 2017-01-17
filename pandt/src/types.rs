@@ -36,7 +36,7 @@ pub struct CreatureID(StringWrapper<[u8; 64]>);
 impl CreatureID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
-            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..31].to_string()))?;
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
         Ok(CreatureID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -54,7 +54,7 @@ pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
-            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..31].to_string()))?;
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
         Ok(AbilityID(sw))
     }
     pub fn to_string(&self) -> String {
