@@ -20,8 +20,6 @@ use pandt::types::GameCommand;
 #[derive(Clone)]
 struct PT {
     app: Arc<Mutex<pandt::app::App>>,
-    index: String,
-    javascript: String,
 }
 
 impl Service for PT {
@@ -36,8 +34,6 @@ impl Service for PT {
             (&Get, Some("/")) => self.get_app(),
             (&Post, Some("/")) => self.post_app(req),
             // lol no router or static file handler
-            (&Get, Some("/app/")) => self.serve_index(),
-            (&Get, Some("/app/main.js")) => self.serve_javascript(),
             _ => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
         }
     }
@@ -52,15 +48,6 @@ impl PT {
                 // sux
                 .with_body(serde_json::to_string(&*self.app.lock().unwrap()).unwrap()))
             .boxed()
-    }
-
-    fn serve_index(&self) -> BoxFuture<Response, hyper::Error> {
-        finished(Response::new().with_body(self.index.clone())).boxed()
-    }
-    fn serve_javascript(&self) -> BoxFuture<Response, hyper::Error> {
-        let result = finished(Response::new().with_body(self.javascript.clone())).boxed();
-        println!("Okay, I constructed the result.");
-        result
     }
 
     fn post_app(&self, req: Request) -> BoxFuture<Response, hyper::Error> {
@@ -98,29 +85,14 @@ impl PT {
     }
 }
 
-fn read_file(filename: &str) -> String {
-    let mut f = File::open(filename).unwrap();
-    let mut s = String::new();
-    f.read_to_string(&mut s).unwrap();
-    s
-}
-
 fn main() {
     let addr = format!("0.0.0.0:{}",
                        env::args().nth(1).unwrap_or(String::from("1337")))
         .parse()
         .unwrap();
 
-
-    let index = read_file("../ptui/dist/index.html");
-    let javascript = read_file("../ptui/dist/main.js");
-
     let app = pandt::app::App::new(pandt::game::Game::new());
-    let pt = PT {
-        app: Arc::new(Mutex::new(app)),
-        index: index,
-        javascript: javascript,
-    };
+    let pt = PT { app: Arc::new(Mutex::new(app)) };
     let (listening, server) = Server::standalone(|tokio| {
             let pt = pt.clone();
             Server::http(&addr, tokio)

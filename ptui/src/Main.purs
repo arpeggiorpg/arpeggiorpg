@@ -75,7 +75,7 @@ eval = case _ of
   MakeRequest next -> do
     username <- H.gets _.username
     H.modify (_ { busy = true })
-    response <- H.liftAff $ (attempt $ AX.get "/")
+    response <- H.liftAff $ (attempt $ AX.get "http://localhost:1337/")
     H.modify (_ { busy = false, result = Just (
       case response of Left e -> show e
                        Right a -> a.response) })
