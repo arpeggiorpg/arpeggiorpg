@@ -29,7 +29,7 @@ pub struct Creature {
 impl Creature {
     pub fn build(id: &str) -> CreatureBuilder {
         CreatureBuilder {
-            id: CreatureID::new(id),
+            id: id.to_string(),
             name: None,
             max_energy: None,
             cur_energy: None,
@@ -166,7 +166,7 @@ impl Creature {
 }
 
 pub struct CreatureBuilder {
-    id: CreatureID,
+    id: String,
     name: Option<String>,
     max_energy: Option<Energy>,
     cur_energy: Option<Energy>,
@@ -179,31 +179,28 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Option<Creature> {
-        if conditions_able(&self.conditions) {
-            Some(Creature {
-                id: self.id,
-                name: self.name.unwrap_or(self.id.to_string()),
-                speed: self.speed.unwrap_or(Distance::new(10.0)),
-                max_energy: self.max_energy.unwrap_or(Energy(10)),
-                cur_energy: self.cur_energy.unwrap_or(Energy(10)),
-                abilities: self.abilities
-                    .into_iter()
-                    .map(|ab| {
-                        AbilityStatus {
-                            ability_id: ab,
-                            cooldown: 0,
-                        }
-                    })
-                    .collect(),
-                max_health: self.max_health.unwrap_or(HP(10)),
-                cur_health: self.cur_health.unwrap_or(HP(10)),
-                pos: self.pos.unwrap_or((0, 0, 0)),
-                conditions: self.conditions,
-            })
-        } else {
-            None
-        }
+    pub fn build(self) -> Result<Creature, GameError> {
+        Ok(Creature {
+            id: CreatureID::new(&self.id)?,
+            name: self.name.unwrap_or(self.id.to_string()),
+            speed: self.speed.unwrap_or(Distance::new(10.0)),
+            max_energy: self.max_energy.unwrap_or(Energy(10)),
+            cur_energy: self.cur_energy.unwrap_or(Energy(10)),
+            abilities: self.abilities
+                .into_iter()
+                .map(|ab| {
+                    AbilityStatus {
+                        ability_id: ab,
+                        cooldown: 0,
+                    }
+                })
+                .collect(),
+            max_health: self.max_health.unwrap_or(HP(10)),
+            cur_health: self.cur_health.unwrap_or(HP(10)),
+            pos: self.pos.unwrap_or((0, 0, 0)),
+            conditions: self.conditions,
+        })
+
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);

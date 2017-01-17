@@ -34,8 +34,10 @@ impl Energy {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct CreatureID(StringWrapper<[u8; 64]>);
 impl CreatureID {
-    pub fn new(s: &str) -> Self {
-        CreatureID(StringWrapper::from_str(s))
+    pub fn new(s: &str) -> Result<Self, GameError> {
+        let sw =
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..31].to_string()))?;
+        Ok(CreatureID(sw))
     }
     pub fn to_string(&self) -> String {
         self.0.to_string()
@@ -44,14 +46,16 @@ impl CreatureID {
 
 #[cfg(test)]
 pub fn cid(s: &str) -> CreatureID {
-    CreatureID::new(s)
+    CreatureID::new(s).unwrap()
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
-    pub fn new(s: &str) -> Self {
-        AbilityID(StringWrapper::from_str(s))
+    pub fn new(s: &str) -> Result<Self, GameError> {
+        let sw =
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..31].to_string()))?;
+        Ok(AbilityID(sw))
     }
     pub fn to_string(&self) -> String {
         self.0.to_string()
@@ -60,7 +64,7 @@ impl AbilityID {
 
 #[cfg(test)]
 pub fn abid(s: &str) -> AbilityID {
-    AbilityID::new(s)
+    AbilityID::new(s).unwrap()
 }
 
 /// A type representing distance. The wrapped value is in centimeters, but should not normally be
@@ -81,6 +85,7 @@ pub enum GameCommand {
     StopCombat,
     Act(AbilityID, DecidedTarget),
     Move(Point3),
+    //    CreateCreature(Creature),
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
     Done,
@@ -124,6 +129,8 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
+    CreatureIDTooLong(String),
+    AbilityIDTooLong(String),
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
     NoAbility(AbilityID),
