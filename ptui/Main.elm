@@ -4,75 +4,48 @@
 
 module Main exposing (..)
 
-import Dict exposing (Dict(..))
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JSON
 
+import Model exposing (..)
 
 main =
     Html.program
-        { init = (Model Nothing, updateApp)
+        { init = (defaultModel, updateApp)
         , view = view
         , update = update
         , subscriptions = subscriptions
         }
 
-
-
--- MODEL
-type alias Model = { app : Maybe App }
-type alias App = { currentGame : Game }
-
-appDecoder = JSON.map App (JSON.field "current_game" gameDecoder)
-
-type alias Game =
-    { currentCombat : Maybe Combat
-    , abilities : Dict String Ability
-    }
-
-gameDecoder = JSON.map2 Game (JSON.field "current_combat" (JSON.maybe combatDecoder))
-                             (JSON.field "abilities" (JSON.dict abilityDecoder))
-
-type alias Combat =
-  { creatures: List Creature
-  , movementUsed: Int
-  }
-
-combatDecoder =
-  JSON.map2 Combat (JSON.field "creatures" (JSON.list creatureDecoder))
-                   (JSON.field "movement_used" JSON.int)
-
-type alias Creature =
-  { id: String
-  , name: String
-  }
-
-creatureDecoder =
-  JSON.map2 Creature (JSON.field "id" JSON.string)
-                     (JSON.field "name" JSON.string)
-
-type alias Ability = { name : String }
-
-
-abilityDecoder = JSON.map Ability (JSON.field "name" JSON.string)
-
-
-
-
 -- UPDATE
 type Msg
     = MorePlease
+    | PendingCreatureId String
+    | PendingCreatureName String
+    | CreateCreature
+    | PostComplete (Result Http.Error String)
     | AppUpdate (Result Http.Error App)
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         MorePlease -> ( model, updateApp  )
-        AppUpdate (Ok newApp) -> ( Model (Just newApp), Cmd.none )
-        AppUpdate (Err _) -> ( model, Cmd.none )
+        PendingCreatureId newId ->
+          let oldPC = model.pendingCreature
+          in ( { model | pendingCreature = {oldPC | id = Just newId } }
+          , Cmd.none )
+        PendingCreatureName newName ->
+          let oldPC = model.pendingCreature
+          in ( { model | pendingCreature = { oldPC | name = Just newName } }
+          , Cmd.none )
+        CreateCreature -> (model, createCreature model.pendingCreature)
+        PostComplete (Ok _) -> (model, updateApp)
+        PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
+        AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
+        AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
 
 
 -- VIEW
@@ -81,8 +54,15 @@ view model =
     div []
         [ h2 [] [ text "P&T" ]
         , button [ onClick MorePlease ] [ text "More Please!" ]
+        , div []
+          [ input [type_ "text", placeholder "id", onInput PendingCreatureId ] []
+          , input [type_ "text", placeholder "name", onInput PendingCreatureName ] []
+          , button [ onClick CreateCreature ] [ text "Create Creature!" ]
+          ]
         , br [] []
+        -- , button [ onClick CreateCreature ] [ text "Create Creature!" ]
         , div [] [ text (toString model.app)]
+        , div [] [text model.error]
         ]
 
 
@@ -94,5 +74,11 @@ subscriptions model = Sub.none
 -- HTTP
 updateApp : Cmd Msg
 updateApp =
-    let url = "http://localhost:1337"
+    let url = "http://localhost:1337/"
     in Http.send AppUpdate (Http.get url appDecoder)
+
+
+createCreature : PendingCreature -> Cmd Msg
+createCreature pc =
+  let url = "http://localhost:1337/"
+  in Http.send PostComplete (Http.post url Http.emptyBody JSON.string)

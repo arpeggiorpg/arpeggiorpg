@@ -396,6 +396,7 @@ dependencies = [
  "odds 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 0.8.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "string-wrapper 0.1.6 (git+https://github.com/radix/string-wrapper)",
 ]

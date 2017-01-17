@@ -5,3 +5,4 @@ output
 dist/main.js
 .psc-ide-port
 elm-stuff
+index.html
