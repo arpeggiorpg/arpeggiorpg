@@ -121,17 +121,14 @@ createCreature : M.Model -> M.PendingCreature -> (M.Model, Cmd Msg)
 createCreature model pc =
   case (M.finalizePending pc) of
     Nothing -> ({ model | error = "Fill out the stuff."}, Cmd.none)
-    Just creature ->
-      let createCreature = M.CreateCreature creature
-          body = M.gameCommandEncoder createCreature
-      in (model, Http.send PostComplete (Http.post url (Http.jsonBody body) JSON.string))
+    Just creature -> (model, sendCommand (M.CreateCreature creature))
 
 startCombat : M.Model -> Set.Set String -> (M.Model, Cmd Msg)
-startCombat model cids =
-  let body = M.gameCommandEncoder (M.StartCombat (Set.toList cids))
-  in (model, Http.send PostComplete (Http.post url (Http.jsonBody body) JSON.string))
+startCombat model cids = (model, sendCommand (M.StartCombat (Set.toList cids)))
 
 stopCombat : M.Model -> (M.Model, Cmd Msg)
-stopCombat model =
-  let body = M.gameCommandEncoder M.StopCombat
-  in (model, Http.send PostComplete (Http.post url (Http.jsonBody body) JSON.string))
+stopCombat model = (model, sendCommand M.StopCombat)
+
+sendCommand : M.GameCommand -> Cmd Msg
+sendCommand cmd =
+  Http.send PostComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JSON.string)

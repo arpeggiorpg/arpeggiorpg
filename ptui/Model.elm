@@ -233,11 +233,18 @@ type GameCommand
   -- StowInInventory(ThingID)
   | Done
 
+gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
     StartCombat cids -> JE.object [("StartCombat", JE.list (List.map JE.string cids))]
     CreateCreature creature -> JE.object [("CreateCreature", creatureEncoder creature)]
-    _ -> JE.string "undefined"
+    RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
+    StopCombat -> JE.string "StopCombat"
+    Move pt3 -> JE.object [("Move", point3Encoder pt3)]
+    AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
+    RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
+    Done -> JE.string "Done"
+
 
 -- pure functions on model
 
