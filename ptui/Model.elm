@@ -15,12 +15,17 @@ defaultModel =
     (PendingCreature Nothing Nothing Nothing Nothing Nothing [] Nothing Nothing Nothing [])
     Set.empty
     "No current error!"
+    (case (JD.decodeString JD.value "null") of
+      Ok(x) -> x
+      Err(_) -> Debug.crash "nope")
+
 
 type alias Model =
   { app : Maybe App
   , pendingCreature : PendingCreature
   , pendingCombatCreatures : Set.Set String
   , error: String
+  , lastResponse : JD.Value
   }
 
 type alias PendingCreature =

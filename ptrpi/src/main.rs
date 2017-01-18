@@ -78,17 +78,13 @@ impl PT {
                                 // TODO: is there a Future-based mutex yet? this .unwrap()
                                 // sux
                                 // TODO: Handle the Result from this function!
-                                {
-                                    let mut app = ARMUT.lock().unwrap();
-                                    let result = app.perform_unchecked(command);
-                                    println!("And here is the result of handling the command:\n \
-                                              {:?}",
-                                             result);
-                                }
+                                let mut app = ARMUT.lock().unwrap();
+                                let result = app.perform_unchecked(command).clone();
+                                println!("Command result:\n {:?}", result);
                                 finished(Response::new()
                                         .with_header(AccessControlAllowOrigin::Any)
                                         .with_header(ContentType::json())
-                                        .with_body("OK GOT THE COMMAND"))
+                                        .with_body(serde_json::to_string(&result).unwrap()))
                                     .boxed()
                             }
                             Err(e) => {

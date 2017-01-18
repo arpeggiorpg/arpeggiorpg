@@ -11,6 +11,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JSON
+import Json.Encode as JE
 import Set
 
 import Model as M
@@ -30,7 +31,7 @@ type Msg
     | PendingCreatureId String
     | PendingCreatureName String
     | PostCreateCreature
-    | PostComplete (Result Http.Error String)
+    | PostComplete (Result Http.Error JSON.Value)
     | AppUpdate (Result Http.Error M.App)
     | ShowError String
     | ToggleSelectedCreature String
@@ -52,7 +53,7 @@ update msg model =
         PostCreateCreature -> createCreature model model.pendingCreature
         PostStartCombat -> startCombat model model.pendingCombatCreatures
         PostStopCombat -> stopCombat model
-        PostComplete (Ok _) -> (model, updateApp)
+        PostComplete (Ok x) -> ( { model | lastResponse = x}, updateApp)
         PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
         AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
         AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
@@ -73,7 +74,8 @@ view model =
         , button [ onClick MorePlease ] [ text "More Please!" ]
         , case model.app of Just app -> viewApp app
                             Nothing -> div [] [text "No app yet. Maybe reload."]
-        , div [] [text model.error]
+        , div [] [text "Last error:", text model.error]
+        , div [] [text "Last Response:", text (JE.encode 4 model.lastResponse)]
         ]
 
 viewApp : M.App -> Html Msg
@@ -146,4 +148,4 @@ stopCombat model = (model, sendCommand M.StopCombat)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
-  Http.send PostComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JSON.string)
+  Http.send PostComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JSON.value)
