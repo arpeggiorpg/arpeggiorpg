@@ -86,7 +86,7 @@ viewApp app = div []
   , h3 [] [text "Creatures"]
   , div [] [ renderCreatures app.current_game.creatures ]
   , case app.current_game.current_combat of
-      Just combat -> renderStopCombat
+      Just combat -> div [] [renderStopCombat, renderCombat combat]
       Nothing -> renderStartCombat
   , div [] [ text (toString app)]
   ]
@@ -105,6 +105,21 @@ renderStopCombat : Html Msg
 renderStopCombat = button [onClick PostStopCombat] [text "Stop Combat"]
 renderStartCombat : Html Msg
 renderStartCombat = button [onClick PostStartCombat] [text "Start Combat"]
+
+renderCombat : M.Combat -> Html Msg
+renderCombat { creatures, movement_used } = div []
+  [ h3 [] [text "Combat!"]
+  , div [] [text "Current movement used:", text (toString movement_used)]
+  , div [] (List.map (renderCreatureInCombat creatures.cursor) (List.indexedMap (,) creatures.data))
+  ]
+
+renderCreatureInCombat : Int -> (Int, M.Creature) -> Html Msg
+renderCreatureInCombat cursor (idx, creature) = div []
+  [ div [] [text "Name: ", text creature.name]
+  , div [] [text "HP: ", text (toString creature.cur_health)]
+  , if cursor == idx then div [] [text "THIS M'S TURN!"]
+    else div [] []
+  ]
 
 -- SUBSCRIPTIONS
 subscriptions : M.Model -> Sub Msg

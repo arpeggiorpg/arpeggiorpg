@@ -59,7 +59,7 @@ gameDecoder =
 
 type alias Combat =
   { creatures: CursorList Creature
-  , movementUsed: Int
+  , movement_used: Int
   }
 
 combatDecoder : JD.Decoder Combat
