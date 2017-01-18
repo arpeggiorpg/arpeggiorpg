@@ -184,11 +184,14 @@ impl Game {
     }
 
     fn start_combat(&self, cids: Vec<CreatureID>) -> Result<(Game, Vec<GameLog>), GameError> {
-        let combatants: Vec<Creature> = cids.iter()
-            .map(|cid| self.get_creature(*cid).map(Clone::clone))
-            .collect::<Result<_, GameError>>()?;
-        Ok((Game { current_combat: Some(Combat::new(combatants)?), ..self.clone() },
-            vec![GameLog::StartCombat(cids)]))
+        let mut newgame = self.clone();
+        let mut creatures = vec![];
+        for cid in &cids {
+            let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
+            creatures.push(creature);
+        }
+        newgame.current_combat = Some(Combat::new(creatures)?);
+        Ok((newgame, vec![GameLog::StartCombat(cids)]))
     }
 }
 
@@ -261,6 +264,18 @@ pub mod test {
         let game = Game::new();
         assert_eq!(game.perform_unchecked(GameCommand::StartCombat(vec![])),
                    Err(GameError::CombatMustHaveCreatures));
+    }
+
+    #[test]
+    fn start_combat() {
+        let game = t_game();
+        let game =
+            game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"), cid("ranger")]))
+                .unwrap()
+                .0;
+        assert_eq!(game.creatures.get(&cid("rogue")), None);
+        assert_eq!(game.creatures.get(&cid("ranger")), None);
+        assert!(game.creatures.get(&cid("cleric")).is_some());
     }
 
     #[test]
