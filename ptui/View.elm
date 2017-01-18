@@ -23,29 +23,35 @@ view model =
 
 viewApp : M.Model -> M.App -> Html U.Msg
 viewApp model app = div []
-  [ div []
+  [ hbox [ div [] [ h3 [] [text "Creatures"]
+                  , renderPendingCreatures app.current_game.current_combat model.pendingCombatCreatures app.current_game.creatures
+                  ]
+         , case app.current_game.current_combat of
+             Just combat -> div [] [renderCombat combat]
+             Nothing -> renderStartCombat
+         ]
+  , div [] [ text (toString app)]
+  ]
+
+
+renderPendingCreatures : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
+renderPendingCreatures mCombat pendingCreatures creatures = div []
+  [ div [] (List.map (renderPendingCreature mCombat pendingCreatures) (Dict.values creatures))
+  , div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
     , button [ onClick U.PostCreateCreature ] [ text "Create Creature!" ]
     ]
-  , h3 [] [text "Creatures"]
-  , div [] [ renderCreatures model.pendingCombatCreatures app.current_game.creatures ]
-  , case app.current_game.current_combat of
-      Just combat -> div [] [renderStopCombat, renderCombat combat]
-      Nothing -> renderStartCombat
-  , div [] [ text (toString app)]
   ]
 
-renderCreatures : Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
-renderCreatures pendingCreatures creatures = div []
-  (List.map (renderCreature pendingCreatures) (Dict.values creatures))
-
-renderCreature : Set.Set String -> M.Creature -> Html U.Msg
-renderCreature pendingCreatures creature = div []
-  [ text creature.name
-  , input [ type_ "checkbox"
-          , checked (Set.member creature.id pendingCreatures)
-          , onClick (U.ToggleSelectedCreature creature.id)] []]
+renderPendingCreature : Maybe M.Combat -> Set.Set String -> M.Creature -> Html U.Msg
+renderPendingCreature mCombat pendingCreatures creature = hbox
+  [ renderCreature creature
+  , case mCombat of Just _ -> renderAddToCombat creature
+                    Nothing ->
+                      input [ type_ "checkbox"
+                      , checked (Set.member creature.id pendingCreatures)
+                      , onClick (U.ToggleSelectedCreature creature.id)] []]
 
 renderStopCombat : Html U.Msg
 renderStopCombat = button [onClick U.PostStopCombat] [text "Stop Combat"]
@@ -56,13 +62,32 @@ renderCombat : M.Combat -> Html U.Msg
 renderCombat { creatures, movement_used } = div []
   [ h3 [] [text "Combat!"]
   , div [] [text "Current movement used:", text (toString movement_used)]
-  , div [] (List.map (renderCreatureInCombat creatures.cursor) (List.indexedMap (,) creatures.data))
+  , vbox (List.map (renderCreatureInCombat creatures.cursor) (List.indexedMap (,) creatures.data))
+  , renderStopCombat
   ]
 
+renderAddToCombat : M.Creature -> Html U.Msg
+renderAddToCombat creature =
+  button [onClick (U.AddToCombat creature.id)] [text "Engage"]
+
 renderCreatureInCombat : Int -> (Int, M.Creature) -> Html U.Msg
-renderCreatureInCombat cursor (idx, creature) = div []
-  [ div [] [text "Name: ", text creature.name]
-  , div [] [text "HP: ", text (toString creature.cur_health)]
-  , if cursor == idx then div [] [text "THIS M'S TURN!"]
+renderCreatureInCombat cursor (idx, creature) = hbox
+  [ if cursor == idx then div [] [text "*"]
     else div [] []
+  , renderCreature creature
   ]
+
+renderCreature : M.Creature -> Html U.Msg
+renderCreature creature = 
+  hbox [div [] [text "Name: ", text creature.name]
+         , div [] [text "HP: ", text (toString creature.cur_health)]
+         , div [] [text "Energy: ", text (toString creature.cur_energy)]
+         ]
+
+hbox : List (Html a) -> Html a
+hbox els = div [style [("display", "flex"), ("width", "100%")] ]
+               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
+
+vbox : List (Html a) -> Html a
+vbox els = div [ style [("display", "flex"), ("flex-direction", "column"), ("width", "100%")]]
+               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)

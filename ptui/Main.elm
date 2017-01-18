@@ -1,12 +1,6 @@
 module Main exposing (..)
 
-import Debug exposing (log)
-import Dict
 import Html
-import Http
-import Json.Decode as JSON
-import Set
-
 import Model as M
 import View as V
 import Update as U
