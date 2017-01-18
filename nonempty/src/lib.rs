@@ -109,7 +109,7 @@ impl<T> NonEmptyWithCursor<T> {
     /// ```
     /// use nonempty::NonEmptyWithCursor;
     /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
-    /// ne.remove(1).unwrap();
+    /// assert_eq!(ne.remove(1).unwrap(), 2);
     /// assert_eq!(ne.get_cursor(), 0); // No adjustment needed for cursor
     /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(1, vec![3, 4]));
     /// ```
@@ -118,7 +118,7 @@ impl<T> NonEmptyWithCursor<T> {
     /// use nonempty::NonEmptyWithCursor;
     /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
     /// ne.set_cursor(1);
-    /// ne.remove(0).unwrap();
+    /// assert_eq!(ne.remove(0).unwrap(), 1);
     /// assert_eq!(ne.get_cursor(), 0); // Cursor adjusted left
     /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(2, vec![3, 4]));
     /// ```
@@ -127,9 +127,11 @@ impl<T> NonEmptyWithCursor<T> {
     /// use nonempty::NonEmptyWithCursor;
     /// let mut ne = NonEmptyWithCursor::new_with_rest(1, vec![2, 3, 4]);
     /// ne.set_cursor(1);
-    /// ne.remove(1).unwrap();
-    /// assert_eq!(ne.get_cursor(), 0); // Cursor remained the same, pointing at the next element
-    /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(1, vec![3, 4]));
+    /// assert_eq!(ne.remove(1).unwrap(), 2);
+    /// assert_eq!(ne.get_cursor(), 1); // Cursor remained the same, pointing at the next element
+    /// let mut ne2 = NonEmptyWithCursor::new_with_rest(1, vec![3, 4]);
+    /// ne2.set_cursor(1);
+    /// assert_eq!(ne, ne2);
     /// ```
     ///
     /// ```
@@ -137,9 +139,10 @@ impl<T> NonEmptyWithCursor<T> {
     /// let mut ne = NonEmptyWithCursor::new(1);
     /// assert_eq!(ne.remove(0), Err(Error::RemoveLastElement))
     /// ```
-    pub fn remove(&mut self, index: usize) -> Result<(), Error> {
+    pub fn remove(&mut self, index: usize) -> Result<T, Error> {
+        println!("Removing index: {}, cursor {}, len {}", index, self.cursor, self.data.len());
         let r = self.data.remove(index)?;
-        if index <= self.cursor {
+        if index < self.cursor {
             self.cursor -= 1;
         }
         Ok(r)
@@ -254,7 +257,7 @@ impl<T> NonEmpty<T> {
     ///
     /// let mut ne = NonEmpty::new_with_rest(1, vec![2]);
     /// // Removing an existing element:
-    /// ne.remove(0).unwrap();
+    /// assert_eq!(ne.remove(0).unwrap(), 1);
     /// assert_eq!(ne, NonEmpty::new(2));
     /// // Removing a non-existent element:
     /// assert_eq!(ne.remove(1), Err(Error::OutOfBounds{index: 1, length: 1}));
@@ -263,7 +266,7 @@ impl<T> NonEmpty<T> {
     ///
     /// assert_eq!(ne, NonEmpty::new(2)); // The NonEmpty is unchanged
     /// ```
-    pub fn remove(&mut self, idx: usize) -> Result<(), Error> {
+    pub fn remove(&mut self, idx: usize) -> Result<T, Error> {
         if idx == 0 && self.len() == 1 {
             Err(Error::RemoveLastElement)
         } else if idx >= self.len() {
@@ -272,8 +275,7 @@ impl<T> NonEmpty<T> {
                 length: self.len(),
             })
         } else {
-            self.0.remove(idx);
-            Ok(())
+            Ok(self.0.remove(idx))
         }
     }
 
