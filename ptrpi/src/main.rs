@@ -1,6 +1,7 @@
 extern crate hyper;
 extern crate futures;
 extern crate serde_json;
+extern crate unicase;
 
 extern crate pandt;
 
@@ -11,9 +12,11 @@ use std::sync::{Arc, Mutex};
 
 use futures::{finished, Stream, Future, BoxFuture};
 
-use hyper::{Get, Post, StatusCode};
-use hyper::header::{ContentType, AccessControlAllowOrigin};
+use hyper::StatusCode;
+use hyper::Method::{Get, Post, Options};
+use hyper::header::{ContentType, AccessControlAllowOrigin, AccessControlAllowHeaders};
 use hyper::server::{Server, Service, Request, Response};
+use unicase::UniCase;
 
 use pandt::types::GameCommand;
 
@@ -33,7 +36,14 @@ impl Service for PT {
         match (req.method(), req.path()) {
             (&Get, Some("/")) => self.get_app(),
             (&Post, Some("/")) => self.post_app(req),
-            // lol no router or static file handler
+            (&Options, Some("/")) => {
+                finished(Response::new()
+                        .with_header(AccessControlAllowOrigin::Any)
+                        .with_header(AccessControlAllowHeaders(vec![UniCase("Content-Type"
+                                                                        .to_owned())]))
+                        .with_body("Okay"))
+                    .boxed()
+            }
             _ => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
         }
     }
@@ -74,11 +84,19 @@ impl PT {
                                     .boxed()
                             }
                             Err(_) => {
-                                finished(Response::new().with_body("NOT A COMMAND YALL")).boxed()
+                                finished(Response::new()
+                                        .with_header(AccessControlAllowOrigin::Any)
+                                        .with_body("NOT A COMMAND YALL"))
+                                    .boxed()
                             }
                         }
                     }
-                    Err(_) => finished(Response::new().with_body("BAD JSON YALL")).boxed(),
+                    Err(_) => {
+                        finished(Response::new()
+                                .with_header(AccessControlAllowOrigin::Any)
+                                .with_body("BAD JSON YALL"))
+                            .boxed()
+                    }
                 }
             })
             .boxed()
