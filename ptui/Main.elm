@@ -57,7 +57,7 @@ update msg model =
         PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
         AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
         AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
-        ShowError s -> log "SETTING ERROR" ( {model | error = s}, Cmd.none)
+        ShowError s -> ( {model | error = s}, Cmd.none)
         ToggleSelectedCreature cid ->
           ( { model | pendingCombatCreatures = toggleSet cid model.pendingCombatCreatures }
           , Cmd.none )
@@ -72,35 +72,36 @@ view model =
     div []
         [ h2 [] [ text "P&T" ]
         , button [ onClick MorePlease ] [ text "More Please!" ]
-        , case model.app of Just app -> viewApp app
+        , case model.app of Just app -> viewApp model app
                             Nothing -> div [] [text "No app yet. Maybe reload."]
         , div [] [text "Last error:", text model.error]
         , div [] [text "Last Response:", text (JE.encode 4 model.lastResponse)]
         ]
 
-viewApp : M.App -> Html Msg
-viewApp app = div []
+viewApp : M.Model -> M.App -> Html Msg
+viewApp model app = div []
   [ div []
     [ input [type_ "text", placeholder "id", onInput PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput PendingCreatureName ] []
     , button [ onClick PostCreateCreature ] [ text "Create Creature!" ]
     ]
   , h3 [] [text "Creatures"]
-  , div [] [ renderCreatures app.current_game.creatures ]
+  , div [] [ renderCreatures model.pendingCombatCreatures app.current_game.creatures ]
   , case app.current_game.current_combat of
       Just combat -> div [] [renderStopCombat, renderCombat combat]
       Nothing -> renderStartCombat
   , div [] [ text (toString app)]
   ]
 
-renderCreatures : Dict.Dict String M.Creature -> Html Msg
-renderCreatures creatures = div []
-  (List.map renderCreature (Dict.values creatures))
+renderCreatures : Set.Set String -> Dict.Dict String M.Creature -> Html Msg
+renderCreatures pendingCreatures creatures = div []
+  (List.map (renderCreature pendingCreatures) (Dict.values creatures))
 
-renderCreature : M.Creature -> Html Msg
-renderCreature creature = div []
+renderCreature : Set.Set String -> M.Creature -> Html Msg
+renderCreature pendingCreatures creature = div []
   [ text creature.name
   , input [ type_ "checkbox"
+          , checked (Set.member creature.id pendingCreatures)
           , onClick (ToggleSelectedCreature creature.id)] []]
 
 renderStopCombat : Html Msg
