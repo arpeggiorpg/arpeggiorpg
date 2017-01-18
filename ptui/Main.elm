@@ -4,6 +4,7 @@
 
 module Main exposing (..)
 
+import Debug exposing (log)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -12,6 +13,7 @@ import Json.Decode as JSON
 
 import Model exposing (..)
 
+main : Program Never Model Msg
 main =
     Html.program
         { init = (defaultModel, updateApp)
@@ -25,9 +27,10 @@ type Msg
     = MorePlease
     | PendingCreatureId String
     | PendingCreatureName String
-    | CreateCreature
+    | PostCreateCreature
     | PostComplete (Result Http.Error String)
     | AppUpdate (Result Http.Error App)
+    | ShowError String
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -41,11 +44,12 @@ update msg model =
           let oldPC = model.pendingCreature
           in ( { model | pendingCreature = { oldPC | name = Just newName } }
           , Cmd.none )
-        CreateCreature -> (model, createCreature model.pendingCreature)
+        PostCreateCreature -> createCreature model model.pendingCreature
         PostComplete (Ok _) -> (model, updateApp)
         PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
         AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
         AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
+        ShowError s -> log "SETTING ERROR" ( {model | error = s}, Cmd.none)
 
 
 -- VIEW
@@ -57,10 +61,9 @@ view model =
         , div []
           [ input [type_ "text", placeholder "id", onInput PendingCreatureId ] []
           , input [type_ "text", placeholder "name", onInput PendingCreatureName ] []
-          , button [ onClick CreateCreature ] [ text "Create Creature!" ]
+          , button [ onClick PostCreateCreature ] [ text "Create Creature!" ]
           ]
         , br [] []
-        -- , button [ onClick CreateCreature ] [ text "Create Creature!" ]
         , div [] [ text (toString model.app)]
         , div [] [text model.error]
         ]
@@ -70,15 +73,18 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model = Sub.none
 
-
 -- HTTP
+url : String
+url = "http://localhost:1337/"
+
 updateApp : Cmd Msg
-updateApp =
-    let url = "http://localhost:1337/"
-    in Http.send AppUpdate (Http.get url appDecoder)
+updateApp = Http.send AppUpdate (Http.get url appDecoder)
 
-
-createCreature : PendingCreature -> Cmd Msg
-createCreature pc =
-  let url = "http://localhost:1337/"
-  in Http.send PostComplete (Http.post url Http.emptyBody JSON.string)
+createCreature : Model -> PendingCreature -> (Model, Cmd Msg)
+createCreature model pc =
+  case (finalizePending pc) of
+    Nothing -> ({ model | error = "Fill out the stuff."}, Cmd.none)
+    Just creature ->
+      let createCreature = CreateCreature creature
+          body = gameCommandEncoder createCreature
+      in (model, Http.send PostComplete (Http.post url (Http.jsonBody body) JSON.string))

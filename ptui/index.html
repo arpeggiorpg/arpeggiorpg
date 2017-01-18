@@ -9503,6 +9503,308 @@ var _user$project$Model$finalizePending = function (_p0) {
 		return _elm_lang$core$Maybe$Nothing;
 	}
 };
+var _user$project$Model$conditionDurationEncoder = function (cd) {
+	var _p3 = cd;
+	if (_p3.ctor === 'Interminate') {
+		return _elm_lang$core$Json_Encode$string('Interminate');
+	} else {
+		return _elm_lang$core$Json_Encode$object(
+			{
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'Duration',
+					_1: _elm_lang$core$Json_Encode$int(_p3._0)
+				},
+				_1: {ctor: '[]'}
+			});
+	}
+};
+var _user$project$Model$effectEncoder = function (eff) {
+	var _p4 = eff;
+	switch (_p4.ctor) {
+		case 'Heal':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'Heal',
+						_1: _elm_lang$core$Json_Encode$int(_p4._0)
+					},
+					_1: {ctor: '[]'}
+				});
+		case 'Damage':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'Damage',
+						_1: _elm_lang$core$Json_Encode$int(_p4._0)
+					},
+					_1: {ctor: '[]'}
+				});
+		case 'GenerateEnergy':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'GenerateEnergy',
+						_1: _elm_lang$core$Json_Encode$int(_p4._0)
+					},
+					_1: {ctor: '[]'}
+				});
+		case 'MultiEffect':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'MultiEffect',
+						_1: _elm_lang$core$Json_Encode$list(
+							A2(_elm_lang$core$List$map, _user$project$Model$effectEncoder, _p4._0))
+					},
+					_1: {ctor: '[]'}
+				});
+		default:
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'ApplyCondition',
+						_1: _elm_lang$core$Json_Encode$list(
+							{
+								ctor: '::',
+								_0: _user$project$Model$conditionDurationEncoder(_p4._0),
+								_1: {
+									ctor: '::',
+									_0: _user$project$Model$conditionEncoder(_p4._1),
+									_1: {ctor: '[]'}
+								}
+							})
+					},
+					_1: {ctor: '[]'}
+				});
+	}
+};
+var _user$project$Model$conditionEncoder = function (condition) {
+	var _p5 = condition;
+	switch (_p5.ctor) {
+		case 'Dead':
+			return _elm_lang$core$Json_Encode$string('Dead');
+		case 'Incapacitated':
+			return _elm_lang$core$Json_Encode$string('Incapacitated');
+		case 'AddDamageBuff':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'AddDamageBuff',
+						_1: _elm_lang$core$Json_Encode$int(_p5._0)
+					},
+					_1: {ctor: '[]'}
+				});
+		default:
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'RecurringEffect',
+						_1: _user$project$Model$effectEncoder(_p5._0)
+					},
+					_1: {ctor: '[]'}
+				});
+	}
+};
+var _user$project$Model$appliedConditionEncoder = function (_p6) {
+	var _p7 = _p6;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'id',
+				_1: _elm_lang$core$Json_Encode$int(_p7.id)
+			},
+			_1: {
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'remaining',
+					_1: _user$project$Model$conditionDurationEncoder(_p7.remaining)
+				},
+				_1: {
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'condition',
+						_1: _user$project$Model$conditionEncoder(_p7.condition)
+					},
+					_1: {ctor: '[]'}
+				}
+			}
+		});
+};
+var _user$project$Model$abilityStatusEncoder = function (_p8) {
+	var _p9 = _p8;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'ability_id',
+				_1: _elm_lang$core$Json_Encode$string(_p9.ability_id)
+			},
+			_1: {
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'cooldown',
+					_1: _elm_lang$core$Json_Encode$int(_p9.cooldown)
+				},
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _user$project$Model$point3Encoder = function (_p10) {
+	var _p11 = _p10;
+	return _elm_lang$core$Json_Encode$list(
+		{
+			ctor: '::',
+			_0: _elm_lang$core$Json_Encode$int(_p11.x),
+			_1: {
+				ctor: '::',
+				_0: _elm_lang$core$Json_Encode$int(_p11.y),
+				_1: {
+					ctor: '::',
+					_0: _elm_lang$core$Json_Encode$int(_p11.z),
+					_1: {ctor: '[]'}
+				}
+			}
+		});
+};
+var _user$project$Model$creatureEncoder = function (_p12) {
+	var _p13 = _p12;
+	return _elm_lang$core$Json_Encode$object(
+		{
+			ctor: '::',
+			_0: {
+				ctor: '_Tuple2',
+				_0: 'id',
+				_1: _elm_lang$core$Json_Encode$string(_p13.id)
+			},
+			_1: {
+				ctor: '::',
+				_0: {
+					ctor: '_Tuple2',
+					_0: 'name',
+					_1: _elm_lang$core$Json_Encode$string(_p13.name)
+				},
+				_1: {
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'speed',
+						_1: _elm_lang$core$Json_Encode$int(_p13.speed)
+					},
+					_1: {
+						ctor: '::',
+						_0: {
+							ctor: '_Tuple2',
+							_0: 'pos',
+							_1: _user$project$Model$point3Encoder(_p13.pos)
+						},
+						_1: {
+							ctor: '::',
+							_0: {
+								ctor: '_Tuple2',
+								_0: 'max_energy',
+								_1: _elm_lang$core$Json_Encode$int(_p13.max_energy)
+							},
+							_1: {
+								ctor: '::',
+								_0: {
+									ctor: '_Tuple2',
+									_0: 'cur_energy',
+									_1: _elm_lang$core$Json_Encode$int(_p13.cur_energy)
+								},
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '_Tuple2',
+										_0: 'max_health',
+										_1: _elm_lang$core$Json_Encode$int(_p13.max_health)
+									},
+									_1: {
+										ctor: '::',
+										_0: {
+											ctor: '_Tuple2',
+											_0: 'cur_health',
+											_1: _elm_lang$core$Json_Encode$int(_p13.cur_health)
+										},
+										_1: {
+											ctor: '::',
+											_0: {
+												ctor: '_Tuple2',
+												_0: 'abilities',
+												_1: _elm_lang$core$Json_Encode$list(
+													A2(_elm_lang$core$List$map, _user$project$Model$abilityStatusEncoder, _p13.abilities))
+											},
+											_1: {
+												ctor: '::',
+												_0: {
+													ctor: '_Tuple2',
+													_0: 'conditions',
+													_1: _elm_lang$core$Json_Encode$list(
+														A2(_elm_lang$core$List$map, _user$project$Model$appliedConditionEncoder, _p13.conditions))
+												},
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		});
+};
+var _user$project$Model$gameCommandEncoder = function (gc) {
+	var _p14 = gc;
+	switch (_p14.ctor) {
+		case 'StartCombat':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'StartCombat',
+						_1: _elm_lang$core$Json_Encode$list(
+							A2(_elm_lang$core$List$map, _elm_lang$core$Json_Encode$string, _p14._0))
+					},
+					_1: {ctor: '[]'}
+				});
+		case 'CreateCreature':
+			return _elm_lang$core$Json_Encode$object(
+				{
+					ctor: '::',
+					_0: {
+						ctor: '_Tuple2',
+						_0: 'CreateCreature',
+						_1: _user$project$Model$creatureEncoder(_p14._0)
+					},
+					_1: {ctor: '[]'}
+				});
+		default:
+			return _elm_lang$core$Json_Encode$string('undefined');
+	}
+};
 var _user$project$Model$Model = F3(
 	function (a, b, c) {
 		return {app: a, pendingCreature: b, error: c};
@@ -9539,13 +9841,18 @@ var _user$project$Model$Point3 = F3(
 	function (a, b, c) {
 		return {x: a, y: b, z: c};
 	});
-var _user$project$Model$point3Decoder = A4(_elm_lang$core$Json_Decode$map3, _user$project$Model$Point3, _elm_lang$core$Json_Decode$int, _elm_lang$core$Json_Decode$int, _elm_lang$core$Json_Decode$int);
+var _user$project$Model$point3Decoder = A4(
+	_elm_lang$core$Json_Decode$map3,
+	_user$project$Model$Point3,
+	A2(_elm_lang$core$Json_Decode$index, 0, _elm_lang$core$Json_Decode$int),
+	A2(_elm_lang$core$Json_Decode$index, 1, _elm_lang$core$Json_Decode$int),
+	A2(_elm_lang$core$Json_Decode$index, 2, _elm_lang$core$Json_Decode$int));
 var _user$project$Model$App = function (a) {
 	return {current_game: a};
 };
-var _user$project$Model$Game = F2(
-	function (a, b) {
-		return {current_combat: a, abilities: b};
+var _user$project$Model$Game = F3(
+	function (a, b, c) {
+		return {current_combat: a, abilities: b, creatures: c};
 	});
 var _user$project$Model$Combat = F2(
 	function (a, b) {
@@ -9680,9 +9987,24 @@ var _user$project$Model$effectDecoder = A2(
 						_0: {
 							ctor: '_Tuple2',
 							_0: 'ApplyCondition',
-							_1: A3(_elm_lang$core$Json_Decode$map2, _user$project$Model$ApplyCondition, _user$project$Model$conditionDurationDecoder, _elm_lang$core$Json_Decode$int)
+							_1: A3(
+								_elm_lang$core$Json_Decode$map2,
+								_user$project$Model$ApplyCondition,
+								A2(_elm_lang$core$Json_Decode$index, 0, _user$project$Model$conditionDurationDecoder),
+								A2(_elm_lang$core$Json_Decode$index, 1, _user$project$Model$conditionDecoder))
 						},
-						_1: {ctor: '[]'}
+						_1: {
+							ctor: '::',
+							_0: {
+								ctor: '_Tuple2',
+								_0: 'MultiEffect',
+								_1: A2(
+									_elm_lang$core$Json_Decode$map,
+									_user$project$Model$MultiEffect,
+									_elm_lang$core$Json_Decode$list(_user$project$Model$lazyEffectDecoder))
+							},
+							_1: {ctor: '[]'}
+						}
 					}
 				}
 			}
@@ -9714,7 +10036,7 @@ var _user$project$Model$conditionDecoder = _elm_lang$core$Json_Decode$oneOf(
 						_0: {
 							ctor: '_Tuple2',
 							_0: 'RecurringEffect',
-							_1: A2(_elm_lang$core$Json_Decode$map, _user$project$Model$RecurringEffect, _user$project$Model$effectDecoder)
+							_1: A2(_elm_lang$core$Json_Decode$map, _user$project$Model$RecurringEffect, _user$project$Model$lazyEffectDecoder)
 						},
 						_1: {
 							ctor: '::',
@@ -9728,6 +10050,10 @@ var _user$project$Model$conditionDecoder = _elm_lang$core$Json_Decode$oneOf(
 					})),
 			_1: {ctor: '[]'}
 		}
+	});
+var _user$project$Model$lazyEffectDecoder = _elm_lang$core$Json_Decode$lazy(
+	function (_p15) {
+		return _user$project$Model$effectDecoder;
 	});
 var _user$project$Model$appliedConditionDecoder = A4(
 	_elm_lang$core$Json_Decode$map3,
@@ -9784,8 +10110,8 @@ var _user$project$Model$combatDecoder = A3(
 		'creatures',
 		_elm_lang$core$Json_Decode$list(_user$project$Model$creatureDecoder)),
 	A2(_elm_lang$core$Json_Decode$field, 'movement_used', _elm_lang$core$Json_Decode$int));
-var _user$project$Model$gameDecoder = A3(
-	_elm_lang$core$Json_Decode$map2,
+var _user$project$Model$gameDecoder = A4(
+	_elm_lang$core$Json_Decode$map3,
 	_user$project$Model$Game,
 	A2(
 		_elm_lang$core$Json_Decode$field,
@@ -9794,38 +10120,84 @@ var _user$project$Model$gameDecoder = A3(
 	A2(
 		_elm_lang$core$Json_Decode$field,
 		'abilities',
-		_elm_lang$core$Json_Decode$dict(_user$project$Model$abilityDecoder)));
+		_elm_lang$core$Json_Decode$dict(_user$project$Model$abilityDecoder)),
+	A2(
+		_elm_lang$core$Json_Decode$field,
+		'creatures',
+		_elm_lang$core$Json_Decode$dict(_user$project$Model$creatureDecoder)));
 var _user$project$Model$appDecoder = A2(
 	_elm_lang$core$Json_Decode$map,
 	_user$project$Model$App,
 	A2(_elm_lang$core$Json_Decode$field, 'current_game', _user$project$Model$gameDecoder));
+var _user$project$Model$Done = {ctor: 'Done'};
+var _user$project$Model$RemoveCreatureFromCombat = function (a) {
+	return {ctor: 'RemoveCreatureFromCombat', _0: a};
+};
+var _user$project$Model$AddCreatureToCombat = function (a) {
+	return {ctor: 'AddCreatureToCombat', _0: a};
+};
+var _user$project$Model$RemoveCreature = function (a) {
+	return {ctor: 'RemoveCreature', _0: a};
+};
+var _user$project$Model$CreateCreature = function (a) {
+	return {ctor: 'CreateCreature', _0: a};
+};
+var _user$project$Model$Move = function (a) {
+	return {ctor: 'Move', _0: a};
+};
+var _user$project$Model$StopCombat = {ctor: 'StopCombat'};
+var _user$project$Model$StartCombat = function (a) {
+	return {ctor: 'StartCombat', _0: a};
+};
+var _user$project$Main$url = 'http://localhost:1337/';
 var _user$project$Main$subscriptions = function (model) {
 	return _elm_lang$core$Platform_Sub$none;
+};
+var _user$project$Main$ShowError = function (a) {
+	return {ctor: 'ShowError', _0: a};
 };
 var _user$project$Main$AppUpdate = function (a) {
 	return {ctor: 'AppUpdate', _0: a};
 };
-var _user$project$Main$updateApp = function () {
-	var url = 'http://localhost:1337/';
-	return A2(
-		_elm_lang$http$Http$send,
-		_user$project$Main$AppUpdate,
-		A2(_elm_lang$http$Http$get, url, _user$project$Model$appDecoder));
-}();
+var _user$project$Main$updateApp = A2(
+	_elm_lang$http$Http$send,
+	_user$project$Main$AppUpdate,
+	A2(_elm_lang$http$Http$get, _user$project$Main$url, _user$project$Model$appDecoder));
 var _user$project$Main$PostComplete = function (a) {
 	return {ctor: 'PostComplete', _0: a};
 };
-var _user$project$Main$createCreature = function (pc) {
-	var url = 'http://localhost:1337/';
-	return A2(
-		_elm_lang$http$Http$send,
-		_user$project$Main$PostComplete,
-		A3(_elm_lang$http$Http$post, url, _elm_lang$http$Http$emptyBody, _elm_lang$core$Json_Decode$string));
-};
+var _user$project$Main$createCreature = F2(
+	function (model, pc) {
+		var _p0 = _user$project$Model$finalizePending(pc);
+		if (_p0.ctor === 'Nothing') {
+			return {
+				ctor: '_Tuple2',
+				_0: _elm_lang$core$Native_Utils.update(
+					model,
+					{error: 'Fill out the stuff.'}),
+				_1: _elm_lang$core$Platform_Cmd$none
+			};
+		} else {
+			var createCreature = _user$project$Model$CreateCreature(_p0._0);
+			var body = _user$project$Model$gameCommandEncoder(createCreature);
+			return {
+				ctor: '_Tuple2',
+				_0: model,
+				_1: A2(
+					_elm_lang$http$Http$send,
+					_user$project$Main$PostComplete,
+					A3(
+						_elm_lang$http$Http$post,
+						_user$project$Main$url,
+						_elm_lang$http$Http$jsonBody(body),
+						_elm_lang$core$Json_Decode$string))
+			};
+		}
+	});
 var _user$project$Main$update = F2(
 	function (msg, model) {
-		var _p0 = msg;
-		switch (_p0.ctor) {
+		var _p1 = msg;
+		switch (_p1.ctor) {
 			case 'MorePlease':
 				return {ctor: '_Tuple2', _0: model, _1: _user$project$Main$updateApp};
 			case 'PendingCreatureId':
@@ -9838,7 +10210,7 @@ var _user$project$Main$update = F2(
 							pendingCreature: _elm_lang$core$Native_Utils.update(
 								oldPC,
 								{
-									id: _elm_lang$core$Maybe$Just(_p0._0)
+									id: _elm_lang$core$Maybe$Just(_p1._0)
 								})
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
@@ -9853,19 +10225,15 @@ var _user$project$Main$update = F2(
 							pendingCreature: _elm_lang$core$Native_Utils.update(
 								oldPC,
 								{
-									name: _elm_lang$core$Maybe$Just(_p0._0)
+									name: _elm_lang$core$Maybe$Just(_p1._0)
 								})
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
-			case 'CreateCreature':
-				return {
-					ctor: '_Tuple2',
-					_0: model,
-					_1: _user$project$Main$createCreature(model.pendingCreature)
-				};
+			case 'PostCreateCreature':
+				return A2(_user$project$Main$createCreature, model, model.pendingCreature);
 			case 'PostComplete':
-				if (_p0._0.ctor === 'Ok') {
+				if (_p1._0.ctor === 'Ok') {
 					return {ctor: '_Tuple2', _0: model, _1: _user$project$Main$updateApp};
 				} else {
 					return {
@@ -9873,19 +10241,19 @@ var _user$project$Main$update = F2(
 						_0: _elm_lang$core$Native_Utils.update(
 							model,
 							{
-								error: _elm_lang$core$Basics$toString(_p0._0._0)
+								error: _elm_lang$core$Basics$toString(_p1._0._0)
 							}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
 				}
-			default:
-				if (_p0._0.ctor === 'Ok') {
+			case 'AppUpdate':
+				if (_p1._0.ctor === 'Ok') {
 					return {
 						ctor: '_Tuple2',
 						_0: _elm_lang$core$Native_Utils.update(
 							model,
 							{
-								app: _elm_lang$core$Maybe$Just(_p0._0._0)
+								app: _elm_lang$core$Maybe$Just(_p1._0._0)
 							}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
@@ -9895,14 +10263,25 @@ var _user$project$Main$update = F2(
 						_0: _elm_lang$core$Native_Utils.update(
 							model,
 							{
-								error: _elm_lang$core$Basics$toString(_p0._0._0)
+								error: _elm_lang$core$Basics$toString(_p1._0._0)
 							}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
 				}
+			default:
+				return A2(
+					_elm_lang$core$Debug$log,
+					'SETTING ERROR',
+					{
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							model,
+							{error: _p1._0}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					});
 		}
 	});
-var _user$project$Main$CreateCreature = {ctor: 'CreateCreature'};
+var _user$project$Main$PostCreateCreature = {ctor: 'PostCreateCreature'};
 var _user$project$Main$PendingCreatureName = function (a) {
 	return {ctor: 'PendingCreatureName', _0: a};
 };
@@ -9985,7 +10364,7 @@ var _user$project$Main$view = function (model) {
 										_elm_lang$html$Html$button,
 										{
 											ctor: '::',
-											_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$CreateCreature),
+											_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$PostCreateCreature),
 											_1: {ctor: '[]'}
 										},
 										{

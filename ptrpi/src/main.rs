@@ -83,10 +83,10 @@ impl PT {
                                         .with_body("OK GOT THE COMMAND"))
                                     .boxed()
                             }
-                            Err(_) => {
+                            Err(e) => {
                                 finished(Response::new()
                                         .with_header(AccessControlAllowOrigin::Any)
-                                        .with_body("NOT A COMMAND YALL"))
+                                        .with_body(format!("{:?}", e)))
                                     .boxed()
                             }
                         }
