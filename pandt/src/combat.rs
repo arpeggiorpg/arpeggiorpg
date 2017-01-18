@@ -121,7 +121,9 @@ impl Combat {
         })
     }
 
-    pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
+    /// the Option<Combat> will be None if you're removing the last creature from a combat.
+    /// Returns the Creature removed, so you can put it back into archival.
+    pub fn remove_from_combat(&self, cid: CreatureID) -> Result<(Option<Combat>, Creature), GameError> {
         let mut combat = self.clone();
         let idx = combat.creatures
             .iter()
@@ -133,8 +135,8 @@ impl Combat {
                                              remove_from_combat"
                     .to_string()))
             }
-            Err(nonempty::Error::RemoveLastElement) => Ok(None),
-            Ok(_) => Ok(Some(combat)),
+            Err(nonempty::Error::RemoveLastElement) => Ok((None, combat.current_creature().clone())),
+            Ok(creature) => Ok((Some(combat), creature)),
         }
     }
 }

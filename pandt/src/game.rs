@@ -92,8 +92,9 @@ impl Game {
                           cid: CreatureID)
                           -> Result<(Game, Vec<GameLog>), GameError> {
         let mut newgame = self.clone();
-        let combat = combat.remove_from_combat(cid)?;
+        let (combat, creature) = combat.remove_from_combat(cid)?;
         newgame.current_combat = combat;
+        newgame.creatures.insert(creature.id(), creature);
         Ok((newgame, vec![GameLog::RemoveCreatureFromCombat(cid)]))
     }
 
