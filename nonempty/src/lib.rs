@@ -131,11 +131,18 @@ impl<T> NonEmptyWithCursor<T> {
     /// assert_eq!(ne.get_cursor(), 0); // Cursor remained the same, pointing at the next element
     /// assert_eq!(ne, NonEmptyWithCursor::new_with_rest(1, vec![3, 4]));
     /// ```
+    ///
+    /// ```
+    /// use nonempty::{NonEmptyWithCursor, Error};
+    /// let mut ne = NonEmptyWithCursor::new(1);
+    /// assert_eq!(ne.remove(0), Err(Error::RemoveLastElement))
+    /// ```
     pub fn remove(&mut self, index: usize) -> Result<(), Error> {
+        let r = self.data.remove(index)?;
         if index <= self.cursor {
             self.cursor -= 1;
         }
-        self.data.remove(index)
+        Ok(r)
     }
 
     // *** Pass-through methods
