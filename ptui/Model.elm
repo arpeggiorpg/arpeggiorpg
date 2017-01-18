@@ -46,10 +46,10 @@ type alias App = { current_game : Game }
 appDecoder = JD.map App (JD.field "current_game" gameDecoder)
 
 type alias Game =
-    { current_combat : Maybe Combat
-    , abilities : Dict String Ability
-    , creatures : Dict String Creature
-    }
+  { current_combat : Maybe Combat
+  , abilities : Dict String Ability
+  , creatures : Dict String Creature
+  }
 
 gameDecoder =
   JD.map3 Game
@@ -58,14 +58,26 @@ gameDecoder =
     (JD.field "creatures" (JD.dict creatureDecoder))
 
 type alias Combat =
-  { creatures: List Creature
+  { creatures: CursorList Creature
   , movementUsed: Int
   }
 
+combatDecoder : JD.Decoder Combat
 combatDecoder =
   JD.map2 Combat
-    (JD.field "creatures" (JD.list creatureDecoder))
+    (JD.field "creatures" (cursorListDecoder creatureDecoder))
     (JD.field "movement_used" JD.int)
+
+type alias CursorList a = {
+  cursor: Int,
+  data: List a
+}
+
+cursorListDecoder : JD.Decoder a -> JD.Decoder (CursorList a)
+cursorListDecoder elDecoder =
+  JD.map2 CursorList
+    (JD.field "cursor" JD.int)
+    (JD.field "data" (JD.list elDecoder))
 
 type alias Creature =
   { id: String

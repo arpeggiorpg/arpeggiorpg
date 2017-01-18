@@ -98,7 +98,7 @@ renderCreatures creatures = div []
 renderCreature : M.Creature -> Html Msg
 renderCreature creature = div []
   [ text creature.name
-  , input [type_ "checkbox"
+  , input [ type_ "checkbox"
           , onClick (ToggleSelectedCreature creature.id)] []]
 
 renderStopCombat : Html Msg

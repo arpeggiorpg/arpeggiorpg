@@ -9859,6 +9859,20 @@ var _user$project$Model$Combat = F2(
 	function (a, b) {
 		return {creatures: a, movementUsed: b};
 	});
+var _user$project$Model$CursorList = F2(
+	function (a, b) {
+		return {cursor: a, data: b};
+	});
+var _user$project$Model$cursorListDecoder = function (elDecoder) {
+	return A3(
+		_elm_lang$core$Json_Decode$map2,
+		_user$project$Model$CursorList,
+		A2(_elm_lang$core$Json_Decode$field, 'cursor', _elm_lang$core$Json_Decode$int),
+		A2(
+			_elm_lang$core$Json_Decode$field,
+			'data',
+			_elm_lang$core$Json_Decode$list(elDecoder)));
+};
 var _user$project$Model$Creature = function (a) {
 	return function (b) {
 		return function (c) {
@@ -10109,7 +10123,7 @@ var _user$project$Model$combatDecoder = A3(
 	A2(
 		_elm_lang$core$Json_Decode$field,
 		'creatures',
-		_elm_lang$core$Json_Decode$list(_user$project$Model$creatureDecoder)),
+		_user$project$Model$cursorListDecoder(_user$project$Model$creatureDecoder)),
 	A2(_elm_lang$core$Json_Decode$field, 'movement_used', _elm_lang$core$Json_Decode$int));
 var _user$project$Model$gameDecoder = A4(
 	_elm_lang$core$Json_Decode$map3,
