@@ -6,8 +6,6 @@ extern crate unicase;
 extern crate pandt;
 
 use std::env;
-use std::fs::File;
-use std::io::Read;
 use std::sync::{Arc, Mutex};
 
 use futures::{finished, Stream, Future, BoxFuture};
@@ -89,8 +87,10 @@ impl PT {
                             }
                             Err(e) => {
                                 finished(Response::new()
+                                        .with_status(StatusCode::InternalServerError)
                                         .with_header(AccessControlAllowOrigin::Any)
-                                        .with_body(format!("{:?}", e)))
+                                        .with_header(ContentType::json())
+                                        .with_body(serde_json::to_string(&format!("{:?}", e)).unwrap()))
                                     .boxed()
                             }
                         }
