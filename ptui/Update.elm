@@ -18,6 +18,7 @@ type Msg
     | PostStartCombat
     | PostStopCombat
     | AddToCombat String
+    | RemoveFromCombat String
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
@@ -43,6 +44,7 @@ update msg model =
           ( { model | pendingCombatCreatures = toggleSet cid model.pendingCombatCreatures }
           , Cmd.none )
         AddToCombat cid -> (model, addToCombat cid)
+        RemoveFromCombat cid -> (model, removeFromCombat cid)
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
@@ -68,6 +70,9 @@ stopCombat model = (model, sendCommand M.StopCombat)
 
 addToCombat : String -> Cmd Msg
 addToCombat cid = sendCommand (M.AddCreatureToCombat cid)
+
+removeFromCombat : String -> Cmd Msg
+removeFromCombat cid = sendCommand (M.RemoveCreatureFromCombat cid)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =

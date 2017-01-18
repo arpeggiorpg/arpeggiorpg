@@ -17,22 +17,24 @@ view model =
         , button [ onClick U.MorePlease ] [ text "More Please!" ]
         , case model.app of Just app -> viewApp model app
                             Nothing -> div [] [text "No app yet. Maybe reload."]
-        , div [] [text "Last error:", text model.error]
-        , div [] [text "Last Response:", text (JE.encode 4 model.lastResponse)]
+        , div [] [text "Last error:", pre [] [text model.error]]
+        , div [] [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
         ]
 
 viewApp : M.Model -> M.App -> Html U.Msg
 viewApp model app = div []
   [ hbox [ div [] [ h3 [] [text "Creatures"]
-                  , renderPendingCreatures app.current_game.current_combat model.pendingCombatCreatures app.current_game.creatures
+                  , renderPendingCreatures
+                        app.current_game.current_combat
+                        model.pendingCombatCreatures
+                        app.current_game.creatures
                   ]
          , case app.current_game.current_combat of
              Just combat -> div [] [renderCombat combat]
              Nothing -> renderStartCombat
          ]
-  , div [] [ text (toString app)]
+  , pre [] [ text (toString app)]
   ]
-
 
 renderPendingCreatures : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
 renderPendingCreatures mCombat pendingCreatures creatures = div []
@@ -75,6 +77,7 @@ renderCreatureInCombat cursor (idx, creature) = hbox
   [ if cursor == idx then div [] [text "*"]
     else div [] []
   , renderCreature creature
+  , removeCreatureFromCombatButton creature
   ]
 
 renderCreature : M.Creature -> Html U.Msg
@@ -83,6 +86,10 @@ renderCreature creature =
          , div [] [text "HP: ", text (toString creature.cur_health)]
          , div [] [text "Energy: ", text (toString creature.cur_energy)]
          ]
+
+removeCreatureFromCombatButton : M.Creature -> Html U.Msg
+removeCreatureFromCombatButton creature =
+  button [onClick (U.RemoveFromCombat creature.id)] [ text "Disengage" ]
 
 hbox : List (Html a) -> Html a
 hbox els = div [style [("display", "flex"), ("width", "100%")] ]
