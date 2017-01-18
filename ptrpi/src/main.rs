@@ -69,6 +69,7 @@ impl PT {
             .and_then(move |chunks| {
                 let vecu8: Vec<u8> = chunks.iter().flat_map(|c| c.as_ref().to_vec()).collect();
                 let json = String::from_utf8(vecu8);
+                println!("Got a POST body: {:?}", json);
                 match json {
                     Ok(json) => {
                         let command: Result<GameCommand, _> = serde_json::from_str(&json);
@@ -76,7 +77,14 @@ impl PT {
                             Ok(command) => {
                                 // TODO: is there a Future-based mutex yet? this .unwrap()
                                 // sux
-                                ARMUT.lock().unwrap().perform_unchecked(command);
+                                // TODO: Handle the Result from this function!
+                                {
+                                    let mut app = ARMUT.lock().unwrap();
+                                    let result = app.perform_unchecked(command);
+                                    println!("And here is the result of handling the command:\n \
+                                              {:?}",
+                                             result);
+                                }
                                 finished(Response::new()
                                         .with_header(AccessControlAllowOrigin::Any)
                                         .with_header(ContentType::json())

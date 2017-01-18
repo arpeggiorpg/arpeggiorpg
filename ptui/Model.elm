@@ -6,18 +6,20 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Json.Decode.Pipeline as P
 import Json.Helpers as JH
-
+import Set
 
 defaultModel : Model
 defaultModel =
   Model
     Nothing
     (PendingCreature Nothing Nothing Nothing Nothing Nothing [] Nothing Nothing Nothing [])
+    Set.empty
     "No current error!"
 
 type alias Model =
   { app : Maybe App
   , pendingCreature : PendingCreature
+  , pendingCombatCreatures : Set.Set String
   , error: String
   }
 

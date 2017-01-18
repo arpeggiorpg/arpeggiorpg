@@ -9805,9 +9805,9 @@ var _user$project$Model$gameCommandEncoder = function (gc) {
 			return _elm_lang$core$Json_Encode$string('undefined');
 	}
 };
-var _user$project$Model$Model = F3(
-	function (a, b, c) {
-		return {app: a, pendingCreature: b, error: c};
+var _user$project$Model$Model = F4(
+	function (a, b, c, d) {
+		return {app: a, pendingCreature: b, pendingCombatCreatures: c, error: d};
 	});
 var _user$project$Model$PendingCreature = function (a) {
 	return function (b) {
@@ -9830,12 +9830,13 @@ var _user$project$Model$PendingCreature = function (a) {
 		};
 	};
 };
-var _user$project$Model$defaultModel = A3(
+var _user$project$Model$defaultModel = A4(
 	_user$project$Model$Model,
 	_elm_lang$core$Maybe$Nothing,
 	_user$project$Model$PendingCreature(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(
 		{ctor: '[]'})(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(_elm_lang$core$Maybe$Nothing)(
 		{ctor: '[]'}),
+	_elm_lang$core$Set$empty,
 	'No current error!');
 var _user$project$Model$Point3 = F3(
 	function (a, b, c) {
@@ -10153,6 +10154,74 @@ var _user$project$Main$url = 'http://localhost:1337/';
 var _user$project$Main$subscriptions = function (model) {
 	return _elm_lang$core$Platform_Sub$none;
 };
+var _user$project$Main$toggleSet = F2(
+	function (el, set) {
+		return A2(_elm_lang$core$Set$member, el, set) ? A2(_elm_lang$core$Set$remove, el, set) : A2(_elm_lang$core$Set$insert, el, set);
+	});
+var _user$project$Main$PostStopCombat = {ctor: 'PostStopCombat'};
+var _user$project$Main$renderStopCombat = A2(
+	_elm_lang$html$Html$button,
+	{
+		ctor: '::',
+		_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$PostStopCombat),
+		_1: {ctor: '[]'}
+	},
+	{
+		ctor: '::',
+		_0: _elm_lang$html$Html$text('Stop Combat'),
+		_1: {ctor: '[]'}
+	});
+var _user$project$Main$PostStartCombat = {ctor: 'PostStartCombat'};
+var _user$project$Main$renderStartCombat = A2(
+	_elm_lang$html$Html$button,
+	{
+		ctor: '::',
+		_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$PostStartCombat),
+		_1: {ctor: '[]'}
+	},
+	{
+		ctor: '::',
+		_0: _elm_lang$html$Html$text('Start Combat'),
+		_1: {ctor: '[]'}
+	});
+var _user$project$Main$ToggleSelectedCreature = function (a) {
+	return {ctor: 'ToggleSelectedCreature', _0: a};
+};
+var _user$project$Main$renderCreature = function (creature) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html$text(creature.name),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$input,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$type_('checkbox'),
+						_1: {
+							ctor: '::',
+							_0: _elm_lang$html$Html_Events$onClick(
+								_user$project$Main$ToggleSelectedCreature(creature.id)),
+							_1: {ctor: '[]'}
+						}
+					},
+					{ctor: '[]'}),
+				_1: {ctor: '[]'}
+			}
+		});
+};
+var _user$project$Main$renderCreatures = function (creatures) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		A2(
+			_elm_lang$core$List$map,
+			_user$project$Main$renderCreature,
+			_elm_lang$core$Dict$values(creatures)));
+};
 var _user$project$Main$ShowError = function (a) {
 	return {ctor: 'ShowError', _0: a};
 };
@@ -10194,6 +10263,39 @@ var _user$project$Main$createCreature = F2(
 			};
 		}
 	});
+var _user$project$Main$startCombat = F2(
+	function (model, cids) {
+		var body = _user$project$Model$gameCommandEncoder(
+			_user$project$Model$StartCombat(
+				_elm_lang$core$Set$toList(cids)));
+		return {
+			ctor: '_Tuple2',
+			_0: model,
+			_1: A2(
+				_elm_lang$http$Http$send,
+				_user$project$Main$PostComplete,
+				A3(
+					_elm_lang$http$Http$post,
+					_user$project$Main$url,
+					_elm_lang$http$Http$jsonBody(body),
+					_elm_lang$core$Json_Decode$string))
+		};
+	});
+var _user$project$Main$stopCombat = function (model) {
+	var body = _user$project$Model$gameCommandEncoder(_user$project$Model$StopCombat);
+	return {
+		ctor: '_Tuple2',
+		_0: model,
+		_1: A2(
+			_elm_lang$http$Http$send,
+			_user$project$Main$PostComplete,
+			A3(
+				_elm_lang$http$Http$post,
+				_user$project$Main$url,
+				_elm_lang$http$Http$jsonBody(body),
+				_elm_lang$core$Json_Decode$string))
+	};
+};
 var _user$project$Main$update = F2(
 	function (msg, model) {
 		var _p1 = msg;
@@ -10232,6 +10334,10 @@ var _user$project$Main$update = F2(
 				};
 			case 'PostCreateCreature':
 				return A2(_user$project$Main$createCreature, model, model.pendingCreature);
+			case 'PostStartCombat':
+				return A2(_user$project$Main$startCombat, model, model.pendingCombatCreatures);
+			case 'PostStopCombat':
+				return _user$project$Main$stopCombat(model);
 			case 'PostComplete':
 				if (_p1._0.ctor === 'Ok') {
 					return {ctor: '_Tuple2', _0: model, _1: _user$project$Main$updateApp};
@@ -10268,7 +10374,7 @@ var _user$project$Main$update = F2(
 						_1: _elm_lang$core$Platform_Cmd$none
 					};
 				}
-			default:
+			case 'ShowError':
 				return A2(
 					_elm_lang$core$Debug$log,
 					'SETTING ERROR',
@@ -10279,6 +10385,16 @@ var _user$project$Main$update = F2(
 							{error: _p1._0}),
 						_1: _elm_lang$core$Platform_Cmd$none
 					});
+			default:
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							pendingCombatCreatures: A2(_user$project$Main$toggleSet, _p1._0, model.pendingCombatCreatures)
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
 		}
 	});
 var _user$project$Main$PostCreateCreature = {ctor: 'PostCreateCreature'};
@@ -10287,6 +10403,117 @@ var _user$project$Main$PendingCreatureName = function (a) {
 };
 var _user$project$Main$PendingCreatureId = function (a) {
 	return {ctor: 'PendingCreatureId', _0: a};
+};
+var _user$project$Main$viewApp = function (app) {
+	return A2(
+		_elm_lang$html$Html$div,
+		{ctor: '[]'},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$div,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$input,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Attributes$type_('text'),
+							_1: {
+								ctor: '::',
+								_0: _elm_lang$html$Html_Attributes$placeholder('id'),
+								_1: {
+									ctor: '::',
+									_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$PendingCreatureId),
+									_1: {ctor: '[]'}
+								}
+							}
+						},
+						{ctor: '[]'}),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$input,
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html_Attributes$type_('text'),
+								_1: {
+									ctor: '::',
+									_0: _elm_lang$html$Html_Attributes$placeholder('name'),
+									_1: {
+										ctor: '::',
+										_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$PendingCreatureName),
+										_1: {ctor: '[]'}
+									}
+								}
+							},
+							{ctor: '[]'}),
+						_1: {
+							ctor: '::',
+							_0: A2(
+								_elm_lang$html$Html$button,
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$PostCreateCreature),
+									_1: {ctor: '[]'}
+								},
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html$text('Create Creature!'),
+									_1: {ctor: '[]'}
+								}),
+							_1: {ctor: '[]'}
+						}
+					}
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$h3,
+					{ctor: '[]'},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text('Creatures'),
+						_1: {ctor: '[]'}
+					}),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$div,
+						{ctor: '[]'},
+						{
+							ctor: '::',
+							_0: _user$project$Main$renderCreatures(app.current_game.creatures),
+							_1: {ctor: '[]'}
+						}),
+					_1: {
+						ctor: '::',
+						_0: function () {
+							var _p2 = app.current_game.current_combat;
+							if (_p2.ctor === 'Just') {
+								return _user$project$Main$renderStopCombat;
+							} else {
+								return _user$project$Main$renderStartCombat;
+							}
+						}(),
+						_1: {
+							ctor: '::',
+							_0: A2(
+								_elm_lang$html$Html$div,
+								{ctor: '[]'},
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html$text(
+										_elm_lang$core$Basics$toString(app)),
+									_1: {ctor: '[]'}
+								}),
+							_1: {ctor: '[]'}
+						}
+					}
+				}
+			}
+		});
 };
 var _user$project$Main$MorePlease = {ctor: 'MorePlease'};
 var _user$project$Main$view = function (model) {
@@ -10319,93 +10546,32 @@ var _user$project$Main$view = function (model) {
 					}),
 				_1: {
 					ctor: '::',
-					_0: A2(
-						_elm_lang$html$Html$div,
-						{ctor: '[]'},
-						{
-							ctor: '::',
-							_0: A2(
-								_elm_lang$html$Html$input,
-								{
-									ctor: '::',
-									_0: _elm_lang$html$Html_Attributes$type_('text'),
-									_1: {
-										ctor: '::',
-										_0: _elm_lang$html$Html_Attributes$placeholder('id'),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$PendingCreatureId),
-											_1: {ctor: '[]'}
-										}
-									}
-								},
-								{ctor: '[]'}),
-							_1: {
-								ctor: '::',
-								_0: A2(
-									_elm_lang$html$Html$input,
-									{
-										ctor: '::',
-										_0: _elm_lang$html$Html_Attributes$type_('text'),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$html$Html_Attributes$placeholder('name'),
-											_1: {
-												ctor: '::',
-												_0: _elm_lang$html$Html_Events$onInput(_user$project$Main$PendingCreatureName),
-												_1: {ctor: '[]'}
-											}
-										}
-									},
-									{ctor: '[]'}),
-								_1: {
-									ctor: '::',
-									_0: A2(
-										_elm_lang$html$Html$button,
-										{
-											ctor: '::',
-											_0: _elm_lang$html$Html_Events$onClick(_user$project$Main$PostCreateCreature),
-											_1: {ctor: '[]'}
-										},
-										{
-											ctor: '::',
-											_0: _elm_lang$html$Html$text('Create Creature!'),
-											_1: {ctor: '[]'}
-										}),
-									_1: {ctor: '[]'}
-								}
-							}
-						}),
-					_1: {
-						ctor: '::',
-						_0: A2(
-							_elm_lang$html$Html$br,
-							{ctor: '[]'},
-							{ctor: '[]'}),
-						_1: {
-							ctor: '::',
-							_0: A2(
+					_0: function () {
+						var _p3 = model.app;
+						if (_p3.ctor === 'Just') {
+							return _user$project$Main$viewApp(_p3._0);
+						} else {
+							return A2(
 								_elm_lang$html$Html$div,
 								{ctor: '[]'},
 								{
 									ctor: '::',
-									_0: _elm_lang$html$Html$text(
-										_elm_lang$core$Basics$toString(model.app)),
+									_0: _elm_lang$html$Html$text('No app yet. Maybe reload.'),
 									_1: {ctor: '[]'}
-								}),
-							_1: {
-								ctor: '::',
-								_0: A2(
-									_elm_lang$html$Html$div,
-									{ctor: '[]'},
-									{
-										ctor: '::',
-										_0: _elm_lang$html$Html$text(model.error),
-										_1: {ctor: '[]'}
-									}),
-								_1: {ctor: '[]'}
-							}
+								});
 						}
+					}(),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$div,
+							{ctor: '[]'},
+							{
+								ctor: '::',
+								_0: _elm_lang$html$Html$text(model.error),
+								_1: {ctor: '[]'}
+							}),
+						_1: {ctor: '[]'}
 					}
 				}
 			}
