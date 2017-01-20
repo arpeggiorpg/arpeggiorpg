@@ -20,6 +20,7 @@ pub struct Creature {
     max_energy: Energy,
     cur_energy: Energy,
     abilities: Vec<AbilityStatus>,
+    ability_set: AbilitySetID,
     max_health: HP,
     cur_health: HP,
     pos: Point3,
@@ -34,6 +35,7 @@ impl Creature {
             max_energy: None,
             cur_energy: None,
             abilities: vec![],
+            ability_set: None,
             max_health: None,
             cur_health: None,
             pos: None,
@@ -142,11 +144,8 @@ impl Creature {
         conditions_able(&self.conditions)
     }
 
-    /// Check if a creature has the given ability.
-    pub fn has_ability(&self, ability_id: &AbilityID) -> bool {
-        self.abilities
-            .iter()
-            .any(|&AbilityStatus { ability_id: ref abid, .. }| abid == ability_id)
+    pub fn ability_set(&self) -> AbilitySetID {
+        self.ability_set
     }
 
     pub fn pos(&self) -> Point3 {
@@ -171,6 +170,7 @@ pub struct CreatureBuilder {
     max_energy: Option<Energy>,
     cur_energy: Option<Energy>,
     abilities: Vec<AbilityID>,
+    ability_set: Option<AbilitySetID>,
     max_health: Option<HP>,
     cur_health: Option<HP>,
     pos: Option<Point3>,
@@ -186,21 +186,18 @@ impl CreatureBuilder {
             speed: self.speed.unwrap_or(Distance::new(10.0)),
             max_energy: self.max_energy.unwrap_or(Energy(10)),
             cur_energy: self.cur_energy.unwrap_or(Energy(10)),
-            abilities: self.abilities
-                .into_iter()
-                .map(|ab| {
-                    AbilityStatus {
-                        ability_id: ab,
-                        cooldown: 0,
-                    }
-                })
-                .collect(),
+            abilities: vec![],
+            ability_set: self.ability_set.ok_or(GameError::AbilitySetRequired)?,
             max_health: self.max_health.unwrap_or(HP(10)),
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
         })
 
+    }
+    pub fn ability_set(mut self, asid: AbilitySetID) -> Self {
+        self.ability_set = Some(asid);
+        self
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);
@@ -250,34 +247,30 @@ pub mod test {
     use creature::*;
     use types::test::*;
 
-    pub fn t_creature() -> Creature {
-        Creature::build("Bob").build().unwrap()
-    }
-
     pub fn t_rogue(name: &str) -> Creature {
         Creature::build(name)
-            .abilities(vec![abid("punch")])
+            .ability_set(AbilitySetID::new("rogue").unwrap())
             .build()
             .unwrap()
     }
 
     pub fn t_ranger(name: &str) -> Creature {
         Creature::build(name)
-            .abilities(vec![abid("shoot")])
+            .ability_set(AbilitySetID::new("ranger").unwrap())
             .build()
             .unwrap()
     }
 
     pub fn t_cleric(name: &str) -> Creature {
         Creature::build(name)
-            .abilities(vec![abid("heal")])
+            .ability_set(AbilitySetID::new("cleric").unwrap())
             .build()
             .unwrap()
     }
 
     #[test]
     fn test_tick_and_expire_condition_remaining() {
-        let mut c = t_creature();
+        let mut c = t_rogue("bob");
         c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
@@ -288,7 +281,7 @@ pub mod test {
 
     #[test]
     fn test_recurring_effect() {
-        let mut c = t_creature();
+        let mut c = t_rogue("bob");
         c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                                      ConditionDuration::Duration(2))];
         let c = c.tick().unwrap().0;

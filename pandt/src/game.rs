@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
 
 use types::*;
 use creature::*;
@@ -9,6 +10,7 @@ use combat::*;
 pub struct Game {
     current_combat: Option<Combat>,
     abilities: HashMap<AbilityID, Ability>,
+    ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
     creatures: HashMap<CreatureID, Creature>,
 }
 
@@ -17,6 +19,7 @@ impl Game {
     pub fn new() -> Self {
         Game {
             abilities: HashMap::new(),
+            ability_sets: HashMap::new(),
             current_combat: None,
             creatures: HashMap::new(),
         }
@@ -154,15 +157,22 @@ impl Game {
            -> Result<(Game, Vec<GameLog>), GameError> {
         let able = combat.get_able()?;
         let ability = self.get_ability(&abid)?;
-        // checking if the creature has this AbilityID is dumb here, it should probably be in
-        // Creature, but Creature::act just takes &Ability not &AbilityID
-        if able.combat.current_creature().has_ability(&abid) {
+        if self.creature_has_ability(&able.combat.current_creature(), &abid)? {
             let (next, logs) = able.act(&ability, target)?;
             Ok((Game { current_combat: Some(next), ..self.clone() },
                 combat_logs_into_game_logs(logs)))
         } else {
             Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid))
         }
+    }
+
+    fn creature_has_ability(&self,
+                            creature: &Creature,
+                            ability: &AbilityID)
+                            -> Result<bool, GameError> {
+        let abset = creature.ability_set();
+        let abilities = self.ability_sets.get(&abset).ok_or(GameError::AbilitySetNotFound(abset))?;
+        Ok(abilities.contains(ability))
     }
 
     fn stop_combat(&self, combat: &Combat) -> (Game, Vec<GameLog>) {
@@ -216,6 +226,7 @@ pub mod test {
         let punch = t_punch();
         let heal = t_heal();
         let mut game = Game::new();
+        game.ability_sets = t_classes();
         game.abilities.insert(abid("punch"), punch);
         game.abilities.insert(abid("heal"), heal);
 
@@ -227,6 +238,15 @@ pub mod test {
         game
     }
 
+    pub fn t_classes() -> HashMap<AbilitySetID, HashSet<AbilityID>> {
+        let rogue = HashSet::from_iter(vec![abid("punch")]);
+        let ranger = HashSet::from_iter(vec![abid("shoot")]);
+        let cleric = HashSet::from_iter(vec![abid("heal")]);
+        HashMap::from_iter(vec![(AbilitySetID::new("rogue").unwrap(), rogue),
+                                (AbilitySetID::new("ranger").unwrap(), ranger),
+                                (AbilitySetID::new("cleric").unwrap(), cleric)])
+    }
+
     #[test]
     fn workflow() {
         let mut creatures = HashMap::new();
@@ -235,6 +255,7 @@ pub mod test {
         let bob_id = cid("bob");
         let creature = Creature::build("bob")
             .abilities(vec![punch_id.clone()])
+            .ability_set(AbilitySetID::new("rogue").unwrap())
             .build()
             .unwrap();
         creatures.insert(bob_id, creature);
@@ -242,6 +263,7 @@ pub mod test {
         abilities.insert(punch_id.clone(), punch);
         let game = Game {
             abilities: abilities,
+            ability_sets: t_classes(),
             current_combat: None,
             creatures: creatures,
         };

@@ -9,7 +9,7 @@ use creature::Creature;
 pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize,
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct HP(pub u8);
 impl HP {
@@ -21,7 +21,7 @@ impl HP {
     }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Serialize,
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
@@ -33,12 +33,13 @@ impl Energy {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(StringWrapper<[u8; 64]>);
 impl CreatureID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
-            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+            StringWrapper::from_str_safe(s)
+                .ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
         Ok(CreatureID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -51,12 +52,13 @@ pub fn cid(s: &str) -> CreatureID {
     CreatureID::new(s).unwrap()
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
-            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+            StringWrapper::from_str_safe(s)
+                .ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
         Ok(AbilityID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -67,6 +69,19 @@ impl AbilityID {
 #[cfg(test)]
 pub fn abid(s: &str) -> AbilityID {
     AbilityID::new(s).unwrap()
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct AbilitySetID(StringWrapper<[u8; 64]>);
+impl AbilitySetID {
+    pub fn new(s: &str) -> Result<Self, GameError> {
+        let sw =
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+        Ok(AbilitySetID(sw))
+    }
+    pub fn to_string(&self) -> String {
+        self.0.to_string()
+    }
 }
 
 /// A type representing distance. The wrapped value is in centimeters, but should not normally be
@@ -145,6 +160,8 @@ pub enum GameError {
     AbilityIDTooLong(String),
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
+    AbilitySetRequired,
+    AbilitySetNotFound(AbilitySetID),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
     CreatureLacksAbility(CreatureID, AbilityID),
