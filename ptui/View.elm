@@ -75,7 +75,7 @@ renderAddToCombat creature =
 
 renderCreatureInCombat : Int -> (Int, M.Creature) -> Html U.Msg
 renderCreatureInCombat cursor (idx, creature) = hbox
-  [ if cursor == idx then div [] [text "*"]
+  [ if cursor == idx then actionBar creature
     else div [] []
   , renderCreature creature
   , removeCreatureFromCombatButton creature
@@ -95,6 +95,13 @@ removeCreatureFromCombatButton creature =
 deleteCreatureButton : M.Creature -> Html U.Msg
 deleteCreatureButton creature =
   button [onClick (U.RemoveFromGame creature.id)] [text "Delete"]
+
+actionBar : M.Creature -> Html U.Msg
+actionBar creature = hbox [doneButton creature]
+
+doneButton : M.Creature -> Html U.Msg
+doneButton creature =
+  button [onClick U.TurnDone] [text "Done"]
 
 hbox : List (Html a) -> Html a
 hbox els = div [style [("display", "flex"), ("width", "100%")] ]

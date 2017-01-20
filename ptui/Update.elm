@@ -20,6 +20,7 @@ type Msg
     | AddToCombat String
     | RemoveFromCombat String
     | RemoveFromGame String
+    | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
@@ -47,6 +48,7 @@ update msg model =
         AddToCombat cid -> (model, addToCombat cid)
         RemoveFromCombat cid -> (model, removeFromCombat cid)
         RemoveFromGame cid -> (model, removeFromGame cid)
+        TurnDone -> (model, turnDone)
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
@@ -78,6 +80,9 @@ removeFromCombat cid = sendCommand (M.RemoveCreatureFromCombat cid)
 
 removeFromGame : String -> Cmd Msg
 removeFromGame cid = sendCommand (M.RemoveCreature cid)
+
+turnDone : Cmd Msg
+turnDone = sendCommand M.Done
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
