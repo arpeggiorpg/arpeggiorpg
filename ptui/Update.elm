@@ -10,6 +10,7 @@ type Msg
     = MorePlease
     | PendingCreatureId String
     | PendingCreatureName String
+    | PendingCreatureAbilitySet String
     | PostCreateCreature
     | PostComplete (Result Http.Error JD.Value)
     | AppUpdate (Result Http.Error M.App)
@@ -34,6 +35,10 @@ update msg model =
           let oldPC = model.pendingCreature
           in ( { model | pendingCreature = { oldPC | name = Just newName } }
           , Cmd.none )
+        PendingCreatureAbilitySet newAS ->
+          let oldPC = model.pendingCreature
+          in ({model | pendingCreature = {oldPC | ability_set = Just newAS}},
+              Cmd.none)
         PostCreateCreature -> createCreature model model.pendingCreature
         PostStartCombat -> startCombat model model.pendingCombatCreatures
         PostStopCombat -> stopCombat model

@@ -12,7 +12,7 @@ defaultModel : Model
 defaultModel =
   Model
     Nothing
-    (PendingCreature Nothing Nothing Nothing Nothing Nothing [] Nothing Nothing Nothing [])
+    (PendingCreature Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing [])
     Set.empty
     "No current error!"
     (case (JD.decodeString JD.value "null") of
@@ -34,7 +34,7 @@ type alias PendingCreature =
   , speed: Maybe Int
   , max_energy: Maybe Int
   , cur_energy: Maybe Int
-  , abilities: List AbilityStatus
+  , ability_set: Maybe String
   , max_health: Maybe Int
   , cur_health: Maybe Int
   , pos: Maybe Point3
@@ -53,13 +53,15 @@ appDecoder = JD.map App (JD.field "current_game" gameDecoder)
 type alias Game =
   { current_combat : Maybe Combat
   , abilities : Dict String Ability
+  , ability_sets : Dict String (List String)
   , creatures : Dict String Creature
   }
 
 gameDecoder =
-  JD.map3 Game
+  JD.map4 Game
     (JD.field "current_combat" (JD.maybe combatDecoder))
     (JD.field "abilities" (JD.dict abilityDecoder))
+    (JD.field "ability_sets" (JD.dict (JD.list JD.string)))
     (JD.field "creatures" (JD.dict creatureDecoder))
 
 type alias Combat =
@@ -94,6 +96,7 @@ type alias Creature =
   , cur_health: Int
   , pos: Point3
   , abilities: List AbilityStatus
+  , ability_set: String
   , conditions: List AppliedCondition
 }
 
@@ -108,10 +111,12 @@ creatureDecoder =
     |> P.required "cur_health" JD.int
     |> P.required "pos" point3Decoder
     |> P.required "abilities" (JD.list abilityStatusDecoder)
+    |> P.required "ability_set" JD.string
     |> P.required "conditions" (JD.list appliedConditionDecoder)
+    
 
 creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
-                , cur_health, pos, abilities, conditions} =
+                , cur_health, pos, abilities, ability_set, conditions} =
   JE.object
     [ ("id", JE.string id)
     , ("name", JE.string name)
@@ -122,6 +127,7 @@ creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
     , ("max_health", JE.int max_health)
     , ("cur_health", JE.int cur_health)
     , ("abilities", JE.list (List.map abilityStatusEncoder abilities))
+    , ("ability_set", JE.string ability_set)
     , ("conditions", JE.list (List.map appliedConditionEncoder conditions))
     ]
 
@@ -254,9 +260,9 @@ gameCommandEncoder gc =
 -- pure functions on model
 
 finalizePending : PendingCreature -> Maybe Creature
-finalizePending {id, name, speed, max_energy, cur_energy, abilities, max_health, cur_health, pos, conditions } =
-  case (id, name) of
-    (Just id, Just name) ->
+finalizePending {id, name, speed, max_energy, cur_energy, ability_set, max_health, cur_health, pos, conditions } =
+  case (id, name, ability_set) of
+    (Just id, Just name, Just ability_set) ->
       Just { id = id
            , name = name
            , speed = withDefault 10 speed
@@ -265,6 +271,7 @@ finalizePending {id, name, speed, max_energy, cur_energy, abilities, max_health,
            , max_health = withDefault 10 max_health
            , cur_health = withDefault 10 cur_health
            , pos = withDefault {x=0, y=0, z=0} pos
-           , abilities = abilities
+           , abilities = []
+           , ability_set = ability_set
            , conditions = conditions }
     _ -> Nothing

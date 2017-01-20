@@ -15,36 +15,40 @@ view model =
     div []
         [ h2 [] [ text "P&T" ]
         , button [ onClick U.MorePlease ] [ text "More Please!" ]
-        , case model.app of Just app -> viewApp model app
+        , case model.app of Just app -> viewGame model app.current_game
                             Nothing -> div [] [text "No app yet. Maybe reload."]
         , div [] [text "Last error:", pre [] [text model.error]]
         , div [] [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
+        , pre [] [ text (toString model.app)]
         ]
 
-viewApp : M.Model -> M.App -> Html U.Msg
-viewApp model app = div []
+viewGame : M.Model -> M.Game -> Html U.Msg
+viewGame model game = div []
   [ hbox [ div [] [ h3 [] [text "Creatures"]
                   , inactiveList
-                        app.current_game.current_combat
+                        game.current_combat
                         model.pendingCombatCreatures
-                        app.current_game.creatures
+                        game.creatures
                   ]
-         , case app.current_game.current_combat of
-             Just combat -> div [] [combatantList combat]
+         , case game.current_combat of
+             Just combat -> div [] [combatantList game combat]
              Nothing -> startCombatButton
          ]
-  , pre [] [ text (toString app)]
   ]
 
 inactiveList : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
 inactiveList mCombat pendingCreatures creatures = div []
   [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
-  , div []
+  , createCreatureForm
+  ]
+
+createCreatureForm : Html U.Msg
+createCreatureForm = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
+    , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureAbilitySet ] []
     , button [ onClick U.PostCreateCreature ] [ text "Create Creature!" ]
     ]
-  ]
 
 inactiveEntry : Maybe M.Combat -> Set.Set String -> M.Creature -> Html U.Msg
 inactiveEntry mCombat pendingCreatures creature = hbox
@@ -61,11 +65,11 @@ stopCombatButton = button [onClick U.PostStopCombat] [text "Stop Combat"]
 startCombatButton : Html U.Msg
 startCombatButton = button [onClick U.PostStartCombat] [text "Start Combat"]
 
-combatantList : M.Combat -> Html U.Msg
-combatantList { creatures, movement_used } = div []
+combatantList : M.Game -> M.Combat -> Html U.Msg
+combatantList game { creatures, movement_used } = div []
   [ h3 [] [text "Combat!"]
   , div [] [text "Current movement used:", text (toString movement_used)]
-  , vbox (List.map (combatantEntry creatures.cursor) (List.indexedMap (,) creatures.data))
+  , vbox (List.map (combatantEntry game creatures.cursor) (List.indexedMap (,) creatures.data))
   , stopCombatButton
   ]
 
@@ -73,13 +77,24 @@ engageButton : M.Creature -> Html U.Msg
 engageButton creature =
   button [onClick (U.AddToCombat creature.id)] [text "Engage"]
 
-combatantEntry : Int -> (Int, M.Creature) -> Html U.Msg
-combatantEntry cursor (idx, creature) = hbox
-  [ if cursor == idx then actionBar creature
+combatantEntry : M.Game -> Int -> (Int, M.Creature) -> Html U.Msg
+combatantEntry game cursor (idx, creature) = hbox
+  [ if cursor == idx then actionBar game.ability_sets creature
     else div [] []
   , creatureStats creature
   , disengageButton creature
   ]
+
+actionBar : Dict.Dict String (List String) -> M.Creature -> Html U.Msg
+actionBar abilitySets creature =
+  let abilitySet =
+        case (Dict.get creature.ability_set abilitySets) of
+          Just x -> x
+          Nothing -> []
+  in hbox ((doneButton creature) :: (List.map actionButton abilitySet))
+
+actionButton : String -> Html U.Msg
+actionButton abid = div [] [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
@@ -95,9 +110,6 @@ disengageButton creature =
 deleteCreatureButton : M.Creature -> Html U.Msg
 deleteCreatureButton creature =
   button [onClick (U.RemoveFromGame creature.id)] [text "Delete"]
-
-actionBar : M.Creature -> Html U.Msg
-actionBar creature = hbox [doneButton creature]
 
 doneButton : M.Creature -> Html U.Msg
 doneButton creature =
