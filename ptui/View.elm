@@ -53,7 +53,8 @@ renderPendingCreature mCombat pendingCreatures creature = hbox
                     Nothing ->
                       input [ type_ "checkbox"
                       , checked (Set.member creature.id pendingCreatures)
-                      , onClick (U.ToggleSelectedCreature creature.id)] []]
+                      , onClick (U.ToggleSelectedCreature creature.id)] []
+  , deleteCreatureButton creature]
 
 renderStopCombat : Html U.Msg
 renderStopCombat = button [onClick U.PostStopCombat] [text "Stop Combat"]
@@ -90,6 +91,10 @@ renderCreature creature =
 removeCreatureFromCombatButton : M.Creature -> Html U.Msg
 removeCreatureFromCombatButton creature =
   button [onClick (U.RemoveFromCombat creature.id)] [ text "Disengage" ]
+
+deleteCreatureButton : M.Creature -> Html U.Msg
+deleteCreatureButton creature =
+  button [onClick (U.RemoveFromGame creature.id)] [text "Delete"]
 
 hbox : List (Html a) -> Html a
 hbox els = div [style [("display", "flex"), ("width", "100%")] ]
