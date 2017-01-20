@@ -10,19 +10,21 @@ import Set
 
 defaultModel : Model
 defaultModel =
-  Model
-    Nothing
-    (PendingCreature Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing [])
-    Set.empty
-    "No current error!"
-    (case (JD.decodeString JD.value "null") of
-      Ok(x) -> x
-      Err(_) -> Debug.crash "nope")
-
+    { app = Nothing
+    , selectedAbility = Nothing
+    , pendingCreature = (PendingCreature Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing [])
+    , pendingCombatCreatures = Set.empty
+    , error = "No current error!"
+    , lastResponse = (case (JD.decodeString JD.value "null") of
+        Ok(x) -> x
+        Err(_) -> Debug.crash "nope")
+  }
 
 type alias Model =
   { app : Maybe App
   , pendingCreature : PendingCreature
+  , selectedAbility : Maybe String
+  -- Creatures which have been selected for combat
   , pendingCombatCreatures : Set.Set String
   , error: String
   , lastResponse : JD.Value

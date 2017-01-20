@@ -21,6 +21,7 @@ type Msg
     | AddToCombat String
     | RemoveFromCombat String
     | RemoveFromGame String
+    | SelectAbility String
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -53,6 +54,7 @@ update msg model =
         AddToCombat cid -> (model, addToCombat cid)
         RemoveFromCombat cid -> (model, removeFromCombat cid)
         RemoveFromGame cid -> (model, removeFromGame cid)
+        SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
         TurnDone -> (model, turnDone)
 
 

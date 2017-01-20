@@ -19,7 +19,7 @@ view model =
                             Nothing -> div [] [text "No app yet. Maybe reload."]
         , div [] [text "Last error:", pre [] [text model.error]]
         , div [] [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
-        , pre [] [ text (toString model.app)]
+        , pre [] [ text (toString model)]
         ]
 
 viewGame : M.Model -> M.Game -> Html U.Msg
@@ -94,7 +94,7 @@ actionBar abilitySets creature =
   in hbox ((doneButton creature) :: (List.map actionButton abilitySet))
 
 actionButton : String -> Html U.Msg
-actionButton abid = div [] [text abid]
+actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
