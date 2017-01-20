@@ -404,7 +404,7 @@ dependencies = [
  "serde_derive 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "string-wrapper 0.1.6 (git+https://github.com/radix/string-wrapper)",
+ "string-wrapper 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -529,8 +529,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "string-wrapper"
-version = "0.1.6"
-source = "git+https://github.com/radix/string-wrapper#3bb2539bf2d69334f20742f24928d81f5ed8b79e"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -723,7 +723,7 @@ dependencies = [
 "checksum serde_yaml 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d89550f42b50678202c7fc96899cb19b914b98e47a7de089a5c766d047914b5"
 "checksum slab 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17b4fcaed89ab08ef143da37bc52adbcc04d4a69014f4c1208d6b51f0c47bc23"
 "checksum smallvec 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4c8cbcd6df1e117c2210e13ab5109635ad68a929fcbb8964dc965b76cb5ee013"
-"checksum string-wrapper 0.1.6 (git+https://github.com/radix/string-wrapper)" = "<none>"
+"checksum string-wrapper 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "d0680b553612c95cd4c291233900b754eb2d7f861dfef8c990139ba6530169f4"
 "checksum syn 0.10.6 (registry+https://github.com/rust-lang/crates.io-index)" = "17134635792e6a2361f53efbee798701796d8b5842c1c21b7cdb875e2950c8fc"
 "checksum take 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b157868d8ac1f56b64604539990685fa7611d8fa9e5476cf0c02cf34d32917c5"
 "checksum time 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)" = "211b63c112206356ef1ff9b19355f43740fc3f85960c598a93d3a3d3ba7beade"
