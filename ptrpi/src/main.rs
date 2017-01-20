@@ -1,11 +1,16 @@
 extern crate hyper;
 extern crate futures;
 extern crate serde_json;
+extern crate serde_yaml;
 extern crate unicase;
 
 extern crate pandt;
 
+use std::collections::{HashMap, HashSet};
 use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use futures::{finished, Stream, Future, BoxFuture};
@@ -90,7 +95,8 @@ impl PT {
                                         .with_status(StatusCode::InternalServerError)
                                         .with_header(AccessControlAllowOrigin::Any)
                                         .with_header(ContentType::json())
-                                        .with_body(serde_json::to_string(&format!("{:?}", e)).unwrap()))
+                                        .with_body(serde_json::to_string(&format!("{:?}", e))
+                                            .unwrap()))
                                     .boxed()
                             }
                         }
@@ -112,8 +118,11 @@ fn main() {
                        env::args().nth(1).unwrap_or(String::from("1337")))
         .parse()
         .unwrap();
+    let mut appf = File::open("samplegame.yaml").unwrap();
+    let mut apps = String::new();
+    appf.read_to_string(&mut apps).unwrap();
+    let app: pandt::app::App = serde_yaml::from_str(&apps).unwrap();
 
-    let app = pandt::app::App::new(pandt::game::Game::new());
     let pt = PT { app: Arc::new(Mutex::new(app)) };
     let (listening, server) = Server::standalone(|tokio| {
             let pt = pt.clone();

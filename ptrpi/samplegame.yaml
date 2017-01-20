@@ -1,0 +1,162 @@
+---
+current_game: 
+  current_combat: ~
+  abilities: 
+    heal: 
+      name: Heal
+      target: 
+        Range: 500
+      cost: 0
+      effects: 
+        - 
+          Heal: 3
+    punch: 
+      name: Punch
+      target: Melee
+      cost: 0
+      effects: 
+        - 
+          Damage: 3
+    shoot: 
+      name: Shoot
+      target: 
+        Range: 500
+      cost: 0
+      effects: 
+        - 
+          Damage: 3
+  ability_sets: 
+    cleric: 
+      - heal
+    rogue: 
+      - punch
+    ranger: 
+      - shoot
+  creatures: 
+    ranger: 
+      id: ranger
+      name: ranger
+      speed: 1000
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      ability_set: ranger
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 0
+        - 0
+        - 0
+      conditions: []
+    rogue: 
+      id: rogue
+      name: rogue
+      speed: 1000
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      ability_set: rogue
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 0
+        - 0
+        - 0
+      conditions: []
+    cleric: 
+      id: cleric
+      name: cleric
+      speed: 1000
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      ability_set: cleric
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 0
+        - 0
+        - 0
+      conditions: []
+snapshots: 
+  - 
+    - 
+      current_combat: ~
+      abilities: 
+        heal: 
+          name: Heal
+          target: 
+            Range: 500
+          cost: 0
+          effects: 
+            - 
+              Heal: 3
+        punch: 
+          name: Punch
+          target: Melee
+          cost: 0
+          effects: 
+            - 
+              Damage: 3
+        shoot: 
+          name: Shoot
+          target: 
+            Range: 500
+          cost: 0
+          effects: 
+            - 
+              Damage: 3
+      ability_sets: 
+        cleric: 
+          - heal
+        rogue: 
+          - punch
+        ranger: 
+          - shoot
+      creatures: 
+        ranger: 
+          id: ranger
+          name: ranger
+          speed: 1000
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          ability_set: ranger
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 0
+            - 0
+          conditions: []
+        rogue: 
+          id: rogue
+          name: rogue
+          speed: 1000
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          ability_set: rogue
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 0
+            - 0
+          conditions: []
+        cleric: 
+          id: cleric
+          name: cleric
+          speed: 1000
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          ability_set: cleric
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 0
+            - 0
+          conditions: []
+    - []

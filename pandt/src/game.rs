@@ -16,10 +16,12 @@ pub struct Game {
 
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
+               abilities: HashMap<AbilityID, Ability>)
+               -> Self {
         Game {
-            abilities: HashMap::new(),
-            ability_sets: HashMap::new(),
+            abilities: abilities,
+            ability_sets: ability_sets,
             current_combat: None,
             creatures: HashMap::new(),
         }
@@ -225,10 +227,11 @@ pub mod test {
     pub fn t_game() -> Game {
         let punch = t_punch();
         let heal = t_heal();
-        let mut game = Game::new();
-        game.ability_sets = t_classes();
-        game.abilities.insert(abid("punch"), punch);
-        game.abilities.insert(abid("heal"), heal);
+        let shoot = t_shoot();
+        let mut game = Game::new(t_classes(),
+                                 HashMap::from_iter(vec![(abid("punch"), punch),
+                                                         (abid("shoot"), shoot),
+                                                         (abid("heal"), heal)]));
 
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue("rogue"))).unwrap().0;
         let game =
@@ -273,10 +276,9 @@ pub mod test {
         let _: Game = next.stop_combat(&next.current_combat.as_ref().unwrap()).0;
     }
 
-
     #[test]
     fn start_combat_not_found() {
-        let game = Game::new();
+        let game = t_game();
         let non = cid("nonexistent");
         assert_eq!(game.perform_unchecked(GameCommand::StartCombat(vec![non])),
                    Err(GameError::CreatureNotFound(non)));
@@ -284,7 +286,7 @@ pub mod test {
 
     #[test]
     fn combat_must_have_creatures() {
-        let game = Game::new();
+        let game = t_game();
         assert_eq!(game.perform_unchecked(GameCommand::StartCombat(vec![])),
                    Err(GameError::CombatMustHaveCreatures));
     }

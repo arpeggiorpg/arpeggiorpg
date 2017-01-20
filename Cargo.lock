@@ -8,6 +8,7 @@ dependencies = [
  "serde 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_yaml 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicase 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
