@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Encode as JE
+--import List.Extra exposing (find)
 import Set
 
 import Model as M
@@ -13,7 +14,7 @@ import Update as U
 view : M.Model -> Html U.Msg
 view model = vbox
   [ h2 [] [ text "P&T" ]
-  , button [ onClick U.MorePlease ] [ text "More Please!" ]
+  , button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
   , case model.app of Just app -> viewGame model app.current_game
                       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
@@ -23,9 +24,12 @@ view model = vbox
 
 viewGame : M.Model -> M.Game -> Html U.Msg
 viewGame model game = hbox 
-  [ div [] [ h3 [] [text "Creatures"]
-           , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
-           ]
+  [ vbox [ h3 [] [text "Creatures"]
+         , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
+         ]
+  , case game.current_combat of
+      Just combat -> combatGrid combat
+      Nothing -> text "Enter combat to see a cool combat grid here!"
   , case game.current_combat of
       Just combat -> combatArea model game combat
       Nothing -> startCombatButton
@@ -54,6 +58,20 @@ inactiveEntry mCombat pendingCreatures creature = hbox
                       , checked (Set.member creature.id pendingCreatures)
                       , onClick (U.ToggleSelectedCreature creature.id)] []
   , deleteCreatureButton creature]
+
+
+combatGrid : M.Combat -> Html U.Msg
+combatGrid combat = vbox <|
+  List.map (combatGridRow combat) (List.range -10 10)
+
+combatGridRow combat rownum = hbox <|
+  List.map (combatGridCell combat rownum) (List.range -10 10)
+
+combatGridCell combat x y = div [style [ ("border", "solid black 1px")
+                                , ("width", "25px")
+                                , ("height", "25px")]] <|
+  let creatures = List.filter (\c -> c.pos.x == x && c.pos.y == y) combat.creatures.data
+  in [vbox (List.map (\c -> text c.id) creatures)]
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
