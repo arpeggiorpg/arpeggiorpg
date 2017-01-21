@@ -24,7 +24,7 @@ pub fn point3_distance(pos1: Point3, pos2: Point3) -> Distance {
                                 na::zero());
     let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
     let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-    Distance::new(distance)
+    Distance(distance as u32)
 }
 
 pub fn creature_within_distance(c1: &Creature, c2: &Creature, d: Distance) -> bool {

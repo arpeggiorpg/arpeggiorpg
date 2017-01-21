@@ -63,6 +63,7 @@ impl Combat {
             CombatLog::EndTurn(ref cid) => {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
+                new.movement_used = Distance(0);
             }
         }
         Ok(new)
@@ -77,16 +78,17 @@ impl Combat {
     }
 
     pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let mut newgame = self.clone();
+        let mut newcombat = self.clone();
         let mut all_logs = vec![];
-        for creature in newgame.creatures.iter_mut() {
+        for creature in newcombat.creatures.iter_mut() {
             let (newcreat, logs) = creature.tick()?;
             *creature = newcreat;
             all_logs.extend(creature_logs_into_combat_logs(creature.id(), logs));
         }
-        all_logs.push(CombatLog::EndTurn(newgame.current_creature().id()));
-        newgame.creatures.next_circular();
-        Ok((newgame, all_logs))
+        all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
+        newcombat.creatures.next_circular();
+        newcombat.movement_used = Distance(0);
+        Ok((newcombat, all_logs))
     }
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {

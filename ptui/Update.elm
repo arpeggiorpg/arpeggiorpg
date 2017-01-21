@@ -24,6 +24,7 @@ type Msg
     | SelectAbility AbilityID
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest -- max amount they can move
+    | Move M.Point3
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -59,6 +60,7 @@ update msg model =
         SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
         Act abid dtarget -> ({model | selectedAbility = Nothing}, act abid dtarget)
         RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
+        Move pt -> ({model | moving = Nothing}, move pt)
         TurnDone -> (model, turnDone)
 
 
@@ -97,6 +99,9 @@ turnDone = sendCommand M.Done
 
 act : AbilityID -> M.DecidedTarget -> Cmd Msg
 act abid dtarget = sendCommand (M.Act abid dtarget)
+
+move : M.Point3 -> Cmd Msg
+move pt = sendCommand (M.Move pt)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =

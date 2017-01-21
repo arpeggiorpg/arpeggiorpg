@@ -1,5 +1,6 @@
 module View exposing (..)
 
+import Debug exposing (log)
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -9,6 +10,8 @@ import Set
 
 import Model as M
 import Update as U
+import MouseEvent exposing (onMouseClick)
+
 
 view : M.Model -> Html U.Msg
 view model = vbox
@@ -59,23 +62,51 @@ inactiveEntry mCombat pendingCreatures creature = hbox
   , deleteCreatureButton creature]
 
 
+--- WATCH OUT BE CAREFUL THERE IS SOME CRAZY COORDINATION BETWEEN COORDINATES AND SIZES AND SCALING AND SHIT HERE
+--- TODO: ABSTRACT IT OUT Y'ALL
+coord c = 250 + ((toFloat c) / 10)
+coordPx c = toString (coord c) ++ "px"
+
 combatGrid : Maybe M.MovementRequest -> M.Combat -> Html U.Msg
-combatGrid moving combat = vbox <|
-  List.map (combatGridRow moving combat) (List.range -10 10)
+combatGrid moving combat =
+  let creatureEls = (List.map gridCreature combat.creatures.data)
+      x = case moving of
+            Just {creature_id, origin, max_distance} -> 
+              let radius = (toFloat max_distance) / 10
+              in [div
+               [style [ ("position", "absolute")
+                      , ("left", coordPx origin.x)
+                      , ("top", coordPx origin.y)]]
+               [div
+                    [ style [ ("width", (toString <| radius * 2) ++ "px")
+                           , ("height", (toString <| radius * 2) ++ "px")
+                           , ("border-radius", (toString radius) ++ "px")
+                           , ("background", "lightgreen")
+                           , ("position", "relative")
+                           , ("margin-left", "-50%")
+                           , ("margin-top", "-50%")]
+                    , onMouseClick (clickedMove origin (round radius))
+                    ]
+                    []]]
+            Nothing -> []
+  in div [style [("border", "2px"), ("position", "relative"), ("width", "500px"), ("height", "500px")]]
+         (x ++ creatureEls)
+      
 
-combatGridRow : Maybe M.MovementRequest -> M.Combat -> Int -> Html U.Msg
-combatGridRow moving combat rownum = hbox <|
-  List.map (combatGridCell moving combat rownum) (List.range -10 10)
+clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
+clickedMove origin radius me = log (toString me) <|
+  let offsetX = (me.clientPos.x - radius) * 10
+      offsetY = (me.clientPos.y - radius) * 10
+  in (U.Move {x=origin.x + offsetX, y=origin.y + offsetY, z=0})
 
-combatGridCell : Maybe M.MovementRequest -> M.Combat -> Int -> Int -> Html U.Msg
-combatGridCell moving combat x y =
-  let bgcolor = case moving of
-                  Just {creature_id, origin, max_distance} -> if (M.distance origin {x=x, y=y, z=0}) < max_distance then "lightgreen" else ""
-                  Nothing -> ""
-      -- TODO: insanely inefficient tho
-      creatures = List.filter (\c -> c.pos.x == x && c.pos.y == y) combat.creatures.data
-  in div [style [ ("border", "solid black 1px"), ("width", "25px"), ("height", "25px"), ("background-color", bgcolor)]] 
-         [vbox (List.map (\c -> text c.id) creatures)]
+gridCreature : M.Creature -> Html U.Msg
+gridCreature creature = div 
+  [style [ ("position", "absolute")
+         , ("left", coordPx creature.pos.x)
+         , ("top", coordPx creature.pos.y)]]
+  [div [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]] [text creature.id]]
+
+--- OK END CRAZY COORDINATION. BE CAREFUL
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of

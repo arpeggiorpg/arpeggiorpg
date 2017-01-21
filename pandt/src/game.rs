@@ -55,9 +55,10 @@ impl Game {
         // Design challenge: figure out a way to make this assertion unnecessary or at least less
         // necessary.
         debug_assert!(newgame == self.apply_logs(logs.clone())?,
-                      "newgame = {:?}, lgame = {:?}",
+                      "newgame = {:?}\nlgame = {:?}\nlogs = {:?}",
                       newgame,
-                      self.apply_logs(logs.clone())?);
+                      self.apply_logs(logs.clone())?,
+                      logs.clone());
         Ok((newgame, logs))
     }
 
