@@ -12,7 +12,7 @@ import Set
 type alias CreatureID = String
 type alias AbilityID = String
 type alias AbilitySetID = String
-
+type alias Distance = Int
 
 defaultModel : Model
 defaultModel =
@@ -39,7 +39,7 @@ type alias Model =
 type alias PendingCreature =
   { id : Maybe CreatureID
   , name : Maybe String
-  , speed: Maybe Int
+  , speed: Maybe Distance
   , max_energy: Maybe Int
   , cur_energy: Maybe Int
   , ability_set: Maybe AbilitySetID
@@ -150,7 +150,7 @@ abilityDecoder = JD.map2 Ability
 
 type TargetSpec
   = Melee
-  | Range Int -- distance in centimeters
+  | Range Distance -- distance in centimeters
     -- CircleWithinRange(Distance, u8), // radius
     -- Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
     -- Line(Distance),

@@ -5,7 +5,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Encode as JE
---import List.Extra exposing (find)
 import Set
 
 import Model as M
@@ -64,12 +63,13 @@ combatGrid : M.Combat -> Html U.Msg
 combatGrid combat = vbox <|
   List.map (combatGridRow combat) (List.range -10 10)
 
+combatGridRow : M.Combat -> Int -> Html U.Msg
 combatGridRow combat rownum = hbox <|
   List.map (combatGridCell combat rownum) (List.range -10 10)
 
-combatGridCell combat x y = div [style [ ("border", "solid black 1px")
-                                , ("width", "25px")
-                                , ("height", "25px")]] <|
+combatGridCell : M.Combat -> Int -> Int -> Html U.Msg
+combatGridCell combat x y = div
+  [style [ ("border", "solid black 1px") , ("width", "25px") , ("height", "25px")]] <|
   let creatures = List.filter (\c -> c.pos.x == x && c.pos.y == y) combat.creatures.data
   in [vbox (List.map (\c -> text c.id) creatures)]
 
@@ -85,7 +85,10 @@ targetSelector model game combat abid = case (Dict.get abid game.abilities) of
     M.Range distance -> creatureTargetSelector abid M.DecidedRange combat
   Nothing -> text "Sorry, that ability was not found. Please reload."
 
-creatureTargetSelector abid con combat = vbox (List.map (\c -> button [onClick (U.Act abid (con c.id))] [text c.name]) combat.creatures.data)
+creatureTargetSelector : M.AbilityID -> (M.CreatureID -> M.DecidedTarget) -> M.Combat -> Html U.Msg
+creatureTargetSelector abid con combat = vbox <|
+  let targetCreatureButton c = button [onClick (U.Act abid (con c.id))] [text c.name]
+  in (List.map targetCreatureButton combat.creatures.data)
 
 stopCombatButton : Html U.Msg
 stopCombatButton = button [onClick U.PostStopCombat] [text "Stop Combat"]
@@ -95,8 +98,7 @@ startCombatButton = button [onClick U.PostStartCombat] [text "Start Combat"]
 combatantList : M.Game -> M.Combat -> Html U.Msg
 combatantList game { creatures, movement_used } = div []
   [ h3 [] [text "Combat!"]
-  , div [] [text "Current movement used:", text (toString movement_used)]
-  , vbox (List.map (combatantEntry game creatures.cursor) (List.indexedMap (,) creatures.data))
+  , vbox (List.map (combatantEntry game movement_used creatures.cursor) (List.indexedMap (,) creatures.data))
   , stopCombatButton
   ]
 
@@ -104,21 +106,23 @@ engageButton : M.Creature -> Html U.Msg
 engageButton creature =
   button [onClick (U.AddToCombat creature.id)] [text "Engage"]
 
-combatantEntry : M.Game -> Int -> (Int, M.Creature) -> Html U.Msg
-combatantEntry game cursor (idx, creature) = hbox
-  [ if cursor == idx then actionBar game.ability_sets creature
+combatantEntry : M.Game -> M.Distance -> Int -> (Int, M.Creature) -> Html U.Msg
+combatantEntry game movement_used cursor (idx, creature) = hbox
+  [ if cursor == idx then actionBar movement_used game.ability_sets creature
     else div [] []
   , creatureStats creature
   , disengageButton creature
   ]
 
-actionBar : Dict.Dict String (List String) -> M.Creature -> Html U.Msg
-actionBar abilitySets creature =
+actionBar : M.Distance -> Dict.Dict String (List String) -> M.Creature -> Html U.Msg
+actionBar movement_used abilitySets creature =
   let abilitySet =
         case (Dict.get creature.ability_set abilitySets) of
           Just x -> x
           Nothing -> []
-  in hbox ((doneButton creature) :: (List.map actionButton abilitySet))
+  in hbox (  (doneButton creature)
+          :: (moveButton movement_used creature)
+          :: (List.map actionButton abilitySet))
 
 actionButton : String -> Html U.Msg
 actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]
@@ -132,7 +136,7 @@ creatureStats creature =
 
 disengageButton : M.Creature -> Html U.Msg
 disengageButton creature =
-  button [onClick (U.RemoveFromCombat creature.id)] [ text "Disengage" ]
+  button [onClick (U.RemoveFromCombat creature.id)] [text "Disengage"]
 
 deleteCreatureButton : M.Creature -> Html U.Msg
 deleteCreatureButton creature =
@@ -142,10 +146,14 @@ doneButton : M.Creature -> Html U.Msg
 doneButton creature =
   button [onClick U.TurnDone] [text "Done"]
 
+moveButton : M.Distance -> M.Creature -> Html U.Msg
+moveButton movement_used creature = button []
+  [text (String.join "" ["Move (", toString (creature.speed - movement_used), ")"])]
+
 hbox : List (Html a) -> Html a
 hbox els = div [style [("display", "flex"), ("width", "100%")] ]
                (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
 
 vbox : List (Html a) -> Html a
-vbox els = div [ style [("display", "flex"), ("flex-direction", "column"), ("width", "100%")]]
+vbox els = div [style [("display", "flex"), ("flex-direction", "column"), ("width", "100%")]]
                (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
