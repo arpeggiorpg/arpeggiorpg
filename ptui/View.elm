@@ -11,29 +11,24 @@ import Model as M
 import Update as U
 
 view : M.Model -> Html U.Msg
-view model =
-    div []
-        [ h2 [] [ text "P&T" ]
-        , button [ onClick U.MorePlease ] [ text "More Please!" ]
-        , case model.app of Just app -> viewGame model app.current_game
-                            Nothing -> div [] [text "No app yet. Maybe reload."]
-        , div [] [text "Last error:", pre [] [text model.error]]
-        , div [] [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
-        , pre [] [ text (toString model)]
-        ]
+view model = vbox
+  [ h2 [] [ text "P&T" ]
+  , button [ onClick U.MorePlease ] [ text "More Please!" ]
+  , case model.app of Just app -> viewGame model app.current_game
+                      Nothing -> text "No app yet. Maybe reload."
+  , hbox [text "Last error:", pre [] [text model.error]]
+  , hbox [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
+  , hbox [text "Model:", text (toString model)]
+  ]
 
 viewGame : M.Model -> M.Game -> Html U.Msg
-viewGame model game = div []
-  [ hbox [ div [] [ h3 [] [text "Creatures"]
-                  , inactiveList
-                        game.current_combat
-                        model.pendingCombatCreatures
-                        game.creatures
-                  ]
-         , case game.current_combat of
-             Just combat -> div [] [combatantList game combat]
-             Nothing -> startCombatButton
-         ]
+viewGame model game = hbox 
+  [ div [] [ h3 [] [text "Creatures"]
+           , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
+           ]
+  , case game.current_combat of
+      Just combat -> combatArea model game combat
+      Nothing -> startCombatButton
   ]
 
 inactiveList : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
@@ -59,6 +54,20 @@ inactiveEntry mCombat pendingCreatures creature = hbox
                       , checked (Set.member creature.id pendingCreatures)
                       , onClick (U.ToggleSelectedCreature creature.id)] []
   , deleteCreatureButton creature]
+
+combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
+combatArea model game combat = case model.selectedAbility of
+  Just abid -> targetSelector model game combat abid
+  Nothing -> combatantList game combat
+
+targetSelector : M.Model -> M.Game -> M.Combat -> String -> Html U.Msg
+targetSelector model game combat abid = case (Dict.get abid game.abilities) of
+  Just ability -> case ability.target of
+    M.Melee -> creatureTargetSelector U.SelectMeleeTarget combat
+    M.Range distance -> creatureTargetSelector U.SelectRangedTarget combat
+  Nothing -> text "Sorry, that ability was not found. Please reload."
+
+creatureTargetSelector msg combat = vbox (List.map (\c -> button [onClick (msg c.id)] [text c.name]) combat.creatures.data)
 
 stopCombatButton : Html U.Msg
 stopCombatButton = button [onClick U.PostStopCombat] [text "Stop Combat"]

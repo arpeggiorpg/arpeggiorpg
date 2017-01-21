@@ -8,6 +8,17 @@ import Json.Decode.Pipeline as P
 import Json.Helpers as JH
 import Set
 
+
+-- A decoder for Serde-style enums. Nullary constructors are bare strings and all others are
+-- `{"ConstructorName": [...]}`
+sumDecoder : String -> List (String, a) -> List (String, JD.Decoder a) -> JD.Decoder a
+sumDecoder name nullaryList singleFieldList = JD.oneOf
+  [ JH.decodeSumUnaries name
+      (Dict.fromList nullaryList)
+  , JH.decodeSumObjectWithSingleField name
+      (Dict.fromList singleFieldList)
+  ]
+
 defaultModel : Model
 defaultModel =
     { app = Nothing
@@ -133,9 +144,27 @@ creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
     , ("conditions", JE.list (List.map appliedConditionEncoder conditions))
     ]
 
-type alias Ability = { name : String }
+type alias Ability =
+  { name : String
+  , target: TargetSpec
+  }
 
-abilityDecoder = JD.map Ability (JD.field "name" JD.string)
+abilityDecoder = JD.map2 Ability
+  (JD.field "name" JD.string)
+  (JD.field "target" targetSpecDecoder)
+
+type TargetSpec
+  = Melee
+  | Range Int -- distance in centimeters
+    -- CircleWithinRange(Distance, u8), // radius
+    -- Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
+    -- Line(Distance),
+    -- LineToFirstHit(),
+
+targetSpecDecoder = sumDecoder "TargetSpec"
+  [("Melee", Melee)]
+  [("Range", JD.map Range JD.int)]
+
 
 type alias AbilityStatus = { ability_id: String, cooldown: Int }
 
@@ -168,13 +197,9 @@ type ConditionDuration
   = Interminate
   | Duration Int
 
-conditionDurationDecoder =
-  JD.oneOf
-    [ JH.decodeSumUnaries "Interminate"
-        (Dict.fromList [("Interminate", Interminate)])
-    , JH.decodeSumObjectWithSingleField "ConditionDuration"
-        (Dict.fromList [("ConditionDuration", JD.map Duration JD.int)])
-    ]
+conditionDurationDecoder = sumDecoder "ConditionDuration"
+  [("Interminate", Interminate)]
+  [("ConditionDuration", JD.map Duration JD.int)]
 conditionDurationEncoder cd =
   case cd of
     Interminate -> JE.string "Interminate"
@@ -186,14 +211,11 @@ type Condition
   | Incapacitated
   | AddDamageBuff Int
 
-conditionDecoder =
-  JD.oneOf
-    [ JH.decodeSumUnaries "Condition Nullary"
-      (Dict.fromList [ ("Dead", Dead)
-                     , ("Incapacitated", Incapacitated)])
-    , JH.decodeSumObjectWithSingleField "Condition Unary"
-      (Dict.fromList [ ("RecurringEffect", JD.map RecurringEffect lazyEffectDecoder)
-                     , ("AddDamageBuff", JD.map AddDamageBuff JD.int)])]
+conditionDecoder = sumDecoder "Condition"
+  [ ("Dead", Dead)
+  , ("Incapacitated", Incapacitated)]
+  [ ("RecurringEffect", JD.map RecurringEffect lazyEffectDecoder)
+  , ("AddDamageBuff", JD.map AddDamageBuff JD.int)]
 
 conditionEncoder condition =
   case condition of

@@ -22,6 +22,8 @@ type Msg
     | RemoveFromCombat String
     | RemoveFromGame String
     | SelectAbility String
+    | SelectMeleeTarget String
+    | SelectRangedTarget String
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -55,6 +57,8 @@ update msg model =
         RemoveFromCombat cid -> (model, removeFromCombat cid)
         RemoveFromGame cid -> (model, removeFromGame cid)
         SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
+        SelectMeleeTarget cid -> ({model | selectedAbility = Nothing}, Cmd.none) -- TODO
+        SelectRangedTarget cid -> ({model | selectedAbility = Nothing}, Cmd.none)
         TurnDone -> (model, turnDone)
 
 
