@@ -47,13 +47,20 @@ pub mod test {
             .sqrt();
         println!("My calculated distance: {:?};", test_distance);
         assert_eq!((point3_distance(pos1, pos2)),
-                   Distance::new(test_distance as f32));
+                   Distance(test_distance as u32));
+    }
+
+    #[test]
+    fn test_simple_distance() {
+        let pos1 = (0, 0, 0);
+        let pos2 = (1, 0, 0);
+        assert_eq!(point3_distance(pos1, pos2), Distance(1));
     }
 
     #[test]
     fn test_diagonal_distance() {
         let pos1 = (0, 0, 0);
         let pos2 = (1, 1, 0);
-        assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
+        assert_eq!(point3_distance(pos1, pos2), Distance(2.0f32.sqrt() as u32));
     }
 }

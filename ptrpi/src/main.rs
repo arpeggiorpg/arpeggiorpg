@@ -80,7 +80,6 @@ impl PT {
                             Ok(command) => {
                                 // TODO: is there a Future-based mutex yet? this .unwrap()
                                 // sux
-                                // TODO: Handle the Result from this function!
                                 let mut app = ARMUT.lock().unwrap();
                                 let result = app.perform_unchecked(command).clone();
                                 println!("Command result:\n {:?}", result);
@@ -115,7 +114,7 @@ impl PT {
 
 fn main() {
     let addr = format!("0.0.0.0:{}",
-                       env::args().nth(1).unwrap_or(String::from("1337")))
+                       env::args().nth(1).unwrap_or("1337".to_string()))
         .parse()
         .unwrap();
     let mut appf = File::open("samplegame.yaml").unwrap();
