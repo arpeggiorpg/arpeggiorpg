@@ -20,10 +20,17 @@ defaultModel =
     , selectedAbility = Nothing
     , pendingCreature = (PendingCreature Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing [])
     , pendingCombatCreatures = Set.empty
+    , moving = Nothing
     , error = "No current error!"
     , lastResponse = (case (JD.decodeString JD.value "null") of
         Ok(x) -> x
         Err(_) -> Debug.crash "nope")
+  }
+
+type alias MovementRequest = 
+  { creature_id: CreatureID
+  , origin: Point3
+  , max_distance: Distance
   }
 
 type alias Model =
@@ -34,6 +41,7 @@ type alias Model =
   , pendingCombatCreatures : Set.Set CreatureID
   , error: String
   , lastResponse : JD.Value
+  , moving: Maybe MovementRequest
   }
 
 type alias PendingCreature =
@@ -315,3 +323,8 @@ finalizePending {id, name, speed, max_energy, cur_energy, ability_set, max_healt
            , ability_set = ability_set
            , conditions = conditions }
     _ -> Nothing
+
+
+distance : Point3 -> Point3 -> Distance
+distance a b =
+  round <| sqrt (toFloat <| (a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)

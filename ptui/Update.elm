@@ -23,6 +23,7 @@ type Msg
     | RemoveFromGame CreatureID
     | SelectAbility AbilityID
     | Act AbilityID M.DecidedTarget
+    | RequestMove M.MovementRequest -- max amount they can move
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -57,6 +58,7 @@ update msg model =
         RemoveFromGame cid -> (model, removeFromGame cid)
         SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
         Act abid dtarget -> ({model | selectedAbility = Nothing}, act abid dtarget)
+        RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
         TurnDone -> (model, turnDone)
 
 

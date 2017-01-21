@@ -27,7 +27,7 @@ viewGame model game = hbox
          , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
          ]
   , case game.current_combat of
-      Just combat -> combatGrid combat
+      Just combat -> combatGrid model.moving combat
       Nothing -> text "Enter combat to see a cool combat grid here!"
   , case game.current_combat of
       Just combat -> combatArea model game combat
@@ -59,19 +59,23 @@ inactiveEntry mCombat pendingCreatures creature = hbox
   , deleteCreatureButton creature]
 
 
-combatGrid : M.Combat -> Html U.Msg
-combatGrid combat = vbox <|
-  List.map (combatGridRow combat) (List.range -10 10)
+combatGrid : Maybe M.MovementRequest -> M.Combat -> Html U.Msg
+combatGrid moving combat = vbox <|
+  List.map (combatGridRow moving combat) (List.range -10 10)
 
-combatGridRow : M.Combat -> Int -> Html U.Msg
-combatGridRow combat rownum = hbox <|
-  List.map (combatGridCell combat rownum) (List.range -10 10)
+combatGridRow : Maybe M.MovementRequest -> M.Combat -> Int -> Html U.Msg
+combatGridRow moving combat rownum = hbox <|
+  List.map (combatGridCell moving combat rownum) (List.range -10 10)
 
-combatGridCell : M.Combat -> Int -> Int -> Html U.Msg
-combatGridCell combat x y = div
-  [style [ ("border", "solid black 1px") , ("width", "25px") , ("height", "25px")]] <|
-  let creatures = List.filter (\c -> c.pos.x == x && c.pos.y == y) combat.creatures.data
-  in [vbox (List.map (\c -> text c.id) creatures)]
+combatGridCell : Maybe M.MovementRequest -> M.Combat -> Int -> Int -> Html U.Msg
+combatGridCell moving combat x y =
+  let bgcolor = case moving of
+                  Just {creature_id, origin, max_distance} -> if (M.distance origin {x=x, y=y, z=0}) < max_distance then "lightgreen" else ""
+                  Nothing -> ""
+      -- TODO: insanely inefficient tho
+      creatures = List.filter (\c -> c.pos.x == x && c.pos.y == y) combat.creatures.data
+  in div [style [ ("border", "solid black 1px"), ("width", "25px"), ("height", "25px"), ("background-color", bgcolor)]] 
+         [vbox (List.map (\c -> text c.id) creatures)]
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
@@ -147,8 +151,10 @@ doneButton creature =
   button [onClick U.TurnDone] [text "Done"]
 
 moveButton : M.Distance -> M.Creature -> Html U.Msg
-moveButton movement_used creature = button []
-  [text (String.join "" ["Move (", toString (creature.speed - movement_used), ")"])]
+moveButton movement_used creature =
+  let movement_left = creature.speed - movement_used
+  in button [onClick (U.RequestMove <| M.MovementRequest creature.id creature.pos movement_left)]
+            [text (String.join "" ["Move (", toString movement_left, ")"])]
 
 hbox : List (Html a) -> Html a
 hbox els = div [style [("display", "flex"), ("width", "100%")] ]
