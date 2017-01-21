@@ -22,9 +22,6 @@ defaultModel =
     , pendingCombatCreatures = Set.empty
     , moving = Nothing
     , error = "No current error!"
-    , lastResponse = (case (JD.decodeString JD.value "null") of
-        Ok(x) -> x
-        Err(_) -> Debug.crash "nope")
   }
 
 type alias MovementRequest = 
@@ -40,7 +37,6 @@ type alias Model =
   -- Creatures which have been selected for combat
   , pendingCombatCreatures : Set.Set CreatureID
   , error: String
-  , lastResponse : JD.Value
   , moving: Maybe MovementRequest
   }
 

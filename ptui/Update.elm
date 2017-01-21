@@ -46,7 +46,7 @@ update msg model =
         PostCreateCreature -> createCreature model model.pendingCreature
         PostStartCombat -> startCombat model model.pendingCombatCreatures
         PostStopCombat -> stopCombat model
-        PostComplete (Ok x) -> ( { model | lastResponse = x}, updateApp)
+        PostComplete (Ok x) -> ( model, updateApp)
         PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
         AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
         AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )

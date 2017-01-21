@@ -20,8 +20,6 @@ view model = vbox
   , case model.app of Just app -> viewGame model app.current_game
                       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
-  , hbox [text "Last Response:", pre [] [text (JE.encode 4 model.lastResponse)]]
-  , hbox [text "Model:", text (toString model)]
   ]
 
 viewGame : M.Model -> M.Game -> Html U.Msg
