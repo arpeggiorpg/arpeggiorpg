@@ -13,15 +13,6 @@ type alias CreatureID = String
 type alias AbilityID = String
 type alias AbilitySetID = String
 
--- A decoder for Serde-style enums. Nullary constructors are bare strings and all others are
--- `{"ConstructorName": [...]}`
-sumDecoder : String -> List (String, a) -> List (String, JD.Decoder a) -> JD.Decoder a
-sumDecoder name nullaryList singleFieldList = JD.oneOf
-  [ JH.decodeSumUnaries name
-      (Dict.fromList nullaryList)
-  , JH.decodeSumObjectWithSingleField name
-      (Dict.fromList singleFieldList)
-  ]
 
 defaultModel : Model
 defaultModel =
@@ -269,7 +260,7 @@ effectEncoder eff =
 type GameCommand
   = StartCombat (List CreatureID)
   | StopCombat
-  -- | Act AbilityID DecidedTarget
+  | Act AbilityID DecidedTarget
   | Move Point3
   | CreateCreature Creature
   | RemoveCreature CreatureID
@@ -289,7 +280,21 @@ gameCommandEncoder gc =
     Move pt3 -> JE.object [("Move", point3Encoder pt3)]
     AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
     RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
+    Act abid dtarget -> JE.object [("Act", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
     Done -> JE.string "Done"
+
+
+-- UTILS
+
+-- A decoder for Serde-style enums. Nullary constructors are bare strings and all others are
+-- `{"ConstructorName": ...}`
+sumDecoder : String -> List (String, a) -> List (String, JD.Decoder a) -> JD.Decoder a
+sumDecoder name nullaryList singleFieldList = JD.oneOf
+  [ JH.decodeSumUnaries name
+      (Dict.fromList nullaryList)
+  , JH.decodeSumObjectWithSingleField name
+      (Dict.fromList singleFieldList)
+  ]
 
 
 -- pure functions on model

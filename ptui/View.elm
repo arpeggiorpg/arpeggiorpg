@@ -63,11 +63,11 @@ combatArea model game combat = case model.selectedAbility of
 targetSelector : M.Model -> M.Game -> M.Combat -> String -> Html U.Msg
 targetSelector model game combat abid = case (Dict.get abid game.abilities) of
   Just ability -> case ability.target of
-    M.Melee -> creatureTargetSelector U.SelectMeleeTarget combat
-    M.Range distance -> creatureTargetSelector U.SelectRangedTarget combat
+    M.Melee -> creatureTargetSelector abid M.DecidedMelee combat
+    M.Range distance -> creatureTargetSelector abid M.DecidedRange combat
   Nothing -> text "Sorry, that ability was not found. Please reload."
 
-creatureTargetSelector msg combat = vbox (List.map (\c -> button [onClick (msg c.id)] [text c.name]) combat.creatures.data)
+creatureTargetSelector abid con combat = vbox (List.map (\c -> button [onClick (U.Act abid (con c.id))] [text c.name]) combat.creatures.data)
 
 stopCombatButton : Html U.Msg
 stopCombatButton = button [onClick U.PostStopCombat] [text "Stop Combat"]

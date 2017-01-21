@@ -22,8 +22,7 @@ type Msg
     | RemoveFromCombat CreatureID
     | RemoveFromGame CreatureID
     | SelectAbility AbilityID
-    | SelectMeleeTarget CreatureID
-    | SelectRangedTarget CreatureID
+    | Act AbilityID M.DecidedTarget
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -57,8 +56,7 @@ update msg model =
         RemoveFromCombat cid -> (model, removeFromCombat cid)
         RemoveFromGame cid -> (model, removeFromGame cid)
         SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
-        SelectMeleeTarget cid -> ({model | selectedAbility = Nothing}, Cmd.none) -- TODO
-        SelectRangedTarget cid -> ({model | selectedAbility = Nothing}, Cmd.none)
+        Act abid dtarget -> ({model | selectedAbility = Nothing}, act abid dtarget)
         TurnDone -> (model, turnDone)
 
 
@@ -94,6 +92,9 @@ removeFromGame cid = sendCommand (M.RemoveCreature cid)
 
 turnDone : Cmd Msg
 turnDone = sendCommand M.Done
+
+act : AbilityID -> M.DecidedTarget -> Cmd Msg
+act abid dtarget = sendCommand (M.Act abid dtarget)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
