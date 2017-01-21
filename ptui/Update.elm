@@ -4,26 +4,26 @@ import Http
 import Json.Decode as JD
 import Set
 
-import Model as M
+import Model as M exposing (CreatureID, AbilityID)
 
 type Msg
     = MorePlease
-    | PendingCreatureId String
+    | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureAbilitySet String
     | PostCreateCreature
     | PostComplete (Result Http.Error JD.Value)
     | AppUpdate (Result Http.Error M.App)
     | ShowError String
-    | ToggleSelectedCreature String
+    | ToggleSelectedCreature CreatureID
     | PostStartCombat
     | PostStopCombat
-    | AddToCombat String
-    | RemoveFromCombat String
-    | RemoveFromGame String
-    | SelectAbility String
-    | SelectMeleeTarget String
-    | SelectRangedTarget String
+    | AddToCombat CreatureID
+    | RemoveFromCombat CreatureID
+    | RemoveFromGame CreatureID
+    | SelectAbility AbilityID
+    | SelectMeleeTarget CreatureID
+    | SelectRangedTarget CreatureID
     | TurnDone
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
@@ -77,19 +77,19 @@ createCreature model pc =
     Nothing -> ({ model | error = "Fill out the stuff."}, Cmd.none)
     Just creature -> (model, sendCommand (M.CreateCreature creature))
 
-startCombat : M.Model -> Set.Set String -> (M.Model, Cmd Msg)
+startCombat : M.Model -> Set.Set CreatureID -> (M.Model, Cmd Msg)
 startCombat model cids = (model, sendCommand (M.StartCombat (Set.toList cids)))
 
 stopCombat : M.Model -> (M.Model, Cmd Msg)
 stopCombat model = (model, sendCommand M.StopCombat)
 
-addToCombat : String -> Cmd Msg
+addToCombat : CreatureID -> Cmd Msg
 addToCombat cid = sendCommand (M.AddCreatureToCombat cid)
 
-removeFromCombat : String -> Cmd Msg
+removeFromCombat : CreatureID -> Cmd Msg
 removeFromCombat cid = sendCommand (M.RemoveCreatureFromCombat cid)
 
-removeFromGame : String -> Cmd Msg
+removeFromGame : CreatureID -> Cmd Msg
 removeFromGame cid = sendCommand (M.RemoveCreature cid)
 
 turnDone : Cmd Msg

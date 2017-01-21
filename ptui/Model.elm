@@ -9,6 +9,10 @@ import Json.Helpers as JH
 import Set
 
 
+type alias CreatureID = String
+type alias AbilityID = String
+type alias AbilitySetID = String
+
 -- A decoder for Serde-style enums. Nullary constructors are bare strings and all others are
 -- `{"ConstructorName": [...]}`
 sumDecoder : String -> List (String, a) -> List (String, JD.Decoder a) -> JD.Decoder a
@@ -34,20 +38,20 @@ defaultModel =
 type alias Model =
   { app : Maybe App
   , pendingCreature : PendingCreature
-  , selectedAbility : Maybe String
+  , selectedAbility : Maybe AbilityID
   -- Creatures which have been selected for combat
-  , pendingCombatCreatures : Set.Set String
+  , pendingCombatCreatures : Set.Set CreatureID
   , error: String
   , lastResponse : JD.Value
   }
 
 type alias PendingCreature =
-  { id : Maybe String
+  { id : Maybe CreatureID
   , name : Maybe String
   , speed: Maybe Int
   , max_energy: Maybe Int
   , cur_energy: Maybe Int
-  , ability_set: Maybe String
+  , ability_set: Maybe AbilitySetID
   , max_health: Maybe Int
   , cur_health: Maybe Int
   , pos: Maybe Point3
@@ -65,9 +69,9 @@ appDecoder = JD.map App (JD.field "current_game" gameDecoder)
 
 type alias Game =
   { current_combat : Maybe Combat
-  , abilities : Dict String Ability
-  , ability_sets : Dict String (List String)
-  , creatures : Dict String Creature
+  , abilities : Dict AbilityID Ability
+  , ability_sets : Dict AbilitySetID (List AbilityID)
+  , creatures : Dict CreatureID Creature
   }
 
 gameDecoder =
@@ -100,7 +104,7 @@ cursorListDecoder elDecoder =
     (JD.field "data" (JD.list elDecoder))
 
 type alias Creature =
-  { id: String
+  { id: CreatureID
   , name: String
   , speed: Int
   , max_energy: Int
@@ -109,7 +113,7 @@ type alias Creature =
   , cur_health: Int
   , pos: Point3
   , abilities: List AbilityStatus
-  , ability_set: String
+  , ability_set: AbilitySetID
   , conditions: List AppliedCondition
 }
 
@@ -165,8 +169,15 @@ targetSpecDecoder = sumDecoder "TargetSpec"
   [("Melee", Melee)]
   [("Range", JD.map Range JD.int)]
 
+type DecidedTarget
+  = DecidedMelee CreatureID
+  | DecidedRange CreatureID
 
-type alias AbilityStatus = { ability_id: String, cooldown: Int }
+decidedTargetEncoder dt = case dt of
+  DecidedMelee cid -> JE.object [("Melee", JE.string cid)]
+  DecidedRange cid -> JE.object [("Range", JE.string cid)]
+
+type alias AbilityStatus = { ability_id: AbilityID, cooldown: Int }
 
 abilityStatusDecoder = JD.map2 AbilityStatus
                                  (JD.field "ability_id" JD.string)
@@ -256,14 +267,14 @@ effectEncoder eff =
 
 -- "Input", or GameCommand and inward
 type GameCommand
-  = StartCombat (List String)
+  = StartCombat (List CreatureID)
   | StopCombat
   -- | Act AbilityID DecidedTarget
   | Move Point3
   | CreateCreature Creature
-  | RemoveCreature String
-  | AddCreatureToCombat String
-  | RemoveCreatureFromCombat String
+  | RemoveCreature CreatureID
+  | AddCreatureToCombat CreatureID
+  | RemoveCreatureFromCombat CreatureID
   -- RetrieveFromInventory(ThingID)
   -- StowInInventory(ThingID)
   | Done
