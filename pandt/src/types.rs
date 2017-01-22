@@ -5,8 +5,9 @@ use string_wrapper::StringWrapper;
 
 use creature::Creature;
 
-// aliases and newtypes
+/// Point3 defines a 3d position in meters. (or... does it?)
 pub type Point3 = (i16, i16, i16);
+
 pub type ConditionID = usize;
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
@@ -84,8 +85,7 @@ impl AbilitySetID {
     }
 }
 
-/// A type representing distance. The wrapped value is in centimeters, but should not normally be
-/// accessed. Note that distances cannot be negative.
+/// Distance in centimeters.
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
          Serialize, Deserialize)]
 pub struct Distance(pub u32);
@@ -96,18 +96,28 @@ impl Distance {
     }
 }
 
+/// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+    /// Start a combat with the specified creatures.
     StartCombat(Vec<CreatureID>),
+    /// Stop the current combat.
     StopCombat,
+    /// Make the current creature use an ability.
     Act(AbilityID, DecidedTarget),
+    /// Move to the given grid position.
     Move(Point3),
+    /// Create a new creature.
     CreateCreature(Creature),
+    /// Remove a creature from the game entirely. Creature must not be in combat.
     RemoveCreature(CreatureID),
+    /// Add a creature to combat. Combat must already be running; otherwise use `StartCombat`.
     AddCreatureToCombat(CreatureID),
+    /// Remove a creature from combat. Combat must already be running.
     RemoveCreatureFromCombat(CreatureID),
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
+    /// End the current creature's turn.
     Done,
 }
 
