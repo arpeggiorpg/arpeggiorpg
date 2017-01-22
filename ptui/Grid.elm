@@ -7,6 +7,7 @@ import Html.Events exposing (..)
 
 import MouseEvent exposing (onMouseClick)
 
+import Elements exposing (..)
 import Model as M
 import Update as U
 
@@ -39,13 +40,6 @@ clickedMove origin radius me = log (toString me) <|
   let offsetX = (me.clientPos.x - radius) * 10
       offsetY = (me.clientPos.y - radius) * 10
   in (U.Move {x=(origin.x + offsetX) // 100, y=(origin.y + offsetY) // 100, z=0})
-
-centerPositionedBox x y attrs content =
-  div [style [ ("position", "absolute")
-             , ("left", x)
-             , ("top", y)]]
-      [div (attrs ++ [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]])
-           content]
 
 movementCircle origin max_distance =
   let radius = cmToPx max_distance

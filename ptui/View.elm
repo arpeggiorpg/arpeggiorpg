@@ -11,6 +11,7 @@ import Set
 import Model as M
 import Update as U
 import Grid
+import Elements exposing (..)
 
 
 view : M.Model -> Html U.Msg
@@ -145,11 +146,3 @@ moveButton movement_used creature =
   let movement_left = creature.speed - movement_used
   in button [onClick (U.RequestMove <| M.MovementRequest creature.id creature.pos movement_left)]
             [text (String.join "" ["Move (", toString movement_left, ")"])]
-
-hbox : List (Html a) -> Html a
-hbox els = div [style [("display", "flex"), ("width", "100%")] ]
-               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
-
-vbox : List (Html a) -> Html a
-vbox els = div [style [("display", "flex"), ("flex-direction", "column"), ("width", "100%")]]
-               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
