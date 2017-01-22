@@ -12,6 +12,7 @@ pub struct Game {
     abilities: HashMap<AbilityID, Ability>,
     ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
     creatures: HashMap<CreatureID, Creature>,
+    maps: HashMap<MapName, Map>,
 }
 
 // Generic methods for any kind of Game regardless of the CreatureState.
@@ -24,6 +25,7 @@ impl Game {
             ability_sets: ability_sets,
             current_combat: None,
             creatures: HashMap::new(),
+            maps: HashMap::new(),
         }
     }
 
@@ -270,6 +272,7 @@ pub mod test {
             ability_sets: t_classes(),
             current_combat: None,
             creatures: creatures,
+            maps: HashMap::new(),
         };
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));

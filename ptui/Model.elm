@@ -12,6 +12,7 @@ import Set
 type alias CreatureID = String
 type alias AbilityID = String
 type alias AbilitySetID = String
+type alias MapName = String
 type alias Distance = Int
 
 defaultModel : Model
@@ -67,14 +68,16 @@ type alias Game =
   , abilities : Dict AbilityID Ability
   , ability_sets : Dict AbilitySetID (List AbilityID)
   , creatures : Dict CreatureID Creature
+  , maps: Dict MapName (List Point3)
   }
 
 gameDecoder =
-  JD.map4 Game
+  JD.map5 Game
     (JD.field "current_combat" (JD.maybe combatDecoder))
     (JD.field "abilities" (JD.dict abilityDecoder))
     (JD.field "ability_sets" (JD.dict (JD.list JD.string)))
     (JD.field "creatures" (JD.dict creatureDecoder))
+    (JD.field "maps" (JD.dict (JD.list point3Decoder)))
 
 type alias Combat =
   { creatures: CursorList Creature

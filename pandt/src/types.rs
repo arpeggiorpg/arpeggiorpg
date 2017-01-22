@@ -5,9 +5,11 @@ use string_wrapper::StringWrapper;
 
 use creature::Creature;
 
-/// Point3 defines a 3d position in meters. (or... does it?)
+/// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
 
+pub type MapName = String;
+pub type Map = Vec<Point3>; // To be extended later. For now just a list of collision voxels
 pub type ConditionID = usize;
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
