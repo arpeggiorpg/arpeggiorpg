@@ -62,7 +62,10 @@ inactiveEntry mCombat pendingCreatures creature = hbox
 
 --- WATCH OUT BE CAREFUL THERE IS SOME CRAZY COORDINATION BETWEEN COORDINATES AND SIZES AND SCALING AND SHIT HERE
 --- TODO: ABSTRACT IT OUT Y'ALL
-coord c = 250 + ((toFloat c) / 10)
+
+-- Convert Point3 coordinates to on-screen corodinates.
+-- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
+coord c = 250 + (c * 10)
 coordPx c = toString (coord c) ++ "px"
 
 combatGrid : Maybe M.MovementRequest -> M.Combat -> Html U.Msg
@@ -70,32 +73,31 @@ combatGrid moving combat =
   let creatureEls = (List.map gridCreature combat.creatures.data)
       x = case moving of
             Just {creature_id, origin, max_distance} -> 
-              let radius = (toFloat max_distance) / 10
+              let radius = max_distance // 10
               in [div
-               [style [ ("position", "absolute")
-                      , ("left", coordPx origin.x)
-                      , ("top", coordPx origin.y)]]
-               [div
-                    [ style [ ("width", (toString <| radius * 2) ++ "px")
-                           , ("height", (toString <| radius * 2) ++ "px")
-                           , ("border-radius", (toString radius) ++ "px")
-                           , ("background", "lightgreen")
-                           , ("position", "relative")
-                           , ("margin-left", "-50%")
-                           , ("margin-top", "-50%")]
-                    , onMouseClick (clickedMove origin (round radius))
-                    ]
-                    []]]
+                   [style [ ("position", "absolute")
+                          , ("left", coordPx origin.x)
+                          , ("top", coordPx origin.y)]]
+                   [div
+                     [ style [ ("width", (toString <| radius * 2) ++ "px")
+                             , ("height", (toString <| radius * 2) ++ "px")
+                             , ("border-radius", (toString radius) ++ "px")
+                             , ("background", "lightgreen")
+                             , ("position", "relative")
+                             , ("margin-left", "-50%")
+                             , ("margin-top", "-50%")]
+                     , onMouseClick (clickedMove origin radius)
+                     ]
+                     []]]
             Nothing -> []
   in div [style [("border", "2px"), ("position", "relative"), ("width", "500px"), ("height", "500px")]]
          (x ++ creatureEls)
-      
 
 clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
 clickedMove origin radius me = log (toString me) <|
   let offsetX = (me.clientPos.x - radius) * 10
       offsetY = (me.clientPos.y - radius) * 10
-  in (U.Move {x=origin.x + offsetX, y=origin.y + offsetY, z=0})
+  in (U.Move {x=(origin.x + offsetX) // 100, y=(origin.y + offsetY) // 100, z=0})
 
 gridCreature : M.Creature -> Html U.Msg
 gridCreature creature = div 
@@ -103,7 +105,6 @@ gridCreature creature = div
          , ("left", coordPx creature.pos.x)
          , ("top", coordPx creature.pos.y)]]
   [div [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]] [text creature.id]]
-
 --- OK END CRAZY COORDINATION. BE CAREFUL
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
@@ -162,10 +163,11 @@ actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
-  hbox [div [] [text "Name: ", text creature.name]
-         , div [] [text "HP: ", text (toString creature.cur_health)]
-         , div [] [text "Energy: ", text (toString creature.cur_energy)]
-         ]
+  hbox [ text "Name: ", text creature.name
+       , text "HP: ", text (toString creature.cur_health)
+       , text "Energy: ", text (toString creature.cur_energy)
+       , text "Pos: ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)
+       ]
 
 disengageButton : M.Creature -> Html U.Msg
 disengageButton creature =

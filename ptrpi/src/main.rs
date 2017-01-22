@@ -6,11 +6,9 @@ extern crate unicase;
 
 extern crate pandt;
 
-use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use futures::{finished, Stream, Future, BoxFuture};
