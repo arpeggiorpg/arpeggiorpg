@@ -67,16 +67,18 @@ inactiveEntry mCombat pendingCreatures creature = hbox
   , deleteCreatureButton creature]
 
 
---- WATCH OUT BE CAREFUL THERE IS SOME CRAZY COORDINATION BETWEEN COORDINATES AND SIZES AND SCALING AND SHIT HERE
---- TODO: ABSTRACT IT OUT Y'ALL
+-- The Grid
 
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
-
+-- These functions make 1 pixel = 1 decimeter
+px x = (toString x) ++ "px"
 metersToPx m = m * 10
-metersToPxPx m = toString (metersToPx m) ++ "px"
+metersToPxPx = px << metersToPx
+cmToPx cm = cm // 10
+cmToPxPx = px << cmToPx
 coord c = 250 + metersToPx c
-coordPx c = toString (coord c) ++ "px"
+coordPx = px << coord
 
 combatGrid : Maybe M.MovementRequest -> Maybe M.Map -> M.Combat -> Html U.Msg
 combatGrid moving maybeMap combat =
@@ -84,28 +86,12 @@ combatGrid moving maybeMap combat =
       terrainEls = case maybeMap of
         Just m -> (List.map gridTerrain m)
         Nothing -> []
-      movementCircle =
+      movementCirc =
         case moving of
-          Just {creature_id, origin, max_distance} -> 
-            let radius = max_distance // 10
-            in [div
-                  [style [ ("position", "absolute")
-                        , ("left", coordPx origin.x)
-                        , ("top", coordPx origin.y)]]
-                  [div
-                    [ style [ ("width", (toString <| radius * 2) ++ "px")
-                            , ("height", (toString <| radius * 2) ++ "px")
-                            , ("border-radius", (toString radius) ++ "px")
-                            , ("background", "lightgreen")
-                            , ("position", "relative")
-                            , ("margin-left", "-50%")
-                            , ("margin-top", "-50%")]
-                    , onMouseClick (clickedMove origin radius)
-                    ]
-                    []]]
+          Just {origin, max_distance} -> [movementCircle origin max_distance]
           Nothing -> []
-  in div [style [("border", "2px"), ("position", "relative"), ("width", "500px"), ("height", "500px")]]
-         (movementCircle ++ terrainEls ++ creatureEls)
+  in div [style [("border", "2px solid black"), ("position", "relative"), ("width", metersToPxPx 50), ("height", metersToPxPx 50)]]
+         (movementCirc ++ terrainEls ++ creatureEls)
 
 clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
 clickedMove origin radius me = log (toString me) <|
@@ -113,23 +99,36 @@ clickedMove origin radius me = log (toString me) <|
       offsetY = (me.clientPos.y - radius) * 10
   in (U.Move {x=(origin.x + offsetX) // 100, y=(origin.y + offsetY) // 100, z=0})
 
+centerPositionedBox x y attrs content =
+  div [style [ ("position", "absolute")
+             , ("left", x)
+             , ("top", y)]]
+      [div (attrs ++ [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]])
+           content]
+
+movementCircle origin max_distance =
+  let radius = cmToPx max_distance
+  in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
+       [ style [ ("width", px (radius * 2))
+               , ("height", px (radius * 2))
+               , ("border-radius", px radius)
+               , ("background", "lightgreen")
+               ]
+       , onMouseClick (clickedMove origin radius)
+       ]
+       []
+
 gridCreature : M.Creature -> Html U.Msg
-gridCreature creature = div 
-  [style [ ("position", "absolute")
-         , ("left", coordPx creature.pos.x)
-         , ("top", coordPx creature.pos.y)]]
-  [div [style [ ("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")
-              , ("background-color", "cyan")
-              , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]] [text creature.id]]
+gridCreature creature = centerPositionedBox (coordPx creature.pos.x) (coordPx creature.pos.y)
+  [style [("background-color", "cyan"), ("width", metersToPxPx 1), ("height", metersToPxPx 1)]]
+  [text creature.id]
 
 gridTerrain : M.Point3 -> Html a
-gridTerrain pt = div
-  [style [ ("position", "absolute")
-         , ("left", coordPx pt.x)
-         , ("top", coordPx pt.y)]]
-  [div [style [ ("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%"), ("background-color", "grey")
-              , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]] []]
---- OK END CRAZY COORDINATION. BE CAREFUL
+gridTerrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
+  [style [("background-color", "grey") , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]]
+  []
+
+-- End grid insanity
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
