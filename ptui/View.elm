@@ -10,7 +10,7 @@ import Set
 
 import Model as M
 import Update as U
-import MouseEvent exposing (onMouseClick)
+import Grid
 
 
 view : M.Model -> Html U.Msg
@@ -28,7 +28,7 @@ viewGame model game = hbox
          , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
          ]
   , case game.current_combat of
-      Just combat -> combatGrid model.moving (model.currentMap |> Maybe.andThen (flip Dict.get game.maps)) combat
+      Just combat -> Grid.combatGrid model.moving (model.currentMap |> Maybe.andThen (flip Dict.get game.maps)) combat
       Nothing -> text "Enter combat to see a cool combat grid here!"
   , case game.current_combat of
       Just combat -> combatArea model game combat
@@ -65,70 +65,6 @@ inactiveEntry mCombat pendingCreatures creature = hbox
                       , checked (Set.member creature.id pendingCreatures)
                       , onClick (U.ToggleSelectedCreature creature.id)] []
   , deleteCreatureButton creature]
-
-
--- The Grid
-
--- Convert Point3 coordinates to on-screen corodinates.
--- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
--- These functions make 1 pixel = 1 decimeter
-px x = (toString x) ++ "px"
-metersToPx m = m * 10
-metersToPxPx = px << metersToPx
-cmToPx cm = cm // 10
-cmToPxPx = px << cmToPx
-coord c = 250 + metersToPx c
-coordPx = px << coord
-
-combatGrid : Maybe M.MovementRequest -> Maybe M.Map -> M.Combat -> Html U.Msg
-combatGrid moving maybeMap combat =
-  let creatureEls = (List.map gridCreature combat.creatures.data)
-      terrainEls = case maybeMap of
-        Just m -> (List.map gridTerrain m)
-        Nothing -> []
-      movementCirc =
-        case moving of
-          Just {origin, max_distance} -> [movementCircle origin max_distance]
-          Nothing -> []
-  in div [style [("border", "2px solid black"), ("position", "relative"), ("width", metersToPxPx 50), ("height", metersToPxPx 50)]]
-         (movementCirc ++ terrainEls ++ creatureEls)
-
-clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
-clickedMove origin radius me = log (toString me) <|
-  let offsetX = (me.clientPos.x - radius) * 10
-      offsetY = (me.clientPos.y - radius) * 10
-  in (U.Move {x=(origin.x + offsetX) // 100, y=(origin.y + offsetY) // 100, z=0})
-
-centerPositionedBox x y attrs content =
-  div [style [ ("position", "absolute")
-             , ("left", x)
-             , ("top", y)]]
-      [div (attrs ++ [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]])
-           content]
-
-movementCircle origin max_distance =
-  let radius = cmToPx max_distance
-  in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
-       [ style [ ("width", px (radius * 2))
-               , ("height", px (radius * 2))
-               , ("border-radius", px radius)
-               , ("background", "lightgreen")
-               ]
-       , onMouseClick (clickedMove origin radius)
-       ]
-       []
-
-gridCreature : M.Creature -> Html U.Msg
-gridCreature creature = centerPositionedBox (coordPx creature.pos.x) (coordPx creature.pos.y)
-  [style [("background-color", "cyan"), ("width", metersToPxPx 1), ("height", metersToPxPx 1)]]
-  [text creature.id]
-
-gridTerrain : M.Point3 -> Html a
-gridTerrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
-  [style [("background-color", "grey") , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]]
-  []
-
--- End grid insanity
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
