@@ -28,12 +28,19 @@ viewGame model game = hbox
          , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
          ]
   , case game.current_combat of
-      Just combat -> combatGrid model.moving combat
+      Just combat -> combatGrid model.moving (model.currentMap |> Maybe.andThen (flip Dict.get game.maps)) combat
       Nothing -> text "Enter combat to see a cool combat grid here!"
   , case game.current_combat of
       Just combat -> combatArea model game combat
       Nothing -> startCombatButton
+  , mapSelector game
   ]
+
+
+mapSelector : M.Game -> Html U.Msg
+mapSelector game = vbox <|
+  let mapSelectorItem name = button [onClick (U.SelectMap name)] [text name]
+  in (List.map mapSelectorItem (Dict.keys game.maps))
 
 inactiveList : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
 inactiveList mCombat pendingCreatures creatures = div []
@@ -65,33 +72,40 @@ inactiveEntry mCombat pendingCreatures creature = hbox
 
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
-coord c = 250 + (c * 10)
+
+metersToPx m = m * 10
+metersToPxPx m = toString (metersToPx m) ++ "px"
+coord c = 250 + metersToPx c
 coordPx c = toString (coord c) ++ "px"
 
-combatGrid : Maybe M.MovementRequest -> M.Combat -> Html U.Msg
-combatGrid moving combat =
+combatGrid : Maybe M.MovementRequest -> Maybe M.Map -> M.Combat -> Html U.Msg
+combatGrid moving maybeMap combat =
   let creatureEls = (List.map gridCreature combat.creatures.data)
-      x = case moving of
-            Just {creature_id, origin, max_distance} -> 
-              let radius = max_distance // 10
-              in [div
-                   [style [ ("position", "absolute")
-                          , ("left", coordPx origin.x)
-                          , ("top", coordPx origin.y)]]
-                   [div
-                     [ style [ ("width", (toString <| radius * 2) ++ "px")
-                             , ("height", (toString <| radius * 2) ++ "px")
-                             , ("border-radius", (toString radius) ++ "px")
-                             , ("background", "lightgreen")
-                             , ("position", "relative")
-                             , ("margin-left", "-50%")
-                             , ("margin-top", "-50%")]
-                     , onMouseClick (clickedMove origin radius)
-                     ]
-                     []]]
-            Nothing -> []
+      terrainEls = case maybeMap of
+        Just m -> (List.map gridTerrain m)
+        Nothing -> []
+      movementCircle =
+        case moving of
+          Just {creature_id, origin, max_distance} -> 
+            let radius = max_distance // 10
+            in [div
+                  [style [ ("position", "absolute")
+                        , ("left", coordPx origin.x)
+                        , ("top", coordPx origin.y)]]
+                  [div
+                    [ style [ ("width", (toString <| radius * 2) ++ "px")
+                            , ("height", (toString <| radius * 2) ++ "px")
+                            , ("border-radius", (toString radius) ++ "px")
+                            , ("background", "lightgreen")
+                            , ("position", "relative")
+                            , ("margin-left", "-50%")
+                            , ("margin-top", "-50%")]
+                    , onMouseClick (clickedMove origin radius)
+                    ]
+                    []]]
+          Nothing -> []
   in div [style [("border", "2px"), ("position", "relative"), ("width", "500px"), ("height", "500px")]]
-         (x ++ creatureEls)
+         (movementCircle ++ terrainEls ++ creatureEls)
 
 clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
 clickedMove origin radius me = log (toString me) <|
@@ -104,7 +118,17 @@ gridCreature creature = div
   [style [ ("position", "absolute")
          , ("left", coordPx creature.pos.x)
          , ("top", coordPx creature.pos.y)]]
-  [div [style [("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")]] [text creature.id]]
+  [div [style [ ("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%")
+              , ("background-color", "cyan")
+              , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]] [text creature.id]]
+
+gridTerrain : M.Point3 -> Html a
+gridTerrain pt = div
+  [style [ ("position", "absolute")
+         , ("left", coordPx pt.x)
+         , ("top", coordPx pt.y)]]
+  [div [style [ ("position", "relative"), ("margin-left", "-50%"), ("margin-top", "-50%"), ("background-color", "grey")
+              , ("width", metersToPxPx 1), ("height", metersToPxPx 1)]] []]
 --- OK END CRAZY COORDINATION. BE CAREFUL
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg

@@ -23,6 +23,7 @@ defaultModel =
     , pendingCombatCreatures = Set.empty
     , moving = Nothing
     , error = "No current error!"
+    , currentMap = Nothing
   }
 
 type alias MovementRequest = 
@@ -39,6 +40,7 @@ type alias Model =
   , pendingCombatCreatures : Set.Set CreatureID
   , error: String
   , moving: Maybe MovementRequest
+  , currentMap: Maybe MapName
   }
 
 type alias PendingCreature =
@@ -68,8 +70,10 @@ type alias Game =
   , abilities : Dict AbilityID Ability
   , ability_sets : Dict AbilitySetID (List AbilityID)
   , creatures : Dict CreatureID Creature
-  , maps: Dict MapName (List Point3)
+  , maps: Dict MapName Map
   }
+
+type alias Map = List Point3
 
 gameDecoder =
   JD.map5 Game

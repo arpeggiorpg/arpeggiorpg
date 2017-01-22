@@ -1,6 +1,7 @@
 ---
 current_game:
   maps:
+    empty-map:
     map1:
       # Right wall
       - [2, -1, 0]

@@ -8,6 +8,7 @@ import Model as M exposing (CreatureID, AbilityID)
 
 type Msg
     = MorePlease
+    | SelectMap M.MapName
     | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureAbilitySet String
@@ -31,6 +32,7 @@ update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
     case msg of
         MorePlease -> ( model, updateApp  )
+        SelectMap mapName -> ({ model | currentMap = Just mapName}, Cmd.none)
         PendingCreatureId newId ->
           let oldPC = model.pendingCreature
           in ( { model | pendingCreature = {oldPC | id = Just newId } }
