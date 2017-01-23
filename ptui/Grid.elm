@@ -12,18 +12,21 @@ import Model as M
 import Update as U
 
 
-gridSize = 50 -- meters
-scale = 10 -- pixels per meter. 10 means 1 pixel = 1 decimeter
+-- how many meters across the grid should be
+gridSize = 25
+-- pixels per meter. 10 means 1 pixel = 1 decimeter
+scale = 10
 
 px x = (toString x) ++ "px"
 
 -- These functions make 1 pixel = 1 decimeter
 
-metersToPx : Int -> Int
 metersToPx m = m * scale
 metersToPxPx = px << metersToPx
 
-cmToPx cm = cm // scale
+pxToMeters m = m // scale
+
+cmToPx cm = (cm // 100) * scale
 cmToPxPx = px << cmToPx
 
 -- Convert Point3 coordinates to on-screen corodinates.
@@ -64,8 +67,8 @@ clickedMove origin radius me = log (toString me) <|
   let elementX = (me.elementPos.x - radius)
       elementY = (me.elementPos.y - radius)
   in log (toString elementX ++ "/" ++ toString elementY)
-         U.Move { x=(elementX // scale) + origin.x
-                , y=(elementY // scale) + origin.y
+         U.Move { x=(pxToMeters elementX) + origin.x
+                , y=(pxToMeters elementY) + origin.y
                 , z=0}
 
 
