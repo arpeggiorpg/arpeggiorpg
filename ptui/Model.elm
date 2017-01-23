@@ -272,7 +272,7 @@ type GameCommand
   = StartCombat (List CreatureID)
   | StopCombat
   | Act AbilityID DecidedTarget
-  | Move Point3
+  | Move (List Point3)
   | CreateCreature Creature
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
@@ -288,7 +288,7 @@ gameCommandEncoder gc =
     CreateCreature creature -> JE.object [("CreateCreature", creatureEncoder creature)]
     RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
     StopCombat -> JE.string "StopCombat"
-    Move pt3 -> JE.object [("Move", point3Encoder pt3)]
+    Move pts -> JE.object [("Move", (JE.list (List.map point3Encoder pts)))]
     AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
     RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     Act abid dtarget -> JE.object [("Act", JE.list [JE.string abid, decidedTargetEncoder dtarget])]

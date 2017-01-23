@@ -1,9 +1,9 @@
 module Grid exposing (..)
 
+import AStar
 import Debug exposing (log)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (..)
 
 import MouseEvent exposing (onMouseClick)
 
@@ -35,22 +35,20 @@ coord : Int -> Int
 coord c = (metersToPx (gridSize // 2)) + metersToPx c
 coordPx = px << coord
 
-combatGrid : Maybe M.MovementRequest -> Maybe M.Map -> M.Combat -> Html U.Msg
-combatGrid moving maybeMap combat =
-  let creatureEls = (List.map gridCreature combat.creatures.data)
-      terrainEls = case maybeMap of
-        Just m -> (List.map gridTerrain m)
-        Nothing -> []
+combatGrid : Maybe M.MovementRequest -> M.Map -> M.Combat -> Html U.Msg
+combatGrid moving terrain combat =
+  let creatureEls = List.map gridCreature combat.creatures.data
+      terrainEls = List.map gridTerrain terrain
       movementCirc =
         case moving of
-          Just {origin, max_distance} -> [movementCircle origin max_distance]
+          Just {origin, max_distance} -> [movementCircle terrain origin max_distance]
           Nothing -> []
   in div [style [ ("border", "2px solid black"), ("position", "relative")
                 , ("width", metersToPxPx gridSize), ("height", metersToPxPx gridSize)]]
          (movementCirc ++ terrainEls ++ creatureEls)
 
-movementCircle : M.Point3 -> Int -> Html U.Msg
-movementCircle origin max_distance =
+movementCircle : M.Map -> M.Point3 -> Int -> Html U.Msg
+movementCircle terrain origin max_distance =
   let radius = cmToPx max_distance
   in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
        [ style [ ("width", px (radius * 2))
@@ -58,18 +56,24 @@ movementCircle origin max_distance =
                , ("border-radius", px radius)
                , ("background", "lightgreen")
                ]
-       , onMouseClick (clickedMove origin radius)
+       , onMouseClick (clickedMove terrain origin radius)
        ]
        []
 
-clickedMove : M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
-clickedMove origin radius me = log (toString me) <|
+clickedMove : M.Map -> M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
+clickedMove terrain origin radius me = log (toString me) <|
   let elementX = (me.elementPos.x - radius)
       elementY = (me.elementPos.y - radius)
   in log (toString elementX ++ "/" ++ toString elementY)
-         U.Move { x=(pxToMeters elementX) + origin.x
-                , y=(pxToMeters elementY) + origin.y
-                , z=0}
+         U.Move
+          (calculatePath
+            origin
+            {x=(pxToMeters elementX) + origin.x, y=(pxToMeters elementY) + origin.y, z=0}
+            terrain)
+
+
+calculatePath : M.Point3 -> M.Point3 -> M.Map -> List M.Point3
+calculatePath origin destination terrain = [{x = 0, y = 0, z = 0}]
 
 
 gridCreature : M.Creature -> Html U.Msg

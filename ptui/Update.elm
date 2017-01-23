@@ -29,7 +29,7 @@ type Msg
     | SelectAbility AbilityID
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest -- max amount they can move
-    | Move M.Point3
+    | Move (List M.Point3)
     | TurnDone
 
 
@@ -106,9 +106,8 @@ turnDone = sendCommand M.Done
 act : AbilityID -> M.DecidedTarget -> Cmd Msg
 act abid dtarget = sendCommand (M.Act abid dtarget)
 
-move : M.Point3 -> Cmd Msg
-move pt = sendCommand (M.Move pt)
-
+move : (List M.Point3) -> Cmd Msg
+move pts = sendCommand (M.Move pts)
 
 url : String
 url = "http://localhost:1337/"

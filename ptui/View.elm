@@ -29,7 +29,7 @@ viewGame model game = hbox
          , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
          ]
   , case game.current_combat of
-      Just combat -> Grid.combatGrid model.moving (model.currentMap |> Maybe.andThen (flip Dict.get game.maps)) combat
+      Just combat -> Grid.combatGrid model.moving (getMap model.currentMap game) combat
       Nothing -> text "Enter combat to see a cool combat grid here!"
   , case game.current_combat of
       Just combat -> combatArea model game combat
@@ -37,6 +37,11 @@ viewGame model game = hbox
   , mapSelector game
   ]
 
+getMap : Maybe M.MapName -> M.Game -> M.Map
+getMap mapName game =
+  case mapName of
+    Just mapName -> (Maybe.withDefault [] (Dict.get mapName game.maps))
+    Nothing -> []
 
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
