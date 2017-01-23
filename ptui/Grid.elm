@@ -4,6 +4,7 @@ import AStar
 import Debug exposing (log)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Set
 
 import MouseEvent exposing (onMouseClick)
 
@@ -73,8 +74,34 @@ clickedMove terrain origin radius me = log (toString me) <|
 
 
 calculatePath : M.Point3 -> M.Point3 -> M.Map -> List M.Point3
-calculatePath origin destination terrain = [{x = 0, y = 0, z = 0}]
+calculatePath origin destination terrain = 
+  let path = AStar.findPath
+               AStar.pythagoreanCost
+                 (gridStep terrain)
+                 (origin.x, origin.y)
+                 (destination.x, destination.y)
+  in case path of
+      Just path -> log "Got a path!" List.map (\(x, y) -> {x=x, y=y, z=0}) path
+      Nothing -> log "No path!" []
 
+
+gridStep : M.Map -> (Int, Int) -> Set.Set (Int, Int)
+gridStep terrain (fromx, fromy) = 
+  let
+    f (offsetx, offsety) result =
+      let adjacentSquare = {x=fromx + offsetx, y=fromy + offsety, z=0}
+          terrainExists = List.member adjacentSquare terrain
+      in if terrainExists then result else Set.insert (adjacentSquare.x, adjacentSquare.y) result
+  in List.foldl f Set.empty [ (-1, -1)
+                     , (-1,  0)
+                     , (-1,  1)
+                     , ( 0, -1)
+                     , ( 0,  0)
+                     , ( 0,  1)
+                     , ( 1, -1)
+                     , ( 1,  0)
+                     , ( 1,  1)
+                     ]
 
 gridCreature : M.Creature -> Html U.Msg
 gridCreature creature = centerPositionedBox (coordPx creature.pos.x) (coordPx creature.pos.y)
