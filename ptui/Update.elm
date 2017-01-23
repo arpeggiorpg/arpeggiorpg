@@ -1,11 +1,15 @@
 module Update exposing (..)
 
+import Debug exposing (log)
 import Http
 import Json.Decode as JD
 import Set
 
 import Model as M exposing (CreatureID, AbilityID)
 
+-- These are all the things that can *happen* in the app.
+-- e.g., clicking a button creates a Msg.
+-- Receiving a response from an API call creates a Msg.
 type Msg
     = MorePlease
     | SelectMap M.MapName
@@ -28,6 +32,9 @@ type Msg
     | Move M.Point3
     | TurnDone
 
+
+-- Do something on behalf of a Msg. Has the opportunity to modify the state of the app AND to
+-- trigger an Effect.
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
     case msg of
@@ -48,7 +55,7 @@ update msg model =
         PostCreateCreature -> createCreature model model.pendingCreature
         PostStartCombat -> startCombat model model.pendingCombatCreatures
         PostStopCombat -> stopCombat model
-        PostComplete (Ok x) -> ( model, updateApp)
+        PostComplete (Ok x) -> ( model, successfulResponse x)
         PostComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
         AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
         AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
@@ -69,11 +76,8 @@ update msg model =
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
 
-url : String
-url = "http://localhost:1337/"
-
-updateApp : Cmd Msg
-updateApp = Http.send AppUpdate (Http.get url M.appDecoder)
+successfulResponse : a -> Cmd Msg
+successfulResponse x = log (toString x) updateApp
 
 createCreature : M.Model -> M.PendingCreature -> (M.Model, Cmd Msg)
 createCreature model pc =
@@ -105,6 +109,14 @@ act abid dtarget = sendCommand (M.Act abid dtarget)
 move : M.Point3 -> Cmd Msg
 move pt = sendCommand (M.Move pt)
 
+
+url : String
+url = "http://localhost:1337/"
+
+updateApp : Cmd Msg
+updateApp = Http.send AppUpdate (Http.get url M.appDecoder)
+
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
+  log (toString cmd)
   Http.send PostComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JD.value)

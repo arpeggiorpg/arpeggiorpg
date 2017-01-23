@@ -13,20 +13,13 @@ type alias Position =
 
 
 type alias MouseEvent =
-    { clientPos : Position
+    { elementPos : Position
     , targetPos : Position
     }
 
-
--- Calculates the relative position of an Event.
-relPos : MouseEvent -> Position
-relPos ev =
-    Position (ev.clientPos.x - ev.targetPos.x) (ev.clientPos.y - ev.targetPos.y)
-
-
 mouseEvent : Int -> Int -> Rectangle -> MouseEvent
-mouseEvent clientX clientY target =
-    { clientPos = Position clientX clientY
+mouseEvent offsetX offsetY target =
+    { elementPos = Position offsetX offsetY
     , targetPos = Position (truncate target.left) (truncate target.top)
     }
 
