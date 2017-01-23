@@ -15,7 +15,7 @@ import Update as U
 -- how many meters across the grid should be
 gridSize = 25
 -- pixels per meter. 10 means 1 pixel = 1 decimeter
-scale = 10
+scale = 30
 
 px x = (toString x) ++ "px"
 
