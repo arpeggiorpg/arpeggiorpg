@@ -125,7 +125,9 @@ impl Combat {
 
     /// the Option<Combat> will be None if you're removing the last creature from a combat.
     /// Returns the Creature removed, so you can put it back into archival.
-    pub fn remove_from_combat(&self, cid: CreatureID) -> Result<(Option<Combat>, Creature), GameError> {
+    pub fn remove_from_combat(&self,
+                              cid: CreatureID)
+                              -> Result<(Option<Combat>, Creature), GameError> {
         let mut combat = self.clone();
         let idx = combat.creatures
             .iter()
@@ -137,7 +139,9 @@ impl Combat {
                                              remove_from_combat"
                     .to_string()))
             }
-            Err(nonempty::Error::RemoveLastElement) => Ok((None, combat.current_creature().clone())),
+            Err(nonempty::Error::RemoveLastElement) => {
+                Ok((None, combat.current_creature().clone()))
+            }
             Ok(creature) => Ok((Some(combat), creature)),
         }
     }
@@ -163,7 +167,28 @@ impl<'a> CombatMove<'a> {
     pub fn movement_left(&self) -> Distance {
         self.movement_left
     }
-    pub fn move_creature(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
+
+    /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
+    /// movement.
+    pub fn move_creature(&self, pts: Vec<Point3>) -> Result<(Combat, Vec<CombatLog>), GameError> {
+        let mut combat = self.combat.clone();
+        let mut all_logs = vec![];
+        for pt in pts {
+            let cpos = combat.current_creature().pos();
+            if point3_distance(cpos, pt) > Distance(100) {
+                return Err(GameError::StepTooBig{from: cpos, to: pt});
+            }
+            combat = {
+                let mvmt = combat.get_movement()?;
+                let r = mvmt.teleport(pt)?;
+                all_logs.extend(r.1);
+                r.0
+            }
+        }
+        Ok((combat, all_logs))
+    }
+
+    pub fn teleport(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let c = self.combat.current_creature();
         let distance = point3_distance(c.pos(), pt);
         if distance > self.movement_left {
@@ -326,7 +351,7 @@ pub mod tests {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().move_creature((11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().teleport((11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance::new(10.0),
@@ -339,11 +364,11 @@ pub mod tests {
     #[test]
     fn move_some_at_a_time() {
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().move_creature((5, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().teleport((5, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().move_creature((10, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().teleport((10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().move_creature((11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().teleport((11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance::new(10.0),

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
 
 use types::*;
 use creature::*;
@@ -48,7 +47,7 @@ impl Game {
             (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
             (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
             (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
-            (Move(pt), Some(com)) => self.move_creature(&com, pt),
+            (Move(pts), Some(com)) => self.move_creature(&com, pts),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
@@ -148,10 +147,10 @@ impl Game {
 
     fn move_creature(&self,
                      combat: &Combat,
-                     pt: Point3)
+                     pts: Vec<Point3>)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(pt)?;
+        let (next, logs) = movement.move_creature(pts)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -218,6 +217,8 @@ pub mod test {
     use types::test::*;
     use creature::test::*;
     use test::Bencher;
+    use std::iter::FromIterator;
+
 
     pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
         game.perform_unchecked(GameCommand::StartCombat(combatants)).unwrap().0
@@ -231,10 +232,10 @@ pub mod test {
         let punch = t_punch();
         let heal = t_heal();
         let shoot = t_shoot();
-        let mut game = Game::new(t_classes(),
-                                 HashMap::from_iter(vec![(abid("punch"), punch),
-                                                         (abid("shoot"), shoot),
-                                                         (abid("heal"), heal)]));
+        let game = Game::new(t_classes(),
+                             HashMap::from_iter(vec![(abid("punch"), punch),
+                                                     (abid("shoot"), shoot),
+                                                     (abid("heal"), heal)]));
 
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue("rogue"))).unwrap().0;
         let game =
@@ -331,7 +332,7 @@ pub mod test {
     fn movement() {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-        game.perform_unchecked(GameCommand::Move((1, 0, 0))).unwrap();
+        game.perform_unchecked(GameCommand::Move(vec![(1, 0, 0)])).unwrap();
     }
 
     #[bench]

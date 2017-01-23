@@ -107,8 +107,8 @@ pub enum GameCommand {
     StopCombat,
     /// Make the current creature use an ability.
     Act(AbilityID, DecidedTarget),
-    /// Move to the given grid position.
-    Move(Point3),
+    /// Take a series of steps.
+    Move(Vec<Point3>),
     /// Create a new creature.
     CreateCreature(Creature),
     /// Remove a creature from the game entirely. Creature must not be in combat.
@@ -194,6 +194,8 @@ pub enum GameError {
         to: Point3,
         distance: Distance,
     },
+    /// Returned when a step in a `Move` command was more than one cube away.
+    StepTooBig { from: Point3, to: Point3 },
 }
 
 impl fmt::Display for GameError {
