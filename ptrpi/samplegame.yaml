@@ -21,7 +21,6 @@ current_game:
       - [1, -1, 0]
       # Top wall
       - [-1, 3, 0]
-      - [0, 3, 0]
       - [1, 3, 0]
   current_combat: ~
   abilities: 

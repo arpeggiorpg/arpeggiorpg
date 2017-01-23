@@ -175,7 +175,8 @@ impl<'a> CombatMove<'a> {
         let mut all_logs = vec![];
         for pt in pts {
             let cpos = combat.current_creature().pos();
-            if point3_distance(cpos, pt) > Distance(100) {
+            // 145 ~ sqrt(200)
+            if point3_distance(cpos, pt) > Distance(145) {
                 return Err(GameError::StepTooBig{from: cpos, to: pt});
             }
             combat = {
