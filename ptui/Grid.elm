@@ -4,6 +4,7 @@ import AStar
 import Debug exposing (log)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Set
 
 import MouseEvent exposing (onMouseClick)
@@ -30,6 +31,14 @@ pxToMeters m = m // scale
 cmToPx cm = (cm // 100) * scale
 cmToPxPx = px << cmToPx
 
+-- Get a list of all points within a distance that can be pathed to from an origin.
+getPathablePts : M.Map -> Int -> M.Point3 -> List M.Point3
+getPathablePts terrain distance origin =
+  let meters = distance // 100
+      xyf x y = calculatePath origin {x=x, y=y, z=0} terrain
+      yf x = List.concatMap (xyf x) (List.range (origin.y - meters) (origin.y + meters))
+  in List.concatMap yf (List.range (origin.x - meters) (origin.x + meters))
+
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
 coord : Int -> Int
@@ -42,24 +51,34 @@ combatGrid moving terrain combat =
       terrainEls = List.map gridTerrain terrain
       movementCirc =
         case moving of
-          Just {origin, max_distance} -> [movementCircle terrain origin max_distance]
+          Just {origin, max_distance} -> movementCircle terrain origin max_distance
           Nothing -> []
   in div [style [ ("border", "2px solid black"), ("position", "relative")
                 , ("width", metersToPxPx gridSize), ("height", metersToPxPx gridSize)]]
          (movementCirc ++ terrainEls ++ creatureEls)
 
-movementCircle : M.Map -> M.Point3 -> Int -> Html U.Msg
+movementCircle : M.Map -> M.Point3 -> Int -> List (Html U.Msg)
 movementCircle terrain origin max_distance =
-  let radius = cmToPx max_distance
-  in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
-       [ style [ ("width", px (radius * 2))
-               , ("height", px (radius * 2))
-               , ("border-radius", px radius)
-               , ("background", "lightgreen")
-               ]
-       , onMouseClick (clickedMove terrain origin radius)
-       ]
-       []
+  let pts = getPathablePts terrain max_distance origin
+  in List.map (movementTarget origin terrain) pts
+
+movementTarget : M.Point3 -> M.Map -> M.Point3 -> Html U.Msg
+movementTarget origin terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
+  [ style [ ("width", metersToPxPx 1), ("height", metersToPxPx 1)
+          , ("border", "1px solid black"), ("background", "lightgreen")]
+  , onClick (U.Move (calculatePath origin pt terrain))]
+  []
+
+  -- let radius = cmToPx max_distance
+  -- in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
+  --      [ style [ ("width", px (radius * 2))
+  --              , ("height", px (radius * 2))
+  --              , ("border-radius", px radius)
+  --              , ("background", "lightgreen")
+  --              ]
+  --      , onMouseClick (clickedMove terrain origin radius)
+  --      ]
+  --      []
 
 clickedMove : M.Map -> M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
 clickedMove terrain origin radius me =
