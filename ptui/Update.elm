@@ -77,7 +77,7 @@ toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
 
 successfulResponse : a -> Cmd Msg
-successfulResponse x = log (toString x) updateApp
+successfulResponse x = updateApp
 
 createCreature : M.Model -> M.PendingCreature -> (M.Model, Cmd Msg)
 createCreature model pc =
@@ -117,5 +117,5 @@ updateApp = Http.send AppUpdate (Http.get url M.appDecoder)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
-  log (toString cmd)
+  log ("[COMMAND] " ++ (toString cmd)) <|
   Http.send PostComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JD.value)
