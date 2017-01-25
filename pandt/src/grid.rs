@@ -159,8 +159,11 @@ pub mod test {
     fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
         let meters = (speed.0 / 100) as i16;
         let mut results = vec![];
-        for x in start.0 - meters..start.0 + meters {
-            for y in start.1 - meters..start.1 + meters {
+        for x in start.0 - meters..start.0 + meters + 1 {
+            for y in start.1 - meters..start.1 + meters + 1 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
                 let end_point = (x, y, 0);
                 let mut gs = GridState {
                     start: start,
@@ -180,18 +183,38 @@ pub mod test {
     fn test_accessible_nowhere_to_go() {
         let terrain = box_map();
         assert_eq!(get_all_accessible((0, 0, 0), &terrain, Distance(9000)),
-                   vec![(0, 0, 0)]);
+                   vec![]);
     }
+
     #[test]
     fn test_accessible_small_limit() {
         // a speed of 100 means you can only move on the axes
         let terrain = vec![];
         let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
         pts.sort();
-        let mut expected = vec![(0, 0, 0), (1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, 1, 0)];
+        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
         expected.sort();
         assert_eq!(pts, expected)
     }
+
+    #[test]
+    fn test_accessible_less_small_limit() {
+        // a speed of 141 means you can also move diagonally, but only once
+        let terrain = vec![];
+        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
+        pts.sort();
+        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (-1,-1,0), (1,1,0), (-1,1,0), (1,-1,0)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
+
+    #[test]
+    fn test_accessible_average_speed() {
+        let terrain = vec![];
+        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
+        assert_eq!(pts.len(), 316);
+    }
+
 
     #[test]
     fn test_iter() {
