@@ -8,6 +8,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate odds;
 extern crate string_wrapper;
+extern crate astar;
 
 #[cfg(test)]
 extern crate serde_json;

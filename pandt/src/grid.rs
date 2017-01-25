@@ -36,6 +36,7 @@ pub fn creature_within_distance(c1: &Creature, c2: &Creature, d: Distance) -> bo
 #[cfg(test)]
 pub mod test {
     use grid::*;
+
     #[test]
     fn test_biggest_distance() {
         let pos1 = (i16::min_value(), i16::min_value(), i16::min_value());
@@ -66,4 +67,238 @@ pub mod test {
         let pos2 = (1, 1, 0);
         assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
     }
+
+
+
+
+    // ASTAR STUFF
+
+
+    use astar::{astar, SearchProblem, TwoDSearchProblem, ReusableSearchProblem};
+    use std::collections::VecDeque;
+    use std::vec::IntoIter;
+
+    struct GridState<'a> {
+        start: Point3,
+        end: Point3,
+        max_distance: u32,
+        terrain: &'a Map,
+    }
+
+    fn box_map() -> Map {
+        vec![// left wall
+             (-1, -1, 0),
+             (-1, 0, 0),
+             (-1, 1, 0),
+             // top wall
+             (0, -1, 0),
+             // right wall
+             (1, -1, 0),
+             (1, 0, 0),
+             (1, 1, 0),
+             // bottom wall
+             (0, 1, 0)]
+    }
+
+    impl<'a> SearchProblem for GridState<'a> {
+        type Node = Point3;
+        type Cost = u32;
+        type Iter = IntoIter<(Self::Node, Self::Cost)>;
+
+        fn start(&self) -> Self::Node {
+            self.start
+        }
+        fn is_end(&self, other: &Self::Node) -> bool {
+            other == &self.end
+        }
+        fn heuristic(&self, node: &Self::Node) -> Self::Cost {
+            point3_distance(self.start, node.clone()).0
+        }
+        fn neighbors(&mut self, here: &Self::Node) -> Self::Iter {
+            let mut vec = vec![];
+            for i in -1..1 + 1 {
+                for k in -1..1 + 1 {
+                    if !(i == 0 && k == 0) {
+                        let newpt = (here.0 + i, here.1 + k, 0);
+                        if self.heuristic(&newpt) <= self.max_distance {
+                            let cost = point3_distance(here.clone(), newpt).0;
+                            if !self.terrain.contains(&newpt) {
+                                vec.push((newpt, cost));
+                            }
+                        }
+                    }
+                }
+            }
+            vec.into_iter()
+        }
+    }
+
+    fn path(start: Point3, end: Point3) -> Option<VecDeque<Point3>> {
+        let terrain = vec![];
+        let mut gs = GridState {
+            start: start,
+            end: end,
+            max_distance: u32::max_value(),
+            terrain: &terrain,
+        };
+        astar(&mut gs)
+    }
+
+    #[test]
+    fn path_inaccessible() {
+        let terrain = box_map();
+        let mut gs = GridState {
+            start: (3, 3, 0),
+            end: (0, 0, 0),
+            max_distance: 1000,
+            terrain: &terrain,
+        };
+        assert_eq!(astar(&mut gs), None);
+    }
+
+    fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
+        let meters = (speed.0 / 100) as i16;
+        let mut results = vec![];
+        for x in start.0 - meters..start.0 + meters {
+            for y in start.1 - meters..start.1 + meters {
+                let end_point = (x, y, 0);
+                let mut gs = GridState {
+                    start: start,
+                    end: end_point,
+                    max_distance: speed.0,
+                    terrain: terrain,
+                };
+                if let Some(_) = astar(&mut gs) {
+                    results.push(end_point);
+                }
+            }
+        }
+        results
+    }
+
+    #[test]
+    fn test_accessible_nowhere_to_go() {
+        let terrain = box_map();
+        assert_eq!(get_all_accessible((0, 0, 0), &terrain, Distance(9000)),
+                   vec![(0, 0, 0)]);
+    }
+    #[test]
+    fn test_accessible_small_limit() {
+        // a speed of 100 means you can only move on the axes
+        let terrain = vec![];
+        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
+        pts.sort();
+        let mut expected = vec![(0, 0, 0), (1, 0, 0), (-1, 0, 0), (0, -1, 0), (0, 1, 0)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut gs = GridState {
+            start: (0, 0, 0),
+            end: (0, 0, 0),
+            max_distance: u32::max_value(),
+            terrain: &vec![],
+        };
+        assert_eq!(gs.neighbors(&(0, 0, 0)).collect::<Vec<_>>(),
+                   vec![((-1, -1, 0), 141),
+                        ((-1, 0, 0), 100),
+                        ((-1, 1, 0), 141),
+                        ((0, -1, 0), 100),
+                        ((0, 1, 0), 100),
+                        ((1, -1, 0), 141),
+                        ((1, 0, 0), 100),
+                        ((1, 1, 0), 141)])
+    }
+
+    #[test]
+    fn test_start_end() {
+        let p = path((0, 0, 0), (0, 0, 0)).unwrap();
+        assert_eq!(p, vec![(0, 0, 0)].into_iter().collect());
+    }
+
+    #[test]
+    fn test_next() {
+        let p = path((0, 0, 0), (0, 1, 0)).unwrap();
+        assert_eq!(p, vec![(0, 0, 0), (0, 1, 0)].into_iter().collect());
+    }
+
+    #[test]
+    fn test_few() {
+        let p = path((0, 0, 0), (0, 4, 0)).unwrap();
+        assert_eq!(p,
+                   vec![(0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (0, 4, 0)]
+                       .into_iter()
+                       .collect());
+    }
+
+    struct Maze {
+        xmax: i32,
+        ymax: i32,
+    }
+
+    impl TwoDSearchProblem for Maze {
+        fn get(&mut self, x: i32, y: i32) -> Option<u32> {
+            // Imagine a simple maze, that looks something like this:
+            // .
+            // ........
+            // .
+            // ........
+            // .
+            // ........
+            // where . is passable, and everywhere else is impassible.
+            //
+            if x < 0 || x > self.xmax || y < 0 || y > self.ymax {
+                None
+            } else if y % 4 == 0 && x > 0 {
+                None
+            } else if (y + 2) % 4 == 0 && x < self.xmax {
+                None
+            } else {
+                Some(0)
+            }
+        }
+    }
+
+    #[test]
+    fn test_maze() {
+        let mut maze = Maze { xmax: 7, ymax: 5 };
+        // If this test fails, try printing out the maze using this code:
+        // println!("");
+        // for y in 0 .. maze.ymax+1 {
+        // for x in 0 .. maze.xmax+1 {
+        // match maze.get(x, y) {
+        // Some(_) => print!("."),
+        // None => print!(" "),
+        // }
+        // }
+        // println!("");
+        // }
+        //
+        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
+        assert_eq!(p,
+                   vec![(0, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1),
+                        (7, 2), (7, 3), (6, 3), (5, 3), (4, 3), (3, 3), (2, 3), (1, 3), (0, 3),
+                        (0, 4)]
+                       .into_iter()
+                       .collect());
+    }
+
+    #[test]
+    fn test_maze_reusable() {
+        let mut maze = Maze { xmax: 7, ymax: 5 };
+        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
+        let p2 = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
+        assert_eq!(p, p2);
+    }
+
+    #[test]
+    fn test_maze_reverse() {
+        let mut maze = Maze { xmax: 7, ymax: 5 };
+        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
+        let p2 = astar(&mut maze.search((0, 4), (0, 0))).unwrap();
+        assert_eq!(p, p2.into_iter().rev().collect());
+    }
+
 }
