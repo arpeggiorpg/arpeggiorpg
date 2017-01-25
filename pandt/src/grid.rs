@@ -78,6 +78,8 @@ pub mod test {
     use std::collections::VecDeque;
     use std::vec::IntoIter;
 
+    use std::collections::HashSet;
+
     struct GridState<'a> {
         start: Point3,
         end: Point3,
@@ -158,25 +160,29 @@ pub mod test {
 
     fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
         let meters = (speed.0 / 100) as i16;
-        let mut results = vec![];
+        let mut results = HashSet::new();
         for x in start.0 - meters..start.0 + meters + 1 {
             for y in start.1 - meters..start.1 + meters + 1 {
-                if x == 0 && y == 0 {
+                let end_point = (x, y, 0);
+                if end_point == start || results.contains(&end_point) {
                     continue;
                 }
-                let end_point = (x, y, 0);
                 let mut gs = GridState {
                     start: start,
                     end: end_point,
                     max_distance: speed.0,
                     terrain: terrain,
                 };
-                if let Some(_) = astar(&mut gs) {
-                    results.push(end_point);
+                if let Some(path) = astar(&mut gs) {
+                    for pt in path {
+                        if pt != start {
+                        results.insert(pt);
+                        }
+                    }
                 }
             }
         }
-        results
+        results.iter().cloned().collect()
     }
 
     #[test]
