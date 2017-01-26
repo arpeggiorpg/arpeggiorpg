@@ -68,25 +68,211 @@ pub mod test {
         assert_eq!(point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
     }
 
+    // PATHFINDING MESSING ABOUT
 
-
-
-    // ASTAR STUFF
-
-
-    use astar::{astar, SearchProblem, TwoDSearchProblem, ReusableSearchProblem};
     use std::collections::VecDeque;
     use std::vec::IntoIter;
-
     use std::collections::HashSet;
 
-    struct GridState<'a> {
-        start: Point3,
-        end: Point3,
-        max_distance: u32,
-        terrain: &'a Map,
+
+    // FOLLOWING COPIED FROM PATHFINDING CRATE
+    // ***************************************
+    use num_traits::Zero;
+    use std::collections::{BinaryHeap, HashMap};
+    use std::hash::Hash;
+    use std::cmp::Ordering;
+
+    struct InvCmpHolder<K, P> {
+        key: K,
+        payload: P,
     }
 
+    impl<K: PartialEq, P> PartialEq for InvCmpHolder<K, P> {
+        fn eq(&self, other: &InvCmpHolder<K, P>) -> bool {
+            self.key.eq(&other.key)
+        }
+    }
+
+    impl<K: PartialEq, P> Eq for InvCmpHolder<K, P> {}
+
+    impl<K: PartialOrd, P> PartialOrd for InvCmpHolder<K, P> {
+        fn partial_cmp(&self, other: &InvCmpHolder<K, P>) -> Option<Ordering> {
+            other.key.partial_cmp(&self.key)
+        }
+    }
+
+    impl<K: Ord, P> Ord for InvCmpHolder<K, P> {
+        fn cmp(&self, other: &InvCmpHolder<K, P>) -> Ordering {
+            other.key.cmp(&self.key)
+        }
+    }
+
+    fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
+        let mut path = vec![start];
+        while let Some(parent) = parents.remove(path.last().unwrap()) {
+            path.push(parent);
+        }
+        path.into_iter().rev().collect()
+    }
+
+    pub fn astar<N, C, FN, IN, FH, FS>(start: &N,
+                                       neighbours: FN,
+                                       heuristic: FH,
+                                       success: FS)
+                                       -> Option<(Vec<N>, C)>
+        where N: Eq + Hash + Clone,
+              C: Zero + Ord + Copy,
+              FN: Fn(&N) -> IN,
+              IN: IntoIterator<Item = (N, C)>,
+              FH: Fn(&N) -> C,
+              FS: Fn(&N) -> bool
+    {
+        let mut to_see = BinaryHeap::new();
+        to_see.push(InvCmpHolder {
+            key: heuristic(start),
+            payload: (Zero::zero(), start.clone()),
+        });
+        let mut parents: HashMap<N, (N, C)> = HashMap::new();
+        while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
+            if success(&node) {
+                let parents = parents.into_iter().map(|(n, (p, _))| (n, p)).collect();
+                return Some((reverse_path(parents, node), cost));
+            }
+            // We may have inserted a node several time into the binary heap if we found
+            // a better way to access it. Ensure that we are currently dealing with the
+            // best path and discard the others.
+            if let Some(&(_, c)) = parents.get(&node) {
+                if cost > c {
+                    continue;
+                }
+            }
+            for (neighbour, move_cost) in neighbours(&node) {
+                let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
+                let new_cost = cost + move_cost;
+                if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) {
+                    parents.insert(neighbour.clone(), (node.clone(), new_cost));
+                    let new_predicted_cost = new_cost + heuristic(&neighbour);
+                    to_see.push(InvCmpHolder {
+                        key: new_predicted_cost,
+                        payload: (new_cost, neighbour),
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    // pub fn astar_multi<N, C, FN, IN, FH, FS>(start: &N,
+    //                                          neighbours: FN,
+    //                                          heuristic: FH,
+    //                                          mut successes: Vec<FS>)
+    //                                          -> Vec<(Vec<N>, C)>
+    //     where N: Eq + Hash + Clone,
+    //           C: Zero + Ord + Copy,
+    //           FN: Fn(&N) -> IN,
+    //           IN: IntoIterator<Item = (N, C)>,
+    //           FH: Fn(&N) -> C,
+    //           FS: Fn(&N) -> bool
+    // {
+    //     let mut to_see = BinaryHeap::new();
+    //     to_see.push(InvCmpHolder {
+    //         key: heuristic(start),
+    //         payload: (Zero::zero(), start.clone()),
+    //     });
+    //     let mut parents: HashMap<N, (N, C)> = HashMap::new();
+    //     let mut results = vec![];
+    //     while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
+    //         for success_idx in 0..successes.len() {
+    //             let was_successful = {
+    //                 let success = &successes[success_idx];
+    //                 if success(&node) {
+    //                     let parents = parents.into_iter().map(|(n, (p, _))| (n, p)).collect();
+    //                     results.push((reverse_path(parents, node.clone()), cost));
+    //                     true
+    //                 } else {
+    //                     false
+    //                 }
+    //             };
+    //             if was_successful {
+    //                 successes.remove(success_idx);
+    //                 continue;
+    //             }
+    //         }
+    //         // We may have inserted a node several time into the binary heap if we found
+    //         // a better way to access it. Ensure that we are currently dealing with the
+    //         // best path and discard the others.
+    //         if let Some(&(_, c)) = parents.get(&node) {
+    //             if cost > c {
+    //                 continue;
+    //             }
+    //         }
+    //         for (neighbour, move_cost) in neighbours(&node) {
+    //             let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
+    //             let new_cost = cost + move_cost;
+    //             if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) {
+    //                 parents.insert(neighbour.clone(), (node.clone(), new_cost));
+    //                 let new_predicted_cost = new_cost + heuristic(&neighbour);
+    //                 to_see.push(InvCmpHolder {
+    //                     key: new_predicted_cost,
+    //                     payload: (new_cost, neighbour),
+    //                 });
+    //             }
+    //         }
+    //     }
+    //     results
+    // }
+
+    // PRECEDING COPIED FROM PATHFINDING CRATE
+    // ***************************************
+
+    fn point3_neighbors(terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
+        let mut results = vec![];
+        for x in -1..2 {
+            for y in -1..2 {
+                if (x, y) == (0, 0) {
+                    continue;
+                }
+                let neighbor = (pt.0 + x, pt.1 + y, pt.2);
+                if !terrain.contains(&neighbor) {
+                    let cost = if x.abs() == y.abs() { 141 } else { 100 };
+                    results.push((neighbor, cost));
+                }
+            }
+        }
+        results
+    }
+
+    #[test]
+    fn test_neighbors() {
+        let terrain = vec![];
+        let mut pts = point3_neighbors(&terrain, (0, 0, 0));
+        pts.sort();
+        let mut expected = vec![((-1, 0, 0), 100),
+                                ((1, 0, 0), 100),
+                                ((0, -1, 0), 100),
+                                ((0, 1, 0), 100),
+                                ((-1, -1, 0), 141),
+                                ((1, 1, 0), 141),
+                                ((-1, 1, 0), 141),
+                                ((1, -1, 0), 141)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
+
+
+    #[test]
+    fn pathfinding_astar() {
+        let start = (0, 0, 0);
+        let (path, cost) = astar(&start,
+                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_distance(start, *n).0,
+                                 |n| *n == (2, 2, 0))
+            .unwrap();
+        assert_eq!(cost, 282);
+        assert_eq!(path, vec![(0, 0, 0), (1, 1, 0), (2, 2, 0)]);
+    }
+
+    /// A map containing a "room" that only has one free space in the middle.
     fn box_map() -> Map {
         vec![// left wall
              (-1, -1, 0),
@@ -102,340 +288,60 @@ pub mod test {
              (0, 1, 0)]
     }
 
-    impl<'a> SearchProblem for GridState<'a> {
-        type Node = Point3;
-        type Cost = u32;
-        type Iter = IntoIter<(Self::Node, Self::Cost)>;
+    // #[test]
+    // fn path_inaccessible() {
+    //     let terrain = box_map();
+    //     let mut gs = GridState {
+    //         start: (3, 3, 0),
+    //         end: (0, 0, 0),
+    //         max_distance: 1000,
+    //         terrain: &terrain,
+    //     };
+    //     assert_eq!(astar(&mut gs), None);
+    // }
 
-        fn start(&self) -> Self::Node {
-            self.start
-        }
-        fn is_end(&self, other: &Self::Node) -> bool {
-            other == &self.end
-        }
-        fn heuristic(&self, node: &Self::Node) -> Self::Cost {
-            point3_distance(self.start, node.clone()).0
-        }
-        fn neighbors(&mut self, here: &Self::Node) -> Self::Iter {
-            let mut vec = vec![];
-            for i in -1..1 + 1 {
-                for k in -1..1 + 1 {
-                    if !(i == 0 && k == 0) {
-                        let newpt = (here.0 + i, here.1 + k, 0);
-                        if self.heuristic(&newpt) <= self.max_distance {
-                            let cost = point3_distance(here.clone(), newpt).0;
-                            if !self.terrain.contains(&newpt) {
-                                vec.push((newpt, cost));
-                            }
-                        }
-                    }
-                }
-            }
-            vec.into_iter()
-        }
-    }
+    // #[test]
+    // fn test_accessible_nowhere_to_go() {
+    //     let terrain = box_map();
+    //     assert_eq!(get_all_accessible((0, 0, 0), &terrain, Distance(9000)),
+    //                vec![]);
+    // }
 
-    fn path(start: Point3, end: Point3) -> Option<VecDeque<Point3>> {
-        let terrain = vec![];
-        let mut gs = GridState {
-            start: start,
-            end: end,
-            max_distance: u32::max_value(),
-            terrain: &terrain,
-        };
-        astar(&mut gs)
-    }
+    // #[test]
+    // fn test_accessible_small_limit() {
+    //     // a speed of 100 means you can only move on the axes
+    //     let terrain = vec![];
+    //     let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
+    //     pts.sort();
+    //     let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
+    //     expected.sort();
+    //     assert_eq!(pts, expected)
+    // }
 
-    #[test]
-    fn path_inaccessible() {
-        let terrain = box_map();
-        let mut gs = GridState {
-            start: (3, 3, 0),
-            end: (0, 0, 0),
-            max_distance: 1000,
-            terrain: &terrain,
-        };
-        assert_eq!(astar(&mut gs), None);
-    }
+    // #[test]
+    // fn test_accessible_less_small_limit() {
+    //     // a speed of 141 means you can also move diagonally, but only once
+    //     let terrain = vec![];
+    //     let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
+    //     pts.sort();
+    //     let mut expected = vec![(-1, 0, 0),
+    //                             (1, 0, 0),
+    //                             (0, -1, 0),
+    //                             (0, 1, 0),
+    //                             (-1, -1, 0),
+    //                             (1, 1, 0),
+    //                             (-1, 1, 0),
+    //                             (1, -1, 0)];
+    //     expected.sort();
+    //     assert_eq!(pts, expected)
+    // }
 
-    fn get_all_accessible_flood(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
-        let meters = (speed.0 / 100) as u16;
-        let size: u16 = (meters * 2) + 1;
-
-        let pt2bitmap = |pt: Point3| -> Option<(usize, usize)> {
-            let x: i32 = meters as i32 + pt.0 as i32;
-            let y: i32 = meters as i32 + pt.1 as i32;
-            if x < 0 || y < 0 || x >= size as i32 || y >= size as i32 {
-                None
-            } else {
-                Some(((meters as i16 + pt.0 - start.0) as usize,
-                      (meters as i16 + pt.1 - start.1) as usize))
-            }
-        };
-
-        let bitmap2pt = |(x, y): (usize, usize)| -> Point3 {
-            (x as i16 - meters as i16 + start.0, y as i16 - meters as i16 + start.1, 0)
-        };
-
-        // the map is a 2d array representing positions on the grid.
-        // cell is
-        // - 0 = empty, unpathable space
-        // - 1 = pathable space
-        // - 2 = terrain
-        let mut map: Vec<Vec<u8>> = vec![vec![0; size as usize]; size as usize];
-        // load up the terrain into the bitmap
-        for pt in terrain {
-            if let Some((x, y)) = pt2bitmap(*pt) {
-                map[x][y] = 2;
-            }
-        }
-        let mut q = VecDeque::new();
-        q.push_back(pt2bitmap(start).unwrap());
-        loop {
-            if let Some(node) = q.pop_front() {
-                let mut w = node;
-                for _ in 0..meters {
-                    let west_of = (w.0 - 1, w.1);
-                    if map[west_of.0][west_of.1] == 0 {
-                        w = west_of;
-                    }
-                }
-                let mut e = node;
-                for _ in 0..meters {
-                    let east_of = (w.0 + 1, w.1);
-                    if map[east_of.0][east_of.1] == 0 {
-                        // also check map
-                        e = east_of;
-                    }
-                }
-
-                for x in w.0..e.0 {
-                    map[x][node.1] = 1;
-                }
-                if node.1 > 0 {
-                    let north_of = (node.0, node.1 - 1);
-                    if map[north_of.0][north_of.1] == 0 {
-                        q.push_back(north_of);
-                    }
-                }
-                if node.1 < size as usize - 1 {
-                    let south_of = (node.0, node.1 + 1);
-                    if map[south_of.0][south_of.1] == 0 {
-                        q.push_back(south_of);
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-        // now, convert the map back into a list of points.
-        let mut results = vec![];
-        for x in 0..size as usize {
-            for y in 0..size as usize {
-                if map[x][y] == 1 {
-                    results.push(bitmap2pt((x,y)));
-                }
-            }
-        }
-        results
-    }
-
-    fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
-        let meters = (speed.0 / 100) as i16;
-        let mut results = HashSet::new();
-        for x in start.0 - meters..start.0 + meters + 1 {
-            for y in start.1 - meters..start.1 + meters + 1 {
-                let end_point = (x, y, 0);
-                if end_point == start || results.contains(&end_point) {
-                    continue;
-                }
-                let mut gs = GridState {
-                    start: start,
-                    end: end_point,
-                    max_distance: speed.0,
-                    terrain: terrain,
-                };
-                if let Some(path) = astar(&mut gs) {
-                    for pt in path {
-                        if pt != start {
-                            results.insert(pt);
-                        }
-                    }
-                }
-            }
-        }
-        results.iter().cloned().collect()
-    }
-
-    #[test]
-    fn test_accessible_nowhere_to_go() {
-        let terrain = box_map();
-        assert_eq!(get_all_accessible((0, 0, 0), &terrain, Distance(9000)),
-                   vec![]);
-    }
-
-    #[test]
-    fn test_accessible_nowhere_to_go_fill() {
-        let terrain = box_map();
-        assert_eq!(get_all_accessible_flood((0, 0, 0), &terrain, Distance(9000)),
-                   vec![]);
-    }
-
-    #[test]
-    fn test_accessible_small_limit() {
-        // a speed of 100 means you can only move on the axes
-        let terrain = vec![];
-        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
-        pts.sort();
-        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
-        expected.sort();
-        assert_eq!(pts, expected)
-    }
-
-    #[test]
-    fn test_accessible_small_limit_flood() {
-        // a speed of 100 means you can only move on the axes
-        let terrain = vec![];
-        let mut pts = get_all_accessible_flood((0, 0, 0), &terrain, Distance(100));
-        pts.sort();
-        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
-        expected.sort();
-        assert_eq!(pts, expected)
-    }
-
-    #[test]
-    fn test_accessible_less_small_limit() {
-        // a speed of 141 means you can also move diagonally, but only once
-        let terrain = vec![];
-        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
-        pts.sort();
-        let mut expected = vec![(-1, 0, 0),
-                                (1, 0, 0),
-                                (0, -1, 0),
-                                (0, 1, 0),
-                                (-1, -1, 0),
-                                (1, 1, 0),
-                                (-1, 1, 0),
-                                (1, -1, 0)];
-        expected.sort();
-        assert_eq!(pts, expected)
-    }
-
-    #[test]
-    #[bench]
-    fn test_accessible_average_speed() {
-        let terrain = vec![];
-        let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
-        assert_eq!(pts.len(), 316);
-    }
-
-
-    #[test]
-    fn test_iter() {
-        let mut gs = GridState {
-            start: (0, 0, 0),
-            end: (0, 0, 0),
-            max_distance: u32::max_value(),
-            terrain: &vec![],
-        };
-        assert_eq!(gs.neighbors(&(0, 0, 0)).collect::<Vec<_>>(),
-                   vec![((-1, -1, 0), 141),
-                        ((-1, 0, 0), 100),
-                        ((-1, 1, 0), 141),
-                        ((0, -1, 0), 100),
-                        ((0, 1, 0), 100),
-                        ((1, -1, 0), 141),
-                        ((1, 0, 0), 100),
-                        ((1, 1, 0), 141)])
-    }
-
-    #[test]
-    fn test_start_end() {
-        let p = path((0, 0, 0), (0, 0, 0)).unwrap();
-        assert_eq!(p, vec![(0, 0, 0)].into_iter().collect());
-    }
-
-    #[test]
-    fn test_next() {
-        let p = path((0, 0, 0), (0, 1, 0)).unwrap();
-        assert_eq!(p, vec![(0, 0, 0), (0, 1, 0)].into_iter().collect());
-    }
-
-    #[test]
-    fn test_few() {
-        let p = path((0, 0, 0), (0, 4, 0)).unwrap();
-        assert_eq!(p,
-                   vec![(0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (0, 4, 0)]
-                       .into_iter()
-                       .collect());
-    }
-
-    struct Maze {
-        xmax: i32,
-        ymax: i32,
-    }
-
-    impl TwoDSearchProblem for Maze {
-        fn get(&mut self, x: i32, y: i32) -> Option<u32> {
-            // Imagine a simple maze, that looks something like this:
-            // .
-            // ........
-            // .
-            // ........
-            // .
-            // ........
-            // where . is passable, and everywhere else is impassible.
-            //
-            if x < 0 || x > self.xmax || y < 0 || y > self.ymax {
-                None
-            } else if y % 4 == 0 && x > 0 {
-                None
-            } else if (y + 2) % 4 == 0 && x < self.xmax {
-                None
-            } else {
-                Some(0)
-            }
-        }
-    }
-
-    #[test]
-    fn test_maze() {
-        let mut maze = Maze { xmax: 7, ymax: 5 };
-        // If this test fails, try printing out the maze using this code:
-        // println!("");
-        // for y in 0 .. maze.ymax+1 {
-        // for x in 0 .. maze.xmax+1 {
-        // match maze.get(x, y) {
-        // Some(_) => print!("."),
-        // None => print!(" "),
-        // }
-        // }
-        // println!("");
-        // }
-        //
-        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
-        assert_eq!(p,
-                   vec![(0, 0), (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1),
-                        (7, 2), (7, 3), (6, 3), (5, 3), (4, 3), (3, 3), (2, 3), (1, 3), (0, 3),
-                        (0, 4)]
-                       .into_iter()
-                       .collect());
-    }
-
-    #[test]
-    fn test_maze_reusable() {
-        let mut maze = Maze { xmax: 7, ymax: 5 };
-        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
-        let p2 = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
-        assert_eq!(p, p2);
-    }
-
-    #[test]
-    fn test_maze_reverse() {
-        let mut maze = Maze { xmax: 7, ymax: 5 };
-        let p = astar(&mut maze.search((0, 0), (0, 4))).unwrap();
-        let p2 = astar(&mut maze.search((0, 4), (0, 0))).unwrap();
-        assert_eq!(p, p2.into_iter().rev().collect());
-    }
+    // #[test]
+    // #[bench]
+    // fn test_accessible_average_speed() {
+    //     let terrain = vec![];
+    //     let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
+    //     assert_eq!(pts.len(), 316);
+    // }
 
 }

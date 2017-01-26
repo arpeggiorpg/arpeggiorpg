@@ -8,7 +8,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate odds;
 extern crate string_wrapper;
-extern crate astar;
+extern crate pathfinding;
+extern crate num_traits;
 
 #[cfg(test)]
 extern crate serde_json;
