@@ -158,6 +158,88 @@ pub mod test {
         assert_eq!(astar(&mut gs), None);
     }
 
+    fn get_all_accessible_flood(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
+        let meters = (speed.0 / 100) as u16;
+        let size: u16 = (meters * 2) + 1;
+
+        let pt2bitmap = |pt: Point3| -> Option<(usize, usize)> {
+            let x: i32 = meters as i32 + pt.0 as i32;
+            let y: i32 = meters as i32 + pt.1 as i32;
+            if x < 0 || y < 0 || x >= size as i32 || y >= size as i32 {
+                None
+            } else {
+                Some(((meters as i16 + pt.0 - start.0) as usize,
+                      (meters as i16 + pt.1 - start.1) as usize))
+            }
+        };
+
+        let bitmap2pt = |(x, y): (usize, usize)| -> Point3 {
+            (x as i16 - meters as i16 + start.0, y as i16 - meters as i16 + start.1, 0)
+        };
+
+        // the map is a 2d array representing positions on the grid.
+        // cell is
+        // - 0 = empty, unpathable space
+        // - 1 = pathable space
+        // - 2 = terrain
+        let mut map: Vec<Vec<u8>> = vec![vec![0; size as usize]; size as usize];
+        // load up the terrain into the bitmap
+        for pt in terrain {
+            if let Some((x, y)) = pt2bitmap(*pt) {
+                map[x][y] = 2;
+            }
+        }
+        let mut q = VecDeque::new();
+        q.push_back(pt2bitmap(start).unwrap());
+        loop {
+            if let Some(node) = q.pop_front() {
+                let mut w = node;
+                for _ in 0..meters {
+                    let west_of = (w.0 - 1, w.1);
+                    if map[west_of.0][west_of.1] == 0 {
+                        w = west_of;
+                    }
+                }
+                let mut e = node;
+                for _ in 0..meters {
+                    let east_of = (w.0 + 1, w.1);
+                    if map[east_of.0][east_of.1] == 0 {
+                        // also check map
+                        e = east_of;
+                    }
+                }
+
+                for x in w.0..e.0 {
+                    map[x][node.1] = 1;
+                }
+                if node.1 > 0 {
+                    let north_of = (node.0, node.1 - 1);
+                    if map[north_of.0][north_of.1] == 0 {
+                        q.push_back(north_of);
+                    }
+                }
+                if node.1 < size as usize - 1 {
+                    let south_of = (node.0, node.1 + 1);
+                    if map[south_of.0][south_of.1] == 0 {
+                        q.push_back(south_of);
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+        // now, convert the map back into a list of points.
+        let mut results = vec![];
+        for x in 0..size as usize {
+            for y in 0..size as usize {
+                if map[x][y] == 1 {
+                    results.push(bitmap2pt((x,y)));
+                }
+            }
+        }
+        results
+    }
+
     fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
         let meters = (speed.0 / 100) as i16;
         let mut results = HashSet::new();
@@ -176,7 +258,7 @@ pub mod test {
                 if let Some(path) = astar(&mut gs) {
                     for pt in path {
                         if pt != start {
-                        results.insert(pt);
+                            results.insert(pt);
                         }
                     }
                 }
@@ -193,10 +275,28 @@ pub mod test {
     }
 
     #[test]
+    fn test_accessible_nowhere_to_go_fill() {
+        let terrain = box_map();
+        assert_eq!(get_all_accessible_flood((0, 0, 0), &terrain, Distance(9000)),
+                   vec![]);
+    }
+
+    #[test]
     fn test_accessible_small_limit() {
         // a speed of 100 means you can only move on the axes
         let terrain = vec![];
         let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
+        pts.sort();
+        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
+
+    #[test]
+    fn test_accessible_small_limit_flood() {
+        // a speed of 100 means you can only move on the axes
+        let terrain = vec![];
+        let mut pts = get_all_accessible_flood((0, 0, 0), &terrain, Distance(100));
         pts.sort();
         let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
         expected.sort();
@@ -209,15 +309,23 @@ pub mod test {
         let terrain = vec![];
         let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
         pts.sort();
-        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0), (-1,-1,0), (1,1,0), (-1,1,0), (1,-1,0)];
+        let mut expected = vec![(-1, 0, 0),
+                                (1, 0, 0),
+                                (0, -1, 0),
+                                (0, 1, 0),
+                                (-1, -1, 0),
+                                (1, 1, 0),
+                                (-1, 1, 0),
+                                (1, -1, 0)];
         expected.sort();
         assert_eq!(pts, expected)
     }
 
     #[test]
+    #[bench]
     fn test_accessible_average_speed() {
         let terrain = vec![];
-        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
+        let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
         assert_eq!(pts.len(), 316);
     }
 
