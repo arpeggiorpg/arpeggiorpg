@@ -329,7 +329,11 @@ pub mod test {
                                         |n| point3_neighbors(terrain, *n),
                                         |n| point3_distance(start, *n).0,
                                         success_fns) {
-            final_points.push(path.last().unwrap().clone())
+            if Distance(cost) <= speed {
+                // FIXME: we should NOT be checking cost here, instead astar_multi should support
+                // max distance.
+                final_points.push(path.last().unwrap().clone())
+            }
         }
         final_points
     }
@@ -369,16 +373,16 @@ pub mod test {
                    vec![]);
     }
 
-    // #[test]
-    // fn test_accessible_small_limit() {
-    //     // a speed of 100 means you can only move on the axes
-    //     let terrain = vec![];
-    //     let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
-    //     pts.sort();
-    //     let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
-    //     expected.sort();
-    //     assert_eq!(pts, expected)
-    // }
+    #[test]
+    fn test_accessible_small_limit() {
+        // a speed of 100 means you can only move on the axes
+        let terrain = vec![];
+        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
+        pts.sort();
+        let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
 
     // #[test]
     // fn test_accessible_less_small_limit() {
