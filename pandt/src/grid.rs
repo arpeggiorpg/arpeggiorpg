@@ -384,26 +384,25 @@ pub mod test {
         assert_eq!(pts, expected)
     }
 
-    // #[test]
-    // fn test_accessible_less_small_limit() {
-    //     // a speed of 141 means you can also move diagonally, but only once
-    //     let terrain = vec![];
-    //     let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
-    //     pts.sort();
-    //     let mut expected = vec![(-1, 0, 0),
-    //                             (1, 0, 0),
-    //                             (0, -1, 0),
-    //                             (0, 1, 0),
-    //                             (-1, -1, 0),
-    //                             (1, 1, 0),
-    //                             (-1, 1, 0),
-    //                             (1, -1, 0)];
-    //     expected.sort();
-    //     assert_eq!(pts, expected)
-    // }
+    #[test]
+    fn test_accessible_less_small_limit() {
+        // a speed of 141 means you can also move diagonally, but only once
+        let terrain = vec![];
+        let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
+        pts.sort();
+        let mut expected = vec![(-1, 0, 0),
+                                (1, 0, 0),
+                                (0, -1, 0),
+                                (0, 1, 0),
+                                (-1, -1, 0),
+                                (1, 1, 0),
+                                (-1, 1, 0),
+                                (1, -1, 0)];
+        expected.sort();
+        assert_eq!(pts, expected)
+    }
 
     // #[test]
-    // #[bench]
     // fn test_accessible_average_speed() {
     //     let terrain = vec![];
     //     let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
