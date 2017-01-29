@@ -6,7 +6,7 @@ use nonempty;
 
 use creature::*;
 use types::*;
-use grid::{creature_within_distance, point3_distance};
+use grid::{creature_within_distance, point3_distance, get_all_accessible};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -23,21 +23,33 @@ pub struct Combat {
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
     movement_used: Distance,
+    /// Points that the current creature can move to.
+    /// This is only relevant in combat, since only in combat is movement limited.
+    movement_options: Vec<Point3>,
 }
 
 impl Combat {
-    pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
+    pub fn new(combatants: Vec<Creature>, terrain: &Map) -> Result<Combat, GameError> {
         nonempty::NonEmptyWithCursor::from_vec(combatants)
             .map(|ne| {
-                Combat {
+                let mut com = Combat {
                     creatures: ne,
                     movement_used: Distance::new(0.0),
-                }
+                    movement_options: vec![],
+                };
+                com.update_movement_options(terrain);
+                com
             })
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
-    pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
+    fn update_movement_options(&mut self, terrain: &Map) {
+        let current_pos = self.current_creature().pos();
+        let current_speed = self.current_creature().speed() - self.movement_used;
+        self.movement_options = get_all_accessible(current_pos, terrain, current_speed);
+    }
+
+    pub fn apply_log(&self, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
             CombatLog::CreatureLog(ref cid, CreatureLog::MoveCreature(ref pt)) => {
@@ -54,6 +66,7 @@ impl Combat {
                 if c_id == *cid {
                     let distance = point3_distance(c_pos, *pt);
                     new.movement_used = new.movement_used + distance;
+                    new.update_movement_options(terrain);
                 }
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
@@ -64,6 +77,7 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
+                new.update_movement_options(terrain);
             }
         }
         Ok(new)
@@ -77,7 +91,7 @@ impl Combat {
         self.creatures.get_current_mut()
     }
 
-    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newcombat = self.clone();
         let mut all_logs = vec![];
         for creature in newcombat.creatures.iter_mut() {
@@ -88,6 +102,7 @@ impl Combat {
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
         newcombat.creatures.next_circular();
         newcombat.movement_used = Distance(0);
+        newcombat.update_movement_options(terrain);
         Ok((newcombat, all_logs))
     }
 
@@ -152,8 +167,8 @@ pub struct CombatIncap<'a> {
     pub combat: &'a Combat,
 }
 impl<'a> CombatIncap<'a> {
-    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        self.combat.next_turn()
+    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
+        self.combat.next_turn(terrain)
     }
 }
 
@@ -170,18 +185,21 @@ impl<'a> CombatMove<'a> {
 
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
-    pub fn move_creature(&self, pts: Vec<Point3>) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn move_creature(&self, terrain: &Map, pts: Vec<Point3>) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut combat = self.combat.clone();
         let mut all_logs = vec![];
         for pt in pts {
             let cpos = combat.current_creature().pos();
             // 145 ~ sqrt(200)
             if point3_distance(cpos, pt) > Distance(145) {
-                return Err(GameError::StepTooBig{from: cpos, to: pt});
+                return Err(GameError::StepTooBig {
+                    from: cpos,
+                    to: pt,
+                });
             }
             combat = {
                 let mvmt = combat.get_movement()?;
-                let r = mvmt.teleport(pt)?;
+                let r = mvmt.teleport(terrain, pt)?;
                 all_logs.extend(r.1);
                 r.0
             }
@@ -189,7 +207,7 @@ impl<'a> CombatMove<'a> {
         Ok((combat, all_logs))
     }
 
-    pub fn teleport(&self, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn teleport(&self, terrain: &Map, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let c = self.combat.current_creature();
         let distance = point3_distance(c.pos(), pt);
         if distance > self.movement_left {
@@ -209,6 +227,7 @@ impl<'a> CombatMove<'a> {
                 *c = newc;
                 logs
             };
+            new.update_movement_options(terrain);
             let cid = new.current_creature().id();
             Ok((new, creature_logs_into_combat_logs(cid, logs)))
         }
@@ -244,8 +263,8 @@ impl<'a> CombatAble<'a> {
         Ok((newgame, all_logs))
     }
 
-    pub fn next_turn(&self) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        self.combat.next_turn()
+    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
+        self.combat.next_turn(terrain)
     }
 
     fn resolve_targets(combat: &Combat,
@@ -293,7 +312,7 @@ pub mod tests {
         let rogue = t_rogue("rogue");
         let ranger = t_ranger("ranger");
         let cleric = t_cleric("cleric");
-        Combat::new(vec![rogue, ranger, cleric]).unwrap()
+        Combat::new(vec![rogue, ranger, cleric], &vec![]).unwrap()
     }
 
     pub fn t_act(c: &Combat,
@@ -352,7 +371,7 @@ pub mod tests {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().teleport((11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance::new(10.0),
@@ -365,11 +384,11 @@ pub mod tests {
     #[test]
     fn move_some_at_a_time() {
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().teleport((5, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().teleport(&vec![], (5, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().teleport((10, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().teleport(&vec![], (10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().teleport((11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance::new(10.0),
@@ -386,15 +405,13 @@ pub mod tests {
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {
             let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?.0;
-            let combat = combat.next_turn()?.0.next_turn()?.0;
+            let combat = combat.next_turn(&vec![])?.0.next_turn(&vec![])?.0;
             let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?.0;
-            let combat = combat.next_turn()?.0;
+            let combat = combat.next_turn(&vec![])?.0;
             Ok(combat)
         };
         bencher.iter(|| {
-            for _ in 0..1000 {
-                combat = iter(&combat).unwrap();
-            }
+            combat = iter(&combat).unwrap();
             combat.clone()
         });
     }

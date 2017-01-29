@@ -104,11 +104,8 @@ mod test {
             Ok(())
         };
         bencher.iter(|| {
-            for _ in 0..1000 {
-                iter(&mut app).unwrap();
-            }
+            iter(&mut app).unwrap();
             app.clone()
         });
     }
-
 }

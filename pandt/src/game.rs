@@ -12,6 +12,7 @@ pub struct Game {
     ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
     creatures: HashMap<CreatureID, Creature>,
     maps: HashMap<MapName, Map>,
+    current_map: Map, // maybe Option<MapName>?
 }
 
 // Generic methods for any kind of Game regardless of the CreatureState.
@@ -25,6 +26,7 @@ impl Game {
             current_combat: None,
             creatures: HashMap::new(),
             maps: HashMap::new(),
+            current_map: vec![],
         }
     }
 
@@ -52,11 +54,11 @@ impl Game {
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
         }?;
-
         // Design challenge: figure out a way to make this assertion unnecessary or at least less
         // necessary.
         debug_assert!(newgame == self.apply_logs(logs.clone())?,
-                      "newgame = {:?}\nlgame = {:?}\nlogs = {:?}",
+                      "[ASSERT] log application != command performance!\nnewgame = {:?}\nlgame = \
+                       {:?}\nlogs = {:?}",
                       newgame,
                       self.apply_logs(logs.clone())?,
                       logs.clone());
@@ -131,7 +133,7 @@ impl Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
                         .ok_or(GameError::NotInCombat)?
-                        .apply_log(cl)?),
+                        .apply_log(cl, &self.current_map)?),
                     ..self.clone()
                 })
             }
@@ -150,7 +152,7 @@ impl Game {
                      pts: Vec<Point3>)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(pts)?;
+        let (next, logs) = movement.move_creature(&self.current_map, pts)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -193,7 +195,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn()?;
+        let (newcombat, logs) = combat.next_turn(&self.current_map)?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
@@ -205,7 +207,7 @@ impl Game {
             let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
             creatures.push(creature);
         }
-        newgame.current_combat = Some(Combat::new(creatures)?);
+        newgame.current_combat = Some(Combat::new(creatures, &self.current_map)?);
         Ok((newgame, vec![GameLog::StartCombat(cids)]))
     }
 }
@@ -274,6 +276,7 @@ pub mod test {
             current_combat: None,
             creatures: creatures,
             maps: HashMap::new(),
+            current_map: vec![],
         };
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));
@@ -352,9 +355,7 @@ pub mod test {
             Ok(game)
         };
         bencher.iter(|| {
-            for _ in 0..1000 {
-                game = iter(&game).unwrap();
-            }
+            game = iter(&game).unwrap();
             game.clone()
         });
     }
