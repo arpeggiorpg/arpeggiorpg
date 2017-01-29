@@ -31,11 +31,15 @@ pxToMeters m = m // scale
 cmToPx cm = (cm // 100) * scale
 cmToPxPx = px << cmToPx
 
+distanceCm : (Int, Int) -> (Int, Int) -> Int
+distanceCm (ax, ay) (bx, by) =
+  round <| 100 * sqrt (toFloat ((ax - bx)^2) + toFloat ((bx - by)^2))
+
 -- Get a list of all points within a distance that can be pathed to from an origin.
 getPathablePts : M.Map -> Int -> M.Point3 -> List M.Point3
 getPathablePts terrain distance origin =
   let meters = distance // 100
-      xyf x y = calculatePath origin {x=x, y=y, z=0} terrain
+      xyf x y = calculatePath origin distance {x=x, y=y, z=0} terrain
       yf x = List.concatMap (xyf x) (List.range (origin.y - meters) (origin.y + meters))
   in List.concatMap yf (List.range (origin.x - meters) (origin.x + meters))
 
@@ -51,63 +55,45 @@ combatGrid moving terrain combat =
       terrainEls = List.map gridTerrain terrain
       movementCirc =
         case moving of
-          Just {origin, max_distance} -> movementCircle terrain origin max_distance
+          Just {origin, max_distance} -> movementCircle combat terrain origin max_distance
           Nothing -> []
   in div [style [ ("border", "2px solid black"), ("position", "relative")
                 , ("width", metersToPxPx gridSize), ("height", metersToPxPx gridSize)]]
          (movementCirc ++ terrainEls ++ creatureEls)
 
-movementCircle : M.Map -> M.Point3 -> Int -> List (Html U.Msg)
-movementCircle terrain origin max_distance =
-  let pts = getPathablePts terrain max_distance origin
-  in List.map (movementTarget origin terrain) pts
+movementCircle : M.Combat -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
+movementCircle combat terrain origin max_distance =
+  let pts = combat.movement_options
+  in List.map (movementTarget origin max_distance terrain) pts
 
-movementTarget : M.Point3 -> M.Map -> M.Point3 -> Html U.Msg
-movementTarget origin terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
+movementTarget : M.Point3 -> Int -> M.Map -> M.Point3 -> Html U.Msg
+movementTarget origin max_distance terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
   [ style [ ("width", metersToPxPx 1), ("height", metersToPxPx 1)
           , ("border", "1px solid black"), ("background", "lightgreen")]
-  , onClick (U.Move (calculatePath origin pt terrain))]
+  , onClick (U.Move (calculatePath origin max_distance pt terrain))]
   []
 
-  -- let radius = cmToPx max_distance
-  -- in centerPositionedBox (coordPx origin.x) (coordPx origin.y)
-  --      [ style [ ("width", px (radius * 2))
-  --              , ("height", px (radius * 2))
-  --              , ("border-radius", px radius)
-  --              , ("background", "lightgreen")
-  --              ]
-  --      , onMouseClick (clickedMove terrain origin radius)
-  --      ]
-  --      []
-
-clickedMove : M.Map -> M.Point3 -> Int -> MouseEvent.MouseEvent -> U.Msg
-clickedMove terrain origin radius me =
-  let elementX = me.elementPos.x - radius
-      elementY = me.elementPos.y - radius
-      newX = (pxToMeters elementX) + origin.x
-      newY = (pxToMeters elementY) + origin.y
-  in U.Move (calculatePath origin {x=newX, y=newY, z=0} terrain)
-
-calculatePath : M.Point3 -> M.Point3 -> M.Map -> List M.Point3
-calculatePath origin destination terrain =
+calculatePath : M.Point3 -> Int -> M.Point3 -> M.Map -> List M.Point3
+calculatePath origin max_distance destination terrain =
   -- We *must* avoid pathing to an inaccessible destination!
   if (List.member destination terrain) then [] else
   let path = AStar.findPath
                AStar.pythagoreanCost
-                 (gridStep terrain)
+                 (gridStep origin max_distance terrain )
                  (origin.x, origin.y)
                  (destination.x, destination.y)
   in case path of
       Just path -> List.map (\(x, y) -> {x=x, y=y, z=0}) path
       Nothing -> []
 
-gridStep : M.Map -> (Int, Int) -> Set.Set (Int, Int)
-gridStep terrain (fromx, fromy) = 
+gridStep : M.Point3 -> Int -> M.Map -> (Int, Int) -> Set.Set (Int, Int)
+gridStep origin max_distance terrain (fromx, fromy) =
   let
     f (offsetx, offsety) result =
       let adjacentSquare = {x=fromx + offsetx, y=fromy + offsety, z=0}
           terrainExists = List.member adjacentSquare terrain
-      in if terrainExists then result else Set.insert (adjacentSquare.x, adjacentSquare.y) result
+          isInRange = distanceCm (origin.x, origin.y) (offsetx, offsety) < max_distance
+      in if terrainExists && isInRange then result else Set.insert (adjacentSquare.x, adjacentSquare.y) result
     result = List.foldl f Set.empty
       [ (-1, -1)
       , (-1,  0)

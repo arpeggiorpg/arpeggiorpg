@@ -86,13 +86,15 @@ gameDecoder =
 type alias Combat =
   { creatures: CursorList Creature
   , movement_used: Int
+  , movement_options: List Point3
   }
 
 combatDecoder : JD.Decoder Combat
 combatDecoder =
-  JD.map2 Combat
+  JD.map3 Combat
     (JD.field "creatures" (cursorListDecoder creatureDecoder))
     (JD.field "movement_used" JD.int)
+    (JD.field "movement_options" (JD.list point3Decoder))
 
 type alias CursorList a = {
   cursor: Int,

@@ -1,5 +1,6 @@
 ---
 current_game:
+  current_map: 
   maps:
     empty-map:
     map1:
@@ -104,6 +105,7 @@ snapshots:
   - 
     - 
       current_combat: ~
+      current_map:
       maps: 
       abilities: 
         heal: 
