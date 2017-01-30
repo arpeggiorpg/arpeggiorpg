@@ -128,10 +128,11 @@ pub fn astar<N, C, FN, IN, FH, FS>(start: &N,
 pub fn astar_multi<N, C, FN, IN, FH>(start: &N,
                                      neighbours: FN,
                                      heuristic: FH,
+                                     max_cost: C,
                                      mut successes: Vec<Box<Fn(&N) -> bool>>)
                                      -> Vec<(Vec<N>, C)>
     where N: Eq + Hash + Clone,
-          C: Zero + Ord + Copy,
+          C: Zero + Ord + Copy + PartialEq + PartialOrd, // maybe relax these so floats can be used?
           FN: Fn(&N) -> IN,
           IN: IntoIterator<Item = (N, C)>,
           FH: Fn(&N) -> C
@@ -165,7 +166,8 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N,
         for (neighbour, move_cost) in neighbours(&node) {
             let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
             let new_cost = cost + move_cost;
-            if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) {
+            if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) &&
+               new_cost <= max_cost {
                 parents.insert(neighbour.clone(), (node.clone(), new_cost));
                 let new_predicted_cost = new_cost + heuristic(&neighbour);
                 to_see.push(InvCmpHolder {
@@ -225,6 +227,7 @@ pub fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<
     for (path, cost) in astar_multi(&start,
                                     |n| point3_neighbors(terrain, *n),
                                     |n| point3_distance(start, *n).0,
+                                    speed.0,
                                     success_fns) {
         if Distance(cost) <= speed {
             // FIXME: we should NOT be checking cost here, instead astar_multi should support
@@ -308,10 +311,38 @@ pub mod test {
         let paths_and_costs = astar_multi(&start,
                                           |n| point3_neighbors(&vec![], *n),
                                           |n| point3_distance(start, *n).0,
+                                          u32::max_value(),
                                           vec![success]);
         let ex_path = vec![(0, 0, 0), (1, 1, 0), (2, 2, 0)];
         assert_eq!(paths_and_costs, [(ex_path, 282)]);
     }
+
+    #[test]
+    fn astar_multi_max_cost() {
+        let start = (0, 0, 0);
+        let success = Box::new(|n: &Point3| *n == (5, 0, 0));
+        let result = astar_multi(&start,
+                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_distance(start, *n).0,
+                                 499,
+                                 vec![success]);
+        assert_eq!(result, vec![]);
+    }
+
+    #[test]
+    fn astar_multi_eq_max_cost() {
+        let start = (0, 0, 0);
+        let success = Box::new(|n: &Point3| *n == (5, 0, 0));
+        let result = astar_multi(&start,
+                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_distance(start, *n).0,
+                                 500,
+                                 vec![success]);
+        assert_eq!(result,
+                   vec![(vec![(0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0), (5, 0, 0)],
+                         500)]);
+    }
+
 
     #[test]
     fn pathfinding_astar_multi_2() {
@@ -321,6 +352,7 @@ pub mod test {
         let paths_and_costs = astar_multi(&start,
                                           |n| point3_neighbors(&vec![], *n),
                                           |n| point3_distance(start, *n).0,
+                                          u32::max_value(),
                                           successes);
         let ex_path_positive = vec![(0, 0, 0), (1, 1, 0)];
         let ex_path_negative = vec![(0, 0, 0), (-1, -1, 0)];
@@ -396,7 +428,7 @@ pub mod test {
     fn test_accessible_average_speed() {
         let terrain = vec![];
         let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
-        assert_eq!(pts.len(), 284); // FIXME: Why isn't this 314?
+        assert_eq!(pts.len(), 284); // FIXME: Why isn't this ~314? (pie are square of radius=100)
     }
 
     extern crate test;
