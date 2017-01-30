@@ -64,7 +64,13 @@ combatGrid moving terrain combat =
 movementCircle : M.Combat -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
 movementCircle combat terrain origin max_distance =
   let pts = combat.movement_options
-  in List.map (movementTarget origin max_distance terrain) pts
+  in (debugCircle origin max_distance) :: List.map (movementTarget origin max_distance terrain) pts
+
+debugCircle : M.Point3 -> Int -> Html U.Msg
+debugCircle origin max_distance = centerPositionedBox (coordPx origin.x) (coordPx origin.y)
+  [id "debug-circle", style [ ("width", cmToPxPx <| max_distance * 2), ("height", cmToPxPx <| max_distance * 2)
+         , ("border-radius", "50%"), ("border", "2px solid black")]]
+  []
 
 movementTarget : M.Point3 -> Int -> M.Map -> M.Point3 -> Html U.Msg
 movementTarget origin max_distance terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
