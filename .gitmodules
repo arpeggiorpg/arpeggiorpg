@@ -1,4 +1,0 @@
-[submodule "ptui/elm-astar"]
-	path = ptui/elm-astar
-	url = git@github.com:radix/elm-astar
-	branch = limit-distance
