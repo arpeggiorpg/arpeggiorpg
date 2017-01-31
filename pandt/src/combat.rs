@@ -374,8 +374,8 @@ pub mod tests {
         assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
-                       speed: Distance::new(10.0),
-                       distance: Distance::new(11.0),
+                       speed: Distance(1086),
+                       distance: Distance(1100),
                        from: (0, 0, 0),
                        to: (11, 0, 0),
                    }))
@@ -391,7 +391,7 @@ pub mod tests {
         assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
-                       speed: Distance::new(10.0),
+                       speed: Distance(1086),
                        distance: Distance::new(1.0),
                        from: (10, 0, 0),
                        to: (11, 0, 0),

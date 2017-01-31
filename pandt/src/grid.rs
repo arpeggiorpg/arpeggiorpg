@@ -428,7 +428,10 @@ pub mod test {
     fn test_accessible_average_speed() {
         let terrain = vec![];
         let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
-        assert_eq!(pts.len(), 284); // FIXME: Why isn't this ~314? (pie are square of radius=100)
+         // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
+         // 8 degrees of movement, which leaves certain positions within a circle impossible to
+         // reach even if you can technically move the radius of the circle in one turn.
+        assert_eq!(pts.len(), 284);
     }
 
     extern crate test;
