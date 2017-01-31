@@ -6,6 +6,20 @@ use odds::vec::VecExt;
 
 use types::*;
 
+
+/// This is carefully chosen to allow for circular-looking movement options.
+/// Since we only allow movement in 8-directions, the available movement options are biased towards
+/// horizontal and diagonal lines, which gives what basically looks like a star shape to movement
+/// options. By increasing the speed above 10 meters but still under 11 meters, we can "fill out"
+/// the shape to look more circular.
+/// This only matters in wide-open spaces, of course, and I'm not sure what difficulties in may
+/// solve, so I may not stick with it. One problem is that if I want to scale movement speeds (e.g.
+/// dwarves move slower, monks move faster, etc) then it may be infeasible to maintain this circular
+///  movement area, unless I can figure out some generalized algorithm for determining a more
+/// circular movement distance.
+const STANDARD_CREATURE_SPEED: u32 = 1086;
+
+
 /// A Creature.
 ///
 /// A very important thing about how we deal with creatures is that whenever we change
@@ -183,7 +197,7 @@ impl CreatureBuilder {
         Ok(Creature {
             id: CreatureID::new(&self.id)?,
             name: self.name.unwrap_or(self.id.to_string()),
-            speed: self.speed.unwrap_or(Distance::new(10.0)),
+            speed: self.speed.unwrap_or(Distance(STANDARD_CREATURE_SPEED)),
             max_energy: self.max_energy.unwrap_or(Energy(10)),
             cur_energy: self.cur_energy.unwrap_or(Energy(10)),
             abilities: vec![],

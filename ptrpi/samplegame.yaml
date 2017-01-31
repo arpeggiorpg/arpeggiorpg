@@ -59,7 +59,7 @@ current_game:
     ranger: 
       id: ranger
       name: ranger
-      speed: 1000
+      speed: 1086
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -74,7 +74,7 @@ current_game:
     rogue: 
       id: rogue
       name: rogue
-      speed: 1000
+      speed: 1086
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -89,7 +89,7 @@ current_game:
     cleric: 
       id: cleric
       name: cleric
-      speed: 1000
+      speed: 1086
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -142,7 +142,7 @@ snapshots:
         ranger: 
           id: ranger
           name: ranger
-          speed: 1000
+          speed: 1086
           max_energy: 10
           cur_energy: 10
           abilities: []
@@ -157,7 +157,7 @@ snapshots:
         rogue: 
           id: rogue
           name: rogue
-          speed: 1000
+          speed: 1086
           max_energy: 10
           cur_energy: 10
           abilities: []
@@ -172,7 +172,7 @@ snapshots:
         cleric: 
           id: cleric
           name: cleric
-          speed: 1000
+          speed: 1086
           max_energy: 10
           cur_energy: 10
           abilities: []
