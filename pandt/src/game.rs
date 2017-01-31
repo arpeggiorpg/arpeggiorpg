@@ -68,8 +68,10 @@ impl Game {
 
     fn select_map(&self, name: &MapName) -> Result<(Game, Vec<GameLog>), GameError> {
         let mut newgame = self.clone();
-        newgame.current_map =
-            self.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?.clone();
+        let terrain = self.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
+        newgame.current_combat = newgame.current_combat
+            .map(|c| c.update_movement_options(&terrain));
+        newgame.current_map = terrain.clone();
         Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
     }
 

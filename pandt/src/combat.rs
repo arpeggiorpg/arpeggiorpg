@@ -37,16 +37,22 @@ impl Combat {
                     movement_used: Distance::new(0.0),
                     movement_options: vec![],
                 };
-                com.update_movement_options(terrain);
+                com.update_movement_options_mut(terrain);
                 com
             })
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
-    fn update_movement_options(&mut self, terrain: &Map) {
+    fn update_movement_options_mut(&mut self, terrain: &Map) {
         let current_pos = self.current_creature().pos();
         let current_speed = self.current_creature().speed() - self.movement_used;
         self.movement_options = get_all_accessible(current_pos, terrain, current_speed);
+    }
+
+    pub fn update_movement_options(&self, terrain: &Map) -> Combat {
+        let mut newcom = self.clone();
+        newcom.update_movement_options_mut(terrain);
+        newcom
     }
 
     pub fn apply_log(&self, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
@@ -66,7 +72,7 @@ impl Combat {
                 if c_id == *cid {
                     let distance = point3_distance(c_pos, *pt);
                     new.movement_used = new.movement_used + distance;
-                    new.update_movement_options(terrain);
+                    new.update_movement_options_mut(terrain);
                 }
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
@@ -77,7 +83,7 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
-                new.update_movement_options(terrain);
+                new.update_movement_options_mut(terrain);
             }
         }
         Ok(new)
@@ -102,7 +108,7 @@ impl Combat {
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
         newcombat.creatures.next_circular();
         newcombat.movement_used = Distance(0);
-        newcombat.update_movement_options(terrain);
+        newcombat.update_movement_options_mut(terrain);
         Ok((newcombat, all_logs))
     }
 
@@ -227,7 +233,7 @@ impl<'a> CombatMove<'a> {
                 *c = newc;
                 logs
             };
-            new.update_movement_options(terrain);
+            new.update_movement_options_mut(terrain);
             let cid = new.current_creature().id();
             Ok((new, creature_logs_into_combat_logs(cid, logs)))
         }
