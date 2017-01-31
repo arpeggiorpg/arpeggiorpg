@@ -43,6 +43,7 @@ impl Game {
 
         use self::GameCommand::*;
         let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
+            (SelectMap(ref name), _) => self.select_map(name),
             (CreateCreature(c), _) => self.add_creature(c),
             (RemoveCreature(cid), _) => self.remove_creature(cid),
             (StartCombat(cids), None) => self.start_combat(cids),
@@ -63,6 +64,13 @@ impl Game {
                       self.apply_logs(logs.clone())?,
                       logs.clone());
         Ok((newgame, logs))
+    }
+
+    fn select_map(&self, name: &MapName) -> Result<(Game, Vec<GameLog>), GameError> {
+        let mut newgame = self.clone();
+        newgame.current_map =
+            self.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?.clone();
+        Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
     }
 
     fn add_creature(&self, creature: Creature) -> Result<(Game, Vec<GameLog>), GameError> {
@@ -122,6 +130,7 @@ impl Game {
     pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
         use self::GameLog::*;
         match *log {
+            SelectMap(ref name) => Ok(self.select_map(name)?.0),
             AddCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
             RemoveCreature(cid) => Ok(self.remove_creature(cid)?.0),
             AddCreatureToCombat(cid) => Ok(self.add_to_combat(self.maybe_combat()?, cid)?.0),

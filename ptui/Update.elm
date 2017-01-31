@@ -39,7 +39,6 @@ update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model =
     case msg of
         MorePlease -> ( model, updateApp  )
-        SelectMap mapName -> ({ model | currentMap = Just mapName}, Cmd.none)
         PendingCreatureId newId ->
           let oldPC = model.pendingCreature
           in ( { model | pendingCreature = {oldPC | id = Just newId } }
@@ -71,6 +70,7 @@ update msg model =
         RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
         Move pt -> ({model | moving = Nothing}, move pt)
         TurnDone -> (model, turnDone)
+        SelectMap mapName -> (model, selectMap mapName)
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
@@ -108,6 +108,9 @@ act abid dtarget = sendCommand (M.Act abid dtarget)
 
 move : (List M.Point3) -> Cmd Msg
 move pts = sendCommand (M.Move pts)
+
+selectMap : M.MapName -> Cmd Msg
+selectMap mapName = sendCommand (M.SelectMap mapName)
 
 url : String
 url = "http://localhost:1337/"

@@ -101,6 +101,8 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+    /// Select the map that should be used for pathing and collision detection
+    SelectMap(MapName),
     /// Start a combat with the specified creatures.
     StartCombat(Vec<CreatureID>),
     /// Stop the current combat.
@@ -150,6 +152,7 @@ pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> 
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+    SelectMap(MapName),
     CombatLog(CombatLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
@@ -196,6 +199,7 @@ pub enum GameError {
     },
     /// Returned when a step in a `Move` command was more than one cube away.
     StepTooBig { from: Point3, to: Point3 },
+    MapNotFound(MapName),
 }
 
 impl fmt::Display for GameError {
