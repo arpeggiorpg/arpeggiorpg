@@ -5,7 +5,6 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Json.Encode as JE
 import Set
 
 import Model as M
@@ -24,18 +23,22 @@ view model = vbox
   ]
 
 viewGame : M.Model -> M.Game -> Html U.Msg
-viewGame model game = hbox 
-  [ vbox [ h3 [] [text "Creatures"]
-         , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
-         ]
-  , case game.current_combat of
-      Just combat -> Grid.combatGrid model.moving game.current_map combat
-      Nothing -> text "Enter combat to see a cool combat grid here!"
-  , case game.current_combat of
-      Just combat -> combatArea model game combat
-      Nothing -> startCombatButton
-  , mapSelector game
-  ]
+viewGame model game =
+  case (game.current_combat, model.moving) of
+    (Just combat, Just mvmt) -> Grid.combatGrid model.moving game.current_map combat
+    _ ->
+      hbox 
+      [ vbox [ h3 [] [text "Creatures"]
+            , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
+            ]
+      , case game.current_combat of
+          Just combat -> Grid.combatGrid model.moving game.current_map combat
+          Nothing -> text "Enter combat to see a cool combat grid here!"
+      , case game.current_combat of
+          Just combat -> combatArea model game combat
+          Nothing -> startCombatButton
+      , mapSelector game
+      ]
 
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|

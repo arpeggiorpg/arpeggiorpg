@@ -64,7 +64,12 @@ combatGrid moving terrain combat =
 movementCircle : M.Combat -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
 movementCircle combat terrain origin max_distance =
   let pts = combat.movement_options
-  in (debugCircle origin max_distance) :: List.map (movementTarget origin max_distance terrain) pts
+      debugEl = debugCircle origin max_distance
+      movementCells = List.map (movementTarget origin max_distance terrain) pts
+  in debugEl :: movementCells ++ [cancelMove]
+
+cancelMove : Html U.Msg
+cancelMove = button [onClick U.CancelMovement] [text "Cancel Movement"]
 
 debugCircle : M.Point3 -> Int -> Html U.Msg
 debugCircle origin max_distance = centerPositionedBox (coordPx origin.x) (coordPx origin.y)

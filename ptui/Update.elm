@@ -29,6 +29,7 @@ type Msg
     | SelectAbility AbilityID
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest -- max amount they can move
+    | CancelMovement
     | Move (List M.Point3)
     | TurnDone
 
@@ -68,6 +69,7 @@ update msg model =
         SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
         Act abid dtarget -> ({model | selectedAbility = Nothing}, act abid dtarget)
         RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
+        CancelMovement -> ({model | moving = Nothing}, Cmd.none)
         Move pt -> ({model | moving = Nothing}, move pt)
         TurnDone -> (model, turnDone)
         SelectMap mapName -> (model, selectMap mapName)
