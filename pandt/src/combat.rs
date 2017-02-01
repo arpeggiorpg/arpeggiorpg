@@ -198,10 +198,10 @@ impl<'a> CombatMove<'a> {
         let mut combat = self.combat.clone();
         let mut all_logs = vec![];
         let (pts, distance) = find_path(self.combat.current_creature().pos(),
-                                        self.combat.current_creature().speed(),
+                                        self.movement_left,
                                         terrain,
                                         pt).ok_or(GameError::NoPathFound)?;
-        debug_assert!(distance <= self.combat.current_creature().speed());
+        debug_assert!(distance <= self.movement_left);
         for pt in pts {
             combat = {
                 let mvmt = combat.get_movement()?;
@@ -213,20 +213,11 @@ impl<'a> CombatMove<'a> {
         Ok((combat, all_logs))
     }
 
-    fn teleport(&self,
-                    terrain: &Map,
-                    pt: Point3)
-                    -> Result<(Combat, Vec<CombatLog>), GameError> {
+    fn teleport(&self, terrain: &Map, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let c = self.combat.current_creature();
         let distance = point3_distance(c.pos(), pt);
         if distance > self.movement_left {
-            Err(GameError::NotFastEnough {
-                creature: c.id(),
-                speed: c.speed(),
-                distance: distance,
-                from: c.pos(),
-                to: pt,
-            })
+            Err(GameError::NoPathFound)
         } else {
             let mut new = self.combat.clone();
             new.movement_used = new.movement_used + distance;
@@ -381,13 +372,7 @@ pub mod tests {
     fn move_too_far() {
         let combat = t_combat();
         assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
-                   Err(GameError::NotFastEnough {
-                       creature: cid("rogue"),
-                       speed: Distance(1086),
-                       distance: Distance(1100),
-                       from: (0, 0, 0),
-                       to: (11, 0, 0),
-                   }))
+                   Err(GameError::NoPathFound))
     }
 
     #[test]
@@ -398,13 +383,7 @@ pub mod tests {
         let combat = combat.get_movement().unwrap().move_creature(&vec![], (10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
         assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
-                   Err(GameError::NotFastEnough {
-                       creature: cid("rogue"),
-                       speed: Distance(1086),
-                       distance: Distance::new(1.0),
-                       from: (10, 0, 0),
-                       to: (11, 0, 0),
-                   }))
+                   Err(GameError::NoPathFound))
     }
 
     #[bench]

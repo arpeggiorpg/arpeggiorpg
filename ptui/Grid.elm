@@ -20,8 +20,6 @@ scale = 30
 
 px x = (toString x) ++ "px"
 
--- These functions make 1 pixel = 1 decimeter
-
 metersToPx m = m * scale
 metersToPxPx = px << metersToPx
 

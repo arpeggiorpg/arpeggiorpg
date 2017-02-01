@@ -190,13 +190,6 @@ pub enum GameError {
     AlreadyInCombat,
     CannotMove(CreatureID),
     CannotAct(CreatureID),
-    NotFastEnough {
-        creature: CreatureID,
-        speed: Distance,
-        from: Point3,
-        to: Point3,
-        distance: Distance,
-    },
     NoPathFound,
     /// Returned when a step in a `Move` command was more than one cube away.
     StepTooBig { from: Point3, to: Point3 },
