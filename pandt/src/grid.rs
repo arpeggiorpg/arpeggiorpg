@@ -198,7 +198,13 @@ fn point3_neighbors(terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
             }
             let neighbor = (pt.0 + x, pt.1 + y, pt.2);
             if !terrain.contains(&neighbor) {
-                let cost = if x.abs() == y.abs() { 141 } else { 100 };
+                let is_angle = x.abs() == y.abs();
+                let cost = if is_angle { 141 } else { 100 };
+                // don't allow diagonal movement around corners
+                if is_angle && terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
+                   terrain.contains(&(pt.0, neighbor.1, pt.2)) {
+                    continue;
+                }
                 results.push((neighbor, cost));
             }
         }
@@ -307,6 +313,16 @@ pub mod test {
                                 ((1, -1, 0), 141)];
         expected.sort();
         assert_eq!(pts, expected)
+    }
+
+    /// a diagonal neighbor is not considered accessible if it "goes around" a blocked corner
+    #[test]
+    fn test_neighbors_around_corners() {
+        let terrain = vec![(1, 0, 0)];
+        let pts: Vec<Point3> =
+            point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
+        assert!(!pts.contains(&(1, 1, 0)));
+        assert!(!pts.contains(&(1, -1, 0)));
     }
 
 
