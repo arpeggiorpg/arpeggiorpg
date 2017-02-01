@@ -238,6 +238,24 @@ pub fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<
     final_points
 }
 
+pub fn find_path(start: Point3,
+                 speed: Distance,
+                 terrain: &Map,
+                 destination: Point3)
+                 -> Option<(Vec<Point3>, Distance)> {
+    let success = Box::new(move |n: &Point3| *n == destination);
+    let result: Vec<(Vec<Point3>, u32)> = astar_multi(&start,
+                                                      |n| point3_neighbors(terrain, *n),
+                                                      |n| point3_distance(start, *n).0,
+                                                      speed.0,
+                                                      vec![success]);
+    if let Some((path, cost)) = result.into_iter().next() {
+        Some((path, Distance(cost)))
+    } else {
+        None
+    }
+}
+
 
 #[cfg(test)]
 pub mod test {
@@ -428,9 +446,9 @@ pub mod test {
     fn test_accessible_average_speed() {
         let terrain = vec![];
         let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
-         // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
-         // 8 degrees of movement, which leaves certain positions within a circle impossible to
-         // reach even if you can technically move the radius of the circle in one turn.
+        // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
+        // 8 degrees of movement, which leaves certain positions within a circle impossible to
+        // reach even if you can technically move the radius of the circle in one turn.
         assert_eq!(pts.len(), 284);
     }
 

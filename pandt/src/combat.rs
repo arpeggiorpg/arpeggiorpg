@@ -6,7 +6,7 @@ use nonempty;
 
 use creature::*;
 use types::*;
-use grid::{creature_within_distance, point3_distance, get_all_accessible};
+use grid::{creature_within_distance, point3_distance, get_all_accessible, find_path};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -191,18 +191,18 @@ impl<'a> CombatMove<'a> {
 
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
-    pub fn move_creature(&self, terrain: &Map, pts: Vec<Point3>) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn move_creature(&self,
+                         terrain: &Map,
+                         pt: Point3)
+                         -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut combat = self.combat.clone();
         let mut all_logs = vec![];
+        let (pts, distance) = find_path(self.combat.current_creature().pos(),
+                                        self.combat.current_creature().speed(),
+                                        terrain,
+                                        pt).ok_or(GameError::NoPathFound)?;
+        debug_assert!(distance <= self.combat.current_creature().speed());
         for pt in pts {
-            let cpos = combat.current_creature().pos();
-            // 145 ~ sqrt(200)
-            if point3_distance(cpos, pt) > Distance(145) {
-                return Err(GameError::StepTooBig {
-                    from: cpos,
-                    to: pt,
-                });
-            }
             combat = {
                 let mvmt = combat.get_movement()?;
                 let r = mvmt.teleport(terrain, pt)?;
@@ -213,7 +213,10 @@ impl<'a> CombatMove<'a> {
         Ok((combat, all_logs))
     }
 
-    pub fn teleport(&self, terrain: &Map, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    fn teleport(&self,
+                    terrain: &Map,
+                    pt: Point3)
+                    -> Result<(Combat, Vec<CombatLog>), GameError> {
         let c = self.combat.current_creature();
         let distance = point3_distance(c.pos(), pt);
         if distance > self.movement_left {
@@ -377,7 +380,7 @@ pub mod tests {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance(1086),
@@ -390,11 +393,11 @@ pub mod tests {
     #[test]
     fn move_some_at_a_time() {
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().teleport(&vec![], (5, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_creature(&vec![], (5, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().teleport(&vec![], (10, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_creature(&vec![], (10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().teleport(&vec![], (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
                    Err(GameError::NotFastEnough {
                        creature: cid("rogue"),
                        speed: Distance(1086),

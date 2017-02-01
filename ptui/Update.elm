@@ -30,7 +30,7 @@ type Msg
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest -- max amount they can move
     | CancelMovement
-    | Move (List M.Point3)
+    | Move M.Point3
     | TurnDone
 
 
@@ -108,8 +108,8 @@ turnDone = sendCommand M.Done
 act : AbilityID -> M.DecidedTarget -> Cmd Msg
 act abid dtarget = sendCommand (M.Act abid dtarget)
 
-move : (List M.Point3) -> Cmd Msg
-move pts = sendCommand (M.Move pts)
+move : M.Point3 -> Cmd Msg
+move pt = sendCommand (M.Move pt)
 
 selectMap : M.MapName -> Cmd Msg
 selectMap mapName = sendCommand (M.SelectMap mapName)

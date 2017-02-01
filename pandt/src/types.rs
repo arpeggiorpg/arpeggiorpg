@@ -110,7 +110,7 @@ pub enum GameCommand {
     /// Make the current creature use an ability.
     Act(AbilityID, DecidedTarget),
     /// Take a series of steps.
-    Move(Vec<Point3>),
+    Move(Point3),
     /// Create a new creature.
     CreateCreature(Creature),
     /// Remove a creature from the game entirely. Creature must not be in combat.
@@ -197,6 +197,7 @@ pub enum GameError {
         to: Point3,
         distance: Distance,
     },
+    NoPathFound,
     /// Returned when a step in a `Move` command was more than one cube away.
     StepTooBig { from: Point3, to: Point3 },
     MapNotFound(MapName),

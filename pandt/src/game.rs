@@ -50,7 +50,7 @@ impl Game {
             (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
             (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
             (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
-            (Move(pts), Some(com)) => self.move_creature(&com, pts),
+            (Move(pt), Some(com)) => self.move_creature(&com, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
@@ -160,10 +160,10 @@ impl Game {
 
     fn move_creature(&self,
                      combat: &Combat,
-                     pts: Vec<Point3>)
+                     pt: Point3)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(&self.current_map, pts)?;
+        let (next, logs) = movement.move_creature(&self.current_map, pt)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -346,7 +346,7 @@ pub mod test {
     fn movement() {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-        game.perform_unchecked(GameCommand::Move(vec![(1, 0, 0)])).unwrap();
+        game.perform_unchecked(GameCommand::Move((1, 0, 0))).unwrap();
     }
 
     #[bench]
