@@ -109,7 +109,9 @@ pub enum GameCommand {
     StopCombat,
     /// Make the current creature use an ability.
     Act(AbilityID, DecidedTarget),
-    /// Take a series of steps.
+    /// Move out of combat. There must be a clear path according to the current loaded map.
+    MoveOutOfCombat(CreatureID, Point3),
+    /// Move to a point. There must be a clear path according to the current loaded map.
     Move(Point3),
     /// Create a new creature.
     CreateCreature(Creature),
@@ -137,6 +139,7 @@ pub enum CreatureLog {
     ApplyCondition(ConditionID, ConditionDuration, Condition),
     RemoveCondition(ConditionID),
     MoveCreature(Point3),
+    PathCreature(Vec<Point3>),
 }
 
 /// Representation of state changes in a Combat. See `CreatureLog`.
@@ -150,10 +153,18 @@ pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> 
     ls.into_iter().map(|l| CombatLog::CreatureLog(cid.clone(), l)).collect()
 }
 
+pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
+    ls.into_iter().map(|l| GameLog::CreatureLog(cid.clone(), l)).collect()
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
     SelectMap(MapName),
     CombatLog(CombatLog),
+    /// A creature log wrapped in a game log.
+    /// Many of these actually go via CombatLog, since most creature modification happens inside of
+    /// a combat context, but things like moving out of combat needs this.
+    CreatureLog(CreatureID, CreatureLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
     AddCreature(Creature),

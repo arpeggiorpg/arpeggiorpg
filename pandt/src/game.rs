@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use types::*;
 use creature::*;
 use combat::*;
-
+use grid::find_path;
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -51,6 +51,7 @@ impl Game {
             (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
             (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
             (Move(pt), Some(com)) => self.move_creature(&com, pt),
+            (MoveOutOfCombat(cid, pt), None) => self.move_creature_ooc(cid, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
@@ -148,6 +149,12 @@ impl Game {
                     ..self.clone()
                 })
             }
+            CreatureLog(cid, ref cl) => {
+                let mut newgame = self.clone();
+                let creature = self.get_creature(cid)?.apply_log(cl)?;
+                *newgame.get_creature_mut(cid)? = creature;
+                Ok(newgame)
+            }
             StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
             StopCombat => {
                 self.current_combat
@@ -165,6 +172,21 @@ impl Game {
         let movement = combat.get_movement()?;
         let (next, logs) = movement.move_creature(&self.current_map, pt)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
+    }
+
+    fn move_creature_ooc(&self,
+                         cid: CreatureID,
+                         pt: Point3)
+                         -> Result<(Game, Vec<GameLog>), GameError> {
+        let creature = self.get_creature(cid)?;
+        let (pts, _) = find_path(creature.pos(),
+                                        creature.speed(),
+                                        &self.current_map,
+                                        pt).ok_or(GameError::NoPathFound)?;
+        let (creature, log) = creature.set_pos_path(pts)?;
+        let mut newgame = self.clone();
+        *newgame.get_creature_mut(cid)? = creature;
+        Ok((newgame, vec![GameLog::CreatureLog(cid, log)]))
     }
 
     fn act(&self,
@@ -203,6 +225,9 @@ impl Game {
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
         self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid))
+    }
+    pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
+        self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid))
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
