@@ -197,12 +197,12 @@ fn point3_neighbors(terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
                 continue;
             }
             let neighbor = (pt.0 + x, pt.1 + y, pt.2);
-            if !terrain.contains(&neighbor) {
+            if terrain.contains(&neighbor) {
                 let is_angle = x.abs() == y.abs();
                 let cost = if is_angle { 141 } else { 100 };
                 // don't allow diagonal movement around corners
-                if is_angle && terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
-                   terrain.contains(&(pt.0, neighbor.1, pt.2)) {
+                if is_angle && !terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
+                   !terrain.contains(&(pt.0, neighbor.1, pt.2)) {
                     continue;
                 }
                 results.push((neighbor, cost));

@@ -44,7 +44,7 @@ terrainMap moveMsg moving terrain creatures =
           Nothing -> []
   in div [style [ ("border", "2px solid black"), ("position", "relative")
                 , ("width", metersToPxPx gridSize), ("height", metersToPxPx gridSize)]]
-         (movementCirc ++ terrainEls ++ creatureEls)
+         (terrainEls ++ movementCirc ++ creatureEls)
 
 movementCircle : (M.Point3 -> U.Msg) -> (List M.Point3) -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
 movementCircle moveMsg pts terrain origin max_distance =

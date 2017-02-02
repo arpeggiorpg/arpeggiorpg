@@ -9,7 +9,7 @@ use creature::Creature;
 pub type Point3 = (i16, i16, i16);
 
 pub type MapName = String;
-pub type Map = Vec<Point3>; // To be extended later. For now just a list of collision voxels
+pub type Map = Vec<Point3>; // To be extended later. For now just a list of open voxels
 pub type ConditionID = usize;
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
