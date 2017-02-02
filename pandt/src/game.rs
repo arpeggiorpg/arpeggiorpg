@@ -259,6 +259,7 @@ pub mod test {
     use game::*;
     use types::test::*;
     use creature::test::*;
+    use grid::test::*;
     use test::Bencher;
     use std::iter::FromIterator;
 
@@ -275,11 +276,11 @@ pub mod test {
         let punch = t_punch();
         let heal = t_heal();
         let shoot = t_shoot();
-        let game = Game::new(t_classes(),
-                             HashMap::from_iter(vec![(abid("punch"), punch),
-                                                     (abid("shoot"), shoot),
-                                                     (abid("heal"), heal)]));
-
+        let mut game = Game::new(t_classes(),
+                                 HashMap::from_iter(vec![(abid("punch"), punch),
+                                                         (abid("shoot"), shoot),
+                                                         (abid("heal"), heal)]));
+        game.current_map = huge_box();
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue("rogue"))).unwrap().0;
         let game =
             game.perform_unchecked(GameCommand::CreateCreature(t_ranger("ranger"))).unwrap().0;
@@ -317,7 +318,7 @@ pub mod test {
             current_combat: None,
             creatures: creatures,
             maps: HashMap::new(),
-            current_map: vec![],
+            current_map: huge_box(),
         };
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));

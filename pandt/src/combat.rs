@@ -284,13 +284,14 @@ pub mod tests {
     use combat::*;
     use creature::test::*;
     use types::test::*;
+    use grid::test::*;
 
     /// Create a Test combat. Combat order is rogue, ranger, then cleric.
     pub fn t_combat() -> Combat {
         let rogue = t_rogue("rogue");
         let ranger = t_ranger("ranger");
         let cleric = t_cleric("cleric");
-        Combat::new(vec![rogue, ranger, cleric], &vec![]).unwrap()
+        Combat::new(vec![rogue, ranger, cleric], &huge_box()).unwrap()
     }
 
     pub fn t_act(c: &Combat,
@@ -307,7 +308,7 @@ pub mod tests {
         let melee = t_punch();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((2, 0, 0)).unwrap().0;
+            *creature = creature.set_pos((2, 0, 0));
         }
         assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
@@ -320,7 +321,7 @@ pub mod tests {
         let range_ab = t_shoot();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 0, 0)).unwrap().0;
+            *creature = creature.set_pos((5, 0, 0));
         }
         let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().0;
     }
@@ -332,7 +333,7 @@ pub mod tests {
         let shoot = t_shoot();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((6, 0, 0)).unwrap().0;
+            *creature = creature.set_pos((6, 0, 0));
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
@@ -340,7 +341,7 @@ pub mod tests {
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 3, 0)).unwrap().0;
+            *creature = creature.set_pos((5, 3, 0));
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::TargetOutOfRange));
@@ -349,18 +350,18 @@ pub mod tests {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
     #[test]
     fn move_some_at_a_time() {
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().move_creature(&vec![], (5, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_creature(&huge_box(), (5, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().move_creature(&vec![], (10, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_creature(&huge_box(), (10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().move_creature(&vec![], (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
@@ -371,9 +372,9 @@ pub mod tests {
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {
             let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?.0;
-            let combat = combat.next_turn(&vec![])?.0.next_turn(&vec![])?.0;
+            let combat = combat.next_turn(&huge_box())?.0.next_turn(&huge_box())?.0;
             let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?.0;
-            let combat = combat.next_turn(&vec![])?.0;
+            let combat = combat.next_turn(&huge_box())?.0;
             Ok(combat)
         };
         bencher.iter(|| {

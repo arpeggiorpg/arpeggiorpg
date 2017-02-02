@@ -120,6 +120,13 @@ impl Creature {
         Ok((creature, ops))
     }
 
+    /// Assign a position. TODO: Make this return a separate GameLog. Only used in tests for now.
+    pub fn set_pos(&self, pt: Point3) -> Creature {
+        let mut newc = self.clone();
+        newc.pos = pt;
+        newc
+    }
+
     pub fn set_pos_path(&self,
                         pts: Vec<Point3>,
                         distance: Distance)

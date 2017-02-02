@@ -300,7 +300,7 @@ pub mod test {
 
     #[test]
     fn test_neighbors() {
-        let terrain = vec![];
+        let terrain = huge_box();
         let mut pts = point3_neighbors(&terrain, (0, 0, 0));
         pts.sort();
         let mut expected = vec![((-1, 0, 0), 100),
@@ -330,7 +330,7 @@ pub mod test {
     fn pathfinding_astar() {
         let start = (0, 0, 0);
         let (path, cost) = astar(&start,
-                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_neighbors(&huge_box(), *n),
                                  |n| point3_distance(start, *n).0,
                                  |n| *n == (2, 2, 0))
             .unwrap();
@@ -343,7 +343,7 @@ pub mod test {
         let start = (0, 0, 0);
         let success = Box::new(|n: &Point3| *n == (2, 2, 0));
         let paths_and_costs = astar_multi(&start,
-                                          |n| point3_neighbors(&vec![], *n),
+                                          |n| point3_neighbors(&huge_box(), *n),
                                           |n| point3_distance(start, *n).0,
                                           u32::max_value(),
                                           vec![success]);
@@ -356,7 +356,7 @@ pub mod test {
         let start = (0, 0, 0);
         let success = Box::new(|n: &Point3| *n == (5, 0, 0));
         let result = astar_multi(&start,
-                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_neighbors(&huge_box(), *n),
                                  |n| point3_distance(start, *n).0,
                                  499,
                                  vec![success]);
@@ -368,7 +368,7 @@ pub mod test {
         let start = (0, 0, 0);
         let success = Box::new(|n: &Point3| *n == (5, 0, 0));
         let result = astar_multi(&start,
-                                 |n| point3_neighbors(&vec![], *n),
+                                 |n| point3_neighbors(&huge_box(), *n),
                                  |n| point3_distance(start, *n).0,
                                  500,
                                  vec![success]);
@@ -384,7 +384,7 @@ pub mod test {
         let successes: Vec<Box<Fn(&Point3) -> bool>> = vec![Box::new(|n: &Point3| *n == (1, 1, 0)),
                                                             Box::new(|n: &Point3| *n == (-1, -1, 0))];
         let paths_and_costs = astar_multi(&start,
-                                          |n| point3_neighbors(&vec![], *n),
+                                          |n| point3_neighbors(&huge_box(), *n),
                                           |n| point3_distance(start, *n).0,
                                           u32::max_value(),
                                           successes);
@@ -396,18 +396,17 @@ pub mod test {
 
     /// A map containing a "room" that only has one free space in the middle.
     fn box_map() -> Map {
-        vec![// left wall
-             (-1, -1, 0),
-             (-1, 0, 0),
-             (-1, 1, 0),
-             // top wall
-             (0, -1, 0),
-             // right wall
-             (1, -1, 0),
-             (1, 0, 0),
-             (1, 1, 0),
-             // bottom wall
-             (0, 1, 0)]
+        vec![(0, 0, 0)]
+    }
+
+    pub fn huge_box() -> Map {
+        let mut map = vec![];
+        for x in -20..20 {
+            for y in -20..20 {
+                map.push((x, y, 0));
+            }
+        }
+        map
     }
 
     // #[test]
@@ -432,7 +431,7 @@ pub mod test {
     #[test]
     fn test_accessible_small_limit() {
         // a speed of 100 means you can only move on the axes
-        let terrain = vec![];
+        let terrain = huge_box();
         let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(100));
         pts.sort();
         let mut expected = vec![(-1, 0, 0), (1, 0, 0), (0, -1, 0), (0, 1, 0)];
@@ -443,7 +442,7 @@ pub mod test {
     #[test]
     fn test_accessible_less_small_limit() {
         // a speed of 141 means you can also move diagonally, but only once
-        let terrain = vec![];
+        let terrain = huge_box();
         let mut pts = get_all_accessible((0, 0, 0), &terrain, Distance(141));
         pts.sort();
         let mut expected = vec![(-1, 0, 0),
@@ -460,7 +459,7 @@ pub mod test {
 
     #[test]
     fn test_accessible_average_speed() {
-        let terrain = vec![];
+        let terrain = huge_box();
         let pts = get_all_accessible((0, 0, 0), &terrain, Distance(1000));
         // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
         // 8 degrees of movement, which leaves certain positions within a circle impossible to
