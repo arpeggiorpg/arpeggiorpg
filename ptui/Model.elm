@@ -1,5 +1,6 @@
 module Model exposing (..)
 
+import Array
 import Dict exposing (Dict(..))
 import Maybe exposing (withDefault)
 import Json.Decode as JD
@@ -59,9 +60,72 @@ type alias Point3 = {x: Int, y: Int, z: Int}
 point3Decoder = JD.map3 Point3 (JD.index 0 JD.int) (JD.index 1 JD.int) (JD.index 2 JD.int)
 point3Encoder {x, y, z} =  JE.list [JE.int x, JE.int y, JE.int z]
 
-type alias App = { current_game : Game }
+type alias App =
+  { current_game : Game
+  , snapshots : Array.Array (Game, (List GameLog))
+  }
 
-appDecoder = JD.map App (JD.field "current_game" gameDecoder)
+appDecoder = JD.map2 App
+  (JD.field "current_game" gameDecoder)
+  (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameDecoder) (JD.index 1 <| JD.list gameLogDecoder))))
+
+type GameLog
+  = GLSelectMap MapName
+  | GLCombatLog CombatLog
+  | GLCreatureLog CreatureID CreatureLog
+  | GLStartCombat (List CreatureID)
+  | GLStopCombat
+  | GLAddCreature Creature
+  | GLRemoveCreature CreatureID
+  | GLAddCreatureToCombat CreatureID
+  | GLRemoveCreatureFromCombat CreatureID
+
+gameLogDecoder = sumDecoder "GameLog"
+  [("StopCombat", GLStopCombat)]
+  [ ("SelectMap", JD.map GLSelectMap JD.string)
+  , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
+  , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
+  , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
+  , ("AddCreature", (JD.map GLAddCreature creatureDecoder))
+  , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
+  , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
+  , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
+  ]
+
+type CombatLog
+  = ComLCreatureLog CreatureID CreatureLog
+  | ComLEndTurn CreatureID
+
+combatLogDecoder = sumDecoder "CombatLog"
+  []
+  [ ("CreatureLog", JD.map2 ComLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
+  , ("EndTurn", JD.map ComLEndTurn JD.string)]
+
+type CreatureLog
+  = CLDamage Int
+  | CLHeal Int
+  | CLGenerateEnergy Int
+  | CLReduceEnergy Int
+  | CLApplyCondition Int ConditionDuration Condition
+  | CLRemoveCondition Int
+  | CLPathCreature PathAndDistance
+
+type alias PathAndDistance = {path: List Point3, distance: Distance}
+
+pathAndDistanceDecoder = JD.map2 PathAndDistance
+  (JD.field "path" (JD.list point3Decoder))
+  (JD.field "distance" JD.int)
+
+creatureLogDecoder = sumDecoder "CreatureLog"
+  []
+  [ ("Damage", JD.map CLDamage JD.int)
+  , ("Heal", JD.map CLHeal JD.int)
+  , ("GenerateEnergy", JD.map CLGenerateEnergy JD.int)
+  , ("ReduceEnergy", JD.map CLReduceEnergy JD.int)
+  , ("ApplyCondition", JD.map3 CLApplyCondition JD.int conditionDurationDecoder conditionDecoder)
+  , ("RemoveCondition", JD.map CLRemoveCondition JD.int)
+  , ("PathCreature", JD.map CLPathCreature pathAndDistanceDecoder)
+  ]
 
 type alias Game =
   { current_combat : Maybe Combat

@@ -1,5 +1,6 @@
 module View exposing (..)
 
+import Array
 import Debug exposing (log)
 import Dict
 import Html exposing (..)
@@ -17,21 +18,25 @@ view : M.Model -> Html U.Msg
 view model = vbox
   [ h2 [] [ text "P&T" ]
   , button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
-  , case model.app of Just app -> viewGame model app.current_game
+  , case model.app of Just app -> viewGame model app
                       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
   ]
 
-viewGame : M.Model -> M.Game -> Html U.Msg
-viewGame model game =
+viewGame : M.Model -> M.App -> Html U.Msg
+viewGame model app =
+  let game = app.current_game in
   case (game.current_combat, model.moving) of
+    -- Movement takes over the whole UI:
     (Nothing, Just mvmt) -> Grid.terrainMap (U.MoveOutOfCombat mvmt.creature.id) model.moving game.current_map (Dict.values game.creatures)
     (Just combat, Just mvmt) -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
+
     _ ->
       hbox 
       [ vbox [ h3 [] [text "Creatures"]
-            , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
-            ]
+             , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
+             , history app
+             ]
       , case game.current_combat of
           Just combat -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
           Nothing -> Grid.terrainMap U.Move model.moving game.current_map (Dict.values game.creatures)
@@ -70,6 +75,39 @@ inactiveEntry mCombat pendingCreatures creature = hbox
                       , onClick (U.ToggleSelectedCreature creature.id)] []
   , deleteCreatureButton creature
   , moveOOCButton creature]
+
+history : M.App -> Html U.Msg
+history app = 
+  let items =
+        case Array.get ((Array.length app.snapshots) - 1) app.snapshots of
+          Just (_, items) -> List.reverse items
+          Nothing -> []
+  in vbox
+  ([ h3 [] [text "History"] ] ++ (List.map historyItem items))
+
+historyItem : M.GameLog -> Html U.Msg
+historyItem i = case i of
+  M.GLSelectMap name ->  text <| "Selected Map: " ++ name
+  M.GLAddCreature creature -> text <| "Created creature: " ++ creature.id
+  M.GLRemoveCreature cid -> text <| "Deleted creature: " ++ cid 
+  M.GLStartCombat combatants -> text <| "Started Combat: " ++ (String.join ", " combatants)
+  M.GLStopCombat -> text "Stopped combat"
+  M.GLAddCreatureToCombat cid -> text <| "Added Creature to Combat: " ++ cid
+  M.GLRemoveCreatureFromCombat cid -> text <| "Removed creature from Combat: " ++ cid
+  M.GLCreatureLog cid cl -> hbox [text cid, historyCreatureLog cl]
+  M.GLCombatLog cl -> historyCombatLog cl
+
+historyCombatLog : M.CombatLog -> Html U.Msg
+historyCombatLog x = text (toString x)
+
+historyCreatureLog cl = case cl of
+  M.CLDamage dmg -> text <| "Took damage: " ++ toString dmg 
+  M.CLHeal dmg -> text <| "Healed: " ++ toString dmg
+  M.CLGenerateEnergy nrg -> text <| "Regenerated energy: " ++ toString nrg
+  M.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
+  M.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
+  M.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
+  M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString distance ++ " to " ++ toString (List.head (List.reverse path))
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
