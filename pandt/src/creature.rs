@@ -85,7 +85,6 @@ impl Creature {
                     .ok_or(GameError::ConditionNotFound(*id))?;
                 new.conditions.remove(pos);
             }
-            CreatureLog::MoveCreature(ref pt) => new.pos = *pt,
             CreatureLog::PathCreature { ref path, .. } => {
                 match path.last() {
                     Some(pt) => new.pos = *pt,
@@ -119,11 +118,6 @@ impl Creature {
             creature = self.apply_log(op)?;
         }
         Ok((creature, ops))
-    }
-
-    pub fn set_pos(&self, pt: Point3) -> Result<(Creature, Vec<CreatureLog>), GameError> {
-        let log = CreatureLog::MoveCreature(pt);
-        Ok((self.apply_log(&log)?, vec![log]))
     }
 
     pub fn set_pos_path(&self,

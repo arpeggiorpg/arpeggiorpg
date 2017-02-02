@@ -138,7 +138,6 @@ pub enum CreatureLog {
     ReduceEnergy(Energy),
     ApplyCondition(ConditionID, ConditionDuration, Condition),
     RemoveCondition(ConditionID),
-    MoveCreature(Point3),
     PathCreature {
         path: Vec<Point3>,
         distance: Distance,
