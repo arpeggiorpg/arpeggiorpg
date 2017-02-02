@@ -1,5 +1,7 @@
+#![feature(slice_patterns)]
 extern crate hyper;
 extern crate futures;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate unicase;
@@ -16,7 +18,7 @@ use futures::{finished, Stream, Future, BoxFuture};
 use hyper::StatusCode;
 use hyper::Method::{Get, Post, Options};
 use hyper::header::{ContentType, AccessControlAllowOrigin, AccessControlAllowHeaders};
-use hyper::server::{Server, Service, Request, Response};
+use hyper::server::{Http, Service, Request, Response};
 use unicase::UniCase;
 
 use pandt::types::GameCommand;
@@ -26,6 +28,29 @@ struct PT {
     app: Arc<Mutex<pandt::app::App>>,
 }
 
+enum Route {
+    GetApp,
+    PostApp(hyper::Body),
+    MovementOptions(String),
+    Options,
+    Unknown,
+}
+
+fn route(req: Request) -> Route {
+    println!("Handling {:?} {:?}", req.method(), req.path());
+    let segments_owned: Vec<String> = req.path().split("/").map(|s| s.to_string()).collect();
+    let segments_reffed: Vec<&str> = segments_owned.iter().map(|s| s.as_ref()).collect();
+    match (req.method(), &segments_reffed[..]) {
+        // lol routes
+        (&Post, &[""]) => Route::PostApp(req.body()),
+        (&Options, &[""]) => Route::Options,
+        (&Get, &[""]) => Route::GetApp,
+        (&Get, &["", "movement_options", cid]) => Route::MovementOptions(cid.to_string()),
+        _ => Route::Unknown,
+    }
+}
+
+
 impl Service for PT {
     type Request = Request;
     type Response = Response;
@@ -33,11 +58,12 @@ impl Service for PT {
     type Future = BoxFuture<Response, hyper::Error>;
 
     fn call(&self, req: Request) -> Self::Future {
-        println!("Handling {:?} {:?}", req.method(), req.path());
-        match (req.method(), req.path()) {
-            (&Get, Some("/")) => self.get_app(),
-            (&Post, Some("/")) => self.post_app(req),
-            (&Options, Some("/")) => {
+        let route = route(req);
+        match route {
+            Route::GetApp => self.get_app(),
+            Route::PostApp(body) => self.post_app(body),
+            Route::MovementOptions(cid) => self.get_movement_options(&cid),
+            Route::Options => {
                 finished(Response::new()
                         .with_header(AccessControlAllowOrigin::Any)
                         .with_header(AccessControlAllowHeaders(vec![UniCase("Content-Type"
@@ -45,9 +71,26 @@ impl Service for PT {
                         .with_body("Okay"))
                     .boxed()
             }
-            _ => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
+            Route::Unknown => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
         }
     }
+}
+
+fn http_error<E: std::fmt::Debug>(e: E) -> BoxFuture<Response, hyper::Error> {
+    finished(Response::new()
+            .with_status(StatusCode::InternalServerError)
+            .with_header(AccessControlAllowOrigin::Any)
+            .with_header(ContentType::json())
+            .with_body(serde_json::to_string(&format!("{:?}", e)).unwrap()))
+        .boxed()
+}
+
+fn http_json<J: serde::Serialize>(j: &J) -> BoxFuture<Response, hyper::Error> {
+    finished(Response::new()
+            .with_header(AccessControlAllowOrigin::Any)
+            .with_header(ContentType::json())
+            .with_body(serde_json::to_string(j).unwrap()))
+        .boxed()
 }
 
 impl PT {
@@ -61,8 +104,20 @@ impl PT {
             .boxed()
     }
 
-    fn post_app(&self, req: Request) -> BoxFuture<Response, hyper::Error> {
-        let body_stream = req.body();
+    fn get_movement_options(&self, creature_id: &str) -> BoxFuture<Response, hyper::Error> {
+        match pandt::types::CreatureID::new(creature_id) {
+            Ok(cid) => {
+                match self.app.lock().unwrap().get_movement_options(cid) {
+                    Ok(points) => http_json(&points),
+                    Err(e) => http_error(e),
+                }
+            }
+            Err(e) => http_error(e),
+        }
+    }
+
+
+    fn post_app(&self, body_stream: hyper::Body) -> BoxFuture<Response, hyper::Error> {
         // we need to clone here so that we don't move a &ref into the closure below, which
         // causes havoc
         let ARMUT = self.app.clone();
@@ -81,29 +136,12 @@ impl PT {
                                 let mut app = ARMUT.lock().unwrap();
                                 let result = app.perform_unchecked(command).clone();
                                 println!("Command result:\n {:?}", result);
-                                finished(Response::new()
-                                        .with_header(AccessControlAllowOrigin::Any)
-                                        .with_header(ContentType::json())
-                                        .with_body(serde_json::to_string(&result).unwrap()))
-                                    .boxed()
+                                http_json(&result)
                             }
-                            Err(e) => {
-                                finished(Response::new()
-                                        .with_status(StatusCode::InternalServerError)
-                                        .with_header(AccessControlAllowOrigin::Any)
-                                        .with_header(ContentType::json())
-                                        .with_body(serde_json::to_string(&format!("{:?}", e))
-                                            .unwrap()))
-                                    .boxed()
-                            }
+                            Err(e) => http_error(e),
                         }
                     }
-                    Err(_) => {
-                        finished(Response::new()
-                                .with_header(AccessControlAllowOrigin::Any)
-                                .with_body("BAD JSON YALL"))
-                            .boxed()
-                    }
+                    Err(_) => http_error("BAD JSON Y'ALL"),
                 }
             })
             .boxed()
@@ -121,13 +159,8 @@ fn main() {
     let app: pandt::app::App = serde_yaml::from_str(&apps).unwrap();
 
     let pt = PT { app: Arc::new(Mutex::new(app)) };
-    let (listening, server) = Server::standalone(|tokio| {
-            let pt = pt.clone();
-            Server::http(&addr, tokio)
-                ?
-                .handle(move || Ok(pt.clone()), tokio)
-        })
-        .unwrap();
-    println!("Listening on http://{}", listening);
-    server.run();
+
+    let server = Http::new().bind(&addr, move || Ok(pt.clone())).unwrap();
+    println!("Listening on http://{}", server.local_addr().unwrap());
+    server.run().unwrap();
 }

@@ -15,5 +15,4 @@ unicase = "1.4.0"
 path = "../pandt"
 
 [dependencies.hyper]
-branch = "tokio"
 git = "https://github.com/hyperium/hyper"
