@@ -26,9 +26,9 @@ defaultModel =
   }
 
 type alias MovementRequest = 
-  { creature_id: CreatureID
-  , origin: Point3
+  { creature: Creature
   , max_distance: Distance
+  , movement_options: (List Point3)
   }
 
 type alias Model =
@@ -276,6 +276,7 @@ type GameCommand
   | StopCombat
   | Act AbilityID DecidedTarget
   | Move Point3
+  | MoveOutOfCombat CreatureID Point3
   | CreateCreature Creature
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
@@ -292,6 +293,7 @@ gameCommandEncoder gc =
     RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
     StopCombat -> JE.string "StopCombat"
     Move pt -> JE.object [("Move", point3Encoder pt)]
+    MoveOutOfCombat cid pt -> JE.object [("MoveOutOfCombat", JE.list [JE.string cid, point3Encoder pt])]
     AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
     RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     Act abid dtarget -> JE.object [("Act", JE.list [JE.string abid, decidedTargetEncoder dtarget])]

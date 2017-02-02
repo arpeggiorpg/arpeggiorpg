@@ -38,23 +38,22 @@ coord : Int -> Int
 coord c = (metersToPx (gridSize // 2)) + metersToPx c
 coordPx = px << coord
 
-combatGrid : Maybe M.MovementRequest -> M.Map -> M.Combat -> Html U.Msg
-combatGrid moving terrain combat =
-  let creatureEls = List.map gridCreature combat.creatures.data
+terrainMap : (M.Point3 -> U.Msg) -> Maybe M.MovementRequest -> M.Map -> List M.Creature -> Html U.Msg
+terrainMap moveMsg moving terrain creatures =
+  let creatureEls = List.map gridCreature creatures
       terrainEls = List.map gridTerrain terrain
       movementCirc =
         case moving of
-          Just {origin, max_distance} -> movementCircle combat terrain origin max_distance
+          Just {creature, max_distance, movement_options} -> movementCircle moveMsg movement_options terrain creature.pos max_distance
           Nothing -> []
   in div [style [ ("border", "2px solid black"), ("position", "relative")
                 , ("width", metersToPxPx gridSize), ("height", metersToPxPx gridSize)]]
          (movementCirc ++ terrainEls ++ creatureEls)
 
-movementCircle : M.Combat -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
-movementCircle combat terrain origin max_distance =
-  let pts = combat.movement_options
-      debugEl = debugCircle origin max_distance
-      movementCells = List.map (movementTarget origin max_distance terrain) pts
+movementCircle : (M.Point3 -> U.Msg) -> (List M.Point3) -> M.Map -> M.Point3 -> Int -> List (Html U.Msg)
+movementCircle moveMsg pts terrain origin max_distance =
+  let debugEl = debugCircle origin max_distance
+      movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
   in debugEl :: movementCells ++ [cancelMove]
 
 cancelMove : Html U.Msg
@@ -66,11 +65,11 @@ debugCircle origin max_distance = centerPositionedBox (coordPx origin.x) (coordP
          , ("border-radius", "50%"), ("border", "2px solid black")]]
   []
 
-movementTarget : M.Point3 -> Int -> M.Map -> M.Point3 -> Html U.Msg
-movementTarget origin max_distance terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
+movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> Html U.Msg
+movementTarget moveMsg origin max_distance terrain pt = centerPositionedBox (coordPx pt.x) (coordPx pt.y)
   [ style [ ("width", metersToPxPx 1), ("height", metersToPxPx 1)
           , ("border", "1px solid black"), ("background", "lightgreen")]
-  , onClick (U.Move pt)]
+  , onClick (moveMsg pt)]
   []
 
 gridCreature : M.Creature -> Html U.Msg

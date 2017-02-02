@@ -25,15 +25,16 @@ view model = vbox
 viewGame : M.Model -> M.Game -> Html U.Msg
 viewGame model game =
   case (game.current_combat, model.moving) of
-    (Just combat, Just mvmt) -> Grid.combatGrid model.moving game.current_map combat
+    (Nothing, Just mvmt) -> Grid.terrainMap (U.MoveOutOfCombat mvmt.creature.id) model.moving game.current_map (Dict.values game.creatures)
+    (Just combat, Just mvmt) -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
     _ ->
       hbox 
       [ vbox [ h3 [] [text "Creatures"]
             , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
             ]
       , case game.current_combat of
-          Just combat -> Grid.combatGrid model.moving game.current_map combat
-          Nothing -> text "Enter combat to see a cool combat grid here!"
+          Just combat -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
+          Nothing -> Grid.terrainMap U.Move model.moving game.current_map (Dict.values game.creatures)
       , case game.current_combat of
           Just combat -> combatArea model game combat
           Nothing -> startCombatButton
@@ -56,7 +57,7 @@ createCreatureForm = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
     , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureAbilitySet ] []
-    , button [ onClick U.PostCreateCreature ] [ text "Create Creature!" ]
+    , button [ onClick U.CreateCreature ] [ text "Create Creature!" ]
     ]
 
 inactiveEntry : Maybe M.Combat -> Set.Set String -> M.Creature -> Html U.Msg
@@ -67,7 +68,8 @@ inactiveEntry mCombat pendingCreatures creature = hbox
                       input [ type_ "checkbox"
                       , checked (Set.member creature.id pendingCreatures)
                       , onClick (U.ToggleSelectedCreature creature.id)] []
-  , deleteCreatureButton creature]
+  , deleteCreatureButton creature
+  , moveOOCButton creature]
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
@@ -87,14 +89,14 @@ creatureTargetSelector abid con combat = vbox <|
   in (List.map targetCreatureButton combat.creatures.data)
 
 stopCombatButton : Html U.Msg
-stopCombatButton = button [onClick U.PostStopCombat] [text "Stop Combat"]
+stopCombatButton = button [onClick U.StopCombat] [text "Stop Combat"]
 startCombatButton : Html U.Msg
-startCombatButton = button [onClick U.PostStartCombat] [text "Start Combat"]
+startCombatButton = button [onClick U.StartCombat] [text "Start Combat"]
 
 combatantList : M.Game -> M.Combat -> Html U.Msg
-combatantList game { creatures, movement_used } = div []
+combatantList game combat = div []
   [ h3 [] [text "Combat!"]
-  , vbox (List.map (combatantEntry game movement_used creatures.cursor) (List.indexedMap (,) creatures.data))
+  , vbox (List.map (combatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
   , stopCombatButton
   ]
 
@@ -102,22 +104,22 @@ engageButton : M.Creature -> Html U.Msg
 engageButton creature =
   button [onClick (U.AddToCombat creature.id)] [text "Engage"]
 
-combatantEntry : M.Game -> M.Distance -> Int -> (Int, M.Creature) -> Html U.Msg
-combatantEntry game movement_used cursor (idx, creature) = hbox
-  [ if cursor == idx then actionBar movement_used game.ability_sets creature
+combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
+combatantEntry game combat (idx, creature) = hbox
+  [ if combat.creatures.cursor == idx then actionBar combat game.ability_sets creature
     else div [] []
   , creatureStats creature
   , disengageButton creature
   ]
 
-actionBar : M.Distance -> Dict.Dict String (List String) -> M.Creature -> Html U.Msg
-actionBar movement_used abilitySets creature =
+actionBar : M.Combat -> Dict.Dict String (List String) -> M.Creature -> Html U.Msg
+actionBar combat abilitySets creature =
   let abilitySet =
         case (Dict.get creature.ability_set abilitySets) of
           Just x -> x
           Nothing -> []
   in hbox (  (doneButton creature)
-          :: (moveButton movement_used creature)
+          :: (moveButton combat creature)
           :: (List.map actionButton abilitySet))
 
 actionButton : String -> Html U.Msg
@@ -139,12 +141,17 @@ deleteCreatureButton : M.Creature -> Html U.Msg
 deleteCreatureButton creature =
   button [onClick (U.RemoveFromGame creature.id)] [text "Delete"]
 
+moveOOCButton : M.Creature -> Html U.Msg
+moveOOCButton creature =
+  button [onClick (U.GetMovementOptions creature)]
+         [text "Move"]
+
 doneButton : M.Creature -> Html U.Msg
 doneButton creature =
   button [onClick U.TurnDone] [text "Done"]
 
-moveButton : M.Distance -> M.Creature -> Html U.Msg
-moveButton movement_used creature =
-  let movement_left = creature.speed - movement_used
-  in button [onClick (U.RequestMove <| M.MovementRequest creature.id creature.pos movement_left)]
+moveButton : M.Combat -> M.Creature -> Html U.Msg
+moveButton combat creature =
+  let movement_left = creature.speed - combat.movement_used
+  in button [onClick (U.RequestMove <| M.MovementRequest creature movement_left combat.movement_options)]
             [text (String.join "" ["Move (", toString movement_left, ")"])]
