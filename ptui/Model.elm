@@ -386,7 +386,7 @@ finalizePending {id, name, speed, max_energy, cur_energy, ability_set, max_healt
     (Just id, Just name, Just ability_set) ->
       Just { id = id
            , name = name
-           , speed = withDefault 10 speed
+           , speed = withDefault 1086 speed
            , max_energy = withDefault 10 max_energy
            , cur_energy = withDefault 10 cur_energy
            , max_health = withDefault 10 max_health
