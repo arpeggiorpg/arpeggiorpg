@@ -86,8 +86,8 @@ impl Creature {
                 new.conditions.remove(pos);
             }
             CreatureLog::MoveCreature(ref pt) => new.pos = *pt,
-            CreatureLog::PathCreature(ref pts) => {
-                match pts.last() {
+            CreatureLog::PathCreature { ref path, .. } => {
+                match path.last() {
                     Some(pt) => new.pos = *pt,
                     None => {}
                 }
@@ -126,8 +126,14 @@ impl Creature {
         Ok((self.apply_log(&log)?, vec![log]))
     }
 
-    pub fn set_pos_path(&self, pts: Vec<Point3>) -> Result<(Creature, CreatureLog), GameError> {
-        let log = CreatureLog::PathCreature(pts);
+    pub fn set_pos_path(&self,
+                        pts: Vec<Point3>,
+                        distance: Distance)
+                        -> Result<(Creature, CreatureLog), GameError> {
+        let log = CreatureLog::PathCreature {
+            path: pts,
+            distance: distance,
+        };
         Ok((self.apply_log(&log)?, log))
     }
 

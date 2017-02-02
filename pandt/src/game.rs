@@ -179,11 +179,11 @@ impl Game {
                          pt: Point3)
                          -> Result<(Game, Vec<GameLog>), GameError> {
         let creature = self.get_creature(cid)?;
-        let (pts, _) = find_path(creature.pos(),
+        let (pts, distance) = find_path(creature.pos(),
                                         creature.speed(),
                                         &self.current_map,
                                         pt).ok_or(GameError::NoPathFound)?;
-        let (creature, log) = creature.set_pos_path(pts)?;
+        let (creature, log) = creature.set_pos_path(pts, distance)?;
         let mut newgame = self.clone();
         *newgame.get_creature_mut(cid)? = creature;
         Ok((newgame, vec![GameLog::CreatureLog(cid, log)]))

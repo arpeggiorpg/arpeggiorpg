@@ -40,7 +40,8 @@ fn route(req: Request) -> Route {
     println!("Handling {:?} {:?}", req.method(), req.path());
     let segments_owned: Vec<String> = req.path().split("/").map(|s| s.to_string()).collect();
     let segments_reffed: Vec<&str> = segments_owned.iter().map(|s| s.as_ref()).collect();
-    match (req.method(), &segments_reffed[..]) {
+    println!("SEGMENTS: {:?}", segments_reffed);
+    match (req.method(), &segments_reffed[1..]) {
         // lol routes
         (&Post, &[""]) => Route::PostApp(req.body()),
         (&Options, &[""]) => Route::Options,

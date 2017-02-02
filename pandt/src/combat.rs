@@ -6,7 +6,7 @@ use nonempty;
 
 use creature::*;
 use types::*;
-use grid::{creature_within_distance, point3_distance, get_all_accessible, find_path};
+use grid::{creature_within_distance, get_all_accessible, find_path};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -58,20 +58,22 @@ impl Combat {
     pub fn apply_log(&self, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
-            CombatLog::CreatureLog(ref cid, CreatureLog::PathCreature(ref pts)) => {
+            CombatLog::CreatureLog(ref cid,
+                                   CreatureLog::PathCreature { ref path, ref distance }) => {
                 // This is weird! It may be better to just implement CombatLog::ChangeMovementLeft
                 // instead of special-casing CreatureLog::MoveCreature, especially since we will
                 // want GM-overridden movement. OTOH that could just be
                 // CreatureLog::AssignPosition...
-                let (c_pos, c_id) = {
+                let c_id = {
                     let mut c = new.get_creature_mut(*cid)?;
-                    let c_pos = c.pos();
-                    *c = c.apply_log(&CreatureLog::PathCreature(pts.clone()))?;
-                    (c_pos, c.id())
+                    *c = c.apply_log(&CreatureLog::PathCreature {
+                            path: path.clone(),
+                            distance: *distance,
+                        })?;
+                    c.id()
                 };
                 if c_id == *cid {
-                    let distance = point3_distance(c_pos, *pts.last().unwrap());
-                    new.movement_used = new.movement_used + distance;
+                    new.movement_used = new.movement_used + *distance;
                     new.update_movement_options_mut(terrain);
                 }
             }
@@ -201,7 +203,7 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let (creature, log) = self.combat.current_creature().set_pos_path(pts)?;
+        let (creature, log) = self.combat.current_creature().set_pos_path(pts, distance)?;
         let mut combat = self.combat.clone();
         *combat.current_creature_mut() = creature;
         combat.movement_used = combat.movement_used + distance;

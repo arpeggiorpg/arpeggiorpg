@@ -139,7 +139,10 @@ pub enum CreatureLog {
     ApplyCondition(ConditionID, ConditionDuration, Condition),
     RemoveCondition(ConditionID),
     MoveCreature(Point3),
-    PathCreature(Vec<Point3>),
+    PathCreature {
+        path: Vec<Point3>,
+        distance: Distance,
+    },
 }
 
 /// Representation of state changes in a Combat. See `CreatureLog`.
