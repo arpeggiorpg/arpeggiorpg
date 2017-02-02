@@ -71,6 +71,10 @@ impl App {
     pub fn game(&self) -> &Game {
         &self.current_game
     }
+
+    pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
+        self.current_game.get_movement_options(creature_id)
+    }
 }
 
 #[cfg(test)]

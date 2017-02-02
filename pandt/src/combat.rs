@@ -58,7 +58,7 @@ impl Combat {
     pub fn apply_log(&self, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
-            CombatLog::CreatureLog(ref cid, CreatureLog::MoveCreature(ref pt)) => {
+            CombatLog::CreatureLog(ref cid, CreatureLog::PathCreature(ref pts)) => {
                 // This is weird! It may be better to just implement CombatLog::ChangeMovementLeft
                 // instead of special-casing CreatureLog::MoveCreature, especially since we will
                 // want GM-overridden movement. OTOH that could just be
@@ -66,11 +66,11 @@ impl Combat {
                 let (c_pos, c_id) = {
                     let mut c = new.get_creature_mut(*cid)?;
                     let c_pos = c.pos();
-                    *c = c.apply_log(&CreatureLog::MoveCreature(*pt))?;
+                    *c = c.apply_log(&CreatureLog::PathCreature(pts.clone()))?;
                     (c_pos, c.id())
                 };
                 if c_id == *cid {
-                    let distance = point3_distance(c_pos, *pt);
+                    let distance = point3_distance(c_pos, *pts.last().unwrap());
                     new.movement_used = new.movement_used + distance;
                     new.update_movement_options_mut(terrain);
                 }
@@ -195,42 +195,18 @@ impl<'a> CombatMove<'a> {
                          terrain: &Map,
                          pt: Point3)
                          -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let mut combat = self.combat.clone();
-        let mut all_logs = vec![];
         let (pts, distance) = find_path(self.combat.current_creature().pos(),
                                         self.movement_left,
                                         terrain,
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
-        for pt in pts {
-            combat = {
-                let mvmt = combat.get_movement()?;
-                let r = mvmt.teleport(terrain, pt)?;
-                all_logs.extend(r.1);
-                r.0
-            }
-        }
-        Ok((combat, all_logs))
-    }
 
-    fn teleport(&self, terrain: &Map, pt: Point3) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let c = self.combat.current_creature();
-        let distance = point3_distance(c.pos(), pt);
-        if distance > self.movement_left {
-            Err(GameError::NoPathFound)
-        } else {
-            let mut new = self.combat.clone();
-            new.movement_used = new.movement_used + distance;
-            let logs = {
-                let mut c = new.current_creature_mut();
-                let (newc, logs) = c.set_pos(pt)?;
-                *c = newc;
-                logs
-            };
-            new.update_movement_options_mut(terrain);
-            let cid = new.current_creature().id();
-            Ok((new, creature_logs_into_combat_logs(cid, logs)))
-        }
+        let (creature, log) = self.combat.current_creature().set_pos_path(pts)?;
+        let mut combat = self.combat.clone();
+        *combat.current_creature_mut() = creature;
+        combat.movement_used = combat.movement_used + distance;
+        combat.update_movement_options_mut(terrain);
+        Ok((combat, vec![CombatLog::CreatureLog(self.combat.current_creature().id(), log)]))
     }
 }
 

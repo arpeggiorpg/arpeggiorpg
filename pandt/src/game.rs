@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use types::*;
 use creature::*;
 use combat::*;
-use grid::find_path;
+use grid::{find_path, get_all_accessible};
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -245,6 +245,11 @@ impl Game {
         }
         newgame.current_combat = Some(Combat::new(creatures, &self.current_map)?);
         Ok((newgame, vec![GameLog::StartCombat(cids)]))
+    }
+
+    pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
+        let creature = self.get_creature(creature_id)?;
+        Ok(get_all_accessible(creature.pos(), &self.current_map, creature.speed()))
     }
 }
 
