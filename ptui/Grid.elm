@@ -1,12 +1,8 @@
 module Grid exposing (..)
 
-import Debug exposing (log)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Set
-
-import MouseEvent exposing (onMouseClick)
 
 import Elements exposing (..)
 import Model as M

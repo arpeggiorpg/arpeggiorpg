@@ -1,7 +1,6 @@
 module View exposing (..)
 
 import Array
-import Debug exposing (log)
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)

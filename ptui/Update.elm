@@ -1,6 +1,5 @@
 module Update exposing (..)
 
-import Debug exposing (log)
 import Http
 import Json.Decode as JD
 import Set
@@ -107,5 +106,5 @@ refreshApp = Http.send AppUpdate (Http.get url M.appDecoder)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
-  log ("[COMMAND] " ++ (toString cmd)) <|
+  Debug.log ("[COMMAND] " ++ (toString cmd)) <|
   Http.send CommandComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JD.value)
