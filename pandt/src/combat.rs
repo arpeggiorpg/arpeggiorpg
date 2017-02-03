@@ -102,14 +102,12 @@ impl Combat {
     pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newcombat = self.clone();
         let mut all_logs = vec![];
-        for creature in newcombat.creatures.iter_mut() {
-            let (newcreat, logs) = creature.tick()?;
-            *creature = newcreat;
-            all_logs.extend(creature_logs_into_combat_logs(creature.id(), logs));
-        }
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
         newcombat.creatures.next_circular();
         newcombat.movement_used = Distance(0);
+        let (ticked_creature, logs) = newcombat.current_creature().tick()?;
+        *newcombat.current_creature_mut() = ticked_creature;
+        all_logs.extend(creature_logs_into_combat_logs(newcombat.current_creature().id(), logs));
         newcombat.update_movement_options_mut(terrain);
         Ok((newcombat, all_logs))
     }
@@ -379,6 +377,6 @@ pub mod test {
             Ok(combat)
         };
 
-        combat = iter(&combat).unwrap();
+        iter(&combat).unwrap();
     }
 }

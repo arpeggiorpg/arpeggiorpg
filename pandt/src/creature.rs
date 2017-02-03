@@ -120,7 +120,8 @@ impl Creature {
         Ok((creature, ops))
     }
 
-    /// Assign a position. TODO: Make this return a separate GameLog. Only used in tests for now.
+    /// Assign a position. TODO: Make this return a separate GameLog. Only used in tests for now,
+    /// but it will be useful for DM-assigned positions.
     pub fn set_pos(&self, pt: Point3) -> Creature {
         let mut newc = self.clone();
         newc.pos = pt;
