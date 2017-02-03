@@ -277,9 +277,8 @@ impl<'a> CombatAble<'a> {
 }
 
 #[cfg(test)]
-pub mod tests {
+pub mod test {
     extern crate test;
-    use self::test::Bencher;
 
     use combat::*;
     use creature::test::*;
@@ -357,16 +356,18 @@ pub mod tests {
     #[test]
     fn move_some_at_a_time() {
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().move_creature(&huge_box(), (5, 0, 0)).unwrap().0;
+        let combat =
+            combat.get_movement().unwrap().move_creature(&huge_box(), (5, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().move_creature(&huge_box(), (10, 0, 0)).unwrap().0;
+        let combat =
+            combat.get_movement().unwrap().move_creature(&huge_box(), (10, 0, 0)).unwrap().0;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
         assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
-    #[bench]
-    fn three_char_infinite_combat(bencher: &mut Bencher) {
+    #[test]
+    fn three_char_infinite_combat() {
         let mut combat = t_combat();
         let punch = t_punch();
         let heal = t_heal();
@@ -377,9 +378,7 @@ pub mod tests {
             let combat = combat.next_turn(&huge_box())?.0;
             Ok(combat)
         };
-        bencher.iter(|| {
-            combat = iter(&combat).unwrap();
-            combat.clone()
-        });
+
+        combat = iter(&combat).unwrap();
     }
 }

@@ -218,7 +218,7 @@ pub fn get_all_accessible(start: Point3, terrain: &Map, speed: Distance) -> Vec<
     for x in start.0 - meters..start.0 + meters + 1 {
         for y in start.1 - meters..start.1 + meters + 1 {
             let end_point = (x, y, 0);
-            if end_point == start {
+            if end_point == start  || !terrain.contains(&end_point) {
                 continue;
             }
             points_to_check.push(end_point);
