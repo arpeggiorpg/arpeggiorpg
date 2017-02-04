@@ -212,6 +212,13 @@ impl Creature {
     pub fn speed(&self) -> Distance {
         self.speed
     }
+
+    // We probably need to move `act` to Creature, then we wouldn't need this method (?)
+    pub fn reduce_energy(&self, delta: Energy) -> Self {
+        let mut newcreature = self.clone();
+        newcreature.cur_energy = newcreature.cur_energy - delta;
+        newcreature
+    }
 }
 
 pub struct CreatureBuilder {
@@ -251,6 +258,10 @@ impl CreatureBuilder {
             .map(|cond| creature.apply_condition_log(ConditionDuration::Interminate, cond.clone()))
             .collect();
         creature.apply_logs(logs)
+    }
+    pub fn name(mut self, name: &str) -> Self {
+        self.name = Some(name.to_string());
+        self
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);

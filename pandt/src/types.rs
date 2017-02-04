@@ -114,7 +114,7 @@ pub enum GameCommand {
     /// Move to a point. There must be a clear path according to the current loaded map.
     Move(Point3),
     /// Create a new creature.
-    CreateCreature(Creature),
+    CreateCreature(CreatureCreation),
     /// Remove a creature from the game entirely. Creature must not be in combat.
     RemoveCreature(CreatureID),
     /// Add a creature to combat. Combat must already be running; otherwise use `StartCombat`.
@@ -169,7 +169,7 @@ pub enum GameLog {
     CreatureLog(CreatureID, CreatureLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
-    AddCreature(Creature),
+    CreateCreature(CreatureCreation),
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
     RemoveCreatureFromCombat(CreatureID),
@@ -302,10 +302,18 @@ pub struct AbilityStatus {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Class {
     /// A list of abilities that this class can use.
-    // TODO: maybe add ActivateAbility condition and obsolete this field
     pub abilities: Vec<AbilityID>,
     /// A list of conditions which will be *permanently* applied to any creature in this class.
     pub conditions: Vec<Condition>,
+}
+
+/// A specification for creating a new creature.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct CreatureCreation {
+    pub id: CreatureID,
+    pub name: String,
+    pub class: String,
+    pub pos: Point3,
 }
 
 #[cfg(test)]
@@ -314,6 +322,33 @@ pub mod test {
 
     use serde_yaml;
     use serde_json;
+
+    pub fn t_rogue_creation(name: &str) -> CreatureCreation {
+        CreatureCreation {
+            id: CreatureID::new(name).unwrap(),
+            name: name.to_string(),
+            class: "rogue".to_string(),
+            pos: (0, 0, 0),
+        }
+    }
+
+    pub fn t_cleric_creation(name: &str) -> CreatureCreation {
+        CreatureCreation {
+            id: CreatureID::new(name).unwrap(),
+            name: name.to_string(),
+            class: "cleric".to_string(),
+            pos: (0, 0, 0),
+        }
+    }
+
+    pub fn t_ranger_creation(name: &str) -> CreatureCreation {
+        CreatureCreation {
+            id: CreatureID::new(name).unwrap(),
+            name: name.to_string(),
+            class: "ranger".to_string(),
+            pos: (0, 0, 0),
+        }
+    }
 
     #[cfg(test)]
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
@@ -368,4 +403,3 @@ pub mod test {
         assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Duration\":3}");
     }
 }
-

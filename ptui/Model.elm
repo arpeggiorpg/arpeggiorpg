@@ -19,7 +19,9 @@ defaultModel : Model
 defaultModel =
     { app = Nothing
     , selectedAbility = Nothing
-    , pendingCreature = (PendingCreature Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing [])
+    , pendingCreatureId = Nothing
+    , pendingCreatureName = Nothing
+    , pendingCreatureClass = Nothing 
     , pendingCombatCreatures = Set.empty
     , moving = Nothing
     , error = "No current error!"
@@ -33,7 +35,9 @@ type alias MovementRequest =
 
 type alias Model =
   { app : Maybe App
-  , pendingCreature : PendingCreature
+  , pendingCreatureId : Maybe CreatureID
+  , pendingCreatureName : Maybe String
+  , pendingCreatureClass : Maybe String
   , selectedAbility : Maybe AbilityID
   -- Creatures which have been selected for combat
   , pendingCombatCreatures : Set.Set CreatureID
@@ -41,18 +45,25 @@ type alias Model =
   , moving: Maybe MovementRequest
   }
 
-type alias PendingCreature =
-  { id : Maybe CreatureID
-  , name : Maybe String
-  , speed: Maybe Distance
-  , max_energy: Maybe Int
-  , cur_energy: Maybe Int
-  , class: Maybe String
-  , max_health: Maybe Int
-  , cur_health: Maybe Int
-  , pos: Maybe Point3
-  , conditions: List AppliedCondition
+type alias CreatureCreation =
+  { id : CreatureID
+  , name : String
+  , class: String
+  , pos: Point3
   }
+
+
+creatureCreationDecoder = JD.map4 CreatureCreation
+  (JD.field "id" JD.string)
+  (JD.field "name" JD.string)
+  (JD.field "class" JD.string)
+  (JD.field "pos" point3Decoder)
+
+creatureCreationEncoder cc = JE.object
+  [ ("id", JE.string cc.id)
+  , ("name", JE.string cc.name)
+  , ("class", JE.string cc.class)
+  , ("pos", point3Encoder cc.pos)]
 
 type alias Point3 = {x: Int, y: Int, z: Int}
 
@@ -74,7 +85,7 @@ type GameLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat (List CreatureID)
   | GLStopCombat
-  | GLAddCreature Creature
+  | GLCreateCreature CreatureCreation
   | GLRemoveCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
@@ -85,7 +96,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
-  , ("AddCreature", (JD.map GLAddCreature creatureDecoder))
+  , ("CreateCreature", (JD.map GLCreateCreature creatureCreationDecoder))
   , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
   , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
@@ -350,7 +361,7 @@ type GameCommand
   | Act AbilityID DecidedTarget
   | Move Point3
   | MoveOutOfCombat CreatureID Point3
-  | CreateCreature Creature
+  | CreateCreature CreatureCreation
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
@@ -362,7 +373,7 @@ gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
     StartCombat cids -> JE.object [("StartCombat", JE.list (List.map JE.string cids))]
-    CreateCreature creature -> JE.object [("CreateCreature", creatureEncoder creature)]
+    CreateCreature creature -> JE.object [("CreateCreature", creatureCreationEncoder creature)]
     RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
     StopCombat -> JE.string "StopCombat"
     Move pt -> JE.object [("Move", point3Encoder pt)]
@@ -388,24 +399,6 @@ sumDecoder name nullaryList singleFieldList = JD.oneOf
 
 
 -- pure functions on model
-
-finalizePending : PendingCreature -> Maybe Creature
-finalizePending {id, name, speed, max_energy, cur_energy, class, max_health, cur_health, pos, conditions } =
-  case (id, name, class) of
-    (Just id, Just name, Just class) ->
-      Just { id = id
-           , name = name
-           , speed = withDefault 1086 speed
-           , max_energy = withDefault 10 max_energy
-           , cur_energy = withDefault 10 cur_energy
-           , max_health = withDefault 10 max_health
-           , cur_health = withDefault 10 cur_health
-           , pos = withDefault {x=0, y=0, z=0} pos
-           , abilities = []
-           , class = class
-           , conditions = conditions }
-    _ -> Nothing
-
 
 distance : Point3 -> Point3 -> Distance
 distance a b =

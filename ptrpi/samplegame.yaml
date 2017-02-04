@@ -75,14 +75,14 @@ current_game:
       name: Heal
       target: 
         Range: 500
-      cost: 0
+      cost: 8
       effects: 
         - 
           Heal: 3
     punch: 
       name: Punch
       target: Melee
-      cost: 0
+      cost: 8
       effects: 
         - 
           Damage: 3
@@ -90,7 +90,7 @@ current_game:
       name: Shoot
       target: 
         Range: 500
-      cost: 0
+      cost: 8
       effects: 
         - 
           Damage: 3

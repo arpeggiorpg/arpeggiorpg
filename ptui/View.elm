@@ -33,7 +33,7 @@ viewGame model app =
     _ ->
       hbox 
       [ vbox [ h3 [] [text "Creatures"]
-             , inactiveList game.current_combat model.pendingCombatCreatures game.creatures
+             , inactiveList model game.current_combat model.pendingCombatCreatures game.creatures
              , history app
              ]
       , case game.current_combat of
@@ -50,19 +50,28 @@ mapSelector game = vbox <|
   let mapSelectorItem name = button [onClick (U.SelectMap name)] [text name]
   in (List.map mapSelectorItem (Dict.keys game.maps))
 
-inactiveList : Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
-inactiveList mCombat pendingCreatures creatures = div []
+inactiveList : M.Model -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
+inactiveList model mCombat pendingCreatures creatures = div []
   [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
-  , createCreatureForm
+  , createCreatureForm model
   ]
 
-createCreatureForm : Html U.Msg
-createCreatureForm = div []
+createCreatureForm : M.Model -> Html U.Msg
+createCreatureForm model = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
     , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureClass ] []
-    , button [ onClick U.CreateCreature ] [ text "Create Creature!" ]
+    , createCreatureButton model
     ]
+
+
+createCreatureButton : M.Model -> Html U.Msg
+createCreatureButton model =
+  case (model.pendingCreatureId, model.pendingCreatureName, model.pendingCreatureClass) of
+    (Just id, Just name, Just class) ->
+      let cc = M.CreatureCreation id name class {x= 0, y= 0, z=0}
+      in button [ onClick (U.CreateCreature cc) ] [text "Create Creature!"]
+    _ -> button [disabled True] [text "Create Creature!"]
 
 inactiveEntry : Maybe M.Combat -> Set.Set String -> M.Creature -> Html U.Msg
 inactiveEntry mCombat pendingCreatures creature = hbox
@@ -87,7 +96,7 @@ history app =
 historyItem : M.GameLog -> Html U.Msg
 historyItem i = case i of
   M.GLSelectMap name ->  text <| "Selected Map: " ++ name
-  M.GLAddCreature creature -> text <| "Created creature: " ++ creature.id
+  M.GLCreateCreature creature -> text <| "Created creature: " ++ creature.id
   M.GLRemoveCreature cid -> text <| "Deleted creature: " ++ cid 
   M.GLStartCombat combatants -> text <| "Started Combat: " ++ (String.join ", " combatants)
   M.GLStopCombat -> text "Stopped combat"

@@ -217,6 +217,8 @@ pub struct CombatAble<'a> {
 }
 impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
+    // TODO: this should really be moved into `creature`, because we also need to support
+    // out-of-combat ability usage.
     pub fn act(&self,
                ability: &Ability,
                target: DecidedTarget)
@@ -236,6 +238,9 @@ impl<'a> CombatAble<'a> {
                 }
             }
         }
+        *newgame.current_creature_mut() = newgame.current_creature().reduce_energy(ability.cost);
+        all_logs.extend(creature_logs_into_combat_logs(newgame.current_creature().id(),
+                                                   vec![CreatureLog::ReduceEnergy(ability.cost)]));
         Ok((newgame, all_logs))
     }
 

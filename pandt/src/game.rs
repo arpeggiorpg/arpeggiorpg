@@ -42,7 +42,7 @@ impl Game {
         use self::GameCommand::*;
         let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
             (SelectMap(ref name), _) => self.select_map(name),
-            (CreateCreature(c), _) => self.add_creature(c),
+            (CreateCreature(c), _) => self.create_creature(c),
             (RemoveCreature(cid), _) => self.remove_creature(cid),
             (StartCombat(cids), None) => self.start_combat(cids),
             (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
@@ -75,13 +75,16 @@ impl Game {
         Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
     }
 
-    fn add_creature(&self, creature: Creature) -> Result<(Game, Vec<GameLog>), GameError> {
+    fn create_creature(&self, spec: CreatureCreation) -> Result<(Game, Vec<GameLog>), GameError> {
         let mut newgame = self.clone();
-        if newgame.creatures.contains_key(&creature.id()) {
-            Err(GameError::CreatureAlreadyExists(creature.id()))
+        if newgame.creatures.contains_key(&spec.id) {
+            Err(GameError::CreatureAlreadyExists(spec.id))
         } else {
-            newgame.creatures.insert(creature.id(), creature.clone());
-            Ok((newgame, vec![GameLog::AddCreature(creature)]))
+            let creature = Creature::build(&spec.id.to_string(), &spec.class).pos(spec.pos)
+                .name(&spec.name)
+                .build(&self.classes)?;
+            newgame.creatures.insert(creature.id(), creature);
+            Ok((newgame, vec![GameLog::CreateCreature(spec)]))
         }
     }
 
@@ -133,7 +136,13 @@ impl Game {
         use self::GameLog::*;
         match *log {
             SelectMap(ref name) => Ok(self.select_map(name)?.0),
-            AddCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
+            // RADIX TODO ERROR FIXME XXX BOOM. Our handling of the CreateCreature log is failing because condition IDs are dynamic.
+            // One quick fix would be to go back to having the *log* version have an entire Creature.
+            // however, I think our handling of condition IDs is fundamentally broken -- f.e. if we restart the app the CONDITION_ID gets reset to 0 and when we add new conditions they could easily collide.
+            // Two ideas:
+            // - store ConditionID on game and make it public (I don't like this)
+            // - make ConditionID random...
+            CreateCreature(ref c) => Ok(self.create_creature(c.clone())?.0),
             RemoveCreature(cid) => Ok(self.remove_creature(cid)?.0),
             AddCreatureToCombat(cid) => Ok(self.add_to_combat(self.maybe_combat()?, cid)?.0),
             RemoveCreatureFromCombat(cid) => {
@@ -280,11 +289,15 @@ pub mod test {
                                                          (abid("shoot"), shoot),
                                                          (abid("heal"), heal)]));
         game.current_map = huge_box();
-        let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue("rogue"))).unwrap().0;
-        let game =
-            game.perform_unchecked(GameCommand::CreateCreature(t_ranger("ranger"))).unwrap().0;
-        let game =
-            game.perform_unchecked(GameCommand::CreateCreature(t_cleric("cleric"))).unwrap().0;
+        let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
+            .unwrap()
+            .0;
+        let game = game.perform_unchecked(GameCommand::CreateCreature(t_ranger_creation("ranger")))
+            .unwrap()
+            .0;
+        let game = game.perform_unchecked(GameCommand::CreateCreature(t_cleric_creation("cleric")))
+            .unwrap()
+            .0;
         game
     }
 

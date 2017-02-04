@@ -12,7 +12,7 @@ type Msg
     | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureClass String
-    | CreateCreature
+    | CreateCreature M.CreatureCreation
     | CommandComplete (Result Http.Error JD.Value)
     | AppUpdate (Result Http.Error M.App)
     | ShowError String
@@ -37,18 +37,18 @@ update msg model = case msg of
 
   MorePlease -> ( model, refreshApp)
 
-  PendingCreatureId newId ->
-    let oldPC = model.pendingCreature
-    in ( { model | pendingCreature = {oldPC | id = Just newId } }
+  PendingCreatureId input ->
+    let newId = if (String.isEmpty input) then Nothing else Just input
+    in ( { model | pendingCreatureId = newId }
        , Cmd.none )
-  PendingCreatureName newName ->
-    let oldPC = model.pendingCreature
-    in ( { model | pendingCreature = { oldPC | name = Just newName } }
+  PendingCreatureName input ->
+    let newName = if (String.isEmpty input) then Nothing else Just input
+    in ( { model | pendingCreatureName = newName }
        , Cmd.none )
-  PendingCreatureClass newAS ->
-    let oldPC = model.pendingCreature
-    in ({model | pendingCreature = {oldPC | class = Just newAS}},
-        Cmd.none)
+  PendingCreatureClass input ->
+    let newClass = if (String.isEmpty input) then Nothing else Just input
+    in ( {model | pendingCreatureClass = newClass}
+       , Cmd.none)
 
   CommandComplete (Ok x) -> (model, refreshApp)
   CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
@@ -73,9 +73,10 @@ update msg model = case msg of
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
 
   -- Basic GameCommands
+  CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))
+  RemoveFromGame cid -> (model, sendCommand (M.RemoveCreature cid))
   AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
   RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
-  RemoveFromGame cid -> (model, sendCommand (M.RemoveCreature cid))
   SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
   Act abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.Act abid dtarget))
   RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
@@ -84,19 +85,12 @@ update msg model = case msg of
   MoveOutOfCombat cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveOutOfCombat cid pt))
   TurnDone -> (model, sendCommand M.Done)
   SelectMap mapName -> (model, sendCommand (M.SelectMap mapName))
-  CreateCreature -> createCreature model model.pendingCreature
   StartCombat -> (model, sendCommand (M.StartCombat (Set.toList model.pendingCombatCreatures)))
   StopCombat -> (model, sendCommand M.StopCombat)
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
-
-createCreature : M.Model -> M.PendingCreature -> (M.Model, Cmd Msg)
-createCreature model pc =
-  case (M.finalizePending pc) of
-    Nothing -> ({ model | error = "Fill out the stuff."}, Cmd.none)
-    Just creature -> (model, sendCommand (M.CreateCreature creature))
 
 url : String
 url = "http://localhost:1337/"
