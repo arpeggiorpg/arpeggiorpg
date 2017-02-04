@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use types::*;
 use creature::*;
@@ -9,24 +9,22 @@ use grid::{find_path, get_all_accessible};
 pub struct Game {
     current_combat: Option<Combat>,
     abilities: HashMap<AbilityID, Ability>,
-    ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
     creatures: HashMap<CreatureID, Creature>,
     maps: HashMap<MapName, Map>,
     current_map: Map, // maybe Option<MapName>?
+    classes: HashMap<String, Class>,
 }
 
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
-    pub fn new(ability_sets: HashMap<AbilitySetID, HashSet<AbilityID>>,
-               abilities: HashMap<AbilityID, Ability>)
-               -> Self {
+    pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
         Game {
             abilities: abilities,
-            ability_sets: ability_sets,
             current_combat: None,
             creatures: HashMap::new(),
             maps: HashMap::new(),
             current_map: vec![],
+            classes: classes,
         }
     }
 
@@ -209,8 +207,9 @@ impl Game {
                             creature: &Creature,
                             ability: &AbilityID)
                             -> Result<bool, GameError> {
-        let abset = creature.ability_set();
-        let abilities = self.ability_sets.get(&abset).ok_or(GameError::AbilitySetNotFound(abset))?;
+        let class = creature.class();
+        let abilities =
+            &self.classes.get(&class).ok_or(GameError::ClassNotFound(class.clone()))?.abilities;
         Ok(abilities.contains(ability))
     }
 
@@ -289,13 +288,25 @@ pub mod test {
         game
     }
 
-    pub fn t_classes() -> HashMap<AbilitySetID, HashSet<AbilityID>> {
-        let rogue = HashSet::from_iter(vec![abid("punch")]);
-        let ranger = HashSet::from_iter(vec![abid("shoot")]);
-        let cleric = HashSet::from_iter(vec![abid("heal")]);
-        HashMap::from_iter(vec![(AbilitySetID::new("rogue").unwrap(), rogue),
-                                (AbilitySetID::new("ranger").unwrap(), ranger),
-                                (AbilitySetID::new("cleric").unwrap(), cleric)])
+    pub fn t_classes() -> HashMap<String, Class> {
+        let rogue_abs = vec![abid("punch")];
+        let ranger_abs = vec![abid("shoot")];
+        let cleric_abs = vec![abid("heal")];
+        HashMap::from_iter(vec![("rogue".to_string(),
+                                 Class {
+                                     abilities: rogue_abs,
+                                     conditions: vec![],
+                                 }),
+                                ("ranger".to_string(),
+                                 Class {
+                                     abilities: ranger_abs,
+                                     conditions: vec![],
+                                 }),
+                                ("cleric".to_string(),
+                                 Class {
+                                     abilities: cleric_abs,
+                                     conditions: vec![],
+                                 })])
     }
 
     #[test]
@@ -304,9 +315,8 @@ pub mod test {
         let punch = t_punch();
         let punch_id = abid("punch");
         let bob_id = cid("bob");
-        let creature = Creature::build("bob")
+        let creature = Creature::build("bob", "rogue")
             .abilities(vec![punch_id.clone()])
-            .ability_set(AbilitySetID::new("rogue").unwrap())
             .build()
             .unwrap();
         creatures.insert(bob_id, creature);
@@ -314,7 +324,7 @@ pub mod test {
         abilities.insert(punch_id.clone(), punch);
         let game = Game {
             abilities: abilities,
-            ability_sets: t_classes(),
+            classes: t_classes(),
             current_combat: None,
             creatures: creatures,
             maps: HashMap::new(),

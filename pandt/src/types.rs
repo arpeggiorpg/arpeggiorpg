@@ -189,7 +189,7 @@ pub enum GameError {
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
     AbilitySetRequired,
-    AbilitySetNotFound(AbilitySetID),
+    ClassNotFound(String),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
     CreatureLacksAbility(CreatureID, AbilityID),
@@ -298,6 +298,16 @@ pub struct AbilityStatus {
     pub cooldown: u8,
 }
 
+/// A creature class, e.g. rogue, mage, warrior
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Class {
+    /// A list of abilities that this class can use.
+    // TODO: maybe add ActivateAbility condition and obsolete this field
+    pub abilities: Vec<AbilityID>,
+    /// A list of conditions which will be *permanently* applied to any creature in this class.
+    pub conditions: Vec<Condition>,
+}
+
 #[cfg(test)]
 pub mod test {
     use types::*;
@@ -358,3 +368,4 @@ pub mod test {
         assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Duration\":3}");
     }
 }
+

@@ -51,6 +51,25 @@ current_game:
       - [4, 4, 0]
   
   current_combat: ~
+  classes:
+    rogue:
+      abilities:
+        - punch
+      conditions:
+        - RecurringEffect:
+            GenerateEnergy: 10
+    cleric:
+      abilities:
+        - heal
+      conditions:
+        - RecurringEffect:
+            GenerateEnergy: 10
+    ranger:
+      abilities:
+        - shoot
+      conditions:
+        - RecurringEffect:
+            GenerateEnergy: 10
   abilities: 
     heal: 
       name: Heal
@@ -75,13 +94,6 @@ current_game:
       effects: 
         - 
           Damage: 3
-  ability_sets: 
-    cleric: 
-      - heal
-    rogue: 
-      - punch
-    ranger: 
-      - shoot
   creatures: 
     ranger: 
       id: ranger
@@ -90,7 +102,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: []
-      ability_set: ranger
+      class: ranger
       max_health: 10
       cur_health: 10
       pos: 
@@ -105,7 +117,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: []
-      ability_set: rogue
+      class: rogue
       max_health: 10
       cur_health: 10
       pos: 
@@ -120,7 +132,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: []
-      ability_set: cleric
+      class: cleric
       max_health: 10
       cur_health: 10
       pos: 
@@ -133,7 +145,8 @@ snapshots:
     - 
       current_combat: ~
       current_map:
-      maps: 
+      maps:
+      classes: 
       abilities: 
         heal: 
           name: Heal
@@ -158,13 +171,6 @@ snapshots:
           effects: 
             - 
               Damage: 3
-      ability_sets: 
-        cleric: 
-          - heal
-        rogue: 
-          - punch
-        ranger: 
-          - shoot
       creatures: 
         ranger: 
           id: ranger
@@ -173,7 +179,7 @@ snapshots:
           max_energy: 10
           cur_energy: 10
           abilities: []
-          ability_set: ranger
+          class: ranger
           max_health: 10
           cur_health: 10
           pos: 
@@ -188,7 +194,7 @@ snapshots:
           max_energy: 10
           cur_energy: 10
           abilities: []
-          ability_set: rogue
+          class: rogue
           max_health: 10
           cur_health: 10
           pos: 
@@ -203,7 +209,7 @@ snapshots:
           max_energy: 10
           cur_energy: 10
           abilities: []
-          ability_set: cleric
+          class: cleric
           max_health: 10
           cur_health: 10
           pos: 

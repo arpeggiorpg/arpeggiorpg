@@ -60,7 +60,7 @@ createCreatureForm : Html U.Msg
 createCreatureForm = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
-    , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureAbilitySet ] []
+    , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureClass ] []
     , button [ onClick U.CreateCreature ] [ text "Create Creature!" ]
     ]
 
@@ -145,21 +145,21 @@ engageButton creature =
 
 combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
 combatantEntry game combat (idx, creature) = hbox
-  [ if combat.creatures.cursor == idx then actionBar combat game.ability_sets creature
+  [ if combat.creatures.cursor == idx then actionBar combat game.classes creature
     else div [] []
   , creatureStats creature
   , disengageButton creature
   ]
 
-actionBar : M.Combat -> Dict.Dict String (List String) -> M.Creature -> Html U.Msg
-actionBar combat abilitySets creature =
-  let abilitySet =
-        case (Dict.get creature.ability_set abilitySets) of
-          Just x -> x
+actionBar : M.Combat -> Dict.Dict String M.Class -> M.Creature -> Html U.Msg
+actionBar combat classes creature =
+  let abilities =
+        case (Dict.get creature.class classes) of
+          Just x -> x.abilities
           Nothing -> []
   in hbox (  (doneButton creature)
           :: (moveButton combat creature)
-          :: (List.map actionButton abilitySet))
+          :: (List.map actionButton abilities))
 
 actionButton : String -> Html U.Msg
 actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]

@@ -34,7 +34,7 @@ pub struct Creature {
     max_energy: Energy,
     cur_energy: Energy,
     abilities: Vec<AbilityStatus>,
-    ability_set: AbilitySetID,
+    class: String,
     max_health: HP,
     cur_health: HP,
     pos: Point3,
@@ -42,14 +42,14 @@ pub struct Creature {
 }
 
 impl Creature {
-    pub fn build(id: &str) -> CreatureBuilder {
+    pub fn build(id: &str, class: &str) -> CreatureBuilder {
         CreatureBuilder {
             id: id.to_string(),
             name: None,
             max_energy: None,
             cur_energy: None,
+            class: class.to_string(),
             abilities: vec![],
-            ability_set: None,
             max_health: None,
             cur_health: None,
             pos: None,
@@ -177,8 +177,8 @@ impl Creature {
         conditions_able(&self.conditions)
     }
 
-    pub fn ability_set(&self) -> AbilitySetID {
-        self.ability_set
+    pub fn class(&self) -> String {
+        self.class.clone()
     }
 
     pub fn pos(&self) -> Point3 {
@@ -203,7 +203,7 @@ pub struct CreatureBuilder {
     max_energy: Option<Energy>,
     cur_energy: Option<Energy>,
     abilities: Vec<AbilityID>,
-    ability_set: Option<AbilitySetID>,
+    class: String,
     max_health: Option<HP>,
     cur_health: Option<HP>,
     pos: Option<Point3>,
@@ -220,17 +220,13 @@ impl CreatureBuilder {
             max_energy: self.max_energy.unwrap_or(Energy(10)),
             cur_energy: self.cur_energy.unwrap_or(Energy(10)),
             abilities: vec![],
-            ability_set: self.ability_set.ok_or(GameError::AbilitySetRequired)?,
+            class: self.class,
             max_health: self.max_health.unwrap_or(HP(10)),
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
         })
 
-    }
-    pub fn ability_set(mut self, asid: AbilitySetID) -> Self {
-        self.ability_set = Some(asid);
-        self
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);
@@ -281,22 +277,19 @@ pub mod test {
     use types::test::*;
 
     pub fn t_rogue(name: &str) -> Creature {
-        Creature::build(name)
-            .ability_set(AbilitySetID::new("rogue").unwrap())
+        Creature::build(name, "rogue")
             .build()
             .unwrap()
     }
 
     pub fn t_ranger(name: &str) -> Creature {
-        Creature::build(name)
-            .ability_set(AbilitySetID::new("ranger").unwrap())
+        Creature::build(name, "ranger")
             .build()
             .unwrap()
     }
 
     pub fn t_cleric(name: &str) -> Creature {
-        Creature::build(name)
-            .ability_set(AbilitySetID::new("cleric").unwrap())
+        Creature::build(name, "cleric")
             .build()
             .unwrap()
     }

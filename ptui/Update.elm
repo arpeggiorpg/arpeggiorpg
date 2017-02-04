@@ -11,7 +11,7 @@ type Msg
     | SelectMap M.MapName
     | PendingCreatureId CreatureID
     | PendingCreatureName String
-    | PendingCreatureAbilitySet String
+    | PendingCreatureClass String
     | CreateCreature
     | CommandComplete (Result Http.Error JD.Value)
     | AppUpdate (Result Http.Error M.App)
@@ -45,16 +45,16 @@ update msg model = case msg of
     let oldPC = model.pendingCreature
     in ( { model | pendingCreature = { oldPC | name = Just newName } }
        , Cmd.none )
-  PendingCreatureAbilitySet newAS ->
+  PendingCreatureClass newAS ->
     let oldPC = model.pendingCreature
-    in ({model | pendingCreature = {oldPC | ability_set = Just newAS}},
+    in ({model | pendingCreature = {oldPC | class = Just newAS}},
         Cmd.none)
 
   CommandComplete (Ok x) -> (model, refreshApp)
   CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
 
-  AppUpdate (Ok newApp) -> ( { model | app = (Just newApp) }, Cmd.none )
-  AppUpdate (Err x) -> ( { model | error = toString x}, Cmd.none )
+  AppUpdate (Ok newApp) -> Debug.log "Got an app" ( { model | app = (Just newApp) }, Cmd.none )
+  AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
   
   ShowError s -> ( {model | error = s}, Cmd.none)
   

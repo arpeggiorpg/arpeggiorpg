@@ -12,7 +12,6 @@ import Set
 
 type alias CreatureID = String
 type alias AbilityID = String
-type alias AbilitySetID = String
 type alias MapName = String
 type alias Distance = Int
 
@@ -48,7 +47,7 @@ type alias PendingCreature =
   , speed: Maybe Distance
   , max_energy: Maybe Int
   , cur_energy: Maybe Int
-  , ability_set: Maybe AbilitySetID
+  , class: Maybe String
   , max_health: Maybe Int
   , cur_health: Maybe Int
   , pos: Maybe Point3
@@ -130,22 +129,33 @@ creatureLogDecoder = sumDecoder "CreatureLog"
 type alias Game =
   { current_combat : Maybe Combat
   , abilities : Dict AbilityID Ability
-  , ability_sets : Dict AbilitySetID (List AbilityID)
+  , classes : Dict String Class
   , creatures : Dict CreatureID Creature
   , maps: Dict MapName Map
   , current_map: Map -- Bah humbug, this should just be a MapName
   }
 
-type alias Map = List Point3
-
+gameDecoder : JD.Decoder Game
 gameDecoder =
   P.decode Game
     |> P.required "current_combat" (JD.maybe combatDecoder)
     |> P.required "abilities" (JD.dict abilityDecoder)
-    |> P.required "ability_sets" (JD.dict (JD.list JD.string))
+    |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
     |> P.required "maps" (JD.dict (JD.list point3Decoder))
     |> P.required "current_map" (JD.list point3Decoder)
+
+type alias Map = List Point3
+
+type alias Class =
+  { abilities: List AbilityID
+  , conditions: List Condition
+  }
+
+classDecoder : JD.Decoder Class
+classDecoder = JD.map2 Class
+  (JD.field "abilities" (JD.list JD.string))
+  (JD.field "conditions" (JD.list conditionDecoder))
 
 type alias Combat =
   { creatures: CursorList Creature
@@ -181,7 +191,7 @@ type alias Creature =
   , cur_health: Int
   , pos: Point3
   , abilities: List AbilityStatus
-  , ability_set: AbilitySetID
+  , class: String
   , conditions: List AppliedCondition
 }
 
@@ -196,12 +206,11 @@ creatureDecoder =
     |> P.required "cur_health" JD.int
     |> P.required "pos" point3Decoder
     |> P.required "abilities" (JD.list abilityStatusDecoder)
-    |> P.required "ability_set" JD.string
+    |> P.required "class" JD.string
     |> P.required "conditions" (JD.list appliedConditionDecoder)
-    
 
 creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
-                , cur_health, pos, abilities, ability_set, conditions} =
+                , cur_health, pos, abilities, class, conditions} =
   JE.object
     [ ("id", JE.string id)
     , ("name", JE.string name)
@@ -212,7 +221,7 @@ creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
     , ("max_health", JE.int max_health)
     , ("cur_health", JE.int cur_health)
     , ("abilities", JE.list (List.map abilityStatusEncoder abilities))
-    , ("ability_set", JE.string ability_set)
+    , ("class", JE.string class)
     , ("conditions", JE.list (List.map appliedConditionEncoder conditions))
     ]
 
@@ -320,7 +329,7 @@ effectDecoder =
       , ("GenerateEnergy", JD.map GenerateEnergy JD.int)
       , ("ApplyCondition", JD.map2 ApplyCondition
                                      (JD.index 0 conditionDurationDecoder)
-                                     (JD.index 1 conditionDecoder))
+                                     (JD.index 1 (JD.lazy (\_ -> conditionDecoder))))
       , ("MultiEffect", JD.map MultiEffect (JD.list lazyEffectDecoder))
       ])
 effectEncoder eff =
@@ -381,9 +390,9 @@ sumDecoder name nullaryList singleFieldList = JD.oneOf
 -- pure functions on model
 
 finalizePending : PendingCreature -> Maybe Creature
-finalizePending {id, name, speed, max_energy, cur_energy, ability_set, max_health, cur_health, pos, conditions } =
-  case (id, name, ability_set) of
-    (Just id, Just name, Just ability_set) ->
+finalizePending {id, name, speed, max_energy, cur_energy, class, max_health, cur_health, pos, conditions } =
+  case (id, name, class) of
+    (Just id, Just name, Just class) ->
       Just { id = id
            , name = name
            , speed = withDefault 1086 speed
@@ -393,7 +402,7 @@ finalizePending {id, name, speed, max_energy, cur_energy, ability_set, max_healt
            , cur_health = withDefault 10 cur_health
            , pos = withDefault {x=0, y=0, z=0} pos
            , abilities = []
-           , ability_set = ability_set
+           , class = class
            , conditions = conditions }
     _ -> Nothing
 
