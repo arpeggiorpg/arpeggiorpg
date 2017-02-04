@@ -207,6 +207,7 @@ pub enum GameError {
     /// Returned when a step in a `Move` command was more than one cube away.
     StepTooBig { from: Point3, to: Point3 },
     MapNotFound(MapName),
+    NotEnoughEnergy(Energy),
 }
 
 impl fmt::Display for GameError {

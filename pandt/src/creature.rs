@@ -214,10 +214,14 @@ impl Creature {
     }
 
     // We probably need to move `act` to Creature, then we wouldn't need this method (?)
-    pub fn reduce_energy(&self, delta: Energy) -> Self {
-        let mut newcreature = self.clone();
-        newcreature.cur_energy = newcreature.cur_energy - delta;
-        newcreature
+    pub fn reduce_energy(&self, delta: Energy) -> Result<Self, GameError> {
+        if delta > self.cur_energy {
+            Err(GameError::NotEnoughEnergy(delta))
+        } else {
+            let mut newcreature = self.clone();
+            newcreature.cur_energy = newcreature.cur_energy - delta;
+            Ok(newcreature)
+        }
     }
 }
 
