@@ -366,7 +366,7 @@ pub mod test {
 
     #[test]
     fn three_char_infinite_combat() {
-        let mut combat = t_combat();
+        let combat = t_combat();
         let punch = t_punch();
         let heal = t_heal();
         let iter = |combat: &Combat| -> Result<Combat, GameError> {

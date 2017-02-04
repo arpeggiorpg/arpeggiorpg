@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::cmp;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
@@ -58,6 +59,14 @@ impl Creature {
         }
     }
 
+    fn apply_logs(&self, logs: Vec<CreatureLog>) -> Result<Creature, GameError> {
+        let mut creature = self.clone();
+        for log in logs {
+            creature = creature.apply_log(&log)?;
+        }
+        Ok(creature)
+    }
+
     pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
         let mut new = self.clone();
         match *item {
@@ -95,24 +104,32 @@ impl Creature {
         Ok(new)
     }
 
-    pub fn apply_effect(&self, effect: &Effect) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+    fn apply_condition_log(&self,
+                           duration: ConditionDuration,
+                           condition: Condition)
+                           -> CreatureLog {
         static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
+                                    duration.clone(),
+                                    condition.clone())
+    }
+    pub fn apply_effect(&self, effect: &Effect) -> Result<(Creature, Vec<CreatureLog>), GameError> {
         // it's unlikely we'll be able to rely on having a simple mapping of Effect to
         // Vec<CreatureLog> forever
-        fn eff2log(effect: &Effect) -> Vec<CreatureLog> {
+        fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
                 Effect::Damage(amt) => vec![CreatureLog::Damage(amt)],
                 Effect::Heal(amt) => vec![CreatureLog::Heal(amt)],
                 Effect::GenerateEnergy(amt) => vec![CreatureLog::GenerateEnergy(amt)],
-                Effect::MultiEffect(ref effects) => effects.iter().flat_map(eff2log).collect(),
+                Effect::MultiEffect(ref effects) => {
+                    effects.iter().flat_map(|x| eff2log(creature, x)).collect()
+                }
                 Effect::ApplyCondition(ref duration, ref condition) => {
-                    vec![CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
-                                                     duration.clone(),
-                                                     condition.clone())]
+                    vec![creature.apply_condition_log(duration.clone(), condition.clone())]
                 }
             }
         }
-        let ops = eff2log(effect);
+        let ops = eff2log(self, effect);
         let mut creature = self.clone();
         for op in &ops {
             creature = self.apply_log(op)?;
@@ -212,21 +229,28 @@ pub struct CreatureBuilder {
 }
 
 impl CreatureBuilder {
-    pub fn build(self) -> Result<Creature, GameError> {
-        Ok(Creature {
+    pub fn build(self, classes: &HashMap<String, Class>) -> Result<Creature, GameError> {
+        let creature = Creature {
             id: CreatureID::new(&self.id)?,
             name: self.name.unwrap_or(self.id.to_string()),
             speed: self.speed.unwrap_or(Distance(STANDARD_CREATURE_SPEED)),
             max_energy: self.max_energy.unwrap_or(Energy(10)),
             cur_energy: self.cur_energy.unwrap_or(Energy(10)),
             abilities: vec![],
-            class: self.class,
+            class: self.class.clone(),
             max_health: self.max_health.unwrap_or(HP(10)),
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
-        })
+        };
 
+        let ref conditions = classes.get(&self.class)
+            .ok_or(GameError::ClassNotFound(self.class.clone()))?
+            .conditions;
+        let logs = conditions.iter()
+            .map(|cond| creature.apply_condition_log(ConditionDuration::Interminate, cond.clone()))
+            .collect();
+        creature.apply_logs(logs)
     }
     pub fn max_energy(mut self, me: Energy) -> Self {
         self.max_energy = Some(me);
@@ -275,22 +299,23 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
 pub mod test {
     use creature::*;
     use types::test::*;
+    use game::test::*;
 
     pub fn t_rogue(name: &str) -> Creature {
         Creature::build(name, "rogue")
-            .build()
+            .build(&t_classes())
             .unwrap()
     }
 
     pub fn t_ranger(name: &str) -> Creature {
         Creature::build(name, "ranger")
-            .build()
+            .build(&t_classes())
             .unwrap()
     }
 
     pub fn t_cleric(name: &str) -> Creature {
         Creature::build(name, "cleric")
-            .build()
+            .build(&t_classes())
             .unwrap()
     }
 

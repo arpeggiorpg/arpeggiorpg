@@ -48,6 +48,7 @@ impl Game {
             (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
             (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
             (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
+            // TODO: rename `Move` to `CombatMove` and `MoveOutOfCombat` to `MoveCreature`.
             (Move(pt), Some(com)) => self.move_creature(&com, pt),
             (MoveOutOfCombat(cid, pt), None) => self.move_creature_ooc(cid, pt),
             (Done, Some(com)) => self.next_turn(&com),
@@ -259,7 +260,6 @@ pub mod test {
     use types::test::*;
     use creature::test::*;
     use grid::test::*;
-    use test::Bencher;
     use std::iter::FromIterator;
 
 
@@ -317,7 +317,7 @@ pub mod test {
         let bob_id = cid("bob");
         let creature = Creature::build("bob", "rogue")
             .abilities(vec![punch_id.clone()])
-            .build()
+            .build(&t_classes())
             .unwrap();
         creatures.insert(bob_id, creature);
         let mut abilities = HashMap::new();
@@ -390,10 +390,10 @@ pub mod test {
         game.perform_unchecked(GameCommand::Move((1, 0, 0))).unwrap();
     }
 
-    #[bench]
-    fn three_char_infinite_combat(bencher: &mut Bencher) {
+    #[test]
+    fn three_char_infinite_combat() {
         let game = t_game();
-        let mut game = game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"),
+        let game = game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"),
                                                              cid("ranger"),
                                                              cid("cleric")]))
             .unwrap()
@@ -406,10 +406,7 @@ pub mod test {
             let game = game.perform_unchecked(GameCommand::Done)?.0;
             Ok(game)
         };
-        bencher.iter(|| {
-            game = iter(&game).unwrap();
-            game.clone()
-        });
+        iter(&game).unwrap();
     }
 
 }
