@@ -169,7 +169,7 @@ pub enum GameLog {
     CreatureLog(CreatureID, CreatureLog),
     StartCombat(Vec<CreatureID>),
     StopCombat,
-    CreateCreature(CreatureCreation),
+    CreateCreature(Creature),
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
     RemoveCreatureFromCombat(CreatureID),

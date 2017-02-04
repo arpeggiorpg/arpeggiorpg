@@ -85,7 +85,7 @@ type GameLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat (List CreatureID)
   | GLStopCombat
-  | GLCreateCreature CreatureCreation
+  | GLCreateCreature Creature
   | GLRemoveCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
@@ -96,7 +96,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
-  , ("CreateCreature", (JD.map GLCreateCreature creatureCreationDecoder))
+  , ("CreateCreature", (JD.map GLCreateCreature creatureDecoder))
   , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
   , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
