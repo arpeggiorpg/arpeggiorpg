@@ -13,7 +13,7 @@ type Msg
     | PendingCreatureName String
     | PendingCreatureClass String
     | CreateCreature M.CreatureCreation
-    | CommandComplete (Result Http.Error JD.Value)
+    | CommandComplete (Result Http.Error M.RustResult)
     | AppUpdate (Result Http.Error M.App)
     | ShowError String
     | ToggleSelectedCreature CreatureID
@@ -50,7 +50,8 @@ update msg model = case msg of
     in ( {model | pendingCreatureClass = newClass}
        , Cmd.none)
 
-  CommandComplete (Ok x) -> (model, refreshApp)
+  CommandComplete (Ok (M.RustOk x)) -> Debug.log (toString x) (model, refreshApp)
+  CommandComplete (Ok (M.RustErr x)) -> ({model | error = toString x}, Cmd.none)
   CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
 
   AppUpdate (Ok newApp) -> Debug.log "Got an app" ( { model | app = (Just newApp) }, Cmd.none )
@@ -101,4 +102,4 @@ refreshApp = Http.send AppUpdate (Http.get url M.appDecoder)
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
   Debug.log ("[COMMAND] " ++ (toString cmd)) <|
-  Http.send CommandComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) JD.value)
+  Http.send CommandComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) M.rustResultDecoder)

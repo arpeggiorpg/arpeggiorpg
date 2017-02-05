@@ -403,3 +403,12 @@ sumDecoder name nullaryList singleFieldList = JD.oneOf
 distance : Point3 -> Point3 -> Distance
 distance a b =
   round <| sqrt (toFloat <| (a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)
+
+type RustResult
+  = RustOk JD.Value
+  | RustErr JD.Value
+
+rustResultDecoder = sumDecoder "RustResult"
+  []
+  [ ("Ok", JD.map RustOk JD.value)
+  , ("Err", JD.map RustErr JD.value) ]
