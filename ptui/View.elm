@@ -111,7 +111,7 @@ historyCombatLog cl = case cl of
   M.ComLEndTurn cid -> text <| "Ended Turn: " ++ cid
 
 historyCreatureLog cl = case cl of
-  M.CLDamage dmg -> text <| "Took damage: " ++ toString dmg 
+  M.CLDamage dmg -> text <| "Took damage: " ++ toString dmg
   M.CLHeal dmg -> text <| "Healed: " ++ toString dmg
   M.CLGenerateEnergy nrg -> text <| "Regenerated energy: " ++ toString nrg
   M.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
