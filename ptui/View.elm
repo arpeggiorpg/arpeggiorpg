@@ -117,7 +117,13 @@ historyCreatureLog cl = case cl of
   M.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
   M.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
   M.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
-  M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString distance ++ " to " ++ toString (List.head (List.reverse path))
+  M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString distance ++ " to " ++ maybePos path
+
+maybePos : List M.Point3 -> String
+maybePos path =
+  case (List.head (List.reverse path)) of
+    Just {x, y, z} -> toString x ++ "," ++ toString y
+    Nothing -> "nowhere"
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
