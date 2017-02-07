@@ -27,8 +27,8 @@ viewGame model app =
   let game = app.current_game in
   case (game.current_combat, model.moving) of
     -- Movement takes over the whole UI:
-    (Nothing, Just mvmt) -> Grid.terrainMap (U.MoveOutOfCombat mvmt.creature.id) model.moving game.current_map (Dict.values game.creatures)
-    (Just combat, Just mvmt) -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
+    (Nothing, Just mvmt) -> Grid.terrainMap (U.MoveOutOfCombat mvmt.creature.id) model.moving model.currentMap (Dict.values game.creatures)
+    (Just combat, Just mvmt) -> Grid.terrainMap U.Move model.moving model.currentMap combat.creatures.data
 
     _ ->
       hbox 
@@ -37,8 +37,8 @@ viewGame model app =
              , history app
              ]
       , case game.current_combat of
-          Just combat -> Grid.terrainMap U.Move model.moving game.current_map combat.creatures.data
-          Nothing -> Grid.terrainMap U.Move model.moving game.current_map (Dict.values game.creatures)
+          Just combat -> Grid.terrainMap U.Move model.moving model.currentMap combat.creatures.data
+          Nothing -> Grid.terrainMap U.Move model.moving model.currentMap (Dict.values game.creatures)
       , case game.current_combat of
           Just combat -> combatArea model game combat
           Nothing -> startCombatButton

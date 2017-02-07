@@ -11,7 +11,7 @@ pub struct Game {
     abilities: HashMap<AbilityID, Ability>,
     creatures: HashMap<CreatureID, Creature>,
     maps: HashMap<MapName, Map>,
-    current_map: Map, // maybe Option<MapName>?
+    current_map: Option<MapName>,
     classes: HashMap<String, Class>,
 }
 
@@ -23,8 +23,16 @@ impl Game {
             current_combat: None,
             creatures: HashMap::new(),
             maps: HashMap::new(),
-            current_map: vec![],
+            current_map: None,
             classes: classes,
+        }
+    }
+
+    pub fn current_map(&self) -> Map {
+        // TODO: this should return &Map instead of Map
+        match self.current_map.as_ref() {
+            Some(x) => self.maps.get(x).unwrap_or(&vec![(0,0,0)]).clone(),
+            None => vec![(0,0,0)]
         }
     }
 
@@ -70,9 +78,9 @@ impl Game {
     fn select_map(&self, name: &MapName) -> Result<(Game, Vec<GameLog>), GameError> {
         let mut newgame = self.clone();
         let terrain = self.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
+        newgame.current_map = Some(name.clone());
         newgame.current_combat = newgame.current_combat
             .map(|c| c.update_movement_options(&terrain));
-        newgame.current_map = terrain.clone();
         Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
     }
 
@@ -159,7 +167,7 @@ impl Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
                         .ok_or(GameError::NotInCombat)?
-                        .apply_log(cl, &self.current_map)?),
+                        .apply_log(cl, &self.current_map())?),
                     ..self.clone()
                 })
             }
@@ -184,7 +192,7 @@ impl Game {
                      pt: Point3)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(&self.current_map, pt)?;
+        let (next, logs) = movement.move_creature(&self.current_map(), pt)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -195,7 +203,7 @@ impl Game {
         let creature = self.get_creature(cid)?;
         let (pts, distance) = find_path(creature.pos(),
                                         creature.speed(),
-                                        &self.current_map,
+                                        &self.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
         let (creature, log) = creature.set_pos_path(pts, distance)?;
         let mut newgame = self.clone();
@@ -246,7 +254,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(&self.current_map)?;
+        let (newcombat, logs) = combat.next_turn(&self.current_map())?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
@@ -258,13 +266,13 @@ impl Game {
             let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
             creatures.push(creature);
         }
-        newgame.current_combat = Some(Combat::new(creatures, &self.current_map)?);
+        newgame.current_combat = Some(Combat::new(creatures, &self.current_map())?);
         Ok((newgame, vec![GameLog::StartCombat(cids)]))
     }
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.get_creature(creature_id)?;
-        Ok(get_all_accessible(creature.pos(), &self.current_map, creature.speed()))
+        Ok(get_all_accessible(creature.pos(), &self.current_map(), creature.speed()))
     }
 }
 
@@ -293,7 +301,8 @@ pub mod test {
                                  HashMap::from_iter(vec![(abid("punch"), punch),
                                                          (abid("shoot"), shoot),
                                                          (abid("heal"), heal)]));
-        game.current_map = huge_box();
+        game.maps.insert("huge".to_string(), huge_box());
+        game.current_map = Some("huge".to_string());
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
             .unwrap()
             .0;
@@ -345,8 +354,8 @@ pub mod test {
             classes: t_classes(),
             current_combat: None,
             creatures: creatures,
-            maps: HashMap::new(),
-            current_map: huge_box(),
+            maps: HashMap::from_iter(vec![("huge".to_string(), huge_box())]),
+            current_map: Some("huge".to_string()),
         };
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));

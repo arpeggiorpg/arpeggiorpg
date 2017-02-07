@@ -54,10 +54,14 @@ update msg model = case msg of
        , Cmd.none)
 
   CommandComplete (Ok (M.RustOk x)) -> Debug.log (toString x) (model, refreshApp)
-  CommandComplete (Ok (M.RustErr x)) -> ({model | error = toString x}, Cmd.none)
-  CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
+  CommandComplete (Ok (M.RustErr x)) -> ({model | error = toString x}, refreshApp)
+  CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp)
 
-  AppUpdate (Ok newApp) -> Debug.log "Got an app" ( { model | app = (Just newApp) }, Cmd.none )
+  AppUpdate (Ok newApp) ->
+    let model2 = { model | app = Just newApp}
+        currentMap = M.getMap model2
+    in ( { model2 | currentMap = currentMap }
+       , Cmd.none )
   AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
   
   ShowError s -> ( {model | error = s}, Cmd.none)
@@ -77,17 +81,10 @@ update msg model = case msg of
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
 
   ToggleTerrain pt ->
-    case model.app of
-      Just app ->
-        let terrain = if not (List.member pt app.current_game.current_map)
-                      then pt :: app.current_game.current_map
-                      else List.filter (\el -> el /= pt) app.current_game.current_map
-            cgame = app.current_game
-            game2 = {cgame | current_map = terrain}
-            app2 = {app | current_game = game2}
-            _ = Debug.log ("Oh ToggleTerrain" ++ toString pt) ()
-        in ({model | app = Just app2}, Cmd.none)
-      Nothing -> ({ model | error = "Can't toggle when there's no map"} , Cmd.none)
+    let terrain = if not (List.member pt model.currentMap)
+                  then pt :: model.currentMap
+                  else List.filter (\el -> el /= pt) model.currentMap
+    in ({model | currentMap = terrain}, Cmd.none)
 
   SaveMapName name -> ({model | saveMapName = name}, Cmd.none)
 

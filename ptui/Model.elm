@@ -26,6 +26,7 @@ defaultModel =
     , moving = Nothing
     , error = "No current error!"
     , saveMapName = ""
+    , currentMap = [{x=0, y=0, z=0}]
   }
 
 type alias MovementRequest = 
@@ -45,6 +46,7 @@ type alias Model =
   , error: String
   , moving: Maybe MovementRequest
   , saveMapName: String
+  , currentMap : Map
   }
 
 type alias CreatureCreation =
@@ -147,7 +149,7 @@ type alias Game =
   , classes : Dict String Class
   , creatures : Dict CreatureID Creature
   , maps: Dict MapName Map
-  , current_map: Map -- Bah humbug, this should just be a MapName
+  , current_map: Maybe MapName
   }
 
 gameDecoder : JD.Decoder Game
@@ -158,7 +160,7 @@ gameDecoder =
     |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
     |> P.required "maps" (JD.dict mapDecoder)
-    |> P.required "current_map" mapDecoder
+    |> P.required "current_map" (JD.maybe JD.string)
 
 type alias Map = List Point3
 
@@ -421,3 +423,10 @@ rustResultDecoder = sumDecoder "RustResult"
   []
   [ ("Ok", JD.map RustOk JD.value)
   , ("Err", JD.map RustErr JD.value) ]
+
+getMap : Model -> Map
+getMap model =
+  case model.app of
+    Just app -> let mapName = (Maybe.withDefault "empty" app.current_game.current_map)
+                in (Maybe.withDefault [] (Dict.get mapName app.current_game.maps))
+    Nothing -> []
