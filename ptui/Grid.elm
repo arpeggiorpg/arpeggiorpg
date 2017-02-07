@@ -67,24 +67,12 @@ distanceCircle origin max_distance =
 
 movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> H.Html U.Msg
 movementTarget moveMsg origin max_distance terrain pt =
-  rect [ width "100", height "100"
-         , x (coord pt.x), y (coord pt.y)
-         , stroke "black"
-         , strokeWidth "1"
-         , fill "green"
-         , onClick (moveMsg pt) ]
-         []
+  tile "green" [onClick (moveMsg pt)] pt
 
 gridCreature : M.Creature -> Svg U.Msg
 gridCreature creature =
   g []
-    [ rect [ width "100"
-             , height "100"
-             , x (coord creature.pos.x), y (coord creature.pos.y)
-             , fill "cyan"
-             , stroke "black"
-             , strokeWidth "1"]
-             []
+    [ tile "cyan" [] creature.pos
     , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
               [ text creature.id]
     ]
@@ -95,17 +83,20 @@ terrainRects terrain =
       empties = emptyTerrain terrain
   in blocks ++ empties
 
-gridTerrain : M.Point3 -> Svg a
-gridTerrain pt = tile "lightgrey" [] pt
+gridTerrain : M.Point3 -> Svg U.Msg
+gridTerrain pt = tile "lightgrey" [onClick (U.ToggleTerrain pt)] pt
 
 emptyTerrain : List M.Point3 -> List (Svg U.Msg)
 emptyTerrain terrain =
   let halfGrid = gridSize // 2
       g x y = let pt = {x= x, y=y, z=0}
-              in if not (List.member pt terrain) then [tile "white" [] pt] else []
+              in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
       f x = List.concatMap (g x) (List.range -halfGrid halfGrid)
   in List.concatMap f (List.range -halfGrid halfGrid)
 
+
+emptyTerrainTile pt =
+  tile "white" [onClick (U.ToggleTerrain pt)] pt
 
 tile cl attrs pt =
   rect (attrs ++ [ width "100"

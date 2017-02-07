@@ -31,6 +31,7 @@ type Msg
     | TurnDone
     | GetMovementOptions M.Creature
     | GotMovementOptions M.Creature (Result Http.Error (List M.Point3))
+    | ToggleTerrain M.Point3
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
@@ -72,6 +73,19 @@ update msg model = case msg of
     let mreq = M.MovementRequest creature creature.speed pts
     in ({ model | moving = Just <| mreq}, Cmd.none)
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
+
+  ToggleTerrain pt ->
+    case model.app of
+      Just app ->
+        let terrain = if not (List.member pt app.current_game.current_map)
+                      then pt :: app.current_game.current_map
+                      else List.filter (\el -> el /= pt) app.current_game.current_map
+            cgame = app.current_game
+            game2 = {cgame | current_map = terrain}
+            app2 = {app | current_game = game2}
+            _ = Debug.log ("Oh ToggleTerrain" ++ toString pt) ()
+        in ({model | app = Just app2}, Cmd.none)
+      Nothing -> ({ model | error = "Can't toggle when there's no map"} , Cmd.none)
 
   -- Basic GameCommands
   CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))
