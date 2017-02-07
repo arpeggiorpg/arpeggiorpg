@@ -25,6 +25,7 @@ defaultModel =
     , pendingCombatCreatures = Set.empty
     , moving = Nothing
     , error = "No current error!"
+    , saveMapName = ""
   }
 
 type alias MovementRequest = 
@@ -43,6 +44,7 @@ type alias Model =
   , pendingCombatCreatures : Set.Set CreatureID
   , error: String
   , moving: Maybe MovementRequest
+  , saveMapName: String
   }
 
 type alias CreatureCreation =
@@ -81,6 +83,7 @@ appDecoder = JD.map2 App
 
 type GameLog
   = GLSelectMap MapName
+  | GLEditMap MapName Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat (List CreatureID)
@@ -100,6 +103,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
   , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
+  , ("EditMap", (JD.map2 GLEditMap (JD.index 0 JD.string) (JD.index 1 mapDecoder)))
   ]
 
 type CombatLog
@@ -153,10 +157,13 @@ gameDecoder =
     |> P.required "abilities" (JD.dict abilityDecoder)
     |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
-    |> P.required "maps" (JD.dict (JD.list point3Decoder))
-    |> P.required "current_map" (JD.list point3Decoder)
+    |> P.required "maps" (JD.dict mapDecoder)
+    |> P.required "current_map" mapDecoder
 
 type alias Map = List Point3
+
+mapDecoder = JD.list point3Decoder
+mapEncoder t = JE.list (List.map point3Encoder t)
 
 type alias Class =
   { abilities: List AbilityID
@@ -356,6 +363,7 @@ effectEncoder eff =
 -- "Input", or GameCommand and inward
 type GameCommand
   = SelectMap MapName
+  | EditMap MapName Map
   | StartCombat (List CreatureID)
   | StopCombat
   | Act AbilityID DecidedTarget
@@ -383,6 +391,7 @@ gameCommandEncoder gc =
     Act abid dtarget -> JE.object [("Act", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
     Done -> JE.string "Done"
     SelectMap name -> JE.object [("SelectMap", JE.string name)]
+    EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
 
 
 -- UTILS

@@ -95,12 +95,13 @@ history app =
 
 historyItem : M.GameLog -> Html U.Msg
 historyItem i = case i of
-  M.GLSelectMap name ->  text <| "Selected Map: " ++ name
-  M.GLCreateCreature creature -> text <| "Created creature: " ++ creature.id
-  M.GLRemoveCreature cid -> text <| "Deleted creature: " ++ cid 
-  M.GLStartCombat combatants -> text <| "Started Combat: " ++ (String.join ", " combatants)
+  M.GLSelectMap name ->  hbox [ text "Selected Map", text name]
+  M.GLEditMap name _ -> hbox [text "Edited Map", text name]
+  M.GLCreateCreature creature -> hbox [text "Created creature", text creature.id]
+  M.GLRemoveCreature cid -> hbox [text "Deleted creature", text cid]
+  M.GLStartCombat combatants -> hbox [text "Started Combat", text (String.join ", " combatants)]
   M.GLStopCombat -> text "Stopped combat"
-  M.GLAddCreatureToCombat cid -> text <| "Added Creature to Combat: " ++ cid
+  M.GLAddCreatureToCombat cid -> hbox [text cid, text "Added Creature to Combat"]
   M.GLRemoveCreatureFromCombat cid -> text <| "Removed creature from Combat: " ++ cid
   M.GLCreatureLog cid cl -> hbox [text cid, historyCreatureLog cl]
   M.GLCombatLog cl -> historyCombatLog cl

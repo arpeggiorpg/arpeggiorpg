@@ -42,6 +42,7 @@ impl Game {
         use self::GameCommand::*;
         let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
             (SelectMap(ref name), _) => self.select_map(name),
+            (EditMap(ref name, ref terrain), _) => self.edit_map(name, terrain.clone()),
             (CreateCreature(c), _) => self.create_creature(c),
             (RemoveCreature(cid), _) => self.remove_creature(cid),
             (StartCombat(cids), None) => self.start_combat(cids),
@@ -73,6 +74,12 @@ impl Game {
             .map(|c| c.update_movement_options(&terrain));
         newgame.current_map = terrain.clone();
         Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
+    }
+
+    fn edit_map(&self, name: &MapName, terrain: Map) -> Result<(Game, Vec<GameLog>), GameError> {
+        let mut newgame = self.clone();
+        newgame.maps.insert(name.clone(), terrain.clone());
+        Ok((newgame, vec![GameLog::EditMap(name.clone(), terrain.clone())]))
     }
 
     fn add_creature(&self, creature: Creature) -> Result<(Game, Vec<GameLog>), GameError> {
@@ -140,14 +147,7 @@ impl Game {
         use self::GameLog::*;
         match *log {
             SelectMap(ref name) => Ok(self.select_map(name)?.0),
-            // RADIX TODO ERROR FIXME XXX BOOM. Our handling of the CreateCreature log is failing because condition IDs are dynamic.
-            // One quick fix would be to go back to having the *log* version have an entire Creature.
-            // however, I think our handling of condition IDs is fundamentally broken -- f.e. if we
-            // restart the app the CONDITION_ID gets reset to 0 and when we add new conditions they
-            // could easily collide.
-            // Two ideas:
-            // - store ConditionID on game and make it public (I don't like this)
-            // - make ConditionID random...
+            EditMap(ref name, ref map) => Ok(self.edit_map(name, map.clone())?.0),
             CreateCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
             RemoveCreature(cid) => Ok(self.remove_creature(cid)?.0),
             AddCreatureToCombat(cid) => Ok(self.add_to_combat(self.maybe_combat()?, cid)?.0),

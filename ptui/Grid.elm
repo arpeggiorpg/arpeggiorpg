@@ -34,7 +34,7 @@ terrainMap moveMsg moving terrain creatures =
           Nothing -> []
   in
     vbox <|
-      cancelButton :: 
+      hbox [cancelButton, saveForm terrain] :: 
         [ svg
             [ viewBox (String.join " " (List.map toString [-gridSize * 50, -gridSize * 50, gridSize * 100, gridSize * 100]))
             , width "800"
@@ -47,6 +47,12 @@ terrainMap moveMsg moving terrain creatures =
 
 cancelMove : H.Html U.Msg
 cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
+
+saveForm : M.Map -> H.Html U.Msg
+saveForm terrain = hbox
+  [ H.input [HA.type_ "text", HA.placeholder "map name", HE.onInput U.SaveMapName ] []
+  , H.button [HE.onClick (U.EditMap terrain)] [text "Save"]
+  ]
 
 movementCircle : (M.Point3 -> U.Msg) -> (List M.Point3) -> M.Map -> M.Point3 -> Int -> List (Svg U.Msg)
 movementCircle moveMsg pts terrain origin max_distance =

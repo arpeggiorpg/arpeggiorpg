@@ -9,6 +9,8 @@ import Model as M exposing (CreatureID, AbilityID)
 type Msg
     = MorePlease
     | SelectMap M.MapName
+    | SaveMapName M.MapName
+    | EditMap M.Map
     | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureClass String
@@ -86,6 +88,10 @@ update msg model = case msg of
             _ = Debug.log ("Oh ToggleTerrain" ++ toString pt) ()
         in ({model | app = Just app2}, Cmd.none)
       Nothing -> ({ model | error = "Can't toggle when there's no map"} , Cmd.none)
+
+  SaveMapName name -> ({model | saveMapName = name}, Cmd.none)
+
+  EditMap terrain -> (model, sendCommand (M.EditMap model.saveMapName terrain))
 
   -- Basic GameCommands
   CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))

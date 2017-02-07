@@ -103,6 +103,8 @@ impl Distance {
 pub enum GameCommand {
     /// Select the map that should be used for pathing and collision detection
     SelectMap(MapName),
+    /// Change the terrain data of a map
+    EditMap(MapName, Map),
     /// Start a combat with the specified creatures.
     StartCombat(Vec<CreatureID>),
     /// Stop the current combat.
@@ -162,6 +164,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
     SelectMap(MapName),
+    EditMap(MapName, Map),
     CombatLog(CombatLog),
     /// A creature log wrapped in a game log.
     /// Many of these actually go via CombatLog, since most creature modification happens inside of
