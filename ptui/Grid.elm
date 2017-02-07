@@ -14,6 +14,7 @@ import Update as U
 
 
 -- how many meters across the grid should be
+gridSize : Int
 gridSize = 25
 
 -- Convert Point3 coordinates to on-screen corodinates.

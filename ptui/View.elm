@@ -117,7 +117,7 @@ historyCreatureLog cl = case cl of
   M.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
   M.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
   M.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
-  M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString distance ++ " to " ++ maybePos path
+  M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString (toFloat distance / 100) ++ " to " ++ maybePos path
 
 maybePos : List M.Point3 -> String
 maybePos path =
