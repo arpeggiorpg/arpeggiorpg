@@ -42,28 +42,32 @@ terrainMap : (M.Point3 -> U.Msg) -> Maybe M.MovementRequest -> M.Map -> List M.C
 terrainMap moveMsg moving terrain creatures =
   let creatureEls = List.map gridCreature creatures
       terrainEls = List.map gridTerrain terrain
+      cancelButton = case moving of Just _ -> cancelMove
+                                    Nothing -> H.div [] []
       movementCirc =
         case moving of
           Just {creature, max_distance, movement_options} -> movementCircle moveMsg movement_options terrain creature.pos max_distance
           Nothing -> []
   in
-    svg
-      [ width (toString <| metersToPx gridSize)
-      , height (toString <| metersToPx gridSize)
-      , HA.style [ ("border", "2px solid black")
-                 , ("position", "relative") ]
-      ]
-      (terrainEls ++ movementCirc ++ creatureEls)
+    vbox <|
+      cancelButton :: 
+        [ svg
+            [ width (toString <| metersToPx gridSize)
+            , height (toString <| metersToPx gridSize)
+            , HA.style [ ("border", "2px solid black")
+                      , ("position", "relative") ]
+            ]
+            (terrainEls ++ movementCirc ++ creatureEls)
+        ]   
+
+cancelMove : H.Html U.Msg
+cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
 
 movementCircle : (M.Point3 -> U.Msg) -> (List M.Point3) -> M.Map -> M.Point3 -> Int -> List (Svg U.Msg)
 movementCircle moveMsg pts terrain origin max_distance =
   let debugEl = debugCircle origin max_distance
       movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
   in debugEl :: movementCells
-  -- ++ [cancelMove]
-
-cancelMove : H.Html U.Msg
-cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
 
 debugCircle : M.Point3 -> Int -> Svg U.Msg
 debugCircle origin max_distance =
