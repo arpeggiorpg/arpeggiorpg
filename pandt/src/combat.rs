@@ -260,7 +260,7 @@ impl<'a> CombatAble<'a> {
                                             MELEE_RANGE) {
                     Ok(vec![cid])
                 } else {
-                    Err(GameError::TargetOutOfRange)
+                    Err(GameError::CreatureOutOfRange(cid))
                 }
             }
             (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
@@ -268,7 +268,7 @@ impl<'a> CombatAble<'a> {
                 if creature_within_distance(combat.creatures.get_current(), target_creature, max) {
                     Ok(vec![cid])
                 } else {
-                    Err(GameError::TargetOutOfRange)
+                    Err(GameError::CreatureOutOfRange(cid))
                 }
             }
             _ => {
@@ -313,7 +313,7 @@ pub mod test {
             *creature = creature.set_pos((2, 0, 0));
         }
         assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
-                   Err(GameError::TargetOutOfRange));
+                   Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
     /// Ranged attacks against targets (just) within range are successful.
@@ -338,7 +338,7 @@ pub mod test {
             *creature = creature.set_pos((6, 0, 0));
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
-                   Err(GameError::TargetOutOfRange));
+                   Err(GameError::CreatureOutOfRange(cid("ranger"))));
 
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
         {
@@ -346,7 +346,7 @@ pub mod test {
             *creature = creature.set_pos((5, 3, 0));
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
-                   Err(GameError::TargetOutOfRange));
+                   Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
     #[test]

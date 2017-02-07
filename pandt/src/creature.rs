@@ -14,9 +14,9 @@ use types::*;
 /// options. By increasing the speed above 10 meters but still under 11 meters, we can "fill out"
 /// the shape to look more circular.
 /// This only matters in wide-open spaces, of course, and I'm not sure what difficulties in may
-/// solve, so I may not stick with it. One problem is that if I want to scale movement speeds (e.g.
+/// bring, so I may not stick with it. One problem is that if I want to scale movement speeds (e.g.
 /// dwarves move slower, monks move faster, etc) then it may be infeasible to maintain this circular
-///  movement area, unless I can figure out some generalized algorithm for determining a more
+/// movement area, unless I can figure out some generalized algorithm for determining a more
 /// circular movement distance.
 const STANDARD_CREATURE_SPEED: u32 = 1086;
 

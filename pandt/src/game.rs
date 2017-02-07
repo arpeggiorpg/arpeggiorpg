@@ -273,7 +273,6 @@ impl Game {
 pub mod test {
     use game::*;
     use types::test::*;
-    use creature::test::*;
     use grid::test::*;
     use std::iter::FromIterator;
 

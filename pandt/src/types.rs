@@ -196,7 +196,7 @@ pub enum GameError {
     CreatureNotFound(CreatureID),
     InvalidTarget(CreatureID),
     InvalidTargetNoSense(CreatureID),
-    TargetOutOfRange,
+    CreatureOutOfRange(CreatureID),
     InvalidCreatureState,
     BuggyProgram(String),
     NotInCombat,
