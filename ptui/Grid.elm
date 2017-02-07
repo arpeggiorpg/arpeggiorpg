@@ -25,7 +25,7 @@ coord c = toString (c * 100)
 terrainMap : (M.Point3 -> U.Msg) -> Maybe M.MovementRequest -> M.Map -> List M.Creature -> H.Html U.Msg
 terrainMap moveMsg moving terrain creatures =
   let creatureEls = List.map gridCreature creatures
-      terrainEls = List.map gridTerrain terrain
+      terrainEls = terrainRects terrain
       cancelButton = case moving of Just _ -> cancelMove
                                     Nothing -> H.div [] []
       movementCirc =
@@ -89,13 +89,30 @@ gridCreature creature =
               [ text creature.id]
     ]
 
+terrainRects : List M.Point3 -> List (Svg U.Msg)
+terrainRects terrain =
+  let blocks = List.map gridTerrain terrain
+      empties = emptyTerrain terrain
+  in blocks ++ empties
+
 gridTerrain : M.Point3 -> Svg a
-gridTerrain pt = 
-  rect [ width "100"
-         , height "100"
-         , x (coord pt.x)
-         , y (coord pt.y)
-         , fill "lightgrey"
-         , stroke "black"
-         , strokeWidth "1" ]
-         []
+gridTerrain pt = tile "lightgrey" [] pt
+
+emptyTerrain : List M.Point3 -> List (Svg U.Msg)
+emptyTerrain terrain =
+  let halfGrid = gridSize // 2
+      g x y = let pt = {x= x, y=y, z=0}
+              in if not (List.member pt terrain) then [tile "white" [] pt] else []
+      f x = List.concatMap (g x) (List.range -halfGrid halfGrid)
+  in List.concatMap f (List.range -halfGrid halfGrid)
+
+
+tile cl attrs pt =
+  rect (attrs ++ [ width "100"
+       , height "100"
+       , x (coord pt.x)
+       , y (coord pt.y)
+       , fill cl
+       , stroke "black"
+       , strokeWidth "1" ])
+       []

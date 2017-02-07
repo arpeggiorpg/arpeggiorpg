@@ -108,7 +108,7 @@ historyItem i = case i of
 historyCombatLog : M.CombatLog -> Html U.Msg
 historyCombatLog cl = case cl of
   M.ComLCreatureLog cid creatureLog -> hbox [text cid, historyCreatureLog creatureLog]
-  M.ComLEndTurn cid -> text <| "Ended Turn: " ++ cid
+  M.ComLEndTurn cid -> hbox [text cid, text "Ended Turn"]
 
 historyCreatureLog cl = case cl of
   M.CLDamage dmg -> text <| "Took damage: " ++ toString dmg
