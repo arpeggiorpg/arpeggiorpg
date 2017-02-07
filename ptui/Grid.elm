@@ -50,18 +50,19 @@ cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
 
 movementCircle : (M.Point3 -> U.Msg) -> (List M.Point3) -> M.Map -> M.Point3 -> Int -> List (Svg U.Msg)
 movementCircle moveMsg pts terrain origin max_distance =
-  let debugEl = debugCircle origin max_distance
+  let circleEl = distanceCircle origin max_distance
       movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
-  in debugEl :: movementCells
+  in circleEl :: movementCells
 
-debugCircle : M.Point3 -> Int -> Svg U.Msg
-debugCircle origin max_distance =
-  circle [ r (toString <| max_distance * 2)
+distanceCircle : M.Point3 -> Int -> Svg U.Msg
+distanceCircle origin max_distance =
+  let centerCoord n = toString ((n * 100) + 50) in
+  circle [ r (toString max_distance)
            , fill "none"
            , stroke "black"
            , strokeWidth "1"
-           , cx (coord origin.x)
-           , cy (coord origin.y)]
+           , cx (centerCoord origin.x)
+           , cy (centerCoord origin.y)]
            []
 
 movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> H.Html U.Msg
