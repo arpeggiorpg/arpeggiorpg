@@ -15,17 +15,11 @@ import Update as U
 
 -- how many meters across the grid should be
 gridSize = 25
--- pixels per meter. 10 means 1 pixel = 1 decimeter
-scale = 30
-
-metersToPx m = m * scale
-
-cmToPx cm = (cm // 100) * scale
 
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
-coord : Int -> Int
-coord c = (metersToPx (gridSize // 2)) + metersToPx c
+coord : Int -> String
+coord c = toString (c * 100)
 
 terrainMap : (M.Point3 -> U.Msg) -> Maybe M.MovementRequest -> M.Map -> List M.Creature -> H.Html U.Msg
 terrainMap moveMsg moving terrain creatures =
@@ -41,8 +35,9 @@ terrainMap moveMsg moving terrain creatures =
     vbox <|
       cancelButton :: 
         [ svg
-            [ width (toString <| metersToPx gridSize)
-            , height (toString <| metersToPx gridSize)
+            [ viewBox (String.join " " (List.map toString [-gridSize * 50, -gridSize * 50, gridSize * 100, gridSize * 100]))
+            , width "800"
+            , height "800"
             , HA.style [ ("border", "2px solid black")
                       , ("position", "relative") ]
             ]
@@ -60,18 +55,18 @@ movementCircle moveMsg pts terrain origin max_distance =
 
 debugCircle : M.Point3 -> Int -> Svg U.Msg
 debugCircle origin max_distance =
-  circle [ r (toString (cmToPx max_distance * 2))
+  circle [ r (toString <| max_distance * 2)
            , fill "none"
            , stroke "black"
            , strokeWidth "1"
-           , cx (toString (coord origin.x))
-           , cy (toString (coord origin.y))]
+           , cx (coord origin.x)
+           , cy (coord origin.y)]
            []
 
 movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> H.Html U.Msg
 movementTarget moveMsg origin max_distance terrain pt =
-  rect [ width (toString (metersToPx 1)), height (toString (metersToPx 1))
-         , x (toString (coord pt.x)), y (toString (coord pt.y))
+  rect [ width "100", height "100"
+         , x (coord pt.x), y (coord pt.y)
          , stroke "black"
          , strokeWidth "1"
          , fill "green"
@@ -81,23 +76,23 @@ movementTarget moveMsg origin max_distance terrain pt =
 gridCreature : M.Creature -> Svg U.Msg
 gridCreature creature =
   g []
-    [ rect [ width (toString <| metersToPx 1)
-             , height (toString <| metersToPx 1)
-             , x <| toString (coord creature.pos.x), y <| toString (coord creature.pos.y)
+    [ rect [ width "100"
+             , height "100"
+             , x (coord creature.pos.x), y (coord creature.pos.y)
              , fill "cyan"
              , stroke "black"
              , strokeWidth "1"]
              []
-    , text_ [x <| toString (coord creature.pos.x), y <| toString (coord creature.pos.y)]
+    , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
               [ text creature.id]
     ]
 
 gridTerrain : M.Point3 -> Svg a
 gridTerrain pt = 
-  rect [ width (toString <| metersToPx 1)
-         , height (toString <| metersToPx 1)
-         , x <| toString (coord pt.x)
-         , y <| toString (coord pt.y)
+  rect [ width "100"
+         , height "100"
+         , x (coord pt.x)
+         , y (coord pt.y)
          , fill "lightgrey"
          , stroke "black"
          , strokeWidth "1" ]
