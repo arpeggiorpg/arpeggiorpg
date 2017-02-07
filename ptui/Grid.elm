@@ -18,25 +18,14 @@ gridSize = 25
 -- pixels per meter. 10 means 1 pixel = 1 decimeter
 scale = 30
 
-px x = (toString x) ++ "px"
-
 metersToPx m = m * scale
-metersToPxPx = px << metersToPx
-
-pxToMeters m = m // scale
 
 cmToPx cm = (cm // 100) * scale
-cmToPxPx = px << cmToPx
-
-distanceCm : (Int, Int) -> (Int, Int) -> Int
-distanceCm (ax, ay) (bx, by) =
-  round <| 100 * sqrt (toFloat ((ax - bx)^2) + toFloat ((bx - by)^2))
 
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
 coord : Int -> Int
 coord c = (metersToPx (gridSize // 2)) + metersToPx c
-coordPx = px << coord
 
 terrainMap : (M.Point3 -> U.Msg) -> Maybe M.MovementRequest -> M.Map -> List M.Creature -> H.Html U.Msg
 terrainMap moveMsg moving terrain creatures =
