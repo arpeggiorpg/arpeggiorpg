@@ -71,12 +71,12 @@ movementCircle moveMsg pts terrain origin max_distance =
 
 debugCircle : M.Point3 -> Int -> Svg U.Msg
 debugCircle origin max_distance =
-  circle [ width (toString (cmToPx max_distance * 2))
-           , height (toString (cmToPx max_distance * 2))
+  circle [ r (toString (cmToPx max_distance * 2))
+           , fill "none"
            , stroke "black"
            , strokeWidth "1"
-           , x (toString (coord origin.x))
-           , y (toString (coord origin.y))]
+           , cx (toString (coord origin.x))
+           , cy (toString (coord origin.y))]
            []
 
 movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> H.Html U.Msg
