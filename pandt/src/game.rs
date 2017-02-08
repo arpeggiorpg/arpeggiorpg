@@ -15,6 +15,10 @@ pub struct Game {
     classes: HashMap<String, Class>,
 }
 
+lazy_static! {
+    static ref BORING_MAP: Vec<Point3> = vec![(0,0,0)];
+}
+
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
     pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
@@ -28,11 +32,11 @@ impl Game {
         }
     }
 
-    pub fn current_map(&self) -> Map {
+    pub fn current_map(&self) -> &Map {
         // TODO: this should return &Map instead of Map
         match self.current_map.as_ref() {
-            Some(x) => self.maps.get(x).unwrap_or(&vec![(0,0,0)]).clone(),
-            None => vec![(0,0,0)]
+            Some(x) => self.maps.get(x).unwrap_or(&BORING_MAP),
+            None => &BORING_MAP
         }
     }
 
@@ -167,7 +171,7 @@ impl Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
                         .ok_or(GameError::NotInCombat)?
-                        .apply_log(cl, &self.current_map())?),
+                        .apply_log(cl, self.current_map())?),
                     ..self.clone()
                 })
             }
@@ -192,7 +196,7 @@ impl Game {
                      pt: Point3)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(&self.current_map(), pt)?;
+        let (next, logs) = movement.move_creature(self.current_map(), pt)?;
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -203,7 +207,7 @@ impl Game {
         let creature = self.get_creature(cid)?;
         let (pts, distance) = find_path(creature.pos(),
                                         creature.speed(),
-                                        &self.current_map(),
+                                        self.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
         let (creature, log) = creature.set_pos_path(pts, distance)?;
         let mut newgame = self.clone();
@@ -254,7 +258,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(&self.current_map())?;
+        let (newcombat, logs) = combat.next_turn(self.current_map())?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
@@ -266,13 +270,13 @@ impl Game {
             let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
             creatures.push(creature);
         }
-        newgame.current_combat = Some(Combat::new(creatures, &self.current_map())?);
+        newgame.current_combat = Some(Combat::new(creatures, self.current_map())?);
         Ok((newgame, vec![GameLog::StartCombat(cids)]))
     }
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.get_creature(creature_id)?;
-        Ok(get_all_accessible(creature.pos(), &self.current_map(), creature.speed()))
+        Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
     }
 }
 
