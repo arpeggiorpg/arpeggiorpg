@@ -21,19 +21,25 @@ defaultModel =
     , selectedAbility = Nothing
     , pendingCreatureId = Nothing
     , pendingCreatureName = Nothing
-    , pendingCreatureClass = Nothing 
-    , pendingCombatCreatures = Set.empty
+    , pendingCreatureClass = Nothing
+    , selectedCreatures = Set.empty
     , moving = Nothing
     , error = "No current error!"
-    , saveMapName = ""
+    , saveMapName = "" -- this could be inside of editingMap sumtype
+    , editingMap = False
     , currentMap = [{x=0, y=0, z=0}]
+    , controlledCreatures = Nothing
   }
 
-type alias MovementRequest = 
-  { creature: Creature
-  , max_distance: Distance
-  , movement_options: (List Point3)
-  }
+type alias MovementRequest = {
+  max_distance: Distance,
+  movement_options: List Point3,
+  -- This field is a Just when we're performing out-of-combat movement.
+  -- It's Nothing for in-combat movement, because in-combat movement is only for the current
+  -- creature.
+  ooc_creature: Maybe Creature
+}
+
 
 type alias Model =
   { app : Maybe App
@@ -42,12 +48,18 @@ type alias Model =
   , pendingCreatureClass : Maybe String
   , selectedAbility : Maybe AbilityID
   -- Creatures which have been selected for combat
-  , pendingCombatCreatures : Set.Set CreatureID
+  , selectedCreatures : Set.Set CreatureID
   , error: String
   , moving: Maybe MovementRequest
   , saveMapName: String
   , currentMap : Map
+  , editingMap : Bool
+  , controlledCreatures : Maybe (List CreatureID)
   }
+
+type ControlledCreatures
+  = GM
+  | Creatures (List CreatureID)
 
 type alias CreatureCreation =
   { id : CreatureID
@@ -55,7 +67,6 @@ type alias CreatureCreation =
   , class: String
   , pos: Point3
   }
-
 
 creatureCreationDecoder = JD.map4 CreatureCreation
   (JD.field "id" JD.string)
@@ -430,3 +441,9 @@ getMap model =
     Just app -> let mapName = (Maybe.withDefault "empty" app.current_game.current_map)
                 in (Maybe.withDefault [] (Dict.get mapName app.current_game.maps))
     Nothing -> []
+
+--- Get the current creature in combat.
+combatCreature : Combat -> Creature
+combatCreature combat = case List.head (List.drop combat.creatures.cursor combat.creatures.data) of
+  Just c -> c
+  Nothing -> Debug.crash "Creature CursorList was invalid"

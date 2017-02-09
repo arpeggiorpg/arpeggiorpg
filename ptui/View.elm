@@ -25,25 +25,58 @@ view model = vbox
 viewGame : M.Model -> M.App -> Html U.Msg
 viewGame model app =
   let game = app.current_game in
+  case model.controlledCreatures of
+    Nothing -> gmView model app game
+    Just creatures -> playerView model app game creatures 
+
+gmView : M.Model -> M.App -> M.Game -> Html U.Msg
+gmView model app game =
   case (game.current_combat, model.moving) of
     -- Movement takes over the whole UI:
-    (Nothing, Just mvmt) -> Grid.terrainMap (U.MoveOutOfCombat mvmt.creature.id) model.moving model.currentMap (Dict.values game.creatures)
-    (Just combat, Just mvmt) -> Grid.terrainMap U.Move model.moving model.currentMap combat.creatures.data
+    (Nothing, Just mvmtReq) ->
+      case mvmtReq.ooc_creature of
+        Just creature -> Grid.movementMap (U.MoveOutOfCombat creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
+        Nothing -> -- What!?? There's a combat movement request but no combat! It'd be nice if this were impossible
+                   fullUI model app game
+    (Just combat, Just mvmtReq) ->
+      let (creature, moveMessage, visibleCreatures) =
+          case mvmtReq.ooc_creature of
+            Just creature -> (creature, U.MoveOutOfCombat creature.id, (Dict.values game.creatures))
+            Nothing -> (M.combatCreature combat, U.Move, combat.creatures.data)
+      in Grid.movementMap moveMessage mvmtReq model.currentMap creature visibleCreatures
+    _ -> fullUI model app game
 
-    _ ->
-      hbox 
-      [ vbox [ h3 [] [text "Creatures"]
-             , inactiveList model game.current_combat model.pendingCombatCreatures game.creatures
-             , history app
-             ]
-      , case game.current_combat of
-          Just combat -> Grid.terrainMap U.Move model.moving model.currentMap combat.creatures.data
-          Nothing -> Grid.terrainMap U.Move model.moving model.currentMap (Dict.values game.creatures)
-      , case game.current_combat of
-          Just combat -> combatArea model game combat
-          Nothing -> startCombatButton
-      , mapSelector game
-      ]
+fullUI : M.Model -> M.App -> M.Game -> Html U.Msg
+fullUI model app game =
+  let visibleCreatures = Maybe.withDefault (Dict.values game.creatures)
+                                           (Maybe.map (\c -> c.creatures.data) game.current_combat)
+  in if model.editingMap
+     then Grid.editMap model.currentMap visibleCreatures 
+     else 
+      hbox
+    [ vbox [ h3 [] [text "Creatures"]
+            , inactiveList model game.current_combat model.selectedCreatures game.creatures
+            , history app
+            ]
+    , vbox [editMapButton, Grid.terrainMap model.currentMap visibleCreatures]
+    , case game.current_combat of
+        Just combat -> combatArea model game combat
+        Nothing -> startCombatButton
+    , mapSelector game
+    ]
+
+editMapButton : Html U.Msg
+editMapButton = button [onClick U.StartEditingMap] [text "Edit this map"]
+
+playerView : M.Model -> M.App -> M.Game -> List M.CreatureID -> Html U.Msg
+playerView model app game creatures = vbox
+  [ hbox [text "Hello", text <| String.join ", " creatures]
+  -- TODO: movement
+  , Grid.terrainMap model.currentMap (Dict.values game.creatures)
+  -- TODO: a read-only initiative list
+  -- TODO: a read-only "creatures nearby" list without details
+  -- TODO: List of MY controlled characters, with Move buttons next to each
+  ]
 
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
@@ -54,6 +87,7 @@ inactiveList : M.Model -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M
 inactiveList model mCombat pendingCreatures creatures = div []
   [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
   , createCreatureForm model
+  , controlCreaturesButton
   ]
 
 createCreatureForm : M.Model -> Html U.Msg
@@ -64,6 +98,8 @@ createCreatureForm model = div []
     , createCreatureButton model
     ]
 
+controlCreaturesButton : Html U.Msg
+controlCreaturesButton = button [ onClick U.TakeOverCreatures ] [text "Control Selected Creatures"]
 
 createCreatureButton : M.Model -> Html U.Msg
 createCreatureButton model =
@@ -208,5 +244,5 @@ doneButton creature =
 moveButton : M.Combat -> M.Creature -> Html U.Msg
 moveButton combat creature =
   let movement_left = creature.speed - combat.movement_used
-  in button [onClick (U.RequestMove <| M.MovementRequest creature movement_left combat.movement_options)]
+  in button [onClick (U.RequestMove <| M.MovementRequest movement_left combat.movement_options Nothing)]
             [text (String.join "" ["Move (", toString movement_left, ")"])]

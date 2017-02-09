@@ -9,8 +9,10 @@ import Model as M exposing (CreatureID, AbilityID)
 type Msg
     = MorePlease
     | SelectMap M.MapName
-    | SaveMapName M.MapName
+    | UpdateSaveMapName M.MapName
+    | StartEditingMap
     | EditMap M.Map
+    | CancelEditingMap
     | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureClass String
@@ -34,6 +36,7 @@ type Msg
     | GetMovementOptions M.Creature
     | GotMovementOptions M.Creature (Result Http.Error (List M.Point3))
     | ToggleTerrain M.Point3
+    | TakeOverCreatures
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
@@ -67,7 +70,7 @@ update msg model = case msg of
   ShowError s -> ( {model | error = s}, Cmd.none)
   
   ToggleSelectedCreature cid ->
-    ( { model | pendingCombatCreatures = toggleSet cid model.pendingCombatCreatures }
+    ( { model | selectedCreatures = toggleSet cid model.selectedCreatures }
     , Cmd.none )
   
   GetMovementOptions creature ->
@@ -76,9 +79,12 @@ update msg model = case msg of
     in (model, cmd)
 
   GotMovementOptions creature (Ok pts) ->
-    let mreq = M.MovementRequest creature creature.speed pts
+    let mreq = M.MovementRequest creature.speed pts (Just creature)
     in ({ model | moving = Just <| mreq}, Cmd.none)
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
+
+  StartEditingMap ->  ({ model | editingMap = True},  Cmd.none)
+  CancelEditingMap -> ({ model | editingMap = False}, Cmd.none)
 
   ToggleTerrain pt ->
     let terrain = if not (List.member pt model.currentMap)
@@ -86,9 +92,13 @@ update msg model = case msg of
                   else List.filter (\el -> el /= pt) model.currentMap
     in ({model | currentMap = terrain}, Cmd.none)
 
-  SaveMapName name -> ({model | saveMapName = name}, Cmd.none)
+  UpdateSaveMapName name -> ( {model | saveMapName = name }
+                            , Cmd.none)
 
-  EditMap terrain -> (model, sendCommand (M.EditMap model.saveMapName terrain))
+  EditMap terrain -> ({ model | editingMap = False}, sendCommand (M.EditMap model.saveMapName terrain))
+
+  TakeOverCreatures -> ( {model | controlledCreatures = Just (Set.toList model.selectedCreatures)}
+                       , Cmd.none)
 
   -- Basic GameCommands
   CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))
@@ -103,7 +113,7 @@ update msg model = case msg of
   MoveOutOfCombat cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveOutOfCombat cid pt))
   TurnDone -> (model, sendCommand M.Done)
   SelectMap mapName -> (model, sendCommand (M.SelectMap mapName))
-  StartCombat -> (model, sendCommand (M.StartCombat (Set.toList model.pendingCombatCreatures)))
+  StartCombat -> (model, sendCommand (M.StartCombat (Set.toList model.selectedCreatures)))
   StopCombat -> (model, sendCommand M.StopCombat)
 
 
