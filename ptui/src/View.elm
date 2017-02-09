@@ -69,17 +69,15 @@ gmView model app game =
 
 fullUI : M.Model -> M.App -> M.Game -> Html U.Msg
 fullUI model app game =
-  let visibleCreatures = Maybe.withDefault (Dict.values game.creatures)
-                                           (Maybe.map (\c -> c.creatures.data) game.current_combat)
-  in if model.editingMap
-     then Grid.editMap model.currentMap visibleCreatures 
+  if model.editingMap
+     then Grid.editMap model.currentMap (visibleCreatures game)
      else 
       hbox
         [ vbox [ h3 [] [text "Creatures"]
                 , inactiveList model game.current_combat model.selectedCreatures game.creatures
                 , history app
                 ]
-        , vbox [editMapButton, Grid.terrainMap model.currentMap visibleCreatures]
+        , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
         , case game.current_combat of
             Just combat -> combatArea model game combat
             Nothing -> startCombatButton
@@ -88,6 +86,12 @@ fullUI model app game =
 
 editMapButton : Html U.Msg
 editMapButton = button [onClick U.StartEditingMap] [text "Edit this map"]
+
+visibleCreatures : M.Game -> List M.Creature
+visibleCreatures game =
+  case game.current_combat of
+    Just combat -> combat.creatures.data
+    Nothing -> Dict.values game.creatures
 
 playerView : M.Model -> M.App -> M.Game -> List M.Creature -> Html U.Msg
 playerView model app game creatures = hbox
@@ -100,7 +104,7 @@ playerView model app game creatures = hbox
             then
               -- one of my characters is moving; render the movement map
               Grid.movementMap (U.MoveOutOfCombat oocMovingCreature.id) movementRequest
-                               model.currentMap oocMovingCreature (Dict.values game.creatures)
+                               model.currentMap oocMovingCreature (visibleCreatures game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
@@ -112,7 +116,7 @@ playerView model app game creatures = hbox
         let currentCreature = M.combatCreature combat
         in
           if List.member currentCreature creatures
-          then actionBar combat game.classes currentCreature
+          then hbox [creatureStats currentCreature, actionBar combat game.classes currentCreature]
           else hbox [text "Current creature:", text currentCreature.id]
       Nothing -> text "No Combat"
   ]
@@ -120,19 +124,19 @@ playerView model app game creatures = hbox
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
 playerGrid model game creatures = 
   let buttonForCreature creature = 
-        if inCombat game creature
+        if playerInCombat game creature
         then Nothing
         else Just <| hbox [text creature.id, moveOOCButton creature]
       movementButtons = List.filterMap buttonForCreature creatures
   in
-    vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (Dict.values game.creatures)]
+    vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
   -- TODO: a read-only initiative list
   -- TODO: a read-only "creatures nearby" list without details
   -- TODO: List of MY controlled characters, with Move buttons next to each
   
 
-inCombat : M.Game -> M.Creature -> Bool
-inCombat game cid =
+playerInCombat : M.Game -> M.Creature -> Bool
+playerInCombat game cid =
   case game.current_combat of
     Nothing -> False
     Just combat -> List.member cid combat.creatures.data
