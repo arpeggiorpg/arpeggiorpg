@@ -25,6 +25,7 @@ view model = vbox
 viewGame : M.Model -> M.App -> Html U.Msg
 viewGame model app =
   let game = app.current_game in
+  -- Dispatch to gmView or playerView based on who's using this UI
   case model.controlledCreatures of
     Nothing -> gmView model app game
     Just creatureIds ->
@@ -120,12 +121,12 @@ playerView model app game creatures = hbox
         let currentCreature = M.combatCreature combat
             bar = if List.member currentCreature creatures
                   then hbox [strong [] [text currentCreature.id]
-                            , actionBar combat game.classes currentCreature]
+                            , actionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
                           Just abid -> targetSelector model game combat abid
                           Nothing -> div [] []
-            initiativeList = combatInitiativeList game combat
+            initiativeList = combatantList game combat
         in vbox [bar, selector, initiativeList]
       Nothing -> text "No Combat"
   ]
@@ -144,16 +145,6 @@ playerGrid model game creatures =
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
   
-
--- A read-only initiative list that is intended to be seen by everyone.
-combatInitiativeList : M.Game -> M.Combat -> Html U.Msg
-combatInitiativeList game combat =
-  vbox (List.map (readOnlyCombatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
-
-readOnlyCombatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
-readOnlyCombatantEntry game combat (idx, creature) = hbox <|
-  let marker = if combat.creatures.cursor == idx then [text "-->"] else []
-  in marker ++ [ creatureStats creature ]
 
 playerInCombat : M.Game -> M.Creature -> Bool
 playerInCombat game cid =
@@ -249,7 +240,10 @@ maybePos path =
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
 combatArea model game combat = case model.selectedAbility of
   Just abid -> targetSelector model game combat abid
-  Nothing -> combatantList game combat
+  Nothing ->
+    let bar = actionBar game combat (M.combatCreature combat)
+        disengageButtons = hbox (List.map disengageButton combat.creatures.data)
+    in vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
 
 targetSelector : M.Model -> M.Game -> M.Combat -> String -> Html U.Msg
 targetSelector model game combat abid = case (Dict.get abid game.abilities) of
@@ -269,28 +263,22 @@ startCombatButton : Html U.Msg
 startCombatButton = button [onClick U.StartCombat] [text "Start Combat"]
 
 combatantList : M.Game -> M.Combat -> Html U.Msg
-combatantList game combat = div []
-  [ h3 [] [text "Combat!"]
-  , vbox (List.map (combatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
-  , stopCombatButton
-  ]
+combatantList game combat =
+  vbox (List.map (combatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
 
 engageButton : M.Creature -> Html U.Msg
 engageButton creature =
   button [onClick (U.AddToCombat creature.id)] [text "Engage"]
 
 combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
-combatantEntry game combat (idx, creature) = hbox
-  [ if combat.creatures.cursor == idx then actionBar combat game.classes creature
-    else div [] []
-  , creatureStats creature
-  , disengageButton creature
-  ]
+combatantEntry game combat (idx, creature) = hbox <|
+  let marker = if combat.creatures.cursor == idx then [text "-->"] else []
+  in marker ++ [ creatureStats creature ]
 
-actionBar : M.Combat -> Dict.Dict String M.Class -> M.Creature -> Html U.Msg
-actionBar combat classes creature =
+actionBar : M.Game -> M.Combat -> M.Creature -> Html U.Msg
+actionBar game combat creature =
   let abilities =
-        case (Dict.get creature.class classes) of
+        case (Dict.get creature.class game.classes) of
           Just x -> x.abilities
           Nothing -> []
   in hbox (  (doneButton creature)
@@ -310,7 +298,7 @@ creatureStats creature =
 
 disengageButton : M.Creature -> Html U.Msg
 disengageButton creature =
-  button [onClick (U.RemoveFromCombat creature.id)] [text "Disengage"]
+  button [onClick (U.RemoveFromCombat creature.id)] [text ("Disengage " ++ creature.id)]
 
 deleteCreatureButton : M.Creature -> Html U.Msg
 deleteCreatureButton creature =
