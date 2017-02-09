@@ -27,7 +27,28 @@ viewGame model app =
   let game = app.current_game in
   case model.controlledCreatures of
     Nothing -> gmView model app game
-    Just creatures -> playerView model app game creatures 
+    Just creatureIds ->
+      let f cid =
+            maybeOr (game.current_combat |> Maybe.andThen (\combat -> getCreatureInCombat combat cid))
+                    (getCreatureOOC game cid)
+          creatures = List.filterMap f creatureIds
+      in playerView model app game creatures
+
+maybeOr : Maybe a -> Maybe a -> Maybe a
+maybeOr m1 m2 =
+  case (m1, m2) of
+    (Just x, _) -> Just x
+    (_, Just x) -> Just x
+    _ -> Nothing
+
+listFind : (a -> Bool) -> List a -> Maybe a
+listFind f l = List.head (List.filter f l)
+
+getCreatureInCombat : M.Combat -> M.CreatureID -> Maybe M.Creature
+getCreatureInCombat combat cid = listFind (\c -> c.id == cid)  combat.creatures.data
+
+getCreatureOOC : M.Game -> M.CreatureID -> Maybe M.Creature
+getCreatureOOC game cid = Dict.get cid game.creatures
 
 gmView : M.Model -> M.App -> M.Game -> Html U.Msg
 gmView model app game =
@@ -54,29 +75,59 @@ fullUI model app game =
      then Grid.editMap model.currentMap visibleCreatures 
      else 
       hbox
-    [ vbox [ h3 [] [text "Creatures"]
-            , inactiveList model game.current_combat model.selectedCreatures game.creatures
-            , history app
-            ]
-    , vbox [editMapButton, Grid.terrainMap model.currentMap visibleCreatures]
-    , case game.current_combat of
-        Just combat -> combatArea model game combat
-        Nothing -> startCombatButton
-    , mapSelector game
-    ]
+        [ vbox [ h3 [] [text "Creatures"]
+                , inactiveList model game.current_combat model.selectedCreatures game.creatures
+                , history app
+                ]
+        , vbox [editMapButton, Grid.terrainMap model.currentMap visibleCreatures]
+        , case game.current_combat of
+            Just combat -> combatArea model game combat
+            Nothing -> startCombatButton
+        , mapSelector game
+        ]
 
 editMapButton : Html U.Msg
 editMapButton = button [onClick U.StartEditingMap] [text "Edit this map"]
 
-playerView : M.Model -> M.App -> M.Game -> List M.CreatureID -> Html U.Msg
+playerView : M.Model -> M.App -> M.Game -> List M.Creature -> Html U.Msg
 playerView model app game creatures = vbox
-  [ hbox [text "Hello", text <| String.join ", " creatures]
-  -- TODO: movement
-  , Grid.terrainMap model.currentMap (Dict.values game.creatures)
+  [ case model.moving of
+      Just movementRequest ->
+        let {max_distance, movement_options, ooc_creature} = movementRequest in
+        case ooc_creature of
+          Just oocMovingCreature ->
+            if List.member oocMovingCreature creatures
+            then
+              -- one of my characters is moving; render the movement map
+              Grid.movementMap (U.MoveOutOfCombat oocMovingCreature.id) movementRequest
+                               model.currentMap oocMovingCreature (Dict.values game.creatures)
+            else
+              -- someone else is moving (render a non-interactive movement map, maybe?)
+              playerGrid model game creatures
+          Nothing -> playerGrid model game creatures
+      Nothing -> playerGrid model game creatures
+
+  ]
+
+playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
+playerGrid model game creatures = 
+  let buttonForCreature creature = 
+        if inCombat game creature
+        then Nothing
+        else Just <| hbox [text creature.id, moveOOCButton creature]
+      movementButtons = List.filterMap buttonForCreature creatures
+  in
+    vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (Dict.values game.creatures)]
   -- TODO: a read-only initiative list
   -- TODO: a read-only "creatures nearby" list without details
   -- TODO: List of MY controlled characters, with Move buttons next to each
-  ]
+  
+
+inCombat : M.Game -> M.Creature -> Bool
+inCombat game cid =
+  case game.current_combat of
+    Nothing -> False
+    Just combat -> List.member cid combat.creatures.data
 
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
@@ -147,6 +198,7 @@ historyCombatLog cl = case cl of
   M.ComLCreatureLog cid creatureLog -> hbox [text cid, historyCreatureLog creatureLog]
   M.ComLEndTurn cid -> hbox [text cid, text "Ended Turn"]
 
+historyCreatureLog : M.CreatureLog -> Html U.Msg
 historyCreatureLog cl = case cl of
   M.CLDamage dmg -> text <| "Took damage: " ++ toString dmg
   M.CLHeal dmg -> text <| "Healed: " ++ toString dmg
