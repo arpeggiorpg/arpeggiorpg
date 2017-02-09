@@ -45,7 +45,7 @@ listFind : (a -> Bool) -> List a -> Maybe a
 listFind f l = List.head (List.filter f l)
 
 getCreatureInCombat : M.Combat -> M.CreatureID -> Maybe M.Creature
-getCreatureInCombat combat cid = listFind (\c -> c.id == cid)  combat.creatures.data
+getCreatureInCombat combat cid = listFind (\c -> c.id == cid) combat.creatures.data
 
 getCreatureOOC : M.Game -> M.CreatureID -> Maybe M.Creature
 getCreatureOOC game cid = Dict.get cid game.creatures
@@ -119,28 +119,41 @@ playerView model app game creatures = hbox
       Just combat ->
         let currentCreature = M.combatCreature combat
             bar = if List.member currentCreature creatures
-                  then hbox [creatureStats currentCreature, actionBar combat game.classes currentCreature]
+                  then hbox [strong [] [text currentCreature.id]
+                            , actionBar combat game.classes currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
                           Just abid -> targetSelector model game combat abid
                           Nothing -> div [] []
-        in vbox [bar, selector]
+            initiativeList = combatInitiativeList game combat
+        in vbox [bar, selector, initiativeList]
       Nothing -> text "No Combat"
   ]
+  -- TODO: a read-only initiative list
+  -- TODO: a read-only "creatures nearby" list without details
+  -- TODO: List of MY controlled characters, with Move buttons next to each
 
+-- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
-playerGrid model game creatures = 
-  let buttonForCreature creature = 
+playerGrid model game creatures =
+  let buttonForCreature creature =
         if playerInCombat game creature
         then Nothing
         else Just <| hbox [text creature.id, moveOOCButton creature]
       movementButtons = List.filterMap buttonForCreature creatures
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
-  -- TODO: a read-only initiative list
-  -- TODO: a read-only "creatures nearby" list without details
-  -- TODO: List of MY controlled characters, with Move buttons next to each
   
+
+-- A read-only initiative list that is intended to be seen by everyone.
+combatInitiativeList : M.Game -> M.Combat -> Html U.Msg
+combatInitiativeList game combat =
+  vbox (List.map (readOnlyCombatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
+
+readOnlyCombatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
+readOnlyCombatantEntry game combat (idx, creature) = hbox <|
+  let marker = if combat.creatures.cursor == idx then [text "-->"] else []
+  in marker ++ [ creatureStats creature ]
 
 playerInCombat : M.Game -> M.Creature -> Bool
 playerInCombat game cid =
@@ -289,7 +302,7 @@ actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
-  hbox [ text "Name: ", text creature.name
+  hbox [ strong [] [text  creature.name]
        , text "HP: ", text (toString creature.cur_health)
        , text "Energy: ", text (toString creature.cur_energy)
        , text "Pos: ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)
