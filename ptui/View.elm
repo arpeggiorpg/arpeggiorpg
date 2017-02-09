@@ -29,7 +29,7 @@ viewGame model app =
     Nothing -> gmView model app game
     Just creatureIds ->
       let f cid =
-            maybeOr (game.current_combat |> Maybe.andThen (\combat -> getCreatureInCombat combat cid))
+            maybeOr (Maybe.andThen (\combat -> getCreatureInCombat combat cid) game.current_combat)
                     (getCreatureOOC game cid)
           creatures = List.filterMap f creatureIds
       in playerView model app game creatures
@@ -90,7 +90,7 @@ editMapButton : Html U.Msg
 editMapButton = button [onClick U.StartEditingMap] [text "Edit this map"]
 
 playerView : M.Model -> M.App -> M.Game -> List M.Creature -> Html U.Msg
-playerView model app game creatures = vbox
+playerView model app game creatures = hbox
   [ case model.moving of
       Just movementRequest ->
         let {max_distance, movement_options, ooc_creature} = movementRequest in
@@ -102,11 +102,19 @@ playerView model app game creatures = vbox
               Grid.movementMap (U.MoveOutOfCombat oocMovingCreature.id) movementRequest
                                model.currentMap oocMovingCreature (Dict.values game.creatures)
             else
-              -- someone else is moving (render a non-interactive movement map, maybe?)
+              -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
           Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
-
+  ,
+    case game.current_combat of
+      Just combat ->
+        let currentCreature = M.combatCreature combat
+        in
+          if List.member currentCreature creatures
+          then actionBar combat game.classes currentCreature
+          else hbox [text "Current creature:", text currentCreature.id]
+      Nothing -> text "No Combat"
   ]
 
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
