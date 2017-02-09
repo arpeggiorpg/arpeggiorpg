@@ -1,5 +1,6 @@
 module Update exposing (..)
 
+import Dict
 import Http
 import Json.Decode as JD
 import Set
@@ -19,6 +20,7 @@ type Msg
     | CreateCreature M.CreatureCreation
     | CommandComplete (Result Http.Error M.RustResult)
     | AppUpdate (Result Http.Error M.App)
+    | AppUpdateForPlayers (Result Http.Error M.App)
     | ShowError String
     | ToggleSelectedCreature CreatureID
     | StartCombat
@@ -66,6 +68,15 @@ update msg model = case msg of
     in ( { model2 | currentMap = currentMap }
        , Cmd.none )
   AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
+
+  -- This is just a stopgap for testing; initialize controlledCreatures to all out-of-combat creatures
+  AppUpdateForPlayers (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
+  AppUpdateForPlayers (Ok newApp) -> 
+    let model2 = { model | app = Just newApp}
+        currentMap = M.getMap model2
+        creatures = Dict.keys newApp.current_game.creatures
+    in ( { model2 | currentMap = currentMap, controlledCreatures = Just creatures }
+       , Cmd.none )
   
   ShowError s -> ( {model | error = s}, Cmd.none)
   
@@ -125,6 +136,12 @@ url = "http://localhost:1337/"
 
 refreshApp : Cmd Msg
 refreshApp = Http.send AppUpdate (Http.get url M.appDecoder)
+
+--- Initialize the application for players. When we receive the game state, we will set
+--- controlledPlayers to all creatures already in the game. (TODO: this isn't what we need to do
+--- for the real workflow)
+refreshAppForPlayers : Cmd Msg
+refreshAppForPlayers = Http.send AppUpdateForPlayers (Http.get url M.appDecoder)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =
