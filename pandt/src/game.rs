@@ -63,7 +63,7 @@ impl Game {
             (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
             // TODO: rename `Move` to `CombatMove` and `MoveOutOfCombat` to `MoveCreature`.
             (Move(pt), Some(com)) => self.move_creature(&com, pt),
-            (MoveOutOfCombat(cid, pt), None) => self.move_creature_ooc(cid, pt),
+            (MoveOutOfCombat(cid, pt), _) => self.move_creature_ooc(cid, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
