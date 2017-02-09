@@ -66,7 +66,8 @@ update msg model = case msg of
     let model2 = { model | app = Just newApp}
         currentMap = M.getMap model2
     in ( { model2 | currentMap = currentMap
-                  , moving = Nothing }
+                  , moving = Nothing
+                  , selectedAbility = Nothing }
        , Cmd.none )
   AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
 

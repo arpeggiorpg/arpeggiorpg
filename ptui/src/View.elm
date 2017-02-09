@@ -118,10 +118,13 @@ playerView model app game creatures = hbox
     case game.current_combat of
       Just combat ->
         let currentCreature = M.combatCreature combat
-        in
-          if List.member currentCreature creatures
-          then hbox [creatureStats currentCreature, actionBar combat game.classes currentCreature]
-          else hbox [text "Current creature:", text currentCreature.id]
+            bar = if List.member currentCreature creatures
+                  then hbox [creatureStats currentCreature, actionBar combat game.classes currentCreature]
+                  else hbox [text "Current creature:", text currentCreature.id]
+            selector = case model.selectedAbility of
+                          Just abid -> targetSelector model game combat abid
+                          Nothing -> div [] []
+        in vbox [bar, selector]
       Nothing -> text "No Combat"
   ]
 
@@ -134,7 +137,6 @@ playerGrid model game creatures =
       movementButtons = List.filterMap buttonForCreature creatures
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
-  -- TODO: in-combat movement
   -- TODO: a read-only initiative list
   -- TODO: a read-only "creatures nearby" list without details
   -- TODO: List of MY controlled characters, with Move buttons next to each
