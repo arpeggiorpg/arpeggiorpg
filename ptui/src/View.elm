@@ -57,7 +57,7 @@ gmView model app game =
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
         Just creature -> Grid.movementMap (U.MoveOutOfCombat creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
-        Nothing -> -- What!?? There's a combat movement request but no combat! It'd be nice if this were impossible
+        Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
       let (creature, moveMessage, visibleCreatures) =
@@ -74,9 +74,9 @@ fullUI model app game =
      else 
       hbox
         [ vbox [ h3 [] [text "Creatures"]
-                , inactiveList model game.current_combat model.selectedCreatures game.creatures
-                , history app
-                ]
+               , inactiveList model game.current_combat model.selectedCreatures game.creatures
+               , history app
+               ]
         , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
         , case game.current_combat of
             Just combat -> combatArea model game combat
@@ -108,7 +108,11 @@ playerView model app game creatures = hbox
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
-          Nothing -> playerGrid model game creatures
+          Nothing -> -- we're moving in-combat.
+            let currentCreature = Maybe.map M.combatCreature game.current_combat
+            in case currentCreature of
+                Just creature -> Grid.movementMap U.Move movementRequest model.currentMap creature (visibleCreatures game)
+                Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ,
     case game.current_combat of
@@ -130,6 +134,7 @@ playerGrid model game creatures =
       movementButtons = List.filterMap buttonForCreature creatures
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
+  -- TODO: in-combat movement
   -- TODO: a read-only initiative list
   -- TODO: a read-only "creatures nearby" list without details
   -- TODO: List of MY controlled characters, with Move buttons next to each
