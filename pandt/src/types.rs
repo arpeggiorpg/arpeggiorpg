@@ -42,7 +42,7 @@ impl CreatureID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
             StringWrapper::from_str_safe(s)
-                .ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+                .ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
         Ok(CreatureID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -61,7 +61,7 @@ impl AbilityID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
             StringWrapper::from_str_safe(s)
-                .ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+                .ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
         Ok(AbilityID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -79,7 +79,7 @@ pub struct AbilitySetID(StringWrapper<[u8; 64]>);
 impl AbilitySetID {
     pub fn new(s: &str) -> Result<Self, GameError> {
         let sw =
-            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::CreatureIDTooLong(s[..64].to_string()))?;
+            StringWrapper::from_str_safe(s).ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
         Ok(AbilitySetID(sw))
     }
     pub fn to_string(&self) -> String {
@@ -187,8 +187,7 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
     CreatureAlreadyExists(CreatureID),
-    CreatureIDTooLong(String),
-    AbilityIDTooLong(String),
+    IDTooLong(String),
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
     AbilitySetRequired,
@@ -233,10 +232,10 @@ impl Error for GameError {
 pub enum TargetSpec {
     Melee,
     Range(Distance),
-    CircleWithinRange(Distance, u8), // radius
-    Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
-    Line(Distance),
-    LineToFirstHit(),
+    // CircleWithinRange(Distance, u8), // radius
+    // Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
+    // Line(Distance),
+    // LineToFirstHit(),
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
@@ -246,11 +245,21 @@ pub enum TargetSpec {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DecidedTarget {
     Melee(CreatureID),
+    // MeleeArea(Point3) // creatures can try attacking a square when they can't directly target a
+                         // creature -- for example if they think an invisible creature is in the
+                         // square. This could also be useful for things like breaking down doors.
     Range(CreatureID),
-    CircleWithinRange(Point3),
-    Cone(u8, u8), // radians (oh shit this needs to be 3d!!!!)
-    Line(Point3),
-    LineToFirstHit(Point3),
+    // CircleWithinRange(Point3),
+    // Cone(Angle2d),
+    // Line(Point3),
+    // LineToFirstHit(Point3),
+}
+
+/// Potential targets for an ability.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum PotentialTarget {
+    CreatureID(CreatureID),
+    Point(Point3),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

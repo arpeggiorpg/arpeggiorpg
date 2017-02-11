@@ -75,6 +75,10 @@ impl App {
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         self.current_game.get_movement_options(creature_id)
     }
+
+    pub fn get_target_options(&self, cid: CreatureID, abid: AbilityID) -> Result<Vec<PotentialTarget>, GameError> {
+        self.current_game.get_target_options(cid, abid)
+    }
 }
 
 #[cfg(test)]

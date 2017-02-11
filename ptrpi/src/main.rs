@@ -21,7 +21,7 @@ use hyper::header::{ContentType, AccessControlAllowOrigin, AccessControlAllowHea
 use hyper::server::{Http, Service, Request, Response};
 use unicase::UniCase;
 
-use pandt::types::GameCommand;
+use pandt::types::{AbilityID, CreatureID, GameCommand, GameError, Point3, PotentialTarget};
 
 #[derive(Clone)]
 struct PT {
@@ -32,6 +32,7 @@ enum Route {
     GetApp,
     PostApp(hyper::Body),
     MovementOptions(String),
+    TargetOptions(String, String),
     Options,
     Unknown,
 }
@@ -47,10 +48,12 @@ fn route(req: Request) -> Route {
         (&Options, &[""]) => Route::Options,
         (&Get, &[""]) => Route::GetApp,
         (&Get, &["", "movement_options", cid]) => Route::MovementOptions(cid.to_string()),
+        (&Get, &["", "target_options", cid, abid]) => {
+            Route::TargetOptions(cid.to_string(), abid.to_string())
+        }
         _ => Route::Unknown,
     }
 }
-
 
 impl Service for PT {
     type Request = Request;
@@ -61,9 +64,10 @@ impl Service for PT {
     fn call(&self, req: Request) -> Self::Future {
         let route = route(req);
         match route {
-            Route::GetApp => self.get_app(),
+            Route::GetApp => respond(self.get_app()),
             Route::PostApp(body) => self.post_app(body),
-            Route::MovementOptions(cid) => self.get_movement_options(&cid),
+            Route::MovementOptions(cid) => respond(self.get_movement_options(&cid)),
+            Route::TargetOptions(cid, abid) => respond(self.get_target_options(&cid, &abid)),
             Route::Options => {
                 finished(Response::new()
                         .with_header(AccessControlAllowOrigin::Any)
@@ -74,6 +78,14 @@ impl Service for PT {
             }
             Route::Unknown => finished(Response::new().with_status(StatusCode::NotFound)).boxed(),
         }
+    }
+}
+
+fn respond<Success: serde::Serialize>(result: Result<Success, GameError>)
+                                      -> BoxFuture<Response, hyper::Error> {
+    match result {
+        Ok(r) => http_json(&r),
+        Err(e) => http_error(e),
     }
 }
 
@@ -95,28 +107,20 @@ fn http_json<J: serde::Serialize>(j: &J) -> BoxFuture<Response, hyper::Error> {
 }
 
 impl PT {
-    fn get_app(&self) -> BoxFuture<Response, hyper::Error> {
-        finished(Response::new()
-                .with_header(ContentType::json())
-                .with_header(AccessControlAllowOrigin::Any)
-                // TODO: is there a Future-based mutex yet? this .unwrap()
-                // sux
-                .with_body(serde_json::to_string(&*self.app.lock().unwrap()).unwrap()))
-            .boxed()
+    fn get_app(&self) -> Result<pandt::app::App, GameError> {
+        Ok(self.app.lock().unwrap().clone())
     }
 
-    fn get_movement_options(&self, creature_id: &str) -> BoxFuture<Response, hyper::Error> {
-        match pandt::types::CreatureID::new(creature_id) {
-            Ok(cid) => {
-                match self.app.lock().unwrap().get_movement_options(cid) {
-                    Ok(points) => http_json(&points),
-                    Err(e) => http_error(e),
-                }
-            }
-            Err(e) => http_error(e),
-        }
+    fn get_movement_options(&self, creature_id: &str) -> Result<Vec<Point3>, GameError> {
+        let cid = CreatureID::new(creature_id)?;
+        self.app.lock().unwrap().get_movement_options(cid)
     }
 
+    fn get_target_options(&self, cid: &str, abid: &str) -> Result<Vec<PotentialTarget>, GameError> {
+        let cid = CreatureID::new(cid)?;
+        let abid = AbilityID::new(abid)?;
+        self.app.lock().unwrap().get_target_options(cid, abid)
+    }
 
     fn post_app(&self, body_stream: hyper::Body) -> BoxFuture<Response, hyper::Error> {
         // we need to clone here so that we don't move a &ref into the closure below, which

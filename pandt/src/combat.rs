@@ -10,7 +10,7 @@ use grid::{creature_within_distance, get_all_accessible, find_path};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-const MELEE_RANGE: Distance = Distance(150);
+pub const MELEE_RANGE: Distance = Distance(150);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {

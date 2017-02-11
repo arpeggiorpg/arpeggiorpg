@@ -130,9 +130,7 @@ playerView model app game creatures = hbox
         in vbox [bar, selector, initiativeList]
       Nothing -> text "No Combat"
   ]
-  -- TODO: a read-only initiative list
   -- TODO: a read-only "creatures nearby" list without details
-  -- TODO: List of MY controlled characters, with Move buttons next to each
 
 -- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg

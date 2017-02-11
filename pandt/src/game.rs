@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use types::*;
 use creature::*;
 use combat::*;
-use grid::{find_path, get_all_accessible};
+use grid::{find_path, get_all_accessible, creature_within_distance};
+
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
@@ -36,7 +37,7 @@ impl Game {
         // TODO: this should return &Map instead of Map
         match self.current_map.as_ref() {
             Some(x) => self.maps.get(x).unwrap_or(&BORING_MAP),
-            None => &BORING_MAP
+            None => &BORING_MAP,
         }
     }
 
@@ -257,6 +258,16 @@ impl Game {
         self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid))
     }
 
+    /// Get a reference to the named Creature, whether or not it's in Combat.
+    pub fn find_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
+        self.get_creature(cid).or_else(|_| {
+            self.current_combat
+                .as_ref()
+                .ok_or(GameError::CreatureNotFound(cid.clone()))
+                .and_then(|combat| combat.get_creature(cid))
+        })
+    }
+
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
         let (newcombat, logs) = combat.next_turn(self.current_map())?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
@@ -274,9 +285,44 @@ impl Game {
         Ok((newgame, vec![GameLog::StartCombat(cids)]))
     }
 
+    pub fn get_combat(&self) -> Result<&Combat, GameError> {
+        self.current_combat.as_ref().ok_or(GameError::NotInCombat)
+    }
+
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.get_creature(creature_id)?;
         Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+    }
+
+    fn creatures_within_distance(combat: &Combat,
+                                 creature: &Creature,
+                                 distance: Distance)
+                                 -> Vec<PotentialTarget> {
+        let mut results = vec![];
+        for ptarget in combat.creatures.iter() {
+            if creature_within_distance(creature, ptarget, distance) {
+                results.push(PotentialTarget::CreatureID(ptarget.id()));
+            }
+        }
+        results
+    }
+
+    /// Get a list of possible targets for an ability being used by a creature.
+    pub fn get_target_options(&self,
+                              creature_id: CreatureID,
+                              ability_id: AbilityID)
+                              -> Result<Vec<PotentialTarget>, GameError> {
+        let ability = self.get_ability(&ability_id)?;
+        let creature = self.find_creature(creature_id)?;
+        // TODO: eventually this should not require combat
+        let combat = self.get_combat()?;
+        match ability.target {
+            TargetSpec::Melee => Ok(Self::creatures_within_distance(combat, creature, MELEE_RANGE)),
+            TargetSpec::Range(distance) => {
+                // TODO: this should check LoS to the target (as should actual target resolution)
+                Ok(Self::creatures_within_distance(combat, creature, distance))
+            }
+        }
     }
 }
 
