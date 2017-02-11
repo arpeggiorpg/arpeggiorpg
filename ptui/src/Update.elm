@@ -28,7 +28,8 @@ type Msg
     | AddToCombat CreatureID
     | RemoveFromCombat CreatureID
     | RemoveFromGame CreatureID
-    | SelectAbility AbilityID
+    | SelectAbility CreatureID AbilityID
+    | GotTargetOptions (Result Http.Error (List M.PotentialTarget))
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest
     | CancelMovement
@@ -113,15 +114,24 @@ update msg model = case msg of
   TakeOverCreatures -> ( {model | controlledCreatures = Just (Set.toList model.selectedCreatures)}
                        , Cmd.none)
 
+  SelectAbility cid abid ->
+    let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
+        req = Http.send GotTargetOptions (Http.get endpoint (JD.list M.potentialTargetDecoder))
+    in ({ model | selectedAbility = Just abid}, req)
+  
+  GotTargetOptions (Ok potTargets) -> ({model | potentialTargets = potTargets}, Cmd.none)
+  GotTargetOptions (Err e) -> ({ model | error = toString e}, Cmd.none)
+
+  RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
+  CancelMovement -> ({model | moving = Nothing}, Cmd.none)
+
+
   -- Basic GameCommands
   CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))
   RemoveFromGame cid -> (model, sendCommand (M.RemoveCreature cid))
   AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
   RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
-  SelectAbility abid -> ({ model | selectedAbility = Just abid}, Cmd.none)
   Act abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.Act abid dtarget))
-  RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
-  CancelMovement -> ({model | moving = Nothing}, Cmd.none)
   Move pt -> ({model | moving = Nothing}, sendCommand (M.Move pt))
   MoveOutOfCombat cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveOutOfCombat cid pt))
   TurnDone -> (model, sendCommand M.Done)

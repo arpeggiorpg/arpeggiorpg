@@ -29,27 +29,8 @@ viewGame model app =
   case model.controlledCreatures of
     Nothing -> gmView model app game
     Just creatureIds ->
-      let f cid =
-            maybeOr (Maybe.andThen (\combat -> getCreatureInCombat combat cid) game.current_combat)
-                    (getCreatureOOC game cid)
-          creatures = List.filterMap f creatureIds
+      let creatures = List.filterMap (M.findCreature game) creatureIds
       in playerView model app game creatures
-
-maybeOr : Maybe a -> Maybe a -> Maybe a
-maybeOr m1 m2 =
-  case (m1, m2) of
-    (Just x, _) -> Just x
-    (_, Just x) -> Just x
-    _ -> Nothing
-
-listFind : (a -> Bool) -> List a -> Maybe a
-listFind f l = List.head (List.filter f l)
-
-getCreatureInCombat : M.Combat -> M.CreatureID -> Maybe M.Creature
-getCreatureInCombat combat cid = listFind (\c -> c.id == cid) combat.creatures.data
-
-getCreatureOOC : M.Game -> M.CreatureID -> Maybe M.Creature
-getCreatureOOC game cid = Dict.get cid game.creatures
 
 gmView : M.Model -> M.App -> M.Game -> Html U.Msg
 gmView model app game =
@@ -143,7 +124,6 @@ playerGrid model game creatures =
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
   
-
 playerInCombat : M.Game -> M.Creature -> Bool
 playerInCombat game cid =
   case game.current_combat of
@@ -244,16 +224,18 @@ combatArea model game combat = case model.selectedAbility of
     in vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
 
 targetSelector : M.Model -> M.Game -> M.Combat -> String -> Html U.Msg
-targetSelector model game combat abid = case (Dict.get abid game.abilities) of
-  Just ability -> case ability.target of
-    M.Melee -> creatureTargetSelector abid M.DecidedMelee combat
-    M.Range distance -> creatureTargetSelector abid M.DecidedRange combat
-  Nothing -> text "Sorry, that ability was not found. Please reload."
+targetSelector model game combat abid =
+  let creatures = List.filterMap (M.findCreature game) (M.potentialCreatureTargets model.potentialTargets)
+  in case (Dict.get abid game.abilities) of
+    Just ability -> case ability.target of
+      M.Melee -> creatureTargetSelector abid M.DecidedMelee creatures
+      M.Range distance -> creatureTargetSelector abid M.DecidedRange creatures
+    Nothing -> text "Sorry, that ability was not found. Please reload."
 
-creatureTargetSelector : M.AbilityID -> (M.CreatureID -> M.DecidedTarget) -> M.Combat -> Html U.Msg
-creatureTargetSelector abid con combat = vbox <|
-  let targetCreatureButton c = button [onClick (U.Act abid (con c.id))] [text c.name]
-  in (List.map targetCreatureButton combat.creatures.data)
+creatureTargetSelector : M.AbilityID -> (M.CreatureID -> M.DecidedTarget) -> List M.Creature -> Html U.Msg
+creatureTargetSelector abid targetConstructor creatures = vbox <|
+  let targetCreatureButton c = button [onClick (U.Act abid (targetConstructor c.id))] [text c.name]
+  in (List.map targetCreatureButton creatures)
 
 stopCombatButton : Html U.Msg
 stopCombatButton = button [onClick U.StopCombat] [text "Stop Combat"]
@@ -281,10 +263,10 @@ actionBar game combat creature =
           Nothing -> []
   in hbox (  (doneButton creature)
           :: (moveButton combat creature)
-          :: (List.map actionButton abilities))
+          :: (List.map (actionButton creature.id) abilities))
 
-actionButton : String -> Html U.Msg
-actionButton abid = button [onClick (U.SelectAbility abid)] [text abid]
+actionButton : String -> String -> Html U.Msg
+actionButton cid abid = button [onClick (U.SelectAbility cid abid)] [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 

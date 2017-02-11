@@ -29,6 +29,7 @@ defaultModel =
     , editingMap = False
     , currentMap = [{x=0, y=0, z=0}]
     , controlledCreatures = Nothing
+    , potentialTargets = []
   }
 
 type alias MovementRequest = {
@@ -55,6 +56,7 @@ type alias Model =
   , currentMap : Map
   , editingMap : Bool
   , controlledCreatures : Maybe (List CreatureID)
+  , potentialTargets: List PotentialTarget
   }
 
 type ControlledCreatures
@@ -84,6 +86,17 @@ type alias Point3 = {x: Int, y: Int, z: Int}
 
 point3Decoder = JD.map3 Point3 (JD.index 0 JD.int) (JD.index 1 JD.int) (JD.index 2 JD.int)
 point3Encoder {x, y, z} =  JE.list [JE.int x, JE.int y, JE.int z]
+
+
+type PotentialTarget
+  = PTCreatureID CreatureID
+  | PTPoint Point3
+
+potentialTargetDecoder = sumDecoder "PotentialTarget"
+  []
+  [ ("CreatureID", JD.map PTCreatureID JD.string)
+  , ("Point", JD.map PTPoint point3Decoder)
+  ]
 
 type alias App =
   { current_game : Game
@@ -407,6 +420,17 @@ gameCommandEncoder gc =
     EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
 
 
+
+type RustResult
+  = RustOk JD.Value
+  | RustErr JD.Value
+
+rustResultDecoder = sumDecoder "RustResult"
+  []
+  [ ("Ok", JD.map RustOk JD.value)
+  , ("Err", JD.map RustErr JD.value) ]
+
+
 -- UTILS
 
 -- A decoder for Serde-style enums. Nullary constructors are bare strings and all others are
@@ -419,21 +443,21 @@ sumDecoder name nullaryList singleFieldList = JD.oneOf
       (Dict.fromList singleFieldList)
   ]
 
+listFind : (a -> Bool) -> List a -> Maybe a
+listFind f l = List.head (List.filter f l)
 
--- pure functions on model
+maybeOr : Maybe a -> Maybe a -> Maybe a
+maybeOr m1 m2 =
+  case (m1, m2) of
+    (Just x, _) -> Just x
+    (_, Just x) -> Just x
+    _ -> Nothing
+
+-- MODEL FUNCTIONS
 
 distance : Point3 -> Point3 -> Distance
 distance a b =
   round <| sqrt (toFloat <| (a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)
-
-type RustResult
-  = RustOk JD.Value
-  | RustErr JD.Value
-
-rustResultDecoder = sumDecoder "RustResult"
-  []
-  [ ("Ok", JD.map RustOk JD.value)
-  , ("Err", JD.map RustErr JD.value) ]
 
 getMap : Model -> Map
 getMap model =
@@ -447,3 +471,23 @@ combatCreature : Combat -> Creature
 combatCreature combat = case List.head (List.drop combat.creatures.cursor combat.creatures.data) of
   Just c -> c
   Nothing -> Debug.crash "Creature CursorList was invalid"
+
+--- Find a creature whether it's in combat or not.
+findCreature : Game -> CreatureID -> Maybe Creature
+findCreature game cid =
+  maybeOr (Maybe.andThen (\combat -> getCreatureInCombat combat cid) game.current_combat)
+          (getCreatureOOC game cid)
+
+getCreatureInCombat : Combat -> CreatureID -> Maybe Creature
+getCreatureInCombat combat cid = listFind (\c -> c.id == cid) combat.creatures.data
+
+getCreatureOOC : Game -> CreatureID -> Maybe Creature
+getCreatureOOC game cid = Dict.get cid game.creatures
+
+potentialCreatureTargets : List PotentialTarget -> List CreatureID
+potentialCreatureTargets pts =
+  let f pt =
+        case pt of
+          PTCreatureID cid -> Just cid
+          PTPoint _ -> Nothing
+  in List.filterMap f pts
