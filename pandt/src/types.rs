@@ -130,11 +130,11 @@ pub enum GameCommand {
     /// Register a player as available for controlling a creature.
     RegisterPlayer(PlayerID),
     /// Give control of a creature to a player.
-    GiveCreatureToPlayer(PlayerID, CreatureID),
+    GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
     /// Remove a player from the game, allowing all of their creatures to be given to other players.
     UnregisterPlayer(PlayerID),
     /// Remove control of a creature from a player.
-    RemoveCreatureFromPlayer(PlayerID, CreatureID),
+    RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
 
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),

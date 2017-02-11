@@ -58,11 +58,11 @@ impl App {
         match &cmd {
             &GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
             &GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
-            &GameCommand::GiveCreatureToPlayer(ref pid, ref cid) => {
-                self.give_creature_to_player(pid, cid)
+            &GameCommand::GiveCreaturesToPlayer(ref pid, ref cids) => {
+                self.give_creatures_to_player(pid, cids)
             }
-            &GameCommand::RemoveCreatureFromPlayer(ref pid, ref cid) => {
-                self.remove_creature_from_player(pid, cid)
+            &GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+                self.remove_creatures_from_player(pid, cids)
             }
             _ => {
                 let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?;
@@ -92,30 +92,41 @@ impl App {
         Ok((&self.current_game, vec![]))
     }
 
-    fn give_creature_to_player(&mut self,
-                               pid: &PlayerID,
-                               cid: &CreatureID)
-                               -> Result<(&Game, Vec<GameLog>), GameError> {
-        self.current_game.find_creature(*cid)?;
+    fn give_creatures_to_player(&mut self,
+                                pid: &PlayerID,
+                                cids: &[CreatureID])
+                                -> Result<(&Game, Vec<GameLog>), GameError> {
         let mut creatures =
             self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
-        creatures.insert(*cid);
+        let mut cids_to_insert = vec![];
+        for cid in cids {
+            self.current_game.find_creature(*cid)?;
+            cids_to_insert.push(cid);
+        }
+        creatures.extend(cids_to_insert);
         Ok((&self.current_game, vec![]))
     }
 
-    fn remove_creature_from_player(&mut self,
-                                 pid: &PlayerID,
-                                 cid: &CreatureID)
-                                 -> Result<(&Game, Vec<GameLog>), GameError> {
-        self.current_game.find_creature(*cid)?;
+    fn remove_creatures_from_player(&mut self,
+                                    pid: &PlayerID,
+                                    cids: &[CreatureID])
+                                    -> Result<(&Game, Vec<GameLog>), GameError> {
+
         let mut creatures =
             self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
-        if creatures.remove(cid) {
-            Ok((&self.current_game, vec![]))
-        } else {
-            Err(GameError::PlayerDoesntControlCreature(pid.clone(), *cid))
+        let mut cids_to_remove = vec![];
+        for cid in cids {
+            self.current_game.find_creature(*cid)?;
+            if creatures.contains(cid) {
+                cids_to_remove.push(cid);
+            } else {
+                return Err(GameError::PlayerDoesntControlCreature(pid.clone(), *cid));
+            }
         }
-        
+        for cid in cids_to_remove {
+            creatures.remove(cid);
+        }
+        Ok((&self.current_game, vec![]))
     }
 
     pub fn snapshot(&mut self) {
