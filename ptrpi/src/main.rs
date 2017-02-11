@@ -81,31 +81,6 @@ impl Service for PT {
     }
 }
 
-fn respond<Success: serde::Serialize>(result: Result<Success, GameError>)
-                                      -> BoxFuture<Response, hyper::Error> {
-    match result {
-        Ok(r) => http_json(&r),
-        Err(e) => http_error(e),
-    }
-}
-
-fn http_error<E: std::fmt::Debug>(e: E) -> BoxFuture<Response, hyper::Error> {
-    finished(Response::new()
-            .with_status(StatusCode::InternalServerError)
-            .with_header(AccessControlAllowOrigin::Any)
-            .with_header(ContentType::json())
-            .with_body(serde_json::to_string(&format!("{:?}", e)).unwrap()))
-        .boxed()
-}
-
-fn http_json<J: serde::Serialize>(j: &J) -> BoxFuture<Response, hyper::Error> {
-    finished(Response::new()
-            .with_header(AccessControlAllowOrigin::Any)
-            .with_header(ContentType::json())
-            .with_body(serde_json::to_string(j).unwrap()))
-        .boxed()
-}
-
 impl PT {
     fn get_app(&self) -> Result<pandt::app::App, GameError> {
         Ok(self.app.lock().unwrap().clone())
@@ -151,6 +126,31 @@ impl PT {
             })
             .boxed()
     }
+}
+
+fn respond<S: serde::Serialize, E: std::fmt::Debug>(result: Result<S, E>)
+                                                    -> BoxFuture<Response, hyper::Error> {
+    match result {
+        Ok(r) => http_json(&r),
+        Err(e) => http_error(e),
+    }
+}
+
+fn http_error<E: std::fmt::Debug>(e: E) -> BoxFuture<Response, hyper::Error> {
+    finished(Response::new()
+            .with_status(StatusCode::InternalServerError)
+            .with_header(AccessControlAllowOrigin::Any)
+            .with_header(ContentType::json())
+            .with_body(serde_json::to_string(&format!("{:?}", e)).unwrap()))
+        .boxed()
+}
+
+fn http_json<J: serde::Serialize>(j: &J) -> BoxFuture<Response, hyper::Error> {
+    finished(Response::new()
+            .with_header(AccessControlAllowOrigin::Any)
+            .with_header(ContentType::json())
+            .with_body(serde_json::to_string(j).unwrap()))
+        .boxed()
 }
 
 fn main() {
