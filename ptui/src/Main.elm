@@ -9,7 +9,7 @@ main : Program Never M.Model U.Msg
 main =
     Html.program
         { init = (M.defaultModel, U.refreshApp)
-        , view = V.view
+        , view = V.gmView
         , update = U.update
         , subscriptions = \_ -> Sub.none
         }

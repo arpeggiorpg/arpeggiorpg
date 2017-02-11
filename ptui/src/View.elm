@@ -12,28 +12,21 @@ import Update as U
 import Grid
 import Elements exposing (..)
 
+refreshButton = button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
 
-view : M.Model -> Html U.Msg
-view model = vbox
+gmView : M.Model -> Html U.Msg
+gmView model = vbox
   [ h2 [] [ text "P&T" ]
-  , button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
-  , case model.app of Just app -> viewGame model app
-                      Nothing -> text "No app yet. Maybe reload."
+  , refreshButton
+  , case model.app of
+      Just app -> gmViewGame model app
+      Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
   ]
 
-viewGame : M.Model -> M.App -> Html U.Msg
-viewGame model app =
+gmViewGame : M.Model -> M.App -> Html U.Msg
+gmViewGame model app =
   let game = app.current_game in
-  -- Dispatch to gmView or playerView based on who's using this UI
-  case model.controlledCreatures of
-    Nothing -> gmView model app game
-    Just creatureIds ->
-      let creatures = List.filterMap (M.findCreature game) creatureIds
-      in playerView model app game creatures
-
-gmView : M.Model -> M.App -> M.Game -> Html U.Msg
-gmView model app game =
   case (game.current_combat, model.moving) of
     -- Movement takes over the whole UI:
     (Nothing, Just mvmtReq) ->
@@ -57,6 +50,7 @@ fullUI model app game =
       hbox
         [ vbox [ h3 [] [text "Creatures"]
                , inactiveList model game.current_combat model.selectedCreatures game.creatures
+               , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
                , history app
                ]
         , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
@@ -65,6 +59,16 @@ fullUI model app game =
             Nothing -> startCombatButton
         , mapSelector game
         ]
+
+
+extPlayerList : (M.PlayerID -> List (Html U.Msg)) -> Dict.Dict M.PlayerID (Set.Set M.CreatureID) -> Html U.Msg
+extPlayerList ext players =
+  let playerEntry (pid, cids) =
+        hbox ([strong [] [text pid], hbox (List.map text (Set.toList cids))] ++ ext pid)
+  in vbox <| [h3 [] [text "Players"]] ++ (List.map playerEntry (Dict.toList players))
+
+playerList : Dict.Dict M.PlayerID (Set.Set M.CreatureID) -> Html U.Msg
+playerList = extPlayerList (always [])
 
 editMapButton : Html U.Msg
 editMapButton = button [onClick U.StartEditingMap] [text "Edit this map"]
@@ -75,8 +79,32 @@ visibleCreatures game =
     Just combat -> combat.creatures.data
     Nothing -> Dict.values game.creatures
 
-playerView : M.Model -> M.App -> M.Game -> List M.Creature -> Html U.Msg
-playerView model app game creatures = hbox
+playerView : M.Model -> Html U.Msg
+playerView model = vbox
+  [ h2 [] [ text "P&T" ]
+  , refreshButton
+  , case model.app of
+      Just app ->
+        let vGame = case model.playerID of
+              Just playerID ->
+                if M.playerIsRegistered app playerID
+                then playerViewGame model app (M.getPlayerCreatures app playerID)
+                else registerForm model
+              Nothing -> registerForm model
+        in vbox [vGame, playerList app.players]
+      Nothing -> text "No app yet. Maybe reload."
+  , hbox [text "Last error:", pre [] [text model.error]]
+  ]
+
+registerForm : M.Model -> Html U.Msg
+registerForm model =
+  hbox [ input [type_ "text", placeholder "player ID", onInput U.SetPlayerID ] []
+       , button [onClick U.RegisterPlayer] [text "Register Player"]]
+
+playerViewGame : M.Model -> M.App -> List M.Creature -> Html U.Msg
+playerViewGame model app creatures = 
+  let game = app.current_game in
+  hbox
   [ case model.moving of
       Just movementRequest ->
         let {max_distance, movement_options, ooc_creature} = movementRequest in
@@ -139,7 +167,6 @@ inactiveList : M.Model -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M
 inactiveList model mCombat pendingCreatures creatures = div []
   [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
   , createCreatureForm model
-  , controlCreaturesButton
   ]
 
 createCreatureForm : M.Model -> Html U.Msg
@@ -149,9 +176,6 @@ createCreatureForm model = div []
     , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureClass ] []
     , createCreatureButton model
     ]
-
-controlCreaturesButton : Html U.Msg
-controlCreaturesButton = button [ onClick U.TakeOverCreatures ] [text "Control Selected Creatures"]
 
 createCreatureButton : M.Model -> Html U.Msg
 createCreatureButton model =

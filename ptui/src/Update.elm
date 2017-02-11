@@ -9,6 +9,9 @@ import Model as M exposing (CreatureID, AbilityID)
 
 type Msg
     = MorePlease
+    | SetPlayerID M.PlayerID
+    | RegisterPlayer
+    | GiveCreaturesToPlayer M.PlayerID
     | SelectMap M.MapName
     | UpdateSaveMapName M.MapName
     | StartEditingMap
@@ -20,7 +23,6 @@ type Msg
     | CreateCreature M.CreatureCreation
     | CommandComplete (Result Http.Error M.RustResult)
     | AppUpdate (Result Http.Error M.App)
-    | AppUpdateForPlayers (Result Http.Error M.App)
     | ShowError String
     | ToggleSelectedCreature CreatureID
     | StartCombat
@@ -39,12 +41,21 @@ type Msg
     | GetMovementOptions M.Creature
     | GotMovementOptions M.Creature (Result Http.Error (List M.Point3))
     | ToggleTerrain M.Point3
-    | TakeOverCreatures
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
 
   MorePlease -> ( model, refreshApp)
+
+  SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
+
+  RegisterPlayer ->
+    case model.playerID of
+      Just playerID -> (model, sendCommand (M.RegisterPlayer playerID))
+      Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
+
+  GiveCreaturesToPlayer pid ->
+    (model, sendCommand (M.GiveCreaturesToPlayer pid (Set.toList model.selectedCreatures)))
 
   PendingCreatureId input ->
     let newId = if (String.isEmpty input) then Nothing else Just input
@@ -71,16 +82,7 @@ update msg model = case msg of
                   , selectedAbility = Nothing }
        , Cmd.none )
   AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
-
-  -- This is just a stopgap for testing; initialize controlledCreatures to all out-of-combat creatures
-  AppUpdateForPlayers (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
-  AppUpdateForPlayers (Ok newApp) -> 
-    let model2 = { model | app = Just newApp}
-        currentMap = M.getMap model2
-        creatures = Dict.keys newApp.current_game.creatures
-    in ( { model2 | currentMap = currentMap, controlledCreatures = Just creatures }
-       , Cmd.none )
-  
+ 
   ShowError s -> ( {model | error = s}, Cmd.none)
   
   ToggleSelectedCreature cid ->
@@ -110,9 +112,6 @@ update msg model = case msg of
                             , Cmd.none)
 
   EditMap terrain -> ({ model | editingMap = False}, sendCommand (M.EditMap model.saveMapName terrain))
-
-  TakeOverCreatures -> ( {model | controlledCreatures = Just (Set.toList model.selectedCreatures)}
-                       , Cmd.none)
 
   SelectAbility cid abid ->
     let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
@@ -148,12 +147,6 @@ url = "http://localhost:1337/"
 
 refreshApp : Cmd Msg
 refreshApp = Http.send AppUpdate (Http.get url M.appDecoder)
-
---- Initialize the application for players. When we receive the game state, we will set
---- controlledPlayers to all creatures already in the game. (TODO: this isn't what we need to do
---- for the real workflow)
-refreshAppForPlayers : Cmd Msg
-refreshAppForPlayers = Http.send AppUpdateForPlayers (Http.get url M.appDecoder)
 
 sendCommand : M.GameCommand -> Cmd Msg
 sendCommand cmd =

@@ -10,6 +10,7 @@ import Json.Helpers as JH
 import Set
 
 
+type alias PlayerID = String
 type alias CreatureID = String
 type alias AbilityID = String
 type alias MapName = String
@@ -28,7 +29,7 @@ defaultModel =
     , saveMapName = "" -- this could be inside of editingMap sumtype
     , editingMap = False
     , currentMap = [{x=0, y=0, z=0}]
-    , controlledCreatures = Nothing
+    , playerID = Nothing
     , potentialTargets = []
   }
 
@@ -55,13 +56,9 @@ type alias Model =
   , saveMapName: String
   , currentMap : Map
   , editingMap : Bool
-  , controlledCreatures : Maybe (List CreatureID)
+  , playerID : Maybe PlayerID
   , potentialTargets: List PotentialTarget
   }
-
-type ControlledCreatures
-  = GM
-  | Creatures (List CreatureID)
 
 type alias CreatureCreation =
   { id : CreatureID
@@ -101,11 +98,13 @@ potentialTargetDecoder = sumDecoder "PotentialTarget"
 type alias App =
   { current_game : Game
   , snapshots : Array.Array (Game, (List GameLog))
+  , players : Dict PlayerID (Set.Set CreatureID)
   }
 
-appDecoder = JD.map2 App
+appDecoder = JD.map3 App
   (JD.field "current_game" gameDecoder)
   (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameDecoder) (JD.index 1 <| JD.list gameLogDecoder))))
+  (JD.field "players" (JD.dict (JD.map Set.fromList (JD.list JD.string))))
 
 type GameLog
   = GLSelectMap MapName
@@ -390,6 +389,8 @@ effectEncoder eff =
 type GameCommand
   = SelectMap MapName
   | EditMap MapName Map
+  | RegisterPlayer PlayerID
+  | GiveCreaturesToPlayer PlayerID (List CreatureID)
   | StartCombat (List CreatureID)
   | StopCombat
   | Act AbilityID DecidedTarget
@@ -406,6 +407,8 @@ type GameCommand
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
+    RegisterPlayer pid -> JE.object [("RegisterPlayer", JE.string pid)]
+    GiveCreaturesToPlayer pid cids -> JE.object [("GiveCreaturesToPlayer", JE.list [JE.string pid, JE.list (List.map JE.string cids)])]
     StartCombat cids -> JE.object [("StartCombat", JE.list (List.map JE.string cids))]
     CreateCreature creature -> JE.object [("CreateCreature", creatureCreationEncoder creature)]
     RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
@@ -491,3 +494,12 @@ potentialCreatureTargets pts =
           PTCreatureID cid -> Just cid
           PTPoint _ -> Nothing
   in List.filterMap f pts
+
+playerIsRegistered : App -> PlayerID -> Bool
+playerIsRegistered app pid = Dict.member pid app.players
+
+getPlayerCreatures : App -> PlayerID -> List Creature
+getPlayerCreatures app pid =
+  -- this sucks because it doesn't throw any kind of error when PID or CID aren't found
+  List.filterMap (findCreature app.current_game)
+                 (Set.toList (Maybe.withDefault Set.empty (Dict.get pid app.players)))

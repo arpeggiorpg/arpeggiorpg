@@ -7,9 +7,9 @@ import Update as U
 
 main : Program Never M.Model U.Msg
 main =
-    Html.program
-        { init = (M.defaultModel, U.refreshAppForPlayers)
-        , view = V.view
-        , update = U.update
-        , subscriptions = \_ -> Sub.none
-        }
+  Html.program
+    { init = (M.defaultModel, U.refreshApp)
+    , view = V.playerView
+    , update = U.update
+    , subscriptions = \_ -> Sub.none
+    }
