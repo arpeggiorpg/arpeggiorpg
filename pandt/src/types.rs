@@ -36,6 +36,9 @@ impl Energy {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct PlayerID(pub String);
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(StringWrapper<[u8; 64]>);
 impl CreatureID {
@@ -123,6 +126,16 @@ pub enum GameCommand {
     AddCreatureToCombat(CreatureID),
     /// Remove a creature from combat. Combat must already be running.
     RemoveCreatureFromCombat(CreatureID),
+
+    /// Register a player as available for controlling a creature.
+    RegisterPlayer(PlayerID),
+    /// Give control of a creature to a player.
+    GiveCreatureToPlayer(PlayerID, CreatureID),
+    /// Remove a player from the game, allowing all of their creatures to be given to other players.
+    UnregisterPlayer(PlayerID),
+    /// Remove control of a creature from a player.
+    RemoveCreatureFromPlayer(PlayerID, CreatureID),
+
     // RetrieveFromInventory(ThingID),
     // StowInInventory(ThingID),
     /// End the current creature's turn.
@@ -210,6 +223,9 @@ pub enum GameError {
     StepTooBig { from: Point3, to: Point3 },
     MapNotFound(MapName),
     NotEnoughEnergy(Energy),
+    PlayerAlreadyExists(PlayerID),
+    PlayerNotFound(PlayerID),
+    PlayerDoesntControlCreature(PlayerID, CreatureID),
 }
 
 impl fmt::Display for GameError {

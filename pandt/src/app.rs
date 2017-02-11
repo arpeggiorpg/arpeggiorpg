@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashMap, HashSet};
 
 use game::*;
 use types::*;
@@ -39,6 +39,7 @@ use types::*;
 pub struct App {
     current_game: Game,
     snapshots: VecDeque<(Game, Vec<GameLog>)>,
+    players: HashMap<PlayerID, HashSet<CreatureID>>,
 }
 
 impl App {
@@ -48,20 +49,73 @@ impl App {
         App {
             current_game: g,
             snapshots: snapshots,
+            players: HashMap::new(),
         }
     }
     pub fn perform_unchecked(&mut self,
                              cmd: GameCommand)
                              -> Result<(&Game, Vec<GameLog>), GameError> {
-        let (game, logs) = self.current_game.perform_unchecked(cmd)?;
-        if self.snapshots.len() >= 1 {
-            if self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
-                self.snapshot();
+        match &cmd {
+            &GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
+            &GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
+            &GameCommand::GiveCreatureToPlayer(ref pid, ref cid) => {
+                self.give_creature_to_player(pid, cid)
             }
-            self.snapshots.back_mut().unwrap().1.extend(logs.clone());
+            &GameCommand::RemoveCreatureFromPlayer(ref pid, ref cid) => {
+                self.remove_creature_from_player(pid, cid)
+            }
+            _ => {
+                let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?;
+                if self.snapshots.len() >= 1 {
+                    if self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
+                        self.snapshot();
+                    }
+                    self.snapshots.back_mut().unwrap().1.extend(logs.clone());
+                }
+                self.current_game = game;
+                Ok((&self.current_game, logs))
+            }
         }
-        self.current_game = game;
-        Ok((&self.current_game, logs))
+    }
+
+    fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
+        if self.players.contains_key(&pid) {
+            Err(GameError::PlayerAlreadyExists(pid.clone()))
+        } else {
+            self.players.insert(pid.clone(), HashSet::new());
+            Ok((&self.current_game, vec![]))
+        }
+    }
+
+    fn unregister_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
+        self.players.remove(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+        Ok((&self.current_game, vec![]))
+    }
+
+    fn give_creature_to_player(&mut self,
+                               pid: &PlayerID,
+                               cid: &CreatureID)
+                               -> Result<(&Game, Vec<GameLog>), GameError> {
+        self.current_game.find_creature(*cid)?;
+        let mut creatures =
+            self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+        creatures.insert(*cid);
+        Ok((&self.current_game, vec![]))
+    }
+
+    fn remove_creature_from_player(&mut self,
+                                 pid: &PlayerID,
+                                 cid: &CreatureID)
+                                 -> Result<(&Game, Vec<GameLog>), GameError> {
+        self.current_game.find_creature(*cid)?;
+        let mut creatures =
+            self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+        if creatures.remove(cid) {
+            Ok((&self.current_game, vec![]))
+        } else {
+            Err(GameError::PlayerDoesntControlCreature(pid.clone(), *cid))
+        }
+        
     }
 
     pub fn snapshot(&mut self) {
@@ -76,7 +130,10 @@ impl App {
         self.current_game.get_movement_options(creature_id)
     }
 
-    pub fn get_target_options(&self, cid: CreatureID, abid: AbilityID) -> Result<Vec<PotentialTarget>, GameError> {
+    pub fn get_target_options(&self,
+                              cid: CreatureID,
+                              abid: AbilityID)
+                              -> Result<Vec<PotentialTarget>, GameError> {
         self.current_game.get_target_options(cid, abid)
     }
 }
