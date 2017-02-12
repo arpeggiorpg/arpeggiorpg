@@ -49,7 +49,7 @@ fullUI model app game =
      else 
       hbox
         [ vbox [ h3 [] [text "Creatures"]
-               , inactiveList model game.current_combat model.selectedCreatures game.creatures
+               , inactiveList model game game.current_combat model.selectedCreatures game.creatures
                , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
                , history app
                ]
@@ -163,17 +163,17 @@ mapSelector game = vbox <|
   let mapSelectorItem name = button [onClick (U.SelectMap name)] [text name]
   in (List.map mapSelectorItem (Dict.keys game.maps))
 
-inactiveList : M.Model -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
-inactiveList model mCombat pendingCreatures creatures = div []
+inactiveList : M.Model -> M.Game -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
+inactiveList model game mCombat pendingCreatures creatures = div []
   [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
-  , createCreatureForm model
+  , createCreatureForm model game
   ]
 
-createCreatureForm : M.Model -> Html U.Msg
-createCreatureForm model = div []
+createCreatureForm : M.Model -> M.Game -> Html U.Msg
+createCreatureForm model game = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
-    , input [type_ "text", placeholder "class (rogue/ranger/cleric)", onInput U.PendingCreatureClass ] []
+    , select [onInput U.PendingCreatureClass ] (List.map (\className -> option [value className] [text className] ) (Dict.keys game.classes))
     , createCreatureButton model
     ]
 

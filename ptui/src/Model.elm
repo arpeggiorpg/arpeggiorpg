@@ -279,11 +279,7 @@ abilityDecoder = JD.map2 Ability
 
 type TargetSpec
   = Melee
-  | Range Distance -- distance in centimeters
-    -- CircleWithinRange(Distance, u8), // radius
-    -- Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
-    -- Line(Distance),
-    -- LineToFirstHit(),
+  | Range Distance
 
 targetSpecDecoder = sumDecoder "TargetSpec"
   [("Melee", Melee)]
@@ -385,7 +381,7 @@ effectEncoder eff =
                                                                     , conditionEncoder cond])]
 
 
--- "Input", or GameCommand and inward
+-- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
   = SelectMap MapName
   | EditMap MapName Map
