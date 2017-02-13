@@ -7,7 +7,6 @@ use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
 use types::*;
-use creature::*;
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?

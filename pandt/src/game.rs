@@ -1,20 +1,9 @@
 use std::collections::HashMap;
 
 use types::*;
-use creature::*;
 use combat::*;
 use grid::{find_path, get_all_accessible, creature_within_distance};
 
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Game {
-    current_combat: Option<Combat>,
-    abilities: HashMap<AbilityID, Ability>,
-    creatures: HashMap<CreatureID, Creature>,
-    maps: HashMap<MapName, Map>,
-    current_map: Option<MapName>,
-    classes: HashMap<String, Class>,
-}
 
 lazy_static! {
     static ref BORING_MAP: Vec<Point3> = vec![(0,0,0)];

@@ -1,9 +1,11 @@
 //! Simple types, with pure operations.
+
+use std::collections::{HashMap, VecDeque, HashSet};
 use std::error::Error;
 use std::fmt;
 use string_wrapper::StringWrapper;
 
-use creature::Creature;
+use nonempty;
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -247,11 +249,10 @@ impl Error for GameError {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TargetSpec {
     Melee,
-    Range(Distance),
-    // CircleWithinRange(Distance, u8), // radius
-    // Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
-    // Line(Distance),
-    // LineToFirstHit(),
+    Range(Distance), /* CircleWithinRange(Distance, u8), // radius
+                      * Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
+                      * Line(Distance),
+                      * LineToFirstHit(), */
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
@@ -262,13 +263,12 @@ pub enum TargetSpec {
 pub enum DecidedTarget {
     Melee(CreatureID),
     // MeleeArea(Point3) // creatures can try attacking a square when they can't directly target a
-                         // creature -- for example if they think an invisible creature is in the
-                         // square. This could also be useful for things like breaking down doors.
-    Range(CreatureID),
-    // CircleWithinRange(Point3),
-    // Cone(Angle2d),
-    // Line(Point3),
-    // LineToFirstHit(Point3),
+    // creature -- for example if they think an invisible creature is in the
+    // square. This could also be useful for things like breaking down doors.
+    Range(CreatureID), /* CircleWithinRange(Point3),
+                        * Cone(Angle2d),
+                        * Line(Point3),
+                        * LineToFirstHit(Point3), */
 }
 
 /// Potential targets for an ability.
@@ -343,6 +343,76 @@ pub struct CreatureCreation {
     pub name: String,
     pub class: String,
     pub pos: Point3,
+}
+
+pub struct CreatureBuilder {
+    pub id: String,
+    pub name: Option<String>,
+    pub class: String,
+    pub pos: Option<Point3>,
+    pub max_energy: Option<Energy>,
+    pub cur_energy: Option<Energy>,
+    pub abilities: Vec<AbilityID>,
+    pub max_health: Option<HP>,
+    pub cur_health: Option<HP>,
+    pub conditions: Vec<AppliedCondition>,
+    pub speed: Option<Distance>,
+}
+
+/// A Creature.
+///
+/// A very important thing about how we deal with creatures is that whenever we change
+/// a creature, we get back both a new creature *and* a log of all things that happened to that
+/// creature. That log is deterministic and complete enough for us to reply it on a snapshot of a
+/// creature and get an identical creature.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Creature {
+    pub id: CreatureID,
+    pub name: String,
+    pub speed: Distance,
+    pub max_energy: Energy,
+    pub cur_energy: Energy,
+    pub abilities: Vec<AbilityStatus>,
+    pub class: String,
+    pub max_health: HP,
+    pub cur_health: HP,
+    pub pos: Point3,
+    pub conditions: Vec<AppliedCondition>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Combat {
+    // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
+    // after we load data back in, because serde doesn't (currently) have any way to know that
+    // multiple Rc-wrapped values should be unified. See
+    // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
+    //
+    // A simpler way to share these references would probably be to store a Vec<Creature> on App,
+    // and then either have Vec<&Creature> here, or Vec<CreatureID>.
+    pub creatures: nonempty::NonEmptyWithCursor<Creature>,
+    pub movement_used: Distance,
+    /// Points that the current creature can move to.
+    /// This is only relevant in combat, since only in combat is movement limited.
+    pub movement_options: Vec<Point3>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Game {
+    pub current_combat: Option<Combat>,
+    pub abilities: HashMap<AbilityID, Ability>,
+    pub creatures: HashMap<CreatureID, Creature>,
+    pub maps: HashMap<MapName, Map>,
+    pub current_map: Option<MapName>,
+    pub classes: HashMap<String, Class>,
+}
+
+/// A data structure maintaining state for the whole app. It keeps track of the history of the
+/// whole game, and exposes the top-level methods that run simulations on the game.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct App {
+    pub current_game: Game,
+    pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
+    pub players: HashMap<PlayerID, HashSet<CreatureID>>,
 }
 
 #[cfg(test)]

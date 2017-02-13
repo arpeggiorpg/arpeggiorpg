@@ -1,6 +1,5 @@
 use std::collections::{VecDeque, HashMap, HashSet};
 
-use game::*;
 use types::*;
 
 // random misplaced notes
@@ -32,15 +31,6 @@ use types::*;
 // probably don't want to just accept a modify Game back from the client...
 // But maybe that's okay actually, we would only be sending it to the GM.
 
-
-/// A data structure maintaining state for the whole app. It keeps track of the history of the
-/// whole game, and exposes the top-level methods that run simulations on the game.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct App {
-    current_game: Game,
-    snapshots: VecDeque<(Game, Vec<GameLog>)>,
-    players: HashMap<PlayerID, HashSet<CreatureID>>,
-}
 
 impl App {
     pub fn new(g: Game) -> Self {

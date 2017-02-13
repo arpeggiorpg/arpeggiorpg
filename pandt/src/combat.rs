@@ -4,29 +4,12 @@
 
 use nonempty;
 
-use creature::*;
 use types::*;
 use grid::{creature_within_distance, get_all_accessible, find_path};
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
 pub const MELEE_RANGE: Distance = Distance(150);
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Combat {
-    // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
-    // after we load data back in, because serde doesn't (currently) have any way to know that
-    // multiple Rc-wrapped values should be unified. See
-    // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
-    //
-    // A simpler way to share these references would probably be to store a Vec<Creature> on App,
-    // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-    pub creatures: nonempty::NonEmptyWithCursor<Creature>,
-    movement_used: Distance,
-    /// Points that the current creature can move to.
-    /// This is only relevant in combat, since only in combat is movement limited.
-    movement_options: Vec<Point3>,
-}
 
 impl Combat {
     pub fn new(combatants: Vec<Creature>, terrain: &Map) -> Result<Combat, GameError> {

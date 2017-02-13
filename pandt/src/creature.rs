@@ -21,27 +21,6 @@ use types::*;
 const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 
-/// A Creature.
-///
-/// A very important thing about how we deal with creatures is that whenever we change
-/// a creature, we get back both a new creature *and* a log of all things that happened to that
-/// creature. That log is deterministic and complete enough for us to reply it on a snapshot of a
-/// creature and get an identical creature.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Creature {
-    id: CreatureID,
-    name: String,
-    speed: Distance,
-    max_energy: Energy,
-    cur_energy: Energy,
-    abilities: Vec<AbilityStatus>,
-    class: String,
-    max_health: HP,
-    cur_health: HP,
-    pos: Point3,
-    conditions: Vec<AppliedCondition>,
-}
-
 impl Creature {
     pub fn build(id: &str, class: &str) -> CreatureBuilder {
         CreatureBuilder {
@@ -223,20 +202,6 @@ impl Creature {
             Ok(newcreature)
         }
     }
-}
-
-pub struct CreatureBuilder {
-    id: String,
-    name: Option<String>,
-    max_energy: Option<Energy>,
-    cur_energy: Option<Energy>,
-    abilities: Vec<AbilityID>,
-    class: String,
-    max_health: Option<HP>,
-    cur_health: Option<HP>,
-    pos: Option<Point3>,
-    conditions: Vec<AppliedCondition>,
-    speed: Option<Distance>,
 }
 
 impl CreatureBuilder {
