@@ -152,16 +152,6 @@ impl Combat {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatIncap<'a> {
-    pub combat: &'a Combat,
-}
-impl<'a> CombatIncap<'a> {
-    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        self.combat.next_turn(terrain)
-    }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatMove<'a> {
     movement_left: Distance,
     pub combat: &'a Combat,
@@ -225,10 +215,6 @@ impl<'a> CombatAble<'a> {
         all_logs.extend(creature_logs_into_combat_logs(newgame.current_creature().id(),
                                                    vec![CreatureLog::ReduceEnergy(ability.cost)]));
         Ok((newgame, all_logs))
-    }
-
-    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        self.combat.next_turn(terrain)
     }
 
     fn resolve_targets(combat: &Combat,
