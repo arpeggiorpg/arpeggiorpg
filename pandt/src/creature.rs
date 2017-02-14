@@ -88,8 +88,6 @@ impl Creature {
                                     condition.clone())
     }
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
-        // it's unlikely we'll be able to rely on having a simple mapping of Effect to
-        // Vec<CreatureLog> forever
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
                 Effect::Damage(amt) => vec![CreatureLog::Damage(amt)],
@@ -113,6 +111,7 @@ impl Creature {
 
     /// Assign a position. TODO: Make this return a CreatureLog. Only used in tests for now,
     /// but it will be useful for DM-assigned positions.
+    #[cfg(test)]
     pub fn set_pos(&self, pt: Point3) -> Creature {
         let mut newc = self.clone();
         newc.pos = pt;

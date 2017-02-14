@@ -38,7 +38,7 @@ impl Combat {
         newcom
     }
 
-    pub fn apply_log(&self, game: &Game, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
+    pub fn apply_log(&self, game: &Game, l: &CombatLog) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
             CombatLog::CreatureLog(ref cid,
@@ -57,7 +57,7 @@ impl Combat {
                 };
                 if c_id == *cid {
                     new.movement_used = new.movement_used + *distance;
-                    new.update_movement_options_mut(terrain);
+                    new.update_movement_options_mut(game.current_map());
                 }
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
@@ -70,7 +70,7 @@ impl Combat {
                 new.movement_used = Distance(0);
                 let ticked_creature = new.current_creature().tick(game)?.creature;
                 *new.current_creature_mut() = ticked_creature;
-                new.update_movement_options_mut(terrain);
+                new.update_movement_options_mut(game.current_map());
             }
         }
         Ok(new)
@@ -84,7 +84,7 @@ impl Combat {
         self.creatures.get_current_mut()
     }
 
-    pub fn next_turn(&self, game: &Game, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn next_turn(&self, game: &Game) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newcombat = self.clone();
         let mut all_logs = vec![];
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
@@ -93,7 +93,7 @@ impl Combat {
         let (ticked_creature, logs) = newcombat.current_creature().tick(game)?.done();
         *newcombat.current_creature_mut() = ticked_creature;
         all_logs.extend(creature_logs_into_combat_logs(newcombat.current_creature().id(), logs));
-        newcombat.update_movement_options_mut(terrain);
+        newcombat.update_movement_options_mut(game.current_map());
         Ok((newcombat, all_logs))
     }
 
@@ -249,6 +249,34 @@ impl<'a> CombatAble<'a> {
         }
     }
 }
+
+
+#[derive(Clone)]
+pub struct ChangedCombat {
+    pub combat: Combat,
+    logs: Vec<CombatLog>,
+}
+
+impl ChangedCombat {
+    pub fn apply(&self, game: &Game, log: &CombatLog) -> Result<ChangedCombat, GameError> {
+        let mut new = self.clone();
+        new.combat = new.combat.apply_log(game, &log)?;
+        new.logs.push(log.clone());
+        Ok(new)
+    }
+
+    pub fn merge(&self, other: ChangedCombat) -> ChangedCombat {
+        let mut new = self.clone();
+        new.combat = other.combat;
+        new.logs.extend(other.logs);
+        new
+    }
+
+    pub fn done(self) -> (Combat, Vec<CombatLog>) {
+        (self.combat, self.logs)
+    }
+}
+
 
 #[cfg(test)]
 pub mod test {

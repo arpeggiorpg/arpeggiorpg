@@ -161,7 +161,7 @@ impl Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
                         .ok_or(GameError::NotInCombat)?
-                        .apply_log(self, cl, self.current_map())?),
+                        .apply_log(self, cl)?),
                     ..self.clone()
                 })
             }
@@ -258,7 +258,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(self, self.current_map())?;
+        let (newcombat, logs) = combat.next_turn(self)?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
