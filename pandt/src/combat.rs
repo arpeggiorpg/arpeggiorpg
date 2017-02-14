@@ -68,7 +68,7 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
-                let (ticked_creature, _) = new.current_creature().tick(game)?;
+                let ticked_creature = new.current_creature().tick(game)?.creature;
                 *new.current_creature_mut() = ticked_creature;
                 new.update_movement_options_mut(terrain);
             }
@@ -90,7 +90,7 @@ impl Combat {
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
         newcombat.creatures.next_circular();
         newcombat.movement_used = Distance(0);
-        let (ticked_creature, logs) = newcombat.current_creature().tick(game)?;
+        let (ticked_creature, logs) = newcombat.current_creature().tick(game)?.done();
         *newcombat.current_creature_mut() = ticked_creature;
         all_logs.extend(creature_logs_into_combat_logs(newcombat.current_creature().id(), logs));
         newcombat.update_movement_options_mut(terrain);
@@ -176,7 +176,7 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let (creature, logs) = self.combat.current_creature().set_pos_path(pts, distance)?;
+        let (creature, logs) = self.combat.current_creature().set_pos_path(pts, distance)?.done();
         let mut combat = self.combat.clone();
         *combat.current_creature_mut() = creature;
         combat.movement_used = combat.movement_used + distance;
@@ -207,7 +207,7 @@ impl<'a> CombatAble<'a> {
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
                     let mut creature = newgame.get_creature_mut(creature_id)?;
-                    let (newcreat, logs) = creature.apply_effect(effect)?;
+                    let (newcreat, logs) = creature.apply_effect(effect)?.done();
                     *creature = newcreat;
                     all_logs.extend(creature_logs_into_combat_logs(creature_id, logs));
                 }

@@ -3,8 +3,6 @@ use std::cmp;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
-use odds::vec::VecExt;
-
 use types::*;
 
 
@@ -89,7 +87,7 @@ impl Creature {
                                     duration.clone(),
                                     condition.clone())
     }
-    pub fn apply_effect(&self, effect: &Effect) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+    pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         // it's unlikely we'll be able to rely on having a simple mapping of Effect to
         // Vec<CreatureLog> forever
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
@@ -110,7 +108,7 @@ impl Creature {
         for op in &ops {
             changes = changes.apply(&op)?;
         }
-        Ok(changes.done())
+        Ok(changes)
     }
 
     /// Assign a position. TODO: Make this return a CreatureLog. Only used in tests for now,
@@ -124,30 +122,29 @@ impl Creature {
     pub fn set_pos_path(&self,
                         pts: Vec<Point3>,
                         distance: Distance)
-                        -> Result<(Creature, Vec<CreatureLog>), GameError> {
+                        -> Result<ChangedCreature, GameError> {
         let log = CreatureLog::PathCreature {
             path: pts,
             distance: distance,
         };
-        Ok(self.start_with(log)?.done())
+        Ok(self.start_with(log)?)
     }
 
-    pub fn tick(&self, game: &Game) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+    pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {
         let mut changes = self.start();
 
         for condition in self.conditions(game)? {
             if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), .. } =
                 condition {
-                //  FIXME apply_effect should return ChangedCreature
-                let (c, l) = (&changes.creature).apply_effect(eff)?;
-                changes = changes.merge(ChangedCreature {
-                    creature: c,
-                    logs: l,
-                });
+                changes = changes.merge(changes.creature.apply_effect(eff)?);
             }
         }
 
-        for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
+        for condition_id in changes.creature
+            .conditions
+            .keys()
+            .cloned()
+            .collect::<Vec<ConditionID>>() {
             match changes.creature.conditions[&condition_id].remaining {
                 ConditionDuration::Interminate => {}
                 ConditionDuration::Duration(remaining) => {
@@ -160,7 +157,7 @@ impl Creature {
                 }
             }
         }
-        Ok(changes.done())
+        Ok(changes)
     }
 
     /// Get all conditions applied to a creature, including permanent conditions associated with
@@ -350,7 +347,7 @@ pub mod test {
                                                (2,
                                                 app_cond(Condition::Incapacitated,
                                                          ConditionDuration::Interminate))]);
-        assert_eq!(c.tick(&game).unwrap().0.conditions,
+        assert_eq!(c.tick(&game).unwrap().creature.conditions,
                    HashMap::from_iter(vec![(1,
                                             app_cond(Condition::Incapacitated,
                                                      ConditionDuration::Duration(4))),
@@ -366,11 +363,11 @@ pub mod test {
         c.conditions = HashMap::from_iter(
             vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                               ConditionDuration::Duration(2)))]);
-        let c = c.tick(&game).unwrap().0;
+        let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(9));
-        let c = c.tick(&game).unwrap().0;
+        let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(8));
-        let c = c.tick(&game).unwrap().0;
+        let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(8));
     }
 }
