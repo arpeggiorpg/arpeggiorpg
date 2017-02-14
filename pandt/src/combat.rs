@@ -69,9 +69,9 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
+                // new.update_movement_options_mut(game.current_map());
                 // let ticked_creature = new.current_creature().tick(game)?.creature;
                 // *new.current_creature_mut() = ticked_creature;
-                // new.update_movement_options_mut(game.current_map());
             }
         }
         Ok(new)
@@ -81,15 +81,11 @@ impl Combat {
         self.creatures.get_current()
     }
 
-    fn current_creature_mut(&mut self) -> &mut Creature {
-        self.creatures.get_current_mut()
-    }
-
-    pub fn next_turn(&self, game: &Game) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let change = self.start_with(game, CombatLog::EndTurn(self.current_creature().id()))?;
+    pub fn next_turn(&self, game: &Game) -> Result<ChangedCombat, GameError> {
+        let change = self.change_with(game, CombatLog::EndTurn(self.current_creature().id()))?;
         let change =
             change.apply_creature(change.combat.current_creature().id(), |c| c.tick(game))?;
-        Ok(change.done())
+        Ok(change)
     }
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
@@ -147,14 +143,14 @@ impl Combat {
         }
     }
 
-    pub fn start(&self) -> ChangedCombat {
+    pub fn change(&self) -> ChangedCombat {
         ChangedCombat {
             combat: self.clone(),
             logs: vec![],
         }
     }
 
-    pub fn start_with(&self, game: &Game, log: CombatLog) -> Result<ChangedCombat, GameError> {
+    pub fn change_with(&self, game: &Game, log: CombatLog) -> Result<ChangedCombat, GameError> {
         let combat = self.apply_log(game, &log)?;
         Ok(ChangedCombat {
             combat: combat,
@@ -176,22 +172,22 @@ impl<'a> CombatMove<'a> {
 
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
-    pub fn move_creature(&self,
-                         terrain: &Map,
-                         pt: Point3)
-                         -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn move_current(&self, game: &Game, pt: Point3) -> Result<ChangedCombat, GameError> {
         let (pts, distance) = find_path(self.combat.current_creature().pos(),
                                         self.movement_left,
-                                        terrain,
+                                        game.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let (creature, logs) = self.combat.current_creature().set_pos_path(pts, distance)?.done();
-        let mut combat = self.combat.clone();
-        *combat.current_creature_mut() = creature;
-        combat.movement_used = combat.movement_used + distance;
-        combat.update_movement_options_mut(terrain);
-        Ok((combat, creature_logs_into_combat_logs(self.combat.current_creature().id(), logs)))
+        let change = self.combat.change();
+        let mut change = change.apply_creature(self.combat.current_creature().id(),
+                            move |c| c.set_pos_path(pts.clone(), distance))?;
+        // Sadly, because of the hack we have in Combat.apply_log for handling
+        // CombatLog::CreatureLog(CreatureLog::PathCreature), we have to mutate the combat here in
+        // an equivalent way.
+        change.combat.movement_used = change.combat.movement_used + distance;
+        change.combat.update_movement_options_mut(game.current_map());
+        Ok(change)
     }
 }
 
@@ -204,29 +200,20 @@ impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
     // TODO: this should really be moved into `creature`, because we also need to support
     // out-of-combat ability usage.
-    pub fn act(&self,
-               ability: &Ability,
-               target: DecidedTarget)
-               -> Result<(Combat, Vec<CombatLog>), GameError> {
-        // I could write this in an Actually Functional style, but I really don't care as long as
-        // the function doesn't have side effects (and the type signature proves it!)
-        let mut newgame = self.combat.clone();
-        let mut all_logs = vec![];
+    pub fn act(&self, ability: &Ability, target: DecidedTarget) -> Result<ChangedCombat, GameError> {
+        let mut change = self.combat.change();
+
         {
-            let mut targets = Self::resolve_targets(&newgame, ability.target, target)?;
+            let mut targets = Self::resolve_targets(&change.combat, ability.target, target)?;
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
-                    let mut creature = newgame.get_creature_mut(creature_id)?;
-                    let (newcreat, logs) = creature.apply_effect(effect)?.done();
-                    *creature = newcreat;
-                    all_logs.extend(creature_logs_into_combat_logs(creature_id, logs));
+                    change = change.apply_creature(creature_id, |c| c.apply_effect(effect))?;
                 }
             }
         }
-        *newgame.current_creature_mut() = newgame.current_creature().reduce_energy(ability.cost)?;
-        all_logs.extend(creature_logs_into_combat_logs(newgame.current_creature().id(),
-                                                   vec![CreatureLog::ReduceEnergy(ability.cost)]));
-        Ok((newgame, all_logs))
+        change = change.apply_creature(change.combat.current_creature().id(),
+                            |c| c.reduce_energy(ability.cost))?;
+        Ok(change)
     }
 
     fn resolve_targets(combat: &Combat,
@@ -261,7 +248,7 @@ impl<'a> CombatAble<'a> {
 }
 
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ChangedCombat {
     pub combat: Combat,
     logs: Vec<CombatLog>,
@@ -321,7 +308,7 @@ pub mod test {
     pub fn t_act(c: &Combat,
                  ab: &Ability,
                  target: DecidedTarget)
-                 -> Result<(Combat, Vec<CombatLog>), GameError> {
+                 -> Result<ChangedCombat, GameError> {
         c.get_able()?.act(ab, target)
     }
 
@@ -347,7 +334,7 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 0, 0));
         }
-        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().0;
+        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
     }
 
     /// Ranged attacks against targets outside of range return `TargetOutOfRange`
@@ -374,20 +361,19 @@ pub mod test {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_current(&t_game(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
     #[test]
     fn move_some_at_a_time() {
+        let game = t_game();
         let combat = t_combat();
-        let combat =
-            combat.get_movement().unwrap().move_creature(&huge_box(), (5, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat =
-            combat.get_movement().unwrap().move_creature(&huge_box(), (10, 0, 0)).unwrap().0;
+        let combat = combat.get_movement().unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
+        assert_eq!(combat.get_movement().unwrap().move_current(&game, (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
@@ -400,7 +386,7 @@ pub mod test {
             .insert(500,
                     Condition::RecurringEffect(Box::new(Effect::Damage(HP(5))))
                         .apply(ConditionDuration::Interminate));
-        let combat = combat.next_turn(&t_game()).unwrap().0;
+        let combat = combat.next_turn(&t_game()).unwrap().combat;
         let cur = combat.current_creature();
         assert_eq!(cur.id, cid("ranger"));
         assert_eq!(cur.cur_health, HP(5));

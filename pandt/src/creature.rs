@@ -48,7 +48,11 @@ impl Creature {
                 new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
             }
             CreatureLog::ReduceEnergy(ref nrg) => {
-                new.cur_energy = new.cur_energy.saturating_sub(*nrg)
+                if *nrg > new.cur_energy {
+                    return Err(GameError::NotEnoughEnergy(*nrg))
+                } else {
+                    new.cur_energy = new.cur_energy - *nrg;
+                }
             }
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
                 new.conditions.insert(*id, con.apply(*dur));
@@ -102,7 +106,7 @@ impl Creature {
             }
         }
         let ops = eff2log(self, effect);
-        let mut changes = self.start();
+        let mut changes = self.change();
         for op in &ops {
             changes = changes.apply(&op)?;
         }
@@ -126,11 +130,11 @@ impl Creature {
             path: pts,
             distance: distance,
         };
-        Ok(self.start_with(log)?)
+        Ok(self.change_with(log)?)
     }
 
     pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {
-        let mut changes = self.start();
+        let mut changes = self.change();
 
         for condition in self.conditions(game)? {
             if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), .. } =
@@ -194,25 +198,18 @@ impl Creature {
         self.speed
     }
 
-    // We probably need to move `act` to Creature, then we wouldn't need this method (?)
-    pub fn reduce_energy(&self, delta: Energy) -> Result<Self, GameError> {
-        if delta > self.cur_energy {
-            Err(GameError::NotEnoughEnergy(delta))
-        } else {
-            let mut newcreature = self.clone();
-            newcreature.cur_energy = newcreature.cur_energy - delta;
-            Ok(newcreature)
-        }
+    pub fn reduce_energy(&self, delta: Energy) -> Result<ChangedCreature, GameError> {
+        self.change_with(CreatureLog::ReduceEnergy(delta))
     }
 
-    pub fn start(&self) -> ChangedCreature {
+    pub fn change(&self) -> ChangedCreature {
         ChangedCreature {
             creature: self.clone(),
             logs: vec![],
         }
     }
 
-    pub fn start_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+    pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
         let creature = self.apply_log(&log)?;
         Ok(ChangedCreature {
             creature: creature,

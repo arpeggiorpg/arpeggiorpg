@@ -186,7 +186,7 @@ impl Game {
                      pt: Point3)
                      -> Result<(Game, Vec<GameLog>), GameError> {
         let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_creature(self.current_map(), pt)?;
+        let (next, logs) = movement.move_current(self, pt)?.done();
         Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
     }
 
@@ -213,7 +213,7 @@ impl Game {
         let able = combat.get_able()?;
         let ability = self.get_ability(&abid)?;
         if self.creature_has_ability(&able.combat.current_creature(), &abid)? {
-            let (next, logs) = able.act(&ability, target)?;
+            let (next, logs) = able.act(&ability, target)?.done();
             Ok((Game { current_combat: Some(next), ..self.clone() },
                 combat_logs_into_game_logs(logs)))
         } else {
@@ -258,7 +258,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(self)?;
+        let (newcombat, logs) = combat.next_turn(self)?.done();
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
