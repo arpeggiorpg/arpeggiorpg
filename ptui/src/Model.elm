@@ -235,7 +235,7 @@ type alias Creature =
   , pos: Point3
   , abilities: List AbilityStatus
   , class: String
-  , conditions: List AppliedCondition
+  , conditions: Dict Int AppliedCondition
 }
 
 creatureDecoder =
@@ -250,7 +250,23 @@ creatureDecoder =
     |> P.required "pos" point3Decoder
     |> P.required "abilities" (JD.list abilityStatusDecoder)
     |> P.required "class" JD.string
-    |> P.required "conditions" (JD.list appliedConditionDecoder)
+    |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
+
+
+stringKeyDictToIntKeyDict : Dict String a -> JD.Decoder (Dict Int a)
+stringKeyDictToIntKeyDict d =
+  let foldFunc : String -> a -> Result String (Dict Int a) -> Result String (Dict Int a)
+      foldFunc key value accumulator =
+        case accumulator of
+          Err x -> Err x
+          Ok intMap -> 
+            case (String.toInt key) of
+              Ok intKey -> Ok (Dict.insert intKey value intMap)
+              Err x -> Err x
+      result = Dict.foldl foldFunc (Ok (Dict.fromList [])) d
+  in case result of
+      Err x -> JD.fail x
+      Ok y -> JD.succeed y
 
 creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
                 , cur_health, pos, abilities, class, conditions} =
