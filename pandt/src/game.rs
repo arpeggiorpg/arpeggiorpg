@@ -161,7 +161,7 @@ impl Game {
                     current_combat: Some(self.current_combat
                         .as_ref()
                         .ok_or(GameError::NotInCombat)?
-                        .apply_log(cl, self.current_map())?),
+                        .apply_log(self, cl, self.current_map())?),
                     ..self.clone()
                 })
             }

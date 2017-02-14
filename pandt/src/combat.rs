@@ -38,7 +38,7 @@ impl Combat {
         newcom
     }
 
-    pub fn apply_log(&self, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
+    pub fn apply_log(&self, game: &Game, l: &CombatLog, terrain: &Map) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
             CombatLog::CreatureLog(ref cid,
@@ -68,6 +68,8 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
+                let (ticked_creature, _) = new.current_creature().tick(game)?;
+                *new.current_creature_mut() = ticked_creature;
                 new.update_movement_options_mut(terrain);
             }
         }

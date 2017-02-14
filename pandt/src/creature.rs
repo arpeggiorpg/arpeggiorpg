@@ -107,7 +107,7 @@ impl Creature {
         let ops = eff2log(self, effect);
         let mut creature = self.clone();
         for op in &ops {
-            creature = self.apply_log(op)?;
+            creature = creature.apply_log(op)?;
         }
         Ok((creature, ops))
     }
@@ -137,27 +137,24 @@ impl Creature {
         let mut all_logs = vec![];
 
         for condition in new.conditions(game)? {
-            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ..} = condition {
+            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), .. } =
+                condition {
                 effs.push(eff.clone())
             }
         }
 
         new.conditions.retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
-            if let ConditionDuration::Duration(k) = *remaining {
-                // this shouldn't happen normally, since we remove conditions as soon as they reach
-                // remaining = 0, but handle it just in case
-                if k == 0 {
-                    all_logs.push(CreatureLog::RemoveCondition(id));
-                    return false;
-                }
-            }
-            match *remaining {
+            let delete = match *remaining {
                 ConditionDuration::Interminate => true,
                 ConditionDuration::Duration(ref mut remaining) => {
                     *remaining -= 1;
-                    *remaining > 0
+                    *remaining >= 0
                 }
+            };
+            if delete {
+                all_logs.push(CreatureLog::RemoveCondition(id));
             }
+            delete
         });
 
         for eff in effs {
@@ -168,6 +165,8 @@ impl Creature {
         Ok((new, all_logs))
     }
 
+    /// Get all conditions applied to a creature, including permanent conditions associated with
+    /// the creature's class.
     pub fn conditions(&self, game: &Game) -> Result<Vec<AppliedCondition>, GameError> {
         let mut conditions = self.conditions.clone();
         let class_conditions = &game.get_class(&self.class)?.conditions;
@@ -329,7 +328,5 @@ pub mod test {
 
     /// Conditions in the class are used directly
     #[test]
-    fn conditions_from_class() {
-
-    }
+    fn conditions_from_class() {}
 }

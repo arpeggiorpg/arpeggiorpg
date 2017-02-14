@@ -56,6 +56,7 @@ current_game:
     rogue:
       abilities:
         - punch
+        - bonk
       conditions:
         - RecurringEffect:
             GenerateEnergy: 10
@@ -78,27 +79,32 @@ current_game:
         Range: 500
       cost: 8
       effects: 
-        - 
-          Heal: 3
+        - Heal: 3
     punch: 
       name: Punch
       target: Melee
       cost: 8
       effects: 
-        - 
-          Damage: 3
+        - Damage: 3
     shoot: 
       name: Shoot
       target: 
         Range: 500
       cost: 8
       effects: 
-        - 
-          Damage: 3
+        - Damage: 3
+    bonk:
+      name: Bonk
+      target: Melee
+      cost: 8
+      effects:
+        - ApplyCondition:
+            - Duration: 1
+            - Incapacitated
   creatures: 
-    ranger: 
-      id: ranger
-      name: ranger
+    elron: 
+      id: elron
+      name: Elron
       speed: 1086
       max_energy: 10
       cur_energy: 10
@@ -111,9 +117,9 @@ current_game:
         - 0
         - 0
       conditions: []
-    rogue: 
-      id: rogue
-      name: rogue
+    kurok-to:
+      id: kurok-to
+      name: Kurok To
       speed: 1086
       max_energy: 10
       cur_energy: 10
@@ -126,9 +132,9 @@ current_game:
         - 0
         - 0
       conditions: []
-    cleric: 
-      id: cleric
-      name: cleric
+    sil:
+      id: sil
+      name: Silmarillion
       speed: 1086
       max_energy: 10
       cur_energy: 10
