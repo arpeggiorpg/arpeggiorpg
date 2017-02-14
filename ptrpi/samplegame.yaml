@@ -116,7 +116,7 @@ current_game:
         - 0
         - 0
         - 0
-      conditions: []
+      conditions:
     kurok-to:
       id: kurok-to
       name: Kurok To
@@ -131,7 +131,7 @@ current_game:
         - 0
         - 0
         - 0
-      conditions: []
+      conditions:
     sil:
       id: sil
       name: Silmarillion
@@ -146,7 +146,7 @@ current_game:
         - 0
         - 0
         - 0
-      conditions: []
+      conditions:
 snapshots: 
   - 
     - 
@@ -193,7 +193,7 @@ snapshots:
             - 0
             - 0
             - 0
-          conditions: []
+          conditions:
         rogue: 
           id: rogue
           name: rogue
@@ -208,7 +208,7 @@ snapshots:
             - 0
             - 0
             - 0
-          conditions: []
+          conditions:
         cleric: 
           id: cleric
           name: cleric
@@ -223,5 +223,5 @@ snapshots:
             - 0
             - 0
             - 0
-          conditions: []
+          conditions:
     - []
