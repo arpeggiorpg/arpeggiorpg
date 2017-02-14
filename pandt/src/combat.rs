@@ -176,12 +176,12 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let (creature, log) = self.combat.current_creature().set_pos_path(pts, distance)?;
+        let (creature, logs) = self.combat.current_creature().set_pos_path(pts, distance)?;
         let mut combat = self.combat.clone();
         *combat.current_creature_mut() = creature;
         combat.movement_used = combat.movement_used + distance;
         combat.update_movement_options_mut(terrain);
-        Ok((combat, vec![CombatLog::CreatureLog(self.combat.current_creature().id(), log)]))
+        Ok((combat, creature_logs_into_combat_logs(self.combat.current_creature().id(), logs)))
     }
 }
 

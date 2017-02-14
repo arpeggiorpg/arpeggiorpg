@@ -199,10 +199,10 @@ impl Game {
                                         creature.speed(),
                                         self.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
-        let (creature, log) = creature.set_pos_path(pts, distance)?;
+        let (creature, logs) = creature.set_pos_path(pts, distance)?;
         let mut newgame = self.clone();
         *newgame.get_creature_mut(cid)? = creature;
-        Ok((newgame, vec![GameLog::CreatureLog(cid, log)]))
+        Ok((newgame, creature_logs_into_game_logs(cid, logs)))
     }
 
     fn act(&self,

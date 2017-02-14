@@ -154,6 +154,7 @@ pub enum CreatureLog {
     GenerateEnergy(Energy),
     ReduceEnergy(Energy),
     ApplyCondition(ConditionID, ConditionDuration, Condition),
+    DecreaseConditionDuration(ConditionID),
     RemoveCondition(ConditionID),
     PathCreature {
         path: Vec<Point3>,
@@ -307,11 +308,10 @@ pub enum Condition {
 }
 
 impl Condition {
-    pub fn apply(&self, id: ConditionID, duration: ConditionDuration) -> AppliedCondition {
+    pub fn apply(&self, duration: ConditionDuration) -> AppliedCondition {
         AppliedCondition {
             remaining: duration,
             condition: self.clone(),
-            id: id,
         }
     }
 }
@@ -325,7 +325,6 @@ pub enum ConditionDuration {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AppliedCondition {
-    pub id: ConditionID,
     pub remaining: ConditionDuration,
     pub condition: Condition,
 }
@@ -387,7 +386,7 @@ pub struct Creature {
     pub max_health: HP,
     pub cur_health: HP,
     pub pos: Point3,
-    pub conditions: Vec<AppliedCondition>,
+    pub conditions: HashMap<ConditionID, AppliedCondition>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -462,7 +461,6 @@ pub mod test {
 
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
         AppliedCondition {
-            id: 0,
             condition: c,
             remaining: r,
         }

@@ -53,14 +53,22 @@ impl Creature {
                 new.cur_energy = new.cur_energy.saturating_sub(*nrg)
             }
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
-                new.conditions.push(con.apply(*id, *dur))
+                new.conditions.insert(*id, con.apply(*dur));
+            }
+            CreatureLog::DecreaseConditionDuration(ref id) => {
+                let mut cond =
+                    new.conditions.get_mut(&id).ok_or(GameError::ConditionNotFound(*id))?;
+                match cond.remaining {
+                    ConditionDuration::Interminate => {
+                        return Err(GameError::BuggyProgram("Tried to decrease condition duration \
+                                                            of an interminate condition"
+                            .to_string()))
+                    }
+                    ConditionDuration::Duration(ref mut dur) => *dur -= 1,
+                }
             }
             CreatureLog::RemoveCondition(ref id) => {
-                let pos = new.conditions
-                    .iter()
-                    .position(|c| c.id == *id)
-                    .ok_or(GameError::ConditionNotFound(*id))?;
-                new.conditions.remove(pos);
+                new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id));
             }
             CreatureLog::PathCreature { ref path, .. } => {
                 match path.last() {
@@ -98,11 +106,11 @@ impl Creature {
             }
         }
         let ops = eff2log(self, effect);
-        let mut creature = self.clone();
+        let mut changes = self.start();
         for op in &ops {
-            creature = creature.apply_log(op)?;
+            changes = changes.apply(&op)?;
         }
-        Ok((creature, ops))
+        Ok(changes.done())
     }
 
     /// Assign a position. TODO: Make this return a CreatureLog. Only used in tests for now,
@@ -116,63 +124,59 @@ impl Creature {
     pub fn set_pos_path(&self,
                         pts: Vec<Point3>,
                         distance: Distance)
-                        -> Result<(Creature, CreatureLog), GameError> {
+                        -> Result<(Creature, Vec<CreatureLog>), GameError> {
         let log = CreatureLog::PathCreature {
             path: pts,
             distance: distance,
         };
-        Ok((self.apply_log(&log)?, log))
+        Ok(self.start_with(log)?.done())
     }
 
     pub fn tick(&self, game: &Game) -> Result<(Creature, Vec<CreatureLog>), GameError> {
-        let mut new = self.clone();
-        let mut effs = vec![];
-        let mut all_logs = vec![];
+        let mut changes = self.start();
 
-        for condition in new.conditions(game)? {
+        for condition in self.conditions(game)? {
             if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), .. } =
                 condition {
-                effs.push(eff.clone())
+                //  FIXME apply_effect should return ChangedCreature
+                let (c, l) = (&changes.creature).apply_effect(eff)?;
+                changes = changes.merge(ChangedCreature {
+                    creature: c,
+                    logs: l,
+                });
             }
         }
 
-        new.conditions
-            .retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
-                let delete = match *remaining {
-                    ConditionDuration::Interminate => true,
-                    ConditionDuration::Duration(ref mut remaining) => {
-                        *remaining -= 1;
-                        *remaining >= 0
+        for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
+            match changes.creature.conditions[&condition_id].remaining {
+                ConditionDuration::Interminate => {}
+                ConditionDuration::Duration(remaining) => {
+                    if remaining > 1 {
+                        changes =
+                            changes.apply(&CreatureLog::DecreaseConditionDuration(condition_id))?;
+                    } else {
+                        changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
                     }
-                };
-                if delete {
-                    all_logs.push(CreatureLog::RemoveCondition(id));
                 }
-                delete
-            });
-
-        for eff in effs {
-            let res = new.apply_effect(&eff)?;
-            new = res.0;
-            all_logs.extend(res.1);
+            }
         }
-        Ok((new, all_logs))
+        Ok(changes.done())
     }
 
     /// Get all conditions applied to a creature, including permanent conditions associated with
     /// the creature's class.
     pub fn conditions(&self, game: &Game) -> Result<Vec<AppliedCondition>, GameError> {
-        let mut conditions = self.conditions.clone();
+        let mut conditions: Vec<AppliedCondition> = self.conditions.values().cloned().collect();
         let class_conditions = &game.get_class(&self.class)?.conditions;
         let applied_class_conditions = class_conditions.iter()
-            .map(|c| c.apply(0, ConditionDuration::Interminate));
+            .map(|c| c.apply(ConditionDuration::Interminate));
         conditions.extend(applied_class_conditions);
         Ok(conditions)
     }
 
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
     pub fn can_act(&self) -> bool {
-        conditions_able(&self.conditions)
+        conditions_able(self.conditions.values().collect())
     }
 
     pub fn class(&self) -> String {
@@ -205,7 +209,14 @@ impl Creature {
         }
     }
 
-    pub fn start(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+    pub fn start(&self) -> ChangedCreature {
+        ChangedCreature {
+            creature: self.clone(),
+            logs: vec![],
+        }
+    }
+
+    pub fn start_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
         let creature = self.apply_log(&log)?;
         Ok(ChangedCreature {
             creature: creature,
@@ -216,24 +227,27 @@ impl Creature {
 
 #[derive(Clone)]
 pub struct ChangedCreature {
-    creature: Creature,
+    pub creature: Creature,
     logs: Vec<CreatureLog>,
 }
 
 impl ChangedCreature {
-    pub fn apply(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+    pub fn apply(&self, log: &CreatureLog) -> Result<ChangedCreature, GameError> {
         let mut new = self.clone();
         new.creature = new.creature.apply_log(&log)?;
-        new.logs.push(log);
+        new.logs.push(log.clone());
         Ok(new)
+    }
+
+    pub fn merge(&self, other: ChangedCreature) -> ChangedCreature {
+        let mut new = self.clone();
+        new.creature = other.creature;
+        new.logs.extend(other.logs);
+        new
     }
 
     pub fn done(self) -> (Creature, Vec<CreatureLog>) {
         (self.creature, self.logs)
-    }
-
-    pub fn inspect<F, T>(&self, f: F) -> T where F: Fn(&Creature) -> T {
-        f(&self.creature)
     }
 }
 
@@ -250,7 +264,7 @@ impl CreatureBuilder {
             max_health: self.max_health.unwrap_or(HP(10)),
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
-            conditions: self.conditions,
+            conditions: HashMap::new(),
         };
         Ok(creature)
     }
@@ -282,19 +296,15 @@ impl CreatureBuilder {
         self.pos = Some(pos);
         self
     }
-    pub fn conditions(mut self, conds: Vec<AppliedCondition>) -> Self {
-        self.conditions = conds;
-        self
-    }
     pub fn speed(mut self, s: Distance) -> Self {
         self.speed = Some(s);
         self
     }
 }
 
-fn conditions_able(conditions: &[AppliedCondition]) -> bool {
+fn conditions_able(conditions: Vec<&AppliedCondition>) -> bool {
     !conditions.iter()
-        .any(|&AppliedCondition { ref condition, .. }| {
+        .any(|&&AppliedCondition { ref condition, .. }| {
             condition == &Condition::Incapacitated || condition == &Condition::Dead
         })
 }
@@ -306,6 +316,8 @@ pub mod test {
     use creature::*;
     use types::test::*;
     use game::test::*;
+
+    use std::iter::FromIterator;
 
     pub fn t_rogue(name: &str) -> Creature {
         Creature::build(name, "rogue")
@@ -329,20 +341,31 @@ pub mod test {
     fn test_tick_and_expire_condition_remaining() {
         let game = t_game();
         let mut c = t_rogue("bob");
-        c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
-                            app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
-                            app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
+        c.conditions = HashMap::from_iter(vec![(0,
+                                                app_cond(Condition::Dead,
+                                                         ConditionDuration::Duration(0))),
+                                               (1,
+                                                app_cond(Condition::Incapacitated,
+                                                         ConditionDuration::Duration(5))),
+                                               (2,
+                                                app_cond(Condition::Incapacitated,
+                                                         ConditionDuration::Interminate))]);
         assert_eq!(c.tick(&game).unwrap().0.conditions,
-                   vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
-                        app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
+                   HashMap::from_iter(vec![(1,
+                                            app_cond(Condition::Incapacitated,
+                                                     ConditionDuration::Duration(4))),
+                                           (2,
+                                            app_cond(Condition::Incapacitated,
+                                                     ConditionDuration::Interminate))]));
     }
 
     #[test]
     fn test_recurring_effect() {
         let game = t_game();
         let mut c = t_rogue("bob");
-        c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
-                                     ConditionDuration::Duration(2))];
+        c.conditions = HashMap::from_iter(
+            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
+                              ConditionDuration::Duration(2)))]);
         let c = c.tick(&game).unwrap().0;
         assert_eq!(c.cur_health, HP(9));
         let c = c.tick(&game).unwrap().0;
@@ -350,8 +373,4 @@ pub mod test {
         let c = c.tick(&game).unwrap().0;
         assert_eq!(c.cur_health, HP(8));
     }
-
-    /// Conditions in the class are used directly
-    #[test]
-    fn conditions_from_class() {}
 }
