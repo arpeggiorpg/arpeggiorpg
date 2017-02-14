@@ -317,6 +317,57 @@ impl Game {
     pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
         self.classes.get(class).ok_or_else(|| GameError::ClassNotFound(class.to_string()))
     }
+
+    pub fn change(&self) -> ChangedGame {
+        ChangedGame {
+            game: self.clone(),
+            logs: vec![],
+        }
+    }
+
+    pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
+        let game = self.apply_log(&log)?;
+        Ok(ChangedGame {
+            game: game,
+            logs: vec![log],
+        })
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangedGame {
+    game: Game,
+    logs: Vec<GameLog>,
+}
+
+impl ChangedGame {
+    pub fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
+        let mut new = self.clone();
+        new.game = self.game.apply_log(log)?;
+        Ok(new)
+    }
+
+    pub fn apply_combat<F>(&self, f: F) -> Result<ChangedGame, GameError>
+        where F: Fn(&Combat) -> Result<ChangedCombat, GameError>
+    {
+        match self.game.current_combat.as_ref() {
+            None => Err(GameError::NotInCombat),
+            Some(combat) => {
+                let change = f(&combat)?;
+                let (combat, logs) = change.done();
+                let mut new = self.clone();
+                new.game.current_combat = Some(combat);
+                new.logs.extend(combat_logs_into_game_logs(logs));
+                Ok(new)
+            }
+        }
+    }
+
+    pub fn done(self) -> (Game, Vec<GameLog>) {
+        (self.game, self.logs)
+    }
 }
 
 
@@ -336,8 +387,7 @@ pub mod test {
     }
 
     pub fn t_game() -> Game {
-        let mut game = Game::new(t_classes(),
-                                 t_abilities());
+        let mut game = Game::new(t_classes(), t_abilities());
         game.maps.insert("huge".to_string(), huge_box());
         game.current_map = Some("huge".to_string());
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
