@@ -149,22 +149,22 @@ type CreatureLog
   | CLRemoveCondition Int
   | CLPathCreature PathAndDistance
 
-type alias PathAndDistance = {path: List Point3, distance: Distance}
-
-pathAndDistanceDecoder = JD.map2 PathAndDistance
-  (JD.field "path" (JD.list point3Decoder))
-  (JD.field "distance" JD.int)
-
 creatureLogDecoder = sumDecoder "CreatureLog"
   []
   [ ("Damage", JD.map CLDamage JD.int)
   , ("Heal", JD.map CLHeal JD.int)
   , ("GenerateEnergy", JD.map CLGenerateEnergy JD.int)
   , ("ReduceEnergy", JD.map CLReduceEnergy JD.int)
-  , ("ApplyCondition", JD.map3 CLApplyCondition JD.int conditionDurationDecoder conditionDecoder)
+  , ("ApplyCondition", JD.map3 CLApplyCondition (JD.index 0 JD.int) (JD.index 1 conditionDurationDecoder) (JD.index 2conditionDecoder))
   , ("RemoveCondition", JD.map CLRemoveCondition JD.int)
   , ("PathCreature", JD.map CLPathCreature pathAndDistanceDecoder)
   ]
+
+type alias PathAndDistance = {path: List Point3, distance: Distance}
+
+pathAndDistanceDecoder = JD.map2 PathAndDistance
+  (JD.field "path" (JD.list point3Decoder))
+  (JD.field "distance" JD.int)
 
 type alias Game =
   { current_combat : Maybe Combat
@@ -326,7 +326,8 @@ type ConditionDuration
 
 conditionDurationDecoder = sumDecoder "ConditionDuration"
   [("Interminate", Interminate)]
-  [("ConditionDuration", JD.map Duration JD.int)]
+  [("Duration", JD.map Duration JD.int)]
+
 conditionDurationEncoder cd =
   case cd of
     Interminate -> JE.string "Interminate"
