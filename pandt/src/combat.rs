@@ -6,6 +6,7 @@ use nonempty;
 
 use types::*;
 use grid::{creature_within_distance, get_all_accessible, find_path};
+use creature::ChangedCreature;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -68,9 +69,9 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
-                let ticked_creature = new.current_creature().tick(game)?.creature;
-                *new.current_creature_mut() = ticked_creature;
-                new.update_movement_options_mut(game.current_map());
+                // let ticked_creature = new.current_creature().tick(game)?.creature;
+                // *new.current_creature_mut() = ticked_creature;
+                // new.update_movement_options_mut(game.current_map());
             }
         }
         Ok(new)
@@ -85,16 +86,10 @@ impl Combat {
     }
 
     pub fn next_turn(&self, game: &Game) -> Result<(Combat, Vec<CombatLog>), GameError> {
-        let mut newcombat = self.clone();
-        let mut all_logs = vec![];
-        all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
-        newcombat.creatures.next_circular();
-        newcombat.movement_used = Distance(0);
-        let (ticked_creature, logs) = newcombat.current_creature().tick(game)?.done();
-        *newcombat.current_creature_mut() = ticked_creature;
-        all_logs.extend(creature_logs_into_combat_logs(newcombat.current_creature().id(), logs));
-        newcombat.update_movement_options_mut(game.current_map());
-        Ok((newcombat, all_logs))
+        let change = self.start_with(game, CombatLog::EndTurn(self.current_creature().id()))?;
+        let change =
+            change.apply_creature(change.combat.current_creature().id(), |c| c.tick(game))?;
+        Ok(change.done())
     }
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
@@ -150,6 +145,21 @@ impl Combat {
             }
             Ok(creature) => Ok((Some(combat), creature)),
         }
+    }
+
+    pub fn start(&self) -> ChangedCombat {
+        ChangedCombat {
+            combat: self.clone(),
+            logs: vec![],
+        }
+    }
+
+    pub fn start_with(&self, game: &Game, log: CombatLog) -> Result<ChangedCombat, GameError> {
+        let combat = self.apply_log(game, &log)?;
+        Ok(ChangedCombat {
+            combat: combat,
+            logs: vec![log],
+        })
     }
 }
 
@@ -265,6 +275,18 @@ impl ChangedCombat {
         Ok(new)
     }
 
+    pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat, GameError>
+        where F: Fn(&Creature) -> Result<ChangedCreature, GameError>
+    {
+        let creature = self.combat.get_creature(cid)?;
+        let change = f(creature)?;
+        let mut new = self.clone();
+        let (creature, logs) = change.done();
+        *new.combat.get_creature_mut(cid)? = creature;
+        new.logs.extend(creature_logs_into_combat_logs(cid, logs));
+        Ok(new)
+    }
+
     pub fn merge(&self, other: ChangedCombat) -> ChangedCombat {
         let mut new = self.clone();
         new.combat = other.combat;
@@ -286,6 +308,7 @@ pub mod test {
     use creature::test::*;
     use types::test::*;
     use grid::test::*;
+    use game::test::t_game;
 
     /// Create a Test combat. Combat order is rogue, ranger, then cleric.
     pub fn t_combat() -> Combat {
@@ -366,5 +389,20 @@ pub mod test {
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
         assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
+    }
+
+    #[test]
+    fn tick_on_next_turn() {
+        let mut combat = t_combat();
+        combat.get_creature_mut(cid("ranger"))
+            .unwrap()
+            .conditions
+            .insert(500,
+                    Condition::RecurringEffect(Box::new(Effect::Damage(HP(5))))
+                        .apply(ConditionDuration::Interminate));
+        let combat = combat.next_turn(&t_game()).unwrap().0;
+        let cur = combat.current_creature();
+        assert_eq!(cur.id, cid("ranger"));
+        assert_eq!(cur.cur_health, HP(5));
     }
 }
