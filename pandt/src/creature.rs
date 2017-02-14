@@ -8,12 +8,13 @@ use odds::vec::VecExt;
 use types::*;
 
 
-/// This is carefully chosen to allow for circular-looking movement options.
-/// Since we only allow movement in 8-directions, the available movement options are biased towards
-/// horizontal and diagonal lines, which gives what basically looks like a star shape to movement
-/// options. By increasing the speed above 10 meters but still under 11 meters, we can "fill out"
-/// the shape to look more circular.
-/// This only matters in wide-open spaces, of course, and I'm not sure what difficulties in may
+/// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
+/// Since we only allow 8-way movement, the available movement options are biased towards
+/// horizontal and diagonal lines, which gives what basically looks like a star shape when you
+/// render all potential destinations in the UI. By increasing the speed above 10 meters but still
+/// under 11 meters, we can "fill out" the shape to look more circular.
+///
+/// This only matters in wide-open spaces, of course, and I'm not sure what difficulties it may
 /// bring, so I may not stick with it. One problem is that if I want to scale movement speeds (e.g.
 /// dwarves move slower, monks move faster, etc) then it may be infeasible to maintain this circular
 /// movement area, unless I can figure out some generalized algorithm for determining a more
@@ -36,14 +37,6 @@ impl Creature {
             conditions: vec![],
             speed: None,
         }
-    }
-
-    fn apply_logs(&self, logs: Vec<CreatureLog>) -> Result<Creature, GameError> {
-        let mut creature = self.clone();
-        for log in logs {
-            creature = creature.apply_log(&log)?;
-        }
-        Ok(creature)
     }
 
     pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
@@ -112,7 +105,7 @@ impl Creature {
         Ok((creature, ops))
     }
 
-    /// Assign a position. TODO: Make this return a separate GameLog. Only used in tests for now,
+    /// Assign a position. TODO: Make this return a CreatureLog. Only used in tests for now,
     /// but it will be useful for DM-assigned positions.
     pub fn set_pos(&self, pt: Point3) -> Creature {
         let mut newc = self.clone();
@@ -143,19 +136,20 @@ impl Creature {
             }
         }
 
-        new.conditions.retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
-            let delete = match *remaining {
-                ConditionDuration::Interminate => true,
-                ConditionDuration::Duration(ref mut remaining) => {
-                    *remaining -= 1;
-                    *remaining >= 0
+        new.conditions
+            .retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
+                let delete = match *remaining {
+                    ConditionDuration::Interminate => true,
+                    ConditionDuration::Duration(ref mut remaining) => {
+                        *remaining -= 1;
+                        *remaining >= 0
+                    }
+                };
+                if delete {
+                    all_logs.push(CreatureLog::RemoveCondition(id));
                 }
-            };
-            if delete {
-                all_logs.push(CreatureLog::RemoveCondition(id));
-            }
-            delete
-        });
+                delete
+            });
 
         for eff in effs {
             let res = new.apply_effect(&eff)?;
@@ -209,6 +203,37 @@ impl Creature {
             newcreature.cur_energy = newcreature.cur_energy - delta;
             Ok(newcreature)
         }
+    }
+
+    pub fn start(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+        let creature = self.apply_log(&log)?;
+        Ok(ChangedCreature {
+            creature: creature,
+            logs: vec![log],
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct ChangedCreature {
+    creature: Creature,
+    logs: Vec<CreatureLog>,
+}
+
+impl ChangedCreature {
+    pub fn apply(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
+        let mut new = self.clone();
+        new.creature = new.creature.apply_log(&log)?;
+        new.logs.push(log);
+        Ok(new)
+    }
+
+    pub fn done(self) -> (Creature, Vec<CreatureLog>) {
+        (self.creature, self.logs)
+    }
+
+    pub fn inspect<F, T>(&self, f: F) -> T where F: Fn(&Creature) -> T {
+        f(&self.creature)
     }
 }
 
