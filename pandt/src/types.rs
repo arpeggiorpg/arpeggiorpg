@@ -306,6 +306,16 @@ pub enum Condition {
     AddDamageBuff(HP),
 }
 
+impl Condition {
+    pub fn apply(&self, id: ConditionID, duration: ConditionDuration) -> AppliedCondition {
+        AppliedCondition {
+            remaining: duration,
+            condition: self.clone(),
+            id: id,
+        }
+    }
+}
+
 /// Serializes as either "Interminate" or {"Duration": 0}
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ConditionDuration {
@@ -418,6 +428,7 @@ pub struct App {
 #[cfg(test)]
 pub mod test {
     use types::*;
+    use std::iter::FromIterator;
 
     use serde_yaml;
     use serde_json;
@@ -449,7 +460,6 @@ pub mod test {
         }
     }
 
-    #[cfg(test)]
     pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
         AppliedCondition {
             id: 0,
@@ -458,7 +468,6 @@ pub mod test {
         }
     }
 
-    #[cfg(test)]
     pub fn t_punch() -> Ability {
         Ability {
             name: "Punch".to_string(),
@@ -468,7 +477,6 @@ pub mod test {
         }
     }
 
-    #[cfg(test)]
     pub fn t_shoot() -> Ability {
         Ability {
             name: "Shoot".to_string(),
@@ -478,7 +486,6 @@ pub mod test {
         }
     }
 
-    #[cfg(test)]
     pub fn t_heal() -> Ability {
         Ability {
             name: "Heal".to_string(),
@@ -487,6 +494,17 @@ pub mod test {
             effects: vec![Effect::Heal(HP(3))],
         }
     }
+
+    pub fn t_abilities() -> HashMap<AbilityID, Ability> {
+        let punch = t_punch();
+        let shoot = t_shoot();
+        let heal = t_heal();
+        HashMap::from_iter(vec![(abid("punch"), punch),
+                                (abid("shoot"), shoot),
+                                (abid("heal"), heal)])
+    }
+
+
 
     #[test]
     fn serde_ids() {

@@ -25,7 +25,7 @@ use pandt::types::{AbilityID, CreatureID, GameCommand, GameError, Point3, Potent
 
 #[derive(Clone)]
 struct PT {
-    app: Arc<Mutex<pandt::app::App>>,
+    app: Arc<Mutex<pandt::types::App>>,
 }
 
 enum Route {
@@ -82,7 +82,7 @@ impl Service for PT {
 }
 
 impl PT {
-    fn get_app(&self) -> Result<pandt::app::App, GameError> {
+    fn get_app(&self) -> Result<pandt::types::App, GameError> {
         Ok(self.app.lock().unwrap().clone())
     }
 
@@ -161,7 +161,7 @@ fn main() {
     let mut appf = File::open("samplegame.yaml").unwrap();
     let mut apps = String::new();
     appf.read_to_string(&mut apps).unwrap();
-    let app: pandt::app::App = serde_yaml::from_str(&apps).unwrap();
+    let app: pandt::types::App = serde_yaml::from_str(&apps).unwrap();
 
     let pt = PT { app: Arc::new(Mutex::new(app)) };
 

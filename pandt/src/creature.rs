@@ -60,11 +60,7 @@ impl Creature {
                 new.cur_energy = new.cur_energy.saturating_sub(*nrg)
             }
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
-                new.conditions.push(AppliedCondition {
-                    remaining: *dur,
-                    condition: con.clone(),
-                    id: *id,
-                })
+                new.conditions.push(con.apply(*id, *dur))
             }
             CreatureLog::RemoveCondition(ref id) => {
                 let pos = new.conditions
@@ -135,10 +131,17 @@ impl Creature {
         Ok((self.apply_log(&log)?, log))
     }
 
-    pub fn tick(&self) -> Result<(Creature, Vec<CreatureLog>), GameError> {
+    pub fn tick(&self, game: &Game) -> Result<(Creature, Vec<CreatureLog>), GameError> {
         let mut new = self.clone();
         let mut effs = vec![];
         let mut all_logs = vec![];
+
+        for condition in new.conditions(game)? {
+            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ..} = condition {
+                effs.push(eff.clone())
+            }
+        }
+
         new.conditions.retain_mut(|&mut AppliedCondition { id, ref condition, ref mut remaining }| {
             if let ConditionDuration::Duration(k) = *remaining {
                 // this shouldn't happen normally, since we remove conditions as soon as they reach
@@ -147,9 +150,6 @@ impl Creature {
                     all_logs.push(CreatureLog::RemoveCondition(id));
                     return false;
                 }
-            }
-            if let Condition::RecurringEffect(ref eff) = *condition {
-                effs.push(eff.clone())
             }
             match *remaining {
                 ConditionDuration::Interminate => true,
@@ -166,6 +166,15 @@ impl Creature {
             all_logs.extend(res.1);
         }
         Ok((new, all_logs))
+    }
+
+    pub fn conditions(&self, game: &Game) -> Result<Vec<AppliedCondition>, GameError> {
+        let mut conditions = self.conditions.clone();
+        let class_conditions = &game.get_class(&self.class)?.conditions;
+        let applied_class_conditions = class_conditions.iter()
+            .map(|c| c.apply(0, ConditionDuration::Interminate));
+        conditions.extend(applied_class_conditions);
+        Ok(conditions)
     }
 
     /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
@@ -219,14 +228,7 @@ impl CreatureBuilder {
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: self.conditions,
         };
-
-        let ref conditions = classes.get(&self.class)
-            .ok_or(GameError::ClassNotFound(self.class.clone()))?
-            .conditions;
-        let logs = conditions.iter()
-            .map(|cond| creature.apply_condition_log(ConditionDuration::Interminate, cond.clone()))
-            .collect();
-        creature.apply_logs(logs)
+        Ok(creature)
     }
     pub fn name(mut self, name: &str) -> Self {
         self.name = Some(name.to_string());
@@ -301,25 +303,33 @@ pub mod test {
 
     #[test]
     fn test_tick_and_expire_condition_remaining() {
+        let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = vec![app_cond(Condition::Dead, ConditionDuration::Duration(0)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Duration(5)),
                             app_cond(Condition::Incapacitated, ConditionDuration::Interminate)];
-        assert_eq!(c.tick().unwrap().0.conditions,
+        assert_eq!(c.tick(&game).unwrap().0.conditions,
                    vec![app_cond(Condition::Incapacitated, ConditionDuration::Duration(4)),
                         app_cond(Condition::Incapacitated, ConditionDuration::Interminate)]);
     }
 
     #[test]
     fn test_recurring_effect() {
+        let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = vec![app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
                                      ConditionDuration::Duration(2))];
-        let c = c.tick().unwrap().0;
+        let c = c.tick(&game).unwrap().0;
         assert_eq!(c.cur_health, HP(9));
-        let c = c.tick().unwrap().0;
+        let c = c.tick(&game).unwrap().0;
         assert_eq!(c.cur_health, HP(8));
-        let c = c.tick().unwrap().0;
+        let c = c.tick(&game).unwrap().0;
         assert_eq!(c.cur_health, HP(8));
+    }
+
+    /// Conditions in the class are used directly
+    #[test]
+    fn conditions_from_class() {
+
     }
 }

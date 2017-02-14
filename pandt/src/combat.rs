@@ -82,13 +82,13 @@ impl Combat {
         self.creatures.get_current_mut()
     }
 
-    pub fn next_turn(&self, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
+    pub fn next_turn(&self, game: &Game, terrain: &Map) -> Result<(Combat, Vec<CombatLog>), GameError> {
         let mut newcombat = self.clone();
         let mut all_logs = vec![];
         all_logs.push(CombatLog::EndTurn(newcombat.current_creature().id()));
         newcombat.creatures.next_circular();
         newcombat.movement_used = Distance(0);
-        let (ticked_creature, logs) = newcombat.current_creature().tick()?;
+        let (ticked_creature, logs) = newcombat.current_creature().tick(game)?;
         *newcombat.current_creature_mut() = ticked_creature;
         all_logs.extend(creature_logs_into_combat_logs(newcombat.current_creature().id(), logs));
         newcombat.update_movement_options_mut(terrain);
@@ -336,21 +336,5 @@ pub mod test {
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
         assert_eq!(combat.get_movement().unwrap().move_creature(&huge_box(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
-    }
-
-    #[test]
-    fn three_char_infinite_combat() {
-        let combat = t_combat();
-        let punch = t_punch();
-        let heal = t_heal();
-        let iter = |combat: &Combat| -> Result<Combat, GameError> {
-            let combat = t_act(&combat, &punch, DecidedTarget::Melee(cid("ranger")))?.0;
-            let combat = combat.next_turn(&huge_box())?.0.next_turn(&huge_box())?.0;
-            let combat = t_act(&combat, &heal, DecidedTarget::Range(cid("ranger")))?.0;
-            let combat = combat.next_turn(&huge_box())?.0;
-            Ok(combat)
-        };
-
-        iter(&combat).unwrap();
     }
 }

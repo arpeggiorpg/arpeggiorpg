@@ -258,7 +258,7 @@ impl Game {
     }
 
     fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(self.current_map())?;
+        let (newcombat, logs) = combat.next_turn(self, self.current_map())?;
         Ok((Game { current_combat: Some(newcombat), ..self.clone() },
             combat_logs_into_game_logs(logs)))
     }
@@ -313,6 +313,10 @@ impl Game {
             }
         }
     }
+
+    pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
+        self.classes.get(class).ok_or_else(|| GameError::ClassNotFound(class.to_string()))
+    }
 }
 
 
@@ -323,7 +327,6 @@ pub mod test {
     use grid::test::*;
     use std::iter::FromIterator;
 
-
     pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
         game.perform_unchecked(GameCommand::StartCombat(combatants)).unwrap().0
     }
@@ -333,13 +336,8 @@ pub mod test {
     }
 
     pub fn t_game() -> Game {
-        let punch = t_punch();
-        let heal = t_heal();
-        let shoot = t_shoot();
         let mut game = Game::new(t_classes(),
-                                 HashMap::from_iter(vec![(abid("punch"), punch),
-                                                         (abid("shoot"), shoot),
-                                                         (abid("heal"), heal)]));
+                                 t_abilities());
         game.maps.insert("huge".to_string(), huge_box());
         game.current_map = Some("huge".to_string());
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
