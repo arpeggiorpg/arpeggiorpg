@@ -178,7 +178,7 @@ type alias Game =
 gameDecoder : JD.Decoder Game
 gameDecoder =
   P.decode Game
-    |> P.required "current_combat" (JD.maybe combatDecoder)
+    |> P.required "current_combat" (JD.oneOf [JD.map Just combatDecoder, JD.null Nothing])
     |> P.required "abilities" (JD.dict abilityDecoder)
     |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
@@ -320,14 +320,12 @@ abilityStatusEncoder {ability_id, cooldown} =
             ]
 
 type alias AppliedCondition =
-  { id: Int
-  , remaining: ConditionDuration
+  { remaining: ConditionDuration
   , condition: Condition
   }
 
 appliedConditionDecoder =
-  JD.map3 AppliedCondition
-    (JD.field "id" JD.int)
+  JD.map2 AppliedCondition
     (JD.field "remaining" conditionDurationDecoder)
     (JD.field "condition" conditionDecoder)
 

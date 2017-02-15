@@ -45,20 +45,20 @@ gmViewGame model app =
 fullUI : M.Model -> M.App -> M.Game -> Html U.Msg
 fullUI model app game =
   if model.editingMap
-     then Grid.editMap model.currentMap (visibleCreatures game)
-     else 
-      hbox
-        [ vbox [ h3 [] [text "Creatures"]
-               , inactiveList model game game.current_combat model.selectedCreatures game.creatures
-               , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
-               , history app
-               ]
-        , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
-        , case game.current_combat of
-            Just combat -> combatArea model game combat
-            Nothing -> startCombatButton
-        , mapSelector game
-        ]
+  then Grid.editMap model.currentMap (visibleCreatures game)
+  else
+  hbox
+    [ vbox [ h3 [] [text "Creatures"]
+            , inactiveList model game game.current_combat model.selectedCreatures game.creatures
+            , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
+            , history app
+            ]
+    , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
+    , case game.current_combat of
+        Just combat -> combatArea model game combat
+        Nothing -> startCombatButton
+    , mapSelector game
+    ]
 
 
 extPlayerList : (M.PlayerID -> List (Html U.Msg)) -> Dict.Dict M.PlayerID (Set.Set M.CreatureID) -> Html U.Msg
