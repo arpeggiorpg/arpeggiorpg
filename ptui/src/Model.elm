@@ -148,6 +148,7 @@ type CreatureLog
   | CLApplyCondition Int ConditionDuration Condition
   | CLRemoveCondition Int
   | CLPathCreature PathAndDistance
+  | CLDecrementConditionRemaining Int
 
 creatureLogDecoder = sumDecoder "CreatureLog"
   []
@@ -158,6 +159,7 @@ creatureLogDecoder = sumDecoder "CreatureLog"
   , ("ApplyCondition", JD.map3 CLApplyCondition (JD.index 0 JD.int) (JD.index 1 conditionDurationDecoder) (JD.index 2conditionDecoder))
   , ("RemoveCondition", JD.map CLRemoveCondition JD.int)
   , ("PathCreature", JD.map CLPathCreature pathAndDistanceDecoder)
+  , ("DecrementConditionRemaining", JD.map CLDecrementConditionRemaining JD.int)
   ]
 
 type alias PathAndDistance = {path: List Point3, distance: Distance}
@@ -268,22 +270,6 @@ stringKeyDictToIntKeyDict d =
       Err x -> JD.fail x
       Ok y -> JD.succeed y
 
-creatureEncoder { id, name, speed, max_energy, cur_energy, max_health
-                , cur_health, pos, abilities, class, conditions} =
-  JE.object
-    [ ("id", JE.string id)
-    , ("name", JE.string name)
-    , ("speed", JE.int speed)
-    , ("pos", point3Encoder pos)
-    , ("max_energy", JE.int max_energy)
-    , ("cur_energy", JE.int cur_energy)
-    , ("max_health", JE.int max_health)
-    , ("cur_health", JE.int cur_health)
-    , ("abilities", JE.list (List.map abilityStatusEncoder abilities))
-    , ("class", JE.string class)
-    , ("conditions", JE.list (List.map appliedConditionEncoder conditions))
-    ]
-
 type alias Ability =
   { name : String
   , target: TargetSpec
@@ -328,11 +314,6 @@ appliedConditionDecoder =
   JD.map2 AppliedCondition
     (JD.field "remaining" conditionDurationDecoder)
     (JD.field "condition" conditionDecoder)
-
-appliedConditionEncoder {id, remaining, condition} =
-  JE.object [ ("id", JE.int id)
-            , ("remaining", conditionDurationEncoder remaining)
-            , ("condition", conditionEncoder condition)]
 
 type ConditionDuration
   = Interminate

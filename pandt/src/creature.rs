@@ -49,7 +49,7 @@ impl Creature {
             }
             CreatureLog::ReduceEnergy(ref nrg) => {
                 if *nrg > new.cur_energy {
-                    return Err(GameError::NotEnoughEnergy(*nrg))
+                    return Err(GameError::NotEnoughEnergy(*nrg));
                 } else {
                     new.cur_energy = new.cur_energy - *nrg;
                 }
@@ -57,7 +57,7 @@ impl Creature {
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
                 new.conditions.insert(*id, con.apply(*dur));
             }
-            CreatureLog::DecreaseConditionDuration(ref id) => {
+            CreatureLog::DecrementConditionRemaining(ref id) => {
                 let mut cond =
                     new.conditions.get_mut(&id).ok_or(GameError::ConditionNotFound(*id))?;
                 match cond.remaining {
@@ -137,9 +137,15 @@ impl Creature {
         let mut changes = self.change();
 
         for condition in self.conditions(game)? {
-            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), .. } =
-                condition {
-                changes = changes.merge(changes.creature.apply_effect(eff)?);
+            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff),
+                                      ref remaining } = condition {
+                if match remaining {
+                    &ConditionDuration::Interminate => true,
+                    &ConditionDuration::Duration(0) => false,
+                    &ConditionDuration::Duration(_) => true,
+                } {
+                    changes = changes.merge(changes.creature.apply_effect(eff)?);
+                }
             }
         }
 
@@ -151,9 +157,9 @@ impl Creature {
             match changes.creature.conditions[&condition_id].remaining {
                 ConditionDuration::Interminate => {}
                 ConditionDuration::Duration(remaining) => {
-                    if remaining > 1 {
+                    if remaining > 0 {
                         changes =
-                            changes.apply(&CreatureLog::DecreaseConditionDuration(condition_id))?;
+                            changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
                     } else {
                         changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
                     }
@@ -352,8 +358,10 @@ pub mod test {
                                                      ConditionDuration::Interminate))]));
     }
 
+    /// A RecurringEffect with duration of "2" will tick exactly twice at the beginning of the
+    /// creature's next two turns.
     #[test]
-    fn test_recurring_effect() {
+    fn test_recurring_effect_ticks_duration_times() {
         let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = HashMap::from_iter(
@@ -365,5 +373,23 @@ pub mod test {
         assert_eq!(c.cur_health, HP(8));
         let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(8));
+    }
+
+    /// If a condition has a duration of N, it will remain on the creature until the N+1'th tick
+    /// on that creature.
+    #[test]
+    fn test_condition_duration() {
+        let game = t_game();
+        let mut c = t_rogue("bob");
+        c.conditions = HashMap::from_iter(vec![(0,
+                                                app_cond(Condition::Incapacitated,
+                                                         ConditionDuration::Duration(1)))]);
+        let c = c.tick(&game).unwrap().creature;
+        assert_eq!(c.conditions,
+                   HashMap::from_iter(vec![(0,
+                                            app_cond(Condition::Incapacitated,
+                                                     ConditionDuration::Duration(0)))]));
+        let c = c.tick(&game).unwrap().creature;
+        assert_eq!(c.conditions, HashMap::new());
     }
 }

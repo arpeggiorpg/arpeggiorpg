@@ -232,6 +232,7 @@ historyCreatureLog cl = case cl of
   M.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
   M.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
   M.CLPathCreature {path, distance} -> text <| "Moved " ++ toString (toFloat distance / 100) ++ " to " ++ maybePos path
+  M.CLDecrementConditionRemaining conID -> text <| "Tick condition: " ++ toString conID
 
 maybePos : List M.Point3 -> String
 maybePos path =

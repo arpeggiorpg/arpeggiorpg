@@ -154,7 +154,7 @@ pub enum CreatureLog {
     GenerateEnergy(Energy),
     ReduceEnergy(Energy),
     ApplyCondition(ConditionID, ConditionDuration, Condition),
-    DecreaseConditionDuration(ConditionID),
+    DecrementConditionRemaining(ConditionID),
     RemoveCondition(ConditionID),
     PathCreature {
         path: Vec<Point3>,
