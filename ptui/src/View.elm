@@ -53,11 +53,10 @@ fullUI model app game =
             , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
             , history app
             ]
-    , vbox [editMapButton, Grid.terrainMap model.currentMap (visibleCreatures game)]
+    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap model.currentMap (visibleCreatures game)]
     , case game.current_combat of
         Just combat -> combatArea model game combat
         Nothing -> startCombatButton
-    , mapSelector game
     ]
 
 
