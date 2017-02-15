@@ -12,6 +12,7 @@ import Update as U
 import Grid
 import Elements exposing (..)
 
+refreshButton : Html U.Msg
 refreshButton = button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
 
 gmView : M.Model -> Html U.Msg
@@ -128,7 +129,7 @@ playerViewGame model app creatures =
       Just combat ->
         let currentCreature = M.combatCreature combat
             bar = if List.member currentCreature creatures
-                  then hbox [strong [] [text currentCreature.id]
+                  then hbox [ strong [] [text currentCreature.id]
                             , actionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
@@ -298,7 +299,15 @@ creatureStats creature =
        , text "HP: ", text (toString creature.cur_health)
        , text "Energy: ", text (toString creature.cur_energy)
        , text "Pos: ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)
+       , hbox (List.map creatureConds (Dict.values creature.conditions))
        ]
+
+creatureConds : M.AppliedCondition -> Html U.Msg
+creatureConds ac = case ac.condition of 
+  M.RecurringEffect eff -> text (toString eff)
+  M.Dead -> text "💀"
+  M.Incapacitated -> text "😞"
+  M.AddDamageBuff dmg -> text "😈"
 
 disengageButton : M.Creature -> Html U.Msg
 disengageButton creature =
