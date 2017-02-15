@@ -37,7 +37,7 @@ impl Game {
     }
 
     /// Perform a GameCommand on the current Game.
-    pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<(Game, Vec<GameLog>), GameError> {
+    pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
         fn disallowed<T>(cmd: GameCommand) -> Result<T, GameError> {
             Err(GameError::InvalidCommand(cmd))
         }
@@ -59,7 +59,7 @@ impl Game {
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
         }?;
-        Ok(change.done())
+        Ok(change)
     }
 
     fn select_map(&self, name: &MapName) -> Result<ChangedGame, GameError> {
@@ -361,11 +361,11 @@ pub mod test {
     use std::iter::FromIterator;
 
     pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-        game.perform_unchecked(GameCommand::StartCombat(combatants)).unwrap().0
+        game.perform_unchecked(GameCommand::StartCombat(combatants)).unwrap().game
     }
 
     pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
-        game.perform_unchecked(GameCommand::Act(ability_id, target)).unwrap().0
+        game.perform_unchecked(GameCommand::Act(ability_id, target)).unwrap().game
     }
 
     pub fn t_game() -> Game {
@@ -374,13 +374,13 @@ pub mod test {
         game.current_map = Some("huge".to_string());
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
             .unwrap()
-            .0;
+            .game;
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_ranger_creation("ranger")))
             .unwrap()
-            .0;
+            .game;
         let game = game.perform_unchecked(GameCommand::CreateCreature(t_cleric_creation("cleric")))
             .unwrap()
-            .0;
+            .game;
         game
     }
 
@@ -428,7 +428,7 @@ pub mod test {
         };
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));
-        let next: Game = next.expect("punch did not succeed").0;
+        let next: Game = next.expect("punch did not succeed").game;
         let _: Game = next.stop_combat(&next.current_combat.as_ref().unwrap()).unwrap().game;
     }
 
@@ -453,7 +453,7 @@ pub mod test {
         let game =
             game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"), cid("ranger")]))
                 .unwrap()
-                .0;
+                .game;
         assert_eq!(game.creatures.get(&cid("rogue")), None);
         assert_eq!(game.creatures.get(&cid("ranger")), None);
         assert!(game.creatures.get(&cid("cleric")).is_some());
@@ -466,7 +466,7 @@ pub mod test {
         let game = game.perform_unchecked(GameCommand::Act(abid("punch"),
                                                 DecidedTarget::Melee(cid("ranger"))))
             .unwrap()
-            .0;
+            .game;
         assert_eq!(game.current_combat
                        .as_ref()
                        .unwrap()
@@ -474,7 +474,7 @@ pub mod test {
                        .unwrap()
                        .cur_health(),
                    HP(7));
-        let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().0;
+        let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
         assert_eq!(game.get_creature(cid("ranger")).unwrap().cur_health(),
                    HP(7));
     }
@@ -493,13 +493,13 @@ pub mod test {
                                                              cid("ranger"),
                                                              cid("cleric")]))
             .unwrap()
-            .0;
+            .game;
         let iter = |game: &Game| -> Result<Game, GameError> {
             let game = t_game_act(game, abid("punch"), DecidedTarget::Melee(cid("ranger")));
-            let game = game.perform_unchecked(GameCommand::Done)?.0;
-            let game = game.perform_unchecked(GameCommand::Done)?.0;
+            let game = game.perform_unchecked(GameCommand::Done)?.game;
+            let game = game.perform_unchecked(GameCommand::Done)?.game;
             let game = t_game_act(&game, abid("heal"), DecidedTarget::Range(cid("ranger")));
-            let game = game.perform_unchecked(GameCommand::Done)?.0;
+            let game = game.perform_unchecked(GameCommand::Done)?.game;
             Ok(game)
         };
         iter(&game).unwrap();

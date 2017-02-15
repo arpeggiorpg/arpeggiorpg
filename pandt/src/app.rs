@@ -55,7 +55,7 @@ impl App {
                 self.remove_creatures_from_player(pid, cids)
             }
             _ => {
-                let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?;
+                let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
                 if self.snapshots.len() >= 1 {
                     if self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
                         self.snapshot();
