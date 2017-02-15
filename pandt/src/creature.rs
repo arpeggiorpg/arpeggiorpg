@@ -145,11 +145,15 @@ impl Creature {
                         pts: Vec<Point3>,
                         distance: Distance)
                         -> Result<ChangedCreature, GameError> {
-        let log = CreatureLog::PathCreature {
-            path: pts,
-            distance: distance,
-        };
-        Ok(self.change_with(log)?)
+        if self.can_move() {
+            let log = CreatureLog::PathCreature {
+                path: pts,
+                distance: distance,
+            };
+            Ok(self.change_with(log)?)
+        } else {
+            Err(GameError::CannotAct(self.id))
+        }
     }
 
     pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {

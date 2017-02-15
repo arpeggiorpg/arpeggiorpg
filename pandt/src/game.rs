@@ -213,7 +213,11 @@ impl Game {
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.get_creature(creature_id)?;
-        Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+        if creature.can_move() {
+            Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+        } else {
+            Err(GameError::CannotAct(creature.id()))
+        }
     }
 
     fn creatures_within_distance(combat: &Combat,

@@ -100,7 +100,7 @@ impl PT {
     fn post_app(&self, body_stream: hyper::Body) -> BoxFuture<Response, hyper::Error> {
         // we need to clone here so that we don't move a &ref into the closure below, which
         // causes havoc
-        let ARMUT = self.app.clone();
+        let mutable_app = self.app.clone();
         body_stream.collect()
             .and_then(move |chunks| {
                 let vecu8: Vec<u8> = chunks.iter().flat_map(|c| c.as_ref().to_vec()).collect();
@@ -113,7 +113,7 @@ impl PT {
                             Ok(command) => {
                                 // TODO: is there a Future-based mutex yet? this .unwrap()
                                 // sux
-                                let mut app = ARMUT.lock().unwrap();
+                                let mut app = mutable_app.lock().unwrap();
                                 let result = app.perform_unchecked(command).clone();
                                 println!("Command result:\n {:?}", result);
                                 http_json(&result)
