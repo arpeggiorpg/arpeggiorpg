@@ -101,10 +101,19 @@ impl Creature {
         }
     }
 
+    fn damage(&self, amt: HP) -> Vec<CreatureLog> {
+        if amt >= self.cur_health {
+            vec![CreatureLog::Damage(self.cur_health),
+                 self.apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
+        } else {
+            vec![CreatureLog::Damage(amt)]
+        }
+    }
+
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
-                Effect::Damage(amt) => vec![CreatureLog::Damage(amt)],
+                Effect::Damage(amt) => creature.damage(amt),
                 Effect::Heal(amt) => vec![CreatureLog::Heal(amt)],
                 Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
                 Effect::MultiEffect(ref effects) => {
