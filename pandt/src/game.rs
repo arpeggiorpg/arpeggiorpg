@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use types::*;
 use combat::*;
+use creature::ChangedCreature;
 use grid::{find_path, get_all_accessible, creature_within_distance};
 
 
@@ -42,95 +43,52 @@ impl Game {
         }
 
         use self::GameCommand::*;
-        let (newgame, logs) = match (cmd.clone(), self.current_combat.as_ref()) {
+        let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (SelectMap(ref name), _) => self.select_map(name),
             (EditMap(ref name, ref terrain), _) => self.edit_map(name, terrain.clone()),
             (CreateCreature(c), _) => self.create_creature(c),
             (RemoveCreature(cid), _) => self.remove_creature(cid),
             (StartCombat(cids), None) => self.start_combat(cids),
-            (StopCombat, Some(com)) => Ok(self.stop_combat(&com)),
-            (AddCreatureToCombat(cid), Some(com)) => self.add_to_combat(&com, cid),
-            (RemoveCreatureFromCombat(cid), Some(com)) => self.remove_from_combat(&com, cid),
+            (StopCombat, Some(com)) => self.stop_combat(&com),
+            (AddCreatureToCombat(cid), Some(_)) => self.add_to_combat(cid),
+            (RemoveCreatureFromCombat(cid), Some(_)) => self.remove_from_combat(cid),
             // TODO: rename `Move` to `CombatMove` and `MoveOutOfCombat` to `MoveCreature`.
-            (Move(pt), Some(com)) => self.move_creature(&com, pt),
+            (Move(pt), Some(_)) => self.move_current(pt),
             (MoveOutOfCombat(cid, pt), _) => self.move_creature_ooc(cid, pt),
             (Done, Some(com)) => self.next_turn(&com),
             (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
             _ => disallowed(cmd),
         }?;
-        // Design challenge: figure out a way to make this assertion unnecessary or at least less
-        // necessary.
-        debug_assert!(newgame == self.apply_logs(logs.clone())?,
-                      "[ASSERT] log application != command performance!\nnewgame = {:?}\nlgame = \
-                       {:?}\nlogs = {:?}",
-                      newgame,
-                      self.apply_logs(logs.clone())?,
-                      logs.clone());
-        Ok((newgame, logs))
+        Ok(change.done())
     }
 
-    fn select_map(&self, name: &MapName) -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        let terrain = self.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
-        newgame.current_map = Some(name.clone());
-        newgame.current_combat = newgame.current_combat
-            .map(|c| c.update_movement_options(&terrain));
-        Ok((newgame, vec![GameLog::SelectMap(name.clone())]))
+    fn select_map(&self, name: &MapName) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::SelectMap(name.clone()))
     }
 
-    fn edit_map(&self, name: &MapName, terrain: Map) -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        newgame.maps.insert(name.clone(), terrain.clone());
-        Ok((newgame, vec![GameLog::EditMap(name.clone(), terrain.clone())]))
+    fn edit_map(&self, name: &MapName, terrain: Map) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))
     }
 
-    fn add_creature(&self, creature: Creature) -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        if newgame.creatures.contains_key(&creature.id()) {
-            Err(GameError::CreatureAlreadyExists(creature.id()))
-        } else {
-            newgame.creatures.insert(creature.id(), creature.clone());
-            Ok((newgame, vec![GameLog::CreateCreature(creature)]))
-        }
-    }
-
-    fn create_creature(&self, spec: CreatureCreation) -> Result<(Game, Vec<GameLog>), GameError> {
+    fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
         let creature = Creature::build(&spec.id.to_string(), &spec.class).pos(spec.pos)
             .name(&spec.name)
             .build(&self.classes)?;
-        self.add_creature(creature)
+        self.change_with(GameLog::CreateCreature(creature))
     }
 
-    fn remove_creature(&self, cid: CreatureID) -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
-        Ok((newgame, vec![GameLog::RemoveCreature(cid)]))
+    fn remove_creature(&self, cid: CreatureID) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::RemoveCreature(cid))
     }
 
-    fn add_to_combat(&self,
-                     combat: &Combat,
-                     cid: CreatureID)
-                     -> Result<(Game, Vec<GameLog>), GameError> {
+    fn add_to_combat(&self, cid: CreatureID) -> Result<ChangedGame, GameError> {
         // TODO: this should probably take an initiative!
-        let mut newgame = self.clone();
-        let mut combat = combat.clone();
-        let creature =
-            newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
-        combat.creatures.push(creature);
-        newgame.current_combat = Some(combat);
-        Ok((newgame, vec![GameLog::AddCreatureToCombat(cid)]))
+        self.change_with(GameLog::AddCreatureToCombat(cid))
     }
 
     /// Remove a creature from combat. If it's the last creature, the Combat will be ended.
-    fn remove_from_combat(&self,
-                          combat: &Combat,
-                          cid: CreatureID)
-                          -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        let (combat, creature) = combat.remove_from_combat(cid)?;
-        newgame.current_combat = combat;
-        newgame.creatures.insert(creature.id(), creature);
-        Ok((newgame, vec![GameLog::RemoveCreatureFromCombat(cid)]))
+    fn remove_from_combat(&self, cid: CreatureID) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::RemoveCreatureFromCombat(cid))
     }
 
     fn apply_logs(&self, logs: Vec<GameLog>) -> Result<Game, GameError> {
@@ -141,84 +99,110 @@ impl Game {
         Ok(newgame)
     }
 
-    pub fn maybe_combat(&self) -> Result<&Combat, GameError> {
-        self.current_combat.as_ref().ok_or(GameError::NotInCombat)
-    }
-
     pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
         use self::GameLog::*;
+        let mut newgame = self.clone();
         match *log {
-            SelectMap(ref name) => Ok(self.select_map(name)?.0),
-            EditMap(ref name, ref map) => Ok(self.edit_map(name, map.clone())?.0),
-            CreateCreature(ref c) => Ok(self.add_creature(c.clone())?.0),
-            RemoveCreature(cid) => Ok(self.remove_creature(cid)?.0),
-            AddCreatureToCombat(cid) => Ok(self.add_to_combat(self.maybe_combat()?, cid)?.0),
+            SelectMap(ref name) => {
+                let terrain =
+                    newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
+                newgame.current_map = Some(name.clone());
+                newgame.current_combat = newgame.current_combat
+                    .map(|c| c.update_movement_options(&terrain));
+            }
+            EditMap(ref name, ref terrain) => {
+                newgame.maps.insert(name.clone(), terrain.clone());
+            }
+            CreateCreature(ref c) => {
+                if newgame.creatures.contains_key(&c.id()) {
+                    return Err(GameError::CreatureAlreadyExists(c.id()));
+                } else {
+                    newgame.creatures.insert(c.id(), c.clone());
+                }
+            }
+            RemoveCreature(cid) => {
+                newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+            }
+            AddCreatureToCombat(cid) => {
+                let mut combat = newgame.current_combat.clone().ok_or(GameError::NotInCombat)?;
+                let creature =
+                    newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+                combat.creatures.push(creature);
+                newgame.current_combat = Some(combat);
+            }
             RemoveCreatureFromCombat(cid) => {
-                Ok(self.remove_from_combat(self.maybe_combat()?, cid)?.0)
+                let (combat, creature) = {
+                    let combat = newgame.get_combat()?;
+                    combat.remove_from_combat(cid)?
+                };
+                newgame.current_combat = combat;
+                newgame.creatures.insert(creature.id(), creature);
             }
             CombatLog(ref cl) => {
-                Ok(Game {
-                    current_combat: Some(self.current_combat
-                        .as_ref()
-                        .ok_or(GameError::NotInCombat)?
+                return Ok(Game {
+                    current_combat: Some(self.get_combat()?
                         .apply_log(self, cl)?),
                     ..self.clone()
-                })
+                });
             }
             CreatureLog(cid, ref cl) => {
                 let mut newgame = self.clone();
                 let creature = self.get_creature(cid)?.apply_log(cl)?;
                 *newgame.get_creature_mut(cid)? = creature;
-                Ok(newgame)
+                return Ok(newgame);
             }
-            StartCombat(ref cids) => Ok(self.start_combat(cids.clone())?.0),
+            StartCombat(ref cids) => {
+                let mut creatures = vec![];
+                for cid in cids {
+                    let creature =
+                        newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
+                    creatures.push(creature);
+                }
+                newgame.current_combat = Some(Combat::new(creatures, self.current_map())?);
+            }
             StopCombat => {
-                self.current_combat
-                    .as_ref()
-                    .map(|c| self.stop_combat(&c).0)
-                    .ok_or(GameError::NotInCombat)
+                // we shouldn't need to collect into a Vec here.
+                let creatures: Vec<Creature> = newgame.current_combat
+                    .take()
+                    .ok_or(GameError::NotInCombat)?
+                    .creatures
+                    .into_iter()
+                    .collect();
+                for creature in creatures {
+                    newgame.creatures.insert(creature.id(), creature.clone());
+                }
             }
         }
+        Ok(newgame)
     }
 
-    fn move_creature(&self,
-                     combat: &Combat,
-                     pt: Point3)
-                     -> Result<(Game, Vec<GameLog>), GameError> {
-        let movement = combat.get_movement()?;
-        let (next, logs) = movement.move_current(self, pt)?.done();
-        Ok((Game { current_combat: Some(next), ..self.clone() }, combat_logs_into_game_logs(logs)))
+    fn move_current(&self, pt: Point3) -> Result<ChangedGame, GameError> {
+        self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
     }
 
-    fn move_creature_ooc(&self,
-                         cid: CreatureID,
-                         pt: Point3)
-                         -> Result<(Game, Vec<GameLog>), GameError> {
+    fn move_creature_ooc(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
         let creature = self.get_creature(cid)?;
         let (pts, distance) = find_path(creature.pos(),
                                         creature.speed(),
                                         self.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
-        let (creature, logs) = creature.set_pos_path(pts, distance)?.done();
-        let mut newgame = self.clone();
-        *newgame.get_creature_mut(cid)? = creature;
-        Ok((newgame, creature_logs_into_game_logs(cid, logs)))
+        self.change().apply_creature(cid, move |c| c.set_pos_path(pts, distance))
     }
 
     fn act(&self,
            combat: &Combat,
            abid: AbilityID,
            target: DecidedTarget)
-           -> Result<(Game, Vec<GameLog>), GameError> {
-        let able = combat.get_able()?;
-        let ability = self.get_ability(&abid)?;
-        if self.creature_has_ability(&able.combat.current_creature(), &abid)? {
-            let (next, logs) = able.act(&ability, target)?.done();
-            Ok((Game { current_combat: Some(next), ..self.clone() },
-                combat_logs_into_game_logs(logs)))
-        } else {
-            Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid))
-        }
+           -> Result<ChangedGame, GameError> {
+        self.change().apply_combat(move |c| {
+            let ability = self.get_ability(&abid)?;
+            let able = combat.get_able()?;
+            if self.creature_has_ability(&able.combat.current_creature(), &abid)? {
+                able.act(&ability, target)
+            } else {
+                Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid))
+            }
+        })
     }
 
     fn creature_has_ability(&self,
@@ -231,13 +215,8 @@ impl Game {
         Ok(abilities.contains(ability))
     }
 
-    fn stop_combat(&self, combat: &Combat) -> (Game, Vec<GameLog>) {
-        let mut newgame = self.clone();
-        for creature in combat.get_creatures() {
-            newgame.creatures.insert(creature.id(), creature.clone());
-        }
-        newgame.current_combat = None;
-        (newgame, vec![GameLog::StopCombat])
+    fn stop_combat(&self, combat: &Combat) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::StopCombat)
     }
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
@@ -257,21 +236,12 @@ impl Game {
         })
     }
 
-    fn next_turn(&self, combat: &Combat) -> Result<(Game, Vec<GameLog>), GameError> {
-        let (newcombat, logs) = combat.next_turn(self)?.done();
-        Ok((Game { current_combat: Some(newcombat), ..self.clone() },
-            combat_logs_into_game_logs(logs)))
+    fn next_turn(&self, combat: &Combat) -> Result<ChangedGame, GameError> {
+        self.change().apply_combat(|c| c.next_turn(self))
     }
 
-    fn start_combat(&self, cids: Vec<CreatureID>) -> Result<(Game, Vec<GameLog>), GameError> {
-        let mut newgame = self.clone();
-        let mut creatures = vec![];
-        for cid in &cids {
-            let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
-            creatures.push(creature);
-        }
-        newgame.current_combat = Some(Combat::new(creatures, self.current_map())?);
-        Ok((newgame, vec![GameLog::StartCombat(cids)]))
+    fn start_combat(&self, cids: Vec<CreatureID>) -> Result<ChangedGame, GameError> {
+        self.change_with(GameLog::StartCombat(cids))
     }
 
     pub fn get_combat(&self) -> Result<&Combat, GameError> {
@@ -350,7 +320,7 @@ impl ChangedGame {
     }
 
     pub fn apply_combat<F>(&self, f: F) -> Result<ChangedGame, GameError>
-        where F: Fn(&Combat) -> Result<ChangedCombat, GameError>
+        where F: FnOnce(&Combat) -> Result<ChangedCombat, GameError>
     {
         match self.game.current_combat.as_ref() {
             None => Err(GameError::NotInCombat),
@@ -363,6 +333,18 @@ impl ChangedGame {
                 Ok(new)
             }
         }
+    }
+
+    pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
+        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+    {
+        let creature = self.game.get_creature(cid)?;
+        let change = f(creature)?;
+        let mut new = self.clone();
+        let (creature, logs) = change.done();
+        *new.game.get_creature_mut(cid)? = creature;
+        new.logs.extend(creature_logs_into_game_logs(cid, logs));
+        Ok(new)
     }
 
     pub fn done(self) -> (Game, Vec<GameLog>) {
@@ -447,7 +429,7 @@ pub mod test {
         let game = t_start_combat(&game, vec![bob_id]);
         let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));
         let next: Game = next.expect("punch did not succeed").0;
-        let _: Game = next.stop_combat(&next.current_combat.as_ref().unwrap()).0;
+        let _: Game = next.stop_combat(&next.current_combat.as_ref().unwrap()).unwrap().game;
     }
 
     #[test]

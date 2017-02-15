@@ -140,7 +140,10 @@ impl<T> NonEmptyWithCursor<T> {
     /// assert_eq!(ne.remove(0), Err(Error::RemoveLastElement))
     /// ```
     pub fn remove(&mut self, index: usize) -> Result<T, Error> {
-        println!("Removing index: {}, cursor {}, len {}", index, self.cursor, self.data.len());
+        println!("Removing index: {}, cursor {}, len {}",
+                 index,
+                 self.cursor,
+                 self.data.len());
         let r = self.data.remove(index)?;
         if index < self.cursor {
             self.cursor -= 1;
@@ -159,6 +162,12 @@ impl<T> NonEmptyWithCursor<T> {
     #[inline]
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.data.iter()
+    }
+
+    /// Consume the NonEmptyWithCursor and iterate over the owned elements, providing T.
+    #[inline]
+    pub fn into_iter(self) -> std::vec::IntoIter<T> {
+        self.data.into_iter()
     }
 
     /// Iterate over the elements, providing &mut T.
@@ -222,6 +231,12 @@ impl<T> NonEmpty<T> {
     #[inline]
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.0.iter()
+    }
+
+    /// Consume the NonEmpty and iterate over the owned elements, providing T.
+    #[inline]
+    pub fn into_iter(self) -> std::vec::IntoIter<T> {
+        self.0.into_iter()
     }
 
     /// Iterate over the elements, providing &mut T.

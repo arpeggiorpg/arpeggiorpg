@@ -181,7 +181,7 @@ impl<'a> CombatMove<'a> {
 
         let change = self.combat.change();
         let mut change = change.apply_creature(self.combat.current_creature().id(),
-                            move |c| c.set_pos_path(pts.clone(), distance))?;
+                            move |c| c.set_pos_path(pts, distance))?;
         // Sadly, because of the hack we have in Combat.apply_log for handling
         // CombatLog::CreatureLog(CreatureLog::PathCreature), we have to mutate the combat here in
         // an equivalent way.
@@ -200,7 +200,10 @@ impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
     // TODO: this should really be moved into `creature`, because we also need to support
     // out-of-combat ability usage.
-    pub fn act(&self, ability: &Ability, target: DecidedTarget) -> Result<ChangedCombat, GameError> {
+    pub fn act(&self,
+               ability: &Ability,
+               target: DecidedTarget)
+               -> Result<ChangedCombat, GameError> {
         let mut change = self.combat.change();
 
         {
@@ -263,7 +266,7 @@ impl ChangedCombat {
     }
 
     pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat, GameError>
-        where F: Fn(&Creature) -> Result<ChangedCreature, GameError>
+        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
     {
         let creature = self.combat.get_creature(cid)?;
         let change = f(creature)?;
@@ -334,7 +337,8 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 0, 0));
         }
-        let _: Combat = t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
+        let _: Combat =
+            t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
     }
 
     /// Ranged attacks against targets outside of range return `TargetOutOfRange`
