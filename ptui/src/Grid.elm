@@ -49,7 +49,7 @@ movementMap moveMsg {max_distance, movement_options} terrain creature creatures 
       movementCirc = movementCircle moveMsg movement_options terrain creature.pos max_distance
   in
     vbox
-      [ hbox [cancelButton, saveForm terrain] 
+      [ cancelButton
       , baseMap terrain creatures movementCirc False ]
 
 cancelMove : H.Html U.Msg
