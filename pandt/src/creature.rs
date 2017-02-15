@@ -204,6 +204,10 @@ impl Creature {
         conditions_able(self.conditions.values().collect())
     }
 
+    pub fn can_move(&self) -> bool {
+        self.can_act()
+    }
+
     pub fn class(&self) -> String {
         self.class.clone()
     }

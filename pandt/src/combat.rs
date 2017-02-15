@@ -114,10 +114,14 @@ impl Combat {
         }
     }
     pub fn get_movement(&self) -> Result<CombatMove, GameError> {
-        Ok(CombatMove {
-            combat: self,
-            movement_left: self.current_creature().speed() - self.movement_used,
-        })
+        if self.current_creature().can_move() {
+            Ok(CombatMove {
+                combat: self,
+                movement_left: self.current_creature().speed() - self.movement_used,
+            })
+        } else {
+            Err(GameError::CannotAct(self.current_creature().id()))
+        }
     }
 
     /// the Option<Combat> will be None if you're removing the last creature from a combat.
