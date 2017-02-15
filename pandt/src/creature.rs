@@ -91,12 +91,22 @@ impl Creature {
                                     duration.clone(),
                                     condition.clone())
     }
+
+    fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
+        let delta = self.max_energy - self.cur_energy;
+        if delta > Energy(0) {
+            vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))]
+        } else {
+            vec![]
+        }
+    }
+
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
                 Effect::Damage(amt) => vec![CreatureLog::Damage(amt)],
                 Effect::Heal(amt) => vec![CreatureLog::Heal(amt)],
-                Effect::GenerateEnergy(amt) => vec![CreatureLog::GenerateEnergy(amt)],
+                Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
                 Effect::MultiEffect(ref effects) => {
                     effects.iter().flat_map(|x| eff2log(creature, x)).collect()
                 }
