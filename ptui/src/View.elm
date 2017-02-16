@@ -259,7 +259,7 @@ targetSelector model game combat abid =
 
 creatureTargetSelector : M.AbilityID -> (M.CreatureID -> M.DecidedTarget) -> List M.Creature -> Html U.Msg
 creatureTargetSelector abid targetConstructor creatures = vbox <|
-  let targetCreatureButton c = button [onClick (U.Act abid (targetConstructor c.id))] [text c.name]
+  let targetCreatureButton c = button [onClick (U.CombatAct abid (targetConstructor c.id))] [text c.name]
   in (List.map targetCreatureButton creatures)
 
 stopCombatButton : Html U.Msg

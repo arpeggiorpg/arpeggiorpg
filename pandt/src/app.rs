@@ -150,7 +150,7 @@ mod test {
     }
 
     pub fn t_app_act(app: &mut App, ab: &str, dtarget: DecidedTarget) -> Result<(), GameError> {
-        app.perform_unchecked(GameCommand::Act(abid(ab), dtarget))?;
+        app.perform_unchecked(GameCommand::CombatAct(abid(ab), dtarget))?;
         Ok(())
     }
 

@@ -31,7 +31,7 @@ type Msg
     | RemoveFromGame CreatureID
     | SelectAbility CreatureID AbilityID
     | GotTargetOptions (Result Http.Error (List M.PotentialTarget))
-    | Act AbilityID M.DecidedTarget
+    | CombatAct AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest
     | CancelMovement
     | CombatMove M.Point3
@@ -129,7 +129,7 @@ update msg model = case msg of
   RemoveFromGame cid -> (model, sendCommand (M.RemoveCreature cid))
   AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
   RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
-  Act abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.Act abid dtarget))
+  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.CombatAct abid dtarget))
   CombatMove pt -> ({model | moving = Nothing}, sendCommand (M.CombatMove pt))
   MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveCreature cid pt))
   TurnDone -> (model, sendCommand M.Done)

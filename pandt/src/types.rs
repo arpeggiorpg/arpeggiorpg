@@ -115,7 +115,7 @@ pub enum GameCommand {
     /// Stop the current combat.
     StopCombat,
     /// Make the current creature use an ability.
-    Act(AbilityID, DecidedTarget),
+    CombatAct(AbilityID, DecidedTarget),
     /// Move out of combat. There must be a clear path according to the current loaded map.
     MoveCreature(CreatureID, Point3),
     /// Move to a point. There must be a clear path according to the current loaded map.

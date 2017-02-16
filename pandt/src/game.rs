@@ -46,7 +46,7 @@ impl Game {
         let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (CreateCreature(c), _) => self.create_creature(c),
             (MoveCreature(cid, pt), _) => self.move_creature_ooc(cid, pt),
-            (Act(abid, dtarget), Some(_)) => self.act(abid, dtarget),
+            (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
 
             (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
             (EditMap(ref name, ref terrain), _) => {
@@ -331,7 +331,7 @@ pub mod test {
     }
 
     pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
-        game.perform_unchecked(GameCommand::Act(ability_id, target)).unwrap().game
+        game.perform_unchecked(GameCommand::CombatAct(ability_id, target)).unwrap().game
     }
 
     pub fn t_game() -> Game {
@@ -393,7 +393,7 @@ pub mod test {
             current_map: Some("huge".to_string()),
         };
         let game = t_start_combat(&game, vec![bob_id]);
-        let next = game.perform_unchecked(GameCommand::Act(punch_id, DecidedTarget::Melee(bob_id)));
+        let next = game.perform_unchecked(GameCommand::CombatAct(punch_id, DecidedTarget::Melee(bob_id)));
         let next: Game = next.expect("punch did not succeed").game;
         let _: Game = next.perform_unchecked(GameCommand::StopCombat).unwrap().game;
     }
@@ -429,7 +429,7 @@ pub mod test {
     fn stop_combat() {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-        let game = game.perform_unchecked(GameCommand::Act(abid("punch"),
+        let game = game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
                                                 DecidedTarget::Melee(cid("ranger"))))
             .unwrap()
             .game;
