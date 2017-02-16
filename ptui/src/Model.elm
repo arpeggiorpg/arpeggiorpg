@@ -238,6 +238,8 @@ type alias Creature =
   , abilities: List AbilityStatus
   , class: String
   , conditions: Dict Int AppliedCondition
+  , can_act: Bool
+  , can_move: Bool
 }
 
 creatureDecoder =
@@ -253,6 +255,8 @@ creatureDecoder =
     |> P.required "abilities" (JD.list abilityStatusDecoder)
     |> P.required "class" JD.string
     |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
+    |> P.required "can_act" JD.bool
+    |> P.required "can_move" JD.bool
 
 
 stringKeyDictToIntKeyDict : Dict String a -> JD.Decoder (Dict Int a)

@@ -284,14 +284,19 @@ actionBar : M.Game -> M.Combat -> M.Creature -> Html U.Msg
 actionBar game combat creature =
   let abilities =
         case (Dict.get creature.class game.classes) of
-          Just x -> x.abilities
+          Just x -> x.abilities -- TODO: get ability *name*
           Nothing -> []
-  in hbox (  (doneButton creature)
-          :: (moveButton combat creature)
-          :: (List.map (actionButton creature.id) abilities))
+  in hbox ( [doneButton creature]
+          ++ [moveButton combat creature]
+          ++ (List.map (actionButton creature) abilities)
+          )
 
-actionButton : String -> String -> Html U.Msg
-actionButton cid abid = button [onClick (U.SelectAbility cid abid)] [text abid]
+actionButton : M.Creature -> String -> Html U.Msg
+actionButton creature abid =
+  button
+    [ onClick (U.SelectAbility creature.id abid)
+    , disabled (not creature.can_act)]
+    [text abid]
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
@@ -319,7 +324,8 @@ deleteCreatureButton creature =
 
 moveOOCButton : M.Creature -> Html U.Msg
 moveOOCButton creature =
-  button [onClick (U.GetMovementOptions creature)]
+  button [ onClick (U.GetMovementOptions creature)
+         , disabled (not creature.can_move)]
          [text "Move"]
 
 doneButton : M.Creature -> Html U.Msg
@@ -329,5 +335,6 @@ doneButton creature =
 moveButton : M.Combat -> M.Creature -> Html U.Msg
 moveButton combat creature =
   let movement_left = creature.speed - combat.movement_used
-  in button [onClick (U.RequestMove <| M.MovementRequest movement_left combat.movement_options Nothing)]
+  in button [ onClick (U.RequestMove <| M.MovementRequest movement_left combat.movement_options Nothing)
+            , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString movement_left, ")"])]
