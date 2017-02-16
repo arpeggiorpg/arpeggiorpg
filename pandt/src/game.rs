@@ -181,7 +181,10 @@ impl Game {
                abid: AbilityID,
                target: DecidedTarget)
                -> Result<ChangedGame, GameError> {
-        Err(GameError::BuggyProgram("Implement this shiz".to_string()))
+        self.get_creature(cid)?.act(|cid| self.get_creature(cid),
+                                    &self.get_ability(&abid)?,
+                                    target,
+                                    self.change())
     }
 
     fn creature_has_ability(&self,
@@ -322,6 +325,15 @@ impl ChangedGame {
         (self.game, self.logs)
     }
 }
+
+impl CreatureChanger for ChangedGame {
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<ChangedGame>, GameError>
+        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+    {
+        Ok(Box::new(ChangedGame::apply_creature(self, cid, f)?))
+    }
+}
+
 
 
 #[cfg(test)]
