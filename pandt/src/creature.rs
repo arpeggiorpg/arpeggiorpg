@@ -208,6 +208,26 @@ impl Creature {
         Ok(conditions)
     }
 
+
+    pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self,
+                                                         get_creature: GetCreature,
+                                                         ability: &Ability,
+                                                         target: DecidedTarget,
+                                                         mut change: Change)
+                                                         -> Result<Change, GameError>
+        where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
+    {
+        let targets = self.resolve_targets(get_creature, ability.target, target)?;
+        for creature_id in targets.iter() {
+            for effect in &ability.effects {
+                change =
+                    *change.apply_creature(*creature_id, |c: &Creature| c.apply_effect(effect))?;
+            }
+        }
+        change = *change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
+        Ok(change)
+    }
+
     pub fn resolve_targets<'a, F>(&'a self,
                                   get_creature: F,
                                   target: TargetSpec,
@@ -275,6 +295,7 @@ impl Creature {
         })
     }
 }
+
 
 #[derive(Clone)]
 pub struct ChangedCreature {

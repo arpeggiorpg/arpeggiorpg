@@ -429,6 +429,13 @@ pub struct App {
     pub players: HashMap<PlayerID, HashSet<CreatureID>>,
 }
 
+use creature::ChangedCreature;
+
+pub trait CreatureChanger {
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<Self>, GameError>
+        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>;
+}
+
 #[cfg(test)]
 pub mod test {
     use types::*;

@@ -1,6 +1,6 @@
 //! Representation and simulation of combat.
 //! Many simple combat-oriented types are in `types.rs`, but this module implements the
-//! Combat types. The most interesting top-level method is `Combat::act`.
+//! Combat types.
 
 use nonempty;
 
@@ -195,6 +195,7 @@ impl<'a> CombatMove<'a> {
     }
 }
 
+
 /// The ability to act in combat.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatAble<'a> {
@@ -206,23 +207,10 @@ impl<'a> CombatAble<'a> {
                ability: &Ability,
                target: DecidedTarget)
                -> Result<ChangedCombat, GameError> {
-        let mut change = self.combat.change();
-
-        {
-            let mut targets = change.combat
-                .current_creature()
-                .resolve_targets(|cid| change.combat.get_creature(cid),
-                                 ability.target,
-                                 target)?;
-            for effect in &ability.effects {
-                for creature_id in targets.iter() {
-                    change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
-                }
-            }
-        }
-        change = change.apply_creature(change.combat.current_creature().id(),
-                            |c| c.reduce_energy(ability.cost))?;
-        Ok(change)
+        self.combat.current_creature().act(|cid| self.combat.get_creature(cid),
+                                           ability,
+                                           target,
+                                           self.combat.change())
     }
 }
 
@@ -262,6 +250,14 @@ impl ChangedCombat {
 
     pub fn done(self) -> (Combat, Vec<CombatLog>) {
         (self.combat, self.logs)
+    }
+}
+
+impl CreatureChanger for ChangedCombat {
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<ChangedCombat>, GameError>
+        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+    {
+        Ok(Box::new(ChangedCombat::apply_creature(self, cid, f)?))
     }
 }
 
