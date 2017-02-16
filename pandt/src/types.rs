@@ -213,7 +213,7 @@ pub enum GameError {
     CreatureLacksAbility(CreatureID, AbilityID),
     CreatureNotFound(CreatureID),
     InvalidTarget(CreatureID),
-    InvalidTargetNoSense(CreatureID),
+    InvalidTargetForTargetSpec(TargetSpec, DecidedTarget),
     CreatureOutOfRange(CreatureID),
     InvalidCreatureState,
     BuggyProgram(String),
@@ -387,6 +387,9 @@ pub struct Creature {
     pub cur_health: HP,
     pub pos: Point3,
     pub conditions: HashMap<ConditionID, AppliedCondition>,
+    // I thought about `pub capabilities: Vec<Capability>`, but this seems simpler...
+    pub can_act: bool,
+    pub can_move: bool,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

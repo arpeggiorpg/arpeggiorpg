@@ -107,14 +107,14 @@ impl Combat {
     }
 
     pub fn get_able(&self) -> Result<CombatAble, GameError> {
-        if self.current_creature().can_act() {
+        if self.current_creature().can_act {
             Ok(CombatAble { combat: self })
         } else {
             Err(GameError::CannotAct(self.current_creature().id()))
         }
     }
     pub fn get_movement(&self) -> Result<CombatMove, GameError> {
-        if self.current_creature().can_move() {
+        if self.current_creature().can_move {
             Ok(CombatMove {
                 combat: self,
                 movement_left: self.current_creature().speed() - self.movement_used,
@@ -246,10 +246,7 @@ impl<'a> CombatAble<'a> {
                     Err(GameError::CreatureOutOfRange(cid))
                 }
             }
-            _ => {
-                let unhandled = true;
-                panic!("Unhandled decided target!")
-            }
+            (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided))
         }
     }
 }

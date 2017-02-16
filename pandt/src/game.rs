@@ -54,7 +54,7 @@ impl Game {
             }
             (RemoveCreature(cid), _) => self.change_with(GameLog::RemoveCreature(cid)),
             (StartCombat(cids), None) => self.change_with(GameLog::StartCombat(cids)),
-            (StopCombat, Some(com)) => self.change_with(GameLog::StopCombat),
+            (StopCombat, Some(_)) => self.change_with(GameLog::StopCombat),
             (AddCreatureToCombat(cid), Some(_)) => {
                 self.change_with(GameLog::AddCreatureToCombat(cid))
             }
@@ -65,7 +65,7 @@ impl Game {
             (Move(pt), Some(_)) => {
                 self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
             }
-            (Done, Some(com)) => self.change().apply_combat(|c| c.next_turn(self)),
+            (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn(self)),
             _ => disallowed(cmd),
         }?;
         Ok(change)
@@ -74,7 +74,7 @@ impl Game {
     fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
         let creature = Creature::build(&spec.id.to_string(), &spec.class).pos(spec.pos)
             .name(&spec.name)
-            .build(&self.classes)?;
+            .build()?;
         self.change_with(GameLog::CreateCreature(creature))
     }
 
@@ -213,7 +213,7 @@ impl Game {
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.get_creature(creature_id)?;
-        if creature.can_move() {
+        if creature.can_move {
             Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
         } else {
             Err(GameError::CannotAct(creature.id()))
@@ -380,7 +380,7 @@ pub mod test {
         let bob_id = cid("bob");
         let creature = Creature::build("bob", "rogue")
             .abilities(vec![punch_id.clone()])
-            .build(&t_classes())
+            .build()
             .unwrap();
         creatures.insert(bob_id, creature);
         let mut abilities = HashMap::new();

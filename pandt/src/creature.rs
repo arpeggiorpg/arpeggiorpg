@@ -56,6 +56,8 @@ impl Creature {
             }
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
                 new.conditions.insert(*id, con.apply(*dur));
+                new.can_move = conditions_able(new.conditions.values().collect());
+                new.can_act = self.can_move;
             }
             CreatureLog::DecrementConditionRemaining(ref id) => {
                 let mut cond =
@@ -70,7 +72,9 @@ impl Creature {
                 }
             }
             CreatureLog::RemoveCondition(ref id) => {
-                new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id));
+                new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
+                new.can_move = conditions_able(new.conditions.values().collect());
+                new.can_act = self.can_move;
             }
             CreatureLog::PathCreature { ref path, .. } => {
                 match path.last() {
@@ -145,7 +149,7 @@ impl Creature {
                         pts: Vec<Point3>,
                         distance: Distance)
                         -> Result<ChangedCreature, GameError> {
-        if self.can_move() {
+        if self.can_move {
             let log = CreatureLog::PathCreature {
                 path: pts,
                 distance: distance,
@@ -201,15 +205,6 @@ impl Creature {
             .map(|c| c.apply(ConditionDuration::Interminate));
         conditions.extend(applied_class_conditions);
         Ok(conditions)
-    }
-
-    /// Return true if a creature can act this turn (e.g. it's not dead or incapacitated)
-    pub fn can_act(&self) -> bool {
-        conditions_able(self.conditions.values().collect())
-    }
-
-    pub fn can_move(&self) -> bool {
-        self.can_act()
     }
 
     pub fn class(&self) -> String {
@@ -278,7 +273,7 @@ impl ChangedCreature {
 }
 
 impl CreatureBuilder {
-    pub fn build(self, classes: &HashMap<String, Class>) -> Result<Creature, GameError> {
+    pub fn build(self) -> Result<Creature, GameError> {
         let creature = Creature {
             id: CreatureID::new(&self.id)?,
             name: self.name.unwrap_or(self.id.to_string()),
@@ -291,6 +286,8 @@ impl CreatureBuilder {
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: HashMap::new(),
+            can_act: true,
+            can_move: true,
         };
         Ok(creature)
     }
@@ -346,21 +343,15 @@ pub mod test {
     use std::iter::FromIterator;
 
     pub fn t_rogue(name: &str) -> Creature {
-        Creature::build(name, "rogue")
-            .build(&t_classes())
-            .unwrap()
+        Creature::build(name, "rogue").build().unwrap()
     }
 
     pub fn t_ranger(name: &str) -> Creature {
-        Creature::build(name, "ranger")
-            .build(&t_classes())
-            .unwrap()
+        Creature::build(name, "ranger").build().unwrap()
     }
 
     pub fn t_cleric(name: &str) -> Creature {
-        Creature::build(name, "cleric")
-            .build(&t_classes())
-            .unwrap()
+        Creature::build(name, "cleric").build().unwrap()
     }
 
     #[test]
