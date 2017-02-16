@@ -221,10 +221,10 @@ impl Creature {
         for creature_id in targets.iter() {
             for effect in &ability.effects {
                 change =
-                    *change.apply_creature(*creature_id, |c: &Creature| c.apply_effect(effect))?;
+                    change.apply_creature(*creature_id, |c: &Creature| c.apply_effect(effect))?;
             }
         }
-        change = *change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
+        change = change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
         Ok(change)
     }
 

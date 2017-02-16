@@ -254,10 +254,10 @@ impl ChangedCombat {
 }
 
 impl CreatureChanger for ChangedCombat {
-    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<ChangedCombat>, GameError>
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat, GameError>
         where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
     {
-        Ok(Box::new(ChangedCombat::apply_creature(self, cid, f)?))
+        Ok(ChangedCombat::apply_creature(self, cid, f)?)
     }
 }
 

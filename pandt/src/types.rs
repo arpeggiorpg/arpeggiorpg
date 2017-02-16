@@ -431,8 +431,8 @@ pub struct App {
 
 use creature::ChangedCreature;
 
-pub trait CreatureChanger {
-    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<Self>, GameError>
+pub trait CreatureChanger: Sized {
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Self, GameError>
         where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>;
 }
 

@@ -326,10 +326,10 @@ impl ChangedGame {
 }
 
 impl CreatureChanger for ChangedGame {
-    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Box<ChangedGame>, GameError>
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
         where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
     {
-        Ok(Box::new(ChangedGame::apply_creature(self, cid, f)?))
+        Ok(ChangedGame::apply_creature(self, cid, f)?)
     }
 }
 
