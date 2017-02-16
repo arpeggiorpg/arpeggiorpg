@@ -18,6 +18,8 @@ use serde::{Deserialize, Deserializer};
 #[cfg(feature="use_serde")]
 #[cfg(test)]
 use serde_json::error as SJE;
+#[cfg(feature="use_serde")]
+use serde::de;
 
 
 /// A non-empty vector with a cursor. NO operations panic.
@@ -342,17 +344,16 @@ struct FakeNEC<T> {
 impl<T> Deserialize for NonEmptyWithCursor<T>
     where T: Deserialize
 {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: Deserializer
     {
         let x: FakeNEC<T> = Deserialize::deserialize(deserializer)?;
         if x.data.len() == 0 {
-            Err(serde::de::Error::invalid_length(0))
+            Err(serde::de::Error::invalid_length(0,
+                                                 &StringExpected(format!("at least one element"))))
         } else if x.cursor >= x.data.len() {
-            Err(serde::de::Error::invalid_value(&format!("Cursor of {} out of bounds for vec of \
-                                                          length {}",
-                                                         x.cursor,
-                                                         x.data.len())))
+            Err(serde::de::Error::invalid_value(de::Unexpected::Unsigned(x.cursor as u64),
+                                                &StringExpected(format!("< {}", x.data.len()))))
         } else {
             let res: NonEmptyWithCursor<T> = NonEmptyWithCursor {
                 cursor: x.cursor,
@@ -363,17 +364,31 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
     }
 }
 
+// It seems silly that I can't just pass a String to invalid_length, but there's no implementation
+// of Expected for String, so...
+#[cfg(feature="use_serde")]
+struct StringExpected(String);
+#[cfg(feature="use_serde")]
+impl serde::de::Expected for StringExpected {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, formatter)
+    }
+}
+
+
 // *** Likewise for NonEmpty
 #[cfg(feature="use_serde")]
 impl<T> Deserialize for NonEmpty<T>
     where T: Deserialize
 {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: Deserializer
     {
         let x: Vec<T> = Deserialize::deserialize(deserializer)?;
         if x.len() == 0 {
-            Err(serde::de::Error::invalid_length(0))
+            Err(serde::de::Error::invalid_length(0,
+                                                 &StringExpected("at least one element"
+                                                     .to_string())))
         } else {
             Ok(NonEmpty(x))
         }
@@ -396,7 +411,10 @@ fn test_deserialize_invalid_nonempty() {
     let parsed: Result<NonEmpty<i32>, _> = serde_json::from_str("[]");
     match parsed {
         Ok(x) => panic!("Somehow this parsed: {:?}", x),
-        Err(SJE::Error::Syntax(SJE::ErrorCode::InvalidLength(0), 0, 0)) => {}
+        Err(e) => {
+            assert_eq!(format!("{}", e),
+                       "invalid length 0, expected at least one element")
+        }
         _ => panic!("Unexpected error"),
     }
 }
@@ -442,11 +460,10 @@ fn test_serialize_deserialize_with_cursor() {
 fn test_deserialize_invalid_cursor() {
     let res: Result<NonEmptyWithCursor<i32>, _> = serde_json::from_str("{\"cursor\":1,\"data\":\
                                                                         [5]}");
-    let exmsg = "Cursor of 1 out of bounds for vec of length 1";
     match res {
         Ok(x) => panic!("Should not have parsed to {:?}", x),
         // TODO: position here is 0, 0 because our parser is dumb.
-        Err(SJE::Error::Syntax(SJE::ErrorCode::InvalidValue(ref msg), 0, 0)) if msg == exmsg => {}
+        Err(e) => assert_eq!(format!("{}", e), "invalid value: integer `1`, expected < 1"),
         Err(e) => panic!("Should not have got any other error: {:?}", e),
     }
 }
@@ -459,7 +476,7 @@ fn test_deserialize_invalid_empty() {
     match res {
         Ok(x) => panic!("Should not have parsed to {:?}", x),
         // TODO: position here is 0, 0 because our parser is dumb.
-        Err(SJE::Error::Syntax(SJE::ErrorCode::InvalidLength(0), 0, 0)) => {}
+        Err(e) => assert_eq!(format!("{}", e), "invalid length 0, expected at least one element"),
         Err(e) => panic!("Should not have got any other error: {}", e),
     }
 }

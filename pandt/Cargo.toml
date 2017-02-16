@@ -4,18 +4,18 @@ version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dev-dependencies]
-serde_json = "0.8"
+serde_json = "0.9"
 
 [dependencies]
-serde = "0.8"
-serde_derive = "0.8"
+serde = "0.9"
+serde_derive = "0.9"
 nonempty = {version = "*", path = "../nonempty", features = ["use_serde"]}
-serde_yaml = "0.5"
+serde_yaml = "0.6"
 odds = "0.2.25"
 nalgebra = "0.9.0"
 ncollide = "0.10.0"
 derive_more = "0.4.0"
-string-wrapper = {version = "0.1.7", features = ["use_serde"]}
+string-wrapper = {version = "0.2", features = ["use_serde"]}
 pathfinding = "0.1.8"
 num-traits = "0.1.36"
 lazy_static = "0.1.*"

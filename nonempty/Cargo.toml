@@ -7,8 +7,8 @@ authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 use_serde = ["serde", "serde_derive"]
 
 [dev-dependencies]
-serde_json = "0.8"
+serde_json = "0.9"
 
 [dependencies]
-serde = {version = "0.8", optional = true}
-serde_derive = {version = "0.8", optional = true}
+serde = {version = "0.9", optional = true}
+serde_derive = {version = "0.9", optional = true}
