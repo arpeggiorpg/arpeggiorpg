@@ -1,7 +1,7 @@
 ---
 players:
 current_game:
-  current_map: 
+  current_map: map1
   maps:
     empty-map:
     map1:
