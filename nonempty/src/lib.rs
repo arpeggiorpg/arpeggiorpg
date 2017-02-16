@@ -16,9 +16,6 @@ use std::fmt;
 #[cfg(feature="use_serde")]
 use serde::{Deserialize, Deserializer};
 #[cfg(feature="use_serde")]
-#[cfg(test)]
-use serde_json::error as SJE;
-#[cfg(feature="use_serde")]
 use serde::de;
 
 
@@ -349,11 +346,10 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
     {
         let x: FakeNEC<T> = Deserialize::deserialize(deserializer)?;
         if x.data.len() == 0 {
-            Err(serde::de::Error::invalid_length(0,
-                                                 &StringExpected(format!("at least one element"))))
+            Err(serde::de::Error::invalid_length(0, &format!("at least one element").as_ref()))
         } else if x.cursor >= x.data.len() {
             Err(serde::de::Error::invalid_value(de::Unexpected::Unsigned(x.cursor as u64),
-                                                &StringExpected(format!("< {}", x.data.len()))))
+                                                &format!("< {}", x.data.len()).as_ref()))
         } else {
             let res: NonEmptyWithCursor<T> = NonEmptyWithCursor {
                 cursor: x.cursor,
@@ -363,18 +359,6 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
         }
     }
 }
-
-// It seems silly that I can't just pass a String to invalid_length, but there's no implementation
-// of Expected for String, so...
-#[cfg(feature="use_serde")]
-struct StringExpected(String);
-#[cfg(feature="use_serde")]
-impl serde::de::Expected for StringExpected {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, formatter)
-    }
-}
-
 
 // *** Likewise for NonEmpty
 #[cfg(feature="use_serde")]
@@ -386,9 +370,7 @@ impl<T> Deserialize for NonEmpty<T>
     {
         let x: Vec<T> = Deserialize::deserialize(deserializer)?;
         if x.len() == 0 {
-            Err(serde::de::Error::invalid_length(0,
-                                                 &StringExpected("at least one element"
-                                                     .to_string())))
+            Err(serde::de::Error::invalid_length(0, &"at least one element"))
         } else {
             Ok(NonEmpty(x))
         }
@@ -415,7 +397,6 @@ fn test_deserialize_invalid_nonempty() {
             assert_eq!(format!("{}", e),
                        "invalid length 0, expected at least one element")
         }
-        _ => panic!("Unexpected error"),
     }
 }
 
@@ -464,7 +445,6 @@ fn test_deserialize_invalid_cursor() {
         Ok(x) => panic!("Should not have parsed to {:?}", x),
         // TODO: position here is 0, 0 because our parser is dumb.
         Err(e) => assert_eq!(format!("{}", e), "invalid value: integer `1`, expected < 1"),
-        Err(e) => panic!("Should not have got any other error: {:?}", e),
     }
 }
 
@@ -476,8 +456,10 @@ fn test_deserialize_invalid_empty() {
     match res {
         Ok(x) => panic!("Should not have parsed to {:?}", x),
         // TODO: position here is 0, 0 because our parser is dumb.
-        Err(e) => assert_eq!(format!("{}", e), "invalid length 0, expected at least one element"),
-        Err(e) => panic!("Should not have got any other error: {}", e),
+        Err(e) => {
+            assert_eq!(format!("{}", e),
+                       "invalid length 0, expected at least one element")
+        }
     }
 }
 
