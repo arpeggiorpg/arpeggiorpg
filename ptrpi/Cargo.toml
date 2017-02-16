@@ -4,10 +4,10 @@ version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dependencies]
-serde = "0.8"
-serde_derive = "0.8"
-serde_json = "0.8"
-serde_yaml = "0.5.1"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
+serde_yaml = "0.6"
 futures = "0.1.8"
 unicase = "1.4.0"
 

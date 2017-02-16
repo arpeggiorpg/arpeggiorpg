@@ -113,10 +113,12 @@ current_game:
       max_health: 10
       cur_health: 10
       pos: 
-        - 0
+        - 1
         - 0
         - 0
       conditions:
+      can_act: true
+      can_move: true
     kurok-to:
       id: kurok-to
       name: Kurok To
@@ -129,9 +131,11 @@ current_game:
       cur_health: 10
       pos: 
         - 0
-        - 0
+        - 1
         - 0
       conditions:
+      can_act: true
+      can_move: true
     sil:
       id: sil
       name: Silmarillion
@@ -143,10 +147,12 @@ current_game:
       max_health: 10
       cur_health: 10
       pos: 
-        - 0
-        - 0
+        - 1
+        - 1
         - 0
       conditions:
+      can_act: true
+      can_move: true
 snapshots: 
   - 
     - 
@@ -179,49 +185,4 @@ snapshots:
             - 
               Damage: 3
       creatures: 
-        ranger: 
-          id: ranger
-          name: ranger
-          speed: 1086
-          max_energy: 10
-          cur_energy: 10
-          abilities: []
-          class: ranger
-          max_health: 10
-          cur_health: 10
-          pos: 
-            - 0
-            - 0
-            - 0
-          conditions:
-        rogue: 
-          id: rogue
-          name: rogue
-          speed: 1086
-          max_energy: 10
-          cur_energy: 10
-          abilities: []
-          class: rogue
-          max_health: 10
-          cur_health: 10
-          pos: 
-            - 0
-            - 0
-            - 0
-          conditions:
-        cleric: 
-          id: cleric
-          name: cleric
-          speed: 1086
-          max_energy: 10
-          cur_energy: 10
-          abilities: []
-          class: cleric
-          max_health: 10
-          cur_health: 10
-          pos: 
-            - 0
-            - 0
-            - 0
-          conditions:
     - []
