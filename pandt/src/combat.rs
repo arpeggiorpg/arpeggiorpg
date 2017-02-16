@@ -5,7 +5,7 @@
 use nonempty;
 
 use types::*;
-use grid::{creature_within_distance, get_all_accessible, find_path};
+use grid::{get_all_accessible, find_path};
 use creature::ChangedCreature;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
@@ -215,8 +215,8 @@ impl<'a> CombatAble<'a> {
                                  ability.target,
                                  target)?;
             for effect in &ability.effects {
-                for creature_id in targets.drain(..) {
-                    change = change.apply_creature(creature_id, |c| c.apply_effect(effect))?;
+                for creature_id in targets.iter() {
+                    change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
                 }
             }
         }
@@ -315,6 +315,24 @@ pub mod test {
         }
         let _: Combat =
             t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
+    }
+
+    #[test]
+    fn multiple_effects_per_target() {
+        let combat = t_combat();
+        let ab = Ability {
+            name: "MultiEffect".to_string(),
+            target: TargetSpec::Melee,
+            cost: Energy(0),
+            effects: vec![Effect::Damage(HP(3)),
+                          Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
+        };
+        let next = t_act(&combat, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
+        assert_eq!(next.get_creature(cid("ranger")).unwrap().conditions(&t_game()).unwrap(),
+                   vec![AppliedCondition {
+                            remaining: ConditionDuration::Interminate,
+                            condition: Condition::Dead,
+                        }])
     }
 
     /// Ranged attacks against targets outside of range return `TargetOutOfRange`
