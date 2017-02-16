@@ -227,12 +227,12 @@ impl Game {
         }
     }
 
-    fn creatures_within_distance(combat: &Combat,
-                                 creature: &Creature,
+    fn creatures_within_distance(creature: &Creature,
+                                 creatures: Vec<&Creature>,
                                  distance: Distance)
                                  -> Vec<PotentialTarget> {
         let mut results = vec![];
-        for ptarget in combat.creatures.iter() {
+        for ptarget in creatures {
             if creature_within_distance(creature, ptarget, distance) {
                 results.push(PotentialTarget::CreatureID(ptarget.id()));
             }
@@ -247,13 +247,21 @@ impl Game {
                               -> Result<Vec<PotentialTarget>, GameError> {
         let ability = self.get_ability(&ability_id)?;
         let creature = self.find_creature(creature_id)?;
-        // TODO: eventually this should not require combat
-        let combat = self.get_combat()?;
-        match ability.target {
-            TargetSpec::Melee => Ok(Self::creatures_within_distance(combat, creature, MELEE_RANGE)),
-            TargetSpec::Range(distance) => {
-                // TODO: this should check LoS to the target (as should actual target resolution)
-                Ok(Self::creatures_within_distance(combat, creature, distance))
+
+        let distance = match ability.target {
+            TargetSpec::Melee => MELEE_RANGE,
+            TargetSpec::Range(distance) => distance,
+        };
+        match self.current_combat.as_ref() {
+            Some(combat) => {
+                Ok(Self::creatures_within_distance(creature,
+                                                   combat.creatures.iter().collect(),
+                                                   distance))
+            }
+            None => {
+                Ok(Self::creatures_within_distance(creature,
+                                                   self.creatures.values().collect(),
+                                                   distance))
             }
         }
     }
