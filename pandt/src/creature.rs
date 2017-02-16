@@ -4,7 +4,8 @@ use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
 use types::*;
-
+use grid::creature_within_distance;
+use combat::MELEE_RANGE;
 
 /// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
 /// Since we only allow 8-way movement, the available movement options are biased towards
@@ -206,6 +207,35 @@ impl Creature {
         conditions.extend(applied_class_conditions);
         Ok(conditions)
     }
+
+    pub fn resolve_targets<'a, F>(&'a self,
+                                  get_creature: F,
+                                  target: TargetSpec,
+                                  decision: DecidedTarget)
+                                  -> Result<Vec<CreatureID>, GameError>
+        where F: Fn(CreatureID) -> Result<&'a Creature, GameError>
+    {
+        match (target, decision) {
+            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
+                let target_creature = get_creature(cid)?;
+                if creature_within_distance(self, target_creature, MELEE_RANGE) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::CreatureOutOfRange(cid))
+                }
+            }
+            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+                let target_creature = get_creature(cid)?;
+                if creature_within_distance(self, target_creature, max) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::CreatureOutOfRange(cid))
+                }
+            }
+            (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
+        }
+    }
+
 
     pub fn class(&self) -> String {
         self.class.clone()

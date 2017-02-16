@@ -202,8 +202,6 @@ pub struct CombatAble<'a> {
 }
 impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
-    // TODO: this should really be moved into `creature`, because we also need to support
-    // out-of-combat ability usage.
     pub fn act(&self,
                ability: &Ability,
                target: DecidedTarget)
@@ -211,7 +209,11 @@ impl<'a> CombatAble<'a> {
         let mut change = self.combat.change();
 
         {
-            let mut targets = Self::resolve_targets(&change.combat, ability.target, target)?;
+            let mut targets = change.combat
+                .current_creature()
+                .resolve_targets(|cid| change.combat.get_creature(cid),
+                                 ability.target,
+                                 target)?;
             for effect in &ability.effects {
                 for creature_id in targets.drain(..) {
                     change = change.apply_creature(creature_id, |c| c.apply_effect(effect))?;
@@ -221,33 +223,6 @@ impl<'a> CombatAble<'a> {
         change = change.apply_creature(change.combat.current_creature().id(),
                             |c| c.reduce_energy(ability.cost))?;
         Ok(change)
-    }
-
-    fn resolve_targets(combat: &Combat,
-                       target: TargetSpec,
-                       decision: DecidedTarget)
-                       -> Result<Vec<CreatureID>, GameError> {
-        match (target, decision) {
-            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
-                let target_creature = combat.get_creature(cid)?;
-                if creature_within_distance(combat.creatures.get_current(),
-                                            target_creature,
-                                            MELEE_RANGE) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::CreatureOutOfRange(cid))
-                }
-            }
-            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
-                let target_creature = combat.get_creature(cid)?;
-                if creature_within_distance(combat.creatures.get_current(), target_creature, max) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::CreatureOutOfRange(cid))
-                }
-            }
-            (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided))
-        }
     }
 }
 

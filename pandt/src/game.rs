@@ -47,7 +47,7 @@ impl Game {
             (CreateCreature(c), _) => self.create_creature(c),
             (MoveCreature(cid, pt), _) => self.move_creature_ooc(cid, pt),
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
-
+            (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
             (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
             (EditMap(ref name, ref terrain), _) => {
                 self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))
@@ -164,10 +164,7 @@ impl Game {
         self.change().apply_creature(cid, move |c| c.set_pos_path(pts, distance))
     }
 
-    fn act(&self,
-           abid: AbilityID,
-           target: DecidedTarget)
-           -> Result<ChangedGame, GameError> {
+    fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
         self.change().apply_combat(move |c| {
             let ability = self.get_ability(&abid)?;
             let able = c.get_able()?;
@@ -177,6 +174,14 @@ impl Game {
                 Err(GameError::CreatureLacksAbility(c.current_creature().id(), abid))
             }
         })
+    }
+
+    fn act_ooc(&self,
+               cid: CreatureID,
+               abid: AbilityID,
+               target: DecidedTarget)
+               -> Result<ChangedGame, GameError> {
+        Err(GameError::BuggyProgram("Implement this shiz".to_string()))
     }
 
     fn creature_has_ability(&self,
@@ -393,7 +398,8 @@ pub mod test {
             current_map: Some("huge".to_string()),
         };
         let game = t_start_combat(&game, vec![bob_id]);
-        let next = game.perform_unchecked(GameCommand::CombatAct(punch_id, DecidedTarget::Melee(bob_id)));
+        let next =
+            game.perform_unchecked(GameCommand::CombatAct(punch_id, DecidedTarget::Melee(bob_id)));
         let next: Game = next.expect("punch did not succeed").game;
         let _: Game = next.perform_unchecked(GameCommand::StopCombat).unwrap().game;
     }
@@ -430,7 +436,7 @@ pub mod test {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
         let game = game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
-                                                DecidedTarget::Melee(cid("ranger"))))
+                                                      DecidedTarget::Melee(cid("ranger"))))
             .unwrap()
             .game;
         assert_eq!(game.current_combat
