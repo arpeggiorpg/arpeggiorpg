@@ -57,7 +57,7 @@ impl Creature {
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
                 new.conditions.insert(*id, con.apply(*dur));
                 new.can_move = conditions_able(new.conditions.values().collect());
-                new.can_act = self.can_move;
+                new.can_act = new.can_move;
             }
             CreatureLog::DecrementConditionRemaining(ref id) => {
                 let mut cond =
@@ -74,7 +74,7 @@ impl Creature {
             CreatureLog::RemoveCondition(ref id) => {
                 new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
                 new.can_move = conditions_able(new.conditions.values().collect());
-                new.can_act = self.can_move;
+                new.can_act = new.can_move;
             }
             CreatureLog::PathCreature { ref path, .. } => {
                 match path.last() {
