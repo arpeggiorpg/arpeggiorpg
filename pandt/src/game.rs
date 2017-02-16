@@ -279,7 +279,6 @@ impl Game {
 }
 
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangedGame {
     game: Game,

@@ -1,7 +1,9 @@
-# Phone-and-Tablet Roleplaying Game
+# P&T
 
-This is a project to implement a digital, turn-based, tabletop RPG system (or
-maybe just the core engine for such a system).
+P&T is a social role-playing game. It's not a video game -- rather, it's akin to tabletop
+role-playing games like Dungeons & Dragons, but instead of needing books and character sheets, the
+app takes care of everything for you. It provides a tactical combat map and makes it easy for
+players and the Game Master to use their abilities.
 
 # License
 

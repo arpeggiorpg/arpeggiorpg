@@ -50,7 +50,7 @@ fullUI model app game =
   else
   hbox
     [ vbox [ h3 [] [text "Creatures"]
-            , inactiveList model game game.current_combat model.selectedCreatures game.creatures
+            , inactiveList model game
             , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
             , history app
             ]
@@ -163,9 +163,9 @@ mapSelector game = vbox <|
   let mapSelectorItem name = button [onClick (U.SelectMap name)] [text name]
   in (List.map mapSelectorItem (Dict.keys game.maps))
 
-inactiveList : M.Model -> M.Game -> Maybe M.Combat -> Set.Set String -> Dict.Dict String M.Creature -> Html U.Msg
-inactiveList model game mCombat pendingCreatures creatures = div []
-  [ div [] (List.map (inactiveEntry mCombat pendingCreatures) (Dict.values creatures))
+inactiveList : M.Model -> M.Game -> Html U.Msg
+inactiveList model game = div []
+  [ div [] (List.map (inactiveEntry game model.selectedCreatures) (Dict.values game.creatures))
   , createCreatureForm model game
   ]
 
@@ -185,16 +185,18 @@ createCreatureButton model =
       in button [ onClick (U.CreateCreature cc) ] [text "Create Creature!"]
     _ -> button [disabled True] [text "Create Creature!"]
 
-inactiveEntry : Maybe M.Combat -> Set.Set String -> M.Creature -> Html U.Msg
-inactiveEntry mCombat pendingCreatures creature = hbox
+inactiveEntry : M.Game -> Set.Set String -> M.Creature -> Html U.Msg
+inactiveEntry game pendingCreatures creature = hbox <|
   [ creatureStats creature
-  , case mCombat of Just _ -> engageButton creature
-                    Nothing ->
-                      input [ type_ "checkbox"
-                      , checked (Set.member creature.id pendingCreatures)
-                      , onClick (U.ToggleSelectedCreature creature.id)] []
+  , case game.current_combat of
+      Just _ -> engageButton creature
+      Nothing ->
+        input [ type_ "checkbox"
+        , checked (Set.member creature.id pendingCreatures)
+        , onClick (U.ToggleSelectedCreature creature.id)] []
   , deleteCreatureButton creature
-  , moveOOCButton creature]
+  , moveOOCButton creature
+  ] ++ oocActionBar game creature
 
 history : M.App -> Html U.Msg
 history app = 
@@ -280,16 +282,17 @@ combatantEntry game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx then [text "-->"] else []
   in marker ++ [ creatureStats creature ]
 
-actionBar : M.Game -> M.Combat -> M.Creature -> Html U.Msg
-actionBar game combat creature =
+oocActionBar : M.Game -> M.Creature -> List (Html U.Msg)
+oocActionBar game creature =
   let abilities =
         case (Dict.get creature.class game.classes) of
           Just x -> x.abilities -- TODO: get ability *name*
           Nothing -> []
-  in hbox ( [doneButton creature]
-          ++ [moveButton combat creature]
-          ++ (List.map (actionButton creature) abilities)
-          )
+  in (List.map (actionButton creature) abilities)
+
+actionBar : M.Game -> M.Combat -> M.Creature -> Html U.Msg
+actionBar game combat creature =
+  hbox (oocActionBar game creature ++ [moveButton combat creature] ++ [doneButton creature])
 
 actionButton : M.Creature -> String -> Html U.Msg
 actionButton creature abid =
