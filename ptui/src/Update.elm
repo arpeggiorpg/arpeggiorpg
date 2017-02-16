@@ -1,6 +1,5 @@
 module Update exposing (..)
 
-import Dict
 import Http
 import Json.Decode as JD
 import Set
@@ -35,8 +34,8 @@ type Msg
     | Act AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest
     | CancelMovement
-    | Move M.Point3
-    | MoveOutOfCombat M.CreatureID M.Point3
+    | CombatMove M.Point3
+    | MoveCreature M.CreatureID M.Point3
     | TurnDone
     | GetMovementOptions M.Creature
     | GotMovementOptions M.Creature (Result Http.Error (List M.Point3))
@@ -131,8 +130,8 @@ update msg model = case msg of
   AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
   RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
   Act abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.Act abid dtarget))
-  Move pt -> ({model | moving = Nothing}, sendCommand (M.Move pt))
-  MoveOutOfCombat cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveOutOfCombat cid pt))
+  CombatMove pt -> ({model | moving = Nothing}, sendCommand (M.CombatMove pt))
+  MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveCreature cid pt))
   TurnDone -> (model, sendCommand M.Done)
   SelectMap mapName -> (model, sendCommand (M.SelectMap mapName))
   StartCombat -> (model, sendCommand (M.StartCombat (Set.toList model.selectedCreatures)))

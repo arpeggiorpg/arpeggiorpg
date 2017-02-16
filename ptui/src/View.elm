@@ -32,14 +32,14 @@ gmViewGame model app =
     -- Movement takes over the whole UI:
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
-        Just creature -> Grid.movementMap (U.MoveOutOfCombat creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
+        Just creature -> Grid.movementMap (U.MoveCreature creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
       let (creature, moveMessage, visibleCreatures) =
           case mvmtReq.ooc_creature of
-            Just creature -> (creature, U.MoveOutOfCombat creature.id, (Dict.values game.creatures))
-            Nothing -> (M.combatCreature combat, U.Move, combat.creatures.data)
+            Just creature -> (creature, U.MoveCreature creature.id, (Dict.values game.creatures))
+            Nothing -> (M.combatCreature combat, U.CombatMove, combat.creatures.data)
       in Grid.movementMap moveMessage mvmtReq model.currentMap creature visibleCreatures
     _ -> fullUI model app game
 
@@ -113,7 +113,7 @@ playerViewGame model app creatures =
             if List.member oocMovingCreature creatures
             then
               -- one of my characters is moving; render the movement map
-              Grid.movementMap (U.MoveOutOfCombat oocMovingCreature.id) movementRequest
+              Grid.movementMap (U.MoveCreature oocMovingCreature.id) movementRequest
                                model.currentMap oocMovingCreature (visibleCreatures game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
@@ -121,7 +121,7 @@ playerViewGame model app creatures =
           Nothing -> -- we're moving in-combat.
             let currentCreature = Maybe.map M.combatCreature game.current_combat
             in case currentCreature of
-                Just creature -> Grid.movementMap U.Move movementRequest model.currentMap creature (visibleCreatures game)
+                Just creature -> Grid.movementMap U.CombatMove movementRequest model.currentMap creature (visibleCreatures game)
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ,

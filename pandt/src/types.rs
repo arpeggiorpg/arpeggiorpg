@@ -117,9 +117,9 @@ pub enum GameCommand {
     /// Make the current creature use an ability.
     Act(AbilityID, DecidedTarget),
     /// Move out of combat. There must be a clear path according to the current loaded map.
-    MoveOutOfCombat(CreatureID, Point3),
+    MoveCreature(CreatureID, Point3),
     /// Move to a point. There must be a clear path according to the current loaded map.
-    Move(Point3),
+    CombatMove(Point3),
     /// Create a new creature.
     CreateCreature(CreatureCreation),
     /// Remove a creature from the game entirely. Creature must not be in combat.

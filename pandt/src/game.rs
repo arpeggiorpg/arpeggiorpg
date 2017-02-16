@@ -45,8 +45,8 @@ impl Game {
         use self::GameCommand::*;
         let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (CreateCreature(c), _) => self.create_creature(c),
-            (MoveOutOfCombat(cid, pt), _) => self.move_creature_ooc(cid, pt),
-            (Act(abid, dtarget), Some(com)) => self.act(&com, abid, dtarget),
+            (MoveCreature(cid, pt), _) => self.move_creature_ooc(cid, pt),
+            (Act(abid, dtarget), Some(_)) => self.act(abid, dtarget),
 
             (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
             (EditMap(ref name, ref terrain), _) => {
@@ -62,7 +62,7 @@ impl Game {
                 self.change_with(GameLog::RemoveCreatureFromCombat(cid))
             }
             // TODO: rename `Move` to `CombatMove` and `MoveOutOfCombat` to `MoveCreature`.
-            (Move(pt), Some(_)) => {
+            (CombatMove(pt), Some(_)) => {
                 self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn(self)),
@@ -165,17 +165,16 @@ impl Game {
     }
 
     fn act(&self,
-           combat: &Combat,
            abid: AbilityID,
            target: DecidedTarget)
            -> Result<ChangedGame, GameError> {
         self.change().apply_combat(move |c| {
             let ability = self.get_ability(&abid)?;
-            let able = combat.get_able()?;
-            if self.creature_has_ability(&able.combat.current_creature(), &abid)? {
+            let able = c.get_able()?;
+            if self.creature_has_ability(&c.current_creature(), &abid)? {
                 able.act(&ability, target)
             } else {
-                Err(GameError::CreatureLacksAbility(able.combat.current_creature().id(), abid))
+                Err(GameError::CreatureLacksAbility(c.current_creature().id(), abid))
             }
         })
     }
@@ -450,7 +449,7 @@ pub mod test {
     fn movement() {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-        game.perform_unchecked(GameCommand::Move((1, 0, 0))).unwrap();
+        game.perform_unchecked(GameCommand::CombatMove((1, 0, 0))).unwrap();
     }
 
     #[test]
