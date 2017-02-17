@@ -138,24 +138,34 @@ playerViewGame model app creatures =
                             , actionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
-                          Just (cid, abid) -> targetSelector model game U.CombatAct abid
-                          Nothing -> div [] []
+                          Just (cid, abid) -> 
+                                if M.isCreatureInCombat game cid
+                                then [targetSelector model game U.CombatAct abid]
+                                else []
+                          Nothing -> []
             initiativeList = combatantList game combat
-        in vbox [bar, selector, initiativeList]
+        in vbox <| [bar] ++ selector ++ [initiativeList]
       Nothing -> text "No Combat"
   ]
   -- TODO: a read-only "creatures nearby" list without details
 
 -- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
-playerGrid model game creatures =
-  let buttonForCreature creature =
+playerGrid model game myCreatures =
+  let bar creature =
         if M.isCreatureInCombat game creature.id
         then Nothing
-        else Just <| hbox [text creature.id, moveOOCButton creature]
-      movementButtons = List.filterMap buttonForCreature creatures
+        else Just <| hbox <| [text creature.id, creatureStats creature, moveOOCButton creature] ++ (oocActionBar game creature)
+      bars = List.filterMap bar myCreatures
+      targetSel =
+        case model.selectedAbility of
+          Just (cid, abid) ->
+            case M.listFind (\c -> c.id == cid) myCreatures of
+              Just _ -> [targetSelector model game (U.ActCreature cid) abid]
+              Nothing -> []
+          Nothing -> []
   in
-    vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
+    vbox <| bars ++ targetSel ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
   
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
