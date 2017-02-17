@@ -253,28 +253,17 @@ impl Game {
             TargetSpec::Range(distance) => distance,
         };
 
-        match self.current_combat.as_ref() {
+        let (creature, creatures) = match self.current_combat.as_ref() {
             Some(combat) => {
+                // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
                 match combat.get_creature(creature_id) {
-                    Ok(creature) => {
-                        Ok(Self::creatures_within_distance(creature,
-                                                           combat.get_creatures(),
-                                                           distance))
-                    }
-                    Err(_) => {
-                        Ok(Self::creatures_within_distance(self.get_creature(creature_id)?,
-                                                           self.creatures.values().collect(),
-                                                           distance))
-                    }
+                    Ok(creature) => (creature, combat.get_creatures()),
+                    Err(_) => (self.get_creature(creature_id)?, self.creatures.values().collect()),
                 }
             }
-            None => {
-                let creature = self.get_creature(creature_id)?;
-                Ok(Self::creatures_within_distance(creature,
-                                                   self.creatures.values().collect(),
-                                                   distance))
-            }
-        }
+            None => (self.get_creature(creature_id)?, self.creatures.values().collect()),
+        };
+        Ok(Self::creatures_within_distance(creature, creatures, distance))
     }
 
     pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
