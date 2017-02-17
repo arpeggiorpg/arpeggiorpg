@@ -49,11 +49,16 @@ fullUI model app game =
   then Grid.editMap model.currentMap (visibleCreatures game)
   else
   hbox
-    [ vbox [ h3 [] [text "Creatures"]
+    [ vbox <| [ h3 [] [text "Creatures"]
             , inactiveList model game
-            , extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
-            , history app
-            ]
+           ] ++ (case model.selectedAbility of
+            Just (cid, abid) -> if M.isCreatureOOC game cid
+                                then [targetSelector model game (U.ActCreature cid) abid]
+                                else []
+            Nothing -> []
+           ) ++ [ extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
+          , history app
+          ]
     , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap model.currentMap (visibleCreatures game)]
     , case game.current_combat of
         Just combat -> combatArea model game combat
@@ -133,7 +138,7 @@ playerViewGame model app creatures =
                             , actionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
-                          Just abid -> targetSelector model game combat abid
+                          Just (cid, abid) -> targetSelector model game U.CombatAct abid
                           Nothing -> div [] []
             initiativeList = combatantList game combat
         in vbox [bar, selector, initiativeList]
@@ -145,19 +150,13 @@ playerViewGame model app creatures =
 playerGrid : M.Model -> M.Game -> List M.Creature -> Html U.Msg
 playerGrid model game creatures =
   let buttonForCreature creature =
-        if playerInCombat game creature
+        if M.isCreatureInCombat game creature.id
         then Nothing
         else Just <| hbox [text creature.id, moveOOCButton creature]
       movementButtons = List.filterMap buttonForCreature creatures
   in
     vbox <| movementButtons ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
   
-playerInCombat : M.Game -> M.Creature -> Bool
-playerInCombat game cid =
-  case game.current_combat of
-    Nothing -> False
-    Just combat -> List.member cid combat.creatures.data
-
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
   let mapSelectorItem name = button [onClick (U.SelectMap name)] [text name]
@@ -173,7 +172,9 @@ createCreatureForm : M.Model -> M.Game -> Html U.Msg
 createCreatureForm model game = div []
     [ input [type_ "text", placeholder "id", onInput U.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput U.PendingCreatureName ] []
-    , select [onInput U.PendingCreatureClass ] (List.map (\className -> option [value className] [text className] ) (Dict.keys game.classes))
+    , select [onInput U.PendingCreatureClass ]
+             (List.map (\className -> option [value className] [text className])
+                       (Dict.keys game.classes))
     , createCreatureButton model
     ]
 
@@ -243,25 +244,32 @@ maybePos path =
     Nothing -> "nowhere"
 
 combatArea : M.Model -> M.Game -> M.Combat -> Html U.Msg
-combatArea model game combat = case model.selectedAbility of
-  Just abid -> targetSelector model game combat abid
-  Nothing ->
-    let bar = actionBar game combat (M.combatCreature combat)
-        disengageButtons = hbox (List.map disengageButton combat.creatures.data)
-    in vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
+combatArea model game combat =
+  let bar = actionBar game combat (M.combatCreature combat)
+      disengageButtons = hbox (List.map disengageButton combat.creatures.data)
+      abar = vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
+  in case model.selectedAbility of
+    Just (cid, abid) ->
+      if M.isCreatureInCombat game cid
+      then targetSelector model game U.CombatAct abid
+      else abar
+    Nothing -> abar
 
-targetSelector : M.Model -> M.Game -> M.Combat -> String -> Html U.Msg
-targetSelector model game combat abid =
+targetSelector : M.Model -> M.Game -> (M.AbilityID -> M.DecidedTarget -> U.Msg) -> String -> Html U.Msg
+targetSelector model game msgConstructor abid =
   let creatures = List.filterMap (M.findCreature game) (M.potentialCreatureTargets model.potentialTargets)
-  in case (Dict.get abid game.abilities) of
-    Just ability -> case ability.target of
-      M.Melee -> creatureTargetSelector abid M.DecidedMelee creatures
-      M.Range distance -> creatureTargetSelector abid M.DecidedRange creatures
-    Nothing -> text "Sorry, that ability was not found. Please reload."
+  in hbox <| 
+    [ case (Dict.get abid game.abilities) of
+        Just ability -> case ability.target of
+          M.Melee -> creatureTargetSelector (msgConstructor abid) M.DecidedMelee creatures
+          M.Range distance -> creatureTargetSelector (msgConstructor abid) M.DecidedRange creatures
+        Nothing -> text "Sorry, that ability was not found. Please reload."
+    , button [onClick U.CancelAbility] [text "Cancel ability"]
+    ]
 
-creatureTargetSelector : M.AbilityID -> (M.CreatureID -> M.DecidedTarget) -> List M.Creature -> Html U.Msg
-creatureTargetSelector abid targetConstructor creatures = vbox <|
-  let targetCreatureButton c = button [onClick (U.CombatAct abid (targetConstructor c.id))] [text c.name]
+creatureTargetSelector : (M.DecidedTarget -> U.Msg) -> (M.CreatureID -> M.DecidedTarget) -> List M.Creature -> Html U.Msg
+creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
+  let targetCreatureButton c = button [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
   in List.map targetCreatureButton creatures
 
 stopCombatButton : Html U.Msg

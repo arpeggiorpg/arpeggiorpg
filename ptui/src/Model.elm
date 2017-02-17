@@ -48,7 +48,7 @@ type alias Model =
   , pendingCreatureId : Maybe CreatureID
   , pendingCreatureName : Maybe String
   , pendingCreatureClass : Maybe String
-  , selectedAbility : Maybe AbilityID
+  , selectedAbility : Maybe (CreatureID, AbilityID)
   -- Creatures which have been selected for combat
   , selectedCreatures : Set.Set CreatureID
   , error: String
@@ -390,6 +390,7 @@ type GameCommand
   | StartCombat (List CreatureID)
   | StopCombat
   | CombatAct AbilityID DecidedTarget
+  | ActCreature CreatureID AbilityID DecidedTarget
   | CombatMove Point3
   | MoveCreature CreatureID Point3
   | CreateCreature CreatureCreation
@@ -414,6 +415,7 @@ gameCommandEncoder gc =
     AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
     RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     CombatAct abid dtarget -> JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
+    ActCreature cid abid dtarget -> JE.object [("ActCreature", JE.list [JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
     Done -> JE.string "Done"
     SelectMap name -> JE.object [("SelectMap", JE.string name)]
     EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
@@ -499,3 +501,15 @@ getPlayerCreatures app pid =
   -- this sucks because it doesn't throw any kind of error when PID or CID aren't found
   List.filterMap (findCreature app.current_game)
                  (Set.toList (Maybe.withDefault Set.empty (Dict.get pid app.players)))
+
+isCreatureInCombat : Game -> CreatureID -> Bool
+isCreatureInCombat game cid =
+  case game.current_combat of
+    Nothing -> False
+    Just combat ->
+      case listFind (\c -> c.id == cid) combat.creatures.data of
+        Just _ -> True
+        Nothing -> False
+
+isCreatureOOC : Game -> CreatureID -> Bool
+isCreatureOOC game cid = Dict.member cid game.creatures

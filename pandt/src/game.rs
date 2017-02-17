@@ -254,9 +254,7 @@ impl Game {
         };
         match self.current_combat.as_ref() {
             Some(combat) => {
-                Ok(Self::creatures_within_distance(creature,
-                                                   combat.creatures.iter().collect(),
-                                                   distance))
+                Ok(Self::creatures_within_distance(creature, combat.get_creatures(), distance))
             }
             None => {
                 Ok(Self::creatures_within_distance(creature,

@@ -30,8 +30,10 @@ type Msg
     | RemoveFromCombat CreatureID
     | RemoveFromGame CreatureID
     | SelectAbility CreatureID AbilityID
+    | CancelAbility
     | GotTargetOptions (Result Http.Error (List M.PotentialTarget))
     | CombatAct AbilityID M.DecidedTarget
+    | ActCreature CreatureID AbilityID M.DecidedTarget
     | RequestMove M.MovementRequest
     | CancelMovement
     | CombatMove M.Point3
@@ -115,8 +117,10 @@ update msg model = case msg of
   SelectAbility cid abid ->
     let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
         req = Http.send GotTargetOptions (Http.get endpoint (JD.list M.potentialTargetDecoder))
-    in ({ model | selectedAbility = Just abid}, req)
+    in ({ model | selectedAbility = Just (cid, abid)}, req)
   
+  CancelAbility -> ({model | selectedAbility = Nothing}, Cmd.none)
+
   GotTargetOptions (Ok potTargets) -> ({model | potentialTargets = potTargets}, Cmd.none)
   GotTargetOptions (Err e) -> ({ model | error = toString e}, Cmd.none)
 
@@ -130,6 +134,7 @@ update msg model = case msg of
   AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
   RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.CombatAct abid dtarget))
+  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.ActCreature cid abid dtarget))
   CombatMove pt -> ({model | moving = Nothing}, sendCommand (M.CombatMove pt))
   MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveCreature cid pt))
   TurnDone -> (model, sendCommand M.Done)
