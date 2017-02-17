@@ -199,7 +199,7 @@ createCreatureButton model =
 inactiveEntry : M.Game -> Set.Set String -> M.Creature -> Html U.Msg
 inactiveEntry game pendingCreatures creature = vbox <|
   [habox [style [("width", "500px"), ("justify-content", "space-around")]]
-    [ creatureStats creature
+    [ creatureCard creature
     , case game.current_combat of
         Just _ -> engageButton creature
         Nothing ->
@@ -300,7 +300,7 @@ combatantEntry game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
                then [datext [style [("width", "25px")]] "-->"]
                else [div [style [("width", "25px")]] []]
-  in marker ++ [ creatureStats creature ]
+  in marker ++ [ creatureCard creature ]
 
 oocActionBar : M.Game -> M.Creature -> List (Html U.Msg)
 oocActionBar game creature =
@@ -321,6 +321,29 @@ actionButton creature abid =
     , disabled (not creature.can_act)]
     [text abid]
 
+creatureCard : M.Creature -> Html U.Msg
+creatureCard creature =
+  vabox [style [("border", "solid 1px black"), ("width", "300px"), ("height", "100px"), ("border-radius", "10px"), ("padding", "3px")]]
+    [ hbox [strong [] [text creature.name ], classIcon creature]
+    , hbox [ div [style [("border", "1px solid black"), ("background", "lightgreen"), ("border-radius", "10px"), ("padding", "3px")]]
+              [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
+           , div [style [("border", "1px solid black"), ("background", "cyan"), ("border-radius", "10px"), ("padding", "3px")]]
+              [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
+           , div [style [("border", "1px solid black"), ("border-radius", "10px"), ("padding", "3px")]]
+              [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
+           ]
+    , habox [style [("width", "50px")]] (List.map creatureConds (Dict.values creature.conditions))
+    ]
+
+classIcon : M.Creature -> Html U.Msg
+classIcon creature =
+  case creature.class of
+    "cleric" -> text "💉"
+    "rogue" -> text "🗡️"
+    "ranger" -> text "🏹"
+    _ -> text "?"
+
+
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
   habox [style [("width", "400px")]]
@@ -328,7 +351,6 @@ creatureStats creature =
     , div [style [("width", "75px")]] [text "HP ", text (toString creature.cur_health)]
     , div [style [("width", "100px")]] [text "NRG ", text (toString creature.cur_energy)]
     , div [style [("width", "75px")]] [text "POS ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)]
-    , habox [style [("width", "50px")]] (List.map creatureConds (Dict.values creature.conditions))
     ]
 
 creatureConds : M.AppliedCondition -> Html U.Msg
