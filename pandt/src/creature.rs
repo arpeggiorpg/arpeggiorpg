@@ -213,7 +213,8 @@ impl Creature {
                                                          get_creature: GetCreature,
                                                          ability: &Ability,
                                                          target: DecidedTarget,
-                                                         mut change: Change)
+                                                         mut change: Change,
+                                                         in_combat: bool)
                                                          -> Result<Change, GameError>
         where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
     {
@@ -224,7 +225,9 @@ impl Creature {
                     change.apply_creature(*creature_id, |c: &Creature| c.apply_effect(effect))?;
             }
         }
-        change = change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
+        if in_combat {
+            change = change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
+        }
         Ok(change)
     }
 

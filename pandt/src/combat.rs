@@ -210,7 +210,8 @@ impl<'a> CombatAble<'a> {
         self.combat.current_creature().act(|cid| self.combat.get_creature(cid),
                                            ability,
                                            target,
-                                           self.combat.change())
+                                           self.combat.change(),
+                                           true)
     }
 }
 

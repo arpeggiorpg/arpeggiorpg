@@ -184,7 +184,8 @@ impl Game {
         self.get_creature(cid)?.act(|cid| self.get_creature(cid),
                                     &self.get_ability(&abid)?,
                                     target,
-                                    self.change())
+                                    self.change(),
+                                    false)
     }
 
     fn creature_has_ability(&self,
@@ -246,17 +247,29 @@ impl Game {
                               ability_id: AbilityID)
                               -> Result<Vec<PotentialTarget>, GameError> {
         let ability = self.get_ability(&ability_id)?;
-        let creature = self.find_creature(creature_id)?;
 
         let distance = match ability.target {
             TargetSpec::Melee => MELEE_RANGE,
             TargetSpec::Range(distance) => distance,
         };
+
         match self.current_combat.as_ref() {
             Some(combat) => {
-                Ok(Self::creatures_within_distance(creature, combat.get_creatures(), distance))
+                match combat.get_creature(creature_id) {
+                    Ok(creature) => {
+                        Ok(Self::creatures_within_distance(creature,
+                                                           combat.get_creatures(),
+                                                           distance))
+                    }
+                    Err(_) => {
+                        Ok(Self::creatures_within_distance(self.get_creature(creature_id)?,
+                                                           self.creatures.values().collect(),
+                                                           distance))
+                    }
+                }
             }
             None => {
+                let creature = self.get_creature(creature_id)?;
                 Ok(Self::creatures_within_distance(creature,
                                                    self.creatures.values().collect(),
                                                    distance))
