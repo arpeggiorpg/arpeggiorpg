@@ -4,6 +4,7 @@ module Elements exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Css as S
 
 hbox : List (Html a) -> Html a
 hbox els = habox [] els
@@ -20,3 +21,6 @@ vabox attrs els = div (attrs ++ [style [("display", "flex"), ("flex-direction", 
 datext a t = div a [text t]
 
 dtext t = div [] [text t]
+
+
+plainBorder = S.border3 (S.px 1) S.solid (S.rgb 0 0 0)

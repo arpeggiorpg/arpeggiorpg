@@ -12,6 +12,11 @@ import Update as U
 import Grid
 import Elements exposing (..)
 
+import Css as S
+
+
+s = S.asPairs >> Html.Attributes.style
+
 refreshButton : Html U.Msg
 refreshButton = button [ onClick U.MorePlease ] [ text "Refresh From Server" ]
 
@@ -198,7 +203,7 @@ createCreatureButton model =
 
 inactiveEntry : M.Game -> Set.Set String -> M.Creature -> Html U.Msg
 inactiveEntry game pendingCreatures creature = vbox <|
-  [habox [style [("width", "500px"), ("justify-content", "space-around")]]
+  [hbox
     [ creatureCard creature
     , case game.current_combat of
         Just _ -> engageButton creature
@@ -298,8 +303,8 @@ engageButton creature =
 combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
 combatantEntry game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
-               then [datext [style [("width", "25px")]] "-->"]
-               else [div [style [("width", "25px")]] []]
+               then [datext [s [S.width (S.px 25)]] "-->"]
+               else [div [s [S.width (S.px 25)]] []]
   in marker ++ [ creatureCard creature ]
 
 oocActionBar : M.Game -> M.Creature -> List (Html U.Msg)
@@ -323,13 +328,18 @@ actionButton creature abid =
 
 creatureCard : M.Creature -> Html U.Msg
 creatureCard creature =
-  vabox [style [("border", "solid 1px black"), ("width", "300px"), ("height", "100px"), ("border-radius", "10px"), ("padding", "3px")]]
+  let cellStyles color =
+        [s [ plainBorder
+           , S.backgroundColor color
+           , S.borderRadius (S.px 10)
+           , S.padding (S.px 3)]]
+  in vabox [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
     [ hbox [strong [] [text creature.name ], classIcon creature]
-    , hbox [ div [style [("border", "1px solid black"), ("background", "lightgreen"), ("border-radius", "10px"), ("padding", "3px")]]
+    , hbox [ div (cellStyles (S.rgb 144 238 144))
               [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-           , div [style [("border", "1px solid black"), ("background", "cyan"), ("border-radius", "10px"), ("padding", "3px")]]
+           , div (cellStyles (S.rgb 0 255 255))
               [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-           , div [style [("border", "1px solid black"), ("border-radius", "10px"), ("padding", "3px")]]
+           , div (cellStyles (S.rgb 255 255 255))
               [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
            ]
     , habox [style [("width", "50px")]] (List.map creatureConds (Dict.values creature.conditions))
