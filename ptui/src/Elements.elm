@@ -6,9 +6,17 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 
 hbox : List (Html a) -> Html a
-hbox els = div [style [("display", "flex"), ("width", "100%")] ]
-               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
+hbox els = habox [] els
+
+habox : List (Attribute a) -> List (Html a) -> Html a
+habox attrs els = div (attrs ++ [style [("display", "flex")]]) els
 
 vbox : List (Html a) -> Html a
-vbox els = div [style [("display", "flex"), ("flex-direction", "column"), ("width", "100%")]]
-               (List.map (\el -> div [style [("flex-grow", "1")]] [el]) els)
+vbox els = vabox [] els
+
+vabox : List (Attribute a) -> List (Html a) -> Html a
+vabox attrs els = div (attrs ++ [style [("display", "flex"), ("flex-direction", "column")]]) els
+
+datext a t = div a [text t]
+
+dtext t = div [] [text t]

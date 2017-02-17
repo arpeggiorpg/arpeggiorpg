@@ -197,17 +197,17 @@ createCreatureButton model =
     _ -> button [disabled True] [text "Create Creature!"]
 
 inactiveEntry : M.Game -> Set.Set String -> M.Creature -> Html U.Msg
-inactiveEntry game pendingCreatures creature = hbox <|
-  [ creatureStats creature
-  , case game.current_combat of
-      Just _ -> engageButton creature
-      Nothing ->
-        input [ type_ "checkbox"
-        , checked (Set.member creature.id pendingCreatures)
-        , onClick (U.ToggleSelectedCreature creature.id)] []
-  , deleteCreatureButton creature
-  , moveOOCButton creature
-  ] ++ oocActionBar game creature
+inactiveEntry game pendingCreatures creature = vbox <|
+  [habox [style [("width", "500px"), ("justify-content", "space-around")]]
+    [ creatureStats creature
+    , case game.current_combat of
+        Just _ -> engageButton creature
+        Nothing ->
+          input [ type_ "checkbox"
+          , checked (Set.member creature.id pendingCreatures)
+          , onClick (U.ToggleSelectedCreature creature.id)] []
+    , deleteCreatureButton creature
+    ], hbox <| [ moveOOCButton creature] ++ (oocActionBar game creature)]
 
 history : M.App -> Html U.Msg
 history app = 
@@ -297,7 +297,9 @@ engageButton creature =
 
 combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
 combatantEntry game combat (idx, creature) = hbox <|
-  let marker = if combat.creatures.cursor == idx then [text "-->"] else []
+  let marker = if combat.creatures.cursor == idx
+               then [datext [style [("width", "25px")]] "-->"]
+               else [div [style [("width", "25px")]] []]
   in marker ++ [ creatureStats creature ]
 
 oocActionBar : M.Game -> M.Creature -> List (Html U.Msg)
@@ -321,12 +323,13 @@ actionButton creature abid =
 
 creatureStats : M.Creature -> Html U.Msg
 creatureStats creature = 
-  hbox [ strong [] [text  creature.name]
-       , text "HP: ", text (toString creature.cur_health)
-       , text "Energy: ", text (toString creature.cur_energy)
-       , text "Pos: ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)
-       , hbox (List.map creatureConds (Dict.values creature.conditions))
-       ]
+  habox [style [("width", "400px")]]
+    [ div [style [("width", "150px")]] [strong [] [text creature.name]]
+    , div [style [("width", "75px")]] [text "HP ", text (toString creature.cur_health)]
+    , div [style [("width", "100px")]] [text "NRG ", text (toString creature.cur_energy)]
+    , div [style [("width", "75px")]] [text "POS ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)]
+    , habox [style [("width", "50px")]] (List.map creatureConds (Dict.values creature.conditions))
+    ]
 
 creatureConds : M.AppliedCondition -> Html U.Msg
 creatureConds ac = case ac.condition of 

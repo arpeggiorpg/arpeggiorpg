@@ -18,7 +18,7 @@ gridSize : Int
 gridSize = 25
 
 -- Convert Point3 coordinates to on-screen corodinates.
--- Point3 coordinates are in METERS, and Distance calculation is done in CENTIMETERS.
+-- Point3 coordinates are in METERS, and Distances are in CENTIMETERS.
 coord : Int -> String
 coord c = toString (c * 100)
 
