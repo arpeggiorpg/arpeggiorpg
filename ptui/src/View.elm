@@ -62,11 +62,11 @@ gmViewGame_ model app =
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
-      let (creature, moveMessage, visCreatures) =
+      let (creature, moveMessage) =
           case mvmtReq.ooc_creature of
-            Just creature -> (creature, M.MoveCreature creature.id, visibleCreatures model game)
-            Nothing -> (T.combatCreature combat, M.CombatMove, combat.creatures.data)
-      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature visCreatures
+            Just creature -> (creature, M.MoveCreature creature.id)
+            Nothing -> (T.combatCreature combat, M.CombatMove)
+      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature (visibleCreatures model game)
     _ -> fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
