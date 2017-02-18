@@ -4,24 +4,25 @@ import Http
 import Json.Decode as JD
 import Set
 
-import Model as M exposing (CreatureID, AbilityID)
+import Model as M 
+import Types as T exposing (CreatureID, AbilityID)
 
 type Msg
     = MorePlease
-    | SetPlayerID M.PlayerID
+    | SetPlayerID T.PlayerID
     | RegisterPlayer
-    | GiveCreaturesToPlayer M.PlayerID
-    | SelectMap M.MapName
-    | UpdateSaveMapName M.MapName
+    | GiveCreaturesToPlayer T.PlayerID
+    | SelectMap T.MapName
+    | UpdateSaveMapName T.MapName
     | StartEditingMap
-    | EditMap M.Map
+    | EditMap T.Map
     | CancelEditingMap
     | PendingCreatureId CreatureID
     | PendingCreatureName String
     | PendingCreatureClass String
-    | CreateCreature M.CreatureCreation
-    | CommandComplete (Result Http.Error M.RustResult)
-    | AppUpdate (Result Http.Error M.App)
+    | CreateCreature T.CreatureCreation
+    | CommandComplete (Result Http.Error T.RustResult)
+    | AppUpdate (Result Http.Error T.App)
     | ShowError String
     | ToggleSelectedCreature CreatureID
     | StartCombat
@@ -31,17 +32,17 @@ type Msg
     | RemoveFromGame CreatureID
     | SelectAbility CreatureID AbilityID
     | CancelAbility
-    | GotTargetOptions (Result Http.Error (List M.PotentialTarget))
-    | CombatAct AbilityID M.DecidedTarget
-    | ActCreature CreatureID AbilityID M.DecidedTarget
+    | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
+    | CombatAct AbilityID T.DecidedTarget
+    | ActCreature CreatureID AbilityID T.DecidedTarget
     | RequestMove M.MovementRequest
     | CancelMovement
-    | CombatMove M.Point3
-    | MoveCreature M.CreatureID M.Point3
+    | CombatMove T.Point3
+    | MoveCreature T.CreatureID T.Point3
     | TurnDone
-    | GetMovementOptions M.Creature
-    | GotMovementOptions M.Creature (Result Http.Error (List M.Point3))
-    | ToggleTerrain M.Point3
+    | GetMovementOptions T.Creature
+    | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
+    | ToggleTerrain T.Point3
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
@@ -52,11 +53,11 @@ update msg model = case msg of
 
   RegisterPlayer ->
     case model.playerID of
-      Just playerID -> (model, sendCommand (M.RegisterPlayer playerID))
+      Just playerID -> (model, sendCommand (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   GiveCreaturesToPlayer pid ->
-    (model, sendCommand (M.GiveCreaturesToPlayer pid (Set.toList model.selectedCreatures)))
+    (model, sendCommand (T.GiveCreaturesToPlayer pid (Set.toList model.selectedCreatures)))
 
   PendingCreatureId input ->
     let newId = if (String.isEmpty input) then Nothing else Just input
@@ -71,8 +72,8 @@ update msg model = case msg of
     in ( {model | pendingCreatureClass = newClass}
        , Cmd.none)
 
-  CommandComplete (Ok (M.RustOk x)) -> Debug.log (toString x) (model, refreshApp)
-  CommandComplete (Ok (M.RustErr x)) -> ({model | error = toString x}, refreshApp)
+  CommandComplete (Ok (T.RustOk x)) -> Debug.log (toString x) (model, refreshApp)
+  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, refreshApp)
   CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp)
 
   AppUpdate (Ok newApp) ->
@@ -92,7 +93,7 @@ update msg model = case msg of
   
   GetMovementOptions creature ->
     let endpoint = (url ++ "/movement_options/" ++ creature.id)
-        cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list M.point3Decoder))
+        cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))
     in (model, cmd)
 
   GotMovementOptions creature (Ok pts) ->
@@ -112,11 +113,11 @@ update msg model = case msg of
   UpdateSaveMapName name -> ( {model | saveMapName = name }
                             , Cmd.none)
 
-  EditMap terrain -> ({ model | editingMap = False}, sendCommand (M.EditMap model.saveMapName terrain))
+  EditMap terrain -> ({ model | editingMap = False}, sendCommand (T.EditMap model.saveMapName terrain))
 
   SelectAbility cid abid ->
     let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
-        req = Http.send GotTargetOptions (Http.get endpoint (JD.list M.potentialTargetDecoder))
+        req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
     in ({ model | selectedAbility = Just (cid, abid)}, req)
   
   CancelAbility -> ({model | selectedAbility = Nothing}, Cmd.none)
@@ -129,18 +130,18 @@ update msg model = case msg of
 
 
   -- Basic GameCommands
-  CreateCreature creation -> (model, sendCommand (M.CreateCreature creation))
-  RemoveFromGame cid -> (model, sendCommand (M.RemoveCreature cid))
-  AddToCombat cid -> (model, sendCommand (M.AddCreatureToCombat cid))
-  RemoveFromCombat cid -> (model, sendCommand (M.RemoveCreatureFromCombat cid))
-  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.CombatAct abid dtarget))
-  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (M.ActCreature cid abid dtarget))
-  CombatMove pt -> ({model | moving = Nothing}, sendCommand (M.CombatMove pt))
-  MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveCreature cid pt))
-  TurnDone -> (model, sendCommand M.Done)
-  SelectMap mapName -> (model, sendCommand (M.SelectMap mapName))
-  StartCombat -> ({ model | selectedCreatures = Set.empty}, sendCommand (M.StartCombat (Set.toList model.selectedCreatures)))
-  StopCombat -> (model, sendCommand M.StopCombat)
+  CreateCreature creation -> (model, sendCommand (T.CreateCreature creation))
+  RemoveFromGame cid -> (model, sendCommand (T.RemoveCreature cid))
+  AddToCombat cid -> (model, sendCommand (T.AddCreatureToCombat cid))
+  RemoveFromCombat cid -> (model, sendCommand (T.RemoveCreatureFromCombat cid))
+  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.CombatAct abid dtarget))
+  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.ActCreature cid abid dtarget))
+  CombatMove pt -> ({model | moving = Nothing}, sendCommand (T.CombatMove pt))
+  MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (T.MoveCreature cid pt))
+  TurnDone -> (model, sendCommand T.Done)
+  SelectMap mapName -> (model, sendCommand (T.SelectMap mapName))
+  StartCombat -> ({ model | selectedCreatures = Set.empty}, sendCommand (T.StartCombat (Set.toList model.selectedCreatures)))
+  StopCombat -> (model, sendCommand T.StopCombat)
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
@@ -150,9 +151,9 @@ url : String
 url = "http://localhost:1337/"
 
 refreshApp : Cmd Msg
-refreshApp = Http.send AppUpdate (Http.get url M.appDecoder)
+refreshApp = Http.send AppUpdate (Http.get url T.appDecoder)
 
-sendCommand : M.GameCommand -> Cmd Msg
+sendCommand : T.GameCommand -> Cmd Msg
 sendCommand cmd =
   Debug.log ("[COMMAND] " ++ (toString cmd)) <|
-  Http.send CommandComplete (Http.post url (Http.jsonBody (M.gameCommandEncoder cmd)) M.rustResultDecoder)
+  Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) T.rustResultDecoder)
