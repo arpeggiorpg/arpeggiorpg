@@ -183,14 +183,13 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let change = self.combat.change();
-        let mut change = change.apply_creature(self.combat.current_creature().id(),
-                            move |c| c.set_pos_path(pts, distance))?;
-        // Sadly, because of the hack we have in Combat.apply_log for handling
-        // CombatLog::CreatureLog(CreatureLog::PathCreature), we have to mutate the combat here in
-        // an equivalent way.
-        change.combat.movement_used = change.combat.movement_used + distance;
-        change.combat.update_movement_options_mut(game.current_map());
+        let change =
+            self.combat.change_with(game,
+                                    CombatLog::CreatureLog(self.combat.current_creature().id,
+                                                           CreatureLog::PathCreature {
+                                                               path: pts,
+                                                               distance: distance,
+                                                           }))?;
         Ok(change)
     }
 }
