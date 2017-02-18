@@ -7,8 +7,6 @@ import Set
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
-
-
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
 

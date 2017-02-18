@@ -51,13 +51,14 @@ gmViewGame model app =
       Nothing -> gmViewGame_ model app
 
 gmViewGame_ : M.Model -> T.App -> Html M.Msg
-gmViewGame_ model app = 
-  let game = app.current_game in
+gmViewGame_ model app =
+  let game = app.current_game
+      center el = div [s [S.displayFlex, S.justifyContent S.spaceAround]] [el]
+  in
   case (game.current_combat, model.moving) of
-    -- Movement takes over the whole UI:
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
-        Just creature -> Grid.movementMap (M.MoveCreature creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
+        Just creature -> center <| Grid.movementMap (M.MoveCreature creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
@@ -65,7 +66,7 @@ gmViewGame_ model app =
           case mvmtReq.ooc_creature of
             Just creature -> (creature, M.MoveCreature creature.id, (Dict.values game.creatures))
             Nothing -> (T.combatCreature combat, M.CombatMove, combat.creatures.data)
-      in Grid.movementMap moveMessage mvmtReq model.currentMap creature visibleCreatures
+      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature visibleCreatures
     _ -> fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
@@ -73,8 +74,8 @@ fullUI model app game =
   if model.editingMap
   then Grid.editMap model.currentMap (visibleCreatures game)
   else
-  hbox
-    [ vbox <| [ h3 [] [text "Creatures"]
+  habox [s [S.justifyContent S.spaceAround]]
+    [ vabox [s [S.width (S.px 500)]] <| [ h3 [] [text "Creatures"]
             , inactiveList model game
            ] ++ (case model.selectedAbility of
             Just (cid, abid) -> if T.isCreatureOOC game cid
@@ -83,9 +84,11 @@ fullUI model app game =
             Nothing -> []
            ) ++ [ playerControlList app , history app ]
     , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap (Maybe.withDefault True (Maybe.map (always False) game.current_combat)) model.currentMap (visibleCreatures game)]
-    , case game.current_combat of
-        Just combat -> combatArea model game combat
-        Nothing -> startCombatButton
+    , div [s [S.width (S.px 500)]] [
+        case game.current_combat of
+          Just combat -> combatArea model game combat
+          Nothing -> startCombatButton
+      ]
     ]
 
 playerControlList app =
@@ -283,13 +286,13 @@ combatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatArea model game combat =
   let bar = actionBar game combat (T.combatCreature combat)
       disengageButtons = hbox (List.map disengageButton combat.creatures.data)
-      abar = vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
+      combatView = vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
   in case model.selectedAbility of
     Just (cid, abid) ->
       if T.isCreatureInCombat game cid
       then targetSelector model game M.CombatAct abid
-      else abar
-    Nothing -> abar
+      else combatView
+    Nothing -> combatView
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
