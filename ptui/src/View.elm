@@ -58,15 +58,15 @@ gmViewGame_ model app =
   case (game.current_combat, model.moving) of
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
-        Just creature -> center <| Grid.movementMap (M.MoveCreature creature.id) mvmtReq model.currentMap creature (Dict.values game.creatures)
+        Just creature -> center <| Grid.movementMap (M.MoveCreature creature.id) mvmtReq model.currentMap creature (visibleCreatures model game)
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
-      let (creature, moveMessage, visibleCreatures) =
+      let (creature, moveMessage, visCreatures) =
           case mvmtReq.ooc_creature of
-            Just creature -> (creature, M.MoveCreature creature.id, (Dict.values game.creatures))
+            Just creature -> (creature, M.MoveCreature creature.id, visibleCreatures model game)
             Nothing -> (T.combatCreature combat, M.CombatMove, combat.creatures.data)
-      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature visibleCreatures
+      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature visCreatures
     _ -> fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
@@ -84,7 +84,8 @@ fullUI model app game =
                     Nothing -> []
             ) ++ [ playerControlList app , history app ]
     , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
-           , Grid.terrainMap (Maybe.withDefault True (Maybe.map (always False) game.current_combat)) model.currentMap (visibleCreatures model game)]
+           , let movable = True -- Maybe.withDefault True (Maybe.map (always False) game.current_combat)
+             in Grid.terrainMap movable model.currentMap (visibleCreatures model game)]
     , div [s [S.width (S.px 500)]] [
         case game.current_combat of
           Just combat -> combatArea model game combat
