@@ -87,7 +87,7 @@ movementTarget moveMsg origin max_distance terrain pt =
 gridCreature : Bool -> M.Creature -> Svg U.Msg
 gridCreature movable creature =
   g []
-    [ tile "cyan" [onClick (U.GetMovementOptions creature)] creature.pos
+    [ tile "cyan" (if movable then [onClick (U.GetMovementOptions creature)] else []) creature.pos
     , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
               [ text creature.id]
     ]

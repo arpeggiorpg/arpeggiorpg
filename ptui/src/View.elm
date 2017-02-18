@@ -64,7 +64,7 @@ fullUI model app game =
            ) ++ [ extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
           , history app
           ]
-    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap True model.currentMap (visibleCreatures game)]
+    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap (Maybe.withDefault True (Maybe.map (always False) game.current_combat)) model.currentMap (visibleCreatures game)]
     , case game.current_combat of
         Just combat -> combatArea model game combat
         Nothing -> startCombatButton
@@ -303,7 +303,7 @@ engageButton creature =
 combatantEntry : M.Game -> M.Combat -> (Int, M.Creature) -> Html U.Msg
 combatantEntry game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
-               then [datext [s [S.width (S.px 25)]] "-->"]
+               then [datext [s [S.width (S.px 25)]] "▶️️"]
                else [div [s [S.width (S.px 25)]] []]
   in marker ++ [ creatureCard creature ]
 
