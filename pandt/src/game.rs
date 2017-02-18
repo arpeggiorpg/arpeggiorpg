@@ -156,7 +156,7 @@ impl Game {
     }
 
     fn move_creature_ooc(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
-        let creature = self.get_creature(cid)?;
+        let creature = self.find_creature(cid)?;
         let (pts, distance) = find_path(creature.pos(),
                                         creature.speed(),
                                         self.current_map(),
@@ -220,7 +220,7 @@ impl Game {
     }
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
-        let creature = self.get_creature(creature_id)?;
+        let creature = self.find_creature(creature_id)?;
         if creature.can_move {
             Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
         } else {

@@ -64,7 +64,7 @@ fullUI model app game =
            ) ++ [ extPlayerList (\pid -> [button [onClick (U.GiveCreaturesToPlayer pid)] [text "Grant Selected Creatures"]]) app.players
           , history app
           ]
-    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap model.currentMap (visibleCreatures game)]
+    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap True model.currentMap (visibleCreatures game)]
     , case game.current_combat of
         Just combat -> combatArea model game combat
         Nothing -> startCombatButton
@@ -170,7 +170,7 @@ playerGrid model game myCreatures =
               Nothing -> []
           Nothing -> []
   in
-    vbox <| bars ++ targetSel ++ [Grid.terrainMap model.currentMap (visibleCreatures game)]
+    vbox <| bars ++ targetSel ++ [Grid.terrainMap False model.currentMap (visibleCreatures game)]
   
 mapSelector : M.Game -> Html U.Msg
 mapSelector game = vbox <|
@@ -212,7 +212,7 @@ inactiveEntry game pendingCreatures creature = vbox <|
           , checked (Set.member creature.id pendingCreatures)
           , onClick (U.ToggleSelectedCreature creature.id)] []
     , deleteCreatureButton creature
-    ], hbox <| [ moveOOCButton creature] ++ (oocActionBar game creature)]
+    ], hbox (oocActionBar game creature)]
 
 history : M.App -> Html U.Msg
 history app = 

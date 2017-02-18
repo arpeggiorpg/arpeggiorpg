@@ -22,9 +22,9 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
-baseMap : M.Map -> List M.Creature -> List (Svg U.Msg) -> Bool -> Svg U.Msg
-baseMap terrain creatures extras editable =
-  let creatureEls = List.map gridCreature creatures
+baseMap : Bool -> M.Map -> List M.Creature -> List (Svg U.Msg) -> Bool -> Svg U.Msg
+baseMap movable terrain creatures extras editable =
+  let creatureEls = List.map (gridCreature movable) creatures
       terrainEls = baseTerrainRects editable terrain
   in svg
       [ viewBox (String.join " " (List.map toString [-gridSize * 50, -gridSize * 50, gridSize * 100, gridSize * 100]))
@@ -35,13 +35,13 @@ baseMap terrain creatures extras editable =
       ]
       (terrainEls ++ extras ++ creatureEls)
 
-terrainMap : M.Map -> List M.Creature -> Svg U.Msg
-terrainMap t c = baseMap t c [] False
+terrainMap : Bool -> M.Map -> List M.Creature -> Svg U.Msg
+terrainMap movable terrain creatures = baseMap movable terrain creatures [] False
 
 editMap : M.Map -> List M.Creature -> H.Html U.Msg
 editMap terrain creatures = vbox
   [ saveForm terrain
-  , baseMap terrain creatures [] True ]
+  , baseMap False terrain creatures [] True ]
 
 movementMap : (M.Point3 -> U.Msg) -> M.MovementRequest -> M.Map -> M.Creature -> List M.Creature -> H.Html U.Msg
 movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
@@ -50,7 +50,7 @@ movementMap moveMsg {max_distance, movement_options} terrain creature creatures 
   in
     vbox
       [ cancelButton
-      , baseMap terrain creatures movementCirc False ]
+      , baseMap False terrain creatures movementCirc False ]
 
 cancelMove : H.Html U.Msg
 cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
@@ -84,10 +84,10 @@ movementTarget : (M.Point3 -> U.Msg) -> M.Point3 -> Int -> M.Map -> M.Point3 -> 
 movementTarget moveMsg origin max_distance terrain pt =
   tile "green" [onClick (moveMsg pt)] pt
 
-gridCreature : M.Creature -> Svg U.Msg
-gridCreature creature =
+gridCreature : Bool -> M.Creature -> Svg U.Msg
+gridCreature movable creature =
   g []
-    [ tile "cyan" [] creature.pos
+    [ tile "cyan" [onClick (U.GetMovementOptions creature)] creature.pos
     , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
               [ text creature.id]
     ]

@@ -139,7 +139,7 @@ update msg model = case msg of
   MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (M.MoveCreature cid pt))
   TurnDone -> (model, sendCommand M.Done)
   SelectMap mapName -> (model, sendCommand (M.SelectMap mapName))
-  StartCombat -> (model, sendCommand (M.StartCombat (Set.toList model.selectedCreatures)))
+  StartCombat -> ({ model | selectedCreatures = Set.empty}, sendCommand (M.StartCombat (Set.toList model.selectedCreatures)))
   StopCombat -> (model, sendCommand M.StopCombat)
 
 
