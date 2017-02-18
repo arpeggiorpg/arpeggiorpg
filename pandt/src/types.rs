@@ -405,9 +405,6 @@ pub struct Combat {
     // and then either have Vec<&Creature> here, or Vec<CreatureID>.
     pub creatures: nonempty::NonEmptyWithCursor<Creature>,
     pub movement_used: Distance,
-    /// Points that the current creature can move to.
-    /// This is only relevant in combat, since only in combat is movement limited.
-    pub movement_options: Vec<Point3>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

@@ -131,6 +131,12 @@ impl App {
         self.current_game.get_movement_options(creature_id)
     }
 
+    pub fn get_combat_movement_options(&self) -> Result<Vec<Point3>, GameError> {
+        Ok(self.current_game
+            .get_combat()?
+            .current_movement_options(self.current_game.current_map()))
+    }
+
     pub fn get_target_options(&self,
                               cid: CreatureID,
                               abid: AbilityID)

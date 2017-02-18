@@ -426,6 +426,6 @@ doneButton creature =
 moveButton : T.Combat -> T.Creature -> Html M.Msg
 moveButton combat creature =
   let movement_left = creature.speed - combat.movement_used
-  in button [ onClick (M.RequestMove <| M.MovementRequest movement_left combat.movement_options Nothing)
+  in button [ onClick M.GetCombatMovementOptions
             , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString movement_left, ")"])]

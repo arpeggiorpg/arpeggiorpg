@@ -73,8 +73,24 @@ update msg model = case msg of
 
   GotMovementOptions creature (Ok pts) ->
     let mreq = M.MovementRequest creature.speed pts (Just creature)
-    in ({ model | moving = Just <| mreq}, Cmd.none)
+    in ({ model | moving = Just mreq}, Cmd.none)
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
+
+  GetCombatMovementOptions ->
+    let endpoint = (url ++ "/combat_movement_options")
+        cmd = Http.send GotCombatMovementOptions (Http.get endpoint (JD.list T.point3Decoder))
+    in (model, cmd)
+  
+  GotCombatMovementOptions (Ok pts) ->
+    case model.app of
+      Just app ->
+        case app.current_game.current_combat of
+          Just combat ->
+            let mreq = M.MovementRequest (T.combatCreature combat).speed pts Nothing
+            in ({model | moving = Just mreq}, Cmd.none)
+          Nothing -> ({model | error = "No combat when receiving combat movement options"}, Cmd.none)
+      Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)
+  GotCombatMovementOptions (Err e) -> ({model | error = toString e}, Cmd.none)
 
   StartEditingMap ->  ({ model | editingMap = True},  Cmd.none)
   CancelEditingMap -> ({ model | editingMap = False}, Cmd.none)

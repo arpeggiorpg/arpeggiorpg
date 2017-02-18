@@ -40,6 +40,8 @@ type Msg
     | MoveCreature T.CreatureID T.Point3
     | TurnDone
     | GetMovementOptions T.Creature
+    | GetCombatMovementOptions
+    | GotCombatMovementOptions (Result Http.Error (List T.Point3))
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
     | ToggleTerrain T.Point3
     | SelectCreatures GotCreatures String

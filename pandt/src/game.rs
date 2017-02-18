@@ -86,8 +86,6 @@ impl Game {
                 let terrain =
                     newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
                 newgame.current_map = Some(name.clone());
-                newgame.current_combat = newgame.current_combat
-                    .map(|c| c.update_movement_options(&terrain));
             }
             EditMap(ref name, ref terrain) => {
                 newgame.maps.insert(name.clone(), terrain.clone());

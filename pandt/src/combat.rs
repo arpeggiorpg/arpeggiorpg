@@ -19,24 +19,16 @@ impl Combat {
                 let mut com = Combat {
                     creatures: ne,
                     movement_used: Distance::new(0.0),
-                    movement_options: vec![],
                 };
-                com.update_movement_options_mut(terrain);
                 com
             })
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
-    fn update_movement_options_mut(&mut self, terrain: &Map) {
+    pub fn current_movement_options(&self, terrain: &Map) -> Vec<Point3> {
         let current_pos = self.current_creature().pos();
         let current_speed = self.current_creature().speed() - self.movement_used;
-        self.movement_options = get_all_accessible(current_pos, terrain, current_speed);
-    }
-
-    pub fn update_movement_options(&self, terrain: &Map) -> Combat {
-        let mut newcom = self.clone();
-        newcom.update_movement_options_mut(terrain);
-        newcom
+        get_all_accessible(current_pos, terrain, current_speed)
     }
 
     pub fn apply_log(&self, game: &Game, l: &CombatLog) -> Result<Combat, GameError> {
@@ -57,7 +49,6 @@ impl Combat {
                 }
                 if *cid == self.current_creature().id {
                     new.movement_used = new.movement_used + *distance;
-                    new.update_movement_options_mut(game.current_map());
                 }
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
@@ -68,9 +59,6 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
-                // new.update_movement_options_mut(game.current_map());
-                // let ticked_creature = new.current_creature().tick(game)?.creature;
-                // *new.current_creature_mut() = ticked_creature;
             }
         }
         Ok(new)

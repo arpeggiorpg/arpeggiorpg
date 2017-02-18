@@ -32,6 +32,8 @@ enum Route {
     GetApp,
     PostApp(hyper::Body),
     MovementOptions(String),
+    // Get movement options of the current combat creature, honoring the movement budget
+    CombatMovementOptions,
     TargetOptions(String, String),
     Options,
     Unknown,
@@ -48,6 +50,7 @@ fn route(req: Request) -> Route {
         (&Options, &[""]) => Route::Options,
         (&Get, &[""]) => Route::GetApp,
         (&Get, &["", "movement_options", cid]) => Route::MovementOptions(cid.to_string()),
+        (&Get, &["", "combat_movement_options"]) => Route::CombatMovementOptions,
         (&Get, &["", "target_options", cid, abid]) => {
             Route::TargetOptions(cid.to_string(), abid.to_string())
         }
@@ -67,6 +70,7 @@ impl Service for PT {
             Route::GetApp => respond(self.get_app()),
             Route::PostApp(body) => self.post_app(body),
             Route::MovementOptions(cid) => respond(self.get_movement_options(&cid)),
+            Route::CombatMovementOptions => respond(self.get_combat_movement_options()),
             Route::TargetOptions(cid, abid) => respond(self.get_target_options(&cid, &abid)),
             Route::Options => {
                 finished(Response::new()
@@ -89,6 +93,10 @@ impl PT {
     fn get_movement_options(&self, creature_id: &str) -> Result<Vec<Point3>, GameError> {
         let cid = CreatureID::new(creature_id)?;
         self.app.lock().unwrap().get_movement_options(cid)
+    }
+
+    fn get_combat_movement_options(&self) -> Result<Vec<Point3>, GameError> {
+        self.app.lock().unwrap().get_combat_movement_options()
     }
 
     fn get_target_options(&self, cid: &str, abid: &str) -> Result<Vec<PotentialTarget>, GameError> {
