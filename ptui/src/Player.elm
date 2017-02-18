@@ -5,7 +5,7 @@ import Model as M
 import View as V
 import Update as U
 
-main : Program Never M.Model U.Msg
+main : Program Never M.Model M.Msg
 main =
   Html.program
     { init = (M.defaultModel, U.refreshApp)

@@ -1,9 +1,50 @@
 module Model exposing (..)
 
 import Dict
+import Http
 import Set
 
 import Types as T
+
+type alias GotCreatures = List T.CreatureID -> Cmd Msg
+
+type Msg
+    = MorePlease
+    | SetPlayerID T.PlayerID
+    | RegisterPlayer
+    | SelectMap T.MapName
+    | UpdateSaveMapName T.MapName
+    | StartEditingMap
+    | EditMap T.Map
+    | CancelEditingMap
+    | PendingCreatureId T.CreatureID
+    | PendingCreatureName String
+    | PendingCreatureClass String
+    | CreateCreature T.CreatureCreation
+    | CommandComplete (Result Http.Error T.RustResult)
+    | AppUpdate (Result Http.Error T.App)
+    | ShowError String
+    | ToggleSelectedCreature T.CreatureID
+    | StopCombat
+    | AddToCombat T.CreatureID
+    | RemoveFromCombat T.CreatureID
+    | RemoveFromGame T.CreatureID
+    | SelectAbility T.CreatureID T.AbilityID
+    | CancelAbility
+    | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
+    | CombatAct T.AbilityID T.DecidedTarget
+    | ActCreature T.CreatureID T.AbilityID T.DecidedTarget
+    | RequestMove MovementRequest
+    | CancelMovement
+    | CombatMove T.Point3
+    | MoveCreature T.CreatureID T.Point3
+    | TurnDone
+    | GetMovementOptions T.Creature
+    | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
+    | ToggleTerrain T.Point3
+    | SelectCreatures GotCreatures String
+    | DoneSelectingCreatures
+    | CancelSelectingCreatures
 
 defaultModel : Model
 defaultModel =
@@ -20,6 +61,7 @@ defaultModel =
     , currentMap = [{x=0, y=0, z=0}]
     , playerID = Nothing
     , potentialTargets = []
+    , selectingCreatures = Nothing
   }
 
 
@@ -38,6 +80,7 @@ type alias Model =
   , editingMap : Bool
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
+  , selectingCreatures : Maybe (GotCreatures, String)
   }
 
 type alias MovementRequest = {

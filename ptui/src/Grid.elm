@@ -23,7 +23,7 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
-baseMap : Bool -> T.Map -> List T.Creature -> List (Svg U.Msg) -> Bool -> Svg U.Msg
+baseMap : Bool -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
 baseMap movable terrain creatures extras editable =
   let creatureEls = List.map (gridCreature movable) creatures
       terrainEls = baseTerrainRects editable terrain
@@ -36,15 +36,15 @@ baseMap movable terrain creatures extras editable =
       ]
       (terrainEls ++ extras ++ creatureEls)
 
-terrainMap : Bool -> T.Map -> List T.Creature -> Svg U.Msg
+terrainMap : Bool -> T.Map -> List T.Creature -> Svg M.Msg
 terrainMap movable terrain creatures = baseMap movable terrain creatures [] False
 
-editMap : T.Map -> List T.Creature -> H.Html U.Msg
+editMap : T.Map -> List T.Creature -> H.Html M.Msg
 editMap terrain creatures = vbox
   [ saveForm terrain
   , baseMap False terrain creatures [] True ]
 
-movementMap : (T.Point3 -> U.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html U.Msg
+movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
 movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
   let cancelButton = cancelMove
       movementCirc = movementCircle moveMsg movement_options terrain creature.pos max_distance
@@ -53,24 +53,24 @@ movementMap moveMsg {max_distance, movement_options} terrain creature creatures 
       [ cancelButton
       , baseMap False terrain creatures movementCirc False ]
 
-cancelMove : H.Html U.Msg
-cancelMove = H.button [HE.onClick U.CancelMovement] [H.text "Cancel Movement"]
+cancelMove : H.Html M.Msg
+cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]
 
-saveForm : T.Map -> H.Html U.Msg
+saveForm : T.Map -> H.Html M.Msg
 saveForm terrain = vbox <|
-  [ H.button [HE.onClick U.CancelEditingMap] [text "Cancel Editing Map"]
+  [ H.button [HE.onClick M.CancelEditingMap] [text "Cancel Editing Map"]
   , hbox
-    [ H.input [HA.type_ "text", HA.placeholder "map name", HE.onInput U.UpdateSaveMapName ] []
-    , H.button [HE.onClick (U.EditMap terrain)] [text "Save"]
+    [ H.input [HA.type_ "text", HA.placeholder "map name", HE.onInput M.UpdateSaveMapName ] []
+    , H.button [HE.onClick (M.EditMap terrain)] [text "Save"]
     ]
   ]
-movementCircle : (T.Point3 -> U.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg U.Msg)
+movementCircle : (T.Point3 -> M.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
 movementCircle moveMsg pts terrain origin max_distance =
   let circleEl = distanceCircle origin max_distance
       movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
   in circleEl :: movementCells
 
-distanceCircle : T.Point3 -> Int -> Svg U.Msg
+distanceCircle : T.Point3 -> Int -> Svg M.Msg
 distanceCircle origin max_distance =
   let centerCoord n = toString ((n * 100) + 50) in
   circle [ r (toString max_distance)
@@ -81,32 +81,32 @@ distanceCircle origin max_distance =
            , cy (centerCoord origin.y)]
            []
 
-movementTarget : (T.Point3 -> U.Msg) -> T.Point3 -> Int -> T.Map -> T.Point3 -> H.Html U.Msg
+movementTarget : (T.Point3 -> M.Msg) -> T.Point3 -> Int -> T.Map -> T.Point3 -> H.Html M.Msg
 movementTarget moveMsg origin max_distance terrain pt =
   tile "green" [onClick (moveMsg pt)] pt
 
-gridCreature : Bool -> T.Creature -> Svg U.Msg
+gridCreature : Bool -> T.Creature -> Svg M.Msg
 gridCreature movable creature =
   g []
-    [ tile "cyan" (if movable then [onClick (U.GetMovementOptions creature)] else []) creature.pos
+    [ tile "cyan" (if movable then [onClick (M.GetMovementOptions creature)] else []) creature.pos
     , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
               [ text creature.id]
     ]
 
-terrainRects : List T.Point3 -> List (Svg U.Msg)
+terrainRects : List T.Point3 -> List (Svg M.Msg)
 terrainRects = baseTerrainRects False
 
-baseTerrainRects : Bool -> List T.Point3 -> List (Svg U.Msg)
+baseTerrainRects : Bool -> List T.Point3 -> List (Svg M.Msg)
 baseTerrainRects editable terrain =
   let blocks = List.map (gridTerrain editable) terrain
       empties = emptyTerrain editable terrain
   in blocks ++ empties
 
-gridTerrain : Bool -> T.Point3 -> Svg U.Msg
+gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
-  tile "lightgrey" (if editable then [onClick (U.ToggleTerrain pt)] else []) pt
+  tile "lightgrey" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
-emptyTerrain : Bool -> List T.Point3 -> List (Svg U.Msg)
+emptyTerrain : Bool -> List T.Point3 -> List (Svg M.Msg)
 emptyTerrain editable terrain =
   let halfGrid = gridSize // 2
       g x y = let pt = {x= x, y=y, z=0}
@@ -114,11 +114,11 @@ emptyTerrain editable terrain =
       f x = List.concatMap (g x) (List.range -halfGrid halfGrid)
   in List.concatMap f (List.range -halfGrid halfGrid)
 
-emptyTerrainTile : Bool -> T.Point3 -> Svg U.Msg
+emptyTerrainTile : Bool -> T.Point3 -> Svg M.Msg
 emptyTerrainTile editable pt =
-  tile "white" (if editable then [onClick (U.ToggleTerrain pt)] else []) pt
+  tile "white" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
-tile : String -> List (Svg.Attribute U.Msg) -> T.Point3 -> Svg U.Msg
+tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
 tile cl attrs pt =
   rect (attrs ++ [ width "100"
        , height "100"

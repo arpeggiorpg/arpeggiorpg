@@ -4,45 +4,10 @@ import Http
 import Json.Decode as JD
 import Set
 
-import Model as M 
+import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
-type Msg
-    = MorePlease
-    | SetPlayerID T.PlayerID
-    | RegisterPlayer
-    | GiveCreaturesToPlayer T.PlayerID
-    | SelectMap T.MapName
-    | UpdateSaveMapName T.MapName
-    | StartEditingMap
-    | EditMap T.Map
-    | CancelEditingMap
-    | PendingCreatureId CreatureID
-    | PendingCreatureName String
-    | PendingCreatureClass String
-    | CreateCreature T.CreatureCreation
-    | CommandComplete (Result Http.Error T.RustResult)
-    | AppUpdate (Result Http.Error T.App)
-    | ShowError String
-    | ToggleSelectedCreature CreatureID
-    | StartCombat
-    | StopCombat
-    | AddToCombat CreatureID
-    | RemoveFromCombat CreatureID
-    | RemoveFromGame CreatureID
-    | SelectAbility CreatureID AbilityID
-    | CancelAbility
-    | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
-    | CombatAct AbilityID T.DecidedTarget
-    | ActCreature CreatureID AbilityID T.DecidedTarget
-    | RequestMove M.MovementRequest
-    | CancelMovement
-    | CombatMove T.Point3
-    | MoveCreature T.CreatureID T.Point3
-    | TurnDone
-    | GetMovementOptions T.Creature
-    | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
-    | ToggleTerrain T.Point3
+
 
 update : Msg -> M.Model -> ( M.Model, Cmd Msg )
 update msg model = case msg of
@@ -55,9 +20,6 @@ update msg model = case msg of
     case model.playerID of
       Just playerID -> (model, sendCommand (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
-
-  GiveCreaturesToPlayer pid ->
-    (model, sendCommand (T.GiveCreaturesToPlayer pid (Set.toList model.selectedCreatures)))
 
   PendingCreatureId input ->
     let newId = if (String.isEmpty input) then Nothing else Just input
@@ -87,9 +49,24 @@ update msg model = case msg of
  
   ShowError s -> ( {model | error = s}, Cmd.none)
   
+
+  SelectCreatures cb commandName ->
+    ( { model | selectingCreatures = Just (cb, commandName)}, Cmd.none)
   ToggleSelectedCreature cid ->
     ( { model | selectedCreatures = toggleSet cid model.selectedCreatures }
     , Cmd.none )
+  DoneSelectingCreatures ->
+    case model.selectingCreatures of
+      Just (cb, _) -> 
+        let cids = Set.toList model.selectedCreatures
+        in ( { model | selectedCreatures = Set.empty, selectingCreatures = Nothing}
+           , cb cids)
+      Nothing ->
+        ( model , Cmd.none)
+  CancelSelectingCreatures ->
+    ( { model | selectedCreatures = Set.empty, selectingCreatures = Nothing}
+    , Cmd.none)
+
   
   GetMovementOptions creature ->
     let endpoint = (url ++ "/movement_options/" ++ creature.id)
@@ -140,7 +117,6 @@ update msg model = case msg of
   MoveCreature cid pt -> ({model | moving = Nothing}, sendCommand (T.MoveCreature cid pt))
   TurnDone -> (model, sendCommand T.Done)
   SelectMap mapName -> (model, sendCommand (T.SelectMap mapName))
-  StartCombat -> ({ model | selectedCreatures = Set.empty}, sendCommand (T.StartCombat (Set.toList model.selectedCreatures)))
   StopCombat -> (model, sendCommand T.StopCombat)
 
 
