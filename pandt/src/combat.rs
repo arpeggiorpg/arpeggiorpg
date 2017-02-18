@@ -45,18 +45,17 @@ impl Combat {
             CombatLog::CreatureLog(ref cid,
                                    CreatureLog::PathCreature { ref path, ref distance }) => {
                 // This is weird! It may be better to just implement CombatLog::ChangeMovementLeft
-                // instead of special-casing CreatureLog::MoveCreature, especially since we will
+                // instead of special-casing CreatureLog::PathCreature, especially since we will
                 // want GM-overridden movement. OTOH that could just be
                 // CreatureLog::AssignPosition...
-                let c_id = {
+                {
                     let mut c = new.get_creature_mut(*cid)?;
                     *c = c.apply_log(&CreatureLog::PathCreature {
                             path: path.clone(),
                             distance: *distance,
                         })?;
-                    c.id()
-                };
-                if c_id == *cid {
+                }
+                if *cid == self.current_creature().id {
                     new.movement_used = new.movement_used + *distance;
                     new.update_movement_options_mut(game.current_map());
                 }
@@ -183,13 +182,13 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let change =
-            self.combat.change_with(game,
-                                    CombatLog::CreatureLog(self.combat.current_creature().id,
-                                                           CreatureLog::PathCreature {
-                                                               path: pts,
-                                                               distance: distance,
-                                                           }))?;
+        let change = self.combat
+            .change_with(game,
+                         CombatLog::CreatureLog(self.combat.current_creature().id,
+                                                CreatureLog::PathCreature {
+                                                    path: pts,
+                                                    distance: distance,
+                                                }))?;
         Ok(change)
     }
 }

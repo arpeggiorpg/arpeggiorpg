@@ -45,7 +45,7 @@ impl Game {
         use self::GameCommand::*;
         let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (CreateCreature(c), _) => self.create_creature(c),
-            (MoveCreature(cid, pt), _) => self.move_creature_ooc(cid, pt),
+            (MoveCreature(cid, pt), _) => self.move_creature(cid, pt),
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
             (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
             (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
@@ -155,14 +155,38 @@ impl Game {
         Ok(newgame)
     }
 
-    fn move_creature_ooc(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
-        let creature = self.find_creature(cid)?;
-        let (pts, distance) = find_path(creature.pos(),
-                                        creature.speed(),
-                                        self.current_map(),
-                                        pt).ok_or(GameError::NoPathFound)?;
-        self.change().apply_creature(cid, move |c| c.set_pos_path(pts, distance))
+    fn move_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
+        match self.get_creature(cid) {
+            Ok(creature) => {
+                let (pts, distance) = find_path(creature.pos(),
+                                                creature.speed(),
+                                                self.current_map(),
+                                                pt).ok_or(GameError::NoPathFound)?;
+                self.change_with(GameLog::CreatureLog(cid,
+                                                      CreatureLog::PathCreature {
+                                                          path: pts,
+                                                          distance: distance,
+                                                      }))
+            }
+            Err(_) => {
+                self.change().apply_combat(|combat| {
+                    let creature = combat.get_creature(cid)?;
+                    let (pts, distance) = find_path(creature.pos(),
+                                                    creature.speed(),
+                                                    self.current_map(),
+                                                    pt).ok_or(GameError::NoPathFound)?;
+                    combat.change_with(self,
+                                       CombatLog::CreatureLog(cid,
+                                                              CreatureLog::PathCreature {
+                                                                  path: pts,
+                                                                  distance: distance,
+                                                              }))
+                })
+            }
+        }
     }
+
+    // self.change().apply_creature(cid, move |c| c.set_pos_path(pts, distance))
 
     fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
         self.change().apply_combat(move |c| {
