@@ -103,6 +103,7 @@ update msg model = case msg of
   RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
+  ToggleShowOOC -> ({model | showOOC = not model.showOOC}, Cmd.none)
 
   -- Basic GameCommands
   CreateCreature creation -> (model, sendCommand (T.CreateCreature creation))

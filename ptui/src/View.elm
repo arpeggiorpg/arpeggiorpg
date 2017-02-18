@@ -72,18 +72,19 @@ gmViewGame_ model app =
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
 fullUI model app game =
   if model.editingMap
-  then Grid.editMap model.currentMap (visibleCreatures game)
+  then Grid.editMap model.currentMap (visibleCreatures model game)
   else
   habox [s [S.justifyContent S.spaceAround]]
     [ vabox [s [S.width (S.px 500)]] <| [ h3 [] [text "Creatures"]
             , inactiveList model game
-           ] ++ (case model.selectedAbility of
-            Just (cid, abid) -> if T.isCreatureOOC game cid
-                                then [targetSelector model game (M.ActCreature cid) abid]
-                                else []
-            Nothing -> []
-           ) ++ [ playerControlList app , history app ]
-    , vbox [hbox [editMapButton, mapSelector game], Grid.terrainMap (Maybe.withDefault True (Maybe.map (always False) game.current_combat)) model.currentMap (visibleCreatures game)]
+            ] ++ (case model.selectedAbility of
+                    Just (cid, abid) -> if T.isCreatureOOC game cid
+                                        then [targetSelector model game (M.ActCreature cid) abid]
+                                        else []
+                    Nothing -> []
+            ) ++ [ playerControlList app , history app ]
+    , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
+           , Grid.terrainMap (Maybe.withDefault True (Maybe.map (always False) game.current_combat)) model.currentMap (visibleCreatures model game)]
     , div [s [S.width (S.px 500)]] [
         case game.current_combat of
           Just combat -> combatArea model game combat
@@ -106,13 +107,19 @@ extPlayerList ext players =
 playerList : Dict.Dict T.PlayerID (Set.Set T.CreatureID) -> Html M.Msg
 playerList = extPlayerList (always [])
 
+oocToggler : M.Model -> Html M.Msg
+oocToggler model =
+  hbox [text "Show Out-of-Combat creatures: "
+       , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
+       ]
+
 editMapButton : Html M.Msg
 editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
 
-visibleCreatures : T.Game -> List T.Creature
-visibleCreatures game =
+visibleCreatures : M.Model -> T.Game -> List T.Creature
+visibleCreatures model game =
   case game.current_combat of
-    Just combat -> combat.creatures.data
+    Just combat -> if model.showOOC then (combat.creatures.data) ++ (Dict.values game.creatures) else combat.creatures.data
     Nothing -> Dict.values game.creatures
 
 playerView : M.Model -> Html M.Msg
@@ -150,14 +157,14 @@ playerViewGame model app creatures =
             then
               -- one of my characters is moving; render the movement map
               Grid.movementMap (M.MoveCreature oocMovingCreature.id) movementRequest
-                               model.currentMap oocMovingCreature (visibleCreatures game)
+                               model.currentMap oocMovingCreature (visibleCreatures model game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
           Nothing -> -- we're moving in-combat.
             let currentCreature = Maybe.map T.combatCreature game.current_combat
             in case currentCreature of
-                Just creature -> Grid.movementMap M.CombatMove movementRequest model.currentMap creature (visibleCreatures game)
+                Just creature -> Grid.movementMap M.CombatMove movementRequest model.currentMap creature (visibleCreatures model game)
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ,
@@ -196,7 +203,7 @@ playerGrid model game myCreatures =
               Nothing -> []
           Nothing -> []
   in
-    vbox <| bars ++ targetSel ++ [Grid.terrainMap False model.currentMap (visibleCreatures game)]
+    vbox <| bars ++ targetSel ++ [Grid.terrainMap False model.currentMap (visibleCreatures model game)]
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|

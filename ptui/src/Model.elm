@@ -45,6 +45,7 @@ type Msg
     | SelectCreatures GotCreatures String
     | DoneSelectingCreatures
     | CancelSelectingCreatures
+    | ToggleShowOOC
 
 defaultModel : Model
 defaultModel =
@@ -54,6 +55,7 @@ defaultModel =
     , pendingCreatureName = Nothing
     , pendingCreatureClass = Nothing
     , selectedCreatures = Set.empty
+    , selectingCreatures = Nothing
     , moving = Nothing
     , error = "No current error!"
     , saveMapName = "" -- this could be inside of editingMap sumtype
@@ -61,7 +63,7 @@ defaultModel =
     , currentMap = [{x=0, y=0, z=0}]
     , playerID = Nothing
     , potentialTargets = []
-    , selectingCreatures = Nothing
+    , showOOC = False
   }
 
 
@@ -73,6 +75,7 @@ type alias Model =
   , selectedAbility : Maybe (T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
   , selectedCreatures : Set.Set T.CreatureID
+  , selectingCreatures : Maybe (GotCreatures, String)
   , error: String
   , moving: Maybe MovementRequest
   , saveMapName: String
@@ -80,7 +83,7 @@ type alias Model =
   , editingMap : Bool
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
-  , selectingCreatures : Maybe (GotCreatures, String)
+  , showOOC: Bool
   }
 
 type alias MovementRequest = {
