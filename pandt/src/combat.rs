@@ -5,7 +5,7 @@
 use nonempty;
 
 use types::*;
-use grid::{get_all_accessible, find_path};
+use grid::{get_all_accessible, find_path, point3_distance};
 use creature::ChangedCreature;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
@@ -13,7 +13,7 @@ use creature::ChangedCreature;
 pub const MELEE_RANGE: Distance = Distance(150);
 
 impl Combat {
-    pub fn new(combatants: Vec<Creature>, terrain: &Map) -> Result<Combat, GameError> {
+    pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
         nonempty::NonEmptyWithCursor::from_vec(combatants)
             .map(|ne| {
                 let mut com = Combat {
@@ -34,22 +34,16 @@ impl Combat {
     pub fn apply_log(&self, game: &Game, l: &CombatLog) -> Result<Combat, GameError> {
         let mut new = self.clone();
         match *l {
-            CombatLog::CreatureLog(ref cid,
-                                   CreatureLog::PathCreature { ref path, ref distance }) => {
-                // This is weird! It may be better to just implement CombatLog::ChangeMovementLeft
-                // instead of special-casing CreatureLog::PathCreature, especially since we will
-                // want GM-overridden movement. OTOH that could just be
-                // CreatureLog::AssignPosition...
-                {
-                    let mut c = new.get_creature_mut(*cid)?;
-                    *c = c.apply_log(&CreatureLog::PathCreature {
-                            path: path.clone(),
-                            distance: *distance,
-                        })?;
-                }
-                if *cid == self.current_creature().id {
-                    new.movement_used = new.movement_used + *distance;
-                }
+            CombatLog::PathCurrentCreature(ref path) => {
+                let distance = {
+                    let mut c = new.current_creature_mut();
+                    let c_pos = c.pos();
+                    let destination = path.last().unwrap_or(&c_pos);
+                    let distance = {point3_distance(c.pos, *destination)};
+                    *c = c.apply_log(&CreatureLog::SetPos(*destination))?;
+                    distance
+                };
+                new.movement_used = new.movement_used + distance;
             }
             CombatLog::CreatureLog(ref cid, ref cl) => {
                 let mut c = new.get_creature_mut(*cid)?;
@@ -66,6 +60,10 @@ impl Combat {
 
     pub fn current_creature(&self) -> &Creature {
         self.creatures.get_current()
+    }
+
+    fn current_creature_mut(&mut self) -> &mut Creature {
+        self.creatures.get_current_mut()
     }
 
     pub fn next_turn(&self, game: &Game) -> Result<ChangedCombat, GameError> {
@@ -170,13 +168,7 @@ impl<'a> CombatMove<'a> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let change = self.combat
-            .change_with(game,
-                         CombatLog::CreatureLog(self.combat.current_creature().id,
-                                                CreatureLog::PathCreature {
-                                                    path: pts,
-                                                    distance: distance,
-                                                }))?;
+        let change = self.combat.change_with(game, CombatLog::PathCurrentCreature(pts))?;
         Ok(change)
     }
 }
@@ -264,7 +256,7 @@ pub mod test {
         let rogue = t_rogue("rogue");
         let ranger = t_ranger("ranger");
         let cleric = t_cleric("cleric");
-        Combat::new(vec![rogue, ranger, cleric], &huge_box()).unwrap()
+        Combat::new(vec![rogue, ranger, cleric]).unwrap()
     }
 
     pub fn t_act(c: &Combat,
@@ -281,7 +273,7 @@ pub mod test {
         let melee = t_punch();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((2, 0, 0));
+            *creature = creature.set_pos((2, 0, 0)).unwrap().creature;
         }
         assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
@@ -294,7 +286,7 @@ pub mod test {
         let range_ab = t_shoot();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 0, 0));
+            *creature = creature.set_pos((5, 0, 0)).unwrap().creature;
         }
         let _: Combat =
             t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
@@ -325,7 +317,7 @@ pub mod test {
         let shoot = t_shoot();
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((6, 0, 0));
+            *creature = creature.set_pos((6, 0, 0)).unwrap().creature;
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
@@ -333,7 +325,7 @@ pub mod test {
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
         {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 3, 0));
+            *creature = creature.set_pos((5, 3, 0)).unwrap().creature;
         }
         assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));

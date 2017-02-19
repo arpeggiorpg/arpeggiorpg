@@ -45,7 +45,11 @@ impl Game {
         use self::GameCommand::*;
         let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (CreateCreature(c), _) => self.create_creature(c),
-            (MoveCreature(cid, pt), _) => self.move_creature(cid, pt),
+            (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
+            (SetCreaturePos(cid, pt), _) => self.change().apply_creature(cid, |c| c.set_pos(pt)),
+            (PathCurrentCombatCreature(pt), Some(com)) => {
+                self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
+            }
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
             (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
             (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
@@ -60,10 +64,6 @@ impl Game {
             }
             (RemoveCreatureFromCombat(cid), Some(_)) => {
                 self.change_with(GameLog::RemoveCreatureFromCombat(cid))
-            }
-            // TODO: rename `Move` to `CombatMove` and `MoveOutOfCombat` to `MoveCreature`.
-            (CombatMove(pt), Some(_)) => {
-                self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn(self)),
             _ => disallowed(cmd),
@@ -135,7 +135,7 @@ impl Game {
                         newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
                     creatures.push(creature);
                 }
-                newgame.current_combat = Some(Combat::new(creatures, self.current_map())?);
+                newgame.current_combat = Some(Combat::new(creatures)?);
             }
             StopCombat => {
                 // we shouldn't need to collect into a Vec here.
@@ -153,33 +153,14 @@ impl Game {
         Ok(newgame)
     }
 
-    fn move_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
-        match self.get_creature(cid) {
-            Ok(creature) => {
-                let (pts, distance) = find_path(creature.pos(),
-                                                creature.speed(),
-                                                self.current_map(),
-                                                pt).ok_or(GameError::NoPathFound)?;
-                self.change_with(GameLog::CreatureLog(cid,
-                                                      CreatureLog::PathCreature {
-                                                          path: pts,
-                                                          distance: distance,
-                                                      }))
-            }
+    fn path_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
+        // TODO: this should use a GameLog::PathCreature instead of just creature.set_pos to the destination.
+        // One reason is so that we check each step in the path to make sure it's valid.
+        match self.change().apply_creature(cid, |c| c.set_pos(pt)) {
+            Ok(r) => Ok(r),
             Err(_) => {
-                self.change().apply_combat(|combat| {
-                    let creature = combat.get_creature(cid)?;
-                    let (pts, distance) = find_path(creature.pos(),
-                                                    creature.speed(),
-                                                    self.current_map(),
-                                                    pt).ok_or(GameError::NoPathFound)?;
-                    combat.change_with(self,
-                                       CombatLog::CreatureLog(cid,
-                                                              CreatureLog::PathCreature {
-                                                                  path: pts,
-                                                                  distance: distance,
-                                                              }))
-                })
+                self.change()
+                    .apply_combat(|com| com.change().apply_creature(cid, |c| c.set_pos(pt)))
             }
         }
     }
@@ -496,7 +477,7 @@ pub mod test {
     fn movement() {
         let game = t_game();
         let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-        game.perform_unchecked(GameCommand::CombatMove((1, 0, 0))).unwrap();
+        game.perform_unchecked(GameCommand::PathCurrentCombatCreature((1, 0, 0))).unwrap();
     }
 
     #[test]

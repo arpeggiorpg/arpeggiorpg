@@ -118,10 +118,13 @@ pub enum GameCommand {
     ActCreature(CreatureID, AbilityID, DecidedTarget),
     /// Make the current creature use an ability.
     CombatAct(AbilityID, DecidedTarget),
-    /// Move out of combat. There must be a clear path according to the current loaded map.
-    MoveCreature(CreatureID, Point3),
-    /// Move to a point. There must be a clear path according to the current loaded map.
-    CombatMove(Point3),
+    /// Move a creature along a path. There must be a clear path according to the current loaded map.
+    /// It doesn't matter whether the creature is in combat or not.
+    PathCreature(CreatureID, Point3),
+    /// Move the current creature in combat to a point. There must be a clear path according to the current loaded map.
+    PathCurrentCombatCreature(Point3),
+    /// Assign a creature's position
+    SetCreaturePos(CreatureID, Point3),
     /// Create a new creature.
     CreateCreature(CreatureCreation),
     /// Remove a creature from the game entirely. Creature must not be in combat.
@@ -158,16 +161,14 @@ pub enum CreatureLog {
     ApplyCondition(ConditionID, ConditionDuration, Condition),
     DecrementConditionRemaining(ConditionID),
     RemoveCondition(ConditionID),
-    PathCreature {
-        path: Vec<Point3>,
-        distance: Distance,
-    },
+    SetPos(Point3),
 }
 
 /// Representation of state changes in a Combat. See `CreatureLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
     CreatureLog(CreatureID, CreatureLog),
+    PathCurrentCreature(Vec<Point3>),
     EndTurn(CreatureID), // the end of this creature's turn
 }
 
@@ -194,6 +195,7 @@ pub enum GameLog {
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
     RemoveCreatureFromCombat(CreatureID),
+    //PathCreature(CreatureID, Vec<Point3>),
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {

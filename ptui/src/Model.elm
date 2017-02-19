@@ -36,8 +36,8 @@ type Msg
     | ActCreature T.CreatureID T.AbilityID T.DecidedTarget
     | RequestMove MovementRequest
     | CancelMovement
-    | CombatMove T.Point3
-    | MoveCreature T.CreatureID T.Point3
+    | PathCurrentCombatCreature T.Point3
+    | PathCreature T.CreatureID T.Point3
     | TurnDone
     | GetMovementOptions T.Creature
     | GetCombatMovementOptions

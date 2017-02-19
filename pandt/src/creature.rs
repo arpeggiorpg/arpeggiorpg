@@ -77,11 +77,8 @@ impl Creature {
                 new.can_move = conditions_able(new.conditions.values().collect());
                 new.can_act = new.can_move;
             }
-            CreatureLog::PathCreature { ref path, .. } => {
-                match path.last() {
-                    Some(pt) => new.pos = *pt,
-                    None => {}
-                }
+            CreatureLog::SetPos(pt) => {
+                new.pos = pt;
             }
         }
         Ok(new)
@@ -137,28 +134,8 @@ impl Creature {
         Ok(changes)
     }
 
-    /// Assign a position. TODO: Make this return a CreatureLog. Only used in tests for now,
-    /// but it will be useful for DM-assigned positions.
-    #[cfg(test)]
-    pub fn set_pos(&self, pt: Point3) -> Creature {
-        let mut newc = self.clone();
-        newc.pos = pt;
-        newc
-    }
-
-    pub fn set_pos_path(&self,
-                        pts: Vec<Point3>,
-                        distance: Distance)
-                        -> Result<ChangedCreature, GameError> {
-        if self.can_move {
-            let log = CreatureLog::PathCreature {
-                path: pts,
-                distance: distance,
-            };
-            Ok(self.change_with(log)?)
-        } else {
-            Err(GameError::CannotAct(self.id))
-        }
+    pub fn set_pos(&self, pt: Point3) -> Result<ChangedCreature, GameError> {
+        self.change_with(CreatureLog::SetPos(pt))
     }
 
     pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {

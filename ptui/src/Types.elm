@@ -90,11 +90,14 @@ gameLogDecoder = sumDecoder "GameLog"
 type CombatLog
   = ComLCreatureLog CreatureID CreatureLog
   | ComLEndTurn CreatureID
+  | ComLPathCurrentCreature (List Point3)
 
 combatLogDecoder = sumDecoder "CombatLog"
   []
   [ ("CreatureLog", JD.map2 ComLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
-  , ("EndTurn", JD.map ComLEndTurn JD.string)]
+  , ("EndTurn", JD.map ComLEndTurn JD.string)
+  , ("PathCurrentCreature", JD.map ComLPathCurrentCreature (JD.list point3Decoder))
+  ]
 
 type CreatureLog
   = CLDamage Int
@@ -103,7 +106,7 @@ type CreatureLog
   | CLReduceEnergy Int
   | CLApplyCondition Int ConditionDuration Condition
   | CLRemoveCondition Int
-  | CLPathCreature PathAndDistance
+  | CLSetPos Point3
   | CLDecrementConditionRemaining Int
 
 creatureLogDecoder = sumDecoder "CreatureLog"
@@ -114,15 +117,9 @@ creatureLogDecoder = sumDecoder "CreatureLog"
   , ("ReduceEnergy", JD.map CLReduceEnergy JD.int)
   , ("ApplyCondition", JD.map3 CLApplyCondition (JD.index 0 JD.int) (JD.index 1 conditionDurationDecoder) (JD.index 2conditionDecoder))
   , ("RemoveCondition", JD.map CLRemoveCondition JD.int)
-  , ("PathCreature", JD.map CLPathCreature pathAndDistanceDecoder)
+  , ("SetPos", JD.map CLSetPos point3Decoder)
   , ("DecrementConditionRemaining", JD.map CLDecrementConditionRemaining JD.int)
   ]
-
-type alias PathAndDistance = {path: List Point3, distance: Distance}
-
-pathAndDistanceDecoder = JD.map2 PathAndDistance
-  (JD.field "path" (JD.list point3Decoder))
-  (JD.field "distance" JD.int)
 
 type alias Game =
   { current_combat : Maybe Combat
@@ -345,8 +342,9 @@ type GameCommand
   | StopCombat
   | CombatAct AbilityID DecidedTarget
   | ActCreature CreatureID AbilityID DecidedTarget
-  | CombatMove Point3
-  | MoveCreature CreatureID Point3
+  | PathCurrentCombatCreature Point3
+  | PathCreature CreatureID Point3
+  | SetCreaturePos CreatureID Point3
   | CreateCreature CreatureCreation
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
@@ -364,8 +362,9 @@ gameCommandEncoder gc =
     CreateCreature creature -> JE.object [("CreateCreature", creatureCreationEncoder creature)]
     RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
     StopCombat -> JE.string "StopCombat"
-    CombatMove pt -> JE.object [("CombatMove", point3Encoder pt)]
-    MoveCreature cid pt -> JE.object [("MoveCreature", JE.list [JE.string cid, point3Encoder pt])]
+    PathCurrentCombatCreature pt -> JE.object [("PathCurrentCombatCreature", point3Encoder pt)]
+    PathCreature cid pt -> JE.object [("PathCreature", JE.list [JE.string cid, point3Encoder pt])]
+    SetCreaturePos cid pt -> JE.object [("SetCreaturePos", JE.list [JE.string cid, point3Encoder pt])]
     AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
     RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     CombatAct abid dtarget -> JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]

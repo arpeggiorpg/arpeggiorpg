@@ -58,14 +58,14 @@ gmViewGame_ model app =
   case (game.current_combat, model.moving) of
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
-        Just creature -> center <| Grid.movementMap (M.MoveCreature creature.id) mvmtReq model.currentMap creature (visibleCreatures model game)
+        Just creature -> center <| Grid.movementMap (M.PathCreature creature.id) mvmtReq model.currentMap creature (visibleCreatures model game)
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
       let (creature, moveMessage) =
           case mvmtReq.ooc_creature of
-            Just creature -> (creature, M.MoveCreature creature.id)
-            Nothing -> (T.combatCreature combat, M.CombatMove)
+            Just creature -> (creature, M.PathCreature creature.id)
+            Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
       in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature (visibleCreatures model game)
     _ -> fullUI model app game
 
@@ -157,7 +157,7 @@ playerViewGame model app creatures =
             if List.member oocMovingCreature creatures
             then
               -- one of my characters is moving; render the movement map
-              Grid.movementMap (M.MoveCreature oocMovingCreature.id) movementRequest
+              Grid.movementMap (M.PathCreature oocMovingCreature.id) movementRequest
                                model.currentMap oocMovingCreature (visibleCreatures model game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
@@ -165,7 +165,7 @@ playerViewGame model app creatures =
           Nothing -> -- we're moving in-combat.
             let currentCreature = Maybe.map T.combatCreature game.current_combat
             in case currentCreature of
-                Just creature -> Grid.movementMap M.CombatMove movementRequest model.currentMap creature (visibleCreatures model game)
+                Just creature -> Grid.movementMap M.PathCurrentCombatCreature movementRequest model.currentMap creature (visibleCreatures model game)
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ,
@@ -272,6 +272,13 @@ historyCombatLog : T.CombatLog -> Html M.Msg
 historyCombatLog cl = case cl of
   T.ComLCreatureLog cid creatureLog -> hbox [text cid, historyCreatureLog creatureLog]
   T.ComLEndTurn cid -> hbox [text cid, text "Ended Turn"]
+  T.ComLPathCurrentCreature pts -> hbox [text <| "Moved to " ++ maybePos pts]
+
+maybePos : List T.Point3 -> String
+maybePos path =
+  case (List.head (List.reverse path)) of
+    Just {x, y, z} -> toString x ++ "," ++ toString y
+    Nothing -> "nowhere"
 
 historyCreatureLog : T.CreatureLog -> Html M.Msg
 historyCreatureLog cl = case cl of
@@ -281,14 +288,8 @@ historyCreatureLog cl = case cl of
   T.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
   T.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
   T.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
-  T.CLPathCreature {path, distance} -> text <| "Moved " ++ toString (toFloat distance / 100) ++ " to " ++ maybePos path
+  T.CLSetPos pos -> text <| "Moved  to " ++ toString pos
   T.CLDecrementConditionRemaining conID -> text <| "Tick condition: " ++ toString conID
-
-maybePos : List T.Point3 -> String
-maybePos path =
-  case (List.head (List.reverse path)) of
-    Just {x, y, z} -> toString x ++ "," ++ toString y
-    Nothing -> "nowhere"
 
 combatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatArea model game combat =
