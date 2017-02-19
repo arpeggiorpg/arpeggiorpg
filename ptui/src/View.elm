@@ -378,6 +378,10 @@ creatureCard creature =
            , div (cellStyles (S.rgb 255 255 255))
               [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
            ]
+    , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
+           , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
+           , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
+           
     , habox [style [("width", "50px")]] (List.map creatureCondIcon (Dict.values creature.conditions))
     ]
 
