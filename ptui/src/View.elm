@@ -194,7 +194,7 @@ playerGrid model game myCreatures =
   let bar creature =
         if T.isCreatureInCombat game creature.id
         then Nothing
-        else Just <| hbox <| [text creature.id, creatureStats creature, moveOOCButton creature] ++ (oocActionBar game creature)
+        else Just <| hbox <| [creatureCard creature, moveOOCButton creature] ++ (oocActionBar game creature)
       bars = List.filterMap bar myCreatures
       targetSel =
         case model.selectedAbility of
@@ -378,7 +378,7 @@ creatureCard creature =
            , div (cellStyles (S.rgb 255 255 255))
               [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
            ]
-    , habox [style [("width", "50px")]] (List.map creatureConds (Dict.values creature.conditions))
+    , habox [style [("width", "50px")]] (List.map creatureCondIcon (Dict.values creature.conditions))
     ]
 
 classIcon : T.Creature -> Html M.Msg
@@ -389,18 +389,8 @@ classIcon creature =
     "ranger" -> text "🏹"
     _ -> text "?"
 
-
-creatureStats : T.Creature -> Html M.Msg
-creatureStats creature = 
-  habox [style [("width", "400px")]]
-    [ div [style [("width", "150px")]] [strong [] [text creature.name]]
-    , div [style [("width", "75px")]] [text "HP ", text (toString creature.cur_health)]
-    , div [style [("width", "100px")]] [text "NRG ", text (toString creature.cur_energy)]
-    , div [style [("width", "75px")]] [text "POS ", text <| (toString creature.pos.x) ++ "/" ++ (toString creature.pos.y)]
-    ]
-
-creatureConds : T.AppliedCondition -> Html M.Msg
-creatureConds ac = case ac.condition of 
+creatureCondIcon : T.AppliedCondition -> Html M.Msg
+creatureCondIcon ac = case ac.condition of 
   T.RecurringEffect eff -> text (toString eff)
   T.Dead -> text "💀"
   T.Incapacitated -> text "😞"
