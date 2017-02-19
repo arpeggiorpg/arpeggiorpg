@@ -20,6 +20,8 @@ extern crate serde_json;
 #[cfg(test)]
 extern crate test;
 
+extern crate rand;
+
 extern crate nonempty;
 
 pub mod game;

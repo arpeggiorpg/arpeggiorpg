@@ -103,7 +103,11 @@ impl Creature {
         }
     }
 
-    fn damage(&self, amt: HP) -> Vec<CreatureLog> {
+    fn damage(&self, dmg: DamageExpr) -> Vec<CreatureLog> {
+        let amt = match dmg {
+            DamageExpr::Flat(hp) => hp,
+            DamageExpr::Dice(dice) => HP(dice.roll().1 as u8),
+        };
         if amt >= self.cur_health {
             vec![CreatureLog::Damage(self.cur_health),
                  self.apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
@@ -414,7 +418,7 @@ pub mod test {
         let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = HashMap::from_iter(
-            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(HP(1)))),
+            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(DamageExpr::Flat(HP(1))))),
                               ConditionDuration::Duration(2)))]);
         let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(9));

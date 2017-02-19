@@ -299,7 +299,7 @@ pub mod test {
             name: "MultiEffect".to_string(),
             target: TargetSpec::Melee,
             cost: Energy(0),
-            effects: vec![Effect::Damage(HP(3)),
+            effects: vec![Effect::Damage(DamageExpr::Flat(HP(3))),
                           Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
         };
         let next = t_act(&combat, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
@@ -357,7 +357,7 @@ pub mod test {
             .unwrap()
             .conditions
             .insert(500,
-                    Condition::RecurringEffect(Box::new(Effect::Damage(HP(5))))
+                    Condition::RecurringEffect(Box::new(Effect::Damage(DamageExpr::Flat(HP(5)))))
                         .apply(ConditionDuration::Interminate));
         let combat = combat.next_turn(&t_game()).unwrap().combat;
         let cur = combat.current_creature();

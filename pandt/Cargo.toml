@@ -19,3 +19,4 @@ string-wrapper = {version = "0.2", features = ["use_serde"]}
 pathfinding = "0.1.8"
 num-traits = "0.1.36"
 lazy_static = "0.1.*"
+rand = "0.3"

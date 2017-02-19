@@ -5,6 +5,9 @@ use std::error::Error;
 use std::fmt;
 use string_wrapper::StringWrapper;
 
+use rand;
+use rand::distributions as dist;
+use rand::distributions::IndependentSample;
 use nonempty;
 
 /// Point3 defines a 3d position in meters.
@@ -13,6 +16,27 @@ pub type Point3 = (i16, i16, i16);
 pub type MapName = String;
 pub type Map = Vec<Point3>; // To be extended later. For now just a list of open voxels
 pub type ConditionID = usize;
+
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+pub struct Dice {
+    pub num: u8,
+    pub size: u8,
+}
+
+impl Dice {
+    pub fn roll(&self) -> (Vec<u8>, u32) {
+        let mut intermediate = vec![];
+        let mut result = 0u32;
+        let range: dist::Range<u8> = dist::Range::new(1, self.size + 1);
+        let mut rng = rand::thread_rng();
+        for _ in 0..self.num {
+            let val = range.ind_sample(&mut rng);
+            result += val as u32;
+            intermediate.push(val);
+        }
+        (intermediate, result)
+    }
+}
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
@@ -147,6 +171,12 @@ pub enum GameCommand {
     // StowInInventory(ThingID),
     /// End the current creature's turn.
     Done,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+pub enum DamageExpr {
+    Dice(Dice),
+    Flat(HP),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -297,7 +327,7 @@ pub enum Effect {
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
     Heal(HP),
-    Damage(HP),
+    Damage(DamageExpr),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
 }
@@ -482,7 +512,7 @@ pub mod test {
             name: "Punch".to_string(),
             target: TargetSpec::Melee,
             cost: Energy(0),
-            effects: vec![Effect::Damage(HP(3))],
+            effects: vec![Effect::Damage(DamageExpr::Flat(HP(3)))],
         }
     }
 
@@ -491,7 +521,7 @@ pub mod test {
             name: "Shoot".to_string(),
             target: TargetSpec::Range(Distance::new(5.0)),
             cost: Energy(0),
-            effects: vec![Effect::Damage(HP(3))],
+            effects: vec![Effect::Damage(DamageExpr::Flat(HP(3)))],
         }
     }
 

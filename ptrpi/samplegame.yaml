@@ -85,14 +85,18 @@ current_game:
       target: Melee
       cost: 8
       effects: 
-        - Damage: 3
+        - Damage:
+            Flat: 3
     shoot: 
       name: Shoot
       target: 
         Range: 500
       cost: 8
       effects: 
-        - Damage: 3
+        - Damage:
+            Dice:
+              size: 2
+              num: 2
     bonk:
       name: Bonk
       target: Melee
@@ -174,15 +178,15 @@ snapshots:
           target: Melee
           cost: 0
           effects: 
-            - 
-              Damage: 3
+            - Damage:
+                Flat: 3
         shoot: 
           name: Shoot
           target: 
             Range: 500
           cost: 0
           effects: 
-            - 
-              Damage: 3
+            - Damage:
+                Flat: 3
       creatures: 
     - []
