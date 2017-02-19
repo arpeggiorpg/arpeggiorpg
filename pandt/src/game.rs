@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use grid::{find_path, get_all_accessible, creature_within_distance};
+use grid::{get_all_accessible, creature_within_distance};
 
 
 lazy_static! {

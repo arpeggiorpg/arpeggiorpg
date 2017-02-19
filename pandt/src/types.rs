@@ -24,10 +24,10 @@ pub struct Dice {
 }
 
 impl Dice {
-    pub fn flat(size: u8) -> Dice {
+    pub fn flat(val: u8) -> Dice {
         Dice {
-            num: 1,
-            size: size,
+            num: val,
+            size: 1,
         }
     }
     pub fn roll(&self) -> (Vec<u8>, u32) {

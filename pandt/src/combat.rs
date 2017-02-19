@@ -16,7 +16,7 @@ impl Combat {
     pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
         nonempty::NonEmptyWithCursor::from_vec(combatants)
             .map(|ne| {
-                let mut com = Combat {
+                let com = Combat {
                     creatures: ne,
                     movement_used: Distance::new(0.0),
                 };
