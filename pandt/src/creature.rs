@@ -115,8 +115,8 @@ impl Creature {
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
-                Effect::Damage(expr) => creature.damage(expr.eval()),
-                Effect::Heal(expr) => vec![CreatureLog::Heal(expr.eval())],
+                Effect::Damage(expr) => creature.damage(HP(expr.roll().1 as u8)),
+                Effect::Heal(expr) => vec![CreatureLog::Heal(HP(expr.roll().1 as u8))],
                 Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
                 Effect::MultiEffect(ref effects) => {
                     effects.iter().flat_map(|x| eff2log(creature, x)).collect()
@@ -414,7 +414,7 @@ pub mod test {
         let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = HashMap::from_iter(
-            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(DiceExpr::Flat(HP(1))))),
+            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
                               ConditionDuration::Duration(2)))]);
         let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(9));

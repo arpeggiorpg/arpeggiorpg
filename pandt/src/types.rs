@@ -24,6 +24,12 @@ pub struct Dice {
 }
 
 impl Dice {
+    pub fn flat(size: u8) -> Dice {
+        Dice {
+            num: 1,
+            size: size,
+        }
+    }
     pub fn roll(&self) -> (Vec<u8>, u32) {
         let mut intermediate = vec![];
         let mut result = 0u32;
@@ -173,21 +179,6 @@ pub enum GameCommand {
     Done,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub enum DiceExpr {
-    Dice(Dice),
-    Flat(HP),
-}
-
-impl DiceExpr {
-    pub fn eval(&self) -> HP {
-        match *self {
-            DiceExpr::Dice(dice) => HP(dice.roll().1 as u8),
-            DiceExpr::Flat(hp) => hp,
-        }
-    }
-}
-
 /// A representation of state change in a Creature. All change to a Creature happens via these
 /// values. Note that these represent *concrete* changes to the Creature, which will have
 /// deterministic results.
@@ -233,8 +224,7 @@ pub enum GameLog {
     CreateCreature(Creature),
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
-    RemoveCreatureFromCombat(CreatureID),
-    //PathCreature(CreatureID, Vec<Point3>),
+    RemoveCreatureFromCombat(CreatureID), // PathCreature(CreatureID, Vec<Point3>),
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
@@ -335,8 +325,8 @@ pub enum Effect {
     // Interrupt,
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
-    Heal(DiceExpr),
-    Damage(DiceExpr),
+    Heal(Dice),
+    Damage(Dice),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
 }
@@ -521,7 +511,7 @@ pub mod test {
             name: "Punch".to_string(),
             target: TargetSpec::Melee,
             cost: Energy(0),
-            effects: vec![Effect::Damage(DiceExpr::Flat(HP(3)))],
+            effects: vec![Effect::Damage(Dice::flat(3))],
         }
     }
 
@@ -530,7 +520,7 @@ pub mod test {
             name: "Shoot".to_string(),
             target: TargetSpec::Range(Distance::new(5.0)),
             cost: Energy(0),
-            effects: vec![Effect::Damage(DiceExpr::Flat(HP(3)))],
+            effects: vec![Effect::Damage(Dice::flat(3))],
         }
     }
 
@@ -539,7 +529,7 @@ pub mod test {
             name: "Heal".to_string(),
             target: TargetSpec::Range(Distance::new(5.0)),
             cost: Energy(0),
-            effects: vec![Effect::Heal(DiceExpr::Flat(HP(3)))],
+            effects: vec![Effect::Heal(Dice::flat(3))],
         }
     }
 
