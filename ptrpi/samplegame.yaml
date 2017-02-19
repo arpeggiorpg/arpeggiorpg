@@ -79,7 +79,10 @@ current_game:
         Range: 500
       cost: 8
       effects: 
-        - Heal: 3
+        - Heal:
+            Dice:
+              num: 2
+              size: 2
     punch: 
       name: Punch
       target: Melee
@@ -171,8 +174,10 @@ snapshots:
             Range: 500
           cost: 0
           effects: 
-            - 
-              Heal: 3
+            - Heal:
+                Dice:
+                  num: 2
+                  size: 2
         punch: 
           name: Punch
           target: Melee

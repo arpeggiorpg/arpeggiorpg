@@ -174,9 +174,18 @@ pub enum GameCommand {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub enum DamageExpr {
+pub enum DiceExpr {
     Dice(Dice),
     Flat(HP),
+}
+
+impl DiceExpr {
+    pub fn eval(&self) -> HP {
+        match *self {
+            DiceExpr::Dice(dice) => HP(dice.roll().1 as u8),
+            DiceExpr::Flat(hp) => hp,
+        }
+    }
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -326,8 +335,8 @@ pub enum Effect {
     // Interrupt,
     // Resurrect,
     ApplyCondition(ConditionDuration, Condition),
-    Heal(HP),
-    Damage(DamageExpr),
+    Heal(DiceExpr),
+    Damage(DiceExpr),
     MultiEffect(Vec<Effect>),
     GenerateEnergy(Energy),
 }
@@ -512,7 +521,7 @@ pub mod test {
             name: "Punch".to_string(),
             target: TargetSpec::Melee,
             cost: Energy(0),
-            effects: vec![Effect::Damage(DamageExpr::Flat(HP(3)))],
+            effects: vec![Effect::Damage(DiceExpr::Flat(HP(3)))],
         }
     }
 
@@ -521,7 +530,7 @@ pub mod test {
             name: "Shoot".to_string(),
             target: TargetSpec::Range(Distance::new(5.0)),
             cost: Energy(0),
-            effects: vec![Effect::Damage(DamageExpr::Flat(HP(3)))],
+            effects: vec![Effect::Damage(DiceExpr::Flat(HP(3)))],
         }
     }
 
@@ -530,7 +539,7 @@ pub mod test {
             name: "Heal".to_string(),
             target: TargetSpec::Range(Distance::new(5.0)),
             cost: Energy(0),
-            effects: vec![Effect::Heal(HP(3))],
+            effects: vec![Effect::Heal(DiceExpr::Flat(HP(3)))],
         }
     }
 

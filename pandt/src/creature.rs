@@ -103,11 +103,7 @@ impl Creature {
         }
     }
 
-    fn damage(&self, dmg: DamageExpr) -> Vec<CreatureLog> {
-        let amt = match dmg {
-            DamageExpr::Flat(hp) => hp,
-            DamageExpr::Dice(dice) => HP(dice.roll().1 as u8),
-        };
+    fn damage(&self, amt: HP) -> Vec<CreatureLog> {
         if amt >= self.cur_health {
             vec![CreatureLog::Damage(self.cur_health),
                  self.apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
@@ -119,8 +115,8 @@ impl Creature {
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
-                Effect::Damage(amt) => creature.damage(amt),
-                Effect::Heal(amt) => vec![CreatureLog::Heal(amt)],
+                Effect::Damage(expr) => creature.damage(expr.eval()),
+                Effect::Heal(expr) => vec![CreatureLog::Heal(expr.eval())],
                 Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
                 Effect::MultiEffect(ref effects) => {
                     effects.iter().flat_map(|x| eff2log(creature, x)).collect()
@@ -418,7 +414,7 @@ pub mod test {
         let game = t_game();
         let mut c = t_rogue("bob");
         c.conditions = HashMap::from_iter(
-            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(DamageExpr::Flat(HP(1))))),
+            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(DiceExpr::Flat(HP(1))))),
                               ConditionDuration::Duration(2)))]);
         let c = c.tick(&game).unwrap().creature;
         assert_eq!(c.cur_health, HP(9));
