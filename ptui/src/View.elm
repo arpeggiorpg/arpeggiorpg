@@ -221,9 +221,10 @@ createCreatureForm : M.Model -> T.Game -> Html M.Msg
 createCreatureForm model game = div []
     [ input [type_ "text", placeholder "id", onInput M.PendingCreatureId ] []
     , input [type_ "text", placeholder "name", onInput M.PendingCreatureName ] []
-    , select [onInput M.PendingCreatureClass ]
-             (List.map (\className -> option [value className] [text className])
-                       (Dict.keys game.classes))
+    , select [onInput M.PendingCreatureClass]
+             <| [option [value ""] [text "Select a Class"]]
+                ++ (List.map (\className -> option [value className] [text className])
+                             (Dict.keys game.classes))
     , createCreatureButton model
     ]
 
@@ -313,7 +314,7 @@ combatArea model game combat =
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
   let creatures = List.filterMap (T.findCreature game) (T.potentialCreatureTargets model.potentialTargets)
-  in hbox <| 
+  in hbox <|
     [ case (Dict.get abid game.abilities) of
         Just ability -> case ability.target of
           T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
