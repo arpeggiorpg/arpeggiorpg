@@ -11,15 +11,6 @@ players and the Game Master to use their abilities.
 
 MIT-licensed: http://opensource.org/licenses/MIT
 
-# Building/testing/etc
-
-cargo test
-
-# TODO
-
-Also grep the code for XXX, FIXME, or TODO.
-
-
 
 # Building/running (for dev/test)
 
