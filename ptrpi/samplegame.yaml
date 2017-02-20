@@ -159,39 +159,4 @@ current_game:
       conditions:
       can_act: true
       can_move: true
-snapshots: 
-  - 
-    - 
-      current_combat: ~
-      current_map:
-      maps:
-      classes: 
-      abilities: 
-        heal: 
-          name: Heal
-          target: 
-            Range: 500
-          cost: 0
-          effects: 
-            - Heal:
-                num: 2
-                size: 2
-        punch: 
-          name: Punch
-          target: Melee
-          cost: 0
-          effects: 
-            - Damage:
-                num: 3
-                size: 1
-        shoot: 
-          name: Shoot
-          target: 
-            Range: 500
-          cost: 0
-          effects: 
-            - Damage:
-                num: 3
-                size: 1
-      creatures: 
-    - []
+snapshots:

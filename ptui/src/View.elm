@@ -248,25 +248,29 @@ inactiveEntry game pendingCreatures creature = vbox <|
 
 history : T.App -> Html M.Msg
 history app = 
-  let items =
-        case Array.get ((Array.length app.snapshots) - 1) app.snapshots of
-          Just (_, items) -> List.reverse items
+  let snapIdx = (Array.length app.snapshots) - 1
+      items =
+        case Array.get snapIdx app.snapshots of
+          Just (_, items) -> items
           Nothing -> []
   in vbox
-  ([ h3 [] [text "History"] ] ++ (List.map historyItem items))
+  ([ h3 [] [text "History"] ] ++ List.reverse (List.indexedMap (historyItem snapIdx) items))
 
-historyItem : T.GameLog -> Html M.Msg
-historyItem i = case i of
-  T.GLSelectMap name ->  hbox [ text "Selected Map", text name]
-  T.GLEditMap name _ -> hbox [text "Edited Map", text name]
-  T.GLCreateCreature creature -> hbox [text "Created creature", text creature.id]
-  T.GLRemoveCreature cid -> hbox [text "Deleted creature", text cid]
-  T.GLStartCombat combatants -> hbox [text "Started Combat", text (String.join ", " combatants)]
-  T.GLStopCombat -> text "Stopped combat"
-  T.GLAddCreatureToCombat cid -> hbox [text cid, text "Added Creature to Combat"]
-  T.GLRemoveCreatureFromCombat cid -> text <| "Removed creature from Combat: " ++ cid
-  T.GLCreatureLog cid cl -> hbox [text cid, historyCreatureLog cl]
-  T.GLCombatLog cl -> historyCombatLog cl
+historyItem : Int -> Int -> T.GameLog -> Html M.Msg
+historyItem snapIdx logIdx log =
+  let logItem = case log of
+    T.GLSelectMap name ->  hbox [ text "Selected Map", text name]
+    T.GLEditMap name _ -> hbox [text "Edited Map", text name]
+    T.GLCreateCreature creature -> hbox [text "Created creature", text creature.id]
+    T.GLRemoveCreature cid -> hbox [text "Deleted creature", text cid]
+    T.GLStartCombat combatants -> hbox [text "Started Combat", text (String.join ", " combatants)]
+    T.GLStopCombat -> text "Stopped combat"
+    T.GLAddCreatureToCombat cid -> hbox [text cid, text "Added Creature to Combat"]
+    T.GLRemoveCreatureFromCombat cid -> text <| "Removed creature from Combat: " ++ cid
+    T.GLCreatureLog cid cl -> hbox [text cid, historyCreatureLog cl]
+    T.GLCombatLog cl -> historyCombatLog cl
+    T.GLRollback si li -> hbox [text "Rolled back. Snapshot: ", text (toString si), text " Log: ", text (toString li)]
+  in hbox [logItem, button [onClick (M.Rollback snapIdx logIdx)] [text "Rollback BEFORE here"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg
 historyCombatLog cl = case cl of

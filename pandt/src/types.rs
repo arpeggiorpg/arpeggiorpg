@@ -177,6 +177,8 @@ pub enum GameCommand {
     // StowInInventory(ThingID),
     /// End the current creature's turn.
     Done,
+    /// Oh my God, Rollback. Indexes into snapshots and logs.
+    Rollback(usize, usize),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -225,6 +227,9 @@ pub enum GameLog {
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
     RemoveCreatureFromCombat(CreatureID), // PathCreature(CreatureID, Vec<Point3>),
+    /// Oh my God, Rollback. Indexes into snapshots and logs.
+    Rollback(usize, usize),
+
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
@@ -262,6 +267,7 @@ pub enum GameError {
     PlayerAlreadyExists(PlayerID),
     PlayerNotFound(PlayerID),
     PlayerDoesntControlCreature(PlayerID, CreatureID),
+    HistoryNotFound(usize, usize),
 }
 
 impl fmt::Display for GameError {

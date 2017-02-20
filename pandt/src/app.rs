@@ -54,18 +54,48 @@ impl App {
             &GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
                 self.remove_creatures_from_player(pid, cids)
             }
+            &GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
+                let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
+                self.current_game = newgame;
+                self.snapshots
+                    .back_mut()
+                    .unwrap()
+                    .1
+                    .push(GameLog::Rollback(*snapshot_idx, *log_idx));
+                Ok((&self.current_game, vec![]))
+            }
             _ => {
                 let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
-                if self.snapshots.len() >= 1 {
-                    if self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
-                        self.snapshot();
-                    }
-                    self.snapshots.back_mut().unwrap().1.extend(logs.clone());
+
+                if self.snapshots.len() == 0 ||
+                   self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
+                    self.snapshots
+                        .push_back((self.current_game.clone(), Vec::with_capacity(100)));
                 }
+
+                self.snapshots.back_mut().unwrap().1.extend(logs.clone());
                 self.current_game = game;
                 Ok((&self.current_game, logs))
             }
         }
+    }
+
+    /// Rollback to a particular point by replaying logs after a snapshot
+    fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
+        let &(ref baseline, ref logs_to_apply) = self.snapshots
+            .get(snapshot_idx)
+            .ok_or(GameError::HistoryNotFound(snapshot_idx, log_idx))?;
+        if logs_to_apply.len() - 1 < log_idx {
+            return Err(GameError::HistoryNotFound(snapshot_idx, log_idx));
+        }
+        let mut newgame = baseline.clone();
+        for (i, log) in logs_to_apply.iter().enumerate() {
+            if i == log_idx {
+                break;
+            }
+            newgame = baseline.apply_log(log)?;
+        }
+        Ok(newgame)
     }
 
     fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
@@ -117,10 +147,6 @@ impl App {
             creatures.remove(cid);
         }
         Ok((&self.current_game, vec![]))
-    }
-
-    pub fn snapshot(&mut self) {
-        self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(100)));
     }
 
     pub fn game(&self) -> &Game {
@@ -179,5 +205,17 @@ mod test {
             iter(&mut app).unwrap();
             app.clone()
         });
+    }
+
+    #[test]
+    fn rollback() {
+        let mut app = t_app();
+        app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
+        app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap();
+        let ranger = app.current_game.get_creature(cid("ranger")).unwrap();
+        assert_eq!(ranger.pos, (0, 0, 0));
+        let logs = &app.snapshots[0].1;
+        println!("{:?}", logs);
+        assert_eq!(logs.len(), 2);
     }
 }

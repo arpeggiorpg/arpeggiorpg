@@ -148,7 +148,9 @@ impl Game {
                 for creature in creatures {
                     newgame.creatures.insert(creature.id(), creature.clone());
                 }
-            }
+            },
+            // Ignore Rollback, since it's something that's handled at the App level.
+            Rollback(..) => {}
         }
         Ok(newgame)
     }

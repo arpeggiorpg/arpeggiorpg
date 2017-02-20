@@ -133,6 +133,7 @@ update msg model = case msg of
   TurnDone -> (model, sendCommand T.Done)
   SelectMap mapName -> (model, sendCommand (T.SelectMap mapName))
   StopCombat -> (model, sendCommand T.StopCombat)
+  Rollback snapIdx logIdx -> (model, sendCommand (T.Rollback snapIdx logIdx))
 
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable

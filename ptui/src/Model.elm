@@ -48,6 +48,7 @@ type Msg
     | DoneSelectingCreatures
     | CancelSelectingCreatures
     | ToggleShowOOC
+    | Rollback Int Int
 
 defaultModel : Model
 defaultModel =

@@ -73,6 +73,7 @@ type GameLog
   | GLRemoveCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
+  | GLRollback Int Int
 
 gameLogDecoder = sumDecoder "GameLog"
   [("StopCombat", GLStopCombat)]
@@ -85,6 +86,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
   , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
   , ("EditMap", (JD.map2 GLEditMap (JD.index 0 JD.string) (JD.index 1 mapDecoder)))
+  , ("Rollback", (JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int)))
   ]
 
 type CombatLog
@@ -352,6 +354,7 @@ type GameCommand
   -- RetrieveFromInventory(ThingID)
   -- StowInInventory(ThingID)
   | Done
+  | Rollback Int Int
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -372,6 +375,7 @@ gameCommandEncoder gc =
     Done -> JE.string "Done"
     SelectMap name -> JE.object [("SelectMap", JE.string name)]
     EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
+    Rollback snapIdx logIdx -> JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
 
 
 
