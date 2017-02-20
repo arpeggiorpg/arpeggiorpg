@@ -78,18 +78,18 @@ current_game:
       target: 
         Range: 500
       cost: 8
-      effects: 
+      effects:
         - Heal:
-            Dice:
-              num: 2
-              size: 2
+            num: 2
+            size: 2
     punch: 
       name: Punch
       target: Melee
       cost: 8
       effects: 
         - Damage:
-            Flat: 3
+            num: 3
+            size: 1
     shoot: 
       name: Shoot
       target: 
@@ -97,9 +97,8 @@ current_game:
       cost: 8
       effects: 
         - Damage:
-            Dice:
-              size: 2
-              num: 2
+            size: 2
+            num: 2
     bonk:
       name: Bonk
       target: Melee
@@ -175,16 +174,16 @@ snapshots:
           cost: 0
           effects: 
             - Heal:
-                Dice:
-                  num: 2
-                  size: 2
+                num: 2
+                size: 2
         punch: 
           name: Punch
           target: Melee
           cost: 0
           effects: 
             - Damage:
-                Flat: 3
+                num: 3
+                size: 1
         shoot: 
           name: Shoot
           target: 
@@ -192,6 +191,7 @@ snapshots:
           cost: 0
           effects: 
             - Damage:
-                Flat: 3
+                num: 3
+                size: 1
       creatures: 
     - []

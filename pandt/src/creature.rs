@@ -41,8 +41,8 @@ impl Creature {
     pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
         let mut new = self.clone();
         match *item {
-            CreatureLog::Damage(ref dmg) => new.cur_health = new.cur_health.saturating_sub(*dmg),
-            CreatureLog::Heal(ref dmg) => {
+            CreatureLog::Damage(ref dmg, ..) => new.cur_health = new.cur_health.saturating_sub(*dmg),
+            CreatureLog::Heal(ref dmg, ..) => {
                 new.cur_health = cmp::min(new.cur_health.saturating_add(*dmg), new.max_health)
             }
             CreatureLog::GenerateEnergy(ref nrg) => {
@@ -103,20 +103,29 @@ impl Creature {
         }
     }
 
-    fn damage(&self, amt: HP) -> Vec<CreatureLog> {
+    fn damage(&self, expr: Dice) -> Vec<CreatureLog> {
+        let (dice, amt) = expr.roll();
+        let amt = HP(amt as u8);
         if amt >= self.cur_health {
-            vec![CreatureLog::Damage(self.cur_health),
+            vec![CreatureLog::Damage(self.cur_health, dice),
                  self.apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
         } else {
-            vec![CreatureLog::Damage(amt)]
+            vec![CreatureLog::Damage(amt, dice)]
         }
+    }
+
+    fn heal(&self, expr: Dice) -> Vec<CreatureLog> {
+        let (dice, amt) = expr.roll();
+        let amt = HP(amt as u8);
+        let missing = self.max_health - self.cur_health;
+        vec![CreatureLog::Heal(cmp::min(missing, amt), dice)]
     }
 
     pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
         fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
             match *effect {
-                Effect::Damage(expr) => creature.damage(HP(expr.roll().1 as u8)),
-                Effect::Heal(expr) => vec![CreatureLog::Heal(HP(expr.roll().1 as u8))],
+                Effect::Damage(expr) => creature.damage(expr),
+                Effect::Heal(expr) => creature.heal(expr),
                 Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
                 Effect::MultiEffect(ref effects) => {
                     effects.iter().flat_map(|x| eff2log(creature, x)).collect()

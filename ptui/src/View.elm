@@ -282,14 +282,17 @@ maybePos path =
 
 historyCreatureLog : T.CreatureLog -> Html M.Msg
 historyCreatureLog cl = case cl of
-  T.CLDamage dmg -> text <| "Took damage: " ++ toString dmg
-  T.CLHeal dmg -> text <| "Healed: " ++ toString dmg
+  T.CLDamage dmg dice -> hbox [text <| "Took damage", text <| toString dmg, text <| " Dice: ", renderDice dice]
+  T.CLHeal dmg dice -> hbox [text <| "Healed: " ++ toString dmg, text <| "Dice: ", renderDice dice]
   T.CLGenerateEnergy nrg -> text <| "Regenerated energy: " ++ toString nrg
   T.CLReduceEnergy nrg -> text <| "Lost energy: " ++ toString nrg
   T.CLApplyCondition conid duration con -> text <| "Got condition: " ++ toString con
   T.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
   T.CLSetPos pos -> text <| "Moved  to " ++ toString pos
   T.CLDecrementConditionRemaining conID -> text <| "Tick condition: " ++ toString conID
+
+renderDice : List Int -> Html M.Msg
+renderDice dice = text <| String.join ", " (List.map toString dice)
 
 combatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatArea model game combat =

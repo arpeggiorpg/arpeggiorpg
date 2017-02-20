@@ -100,8 +100,8 @@ combatLogDecoder = sumDecoder "CombatLog"
   ]
 
 type CreatureLog
-  = CLDamage Int
-  | CLHeal Int
+  = CLDamage Int (List Int)
+  | CLHeal Int (List Int)
   | CLGenerateEnergy Int
   | CLReduceEnergy Int
   | CLApplyCondition Int ConditionDuration Condition
@@ -111,8 +111,8 @@ type CreatureLog
 
 creatureLogDecoder = sumDecoder "CreatureLog"
   []
-  [ ("Damage", JD.map CLDamage JD.int)
-  , ("Heal", JD.map CLHeal JD.int)
+  [ ("Damage", JD.map2 CLDamage (JD.index 0 JD.int) (JD.index 1 (JD.list JD.int)))
+  , ("Heal", JD.map2 CLHeal (JD.index 0 JD.int) (JD.index 1 (JD.list JD.int)))
   , ("GenerateEnergy", JD.map CLGenerateEnergy JD.int)
   , ("ReduceEnergy", JD.map CLReduceEnergy JD.int)
   , ("ApplyCondition", JD.map3 CLApplyCondition (JD.index 0 JD.int) (JD.index 1 conditionDurationDecoder) (JD.index 2conditionDecoder))

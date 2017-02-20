@@ -184,8 +184,8 @@ pub enum GameCommand {
 /// deterministic results.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureLog {
-    Damage(HP),
-    Heal(HP),
+    Damage(HP, Vec<u8>),
+    Heal(HP, Vec<u8>),
     GenerateEnergy(Energy),
     ReduceEnergy(Energy),
     ApplyCondition(ConditionID, ConditionDuration, Condition),
