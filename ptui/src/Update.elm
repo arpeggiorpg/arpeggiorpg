@@ -7,7 +7,7 @@ import Set
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
-update : Msg -> M.Model -> ( M.Model, Cmd Msg )
+update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
   MorePlease -> ( model, refreshApp)
@@ -39,14 +39,31 @@ update msg model = case msg of
   AppUpdate (Ok newApp) ->
     let model2 = { model | app = Just newApp}
         currentMap = M.getMap model2
+        showingMovement =
+          case T.mostRecentLog newApp of
+            Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) -> Just ([first], (first::rest))
+            _ -> Nothing
+        _ = Debug.log "showingMovement" showingMovement
     in ( { model2 | currentMap = currentMap
                   , moving = Nothing
-                  , selectedAbility = Nothing }
+                  , selectedAbility = Nothing
+                  , showingMovement = showingMovement}
        , Cmd.none )
   AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
  
+  Tick time ->
+    let _ = Debug.log "TICK" ()
+        showingMovement =
+          case model.showingMovement of
+            Just (soFar, total) -> 
+              let newSoFar = List.take ((List.length soFar) + 1) total
+              in if (List.length newSoFar) == (List.length total)
+                 then Nothing
+                 else Just (newSoFar, total)
+            Nothing -> Nothing -- this shouldn't happen maybe
+    in ({ model | showingMovement = showingMovement }, Cmd.none)
+
   ShowError s -> ( {model | error = s}, Cmd.none)
-  
 
   SelectCreatures cb commandName ->
     ( { model | selectingCreatures = Just (cb, commandName)}, Cmd.none)

@@ -11,7 +11,6 @@ import Svg.Events exposing (..)
 import Elements exposing (..)
 import Types as T
 import Model as M
-import Update as U
 
 
 -- how many meters across the grid should be
@@ -23,10 +22,13 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
-baseMap : Bool -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap movable terrain creatures extras editable =
+baseMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
+baseMap movable ghost terrain creatures extras editable =
   let creatureEls = List.map (gridCreature movable) creatures
       terrainEls = baseTerrainRects editable terrain
+      ghostEl = case ghost of
+                  Just pt -> [tile "black" [] pt]
+                  Nothing -> []
   in svg
       [ viewBox (String.join " " (List.map toString [-gridSize * 50, -gridSize * 50, gridSize * 100, gridSize * 100]))
       , width "800"
@@ -34,15 +36,15 @@ baseMap movable terrain creatures extras editable =
       , HA.style [ ("border", "2px solid black")
                  , ("position", "relative") ]
       ]
-      (terrainEls ++ extras ++ creatureEls)
+      (terrainEls ++ extras ++ creatureEls ++ ghostEl)
 
-terrainMap : Bool -> T.Map -> List T.Creature -> Svg M.Msg
-terrainMap movable terrain creatures = baseMap movable terrain creatures [] False
+terrainMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> Svg M.Msg
+terrainMap movable ghost terrain creatures = baseMap movable ghost terrain creatures [] False
 
 editMap : T.Map -> List T.Creature -> H.Html M.Msg
 editMap terrain creatures = vbox
   [ saveForm terrain
-  , baseMap False terrain creatures [] True ]
+  , baseMap False Nothing terrain creatures [] True ]
 
 movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
 movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
@@ -51,7 +53,7 @@ movementMap moveMsg {max_distance, movement_options} terrain creature creatures 
   in
     vbox
       [ cancelButton
-      , baseMap False terrain creatures movementCirc False ]
+      , baseMap False Nothing terrain creatures movementCirc False ]
 
 cancelMove : H.Html M.Msg
 cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]

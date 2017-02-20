@@ -463,3 +463,10 @@ isCreatureInCombat game cid =
 
 isCreatureOOC : Game -> CreatureID -> Bool
 isCreatureOOC game cid = Dict.member cid game.creatures
+
+mostRecentLog : App -> Maybe GameLog
+mostRecentLog app =
+  let last = Array.get ((Array.length app.snapshots) - 1) app.snapshots
+  in case last of
+    Just (game, logs) -> List.head (List.reverse logs)
+    _ -> Nothing

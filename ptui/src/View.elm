@@ -84,8 +84,11 @@ fullUI model app game =
                     Nothing -> []
             ) ++ [ playerControlList app , history app ]
     , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
-           , let movable = True -- Maybe.withDefault True (Maybe.map (always False) game.current_combat)
-             in Grid.terrainMap movable model.currentMap (visibleCreatures model game)]
+           , let movementGhost =
+                   case model.showingMovement of
+                     Just (soFar, _) -> List.head (List.reverse soFar)
+                     Nothing -> Nothing
+             in Grid.terrainMap True movementGhost model.currentMap (visibleCreatures model game)]
     , div [s [S.width (S.px 500)]] [
         case game.current_combat of
           Just combat -> combatArea model game combat
@@ -204,7 +207,7 @@ playerGrid model game myCreatures =
               Nothing -> []
           Nothing -> []
   in
-    vbox <| bars ++ targetSel ++ [Grid.terrainMap False model.currentMap (visibleCreatures model game)]
+    vbox <| bars ++ targetSel ++ [Grid.terrainMap False Nothing model.currentMap (visibleCreatures model game)]
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|

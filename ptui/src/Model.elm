@@ -3,10 +3,18 @@ module Model exposing (..)
 import Dict
 import Http
 import Set
+import Time
 
 import Types as T
 
+
 type alias GotCreatures = List T.CreatureID -> Cmd Msg
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  case model.showingMovement of
+    Just _ -> Time.every (Time.second / 4) Tick
+    Nothing -> Sub.none
 
 type Msg
     = MorePlease
@@ -49,6 +57,7 @@ type Msg
     | CancelSelectingCreatures
     | ToggleShowOOC
     | Rollback Int Int
+    | Tick Time.Time
 
 defaultModel : Model
 defaultModel =
@@ -67,6 +76,7 @@ defaultModel =
     , playerID = Nothing
     , potentialTargets = []
     , showOOC = False
+    , showingMovement = Nothing
   }
 
 
@@ -87,6 +97,7 @@ type alias Model =
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
   , showOOC: Bool
+  , showingMovement: Maybe (List T.Point3, List T.Point3)
   }
 
 type alias MovementRequest = {

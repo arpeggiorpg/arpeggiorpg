@@ -11,5 +11,5 @@ main =
         { init = (M.defaultModel, U.refreshApp)
         , view = V.gmView
         , update = U.update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = M.subscriptions
         }
