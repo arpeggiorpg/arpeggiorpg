@@ -18,35 +18,9 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
                               -> Result<(Option<Combat>, Creature), GameError> {
         self.combat.remove_from_combat(cid)
     }
+
     pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
-        self.combat.apply_log(self.game, l)
-    }
-    pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
-        self.combat.current_movement_options(self.game)
-    }
-}
-
-impl Combat {
-    pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
-        nonempty::NonEmptyWithCursor::from_vec(combatants)
-            .map(|ne| {
-                let com = Combat {
-                    creatures: ne,
-                    movement_used: Distance::new(0.0),
-                };
-                com
-            })
-            .ok_or(GameError::CombatMustHaveCreatures)
-    }
-
-    pub fn current_movement_options(&self, game: &Game) -> Result<Vec<Point3>, GameError> {
-        let current_pos = self.current_creature().pos();
-        let current_speed = self.current_creature().speed(game)? - self.movement_used;
-        Ok(get_all_accessible(current_pos, game.current_map(), current_speed))
-    }
-
-    pub fn apply_log(&self, game: &Game, l: &CombatLog) -> Result<Combat, GameError> {
-        let mut new = self.clone();
+        let mut new = self.combat.clone();
         match *l {
             CombatLog::PathCurrentCreature(ref path) => {
                 let distance = {
@@ -85,6 +59,27 @@ impl Combat {
             }
         }
         Ok(new)
+    }
+
+    pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
+        let current_pos = self.combat.current_creature().pos();
+        let current_speed = self.combat.current_creature().speed(self.game)? -
+                            self.combat.movement_used;
+        Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
+    }
+}
+
+impl Combat {
+    pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
+        nonempty::NonEmptyWithCursor::from_vec(combatants)
+            .map(|ne| {
+                let com = Combat {
+                    creatures: ne,
+                    movement_used: Distance::new(0.0),
+                };
+                com
+            })
+            .ok_or(GameError::CombatMustHaveCreatures)
     }
 
     pub fn current_creature(&self) -> &Creature {
@@ -177,7 +172,10 @@ impl Combat {
     }
 
     pub fn change_with(&self, game: &Game, log: CombatLog) -> Result<ChangedCombat, GameError> {
-        let combat = self.apply_log(game, &log)?;
+        let combat = (DynamicCombat {
+                game: game,
+                combat: self,
+            }).apply_log(&log)?;
         Ok(ChangedCombat {
             combat: combat,
             logs: vec![log],
@@ -240,7 +238,7 @@ pub struct ChangedCombat {
 impl ChangedCombat {
     pub fn apply(&self, game: &Game, log: &CombatLog) -> Result<ChangedCombat, GameError> {
         let mut new = self.clone();
-        new.combat = new.combat.apply_log(game, &log)?;
+        new.combat = DynamicCombat{game: game, combat: &new.combat}.apply_log(&log)?;
         new.logs.push(log.clone());
         Ok(new)
     }
