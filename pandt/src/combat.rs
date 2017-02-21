@@ -12,6 +12,20 @@ use creature::ChangedCreature;
 /// diagonally!
 pub const MELEE_RANGE: Distance = Distance(150);
 
+impl<'combat, 'game> DynamicCombat<'combat, 'game> {
+    pub fn remove_from_combat(&self,
+                              cid: CreatureID)
+                              -> Result<(Option<Combat>, Creature), GameError> {
+        self.combat.remove_from_combat(cid)
+    }
+    pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
+        self.combat.apply_log(self.game, l)
+    }
+    pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
+        self.combat.current_movement_options(self.game)
+    }
+}
+
 impl Combat {
     pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
         nonempty::NonEmptyWithCursor::from_vec(combatants)
@@ -394,9 +408,11 @@ pub mod test {
     fn move_some_at_a_time() {
         let game = t_game();
         let combat = t_combat();
-        let combat = combat.get_movement(&game).unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
+        let combat =
+            combat.get_movement(&game).unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement(&game).unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
+        let combat =
+            combat.get_movement(&game).unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
         assert_eq!(combat.get_movement(&game).unwrap().move_current(&game, (11, 0, 0)),
                    Err(GameError::NoPathFound))

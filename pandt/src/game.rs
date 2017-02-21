@@ -86,8 +86,7 @@ impl Game {
         let mut newgame = self.clone();
         match *log {
             SelectMap(ref name) => {
-                let _ =
-                    newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
+                let _ = newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
                 newgame.current_map = Some(name.clone());
             }
             EditMap(ref name, ref terrain) => {
@@ -120,8 +119,7 @@ impl Game {
             }
             CombatLog(ref cl) => {
                 return Ok(Game {
-                    current_combat: Some(self.get_combat()?
-                        .apply_log(self, cl)?),
+                    current_combat: Some(self.get_combat()?.apply_log(cl)?),
                     ..self.clone()
                 });
             }
@@ -223,8 +221,16 @@ impl Game {
         })
     }
 
-    pub fn get_combat(&self) -> Result<&Combat, GameError> {
-        self.current_combat.as_ref().ok_or(GameError::NotInCombat)
+    pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
+        self.current_combat
+            .as_ref()
+            .map(|com| {
+                DynamicCombat {
+                    combat: &com,
+                    game: self,
+                }
+            })
+            .ok_or(GameError::NotInCombat)
     }
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
