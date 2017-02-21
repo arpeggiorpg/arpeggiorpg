@@ -164,7 +164,9 @@ impl Game {
             Ok(r) => Ok(r),
             Err(_) => {
                 self.change()
-                    .apply_combat(|com| com.combat.change().apply_creature(cid, |c| c.set_pos(pt)))
+                    .apply_combat(|com| {
+                        com.combat.change(self).apply_creature(cid, |c| c.set_pos(pt))
+                    })
             }
         }
     }
@@ -220,7 +222,9 @@ impl Game {
         })
     }
 
-    pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
+    pub fn get_combat<'combat, 'game: 'combat>
+        (&'game self)
+         -> Result<DynamicCombat<'combat, 'game>, GameError> {
         self.current_combat
             .as_ref()
             .map(|com| {
@@ -312,8 +316,10 @@ impl ChangedGame {
         Ok(new)
     }
 
-    pub fn apply_combat<F>(&self, f: F) -> Result<ChangedGame, GameError>
-        where F: FnOnce(DynamicCombat) -> Result<ChangedCombat, GameError>
+    pub fn apply_combat<'combat, 'game: 'combat, F>(&'game self,
+                                                    f: F)
+                                                    -> Result<ChangedGame, GameError>
+        where F: FnOnce(DynamicCombat<'combat, 'game>) -> Result<ChangedCombat<'game>, GameError>
     {
         match self.game.current_combat.as_ref() {
             None => Err(GameError::NotInCombat),

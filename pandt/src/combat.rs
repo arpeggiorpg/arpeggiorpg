@@ -61,7 +61,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         Ok(new)
     }
 
-    pub fn next_turn(&self) -> Result<ChangedCombat, GameError> {
+    pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
         let change = self.combat
             .change_with(self.game,
                          CombatLog::EndTurn(self.combat.current_creature().id()))?;
@@ -100,7 +100,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     pub fn change_creature_initiative(&self,
                                       cid: CreatureID,
                                       new_pos: usize)
-                                      -> Result<ChangedCombat, GameError> {
+                                      -> Result<ChangedCombat<'game>, GameError> {
         self.combat.change_with(self.game, CombatLog::ChangeCreatureInitiative(cid, new_pos))
     }
 }
@@ -167,20 +167,25 @@ impl Combat {
         }
     }
 
-    pub fn change(&self) -> ChangedCombat {
+    pub fn change<'game>(&self, game: &'game Game) -> ChangedCombat<'game> {
         ChangedCombat {
             combat: self.clone(),
             logs: vec![],
+            game: game,
         }
     }
 
-    pub fn change_with(&self, game: &Game, log: CombatLog) -> Result<ChangedCombat, GameError> {
+    pub fn change_with<'game>(&self,
+                              game: &'game Game,
+                              log: CombatLog)
+                              -> Result<ChangedCombat<'game>, GameError> {
         let combat = (DynamicCombat {
                 game: game,
                 combat: self,
             }).apply_log(&log)?;
         Ok(ChangedCombat {
             combat: combat,
+            game: game,
             logs: vec![log],
         })
     }
@@ -199,7 +204,7 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
 
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
-    pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat, GameError> {
+    pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat<'game>, GameError> {
         let (pts, distance) = find_path(self.combat.combat.current_creature().pos(),
                                         self.movement_left,
                                         self.combat.game.current_map(),
@@ -223,34 +228,41 @@ impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
     pub fn act(&self,
                ability: &Ability,
                target: DecidedTarget)
-               -> Result<ChangedCombat, GameError> {
+               -> Result<ChangedCombat<'game>, GameError> {
         self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature(cid),
                                                   ability,
                                                   target,
-                                                  self.combat.combat.change(),
+                                                  self.combat.combat.change(self.combat.game),
                                                   true)
     }
 }
 
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ChangedCombat {
+pub struct ChangedCombat<'game> {
+    // RADIX I think the problem here is that there are lots of things that rely on 'game: 'combat,
+    // but since we OWN a Combat here, we're running into problems proving that the Combat lives
+    // less than the Game?
     pub combat: Combat,
+    game: &'game Game,
     logs: Vec<CombatLog>,
 }
 
-impl ChangedCombat {
-    pub fn apply(&self, game: &Game, log: &CombatLog) -> Result<ChangedCombat, GameError> {
+impl<'game> ChangedCombat<'game> {
+    pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
         let mut new = self.clone();
         new.combat = DynamicCombat {
-                game: game,
+                game: self.game,
                 combat: &new.combat,
             }.apply_log(&log)?;
         new.logs.push(log.clone());
         Ok(new)
     }
 
-    pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat, GameError>
+    pub fn apply_creature<F>(&self,
+                             cid: CreatureID,
+                             f: F)
+                             -> Result<ChangedCombat<'game>, GameError>
         where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
     {
         let creature = self.combat.get_creature(cid)?;
@@ -262,20 +274,13 @@ impl ChangedCombat {
         Ok(new)
     }
 
-    pub fn merge(&self, other: ChangedCombat) -> ChangedCombat {
-        let mut new = self.clone();
-        new.combat = other.combat;
-        new.logs.extend(other.logs);
-        new
-    }
-
     pub fn done(self) -> (Combat, Vec<CombatLog>) {
         (self.combat, self.logs)
     }
 }
 
-impl CreatureChanger for ChangedCombat {
-    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat, GameError>
+impl<'game> CreatureChanger for ChangedCombat<'game> {
+    fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat<'game>, GameError>
         where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
     {
         Ok(ChangedCombat::apply_creature(self, cid, f)?)
@@ -330,16 +335,11 @@ pub mod test {
         Combat::new(vec![rogue, ranger, cleric]).unwrap()
     }
 
-    pub fn t_act(c: &Combat,
-                 ab: &Ability,
-                 target: DecidedTarget)
-                 -> Result<ChangedCombat, GameError> {
-        DynamicCombat {
-                combat: c,
-                game: &t_game(),
-            }
-            .get_able()?
-            .act(ab, target)
+    pub fn t_act<'game>(game: &'game Game,
+                        ab: &Ability,
+                        target: DecidedTarget)
+                        -> Result<ChangedCombat<'game>, GameError> {
+        game.get_combat().unwrap().get_able()?.act(ab, target)
     }
 
     /// Try to melee-atack the ranger when the ranger is out of melee range.
@@ -351,7 +351,7 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((2, 0, 0)).unwrap().creature;
         }
-        assert_eq!(t_act(&combat, &melee, DecidedTarget::Melee(cid("ranger"))),
+        assert_eq!(t_act(&t_game(), &melee, DecidedTarget::Melee(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
@@ -364,8 +364,9 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 0, 0)).unwrap().creature;
         }
-        let _: Combat =
-            t_act(&combat, &range_ab, DecidedTarget::Range(cid("ranger"))).unwrap().combat;
+        let _: Combat = t_act(&t_game(), &range_ab, DecidedTarget::Range(cid("ranger")))
+            .unwrap()
+            .combat;
     }
 
     #[test]
@@ -378,7 +379,7 @@ pub mod test {
             effects: vec![Effect::Damage(Dice::flat(3)),
                           Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
         };
-        let next = t_act(&combat, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
+        let next = t_act(&t_game(), &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
         assert_eq!(next.get_creature(cid("ranger")).unwrap().conditions(&t_game()).unwrap(),
                    vec![AppliedCondition {
                             remaining: ConditionDuration::Interminate,
@@ -395,7 +396,7 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((6, 0, 0)).unwrap().creature;
         }
-        assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
+        assert_eq!(t_act(&t_game(), &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
 
         // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
@@ -403,7 +404,7 @@ pub mod test {
             let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
             *creature = creature.set_pos((5, 3, 0)).unwrap().creature;
         }
-        assert_eq!(t_act(&combat, &shoot, DecidedTarget::Range(cid("ranger"))),
+        assert_eq!(t_act(&t_game(), &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
