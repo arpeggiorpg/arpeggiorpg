@@ -88,7 +88,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
             Err(GameError::CannotAct(self.combat.current_creature().id()))
         }
     }
-    pub fn get_able(&self) -> Result<CombatAble, GameError> {
+    pub fn get_able(&'combat self) -> Result<CombatAble<'combat, 'game>, GameError> {
         if self.combat.current_creature().can_act {
             Ok(CombatAble { combat: self })
         } else {
@@ -215,10 +215,10 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
 
 /// The ability to act in combat.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatAble<'a> {
-    pub combat: &'a DynamicCombat<'a, 'a>,
+pub struct CombatAble<'combat, 'game: 'combat> {
+    pub combat: &'combat DynamicCombat<'combat, 'game>,
 }
-impl<'a> CombatAble<'a> {
+impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
     /// Make the current creature use an ability.
     pub fn act(&self,
                ability: &Ability,
