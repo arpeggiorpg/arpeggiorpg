@@ -82,7 +82,7 @@ fullUI model app game =
                                         then [targetSelector model game (M.ActCreature cid) abid]
                                         else []
                     Nothing -> []
-            ) ++ [ playerControlList app , history app ]
+            ) ++ [playerControlList app, history app]
     , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
            , let movementGhost =
                    case model.showingMovement of
@@ -281,10 +281,11 @@ historyCombatLog cl = case cl of
   T.ComLCreatureLog cid creatureLog -> hbox [text cid, historyCreatureLog creatureLog]
   T.ComLEndTurn cid -> hbox [text cid, text "Ended Turn"]
   T.ComLPathCurrentCreature pts -> hbox [text <| "Moved to " ++ maybePos pts]
+  T.ComLChangeCreatureInitiative cid newPos -> hbox [text cid, text "Changed initiative to", text <| toString newPos]
 
 maybePos : List T.Point3 -> String
 maybePos path =
-  case (List.head (List.reverse path)) of
+  case List.head (List.reverse path) of
     Just {x, y, z} -> toString x ++ "," ++ toString y
     Nothing -> "nowhere"
 
@@ -350,9 +351,16 @@ engageButton creature =
 combatantEntry : T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
 combatantEntry game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
-               then [datext [s [S.width (S.px 25)]] "▶️️"]
-               else [div [s [S.width (S.px 25)]] []]
-  in marker ++ [ creatureCard creature ]
+               then [ datext [s [S.width (S.px 25)]] "▶️️" ]
+               else []
+      gutter =  [vbox <| marker
+                      ++ [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
+                                  , disabled (idx == 0)] [text "⬆️️"]
+                         , button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx + 1)))
+                                  , disabled (idx == (List.length combat.creatures.data) - 1)] [text "⬇️️"]
+                         ]
+                ]
+  in gutter ++ [ creatureCard creature ]
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =

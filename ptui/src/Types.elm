@@ -93,12 +93,14 @@ type CombatLog
   = ComLCreatureLog CreatureID CreatureLog
   | ComLEndTurn CreatureID
   | ComLPathCurrentCreature (List Point3)
+  | ComLChangeCreatureInitiative CreatureID Int
 
 combatLogDecoder = sumDecoder "CombatLog"
   []
   [ ("CreatureLog", JD.map2 ComLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("EndTurn", JD.map ComLEndTurn JD.string)
   , ("PathCurrentCreature", JD.map ComLPathCurrentCreature (JD.list point3Decoder))
+  , ("ChangeCreatureInitiative", JD.map2 ComLChangeCreatureInitiative (JD.index 0 JD.string) (JD.index 1 JD.int))
   ]
 
 type CreatureLog
@@ -355,6 +357,7 @@ type GameCommand
   -- StowInInventory(ThingID)
   | Done
   | Rollback Int Int
+  | ChangeCreatureInitiative CreatureID Int
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -376,7 +379,7 @@ gameCommandEncoder gc =
     SelectMap name -> JE.object [("SelectMap", JE.string name)]
     EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
     Rollback snapIdx logIdx -> JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
-
+    ChangeCreatureInitiative cid newPos -> JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
 
 
 type RustResult

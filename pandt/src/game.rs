@@ -47,7 +47,7 @@ impl Game {
             (CreateCreature(c), _) => self.create_creature(c),
             (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
             (SetCreaturePos(cid, pt), _) => self.change().apply_creature(cid, |c| c.set_pos(pt)),
-            (PathCurrentCombatCreature(pt), Some(com)) => {
+            (PathCurrentCombatCreature(pt), Some(_)) => {
                 self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
             }
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
@@ -64,6 +64,9 @@ impl Game {
             }
             (RemoveCreatureFromCombat(cid), Some(_)) => {
                 self.change_with(GameLog::RemoveCreatureFromCombat(cid))
+            }
+            (ChangeCreatureInitiative(cid, new_pos), Some(com)) => {
+                self.change().apply_combat(|c| c.change_creature_initiative(self, cid, new_pos))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn(self)),
             _ => disallowed(cmd),
@@ -148,7 +151,7 @@ impl Game {
                 for creature in creatures {
                     newgame.creatures.insert(creature.id(), creature.clone());
                 }
-            },
+            }
             // Ignore Rollback, since it's something that's handled at the App level.
             Rollback(..) => {}
         }

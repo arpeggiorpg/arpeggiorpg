@@ -177,6 +177,7 @@ pub enum GameCommand {
     // StowInInventory(ThingID),
     /// End the current creature's turn.
     Done,
+    ChangeCreatureInitiative(CreatureID, usize),
     /// Oh my God, Rollback. Indexes into snapshots and logs.
     Rollback(usize, usize),
 }
@@ -201,6 +202,7 @@ pub enum CreatureLog {
 pub enum CombatLog {
     CreatureLog(CreatureID, CreatureLog),
     PathCurrentCreature(Vec<Point3>),
+    ChangeCreatureInitiative(CreatureID, usize),
     EndTurn(CreatureID), // the end of this creature's turn
 }
 
@@ -244,7 +246,6 @@ pub enum GameError {
     IDTooLong(String),
     ConditionNotFound(ConditionID),
     InvalidCommand(GameCommand),
-    AbilitySetRequired,
     ClassNotFound(String),
     NoAbility(AbilityID),
     CombatMustHaveCreatures,
@@ -268,6 +269,7 @@ pub enum GameError {
     PlayerNotFound(PlayerID),
     PlayerDoesntControlCreature(PlayerID, CreatureID),
     HistoryNotFound(usize, usize),
+    InitiativeOutOfBounds(usize),
 }
 
 impl fmt::Display for GameError {
@@ -547,8 +549,6 @@ pub mod test {
                                 (abid("shoot"), shoot),
                                 (abid("heal"), heal)])
     }
-
-
 
     #[test]
     fn serde_ids() {

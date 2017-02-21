@@ -39,7 +39,9 @@ impl Combat {
                     let mut c = new.current_creature_mut();
                     let c_pos = c.pos();
                     let destination = path.last().unwrap_or(&c_pos);
-                    let distance = {point3_distance(c.pos, *destination)};
+                    let distance = {
+                        point3_distance(c.pos, *destination)
+                    };
                     *c = c.apply_log(&CreatureLog::SetPos(*destination))?;
                     distance
                 };
@@ -53,6 +55,19 @@ impl Combat {
                 debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
+            }
+            CombatLog::ChangeCreatureInitiative(cid, new_pos) => {
+                let current_pos = new.creatures
+                    .iter()
+                    .position(|c| c.id == cid)
+                    .ok_or(GameError::CreatureNotFound(cid))?;
+                if new_pos >= new.creatures.len() {
+                    return Err(GameError::InitiativeOutOfBounds(new.creatures.len() - 1));
+                }
+                new.creatures = new.creatures
+                    .mutate(|creatures| slide_vec(creatures, current_pos, new_pos))
+                    .0
+                    .unwrap();
             }
         }
         Ok(new)
@@ -130,6 +145,14 @@ impl Combat {
             }
             Ok(creature) => Ok((Some(combat), creature)),
         }
+    }
+
+    pub fn change_creature_initiative(&self,
+                                      game: &Game,
+                                      cid: CreatureID,
+                                      new_pos: usize)
+                                      -> Result<ChangedCombat, GameError> {
+        self.change_with(game, CombatLog::ChangeCreatureInitiative(cid, new_pos))
     }
 
     pub fn change(&self) -> ChangedCombat {
@@ -240,6 +263,14 @@ impl CreatureChanger for ChangedCombat {
     }
 }
 
+fn slide_vec<T>(mut vec: &mut Vec<T>, move_me: usize, to: usize) -> Option<()> {
+    if to >= vec.len() {
+        return None;
+    }
+    let el = vec.remove(move_me);
+    vec.insert(to, el);
+    Some(())
+}
 
 #[cfg(test)]
 pub mod test {
@@ -250,6 +281,28 @@ pub mod test {
     use types::test::*;
     use grid::test::*;
     use game::test::t_game;
+
+    #[test]
+    fn slide_later() {
+        let mut v = vec![1, 2, 3];
+        slide_vec(&mut v, 0, 2).unwrap();
+        assert_eq!(v, [2, 3, 1]);
+
+        let mut v = vec![1, 2, 3];
+        slide_vec(&mut v, 0, 1).unwrap();
+        assert_eq!(v, [2, 1, 3]);
+
+        let mut v = vec![1, 2, 3, 4, 5];
+        slide_vec(&mut v, 2, 3);
+        assert_eq!(v, vec![1, 2, 4, 3, 5]);
+    }
+
+    #[test]
+    fn slide_earlier() {
+        let mut v = vec![1, 2, 3];
+        slide_vec(&mut v, 2, 0).unwrap();
+        assert_eq!(v, vec![3, 1, 2]);
+    }
 
     /// Create a Test combat. Combat order is rogue, ranger, then cleric.
     pub fn t_combat() -> Combat {

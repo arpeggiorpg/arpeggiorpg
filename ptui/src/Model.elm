@@ -58,6 +58,7 @@ type Msg
     | ToggleShowOOC
     | Rollback Int Int
     | Tick Time.Time
+    | SendCommand T.GameCommand
 
 defaultModel : Model
 defaultModel =

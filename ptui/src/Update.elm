@@ -139,6 +139,7 @@ update msg model = case msg of
   ToggleShowOOC -> ({model | showOOC = not model.showOOC}, Cmd.none)
 
   -- Basic GameCommands
+  SendCommand cmd -> (model, sendCommand cmd)
   CreateCreature creation -> (model, sendCommand (T.CreateCreature creation))
   RemoveFromGame cid -> (model, sendCommand (T.RemoveCreature cid))
   AddToCombat cid -> (model, sendCommand (T.AddCreatureToCombat cid))
