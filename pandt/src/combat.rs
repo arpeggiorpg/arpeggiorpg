@@ -61,6 +61,15 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
         Ok(new)
     }
 
+    pub fn next_turn(&self) -> Result<ChangedCombat, GameError> {
+        let change = self.combat
+            .change_with(self.game,
+                         CombatLog::EndTurn(self.combat.current_creature().id()))?;
+        let change =
+            change.apply_creature(change.combat.current_creature().id(), |c| c.tick(self.game))?;
+        Ok(change)
+    }
+
     pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
         let current_pos = self.combat.current_creature().pos();
         let current_speed = self.combat.current_creature().speed(self.game)? -
@@ -88,13 +97,6 @@ impl Combat {
 
     fn current_creature_mut(&mut self) -> &mut Creature {
         self.creatures.get_current_mut()
-    }
-
-    pub fn next_turn(&self, game: &Game) -> Result<ChangedCombat, GameError> {
-        let change = self.change_with(game, CombatLog::EndTurn(self.current_creature().id()))?;
-        let change =
-            change.apply_creature(change.combat.current_creature().id(), |c| c.tick(game))?;
-        Ok(change)
     }
 
     pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
@@ -238,7 +240,10 @@ pub struct ChangedCombat {
 impl ChangedCombat {
     pub fn apply(&self, game: &Game, log: &CombatLog) -> Result<ChangedCombat, GameError> {
         let mut new = self.clone();
-        new.combat = DynamicCombat{game: game, combat: &new.combat}.apply_log(&log)?;
+        new.combat = DynamicCombat {
+                game: game,
+                combat: &new.combat,
+            }.apply_log(&log)?;
         new.logs.push(log.clone());
         Ok(new)
     }
@@ -425,7 +430,13 @@ pub mod test {
             .insert(500,
                     Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(5))))
                         .apply(ConditionDuration::Interminate));
-        let combat = combat.next_turn(&t_game()).unwrap().combat;
+        let combat = DynamicCombat {
+                combat: &combat,
+                game: &t_game(),
+            }
+            .next_turn()
+            .unwrap()
+            .combat;
         let cur = combat.current_creature();
         assert_eq!(cur.id, cid("ranger"));
         assert_eq!(cur.cur_health, HP(5));
