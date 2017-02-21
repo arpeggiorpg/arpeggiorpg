@@ -169,12 +169,10 @@ impl Game {
         }
     }
 
-    // self.change().apply_creature(cid, move |c| c.set_pos_path(pts, distance))
-
     fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
         self.change().apply_combat(move |c| {
             let ability = self.get_ability(&abid)?;
-            let able = c.combat.get_able()?;
+            let able = c.get_able()?;
             if self.creature_has_ability(&c.combat.current_creature(), &abid)? {
                 able.act(&ability, target)
             } else {

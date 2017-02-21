@@ -88,6 +88,14 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
             Err(GameError::CannotAct(self.combat.current_creature().id()))
         }
     }
+    pub fn get_able(&self) -> Result<CombatAble, GameError> {
+        if self.combat.current_creature().can_act {
+            Ok(CombatAble { combat: self })
+        } else {
+            Err(GameError::CannotAct(self.combat.current_creature().id()))
+        }
+    }
+
 
     pub fn change_creature_initiative(&self,
                                       cid: CreatureID,
@@ -136,13 +144,6 @@ impl Combat {
         self.creatures.iter().collect()
     }
 
-    pub fn get_able(&self) -> Result<CombatAble, GameError> {
-        if self.current_creature().can_act {
-            Ok(CombatAble { combat: self })
-        } else {
-            Err(GameError::CannotAct(self.current_creature().id()))
-        }
-    }
     /// the Option<Combat> will be None if you're removing the last creature from a combat.
     /// Returns the Creature removed, so you can put it back into archival.
     pub fn remove_from_combat(&self,
@@ -215,7 +216,7 @@ impl<'a> CombatMove<'a> {
 /// The ability to act in combat.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatAble<'a> {
-    pub combat: &'a Combat,
+    pub combat: &'a DynamicCombat<'a, 'a>,
 }
 impl<'a> CombatAble<'a> {
     /// Make the current creature use an ability.
@@ -223,11 +224,11 @@ impl<'a> CombatAble<'a> {
                ability: &Ability,
                target: DecidedTarget)
                -> Result<ChangedCombat, GameError> {
-        self.combat.current_creature().act(|cid| self.combat.get_creature(cid),
-                                           ability,
-                                           target,
-                                           self.combat.change(),
-                                           true)
+        self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature(cid),
+                                                  ability,
+                                                  target,
+                                                  self.combat.combat.change(),
+                                                  true)
     }
 }
 
@@ -333,7 +334,12 @@ pub mod test {
                  ab: &Ability,
                  target: DecidedTarget)
                  -> Result<ChangedCombat, GameError> {
-        c.get_able()?.act(ab, target)
+        DynamicCombat {
+                combat: c,
+                game: &t_game(),
+            }
+            .get_able()?
+            .act(ab, target)
     }
 
     /// Try to melee-atack the ranger when the ranger is out of melee range.
