@@ -67,7 +67,7 @@ impl Game {
             }
             (ChangeCreatureInitiative(cid, new_pos), Some(_)) => {
                 self.change()
-                    .apply_combat(|c| c.combat.change_creature_initiative(self, cid, new_pos))
+                    .apply_combat(|c| c.change_creature_initiative(cid, new_pos))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn()),
             _ => disallowed(cmd),

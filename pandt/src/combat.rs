@@ -88,6 +88,13 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
             Err(GameError::CannotAct(self.combat.current_creature().id()))
         }
     }
+
+    pub fn change_creature_initiative(&self,
+                                      cid: CreatureID,
+                                      new_pos: usize)
+                                      -> Result<ChangedCombat, GameError> {
+        self.combat.change_with(self.game, CombatLog::ChangeCreatureInitiative(cid, new_pos))
+    }
 }
 
 impl Combat {
@@ -157,14 +164,6 @@ impl Combat {
             }
             Ok(creature) => Ok((Some(combat), creature)),
         }
-    }
-
-    pub fn change_creature_initiative(&self,
-                                      game: &Game,
-                                      cid: CreatureID,
-                                      new_pos: usize)
-                                      -> Result<ChangedCombat, GameError> {
-        self.change_with(game, CombatLog::ChangeCreatureInitiative(cid, new_pos))
     }
 
     pub fn change(&self) -> ChangedCombat {
