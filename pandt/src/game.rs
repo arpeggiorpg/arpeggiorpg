@@ -48,7 +48,7 @@ impl Game {
             (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
             (SetCreaturePos(cid, pt), _) => self.change().apply_creature(cid, |c| c.set_pos(pt)),
             (PathCurrentCombatCreature(pt), Some(_)) => {
-                self.change().apply_combat(|c| c.get_movement()?.move_current(self, pt))
+                self.change().apply_combat(|c| c.get_movement(self)?.move_current(self, pt))
             }
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
             (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
@@ -65,7 +65,7 @@ impl Game {
             (RemoveCreatureFromCombat(cid), Some(_)) => {
                 self.change_with(GameLog::RemoveCreatureFromCombat(cid))
             }
-            (ChangeCreatureInitiative(cid, new_pos), Some(com)) => {
+            (ChangeCreatureInitiative(cid, new_pos), Some(_)) => {
                 self.change().apply_combat(|c| c.change_creature_initiative(self, cid, new_pos))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn(self)),
@@ -86,7 +86,7 @@ impl Game {
         let mut newgame = self.clone();
         match *log {
             SelectMap(ref name) => {
-                let terrain =
+                let _ =
                     newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
                 newgame.current_map = Some(name.clone());
             }
@@ -230,23 +230,10 @@ impl Game {
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.find_creature(creature_id)?;
         if creature.can_move {
-            Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+            Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed(self)?))
         } else {
             Err(GameError::CannotAct(creature.id()))
         }
-    }
-
-    fn creatures_within_distance(creature: &Creature,
-                                 creatures: Vec<&Creature>,
-                                 distance: Distance)
-                                 -> Vec<PotentialTarget> {
-        let mut results = vec![];
-        for ptarget in creatures {
-            if creature_within_distance(creature, ptarget, distance) {
-                results.push(PotentialTarget::CreatureID(ptarget.id()));
-            }
-        }
-        results
     }
 
     /// Get a list of possible targets for an ability being used by a creature.
@@ -256,11 +243,17 @@ impl Game {
                               -> Result<Vec<PotentialTarget>, GameError> {
         let ability = self.get_ability(&ability_id)?;
 
-        let distance = match ability.target {
-            TargetSpec::Melee => MELEE_RANGE,
-            TargetSpec::Range(distance) => distance,
-        };
+        Ok(match ability.target {
+            TargetSpec::Melee => self.creatures_in_range(creature_id, MELEE_RANGE)?,
+            TargetSpec::Range(distance) => self.creatures_in_range(creature_id, distance)?,
+            TargetSpec::Actor => vec![PotentialTarget::CreatureID(creature_id)],
+        })
+    }
 
+    fn creatures_in_range(&self,
+                          creature_id: CreatureID,
+                          distance: Distance)
+                          -> Result<Vec<PotentialTarget>, GameError> {
         let (creature, creatures) = match self.current_combat.as_ref() {
             Some(combat) => {
                 // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
@@ -271,7 +264,13 @@ impl Game {
             }
             None => (self.get_creature(creature_id)?, self.creatures.values().collect()),
         };
-        Ok(Self::creatures_within_distance(creature, creatures, distance))
+        let mut results = vec![];
+        for ptarget in creatures {
+            if creature_within_distance(creature, ptarget, distance) {
+                results.push(PotentialTarget::CreatureID(ptarget.id()));
+            }
+        }
+        Ok(results)
     }
 
     pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {

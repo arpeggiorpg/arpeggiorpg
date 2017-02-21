@@ -41,7 +41,9 @@ impl Creature {
     pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
         let mut new = self.clone();
         match *item {
-            CreatureLog::Damage(ref dmg, ..) => new.cur_health = new.cur_health.saturating_sub(*dmg),
+            CreatureLog::Damage(ref dmg, ..) => {
+                new.cur_health = new.cur_health.saturating_sub(*dmg)
+            }
             CreatureLog::Heal(ref dmg, ..) => {
                 new.cur_health = cmp::min(new.cur_health.saturating_add(*dmg), new.max_health)
             }
@@ -241,6 +243,9 @@ impl Creature {
                     Err(GameError::CreatureOutOfRange(cid))
                 }
             }
+            (TargetSpec::Actor, DecidedTarget::Actor) => {
+                Ok(vec![self.id])
+            }
             (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
         }
     }
@@ -261,8 +266,13 @@ impl Creature {
         self.cur_health
     }
 
-    pub fn speed(&self) -> Distance {
-        self.speed
+    pub fn speed(&self, game: &Game) -> Result<Distance, GameError> {
+        for acondition in self.conditions(game)? {
+            if acondition.condition == Condition::DoubleMaxMovement {
+                return Ok(self.speed + self.speed);
+            }
+        }
+        Ok(self.speed)
     }
 
     pub fn reduce_energy(&self, delta: Energy) -> Result<ChangedCreature, GameError> {

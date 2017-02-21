@@ -57,25 +57,36 @@ current_game:
       abilities:
         - punch
         - bonk
+        - dash
       conditions:
         - RecurringEffect:
             GenerateEnergy: 10
     cleric:
       abilities:
         - heal
+        - dash
       conditions:
         - RecurringEffect:
             GenerateEnergy: 10
     ranger:
       abilities:
         - shoot
+        - dash
       conditions:
         - RecurringEffect:
             GenerateEnergy: 10
-  abilities: 
+  abilities:
+    dash:
+      name: Dash
+      target: Actor
+      cost: 8
+      effects:
+        - ApplyCondition:
+            - Duration: 1
+            - DoubleMaxMovement
     heal: 
       name: Heal
-      target: 
+      target:
         Range: 500
       cost: 8
       effects:

@@ -25,10 +25,10 @@ impl Combat {
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
-    pub fn current_movement_options(&self, terrain: &Map) -> Vec<Point3> {
+    pub fn current_movement_options(&self, game: &Game) -> Result<Vec<Point3>, GameError> {
         let current_pos = self.current_creature().pos();
-        let current_speed = self.current_creature().speed() - self.movement_used;
-        get_all_accessible(current_pos, terrain, current_speed)
+        let current_speed = self.current_creature().speed(game)? - self.movement_used;
+        Ok(get_all_accessible(current_pos, game.current_map(), current_speed))
     }
 
     pub fn apply_log(&self, game: &Game, l: &CombatLog) -> Result<Combat, GameError> {
@@ -113,11 +113,11 @@ impl Combat {
             Err(GameError::CannotAct(self.current_creature().id()))
         }
     }
-    pub fn get_movement(&self) -> Result<CombatMove, GameError> {
+    pub fn get_movement(&self, game: &Game) -> Result<CombatMove, GameError> {
         if self.current_creature().can_move {
             Ok(CombatMove {
                 combat: self,
-                movement_left: self.current_creature().speed() - self.movement_used,
+                movement_left: self.current_creature().speed(game)? - self.movement_used,
             })
         } else {
             Err(GameError::CannotAct(self.current_creature().id()))
@@ -279,7 +279,6 @@ pub mod test {
     use combat::*;
     use creature::test::*;
     use types::test::*;
-    use grid::test::*;
     use game::test::t_game;
 
     #[test]
@@ -387,7 +386,7 @@ pub mod test {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement().unwrap().move_current(&t_game(), (11, 0, 0)),
+        assert_eq!(combat.get_movement(&t_game()).unwrap().move_current(&t_game(), (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
@@ -395,11 +394,11 @@ pub mod test {
     fn move_some_at_a_time() {
         let game = t_game();
         let combat = t_combat();
-        let combat = combat.get_movement().unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
+        let combat = combat.get_movement(&game).unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = combat.get_movement().unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
+        let combat = combat.get_movement(&game).unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement().unwrap().move_current(&game, (11, 0, 0)),
+        assert_eq!(combat.get_movement(&game).unwrap().move_current(&game, (11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 

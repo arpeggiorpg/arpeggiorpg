@@ -160,7 +160,7 @@ impl App {
     pub fn get_combat_movement_options(&self) -> Result<Vec<Point3>, GameError> {
         Ok(self.current_game
             .get_combat()?
-            .current_movement_options(self.current_game.current_map()))
+            .current_movement_options(&self.current_game)?)
     }
 
     pub fn get_target_options(&self,

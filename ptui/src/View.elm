@@ -323,6 +323,7 @@ targetSelector model game msgConstructor abid =
         Just ability -> case ability.target of
           T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
           T.Range distance -> creatureTargetSelector (msgConstructor abid) T.DecidedRange creatures
+          T.Actor -> button [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
         Nothing -> text "Sorry, that ability was not found. Please reload."
     , button [onClick M.CancelAbility] [text "Cancel ability"]
     ]
@@ -401,7 +402,7 @@ creatureCard creature =
            , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
            , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
            
-    , habox [style [("width", "50px")]] (List.map creatureCondIcon (Dict.values creature.conditions))
+    , habox [style [("width", "50px")]] (List.map conditionIcon (Dict.values creature.conditions))
     ]
 
 classIcon : T.Creature -> Html M.Msg
@@ -412,12 +413,13 @@ classIcon creature =
     "ranger" -> text "🏹"
     _ -> text "?"
 
-creatureCondIcon : T.AppliedCondition -> Html M.Msg
-creatureCondIcon ac = case ac.condition of 
+conditionIcon : T.AppliedCondition -> Html M.Msg
+conditionIcon ac = case ac.condition of 
   T.RecurringEffect eff -> text (toString eff)
   T.Dead -> text "💀"
   T.Incapacitated -> text "😞"
   T.AddDamageBuff dmg -> text "😈"
+  T.DoubleMaxMovement -> text "🏃"
 
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =

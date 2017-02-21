@@ -231,7 +231,6 @@ pub enum GameLog {
     RemoveCreatureFromCombat(CreatureID), // PathCreature(CreatureID, Vec<Point3>),
     /// Oh my God, Rollback. Indexes into snapshots and logs.
     Rollback(usize, usize),
-
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
@@ -295,6 +294,7 @@ pub enum TargetSpec {
                       * Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
                       * Line(Distance),
                       * LineToFirstHit(), */
+    Actor,
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
@@ -311,6 +311,7 @@ pub enum DecidedTarget {
                         * Cone(Angle2d),
                         * Line(Point3),
                         * LineToFirstHit(Point3), */
+    Actor,
 }
 
 /// Potential targets for an ability.
@@ -346,6 +347,7 @@ pub enum Condition {
     Dead,
     Incapacitated,
     AddDamageBuff(HP),
+    DoubleMaxMovement,
 }
 
 impl Condition {
