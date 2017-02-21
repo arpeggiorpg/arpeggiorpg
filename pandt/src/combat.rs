@@ -12,7 +12,7 @@ use creature::ChangedCreature;
 /// diagonally!
 pub const MELEE_RANGE: Distance = Distance(150);
 
-impl<'combat, 'game> DynamicCombat<'combat, 'game> {
+impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     pub fn remove_from_combat(&self,
                               cid: CreatureID)
                               -> Result<(Option<Combat>, Creature), GameError> {
@@ -77,7 +77,7 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
         Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
     }
 
-    pub fn get_movement(&self) -> Result<CombatMove, GameError> {
+    pub fn get_movement(&'combat self) -> Result<CombatMove<'combat, 'game>, GameError> {
         if self.combat.current_creature().can_move {
             Ok(CombatMove {
                 combat: self,
@@ -187,12 +187,12 @@ impl Combat {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatMove<'a> {
+pub struct CombatMove<'combat, 'game: 'combat> {
     movement_left: Distance,
-    pub combat: &'a DynamicCombat<'a, 'a>,
+    pub combat: &'combat DynamicCombat<'combat, 'game>,
 }
 
-impl<'a> CombatMove<'a> {
+impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
     pub fn movement_left(&self) -> Distance {
         self.movement_left
     }

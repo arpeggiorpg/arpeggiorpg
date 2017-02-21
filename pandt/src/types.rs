@@ -439,27 +439,6 @@ pub struct Creature {
     pub can_move: bool,
 }
 
-// impl ser::Serialize for Creature {
-//     fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//         let mut str = serializer.serialize_struct("Creature", 13)?;
-//         str.serialize_field("id", &self.id)?;
-//         str.serialize_field("name", &self.name)?;
-//         str.serialize_field("speed", &self.speed())?;
-//         str.serialize_field("max_energy", &self.max_energy)?;
-//         str.serialize_field("cur_energy", &self.cur_energy)?;
-//         str.serialize_field("abilities", &self.abilities)?;
-//         str.serialize_field("class", &self.class)?;
-//         str.serialize_field("max_health", &self.max_health)?;
-//         str.serialize_field("cur_health", &self.cur_health)?;
-//         str.serialize_field("pos", &self.pos)?;
-//         str.serialize_field("conditions", &self.conditions)?;
-//         str.serialize_field("can_act", &self.can_act)?;
-//         str.serialize_field("can_move", &self.can_move)?;
-//         str.end()
-//     }
-// }
-
-
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
     // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
@@ -473,13 +452,13 @@ pub struct Combat {
     pub movement_used: Distance,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DynamicCombat<'combat, 'game: 'combat> {
     pub combat: &'combat Combat,
     pub game: &'game Game,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DynamicCreature<'creature, 'game: 'creature> {
     pub creature: &'creature Creature,
     pub game: &'game Game,
