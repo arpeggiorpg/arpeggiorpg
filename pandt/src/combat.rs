@@ -76,6 +76,18 @@ impl<'combat, 'game> DynamicCombat<'combat, 'game> {
                             self.combat.movement_used;
         Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
     }
+
+    pub fn get_movement(&self) -> Result<CombatMove, GameError> {
+        if self.combat.current_creature().can_move {
+            Ok(CombatMove {
+                combat: self,
+                movement_left: self.combat.current_creature().speed(self.game)? -
+                               self.combat.movement_used,
+            })
+        } else {
+            Err(GameError::CannotAct(self.combat.current_creature().id()))
+        }
+    }
 }
 
 impl Combat {
@@ -124,17 +136,6 @@ impl Combat {
             Err(GameError::CannotAct(self.current_creature().id()))
         }
     }
-    pub fn get_movement(&self, game: &Game) -> Result<CombatMove, GameError> {
-        if self.current_creature().can_move {
-            Ok(CombatMove {
-                combat: self,
-                movement_left: self.current_creature().speed(game)? - self.movement_used,
-            })
-        } else {
-            Err(GameError::CannotAct(self.current_creature().id()))
-        }
-    }
-
     /// the Option<Combat> will be None if you're removing the last creature from a combat.
     /// Returns the Creature removed, so you can put it back into archival.
     pub fn remove_from_combat(&self,
@@ -188,7 +189,7 @@ impl Combat {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatMove<'a> {
     movement_left: Distance,
-    pub combat: &'a Combat,
+    pub combat: &'a DynamicCombat<'a, 'a>,
 }
 
 impl<'a> CombatMove<'a> {
@@ -198,14 +199,15 @@ impl<'a> CombatMove<'a> {
 
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
-    pub fn move_current(&self, game: &Game, pt: Point3) -> Result<ChangedCombat, GameError> {
-        let (pts, distance) = find_path(self.combat.current_creature().pos(),
+    pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat, GameError> {
+        let (pts, distance) = find_path(self.combat.combat.current_creature().pos(),
                                         self.movement_left,
-                                        game.current_map(),
+                                        self.combat.game.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let change = self.combat.change_with(game, CombatLog::PathCurrentCreature(pts))?;
+        let change =
+            self.combat.combat.change_with(self.combat.game, CombatLog::PathCurrentCreature(pts))?;
         Ok(change)
     }
 }
@@ -403,7 +405,13 @@ pub mod test {
     #[test]
     fn move_too_far() {
         let combat = t_combat();
-        assert_eq!(combat.get_movement(&t_game()).unwrap().move_current(&t_game(), (11, 0, 0)),
+        assert_eq!(DynamicCombat {
+                           combat: &combat,
+                           game: &t_game(),
+                       }
+                       .get_movement()
+                       .unwrap()
+                       .move_current((11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 
@@ -411,13 +419,33 @@ pub mod test {
     fn move_some_at_a_time() {
         let game = t_game();
         let combat = t_combat();
-        let combat =
-            combat.get_movement(&game).unwrap().move_current(&game, (5, 0, 0)).unwrap().combat;
+        let combat = DynamicCombat {
+                combat: &combat,
+                game: &game,
+            }
+            .get_movement()
+            .unwrap()
+            .move_current((5, 0, 0))
+            .unwrap()
+            .combat;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat =
-            combat.get_movement(&game).unwrap().move_current(&game, (10, 0, 0)).unwrap().combat;
+        let combat = DynamicCombat {
+                combat: &combat,
+                game: &game,
+            }
+            .get_movement()
+            .unwrap()
+            .move_current((10, 0, 0))
+            .unwrap()
+            .combat;
         assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(combat.get_movement(&game).unwrap().move_current(&game, (11, 0, 0)),
+        assert_eq!(DynamicCombat {
+                           combat: &combat,
+                           game: &game,
+                       }
+                       .get_movement()
+                       .unwrap()
+                       .move_current((11, 0, 0)),
                    Err(GameError::NoPathFound))
     }
 

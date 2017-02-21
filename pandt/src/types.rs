@@ -473,11 +473,13 @@ pub struct Combat {
     pub movement_used: Distance,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct DynamicCombat<'combat, 'game: 'combat> {
     pub combat: &'combat Combat,
     pub game: &'game Game,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct DynamicCreature<'creature, 'game: 'creature> {
     pub creature: &'creature Creature,
     pub game: &'game Game,

@@ -48,7 +48,7 @@ impl Game {
             (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
             (SetCreaturePos(cid, pt), _) => self.change().apply_creature(cid, |c| c.set_pos(pt)),
             (PathCurrentCombatCreature(pt), Some(_)) => {
-                self.change().apply_combat(|c| c.combat.get_movement(self)?.move_current(self, pt))
+                self.change().apply_combat(|c| c.get_movement()?.move_current(pt))
             }
             (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
             (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
@@ -66,7 +66,8 @@ impl Game {
                 self.change_with(GameLog::RemoveCreatureFromCombat(cid))
             }
             (ChangeCreatureInitiative(cid, new_pos), Some(_)) => {
-                self.change().apply_combat(|c| c.combat.change_creature_initiative(self, cid, new_pos))
+                self.change()
+                    .apply_combat(|c| c.combat.change_creature_initiative(self, cid, new_pos))
             }
             (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn()),
             _ => disallowed(cmd),
@@ -319,7 +320,10 @@ impl ChangedGame {
         match self.game.current_combat.as_ref() {
             None => Err(GameError::NotInCombat),
             Some(combat) => {
-                let change = f(DynamicCombat{combat: &combat, game: &self.game})?;
+                let change = f(DynamicCombat {
+                    combat: &combat,
+                    game: &self.game,
+                })?;
                 let (combat, logs) = change.done();
                 let mut new = self.clone();
                 new.game.current_combat = Some(combat);
