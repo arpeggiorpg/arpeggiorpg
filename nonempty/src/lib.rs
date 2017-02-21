@@ -95,6 +95,48 @@ impl<T> NonEmptyWithCursor<T> {
         }
     }
 
+    /// Invoke a function to mutate the underlying vector.
+    /// If the function removes all of the elements of the vector, the first element of the tuple
+    /// will be an `Error`.
+    /// If the function truncates the vector such that the cursor is out-of-bounds, the cursor will
+    /// be adjusted to point to the last item in the vector.
+    /// The second element of the tuple is the return value of the function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nonempty::NonEmptyWithCursor;
+    /// let ne = NonEmptyWithCursor::new(0);
+    /// let (result, f_result) = ne.mutate(|v| {v.push(1); "Hello, world!" });
+    /// assert_eq!(f_result, "Hello, world!");
+    /// assert_eq!(result, Ok(NonEmptyWithCursor::new_with_rest(0, vec![1])))
+    /// ```
+    ///
+    /// ```
+    /// use nonempty::NonEmptyWithCursor;
+    /// let mut ne = NonEmptyWithCursor::new_with_rest(0, vec![1,2,3]);
+    /// ne.set_cursor(2);
+    /// let (result, _) = ne.mutate(|v| v.truncate(2));
+    /// let mut expected = NonEmptyWithCursor::new_with_rest(0, vec![1]);
+    /// expected.set_cursor(1);
+    /// assert_eq!(result, Ok(expected));
+    /// ```
+    pub fn mutate<F, R>(mut self, mut f: F) -> (Result<NonEmptyWithCursor<T>, Error>, R)
+        where F: FnMut(&mut Vec<T>) -> R
+    {
+        let (res, f_res) = self.data.mutate(f);
+        match res {
+            Ok(ne) => {
+                if self.cursor >= ne.len() {
+                    self.cursor = ne.len() - 1;
+                }
+                self.data = ne;
+                (Ok(self), f_res)
+            }
+            Err(x) => (Err(x), f_res),
+        }
+    }
+
     /// Get the current cursor.
     #[inline]
     pub fn get_cursor(&self) -> usize {
@@ -207,6 +249,40 @@ impl<T> NonEmpty<T> {
     pub fn new(head: T) -> Self {
         NonEmpty(vec![head])
     }
+
+    /// Invoke a function to mutate the underlying vector.
+    /// If the function removes all of the elements of the vector, the first element of the tuple
+    /// will be an `Error`.
+    /// The second element of the tuple is the return value of the function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nonempty::NonEmpty;
+    /// let ne = NonEmpty::new(0);
+    /// let (result, f_result) = ne.mutate(|v| {v.push(1); "Hello, world!" });
+    /// assert_eq!(f_result, "Hello, world!");
+    /// assert_eq!(result, Ok(NonEmpty::new_with_rest(0, vec![1])))
+    /// ```
+    ///
+    /// ```
+    /// use nonempty::{NonEmpty, Error};
+    /// let ne = NonEmpty::new("hello");
+    /// let (result, f_result) = ne.mutate(|v| v.remove(0));
+    /// assert_eq!(result, Err(Error::RemoveLastElement));
+    /// assert_eq!(f_result, "hello");
+    /// ```
+    pub fn mutate<F, R>(mut self, mut f: F) -> (Result<NonEmpty<T>, Error>, R)
+        where F: FnMut(&mut Vec<T>) -> R
+    {
+        let result = f(&mut self.0);
+        if self.0.len() == 0 {
+            (Err(Error::RemoveLastElement), result)
+        } else {
+            (Ok(self), result)
+        }
+    }
+
 
     /// Construct a new NonEmpty from the first element and a vector of the rest of the elements.
     #[inline]
