@@ -465,9 +465,35 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
     pub class: &'game Class,
 }
 
+impl ser::Serialize for Game {
+    fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut str = serializer.serialize_struct("Game", 6)?;
+        let com = match self.get_combat() {
+            Ok(c) => Some(c),
+            Err(_) => None // TODO: distinguish between NotInCombat and other errors
+        };
+        str.serialize_field("current_combat", &com)?;
+        str.serialize_field("abilities", &self.abilities)?;
+        str.serialize_field("creatures", &self.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
+        str.serialize_field("maps", &self.maps)?;
+        str.serialize_field("current_map", &self.current_map)?;
+        str.serialize_field("classes", &self.classes)?;
+        str.end()
+    }
+}
+
+impl<'combat, 'game: 'combat> ser::Serialize for DynamicCombat<'combat, 'game> {
+    fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+       let mut str = serializer.serialize_struct("Combat", 2)?;
+       str.serialize_field("movement_used", &self.combat.movement_used)?;
+       str.serialize_field("creatures", &self.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
+       str.end()
+     }
+}
+
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
     fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut str = serializer.serialize_struct("Creature", 13)?;
+        let mut str = serializer.serialize_struct("Creature", 14)?;
         let creat = &self.creature;
         str.serialize_field("id", &creat.id)?;
         str.serialize_field("name", &creat.name)?;
@@ -480,6 +506,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
         str.serialize_field("cur_health", &creat.cur_health)?;
         str.serialize_field("pos", &creat.pos)?;
         str.serialize_field("conditions", &creat.conditions)?;
+        str.serialize_field("all_conditions", &self.conditions())?;
         str.serialize_field("can_act", &creat.can_act)?;
         str.serialize_field("can_move", &creat.can_move)?;
         str.end()
@@ -487,7 +514,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
 }
 
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deserialize)]
 pub struct Game {
     pub current_combat: Option<Combat>,
     pub abilities: HashMap<AbilityID, Ability>,

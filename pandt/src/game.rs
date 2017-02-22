@@ -24,11 +24,18 @@ impl Game {
     }
 
     pub fn current_map(&self) -> &Map {
-        // TODO: this should return &Map instead of Map
         match self.current_map.as_ref() {
             Some(x) => self.maps.get(x).unwrap_or(&BORING_MAP),
             None => &BORING_MAP,
         }
+    }
+
+    pub fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
+        let mut map = HashMap::new();
+        for creature in self.creatures.values() {
+            map.insert(creature.id, self.dyn_creature(creature)?);
+        }
+        Ok(map)
     }
 
     pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {

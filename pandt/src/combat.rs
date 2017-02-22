@@ -13,6 +13,18 @@ use creature::ChangedCreature;
 pub const MELEE_RANGE: Distance = Distance(150);
 
 impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
+    pub fn creatures(&self) -> Result<nonempty::NonEmptyWithCursor<DynamicCreature>, GameError> {
+        let mut results = vec![];
+        for creature in self.combat.creatures.iter() {
+            results.push(self.game.dyn_creature(creature)?);
+        }
+        // UNWRAP: since we built this from another NonEmpty, we know that it must have at least
+        // one element, so from_vec will never fail.
+        let mut ne = nonempty::NonEmptyWithCursor::from_vec(results).unwrap();
+        ne.set_cursor(self.combat.creatures.get_cursor());
+        Ok(ne)
+    }
+
     pub fn remove_from_combat(&self,
                               cid: CreatureID)
                               -> Result<(Option<Combat>, Creature), GameError> {
