@@ -351,7 +351,7 @@ impl ChangedGame {
     {
         match self.apply_creature(cid, f) {
             Ok(r) => Ok(r),
-            Err(_) => self.apply_combat(|com| com.combat.change(&self.game).apply_creature(cid, f)),
+            Err(_) => self.apply_combat(|com| com.change().apply_creature(cid, f)),
         }
     }
 

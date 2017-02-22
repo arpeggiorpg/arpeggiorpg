@@ -62,9 +62,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     }
 
     pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
-        let change = self.combat
-            .change_with(self.game,
-                         CombatLog::EndTurn(self.combat.current_creature().id()))?;
+        let change = self.change_with(CombatLog::EndTurn(self.combat.current_creature().id()))?;
         let change =
             change.apply_creature(change.combat.current_creature().id(), |c| c.tick(self.game))?;
         Ok(change)
@@ -101,7 +99,24 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
                                       cid: CreatureID,
                                       new_pos: usize)
                                       -> Result<ChangedCombat<'game>, GameError> {
-        self.combat.change_with(self.game, CombatLog::ChangeCreatureInitiative(cid, new_pos))
+        self.change_with(CombatLog::ChangeCreatureInitiative(cid, new_pos))
+    }
+
+    pub fn change(&self) -> ChangedCombat<'game> {
+        ChangedCombat {
+            combat: self.combat.clone(),
+            logs: vec![],
+            game: self.game,
+        }
+    }
+
+    pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
+        let combat = self.apply_log(&log)?;
+        Ok(ChangedCombat {
+            combat: combat,
+            game: self.game,
+            logs: vec![log],
+        })
     }
 }
 
@@ -166,29 +181,6 @@ impl Combat {
             Ok(creature) => Ok((Some(combat), creature)),
         }
     }
-
-    pub fn change<'game>(&self, game: &'game Game) -> ChangedCombat<'game> {
-        ChangedCombat {
-            combat: self.clone(),
-            logs: vec![],
-            game: game,
-        }
-    }
-
-    pub fn change_with<'game>(&self,
-                              game: &'game Game,
-                              log: CombatLog)
-                              -> Result<ChangedCombat<'game>, GameError> {
-        let combat = (DynamicCombat {
-                game: game,
-                combat: self,
-            }).apply_log(&log)?;
-        Ok(ChangedCombat {
-            combat: combat,
-            game: game,
-            logs: vec![log],
-        })
-    }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -212,7 +204,7 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
         debug_assert!(distance <= self.movement_left);
 
         let change =
-            self.combat.combat.change_with(self.combat.game, CombatLog::PathCurrentCreature(pts))?;
+            self.combat.change_with(CombatLog::PathCurrentCreature(pts))?;
         Ok(change)
     }
 }
@@ -232,7 +224,7 @@ impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
         self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature(cid),
                                                   ability,
                                                   target,
-                                                  self.combat.combat.change(self.combat.game),
+                                                  self.combat.change(),
                                                   true)
     }
 }
