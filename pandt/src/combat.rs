@@ -203,8 +203,7 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
                                         pt).ok_or(GameError::NoPathFound)?;
         debug_assert!(distance <= self.movement_left);
 
-        let change =
-            self.combat.change_with(CombatLog::PathCurrentCreature(pts))?;
+        let change = self.combat.change_with(CombatLog::PathCurrentCreature(pts))?;
         Ok(change)
     }
 }
@@ -238,12 +237,15 @@ pub struct ChangedCombat<'game> {
 }
 
 impl<'game> ChangedCombat<'game> {
+    pub fn dyn(&self) -> DynamicCombat {
+        DynamicCombat {
+            game: self.game,
+            combat: &self.combat,
+        }
+    }
     pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
         let mut new = self.clone();
-        new.combat = DynamicCombat {
-                game: self.game,
-                combat: &new.combat,
-            }.apply_log(&log)?;
+        new.combat = new.dyn().apply_log(&log)?;
         new.logs.push(log.clone());
         Ok(new)
     }
@@ -416,24 +418,13 @@ pub mod test {
             .unwrap()
             .combat;
         assert_eq!(combat.current_creature().pos(), (5, 0, 0));
-        let combat = DynamicCombat {
-                combat: &combat,
-                game: &game,
-            }
-            .get_movement()
+        let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
             .unwrap()
-            .move_current((10, 0, 0))
-            .unwrap()
-            .combat;
-        assert_eq!(combat.current_creature().pos(), (10, 0, 0));
-        assert_eq!(DynamicCombat {
-                           combat: &combat,
-                           game: &game,
-                       }
-                       .get_movement()
-                       .unwrap()
-                       .move_current((11, 0, 0)),
-                   Err(GameError::NoPathFound))
+            .game;
+        assert_eq!(game.current_combat.as_ref().unwrap().current_creature().pos(),
+                   (10, 0, 0));
+        assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
+                   Err(GameError::NoPathFound));
     }
 
     #[test]
