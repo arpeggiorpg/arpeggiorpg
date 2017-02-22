@@ -47,7 +47,7 @@ impl Game {
             (CreateCreature(c), _) => self.create_creature(c),
             (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
             (SetCreaturePos(cid, pt), _) => {
-                self.change().apply_creature_anywhere(cid, &|c| c.set_pos(pt))
+                self.change().apply_creature_anywhere(cid, &|c| c.creature.set_pos(pt))
             }
             (PathCurrentCombatCreature(pt), Some(_)) => {
                 self.change().apply_combat(|c| c.get_movement()?.move_current(pt))
@@ -162,7 +162,7 @@ impl Game {
     fn path_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
         // TODO: this should use a GameLog::PathCreature instead of just creature.set_pos to the destination.
         // One reason is so that we check each step in the path to make sure it's valid.
-        self.change().apply_creature_anywhere(cid, &|c| c.set_pos(pt))
+        self.change().apply_creature_anywhere(cid, &|c| c.creature.set_pos(pt))
     }
 
     fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
@@ -341,10 +341,10 @@ impl ChangedGame {
     }
 
     pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
-        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+        where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         let creature = self.game.get_creature(cid)?;
-        let change = f(creature)?;
+        let change = f(self.game.dyn_creature(creature)?)?;
         let mut new = self.clone();
         let (creature, logs) = change.done();
         *new.game.get_creature_mut(cid)? = creature;
@@ -356,7 +356,7 @@ impl ChangedGame {
                                       cid: CreatureID,
                                       f: &F)
                                       -> Result<ChangedGame, GameError>
-        where F: Fn(&Creature) -> Result<ChangedCreature, GameError>
+        where F: Fn(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         match self.apply_creature(cid, f) {
             Ok(r) => Ok(r),
@@ -371,7 +371,7 @@ impl ChangedGame {
 
 impl CreatureChanger for ChangedGame {
     fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
-        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+        where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         Ok(ChangedGame::apply_creature(self, cid, f)?)
     }

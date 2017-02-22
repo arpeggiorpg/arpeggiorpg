@@ -510,7 +510,7 @@ use creature::ChangedCreature;
 
 pub trait CreatureChanger: Sized {
     fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Self, GameError>
-        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>;
+        where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>;
 }
 
 #[cfg(test)]

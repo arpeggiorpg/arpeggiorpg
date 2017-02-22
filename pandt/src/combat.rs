@@ -64,7 +64,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
         let change = self.change_with(CombatLog::EndTurn(self.combat.current_creature().id()))?;
         let change =
-            change.apply_creature(change.combat.current_creature().id(), |c| c.tick(self.game))?;
+            change.apply_creature(change.combat.current_creature().id(), |c| c.tick())?;
         Ok(change)
     }
 
@@ -257,10 +257,10 @@ impl<'game> ChangedCombat<'game> {
                              cid: CreatureID,
                              f: F)
                              -> Result<ChangedCombat<'game>, GameError>
-        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+        where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         let creature = self.combat.get_creature(cid)?;
-        let change = f(creature)?;
+        let change = f(self.game.dyn_creature(creature)?)?;
         let mut new = self.clone();
         let (creature, logs) = change.done();
         *new.combat.get_creature_mut(cid)? = creature;
@@ -275,7 +275,7 @@ impl<'game> ChangedCombat<'game> {
 
 impl<'game> CreatureChanger for ChangedCombat<'game> {
     fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat<'game>, GameError>
-        where F: FnOnce(&Creature) -> Result<ChangedCreature, GameError>
+        where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         Ok(ChangedCombat::apply_creature(self, cid, f)?)
     }

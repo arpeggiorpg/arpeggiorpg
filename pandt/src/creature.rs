@@ -45,10 +45,48 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     pub fn conditions(&self) -> Vec<AppliedCondition> {
         let mut conditions: Vec<AppliedCondition> =
             self.creature.conditions.values().cloned().collect();
-        let applied_class_conditions = self.class.conditions.iter()
+        let applied_class_conditions = self.class
+            .conditions
+            .iter()
             .map(|c| c.apply(ConditionDuration::Interminate));
         conditions.extend(applied_class_conditions);
         conditions
+    }
+
+    pub fn tick(&self) -> Result<ChangedCreature, GameError> {
+        let mut changes = self.creature.change();
+
+        for condition in self.conditions() {
+            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff),
+                                      ref remaining } = condition {
+                if match remaining {
+                    &ConditionDuration::Interminate => true,
+                    &ConditionDuration::Duration(0) => false,
+                    &ConditionDuration::Duration(_) => true,
+                } {
+                    changes = changes.merge(changes.creature.apply_effect(eff)?);
+                }
+            }
+        }
+
+        for condition_id in changes.creature
+            .conditions
+            .keys()
+            .cloned()
+            .collect::<Vec<ConditionID>>() {
+            match changes.creature.conditions[&condition_id].remaining {
+                ConditionDuration::Interminate => {}
+                ConditionDuration::Duration(remaining) => {
+                    if remaining > 0 {
+                        changes =
+                            changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
+                    } else {
+                        changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
+                    }
+                }
+            }
+        }
+        Ok(changes)
     }
 }
 
@@ -180,42 +218,6 @@ impl Creature {
         self.change_with(CreatureLog::SetPos(pt))
     }
 
-    pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {
-        let mut changes = self.change();
-
-        for condition in game.dyn_creature(self)?.conditions() {
-            if let AppliedCondition { condition: Condition::RecurringEffect(ref eff),
-                                      ref remaining } = condition {
-                if match remaining {
-                    &ConditionDuration::Interminate => true,
-                    &ConditionDuration::Duration(0) => false,
-                    &ConditionDuration::Duration(_) => true,
-                } {
-                    changes = changes.merge(changes.creature.apply_effect(eff)?);
-                }
-            }
-        }
-
-        for condition_id in changes.creature
-            .conditions
-            .keys()
-            .cloned()
-            .collect::<Vec<ConditionID>>() {
-            match changes.creature.conditions[&condition_id].remaining {
-                ConditionDuration::Interminate => {}
-                ConditionDuration::Duration(remaining) => {
-                    if remaining > 0 {
-                        changes =
-                            changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
-                    } else {
-                        changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
-                    }
-                }
-            }
-        }
-        Ok(changes)
-    }
-
     pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self,
                                                          get_creature: GetCreature,
                                                          ability: &Ability,
@@ -229,11 +231,11 @@ impl Creature {
         for creature_id in targets.iter() {
             for effect in &ability.effects {
                 change =
-                    change.apply_creature(*creature_id, |c: &Creature| c.apply_effect(effect))?;
+                    change.apply_creature(*creature_id, |c| c.creature.apply_effect(effect))?;
             }
         }
         if in_combat {
-            change = change.apply_creature(self.id, |c| c.reduce_energy(ability.cost))?;
+            change = change.apply_creature(self.id, |c| c.creature.reduce_energy(ability.cost))?;
         }
         Ok(change)
     }
@@ -425,7 +427,7 @@ pub mod test {
                                                (2,
                                                 app_cond(Condition::Incapacitated,
                                                          ConditionDuration::Interminate))]);
-        assert_eq!(c.tick(&game).unwrap().creature.conditions,
+        assert_eq!(game.dyn_creature(&c).unwrap().tick().unwrap().creature.conditions,
                    HashMap::from_iter(vec![(1,
                                             app_cond(Condition::Incapacitated,
                                                      ConditionDuration::Duration(4))),
@@ -443,11 +445,11 @@ pub mod test {
         c.conditions = HashMap::from_iter(
             vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
                               ConditionDuration::Duration(2)))]);
-        let c = c.tick(&game).unwrap().creature;
+        let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
         assert_eq!(c.cur_health, HP(9));
-        let c = c.tick(&game).unwrap().creature;
+        let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
         assert_eq!(c.cur_health, HP(8));
-        let c = c.tick(&game).unwrap().creature;
+        let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
         assert_eq!(c.cur_health, HP(8));
     }
 
@@ -460,12 +462,12 @@ pub mod test {
         c.conditions = HashMap::from_iter(vec![(0,
                                                 app_cond(Condition::Incapacitated,
                                                          ConditionDuration::Duration(1)))]);
-        let c = c.tick(&game).unwrap().creature;
+        let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
         assert_eq!(c.conditions,
                    HashMap::from_iter(vec![(0,
                                             app_cond(Condition::Incapacitated,
                                                      ConditionDuration::Duration(0)))]));
-        let c = c.tick(&game).unwrap().creature;
+        let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
         assert_eq!(c.conditions, HashMap::new());
     }
 }
