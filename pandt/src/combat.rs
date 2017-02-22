@@ -276,13 +276,13 @@ impl<'game> CreatureChanger for ChangedCombat<'game> {
     }
 }
 
-fn slide_vec<T>(mut vec: &mut Vec<T>, move_me: usize, to: usize) -> Option<()> {
+fn slide_vec<T>(mut vec: &mut Vec<T>, move_me: usize, to: usize) -> bool {
     if to >= vec.len() {
-        return None;
+        return false;
     }
     let el = vec.remove(move_me);
     vec.insert(to, el);
-    Some(())
+    true
 }
 
 #[cfg(test)]
@@ -290,18 +290,17 @@ pub mod test {
     extern crate test;
 
     use combat::*;
-    use creature::test::*;
     use types::test::*;
     use game::test::t_game;
 
     #[test]
     fn slide_later() {
         let mut v = vec![1, 2, 3];
-        slide_vec(&mut v, 0, 2).unwrap();
+        slide_vec(&mut v, 0, 2);
         assert_eq!(v, [2, 3, 1]);
 
         let mut v = vec![1, 2, 3];
-        slide_vec(&mut v, 0, 1).unwrap();
+        slide_vec(&mut v, 0, 1);
         assert_eq!(v, [2, 1, 3]);
 
         let mut v = vec![1, 2, 3, 4, 5];
@@ -312,7 +311,7 @@ pub mod test {
     #[test]
     fn slide_earlier() {
         let mut v = vec![1, 2, 3];
-        slide_vec(&mut v, 2, 0).unwrap();
+        slide_vec(&mut v, 2, 0);
         assert_eq!(v, vec![3, 1, 2]);
     }
 
