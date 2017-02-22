@@ -75,8 +75,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
     pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
         let change = self.change_with(CombatLog::EndTurn(self.combat.current_creature().id()))?;
-        let change =
-            change.apply_creature(change.combat.current_creature().id(), |c| c.tick())?;
+        let change = change.apply_creature(change.combat.current_creature().id(), |c| c.tick())?;
         Ok(change)
     }
 
@@ -132,6 +131,10 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     pub fn current_creature(&self) -> Result<DynamicCreature, GameError> {
         self.game.dyn_creature(self.combat.creatures.get_current())
     }
+
+    pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
+        DynamicCreature::new(self.combat.get_creature_data(cid)?, self.game)
+    }
 }
 
 impl Combat {
@@ -155,11 +158,8 @@ impl Combat {
         self.creatures.get_current_mut()
     }
 
-    pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
-        self.creatures
-            .iter()
-            .find(|c| c.id() == cid)
-            .ok_or(GameError::CreatureNotFound(cid))
+    pub fn get_creature_data(&self, cid: CreatureID) -> Result<&Creature, GameError> {
+        self.creatures.iter().find(|c| c.id() == cid).ok_or(GameError::CreatureNotFound(cid))
     }
 
     pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
@@ -234,7 +234,7 @@ impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
                ability: &Ability,
                target: DecidedTarget)
                -> Result<ChangedCombat<'game>, GameError> {
-        self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature(cid),
+        self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature_data(cid),
                                                   ability,
                                                   target,
                                                   self.combat.change(),
@@ -271,8 +271,9 @@ impl<'game> ChangedCombat<'game> {
                              -> Result<ChangedCombat<'game>, GameError>
         where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
-        let creature = self.combat.get_creature(cid)?;
-        let change = f(self.game.dyn_creature(creature)?)?;
+        let combat = self.dyn();
+        let creature = combat.get_creature(cid)?;
+        let change = f(creature)?;
         let mut new = self.clone();
         let (creature, logs) = change.done();
         *new.combat.get_creature_mut(cid)? = creature;
@@ -384,9 +385,9 @@ pub mod test {
             effects: vec![Effect::Damage(Dice::flat(3)),
                           Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
         };
-        let next = t_act(&game, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
-        assert_eq!(game.dyn_creature(next.get_creature(cid("ranger")).unwrap()).unwrap()
-                       .conditions(),
+        let change = t_act(&game, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap();
+        let next = change.dyn();
+        assert_eq!(next.get_creature(cid("ranger")).unwrap().conditions(),
                    vec![AppliedCondition {
                             remaining: ConditionDuration::Interminate,
                             condition: Condition::Dead,

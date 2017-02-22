@@ -219,7 +219,7 @@ impl Game {
             self.current_combat
                 .as_ref()
                 .ok_or(GameError::CreatureNotFound(cid.clone()))
-                .and_then(|combat| combat.get_creature(cid))
+                .and_then(|combat| combat.get_creature_data(cid))
         })
     }
 
@@ -276,7 +276,7 @@ impl Game {
         let (creature, creatures) = match self.current_combat.as_ref() {
             Some(combat) => {
                 // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
-                match combat.get_creature(creature_id) {
+                match combat.get_creature_data(creature_id) {
                     Ok(creature) => (creature, combat.get_creatures()),
                     Err(_) => (self.get_creature(creature_id)?, self.creatures.values().collect()),
                 }
@@ -504,7 +504,7 @@ pub mod test {
         assert_eq!(game.current_combat
                        .as_ref()
                        .unwrap()
-                       .get_creature(cid("ranger"))
+                       .get_creature_data(cid("ranger"))
                        .unwrap()
                        .cur_health(),
                    HP(7));
