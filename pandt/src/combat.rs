@@ -240,9 +240,6 @@ impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ChangedCombat<'game> {
-    // RADIX I think the problem here is that there are lots of things that rely on 'game: 'combat,
-    // but since we OWN a Combat here, we're running into problems proving that the Combat lives
-    // less than the Game?
     pub combat: Combat,
     game: &'game Game,
     logs: Vec<CombatLog>,
@@ -328,11 +325,13 @@ pub mod test {
     }
 
     /// Create a Test combat. Combat order is rogue, ranger, then cleric.
-    pub fn t_combat() -> Combat {
-        let rogue = t_rogue("rogue");
-        let ranger = t_ranger("ranger");
-        let cleric = t_cleric("cleric");
-        Combat::new(vec![rogue, ranger, cleric]).unwrap()
+    pub fn t_combat() -> Game {
+        let game = t_game();
+        game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"),
+                                                             cid("ranger"),
+                                                             cid("cleric")]))
+            .unwrap()
+            .game
     }
 
     pub fn t_act<'game>(game: &'game Game,
@@ -345,33 +344,31 @@ pub mod test {
     /// Try to melee-atack the ranger when the ranger is out of melee range.
     #[test]
     fn target_melee_out_of_range() {
-        let mut combat = t_combat();
+        let game = t_combat();
         let melee = t_punch();
-        {
-            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((2, 0, 0)).unwrap().creature;
-        }
-        assert_eq!(t_act(&t_game(), &melee, DecidedTarget::Melee(cid("ranger"))),
+        let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (2, 0, 0)))
+            .unwrap()
+            .game;
+        assert_eq!(t_act(&game, &melee, DecidedTarget::Melee(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
     /// Ranged attacks against targets (just) within range are successful.
     #[test]
     fn target_range() {
-        let mut combat = t_combat();
+        let game = t_combat();
         let range_ab = t_shoot();
-        {
-            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 0, 0)).unwrap().creature;
-        }
-        let _: Combat = t_act(&t_game(), &range_ab, DecidedTarget::Range(cid("ranger")))
+        let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (5, 0, 0)))
+            .unwrap()
+            .game;
+        let _: Combat = t_act(&game, &range_ab, DecidedTarget::Range(cid("ranger")))
             .unwrap()
             .combat;
     }
 
     #[test]
     fn multiple_effects_per_target() {
-        let combat = t_combat();
+        let game = t_combat();
         let ab = Ability {
             name: "MultiEffect".to_string(),
             target: TargetSpec::Melee,
@@ -379,7 +376,7 @@ pub mod test {
             effects: vec![Effect::Damage(Dice::flat(3)),
                           Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
         };
-        let next = t_act(&t_game(), &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
+        let next = t_act(&game, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
         assert_eq!(next.get_creature(cid("ranger")).unwrap().conditions(&t_game()).unwrap(),
                    vec![AppliedCondition {
                             remaining: ConditionDuration::Interminate,
@@ -390,31 +387,27 @@ pub mod test {
     /// Ranged attacks against targets outside of range return `TargetOutOfRange`
     #[test]
     fn target_out_of_range() {
-        let mut combat = t_combat();
+        let game = t_combat();
         let shoot = t_shoot();
-        {
-            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((6, 0, 0)).unwrap().creature;
-        }
-        assert_eq!(t_act(&t_game(), &shoot, DecidedTarget::Range(cid("ranger"))),
+        let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (6, 0, 0)))
+            .unwrap()
+            .game;
+        assert_eq!(t_act(&game, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
 
-        // d((5,1,0), (0,0,0)).round() is still 5 so it's still in range
-        {
-            let mut creature = combat.get_creature_mut(cid("ranger")).unwrap();
-            *creature = creature.set_pos((5, 3, 0)).unwrap().creature;
-        }
-        assert_eq!(t_act(&t_game(), &shoot, DecidedTarget::Range(cid("ranger"))),
+        let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (5, 3, 0)))
+            .unwrap()
+            .game;
+        // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
+        assert_eq!(t_act(&game, &shoot, DecidedTarget::Range(cid("ranger"))),
                    Err(GameError::CreatureOutOfRange(cid("ranger"))));
     }
 
     #[test]
     fn move_too_far() {
-        let combat = t_combat();
-        assert_eq!(DynamicCombat {
-                           combat: &combat,
-                           game: &t_game(),
-                       }
+        let game = t_combat();
+        assert_eq!(game.get_combat()
+                       .unwrap()
                        .get_movement()
                        .unwrap()
                        .move_current((11, 0, 0)),
@@ -423,12 +416,9 @@ pub mod test {
 
     #[test]
     fn move_some_at_a_time() {
-        let game = t_game();
-        let combat = t_combat();
-        let combat = DynamicCombat {
-                combat: &combat,
-                game: &game,
-            }
+        let game = t_combat();
+        let combat = game.get_combat()
+            .unwrap()
             .get_movement()
             .unwrap()
             .move_current((5, 0, 0))
@@ -457,17 +447,18 @@ pub mod test {
 
     #[test]
     fn tick_on_next_turn() {
-        let mut combat = t_combat();
-        combat.get_creature_mut(cid("ranger"))
+        let mut game = t_combat();
+        game.current_combat
+            .as_mut()
+            .unwrap()
+            .get_creature_mut(cid("ranger"))
             .unwrap()
             .conditions
             .insert(500,
                     Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(5))))
                         .apply(ConditionDuration::Interminate));
-        let combat = DynamicCombat {
-                combat: &combat,
-                game: &t_game(),
-            }
+        let combat = game.get_combat()
+            .unwrap()
             .next_turn()
             .unwrap()
             .combat;

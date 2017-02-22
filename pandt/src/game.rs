@@ -46,7 +46,9 @@ impl Game {
         let change = match (cmd.clone(), self.current_combat.as_ref()) {
             (CreateCreature(c), _) => self.create_creature(c),
             (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
-            (SetCreaturePos(cid, pt), _) => self.change().apply_creature(cid, |c| c.set_pos(pt)),
+            (SetCreaturePos(cid, pt), _) => {
+                self.change().apply_creature_anywhere(cid, &|c| c.set_pos(pt))
+            }
             (PathCurrentCombatCreature(pt), Some(_)) => {
                 self.change().apply_combat(|c| c.get_movement()?.move_current(pt))
             }
@@ -160,15 +162,7 @@ impl Game {
     fn path_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
         // TODO: this should use a GameLog::PathCreature instead of just creature.set_pos to the destination.
         // One reason is so that we check each step in the path to make sure it's valid.
-        match self.change().apply_creature(cid, |c| c.set_pos(pt)) {
-            Ok(r) => Ok(r),
-            Err(_) => {
-                self.change()
-                    .apply_combat(|com| {
-                        com.combat.change(self).apply_creature(cid, |c| c.set_pos(pt))
-                    })
-            }
-        }
+        self.change().apply_creature_anywhere(cid, &|c| c.set_pos(pt))
     }
 
     fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
@@ -305,8 +299,8 @@ impl Game {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangedGame {
-    game: Game,
-    logs: Vec<GameLog>,
+    pub game: Game,
+    pub logs: Vec<GameLog>,
 }
 
 impl ChangedGame {
@@ -347,6 +341,18 @@ impl ChangedGame {
         *new.game.get_creature_mut(cid)? = creature;
         new.logs.extend(creature_logs_into_game_logs(cid, logs));
         Ok(new)
+    }
+
+    pub fn apply_creature_anywhere<F>(&self,
+                                      cid: CreatureID,
+                                      f: &F)
+                                      -> Result<ChangedGame, GameError>
+        where F: Fn(&Creature) -> Result<ChangedCreature, GameError>
+    {
+        match self.apply_creature(cid, f) {
+            Ok(r) => Ok(r),
+            Err(_) => self.apply_combat(|com| com.combat.change(&self.game).apply_creature(cid, f)),
+        }
     }
 
     pub fn done(self) -> (Game, Vec<GameLog>) {
