@@ -216,7 +216,8 @@ impl Game {
         })
     }
 
-    fn dyn_creature<'creature, 'game: 'creature>(&'game self,
+    // DELETE THIS RADIX FIXME TODO XXX
+    pub fn dyn_creature<'creature, 'game: 'creature>(&'game self,
                                                  creature: &'creature Creature)
                                                  -> DynamicCreature<'creature, 'game> {
         DynamicCreature {

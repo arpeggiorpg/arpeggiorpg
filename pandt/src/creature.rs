@@ -23,7 +23,7 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     pub fn speed(&self) -> Result<Distance, GameError> {
-        for acondition in self.creature.conditions(self.game)? {
+        for acondition in self.conditions()? {
             if acondition.condition == Condition::DoubleMaxMovement {
                 return Ok(self.creature.speed * 2);
             }
@@ -31,6 +31,16 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
         Ok(self.creature.speed)
     }
 
+    /// Get all conditions applied to a creature, including permanent conditions associated with
+    /// the creature's class.
+    pub fn conditions(&self) -> Result<Vec<AppliedCondition>, GameError> {
+        let mut conditions: Vec<AppliedCondition> = self.creature.conditions.values().cloned().collect();
+        let class_conditions = &self.game.get_class(&self.creature.class)?.conditions;
+        let applied_class_conditions = class_conditions.iter()
+            .map(|c| c.apply(ConditionDuration::Interminate));
+        conditions.extend(applied_class_conditions);
+        Ok(conditions)
+    }
 
 }
 
@@ -165,7 +175,7 @@ impl Creature {
     pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {
         let mut changes = self.change();
 
-        for condition in self.conditions(game)? {
+        for condition in (DynamicCreature{creature: self, game: game}).conditions()? {
             if let AppliedCondition { condition: Condition::RecurringEffect(ref eff),
                                       ref remaining } = condition {
                 if match remaining {
@@ -197,18 +207,6 @@ impl Creature {
         }
         Ok(changes)
     }
-
-    /// Get all conditions applied to a creature, including permanent conditions associated with
-    /// the creature's class.
-    pub fn conditions(&self, game: &Game) -> Result<Vec<AppliedCondition>, GameError> {
-        let mut conditions: Vec<AppliedCondition> = self.conditions.values().cloned().collect();
-        let class_conditions = &game.get_class(&self.class)?.conditions;
-        let applied_class_conditions = class_conditions.iter()
-            .map(|c| c.apply(ConditionDuration::Interminate));
-        conditions.extend(applied_class_conditions);
-        Ok(conditions)
-    }
-
 
     pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self,
                                                          get_creature: GetCreature,
