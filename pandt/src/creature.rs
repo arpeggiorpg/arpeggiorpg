@@ -22,26 +22,34 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
-    pub fn speed(&self) -> Result<Distance, GameError> {
-        for acondition in self.conditions()? {
+    pub fn new(creature: &'creature Creature,
+               game: &'game Game)
+               -> Result<DynamicCreature<'creature, 'game>, GameError> {
+        Ok(DynamicCreature {
+            creature: creature,
+            game: game,
+            class: game.get_class(&creature.class)?,
+        })
+    }
+    pub fn speed(&self) -> Distance {
+        for acondition in self.conditions() {
             if acondition.condition == Condition::DoubleMaxMovement {
-                return Ok(self.creature.speed * 2);
+                return self.creature.speed * 2;
             }
         }
-        Ok(self.creature.speed)
+        self.creature.speed
     }
 
     /// Get all conditions applied to a creature, including permanent conditions associated with
     /// the creature's class.
-    pub fn conditions(&self) -> Result<Vec<AppliedCondition>, GameError> {
-        let mut conditions: Vec<AppliedCondition> = self.creature.conditions.values().cloned().collect();
-        let class_conditions = &self.game.get_class(&self.creature.class)?.conditions;
-        let applied_class_conditions = class_conditions.iter()
+    pub fn conditions(&self) -> Vec<AppliedCondition> {
+        let mut conditions: Vec<AppliedCondition> =
+            self.creature.conditions.values().cloned().collect();
+        let applied_class_conditions = self.class.conditions.iter()
             .map(|c| c.apply(ConditionDuration::Interminate));
         conditions.extend(applied_class_conditions);
-        Ok(conditions)
+        conditions
     }
-
 }
 
 impl Creature {
@@ -175,7 +183,7 @@ impl Creature {
     pub fn tick(&self, game: &Game) -> Result<ChangedCreature, GameError> {
         let mut changes = self.change();
 
-        for condition in (DynamicCreature{creature: self, game: game}).conditions()? {
+        for condition in game.dyn_creature(self)?.conditions() {
             if let AppliedCondition { condition: Condition::RecurringEffect(ref eff),
                                       ref remaining } = condition {
                 if match remaining {
@@ -254,9 +262,7 @@ impl Creature {
                     Err(GameError::CreatureOutOfRange(cid))
                 }
             }
-            (TargetSpec::Actor, DecidedTarget::Actor) => {
-                Ok(vec![self.id])
-            }
+            (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![self.id]),
             (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
         }
     }

@@ -218,12 +218,9 @@ impl Game {
 
     // DELETE THIS RADIX FIXME TODO XXX
     pub fn dyn_creature<'creature, 'game: 'creature>(&'game self,
-                                                 creature: &'creature Creature)
-                                                 -> DynamicCreature<'creature, 'game> {
-        DynamicCreature {
-            creature: creature,
-            game: self,
-        }
+                                                     creature: &'creature Creature)
+                                                     -> Result<DynamicCreature<'creature, 'game>, GameError> {
+        DynamicCreature::new(creature, self)
     }
 
     pub fn get_combat<'combat, 'game: 'combat>
@@ -243,7 +240,9 @@ impl Game {
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.find_creature(creature_id)?;
         if creature.can_move {
-            Ok(get_all_accessible(creature.pos(), self.current_map(), self.dyn_creature(creature).speed()?))
+            Ok(get_all_accessible(creature.pos(),
+                                  self.current_map(),
+                                  self.dyn_creature(creature)?.speed()))
         } else {
             Err(GameError::CannotAct(creature.id()))
         }

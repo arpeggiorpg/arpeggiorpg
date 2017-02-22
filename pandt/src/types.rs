@@ -462,6 +462,7 @@ pub struct DynamicCombat<'combat, 'game: 'combat> {
 pub struct DynamicCreature<'creature, 'game: 'creature> {
     pub creature: &'creature Creature,
     pub game: &'game Game,
+    pub class: &'game Class,
 }
 
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
@@ -470,8 +471,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
         let creat = &self.creature;
         str.serialize_field("id", &creat.id)?;
         str.serialize_field("name", &creat.name)?;
-        str.serialize_field("speed",
-                             &self.speed().map_err(|e| S::Error::custom(format!("{:?}", e)))?)?;
+        str.serialize_field("speed", &self.speed())?;
         str.serialize_field("max_energy", &creat.max_energy)?;
         str.serialize_field("cur_energy", &creat.cur_energy)?;
         str.serialize_field("abilities", &creat.abilities)?;

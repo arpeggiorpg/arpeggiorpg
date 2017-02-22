@@ -70,7 +70,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
     pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
         let current_pos = self.combat.current_creature().pos();
-        let current_speed = self.current_creature().speed()? - self.combat.movement_used;
+        let current_speed = self.current_creature()?.speed() - self.combat.movement_used;
         Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
     }
 
@@ -78,7 +78,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         if self.combat.current_creature().can_move {
             Ok(CombatMove {
                 combat: self,
-                movement_left: self.current_creature().speed()? - self.combat.movement_used,
+                movement_left: self.current_creature()?.speed() - self.combat.movement_used,
             })
         } else {
             Err(GameError::CannotAct(self.combat.current_creature().id()))
@@ -117,11 +117,8 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         })
     }
 
-    pub fn current_creature(&self) -> DynamicCreature {
-        DynamicCreature {
-            creature: self.combat.creatures.get_current(),
-            game: self.game,
-        }
+    pub fn current_creature(&self) -> Result<DynamicCreature, GameError> {
+        self.game.dyn_creature(self.combat.creatures.get_current())
     }
 }
 
@@ -376,9 +373,8 @@ pub mod test {
                           Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
         };
         let next = t_act(&game, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap().combat;
-        assert_eq!(game.dyn_creature(next.get_creature(cid("ranger")).unwrap())
-                       .conditions()
-                       .unwrap(),
+        assert_eq!(game.dyn_creature(next.get_creature(cid("ranger")).unwrap()).unwrap()
+                       .conditions(),
                    vec![AppliedCondition {
                             remaining: ConditionDuration::Interminate,
                             condition: Condition::Dead,
