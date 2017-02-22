@@ -70,7 +70,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
     pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
         let current_pos = self.combat.current_creature().pos();
-        let current_speed = self.combat.current_creature().speed(self.game)? -
+        let current_speed = self.current_creature().speed()? -
                             self.combat.movement_used;
         Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
     }
@@ -79,7 +79,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         if self.combat.current_creature().can_move {
             Ok(CombatMove {
                 combat: self,
-                movement_left: self.combat.current_creature().speed(self.game)? -
+                movement_left: self.current_creature().speed()? -
                                self.combat.movement_used,
             })
         } else {
@@ -117,6 +117,13 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
             game: self.game,
             logs: vec![log],
         })
+    }
+
+    pub fn current_creature(&self) -> DynamicCreature {
+        DynamicCreature {
+            creature: self.combat.creatures.get_current(),
+            game: self.game,
+        }
     }
 }
 
@@ -243,6 +250,7 @@ impl<'game> ChangedCombat<'game> {
             combat: &self.combat,
         }
     }
+
     pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
         let mut new = self.clone();
         new.combat = new.dyn().apply_log(&log)?;

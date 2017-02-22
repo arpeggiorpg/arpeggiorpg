@@ -10,7 +10,7 @@ use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
 use serde::ser;
-use serde::ser::SerializeStruct;
+use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
 
@@ -470,7 +470,8 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
         let creat = &self.creature;
         str.serialize_field("id", &creat.id)?;
         str.serialize_field("name", &creat.name)?;
-        str.serialize_field("speed", &creat.speed(self.game))?;
+        str.serialize_field("speed",
+                             &self.speed().map_err(|e| S::Error::custom(format!("{:?}", e)))?)?;
         str.serialize_field("max_energy", &creat.max_energy)?;
         str.serialize_field("cur_energy", &creat.cur_energy)?;
         str.serialize_field("abilities", &creat.abilities)?;

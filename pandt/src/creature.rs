@@ -21,6 +21,19 @@ use combat::MELEE_RANGE;
 const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 
+impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
+    pub fn speed(&self) -> Result<Distance, GameError> {
+        for acondition in self.creature.conditions(self.game)? {
+            if acondition.condition == Condition::DoubleMaxMovement {
+                return Ok(self.creature.speed * 2);
+            }
+        }
+        Ok(self.creature.speed)
+    }
+
+
+}
+
 impl Creature {
     pub fn build(id: &str, class: &str) -> CreatureBuilder {
         CreatureBuilder {
@@ -264,15 +277,6 @@ impl Creature {
 
     pub fn cur_health(&self) -> HP {
         self.cur_health
-    }
-
-    pub fn speed(&self, game: &Game) -> Result<Distance, GameError> {
-        for acondition in self.conditions(game)? {
-            if acondition.condition == Condition::DoubleMaxMovement {
-                return Ok(self.speed + self.speed);
-            }
-        }
-        Ok(self.speed)
     }
 
     pub fn reduce_energy(&self, delta: Energy) -> Result<ChangedCreature, GameError> {
