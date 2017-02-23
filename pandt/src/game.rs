@@ -153,7 +153,9 @@ impl Game {
         }
       }
       // Ignore Rollback, since it's something that's handled at the App level.
-      Rollback(..) => {}
+      Rollback(..) => {
+        return Err(GameError::BuggyProgram("Rollback should be handled by the App".to_string()))
+      }
     }
     Ok(newgame)
   }

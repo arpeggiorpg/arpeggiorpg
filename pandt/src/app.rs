@@ -56,12 +56,9 @@ impl App {
       &GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
         self.current_game = newgame;
-        self.snapshots
-          .back_mut()
-          .unwrap()
-          .1
-          .push(GameLog::Rollback(*snapshot_idx, *log_idx));
-        Ok((&self.current_game, vec![]))
+        let log = GameLog::Rollback(*snapshot_idx, *log_idx);
+        self.snapshots.back_mut().unwrap().1.push(log.clone());
+        Ok((&self.current_game, vec![log]))
       }
       _ => {
         let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
@@ -80,22 +77,32 @@ impl App {
 
   /// Rollback to a particular point by replaying logs after a snapshot
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
+    println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
     let &(ref baseline, ref logs_to_apply) =
       self.snapshots.get(snapshot_idx).ok_or(GameError::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
       return Err(GameError::HistoryNotFound(snapshot_idx, log_idx));
     }
-    let mut newgame = baseline.clone();
-    for (i, log) in logs_to_apply.iter().enumerate() {
+    println!("All logs: {:?}", logs_to_apply);
+    let logs_to_apply = &logs_to_apply[..log_idx];
+    Self::apply_game_logs(baseline.clone(), baseline.clone(), logs_to_apply)
+  }
+
+  fn apply_game_logs(baseline: Game, mut game: Game, logs: &[GameLog]) -> Result<Game, GameError> {
+    for log in logs {
       println!("Applying log {:?}", log);
-      println!("To... {:?}", newgame.current_combat);
-      if i == log_idx {
-        break;
+      if let &GameLog::Rollback(sni, li) = log {
+        // 1. assert li is within bounds?
+        // 2. need to handle SnapshotIndex -- this assumes it's always based on the same snapshot
+        // 3. this is super inefficient
+        // 4. if each Rollback also created a Snapshot, things could be easier... we would never
+        //    need to apply a Rollback as a log in that case
+        game = Self::apply_game_logs(baseline.clone(), baseline.clone(), &logs[..li])?;
+      } else {
+        game = game.apply_log(log)?;
       }
-      newgame = newgame.apply_log(log)?;
-      println!("Applied log {:?}", newgame.current_combat);
     }
-    Ok(newgame)
+    Ok(game)
   }
 
   fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
@@ -201,7 +208,9 @@ mod test {
 
   #[test]
   fn rollback() {
+    // 0
     let mut app = t_app();
+    // 1
     app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
     app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap();
     let ranger = app.current_game.get_creature(cid("ranger")).unwrap();
@@ -211,9 +220,9 @@ mod test {
     assert_eq!(logs.len(), 2);
   }
 
-  // bug test: for some reason combat-related things aren't working.
+  /// bug test: ensure precedent logs are also applied, not just the one being rolled back to.
   #[test]
-  fn rollback_through_combat() {
+  fn rollback_reapplies_precedents() {
     // 0
     let mut app = t_app();
     // 1
@@ -226,5 +235,32 @@ mod test {
     // 3
     app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
     app.perform_unchecked(GameCommand::Rollback(0, 2)).unwrap();
+    assert_eq!(app.current_game.current_combat, None);
+    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(),
+               (0, 0, 0));
+  }
+
+  ///
+  #[test]
+  fn rollback_through_rollback() {
+    // 0
+    let mut app = t_app();
+    // 1
+    app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
+    // 2
+    app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
+    // 3
+    app.perform_unchecked(GameCommand::SetCreaturePos(cid("cleric"), (1, 1, 1))).unwrap();
+    // 4
+    app.perform_unchecked(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
+    // 5
+    app.perform_unchecked(GameCommand::SetCreaturePos(cid("rogue"), (1, 1, 1))).unwrap();
+
+    assert_eq!(app.current_game.get_creature(cid("cleric")).unwrap().pos(),
+               (0, 0, 0));
+    assert_eq!(app.current_game.get_creature(cid("rogue")).unwrap().pos(),
+               (1, 1, 1));
+    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(),
+               (0, 0, 0));
   }
 }
