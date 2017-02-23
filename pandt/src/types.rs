@@ -434,9 +434,6 @@ pub struct Creature {
     pub cur_health: HP,
     pub pos: Point3,
     pub conditions: HashMap<ConditionID, AppliedCondition>,
-    // I thought about `pub capabilities: Vec<Capability>`, but this seems simpler...
-    pub can_act: bool,
-    pub can_move: bool,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -507,8 +504,8 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
         str.serialize_field("pos", &creat.pos)?;
         str.serialize_field("conditions", &creat.conditions)?;
         str.serialize_field("all_conditions", &self.conditions())?;
-        str.serialize_field("can_act", &creat.can_act)?;
-        str.serialize_field("can_move", &creat.can_move)?;
+        str.serialize_field("can_act", &self.can_act())?;
+        str.serialize_field("can_move", &self.can_move())?;
         str.end()
     }
 }

@@ -52,7 +52,6 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
                 *c = c.apply_log(cl)?;
             }
             CombatLog::EndTurn(ref cid) => {
-                debug_assert!(*cid == new.current_creature().id());
                 new.creatures.next_circular();
                 new.movement_used = Distance(0);
             }
@@ -74,32 +73,35 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     }
 
     pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
-        let change = self.change_with(CombatLog::EndTurn(self.combat.current_creature().id()))?;
-        let change = change.apply_creature(change.combat.current_creature().id(), |c| c.tick())?;
+        let change = self.change_with(CombatLog::EndTurn(self.current_creature()?.id()))?;
+        let change = change.apply_creature(change.dyn().current_creature()?.id(), |c| c.tick())?;
         Ok(change)
     }
 
     pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
-        let current_pos = self.combat.current_creature().pos();
-        let current_speed = self.current_creature()?.speed() - self.combat.movement_used;
+        let current = self.current_creature()?;
+        let current_pos = current.pos();
+        let current_speed = current.speed() - self.combat.movement_used;
         Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
     }
 
     pub fn get_movement(&'combat self) -> Result<CombatMove<'combat, 'game>, GameError> {
-        if self.combat.current_creature().can_move {
+        let current = self.current_creature()?;
+        if current.can_move() {
             Ok(CombatMove {
                 combat: self,
                 movement_left: self.current_creature()?.speed() - self.combat.movement_used,
             })
         } else {
-            Err(GameError::CannotAct(self.combat.current_creature().id()))
+            Err(GameError::CannotAct(current.id()))
         }
     }
     pub fn get_able(&'combat self) -> Result<CombatAble<'combat, 'game>, GameError> {
-        if self.combat.current_creature().can_act {
+        let current = self.current_creature()?;
+        if current.can_act() {
             Ok(CombatAble { combat: self })
         } else {
-            Err(GameError::CannotAct(self.combat.current_creature().id()))
+            Err(GameError::CannotAct(current.id()))
         }
     }
 
@@ -128,11 +130,13 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         })
     }
 
-    pub fn current_creature(&self) -> Result<DynamicCreature, GameError> {
+    pub fn current_creature(&self) -> Result<DynamicCreature<'combat, 'game>, GameError> {
         self.game.dyn_creature(self.combat.creatures.get_current())
     }
 
-    pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
+    pub fn get_creature(&self,
+                        cid: CreatureID)
+                        -> Result<DynamicCreature<'combat, 'game>, GameError> {
         DynamicCreature::new(self.combat.get_creature_data(cid)?, self.game)
     }
 }
@@ -150,10 +154,6 @@ impl Combat {
             .ok_or(GameError::CombatMustHaveCreatures)
     }
 
-    pub fn current_creature(&self) -> &Creature {
-        self.creatures.get_current()
-    }
-
     fn current_creature_mut(&mut self) -> &mut Creature {
         self.creatures.get_current_mut()
     }
@@ -169,8 +169,8 @@ impl Combat {
             .ok_or(GameError::CreatureNotFound(cid))
     }
 
-    pub fn get_creatures(&self) -> Vec<&Creature> {
-        self.creatures.iter().collect()
+    pub fn current_creature_data(&self) -> &Creature {
+        self.creatures.get_current()
     }
 
     /// the Option<Combat> will be None if you're removing the last creature from a combat.
@@ -190,7 +190,7 @@ impl Combat {
                     .to_string()))
             }
             Err(nonempty::Error::RemoveLastElement) => {
-                Ok((None, combat.current_creature().clone()))
+                Ok((None, combat.current_creature_data().clone()))
             }
             Ok(creature) => Ok((Some(combat), creature)),
         }
@@ -211,7 +211,7 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
     /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
     /// movement.
     pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat<'game>, GameError> {
-        let (pts, distance) = find_path(self.combat.combat.current_creature().pos(),
+        let (pts, distance) = find_path(self.combat.current_creature()?.pos(),
                                         self.movement_left,
                                         self.combat.game.current_map(),
                                         pt).ok_or(GameError::NoPathFound)?;
@@ -234,11 +234,11 @@ impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
                ability: &Ability,
                target: DecidedTarget)
                -> Result<ChangedCombat<'game>, GameError> {
-        self.combat.combat.current_creature().act(|cid| self.combat.combat.get_creature_data(cid),
-                                                  ability,
-                                                  target,
-                                                  self.combat.change(),
-                                                  true)
+        self.combat.current_creature()?.act(|cid| self.combat.combat.get_creature_data(cid),
+                                            ability,
+                                            target,
+                                            self.combat.change(),
+                                            true)
     }
 }
 
@@ -432,13 +432,12 @@ pub mod test {
             .get_movement()
             .unwrap()
             .move_current((5, 0, 0))
-            .unwrap()
-            .combat;
-        assert_eq!(combat.current_creature().pos(), (5, 0, 0));
+            .unwrap();
+        assert_eq!(combat.dyn().current_creature().unwrap().pos(), (5, 0, 0));
         let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
             .unwrap()
             .game;
-        assert_eq!(game.current_combat.as_ref().unwrap().current_creature().pos(),
+        assert_eq!(game.get_combat().unwrap().current_creature().unwrap().pos(),
                    (10, 0, 0));
         assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
                    Err(GameError::NoPathFound));
@@ -459,10 +458,9 @@ pub mod test {
         let combat = game.get_combat()
             .unwrap()
             .next_turn()
-            .unwrap()
-            .combat;
-        let cur = combat.current_creature();
-        assert_eq!(cur.id, cid("ranger"));
-        assert_eq!(cur.cur_health, HP(5));
+            .unwrap();
+        let cur = combat.dyn().current_creature().unwrap().clone();
+        assert_eq!(cur.id(), cid("ranger"));
+        assert_eq!(cur.creature.cur_health, HP(5));
     }
 }

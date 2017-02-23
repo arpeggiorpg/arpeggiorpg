@@ -121,7 +121,7 @@ impl<T> NonEmptyWithCursor<T> {
     /// expected.set_cursor(1);
     /// assert_eq!(result, Ok(expected));
     /// ```
-    pub fn mutate<F, R>(mut self, mut f: F) -> (Result<NonEmptyWithCursor<T>, Error>, R)
+    pub fn mutate<F, R>(mut self, f: F) -> (Result<NonEmptyWithCursor<T>, Error>, R)
         where F: FnMut(&mut Vec<T>) -> R
     {
         let (res, f_res) = self.data.mutate(f);

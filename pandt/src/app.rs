@@ -211,7 +211,7 @@ mod test {
         app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
         app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap();
         let ranger = app.current_game.get_creature(cid("ranger")).unwrap();
-        assert_eq!(ranger.pos, (0, 0, 0));
+        assert_eq!(ranger.pos(), (0, 0, 0));
         let logs = &app.snapshots[0].1;
         println!("{:?}", logs);
         assert_eq!(logs.len(), 2);

@@ -31,6 +31,23 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
             class: game.get_class(&creature.class)?,
         })
     }
+
+    pub fn id(&self) -> CreatureID {
+        self.creature.id
+    }
+
+    pub fn pos(&self) -> Point3 {
+        self.creature.pos
+    }
+
+    pub fn can_act(&self) -> bool {
+        conditions_able(self.conditions())
+    }
+
+    pub fn can_move(&self) -> bool {
+        conditions_able(self.conditions())
+    }
+
     pub fn speed(&self) -> Distance {
         for acondition in self.conditions() {
             if acondition.condition == Condition::DoubleMaxMovement {
@@ -64,7 +81,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
                     &ConditionDuration::Duration(0) => false,
                     &ConditionDuration::Duration(_) => true,
                 } {
-                    changes = changes.merge(changes.creature.apply_effect(eff)?);
+                    changes = changes.merge(changes.creature(self.game)?.apply_effect(eff)?);
                 }
             }
         }
@@ -87,6 +104,117 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
             }
         }
         Ok(changes)
+    }
+
+    fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
+        let delta = self.creature.max_energy - self.creature.cur_energy;
+        if delta > Energy(0) {
+            vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))]
+        } else {
+            vec![]
+        }
+    }
+
+    fn damage(&self, expr: Dice) -> Vec<CreatureLog> {
+        let (dice, amt) = expr.roll();
+        let amt = HP(amt as u8);
+        if amt >= self.creature.cur_health {
+            vec![CreatureLog::Damage(self.creature.cur_health, dice),
+                 Self::apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
+        } else {
+            vec![CreatureLog::Damage(amt, dice)]
+        }
+    }
+
+    fn heal(&self, expr: Dice) -> Vec<CreatureLog> {
+        let (dice, amt) = expr.roll();
+        let amt = HP(amt as u8);
+        let missing = self.creature.max_health - self.creature.cur_health;
+        vec![CreatureLog::Heal(cmp::min(missing, amt), dice)]
+    }
+
+    fn eff2log(&self, effect: &Effect) -> Vec<CreatureLog> {
+        match *effect {
+            Effect::Damage(expr) => self.damage(expr),
+            Effect::Heal(expr) => self.heal(expr),
+            Effect::GenerateEnergy(amt) => self.generate_energy(amt),
+            Effect::MultiEffect(ref effects) => {
+                effects.iter().flat_map(|x| self.eff2log(x)).collect()
+            }
+            Effect::ApplyCondition(ref duration, ref condition) => {
+                vec![Self::apply_condition_log(duration.clone(), condition.clone())]
+            }
+        }
+    }
+
+    pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
+        let ops = Self::eff2log(self, effect);
+        let mut changes = self.creature.change();
+        for op in &ops {
+            changes = changes.apply(&op)?;
+        }
+        Ok(changes)
+    }
+
+    fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
+        static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+        CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
+                                    duration.clone(),
+                                    condition.clone())
+    }
+
+    pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self,
+                                                         get_creature: GetCreature,
+                                                         ability: &Ability,
+                                                         target: DecidedTarget,
+                                                         mut change: Change,
+                                                         in_combat: bool)
+                                                         -> Result<Change, GameError>
+        where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
+    {
+        let targets = self.resolve_targets(get_creature, ability.target, target)?;
+        for creature_id in targets.iter() {
+            for effect in &ability.effects {
+                change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
+            }
+        }
+        if in_combat {
+            change = change.apply_creature(self.creature.id, |c| c.creature.reduce_energy(ability.cost))?;
+        }
+        Ok(change)
+    }
+
+    pub fn resolve_targets<'a, F>(&'a self,
+                                  get_creature: F,
+                                  target: TargetSpec,
+                                  decision: DecidedTarget)
+                                  -> Result<Vec<CreatureID>, GameError>
+        where F: Fn(CreatureID) -> Result<&'a Creature, GameError>
+    {
+        match (target, decision) {
+            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
+                let target_creature = get_creature(cid)?;
+                if creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::CreatureOutOfRange(cid))
+                }
+            }
+            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+                let target_creature = get_creature(cid)?;
+                if creature_within_distance(self.creature, target_creature, max) {
+                    Ok(vec![cid])
+                } else {
+                    Err(GameError::CreatureOutOfRange(cid))
+                }
+            }
+            (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![self.creature.id]),
+            (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
+        }
+    }
+
+    pub fn has_ability(&self, ability: &AbilityID) -> Result<bool, GameError> {
+        Ok(self.class.abilities.contains(ability))
     }
 }
 
@@ -128,8 +256,6 @@ impl Creature {
             }
             CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
                 new.conditions.insert(*id, con.apply(*dur));
-                new.can_move = conditions_able(new.conditions.values().collect());
-                new.can_act = new.can_move;
             }
             CreatureLog::DecrementConditionRemaining(ref id) => {
                 let mut cond =
@@ -145,8 +271,6 @@ impl Creature {
             }
             CreatureLog::RemoveCondition(ref id) => {
                 new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
-                new.can_move = conditions_able(new.conditions.values().collect());
-                new.can_act = new.can_move;
             }
             CreatureLog::SetPos(pt) => {
                 new.pos = pt;
@@ -155,120 +279,9 @@ impl Creature {
         Ok(new)
     }
 
-    fn apply_condition_log(&self,
-                           duration: ConditionDuration,
-                           condition: Condition)
-                           -> CreatureLog {
-        static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
-        CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
-                                    duration.clone(),
-                                    condition.clone())
-    }
-
-    fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
-        let delta = self.max_energy - self.cur_energy;
-        if delta > Energy(0) {
-            vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))]
-        } else {
-            vec![]
-        }
-    }
-
-    fn damage(&self, expr: Dice) -> Vec<CreatureLog> {
-        let (dice, amt) = expr.roll();
-        let amt = HP(amt as u8);
-        if amt >= self.cur_health {
-            vec![CreatureLog::Damage(self.cur_health, dice),
-                 self.apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
-        } else {
-            vec![CreatureLog::Damage(amt, dice)]
-        }
-    }
-
-    fn heal(&self, expr: Dice) -> Vec<CreatureLog> {
-        let (dice, amt) = expr.roll();
-        let amt = HP(amt as u8);
-        let missing = self.max_health - self.cur_health;
-        vec![CreatureLog::Heal(cmp::min(missing, amt), dice)]
-    }
-
-    pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
-        fn eff2log(creature: &Creature, effect: &Effect) -> Vec<CreatureLog> {
-            match *effect {
-                Effect::Damage(expr) => creature.damage(expr),
-                Effect::Heal(expr) => creature.heal(expr),
-                Effect::GenerateEnergy(amt) => creature.generate_energy(amt),
-                Effect::MultiEffect(ref effects) => {
-                    effects.iter().flat_map(|x| eff2log(creature, x)).collect()
-                }
-                Effect::ApplyCondition(ref duration, ref condition) => {
-                    vec![creature.apply_condition_log(duration.clone(), condition.clone())]
-                }
-            }
-        }
-        let ops = eff2log(self, effect);
-        let mut changes = self.change();
-        for op in &ops {
-            changes = changes.apply(&op)?;
-        }
-        Ok(changes)
-    }
-
     pub fn set_pos(&self, pt: Point3) -> Result<ChangedCreature, GameError> {
         self.change_with(CreatureLog::SetPos(pt))
     }
-
-    pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self,
-                                                         get_creature: GetCreature,
-                                                         ability: &Ability,
-                                                         target: DecidedTarget,
-                                                         mut change: Change,
-                                                         in_combat: bool)
-                                                         -> Result<Change, GameError>
-        where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
-    {
-        let targets = self.resolve_targets(get_creature, ability.target, target)?;
-        for creature_id in targets.iter() {
-            for effect in &ability.effects {
-                change =
-                    change.apply_creature(*creature_id, |c| c.creature.apply_effect(effect))?;
-            }
-        }
-        if in_combat {
-            change = change.apply_creature(self.id, |c| c.creature.reduce_energy(ability.cost))?;
-        }
-        Ok(change)
-    }
-
-    pub fn resolve_targets<'a, F>(&'a self,
-                                  get_creature: F,
-                                  target: TargetSpec,
-                                  decision: DecidedTarget)
-                                  -> Result<Vec<CreatureID>, GameError>
-        where F: Fn(CreatureID) -> Result<&'a Creature, GameError>
-    {
-        match (target, decision) {
-            (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
-                let target_creature = get_creature(cid)?;
-                if creature_within_distance(self, target_creature, MELEE_RANGE) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::CreatureOutOfRange(cid))
-                }
-            }
-            (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
-                let target_creature = get_creature(cid)?;
-                if creature_within_distance(self, target_creature, max) {
-                    Ok(vec![cid])
-                } else {
-                    Err(GameError::CreatureOutOfRange(cid))
-                }
-            }
-            (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![self.id]),
-            (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
-        }
-    }
-
 
     pub fn class(&self) -> String {
         self.class.clone()
@@ -313,6 +326,12 @@ pub struct ChangedCreature {
 }
 
 impl ChangedCreature {
+    pub fn creature<'creature, 'game>(&'creature self,
+                                      game: &'game Game)
+                                      -> Result<DynamicCreature<'creature, 'game>, GameError> {
+        DynamicCreature::new(&self.creature, game)
+    }
+
     pub fn apply(&self, log: &CreatureLog) -> Result<ChangedCreature, GameError> {
         let mut new = self.clone();
         new.creature = new.creature.apply_log(&log)?;
@@ -346,8 +365,6 @@ impl CreatureBuilder {
             cur_health: self.cur_health.unwrap_or(HP(10)),
             pos: self.pos.unwrap_or((0, 0, 0)),
             conditions: HashMap::new(),
-            can_act: true,
-            can_move: true,
         };
         Ok(creature)
     }
@@ -385,9 +402,9 @@ impl CreatureBuilder {
     }
 }
 
-fn conditions_able(conditions: Vec<&AppliedCondition>) -> bool {
+fn conditions_able(conditions: Vec<AppliedCondition>) -> bool {
     !conditions.iter()
-        .any(|&&AppliedCondition { ref condition, .. }| {
+        .any(|&AppliedCondition { ref condition, .. }| {
             condition == &Condition::Incapacitated || condition == &Condition::Dead
         })
 }

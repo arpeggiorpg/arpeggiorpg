@@ -135,7 +135,7 @@ impl Game {
             }
             CreatureLog(cid, ref cl) => {
                 let mut newgame = self.clone();
-                let creature = self.get_creature(cid)?.apply_log(cl)?;
+                let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
                 *newgame.get_creature_mut(cid)? = creature;
                 return Ok(newgame);
             }
@@ -176,10 +176,11 @@ impl Game {
         self.change().apply_combat(move |c| {
             let ability = self.get_ability(&abid)?;
             let able = c.get_able()?;
-            if self.creature_has_ability(&c.combat.current_creature(), &abid)? {
+            let current = c.current_creature()?;
+            if current.has_ability(&abid)? {
                 able.act(&ability, target)
             } else {
-                Err(GameError::CreatureLacksAbility(c.combat.current_creature().id(), abid))
+                Err(GameError::CreatureLacksAbility(current.id(), abid))
             }
         })
     }
@@ -189,44 +190,34 @@ impl Game {
                abid: AbilityID,
                target: DecidedTarget)
                -> Result<ChangedGame, GameError> {
-        self.get_creature(cid)?.act(|cid| self.get_creature(cid),
+        self.get_creature(cid)?.act(|cid| self.get_creature(cid).map(|c| c.creature),
                                     &self.get_ability(&abid)?,
                                     target,
                                     self.change(),
                                     false)
     }
 
-    fn creature_has_ability(&self,
-                            creature: &Creature,
-                            ability: &AbilityID)
-                            -> Result<bool, GameError> {
-        let class = creature.class();
-        let abilities =
-            &self.classes.get(&class).ok_or(GameError::ClassNotFound(class.clone()))?.abilities;
-        Ok(abilities.contains(ability))
-    }
-
-    pub fn get_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
-        self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid))
+    pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
+        self.dyn_creature(self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid))?)
     }
     pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
         self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid))
     }
 
     /// Get a reference to the named Creature, whether or not it's in Combat.
-    pub fn find_creature(&self, cid: CreatureID) -> Result<&Creature, GameError> {
+    pub fn find_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
         self.get_creature(cid).or_else(|_| {
-            self.current_combat
-                .as_ref()
-                .ok_or(GameError::CreatureNotFound(cid.clone()))
-                .and_then(|combat| combat.get_creature_data(cid))
+            self.get_combat()
+                .map_err(|_| GameError::CreatureNotFound(cid.clone()))
+                .and_then(|combat| combat.get_creature(cid))
         })
     }
 
     // DELETE THIS RADIX FIXME TODO XXX
-    pub fn dyn_creature<'creature, 'game: 'creature>(&'game self,
-                                                     creature: &'creature Creature)
-                                                     -> Result<DynamicCreature<'creature, 'game>, GameError> {
+    pub fn dyn_creature<'creature, 'game: 'creature>
+        (&'game self,
+         creature: &'creature Creature)
+         -> Result<DynamicCreature<'creature, 'game>, GameError> {
         DynamicCreature::new(creature, self)
     }
 
@@ -246,10 +237,8 @@ impl Game {
 
     pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
         let creature = self.find_creature(creature_id)?;
-        if creature.can_move {
-            Ok(get_all_accessible(creature.pos(),
-                                  self.current_map(),
-                                  self.dyn_creature(creature)?.speed()))
+        if creature.can_move() {
+            Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
         } else {
             Err(GameError::CannotAct(creature.id()))
         }
@@ -273,23 +262,38 @@ impl Game {
                           creature_id: CreatureID,
                           distance: Distance)
                           -> Result<Vec<PotentialTarget>, GameError> {
-        let (creature, creatures) = match self.current_combat.as_ref() {
-            Some(combat) => {
-                // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
-                match combat.get_creature_data(creature_id) {
-                    Ok(creature) => (creature, combat.get_creatures()),
-                    Err(_) => (self.get_creature(creature_id)?, self.creatures.values().collect()),
+        fn check_in_range(me: DynamicCreature,
+                          others: Vec<&DynamicCreature>,
+                          distance: Distance)
+                          -> Vec<PotentialTarget> {
+            let mut results = vec![];
+            for ptarget in others {
+                if creature_within_distance(me.creature, ptarget.creature, distance) {
+                    results.push(PotentialTarget::CreatureID(ptarget.id()));
                 }
             }
-            None => (self.get_creature(creature_id)?, self.creatures.values().collect()),
-        };
-        let mut results = vec![];
-        for ptarget in creatures {
-            if creature_within_distance(creature, ptarget, distance) {
-                results.push(PotentialTarget::CreatureID(ptarget.id()));
-            }
+            results
         }
-        Ok(results)
+        Ok(match self.get_combat() {
+            Ok(combat) => {
+                // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
+                match combat.get_creature(creature_id) {
+                    Ok(creature) => {
+                        check_in_range(creature, combat.creatures()?.iter().collect(), distance)
+                    }
+                    Err(_) => {
+                        check_in_range(self.get_creature(creature_id)?,
+                                       self.creatures()?.values().collect(),
+                                       distance)
+                    }
+                }
+            }
+            Err(_) => {
+                check_in_range(self.get_creature(creature_id)?,
+                               self.creatures()?.values().collect(),
+                               distance)
+            }
+        })
     }
 
     pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
@@ -351,7 +355,7 @@ impl ChangedGame {
         where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
     {
         let creature = self.game.get_creature(cid)?;
-        let change = f(self.game.dyn_creature(creature)?)?;
+        let change = f(creature)?;
         let mut new = self.clone();
         let (creature, logs) = change.done();
         *new.game.get_creature_mut(cid)? = creature;
@@ -509,7 +513,7 @@ pub mod test {
                        .cur_health(),
                    HP(7));
         let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
-        assert_eq!(game.get_creature(cid("ranger")).unwrap().cur_health(),
+        assert_eq!(game.get_creature(cid("ranger")).unwrap().creature.cur_health(),
                    HP(7));
     }
 
