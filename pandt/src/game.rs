@@ -143,13 +143,11 @@ impl Game {
         newgame.current_combat = Some(Combat::new(creatures)?);
       }
       StopCombat => {
-        // we shouldn't need to collect into a Vec here.
-        let creatures: Vec<Creature> = newgame.current_combat
+        let creatures = newgame.current_combat
           .take()
           .ok_or(GameError::NotInCombat)?
           .creatures
-          .into_iter()
-          .collect();
+          .into_iter();
         for creature in creatures {
           newgame.creatures.insert(creature.id(), creature.clone());
         }
