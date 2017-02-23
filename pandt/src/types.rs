@@ -181,9 +181,12 @@ pub enum GameCommand {
     // StowInInventory(ThingID),
     /// End the current creature's turn.
     Done,
+    /// Modify a creature's order in the combat list.
     ChangeCreatureInitiative(CreatureID, usize),
-    /// Oh my God, Rollback. Indexes into snapshots and logs.
+    /// Roll back to a specific snapshot + log index
     Rollback(usize, usize),
+    /// Set a note on a creature.
+    SetCreatureNote(CreatureID, String),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -199,6 +202,7 @@ pub enum CreatureLog {
     DecrementConditionRemaining(ConditionID),
     RemoveCondition(ConditionID),
     SetPos(Point3),
+    SetNote(String),
 }
 
 /// Representation of state changes in a Combat. See `CreatureLog`.
@@ -233,7 +237,7 @@ pub enum GameLog {
     RemoveCreature(CreatureID),
     AddCreatureToCombat(CreatureID),
     RemoveCreatureFromCombat(CreatureID), // PathCreature(CreatureID, Vec<Point3>),
-    /// Oh my God, Rollback. Indexes into snapshots and logs.
+    /// Indexes into snapshots and logs.
     Rollback(usize, usize),
 }
 
@@ -413,7 +417,7 @@ pub struct CreatureBuilder {
     pub cur_health: Option<HP>,
     pub conditions: Vec<AppliedCondition>,
     pub speed: Option<Distance>,
-    pub notes: String,
+    pub note: String,
 }
 
 /// A Creature.
@@ -435,7 +439,7 @@ pub struct Creature {
     pub cur_health: HP,
     pub pos: Point3,
     pub conditions: HashMap<ConditionID, AppliedCondition>,
-    pub notes: String,
+    pub note: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]

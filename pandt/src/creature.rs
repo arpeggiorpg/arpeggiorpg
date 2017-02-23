@@ -219,7 +219,7 @@ impl Creature {
       pos: None,
       conditions: vec![],
       speed: None,
-      notes: "".to_string(),
+      note: "".to_string(),
     }
   }
 
@@ -257,15 +257,18 @@ impl Creature {
       CreatureLog::RemoveCondition(ref id) => {
         new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
       }
-      CreatureLog::SetPos(pt) => {
-        new.pos = pt;
-      }
+      CreatureLog::SetPos(pt) => new.pos = pt,
+      CreatureLog::SetNote(ref note) => new.note = note.clone(),
     }
     Ok(new)
   }
 
   pub fn set_pos(&self, pt: Point3) -> Result<ChangedCreature, GameError> {
     self.change_with(CreatureLog::SetPos(pt))
+  }
+
+  pub fn set_note(&self, note: String) -> Result<ChangedCreature, GameError> {
+    self.change_with(CreatureLog::SetNote(note))
   }
 
   pub fn class(&self) -> String {
@@ -349,7 +352,7 @@ impl CreatureBuilder {
       cur_health: self.cur_health.unwrap_or(HP(10)),
       pos: self.pos.unwrap_or((0, 0, 0)),
       conditions: HashMap::new(),
-      notes: "".to_string(),
+      note: "".to_string(),
     };
     Ok(creature)
   }

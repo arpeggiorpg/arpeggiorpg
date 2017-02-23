@@ -56,6 +56,9 @@ impl Game {
       (SetCreaturePos(cid, pt), _) => {
         self.change().apply_creature_anywhere(cid, &|c| c.creature.set_pos(pt))
       }
+      (SetCreatureNote(cid, note), _) => {
+        self.change().apply_creature_anywhere(cid, &|c| c.creature.set_note(note.clone()))
+      }
       (PathCurrentCombatCreature(pt), Some(_)) => {
         self.change().apply_combat(|c| c.get_movement()?.move_current(pt))
       }
