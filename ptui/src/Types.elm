@@ -112,6 +112,7 @@ type CreatureLog
   | CLRemoveCondition Int
   | CLSetPos Point3
   | CLDecrementConditionRemaining Int
+  | CLSetNote String
 
 creatureLogDecoder = sumDecoder "CreatureLog"
   []
@@ -123,6 +124,7 @@ creatureLogDecoder = sumDecoder "CreatureLog"
   , ("RemoveCondition", JD.map CLRemoveCondition JD.int)
   , ("SetPos", JD.map CLSetPos point3Decoder)
   , ("DecrementConditionRemaining", JD.map CLDecrementConditionRemaining JD.int)
+  , ("SetNote", JD.map CLSetNote JD.string)
   ]
 
 type alias Game =
@@ -195,6 +197,7 @@ type alias Creature =
   , conditions: Dict Int AppliedCondition
   , can_act: Bool
   , can_move: Bool
+  , note: String
 }
 
 creatureDecoder =
@@ -212,6 +215,7 @@ creatureDecoder =
     |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
     |> P.required "can_act" JD.bool
     |> P.required "can_move" JD.bool
+    |> P.required "note" JD.string
 
 
 stringKeyDictToIntKeyDict : Dict String a -> JD.Decoder (Dict Int a)
@@ -365,6 +369,7 @@ type GameCommand
   | Done
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
+  | SetCreatureNote CreatureID String
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -387,6 +392,7 @@ gameCommandEncoder gc =
     EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
     Rollback snapIdx logIdx -> JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos -> JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
+    SetCreatureNote cid note -> JE.object [("SetCreatureNote", JE.list [JE.string cid, JE.string note])]
 
 
 type RustResult

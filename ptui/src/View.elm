@@ -31,12 +31,12 @@ gmView model = vbox
   , hbox [text "Last error:", pre [] [text model.error]]
   ]
 
-modalSelectingCreatures : T.App -> M.GotCreatures -> String -> Html M.Msg
-modalSelectingCreatures app callback commandName =
+modalSelectingCreatures : M.Model -> T.App -> M.GotCreatures -> String -> Html M.Msg
+modalSelectingCreatures model app callback commandName =
   let checkbox creature =
         input [ type_ "checkbox", onClick (M.ToggleSelectedCreature creature.id)
               , s [S.height (S.px 100), S.width (S.px 100)]] []
-      selectableCreature creature = hbox [checkbox creature, creatureCard creature]
+      selectableCreature creature = hbox [checkbox creature, creatureCard model creature]
   in vbox <|
     [ h3 [] [text <| "Select Creatures to " ++ commandName]
     ] ++ (List.map selectableCreature (Dict.values app.current_game.creatures))
@@ -47,7 +47,7 @@ modalSelectingCreatures app callback commandName =
 gmViewGame : M.Model -> T.App -> Html M.Msg
 gmViewGame model app =
   case model.selectingCreatures of
-      Just (cb, commandName) -> modalSelectingCreatures app cb commandName
+      Just (cb, commandName) -> modalSelectingCreatures model app cb commandName
       Nothing -> gmViewGame_ model app
 
 gmViewGame_ : M.Model -> T.App -> Html M.Msg
@@ -185,7 +185,7 @@ playerViewGame model app creatures =
                                 then [targetSelector model game M.CombatAct abid]
                                 else []
                           Nothing -> []
-            initiativeList = combatantList game combat
+            initiativeList = combatantList model game combat
         in vbox <| [bar] ++ selector ++ [initiativeList]
       Nothing -> text "No Combat"
   ]
@@ -197,7 +197,7 @@ playerGrid model game myCreatures =
   let bar creature =
         if T.isCreatureInCombat game creature.id
         then Nothing
-        else Just <| hbox <| [creatureCard creature, moveOOCButton creature] ++ (oocActionBar game creature)
+        else Just <| hbox <| [creatureCard model creature, moveOOCButton creature] ++ (oocActionBar game creature)
       bars = List.filterMap bar myCreatures
       targetSel =
         case model.selectedAbility of
@@ -216,7 +216,7 @@ mapSelector game = vbox <|
 
 inactiveList : M.Model -> T.Game -> Html M.Msg
 inactiveList model game = div []
-  [ div [] (List.map (inactiveEntry game model.selectedCreatures) (Dict.values game.creatures))
+  [ div [] (List.map (inactiveEntry model game model.selectedCreatures) (Dict.values game.creatures))
   , createCreatureForm model game
   ]
 
@@ -239,10 +239,10 @@ createCreatureButton model =
       in button [ onClick (M.CreateCreature cc) ] [text "Create Creature!"]
     _ -> button [disabled True] [text "Create Creature!"]
 
-inactiveEntry : T.Game -> Set.Set String -> T.Creature -> Html M.Msg
-inactiveEntry game pendingCreatures creature = vbox <|
+inactiveEntry : M.Model -> T.Game -> Set.Set String -> T.Creature -> Html M.Msg
+inactiveEntry model game pendingCreatures creature = vbox <|
   [hbox <|
-    [ creatureCard creature
+    [ creatureCard model creature
     ] ++ case game.current_combat of
         Just _ -> [engageButton creature]
         Nothing -> []
@@ -299,6 +299,7 @@ historyCreatureLog cl = case cl of
   T.CLRemoveCondition conid -> text <| "Lost condition: " ++ toString conid
   T.CLSetPos pos -> text <| "Moved  to " ++ toString pos
   T.CLDecrementConditionRemaining conID -> text <| "Tick condition: " ++ toString conID
+  T.CLSetNote note -> hbox [text "Set note to", text note]
 
 renderDice : List Int -> Html M.Msg
 renderDice dice = text <| String.join ", " (List.map toString dice)
@@ -307,7 +308,7 @@ combatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatArea model game combat =
   let bar = actionBar game combat (T.combatCreature combat)
       disengageButtons = hbox (List.map disengageButton combat.creatures.data)
-      combatView = vbox [ bar, combatantList game combat, stopCombatButton, disengageButtons]
+      combatView = vbox [ bar, combatantList model game combat, stopCombatButton, disengageButtons]
   in case model.selectedAbility of
     Just (cid, abid) ->
       if T.isCreatureInCombat game cid
@@ -341,16 +342,16 @@ startCombatButton =
   let gotCreatures cids = U.sendCommand (T.StartCombat cids)
   in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
 
-combatantList : T.Game -> T.Combat -> Html M.Msg
-combatantList game combat =
-  vbox (List.map (combatantEntry game combat) (List.indexedMap (,) combat.creatures.data))
+combatantList : M.Model -> T.Game -> T.Combat -> Html M.Msg
+combatantList model game combat =
+  vbox (List.map (combatantEntry model game combat) (List.indexedMap (,) combat.creatures.data))
 
 engageButton : T.Creature -> Html M.Msg
 engageButton creature =
   button [onClick (M.AddToCombat creature.id)] [text "Engage"]
 
-combatantEntry : T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
-combatantEntry game combat (idx, creature) = hbox <|
+combatantEntry : M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
+combatantEntry model game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
                then [ datext [s [S.width (S.px 25)]] "▶️️" ]
                else []
@@ -361,7 +362,7 @@ combatantEntry game combat (idx, creature) = hbox <|
                                   , disabled (idx == (List.length combat.creatures.data) - 1)] [text "⬇️️"]
                          ]
                 ]
-  in gutter ++ [ creatureCard creature ]
+  in gutter ++ [ creatureCard model creature ]
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =
@@ -382,8 +383,8 @@ actionButton creature abid =
     , disabled (not creature.can_act)]
     [text abid]
 
-creatureCard : T.Creature -> Html M.Msg
-creatureCard creature =
+creatureCard : M.Model -> T.Creature -> Html M.Msg
+creatureCard model creature =
   let cellStyles color =
         [s [ plainBorder
            , S.backgroundColor color
@@ -401,9 +402,19 @@ creatureCard creature =
     , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
            , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
            , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
-           
     , habox [style [("width", "50px")]] (List.map conditionIcon (Dict.values creature.conditions))
+    , noteBox model creature
     ]
+
+noteBox : M.Model -> T.Creature -> Html M.Msg
+noteBox model creature = 
+  let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
+      inp = input [type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
+      saveButton =
+        if creature.note /= note
+        then [button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]]
+        else []
+  in hbox <| [inp] ++ saveButton
 
 classIcon : T.Creature -> Html M.Msg
 classIcon creature =

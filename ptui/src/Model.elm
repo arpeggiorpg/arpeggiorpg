@@ -59,6 +59,7 @@ type Msg
     | Rollback Int Int
     | Tick Time.Time
     | SendCommand T.GameCommand
+    | SetCreatureNote T.CreatureID String
 
 defaultModel : Model
 defaultModel =
@@ -78,6 +79,7 @@ defaultModel =
     , potentialTargets = []
     , showOOC = False
     , showingMovement = Nothing
+    , creatureNotes = Dict.empty
   }
 
 
@@ -99,6 +101,7 @@ type alias Model =
   , potentialTargets: List T.PotentialTarget
   , showOOC: Bool
   , showingMovement: Maybe (List T.Point3, List T.Point3)
+  , creatureNotes : Dict.Dict T.CreatureID String
   }
 
 type alias MovementRequest = {

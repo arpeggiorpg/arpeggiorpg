@@ -1,5 +1,6 @@
 module Update exposing (..)
 
+import Dict
 import Http
 import Json.Decode as JD
 import Set
@@ -137,6 +138,10 @@ update msg model = case msg of
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
   ToggleShowOOC -> ({model | showOOC = not model.showOOC}, Cmd.none)
+
+  SetCreatureNote cid note ->
+    let newNotes = Dict.insert cid note model.creatureNotes
+    in ({model | creatureNotes = newNotes}, Cmd.none)
 
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand cmd)
