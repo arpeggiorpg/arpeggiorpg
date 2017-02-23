@@ -82,7 +82,7 @@ current_game:
       cost: 8
       effects:
         - ApplyCondition:
-            - Duration: 1
+            - Duration: 0
             - DoubleMaxMovement
     heal: 
       name: Heal
