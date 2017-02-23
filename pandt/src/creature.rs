@@ -219,6 +219,7 @@ impl Creature {
       pos: None,
       conditions: vec![],
       speed: None,
+      notes: "".to_string(),
     }
   }
 
@@ -348,6 +349,7 @@ impl CreatureBuilder {
       cur_health: self.cur_health.unwrap_or(HP(10)),
       pos: self.pos.unwrap_or((0, 0, 0)),
       conditions: HashMap::new(),
+      notes: "".to_string(),
     };
     Ok(creature)
   }

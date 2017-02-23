@@ -413,6 +413,7 @@ pub struct CreatureBuilder {
     pub cur_health: Option<HP>,
     pub conditions: Vec<AppliedCondition>,
     pub speed: Option<Distance>,
+    pub notes: String,
 }
 
 /// A Creature.
@@ -434,6 +435,7 @@ pub struct Creature {
     pub cur_health: HP,
     pub pos: Point3,
     pub conditions: HashMap<ConditionID, AppliedCondition>,
+    pub notes: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
