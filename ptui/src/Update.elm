@@ -33,7 +33,7 @@ update msg model = case msg of
     in ( {model | pendingCreatureClass = newClass}
        , Cmd.none)
 
-  CommandComplete (Ok (T.RustOk x)) -> Debug.log (toString x) (model, refreshApp)
+  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, refreshApp)
   CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, refreshApp)
   CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp)
 
@@ -44,16 +44,15 @@ update msg model = case msg of
           case T.mostRecentLog newApp of
             Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) -> Just ([first], (first::rest))
             _ -> Nothing
-        _ = Debug.log "showingMovement" showingMovement
     in ( { model2 | currentMap = currentMap
                   , moving = Nothing
                   , selectedAbility = Nothing
                   , showingMovement = showingMovement}
        , Cmd.none )
-  AppUpdate (Err x) -> Debug.log "Got an error from App" ( { model | error = toString x}, Cmd.none )
+  AppUpdate (Err x) -> Debug.log "[APP-ERROR]" ( { model | error = toString x}, Cmd.none )
  
   Tick time ->
-    let _ = Debug.log "TICK" ()
+    let _ = Debug.log "[TICK]" ()
         showingMovement =
           case model.showingMovement of
             Just (soFar, total) -> 
