@@ -171,10 +171,12 @@ fn main() {
                      env::args().nth(1).unwrap_or("1337".to_string()))
     .parse()
     .unwrap();
-  let mut appf = File::open("samplegame.yaml").unwrap();
-  let mut apps = String::new();
-  appf.read_to_string(&mut apps).unwrap();
-  let app: pandt::types::App = serde_yaml::from_str(&apps).unwrap();
+  let app: pandt::types::App = {
+    let mut appf = File::open("samplegame.yaml").unwrap();
+    let mut apps = String::new();
+    appf.read_to_string(&mut apps).unwrap();
+    serde_yaml::from_str(&apps).unwrap()
+  };
 
   let pt = PT { app: Arc::new(Mutex::new(app)) };
 
