@@ -1,0 +1,80 @@
+---
+players:
+current_game:
+  current_map: map1
+  maps:
+    empty-map:
+  
+  current_combat: ~
+  classes:
+    creature:
+      abilities:
+        - dash
+      conditions:
+        - RecurringEffect:
+            GenerateEnergy: 10
+  abilities:
+    dash:
+      name: Dash
+      target: Actor
+      cost: 10
+      effects:
+        - ApplyCondition:
+            - Duration: 0
+            - DoubleMaxMovement
+  creatures: 
+    elron: 
+      id: elron
+      name: Elron
+      note:
+      speed: 1086
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      class: creature
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 1
+        - 0
+        - 0
+      conditions:
+      can_act: true
+      can_move: true
+    kurok-to:
+      id: kurok-to
+      name: Kurok To
+      note:
+      speed: 1086
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      class: creature
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 0
+        - 1
+        - 0
+      conditions:
+      can_act: true
+      can_move: true
+    sil:
+      id: sil
+      name: Silmarillion
+      note:
+      speed: 1086
+      max_energy: 10
+      cur_energy: 10
+      abilities: []
+      class: creature
+      max_health: 10
+      cur_health: 10
+      pos: 
+        - 1
+        - 1
+        - 0
+      conditions:
+      can_act: true
+      can_move: true
+snapshots:

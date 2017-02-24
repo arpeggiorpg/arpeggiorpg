@@ -180,7 +180,7 @@ fn main() {
     .parse()
     .unwrap();
   let app: pandt::types::App = {
-    let mut appf = File::open("samplegame.yaml").unwrap();
+    let mut appf = File::open(env::args().nth(2).unwrap_or("samplegame.yaml".to_string())).unwrap();
     let mut apps = String::new();
     appf.read_to_string(&mut apps).unwrap();
     serde_yaml::from_str(&apps).unwrap()
