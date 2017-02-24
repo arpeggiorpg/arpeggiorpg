@@ -27,7 +27,7 @@ current_game:
       id: elron
       name: Elron
       note:
-      speed: 1086
+      speed: 699
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -45,7 +45,7 @@ current_game:
       id: kurok-to
       name: Kurok To
       note:
-      speed: 1086
+      speed: 699
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -63,7 +63,7 @@ current_game:
       id: sil
       name: Silmarillion
       note:
-      speed: 1086
+      speed: 699
       max_energy: 10
       cur_energy: 10
       abilities: []

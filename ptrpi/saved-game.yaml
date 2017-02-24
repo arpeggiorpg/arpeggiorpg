@@ -1,0 +1,1118 @@
+---
+current_game: 
+  current_combat: 
+    movement_used: 1360
+    creatures: 
+      cursor: 0
+      data: 
+        - 
+          id: elron
+          name: Elron
+          note: "~"
+          speed: 1398
+          max_energy: 10
+          cur_energy: 0
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 1
+            - 2
+            - 0
+          conditions: 
+            0: 
+              remaining: 
+                Duration: 0
+              condition: DoubleMaxMovement
+          all_conditions: 
+            - 
+              remaining: 
+                Duration: 0
+              condition: DoubleMaxMovement
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+        - 
+          id: "kurok-to"
+          name: Kurok To
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - -3
+            - -2
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+        - 
+          id: sil
+          name: Silmarillion
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - -2
+            - -3
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+  abilities: 
+    dash: 
+      name: Dash
+      target: Actor
+      cost: 10
+      effects: 
+        - 
+          ApplyCondition: 
+            - 
+              Duration: 0
+            - DoubleMaxMovement
+  creatures: {}
+  maps: 
+    map1: 
+      - 
+        - 0
+        - 1
+        - 0
+      - 
+        - 1
+        - 1
+        - 0
+      - 
+        - 1
+        - 0
+        - 0
+      - 
+        - 3
+        - -3
+        - 0
+      - 
+        - 4
+        - -3
+        - 0
+      - 
+        - 4
+        - -1
+        - 0
+      - 
+        - 4
+        - -2
+        - 0
+      - 
+        - 4
+        - 0
+        - 0
+      - 
+        - 4
+        - 1
+        - 0
+      - 
+        - 4
+        - 2
+        - 0
+      - 
+        - 4
+        - 3
+        - 0
+      - 
+        - 4
+        - 4
+        - 0
+      - 
+        - 3
+        - 4
+        - 0
+      - 
+        - 2
+        - 4
+        - 0
+      - 
+        - 1
+        - 4
+        - 0
+      - 
+        - 0
+        - 4
+        - 0
+      - 
+        - -1
+        - 4
+        - 0
+      - 
+        - -2
+        - 4
+        - 0
+      - 
+        - -3
+        - 4
+        - 0
+      - 
+        - -3
+        - 3
+        - 0
+      - 
+        - -3
+        - 2
+        - 0
+      - 
+        - -3
+        - 1
+        - 0
+      - 
+        - -3
+        - 0
+        - 0
+      - 
+        - -3
+        - -1
+        - 0
+      - 
+        - -3
+        - -2
+        - 0
+      - 
+        - -3
+        - -3
+        - 0
+      - 
+        - -2
+        - -3
+        - 0
+      - 
+        - -1
+        - -3
+        - 0
+      - 
+        - 0
+        - -3
+        - 0
+      - 
+        - 1
+        - -3
+        - 0
+      - 
+        - 2
+        - -3
+        - 0
+      - 
+        - 2
+        - -2
+        - 0
+      - 
+        - 3
+        - -2
+        - 0
+      - 
+        - 3
+        - 0
+        - 0
+      - 
+        - 3
+        - -1
+        - 0
+      - 
+        - 3
+        - 1
+        - 0
+      - 
+        - 3
+        - 2
+        - 0
+      - 
+        - 3
+        - 3
+        - 0
+      - 
+        - 2
+        - 3
+        - 0
+      - 
+        - 0
+        - 3
+        - 0
+      - 
+        - 1
+        - 3
+        - 0
+      - 
+        - -1
+        - 3
+        - 0
+      - 
+        - -2
+        - 3
+        - 0
+      - 
+        - -2
+        - 2
+        - 0
+      - 
+        - -2
+        - 1
+        - 0
+      - 
+        - -2
+        - 0
+        - 0
+      - 
+        - -2
+        - -1
+        - 0
+      - 
+        - -2
+        - -2
+        - 0
+      - 
+        - -1
+        - -2
+        - 0
+      - 
+        - 0
+        - -2
+        - 0
+      - 
+        - 1
+        - -2
+        - 0
+      - 
+        - 1
+        - -1
+        - 0
+      - 
+        - 2
+        - -1
+        - 0
+      - 
+        - 2
+        - 0
+        - 0
+      - 
+        - 2
+        - 1
+        - 0
+      - 
+        - 2
+        - 2
+        - 0
+      - 
+        - 1
+        - 2
+        - 0
+      - 
+        - 0
+        - 2
+        - 0
+      - 
+        - -1
+        - 2
+        - 0
+      - 
+        - -1
+        - 1
+        - 0
+      - 
+        - -1
+        - 0
+        - 0
+      - 
+        - -1
+        - -1
+        - 0
+      - 
+        - 0
+        - -1
+        - 0
+      - 
+        - 0
+        - 0
+        - 0
+    "empty-map": []
+  current_map: map1
+  classes: 
+    creature: 
+      abilities: 
+        - dash
+      conditions: 
+        - 
+          RecurringEffect: 
+            GenerateEnergy: 10
+snapshots: 
+  - 
+    - 
+      current_combat: ~
+      abilities: 
+        dash: 
+          name: Dash
+          target: Actor
+          cost: 10
+          effects: 
+            - 
+              ApplyCondition: 
+                - 
+                  Duration: 0
+                - DoubleMaxMovement
+      creatures: 
+        sil: 
+          id: sil
+          name: Silmarillion
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 1
+            - 1
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+        elron: 
+          id: elron
+          name: Elron
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 1
+            - 0
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+        "kurok-to": 
+          id: "kurok-to"
+          name: Kurok To
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: []
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 1
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+      maps: 
+        "empty-map": []
+      current_map: map1
+      classes: 
+        creature: 
+          abilities: 
+            - dash
+          conditions: 
+            - 
+              RecurringEffect: 
+                GenerateEnergy: 10
+    - 
+      - 
+        StartCombat: 
+          - elron
+          - "kurok-to"
+          - sil
+      - 
+        EditMap: 
+          - map1
+          - 
+            - 
+              - 3
+              - -3
+              - 0
+            - 
+              - 4
+              - -3
+              - 0
+            - 
+              - 4
+              - -1
+              - 0
+            - 
+              - 4
+              - -2
+              - 0
+            - 
+              - 4
+              - 0
+              - 0
+            - 
+              - 4
+              - 1
+              - 0
+            - 
+              - 4
+              - 2
+              - 0
+            - 
+              - 4
+              - 3
+              - 0
+            - 
+              - 4
+              - 4
+              - 0
+            - 
+              - 3
+              - 4
+              - 0
+            - 
+              - 2
+              - 4
+              - 0
+            - 
+              - 1
+              - 4
+              - 0
+            - 
+              - 0
+              - 4
+              - 0
+            - 
+              - -1
+              - 4
+              - 0
+            - 
+              - -2
+              - 4
+              - 0
+            - 
+              - -3
+              - 4
+              - 0
+            - 
+              - -3
+              - 3
+              - 0
+            - 
+              - -3
+              - 2
+              - 0
+            - 
+              - -3
+              - 1
+              - 0
+            - 
+              - -3
+              - 0
+              - 0
+            - 
+              - -3
+              - -1
+              - 0
+            - 
+              - -3
+              - -2
+              - 0
+            - 
+              - -3
+              - -3
+              - 0
+            - 
+              - -2
+              - -3
+              - 0
+            - 
+              - -1
+              - -3
+              - 0
+            - 
+              - 0
+              - -3
+              - 0
+            - 
+              - 1
+              - -3
+              - 0
+            - 
+              - 2
+              - -3
+              - 0
+            - 
+              - 2
+              - -2
+              - 0
+            - 
+              - 3
+              - -2
+              - 0
+            - 
+              - 3
+              - 0
+              - 0
+            - 
+              - 3
+              - -1
+              - 0
+            - 
+              - 3
+              - 1
+              - 0
+            - 
+              - 3
+              - 2
+              - 0
+            - 
+              - 3
+              - 3
+              - 0
+            - 
+              - 2
+              - 3
+              - 0
+            - 
+              - 0
+              - 3
+              - 0
+            - 
+              - 1
+              - 3
+              - 0
+            - 
+              - -1
+              - 3
+              - 0
+            - 
+              - -2
+              - 3
+              - 0
+            - 
+              - -2
+              - 2
+              - 0
+            - 
+              - -2
+              - 1
+              - 0
+            - 
+              - -2
+              - 0
+              - 0
+            - 
+              - -2
+              - -1
+              - 0
+            - 
+              - -2
+              - -2
+              - 0
+            - 
+              - -1
+              - -2
+              - 0
+            - 
+              - 0
+              - -2
+              - 0
+            - 
+              - 1
+              - -2
+              - 0
+            - 
+              - 1
+              - -1
+              - 0
+            - 
+              - 2
+              - -1
+              - 0
+            - 
+              - 2
+              - 0
+              - 0
+            - 
+              - 2
+              - 1
+              - 0
+            - 
+              - 2
+              - 2
+              - 0
+            - 
+              - 1
+              - 2
+              - 0
+            - 
+              - 0
+              - 2
+              - 0
+            - 
+              - -1
+              - 2
+              - 0
+            - 
+              - -1
+              - 1
+              - 0
+            - 
+              - -1
+              - 0
+              - 0
+            - 
+              - -1
+              - -1
+              - 0
+            - 
+              - 0
+              - -1
+              - 0
+            - 
+              - 0
+              - 0
+              - 0
+      - 
+        SelectMap: map1
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - elron
+            - 
+              SetPos: 
+                - -3
+                - -3
+                - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - "kurok-to"
+            - 
+              SetPos: 
+                - -3
+                - -2
+                - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - sil
+            - 
+              SetPos: 
+                - 1
+                - -3
+                - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - sil
+            - 
+              SetPos: 
+                - -2
+                - -3
+                - 0
+      - 
+        EditMap: 
+          - map1
+          - 
+            - 
+              - 0
+              - 1
+              - 0
+            - 
+              - 1
+              - 1
+              - 0
+            - 
+              - 1
+              - 0
+              - 0
+            - 
+              - 3
+              - -3
+              - 0
+            - 
+              - 4
+              - -3
+              - 0
+            - 
+              - 4
+              - -1
+              - 0
+            - 
+              - 4
+              - -2
+              - 0
+            - 
+              - 4
+              - 0
+              - 0
+            - 
+              - 4
+              - 1
+              - 0
+            - 
+              - 4
+              - 2
+              - 0
+            - 
+              - 4
+              - 3
+              - 0
+            - 
+              - 4
+              - 4
+              - 0
+            - 
+              - 3
+              - 4
+              - 0
+            - 
+              - 2
+              - 4
+              - 0
+            - 
+              - 1
+              - 4
+              - 0
+            - 
+              - 0
+              - 4
+              - 0
+            - 
+              - -1
+              - 4
+              - 0
+            - 
+              - -2
+              - 4
+              - 0
+            - 
+              - -3
+              - 4
+              - 0
+            - 
+              - -3
+              - 3
+              - 0
+            - 
+              - -3
+              - 2
+              - 0
+            - 
+              - -3
+              - 1
+              - 0
+            - 
+              - -3
+              - 0
+              - 0
+            - 
+              - -3
+              - -1
+              - 0
+            - 
+              - -3
+              - -2
+              - 0
+            - 
+              - -3
+              - -3
+              - 0
+            - 
+              - -2
+              - -3
+              - 0
+            - 
+              - -1
+              - -3
+              - 0
+            - 
+              - 0
+              - -3
+              - 0
+            - 
+              - 1
+              - -3
+              - 0
+            - 
+              - 2
+              - -3
+              - 0
+            - 
+              - 2
+              - -2
+              - 0
+            - 
+              - 3
+              - -2
+              - 0
+            - 
+              - 3
+              - 0
+              - 0
+            - 
+              - 3
+              - -1
+              - 0
+            - 
+              - 3
+              - 1
+              - 0
+            - 
+              - 3
+              - 2
+              - 0
+            - 
+              - 3
+              - 3
+              - 0
+            - 
+              - 2
+              - 3
+              - 0
+            - 
+              - 0
+              - 3
+              - 0
+            - 
+              - 1
+              - 3
+              - 0
+            - 
+              - -1
+              - 3
+              - 0
+            - 
+              - -2
+              - 3
+              - 0
+            - 
+              - -2
+              - 2
+              - 0
+            - 
+              - -2
+              - 1
+              - 0
+            - 
+              - -2
+              - 0
+              - 0
+            - 
+              - -2
+              - -1
+              - 0
+            - 
+              - -2
+              - -2
+              - 0
+            - 
+              - -1
+              - -2
+              - 0
+            - 
+              - 0
+              - -2
+              - 0
+            - 
+              - 1
+              - -2
+              - 0
+            - 
+              - 1
+              - -1
+              - 0
+            - 
+              - 2
+              - -1
+              - 0
+            - 
+              - 2
+              - 0
+              - 0
+            - 
+              - 2
+              - 1
+              - 0
+            - 
+              - 2
+              - 2
+              - 0
+            - 
+              - 1
+              - 2
+              - 0
+            - 
+              - 0
+              - 2
+              - 0
+            - 
+              - -1
+              - 2
+              - 0
+            - 
+              - -1
+              - 1
+              - 0
+            - 
+              - -1
+              - 0
+              - 0
+            - 
+              - -1
+              - -1
+              - 0
+            - 
+              - 0
+              - -1
+              - 0
+            - 
+              - 0
+              - 0
+              - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - elron
+            - 
+              SetPos: 
+                - 1
+                - 2
+                - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - elron
+            - 
+              SetPos: 
+                - -3
+                - -3
+                - 0
+      - 
+        CombatLog: 
+          PathCurrentCreature: 
+            - 
+              - -3
+              - -3
+              - 0
+            - 
+              - -3
+              - -2
+              - 0
+            - 
+              - -2
+              - -1
+              - 0
+            - 
+              - -1
+              - 0
+              - 0
+            - 
+              - 0
+              - 1
+              - 0
+            - 
+              - 1
+              - 2
+              - 0
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - elron
+            - 
+              ApplyCondition: 
+                - 0
+                - 
+                  Duration: 0
+                - DoubleMaxMovement
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - elron
+            - 
+              ReduceEnergy: 10
+      - 
+        CombatLog: 
+          PathCurrentCreature: 
+            - 
+              - 1
+              - 2
+              - 0
+            - 
+              - 2
+              - 2
+              - 0
+            - 
+              - 3
+              - 3
+              - 0
+            - 
+              - 4
+              - 4
+              - 0
+      - 
+        CombatLog: 
+          PathCurrentCreature: 
+            - 
+              - 4
+              - 4
+              - 0
+            - 
+              - 3
+              - 4
+              - 0
+            - 
+              - 2
+              - 3
+              - 0
+            - 
+              - 1
+              - 2
+              - 0
+players: {}
