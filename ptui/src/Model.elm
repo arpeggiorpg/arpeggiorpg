@@ -18,6 +18,10 @@ subscriptions model =
 
 type Msg
     = MorePlease
+    | PollApp
+    | ReceivedAppUpdate (Result Http.Error T.App)
+    | AppUpdate (Result Http.Error T.App)
+    | ShowError String
     | SetPlayerID T.PlayerID
     | RegisterPlayer
     | SelectMap T.MapName
@@ -30,8 +34,6 @@ type Msg
     | PendingCreatureClass String
     | CreateCreature T.CreatureCreation
     | CommandComplete (Result Http.Error T.RustResult)
-    | AppUpdate (Result Http.Error T.App)
-    | ShowError String
     | ToggleSelectedCreature T.CreatureID
     | StopCombat
     | AddToCombat T.CreatureID

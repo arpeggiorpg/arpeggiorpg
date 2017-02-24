@@ -30,6 +30,7 @@ struct PT {
 
 enum Route {
   GetApp,
+  PollApp,
   PostApp(hyper::Body),
   MovementOptions(String),
   // Get movement options of the current combat creature, honoring the movement budget
@@ -49,6 +50,7 @@ fn route(req: Request) -> Route {
     (&Post, &[""]) => Route::PostApp(req.body()),
     (&Options, &[""]) => Route::Options,
     (&Get, &[""]) => Route::GetApp,
+    (&Get, &["poll"]) => Route::PollApp,
     (&Get, &["", "movement_options", cid]) => Route::MovementOptions(cid.to_string()),
     (&Get, &["", "combat_movement_options"]) => Route::CombatMovementOptions,
     (&Get, &["", "target_options", cid, abid]) => {
@@ -68,6 +70,7 @@ impl Service for PT {
     let route = route(req);
     match route {
       Route::GetApp => respond(self.get_app()),
+      Route::PollApp => respond(self.poll_app()),
       Route::PostApp(body) => self.post_app(body),
       Route::MovementOptions(cid) => respond(self.get_movement_options(&cid)),
       Route::CombatMovementOptions => respond(self.get_combat_movement_options()),
@@ -86,6 +89,10 @@ impl Service for PT {
 
 impl PT {
   fn get_app(&self) -> Result<pandt::types::App, GameError> {
+    Ok(self.app.lock().unwrap().clone())
+  }
+
+  fn poll_app(&self) -> Result<pandt::types::App, GameError> {
     Ok(self.app.lock().unwrap().clone())
   }
 
@@ -128,6 +135,7 @@ impl PT {
                   let mut f = File::create("saved-game.yaml").unwrap();
                   let app_yaml = serde_yaml::to_string(&*mutable_app.lock().unwrap()).unwrap();
                   f.write_all(app_yaml.as_bytes()).unwrap();
+                  // TODO: also trigger an event that sends a notification to long-poll clients
                 }
                 json
               }

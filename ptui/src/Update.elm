@@ -4,14 +4,42 @@ import Dict
 import Http
 import Json.Decode as JD
 import Set
+import Process
+import Task
+import Time
 
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
+delay : Time.Time -> msg -> Cmd msg
+delay time msg =
+  Process.sleep time
+  |> Task.andThen (always <| Task.succeed msg)
+  |> Task.perform identity
+
+message : msg -> Cmd msg
+message msg = Task.perform (always msg) (Task.succeed ())
+
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
-  MorePlease -> ( model, refreshApp)
+  MorePlease -> ( model, message PollApp)
+
+  PollApp -> (model, Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder))
+
+  ReceivedAppUpdate (Ok newApp) ->
+    let model2 = { model | app = Just newApp}
+        currentMap = M.getMap model2
+        showingMovement =
+          case T.mostRecentLog newApp of
+            Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) -> Just ([first], (first::rest))
+            _ -> Nothing
+    in ( { model2 | currentMap = currentMap
+                  , showingMovement = showingMovement}
+       , delay Time.second PollApp )
+  ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
+    ( { model | error = toString x}
+    , delay Time.second PollApp )
 
   SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
 
