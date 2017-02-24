@@ -366,17 +366,14 @@ combatantEntry model game combat (idx, creature) = hbox <|
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =
-  let abilities =
-        case (Dict.get creature.class game.classes) of
-          Just x -> x.abilities -- TODO: get ability *name*
-          Nothing -> []
+  let abilities = List.map (\a -> a.ability_id) creature.abilities
   in (List.map (actionButton creature) abilities)
 
 actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 actionBar game combat creature =
   hbox (oocActionBar game creature ++ [moveButton combat creature] ++ [doneButton creature])
 
-actionButton : T.Creature -> String -> Html M.Msg
+actionButton : T.Creature -> T.AbilityID -> Html M.Msg
 actionButton creature abid =
   button
     [ onClick (M.SelectAbility creature.id abid)
@@ -422,7 +419,7 @@ classIcon creature =
     "cleric" -> text "💉"
     "rogue" -> text "🗡️"
     "ranger" -> text "🏹"
-    _ -> text "?"
+    _ -> text ""
 
 conditionIcon : T.AppliedCondition -> Html M.Msg
 conditionIcon ac = case ac.condition of 

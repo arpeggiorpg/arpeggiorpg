@@ -356,6 +356,7 @@ pub enum Condition {
     Incapacitated,
     AddDamageBuff(HP),
     DoubleMaxMovement,
+    ActivateAbility(AbilityID),
 }
 
 impl Condition {
@@ -504,7 +505,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
         str.serialize_field("speed", &self.speed())?;
         str.serialize_field("max_energy", &creat.max_energy)?;
         str.serialize_field("cur_energy", &creat.cur_energy)?;
-        str.serialize_field("abilities", &creat.abilities)?;
+        str.serialize_field("abilities", &self.ability_statuses())?;
         str.serialize_field("class", &creat.class)?;
         str.serialize_field("max_health", &creat.max_health)?;
         str.serialize_field("cur_health", &creat.cur_health)?;

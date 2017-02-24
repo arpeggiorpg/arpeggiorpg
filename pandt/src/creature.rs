@@ -200,8 +200,29 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     }
   }
 
-  pub fn has_ability(&self, ability: &AbilityID) -> Result<bool, GameError> {
-    Ok(self.class.abilities.contains(ability))
+  pub fn ability_statuses(&self) -> Vec<AbilityStatus> {
+    let mut abs = self.creature.abilities.clone();
+    for acondition in self.conditions() {
+      if let Condition::ActivateAbility(abid) = acondition.condition {
+        abs.push(AbilityStatus{ability_id: abid, cooldown: 0});
+      }
+    }
+    abs
+  }
+
+  pub fn has_ability(&self, ability: &AbilityID) -> bool {
+    if self.class.abilities.contains(ability) {
+      return true;
+    } else {
+      for acondition in self.conditions() {
+        if let Condition::ActivateAbility(abid) = acondition.condition {
+          if abid == *ability {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 }
 

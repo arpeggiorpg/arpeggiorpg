@@ -174,7 +174,7 @@ impl Game {
       let ability = self.get_ability(&abid)?;
       let able = c.get_able()?;
       let current = c.current_creature()?;
-      if current.has_ability(&abid)? {
+      if current.has_ability(&abid) {
         able.act(&ability, target)
       } else {
         Err(GameError::CreatureLacksAbility(current.id(), abid))

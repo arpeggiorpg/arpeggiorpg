@@ -1,9 +1,28 @@
 ---
 players:
 current_game:
-  current_map: map1
+  current_map: empty-map
   maps:
     empty-map:
+      - [0,0,0]
+      - [0,0,1]
+      - [0,0,-1]
+      - [0,1,0]
+      - [0,1,1]
+      - [0,1,-1]
+      - [1, 0,0]
+      - [1, 0, -1]
+      - [1, 0, 1]
+      - [1,1,1]
+      - [-1, 0,0]
+      - [-1, 0, 1]
+      - [-1, 0, -1]
+      - [-1, 1, 0]
+      - [-1, 1, 0]
+      - [-1, 1, -1]
+      - [-1, -1, 0]
+      - [-1, -1, -1]
+      - [-1, -1, 1]
   
   current_combat: ~
   classes:
@@ -14,16 +33,32 @@ current_game:
         - RecurringEffect:
             GenerateEnergy: 10
   abilities:
+    longstrider-shift:
+      name: Longstrider Shift
+      target: Actor
+      cost: 2
+      effects:
+        - ApplyCondition:
+            - Duration: 9
+            - ActivateAbility: bonus-action-dash
+    bonus-action-dash:
+      name: Bonus Action Dash
+      target: Actor
+      cost: 2
+      effects:
+        - ApplyCondition:
+            - Duration: 0
+            - DoubleMaxMovement
     dash:
       name: Dash
       target: Actor
-      cost: 10
+      cost: 8
       effects:
         - ApplyCondition:
             - Duration: 0
             - DoubleMaxMovement
   creatures: 
-    elron: 
+    elron:
       id: elron
       name: Elron
       note:
@@ -59,9 +94,24 @@ current_game:
       conditions:
       can_act: true
       can_move: true
-    sil:
-      id: sil
-      name: Silmarillion
+    pete:
+      id: pete
+      name: Pete
+      note:
+      speed: 699
+      max_energy: 10
+      cur_energy: 10
+      abilities:
+        - ability_id: longstrider-shift
+          cooldown: 0
+      class: creature
+      max_health: 10
+      cur_health: 10
+      pos: [0, 2, 0]
+      conditions:
+    mia:
+      id: mia
+      name: Mia
       note:
       speed: 699
       max_energy: 10
