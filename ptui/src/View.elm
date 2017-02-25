@@ -488,4 +488,4 @@ moveButton combat creature =
   let movement_left = creature.speed - combat.movement_used
   in actionButton [ onClick M.GetCombatMovementOptions
             , disabled (not creature.can_move) ]
-            [text (String.join "" ["Move (", toString movement_left, ")"])]
+            [text (String.join "" ["Move (", toString (movement_left // 100), ")"])]

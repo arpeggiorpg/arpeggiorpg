@@ -47,12 +47,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   pub fn speed(&self) -> Distance {
+    let mut speed = self.creature.speed;
     for acondition in self.conditions() {
       if acondition.condition == Condition::DoubleMaxMovement {
-        return self.creature.speed * 2;
+        speed = speed + self.creature.speed;
       }
     }
-    self.creature.speed
+    speed
   }
 
   /// Get all conditions applied to a creature, including permanent conditions associated with

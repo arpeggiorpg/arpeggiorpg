@@ -107,7 +107,15 @@ impl TileSystem {
               TileSystem::DnD => 100,
             }
           } else {
-            100
+            match *self {
+              TileSystem::Realistic => 100,
+              // ok, this is ridiculous, but:
+              // since D&D movement makes diagonals cost the same as cardinals, the pathfinder
+              // will arbitrarily choose to move diagonally when a normal person would move in
+              // a straight line. By ever-so-slightly reducing the cost of straight lines here,
+              // we get it to prefer to move straight.
+              TileSystem::DnD => 99,
+            }
           };
           // don't allow diagonal movement around corners
           if is_angle && !terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
@@ -283,7 +291,8 @@ pub mod test {
   #[test]
   fn test_neighbors_around_corners() {
     let terrain = vec![(1, 0, 0)];
-    let pts: Vec<Point3> = TileSystem::Realistic.point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
+    let pts: Vec<Point3> =
+      TileSystem::Realistic.point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
     assert!(!pts.contains(&(1, 1, 0)));
     assert!(!pts.contains(&(1, -1, 0)));
   }
