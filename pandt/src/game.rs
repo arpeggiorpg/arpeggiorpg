@@ -76,8 +76,7 @@ impl Game {
         self.change_with(GameLog::RemoveCreatureFromCombat(cid))
       }
       (ChangeCreatureInitiative(cid, new_pos), Some(_)) => {
-        self.change()
-          .apply_combat(|c| c.change_creature_initiative(cid, new_pos))
+        self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
       }
       (Done, Some(_)) => self.change().apply_combat(|c| c.next_turn()),
       _ => disallowed(cmd),
@@ -374,6 +373,7 @@ impl CreatureChanger for ChangedGame {
 #[cfg(test)]
 pub mod test {
   use game::*;
+  use combat::test::*;
   use types::test::*;
   use grid::test::*;
   use std::iter::FromIterator;
@@ -502,6 +502,21 @@ pub mod test {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
     game.perform_unchecked(GameCommand::PathCurrentCombatCreature((1, 0, 0))).unwrap();
+  }
+
+  #[test]
+  fn change_creature_initiative() {
+    let game = t_combat();
+    fn combat_cids(game: &Game) -> Vec<CreatureID> {
+      game.get_combat().unwrap().creatures().unwrap().iter().map(|c| c.id()).collect()
+    }
+    assert_eq!(combat_cids(&game),
+               vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+    // move ranger to position 0
+    let game =
+      game.perform_unchecked(GameCommand::ChangeCreatureInitiative(cid("ranger"), 0)).unwrap().game;
+    assert_eq!(combat_cids(&game),
+               vec![cid("ranger"), cid("rogue"), cid("cleric")]);
   }
 
   #[test]

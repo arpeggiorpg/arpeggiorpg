@@ -18,9 +18,9 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     for creature in self.combat.creatures.iter() {
       results.push(self.game.dyn_creature(creature)?);
     }
-    // UNWRAP: since we built this from another NonEmpty, we know that it must have at least
-    // one element, so from_vec will never fail.
-    let mut ne = nonempty::NonEmptyWithCursor::from_vec(results).unwrap();
+    let mut ne = nonempty::NonEmptyWithCursor::from_vec(results)
+      .expect("since we built this from another NonEmpty, we know that it must have at least one \
+               element, so from_vec will never fail");
     ne.set_cursor(self.combat.creatures.get_cursor());
     Ok(ne)
   }
@@ -40,9 +40,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
           let mut c = new.current_creature_mut();
           let c_pos = c.pos();
           let destination = path.last().unwrap_or(&c_pos);
-          let distance = {
-            point3_distance(c.pos, *destination)
-          };
+          let distance = point3_distance(c.pos, *destination);
           *c = c.apply_log(&CreatureLog::SetPos(*destination))?;
           distance
         };
@@ -68,7 +66,8 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         new.creatures = new.creatures
           .mutate(|creatures| slide_vec(creatures, current_pos, new_pos))
           .0
-          .unwrap();
+          .expect("We do bounds-checking ahead of time, and our mutator doesn't change the \
+                   number of elements");
       }
     }
     Ok(new)
@@ -98,6 +97,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
       Err(GameError::CannotAct(current.id()))
     }
   }
+
   pub fn get_able(&'combat self) -> Result<CombatAble<'combat, 'game>, GameError> {
     let current = self.current_creature()?;
     if current.can_act() {
@@ -105,12 +105,6 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     } else {
       Err(GameError::CannotAct(current.id()))
     }
-  }
-
-
-  pub fn change_creature_initiative(&self, cid: CreatureID, new_pos: usize)
-                                    -> Result<ChangedCombat<'game>, GameError> {
-    self.change_with(CombatLog::ChangeCreatureInitiative(cid, new_pos))
   }
 
   pub fn change(&self) -> ChangedCombat<'game> {
