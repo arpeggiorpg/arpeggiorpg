@@ -34,6 +34,8 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     let mut new = self.combat.clone();
     match *l {
       CombatLog::PathCurrentCreature(ref path) => {
+        // FIXME RADIX TODO XXX: this should actually PATH the creature and ensure that
+        // movement_used isn't exceeded.
         let distance = {
           let mut c = new.current_creature_mut();
           let c_pos = c.pos();

@@ -77,53 +77,6 @@ fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
     path.into_iter().rev().collect()
 }
 
-pub fn astar<N, C, FN, IN, FH, FS>(start: &N,
-                                   neighbours: FN,
-                                   heuristic: FH,
-                                   success: FS)
-                                   -> Option<(Vec<N>, C)>
-    where N: Eq + Hash + Clone,
-          C: Zero + Ord + Copy,
-          FN: Fn(&N) -> IN,
-          IN: IntoIterator<Item = (N, C)>,
-          FH: Fn(&N) -> C,
-          FS: Fn(&N) -> bool
-{
-    let mut to_see = BinaryHeap::new();
-    to_see.push(InvCmpHolder {
-        key: heuristic(start),
-        payload: (Zero::zero(), start.clone()),
-    });
-    let mut parents: HashMap<N, (N, C)> = HashMap::new();
-    while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
-        if success(&node) {
-            let parents = parents.into_iter().map(|(n, (p, _))| (n, p)).collect();
-            return Some((reverse_path(parents, node), cost));
-        }
-        // We may have inserted a node several time into the binary heap if we found
-        // a better way to access it. Ensure that we are currently dealing with the
-        // best path and discard the others.
-        if let Some(&(_, c)) = parents.get(&node) {
-            if cost > c {
-                continue;
-            }
-        }
-        for (neighbour, move_cost) in neighbours(&node) {
-            let old_cost = parents.get(&neighbour).map(|&(_, c)| c);
-            let new_cost = cost + move_cost;
-            if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) {
-                parents.insert(neighbour.clone(), (node.clone(), new_cost));
-                let new_predicted_cost = new_cost + heuristic(&neighbour);
-                to_see.push(InvCmpHolder {
-                    key: new_predicted_cost,
-                    payload: (new_cost, neighbour),
-                });
-            }
-        }
-    }
-    None
-}
-
 pub fn astar_multi<N, C, FN, IN, FH>(start: &N,
                                      neighbours: FN,
                                      heuristic: FH,
@@ -322,19 +275,6 @@ pub mod test {
             point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
         assert!(!pts.contains(&(1, 1, 0)));
         assert!(!pts.contains(&(1, -1, 0)));
-    }
-
-
-    #[test]
-    fn pathfinding_astar() {
-        let start = (0, 0, 0);
-        let (path, cost) = astar(&start,
-                                 |n| point3_neighbors(&huge_box(), *n),
-                                 |n| point3_distance(start, *n).0,
-                                 |n| *n == (2, 2, 0))
-            .unwrap();
-        assert_eq!(cost, 282);
-        assert_eq!(path, vec![(0, 0, 0), (1, 1, 0), (2, 2, 0)]);
     }
 
     #[test]
