@@ -73,23 +73,28 @@ fullUI model app game =
   if model.editingMap
   then Grid.editMap model.currentMap (visibleCreatures model game)
   else
-  habox [s [S.justifyContent S.spaceAround]]
-    [ vabox [s [S.width (S.px 500)]] <| [ h3 [] [text "Creatures"]
+    let combatHTML =
+          case game.current_combat of
+            Just combat -> vbox [h4 [] [text "Combat"], gmCombatArea model game combat]
+            Nothing -> startCombatButton
+        targetSelectorHTML =
+          case model.selectedAbility of
+            Just (cid, abid) -> if T.isCreatureOOC game cid
+                                then [targetSelector model game (M.ActCreature cid) abid]
+                                else []
+            Nothing -> []
+        mapHTML =
+          vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
+               , Grid.terrainMap True (movementGhost model) model.currentMap (visibleCreatures model game)
+               ]
+        sideBarHTML =
+          vabox [s [S.width (S.px 500)]] <|
+            [ combatHTML
+            , h3 [] [text "Creatures"]
             , inactiveList model game
-            ] ++ (case model.selectedAbility of
-                    Just (cid, abid) -> if T.isCreatureOOC game cid
-                                        then [targetSelector model game (M.ActCreature cid) abid]
-                                        else []
-                    Nothing -> []
-            ) ++ [playerControlList app, history app]
-    , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
-           , Grid.terrainMap True (movementGhost model) model.currentMap (visibleCreatures model game)]
-    , div [s [S.width (S.px 500)]] [
-        case game.current_combat of
-          Just combat -> gmCombatArea model game combat
-          Nothing -> startCombatButton
-      ]
-    ]
+            ] ++ targetSelectorHTML ++ [playerControlList app, history app]
+    in
+      habox [s [S.justifyContent S.spaceAround]] [mapHTML, sideBarHTML]
 
 movementGhost model =
   case model.showingMovement of
@@ -176,7 +181,7 @@ playerCombatArea model game combat creatures =
   let currentCreature = T.combatCreature combat
       bar = if List.member currentCreature creatures
             then habox [s [S.flexWrap S.wrap]]
-                       [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
+                       [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
                        , combatActionBar game combat currentCreature
                        ]
             else hbox [text "Current creature:", text currentCreature.id]
@@ -212,8 +217,14 @@ playerGrid model game myCreatures =
         case game.current_combat of
           Just combat -> [h4 [] [text "Combat"], playerCombatArea model game combat myCreatures]
           Nothing -> [text "No Combat"]
+      movable =
+        -- Don't allow click-to-move when ANY creatures are in combat.
+        -- TODO: maybe allow click-to-move for out-of-combat creatures
+        case game.current_combat of
+          Just _ -> False
+          Nothing -> True
   in
-    hbox <| [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game)
+    hbox <| [Grid.terrainMap movable (movementGhost model) model.currentMap (visibleCreatures model game)
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
   
 mapSelector : T.Game -> Html M.Msg

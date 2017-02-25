@@ -501,8 +501,8 @@ current_game:
         - 0
         - 0
       conditions:
-    kurok-to:
-      id: kurok-to
+    KT:
+      id: KT
       name: Kurok To
       note:
       speed: 699
@@ -563,7 +563,7 @@ current_game:
       cur_health: 10
       pos: 
         - 1
-        - 1
+        - 2
         - 0
       conditions:
 snapshots:
