@@ -441,7 +441,7 @@ pub struct Creature {
   pub note: String,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deserialize)]
 pub struct Combat {
   // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
   // after we load data back in, because serde doesn't (currently) have any way to know that

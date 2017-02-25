@@ -69,7 +69,7 @@ type GameLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat (List CreatureID)
   | GLStopCombat
-  | GLCreateCreature Creature
+  | GLCreateCreature CreatureData
   | GLRemoveCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
@@ -81,7 +81,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
-  , ("CreateCreature", (JD.map GLCreateCreature creatureDecoder))
+  , ("CreateCreature", (JD.map GLCreateCreature creatureDataDecoder))
   , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
   , ("RemoveCreatureFromCombat", (JD.map GLRemoveCreatureFromCombat JD.string))
@@ -215,6 +215,22 @@ creatureDecoder =
     |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
     |> P.required "can_act" JD.bool
     |> P.required "can_move" JD.bool
+    |> P.required "note" JD.string
+
+type alias CreatureData =
+  { id: CreatureID
+  , name: String
+  , pos: Point3
+  , class: String
+  , note: String
+}
+
+creatureDataDecoder =
+  P.decode CreatureData
+    |> P.required "id" JD.string
+    |> P.required "name" JD.string
+    |> P.required "pos" point3Decoder
+    |> P.required "class" JD.string
     |> P.required "note" JD.string
 
 
