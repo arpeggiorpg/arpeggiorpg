@@ -18,13 +18,9 @@ import Css as S
 
 s = S.asPairs >> Html.Attributes.style
 
-refreshButton : Html M.Msg
-refreshButton = button [ onClick M.MorePlease ] [ text "Refresh From Server" ]
-
 gmView : M.Model -> Html M.Msg
 gmView model = vbox
-  [ refreshButton
-  , case model.app of
+  [ case model.app of
       Just app -> gmViewGame model app
       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
