@@ -175,8 +175,10 @@ playerViewGame model app creatures =
 playerCombatArea model game combat creatures =
   let currentCreature = T.combatCreature combat
       bar = if List.member currentCreature creatures
-            then hbox [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
-                      , combatActionBar game combat currentCreature]
+            then habox [s [S.flexWrap S.wrap]]
+                       [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
+                       , combatActionBar game combat currentCreature
+                       ]
             else hbox [text "Current creature:", text currentCreature.id]
       selector = case model.selectedAbility of
                     Just (cid, abid) -> 
@@ -208,11 +210,11 @@ playerGrid model game myCreatures =
           Nothing -> []
       comUI =
         case game.current_combat of
-          Just combat -> vbox [h4 [] [text "Combat"], playerCombatArea model game combat myCreatures]
-          Nothing -> text "No Combat"
+          Just combat -> [h4 [] [text "Combat"], playerCombatArea model game combat myCreatures]
+          Nothing -> [text "No Combat"]
   in
     hbox <| [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game)
-            , vbox ([comUI] ++ ooc ++ targetSel)]
+            , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|
