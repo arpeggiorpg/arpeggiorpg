@@ -172,19 +172,10 @@ update msg model = case msg of
 
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand cmd)
-  CreateCreature creation -> (model, sendCommand (T.CreateCreature creation))
-  RemoveFromGame cid -> (model, sendCommand (T.RemoveCreature cid))
-  AddToCombat cid -> (model, sendCommand (T.AddCreatureToCombat cid))
-  RemoveFromCombat cid -> (model, sendCommand (T.RemoveCreatureFromCombat cid))
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.CombatAct abid dtarget))
   ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.ActCreature cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand (T.PathCurrentCombatCreature pt))
   PathCreature cid pt -> ({model | moving = Nothing}, sendCommand (T.PathCreature cid pt))
-  TurnDone -> (model, sendCommand T.Done)
-  SelectMap mapName -> (model, sendCommand (T.SelectMap mapName))
-  StopCombat -> (model, sendCommand T.StopCombat)
-  Rollback snapIdx logIdx -> (model, sendCommand (T.Rollback snapIdx logIdx))
-
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set

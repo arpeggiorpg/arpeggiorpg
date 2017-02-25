@@ -211,7 +211,7 @@ playerGrid model game myCreatures =
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|
-  let mapSelectorItem name = button [onClick (M.SelectMap name)] [text name]
+  let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]
   in (List.map mapSelectorItem (Dict.keys game.maps))
 
 inactiveList : M.Model -> T.Game -> Html M.Msg
@@ -236,7 +236,7 @@ createCreatureButton model =
   case (model.pendingCreatureId, model.pendingCreatureName, model.pendingCreatureClass) of
     (Just id, Just name, Just class) ->
       let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0}
-      in button [ onClick (M.CreateCreature cc) ] [text "Create Creature!"]
+      in button [onClick (M.SendCommand (T.CreateCreature cc))] [text "Create Creature!"]
     _ -> button [disabled True] [text "Create Creature!"]
 
 inactiveEntry : M.Model -> T.Game -> Set.Set String -> T.Creature -> Html M.Msg
@@ -274,7 +274,7 @@ historyItem snapIdx logIdx log =
     T.GLCreatureLog cid cl -> hbox [text cid, historyCreatureLog cl]
     T.GLCombatLog cl -> historyCombatLog cl
     T.GLRollback si li -> hbox [text "Rolled back. Snapshot: ", text (toString si), text " Log: ", text (toString li)]
-  in hbox [logItem, button [onClick (M.Rollback snapIdx logIdx)] [text "Rollback BEFORE here"]]
+  in hbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [text "Rollback BEFORE here"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg
 historyCombatLog cl = case cl of
@@ -335,7 +335,7 @@ creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
   in List.map targetCreatureButton creatures
 
 stopCombatButton : Html M.Msg
-stopCombatButton = button [onClick M.StopCombat] [text "Stop Combat"]
+stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]
 
 startCombatButton : Html M.Msg
 startCombatButton =
@@ -348,7 +348,7 @@ combatantList model game combat =
 
 engageButton : T.Creature -> Html M.Msg
 engageButton creature =
-  button [onClick (M.AddToCombat creature.id)] [text "Engage"]
+  button [onClick (M.SendCommand (T.AddCreatureToCombat creature.id))] [text "Engage"]
 
 combatantEntry : M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
 combatantEntry model game combat (idx, creature) = hbox <|
@@ -434,11 +434,11 @@ conditionIcon ac = case ac.condition of
 
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =
-  button [onClick (M.RemoveFromCombat creature.id)] [text ("Disengage " ++ creature.id)]
+  button [onClick (M.SendCommand (T.RemoveCreatureFromCombat creature.id))] [text ("Disengage " ++ creature.id)]
 
 deleteCreatureButton : T.Creature -> Html M.Msg
 deleteCreatureButton creature =
-  button [onClick (M.RemoveFromGame creature.id)] [text "Delete"]
+  button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
 
 moveOOCButton : T.Creature -> Html M.Msg
 moveOOCButton creature =
@@ -448,7 +448,7 @@ moveOOCButton creature =
 
 doneButton : T.Creature -> Html M.Msg
 doneButton creature =
-  button [onClick M.TurnDone] [text "Done"]
+  button [onClick (M.SendCommand T.Done)] [text "Done"]
 
 moveButton : T.Combat -> T.Creature -> Html M.Msg
 moveButton combat creature =

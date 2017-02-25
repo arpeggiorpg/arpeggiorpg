@@ -24,7 +24,6 @@ type Msg
     | ShowError String
     | SetPlayerID T.PlayerID
     | RegisterPlayer
-    | SelectMap T.MapName
     | UpdateSaveMapName T.MapName
     | StartEditingMap
     | EditMap T.Map
@@ -32,13 +31,8 @@ type Msg
     | PendingCreatureId T.CreatureID
     | PendingCreatureName String
     | PendingCreatureClass String
-    | CreateCreature T.CreatureCreation
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
-    | StopCombat
-    | AddToCombat T.CreatureID
-    | RemoveFromCombat T.CreatureID
-    | RemoveFromGame T.CreatureID
     | SelectAbility T.CreatureID T.AbilityID
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
@@ -48,7 +42,6 @@ type Msg
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
     | PathCreature T.CreatureID T.Point3
-    | TurnDone
     | GetMovementOptions T.Creature
     | GetCombatMovementOptions
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))
@@ -58,7 +51,6 @@ type Msg
     | DoneSelectingCreatures
     | CancelSelectingCreatures
     | ToggleShowOOC
-    | Rollback Int Int
     | Tick Time.Time
     | SendCommand T.GameCommand
     | SetCreatureNote T.CreatureID String
