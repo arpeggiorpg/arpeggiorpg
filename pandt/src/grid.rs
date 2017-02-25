@@ -21,12 +21,22 @@ use types::{Point3, Distance, TileSystem, Creature, Map};
 
 impl TileSystem {
   pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> Distance {
-    let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
-    let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
-                                na::zero());
-    let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
-    let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-    Distance::new(distance)
+    match *self {
+      TileSystem::Realistic => {
+        let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
+        let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
+                                    na::zero());
+        let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
+        let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
+        Distance::from_meters(distance)
+      }
+      TileSystem::DnD => {
+        // I'd use cmp::max but it's not usable on floats
+        let xdiff = pos1.0 - pos2.0;
+        let ydiff = pos1.1 - pos2.1;
+        Distance(if xdiff > ydiff { xdiff.abs() as u32 * 100 } else { ydiff.abs() as u32 * 100 })
+      }
+    }
   }
 
   pub fn creature_within_distance(&self, c1: &Creature, c2: &Creature, d: Distance) -> bool {
@@ -38,6 +48,7 @@ impl TileSystem {
     let mut points_to_check = vec![];
     for x in start.0 - meters..start.0 + meters + 1 {
       for y in start.1 - meters..start.1 + meters + 1 {
+        println!("Checking {:?},{:?}", x, y);
         let end_point = (x, y, 0);
         if end_point == start || !terrain.contains(&end_point) {
           continue;
@@ -52,7 +63,7 @@ impl TileSystem {
     }
     let mut final_points = vec![];
     for (path, cost) in astar_multi(&start,
-                                    |n| point3_neighbors(terrain, *n),
+                                    |n| self.point3_neighbors(terrain, *n),
                                     |n| self.point3_distance(start, *n).0,
                                     speed.0,
                                     success_fns) {
@@ -69,7 +80,7 @@ impl TileSystem {
                    -> Option<(Vec<Point3>, Distance)> {
     let success = Box::new(move |n: &Point3| *n == destination);
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(&start,
-                                                      |n| point3_neighbors(terrain, *n),
+                                                      |n| self.point3_neighbors(terrain, *n),
                                                       |n| self.point3_distance(start, *n).0,
                                                       speed.0,
                                                       vec![success]);
@@ -78,6 +89,36 @@ impl TileSystem {
     } else {
       None
     }
+  }
+
+  fn point3_neighbors(&self, terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
+    let mut results = vec![];
+    for x in -1..2 {
+      for y in -1..2 {
+        if (x, y) == (0, 0) {
+          continue;
+        }
+        let neighbor = (pt.0 + x, pt.1 + y, pt.2);
+        if terrain.contains(&neighbor) {
+          let is_angle = x.abs() == y.abs();
+          let cost = if is_angle {
+            match *self {
+              TileSystem::Realistic => 141,
+              TileSystem::DnD => 100,
+            }
+          } else {
+            100
+          };
+          // don't allow diagonal movement around corners
+          if is_angle && !terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
+             !terrain.contains(&(pt.0, neighbor.1, pt.2)) {
+            continue;
+          }
+          results.push((neighbor, cost));
+        }
+      }
+    }
+    results
   }
 }
 
@@ -184,29 +225,6 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
 // PRECEDING COPIED FROM PATHFINDING CRATE
 // ***************************************
 
-fn point3_neighbors(terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
-  let mut results = vec![];
-  for x in -1..2 {
-    for y in -1..2 {
-      if (x, y) == (0, 0) {
-        continue;
-      }
-      let neighbor = (pt.0 + x, pt.1 + y, pt.2);
-      if terrain.contains(&neighbor) {
-        let is_angle = x.abs() == y.abs();
-        let cost = if is_angle { 141 } else { 100 };
-        // don't allow diagonal movement around corners
-        if is_angle && !terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
-           !terrain.contains(&(pt.0, neighbor.1, pt.2)) {
-          continue;
-        }
-        results.push((neighbor, cost));
-      }
-    }
-  }
-  results
-}
-
 #[cfg(test)]
 pub mod test {
   use grid::*;
@@ -224,7 +242,7 @@ pub mod test {
       .sqrt();
     println!("My calculated distance: {:?};", test_distance);
     assert_eq!((TileSystem::Realistic.point3_distance(pos1, pos2)),
-               Distance::new(test_distance as f32));
+               Distance::from_meters(test_distance as f32));
   }
 
   #[test]
@@ -232,20 +250,22 @@ pub mod test {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = (0, 0, 0);
     let pos2 = (1, 0, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), Distance(100));
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2),
+               Distance(100));
   }
 
   #[test]
   fn test_diagonal_distance() {
     let pos1 = (0, 0, 0);
     let pos2 = (1, 1, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), Distance::new(2.0f32.sqrt()));
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2),
+               Distance::from_meters(2.0f32.sqrt()));
   }
 
   #[test]
   fn test_neighbors() {
     let terrain = huge_box();
-    let mut pts = point3_neighbors(&terrain, (0, 0, 0));
+    let mut pts = TileSystem::Realistic.point3_neighbors(&terrain, (0, 0, 0));
     pts.sort();
     let mut expected = vec![((-1, 0, 0), 100),
                             ((1, 0, 0), 100),
@@ -263,7 +283,7 @@ pub mod test {
   #[test]
   fn test_neighbors_around_corners() {
     let terrain = vec![(1, 0, 0)];
-    let pts: Vec<Point3> = point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
+    let pts: Vec<Point3> = TileSystem::Realistic.point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
     assert!(!pts.contains(&(1, 1, 0)));
     assert!(!pts.contains(&(1, -1, 0)));
   }
@@ -273,7 +293,7 @@ pub mod test {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (2, 2, 0));
     let paths_and_costs = astar_multi(&start,
-                                      |n| point3_neighbors(&huge_box(), *n),
+                                      |n| TileSystem::Realistic.point3_neighbors(&huge_box(), *n),
                                       |n| TileSystem::Realistic.point3_distance(start, *n).0,
                                       u32::max_value(),
                                       vec![success]);
@@ -286,7 +306,7 @@ pub mod test {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (5, 0, 0));
     let result = astar_multi(&start,
-                             |n| point3_neighbors(&huge_box(), *n),
+                             |n| TileSystem::Realistic.point3_neighbors(&huge_box(), *n),
                              |n| TileSystem::Realistic.point3_distance(start, *n).0,
                              499,
                              vec![success]);
@@ -298,7 +318,7 @@ pub mod test {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (5, 0, 0));
     let result = astar_multi(&start,
-                             |n| point3_neighbors(&huge_box(), *n),
+                             |n| TileSystem::Realistic.point3_neighbors(&huge_box(), *n),
                              |n| TileSystem::Realistic.point3_distance(start, *n).0,
                              500,
                              vec![success]);
@@ -313,7 +333,7 @@ pub mod test {
     let successes: Vec<Box<Fn(&Point3) -> bool>> = vec![Box::new(|n: &Point3| *n == (1, 1, 0)),
                                                         Box::new(|n: &Point3| *n == (-1, -1, 0))];
     let paths_and_costs = astar_multi(&start,
-                                      |n| point3_neighbors(&huge_box(), *n),
+                                      |n| TileSystem::Realistic.point3_neighbors(&huge_box(), *n),
                                       |n| TileSystem::Realistic.point3_distance(start, *n).0,
                                       u32::max_value(),
                                       successes);

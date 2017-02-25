@@ -130,7 +130,7 @@ impl AbilitySetID {
 pub struct Distance(pub u32);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
-  pub fn new(x: f32) -> Distance {
+  pub fn from_meters(x: f32) -> Distance {
     Distance((x * 100.0) as u32)
   }
 }
@@ -608,7 +608,7 @@ pub mod test {
   pub fn t_shoot() -> Ability {
     Ability {
       name: "Shoot".to_string(),
-      target: TargetSpec::Range(Distance::new(5.0)),
+      target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       effects: vec![Effect::Damage(Dice::flat(3))],
     }
@@ -617,7 +617,7 @@ pub mod test {
   pub fn t_heal() -> Ability {
     Ability {
       name: "Heal".to_string(),
-      target: TargetSpec::Range(Distance::new(5.0)),
+      target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       effects: vec![Effect::Heal(Dice::flat(3))],
     }

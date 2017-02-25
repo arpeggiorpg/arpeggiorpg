@@ -144,7 +144,7 @@ impl Combat {
       .map(|ne| {
         let com = Combat {
           creatures: ne,
-          movement_used: Distance::new(0.0),
+          movement_used: Distance::from_meters(0.0),
         };
         com
       })

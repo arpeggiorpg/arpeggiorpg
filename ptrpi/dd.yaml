@@ -1,6 +1,7 @@
 ---
 players:
 current_game:
+  tile_system: DnD
   current_map: empty-map
   maps:
     empty-map:
