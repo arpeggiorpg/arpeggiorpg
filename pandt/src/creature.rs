@@ -204,25 +204,23 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let mut abs = self.creature.abilities.clone();
     for acondition in self.conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
-        abs.push(AbilityStatus{ability_id: abid, cooldown: 0});
+        abs.push(AbilityStatus {
+          ability_id: abid,
+          cooldown: 0,
+        });
       }
+    }
+    for abid in self.class.abilities.iter() {
+      abs.push(AbilityStatus {
+        ability_id: *abid,
+        cooldown: 0,
+      });
     }
     abs
   }
 
-  pub fn has_ability(&self, ability: &AbilityID) -> bool {
-    if self.class.abilities.contains(ability) {
-      return true;
-    } else {
-      for acondition in self.conditions() {
-        if let Condition::ActivateAbility(abid) = acondition.condition {
-          if abid == *ability {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+  pub fn has_ability(&self, ability: AbilityID) -> bool {
+    self.ability_statuses().iter().any(|ac| ac.ability_id == ability)
   }
 }
 

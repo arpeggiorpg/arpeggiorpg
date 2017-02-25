@@ -366,19 +366,19 @@ combatantEntry model game combat (idx, creature) = hbox <|
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =
-  let abilities = List.map (\a -> a.ability_id) creature.abilities
+  let abilities = List.filterMap (\abstatus -> Maybe.map (\ability -> (abstatus.ability_id, ability)) (Dict.get abstatus.ability_id game.abilities)) (Debug.log "creature abilities" creature.abilities)
   in (List.map (actionButton creature) abilities)
 
 actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 actionBar game combat creature =
   hbox (oocActionBar game creature ++ [moveButton combat creature] ++ [doneButton creature])
 
-actionButton : T.Creature -> T.AbilityID -> Html M.Msg
-actionButton creature abid =
+actionButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
+actionButton creature (abid, ability) =
   button
     [ onClick (M.SelectAbility creature.id abid)
     , disabled (not creature.can_act)]
-    [text abid]
+    [text ability.name]
 
 creatureCard : M.Model -> T.Creature -> Html M.Msg
 creatureCard model creature =
@@ -428,6 +428,7 @@ conditionIcon ac = case ac.condition of
   T.Incapacitated -> text "😞"
   T.AddDamageBuff dmg -> text "😈"
   T.DoubleMaxMovement -> text "🏃"
+  T.ActivateAbility _ -> text ""
 
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =

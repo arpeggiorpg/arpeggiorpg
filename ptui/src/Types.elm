@@ -301,13 +301,15 @@ type Condition
   | Incapacitated
   | AddDamageBuff Int
   | DoubleMaxMovement
+  | ActivateAbility AbilityID
 
 conditionDecoder = sumDecoder "Condition"
   [ ("Dead", Dead)
   , ("Incapacitated", Incapacitated)
   , ("DoubleMaxMovement", DoubleMaxMovement)]
   [ ("RecurringEffect", JD.map RecurringEffect lazyEffectDecoder)
-  , ("AddDamageBuff", JD.map AddDamageBuff JD.int)]
+  , ("AddDamageBuff", JD.map AddDamageBuff JD.int)
+  , ("ActivateAbility", JD.map ActivateAbility JD.string)]
 
 -- conditionEncoder condition =
 --   case condition of

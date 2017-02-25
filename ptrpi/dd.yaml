@@ -34,7 +34,7 @@ current_game:
             GenerateEnergy: 10
   abilities:
     longstrider-shift:
-      name: Longstrider Shift
+      name: "Bonus Action: Longstrider Shift"
       target: Actor
       cost: 2
       effects:
@@ -42,7 +42,7 @@ current_game:
             - Duration: 9
             - ActivateAbility: bonus-action-dash
     bonus-action-dash:
-      name: Bonus Action Dash
+      name: "Bonus Action: Dash"
       target: Actor
       cost: 2
       effects:
@@ -50,7 +50,7 @@ current_game:
             - Duration: 0
             - DoubleMaxMovement
     dash:
-      name: Dash
+      name: "Action: Dash"
       target: Actor
       cost: 8
       effects:

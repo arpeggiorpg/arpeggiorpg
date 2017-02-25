@@ -6,22 +6,22 @@ current_game:
       cursor: 0
       data: 
         - 
-          id: pete
-          name: Pete
+          id: elron
+          name: Elron
           note: "~"
           speed: 699
           max_energy: 10
           cur_energy: 10
           abilities: 
             - 
-              ability_id: "longstrider-shift"
+              ability_id: dash
               cooldown: 0
           class: creature
           max_health: 10
           cur_health: 10
           pos: 
+            - 1
             - 0
-            - 2
             - 0
           conditions: {}
           all_conditions: 
@@ -32,9 +32,79 @@ current_game:
                   GenerateEnergy: 10
           can_act: true
           can_move: true
+        - 
+          id: "kurok-to"
+          name: Kurok To
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 10
+          abilities: 
+            - 
+              ability_id: dash
+              cooldown: 0
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 1
+            - 0
+          conditions: {}
+          all_conditions: 
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
+        - 
+          id: pete
+          name: Pete
+          note: "~"
+          speed: 699
+          max_energy: 10
+          cur_energy: 8
+          abilities: 
+            - 
+              ability_id: "longstrider-shift"
+              cooldown: 0
+            - 
+              ability_id: "bonus-action-dash"
+              cooldown: 0
+            - 
+              ability_id: dash
+              cooldown: 0
+          class: creature
+          max_health: 10
+          cur_health: 10
+          pos: 
+            - 0
+            - 2
+            - 0
+          conditions: 
+            0: 
+              remaining: 
+                Duration: 9
+              condition: 
+                ActivateAbility: "bonus-action-dash"
+          all_conditions: 
+            - 
+              remaining: 
+                Duration: 9
+              condition: 
+                ActivateAbility: "bonus-action-dash"
+            - 
+              remaining: Interminate
+              condition: 
+                RecurringEffect: 
+                  GenerateEnergy: 10
+          can_act: true
+          can_move: true
   abilities: 
     "longstrider-shift": 
-      name: Longstrider Shift
+      name: "Bonus Action: Longstrider Shift"
       target: Actor
       cost: 2
       effects: 
@@ -45,7 +115,7 @@ current_game:
             - 
               ActivateAbility: "bonus-action-dash"
     dash: 
-      name: Dash
+      name: "Action: Dash"
       target: Actor
       cost: 8
       effects: 
@@ -55,7 +125,7 @@ current_game:
               Duration: 0
             - DoubleMaxMovement
     "bonus-action-dash": 
-      name: Bonus Action Dash
+      name: "Bonus Action: Dash"
       target: Actor
       cost: 2
       effects: 
@@ -65,30 +135,6 @@ current_game:
               Duration: 0
             - DoubleMaxMovement
   creatures: 
-    "kurok-to": 
-      id: "kurok-to"
-      name: Kurok To
-      note: "~"
-      speed: 699
-      max_energy: 10
-      cur_energy: 10
-      abilities: []
-      class: creature
-      max_health: 10
-      cur_health: 10
-      pos: 
-        - 0
-        - 1
-        - 0
-      conditions: {}
-      all_conditions: 
-        - 
-          remaining: Interminate
-          condition: 
-            RecurringEffect: 
-              GenerateEnergy: 10
-      can_act: true
-      can_move: true
     mia: 
       id: mia
       name: Mia
@@ -96,37 +142,16 @@ current_game:
       speed: 699
       max_energy: 10
       cur_energy: 10
-      abilities: []
-      class: creature
-      max_health: 10
-      cur_health: 10
-      pos: 
-        - 1
-        - 1
-        - 0
-      conditions: {}
-      all_conditions: 
+      abilities: 
         - 
-          remaining: Interminate
-          condition: 
-            RecurringEffect: 
-              GenerateEnergy: 10
-      can_act: true
-      can_move: true
-    elron: 
-      id: elron
-      name: Elron
-      note: "~"
-      speed: 699
-      max_energy: 10
-      cur_energy: 10
-      abilities: []
+          ability_id: dash
+          cooldown: 0
       class: creature
       max_health: 10
       cur_health: 10
       pos: 
         - 1
-        - 0
+        - 1
         - 0
       conditions: {}
       all_conditions: 
@@ -230,7 +255,7 @@ snapshots:
       current_combat: ~
       abilities: 
         "longstrider-shift": 
-          name: Longstrider Shift
+          name: "Bonus Action: Longstrider Shift"
           target: Actor
           cost: 2
           effects: 
@@ -241,7 +266,7 @@ snapshots:
                 - 
                   ActivateAbility: "bonus-action-dash"
         dash: 
-          name: Dash
+          name: "Action: Dash"
           target: Actor
           cost: 8
           effects: 
@@ -251,7 +276,7 @@ snapshots:
                   Duration: 0
                 - DoubleMaxMovement
         "bonus-action-dash": 
-          name: Bonus Action Dash
+          name: "Bonus Action: Dash"
           target: Actor
           cost: 2
           effects: 
@@ -261,23 +286,23 @@ snapshots:
                   Duration: 0
                 - DoubleMaxMovement
       creatures: 
-        pete: 
-          id: pete
-          name: Pete
+        "kurok-to": 
+          id: "kurok-to"
+          name: Kurok To
           note: "~"
           speed: 699
           max_energy: 10
           cur_energy: 10
           abilities: 
             - 
-              ability_id: "longstrider-shift"
+              ability_id: dash
               cooldown: 0
           class: creature
           max_health: 10
           cur_health: 10
           pos: 
             - 0
-            - 2
+            - 1
             - 0
           conditions: {}
           all_conditions: 
@@ -295,7 +320,10 @@ snapshots:
           speed: 699
           max_energy: 10
           cur_energy: 10
-          abilities: []
+          abilities: 
+            - 
+              ability_id: dash
+              cooldown: 0
           class: creature
           max_health: 10
           cur_health: 10
@@ -319,7 +347,10 @@ snapshots:
           speed: 699
           max_energy: 10
           cur_energy: 10
-          abilities: []
+          abilities: 
+            - 
+              ability_id: dash
+              cooldown: 0
           class: creature
           max_health: 10
           cur_health: 10
@@ -336,20 +367,26 @@ snapshots:
                   GenerateEnergy: 10
           can_act: true
           can_move: true
-        "kurok-to": 
-          id: "kurok-to"
-          name: Kurok To
+        pete: 
+          id: pete
+          name: Pete
           note: "~"
           speed: 699
           max_energy: 10
           cur_energy: 10
-          abilities: []
+          abilities: 
+            - 
+              ability_id: "longstrider-shift"
+              cooldown: 0
+            - 
+              ability_id: dash
+              cooldown: 0
           class: creature
           max_health: 10
           cur_health: 10
           pos: 
             - 0
-            - 1
+            - 2
             - 0
           conditions: {}
           all_conditions: 
@@ -450,5 +487,33 @@ snapshots:
     - 
       - 
         StartCombat: 
+          - elron
+          - "kurok-to"
           - pete
+      - 
+        CombatLog: 
+          EndTurn: elron
+      - 
+        CombatLog: 
+          EndTurn: "kurok-to"
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - pete
+            - 
+              ApplyCondition: 
+                - 0
+                - 
+                  Duration: 9
+                - 
+                  ActivateAbility: "bonus-action-dash"
+      - 
+        CombatLog: 
+          CreatureLog: 
+            - pete
+            - 
+              ReduceEnergy: 2
+      - 
+        CombatLog: 
+          EndTurn: pete
 players: {}

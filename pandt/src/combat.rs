@@ -51,6 +51,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         *c = c.apply_log(cl)?;
       }
       CombatLog::EndTurn(ref cid) => {
+        assert_eq!(*cid, new.creatures.get_current().id());
         new.creatures.next_circular();
         new.movement_used = Distance(0);
       }
