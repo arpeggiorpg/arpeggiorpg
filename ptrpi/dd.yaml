@@ -489,7 +489,7 @@ current_game:
       id: elron
       name: Elron
       note:
-      speed: 699
+      speed: 600
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -505,7 +505,7 @@ current_game:
       id: KT
       name: Kurok To
       note:
-      speed: 699
+      speed: 600
       max_energy: 10
       cur_energy: 10
       abilities:
@@ -523,7 +523,7 @@ current_game:
       id: pete
       name: Pete
       note:
-      speed: 899
+      speed: 800
       max_energy: 10
       cur_energy: 10
       abilities:
@@ -538,7 +538,7 @@ current_game:
       id: mia
       name: Mia
       note:
-      speed: 699
+      speed: 600
       max_energy: 10
       cur_energy: 10
       abilities: []
@@ -554,7 +554,7 @@ current_game:
       id: wak
       name: Wak
       note:
-      speed: 699
+      speed: 600
       max_energy: 10
       cur_energy: 10
       abilities: []
