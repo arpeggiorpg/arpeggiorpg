@@ -86,8 +86,8 @@ fullUI model app game =
     , vbox [ hbox [editMapButton, mapSelector game, oocToggler model ]
            , let movementGhost =
                    case model.showingMovement of
-                     Just (soFar, _) -> List.head (List.reverse soFar)
-                     Nothing -> Nothing
+                     M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
+                     _ -> Nothing
              in Grid.terrainMap True movementGhost model.currentMap (visibleCreatures model game)]
     , div [s [S.width (S.px 500)]] [
         case game.current_combat of

@@ -13,8 +13,8 @@ type alias GotCreatures = List T.CreatureID -> Cmd Msg
 subscriptions : Model -> Sub Msg
 subscriptions model =
   case model.showingMovement of
-    Just _ -> Time.every (Time.second / 4) Tick
-    Nothing -> Sub.none
+    ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
+    _ -> Sub.none
 
 type Msg
     = MorePlease
@@ -72,7 +72,7 @@ defaultModel =
     , playerID = Nothing
     , potentialTargets = []
     , showOOC = False
-    , showingMovement = Nothing
+    , showingMovement = NotShowingMovement
     , creatureNotes = Dict.empty
   }
 
@@ -94,9 +94,15 @@ type alias Model =
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
   , showOOC: Bool
-  , showingMovement: Maybe (List T.Point3, List T.Point3)
+  , showingMovement: MovementAnimation
   , creatureNotes : Dict.Dict T.CreatureID String
   }
+
+type MovementAnimation
+  = ShowingMovement (List T.Point3) (List T.Point3) -- first is what's been shown so far, second is what's left to animate
+  | DoneShowingMovement (List T.Point3)
+  | NotShowingMovement
+
 
 type alias MovementRequest = {
   max_distance: T.Distance,

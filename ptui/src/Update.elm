@@ -20,6 +20,29 @@ delay time msg =
 message : msg -> Cmd msg
 message msg = Task.perform (always msg) (Task.succeed ())
 
+updateModelFromApp : M.Model -> T.App -> M.Model
+updateModelFromApp model newApp =
+  let model2 = { model | app = Just newApp}
+      currentMap = M.getMap model2
+      showingMovement =
+        case T.mostRecentLog newApp of
+          Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
+            -- most recent action was movement. Only start animating it if we haven't already
+            -- started animating it.
+            case model.showingMovement of
+              M.ShowingMovement alreadyShown toShow ->
+                if (alreadyShown ++ toShow) /= (first::rest)
+                then M.ShowingMovement [first] (first::rest)
+                else M.ShowingMovement alreadyShown toShow
+              M.DoneShowingMovement shown ->
+                if shown /= (first::rest)
+                then M.ShowingMovement [first] rest
+                else M.DoneShowingMovement shown
+              M.NotShowingMovement -> M.ShowingMovement [first] rest
+          _ -> M.NotShowingMovement
+  in { model2 | currentMap = currentMap, showingMovement = showingMovement}
+
+
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
@@ -27,16 +50,7 @@ update msg model = case msg of
 
   PollApp -> (model, Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder))
 
-  ReceivedAppUpdate (Ok newApp) ->
-    let model2 = { model | app = Just newApp}
-        currentMap = M.getMap model2
-        showingMovement =
-          case T.mostRecentLog newApp of
-            Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) -> Just ([first], (first::rest))
-            _ -> Nothing
-    in ( { model2 | currentMap = currentMap
-                  , showingMovement = showingMovement}
-       , delay Time.second PollApp )
+  ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, delay Time.second PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
     ( { model | error = toString x}
     , delay Time.second PollApp )
@@ -66,29 +80,21 @@ update msg model = case msg of
   CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp)
 
   AppUpdate (Ok newApp) ->
-    let model2 = { model | app = Just newApp}
-        currentMap = M.getMap model2
-        showingMovement =
-          case T.mostRecentLog newApp of
-            Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) -> Just ([first], (first::rest))
-            _ -> Nothing
-    in ( { model2 | currentMap = currentMap
-                  , moving = Nothing
-                  , selectedAbility = Nothing
-                  , showingMovement = showingMovement}
-       , Cmd.none )
+    let model2 = updateModelFromApp model newApp
+    in ( { model2 | moving = Nothing , selectedAbility = Nothing }, Cmd.none )
   AppUpdate (Err x) -> Debug.log "[APP-ERROR]" ( { model | error = toString x}, Cmd.none )
  
   Tick time ->
     let _ = Debug.log "[TICK]" ()
         showingMovement =
           case model.showingMovement of
-            Just (soFar, total) -> 
-              let newSoFar = List.take ((List.length soFar) + 1) total
-              in if (List.length newSoFar) == (List.length total)
-                 then Nothing
-                 else Just (newSoFar, total)
-            Nothing -> Nothing -- this shouldn't happen maybe
+            M.ShowingMovement soFar rest -> 
+              let newSoFar = soFar ++ (List.take 1 rest)
+                  newRest = List.drop 1 rest
+              in if (List.length newRest) == 0
+                 then M.DoneShowingMovement newSoFar
+                 else M.ShowingMovement newSoFar newRest
+            x -> x -- this shouldn't happen maybe
     in ({ model | showingMovement = showingMovement }, Cmd.none)
 
   ShowError s -> ( {model | error = s}, Cmd.none)
