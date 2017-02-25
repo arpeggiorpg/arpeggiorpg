@@ -4,7 +4,6 @@ use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
 use types::*;
-use grid::creature_within_distance;
 use combat::MELEE_RANGE;
 
 /// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
@@ -181,7 +180,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     match (target, decision) {
       (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
         let target_creature = get_creature(cid)?;
-        if creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
+        if self.game.tile_system.creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
           Ok(vec![cid])
         } else {
           Err(GameError::CreatureOutOfRange(cid))
@@ -189,7 +188,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
       }
       (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
         let target_creature = get_creature(cid)?;
-        if creature_within_distance(self.creature, target_creature, max) {
+        if self.game.tile_system.creature_within_distance(self.creature, target_creature, max) {
           Ok(vec![cid])
         } else {
           Err(GameError::CreatureOutOfRange(cid))

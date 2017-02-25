@@ -66,6 +66,7 @@ saveForm terrain = vbox <|
     , H.button [HE.onClick (M.EditMap terrain)] [text "Save"]
     ]
   ]
+
 movementCircle : (T.Point3 -> M.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
 movementCircle moveMsg pts terrain origin max_distance =
   let movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts

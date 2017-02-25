@@ -5,7 +5,6 @@
 use nonempty;
 
 use types::*;
-use grid::{get_all_accessible, find_path, point3_distance};
 use creature::ChangedCreature;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
@@ -39,7 +38,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         let mut cur_pos = c_pos;
         // TODO: honor terrain
         for pos in path {
-          distance = distance + point3_distance(cur_pos, *pos);
+          distance = distance + self.game.tile_system.point3_distance(cur_pos, *pos);
           cur_pos = *pos;
         }
         let destination = path.last().unwrap_or(&c_pos);
@@ -86,7 +85,9 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     let current = self.current_creature()?;
     let current_pos = current.pos();
     let current_speed = current.speed() - self.combat.movement_used;
-    Ok(get_all_accessible(current_pos, self.game.current_map(), current_speed))
+    Ok(self.game
+      .tile_system
+      .get_all_accessible(current_pos, self.game.current_map(), current_speed))
   }
 
   pub fn get_movement(&'combat self) -> Result<CombatMove<'combat, 'game>, GameError> {
@@ -203,10 +204,14 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
   pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat<'game>, GameError> {
-    let (pts, distance) = find_path(self.combat.current_creature()?.pos(),
-                                    self.movement_left,
-                                    self.combat.game.current_map(),
-                                    pt).ok_or(GameError::NoPathFound)?;
+    let (pts, distance) = self.combat
+      .game
+      .tile_system
+      .find_path(self.combat.current_creature()?.pos(),
+                 self.movement_left,
+                 self.combat.game.current_map(),
+                 pt)
+      .ok_or(GameError::NoPathFound)?;
     debug_assert!(distance <= self.movement_left);
 
     let change = self.combat.change_with(CombatLog::PathCurrentCreature(pts))?;

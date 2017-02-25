@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use grid::{get_all_accessible, creature_within_distance};
 
 
 lazy_static! {
@@ -20,6 +19,7 @@ impl Game {
       maps: HashMap::new(),
       current_map: None,
       classes: classes,
+      tile_system: TileSystem::Realistic,
     }
   }
 
@@ -230,7 +230,7 @@ impl Game {
   pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
     let creature = self.find_creature(creature_id)?;
     if creature.can_move() {
-      Ok(get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+      Ok(self.tile_system.get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
     } else {
       Err(GameError::CannotAct(creature.id()))
     }
@@ -250,11 +250,12 @@ impl Game {
 
   fn creatures_in_range(&self, creature_id: CreatureID, distance: Distance)
                         -> Result<Vec<PotentialTarget>, GameError> {
-    fn check_in_range(me: DynamicCreature, others: Vec<&DynamicCreature>, distance: Distance)
+    fn check_in_range(me: DynamicCreature, others: Vec<&DynamicCreature>, distance: Distance,
+                      ts: TileSystem)
                       -> Vec<PotentialTarget> {
       let mut results = vec![];
       for ptarget in others {
-        if creature_within_distance(me.creature, ptarget.creature, distance) {
+        if ts.creature_within_distance(me.creature, ptarget.creature, distance) {
           results.push(PotentialTarget::CreatureID(ptarget.id()));
         }
       }
@@ -264,18 +265,24 @@ impl Game {
       Ok(combat) => {
         // OOC creatures target OOC creatures; in-combat creatures target in-combat creatures
         match combat.get_creature(creature_id) {
-          Ok(creature) => check_in_range(creature, combat.creatures()?.iter().collect(), distance),
+          Ok(creature) => {
+            check_in_range(creature,
+                           combat.creatures()?.iter().collect(),
+                           distance,
+                           self.tile_system)
+          }
           Err(_) => {
             check_in_range(self.get_creature(creature_id)?,
                            self.creatures()?.values().collect(),
-                           distance)
+                           distance, self.tile_system)
           }
         }
       }
       Err(_) => {
         check_in_range(self.get_creature(creature_id)?,
                        self.creatures()?.values().collect(),
-                       distance)
+                       distance,
+                       self.tile_system)
       }
     })
   }
@@ -443,6 +450,7 @@ pub mod test {
       creatures: creatures,
       maps: HashMap::from_iter(vec![("huge".to_string(), huge_box())]),
       current_map: Some("huge".to_string()),
+      tile_system: TileSystem::Realistic,
     };
     let game = t_start_combat(&game, vec![bob_id]);
     let next =

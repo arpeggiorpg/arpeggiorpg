@@ -527,6 +527,7 @@ pub struct Game {
   pub maps: HashMap<MapName, Map>,
   pub current_map: Option<MapName>,
   pub classes: HashMap<String, Class>,
+  pub tile_system: TileSystem,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -543,6 +544,14 @@ use creature::ChangedCreature;
 pub trait CreatureChanger: Sized {
   fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Self, GameError>
     where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>;
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
+pub enum TileSystem {
+  /// Square grid with diagonal movement costing 1.41
+  Realistic,
+  /// Square grid with diagonal movement costing 1
+  DnD,
 }
 
 #[cfg(test)]
