@@ -34,16 +34,19 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     let mut new = self.combat.clone();
     match *l {
       CombatLog::PathCurrentCreature(ref path) => {
-        // FIXME RADIX TODO XXX: this should actually PATH the creature and ensure that
-        // movement_used isn't exceeded.
-        let distance = {
+        let c_pos = self.current_creature()?.pos();
+        let mut distance = Distance(0);
+        let mut cur_pos = c_pos;
+        // TODO: honor terrain
+        for pos in path {
+          distance = distance + point3_distance(cur_pos, *pos);
+          cur_pos = *pos;
+        }
+        let destination = path.last().unwrap_or(&c_pos);
+        {
           let mut c = new.current_creature_mut();
-          let c_pos = c.pos();
-          let destination = path.last().unwrap_or(&c_pos);
-          let distance = point3_distance(c.pos, *destination);
           *c = c.apply_log(&CreatureLog::SetPos(*destination))?;
-          distance
-        };
+        }
         new.movement_used = new.movement_used + distance;
       }
       CombatLog::CreatureLog(ref cid, ref cl) => {
@@ -423,6 +426,19 @@ pub mod test {
                (10, 0, 0));
     assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
                Err(GameError::NoPathFound));
+  }
+
+  /// The length of the past is deducted from combat.movement_used after PathCurrentCreature.
+  #[test]
+  fn move_honors_path() {
+    let mut game = t_combat();
+    game.maps.insert("circuitous".to_string(),
+                     // up, right, right, down
+                     vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)]);
+    game.current_map = Some("circuitous".to_string());
+    let combat =
+      game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().combat;
+    assert_eq!(combat.movement_used, Distance(400));
   }
 
   #[test]
