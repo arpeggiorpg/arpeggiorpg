@@ -68,9 +68,8 @@ saveForm terrain = vbox <|
   ]
 movementCircle : (T.Point3 -> M.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
 movementCircle moveMsg pts terrain origin max_distance =
-  let circleEl = distanceCircle origin max_distance
-      movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
-  in circleEl :: movementCells
+  let movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
+  in movementCells
 
 distanceCircle : T.Point3 -> Int -> Svg M.Msg
 distanceCircle origin max_distance =
