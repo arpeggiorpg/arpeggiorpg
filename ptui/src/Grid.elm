@@ -91,7 +91,7 @@ gridCreature : Bool -> T.Creature -> Svg M.Msg
 gridCreature movable creature =
   g []
     [ tile "cyan" (if movable then [onClick (M.GetMovementOptions creature)] else []) creature.pos
-    , text_ [fontSize "50", x (coord creature.pos.x), y (coord creature.pos.y)]
+    , text_ [HA.style [("pointer-events", "none")], fontSize "50", x (coord creature.pos.x), y (toString <| (creature.pos.y * 100) + 50)]
               [ text creature.id]
     ]
 
