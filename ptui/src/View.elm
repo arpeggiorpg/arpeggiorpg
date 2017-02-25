@@ -35,7 +35,7 @@ modalSelectingCreatures model app callback commandName =
   let checkbox creature =
         input [ type_ "checkbox", onClick (M.ToggleSelectedCreature creature.id)
               , s [S.height (S.px 100), S.width (S.px 100)]] []
-      selectableCreature creature = hbox [checkbox creature, creatureCard model creature]
+      selectableCreature creature = hbox [checkbox creature, creatureCard True model creature]
   in vbox <|
     [ h3 [] [text <| "Select Creatures to " ++ commandName]
     ] ++ (List.map selectableCreature (Dict.values app.current_game.creatures))
@@ -174,7 +174,7 @@ playerViewGame model app creatures =
       Just combat ->
         let currentCreature = T.combatCreature combat
             bar = if List.member currentCreature creatures
-                  then hbox [ strong [] [text currentCreature.id]
+                  then hbox [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
                             , actionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
@@ -195,7 +195,7 @@ playerGrid model game myCreatures =
   let bar creature =
         if T.isCreatureInCombat game creature.id
         then Nothing
-        else Just <| hbox <| [creatureCard model creature, moveOOCButton creature] ++ (oocActionBar game creature)
+        else Just <| hbox <| [creatureCard False model creature, moveOOCButton creature] ++ (oocActionBar game creature)
       bars = List.filterMap bar myCreatures
       targetSel =
         case model.selectedAbility of
@@ -240,7 +240,7 @@ createCreatureButton model =
 inactiveEntry : M.Model -> T.Game -> Set.Set String -> T.Creature -> Html M.Msg
 inactiveEntry model game pendingCreatures creature = vbox <|
   [hbox <|
-    [ creatureCard model creature
+    [ creatureCard True model creature
     ] ++ case game.current_combat of
         Just _ -> [engageButton creature]
         Nothing -> []
@@ -364,7 +364,7 @@ combatantEntry isGmView model game combat (idx, creature) = hbox <|
              ]
         else []
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ initiativeArrows]
-  in gutter ++ [ creatureCard model creature ]
+  in gutter ++ [ creatureCard isGmView model creature ]
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =
@@ -375,7 +375,7 @@ oocActionBar game creature =
 
 actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 actionBar game combat creature =
-  hbox (oocActionBar game creature ++ [moveButton combat creature] ++ [doneButton creature])
+  hbox ([doneButton creature] ++ [moveButton combat creature] ++  oocActionBar game creature)
 
 actionButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
 actionButton creature (abid, ability) =
@@ -384,29 +384,31 @@ actionButton creature (abid, ability) =
     , disabled (not creature.can_act)]
     [text ability.name]
 
-creatureCard : M.Model -> T.Creature -> Html M.Msg
-creatureCard model creature =
+creatureCard : Bool -> M.Model -> T.Creature -> Html M.Msg
+creatureCard isGmView model creature =
   let cellStyles color =
         [s [ plainBorder
            , S.backgroundColor color
            , S.borderRadius (S.px 10)
            , S.padding (S.px 3)]]
-  in vabox [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
-    [ hbox [strong [] [text creature.name ], classIcon creature]
-    , hbox [
-      --  div (cellStyles (S.rgb 144 238 144))
-      --         [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-      --      , div (cellStyles (S.rgb 0 255 255))
-      --         [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-           div (cellStyles (S.rgb 255 255 255))
-              [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
-           ]
-    -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
-    --        , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
-    --        , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
-    , hbox (List.map conditionIcon (Dict.values creature.conditions))
-    , noteBox model creature
-    ]
+  in
+    vabox
+      [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
+      <| 
+      [ hbox [strong [] [text creature.name ], classIcon creature]
+      , hbox [
+        --  div (cellStyles (S.rgb 144 238 144))
+        --         [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
+        --      , div (cellStyles (S.rgb 0 255 255))
+        --         [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
+            div (cellStyles (S.rgb 255 255 255))
+                [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
+            ]
+      -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
+      --        , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
+      --        , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
+      , hbox (List.map conditionIcon (Dict.values creature.conditions))
+      ] ++ if isGmView then [noteBox model creature] else []
 
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
@@ -434,7 +436,12 @@ conditionIcon ac = case ac.condition of
   T.Incapacitated -> text "😞"
   T.AddDamageBuff dmg -> text "😈"
   T.DoubleMaxMovement -> text "🏃"
-  T.ActivateAbility abid -> text <| "ACTIVE: " ++ abid
+  T.ActivateAbility abid -> hbox [text <| "ACTIVE: " ++ abid, durationEl ac.remaining]
+
+durationEl : T.ConditionDuration -> Html M.Msg
+durationEl condDur = case condDur of
+  T.Interminate -> text "∞"
+  T.Duration n -> text <| "(" ++ toString n ++ ")"
 
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =
