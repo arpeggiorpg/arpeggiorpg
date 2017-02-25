@@ -32,9 +32,9 @@ impl TileSystem {
       }
       TileSystem::DnD => {
         // I'd use cmp::max but it's not usable on floats
-        let xdiff = pos1.0 - pos2.0;
-        let ydiff = pos1.1 - pos2.1;
-        Distance(if xdiff > ydiff { xdiff.abs() as u32 * 100 } else { ydiff.abs() as u32 * 100 })
+        let xdiff = (pos1.0 - pos2.0).abs() as u32;
+        let ydiff = (pos1.1 - pos2.1).abs() as u32;
+        Distance(if xdiff > ydiff { xdiff * 100 } else { ydiff * 100 })
       }
     }
   }
