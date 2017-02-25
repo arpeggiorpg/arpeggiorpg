@@ -169,25 +169,24 @@ playerViewGame model app creatures =
                 Just creature -> Grid.movementMap M.PathCurrentCombatCreature movementRequest model.currentMap creature (visibleCreatures model game)
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
-  ,
-    case game.current_combat of
-      Just combat ->
-        let currentCreature = T.combatCreature combat
-            bar = if List.member currentCreature creatures
-                  then hbox [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
-                            , combatActionBar game combat currentCreature]
-                  else hbox [text "Current creature:", text currentCreature.id]
-            selector = case model.selectedAbility of
-                          Just (cid, abid) -> 
-                                if T.isCreatureInCombat game cid
-                                then [targetSelector model game M.CombatAct abid]
-                                else []
-                          Nothing -> []
-            initiativeList = combatantList False model game combat
-        in vbox <| [bar] ++ selector ++ [initiativeList]
-      Nothing -> text "No Combat"
   ]
   -- TODO: a read-only "creatures nearby" list without details
+
+playerCombatArea model game combat creatures =
+  let currentCreature = T.combatCreature combat
+      bar = if List.member currentCreature creatures
+            then hbox [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
+                      , combatActionBar game combat currentCreature]
+            else hbox [text "Current creature:", text currentCreature.id]
+      selector = case model.selectedAbility of
+                    Just (cid, abid) -> 
+                          if T.isCreatureInCombat game cid
+                          then [targetSelector model game M.CombatAct abid]
+                          else []
+                    Nothing -> []
+      initiativeList = combatantList False model game combat
+  in vbox <| [bar] ++ selector ++ [initiativeList]
+
 
 -- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> T.Game -> List T.Creature -> Html M.Msg
@@ -197,6 +196,9 @@ playerGrid model game myCreatures =
         then Nothing
         else Just <| hbox <| [creatureCard False model creature, moveOOCButton creature] ++ (oocActionBar game creature)
       oocBars = List.filterMap bar myCreatures
+      ooc = if (List.length oocBars) > 0
+            then [vbox <| [h4 [] [text "Out Of Combat"]] ++ oocBars]
+            else []
       targetSel =
         case model.selectedAbility of
           Just (cid, abid) ->
@@ -204,8 +206,13 @@ playerGrid model game myCreatures =
               Just _ -> [targetSelector model game (M.ActCreature cid) abid]
               Nothing -> []
           Nothing -> []
+      comUI =
+        case game.current_combat of
+          Just combat -> vbox [h4 [] [text "Combat"], playerCombatArea model game combat myCreatures]
+          Nothing -> text "No Combat"
   in
-    hbox <| [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game), vbox (oocBars ++ targetSel)]
+    hbox <| [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game)
+            , vbox ([comUI] ++ ooc ++ targetSel)]
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|
