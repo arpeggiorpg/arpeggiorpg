@@ -366,7 +366,9 @@ combatantEntry model game combat (idx, creature) = hbox <|
 
 oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar game creature =
-  let abilities = List.filterMap (\abstatus -> Maybe.map (\ability -> (abstatus.ability_id, ability)) (Dict.get abstatus.ability_id game.abilities)) (Debug.log "creature abilities" creature.abilities)
+  let abinfo abstatus = Maybe.map (\ability -> (abstatus.ability_id, ability))
+                                  (Dict.get abstatus.ability_id game.abilities)
+      abilities = List.filterMap abinfo creature.abilities
   in (List.map (actionButton creature) abilities)
 
 actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
