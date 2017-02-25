@@ -22,8 +22,8 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
-baseMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> Bool -> Svg M.Msg
-baseMap movable ghost terrain creatures editable =
+baseMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
+baseMap movable ghost terrain creatures extras editable =
   let creatureEls = List.map (gridCreature movable) creatures
       terrainEls = baseTerrainRects editable terrain
       ghostEl = case ghost of
@@ -36,23 +36,24 @@ baseMap movable ghost terrain creatures editable =
       , HA.style [ ("border", "2px solid black")
                  , ("position", "relative") ]
       ]
-      (terrainEls ++ creatureEls ++ ghostEl)
+      (terrainEls ++ extras ++ creatureEls ++ ghostEl)
 
 terrainMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> Svg M.Msg
-terrainMap movable ghost terrain creatures = baseMap movable ghost terrain creatures False
+terrainMap movable ghost terrain creatures = baseMap movable ghost terrain creatures [] False
 
 editMap : T.Map -> List T.Creature -> H.Html M.Msg
 editMap terrain creatures = vbox
   [ saveForm terrain
-  , baseMap False Nothing terrain creatures True ]
+  , baseMap False Nothing terrain creatures [] True ]
 
 movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
 movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
   let cancelButton = cancelMove
+      movementCirc = movementCircle moveMsg movement_options terrain creature.pos max_distance
   in
     vbox
       [ cancelButton
-      , baseMap False Nothing terrain creatures False ]
+      , baseMap False Nothing terrain creatures movementCirc False ]
 
 cancelMove : H.Html M.Msg
 cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]
@@ -65,6 +66,11 @@ saveForm terrain = vbox <|
     , H.button [HE.onClick (M.EditMap terrain)] [text "Save"]
     ]
   ]
+movementCircle : (T.Point3 -> M.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
+movementCircle moveMsg pts terrain origin max_distance =
+  let circleEl = distanceCircle origin max_distance
+      movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
+  in circleEl :: movementCells
 
 distanceCircle : T.Point3 -> Int -> Svg M.Msg
 distanceCircle origin max_distance =
