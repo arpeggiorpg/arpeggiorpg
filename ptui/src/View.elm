@@ -175,7 +175,7 @@ playerViewGame model app creatures =
         let currentCreature = T.combatCreature combat
             bar = if List.member currentCreature creatures
                   then hbox [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.id]]
-                            , actionBar game combat currentCreature]
+                            , combatActionBar game combat currentCreature]
                   else hbox [text "Current creature:", text currentCreature.id]
             selector = case model.selectedAbility of
                           Just (cid, abid) -> 
@@ -196,7 +196,7 @@ playerGrid model game myCreatures =
         if T.isCreatureInCombat game creature.id
         then Nothing
         else Just <| hbox <| [creatureCard False model creature, moveOOCButton creature] ++ (oocActionBar game creature)
-      bars = List.filterMap bar myCreatures
+      oocBars = List.filterMap bar myCreatures
       targetSel =
         case model.selectedAbility of
           Just (cid, abid) ->
@@ -205,7 +205,7 @@ playerGrid model game myCreatures =
               Nothing -> []
           Nothing -> []
   in
-    vbox <| bars ++ targetSel ++ [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game)]
+    hbox <| [Grid.terrainMap False (movementGhost model) model.currentMap (visibleCreatures model game), vbox (oocBars ++ targetSel)]
   
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|
@@ -304,7 +304,7 @@ renderDice dice = text <| String.join ", " (List.map toString dice)
 
 gmCombatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
 gmCombatArea model game combat =
-  let bar = actionBar game combat (T.combatCreature combat)
+  let bar = combatActionBar game combat (T.combatCreature combat)
       disengageButtons = hbox (List.map disengageButton combat.creatures.data)
       combatView = vbox [ bar, combatantList True model game combat, stopCombatButton, disengageButtons]
   in case model.selectedAbility of
@@ -366,16 +366,18 @@ combatantEntry isGmView model game combat (idx, creature) = hbox <|
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ initiativeArrows]
   in gutter ++ [ creatureCard isGmView model creature ]
 
-oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
-oocActionBar game creature =
-  let abinfo abstatus = Maybe.map (\ability -> (abstatus.ability_id, ability))
+baseActionBar : Bool -> T.Game -> T.Creature -> List (Html M.Msg)
+baseActionBar inCombat game creature =
+  let abinfo abstatus = Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
                                   (Dict.get abstatus.ability_id game.abilities)
       abilities = List.filterMap abinfo creature.abilities
   in (List.map (abilityButton creature) abilities)
 
-actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
-actionBar game combat creature =
-  habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  oocActionBar game creature)
+oocActionBar = baseActionBar False
+
+combatActionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
+combatActionBar game combat creature =
+  habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  baseActionBar True game creature)
 
 abilityButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
 abilityButton creature (abid, ability) =

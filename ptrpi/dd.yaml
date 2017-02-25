@@ -461,6 +461,7 @@ current_game:
       name: "Bonus Action: Longstrider Shift"
       target: Actor
       cost: 2
+      usable_ooc: true
       effects:
         - ApplyCondition:
             - Duration: 9
@@ -469,6 +470,7 @@ current_game:
       name: "Bonus Action: Dash"
       target: Actor
       cost: 2
+      usable_ooc: false
       effects:
         - ApplyCondition:
             - Duration: 0
@@ -477,6 +479,7 @@ current_game:
       name: "Action: Dash"
       target: Actor
       cost: 8
+      usable_ooc: false
       effects:
         - ApplyCondition:
             - Duration: 0

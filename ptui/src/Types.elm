@@ -252,11 +252,14 @@ stringKeyDictToIntKeyDict d =
 type alias Ability =
   { name : String
   , target: TargetSpec
+  , usable_ooc: Bool
   }
 
-abilityDecoder = JD.map2 Ability
+abilityDecoder : JD.Decoder Ability
+abilityDecoder = JD.map3 Ability
   (JD.field "name" JD.string)
   (JD.field "target" targetSpecDecoder)
+  (JD.field "usable_ooc" JD.bool)
 
 type TargetSpec
   = Melee

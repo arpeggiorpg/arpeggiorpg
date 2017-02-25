@@ -333,6 +333,7 @@ pub struct Ability {
   pub target: TargetSpec,
   pub cost: Energy,
   pub effects: Vec<Effect>,
+  pub usable_ooc: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -601,6 +602,7 @@ pub mod test {
       name: "Punch".to_string(),
       target: TargetSpec::Melee,
       cost: Energy(0),
+      usable_ooc: true,
       effects: vec![Effect::Damage(Dice::flat(3))],
     }
   }
@@ -610,6 +612,7 @@ pub mod test {
       name: "Shoot".to_string(),
       target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
+      usable_ooc: true,
       effects: vec![Effect::Damage(Dice::flat(3))],
     }
   }
@@ -619,6 +622,7 @@ pub mod test {
       name: "Heal".to_string(),
       target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
+      usable_ooc: true,
       effects: vec![Effect::Heal(Dice::flat(3))],
     }
   }

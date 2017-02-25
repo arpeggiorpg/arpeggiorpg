@@ -372,6 +372,7 @@ pub mod test {
       name: "MultiEffect".to_string(),
       target: TargetSpec::Melee,
       cost: Energy(0),
+      usable_ooc: true,
       effects: vec![Effect::Damage(Dice::flat(3)),
                     Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
     };
