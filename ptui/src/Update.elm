@@ -43,12 +43,14 @@ updateModelFromApp model newApp =
   in { model2 | currentMap = currentMap, showingMovement = showingMovement}
 
 
+pollApp = Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder)
+
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
   MorePlease -> ( model, message PollApp)
 
-  PollApp -> (model, Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder))
+  PollApp -> (model, pollApp)
 
   ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, delay Time.second PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
@@ -187,7 +189,7 @@ toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
 
 url : String
-url = "http://localhost:1337/"
+url = "http://10.0.0.14:1337/"
 
 refreshApp : Cmd Msg
 refreshApp = Http.send AppUpdate (Http.get url T.appDecoder)

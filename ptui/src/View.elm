@@ -127,8 +127,7 @@ visibleCreatures model game =
 
 playerView : M.Model -> Html M.Msg
 playerView model = vbox
-  [ refreshButton
-  , case model.app of
+  [ case model.app of
       Just app ->
         let vGame = case model.playerID of
               Just playerID ->
@@ -371,18 +370,22 @@ oocActionBar game creature =
   let abinfo abstatus = Maybe.map (\ability -> (abstatus.ability_id, ability))
                                   (Dict.get abstatus.ability_id game.abilities)
       abilities = List.filterMap abinfo creature.abilities
-  in (List.map (actionButton creature) abilities)
+  in (List.map (abilityButton creature) abilities)
 
 actionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 actionBar game combat creature =
-  hbox ([doneButton creature] ++ [moveButton combat creature] ++  oocActionBar game creature)
+  habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  oocActionBar game creature)
 
-actionButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
-actionButton creature (abid, ability) =
-  button
+abilityButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
+abilityButton creature (abid, ability) =
+  actionButton
     [ onClick (M.SelectAbility creature.id abid)
     , disabled (not creature.can_act)]
     [text ability.name]
+
+actionButton : List (Attribute msg) -> List (Html msg) -> Html msg
+actionButton attrs children =
+  button ([s [S.height (S.px 50), S.width (S.px 100)]] ++ attrs) children
 
 creatureCard : Bool -> M.Model -> T.Creature -> Html M.Msg
 creatureCard isGmView model creature =
@@ -399,9 +402,9 @@ creatureCard isGmView model creature =
       , hbox [
         --  div (cellStyles (S.rgb 144 238 144))
         --         [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-        --      , div (cellStyles (S.rgb 0 255 255))
-        --         [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-            div (cellStyles (S.rgb 255 255 255))
+            div (cellStyles (S.rgb 0 255 255))
+                [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
+            , div (cellStyles (S.rgb 255 255 255))
                 [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
             ]
       -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
@@ -459,11 +462,11 @@ moveOOCButton creature =
 
 doneButton : T.Creature -> Html M.Msg
 doneButton creature =
-  button [onClick (M.SendCommand T.Done)] [text "Done"]
+  actionButton [onClick (M.SendCommand T.Done)] [text "Done"]
 
 moveButton : T.Combat -> T.Creature -> Html M.Msg
 moveButton combat creature =
   let movement_left = creature.speed - combat.movement_used
-  in button [ onClick M.GetCombatMovementOptions
+  in actionButton [ onClick M.GetCombatMovementOptions
             , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString movement_left, ")"])]

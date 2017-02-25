@@ -8,7 +8,7 @@ import Update as U
 main : Program Never M.Model M.Msg
 main =
   Html.program
-    { init = (M.defaultModel, U.refreshApp)
+    { init = (M.defaultModel, U.pollApp)
     , view = V.playerView
     , update = U.update
     , subscriptions = \_ -> Sub.none

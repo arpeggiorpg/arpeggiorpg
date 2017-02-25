@@ -30,8 +30,8 @@ baseMap movable ghost terrain creatures extras editable =
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
   in svg
-      [ viewBox (String.join " " (List.map toString [-gridSize * 50, -gridSize * 50, gridSize * 100, gridSize * 100]))
-      , width "800"
+      [ viewBox (String.join " " (List.map toString [-gridSize * 40, -gridSize * 40, gridSize * 80, gridSize * 80]))
+      , width "1000"
       , height "800"
       , HA.style [ ("border", "2px solid black")
                  , ("position", "relative") ]
