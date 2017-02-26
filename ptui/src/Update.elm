@@ -23,7 +23,7 @@ message msg = Task.perform (always msg) (Task.succeed ())
 updateModelFromApp : M.Model -> T.App -> M.Model
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
-      currentMap = M.getMap model2
+      currentMap = if model.editingMap then model.currentMap else M.getMap model2
       showingMovement =
         case T.mostRecentLog newApp of
           Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
