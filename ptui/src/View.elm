@@ -79,9 +79,10 @@ fullUI model app game =
                                 then [targetSelector model game (M.ActCreature cid) abid]
                                 else []
             Nothing -> []
+        currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
         mapHTML =
           vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
-               , Grid.terrainMap True (movementGhost model) model.currentMap (visibleCreatures model game)
+               , Grid.terrainMap True currentCombatCreature (movementGhost model) model.currentMap (visibleCreatures model game)
                ]
         sideBarHTML =
           vabox [s [S.width (S.px 500)]] <|
@@ -219,8 +220,9 @@ playerGrid model game myCreatures =
         case game.current_combat of
           Just _ -> False
           Nothing -> True
+      currentCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
   in
-    hbox <| [Grid.terrainMap movable (movementGhost model) model.currentMap (visibleCreatures model game)
+    hbox <| [Grid.terrainMap movable currentCreature (movementGhost model) model.currentMap (visibleCreatures model game)
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
   
 mapSelector : T.Game -> Html M.Msg

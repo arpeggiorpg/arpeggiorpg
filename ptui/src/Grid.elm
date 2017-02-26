@@ -22,9 +22,9 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
-baseMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap movable ghost terrain creatures extras editable =
-  let creatureEls = List.map (gridCreature movable) creatures
+baseMap : Bool -> Maybe T.CreatureID -> Maybe T.Point3 -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
+baseMap movable highlightCreature ghost terrain creatures extras editable =
+  let creatureEls = List.map (gridCreature movable highlightCreature) creatures
       terrainEls = baseTerrainRects editable terrain
       ghostEl = case ghost of
                   Just pt -> [tile "black" [] pt]
@@ -38,13 +38,13 @@ baseMap movable ghost terrain creatures extras editable =
       ]
       (terrainEls ++ extras ++ creatureEls ++ ghostEl)
 
-terrainMap : Bool -> Maybe T.Point3 -> T.Map -> List T.Creature -> Svg M.Msg
-terrainMap movable ghost terrain creatures = baseMap movable ghost terrain creatures [] False
+terrainMap : Bool -> Maybe T.CreatureID -> Maybe T.Point3 -> T.Map -> List T.Creature -> Svg M.Msg
+terrainMap movable highlightCreature ghost terrain creatures = baseMap movable highlightCreature ghost terrain creatures [] False
 
 editMap : T.Map -> List T.Creature -> H.Html M.Msg
 editMap terrain creatures = vbox
   [ saveForm terrain
-  , baseMap False Nothing terrain creatures [] True ]
+  , baseMap False Nothing Nothing terrain creatures [] True ]
 
 movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
 movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
@@ -53,7 +53,7 @@ movementMap moveMsg {max_distance, movement_options} terrain creature creatures 
   in
     vbox
       [ cancelButton
-      , baseMap False Nothing terrain creatures movementCirc False ]
+      , baseMap False (Just creature.id) Nothing terrain creatures movementCirc False ]
 
 cancelMove : H.Html M.Msg
 cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]
@@ -87,14 +87,24 @@ movementTarget : (T.Point3 -> M.Msg) -> T.Point3 -> Int -> T.Map -> T.Point3 -> 
 movementTarget moveMsg origin max_distance terrain pt =
   tile "green" [onClick (moveMsg pt)] pt
 
-gridCreature : Bool -> T.Creature -> Svg M.Msg
-gridCreature movable creature =
+gridCreature : Bool -> Maybe T.CreatureID -> T.Creature -> Svg M.Msg
+gridCreature movable highlightCreature creature =
   let creatureColor =
         case creature.class of
           "baddie" -> "red"
           _ -> "cyan"
+      strokeColor =
+        if Just creature.id == highlightCreature
+        then "white"
+        else "black"
+      strokeWidthSize =
+        if Just creature.id == highlightCreature
+        then 10
+        else 1
+      movableEventHandler = if movable then [onClick (M.GetMovementOptions creature)] else []
+      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize)] ++ movableEventHandler
   in g []
-    [ tile creatureColor (if movable then [onClick (M.GetMovementOptions creature)] else []) creature.pos
+    [ tile creatureColor attrs creature.pos
     , text_ [HA.style [("pointer-events", "none")], fontSize "50", x (coord creature.pos.x), y (toString <| (creature.pos.y * 100) + 50)]
               [ text creature.id]
     ]
@@ -126,11 +136,11 @@ emptyTerrainTile editable pt =
 
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
 tile cl attrs pt =
-  rect (attrs ++ [ width "100"
+  rect ([ width "100"
        , height "100"
        , x (coord pt.x)
        , y (coord pt.y)
        , fill cl
        , stroke "black"
-       , strokeWidth "1" ])
+       , strokeWidth "1" ] ++ attrs)
        []
