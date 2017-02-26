@@ -49,11 +49,16 @@ gmViewGame_ : M.Model -> T.App -> Html M.Msg
 gmViewGame_ model app =
   let game = app.current_game
       center el = div [s [S.displayFlex, S.justifyContent S.spaceAround]] [el]
+      movementGrid msg mvmtReq creature =
+        vbox
+          [ hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
+          , Grid.movementMap msg mvmtReq model.moveAnywhere model.currentMap creature (visibleCreatures model game)
+          ]
   in
   case (game.current_combat, model.moving) of
     (Nothing, Just mvmtReq) ->
       case mvmtReq.ooc_creature of
-        Just creature -> center <| Grid.movementMap (M.PathCreature creature.id) mvmtReq model.currentMap creature (visibleCreatures model game)
+        Just creature -> center <| movementGrid (M.PathCreature creature.id) mvmtReq creature
         Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
                    fullUI model app game
     (Just combat, Just mvmtReq) ->
@@ -61,7 +66,7 @@ gmViewGame_ model app =
           case mvmtReq.ooc_creature of
             Just creature -> (creature, M.PathCreature creature.id)
             Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
-      in center <| Grid.movementMap moveMessage mvmtReq model.currentMap creature (visibleCreatures model game)
+      in center <| movementGrid moveMessage mvmtReq creature
     _ -> fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
@@ -161,14 +166,14 @@ playerViewGame model app creatures =
             then
               -- one of my characters is moving; render the movement map
               Grid.movementMap (M.PathCreature oocMovingCreature.id) movementRequest
-                               model.currentMap oocMovingCreature (visibleCreatures model game)
+                               False model.currentMap oocMovingCreature (visibleCreatures model game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
           Nothing -> -- we're moving in-combat.
             let currentCreature = Maybe.map T.combatCreature game.current_combat
             in case currentCreature of
-                Just creature -> Grid.movementMap M.PathCurrentCombatCreature movementRequest model.currentMap creature (visibleCreatures model game)
+                Just creature -> Grid.movementMap M.PathCurrentCombatCreature movementRequest False model.currentMap creature (visibleCreatures model game)
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ]

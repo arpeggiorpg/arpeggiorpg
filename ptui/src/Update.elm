@@ -163,7 +163,7 @@ update msg model = case msg of
     let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
         req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
     in ({ model | selectedAbility = Just (cid, abid)}, req)
-  
+
   CancelAbility -> ({model | selectedAbility = Nothing}, Cmd.none)
 
   GotTargetOptions (Ok potTargets) -> ({model | potentialTargets = potTargets}, Cmd.none)
@@ -173,6 +173,8 @@ update msg model = case msg of
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
   ToggleShowOOC -> ({model | showOOC = not model.showOOC}, Cmd.none)
+
+  ToggleMoveAnywhere -> ({ model | moveAnywhere = not model.moveAnywhere}, Cmd.none)
 
   SetCreatureNote cid note ->
     let newNotes = Dict.insert cid note model.creatureNotes

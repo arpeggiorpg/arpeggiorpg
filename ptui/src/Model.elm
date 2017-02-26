@@ -51,6 +51,7 @@ type Msg
     | DoneSelectingCreatures
     | CancelSelectingCreatures
     | ToggleShowOOC
+    | ToggleMoveAnywhere
     | Tick Time.Time
     | SendCommand T.GameCommand
     | SetCreatureNote T.CreatureID String
@@ -72,6 +73,7 @@ defaultModel =
     , playerID = Nothing
     , potentialTargets = []
     , showOOC = False
+    , moveAnywhere = False
     , showingMovement = NotShowingMovement
     , creatureNotes = Dict.empty
   }
@@ -96,6 +98,7 @@ type alias Model =
   , showOOC: Bool
   , showingMovement: MovementAnimation
   , creatureNotes : Dict.Dict T.CreatureID String
+  , moveAnywhere : Bool
   }
 
 type MovementAnimation

@@ -46,14 +46,25 @@ editMap terrain creatures = vbox
   [ saveForm terrain
   , baseMap False Nothing Nothing terrain creatures [] True ]
 
-movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
-movementMap moveMsg {max_distance, movement_options} terrain creature creatures =
+movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List T.Creature -> H.Html M.Msg
+movementMap moveMsg {max_distance, movement_options} moveAnywhere terrain creature creatures =
   let cancelButton = cancelMove
-      movementCirc = movementCircle moveMsg movement_options terrain creature.pos max_distance
+      targetPoints =
+        if moveAnywhere
+        then calculateAllMovementOptions creature.pos (max_distance // 100)
+        else movement_options            
+      movementTiles = movementTargets moveMsg targetPoints terrain creature.pos max_distance
   in
     vbox
       [ cancelButton
-      , baseMap False (Just creature.id) Nothing terrain creatures movementCirc False ]
+      , baseMap False (Just creature.id) Nothing terrain creatures movementTiles False ]
+
+calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
+calculateAllMovementOptions from distance =
+  let xs = List.range (from.x - distance) (from.x + distance)
+      ys = List.range (from.y - distance) (from.y + distance)
+      result = List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
+  in result
 
 cancelMove : H.Html M.Msg
 cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]
@@ -67,21 +78,9 @@ saveForm terrain = vbox <|
     ]
   ]
 
-movementCircle : (T.Point3 -> M.Msg) -> (List T.Point3) -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
-movementCircle moveMsg pts terrain origin max_distance =
-  let movementCells = List.map (movementTarget moveMsg origin max_distance terrain) pts
-  in movementCells
-
-distanceCircle : T.Point3 -> Int -> Svg M.Msg
-distanceCircle origin max_distance =
-  let centerCoord n = toString ((n * 100) + 50) in
-  circle [ r (toString max_distance)
-           , fill "none"
-           , stroke "black"
-           , strokeWidth "1"
-           , cx (centerCoord origin.x)
-           , cy (centerCoord origin.y)]
-           []
+movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
+movementTargets moveMsg pts terrain origin max_distance =
+  List.map (movementTarget moveMsg origin max_distance terrain) pts
 
 movementTarget : (T.Point3 -> M.Msg) -> T.Point3 -> Int -> T.Map -> T.Point3 -> H.Html M.Msg
 movementTarget moveMsg origin max_distance terrain pt =
