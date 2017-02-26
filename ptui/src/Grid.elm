@@ -89,8 +89,12 @@ movementTarget moveMsg origin max_distance terrain pt =
 
 gridCreature : Bool -> T.Creature -> Svg M.Msg
 gridCreature movable creature =
-  g []
-    [ tile "cyan" (if movable then [onClick (M.GetMovementOptions creature)] else []) creature.pos
+  let creatureColor =
+        case creature.class of
+          "baddie" -> "red"
+          _ -> "cyan"
+  in g []
+    [ tile creatureColor (if movable then [onClick (M.GetMovementOptions creature)] else []) creature.pos
     , text_ [HA.style [("pointer-events", "none")], fontSize "50", x (coord creature.pos.x), y (toString <| (creature.pos.y * 100) + 50)]
               [ text creature.id]
     ]
