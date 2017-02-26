@@ -482,6 +482,7 @@ impl ser::Serialize for Game {
     str.serialize_field("maps", &self.maps)?;
     str.serialize_field("current_map", &self.current_map)?;
     str.serialize_field("classes", &self.classes)?;
+    str.serialize_field("tile_system", &self.tile_system)?;
     str.end()
   }
 }
