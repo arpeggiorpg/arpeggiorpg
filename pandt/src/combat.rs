@@ -1,6 +1,9 @@
-//! Representation and simulation of combat.
-//! Many simple combat-oriented types are in `types.rs`, but this module implements the
-//! Combat types.
+//! Simulation of combat.
+//! Combat takes over ownership of Creatures who are in combat.
+//! I'm not sure if I want to stick with this design - Combat should maybe just a vec of
+//! CreatureIDs. But modification of those creatures as a part of combat would require some
+//! significant refactoring. It may go hand-in-hand with a removal of the `CombatLog` (and just
+//! using GameLog).
 
 use nonempty;
 

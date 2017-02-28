@@ -442,7 +442,7 @@ pub struct Creature {
   pub note: String,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
   // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
   // after we load data back in, because serde doesn't (currently) have any way to know that
@@ -453,6 +453,26 @@ pub struct Combat {
   // and then either have Vec<&Creature> here, or Vec<CreatureID>.
   pub creatures: nonempty::NonEmptyWithCursor<Creature>,
   pub movement_used: Distance,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Game {
+  pub current_combat: Option<Combat>,
+  pub abilities: HashMap<AbilityID, Ability>,
+  pub creatures: HashMap<CreatureID, Creature>,
+  pub maps: HashMap<MapName, Map>,
+  pub current_map: Option<MapName>,
+  pub classes: HashMap<String, Class>,
+  pub tile_system: TileSystem,
+}
+
+/// A data structure maintaining state for the whole app. It keeps track of the history of the
+/// whole game, and exposes the top-level methods that run simulations on the game.
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct App {
+  pub current_game: Game,
+  pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
+  pub players: HashMap<PlayerID, HashSet<CreatureID>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -468,21 +488,39 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
   pub class: &'game Class,
 }
 
-impl ser::Serialize for Game {
+/// A newtype wrapper over App that has a special Serialize implementation, which includes extra
+/// data dynamically as a convenience for the client.
+pub struct RPIApp<'a>(pub &'a App);
+/// Like RPIApp for Game.
+pub struct RPIGame<'a>(pub &'a Game);
+
+impl<'a> ser::Serialize for RPIApp<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 6)?;
-    let com = match self.get_combat() {
+    let mut str = serializer.serialize_struct("App", 3)?;
+    let app = self.0;
+    str.serialize_field("current_game", &RPIGame(&app.current_game))?;
+    str.serialize_field("snapshots", &app.snapshots)?;
+    str.serialize_field("players", &app.players)?;
+    str.end()
+  }
+}
+
+impl<'a> ser::Serialize for RPIGame<'a> {
+  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    let mut str = serializer.serialize_struct("Game", 7)?;
+    let game = self.0;
+    let com = match game.get_combat() {
       Ok(c) => Some(c),
       Err(_) => None, // TODO: distinguish between NotInCombat and other errors
     };
     str.serialize_field("current_combat", &com)?;
-    str.serialize_field("abilities", &self.abilities)?;
+    str.serialize_field("abilities", &game.abilities)?;
     str.serialize_field("creatures",
-                       &self.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
-    str.serialize_field("maps", &self.maps)?;
-    str.serialize_field("current_map", &self.current_map)?;
-    str.serialize_field("classes", &self.classes)?;
-    str.serialize_field("tile_system", &self.tile_system)?;
+                       &game.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
+    str.serialize_field("maps", &game.maps)?;
+    str.serialize_field("current_map", &game.current_map)?;
+    str.serialize_field("classes", &game.classes)?;
+    str.serialize_field("tile_system", &game.tile_system)?;
     str.end()
   }
 }
@@ -513,32 +551,10 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("cur_health", &creat.cur_health)?;
     str.serialize_field("pos", &creat.pos)?;
     str.serialize_field("conditions", &creat.conditions)?;
-    str.serialize_field("all_conditions", &self.conditions())?;
     str.serialize_field("can_act", &self.can_act())?;
     str.serialize_field("can_move", &self.can_move())?;
     str.end()
   }
-}
-
-
-#[derive(Clone, Eq, PartialEq, Debug, Deserialize)]
-pub struct Game {
-  pub current_combat: Option<Combat>,
-  pub abilities: HashMap<AbilityID, Ability>,
-  pub creatures: HashMap<CreatureID, Creature>,
-  pub maps: HashMap<MapName, Map>,
-  pub current_map: Option<MapName>,
-  pub classes: HashMap<String, Class>,
-  pub tile_system: TileSystem,
-}
-
-/// A data structure maintaining state for the whole app. It keeps track of the history of the
-/// whole game, and exposes the top-level methods that run simulations on the game.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct App {
-  pub current_game: Game,
-  pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
-  pub players: HashMap<PlayerID, HashSet<CreatureID>>,
 }
 
 use creature::ChangedCreature;

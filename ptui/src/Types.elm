@@ -53,14 +53,18 @@ potentialTargetDecoder = sumDecoder "PotentialTarget"
 
 type alias App =
   { current_game : Game
-  , snapshots : Array.Array (Game, (List GameLog))
+  , snapshots : Array.Array (GameSnapshot, (List GameLog))
   , players : Dict PlayerID (Set.Set CreatureID)
   }
 
 appDecoder = JD.map3 App
   (JD.field "current_game" gameDecoder)
-  (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameDecoder) (JD.index 1 <| JD.list gameLogDecoder))))
+  (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameSnapshotDecoder) (JD.index 1 <| JD.list gameLogDecoder))))
   (JD.field "players" (JD.dict (JD.map Set.fromList (JD.list JD.string))))
+
+type alias GameSnapshot = {}
+
+gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
   = GLSelectMap MapName

@@ -69,8 +69,8 @@ impl Service for PT {
   fn call(&self, req: Request) -> Self::Future {
     let route = route(req);
     match route {
-      Route::GetApp => respond(self.get_app()),
-      Route::PollApp => respond(self.poll_app()),
+      Route::GetApp => respond_string(self.get_app()),
+      Route::PollApp => respond_string(self.poll_app()),
       Route::PostApp(body) => self.post_app(body),
       Route::MovementOptions(cid) => respond(self.get_movement_options(&cid)),
       Route::CombatMovementOptions => respond(self.get_combat_movement_options()),
@@ -88,12 +88,17 @@ impl Service for PT {
 }
 
 impl PT {
-  fn get_app(&self) -> Result<pandt::types::App, GameError> {
-    Ok(self.app.lock().unwrap().clone())
+  fn get_app(&self) -> Result<String, GameError> {
+    let app = self.app.lock().unwrap();
+    let json = serde_json::to_string(&pandt::types::RPIApp(&*app)).unwrap();
+    Ok(json)
   }
 
-  fn poll_app(&self) -> Result<pandt::types::App, GameError> {
-    Ok(self.app.lock().unwrap().clone())
+  fn poll_app(&self) -> Result<String, GameError> {
+    // TODO: return a Future that only results in an RPIApp when there is a change
+    // TODO: take a `version` parameter which causes this function to immediately return the latest
+    // App if the version is older than current.
+    self.get_app()
   }
 
   fn get_movement_options(&self, creature_id: &str) -> Result<Vec<Point3>, GameError> {
@@ -157,6 +162,14 @@ fn respond<S: serde::Serialize, E: std::fmt::Debug>(result: Result<S, E>)
   }
 }
 
+fn respond_string<E: std::fmt::Debug>(result: Result<String, E>)
+                                      -> BoxFuture<Response, hyper::Error> {
+  match result {
+    Ok(r) => http_string(r),
+    Err(e) => http_error(e),
+  }
+}
+
 fn http_error<E: std::fmt::Debug>(e: E) -> BoxFuture<Response, hyper::Error> {
   finished(Response::new()
       .with_status(StatusCode::InternalServerError)
@@ -167,10 +180,14 @@ fn http_error<E: std::fmt::Debug>(e: E) -> BoxFuture<Response, hyper::Error> {
 }
 
 fn http_json<J: serde::Serialize>(j: &J) -> BoxFuture<Response, hyper::Error> {
+  http_string(serde_json::to_string(j).unwrap())
+}
+
+fn http_string(s: String) -> BoxFuture<Response, hyper::Error> {
   finished(Response::new()
       .with_header(AccessControlAllowOrigin::Any)
       .with_header(ContentType::json())
-      .with_body(serde_json::to_string(j).unwrap()))
+      .with_body(s))
     .boxed()
 }
 
