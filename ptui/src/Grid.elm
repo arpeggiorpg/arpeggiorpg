@@ -84,7 +84,7 @@ movementTargets moveMsg pts terrain origin max_distance =
 
 movementTarget : (T.Point3 -> M.Msg) -> T.Point3 -> Int -> T.Map -> T.Point3 -> H.Html M.Msg
 movementTarget moveMsg origin max_distance terrain pt =
-  tile "green" [onClick (moveMsg pt)] pt
+  tile "lawngreen" [fillOpacity "0.3", onClick (moveMsg pt)] pt
 
 gridCreature : Bool -> Maybe T.CreatureID -> T.Creature -> Svg M.Msg
 gridCreature movable highlightCreature creature =
