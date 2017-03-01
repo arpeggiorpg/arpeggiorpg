@@ -102,20 +102,29 @@ update msg model = case msg of
   ShowError s -> ( {model | error = s}, Cmd.none)
 
   SelectCreatures cb commandName ->
-    ( { model | selectingCreatures = Just (cb, commandName)}, Cmd.none)
+    ( { model | selectingCreatures = Just ([], cb, commandName)}, Cmd.none)
+
   ToggleSelectedCreature cid ->
-    ( { model | selectedCreatures = toggleSet cid model.selectedCreatures }
-    , Cmd.none )
+    case model.selectingCreatures of
+      Just (selectedCreatures, cb, descr) ->
+        let newSelectedCreatures =
+              if List.member cid selectedCreatures
+              then List.filter (\c -> c /= cid) selectedCreatures
+              else List.append selectedCreatures [cid]
+            newSelectingCreatures = Just (newSelectedCreatures, cb, descr)
+        in ( { model | selectingCreatures = newSelectingCreatures }, Cmd.none)
+      Nothing -> ({model | error = "Can't select creature when not selecting creatures"}, Cmd.none)
+
   DoneSelectingCreatures ->
     case model.selectingCreatures of
-      Just (cb, _) -> 
-        let cids = Set.toList model.selectedCreatures
-        in ( { model | selectedCreatures = Set.empty, selectingCreatures = Nothing}
+      Just (selectedCreatures, cb, _) -> 
+        let cids = selectedCreatures
+        in ( { model |selectingCreatures = Nothing}
            , cb cids)
-      Nothing ->
-        ( model , Cmd.none)
+      Nothing -> ( model , Cmd.none)
+
   CancelSelectingCreatures ->
-    ( { model | selectedCreatures = Set.empty, selectingCreatures = Nothing}
+    ( { model | selectingCreatures = Nothing}
     , Cmd.none)
 
   
@@ -191,7 +200,7 @@ toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
 
 url : String
-url = "http://10.0.0.14:1337/"
+url = "http://localhost:1337/"
 
 refreshApp : Cmd Msg
 refreshApp = Http.send AppUpdate (Http.get url T.appDecoder)

@@ -63,7 +63,6 @@ defaultModel =
     , pendingCreatureId = Nothing
     , pendingCreatureName = Nothing
     , pendingCreatureClass = Nothing
-    , selectedCreatures = Set.empty
     , selectingCreatures = Nothing
     , moving = Nothing
     , error = "No current error!"
@@ -78,7 +77,6 @@ defaultModel =
     , creatureNotes = Dict.empty
   }
 
-
 type alias Model =
   { app : Maybe T.App
   , pendingCreatureId : Maybe T.CreatureID
@@ -86,8 +84,7 @@ type alias Model =
   , pendingCreatureClass : Maybe String
   , selectedAbility : Maybe (T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
-  , selectedCreatures : Set.Set T.CreatureID
-  , selectingCreatures : Maybe (GotCreatures, String)
+  , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)
   , error: String
   , moving: Maybe MovementRequest
   , saveMapName: String
