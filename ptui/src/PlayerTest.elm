@@ -5,10 +5,10 @@ import Model as M
 import View as V
 import Update as U
 
-main : Program M.ProgramFlags M.Model M.Msg
+main : Program Never M.Model M.Msg
 main =
-  Html.programWithFlags
-    { init = \flags -> (M.defaultModel flags, U.message M.PollApp)
+  Html.program
+    { init = (M.defaultModel M.devFlags, U.message M.PollApp)
     , view = V.playerView
     , update = U.update
     , subscriptions = M.subscriptions

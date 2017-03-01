@@ -115,7 +115,7 @@ movementGhost model =
     _ -> Nothing
 
 playerControlList app =
-  let gotCreatures pid cids = U.sendCommand (T.GiveCreaturesToPlayer pid cids)
+  let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
       selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
       playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
   in extPlayerList playerButton app.players
@@ -371,7 +371,7 @@ stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Com
 
 startCombatButton : Html M.Msg
 startCombatButton =
-  let gotCreatures cids = U.sendCommand (T.StartCombat cids)
+  let gotCreatures cids = U.message (M.SendCommand (T.StartCombat cids))
   in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
 
 combatantList : Bool -> M.Model -> T.Game -> T.Combat -> Html M.Msg

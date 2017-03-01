@@ -43,14 +43,14 @@ updateModelFromApp model newApp =
   in { model2 | currentMap = currentMap, showingMovement = showingMovement}
 
 
-pollApp = Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder)
+pollApp url = Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder)
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
   MorePlease -> ( model, message PollApp)
 
-  PollApp -> (model, pollApp)
+  PollApp -> (model, pollApp model.rpiURL)
 
   ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, delay Time.second PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
@@ -61,7 +61,7 @@ update msg model = case msg of
 
   RegisterPlayer ->
     case model.playerID of
-      Just playerID -> (model, sendCommand (T.RegisterPlayer playerID))
+      Just playerID -> (model, sendCommand model.rpiURL (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   PendingCreatureId input ->
@@ -77,9 +77,9 @@ update msg model = case msg of
     in ( {model | pendingCreatureClass = newClass}
        , Cmd.none)
 
-  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, refreshApp)
-  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, refreshApp)
-  CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp)
+  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, refreshApp model.rpiURL)
+  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, refreshApp model.rpiURL)
+  CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp model.rpiURL)
 
   AppUpdate (Ok newApp) ->
     let model2 = updateModelFromApp model newApp
@@ -129,7 +129,7 @@ update msg model = case msg of
 
   
   GetMovementOptions creature ->
-    let endpoint = (url ++ "/movement_options/" ++ creature.id)
+    let endpoint = (model.rpiURL ++ "/movement_options/" ++ creature.id)
         cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))
     in (model, cmd)
 
@@ -139,7 +139,7 @@ update msg model = case msg of
   GotMovementOptions _ (Err e) -> ({ model | error = toString e}, Cmd.none)
 
   GetCombatMovementOptions ->
-    let endpoint = (url ++ "/combat_movement_options")
+    let endpoint = (model.rpiURL ++ "/combat_movement_options")
         cmd = Http.send GotCombatMovementOptions (Http.get endpoint (JD.list T.point3Decoder))
     in (model, cmd)
   
@@ -166,10 +166,10 @@ update msg model = case msg of
   UpdateSaveMapName name -> ( {model | saveMapName = name }
                             , Cmd.none)
 
-  EditMap terrain -> ({ model | editingMap = False}, sendCommand (T.EditMap model.saveMapName terrain))
+  EditMap terrain -> ({ model | editingMap = False}, sendCommand model.rpiURL (T.EditMap model.saveMapName terrain))
 
   SelectAbility cid abid ->
-    let endpoint = url ++ "/target_options/" ++ cid ++ "/" ++ abid
+    let endpoint = model.rpiURL ++ "/target_options/" ++ cid ++ "/" ++ abid
         req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
     in ({ model | selectedAbility = Just (cid, abid)}, req)
 
@@ -190,22 +190,19 @@ update msg model = case msg of
     in ({model | creatureNotes = newNotes}, Cmd.none)
 
   -- Basic GameCommands
-  SendCommand cmd -> (model, sendCommand cmd)
-  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.CombatAct abid dtarget))
-  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand (T.ActCreature cid abid dtarget))
-  PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand (T.PathCurrentCombatCreature pt))
-  PathCreature cid pt -> ({model | moving = Nothing}, sendCommand (T.PathCreature cid pt))
+  SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
+  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
+  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature cid abid dtarget))
+  PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
+  PathCreature cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature cid pt))
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
 
-url : String
-url = "http://localhost:1337/"
+refreshApp : String -> Cmd Msg
+refreshApp url = Http.send AppUpdate (Http.get url T.appDecoder)
 
-refreshApp : Cmd Msg
-refreshApp = Http.send AppUpdate (Http.get url T.appDecoder)
-
-sendCommand : T.GameCommand -> Cmd Msg
-sendCommand cmd =
+sendCommand : String -> T.GameCommand -> Cmd Msg
+sendCommand url cmd =
   Debug.log ("[COMMAND] " ++ (toString cmd)) <|
   Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) T.rustResultDecoder)

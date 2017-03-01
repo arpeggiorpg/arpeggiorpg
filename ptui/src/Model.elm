@@ -2,7 +2,6 @@ module Model exposing (..)
 
 import Dict
 import Http
-import Set
 import Time
 
 import Types as T
@@ -56,8 +55,8 @@ type Msg
     | SendCommand T.GameCommand
     | SetCreatureNote T.CreatureID String
 
-defaultModel : Model
-defaultModel =
+defaultModel : ProgramFlags -> Model
+defaultModel flags =
     { app = Nothing
     , selectedAbility = Nothing
     , pendingCreatureId = Nothing
@@ -75,7 +74,14 @@ defaultModel =
     , moveAnywhere = False
     , showingMovement = NotShowingMovement
     , creatureNotes = Dict.empty
+    , rpiURL = flags.rpi
   }
+
+devFlags : ProgramFlags
+devFlags = {rpi = "http://localhost:1337/"}
+
+type alias ProgramFlags =
+  { rpi : String }
 
 type alias Model =
   { app : Maybe T.App
@@ -96,7 +102,9 @@ type alias Model =
   , showingMovement: MovementAnimation
   , creatureNotes : Dict.Dict T.CreatureID String
   , moveAnywhere : Bool
+  , rpiURL : String
   }
+  
 
 type MovementAnimation
   = ShowingMovement (List T.Point3) (List T.Point3) -- first is what's been shown so far, second is what's left to animate
