@@ -192,6 +192,11 @@ impl<T> NonEmptyWithCursor<T> {
         Ok(r)
     }
 
+    /// See Vec::sort_by_key. Note that the cursor is NOT affected.
+    pub fn sort_by_key<B, F>(&mut self, f: F) where B: Ord, F: FnMut(&T) -> B {
+        self.data.sort_by_key(f)
+    }
+
     // *** Pass-through methods
     /// Get the length of the underlying non-empty vector.
     #[inline]
