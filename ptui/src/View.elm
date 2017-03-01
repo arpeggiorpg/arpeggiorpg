@@ -15,7 +15,7 @@ import Elements exposing (..)
 
 import Css as S
 
-
+s : List S.Mixin -> Attribute msg
 s = S.asPairs >> Html.Attributes.style
 
 gmView : M.Model -> Html M.Msg
@@ -29,15 +29,18 @@ gmView model = vbox
 modalSelectingCreatures : M.Model -> T.App -> M.GotCreatures -> String -> Html M.Msg
 modalSelectingCreatures model app callback commandName =
   let checkbox creature =
-        input [ type_ "checkbox", onClick (M.ToggleSelectedCreature creature.id)
+        input [ type_ "checkbox"
+              , onClick (M.ToggleSelectedCreature creature.id)
               , s [S.height (S.px 100), S.width (S.px 100)]] []
-      selectableCreature creature = hbox [checkbox creature, creatureCard True model creature]
+      selectableCreature creature =
+        hbox [checkbox creature, creatureCard True model creature]
+      creatureItems = List.map selectableCreature (Dict.values app.current_game.creatures)
+      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
+      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
   in vbox <|
-    [ h3 [] [text <| "Select Creatures to " ++ commandName]
-    ] ++ (List.map selectableCreature (Dict.values app.current_game.creatures))
-    ++ [ hbox [button [onClick M.DoneSelectingCreatures] [text commandName]
-              , button [onClick M.CancelSelectingCreatures] [text "Cancel"]]
-    ]
+    [h3 [] [text <| "Select Creatures to " ++ commandName]]
+    ++ creatureItems ++
+    [hbox [doneSelectingButton, cancelButton]]
 
 gmViewGame : M.Model -> T.App -> Html M.Msg
 gmViewGame model app =
@@ -237,7 +240,7 @@ mapSelector game = vbox <|
 
 inactiveList : M.Model -> T.Game -> Html M.Msg
 inactiveList model game = div []
-  [ div [] (List.map (inactiveEntry model game model.selectedCreatures) (Dict.values game.creatures))
+  [ div [] (List.map (inactiveEntry model game) (Dict.values game.creatures))
   , createCreatureForm model game
   ]
 
@@ -260,8 +263,8 @@ createCreatureButton model =
       in button [onClick (M.SendCommand (T.CreateCreature cc))] [text "Create Creature!"]
     _ -> button [disabled True] [text "Create Creature!"]
 
-inactiveEntry : M.Model -> T.Game -> Set.Set String -> T.Creature -> Html M.Msg
-inactiveEntry model game pendingCreatures creature = vbox <|
+inactiveEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
+inactiveEntry model game creature = vbox <|
   [hbox <|
     [ creatureCard True model creature
     ] ++ case game.current_combat of
