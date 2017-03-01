@@ -369,6 +369,19 @@ impl<T> NonEmpty<T> {
         }
     }
 
+    /// See Vec::sort_by_key.
+    ///
+    /// # Examples
+    /// ```
+    /// use nonempty::NonEmpty;
+    /// let mut ne = NonEmpty::new_with_rest(1, vec![2,3]);
+    /// ne.sort_by_key(|el| -el);
+    /// assert_eq!(ne, NonEmpty::new_with_rest(3, vec![2, 1]));
+    /// ```
+    pub fn sort_by_key<B, F>(&mut self, f: F) where B: Ord, F: FnMut(&T) -> B {
+        self.0.sort_by_key(f)
+    }
+
     /// Return the total length.
     #[inline]
     pub fn len(&self) -> usize {
