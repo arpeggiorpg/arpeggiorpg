@@ -8,11 +8,11 @@ serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
 serde_yaml = "0.6"
-futures = "0.1.8"
 unicase = "1.4.0"
+rocket = "0.2"
+rocket_codegen = "0.2"
+rocket_contrib = "0.2"
 
 [dependencies.pandt]
 path = "../pandt"
 
-[dependencies.hyper]
-git = "https://github.com/hyperium/hyper"

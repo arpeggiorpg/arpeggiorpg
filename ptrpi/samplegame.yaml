@@ -79,6 +79,7 @@ current_game:
   abilities:
     dash:
       name: Dash
+      usable_ooc: true
       target: Actor
       cost: 8
       effects:
@@ -87,6 +88,7 @@ current_game:
             - DoubleMaxMovement
     heal: 
       name: Heal
+      usable_ooc: true
       target:
         Range: 500
       cost: 8
@@ -96,6 +98,7 @@ current_game:
             size: 2
     punch: 
       name: Punch
+      usable_ooc: false
       target: Melee
       cost: 8
       effects: 
@@ -104,6 +107,7 @@ current_game:
             size: 1
     shoot: 
       name: Shoot
+      usable_ooc: false
       target: 
         Range: 500
       cost: 8
@@ -113,6 +117,7 @@ current_game:
             num: 2
     bonk:
       name: Bonk
+      usable_ooc: false
       target: Melee
       cost: 8
       effects:
