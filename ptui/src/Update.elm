@@ -43,10 +43,15 @@ updateModelFromApp model newApp =
   in { model2 | currentMap = currentMap, showingMovement = showingMovement}
 
 
+
+start = message Start
+
 pollApp url = Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder)
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
+
+  Start -> ( model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder) )
 
   MorePlease -> ( model, message PollApp)
 
@@ -55,7 +60,7 @@ update msg model = case msg of
   ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, delay Time.second PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
     ( { model | error = toString x}
-    , delay Time.second PollApp )
+    , pollApp model.rpiURL )
 
   SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
 
@@ -77,8 +82,8 @@ update msg model = case msg of
     in ( {model | pendingCreatureClass = newClass}
        , Cmd.none)
 
-  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, refreshApp model.rpiURL)
-  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, refreshApp model.rpiURL)
+  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
+  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)
   CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp model.rpiURL)
 
   AppUpdate (Ok newApp) ->

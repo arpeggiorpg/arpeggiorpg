@@ -16,7 +16,8 @@ subscriptions model =
     _ -> Sub.none
 
 type Msg
-    = MorePlease
+    = Start
+    | MorePlease
     | PollApp
     | ReceivedAppUpdate (Result Http.Error T.App)
     | AppUpdate (Result Http.Error T.App)

@@ -2,8 +2,8 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
+extern crate bus;
 extern crate rocket;
-#[macro_use]
 extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
@@ -12,17 +12,18 @@ extern crate unicase;
 
 extern crate pandt;
 
-mod cors;
-use cors::{CORS, PreflightCORS};
-
+use bus::Bus;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 
 use rocket::State;
-use rocket_contrib::{JSON, Value};
+use rocket_contrib::JSON;
 use rocket::http::Method;
+
+mod cors;
+use cors::{CORS, PreflightCORS};
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, Game, GameLog, GameError, Point3,
                    PotentialTarget};
@@ -32,6 +33,7 @@ type PTResult<X> = Result<CORS<JSON<X>>, GameError>;
 #[derive(Clone)]
 struct PT {
   app: Arc<Mutex<pandt::types::App>>,
+  pollers: Arc<Mutex<bus::Bus<()>>>,
 }
 
 #[route(OPTIONS, "/")]
@@ -48,6 +50,11 @@ fn get_app(pt: State<PT>) -> CORS<String> {
 
 #[get("/poll")]
 fn poll_app(pt: State<PT>) -> CORS<String> {
+  let mut reader = {
+    let mut bus = pt.pollers.lock().unwrap();
+    bus.add_rx()
+  };
+  reader.recv().expect("Couldn't receive from BusReader");
   get_app(pt)
 }
 
@@ -56,6 +63,7 @@ fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> CORS<String> {
   let mut app = pt.app.lock().unwrap();
   let result = app.perform_unchecked(command.0);
   let json = serde_json::to_string(&result).expect("Couldn't serialize result");
+  pt.pollers.lock().unwrap().broadcast(());
   CORS::any(json)
 }
 
@@ -88,14 +96,20 @@ fn main() {
     appf.read_to_string(&mut apps).unwrap();
     serde_yaml::from_str(&apps).unwrap()
   };
-  let pt = PT { app: Arc::new(Mutex::new(app)) };
+  let pt = PT {
+    app: Arc::new(Mutex::new(app)),
+    pollers: Arc::new(Mutex::new(Bus::new(1000))),
+  };
 
-  let routes = routes![get_app,
-                       poll_app,
-                       options_handler,
-                       post_app,
-                       combat_movement_options,
-                       movement_options,
-                       target_options];
-  rocket::ignite().manage(pt).mount("/", routes).launch();
+  rocket::ignite()
+    .mount("/",
+           routes![get_app,
+                   poll_app,
+                   options_handler,
+                   post_app,
+                   combat_movement_options,
+                   movement_options,
+                   target_options])
+    .manage(pt)
+    .launch();
 }
