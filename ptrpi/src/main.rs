@@ -96,10 +96,21 @@ fn main() {
     appf.read_to_string(&mut apps).unwrap();
     serde_yaml::from_str(&apps).unwrap()
   };
+
+  let arc_pollers = Arc::new(Mutex::new(Bus::new(1000)));
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
-    pollers: Arc::new(Mutex::new(Bus::new(1000))),
+    pollers: arc_pollers.clone(),
   };
+
+  // ping all the pollers every 10 seconds so we don't have any infinite waits.
+  use std::{thread, time};
+  thread::spawn(move || {
+    loop {
+      thread::sleep(time::Duration::from_secs(10));
+      arc_pollers.lock().unwrap().broadcast(());
+    }
+  });
 
   rocket::ignite()
     .mount("/",
