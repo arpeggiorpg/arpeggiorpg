@@ -1,4 +1,4 @@
 [development]
+address = "0.0.0.0"
 port = 1337
 workers = 20
-
