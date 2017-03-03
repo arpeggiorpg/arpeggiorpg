@@ -8,15 +8,16 @@ extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
-extern crate unicase;
 
 extern crate pandt;
 
-use bus::Bus;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
+use std::time;
+
+use bus::Bus;
 
 use rocket::State;
 use rocket_contrib::JSON;
@@ -52,14 +53,16 @@ fn get_app(pt: State<PT>) -> CORS<String> {
 fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> CORS<String> {
   {
     let app = pt.app.lock().unwrap();
-    if app.snapshots.len() != snapshot_len || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
+    if app.snapshots.len() != snapshot_len ||
+       app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
       let result = serde_json::to_string(&pandt::types::RPIApp(&*app)).unwrap();
       return CORS::any(result);
     }
   }
 
   let mut reader = pt.pollers.lock().unwrap().add_rx();
-  reader.recv().expect("Couldn't receive from BusReader");
+  // this will either return a timeout or (); in any case we'll just return the App to the client.
+  let _ = reader.recv_timeout(time::Duration::from_secs(30));
   get_app(pt)
 }
 
@@ -102,20 +105,10 @@ fn main() {
     serde_yaml::from_str(&apps).unwrap()
   };
 
-  let arc_pollers = Arc::new(Mutex::new(Bus::new(1000)));
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
-    pollers: arc_pollers.clone(),
+    pollers: Arc::new(Mutex::new(Bus::new(1000))),
   };
-
-  // ping all the pollers every 10 seconds so we don't have any infinite waits.
-  use std::{thread, time};
-  thread::spawn(move || {
-    loop {
-      thread::sleep(time::Duration::from_secs(10));
-      arc_pollers.lock().unwrap().broadcast(());
-    }
-  });
 
   rocket::ignite()
     .mount("/",
