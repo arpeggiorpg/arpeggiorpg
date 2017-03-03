@@ -1,5 +1,6 @@
 module Update exposing (..)
 
+import Array
 import Dict
 import Http
 import Json.Decode as JD
@@ -46,8 +47,6 @@ updateModelFromApp model newApp =
 
 start = message Start
 
-pollApp url = Http.send ReceivedAppUpdate (Http.get (url ++ "poll") T.appDecoder)
-
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
@@ -55,12 +54,20 @@ update msg model = case msg of
 
   MorePlease -> ( model, message PollApp)
 
-  PollApp -> (model, pollApp model.rpiURL)
+  PollApp ->
+    case model.app of
+      Nothing -> (model, message Start)
+      Just app -> 
+        let snapshotLength = Array.length app.snapshots
+            logLength = Maybe.withDefault 0 (Maybe.map (\(g, logs) -> List.length logs) <| Array.get (snapshotLength - 1) app.snapshots)
+            url = model.rpiURL ++ "poll/" ++ (toString snapshotLength) ++ "/" ++ (toString logLength)
+            cmd = Http.send ReceivedAppUpdate (Http.get url T.appDecoder)
+        in (model, cmd)
 
-  ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, delay Time.second PollApp)
+  ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, message PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
     ( { model | error = toString x}
-    , pollApp model.rpiURL )
+    , message PollApp )
 
   SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
 
@@ -84,7 +91,7 @@ update msg model = case msg of
 
   CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
   CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)
-  CommandComplete (Err x) -> ({ model | error = toString x}, refreshApp model.rpiURL)
+  CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
 
   AppUpdate (Ok newApp) ->
     let model2 = updateModelFromApp model newApp

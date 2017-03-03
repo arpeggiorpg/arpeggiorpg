@@ -48,12 +48,17 @@ fn get_app(pt: State<PT>) -> CORS<String> {
   CORS::any(result)
 }
 
-#[get("/poll")]
-fn poll_app(pt: State<PT>) -> CORS<String> {
-  let mut reader = {
-    let mut bus = pt.pollers.lock().unwrap();
-    bus.add_rx()
-  };
+#[get("/poll/<snapshot_len>/<log_len>")]
+fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> CORS<String> {
+  {
+    let app = pt.app.lock().unwrap();
+    if app.snapshots.len() != snapshot_len || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
+      let result = serde_json::to_string(&pandt::types::RPIApp(&*app)).unwrap();
+      return CORS::any(result);
+    }
+  }
+
+  let mut reader = pt.pollers.lock().unwrap().add_rx();
   reader.recv().expect("Couldn't receive from BusReader");
   get_app(pt)
 }
