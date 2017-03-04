@@ -26,7 +26,7 @@ coord c = toString (c * 100)
 type alias MapCreature =
   { creature: T.Creature
   , highlight : Bool
-  , movable : Bool
+  , movable : Maybe (T.Creature -> M.Msg)
   , class : T.Class
   }
 
@@ -55,17 +55,21 @@ editMap terrain creatures = vbox
   , baseMap Nothing terrain creatures [] True ]
 
 movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> H.Html M.Msg
-movementMap moveMsg {max_distance, movement_options} moveAnywhere terrain creature creatures =
+movementMap moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
   let cancelButton = cancelMove
       targetPoints =
         if moveAnywhere
         then calculateAllMovementOptions creature.pos (max_distance // 100)
-        else movement_options            
+        else movement_options
       movementTiles = movementTargets moveMsg targetPoints terrain creature.pos max_distance
+      highlightMovingCreature : MapCreature -> MapCreature
+      highlightMovingCreature mapc =
+        {mapc | highlight = (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)}
+      vCreatures = List.map highlightMovingCreature creatures
   in
     vbox
       [ cancelButton
-      , baseMap Nothing terrain creatures movementTiles False ]
+      , baseMap Nothing terrain vCreatures movementTiles False ]
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
@@ -91,7 +95,6 @@ movementTargets moveMsg pts terrain origin max_distance =
   let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (moveMsg pt)] pt
   in List.map movementTarget pts
 
-
 gridCreature : MapCreature -> Svg M.Msg
 gridCreature creature =
   let creatureColor = creature.class.color
@@ -104,9 +107,9 @@ gridCreature creature =
         then 10
         else 1
       movableEventHandler =
-        if creature.movable
-        then [onClick (M.GetMovementOptions creature.creature)]
-        else []
+        case creature.movable of
+          Just fn -> [onClick (fn creature.creature)]
+          Nothing -> []
       attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize)] ++ movableEventHandler
       pos = creature.creature.pos
   in g []

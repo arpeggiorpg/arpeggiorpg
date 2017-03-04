@@ -139,7 +139,6 @@ update msg model = case msg of
     ( { model | selectingCreatures = Nothing}
     , Cmd.none)
 
-  
   GetMovementOptions creature ->
     let endpoint = (model.rpiURL ++ "/movement_options/" ++ creature.id)
         cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))

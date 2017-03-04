@@ -61,9 +61,10 @@ gmViewGame_ model app =
   let game = app.current_game
       center el = div [s [S.displayFlex, S.justifyContent S.spaceAround]] [el]
       movementGrid msg mvmtReq creature =
-        vbox
+        let vCreatures = visibleCreatures model game
+        in vbox
           [ hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
-          , Grid.movementMap msg mvmtReq model.moveAnywhere model.currentMap creature (visibleCreatures model game)
+          , Grid.movementMap msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
           ]
   in
   case (game.current_combat, model.moving) of
@@ -97,9 +98,9 @@ fullUI model app game =
             Nothing -> []
         currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
         modifyMapCreature mapc =
-          let movable = {mapc | movable = True}
-              highlight = (Just mapc.creature.id) == currentCombatCreature
-          in { mapc | highlight = highlight}
+          let highlight = (Just mapc.creature.id) == currentCombatCreature
+          in { mapc | highlight = highlight
+                    , movable = Just M.GetMovementOptions}
         vCreatures = List.map modifyMapCreature (visibleCreatures model game)
         mapHTML =
           vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
@@ -146,7 +147,7 @@ editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
 visibleCreatures : M.Model -> T.Game -> List Grid.MapCreature
 visibleCreatures model game =
   let mapInfo creature =
-    Maybe.map (\class -> {creature = creature, highlight = False, movable = False, class = class})
+    Maybe.map (\class -> {creature = creature, highlight = False, movable = Nothing, class = class})
               (Dict.get creature.class game.classes)
   in
     case game.current_combat of
@@ -243,16 +244,19 @@ playerGrid model game myCreatures =
         case game.current_combat of
           Just combat -> [h4 [] [text "Combat"], playerCombatArea model game combat myCreatures]
           Nothing -> [text "No Combat"]
-      movable =
+      movable mapc =
         -- Don't allow click-to-move when ANY creatures are in combat.
         -- TODO: maybe allow click-to-move for out-of-combat creatures
         case game.current_combat of
-          Just _ -> False
-          Nothing -> True
+          Just com ->
+            if List.member (T.combatCreature com) myCreatures && mapc.creature == T.combatCreature com
+            then Just (\_ -> M.GetCombatMovementOptions)
+            else Nothing
+          Nothing -> Just M.GetMovementOptions
       currentCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCreature
-        in { mapc | movable = movable, highlight = highlight}
+        in { mapc | movable = (movable mapc), highlight = highlight}
       vCreatures = List.map modifyMapCreature (visibleCreatures model game)
   in
     hbox <| [Grid.terrainMap (movementGhost model) model.currentMap vCreatures
