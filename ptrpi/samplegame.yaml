@@ -55,6 +55,7 @@ current_game:
   current_combat: ~
   classes:
     rogue:
+      color: purple
       abilities:
         - punch
         - bonk
@@ -63,6 +64,7 @@ current_game:
         - RecurringEffect:
             GenerateEnergy: 10
     cleric:
+      color: lightgreen
       abilities:
         - heal
         - dash
@@ -70,6 +72,7 @@ current_game:
         - RecurringEffect:
             GenerateEnergy: 10
     ranger:
+      color: darkgreen
       abilities:
         - shoot
         - dash
@@ -128,6 +131,7 @@ current_game:
     elron: 
       id: elron
       name: Elron
+      portrait_url: ""
       note:
       speed: 1086
       max_energy: 10
@@ -146,6 +150,7 @@ current_game:
     kurok-to:
       id: kurok-to
       name: Kurok To
+      portrait_url: ""
       note:
       speed: 1086
       max_energy: 10
@@ -164,6 +169,7 @@ current_game:
     sil:
       id: sil
       name: Silmarillion
+      portrait_url: ""
       note:
       speed: 1086
       max_energy: 10

@@ -21,19 +21,15 @@ type alias CreatureCreation =
   , name : String
   , class: String
   , pos: Point3
+  , portrait_url: String
   }
-
-creatureCreationDecoder = JD.map4 CreatureCreation
-  (JD.field "id" JD.string)
-  (JD.field "name" JD.string)
-  (JD.field "class" JD.string)
-  (JD.field "pos" point3Decoder)
 
 creatureCreationEncoder cc = JE.object
   [ ("id", JE.string cc.id)
   , ("name", JE.string cc.name)
   , ("class", JE.string cc.class)
-  , ("pos", point3Encoder cc.pos)]
+  , ("pos", point3Encoder cc.pos)
+  , ("portrait_url", JE.string cc.portrait_url)]
 
 type alias Point3 = {x: Int, y: Int, z: Int}
 
@@ -202,8 +198,10 @@ type alias Creature =
   , can_act: Bool
   , can_move: Bool
   , note: String
+  , portrait_url: String
 }
 
+creatureDecoder : JD.Decoder Creature
 creatureDecoder =
   P.decode Creature
     |> P.required "id" JD.string
@@ -220,6 +218,7 @@ creatureDecoder =
     |> P.required "can_act" JD.bool
     |> P.required "can_move" JD.bool
     |> P.required "note" JD.string
+    |> P.required "portrait_url" JD.string
 
 type alias CreatureData =
   { id: CreatureID

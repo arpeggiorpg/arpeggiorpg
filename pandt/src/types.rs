@@ -394,6 +394,8 @@ pub struct Class {
   pub abilities: Vec<AbilityID>,
   /// A list of conditions which will be *permanently* applied to any creature in this class.
   pub conditions: Vec<Condition>,
+  /// An SVG-compatible color specifier
+  pub color: String,
 }
 
 /// A specification for creating a new creature.
@@ -403,13 +405,14 @@ pub struct CreatureCreation {
   pub name: String,
   pub class: String,
   pub pos: Point3,
+  pub portrait_url: String,
 }
 
 /// A Creature.
 ///
 /// A very important thing about how we deal with creatures is that whenever we change
 /// a creature, we get back both a new creature *and* a log of all things that happened to that
-/// creature. That log is deterministic and complete enough for us to reply it on a snapshot of a
+/// creature. That log is deterministic and complete enough for us to replay it on a snapshot of a
 /// creature and get an identical creature.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Creature {
@@ -425,6 +428,7 @@ pub struct Creature {
   pub pos: Point3,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
+  pub portrait_url: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -522,11 +526,12 @@ impl<'combat, 'game: 'combat> ser::Serialize for DynamicCombat<'combat, 'game> {
 
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Creature", 15)?;
+    let mut str = serializer.serialize_struct("Creature", 16)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
     str.serialize_field("name", &creat.name)?;
     str.serialize_field("note", &creat.note)?;
+    str.serialize_field("portrait_url", &creat.portrait_url)?;
     str.serialize_field("speed", &self.speed())?;
     str.serialize_field("max_energy", &creat.max_energy)?;
     str.serialize_field("cur_energy", &creat.cur_energy)?;

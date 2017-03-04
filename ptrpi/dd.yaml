@@ -4124,6 +4124,7 @@ current_game:
   current_map: prison
   classes: 
     creature: 
+      color: cyan
       abilities: 
         - dash
       conditions: 
@@ -4131,6 +4132,7 @@ current_game:
           RecurringEffect: 
             GenerateEnergy: 10
     baddie: 
+      color: red
       abilities: 
         - dash
       conditions: []

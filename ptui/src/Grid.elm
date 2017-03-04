@@ -22,6 +22,15 @@ gridSize = 25
 coord : Int -> String
 coord c = toString (c * 100)
 
+type alias MappedCreatureInfo =
+  { creature: T.Creature
+  , highlight : Bool
+  , movable : Bool
+  , class : T.Class
+
+  }
+
+
 baseMap : Bool -> Maybe T.CreatureID -> Maybe T.Point3 -> T.Map -> List T.Creature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
 baseMap movable highlightCreature ghost terrain creatures extras editable =
   let creatureEls = List.map (gridCreature movable highlightCreature) creatures
@@ -39,7 +48,8 @@ baseMap movable highlightCreature ghost terrain creatures extras editable =
       (terrainEls ++ extras ++ creatureEls ++ ghostEl)
 
 terrainMap : Bool -> Maybe T.CreatureID -> Maybe T.Point3 -> T.Map -> List T.Creature -> Svg M.Msg
-terrainMap movable highlightCreature ghost terrain creatures = baseMap movable highlightCreature ghost terrain creatures [] False
+terrainMap movable highlightCreature ghost terrain creatures =
+  baseMap movable highlightCreature ghost terrain creatures [] False
 
 editMap : T.Map -> List T.Creature -> H.Html M.Msg
 editMap terrain creatures = vbox

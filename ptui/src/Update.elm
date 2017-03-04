@@ -67,7 +67,7 @@ update msg model = case msg of
   ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, message PollApp)
   ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
     ( { model | error = toString x}
-    , message PollApp )
+    , delay Time.second PollApp )
 
   SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
 
@@ -210,9 +210,6 @@ update msg model = case msg of
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
-
-refreshApp : String -> Cmd Msg
-refreshApp url = Http.send AppUpdate (Http.get url T.appDecoder)
 
 sendCommand : String -> T.GameCommand -> Cmd Msg
 sendCommand url cmd =

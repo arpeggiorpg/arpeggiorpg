@@ -267,7 +267,7 @@ createCreatureButton : M.Model -> Html M.Msg
 createCreatureButton model =
   case (model.pendingCreatureId, model.pendingCreatureName, model.pendingCreatureClass) of
     (Just id, Just name, Just class) ->
-      let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0}
+      let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0} ""
       in button [onClick (M.SendCommand (T.CreateCreature cc))] [text "Create Creature!"]
     _ -> button [disabled True] [text "Create Creature!"]
 

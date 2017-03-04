@@ -241,6 +241,7 @@ impl Creature {
       cur_health: HP(10),
       conditions: HashMap::new(),
       note: "".to_string(),
+      portrait_url: spec.portrait_url.clone(),
     }
   }
 
@@ -382,6 +383,7 @@ pub mod test {
       name: name.to_string(),
       class: class.to_string(),
       pos: (0, 0, 0),
+      portrait_url: "",
     })
   }
 
