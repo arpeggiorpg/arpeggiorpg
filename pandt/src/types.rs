@@ -576,6 +576,7 @@ pub mod test {
       name: name.to_string(),
       class: "rogue".to_string(),
       pos: (0, 0, 0),
+      portrait_url: "".to_string(),
     }
   }
 
@@ -585,6 +586,7 @@ pub mod test {
       name: name.to_string(),
       class: "cleric".to_string(),
       pos: (0, 0, 0),
+      portrait_url: "".to_string(),
     }
   }
 
@@ -594,6 +596,7 @@ pub mod test {
       name: name.to_string(),
       class: "ranger".to_string(),
       pos: (0, 0, 0),
+      portrait_url: "".to_string(),
     }
   }
 

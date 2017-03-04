@@ -416,16 +416,19 @@ pub mod test {
                              Class {
                                abilities: rogue_abs,
                                conditions: vec![],
+                               color: "purple".to_string(),
                              }),
                             ("ranger".to_string(),
                              Class {
                                abilities: ranger_abs,
                                conditions: vec![],
+                               color: "darkgreen".to_string(),
                              }),
                             ("cleric".to_string(),
                              Class {
                                abilities: cleric_abs,
                                conditions: vec![],
+                               color: "lightgreen".to_string(),
                              })])
   }
 
