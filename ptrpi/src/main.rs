@@ -26,8 +26,7 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, Game, GameLog, GameError, Point3,
-                   PotentialTarget};
+use pandt::types::{AbilityID, CreatureID, GameCommand, GameError, Point3, PotentialTarget};
 
 type PTResult<X> = Result<CORS<JSON<X>>, GameError>;
 

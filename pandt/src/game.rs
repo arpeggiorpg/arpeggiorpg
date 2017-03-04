@@ -85,9 +85,7 @@ impl Game {
   }
 
   fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
-    let creature = Creature::build(&spec.id.to_string(), &spec.class).pos(spec.pos)
-      .name(&spec.name)
-      .build()?;
+    let creature = Creature::create(&spec);
     self.change_with(GameLog::CreateCreature(creature))
   }
 
@@ -380,6 +378,7 @@ impl CreatureChanger for ChangedGame {
 #[cfg(test)]
 pub mod test {
   use game::*;
+  use creature::test::*;
   use combat::test::*;
   use types::test::*;
   use grid::test::*;
@@ -436,10 +435,7 @@ pub mod test {
     let punch = t_punch();
     let punch_id = abid("punch");
     let bob_id = cid("bob");
-    let creature = Creature::build("bob", "rogue")
-      .abilities(vec![punch_id.clone()])
-      .build()
-      .unwrap();
+    let creature = t_rogue("bob");
     creatures.insert(bob_id, creature);
     let mut abilities = HashMap::new();
     abilities.insert(punch_id.clone(), punch);

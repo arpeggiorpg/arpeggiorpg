@@ -181,7 +181,9 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     match (target, decision) {
       (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
         let target_creature = get_creature(cid)?;
-        if self.game.tile_system.creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
+        if self.game
+          .tile_system
+          .creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
           Ok(vec![cid])
         } else {
           Err(GameError::CreatureOutOfRange(cid))
@@ -225,19 +227,19 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 }
 
 impl Creature {
-  pub fn build(id: &str, class: &str) -> CreatureBuilder {
-    CreatureBuilder {
-      id: id.to_string(),
-      name: None,
-      max_energy: None,
-      cur_energy: None,
-      class: class.to_string(),
+  pub fn create(spec: &CreatureCreation) -> Creature {
+    Creature {
+      id: spec.id,
+      name: spec.name.to_string(),
+      class: spec.class.clone(),
+      pos: spec.pos,
+      speed: Distance(STANDARD_CREATURE_SPEED),
+      max_energy: Energy(10),
+      cur_energy: Energy(10),
       abilities: vec![],
-      max_health: None,
-      cur_health: None,
-      pos: None,
-      conditions: vec![],
-      speed: None,
+      max_health: HP(10),
+      cur_health: HP(10),
+      conditions: HashMap::new(),
       note: "".to_string(),
     }
   }
@@ -357,58 +359,6 @@ impl ChangedCreature {
   }
 }
 
-impl CreatureBuilder {
-  pub fn build(self) -> Result<Creature, GameError> {
-    let creature = Creature {
-      id: CreatureID::new(&self.id)?,
-      name: self.name.unwrap_or(self.id.to_string()),
-      speed: self.speed.unwrap_or(Distance(STANDARD_CREATURE_SPEED)),
-      max_energy: self.max_energy.unwrap_or(Energy(10)),
-      cur_energy: self.cur_energy.unwrap_or(Energy(10)),
-      abilities: vec![],
-      class: self.class.clone(),
-      max_health: self.max_health.unwrap_or(HP(10)),
-      cur_health: self.cur_health.unwrap_or(HP(10)),
-      pos: self.pos.unwrap_or((0, 0, 0)),
-      conditions: HashMap::new(),
-      note: "".to_string(),
-    };
-    Ok(creature)
-  }
-  pub fn name(mut self, name: &str) -> Self {
-    self.name = Some(name.to_string());
-    self
-  }
-  pub fn max_energy(mut self, me: Energy) -> Self {
-    self.max_energy = Some(me);
-    self
-  }
-  pub fn cur_energy(mut self, ce: Energy) -> Self {
-    self.cur_energy = Some(ce);
-    self
-  }
-  pub fn abilities(mut self, abs: Vec<AbilityID>) -> Self {
-    self.abilities = abs;
-    self
-  }
-  pub fn max_health(mut self, mh: HP) -> Self {
-    self.max_health = Some(mh);
-    self
-  }
-  pub fn cur_health(mut self, ch: HP) -> Self {
-    self.cur_health = Some(ch);
-    self
-  }
-  pub fn pos(mut self, pos: Point3) -> Self {
-    self.pos = Some(pos);
-    self
-  }
-  pub fn speed(mut self, s: Distance) -> Self {
-    self.speed = Some(s);
-    self
-  }
-}
-
 fn conditions_able(conditions: Vec<AppliedCondition>) -> bool {
   !conditions.iter()
     .any(|&AppliedCondition { ref condition, .. }| {
@@ -426,16 +376,25 @@ pub mod test {
 
   use std::iter::FromIterator;
 
+  pub fn t_creature(name: &str, class: &str) -> Creature {
+    Creature::create(&CreatureCreation {
+      id: CreatureID::new(name).expect("Couldn't create CreatureID from given name"),
+      name: name.to_string(),
+      class: class.to_string(),
+      pos: (0, 0, 0),
+    })
+  }
+
   pub fn t_rogue(name: &str) -> Creature {
-    Creature::build(name, "rogue").build().unwrap()
+    t_creature(name, "rogue")
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    Creature::build(name, "ranger").build().unwrap()
+    t_creature(name, "ranger")
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    Creature::build(name, "cleric").build().unwrap()
+    t_creature(name, "cleric")
   }
 
   #[test]

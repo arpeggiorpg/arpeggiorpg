@@ -405,21 +405,6 @@ pub struct CreatureCreation {
   pub pos: Point3,
 }
 
-pub struct CreatureBuilder {
-  pub id: String,
-  pub name: Option<String>,
-  pub class: String,
-  pub pos: Option<Point3>,
-  pub max_energy: Option<Energy>,
-  pub cur_energy: Option<Energy>,
-  pub abilities: Vec<AbilityID>,
-  pub max_health: Option<HP>,
-  pub cur_health: Option<HP>,
-  pub conditions: Vec<AppliedCondition>,
-  pub speed: Option<Distance>,
-  pub note: String,
-}
-
 /// A Creature.
 ///
 /// A very important thing about how we deal with creatures is that whenever we change
