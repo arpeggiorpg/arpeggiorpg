@@ -96,9 +96,14 @@ fullUI model app game =
                                 else []
             Nothing -> []
         currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+        modifyMapCreature mapc =
+          let movable = {mapc | movable = True}
+              highlight = (Just mapc.creature.id) == currentCombatCreature
+          in { mapc | highlight = highlight}
+        vCreatures = List.map modifyMapCreature (visibleCreatures model game)
         mapHTML =
           vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
-               , Grid.terrainMap True currentCombatCreature (movementGhost model) model.currentMap (visibleCreatures model game)
+               , Grid.terrainMap (movementGhost model) model.currentMap vCreatures
                ]
         sideBarHTML =
           vabox [s [S.width (S.px 500)]] <|
@@ -138,11 +143,18 @@ oocToggler model =
 editMapButton : Html M.Msg
 editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
 
-visibleCreatures : M.Model -> T.Game -> List T.Creature
+visibleCreatures : M.Model -> T.Game -> List Grid.MapCreature
 visibleCreatures model game =
-  case game.current_combat of
-    Just combat -> if model.showOOC then (combat.creatures.data) ++ (Dict.values game.creatures) else combat.creatures.data
-    Nothing -> Dict.values game.creatures
+  let mapInfo creature =
+    Maybe.map (\class -> {creature = creature, highlight = False, movable = False, class = class})
+              (Dict.get creature.class game.classes)
+  in
+    case game.current_combat of
+      Just combat ->
+        if model.showOOC
+        then List.filterMap mapInfo <| combat.creatures.data ++ (Dict.values game.creatures)
+        else List.filterMap mapInfo combat.creatures.data
+      Nothing -> (List.filterMap mapInfo (Dict.values game.creatures))
 
 playerView : M.Model -> Html M.Msg
 playerView model = vbox
@@ -190,6 +202,7 @@ playerViewGame model app creatures =
   ]
   -- TODO: a read-only "creatures nearby" list without details
 
+playerCombatArea : M.Model -> T.Game -> T.Combat -> List T.Creature -> Html M.Msg
 playerCombatArea model game combat creatures =
   let currentCreature = T.combatCreature combat
       bar = if List.member currentCreature creatures
@@ -237,10 +250,14 @@ playerGrid model game myCreatures =
           Just _ -> False
           Nothing -> True
       currentCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+      modifyMapCreature mapc =
+        let highlight = (Just mapc.creature.id) == currentCreature
+        in { mapc | movable = movable, highlight = highlight}
+      vCreatures = List.map modifyMapCreature (visibleCreatures model game)
   in
-    hbox <| [Grid.terrainMap movable currentCreature (movementGhost model) model.currentMap (visibleCreatures model game)
+    hbox <| [Grid.terrainMap (movementGhost model) model.currentMap vCreatures
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
-  
+
 mapSelector : T.Game -> Html M.Msg
 mapSelector game = vbox <|
   let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]

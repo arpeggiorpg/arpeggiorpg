@@ -154,12 +154,14 @@ mapEncoder t = JE.list (List.map point3Encoder t)
 type alias Class =
   { abilities: List AbilityID
   , conditions: List Condition
+  , color: String
   }
 
 classDecoder : JD.Decoder Class
-classDecoder = JD.map2 Class
+classDecoder = JD.map3 Class
   (JD.field "abilities" (JD.list JD.string))
   (JD.field "conditions" (JD.list conditionDecoder))
+  (JD.field "color" JD.string)
 
 type alias Combat =
   { creatures: CursorList Creature
