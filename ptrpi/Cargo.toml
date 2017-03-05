@@ -12,6 +12,7 @@ rocket = "0.2"
 rocket_codegen = "0.2"
 rocket_contrib = "0.2"
 bus = "1.2.0"
+error-chain = "0.10.0"
 
 [dependencies.pandt]
 path = "../pandt"
