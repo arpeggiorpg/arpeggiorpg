@@ -14,7 +14,7 @@ extern crate pandt;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time;
 
 use bus::Bus;
@@ -26,14 +26,21 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, GameError, Point3, PotentialTarget};
+use pandt::types::{App, RPIApp, AbilityID, CreatureID, GameCommand, GameError, Point3,
+                   PotentialTarget};
 
 type PTResult<X> = Result<CORS<JSON<X>>, GameError>;
 
 #[derive(Clone)]
 struct PT {
-  app: Arc<Mutex<pandt::types::App>>,
+  app: Arc<Mutex<App>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
+}
+
+impl PT {
+  fn app(&self) -> MutexGuard<App> {
+    self.app.lock().expect("Couldn't acquire App!")
+  }
 }
 
 #[route(OPTIONS, "/")]
@@ -43,18 +50,20 @@ fn options_handler<'a>() -> PreflightCORS {
 
 #[get("/")]
 fn get_app(pt: State<PT>) -> CORS<String> {
-  let app = pt.app.lock().unwrap();
-  let result = serde_json::to_string(&pandt::types::RPIApp(&*app)).unwrap();
+  let app = pt.app();
+  let result = serde_json::to_string(&RPIApp(&*app)).unwrap();
   CORS::any(result)
 }
 
+/// If the client is polling with a non-current app "version", then immediately return the current
+/// App. Otherwise, wait 30 seconds for any new changes.
 #[get("/poll/<snapshot_len>/<log_len>")]
 fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> CORS<String> {
   {
-    let app = pt.app.lock().unwrap();
+    let app = pt.app();
     if app.snapshots.len() != snapshot_len ||
        app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
-      let result = serde_json::to_string(&pandt::types::RPIApp(&*app)).unwrap();
+      let result = serde_json::to_string(&RPIApp(&*app)).unwrap();
       return CORS::any(result);
     }
   }
@@ -67,29 +76,31 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> CORS<String> 
 
 #[post("/", format = "application/json", data = "<command>")]
 fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> CORS<String> {
-  let mut app = pt.app.lock().unwrap();
-  let result = app.perform_unchecked(command.0);
-  let json = serde_json::to_string(&result).expect("Couldn't serialize result");
+  let json = {
+    let mut app = pt.app();
+    let result = app.perform_unchecked(command.0);
+    serde_json::to_string(&result)
+  };
   pt.pollers.lock().unwrap().broadcast(());
-  CORS::any(json)
+  CORS::any(json.expect("Couldn't serialize App response"))
 }
 
 #[get("/combat_movement_options")]
 fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
-  let app = pt.app.lock().unwrap();
+  let app = pt.app();
   Ok(CORS::any(JSON(app.get_combat_movement_options()?)))
 }
 
 #[get("/movement_options/<cid>")]
 fn movement_options(pt: State<PT>, cid: &str) -> PTResult<Vec<Point3>> {
-  let app = pt.app.lock().unwrap();
+  let app = pt.app();
   let cid = CreatureID::new(cid)?;
   Ok(CORS::any(JSON(app.get_movement_options(cid)?)))
 }
 
 #[get("/target_options/<cid>/<abid>")]
 fn target_options(pt: State<PT>, cid: &str, abid: &str) -> PTResult<Vec<PotentialTarget>> {
-  let app = pt.app.lock().unwrap();
+  let app = pt.app();
   let cid = CreatureID::new(cid)?;
   let abid = AbilityID::new(abid)?;
   Ok(CORS::any(JSON(app.get_target_options(cid, abid)?)))
@@ -97,7 +108,7 @@ fn target_options(pt: State<PT>, cid: &str, abid: &str) -> PTResult<Vec<Potentia
 
 fn main() {
   let filename = env::args().nth(1).unwrap_or("samplegame.yaml".to_string());
-  let app: pandt::types::App = {
+  let app: App = {
     let mut appf = File::open(filename).unwrap();
     let mut apps = String::new();
     appf.read_to_string(&mut apps).unwrap();

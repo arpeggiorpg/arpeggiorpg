@@ -48,7 +48,6 @@ impl TileSystem {
     let mut points_to_check = vec![];
     for x in start.0 - meters..start.0 + meters + 1 {
       for y in start.1 - meters..start.1 + meters + 1 {
-        println!("Checking {:?},{:?}", x, y);
         let end_point = (x, y, 0);
         if end_point == start || !terrain.contains(&end_point) {
           continue;
