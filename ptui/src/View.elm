@@ -195,9 +195,15 @@ playerViewGame model app creatures =
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
               playerGrid model game creatures
           Nothing -> -- we're moving in-combat.
-            let currentCreature = Maybe.map T.combatCreature game.current_combat
-            in case currentCreature of
-                Just creature -> Grid.movementMap M.PathCurrentCombatCreature movementRequest False model.currentMap creature (visibleCreatures model game)
+            case Maybe.map T.combatCreature game.current_combat of
+                Just creature ->
+                  let highlightMover mapc =
+                        if creature.id == mapc.creature.id
+                        then {mapc | highlight = True}
+                        else mapc
+                      vCreatures = List.map highlightMover (visibleCreatures model game)
+                  in Grid.movementMap M.PathCurrentCombatCreature movementRequest
+                                   False model.currentMap creature vCreatures
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
   ]

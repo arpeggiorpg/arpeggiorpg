@@ -64,7 +64,9 @@ movementMap moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere 
       movementTiles = movementTargets moveMsg targetPoints terrain creature.pos max_distance
       highlightMovingCreature : MapCreature -> MapCreature
       highlightMovingCreature mapc =
-        {mapc | highlight = (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)}
+        if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
+        then {mapc | highlight = True}
+        else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
     vbox
