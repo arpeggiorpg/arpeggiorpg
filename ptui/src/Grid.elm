@@ -114,15 +114,27 @@ gridCreature creature =
           Nothing -> []
       attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize)] ++ movableEventHandler
       pos = creature.creature.pos
+      creatureNameEl name =
+        text_ [ HA.style [("pointer-events", "none")]
+              , fontSize "50"
+              , x (coord pos.x)
+              , y (toString <| (pos.y * 100) + 50)
+              ]
+              [text name]
+      creatureImageEl url =
+        image
+          [ HA.style [ ("pointer-events", "none") ]
+          , x (coord pos.x), y (coord pos.y)
+          , xlinkHref url
+          , width "100", height "100"
+          ] []
+      foreground =
+        if creature.creature.portrait_url == ""
+        then creatureNameEl creature.creature.id
+        else creatureImageEl creature.creature.portrait_url
   in g []
     [ tile creatureColor attrs creature.creature.pos
-    , text_ [ HA.style [("pointer-events", "none")]
-            , fontSize "50"
-            , x (coord pos.x)
-            , y (toString <| (pos.y * 100) + 50)
-            ]
-            [ text creature.creature.id]
-    ]
+    , foreground ]
 
 terrainRects : List T.Point3 -> List (Svg M.Msg)
 terrainRects = baseTerrainRects False

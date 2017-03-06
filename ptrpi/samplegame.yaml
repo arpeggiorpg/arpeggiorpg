@@ -150,7 +150,7 @@ current_game:
     kurok-to:
       id: kurok-to
       name: Kurok To
-      portrait_url: ""
+      portrait_url: "http://i.imgur.com/g09XhxI.jpg"
       note:
       speed: 1086
       max_energy: 10
