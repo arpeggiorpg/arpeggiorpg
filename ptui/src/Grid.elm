@@ -3,19 +3,16 @@ module Grid exposing (..)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Css as S
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
 
-import Elements exposing (..)
+import Elements exposing (hbox, vbox, s)
 import Types as T
 import Model as M
 
-
--- how many meters across the grid should be
-gridSize : Int
-gridSize = 25
 
 -- Convert Point3 coordinates to on-screen corodinates.
 -- Point3 coordinates are in METERS, and Distances are in CENTIMETERS.
@@ -30,32 +27,16 @@ type alias MapCreature =
   , class : T.Class
   }
 
-baseMap : Maybe T.Point3 -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap ghost terrain creatures extras editable =
-  let creatureEls = List.map gridCreature creatures
-      terrainEls = baseTerrainRects editable terrain
-      ghostEl = case ghost of
-                  Just pt -> [tile "black" [] pt]
-                  Nothing -> []
-  in svg
-      [ viewBox (String.join " " (List.map toString [-gridSize * 40, -gridSize * 40, gridSize * 80, gridSize * 80]))
-      , width "1000"
-      , height "800"
-      , HA.style [ ("border", "2px solid black")
-                 , ("position", "relative") ]
-      ]
-      (terrainEls ++ extras ++ creatureEls ++ ghostEl)
+terrainMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> Svg M.Msg
+terrainMap model ghost terrain creatures = baseMap model ghost terrain creatures [] False
 
-terrainMap : Maybe T.Point3 -> T.Map -> List MapCreature -> Svg M.Msg
-terrainMap ghost terrain creatures = baseMap ghost terrain creatures [] False
-
-editMap : T.Map -> List MapCreature -> H.Html M.Msg
-editMap terrain creatures = vbox
+editMap : M.Model -> T.Map -> List MapCreature -> H.Html M.Msg
+editMap model terrain creatures = vbox
   [ saveForm terrain
-  , baseMap Nothing terrain creatures [] True ]
+  , baseMap model Nothing terrain creatures [] True ]
 
-movementMap : (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> H.Html M.Msg
-movementMap moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> H.Html M.Msg
+movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
   let cancelButton = cancelMove
       targetPoints =
         if moveAnywhere
@@ -71,7 +52,52 @@ movementMap moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere 
   in
     vbox
       [ cancelButton
-      , baseMap Nothing terrain vCreatures movementTiles False ]
+      , baseMap model Nothing terrain vCreatures movementTiles False ]
+
+baseMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> H.Html M.Msg
+baseMap model ghost terrain creatures extras editable =
+  let creatureEls = List.map gridCreature creatures
+      terrainEls = baseTerrainRects model editable terrain
+      ghostEl = case ghost of
+                  Just pt -> [tile "black" [] pt]
+                  Nothing -> []
+      -- gridSize is 25 ("meters across")
+      -- our coordinate system is in centimeters. We want to pan by 100 * offset.
+      gridLeft = (-model.gridSize + model.gridOffset.x * 2) * 50
+      gridTop = (-model.gridSize + -model.gridOffset.y * 2) * 50
+      gridWidth = model.gridSize * 100
+      gridHeight = model.gridSize * 100
+      -- gridTranslateX = -model.gridOffset.x * 50
+      -- gridTranslateY = model.gridOffset.y * 50
+      -- gridTranslate = "translate(" ++ toString gridTranslateX ++ "," ++ toString gridTranslateY ++ ")"
+      mapSVG = svg
+        [ viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
+        -- , transform gridTranslate
+        , width "1000px"
+        , height "800px"
+        , s [S.border2 (S.px 2) S.solid]
+        ]
+        (terrainEls ++ extras ++ creatureEls ++ ghostEl)
+      htmlOverlay =
+        Elements.vabox
+          [s [ S.position S.absolute
+             , S.top (S.px 0)
+             , S.left (S.px 0)
+             , S.border2 (S.px 2) S.solid
+             , S.backgroundColor (S.rgb 230 230 230)]]
+          [ H.button [HE.onClick (M.MapZoom M.In)] [text "+"]
+          , H.button [HE.onClick (M.MapZoom M.Out)] [text "-"]
+          , Elements.vbox
+              [ H.button [HE.onClick (M.MapPan M.Up)] [text "^"]
+              , Elements.hbox
+                  [ H.button [HE.onClick (M.MapPan M.Left)] [text "<"]
+                  , H.button [HE.onClick (M.MapPan M.Right)] [text ">"]
+                  ]
+              , H.button [HE.onClick (M.MapPan M.Down)] [text "v"]
+              ]
+          ]
+  in
+    H.div [s [S.position S.relative]] [mapSVG, htmlOverlay]
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
@@ -136,26 +162,23 @@ gridCreature creature =
     [ tile creatureColor attrs creature.creature.pos
     , foreground ]
 
-terrainRects : List T.Point3 -> List (Svg M.Msg)
-terrainRects = baseTerrainRects False
-
-baseTerrainRects : Bool -> List T.Point3 -> List (Svg M.Msg)
-baseTerrainRects editable terrain =
+baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
+baseTerrainRects model editable terrain =
   let blocks = List.map (gridTerrain editable) terrain
-      empties = emptyTerrain editable terrain
+      empties = emptyTerrain model editable terrain
   in blocks ++ empties
 
 gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
   tile "lightgrey" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
-emptyTerrain : Bool -> List T.Point3 -> List (Svg M.Msg)
-emptyTerrain editable terrain =
-  let halfGrid = gridSize // 2
-      g x y = let pt = {x= x, y=y, z=0}
+emptyTerrain : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
+emptyTerrain model editable terrain =
+  let halfGrid = model.gridSize // 2
+      g x y = let pt = {x = x, y = y, z = 0}
               in if not (List.member pt terrain) then [emptyTerrainTile editable pt] else []
-      f x = List.concatMap (g x) (List.range -halfGrid halfGrid)
-  in List.concatMap f (List.range -halfGrid halfGrid)
+      f x = List.concatMap (g x) (List.range (-halfGrid - model.gridOffset.y) (halfGrid - model.gridOffset.y))
+  in List.concatMap f (List.range (-halfGrid + model.gridOffset.x) (halfGrid + model.gridOffset.x))
 
 emptyTerrainTile : Bool -> T.Point3 -> Svg M.Msg
 emptyTerrainTile editable pt =

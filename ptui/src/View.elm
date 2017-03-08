@@ -15,8 +15,8 @@ import Elements exposing (..)
 
 import Css as S
 
-s : List S.Mixin -> Attribute msg
-s = S.asPairs >> Html.Attributes.style
+s = Elements.s -- to disambiguate `s`, which Html also exports
+
 
 gmView : M.Model -> Html M.Msg
 gmView model = vbox
@@ -64,7 +64,7 @@ gmViewGame_ model app =
         let vCreatures = visibleCreatures model game
         in vbox
           [ hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
-          , Grid.movementMap msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
+          , Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
           ]
   in
   case (game.current_combat, model.moving) of
@@ -84,7 +84,7 @@ gmViewGame_ model app =
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
 fullUI model app game =
   if model.editingMap
-  then Grid.editMap model.currentMap (visibleCreatures model game)
+  then Grid.editMap model model.currentMap (visibleCreatures model game)
   else
     let combatHTML =
           case game.current_combat of
@@ -104,7 +104,7 @@ fullUI model app game =
         vCreatures = List.map modifyMapCreature (visibleCreatures model game)
         mapHTML =
           vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
-               , Grid.terrainMap (movementGhost model) model.currentMap vCreatures
+               , Grid.terrainMap model (movementGhost model) model.currentMap vCreatures
                ]
         sideBarHTML =
           vabox [s [S.width (S.px 500)]] <|
@@ -189,7 +189,7 @@ playerViewGame model app creatures =
             if List.member oocMovingCreature creatures
             then
               -- one of my characters is moving; render the movement map
-              Grid.movementMap (M.PathCreature oocMovingCreature.id) movementRequest
+              Grid.movementMap model (M.PathCreature oocMovingCreature.id) movementRequest
                                False model.currentMap oocMovingCreature (visibleCreatures model game)
             else
               -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
@@ -202,7 +202,7 @@ playerViewGame model app creatures =
                         then {mapc | highlight = True}
                         else mapc
                       vCreatures = List.map highlightMover (visibleCreatures model game)
-                  in Grid.movementMap M.PathCurrentCombatCreature movementRequest
+                  in Grid.movementMap model M.PathCurrentCombatCreature movementRequest
                                    False model.currentMap creature vCreatures
                 Nothing -> playerGrid model game creatures
       Nothing -> playerGrid model game creatures
@@ -265,7 +265,7 @@ playerGrid model game myCreatures =
         in { mapc | movable = (movable mapc), highlight = highlight}
       vCreatures = List.map modifyMapCreature (visibleCreatures model game)
   in
-    hbox <| [Grid.terrainMap (movementGhost model) model.currentMap vCreatures
+    hbox <| [Grid.terrainMap model (movementGhost model) model.currentMap vCreatures
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
 
 mapSelector : T.Game -> Html M.Msg

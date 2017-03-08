@@ -177,7 +177,25 @@ update msg model = case msg of
   UpdateSaveMapName name -> ( {model | saveMapName = name }
                             , Cmd.none)
 
-  EditMap terrain -> ({ model | editingMap = False}, sendCommand model.rpiURL (T.EditMap model.saveMapName terrain))
+  EditMap terrain ->
+    ( { model | editingMap = False}
+    , sendCommand model.rpiURL (T.EditMap model.saveMapName terrain))
+
+  MapZoom zoom ->
+    let newSize =
+          case zoom of
+            M.In -> model.gridSize - 5
+            M.Out -> model.gridSize + 5
+    in ({ model | gridSize = newSize}, Cmd.none)
+  MapPan dir ->
+    let offsetSize = 1 -- pan by meter increments
+        newOffset =
+          case dir of
+            M.Right -> {x = model.gridOffset.x + offsetSize, y = model.gridOffset.y}
+            M.Left -> {x = model.gridOffset.x - offsetSize, y = model.gridOffset.y}
+            M.Up -> {x = model.gridOffset.x, y = model.gridOffset.y + offsetSize}
+            M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
+    in ({ model | gridOffset = newOffset}, Cmd.none)
 
   SelectAbility cid abid ->
     let endpoint = model.rpiURL ++ "/target_options/" ++ cid ++ "/" ++ abid

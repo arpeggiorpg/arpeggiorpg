@@ -55,6 +55,17 @@ type Msg
     | Tick Time.Time
     | SendCommand T.GameCommand
     | SetCreatureNote T.CreatureID String
+    | MapZoom MapInOut
+    | MapPan Direction
+
+type MapInOut
+  = In | Out
+
+type Direction
+  = Left
+  | Right
+  | Up
+  | Down
 
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
@@ -76,10 +87,12 @@ defaultModel flags =
     , showingMovement = NotShowingMovement
     , creatureNotes = Dict.empty
     , rpiURL = flags.rpi
+    , gridSize = 25
+    , gridOffset = {x = 0, y = 0}
   }
 
 devFlags : ProgramFlags
-devFlags = {rpi = "http://localhost:1337/"}
+devFlags = {rpi = "http://10.0.0.14:1337/"}
 
 type alias ProgramFlags =
   { rpi : String }
@@ -104,6 +117,10 @@ type alias Model =
   , creatureNotes : Dict.Dict T.CreatureID String
   , moveAnywhere : Bool
   , rpiURL : String
+  -- gridSize: how many SQUARE METERS to show
+  , gridSize : Int
+  -- gridOffset: offset in METERS
+  , gridOffset : {x : Int, y: Int}
   }
   
 

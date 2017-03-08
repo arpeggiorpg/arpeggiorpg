@@ -24,3 +24,6 @@ dtext t = div [] [text t]
 
 
 plainBorder = S.border3 (S.px 1) S.solid (S.rgb 0 0 0)
+
+s : List S.Mixin -> Attribute msg
+s = S.asPairs >> Html.Attributes.style
