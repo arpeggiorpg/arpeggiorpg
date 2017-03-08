@@ -63,41 +63,23 @@ baseMap model ghost terrain creatures extras editable =
                   Nothing -> []
       -- gridSize is 25 ("meters across")
       -- our coordinate system is in centimeters. We want to pan by 100 * offset.
-      gridLeft = (-model.gridSize + model.gridOffset.x * 2) * 50
-      gridTop = (-model.gridSize + -model.gridOffset.y * 2) * 50
-      gridWidth = model.gridSize * 100
-      gridHeight = model.gridSize * 100
-      -- gridTranslateX = -model.gridOffset.x * 50
-      -- gridTranslateY = model.gridOffset.y * 50
-      -- gridTranslate = "translate(" ++ toString gridTranslateX ++ "," ++ toString gridTranslateY ++ ")"
+      -- gridLeft = (-model.gridSize + model.gridOffset.x * 2) * 50
+      -- gridTop = (-model.gridSize + -model.gridOffset.y * 2) * 50
+      -- gridWidth = model.gridSize * 100
+      -- gridHeight = model.gridSize * 100
+      gridTranslateX = toString <| -model.gridOffset.x * 50
+      gridTranslateY = toString <| model.gridOffset.y * 50
+      gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
+      matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
       mapSVG = svg
-        [ viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
-        -- , transform gridTranslate
-        , width "1000px"
-        , height "800px"
-        , s [S.border2 (S.px 2) S.solid]
+        [ -- viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
+         preserveAspectRatio "xMinYMid slice"
+        , transform <| "matrix(" ++ matrixArgs ++ ")"
+        , s [S.border2 (S.px 2) S.solid, S.width (S.pct 100), S.height (S.pct 100)]
         ]
         (terrainEls ++ extras ++ creatureEls ++ ghostEl)
-      htmlOverlay =
-        Elements.vabox
-          [s [ S.position S.absolute
-             , S.top (S.px 0)
-             , S.left (S.px 0)
-             , S.border2 (S.px 2) S.solid
-             , S.backgroundColor (S.rgb 230 230 230)]]
-          [ H.button [HE.onClick (M.MapZoom M.In)] [text "+"]
-          , H.button [HE.onClick (M.MapZoom M.Out)] [text "-"]
-          , Elements.vbox
-              [ H.button [HE.onClick (M.MapPan M.Up)] [text "^"]
-              , Elements.hbox
-                  [ H.button [HE.onClick (M.MapPan M.Left)] [text "<"]
-                  , H.button [HE.onClick (M.MapPan M.Right)] [text ">"]
-                  ]
-              , H.button [HE.onClick (M.MapPan M.Down)] [text "v"]
-              ]
-          ]
   in
-    H.div [s [S.position S.relative]] [mapSVG, htmlOverlay]
+    mapSVG
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
@@ -165,7 +147,8 @@ gridCreature creature =
 baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
 baseTerrainRects model editable terrain =
   let blocks = List.map (gridTerrain editable) terrain
-      empties = if editable then emptyTerrain model editable terrain else []
+      -- TODO re-enable editing-only empties
+      empties = emptyTerrain model editable terrain -- if editable then emptyTerrain model editable terrain else []
   in blocks ++ empties
 
 gridTerrain : Bool -> T.Point3 -> Svg M.Msg

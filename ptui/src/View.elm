@@ -12,16 +12,19 @@ import Types as T
 import Grid
 import Update as U
 import Elements exposing (..)
+import GMView
+
+-- TODO: delete these once we refactor player code out
+import CommonView exposing (visibleCreatures)
 
 import Css as S
 
 s = Elements.s -- to disambiguate `s`, which Html also exports
 
-
 gmView : M.Model -> Html M.Msg
 gmView model = vbox
   [ case model.app of
-      Just app -> gmViewGame model app
+      Just app -> GMView.viewGame model app
       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
   ]
@@ -143,19 +146,6 @@ oocToggler model =
 
 editMapButton : Html M.Msg
 editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
-
-visibleCreatures : M.Model -> T.Game -> List Grid.MapCreature
-visibleCreatures model game =
-  let mapInfo creature =
-    Maybe.map (\class -> {creature = creature, highlight = False, movable = Nothing, class = class})
-              (Dict.get creature.class game.classes)
-  in
-    case game.current_combat of
-      Just combat ->
-        if model.showOOC
-        then List.filterMap mapInfo <| combat.creatures.data ++ (Dict.values game.creatures)
-        else List.filterMap mapInfo combat.creatures.data
-      Nothing -> (List.filterMap mapInfo (Dict.values game.creatures))
 
 playerView : M.Model -> Html M.Msg
 playerView model = vbox
