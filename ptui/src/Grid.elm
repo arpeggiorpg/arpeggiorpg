@@ -172,6 +172,9 @@ gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
   tile "lightgrey" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
+-- TODO: panning/zooming empty terrain in edit mode is very slow in Firefox.
+-- Using Svg.Keyed.node pervasively for all tiles didn't help at all.
+-- I'm guessing that the slowness is from rendering Elm nodes, but I'm not sure why.
 emptyTerrain : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
 emptyTerrain model editable terrain =
   let halfGrid = model.gridSize // 2
