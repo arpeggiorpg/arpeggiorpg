@@ -92,7 +92,7 @@ defaultModel flags =
   }
 
 devFlags : ProgramFlags
-devFlags = {rpi = "http://10.0.0.14:1337/"}
+devFlags = {rpi = "http://localhost:1337/"}
 
 type alias ProgramFlags =
   { rpi : String }

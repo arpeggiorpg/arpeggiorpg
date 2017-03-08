@@ -165,7 +165,7 @@ gridCreature creature =
 baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
 baseTerrainRects model editable terrain =
   let blocks = List.map (gridTerrain editable) terrain
-      empties = emptyTerrain model editable terrain
+      empties = if editable then emptyTerrain model editable terrain else []
   in blocks ++ empties
 
 gridTerrain : Bool -> T.Point3 -> Svg M.Msg
