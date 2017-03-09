@@ -31,14 +31,7 @@ elements on top.
 -}
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
-  let movementConsole =
-        case model.moving of
-          Just _ ->
-            [overlay (S.px 80) (S.px 60) []
-              [ button [onClick M.CancelMovement] [text "Cancel Movement"]
-              , hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]]]
-          Nothing -> []
-  in div
+  div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98), S.overflow S.hidden]]
     <| 
@@ -56,7 +49,28 @@ viewGame model app =
             , combatView model app 
             ]
         ]
-    ] ++ movementConsole ++ (modalOverlay model app)
+    ] ++ (movementConsole model) ++ (editMapConsole model) ++ (modalOverlay model app)
+
+editMapConsole : M.Model -> List (Html M.Msg)
+editMapConsole model =
+  let console =
+        overlay (S.px 80) (S.px 60) []
+          [ button [onClick M.CancelEditingMap] [text "Cancel Editing Map"]
+          , hbox
+            [ input [type_ "text", placeholder "map name", onInput M.UpdateSaveMapName ] []
+            , button [onClick (M.EditMap model.currentMap)] [text "Save"]
+            ]
+          ]
+  in if model.editingMap then [console] else []
+
+movementConsole : M.Model -> List (Html M.Msg)
+movementConsole model =
+  case model.moving of
+    Just _ ->
+      [overlay (S.px 80) (S.px 60) []
+        [ button [onClick M.CancelMovement] [text "Cancel Movement"]
+        , hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]]]
+    Nothing -> []
 
 {-| Check if any modal prompts should be done based on the model, and render the appropriate one. -}
 modalOverlay : M.Model -> T.App -> List (Html M.Msg)

@@ -31,9 +31,8 @@ terrainMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> Svg M.Msg
 terrainMap model ghost terrain creatures = baseMap model ghost terrain creatures [] False
 
 editMap : M.Model -> T.Map -> List MapCreature -> H.Html M.Msg
-editMap model terrain creatures = vbox
-  [ saveForm terrain
-  , baseMap model Nothing terrain creatures [] True ]
+editMap model terrain creatures =
+  baseMap model Nothing terrain creatures [] True
 
 movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
@@ -86,15 +85,6 @@ calculateAllMovementOptions from distance =
       ys = List.range (from.y - distance) (from.y + distance)
       result = List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
   in result
-
-saveForm : T.Map -> H.Html M.Msg
-saveForm terrain = vbox <|
-  [ H.button [HE.onClick M.CancelEditingMap] [text "Cancel Editing Map"]
-  , hbox
-    [ H.input [HA.type_ "text", HA.placeholder "map name", HE.onInput M.UpdateSaveMapName ] []
-    , H.button [HE.onClick (M.EditMap terrain)] [text "Save"]
-    ]
-  ]
 
 movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
 movementTargets moveMsg pts terrain origin max_distance =
