@@ -60,10 +60,7 @@ fullUI model app game =
   if model.editingMap
   then Grid.editMap model model.currentMap (visibleCreatures model game)
   else
-    let combatHTML =
-          case game.current_combat of
-            Just combat -> vbox [h4 [] [text "Combat"], gmCombatArea model game combat]
-            Nothing -> startCombatButton
+    let combatHTML = div [] []
         targetSelectorHTML =
           case model.selectedAbility of
             Just (cid, abid) -> if T.isCreatureOOC game cid
@@ -323,44 +320,6 @@ historyCreatureLog cl = case cl of
 
 renderDice : List Int -> Html M.Msg
 renderDice dice = text <| String.join ", " (List.map toString dice)
-
-gmCombatArea : M.Model -> T.Game -> T.Combat -> Html M.Msg
-gmCombatArea model game combat =
-  let bar = combatActionBar game combat (T.combatCreature combat)
-      disengageButtons = hbox (List.map disengageButton combat.creatures.data)
-      combatView = vbox [ bar, combatantList True model game combat, stopCombatButton, disengageButtons]
-  in case model.selectedAbility of
-    Just (cid, abid) ->
-      if T.isCreatureInCombat game cid
-      then targetSelector model game M.CombatAct abid
-      else combatView
-    Nothing -> combatView
-
-targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
-targetSelector model game msgConstructor abid =
-  let creatures = List.filterMap (T.findCreature game) (T.potentialCreatureTargets model.potentialTargets)
-  in hbox <|
-    [ case (Dict.get abid game.abilities) of
-        Just ability -> case ability.target of
-          T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
-          T.Range distance -> creatureTargetSelector (msgConstructor abid) T.DecidedRange creatures
-          T.Actor -> button [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
-        Nothing -> text "Sorry, that ability was not found. Please reload."
-    , button [onClick M.CancelAbility] [text "Cancel ability"]
-    ]
-
-creatureTargetSelector : (T.DecidedTarget -> M.Msg) -> (T.CreatureID -> T.DecidedTarget) -> List T.Creature -> Html M.Msg
-creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
-  let targetCreatureButton c = button [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
-  in List.map targetCreatureButton creatures
-
-stopCombatButton : Html M.Msg
-stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]
-
-startCombatButton : Html M.Msg
-startCombatButton =
-  let gotCreatures cids = U.message (M.SendCommand (T.StartCombat cids))
-  in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
 
 combatantList : Bool -> M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatantList isGmView model game combat =

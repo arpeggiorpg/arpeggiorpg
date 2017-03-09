@@ -5,6 +5,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Maybe.Extra as MaybeEx
 import Set
 
 import Model as M
@@ -54,10 +55,19 @@ viewGame model app =
 modalOverlay : M.Model -> T.App -> List (Html M.Msg)
 modalOverlay model app =
   let
-    modal = case model.selectingCreatures of
-      Just (selectedCreatures, cb, commandName) ->
-        Just (selectCreaturesView model app selectedCreatures cb commandName)
-      Nothing -> Nothing
+    game = app.current_game
+    selectingCreatures =
+      Maybe.map (\(selected, cb, name) -> selectCreaturesView model app selected cb name)
+        model.selectingCreatures
+    selectingTargets =
+      -- TODO: target selection should be done on the map
+      case model.selectedAbility of
+        Just (cid, abid) -> 
+          if T.isCreatureInCombat game cid
+          then Just (CommonView.targetSelector model game M.CombatAct abid)
+          else Nothing
+        Nothing -> Nothing
+    modal = MaybeEx.or selectingCreatures selectingTargets
   in
     case modal of
       Just m ->
@@ -170,12 +180,35 @@ selectCreaturesView model app selectedCreatures callback commandName =
     , hbox [selectableCreatureItems, selectedCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
 
+{-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
-  startCombatButton
+  case app.current_game.current_combat of
+    Just com -> inCombatView model app com
+    Nothing -> startCombatButton
+
+inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
+inCombatView model app combat =
+  let game = app.current_game
+      bar = CommonView.combatActionBar game combat (T.combatCreature combat)
+      disengageButtons = hbox (List.map disengageButton combat.creatures.data)
+      extraGutter idx creature =
+        [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
+                 , disabled (idx == 0)]
+                 [text "⬆️️"]
+        , button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx + 1)))
+                 , disabled (idx == (List.length combat.creatures.data) - 1)]
+                 [text "⬇️️"]
+        ]
+      combatView = vbox [ bar, CommonView.combatantList extraGutter model game combat, stopCombatButton, disengageButtons]
+  in combatView
 
 {-| A button for starting combat. -}
 startCombatButton : Html M.Msg
 startCombatButton =
   let gotCreatures cids = U.message (M.SendCommand (T.StartCombat cids))
   in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
+
+{-| A button for stopping combat. -}
+stopCombatButton : Html M.Msg
+stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]

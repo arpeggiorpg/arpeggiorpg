@@ -1,5 +1,6 @@
 module CommonView exposing
-  (visibleCreatures, creatureCard, oocActionBar, combatActionBar, moveOOCButton, mapControls)
+  ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, moveOOCButton, mapControls
+  , combatantList, targetSelector)
 
 import Dict
 
@@ -42,14 +43,14 @@ creatureCard extras model creature =
       [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
       <| 
       [ hbox [strong [] [text creature.name ], classIcon creature]
-      , hbox [
-        --  div (cellStyles (S.rgb 144 238 144))
-        --         [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-            div (cellStyles (S.rgb 0 255 255))
+      , hbox
+          [ div (cellStyles (S.rgb 144 238 144))
+                [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
+          , div (cellStyles (S.rgb 0 255 255))
                 [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-            , div (cellStyles (S.rgb 255 255 255))
+          , div (cellStyles (S.rgb 255 255 255))
                 [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
-            ]
+          ]
       -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
       --        , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
       --        , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
@@ -139,3 +140,33 @@ mapControls =
         , sqButton 40 [s [S.alignSelf S.center], onClick (M.MapPan M.Down)] [text "v"]
         ]
     ]
+
+combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> Html M.Msg
+combatantList extraGutter model game combat =
+  vbox (List.map (combatantEntry extraGutter model game combat) (List.indexedMap (,) combat.creatures.data))
+
+combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
+combatantEntry extraGutter model game combat (idx, creature) = hbox <|
+  let marker = if combat.creatures.cursor == idx
+               then [ datext [s [S.width (S.px 25)]] "▶️️" ]
+               else []
+      gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature]
+  in gutter ++ [ creatureCard [] model creature ]
+
+targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
+targetSelector model game msgConstructor abid =
+  let creatures = List.filterMap (T.findCreature game) (T.potentialCreatureTargets model.potentialTargets)
+  in hbox <|
+    [ case (Dict.get abid game.abilities) of
+        Just ability -> case ability.target of
+          T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
+          T.Range distance -> creatureTargetSelector (msgConstructor abid) T.DecidedRange creatures
+          T.Actor -> button [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
+        Nothing -> text "Sorry, that ability was not found. Please reload."
+    , button [onClick M.CancelAbility] [text "Cancel ability"]
+    ]
+
+creatureTargetSelector : (T.DecidedTarget -> M.Msg) -> (T.CreatureID -> T.DecidedTarget) -> List T.Creature -> Html M.Msg
+creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
+  let targetCreatureButton c = button [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
+  in List.map targetCreatureButton creatures
