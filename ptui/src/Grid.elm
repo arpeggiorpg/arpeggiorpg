@@ -35,10 +35,9 @@ editMap model terrain creatures = vbox
   [ saveForm terrain
   , baseMap model Nothing terrain creatures [] True ]
 
-movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> H.Html M.Msg
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
-  let cancelButton = cancelMove
-      targetPoints =
+  let targetPoints =
         if moveAnywhere
         then calculateAllMovementOptions creature.pos (max_distance // 100)
         else movement_options
@@ -50,9 +49,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    vbox
-      [ cancelButton
-      , baseMap model Nothing terrain vCreatures movementTiles False ]
+    baseMap model Nothing terrain vCreatures movementTiles False
 
 baseMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> H.Html M.Msg
 baseMap model ghost terrain creatures extras editable =
@@ -89,9 +86,6 @@ calculateAllMovementOptions from distance =
       ys = List.range (from.y - distance) (from.y + distance)
       result = List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
   in result
-
-cancelMove : H.Html M.Msg
-cancelMove = H.button [HE.onClick M.CancelMovement] [H.text "Cancel Movement"]
 
 saveForm : T.Map -> H.Html M.Msg
 saveForm terrain = vbox <|

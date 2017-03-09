@@ -65,9 +65,10 @@ update msg model = case msg of
         in (model, cmd)
 
   ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, message PollApp)
-  ReceivedAppUpdate (Err x) -> Debug.log "[APP-ERROR]"
-    ( { model | error = toString x}
-    , delay Time.second PollApp )
+  ReceivedAppUpdate (Err x) ->
+    let _ = Debug.log "[APP-ERROR] " x
+    in ( { model | error = toString x}
+       , delay Time.second PollApp )
 
   SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
 
@@ -96,8 +97,10 @@ update msg model = case msg of
   AppUpdate (Ok newApp) ->
     let model2 = updateModelFromApp model newApp
     in ( { model2 | moving = Nothing , selectedAbility = Nothing }, Cmd.none )
-  AppUpdate (Err x) -> Debug.log "[APP-ERROR]" ( { model | error = toString x}, Cmd.none )
- 
+  AppUpdate (Err x) ->
+    let _ = Debug.log "[APP-ERROR] " x
+    in ({model | error = toString x}, Cmd.none)
+
   Tick time ->
     let _ = Debug.log "[TICK]" ()
         showingMovement =

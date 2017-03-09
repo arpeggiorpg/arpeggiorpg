@@ -31,7 +31,14 @@ elements on top.
 -}
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
-  div
+  let movementConsole =
+        case model.moving of
+          Just _ ->
+            [overlay (S.px 80) (S.px 60) []
+              [ button [onClick M.CancelMovement] [text "Cancel Movement"]
+              , hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]]]
+          Nothing -> []
+  in div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98), S.overflow S.hidden]]
     <| 
@@ -49,7 +56,7 @@ viewGame model app =
             , combatView model app 
             ]
         ]
-    ] ++ (modalOverlay model app)
+    ] ++ movementConsole ++ (modalOverlay model app)
 
 {-| Check if any modal prompts should be done based on the model, and render the appropriate one. -}
 modalOverlay : M.Model -> T.App -> List (Html M.Msg)
@@ -88,10 +95,43 @@ modalOverlay model app =
       Nothing -> []
 
 {-| Figure out which map to render. There are various modes that the game might be in which affect
-how we render the map: movement, editing, regular play.
+how we render the map: combat, movement, editing, regular play.
 -}
 mapView : M.Model -> T.App -> Html M.Msg
-mapView model app = Grid.terrainMap model Nothing model.currentMap (CommonView.visibleCreatures model app.current_game)
+mapView model app =
+  let game = app.current_game
+      movementGrid msg mvmtReq creature = Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
+      movementMap =
+        case (game.current_combat, model.moving) of
+          (Nothing, Just mvmtReq) ->
+            Maybe.map (\creature -> movementGrid (M.PathCreature creature.id) mvmtReq creature)
+                      mvmtReq.ooc_creature
+          (Just combat, Just mvmtReq) ->
+            let (creature, moveMessage) =
+                  case mvmtReq.ooc_creature of
+                    Just creature -> (creature, M.PathCreature creature.id)
+                    Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
+            in Just <| movementGrid moveMessage mvmtReq creature
+          _ -> Nothing
+      editMap () = if model.editingMap
+                   then Just <| Grid.editMap model model.currentMap vCreatures
+                   else Nothing
+      currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+      modifyMapCreature mapc =
+        let highlight = (Just mapc.creature.id) == currentCombatCreature
+        in { mapc | highlight = highlight
+                  , movable = Just M.GetMovementOptions}
+      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
+      defaultMap () = Grid.terrainMap model Nothing model.currentMap vCreatures
+  in movementMap
+      |> MaybeEx.orElseLazy editMap
+      |> withDefaultLazy defaultMap
+
+withDefaultLazy : (() -> a) -> Maybe a -> a
+withDefaultLazy df m =
+  case m of
+    Just x -> x
+    Nothing -> df ()
 
 {-| A navigator for available creatures, i.e., those that aren't in combat.
 -}
