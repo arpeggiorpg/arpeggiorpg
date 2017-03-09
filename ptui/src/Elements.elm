@@ -28,6 +28,9 @@ abspos left_ top_ = [S.position S.absolute, S.left left_, S.top top_]
 overlay left_ top_ extra =
   div <| stdStyle ++ [s <| (abspos left_ top_) ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
 
+overlayRight right_ top_ extra = 
+  div <| stdStyle ++ [s <| [S.position S.absolute, S.right right_, S.top top_] ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
+
 plainBorder = S.border3 (S.px 1) S.solid (S.rgb 0 0 0)
 
 button : List (Attribute msg) -> List (Html msg) -> Html msg

@@ -41,7 +41,7 @@ viewGame model app =
         [CommonView.mapControls]
     , overlay (S.px 80) (S.px 0) []
         [mapConsole model app]
-    , overlay (S.vw 80) (S.px 0) []
+    , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [
           vbox 
             [ collapsible "Available Creatures" model.collapsed.availableCreatures M.ToggleCollapsedAvailableCreatures

@@ -83,11 +83,14 @@ durationEl condDur = case condDur of
 
 baseActionBar : Bool -> T.Game -> T.Creature -> List (Html M.Msg)
 baseActionBar inCombat game creature =
-  let abinfo abstatus = Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
-                                  (Dict.get abstatus.ability_id game.abilities)
+  let abinfo abstatus =
+        Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
+                      (Dict.get abstatus.ability_id game.abilities)
       abilities = List.filterMap abinfo creature.abilities
   in (List.map (abilityButton creature) abilities)
 
+{-| An action bar for characters who are not in combat. -}
+oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar = baseActionBar False
 
 combatActionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
