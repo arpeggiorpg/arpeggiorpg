@@ -20,31 +20,68 @@ import Css as S
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
+collapsible collapsed msg content =
+  vbox <|
+    [ button [onClick msg] [text ">"]
+     ] ++ if collapsed then [] else [content]
+
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
 elements on top.
 -}
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
-  let theMap = chooseMap model app
-      creaturesOverlay = availableCreaturesView model app
-      mapConsoleOverlay = mapConsole model app
-      -- combatOverlay = combatList model app
-      -- creatureSelectorOverlay = creatureSelector model app
+  div
+    -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
+    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98), S.overflow S.hidden]]
+    <| 
+    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
+        [mapView model app]
+    , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
+        [CommonView.mapControls]
+    , overlay (S.px 80) (S.px 0) []
+        [mapConsole model app]
+    , overlay (S.vw 80) (S.px 0) []
+        [
+          vbox 
+            [ collapsible model.collapsed.availableCreatures M.ToggleCollapsedAvailableCreatures
+                (availableCreaturesView model app)
+            , combatView model app 
+            ]
+        ]
+    ] ++ (modalOverlay model app)
+
+{-| Check if any modal prompts should be done based on the model, and render the appropriate one. -}
+modalOverlay : M.Model -> T.App -> List (Html M.Msg)
+modalOverlay model app =
+  let
+    modal = case model.selectingCreatures of
+      Just (selectedCreatures, cb, commandName) ->
+        Just (selectCreaturesView model app selectedCreatures cb commandName)
+      Nothing -> Nothing
   in
-    div
-      -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
-      [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98), S.overflow S.hidden]]
-      [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)] [theMap]
-      , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)] [CommonView.mapControls]
-      , overlay (S.px 80) (S.px 0) [] [mapConsoleOverlay]
-      , overlay (S.vw 80) (S.px 0) [] [creaturesOverlay]
-      ]
+    case modal of
+      Just m ->
+        let box =
+              div [s [S.position S.absolute
+                     , S.left (S.pct 50)
+                     , S.transform (S.translateX (S.pct -50))
+                     , plainBorder
+                     , S.backgroundColor (S.rgb 255 255 255)]]
+                  [m]
+            cover =
+              div [s [S.position S.absolute
+                     , S.width (S.vw 100)
+                     , S.height (S.vh 100)
+                     , S.backgroundColor (S.rgba 0 0 0 0.5)]]
+                  []
+        in [cover, box]
+      Nothing -> []
 
 {-| Figure out which map to render. There are various modes that the game might be in which affect
 how we render the map: movement, editing, regular play.
 -}
-chooseMap : M.Model -> T.App -> Html M.Msg
-chooseMap model app = Grid.terrainMap model Nothing model.currentMap (CommonView.visibleCreatures model app.current_game)
+mapView : M.Model -> T.App -> Html M.Msg
+mapView model app = Grid.terrainMap model Nothing model.currentMap (CommonView.visibleCreatures model app.current_game)
 
 {-| A navigator for available creatures, i.e., those that aren't in combat.
 -}
@@ -94,19 +131,51 @@ deleteCreatureButton : T.Creature -> Html M.Msg
 deleteCreatureButton creature =
   button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
 
+{-| Various GM-specific controls for affecting the map. -}
+mapConsole model app =
+  let
+    editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
+    mapSelector = vbox <|
+      let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]
+      in (List.map mapSelectorItem (Dict.keys app.current_game.maps))
+    oocToggler =
+        hbox [text "Show Out-of-Combat creatures: "
+        , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
+        ]
+  in hbox [editMapButton, mapSelector, oocToggler]
 
-mapConsole model app = hbox [editMapButton, mapSelector app.current_game, oocToggler model]
+{-| A view that allows selecting creatures in a particular order and calling a callback when done.
+-}
+selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
+selectCreaturesView model app selectedCreatures callback commandName =
+  let selectButton creature =
+        button [onClick (M.ToggleSelectedCreature creature.id)
+               , s [S.height (S.px 100), S.width (S.px 100)]]
+               [text "Add"]
+      unselectButton cid =
+        button [ onClick (M.ToggleSelectedCreature cid)
+               , s [S.height (S.px 100), S.width (S.px 100)]]
+               [text "Remove"]
+      selectableCreature creature =
+        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] model creature]
+      selectableCreatureItems =
+        vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
+      selectedCreatureItem cid =
+        hbox [strong [] [text cid], unselectButton cid]
+      selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
+      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
+      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
+  in vbox <|
+    [h3 [] [text <| "Select Creatures to " ++ commandName]
+    , hbox [selectableCreatureItems, selectedCreatureItems]
+    , hbox [doneSelectingButton, cancelButton]]
 
-editMapButton : Html M.Msg
-editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
+combatView : M.Model -> T.App -> Html M.Msg
+combatView model app =
+  startCombatButton
 
-mapSelector : T.Game -> Html M.Msg
-mapSelector game = vbox <|
-  let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]
-  in (List.map mapSelectorItem (Dict.keys game.maps))
-
-oocToggler : M.Model -> Html M.Msg
-oocToggler model =
-  hbox [text "Show Out-of-Combat creatures: "
-       , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
-       ]
+{-| A button for starting combat. -}
+startCombatButton : Html M.Msg
+startCombatButton =
+  let gotCreatures cids = U.message (M.SendCommand (T.StartCombat cids))
+  in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]

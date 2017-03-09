@@ -57,6 +57,7 @@ type Msg
     | SetCreatureNote T.CreatureID String
     | MapZoom MapInOut
     | MapPan Direction
+    | ToggleCollapsedAvailableCreatures
 
 type MapInOut
   = In | Out
@@ -89,6 +90,10 @@ defaultModel flags =
     , rpiURL = flags.rpi
     , gridSize = 25
     , gridOffset = {x = 0, y = 0}
+    , collapsed =
+        { availableCreatures = False
+        , combat = False
+        }
   }
 
 devFlags : ProgramFlags
@@ -121,6 +126,7 @@ type alias Model =
   , gridSize : Int
   -- gridOffset: offset in METERS
   , gridOffset : {x : Int, y: Int}
+  , collapsed : { availableCreatures: Bool, combat: Bool}
   }
   
 

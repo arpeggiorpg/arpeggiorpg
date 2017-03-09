@@ -139,6 +139,11 @@ update msg model = case msg of
     ( { model | selectingCreatures = Nothing}
     , Cmd.none)
 
+  ToggleCollapsedAvailableCreatures ->
+    let c = model.collapsed
+        newCollapsed = {c | availableCreatures = not c.availableCreatures}
+    in ({model | collapsed = newCollapsed}, Cmd.none)
+
   GetMovementOptions creature ->
     let endpoint = (model.rpiURL ++ "/movement_options/" ++ creature.id)
         cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))

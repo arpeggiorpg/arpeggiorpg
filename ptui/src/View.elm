@@ -30,36 +30,6 @@ gmView model = vbox
   , hbox [text "Last error:", pre [] [text model.error]]
   ]
 
-modalSelectingCreatures : M.Model -> T.App -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
-modalSelectingCreatures model app selectedCreatures callback commandName =
-  let selectButton creature =
-        button [onClick (M.ToggleSelectedCreature creature.id)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
-               [text "Add"]
-      unselectButton cid =
-        button [ onClick (M.ToggleSelectedCreature cid)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
-               [text "Remove"]
-      selectableCreature creature =
-        hbox [selectButton creature, creatureCard [noteBox model creature] model creature]
-      selectableCreatureItems =
-        vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
-      selectedCreatureItem cid =
-        hbox [strong [] [text cid], unselectButton cid]
-      selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
-      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
-      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
-  in vbox <|
-    [h3 [] [text <| "Select Creatures to " ++ commandName]
-    , hbox [selectableCreatureItems, selectedCreatureItems]
-    , hbox [doneSelectingButton, cancelButton]]
-
-gmViewGame : M.Model -> T.App -> Html M.Msg
-gmViewGame model app =
-  case model.selectingCreatures of
-      Just (selectedCreatures, cb, commandName) -> modalSelectingCreatures model app selectedCreatures cb commandName
-      Nothing -> gmViewGame_ model app
-
 gmViewGame_ : M.Model -> T.App -> Html M.Msg
 gmViewGame_ model app =
   let game = app.current_game
