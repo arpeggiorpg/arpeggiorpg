@@ -189,7 +189,11 @@ playerCombatArea model game combat creatures =
 -- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> T.Game -> List T.Creature -> Html M.Msg
 playerGrid model game myCreatures =
-  let bar creature =
+  let moveOOCButton creature =
+        button [ onClick (M.GetMovementOptions creature)
+               , disabled (not creature.can_move)]
+               [text "Move"]
+      bar creature =
         if T.isCreatureInCombat game creature.id
         then Nothing
         else Just <| hbox <| [creatureCard [] model creature, moveOOCButton creature] ++ (oocActionBar game creature)

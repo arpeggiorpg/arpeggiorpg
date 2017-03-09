@@ -21,9 +21,9 @@ import Css as S
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
-collapsible collapsed msg content =
+collapsible header collapsed msg content =
   vbox <|
-    [ button [onClick msg] [text ">"]
+    [ button [onClick msg] [text (header ++ " >")]
      ] ++ if collapsed then [] else [content]
 
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
@@ -44,7 +44,7 @@ viewGame model app =
     , overlay (S.vw 80) (S.px 0) []
         [
           vbox 
-            [ collapsible model.collapsed.availableCreatures M.ToggleCollapsedAvailableCreatures
+            [ collapsible "Available Creatures" model.collapsed.availableCreatures M.ToggleCollapsedAvailableCreatures
                 (availableCreaturesView model app)
             , combatView model app 
             ]
@@ -62,7 +62,7 @@ modalOverlay model app =
     selectingTargets =
       -- TODO: target selection should be done on the map
       case model.selectedAbility of
-        Just (cid, abid) -> 
+        Just (cid, abid) ->
           if T.isCreatureInCombat game cid
           then Just (CommonView.targetSelector model game M.CombatAct abid)
           else Nothing
@@ -142,6 +142,7 @@ deleteCreatureButton creature =
   button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
 
 {-| Various GM-specific controls for affecting the map. -}
+mapConsole : M.Model -> T.App -> Html M.Msg
 mapConsole model app =
   let
     editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
@@ -184,9 +185,10 @@ selectCreaturesView model app selectedCreatures callback commandName =
 combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
   case app.current_game.current_combat of
-    Just com -> inCombatView model app com
+    Just com -> collapsible "Combat" model.collapsed.combat M.ToggleCollapsedCombat (inCombatView model app com)
     Nothing -> startCombatButton
 
+{-| The content of what's rendered when we're actually in combat. -}
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
 inCombatView model app combat =
   let game = app.current_game

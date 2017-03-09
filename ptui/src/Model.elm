@@ -58,6 +58,7 @@ type Msg
     | MapZoom MapInOut
     | MapPan Direction
     | ToggleCollapsedAvailableCreatures
+    | ToggleCollapsedCombat
 
 type MapInOut
   = In | Out
@@ -88,8 +89,8 @@ defaultModel flags =
     , showingMovement = NotShowingMovement
     , creatureNotes = Dict.empty
     , rpiURL = flags.rpi
-    , gridSize = 25
-    , gridOffset = {x = 0, y = 0}
+    , gridSize = 60
+    , gridOffset = {x = -15, y = 10}
     , collapsed =
         { availableCreatures = False
         , combat = False

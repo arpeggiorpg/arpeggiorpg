@@ -1,5 +1,5 @@
 module CommonView exposing
-  ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, moveOOCButton, mapControls
+  ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
   , combatantList, targetSelector)
 
 import Dict
@@ -105,12 +105,6 @@ actionButton : List (Attribute msg) -> List (Html msg) -> Html msg
 actionButton attrs children =
   button ([s [S.height (S.px 50), S.width (S.px 100)]] ++ attrs) children
 
-moveOOCButton : T.Creature -> Html M.Msg
-moveOOCButton creature =
-  button [ onClick (M.GetMovementOptions creature)
-         , disabled (not creature.can_move)]
-         [text "Move"]
-
 doneButton : T.Creature -> Html M.Msg
 doneButton creature =
   actionButton [onClick (M.SendCommand T.Done)] [text "Done"]
@@ -161,12 +155,12 @@ targetSelector model game msgConstructor abid =
         Just ability -> case ability.target of
           T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
           T.Range distance -> creatureTargetSelector (msgConstructor abid) T.DecidedRange creatures
-          T.Actor -> button [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
+          T.Actor -> sqButton 100 [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
         Nothing -> text "Sorry, that ability was not found. Please reload."
-    , button [onClick M.CancelAbility] [text "Cancel ability"]
+    , sqButton 100 [onClick M.CancelAbility] [text "Cancel ability"]
     ]
 
 creatureTargetSelector : (T.DecidedTarget -> M.Msg) -> (T.CreatureID -> T.DecidedTarget) -> List T.Creature -> Html M.Msg
 creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
-  let targetCreatureButton c = button [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
+  let targetCreatureButton c = sqButton 100 [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
   in List.map targetCreatureButton creatures
