@@ -74,10 +74,12 @@ baseMap model ghost terrain creatures extras editable =
       mapSVG = svg
         [ -- viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
          preserveAspectRatio "xMinYMid slice"
-        , transform <| "matrix(" ++ matrixArgs ++ ")"
-        , s [S.border2 (S.px 2) S.solid, S.width (S.pct 100), S.height (S.pct 100)]
+        , s [ S.width (S.vw 100) -- CHROME-SPECIFIC: I *have* to use vw instead of % here,
+                                 -- even though the container is full-width... if I set it to 100%
+                                 -- it's not filling the container.
+            , S.height (S.pct 100)]
         ]
-        (terrainEls ++ extras ++ creatureEls ++ ghostEl)
+        [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ creatureEls ++ ghostEl)]
   in
     mapSVG
 
@@ -147,28 +149,26 @@ gridCreature creature =
 baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
 baseTerrainRects model editable terrain =
   let blocks = List.map (gridTerrain editable) terrain
-      -- TODO re-enable editing-only empties
-      empties = emptyTerrain model editable terrain -- if editable then emptyTerrain model editable terrain else []
+      empties = if editable then emptyTerrain terrain else []
   in blocks ++ empties
 
 gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
   tile "lightgrey" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
--- TODO: panning/zooming empty terrain in edit mode is very slow in Firefox.
--- Using Svg.Keyed.node pervasively for all tiles didn't help at all.
--- I'm guessing that the slowness is from rendering Elm nodes, but I'm not sure why.
-emptyTerrain : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
-emptyTerrain model editable terrain =
-  let halfGrid = model.gridSize // 2
-      g x y = let pt = {x = x, y = y, z = 0}
-              in if not (List.member pt terrain) then [emptyTerrainTile editable pt] else []
-      f x = List.concatMap (g x) (List.range (-halfGrid - model.gridOffset.y) (halfGrid - model.gridOffset.y))
-  in List.concatMap f (List.range (-halfGrid + model.gridOffset.x) (halfGrid + model.gridOffset.x))
 
-emptyTerrainTile : Bool -> T.Point3 -> Svg M.Msg
-emptyTerrainTile editable pt =
-  tile "white" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
+emptyTerrain : List T.Point3 -> List (Svg M.Msg)
+emptyTerrain terrain =
+  let g x y = let pt = {x = x, y = y, z = 0}
+              in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
+      f x = List.concatMap (g x) (List.range -50 50)
+      empties = List.concatMap f (List.range -50 50)
+      _ = Debug.log "Number of empties: " (List.length empties)
+  in empties
+
+emptyTerrainTile : T.Point3 -> Svg M.Msg
+emptyTerrainTile pt =
+  tile "white" [onClick (M.ToggleTerrain pt)] pt
 
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
 tile cl attrs pt =
