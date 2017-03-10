@@ -39,20 +39,20 @@ registerForm model =
        , button [onClick M.RegisterPlayer] [text "Register Player"]]
 
 viewGame : M.Model -> T.App -> List T.Creature -> Html M.Msg
-viewGame model app creatures = 
+viewGame model app myCreatures = 
   div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
-        [mapView model app]
+        [mapView model app myCreatures]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
     , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
         [CommonView.collapsible "Players" model <| playersView app]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
-        [ myCreaturesView model app creatures
-        , combatView model app creatures]
+        [ myCreaturesView model app myCreatures
+        , combatView model app myCreatures]
     ]
     ++ CommonView.movementControls [] model
     ++ modalView model app
@@ -86,8 +86,8 @@ myCreatureEntry model game creature =
         Just _ -> text ""
     ]
 
-mapView : M.Model -> T.App -> Html M.Msg
-mapView model app =
+mapView : M.Model -> T.App -> List T.Creature -> Html M.Msg
+mapView model app myCreatures =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
         Grid.movementMap model msg mvmtReq False model.currentMap creature vCreatures
@@ -104,12 +104,20 @@ mapView model app =
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+      creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
+            movable =
+              case game.current_combat of
+                Just combat ->
+                  if creatureIsMine mapc.creature && Just mapc.creature.id == currentCombatCreature
+                  then Just (always M.GetCombatMovementOptions)
+                  else Nothing
+                Nothing -> if creatureIsMine mapc.creature then Just M.GetMovementOptions else Nothing
         in { mapc | highlight = highlight
                   -- TODO: 1. only move out-of-combat for non-current creatures; when it's MY creature
                   --       2. only move current combat creature when it's MY creature
-                  , movable = Just M.GetMovementOptions}
+                  , movable = movable}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
       defaultMap () = Grid.terrainMap model model.currentMap vCreatures
   in movementMap
