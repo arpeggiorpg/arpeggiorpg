@@ -193,7 +193,11 @@ movementConsole : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
 movementConsole extras model =
   case model.moving of
     Just _ ->
-      [ overlay (S.px 80) (S.px 60) []
+      [ div [s [ S.position S.absolute
+                , S.left (S.pct 50)
+                , S.transform (S.translate (S.pct -50))
+                , plainBorder
+                , S.backgroundColor (S.rgb 255 255 255)]]
         <| [ button [onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras]
     Nothing -> []
 

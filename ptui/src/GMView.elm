@@ -42,7 +42,8 @@ viewGame model app =
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
     , overlay (S.px 80) (S.px 0) []
-        [mapConsole model app]
+        [ mapConsole model app
+        , editMapConsole model]
     , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
       [
         vbox
@@ -59,7 +60,6 @@ viewGame model app =
         ]
     ]
     ++ CommonView.movementConsole [moveAnywhereToggle model] model
-    ++ editMapConsole model
     ++ modalView model app
 
 moveAnywhereToggle : M.Model -> Html M.Msg
@@ -67,17 +67,18 @@ moveAnywhereToggle model =
   hbox [ text "Allow movement anywhere: "
        , input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
 
-editMapConsole : M.Model -> List (Html M.Msg)
+{-| Controls to show when editing the map. -}
+editMapConsole : M.Model -> Html M.Msg
 editMapConsole model =
   let console =
-        overlay (S.px 80) (S.px 60) []
+        vbox
           [ button [onClick M.CancelEditingMap] [text "Cancel Editing Map"]
           , hbox
             [ input [type_ "text", placeholder "map name", onInput M.UpdateSaveMapName ] []
             , button [onClick (M.EditMap model.currentMap)] [text "Save"]
             ]
           ]
-  in if model.editingMap then [console] else []
+  in if model.editingMap then console else text ""
 
 {-| Check if any modals should be rendered and render them. -}
 modalView : M.Model -> T.App -> List (Html M.Msg)
@@ -161,8 +162,7 @@ mapView model app =
       |> MaybeEx.orElseLazy editMap
       |> MaybeEx.unpack defaultMap identity
 
-{-| A navigator for available creatures, i.e., those that aren't in combat.
--}
+{-| A navigator for available creatures, i.e., those that aren't in combat. -}
 availableCreaturesView : M.Model -> T.App -> Html M.Msg
 availableCreaturesView model app =
   let game = app.current_game
@@ -186,8 +186,7 @@ availableCreatureEntry model game creature = vbox <|
     ], hbox (CommonView.oocActionBar game creature)]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
-creatureCard.
--}
+creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
@@ -307,6 +306,7 @@ historyView app =
           Nothing -> []
   in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
+-- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox = habox [s [S.justifyContent S.spaceBetween]]
 
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
