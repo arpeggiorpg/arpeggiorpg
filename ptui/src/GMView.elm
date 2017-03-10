@@ -58,9 +58,14 @@ viewGame model app =
             ]
         ]
     ]
-    ++ movementConsole model
+    ++ CommonView.movementConsole [moveAnywhereToggle model] model
     ++ editMapConsole model
-    ++ modalOverlay model app
+    ++ modalView model app
+
+moveAnywhereToggle : M.Model -> Html M.Msg
+moveAnywhereToggle model =
+  hbox [ text "Allow movement anywhere: "
+       , input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
 
 editMapConsole : M.Model -> List (Html M.Msg)
 editMapConsole model =
@@ -74,52 +79,53 @@ editMapConsole model =
           ]
   in if model.editingMap then [console] else []
 
-movementConsole : M.Model -> List (Html M.Msg)
-movementConsole model =
-  case model.moving of
-    Just _ ->
-      [overlay (S.px 80) (S.px 60) []
-        [ button [onClick M.CancelMovement] [text "Cancel Movement"]
-        , hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]]]
-    Nothing -> []
+{-| Check if any modals should be rendered and render them. -}
+modalView : M.Model -> T.App -> List (Html M.Msg)
+modalView model app =
+  checkModal model app
+    |> Maybe.map CommonView.modalOverlay
+    |> Maybe.withDefault []
 
-{-| Check if any modal prompts should be done based on the model, and render the appropriate one. -}
-modalOverlay : M.Model -> T.App -> List (Html M.Msg)
-modalOverlay model app =
+{-| Check for any GM-specific modals that should be rendered. -}
+checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
+checkModal model app =
   let
     game = app.current_game
     selectingCreatures =
       Maybe.map (\(selected, cb, name) -> selectCreaturesView model app selected cb name)
         model.selectingCreatures
-    selectingTargets =
-      -- TODO: target selection should be done on the map
-      case model.selectedAbility of
-        Just (cid, abid) ->
-          if T.isCreatureInCombat game cid
-          then Just (CommonView.targetSelector model game M.CombatAct abid)
-          else Nothing
-        Nothing -> Nothing
     creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
-    modal = selectingCreatures |> MaybeEx.orElse selectingTargets |> MaybeEx.orElse creatingCreature
-  in
-    case modal of
-      Just m ->
-        let box =
-              div [s [ S.position S.absolute
-                     , S.left (S.pct 50)
-                     , S.top (S.pct 50)
-                     , S.transform (S.translate2 (S.pct -50) (S.pct -50))
-                     , plainBorder
-                     , S.backgroundColor (S.rgb 255 255 255)]]
-                  [m]
-            cover =
-              div [s [S.position S.absolute
-                     , S.width (S.vw 100)
-                     , S.height (S.vh 100)
-                     , S.backgroundColor (S.rgba 0 0 0 0.5)]]
-                  []
-        in [cover, box]
-      Nothing -> []
+  in selectingCreatures
+      |> MaybeEx.orElse creatingCreature
+      |> MaybeEx.orElse (CommonView.checkModal model app)
+
+{-| A view that allows selecting creatures in a particular order and calling a callback when done.
+-}
+-- NOTE: I'm sure at some point we'll want to move this to CommonView -- we just need to make sure
+-- that only the GM gets the noteBox in the creatureCard.
+selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
+selectCreaturesView model app selectedCreatures callback commandName =
+  let selectButton creature =
+        button [onClick (M.ToggleSelectedCreature creature.id)
+               , s [S.height (S.px 100), S.width (S.px 100)]]
+               [text "Add"]
+      unselectButton cid =
+        button [ onClick (M.ToggleSelectedCreature cid)
+               , s [S.height (S.px 100), S.width (S.px 100)]]
+               [text "Remove"]
+      selectableCreature creature =
+        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] model creature]
+      selectableCreatureItems =
+        vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
+      selectedCreatureItem cid =
+        hbox [strong [] [text cid], unselectButton cid]
+      selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
+      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
+      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
+  in vbox <|
+    [h3 [] [text <| "Select Creatures to " ++ commandName]
+    , hbox [selectableCreatureItems, selectedCreatureItems]
+    , hbox [doneSelectingButton, cancelButton]]
 
 {-| Figure out which map to render. There are various modes that the game might be in which affect
 how we render the map: combat, movement, editing, regular play.
@@ -127,7 +133,8 @@ how we render the map: combat, movement, editing, regular play.
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   let game = app.current_game
-      movementGrid msg mvmtReq creature = Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
+      movementGrid msg mvmtReq creature =
+        Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
@@ -225,32 +232,6 @@ mapConsole model app =
         , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
         ]
   in hbox [editMapButton, mapSelector, oocToggler]
-
-{-| A view that allows selecting creatures in a particular order and calling a callback when done.
--}
-selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
-selectCreaturesView model app selectedCreatures callback commandName =
-  let selectButton creature =
-        button [onClick (M.ToggleSelectedCreature creature.id)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
-               [text "Add"]
-      unselectButton cid =
-        button [ onClick (M.ToggleSelectedCreature cid)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
-               [text "Remove"]
-      selectableCreature creature =
-        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] model creature]
-      selectableCreatureItems =
-        vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
-      selectedCreatureItem cid =
-        hbox [strong [] [text cid], unselectButton cid]
-      selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
-      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
-      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
-  in vbox <|
-    [h3 [] [text <| "Select Creatures to " ++ commandName]
-    , hbox [selectableCreatureItems, selectedCreatureItems]
-    , hbox [doneSelectingButton, cancelButton]]
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg

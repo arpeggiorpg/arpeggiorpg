@@ -1,6 +1,7 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
-  , combatantList, targetSelector, collapsible, playerList)
+  , movementConsole, modalOverlay, checkModal
+  , combatantList, collapsible, playerList)
 
 import Dict
 import Set
@@ -9,6 +10,7 @@ import Css as S
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -185,3 +187,46 @@ playerList extra players =
         habox [s [S.justifyContent S.spaceBetween]] <|
           [strong [] [text pid]] ++ (List.map (\id -> div [] [text id]) (Set.toList cids)) ++ extra pid
   in vbox (List.map playerEntry (Dict.toList players))
+
+
+movementConsole : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
+movementConsole extras model =
+  case model.moving of
+    Just _ ->
+      [ overlay (S.px 80) (S.px 60) []
+        <| [ button [onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras]
+    Nothing -> []
+
+{-| Render a modal dialog which disables use of all other UI. -}
+modalOverlay : Html M.Msg -> List (Html M.Msg)
+modalOverlay content =
+  let box =
+        div [s [ S.position S.absolute
+                , S.left (S.pct 50)
+                , S.top (S.pct 50)
+                , S.transform (S.translate2 (S.pct -50) (S.pct -50))
+                , plainBorder
+                , S.backgroundColor (S.rgb 255 255 255)]]
+            [content]
+      cover =
+        div [s [S.position S.absolute
+                , S.width (S.vw 100)
+                , S.height (S.vh 100)
+                , S.backgroundColor (S.rgba 0 0 0 0.5)]]
+            []
+  in [cover, box]
+
+{-| Check for any modals that both GMs and Players may need to render. -}
+checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
+checkModal model app =
+  let
+    game = app.current_game
+    selectingTargets =
+      -- TODO: target selection should be done on the map
+      case model.selectedAbility of
+        Just (cid, abid) ->
+          if T.isCreatureInCombat game cid
+          then Just (targetSelector model game M.CombatAct abid)
+          else Nothing
+        Nothing -> Nothing
+  in selectingTargets
