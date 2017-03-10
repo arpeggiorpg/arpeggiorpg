@@ -1,12 +1,10 @@
 module GMView exposing (viewGame)
 
-import Array
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Maybe.Extra as MaybeEx
-import Set
 
 import Model as M
 import Types as T
@@ -20,12 +18,6 @@ import Css as S
 
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
-
-collapsible header model content =
-  let isCollapsed = Dict.get header model.collapsed |> Maybe.withDefault False
-  in vbox <|
-    [ button [onClick (M.ToggleCollapsed header)] [text (header ++ " >")]
-     ] ++ if isCollapsed then [] else [content]
 
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
 elements on top.
@@ -45,7 +37,7 @@ viewGame model app =
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [
           vbox 
-            [ collapsible "Available Creatures" model (availableCreaturesView model app)
+            [ CommonView.collapsible "Available Creatures" model (availableCreaturesView model app)
             , combatView model app 
             ]
         ]
@@ -242,7 +234,7 @@ selectCreaturesView model app selectedCreatures callback commandName =
 combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
   case app.current_game.current_combat of
-    Just com -> collapsible "Combat" model (inCombatView model app com)
+    Just com -> CommonView.collapsible "Combat" model (inCombatView model app com)
     Nothing -> startCombatButton
 
 {-| The content of what's rendered when we're actually in combat. -}

@@ -1,6 +1,6 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
-  , combatantList, targetSelector)
+  , combatantList, targetSelector, collapsible)
 
 import Dict
 
@@ -167,3 +167,13 @@ creatureTargetSelector : (T.DecidedTarget -> M.Msg) -> (T.CreatureID -> T.Decide
 creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
   let targetCreatureButton c = sqButton 100 [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
   in List.map targetCreatureButton creatures
+
+collapsible : String -> M.Model -> Html M.Msg -> Html M.Msg
+collapsible header model content =
+  let isCollapsed = Dict.get header model.collapsed |> Maybe.withDefault False
+      arrow = if isCollapsed then "▶" else "▼"
+  in vbox <|
+    [ hr [s [S.width (S.pct 100)]] []
+    , hbox [strong [] [text header], button [onClick (M.ToggleCollapsed header)] [text arrow]]
+    , hr [s [S.width (S.pct 100)]] []
+     ] ++ if isCollapsed then [] else [content]
