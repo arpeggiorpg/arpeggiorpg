@@ -184,4 +184,4 @@ playerList extra players =
   let playerEntry (pid, cids) =
         habox [s [S.justifyContent S.spaceBetween]] <|
           [strong [] [text pid]] ++ (List.map (\id -> div [] [text id]) (Set.toList cids)) ++ extra pid
-  in vbox <| [h3 [] [text "Players"]] ++ (List.map playerEntry (Dict.toList players))
+  in vbox (List.map playerEntry (Dict.toList players))

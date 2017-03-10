@@ -1,5 +1,6 @@
 module GMView exposing (viewGame)
 
+import Array
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -36,7 +37,13 @@ viewGame model app =
         [CommonView.mapControls]
     , overlay (S.px 80) (S.px 0) []
         [mapConsole model app]
-    , overlay (S.px 0) (S.px 160) [S.width (S.px 325)] [playersView app]
+    , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
+      [
+        vbox
+          [ CommonView.collapsible "Players" model <| playersView app
+          , CommonView.collapsible "History" model <| historyView app
+          ]
+      ]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [
           vbox 
@@ -307,3 +314,61 @@ playersView app =
       selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
       playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
   in CommonView.playerList playerButton app.players
+
+
+{-| Show a list of all events that have happened in the game. -}
+historyView : T.App -> Html M.Msg
+historyView app = 
+  let snapIdx = (Array.length app.snapshots) - 1
+      items =
+        case Array.get snapIdx app.snapshots of
+          Just (_, items) -> items
+          Nothing -> []
+  in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+
+hsbox = habox [s [S.justifyContent S.spaceBetween]]
+
+historyItem : Int -> Int -> T.GameLog -> Html M.Msg
+historyItem snapIdx logIdx log =
+  let logItem = case log of
+    T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
+    T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]
+    T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
+    T.GLRemoveCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
+    T.GLStartCombat combatants -> hsbox <| [dtext "Started Combat"] ++ List.map dtext combatants
+    T.GLStopCombat -> dtext "Stopped combat"
+    T.GLAddCreatureToCombat cid -> hsbox [dtext cid, dtext "Added Creature to Combat"]
+    T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", dtext cid]
+    T.GLCreatureLog cid cl -> hsbox [dtext cid, historyCreatureLog cl]
+    T.GLCombatLog cl -> historyCombatLog cl
+    T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
+  in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [dtext "⟲"]]
+
+historyCombatLog : T.CombatLog -> Html M.Msg
+historyCombatLog cl = case cl of
+  T.ComLCreatureLog cid creatureLog -> hsbox [dtext cid, historyCreatureLog creatureLog]
+  T.ComLEndTurn cid -> hsbox [dtext cid, dtext "Ended Turn"]
+  T.ComLPathCurrentCreature pts -> hsbox [dtext <| "Moved to " ++ maybePos pts]
+  T.ComLChangeCreatureInitiative cid newPos -> hsbox [dtext cid, dtext "Changed initiative to", dtext <| toString newPos]
+
+maybePos : List T.Point3 -> String
+maybePos path =
+  case List.head (List.reverse path) of
+    Just {x, y, z} -> toString x ++ "," ++ toString y
+    Nothing -> "nowhere"
+
+historyCreatureLog : T.CreatureLog -> Html M.Msg
+historyCreatureLog cl = case cl of
+  T.CLDamage dmg dice -> hsbox [dtext <| "Took damage", dtext <| toString dmg, dtext <| " Dice: ", renderDice dice]
+  T.CLHeal dmg dice -> hsbox [dtext <| "Healed: " ++ toString dmg, dtext <| "Dice: ", renderDice dice]
+  T.CLGenerateEnergy nrg -> dtext <| "Regenerated energy: " ++ toString nrg
+  T.CLReduceEnergy nrg -> dtext <| "Lost energy: " ++ toString nrg
+  T.CLApplyCondition conid duration con -> dtext <| "Got condition: " ++ toString con
+  T.CLRemoveCondition conid -> dtext <| "Lost condition: " ++ toString conid
+  T.CLSetPos pos -> dtext <| "Moved  to " ++ toString pos
+  T.CLDecrementConditionRemaining conID -> dtext <| "Tick condition: " ++ toString conID
+  T.CLSetNote note -> hsbox [dtext "Set note to", dtext note]
+
+renderDice : List Int -> Html M.Msg
+renderDice dice = dtext <| String.join ", " (List.map toString dice)
+
