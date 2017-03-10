@@ -27,12 +27,12 @@ type alias MapCreature =
   , class : T.Class
   }
 
-terrainMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> Svg M.Msg
-terrainMap model ghost terrain creatures = baseMap model ghost terrain creatures [] False
+terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
+terrainMap model terrain creatures = baseMap model terrain creatures [] False
 
 editMap : M.Model -> T.Map -> List MapCreature -> H.Html M.Msg
 editMap model terrain creatures =
-  baseMap model Nothing terrain creatures [] True
+  baseMap model terrain creatures [] True
 
 movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
@@ -48,13 +48,19 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    baseMap model Nothing terrain vCreatures movementTiles False
+    baseMap model terrain vCreatures movementTiles False
 
-baseMap : M.Model -> Maybe T.Point3 -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> H.Html M.Msg
-baseMap model ghost terrain creatures extras editable =
+movementGhost model =
+  case model.showingMovement of
+    M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
+    _ -> Nothing
+
+
+baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> H.Html M.Msg
+baseMap model terrain creatures extras editable =
   let creatureEls = List.map gridCreature creatures
       terrainEls = baseTerrainRects model editable terrain
-      ghostEl = case ghost of
+      ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
       -- gridSize is 25 ("meters across")

@@ -26,6 +26,8 @@ viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
   div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
+    -- TODO: history
+    -- TODO: player control
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
@@ -133,7 +135,7 @@ mapView model app =
         in { mapc | highlight = highlight
                   , movable = Just M.GetMovementOptions}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
-      defaultMap () = Grid.terrainMap model Nothing model.currentMap vCreatures
+      defaultMap () = Grid.terrainMap model model.currentMap vCreatures
   in movementMap
       |> MaybeEx.orElseLazy editMap
       |> withDefaultLazy defaultMap

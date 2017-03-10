@@ -33,63 +33,10 @@ gmView model = vbox
 gmViewGame_ : M.Model -> T.App -> Html M.Msg
 gmViewGame_ model app =
   let game = app.current_game
-      center el = div [s [S.displayFlex, S.justifyContent S.spaceAround]] [el]
-      movementGrid msg mvmtReq creature =
-        let vCreatures = visibleCreatures model game
-        in vbox
-          [ hbox [ text "Allow movement anywhere: ", input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
-          , Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
-          ]
-  in
-  case (game.current_combat, model.moving) of
-    (Nothing, Just mvmtReq) ->
-      case mvmtReq.ooc_creature of
-        Just creature -> center <| movementGrid (M.PathCreature creature.id) mvmtReq creature
-        Nothing -> -- There's a combat movement request but no combat! It'd be nice if this were impossible to represent
-                   fullUI model app game
-    (Just combat, Just mvmtReq) ->
-      let (creature, moveMessage) =
-          case mvmtReq.ooc_creature of
-            Just creature -> (creature, M.PathCreature creature.id)
-            Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
-      in center <| movementGrid moveMessage mvmtReq creature
-    _ -> fullUI model app game
+  in fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
-fullUI model app game =
-  if model.editingMap
-  then Grid.editMap model model.currentMap (visibleCreatures model game)
-  else
-    let combatHTML = div [] []
-        targetSelectorHTML =
-          case model.selectedAbility of
-            Just (cid, abid) -> if T.isCreatureOOC game cid
-                                then [targetSelector model game (M.ActCreature cid) abid]
-                                else []
-            Nothing -> []
-        currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
-        modifyMapCreature mapc =
-          let highlight = (Just mapc.creature.id) == currentCombatCreature
-          in { mapc | highlight = highlight
-                    , movable = Just M.GetMovementOptions}
-        vCreatures = List.map modifyMapCreature (visibleCreatures model game)
-        mapHTML =
-          vbox [ hbox [editMapButton, mapSelector game, oocToggler model]
-               , Grid.terrainMap model (movementGhost model) model.currentMap vCreatures
-               ]
-        sideBarHTML =
-          vabox [s [S.width (S.px 500)]] <|
-            [ combatHTML
-            , h3 [] [text "Creatures"]
-            , inactiveList model game
-            ] ++ targetSelectorHTML ++ [playerControlList app, history app]
-    in
-      habox [s [S.justifyContent S.spaceAround]] [mapHTML, sideBarHTML]
-
-movementGhost model =
-  case model.showingMovement of
-    M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
-    _ -> Nothing
+fullUI model app game = vabox [s [S.width (S.px 500)]] [playerControlList app, history app]
 
 playerControlList app =
   let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
@@ -227,7 +174,7 @@ playerGrid model game myCreatures =
         in { mapc | movable = (movable mapc), highlight = highlight}
       vCreatures = List.map modifyMapCreature (visibleCreatures model game)
   in
-    hbox <| [Grid.terrainMap model (movementGhost model) model.currentMap vCreatures
+    hbox <| [Grid.terrainMap model model.currentMap vCreatures
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
 
 mapSelector : T.Game -> Html M.Msg
