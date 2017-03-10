@@ -4,6 +4,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -50,7 +51,7 @@ viewGame model app creatures =
     , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
         [CommonView.collapsible "Players" model <| playersView app]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
-        [ myCreaturesView model app
+        [ myCreaturesView model app creatures
         , combatView model app creatures]
     ]
     ++ CommonView.movementConsole [] model
@@ -68,24 +69,28 @@ modalView model app =
 
 
 {-| A navigator for my creatures which aren't in combat. -}
-myCreaturesView : M.Model -> T.App -> Html M.Msg
-myCreaturesView model app =
+myCreaturesView : M.Model -> T.App -> List T.Creature -> Html M.Msg
+myCreaturesView model app creatures =
   let game = app.current_game
-  in vbox (List.map (myCreatureEntry model game) (Dict.values game.creatures))
+  in
+    CommonView.collapsible "My Creatures" model
+      <| vbox (List.map (myCreatureEntry model game) creatures)
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
 myCreatureEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
 myCreatureEntry model game creature =
   vbox
     [ CommonView.creatureCard [] model creature
-    , hbox (CommonView.oocActionBar game creature)
+    , case game.current_combat of
+        Nothing -> hbox (CommonView.oocActionBar game creature)
+        Just _ -> text ""
     ]
 
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
-        Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
+        Grid.movementMap model msg mvmtReq False model.currentMap creature vCreatures
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
@@ -103,18 +108,12 @@ mapView model app =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
         in { mapc | highlight = highlight
                   -- TODO: 1. only move out-of-combat for non-current creatures; when it's MY creature
-                  --       2. only move current creature (with combat movement); when it's MY creature
+                  --       2. only move current combat creature when it's MY creature
                   , movable = Just M.GetMovementOptions}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
       defaultMap () = Grid.terrainMap model model.currentMap vCreatures
   in movementMap
-      |> withDefaultLazy defaultMap
-
-withDefaultLazy : (() -> a) -> Maybe a -> a
-withDefaultLazy df m =
-  case m of
-    Just x -> x
-    Nothing -> df ()
+      |> MaybeEx.unpack defaultMap identity
 
   -- [ case model.moving of
   --     Just movementRequest ->
@@ -158,7 +157,7 @@ combatView model app creatures =
                             ]
                   else hbox [text "Current creature:", text currentCreature.id]
             initiativeList = combatantList False model game combat
-        in vbox <| [bar] ++ [initiativeList]
+        in collapsible "Combat" model <| vbox <| [bar] ++ [initiativeList]
       Nothing -> text ""
 
 -- -- render the grid and some OOC movement buttons for the given creatures

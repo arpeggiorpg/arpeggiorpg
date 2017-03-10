@@ -159,13 +159,7 @@ mapView model app =
       defaultMap () = Grid.terrainMap model model.currentMap vCreatures
   in movementMap
       |> MaybeEx.orElseLazy editMap
-      |> withDefaultLazy defaultMap
-
-withDefaultLazy : (() -> a) -> Maybe a -> a
-withDefaultLazy df m =
-  case m of
-    Just x -> x
-    Nothing -> df ()
+      |> MaybeEx.unpack defaultMap identity
 
 {-| A navigator for available creatures, i.e., those that aren't in combat.
 -}
