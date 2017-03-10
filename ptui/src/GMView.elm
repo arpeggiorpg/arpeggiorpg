@@ -36,6 +36,7 @@ viewGame model app =
         [CommonView.mapControls]
     , overlay (S.px 80) (S.px 0) []
         [mapConsole model app]
+    , overlay (S.px 0) (S.px 160) [S.width (S.px 325)] [playersView app]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [
           vbox 
@@ -299,3 +300,10 @@ createCreatureDialog model app {id, name, class} =
     , hbox [createCreatureButton, cancelCreationButton]
     ]
 
+{-| Show all registered players and which creatures they've been granted -}
+playersView : T.App -> Html M.Msg
+playersView app =
+  let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
+      selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
+      playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
+  in CommonView.playerList playerButton app.players

@@ -36,22 +36,7 @@ gmViewGame_ model app =
   in fullUI model app game
 
 fullUI : M.Model -> T.App -> T.Game -> Html M.Msg
-fullUI model app game = vabox [s [S.width (S.px 500)]] [playerControlList app, history app]
-
-playerControlList app =
-  let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
-      selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
-      playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
-  in extPlayerList playerButton app.players
-
-extPlayerList : (T.PlayerID -> List (Html M.Msg)) -> Dict.Dict T.PlayerID (Set.Set T.CreatureID) -> Html M.Msg
-extPlayerList ext players =
-  let playerEntry (pid, cids) =
-        hbox ([strong [] [text pid], hbox (List.map text (Set.toList cids))] ++ ext pid)
-  in vbox <| [h3 [] [text "Players"]] ++ (List.map playerEntry (Dict.toList players))
-
-playerList : Dict.Dict T.PlayerID (Set.Set T.CreatureID) -> Html M.Msg
-playerList = extPlayerList (always [])
+fullUI model app game = vabox [s [S.width (S.px 500)]] [history app]
 
 oocToggler : M.Model -> Html M.Msg
 oocToggler model =
@@ -72,7 +57,7 @@ playerView model = vbox
                 then playerViewGame model app (T.getPlayerCreatures app playerID)
                 else registerForm model
               Nothing -> registerForm model
-        in vbox [vGame, playerList app.players]
+        in vbox [vGame, playerList (always []) app.players]
       Nothing -> text "No app yet. Maybe reload."
   , hbox [text "Last error:", pre [] [text model.error]]
   ]

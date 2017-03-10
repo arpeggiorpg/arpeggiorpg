@@ -1,8 +1,9 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
-  , combatantList, targetSelector, collapsible)
+  , combatantList, targetSelector, collapsible, playerList)
 
 import Dict
+import Set
 
 import Css as S
 import Html exposing (..)
@@ -177,3 +178,10 @@ collapsible header model content =
     , hbox [strong [] [text header], button [onClick (M.ToggleCollapsed header)] [text arrow]]
     , hr [s [S.width (S.pct 100)]] []
      ] ++ if isCollapsed then [] else [content]
+
+playerList : (T.PlayerID -> List (Html M.Msg)) -> Dict.Dict T.PlayerID (Set.Set T.CreatureID) -> Html M.Msg
+playerList extra players =
+  let playerEntry (pid, cids) =
+        habox [s [S.justifyContent S.spaceBetween]] <|
+          [strong [] [text pid]] ++ (List.map (\id -> div [] [text id]) (Set.toList cids)) ++ extra pid
+  in vbox <| [h3 [] [text "Players"]] ++ (List.map playerEntry (Dict.toList players))
