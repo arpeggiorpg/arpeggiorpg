@@ -142,14 +142,9 @@ update msg model = case msg of
     ( { model | selectingCreatures = Nothing}
     , Cmd.none)
 
-  ToggleCollapsedAvailableCreatures ->
-    let c = model.collapsed
-        newCollapsed = {c | availableCreatures = not c.availableCreatures}
-    in ({model | collapsed = newCollapsed}, Cmd.none)
-
-  ToggleCollapsedCombat ->
-    let c = model.collapsed
-        newCollapsed = {c | combat = not c.combat}
+  ToggleCollapsed name ->
+    let currentlyCollapsed = Dict.get name model.collapsed |> Maybe.withDefault False
+        newCollapsed = Dict.insert name (not currentlyCollapsed) model.collapsed
     in ({model | collapsed = newCollapsed}, Cmd.none)
 
   GetMovementOptions creature ->
