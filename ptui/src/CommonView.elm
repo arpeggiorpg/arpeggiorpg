@@ -1,6 +1,6 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
-  , movementConsole, modalOverlay, checkModal
+  , movementControls, modalOverlay, checkModal
   , combatantList, collapsible, playerList)
 
 import Dict
@@ -189,8 +189,8 @@ playerList extra players =
   in vbox (List.map playerEntry (Dict.toList players))
 
 
-movementConsole : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
-movementConsole extras model =
+movementControls : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
+movementControls extras model =
   case model.moving of
     Just _ ->
       [ div [s [ S.position S.absolute

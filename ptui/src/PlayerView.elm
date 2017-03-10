@@ -54,7 +54,7 @@ viewGame model app creatures =
         [ myCreaturesView model app creatures
         , combatView model app creatures]
     ]
-    ++ CommonView.movementConsole [] model
+    ++ CommonView.movementControls [] model
     ++ modalView model app
 
 playersView : T.App -> Html M.Msg
@@ -126,7 +126,6 @@ mapView model app =
   --             Grid.movementMap model (M.PathCreature oocMovingCreature.id) movementRequest
   --                              False model.currentMap oocMovingCreature (visibleCreatures model game)
   --           else
-  --             -- someone else is moving (TODO: render a non-interactive movement map to show what they're doing)
   --             playerGrid model game creatures
   --         Nothing -> -- we're moving in-combat.
   --           case Maybe.map T.combatCreature game.current_combat of

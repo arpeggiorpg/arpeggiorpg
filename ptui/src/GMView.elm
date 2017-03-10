@@ -59,7 +59,7 @@ viewGame model app =
             ]
         ]
     ]
-    ++ CommonView.movementConsole [moveAnywhereToggle model] model
+    ++ CommonView.movementControls [moveAnywhereToggle model] model
     ++ modalView model app
 
 moveAnywhereToggle : M.Model -> Html M.Msg
