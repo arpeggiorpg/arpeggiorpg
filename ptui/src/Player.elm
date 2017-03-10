@@ -2,14 +2,14 @@ module Main exposing (..)
 
 import Html
 import Model as M
-import View as V
+import PlayerView
 import Update as U
 
 main : Program M.ProgramFlags M.Model M.Msg
 main =
   Html.programWithFlags
     { init = \flags -> (M.defaultModel flags, U.start)
-    , view = V.playerView
+    , view = PlayerView.playerView
     , update = U.update
     , subscriptions = M.subscriptions
     }

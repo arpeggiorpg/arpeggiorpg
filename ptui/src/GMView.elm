@@ -1,4 +1,4 @@
-module GMView exposing (viewGame)
+module GMView exposing (gmView)
 
 import Array
 import Dict
@@ -20,6 +20,14 @@ import Css as S
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
+gmView : M.Model -> Html M.Msg
+gmView model = vbox
+  [ case model.app of
+      Just app -> viewGame model app
+      Nothing -> text "No app yet. Maybe reload."
+  , hbox [text "Last error:", pre [] [text model.error]]
+  ]
+
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
 elements on top.
 -}
@@ -27,8 +35,6 @@ viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
   div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
-    -- TODO: history
-    -- TODO: player control
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]

@@ -1,18 +1,13 @@
-module View exposing (..)
+module PlayerView exposing (playerView)
 
-import Array
-import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Set
 
 import Model as M
 import Types as T
 import Grid
-import Update as U
 import Elements exposing (..)
-import GMView
 
 -- TODO: delete these once we refactor player code out
 import CommonView exposing (..)
@@ -22,22 +17,6 @@ import Css as S
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
-gmView : M.Model -> Html M.Msg
-gmView model = vbox
-  [ case model.app of
-      Just app -> GMView.viewGame model app
-      Nothing -> text "No app yet. Maybe reload."
-  , hbox [text "Last error:", pre [] [text model.error]]
-  ]
-
-oocToggler : M.Model -> Html M.Msg
-oocToggler model =
-  hbox [text "Show Out-of-Combat creatures: "
-       , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
-       ]
-
-editMapButton : Html M.Msg
-editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
 
 playerView : M.Model -> Html M.Msg
 playerView model = vbox
@@ -109,7 +88,6 @@ playerCombatArea model game combat creatures =
       initiativeList = combatantList False model game combat
   in vbox <| [bar] ++ selector ++ [initiativeList]
 
-
 -- render the grid and some OOC movement buttons for the given creatures
 playerGrid : M.Model -> T.Game -> List T.Creature -> Html M.Msg
 playerGrid model game myCreatures =
@@ -154,35 +132,9 @@ playerGrid model game myCreatures =
     hbox <| [Grid.terrainMap model model.currentMap vCreatures
             , vabox [s [S.width (S.px 350)]] (comUI ++ ooc ++ targetSel)]
 
-mapSelector : T.Game -> Html M.Msg
-mapSelector game = vbox <|
-  let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]
-  in (List.map mapSelectorItem (Dict.keys game.maps))
-
-inactiveList : M.Model -> T.Game -> Html M.Msg
-inactiveList model game = div []
-  [ div [] (List.map (inactiveEntry model game) (Dict.values game.creatures))
-  ]
-
-
-inactiveEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
-inactiveEntry model game creature = vbox <|
-  [hbox <|
-    [ creatureCard [noteBox model creature] model creature
-    ] ++ case game.current_combat of
-        Just _ -> [engageButton creature]
-        Nothing -> []
-    ++ [
-      deleteCreatureButton creature
-    ], hbox (oocActionBar game creature)]
-
 combatantList : Bool -> M.Model -> T.Game -> T.Combat -> Html M.Msg
 combatantList isGmView model game combat =
   vbox (List.map (combatantEntry isGmView model game combat) (List.indexedMap (,) combat.creatures.data))
-
-engageButton : T.Creature -> Html M.Msg
-engageButton creature =
-  button [onClick (M.SendCommand (T.AddCreatureToCombat creature.id))] [text "Engage"]
 
 combatantEntry : Bool -> M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
 combatantEntry isGmView model game combat (idx, creature) = hbox <|
@@ -201,22 +153,3 @@ combatantEntry isGmView model game combat (idx, creature) = hbox <|
         else []
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ initiativeArrows]
   in gutter ++ [ creatureCard [] model creature ]
-
-noteBox : M.Model -> T.Creature -> Html M.Msg
-noteBox model creature = 
-  let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
-      inp = input [type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
-      saveButton =
-        if creature.note /= note
-        then [button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]]
-        else []
-  in hbox <| [inp] ++ saveButton
-
-disengageButton : T.Creature -> Html M.Msg
-disengageButton creature =
-  button [onClick (M.SendCommand (T.RemoveCreatureFromCombat creature.id))] [text ("Disengage " ++ creature.id)]
-
-deleteCreatureButton : T.Creature -> Html M.Msg
-deleteCreatureButton creature =
-  button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
-
