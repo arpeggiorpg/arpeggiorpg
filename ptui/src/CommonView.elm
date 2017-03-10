@@ -138,17 +138,17 @@ mapControls =
         ]
     ]
 
-combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> Html M.Msg
-combatantList extraGutter model game combat =
-  vbox (List.map (combatantEntry extraGutter model game combat) (List.indexedMap (,) combat.creatures.data))
+combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> Html M.Msg
+combatantList extraGutter extraCreatureCard model game combat =
+  vbox (List.map (combatantEntry extraGutter extraCreatureCard model game combat) (List.indexedMap (,) combat.creatures.data))
 
-combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
-combatantEntry extraGutter model game combat (idx, creature) = hbox <|
+combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
+combatantEntry extraGutter extraCreatureCard model game combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
                then [ datext [s [S.width (S.px 25)]] "▶️️" ]
                else []
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature]
-  in gutter ++ [ creatureCard [] model creature ]
+  in gutter ++ [ creatureCard (extraCreatureCard creature) model creature ]
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =

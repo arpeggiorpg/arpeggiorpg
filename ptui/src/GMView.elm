@@ -89,7 +89,7 @@ modalOverlay model app =
     case modal of
       Just m ->
         let box =
-              div [s [S.position S.absolute
+              div [s [ S.position S.absolute
                      , S.left (S.pct 50)
                      , S.top (S.pct 50)
                      , S.transform (S.translate2 (S.pct -50) (S.pct -50))
@@ -257,7 +257,13 @@ inCombatView model app combat =
                  , disabled (idx == (List.length combat.creatures.data) - 1)]
                  [text "⬇️️"]
         ]
-      combatView = vbox [ bar, CommonView.combatantList extraGutter model game combat, stopCombatButton, disengageButtons]
+      extraCreatureCard creature = [noteBox model creature]
+      combatView =
+        vbox
+          [ bar
+          , CommonView.combatantList extraGutter extraCreatureCard model game combat
+          , stopCombatButton
+          , disengageButtons]
   in combatView
 
 {-| A button for starting combat. -}
