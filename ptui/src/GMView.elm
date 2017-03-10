@@ -25,8 +25,8 @@ gmView : M.Model -> Html M.Msg
 gmView model = vbox
   [ case model.app of
       Just app -> viewGame model app
-      Nothing -> text "No app yet. Maybe reload."
-  , hbox [text "Last error:", pre [] [text model.error]]
+      Nothing -> vbox [text "No app yet. Maybe reload."
+                      , hbox [text "Last error:", pre [] [text model.error]]]
   ]
 
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
@@ -38,7 +38,7 @@ viewGame model app =
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
-    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
+    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
@@ -46,19 +46,18 @@ viewGame model app =
         [ mapConsole model app
         , editMapConsole model]
     , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
-      [
-        vbox
+      [ vbox
           [ CommonView.collapsible "Players" model <| playersView app
           , CommonView.collapsible "History" model <| historyView app
           ]
       ]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
-        [
-          vbox 
+        [ vbox 
             [ CommonView.collapsible "Available Creatures" model (availableCreaturesView model app)
             , combatView model app 
             ]
         ]
+    , CommonView.errorBox model
     ]
     ++ CommonView.movementControls [moveAnywhereToggle model] model
     ++ modalView model app
@@ -170,7 +169,7 @@ availableCreaturesView model app =
   in
     vbox
       [ button [onClick M.StartCreatingCreature] [text "Create Creature"]
-      , hr [s [S.width (S.pct 100)]] []
+      , hline
       , vbox (List.map (availableCreatureEntry model game) (Dict.values game.creatures))
       ]
 

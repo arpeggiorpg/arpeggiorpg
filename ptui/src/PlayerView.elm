@@ -29,8 +29,7 @@ playerView model = vbox
                 else registerForm model
               Nothing -> registerForm model
         in vbox [vGame, playerList (always []) app.players]
-      Nothing -> text "No app yet. Maybe reload."
-  , hbox [text "Last error:", pre [] [text model.error]]
+      Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
   ]
 
 {-| Show a form where the player can type their name to register. -}
@@ -55,6 +54,7 @@ viewGame model app myCreatures =
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [ myCreaturesView model app myCreatures
         , combatView model app myCreatures]
+    , CommonView.errorBox model
     ]
     ++ CommonView.movementControls [] model
     ++ modalView model app

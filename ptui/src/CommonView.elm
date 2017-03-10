@@ -1,7 +1,7 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
   , movementControls, modalOverlay, checkModal
-  , combatantList, collapsible, playerList)
+  , combatantList, collapsible, playerList, errorBox)
 
 import Dict
 import Set
@@ -176,9 +176,9 @@ collapsible header model content =
   let isCollapsed = Dict.get header model.collapsed |> Maybe.withDefault False
       arrow = if isCollapsed then "▶" else "▼"
   in vbox <|
-    [ hr [s [S.width (S.pct 100)]] []
+    [ hline
     , hbox [strong [] [text header], button [onClick (M.ToggleCollapsed header)] [text arrow]]
-    , hr [s [S.width (S.pct 100)]] []
+    , hline
      ] ++ if isCollapsed then [] else [content]
 
 playerList : (T.PlayerID -> List (Html M.Msg)) -> Dict.Dict T.PlayerID (Set.Set T.CreatureID) -> Html M.Msg
@@ -234,3 +234,12 @@ checkModal model app =
           else Nothing
         Nothing -> Nothing
   in selectingTargets
+
+errorBox model =
+  div [s [ S.position S.absolute
+         , S.left (S.pct 50)
+         , S.bottom (S.px 0)
+         , S.transform (S.translate (S.pct -50))
+         , plainBorder
+         , S.backgroundColor (S.rgb 255 255 255)]]
+      [ hbox [text "Last error:", pre [] [text model.error]]  ]

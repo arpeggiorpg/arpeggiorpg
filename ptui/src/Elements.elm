@@ -44,3 +44,5 @@ sqButton size attrs content =
 
 s : List S.Mixin -> Attribute msg
 s = S.asPairs >> Html.Attributes.style
+
+hline = hr (stdStyle ++ [s [S.width (S.pct 100)]]) []

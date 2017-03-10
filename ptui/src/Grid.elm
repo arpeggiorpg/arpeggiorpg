@@ -76,9 +76,7 @@ baseMap model terrain creatures extras editable =
       mapSVG = svg
         [ -- viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
          preserveAspectRatio "xMinYMid slice"
-        , s [ S.width (S.vw 100) -- CHROME-SPECIFIC: I *have* to use vw instead of % here,
-                                 -- even though the container is full-width... if I set it to 100%
-                                 -- it's not filling the container.
+        , s [ S.width (S.pct 100)
             , S.height (S.pct 100)]
         ]
         [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ creatureEls ++ ghostEl)]
