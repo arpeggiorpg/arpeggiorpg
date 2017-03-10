@@ -20,6 +20,7 @@ import Css as S
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
+{-| Top-level GM view. -}
 gmView : M.Model -> Html M.Msg
 gmView model = vbox
   [ case model.app of
