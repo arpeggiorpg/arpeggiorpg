@@ -26,7 +26,7 @@ viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
   div
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
-    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98), S.overflow S.hidden]]
+    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
         [mapView model app]
@@ -83,7 +83,8 @@ modalOverlay model app =
           then Just (CommonView.targetSelector model game M.CombatAct abid)
           else Nothing
         Nothing -> Nothing
-    modal = MaybeEx.or selectingCreatures selectingTargets
+    creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
+    modal = selectingCreatures |> MaybeEx.orElse selectingTargets |> MaybeEx.orElse creatingCreature
   in
     case modal of
       Just m ->
@@ -147,8 +148,12 @@ withDefaultLazy df m =
 availableCreaturesView : M.Model -> T.App -> Html M.Msg
 availableCreaturesView model app =
   let game = app.current_game
-  in div []
-  [ div [] (List.map (availableCreatureEntry model game) (Dict.values game.creatures)) ]
+  in
+    vbox
+      [ button [onClick M.StartCreatingCreature] [text "Create Creature"]
+      , hr [s [S.width (S.pct 100)]] []
+      , vbox (List.map (availableCreatureEntry model game) (Dict.values game.creatures))
+      ]
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
 availableCreatureEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
@@ -263,3 +268,25 @@ startCombatButton =
 {-| A button for stopping combat. -}
 stopCombatButton : Html M.Msg
 stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]
+
+{-| A form for creating a creature. -}
+createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
+createCreatureDialog model app {id, name, class} =
+  let disabledButton = button [disabled True] [text "Create Creature"]
+      createCreatureButton =
+        case (id, name, class) of
+          (Just id, Just name, Just class) ->
+            let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0} ""
+            in button [onClick (M.CreateCreature cc)] [text "Create Creature"]
+          _ -> disabledButton
+      cancelCreationButton = button [onClick M.CancelCreatingCreature] [text "Cancel Creation"]
+  in vbox
+    [ input [type_ "text", placeholder "id", onInput M.SetCreatureId ] []
+    , input [type_ "text", placeholder "name", onInput M.SetCreatureName ] []
+    , select [onInput M.SetCreatureClass]
+             <| [option [value ""] [text "Select a Class"]]
+                ++ (List.map (\className -> option [value className] [text className])
+                             (Dict.keys app.current_game.classes))
+    , hbox [createCreatureButton, cancelCreationButton]
+    ]
+

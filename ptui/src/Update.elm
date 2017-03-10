@@ -77,18 +77,38 @@ update msg model = case msg of
       Just playerID -> (model, sendCommand model.rpiURL (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
-  PendingCreatureId input ->
+  StartCreatingCreature ->
+    ( {model | creatingCreature = Just {id =  Nothing, name = Nothing, class = Nothing}}
+    , Cmd.none)
+  CancelCreatingCreature -> ({model | creatingCreature = Nothing}, Cmd.none)
+
+  SetCreatureId input ->
     let newId = if (String.isEmpty input) then Nothing else Just input
-    in ( { model | pendingCreatureId = newId }
-       , Cmd.none )
-  PendingCreatureName input ->
+        newCreating =
+          case model.creatingCreature of
+            Just x -> Just {x | id = newId}
+            Nothing -> Nothing
+    in ( { model | creatingCreature = newCreating } , Cmd.none )
+
+  SetCreatureName input ->
     let newName = if (String.isEmpty input) then Nothing else Just input
-    in ( { model | pendingCreatureName = newName }
-       , Cmd.none )
-  PendingCreatureClass input ->
+        newCreating =
+          case model.creatingCreature of
+            Just x -> Just {x | name = newName}
+            Nothing -> Nothing
+    in ( { model | creatingCreature = newCreating }, Cmd.none )
+
+  SetCreatureClass input ->
     let newClass = if (String.isEmpty input) then Nothing else Just input
-    in ( {model | pendingCreatureClass = newClass}
+        newCreating =
+          case model.creatingCreature of
+            Just x -> Just {x | class = newClass}
+            Nothing -> Nothing
+    in ( {model | creatingCreature = newCreating}
        , Cmd.none)
+
+  CreateCreature creation ->
+    ({model | creatingCreature = Nothing}, sendCommand model.rpiURL (T.CreateCreature creation))
 
   CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
   CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)

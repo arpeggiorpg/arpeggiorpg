@@ -28,9 +28,14 @@ type Msg
     | StartEditingMap
     | EditMap T.Map
     | CancelEditingMap
-    | PendingCreatureId T.CreatureID
-    | PendingCreatureName String
-    | PendingCreatureClass String
+
+    | StartCreatingCreature
+    | CancelCreatingCreature
+    | SetCreatureId T.CreatureID
+    | SetCreatureName String
+    | SetCreatureClass String
+    | CreateCreature T.CreatureCreation
+
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
     | SelectAbility T.CreatureID T.AbilityID
@@ -72,9 +77,7 @@ defaultModel : ProgramFlags -> Model
 defaultModel flags =
     { app = Nothing
     , selectedAbility = Nothing
-    , pendingCreatureId = Nothing
-    , pendingCreatureName = Nothing
-    , pendingCreatureClass = Nothing
+    , creatingCreature = Nothing
     , selectingCreatures = Nothing
     , moving = Nothing
     , error = "No current error!"
@@ -99,11 +102,12 @@ devFlags = {rpi = "http://localhost:1337/"}
 type alias ProgramFlags =
   { rpi : String }
 
+type alias PendingCreature =
+  {id: Maybe String, name: Maybe T.CreatureID, class: Maybe String}
+
 type alias Model =
   { app : Maybe T.App
-  , pendingCreatureId : Maybe T.CreatureID
-  , pendingCreatureName : Maybe String
-  , pendingCreatureClass : Maybe String
+  , creatingCreature : Maybe PendingCreature
   , selectedAbility : Maybe (T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
   , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)

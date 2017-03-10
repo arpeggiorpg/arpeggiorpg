@@ -238,27 +238,8 @@ mapSelector game = vbox <|
 inactiveList : M.Model -> T.Game -> Html M.Msg
 inactiveList model game = div []
   [ div [] (List.map (inactiveEntry model game) (Dict.values game.creatures))
-  , createCreatureForm model game
   ]
 
-createCreatureForm : M.Model -> T.Game -> Html M.Msg
-createCreatureForm model game = div []
-    [ input [type_ "text", placeholder "id", onInput M.PendingCreatureId ] []
-    , input [type_ "text", placeholder "name", onInput M.PendingCreatureName ] []
-    , select [onInput M.PendingCreatureClass]
-             <| [option [value ""] [text "Select a Class"]]
-                ++ (List.map (\className -> option [value className] [text className])
-                             (Dict.keys game.classes))
-    , createCreatureButton model
-    ]
-
-createCreatureButton : M.Model -> Html M.Msg
-createCreatureButton model =
-  case (model.pendingCreatureId, model.pendingCreatureName, model.pendingCreatureClass) of
-    (Just id, Just name, Just class) ->
-      let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0} ""
-      in button [onClick (M.SendCommand (T.CreateCreature cc))] [text "Create Creature!"]
-    _ -> button [disabled True] [text "Create Creature!"]
 
 inactiveEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
 inactiveEntry model game creature = vbox <|
