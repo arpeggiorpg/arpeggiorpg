@@ -45,7 +45,7 @@ viewGame model app =
     , overlay (S.px 80) (S.px 0) []
         [ mapConsole model app
         , editMapConsole model]
-    , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
+    , overlay (S.px 0) (S.px 160) []
       [ vbox
           [ CommonView.collapsible "Players" model <| playersView app
           , CommonView.collapsible "History" model <| historyView app
@@ -304,7 +304,7 @@ historyView app =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> items
           Nothing -> []
-  in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+  in vabox [s [S.width (S.px 325)]] <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox = habox [s [S.justifyContent S.spaceBetween]]

@@ -186,7 +186,7 @@ playerList extra players =
   let playerEntry (pid, cids) =
         habox [s [S.justifyContent S.spaceBetween]] <|
           [strong [] [text pid]] ++ (List.map (\id -> div [] [text id]) (Set.toList cids)) ++ extra pid
-  in vbox (List.map playerEntry (Dict.toList players))
+  in vabox [s [S.width (S.px 325)]] (List.map playerEntry (Dict.toList players))
 
 
 movementControls : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
@@ -198,7 +198,7 @@ movementControls extras model =
                 , S.transform (S.translate (S.pct -50))
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
-        <| [ button [onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras]
+        <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras]
     Nothing -> []
 
 {-| Render a modal dialog which disables use of all other UI. -}
@@ -236,6 +236,7 @@ checkModal model app =
   in selectingTargets
 
 errorBox model =
+  if model.error == "" then text "" else
   div [s [ S.position S.absolute
          , S.left (S.pct 50)
          , S.bottom (S.px 0)

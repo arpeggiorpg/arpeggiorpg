@@ -1,8 +1,6 @@
 module Grid exposing (..)
 
-import Html as H
 import Html.Attributes as HA
-import Html.Events as HE
 import Css as S
 
 import Svg exposing (..)
@@ -30,7 +28,7 @@ type alias MapCreature =
 terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
 terrainMap model terrain creatures = baseMap model terrain creatures [] False
 
-editMap : M.Model -> T.Map -> List MapCreature -> H.Html M.Msg
+editMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
 editMap model terrain creatures =
   baseMap model terrain creatures [] True
 
@@ -50,13 +48,14 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
   in
     baseMap model terrain vCreatures movementTiles False
 
+movementGhost : M.Model -> Maybe T.Point3
 movementGhost model =
   case model.showingMovement of
     M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
     _ -> Nothing
 
 
-baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> H.Html M.Msg
+baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
 baseMap model terrain creatures extras editable =
   let creatureEls = List.map gridCreature creatures
       terrainEls = baseTerrainRects model editable terrain

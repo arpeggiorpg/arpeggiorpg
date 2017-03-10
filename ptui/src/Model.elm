@@ -80,7 +80,7 @@ defaultModel flags =
     , creatingCreature = Nothing
     , selectingCreatures = Nothing
     , moving = Nothing
-    , error = "No current error!"
+    , error = ""
     , saveMapName = "" -- this could be inside of editingMap sumtype
     , editingMap = False
     , currentMap = [{x=0, y=0, z=0}]

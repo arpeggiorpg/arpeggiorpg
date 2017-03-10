@@ -10,7 +10,7 @@ import Types as T
 import Grid
 import Elements exposing (..)
 
-import CommonView exposing (..)
+import CommonView
 
 import Css as S
 
@@ -22,20 +22,20 @@ playerView : M.Model -> Html M.Msg
 playerView model = vbox
   [ case model.app of
       Just app ->
-        let vGame = case model.playerID of
-              Just playerID ->
-                if T.playerIsRegistered app playerID
-                then viewGame model app (T.getPlayerCreatures app playerID)
-                else registerForm model
-              Nothing -> registerForm model
-        in vbox [vGame, playerList (always []) app.players]
+        case model.playerID of
+          Just playerID ->
+            if T.playerIsRegistered app playerID
+            then viewGame model app (T.getPlayerCreatures app playerID)
+            else registerForm model
+          Nothing -> registerForm model
       Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
   ]
 
 {-| Show a form where the player can type their name to register. -}
 registerForm : M.Model -> Html M.Msg
 registerForm model =
-  hbox [ input [type_ "text", placeholder "player ID", onInput M.SetPlayerID ] []
+  hbox [ input [type_ "text", placeholder "player ID", onInput M.SetPlayerID
+       , s [S.width (S.px 500), S.height (S.px 100)] ] []
        , button [onClick M.RegisterPlayer] [text "Register Player"]]
 
 {-| Show a Player's-eye-view of a game, in the context of a set of controlled characters. -}
@@ -45,11 +45,11 @@ viewGame model app myCreatures =
     -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
     <| 
-    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100)]
+    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app myCreatures]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
-    , overlay (S.px 0) (S.px 160) [S.width (S.px 325)]
+    , overlay (S.px 0) (S.px 160) []
         [CommonView.collapsible "Players" model <| CommonView.playerList (always []) app.players]
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [ myCreaturesView model app myCreatures
@@ -62,7 +62,7 @@ viewGame model app myCreatures =
 {-| Check if any modals should be rendered and render them. -}
 modalView : M.Model -> T.App -> List (Html M.Msg)
 modalView model app =
-  checkModal model app
+  CommonView.checkModal model app
     |> Maybe.map CommonView.modalOverlay
     |> Maybe.withDefault []
 
@@ -124,7 +124,7 @@ mapView model app myCreatures =
 combatView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 combatView model app myCreatures =
   case app.current_game.current_combat of
-    Just combat -> collapsible "Combat" model <| inCombatView model app combat myCreatures
+    Just combat -> CommonView.collapsible "Combat" model <| inCombatView model app combat myCreatures
     Nothing -> text ""
 
 inCombatView : M.Model -> T.App -> T.Combat -> List T.Creature -> Html M.Msg
@@ -134,7 +134,7 @@ inCombatView model app combat myCreatures =
       bar = if List.member currentCreature myCreatures
             then habox [s [S.flexWrap S.wrap]]
                       [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
-                      , combatActionBar game combat currentCreature
+                      , CommonView.combatActionBar game combat currentCreature
                       ]
             else hbox [text "Current creature:", text currentCreature.id]
       combatantList =
