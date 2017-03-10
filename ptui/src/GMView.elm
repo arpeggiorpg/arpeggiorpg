@@ -91,7 +91,8 @@ modalOverlay model app =
         let box =
               div [s [S.position S.absolute
                      , S.left (S.pct 50)
-                     , S.transform (S.translateX (S.pct -50))
+                     , S.top (S.pct 50)
+                     , S.transform (S.translate2 (S.pct -50) (S.pct -50))
                      , plainBorder
                      , S.backgroundColor (S.rgb 255 255 255)]]
                   [m]
