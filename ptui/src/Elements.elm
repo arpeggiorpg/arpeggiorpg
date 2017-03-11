@@ -13,24 +13,24 @@ hbox : List (Html a) -> Html a
 hbox els = habox stdStyle els
 
 habox : List (Attribute a) -> List (Html a) -> Html a
-habox attrs els = div (attrs ++ stdStyle ++ [style [("display", "flex")]]) els
+habox attrs els = sdiv (attrs ++ [style [("display", "flex")]]) els
 
 vbox : List (Html a) -> Html a
 vbox els = vabox stdStyle els
 
 vabox : List (Attribute a) -> List (Html a) -> Html a
-vabox attrs els = div (attrs ++ stdStyle ++ [style [("display", "flex"), ("flex-direction", "column")]]) els
+vabox attrs els = sdiv (attrs ++ [style [("display", "flex"), ("flex-direction", "column")]]) els
 
-datext a t = div (stdStyle ++ a) [text t]
+datext a t = sdiv a [text t]
 
-dtext t = div stdStyle [text t]
+dtext t = sdiv [] [text t]
 
 abspos left_ top_ = [S.position S.absolute, S.left left_, S.top top_]
 overlay left_ top_ extra =
-  div <| stdStyle ++ [s <| (abspos left_ top_) ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
+  sdiv <| stdStyle ++ [s <| (abspos left_ top_) ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
 
 overlayRight right_ top_ extra = 
-  div <| stdStyle ++ [s <| [S.position S.absolute, S.right right_, S.top top_] ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
+  sdiv <| stdStyle ++ [s <| [S.position S.absolute, S.right right_, S.top top_] ++ extra ++ [plainBorder, S.backgroundColor (S.rgb 255 255 255)]]
 
 plainBorder = S.border3 (S.px 1) S.solid (S.rgb 0 0 0)
 
@@ -46,3 +46,5 @@ s : List S.Mixin -> Attribute msg
 s = S.asPairs >> Html.Attributes.style
 
 hline = hr (stdStyle ++ [s [S.width (S.pct 100)]]) []
+
+sdiv attrs body = div (attrs ++ stdStyle) body

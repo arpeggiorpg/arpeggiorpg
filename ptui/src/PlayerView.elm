@@ -40,18 +40,25 @@ registerForm model =
 {-| Show a Player's-eye-view of a game, in the context of a set of controlled characters. -}
 viewGame : M.Model -> T.App -> List T.Creature -> Html M.Msg
 viewGame model app myCreatures = 
-  div
-    [s [S.position S.relative, S.width (S.pct 100), S.height (S.pct 100)]]
+  sdiv
+    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
     <| 
-    [ div [s [S.position S.absolute, S.left (S.px 0), S.top (S.px 0), S.height (S.vh 100), S.width (S.pct 100)]]
+    [ sdiv [s [S.position S.absolute, S.left (S.px 0), S.top (S.px 0), S.height (S.vh 100), S.width (S.pct 100)]]
         [mapView model app myCreatures]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
     , overlay (S.px 0) (S.px 160) []
         [CommonView.collapsible "Players" model <| CommonView.playerList (always []) app.players]
-    , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
-        [ myCreaturesView model app myCreatures
-        , combatView model app myCreatures]
+    , overlayRight (S.px 0) (S.px 0)
+        [S.width (S.px 325)
+        -- restrict the max-height so that it doesn't collide with the action bar at the bottom of
+        -- the screen.
+        -- The reason that this isn't just "- 50px" (which is the height of the action bar)
+        -- is that the android chrome browser does some... weird, but forgivable stuff with vh when
+        -- scrolling the address bar off the screen.
+        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
+        [ combatView model app myCreatures
+        , myCreaturesView model app myCreatures]
     , CommonView.movementControls [] model
     , CommonView.errorBox model
     , bottomActionBar app myCreatures
@@ -80,15 +87,15 @@ myCreaturesView model app creatures =
   let game = app.current_game
   in
     CommonView.collapsible "My Creatures" model
-      <| vbox (List.map (myCreatureEntry model game) creatures)
+      <| vbox (List.map (myCreatureEntry model app) creatures)
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
-myCreatureEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
-myCreatureEntry model game creature =
+myCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
+myCreatureEntry model app creature =
   vbox
-    [ CommonView.creatureCard [] model creature
-    , case game.current_combat of
-        Nothing -> hbox (CommonView.oocActionBar game creature)
+    [ CommonView.creatureCard [] app creature
+    , case app.current_game.current_combat of
+        Nothing -> hbox (CommonView.oocActionBar app.current_game creature)
         Just _ -> text ""
     ]
 
@@ -140,11 +147,8 @@ inCombatView model app combat myCreatures =
   let game = app.current_game
       currentCreature = T.combatCreature combat
       bar = if List.member currentCreature myCreatures
-            then habox [s [S.flexWrap S.wrap]]
-                      [ div [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
-                      , CommonView.combatActionBar game combat currentCreature
-                      ]
+            then sdiv [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
             else hbox [text "Current creature:", text currentCreature.id]
       combatantList =
-        CommonView.combatantList (always << always []) (always []) model game combat
+        CommonView.combatantList (always << always []) (always []) app combat
   in vbox <| [bar] ++ [combatantList]

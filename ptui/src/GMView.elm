@@ -34,7 +34,7 @@ elements on top.
 -}
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
-  div
+  sdiv
     (stdStyle ++ [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]])
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
@@ -121,7 +121,7 @@ selectCreaturesView model app selectedCreatures callback commandName =
                , s [S.height (S.px 100), S.width (S.px 100)]]
                [text "Remove"]
       selectableCreature creature =
-        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] model creature]
+        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
       selectedCreatureItem cid =
@@ -176,20 +176,20 @@ availableCreaturesView model app =
     vbox
       [ button [onClick M.StartCreatingCreature] [text "Create Creature"]
       , hline
-      , vbox (List.map (availableCreatureEntry model game) (Dict.values game.creatures))
+      , vbox (List.map (availableCreatureEntry model app) (Dict.values game.creatures))
       ]
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
-availableCreatureEntry : M.Model -> T.Game -> T.Creature -> Html M.Msg
-availableCreatureEntry model game creature = vbox <|
+availableCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
+availableCreatureEntry model app creature = vbox <|
   [hbox <|
-    [ CommonView.creatureCard [noteBox model creature] model creature
-    ] ++ case game.current_combat of
+    [ CommonView.creatureCard [noteBox model creature] app creature
+    ] ++ case app.current_game.current_combat of
         Just _ -> [engageButton creature]
         Nothing -> []
     ++ [
       deleteCreatureButton creature
-    ], hbox (CommonView.oocActionBar game creature)]
+    ], hbox (CommonView.oocActionBar app.current_game creature)]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}
@@ -243,7 +243,6 @@ combatView model app =
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
 inCombatView model app combat =
   let game = app.current_game
-      bar = CommonView.combatActionBar game combat (T.combatCreature combat)
       disengageButtons = hbox (List.map disengageButton combat.creatures.data)
       extraGutter idx creature =
         [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
@@ -256,8 +255,7 @@ inCombatView model app combat =
       extraCreatureCard creature = [noteBox model creature]
       combatView =
         vbox
-          [ bar
-          , CommonView.combatantList extraGutter extraCreatureCard model game combat
+          [ CommonView.combatantList extraGutter extraCreatureCard app combat
           , stopCombatButton
           , disengageButtons]
   in combatView

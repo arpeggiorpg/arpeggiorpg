@@ -11,7 +11,6 @@ import Css as S
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -35,8 +34,8 @@ visibleCreatures model game =
         else List.filterMap mapInfo combat.creatures.data
       Nothing -> (List.filterMap mapInfo (Dict.values game.creatures))
 
-creatureCard : List (Html M.Msg) -> M.Model -> T.Creature -> Html M.Msg
-creatureCard extras model creature =
+creatureCard : List (Html M.Msg) -> T.App -> T.Creature -> Html M.Msg
+creatureCard extras app creature =
   let cellStyles color =
         [s [ plainBorder
            , S.backgroundColor color
@@ -48,11 +47,12 @@ creatureCard extras model creature =
       <| 
       [ hbox [strong [] [text creature.name ], classIcon creature]
       , hbox
-          [ div (cellStyles (S.rgb 144 238 144))
+          [ creatureIcon app creature
+          , sdiv (cellStyles (S.rgb 144 238 144))
                 [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-          , div (cellStyles (S.rgb 0 255 255))
+          , sdiv (cellStyles (S.rgb 0 255 255))
                 [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-          , div (cellStyles (S.rgb 255 255 255))
+          , sdiv (cellStyles (S.rgb 255 255 255))
                 [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
           ]
       -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
@@ -142,17 +142,17 @@ mapControls =
         ]
     ]
 
-combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> Html M.Msg
-combatantList extraGutter extraCreatureCard model game combat =
-  vbox (List.map (combatantEntry extraGutter extraCreatureCard model game combat) (List.indexedMap (,) combat.creatures.data))
+combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
+combatantList extraGutter extraCreatureCard app combat =
+  vbox (List.map (combatantEntry extraGutter extraCreatureCard app combat) (List.indexedMap (,) combat.creatures.data))
 
-combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> M.Model -> T.Game -> T.Combat -> (Int, T.Creature) -> Html M.Msg
-combatantEntry extraGutter extraCreatureCard model game combat (idx, creature) = hbox <|
+combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> (Int, T.Creature) -> Html M.Msg
+combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <|
   let marker = if combat.creatures.cursor == idx
                then [ datext [s [S.width (S.px 25)]] "▶️️" ]
                else []
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature]
-  in gutter ++ [ creatureCard (extraCreatureCard creature) model creature ]
+  in gutter ++ [ creatureCard (extraCreatureCard creature) app creature ]
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
@@ -186,7 +186,7 @@ playerList : (T.PlayerID -> List (Html M.Msg)) -> Dict.Dict T.PlayerID (Set.Set 
 playerList extra players =
   let playerEntry (pid, cids) =
         habox [s [S.justifyContent S.spaceBetween]] <|
-          [strong [] [text pid]] ++ (List.map (\id -> div [] [text id]) (Set.toList cids)) ++ extra pid
+          [strong [] [text pid]] ++ (List.map (\id -> sdiv [] [text id]) (Set.toList cids)) ++ extra pid
   in vabox [s [S.width (S.px 325)]] (List.map playerEntry (Dict.toList players))
 
 
@@ -194,7 +194,7 @@ movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
 movementControls extras model =
   case model.moving of
     Just _ ->
-      div [s [ S.position S.absolute
+      sdiv [s [ S.position S.absolute
                 , S.left (S.pct 50)
                 , S.transform (S.translate (S.pct -50))
                 , plainBorder
@@ -206,7 +206,7 @@ movementControls extras model =
 modalOverlay : Html M.Msg -> List (Html M.Msg)
 modalOverlay content =
   let box =
-        div [s [ S.position S.absolute
+        sdiv [s [ S.position S.absolute
                 , S.left (S.pct 50)
                 , S.top (S.pct 50)
                 , S.transform (S.translate2 (S.pct -50) (S.pct -50))
@@ -214,7 +214,7 @@ modalOverlay content =
                 , S.backgroundColor (S.rgb 255 255 255)]]
             [content]
       cover =
-        div [s [S.position S.absolute
+        sdiv [s [S.position S.absolute
                 , S.width (S.vw 100)
                 , S.height (S.vh 100)
                 , S.backgroundColor (S.rgba 0 0 0 0.5)]]
@@ -236,9 +236,10 @@ checkModal model app =
         Nothing -> Nothing
   in selectingTargets
 
+errorBox : M.Model -> Html M.Msg
 errorBox model =
   if model.error == "" then text "" else
-  div [s [ S.position S.absolute
+  sdiv [s [ S.position S.absolute
          , S.left (S.pct 50)
          , S.bottom (S.px 0)
          , S.transform (S.translate (S.pct -50))
@@ -246,22 +247,32 @@ errorBox model =
          , S.backgroundColor (S.rgb 255 255 255)]]
       [ hbox [text "Last error:", pre [] [text model.error]]  ]
 
-{-| An action bar that renders at the bottom of the screen for the current combat creature. -}
-mainActionBar app combat =
-  let creature = T.combatCreature combat
-      creatureColor =
+creatureIcon : T.App -> T.Creature -> Html M.Msg
+creatureIcon app creature = 
+  let creatureColor =
         case Dict.get creature.class app.current_game.classes of
           Just class -> class.color
           Nothing -> "red"
-      icon = if creature.portrait_url /= ""
-             then img [src creature.portrait_url, s [S.width (S.px 50), S.height (S.px 50)]] []
-             else div [s [ S.width (S.px 50), S.height (S.px 50)]
-                      , style [("background-color", creatureColor)] ]
-                      [text creature.id]
-  in div [s [ S.position S.absolute
+  in
+    if creature.portrait_url /= ""
+    then
+      img (stdStyle ++ [src creature.portrait_url
+          , s [S.width (S.px 50), S.height (S.px 50), S.borderRadius (S.px 10), plainBorder]])
+          []
+    else
+      sdiv [s [ S.width (S.px 50), S.height (S.px 50), S.borderRadius (S.px 10), plainBorder]
+          , style [("background-color", creatureColor)] ]
+          [text creature.id]
+
+{-| An action bar that renders at the bottom of the screen for the current combat creature. -}
+mainActionBar : T.App -> T.Combat -> Html M.Msg
+mainActionBar app combat =
+  let creature = T.combatCreature combat
+  in sdiv 
+      [s [ S.position S.fixed
          , S.left (S.pct 50)
          , S.bottom (S.px 0)
          , S.transform (S.translate (S.pct -50))
          , plainBorder
          , S.backgroundColor (S.rgb 255 255 255)]]
-      [ hbox [icon, combatActionBar app.current_game combat creature]]
+      [hbox [creatureIcon app creature, combatActionBar app.current_game combat creature]]
