@@ -6,8 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Css as S
 
--- oh god why can't I just use a .css file
-stdStyle = [s [S.boxSizing S.borderBox]]
+stdStyle = []
 
 hbox : List (Html a) -> Html a
 hbox els = habox stdStyle els

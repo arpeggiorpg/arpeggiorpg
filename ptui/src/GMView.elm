@@ -35,15 +35,15 @@ viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
   sdiv
     (stdStyle ++ [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]])
-    <| 
-    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+    <|
+    [ CommonView.theCss,
+      overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
-    , overlay (S.px 80) (S.px 0) []
-        [ mapConsole model app
-        , editMapConsole model]
-    , overlay (S.px 0) (S.px 160) []
+    , overlay (S.px 80) (S.px 0) [S.height (S.px 50)]
+        [ hbox [mapConsole model app , editMapConsole model] ]
+    , overlay (S.px 80) (S.px 50) []
       [ vbox
           [ CommonView.collapsible "Players" model <| playersView app
           , CommonView.collapsible "History" model <| historyView app

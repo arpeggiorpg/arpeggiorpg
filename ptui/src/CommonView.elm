@@ -2,7 +2,7 @@ module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
   , movementControls, modalOverlay, checkModal
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar)
+  , mainActionBar, theCss)
 
 import Dict
 import Set
@@ -276,3 +276,10 @@ mainActionBar app combat =
          , plainBorder
          , S.backgroundColor (S.rgb 255 255 255)]]
       [hbox [creatureIcon app creature, combatActionBar app.current_game combat creature]]
+
+theCss : Html M.Msg
+theCss = node "style" [] [text """
+  * {
+    box-sizing: border-box;
+  }
+  """]
