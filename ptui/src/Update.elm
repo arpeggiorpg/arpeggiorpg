@@ -43,14 +43,14 @@ updateModelFromApp model newApp =
           _ -> M.NotShowingMovement
   in { model2 | currentMap = currentMap, showingMovement = showingMovement}
 
-
-
 start = message Start
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
-  Start -> ( model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder) )
+  NoMsg -> (model, Cmd.none)
+
+  Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder))
 
   MorePlease -> ( model, message PollApp)
 

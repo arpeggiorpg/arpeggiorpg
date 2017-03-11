@@ -2,6 +2,8 @@ module Model exposing (..)
 
 import Dict
 import Http
+import Keyboard
+import Keyboard.Key as Key
 import Time
 
 import Types as T
@@ -11,9 +13,21 @@ type alias GotCreatures = List T.CreatureID -> Cmd Msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  case model.showingMovement of
-    ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
-    _ -> Sub.none
+  let ticks =
+        case model.showingMovement of
+          ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
+          _ -> Sub.none
+      handleKey key =
+        case (Key.fromCode key) of
+          Key.Up -> MapPan Up
+          Key.Down -> MapPan Down
+          Key.Left -> MapPan Left
+          Key.Right -> MapPan Right
+          _ -> NoMsg
+          -- Key.Add -> MapZoom In
+          -- Key.Subtract -> MapZoom Out
+      keys = Keyboard.downs handleKey
+  in Sub.batch [ticks, keys]
 
 type Msg
     = Start
@@ -63,6 +77,8 @@ type Msg
     | MapZoom MapInOut
     | MapPan Direction
     | ToggleCollapsed String
+
+    | NoMsg
 
 type MapInOut
   = In | Out
