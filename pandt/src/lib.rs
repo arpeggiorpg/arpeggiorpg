@@ -30,3 +30,4 @@ pub mod combat;
 pub mod creature;
 pub mod grid;
 pub mod types;
+pub mod indexed;

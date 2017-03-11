@@ -3,6 +3,7 @@
 use std::collections::{HashMap, VecDeque, HashSet};
 use std::error::Error;
 use std::fmt;
+use std::iter::FromIterator;
 use string_wrapper::StringWrapper;
 
 use rand;
@@ -10,9 +11,11 @@ use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
 use serde::ser;
+use serde::de;
 use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
+use indexed::{DeriveKey, IndexedHashMap};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -432,6 +435,12 @@ pub struct Creature {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct CreatureGroup {
+  pub name: String,
+  pub creatures: IndexedHashMap<Creature>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
   // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
   // after we load data back in, because serde doesn't (currently) have any way to know that
@@ -444,8 +453,23 @@ pub struct Combat {
   pub movement_used: Distance,
 }
 
+impl DeriveKey for CreatureGroup {
+  type KeyType = String;
+  fn derive_key(&self) -> String {
+    self.name.clone()
+  }
+}
+
+impl DeriveKey for Creature {
+  type KeyType = CreatureID;
+  fn derive_key(&self) -> CreatureID {
+    self.id
+  }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
+  pub creature_groups: IndexedHashMap<CreatureGroup>,
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: HashMap<CreatureID, Creature>,

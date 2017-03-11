@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexed::IndexedHashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
@@ -13,6 +14,7 @@ lazy_static! {
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
+      creature_groups: IndexedHashMap::new(),
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),
@@ -443,6 +445,7 @@ pub mod test {
     let mut abilities = HashMap::new();
     abilities.insert(punch_id.clone(), punch);
     let game = Game {
+      creature_groups: IndexedHashMap::new(),
       abilities: abilities,
       classes: t_classes(),
       current_combat: None,
