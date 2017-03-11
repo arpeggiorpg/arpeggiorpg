@@ -141,6 +141,14 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+  /// Create a group of creatures
+  CreateCreatureGroup(String),
+  CreateCreatureInGroup(String, CreatureCreation),
+  RemoveCreatureFromGroup(String, CreatureID),
+  SetCreatureNoteInGroup(String, CreatureID, String), // groupname, creature ID, then note value
+  /// Load a group of creatures into the game.
+  LoadCreatureGroup(String),
+
   /// Select the map that should be used for pathing and collision detection
   SelectMap(MapName),
   /// Change the terrain data of a map
