@@ -19,17 +19,16 @@ button = Elements.button
 
 {-| Top-level player view. -}
 playerView : M.Model -> Html M.Msg
-playerView model = vbox
-  [ case model.app of
-      Just app ->
-        case model.playerID of
-          Just playerID ->
-            if T.playerIsRegistered app playerID
-            then viewGame model app (T.getPlayerCreatures app playerID)
-            else registerForm model
-          Nothing -> registerForm model
-      Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
-  ]
+playerView model =
+  case model.app of
+    Just app ->
+      case model.playerID of
+        Just playerID ->
+          if T.playerIsRegistered app playerID
+          then viewGame model app (T.getPlayerCreatures app playerID)
+          else registerForm model
+        Nothing -> registerForm model
+    Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
 
 {-| Show a form where the player can type their name to register. -}
 registerForm : M.Model -> Html M.Msg
@@ -42,10 +41,9 @@ registerForm model =
 viewGame : M.Model -> T.App -> List T.Creature -> Html M.Msg
 viewGame model app myCreatures = 
   div
-    -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
-    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
+    [s [S.position S.relative, S.width (S.pct 100), S.height (S.pct 100)]]
     <| 
-    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+    [ div [s [S.position S.absolute, S.left (S.px 0), S.top (S.px 0), S.height (S.vh 100), S.width (S.pct 100)]]
         [mapView model app myCreatures]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
@@ -54,10 +52,20 @@ viewGame model app myCreatures =
     , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
         [ myCreaturesView model app myCreatures
         , combatView model app myCreatures]
+    , CommonView.movementControls [] model
     , CommonView.errorBox model
+    , bottomActionBar app myCreatures
     ]
-    ++ CommonView.movementControls [] model
     ++ modalView model app
+
+bottomActionBar : T.App -> List T.Creature -> Html M.Msg
+bottomActionBar app myCreatures =
+  case app.current_game.current_combat of
+    Nothing -> text ""
+    Just combat ->
+      if List.member (T.combatCreature combat) myCreatures
+      then CommonView.mainActionBar app combat
+      else text ""
 
 {-| Check if any modals should be rendered and render them. -}
 modalView : M.Model -> T.App -> List (Html M.Msg)

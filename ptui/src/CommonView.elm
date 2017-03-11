@@ -1,7 +1,8 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, combatActionBar, mapControls
   , movementControls, modalOverlay, checkModal
-  , combatantList, collapsible, playerList, errorBox)
+  , combatantList, collapsible, playerList, errorBox
+  , mainActionBar)
 
 import Dict
 import Set
@@ -189,17 +190,17 @@ playerList extra players =
   in vabox [s [S.width (S.px 325)]] (List.map playerEntry (Dict.toList players))
 
 
-movementControls : List (Html M.Msg) -> M.Model -> List (Html M.Msg)
+movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
 movementControls extras model =
   case model.moving of
     Just _ ->
-      [ div [s [ S.position S.absolute
+      div [s [ S.position S.absolute
                 , S.left (S.pct 50)
                 , S.transform (S.translate (S.pct -50))
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
-        <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras]
-    Nothing -> []
+        <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras
+    Nothing -> text ""
 
 {-| Render a modal dialog which disables use of all other UI. -}
 modalOverlay : Html M.Msg -> List (Html M.Msg)
@@ -244,3 +245,21 @@ errorBox model =
          , plainBorder
          , S.backgroundColor (S.rgb 255 255 255)]]
       [ hbox [text "Last error:", pre [] [text model.error]]  ]
+
+{-| An action bar that renders at the bottom of the screen for the current combat creature. -}
+mainActionBar app combat =
+  let creature = T.combatCreature combat
+      creatureColor =
+        case Dict.get creature.class app.current_game.classes of
+          Just class -> class.color
+          Nothing -> "red"
+      icon = if creature.portrait_url /= ""
+             then img [src creature.portrait_url, s [S.width (S.px 50), S.height (S.px 50)]] []
+             else div [s [ S.width (S.px 50), S.height (S.px 50)], style [("background-color", creatureColor)] ] []
+  in div [s [ S.position S.absolute
+         , S.left (S.pct 50)
+         , S.bottom (S.px 0)
+         , S.transform (S.translate (S.pct -50))
+         , plainBorder
+         , S.backgroundColor (S.rgb 255 255 255)]]
+      [ hbox [icon, combatActionBar app.current_game combat creature]]

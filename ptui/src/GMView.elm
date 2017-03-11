@@ -35,8 +35,7 @@ elements on top.
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
   div
-    -- TODO: I should maybe move the "vh" to a div up all the way to the very top of the tree.
-    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 98)]]
+    (stdStyle ++ [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]])
     <| 
     [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app]
@@ -57,10 +56,17 @@ viewGame model app =
             , combatView model app 
             ]
         ]
+    , CommonView.movementControls [moveAnywhereToggle model] model
     , CommonView.errorBox model
+    , bottomActionBar app
     ]
-    ++ CommonView.movementControls [moveAnywhereToggle model] model
     ++ modalView model app
+
+bottomActionBar : T.App -> Html M.Msg
+bottomActionBar app =
+  case app.current_game.current_combat of
+    Nothing -> text ""
+    Just combat -> CommonView.mainActionBar app combat
 
 moveAnywhereToggle : M.Model -> Html M.Msg
 moveAnywhereToggle model =
@@ -304,7 +310,7 @@ historyView app =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> items
           Nothing -> []
-  in vabox [s [S.width (S.px 325)]] <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+  in vabox [s [S.width (S.px 325), S.overflow S.auto, S.maxHeight (S.px 600)]] <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox = habox [s [S.justifyContent S.spaceBetween]]
