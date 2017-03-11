@@ -1,16 +1,21 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::hash;
+use std::iter::FromIterator;
 
 use serde::de;
 use serde::ser;
 
 
+/// A trait for fetching the "canonical" key type for a type.
 pub trait DeriveKey {
+  /// The key type
   type KeyType: hash::Hash + Eq;
+  /// Given a value, get the key that should be used to refer to it.
   fn derive_key(&self) -> Self::KeyType;
 }
 
+/// A HashMap which uses keys intrinsic to values with the DeriveKey trait.
 #[derive(Eq, PartialEq)]
 pub struct IndexedHashMap<V: DeriveKey> {
   data: HashMap<<V as DeriveKey>::KeyType, V>,
@@ -54,6 +59,16 @@ impl<V> de::Deserialize for IndexedHashMap<V>
   {
     let hm: HashMap<<V as DeriveKey>::KeyType, V> = de::Deserialize::deserialize(deserializer)?;
     Ok(IndexedHashMap { data: hm })
+  }
+}
+
+impl<V> FromIterator<V> for IndexedHashMap<V>
+  where V: DeriveKey
+{
+  fn from_iter<T>(iter: T) -> Self
+    where T: IntoIterator<Item = V>
+  {
+    IndexedHashMap { data: iter.into_iter().map(|v| (v.derive_key(), v)).collect() }
   }
 }
 
