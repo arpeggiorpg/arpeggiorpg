@@ -22,12 +22,11 @@ button = Elements.button
 
 {-| Top-level GM view. -}
 gmView : M.Model -> Html M.Msg
-gmView model = vbox
-  [ case model.app of
-      Just app -> viewGame model app
-      Nothing -> vbox [text "No app yet. Maybe reload."
-                      , hbox [text "Last error:", pre [] [text model.error]]]
-  ]
+gmView model =
+  case model.app of
+    Just app -> viewGame model app
+    Nothing -> vbox [text "No app yet. Maybe reload."
+                    , hbox [text "Last error:", pre [] [text model.error]]]
 
 {-| Layout the entire game. This renders the map in the "background", and overlays various UI
 elements on top.

@@ -43,7 +43,7 @@ viewGame model app myCreatures =
   sdiv
     [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
     <| 
-    [ sdiv [s [S.position S.absolute, S.left (S.px 0), S.top (S.px 0), S.height (S.vh 100), S.width (S.pct 100)]]
+    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app myCreatures]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
