@@ -308,7 +308,9 @@ historyView app =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> items
           Nothing -> []
-  in vabox [s [S.width (S.px 325), S.overflow S.auto, S.maxHeight (S.px 600)]] <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+          -- it'd be nice if the following maxHeight were smarter about avoiding falling off the bottom of the screen.
+  in vabox [s [S.width (S.px 325), S.overflow S.auto, S.maxHeight (S.px 600)]]
+        <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox = habox [s [S.justifyContent S.spaceBetween]]

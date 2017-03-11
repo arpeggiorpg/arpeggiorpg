@@ -109,7 +109,7 @@ gridCreature creature =
         case creature.movable of
           Just fn -> [onClick (fn creature.creature)]
           Nothing -> []
-      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize)] ++ movableEventHandler
+      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize), rx "10", ry "10"] ++ movableEventHandler
       pos = creature.creature.pos
       creatureNameEl name =
         text_ [ HA.style [("pointer-events", "none")]
@@ -124,6 +124,8 @@ gridCreature creature =
           , x (coord pos.x), y (coord pos.y)
           , xlinkHref url
           , width "100", height "100"
+          , rx "10"
+          , ry "10"
           ] []
       foreground =
         if creature.creature.portrait_url == ""
