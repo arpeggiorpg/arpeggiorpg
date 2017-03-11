@@ -255,7 +255,9 @@ mainActionBar app combat =
           Nothing -> "red"
       icon = if creature.portrait_url /= ""
              then img [src creature.portrait_url, s [S.width (S.px 50), S.height (S.px 50)]] []
-             else div [s [ S.width (S.px 50), S.height (S.px 50)], style [("background-color", creatureColor)] ] []
+             else div [s [ S.width (S.px 50), S.height (S.px 50)]
+                      , style [("background-color", creatureColor)] ]
+                      [text creature.id]
   in div [s [ S.position S.absolute
          , S.left (S.pct 50)
          , S.bottom (S.px 0)
