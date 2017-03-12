@@ -125,7 +125,7 @@ impl App {
       self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
     let mut cids_to_insert = vec![];
     for cid in cids {
-      self.current_game.find_creature(*cid)?;
+      self.current_game.get_creature(*cid)?;
       cids_to_insert.push(cid);
     }
     creatures.extend(cids_to_insert);
@@ -139,7 +139,7 @@ impl App {
       self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
     let mut cids_to_remove = vec![];
     for cid in cids {
-      self.current_game.find_creature(*cid)?;
+      self.current_game.get_creature(*cid)?;
       if creatures.contains(cid) {
         cids_to_remove.push(cid);
       } else {

@@ -1,9 +1,4 @@
 //! Simulation of combat.
-//! Combat takes over ownership of Creatures who are in combat.
-//! I'm not sure if I want to stick with this design - Combat should maybe just a vec of
-//! CreatureIDs. But modification of those creatures as a part of combat would require some
-//! significant refactoring. It may go hand-in-hand with a removal of the `CombatLog` (and just
-//! using GameLog).
 
 use nonempty;
 
@@ -18,7 +13,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
   pub fn creatures(&self) -> Result<nonempty::NonEmptyWithCursor<DynamicCreature>, GameError> {
     let mut results = vec![];
     for creature in self.combat.creatures.iter() {
-      results.push(self.game.dyn_creature(creature)?);
+      results.push(self.game.get_creature(*creature)?);
     }
     let mut ne = nonempty::NonEmptyWithCursor::from_vec(results)
       .expect("since we built this from another NonEmpty, we know that it must have at least one \
@@ -27,43 +22,25 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     Ok(ne)
   }
 
-  pub fn remove_from_combat(&self, cid: CreatureID)
-                            -> Result<(Option<Combat>, Creature), GameError> {
+  pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
     self.combat.remove_from_combat(cid)
   }
 
   pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
     let mut new = self.combat.clone();
     match *l {
-      CombatLog::PathCurrentCreature(ref path) => {
-        let c_pos = self.current_creature()?.pos();
-        let mut distance = Distance(0);
-        let mut cur_pos = c_pos;
-        // TODO: honor terrain
-        for pos in path {
-          distance = distance + self.game.tile_system.point3_distance(cur_pos, *pos);
-          cur_pos = *pos;
-        }
-        let destination = path.last().unwrap_or(&c_pos);
-        {
-          let mut c = new.current_creature_mut();
-          *c = c.apply_log(&CreatureLog::SetPos(*destination))?;
-        }
+      CombatLog::ConsumeMovement(distance) => {
         new.movement_used = new.movement_used + distance;
       }
-      CombatLog::CreatureLog(ref cid, ref cl) => {
-        let mut c = new.get_creature_mut(*cid)?;
-        *c = c.apply_log(cl)?;
-      }
       CombatLog::EndTurn(ref cid) => {
-        assert_eq!(*cid, new.creatures.get_current().id());
+        assert_eq!(*cid, *new.creatures.get_current());
         new.creatures.next_circular();
         new.movement_used = Distance(0);
       }
       CombatLog::ChangeCreatureInitiative(cid, new_pos) => {
         let current_pos = new.creatures
           .iter()
-          .position(|c| c.id == cid)
+          .position(|c| *c == cid)
           .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
         if new_pos >= new.creatures.len() {
           return Err(GameError::InitiativeOutOfBounds(new.creatures.len() - 1));
@@ -80,7 +57,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
   pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
     let change = self.change_with(CombatLog::EndTurn(self.current_creature()?.id()))?;
-    let change = change.apply_creature(change.dyn().current_creature()?.id(), |c| c.tick())?;
+    // let change = change.apply_creature(change.dyn().current_creature()?.id(), |c| c.tick())?;
     Ok(change)
   }
 
@@ -105,15 +82,6 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
     }
   }
 
-  pub fn get_able(&'combat self) -> Result<CombatAble<'combat, 'game>, GameError> {
-    let current = self.current_creature()?;
-    if current.can_act() {
-      Ok(CombatAble { combat: self })
-    } else {
-      Err(GameError::CannotAct(current.id()))
-    }
-  }
-
   pub fn change(&self) -> ChangedCombat<'game> {
     ChangedCombat {
       combat: self.combat.clone(),
@@ -132,17 +100,12 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'combat, 'game>, GameError> {
-    self.game.dyn_creature(self.combat.creatures.get_current())
-  }
-
-  pub fn get_creature(&self, cid: CreatureID)
-                      -> Result<DynamicCreature<'combat, 'game>, GameError> {
-    DynamicCreature::new(self.combat.get_creature_data(cid)?, self.game)
+    self.game.get_creature(self.combat.current_creature_id())
   }
 }
 
 impl Combat {
-  pub fn new(combatants: Vec<Creature>) -> Result<Combat, GameError> {
+  pub fn new(combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
     nonempty::NonEmptyWithCursor::from_vec(combatants)
       .map(|ne| {
         let com = Combat {
@@ -154,44 +117,24 @@ impl Combat {
       .ok_or(GameError::CombatMustHaveCreatures)
   }
 
-  fn current_creature_mut(&mut self) -> &mut Creature {
-    self.creatures.get_current_mut()
-  }
-
-  pub fn get_creature_data(&self, cid: CreatureID) -> Result<&Creature, GameError> {
-    self.creatures
-      .iter()
-      .find(|c| c.id() == cid)
-      .ok_or(GameError::CreatureNotFound(cid.to_string()))
-  }
-
-  pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
-    self.creatures
-      .iter_mut()
-      .find(|c| c.id() == cid)
-      .ok_or(GameError::CreatureNotFound(cid.to_string()))
-  }
-
-  pub fn current_creature_data(&self) -> &Creature {
-    self.creatures.get_current()
+  pub fn current_creature_id(&self) -> CreatureID {
+    *self.creatures.get_current()
   }
 
   /// the Option<Combat> will be None if you're removing the last creature from a combat.
-  /// Returns the Creature removed, so you can put it back into archival.
-  pub fn remove_from_combat(&self, cid: CreatureID)
-                            -> Result<(Option<Combat>, Creature), GameError> {
+  pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
     let mut combat = self.clone();
     let idx = combat.creatures
       .iter()
-      .position(|c| c.id() == cid)
+      .position(|c| *c == cid)
       .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => {
         Err(GameError::BuggyProgram("can't remove index THAT WE FOUND in remove_from_combat"
           .to_string()))
       }
-      Err(nonempty::Error::RemoveLastElement) => Ok((None, combat.current_creature_data().clone())),
-      Ok(creature) => Ok((Some(combat), creature)),
+      Err(nonempty::Error::RemoveLastElement) => Ok(None),
+      Ok(creature) => Ok(Some(combat)),
     }
   }
 }
@@ -209,7 +152,7 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
-  pub fn move_current(&self, pt: Point3) -> Result<ChangedCombat<'game>, GameError> {
+  pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
     let (pts, distance) = self.combat
       .game
       .tile_system
@@ -220,29 +163,13 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
       .ok_or(GameError::NoPathFound)?;
     debug_assert!(distance <= self.movement_left);
 
-    let change = self.combat.change_with(CombatLog::PathCurrentCreature(pts))?;
-    Ok(change)
+    let change = self.combat
+      .game
+      .change_with(GameLog::CreatureLog(self.combat.combat.current_creature_id(),
+                                        CreatureLog::SetPos(pt)))?;
+    change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
   }
 }
-
-
-/// The ability to act in combat.
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatAble<'combat, 'game: 'combat> {
-  pub combat: &'combat DynamicCombat<'combat, 'game>,
-}
-impl<'combat, 'game: 'combat> CombatAble<'combat, 'game> {
-  /// Make the current creature use an ability.
-  pub fn act(&self, ability: &Ability, target: DecidedTarget)
-             -> Result<ChangedCombat<'game>, GameError> {
-    self.combat.current_creature()?.act(|cid| self.combat.combat.get_creature_data(cid),
-                                        ability,
-                                        target,
-                                        self.combat.change(),
-                                        true)
-  }
-}
-
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ChangedCombat<'game> {
@@ -266,29 +193,8 @@ impl<'game> ChangedCombat<'game> {
     Ok(new)
   }
 
-  pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat<'game>, GameError>
-    where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
-  {
-    let combat = self.dyn();
-    let creature = combat.get_creature(cid)?;
-    let change = f(creature)?;
-    let mut new = self.clone();
-    let (creature, logs) = change.done();
-    *new.combat.get_creature_mut(cid)? = creature;
-    new.logs.extend(creature_logs_into_combat_logs(cid, logs));
-    Ok(new)
-  }
-
   pub fn done(self) -> (Combat, Vec<CombatLog>) {
     (self.combat, self.logs)
-  }
-}
-
-impl<'game> CreatureChanger for ChangedCombat<'game> {
-  fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedCombat<'game>, GameError>
-    where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
-  {
-    Ok(ChangedCombat::apply_creature(self, cid, f)?)
   }
 }
 

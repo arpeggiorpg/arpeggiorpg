@@ -4,6 +4,7 @@ use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
 use types::*;
+use game::ChangedGame;
 use combat::MELEE_RANGE;
 
 /// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
@@ -155,10 +156,9 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
                                 condition.clone())
   }
 
-  pub fn act<'a, GetCreature, Change: CreatureChanger>(&'a self, get_creature: GetCreature,
-                                                       ability: &Ability, target: DecidedTarget,
-                                                       mut change: Change, in_combat: bool)
-                                                       -> Result<Change, GameError>
+  pub fn act<'a, GetCreature>(&'a self, get_creature: GetCreature, ability: &Ability,
+                              target: DecidedTarget, mut change: ChangedGame, in_combat: bool)
+                              -> Result<ChangedGame, GameError>
     where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
   {
     let targets = self.resolve_targets(get_creature, ability.target, target)?;
@@ -232,7 +232,7 @@ impl Creature {
       id: CreatureID::new(),
       name: spec.name.to_string(),
       class: spec.class.clone(),
-      pos: (0,0,0),
+      pos: (0, 0, 0),
       speed: Distance(STANDARD_CREATURE_SPEED),
       max_energy: Energy(10),
       cur_energy: Energy(10),

@@ -331,10 +331,9 @@ historyItem snapIdx logIdx log =
 
 historyCombatLog : T.CombatLog -> Html M.Msg
 historyCombatLog cl = case cl of
-  T.ComLCreatureLog cid creatureLog -> hsbox [dtext cid, historyCreatureLog creatureLog]
   T.ComLEndTurn cid -> hsbox [dtext cid, dtext "Ended Turn"]
-  T.ComLPathCurrentCreature pts -> hsbox [dtext <| "Moved to " ++ maybePos pts]
   T.ComLChangeCreatureInitiative cid newPos -> hsbox [dtext cid, dtext "Changed initiative to", dtext <| toString newPos]
+  T.ComLConsumeMovement distance -> hsbox [dtext "Used movement", dtext (toString distance)]
 
 maybePos : List T.Point3 -> String
 maybePos path =

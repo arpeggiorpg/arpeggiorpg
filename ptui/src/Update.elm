@@ -26,21 +26,23 @@ updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
       currentMap = if model.editingMap then model.currentMap else M.getMap model2
       showingMovement =
-        case T.mostRecentLog newApp of
-          Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
-            -- most recent action was movement. Only start animating it if we haven't already
-            -- started animating it.
-            case model.showingMovement of
-              M.ShowingMovement alreadyShown toShow ->
-                if (alreadyShown ++ toShow) /= (first::rest)
-                then M.ShowingMovement [first] (first::rest)
-                else M.ShowingMovement alreadyShown toShow
-              M.DoneShowingMovement shown ->
-                if shown /= (first::rest)
-                then M.ShowingMovement [first] rest
-                else M.DoneShowingMovement shown
-              M.NotShowingMovement -> M.ShowingMovement [first] rest
-          _ -> M.NotShowingMovement
+        -- TODO: Bring back the PathCreature log!
+        M.NotShowingMovement
+        -- case T.mostRecentLog newApp of
+        --   Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
+        --     -- most recent action was movement. Only start animating it if we haven't already
+        --     -- started animating it.
+        --     case model.showingMovement of
+        --       M.ShowingMovement alreadyShown toShow ->
+        --         if (alreadyShown ++ toShow) /= (first::rest)
+        --         then M.ShowingMovement [first] (first::rest)
+        --         else M.ShowingMovement alreadyShown toShow
+        --       M.DoneShowingMovement shown ->
+        --         if shown /= (first::rest)
+        --         then M.ShowingMovement [first] rest
+        --         else M.DoneShowingMovement shown
+        --       M.NotShowingMovement -> M.ShowingMovement [first] rest
+        --   _ -> M.NotShowingMovement
   in { model2 | currentMap = currentMap, showingMovement = showingMovement}
 
 start = message Start

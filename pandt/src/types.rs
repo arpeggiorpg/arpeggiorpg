@@ -210,14 +210,9 @@ pub enum CreatureLog {
 /// Representation of state changes in a Combat. See `CreatureLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
-  CreatureLog(CreatureID, CreatureLog),
-  PathCurrentCreature(Vec<Point3>),
+  ConsumeMovement(Distance),
   ChangeCreatureInitiative(CreatureID, usize),
   EndTurn(CreatureID), // the end of this creature's turn
-}
-
-pub fn creature_logs_into_combat_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<CombatLog> {
-  ls.into_iter().map(|l| CombatLog::CreatureLog(cid.clone(), l)).collect()
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
@@ -252,7 +247,6 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
   CreatureAlreadyExists(CreatureID),
-  CreatureGroupAlreadyExists(String),
   GroupNotFound(String),
   IDTooLong(String),
   ConditionNotFound(ConditionID),
@@ -436,38 +430,9 @@ pub struct Creature {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct CreatureGroup {
-  pub name: String,
-  pub creatures: IndexedHashMap<Creature>,
-}
-
-impl CreatureGroup {
-  pub fn new(name: &str) -> CreatureGroup {
-    CreatureGroup {
-      name: name.to_string(),
-      creatures: IndexedHashMap::new(),
-    }
-  }
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
-  // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
-  // after we load data back in, because serde doesn't (currently) have any way to know that
-  // multiple Rc-wrapped values should be unified. See
-  // https://github.com/erickt/serde-rfcs/blob/master/text/0001-serializing-pointers.md
-  //
-  // A simpler way to share these references would probably be to store a Vec<Creature> on App,
-  // and then either have Vec<&Creature> here, or Vec<CreatureID>.
-  pub creatures: nonempty::NonEmptyWithCursor<Creature>,
+  pub creatures: nonempty::NonEmptyWithCursor<CreatureID>,
   pub movement_used: Distance,
-}
-
-impl DeriveKey for CreatureGroup {
-  type KeyType = String;
-  fn derive_key(&self) -> String {
-    self.name.clone()
-  }
 }
 
 impl DeriveKey for Creature {
@@ -578,13 +543,6 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("can_move", &self.can_move())?;
     str.end()
   }
-}
-
-use creature::ChangedCreature;
-
-pub trait CreatureChanger: Sized {
-  fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<Self, GameError>
-    where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]

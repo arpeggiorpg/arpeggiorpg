@@ -86,17 +86,15 @@ gameLogDecoder = sumDecoder "GameLog"
   ]
 
 type CombatLog
-  = ComLCreatureLog CreatureID CreatureLog
-  | ComLEndTurn CreatureID
-  | ComLPathCurrentCreature (List Point3)
+  = ComLEndTurn CreatureID
   | ComLChangeCreatureInitiative CreatureID Int
+  | ComLConsumeMovement Int
 
 combatLogDecoder = sumDecoder "CombatLog"
   []
-  [ ("CreatureLog", JD.map2 ComLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
-  , ("EndTurn", JD.map ComLEndTurn JD.string)
-  , ("PathCurrentCreature", JD.map ComLPathCurrentCreature (JD.list point3Decoder))
+  [ ("EndTurn", JD.map ComLEndTurn JD.string)
   , ("ChangeCreatureInitiative", JD.map2 ComLChangeCreatureInitiative (JD.index 0 JD.string) (JD.index 1 JD.int))
+  , ("ConsumeMovement", JD.map ComLConsumeMovement (JD.int))
   ]
 
 type CreatureLog
