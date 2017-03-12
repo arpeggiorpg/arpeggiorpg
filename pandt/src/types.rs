@@ -141,41 +141,50 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-  /// Create a group of creatures
-  CreateCreatureGroup(String),
-  CreateCreatureInGroup(String, CreatureCreation),
-  RemoveCreatureFromGroup(String, CreatureID),
-  SetCreatureNoteInGroup(String, CreatureID, String), // groupname, creature ID, then note value
-  /// Load a group of creatures into the game.
-  LoadCreatureGroup(String),
+  // ** Map management **
 
   /// Select the map that should be used for pathing and collision detection
   SelectMap(MapName),
   /// Change the terrain data of a map
   EditMap(MapName, Map),
+
+  // ** Combat management **
+
   /// Start a combat with the specified creatures.
   StartCombat(Vec<CreatureID>),
   /// Stop the current combat.
   StopCombat,
-  /// Use an Ability out of combat.
-  ActCreature(CreatureID, AbilityID, DecidedTarget),
-  /// Make the current creature use an ability.
-  CombatAct(AbilityID, DecidedTarget),
-  /// Move a creature along a path. There must be a clear path according to the current loaded map.
-  /// It doesn't matter whether the creature is in combat or not.
-  PathCreature(CreatureID, Point3),
-  /// Move the current creature in combat to a point. There must be a clear path according to the current loaded map.
-  PathCurrentCombatCreature(Point3),
-  /// Assign a creature's position
-  SetCreaturePos(CreatureID, Point3),
-  /// Create a new creature.
-  CreateCreature(CreatureCreation),
-  /// Remove a creature from the game entirely. Creature must not be in combat.
-  RemoveCreature(CreatureID),
   /// Add a creature to combat. Combat must already be running; otherwise use `StartCombat`.
   AddCreatureToCombat(CreatureID),
   /// Remove a creature from combat. Combat must already be running.
   RemoveCreatureFromCombat(CreatureID),
+  /// Use an Ability out of combat.
+  ActCreature(CreatureID, AbilityID, DecidedTarget),
+  /// Make the current creature use an ability.
+  CombatAct(AbilityID, DecidedTarget),
+  /// Move the current creature in combat to a point.
+  /// There must be a clear path according to the current loaded map.
+  PathCurrentCombatCreature(Point3),
+  /// End the current creature's turn.
+  Done,
+  /// Modify a creature's order in the combat list.
+  ChangeCreatureInitiative(CreatureID, usize),
+
+  // ** Creature Manipulation **
+
+  /// Create a new creature.
+  CreateCreature(CreatureCreation),
+  /// Assign a creature's position
+  SetCreaturePos(CreatureID, Point3),
+  /// Move a creature along a path. There must be a clear path according to the current loaded map.
+  /// It doesn't matter whether the creature is in combat.
+  PathCreature(CreatureID, Point3),
+  /// Set a note on a creature.
+  SetCreatureNote(CreatureID, String),
+  /// Remove a creature from the game entirely. Creature must not be in combat.
+  RemoveCreature(CreatureID),
+
+  // ** Player Manipulation **
 
   /// Register a player as available for controlling a creature.
   RegisterPlayer(PlayerID),
@@ -186,16 +195,8 @@ pub enum GameCommand {
   /// Remove control of a creature from a player.
   RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
 
-  // RetrieveFromInventory(ThingID),
-  // StowInInventory(ThingID),
-  /// End the current creature's turn.
-  Done,
-  /// Modify a creature's order in the combat list.
-  ChangeCreatureInitiative(CreatureID, usize),
   /// Roll back to a specific snapshot + log index
   Rollback(usize, usize),
-  /// Set a note on a creature.
-  SetCreatureNote(CreatureID, String),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -259,6 +260,8 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
   CreatureAlreadyExists(CreatureID),
+  CreatureGroupAlreadyExists(String),
+  GroupNotFound(String),
   IDTooLong(String),
   ConditionNotFound(ConditionID),
   InvalidCommand(GameCommand),
@@ -448,6 +451,15 @@ pub struct CreatureGroup {
   pub creatures: IndexedHashMap<Creature>,
 }
 
+impl CreatureGroup {
+  pub fn new(name: &str) -> CreatureGroup {
+    CreatureGroup {
+      name: name.to_string(),
+      creatures: IndexedHashMap::new(),
+    }
+  }
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
   // Since we serialize a whole history of combats to JSON, using Rc<Creature> pointless, because
@@ -477,7 +489,6 @@ impl DeriveKey for Creature {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
-  pub creature_groups: IndexedHashMap<CreatureGroup>,
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: HashMap<CreatureID, Creature>,

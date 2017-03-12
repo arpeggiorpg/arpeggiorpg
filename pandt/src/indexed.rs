@@ -79,15 +79,33 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     IndexedHashMap { data: HashMap::new() }
   }
 
-  fn insert(&mut self, v: V) -> Option<V> {
+  pub fn insert(&mut self, v: V) -> Option<V> {
     self.data.insert(v.derive_key(), v)
   }
 
-  fn get<'a>(&'a self, k: &<V as DeriveKey>::KeyType) -> Option<&'a V> {
+  pub fn get<'a, Q: ?Sized>(&'a self, k: &Q) -> Option<&'a V>
+    where <V as DeriveKey>::KeyType: ::std::borrow::Borrow<Q>,
+          Q: hash::Hash + Eq
+  {
     self.data.get(k)
   }
 
-  fn remove<Q: ?Sized>(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> {
+  pub fn remove(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> {
     self.data.remove(k)
+  }
+  pub fn contains_key<'a>(&'a self, k: &<V as DeriveKey>::KeyType) -> bool {
+    self.data.contains_key(k)
+  }
+
+  pub fn mutate<F>(&mut self, k: &<V as DeriveKey>::KeyType, f: F) -> Option<()>
+    where F: Fn(V) -> V
+  {
+    match self.data.remove(k) {
+      Some(thing) => {
+        self.insert(f(thing));
+        Some(())
+      }
+      None => None,
+    }
   }
 }

@@ -14,7 +14,6 @@ lazy_static! {
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
-      creature_groups: IndexedHashMap::new(),
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),
@@ -274,7 +273,8 @@ impl Game {
           Err(_) => {
             check_in_range(self.get_creature(creature_id)?,
                            self.creatures()?.values().collect(),
-                           distance, self.tile_system)
+                           distance,
+                           self.tile_system)
           }
         }
       }
@@ -445,7 +445,6 @@ pub mod test {
     let mut abilities = HashMap::new();
     abilities.insert(punch_id.clone(), punch);
     let game = Game {
-      creature_groups: IndexedHashMap::new(),
       abilities: abilities,
       classes: t_classes(),
       current_combat: None,
