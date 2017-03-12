@@ -137,6 +137,13 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+
+  // ** Scene management **
+  /// Create a scene (or, if it already exists, change the existing one).
+  CreateScene(String, MapName, HashMap<CreatureID, Point3>),
+  /// Delete a scene.
+  DeleteScene(String),
+
   // ** Map management **
   /// Select the map that should be used for pathing and collision detection
   SelectMap(MapName),
@@ -221,6 +228,8 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  CreateScene(String, MapName, HashMap<CreatureID, Point3>),
+  DeleteScene(String),
   SelectMap(MapName),
   EditMap(MapName, Map),
   CombatLog(CombatLog),
@@ -451,6 +460,7 @@ pub struct Game {
   pub current_map: Option<MapName>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
+  pub scenes: IndexedHashMap<Scene>,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -460,6 +470,20 @@ pub struct App {
   pub current_game: Game,
   pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
   pub players: HashMap<PlayerID, HashSet<CreatureID>>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Scene {
+  pub name: String,
+  pub map: MapName,
+  pub creatures: HashMap<CreatureID, Point3>,
+}
+
+impl DeriveKey for Scene {
+  type KeyType = String;
+  fn derive_key(&self) -> String {
+    self.name.clone()
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

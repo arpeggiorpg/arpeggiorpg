@@ -21,6 +21,7 @@ impl Game {
       current_map: None,
       classes: classes,
       tile_system: TileSystem::Realistic,
+      scenes: IndexedHashMap::new(),
     }
   }
 
@@ -51,35 +52,33 @@ impl Game {
     }
 
     use self::GameCommand::*;
-    let change = match (cmd.clone(), self.current_combat.as_ref()) {
-      (CreateCreature(c), _) => self.create_creature(c),
-      (PathCreature(cid, pt), _) => self.path_creature(cid, pt),
-      (SetCreaturePos(cid, pt), _) => {
-        self.change().apply_creature(cid, |c| c.creature.set_pos(pt))
+    let change = match cmd {
+      CreateScene(name, map, creatures) => {
+        self.change_with(GameLog::CreateScene(name, map, creatures))
       }
-      (SetCreatureNote(cid, note), _) => {
+      DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
+      CreateCreature(c) => self.create_creature(c),
+      PathCreature(cid, pt) => self.path_creature(cid, pt),
+      SetCreaturePos(cid, pt) => self.change().apply_creature(cid, |c| c.creature.set_pos(pt)),
+      SetCreatureNote(cid, note) => {
         self.change().apply_creature(cid, |c| c.creature.set_note(note.clone()))
       }
-      (PathCurrentCombatCreature(pt), Some(_)) => {
-        self.get_combat()?.get_movement()?.move_current(pt)
-      }
-      (CombatAct(abid, dtarget), Some(_)) => self.act(abid, dtarget),
-      (ActCreature(cid, abid, dtarget), _) => self.act_ooc(cid, abid, dtarget),
-      (SelectMap(ref name), _) => self.change_with(GameLog::SelectMap(name.clone())),
-      (EditMap(ref name, ref terrain), _) => {
+      PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
+      CombatAct(abid, dtarget) => self.act(abid, dtarget),
+      ActCreature(cid, abid, dtarget) => self.act_ooc(cid, abid, dtarget),
+      SelectMap(ref name) => self.change_with(GameLog::SelectMap(name.clone())),
+      EditMap(ref name, ref terrain) => {
         self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))
       }
-      (RemoveCreature(cid), _) => self.change_with(GameLog::RemoveCreature(cid)),
-      (StartCombat(cids), None) => self.change_with(GameLog::StartCombat(cids)),
-      (StopCombat, Some(_)) => self.change_with(GameLog::StopCombat),
-      (AddCreatureToCombat(cid), Some(_)) => self.change_with(GameLog::AddCreatureToCombat(cid)),
-      (RemoveCreatureFromCombat(cid), Some(_)) => {
-        self.change_with(GameLog::RemoveCreatureFromCombat(cid))
-      }
-      (ChangeCreatureInitiative(cid, new_pos), Some(_)) => {
+      RemoveCreature(cid) => self.change_with(GameLog::RemoveCreature(cid)),
+      StartCombat(cids) => self.change_with(GameLog::StartCombat(cids)),
+      StopCombat => self.change_with(GameLog::StopCombat),
+      AddCreatureToCombat(cid) => self.change_with(GameLog::AddCreatureToCombat(cid)),
+      RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
+      ChangeCreatureInitiative(cid, new_pos) => {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
       }
-      (Done, Some(_)) => self.next_turn(),
+      Done => self.next_turn(),
       _ => disallowed(cmd),
     }?;
     Ok(change)
@@ -87,7 +86,8 @@ impl Game {
 
   fn next_turn(&self) -> Result<ChangedGame, GameError> {
     let change = self.change().apply_combat(|c| c.next_turn())?;
-    change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(), |c| c.tick())
+    change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(),
+                          |c| c.tick())
   }
 
   fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
@@ -95,12 +95,32 @@ impl Game {
     self.change_with(GameLog::CreateCreature(creature))
   }
 
+  fn check_map(&self, map_name: &str) -> Result<(), GameError> {
+    if self.maps.contains_key(map_name) {
+      Ok(())
+    } else {
+      Err(GameError::MapNotFound(map_name.to_string()))
+    }
+  }
+
   pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
+      CreateScene(ref name, ref map_name, ref creature_positions) => {
+        newgame.check_map(map_name)?;
+        let scene = Scene {
+          name: name.to_string(),
+          map: map_name.to_string(),
+          creatures: creature_positions.clone(),
+        };
+        newgame.scenes.insert(scene);
+      }
+      DeleteScene(ref name) => {
+        newgame.scenes.remove(name);
+      }
       SelectMap(ref name) => {
-        let _ = newgame.maps.get(name).ok_or_else(|| GameError::MapNotFound(name.clone()))?;
+        newgame.check_map(name)?;
         newgame.current_map = Some(name.clone());
       }
       EditMap(ref name, ref terrain) => {
