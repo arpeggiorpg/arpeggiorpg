@@ -78,17 +78,9 @@ update msg model = case msg of
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   StartCreatingCreature ->
-    ( {model | creatingCreature = Just {id =  Nothing, name = Nothing, class = Nothing}}
+    ( {model | creatingCreature = Just {name = Nothing, class = Nothing}}
     , Cmd.none)
   CancelCreatingCreature -> ({model | creatingCreature = Nothing}, Cmd.none)
-
-  SetCreatureId input ->
-    let newId = if (String.isEmpty input) then Nothing else Just input
-        newCreating =
-          case model.creatingCreature of
-            Just x -> Just {x | id = newId}
-            Nothing -> Nothing
-    in ( { model | creatingCreature = newCreating } , Cmd.none )
 
   SetCreatureName input ->
     let newName = if (String.isEmpty input) then Nothing else Just input

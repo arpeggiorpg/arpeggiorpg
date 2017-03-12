@@ -128,8 +128,8 @@ current_game:
             - Duration: 1
             - Incapacitated
   creatures: 
-    elron: 
-      id: elron
+    0420f7db-c7ec-48af-add3-045ad859f47e:
+      id: 0420f7db-c7ec-48af-add3-045ad859f47e
       name: Elron
       portrait_url: ""
       note:
@@ -147,8 +147,8 @@ current_game:
       conditions:
       can_act: true
       can_move: true
-    kurok-to:
-      id: kurok-to
+    34877b65-1eb6-44bb-b1a8-696c424e9d0f:
+      id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
       name: Kurok To
       portrait_url: "http://i.imgur.com/g09XhxI.jpg"
       note:
@@ -166,8 +166,8 @@ current_game:
       conditions:
       can_act: true
       can_move: true
-    sil:
-      id: sil
+    f5fd4b9a-c801-4840-a39b-b5653329dc54:
+      id: f5fd4b9a-c801-4840-a39b-b5653329dc54
       name: Silmarillion
       portrait_url: ""
       note:

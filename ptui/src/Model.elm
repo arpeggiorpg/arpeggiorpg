@@ -45,7 +45,6 @@ type Msg
 
     | StartCreatingCreature
     | CancelCreatingCreature
-    | SetCreatureId T.CreatureID
     | SetCreatureName String
     | SetCreatureClass String
     | CreateCreature T.CreatureCreation
@@ -118,8 +117,7 @@ devFlags = {rpi = "http://localhost:1337/"}
 type alias ProgramFlags =
   { rpi : String }
 
-type alias PendingCreature =
-  {id: Maybe String, name: Maybe T.CreatureID, class: Maybe String}
+type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String}
 
 type alias Model =
   { app : Maybe T.App

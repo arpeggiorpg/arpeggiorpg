@@ -271,18 +271,17 @@ stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Com
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
-createCreatureDialog model app {id, name, class} =
+createCreatureDialog model app {name, class} =
   let disabledButton = button [disabled True] [text "Create Creature"]
       createCreatureButton =
-        case (id, name, class) of
-          (Just id, Just name, Just class) ->
-            let cc = T.CreatureCreation id name class {x= 0, y= 0, z=0} ""
+        case (name, class) of
+          (Just name, Just class) ->
+            let cc = T.CreatureCreation name class {x= 0, y= 0, z=0} ""
             in button [onClick (M.CreateCreature cc)] [text "Create Creature"]
           _ -> disabledButton
       cancelCreationButton = button [onClick M.CancelCreatingCreature] [text "Cancel Creation"]
   in vbox
-    [ input [type_ "text", placeholder "id", onInput M.SetCreatureId ] []
-    , input [type_ "text", placeholder "name", onInput M.SetCreatureName ] []
+    [ input [type_ "text", placeholder "name", onInput M.SetCreatureName ] []
     , select [onInput M.SetCreatureClass]
              <| [option [value ""] [text "Select a Class"]]
                 ++ (List.map (\className -> option [value className] [text className])

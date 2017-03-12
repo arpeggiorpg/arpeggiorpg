@@ -109,12 +109,13 @@ impl Game {
         }
       }
       RemoveCreature(cid) => {
-        newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+        newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
       }
       AddCreatureToCombat(cid) => {
         let mut combat = newgame.current_combat.clone().ok_or(GameError::NotInCombat)?;
-        let creature =
-          newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid))?;
+        let creature = newgame.creatures
+          .remove(&cid)
+          .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
         combat.creatures.push(creature);
         newgame.current_combat = Some(combat);
       }
@@ -138,7 +139,8 @@ impl Game {
       StartCombat(ref cids) => {
         let mut creatures = vec![];
         for cid in cids {
-          let creature = newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(*cid))?;
+          let creature =
+            newgame.creatures.remove(cid).ok_or(GameError::CreatureNotFound(cid.to_string()))?;
           creatures.push(creature);
         }
         newgame.current_combat = Some(Combat::new(creatures)?);
@@ -190,17 +192,17 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid))?)
+    self.dyn_creature(self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))?)
   }
   pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
-    self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid))
+    self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))
   }
 
   /// Get a reference to the named Creature, whether or not it's in Combat.
   pub fn find_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
     self.get_creature(cid).or_else(|_| {
       self.get_combat()
-        .map_err(|_| GameError::CreatureNotFound(cid.clone()))
+        .map_err(|_| GameError::CreatureNotFound(cid.to_string()))
         .and_then(|combat| combat.get_creature(cid))
     })
   }

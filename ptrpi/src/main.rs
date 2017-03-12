@@ -118,14 +118,14 @@ fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
 #[get("/movement_options/<cid>")]
 fn movement_options(pt: State<PT>, cid: &str) -> PTResult<Vec<Point3>> {
   let app = pt.app()?;
-  let cid = CreatureID::new(cid)?;
+  let cid = CreatureID::from_str(cid)?;
   Ok(CORS::any(JSON(app.get_movement_options(cid)?)))
 }
 
 #[get("/target_options/<cid>/<abid>")]
 fn target_options(pt: State<PT>, cid: &str, abid: &str) -> PTResult<Vec<PotentialTarget>> {
   let app = pt.app()?;
-  let cid = CreatureID::new(cid)?;
+  let cid = CreatureID::from_str(cid)?;
   let abid = AbilityID::new(abid)?;
   Ok(CORS::any(JSON(app.get_target_options(cid, abid)?)))
 }

@@ -10,6 +10,7 @@ extern crate odds;
 extern crate string_wrapper;
 extern crate pathfinding;
 extern crate num_traits;
+extern crate uuid;
 
 #[macro_use]
 extern crate lazy_static;

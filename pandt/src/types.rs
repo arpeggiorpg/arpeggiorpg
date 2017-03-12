@@ -3,15 +3,15 @@
 use std::collections::{HashMap, VecDeque, HashSet};
 use std::error::Error;
 use std::fmt;
-use std::iter::FromIterator;
 use string_wrapper::StringWrapper;
 
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
+use uuid;
+
 use serde::ser;
-use serde::de;
 use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
@@ -79,21 +79,17 @@ impl Energy {
 pub struct PlayerID(pub String);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct CreatureID(StringWrapper<[u8; 64]>);
+pub struct CreatureID(uuid::Uuid);
 impl CreatureID {
-  pub fn new(s: &str) -> Result<Self, GameError> {
-    let sw =
-      StringWrapper::from_str_safe(s).ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
-    Ok(CreatureID(sw))
+  pub fn new() -> CreatureID {
+    CreatureID(uuid::Uuid::new_v4())
+  }
+  pub fn from_str(s: &str) -> Result<CreatureID, GameError> {
+    Ok(CreatureID(uuid::Uuid::parse_str(s).map_err(|_| GameError::CreatureNotFound(s.to_string()))?))
   }
   pub fn to_string(&self) -> String {
-    self.0.to_string()
+    self.0.hyphenated().to_string()
   }
-}
-
-#[cfg(test)]
-pub fn cid(s: &str) -> CreatureID {
-  CreatureID::new(s).unwrap()
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -142,14 +138,12 @@ impl Distance {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
   // ** Map management **
-
   /// Select the map that should be used for pathing and collision detection
   SelectMap(MapName),
   /// Change the terrain data of a map
   EditMap(MapName, Map),
 
   // ** Combat management **
-
   /// Start a combat with the specified creatures.
   StartCombat(Vec<CreatureID>),
   /// Stop the current combat.
@@ -171,7 +165,6 @@ pub enum GameCommand {
   ChangeCreatureInitiative(CreatureID, usize),
 
   // ** Creature Manipulation **
-
   /// Create a new creature.
   CreateCreature(CreatureCreation),
   /// Assign a creature's position
@@ -185,7 +178,6 @@ pub enum GameCommand {
   RemoveCreature(CreatureID),
 
   // ** Player Manipulation **
-
   /// Register a player as available for controlling a creature.
   RegisterPlayer(PlayerID),
   /// Give control of a creature to a player.
@@ -269,7 +261,7 @@ pub enum GameError {
   NoAbility(AbilityID),
   CombatMustHaveCreatures,
   CreatureLacksAbility(CreatureID, AbilityID),
-  CreatureNotFound(CreatureID),
+  CreatureNotFound(String),
   InvalidTarget(CreatureID),
   InvalidTargetForTargetSpec(TargetSpec, DecidedTarget),
   CreatureOutOfRange(CreatureID),
@@ -415,7 +407,6 @@ pub struct Class {
 /// A specification for creating a new creature.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct CreatureCreation {
-  pub id: CreatureID,
   pub name: String,
   pub class: String,
   pub pos: Point3,

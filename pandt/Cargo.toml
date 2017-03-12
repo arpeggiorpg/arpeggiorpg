@@ -20,3 +20,4 @@ pathfinding = "0.1.8"
 num-traits = "0.1.36"
 lazy_static = "0.1.*"
 rand = "0.3"
+uuid = {version = "0.4", features = ["v4", "serde"]}

@@ -17,16 +17,14 @@ type alias MapName = String
 type alias Distance = Int
 
 type alias CreatureCreation =
-  { id : CreatureID
-  , name : String
+  { name : String
   , class: String
   , pos: Point3
   , portrait_url: String
   }
 
 creatureCreationEncoder cc = JE.object
-  [ ("id", JE.string cc.id)
-  , ("name", JE.string cc.name)
+  [ ("name", JE.string cc.name)
   , ("class", JE.string cc.class)
   , ("pos", point3Encoder cc.pos)
   , ("portrait_url", JE.string cc.portrait_url)]

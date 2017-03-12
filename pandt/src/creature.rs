@@ -229,7 +229,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 impl Creature {
   pub fn create(spec: &CreatureCreation) -> Creature {
     Creature {
-      id: spec.id,
+      id: CreatureID::new(),
       name: spec.name.to_string(),
       class: spec.class.clone(),
       pos: spec.pos,

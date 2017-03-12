@@ -64,7 +64,7 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
         let current_pos = new.creatures
           .iter()
           .position(|c| c.id == cid)
-          .ok_or(GameError::CreatureNotFound(cid))?;
+          .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
         if new_pos >= new.creatures.len() {
           return Err(GameError::InitiativeOutOfBounds(new.creatures.len() - 1));
         }
@@ -159,14 +159,17 @@ impl Combat {
   }
 
   pub fn get_creature_data(&self, cid: CreatureID) -> Result<&Creature, GameError> {
-    self.creatures.iter().find(|c| c.id() == cid).ok_or(GameError::CreatureNotFound(cid))
+    self.creatures
+      .iter()
+      .find(|c| c.id() == cid)
+      .ok_or(GameError::CreatureNotFound(cid.to_string()))
   }
 
   pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
     self.creatures
       .iter_mut()
       .find(|c| c.id() == cid)
-      .ok_or(GameError::CreatureNotFound(cid))
+      .ok_or(GameError::CreatureNotFound(cid.to_string()))
   }
 
   pub fn current_creature_data(&self) -> &Creature {
@@ -181,7 +184,7 @@ impl Combat {
     let idx = combat.creatures
       .iter()
       .position(|c| c.id() == cid)
-      .ok_or(GameError::CreatureNotFound(cid))?;
+      .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => {
         Err(GameError::BuggyProgram("can't remove index THAT WE FOUND in remove_from_combat"
