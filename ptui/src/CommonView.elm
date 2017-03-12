@@ -11,6 +11,7 @@ import Css as S
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -206,7 +207,7 @@ movementControls extras model =
 modalOverlay : Html M.Msg -> List (Html M.Msg)
 modalOverlay content =
   let box =
-        sdiv [s [ S.position S.absolute
+        sdiv [s [ S.position S.fixed
                 , S.left (S.pct 50)
                 , S.top (S.pct 50)
                 , S.transform (S.translate2 (S.pct -50) (S.pct -50))
@@ -214,9 +215,10 @@ modalOverlay content =
                 , S.backgroundColor (S.rgb 255 255 255)]]
             [content]
       cover =
-        sdiv [s [S.position S.absolute
-                , S.width (S.vw 100)
-                , S.height (S.vh 100)
+        sdiv [s [ S.position S.fixed
+                , S.left (S.px 0), S.top (S.px 0)
+                , S.width (S.pct 100)
+                , S.height (S.pct 100)
                 , S.backgroundColor (S.rgba 0 0 0 0.5)]]
             []
   in [cover, box]
@@ -234,18 +236,13 @@ checkModal model app =
           then Just (targetSelector model game M.CombatAct abid)
           else Nothing
         Nothing -> Nothing
-  in selectingTargets
+    error = if model.error /= "" then Just (errorBox model) else Nothing
+  in selectingTargets |> MaybeEx.or error
 
 errorBox : M.Model -> Html M.Msg
 errorBox model =
   if model.error == "" then text "" else
-  sdiv [s [ S.position S.absolute
-         , S.left (S.pct 50)
-         , S.bottom (S.px 0)
-         , S.transform (S.translate (S.pct -50))
-         , plainBorder
-         , S.backgroundColor (S.rgb 255 255 255)]]
-      [ hbox [text "Last error:", pre [] [text model.error]]  ]
+  vbox [text "Error", button [onClick M.ClearError] [text "OK"], pre [] [text model.error]]
 
 creatureIcon : T.App -> T.Creature -> Html M.Msg
 creatureIcon app creature = 

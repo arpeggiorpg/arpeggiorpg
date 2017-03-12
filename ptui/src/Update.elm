@@ -127,6 +127,7 @@ update msg model = case msg of
     in ({ model | showingMovement = showingMovement }, Cmd.none)
 
   ShowError s -> ( {model | error = s}, Cmd.none)
+  ClearError -> ({model | error = ""}, Cmd.none)
 
   SelectCreatures cb commandName ->
     ( { model | selectingCreatures = Just ([], cb, commandName)}, Cmd.none)

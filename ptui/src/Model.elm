@@ -36,6 +36,7 @@ type Msg
     | ReceivedAppUpdate (Result Http.Error T.App)
     | AppUpdate (Result Http.Error T.App)
     | ShowError String
+    | ClearError
     | SetPlayerID T.PlayerID
     | RegisterPlayer
     | UpdateSaveMapName T.MapName
