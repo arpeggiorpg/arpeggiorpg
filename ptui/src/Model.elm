@@ -50,6 +50,12 @@ type Msg
     | SetCreatureClass String
     | CreateCreature T.CreatureCreation
 
+    | StartCreatingScene
+    | CancelCreatingScene
+    | SetSceneName String
+    | SetSceneMapName T.MapName
+    | CreateScene T.Scene
+
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
     | SelectAbility T.CreatureID T.AbilityID
@@ -110,6 +116,7 @@ defaultModel flags =
     , gridSize = 60
     , gridOffset = {x = -15, y = 10}
     , collapsed = Dict.empty
+    , creatingScene = Nothing
   }
 
 devFlags : ProgramFlags
@@ -123,6 +130,7 @@ type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String}
 type alias Model =
   { app : Maybe T.App
   , creatingCreature : Maybe PendingCreature
+  , creatingScene : Maybe T.Scene
   , selectedAbility : Maybe (T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
   , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)

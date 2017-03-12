@@ -140,7 +140,7 @@ pub enum GameCommand {
 
   // ** Scene management **
   /// Create a scene (or, if it already exists, change the existing one).
-  CreateScene(String, MapName, HashMap<CreatureID, Point3>),
+  CreateScene(Scene),
   /// Delete a scene.
   DeleteScene(String),
 
@@ -228,7 +228,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
-  CreateScene(String, MapName, HashMap<CreatureID, Point3>),
+  CreateScene(Scene),
   DeleteScene(String),
   SelectMap(MapName),
   EditMap(MapName, Map),
@@ -518,7 +518,7 @@ impl<'a> ser::Serialize for RPIApp<'a> {
 
 impl<'a> ser::Serialize for RPIGame<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 7)?;
+    let mut str = serializer.serialize_struct("Game", 8)?;
     let game = self.0;
     let com = match game.get_combat() {
       Ok(c) => Some(c),
@@ -532,6 +532,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("current_map", &game.current_map)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
+    str.serialize_field("scenes", &game.scenes)?;
     str.end()
   }
 }

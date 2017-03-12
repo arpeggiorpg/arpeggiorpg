@@ -41,7 +41,8 @@ viewGame model app =
         [mapView model app]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
-    , overlay (S.px 80) (S.px 0) [S.height (S.px 50)]
+    , overlay (S.px 440) (S.px 0) [] [sceneManagementView model app]
+    , overlay (S.px 80) (S.px 0) [S.width (S.px 360), S.height (S.px 50)]
         [ hbox [mapConsole model app , editMapConsole model] ]
     , overlay (S.px 80) (S.px 50) []
       [ vbox
@@ -60,6 +61,15 @@ viewGame model app =
     , bottomActionBar app
     ]
     ++ modalView model app
+
+sceneManagementView : M.Model -> T.App -> Html M.Msg
+sceneManagementView model app =
+  vbox
+    [ h3 [] [text "Scenes"]
+    , hbox <|
+        List.map (\sceneName -> button [] [text sceneName]) (Dict.keys app.current_game.scenes)
+    , button [onClick M.StartCreatingScene] [text "Create a scene"]
+    ]
 
 bottomActionBar : T.App -> Html M.Msg
 bottomActionBar app =
@@ -101,8 +111,10 @@ checkModal model app =
       Maybe.map (\(selected, cb, name) -> selectCreaturesView model app selected cb name)
         model.selectingCreatures
     creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
+    creatingScene = Maybe.map (createSceneDialog model app) model.creatingScene
   in selectingCreatures
       |> MaybeEx.orElse creatingCreature
+      |> MaybeEx.orElse creatingScene
       |> MaybeEx.orElse (CommonView.checkModal model app)
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
@@ -217,14 +229,19 @@ deleteCreatureButton : T.Creature -> Html M.Msg
 deleteCreatureButton creature =
   button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
 
+mapSelectorMenu : M.Model -> T.App -> (String -> M.Msg) -> Html M.Msg
+mapSelectorMenu model app action =
+  let isCurrent mapName = (Just mapName) == app.current_game.current_map
+  in select [onInput action]
+    <| [option [value ""] [text "Select a Map"]]
+       ++ (List.map (\mapName -> option [value mapName, selected (isCurrent mapName)] [text mapName]) (Dict.keys app.current_game.maps))
+
 {-| Various GM-specific controls for affecting the map. -}
 mapConsole : M.Model -> T.App -> Html M.Msg
 mapConsole model app =
   let
     editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
-    mapSelector = vbox <|
-      let mapSelectorItem name = button [onClick (M.SendCommand (T.SelectMap name))] [text name]
-      in (List.map mapSelectorItem (Dict.keys app.current_game.maps))
+    mapSelector = mapSelectorMenu model app (M.SendCommand << T.SelectMap)
     oocToggler =
         hbox [text "Show Out-of-Combat creatures: "
         , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
@@ -268,6 +285,14 @@ startCombatButton =
 {-| A button for stopping combat. -}
 stopCombatButton : Html M.Msg
 stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]
+
+{-| A form for creating a scene. -}
+createSceneDialog : M.Model -> T.App -> T.Scene -> Html M.Msg
+createSceneDialog model app scene =
+  vbox [h3 [] [text "Create a Scene"]
+       , input [type_ "text", placeholder "Name", onInput M.SetSceneName] []
+       , mapSelectorMenu model app M.SetSceneMapName
+       , hbox [button [onClick (M.CreateScene scene)] [text "Create"], button [onClick M.CancelCreatingScene] [text "Cancel"]]]
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
@@ -316,6 +341,7 @@ hsbox = habox [s [S.justifyContent S.spaceBetween]]
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
+    T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
     T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]

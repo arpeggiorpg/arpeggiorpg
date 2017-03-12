@@ -59,7 +59,8 @@ type alias GameSnapshot = {}
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
-  = GLSelectMap MapName
+  = GLCreateScene Scene
+  | GLSelectMap MapName
   | GLEditMap MapName Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
@@ -73,7 +74,8 @@ type GameLog
 
 gameLogDecoder = sumDecoder "GameLog"
   [("StopCombat", GLStopCombat)]
-  [ ("SelectMap", JD.map GLSelectMap JD.string)
+  [ ("CreateScene", JD.map GLCreateScene sceneDecoder)
+  , ("SelectMap", JD.map GLSelectMap JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
@@ -128,6 +130,7 @@ type alias Game =
   , creatures : Dict CreatureID Creature
   , maps: Dict MapName Map
   , current_map: Maybe MapName
+  , scenes: Dict String Scene
   }
 
 gameDecoder : JD.Decoder Game
@@ -139,6 +142,29 @@ gameDecoder =
     |> P.required "creatures" (JD.dict creatureDecoder)
     |> P.required "maps" (JD.dict mapDecoder)
     |> P.required "current_map" (JD.maybe JD.string)
+    |> P.required "scenes" (JD.dict sceneDecoder)
+
+type alias Scene =
+  { name: String
+  , map: String
+  , creatures: Dict CreatureID Point3
+  }
+
+sceneDecoder : JD.Decoder Scene
+sceneDecoder =
+  JD.map3 Scene
+    (JD.field "name" JD.string)
+    (JD.field "map" JD.string)
+    (JD.field "creatures" (JD.dict point3Decoder))
+
+sceneEncoder scene =
+  let encCreatures = List.map (\(key, value) -> (key, point3Encoder value)) (Dict.toList scene.creatures)
+  in 
+  JE.object
+    [ ("name", JE.string scene.name)
+    , ("map", JE.string scene.map)
+    , ("creatures", JE.object encCreatures)
+    ]
 
 type alias Map = List Point3
 
@@ -369,7 +395,8 @@ effectDecoder =
 
 -- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
-  = SelectMap MapName
+  = CreateScene Scene
+  | SelectMap MapName
   | EditMap MapName Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
@@ -384,8 +411,6 @@ type GameCommand
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
-  -- RetrieveFromInventory(ThingID)
-  -- StowInInventory(ThingID)
   | Done
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
@@ -394,25 +419,46 @@ type GameCommand
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
-    RegisterPlayer pid -> JE.object [("RegisterPlayer", JE.string pid)]
-    GiveCreaturesToPlayer pid cids -> JE.object [("GiveCreaturesToPlayer", JE.list [JE.string pid, JE.list (List.map JE.string cids)])]
-    StartCombat cids -> JE.object [("StartCombat", JE.list (List.map JE.string cids))]
-    CreateCreature creature -> JE.object [("CreateCreature", creatureCreationEncoder creature)]
-    RemoveCreature cid -> JE.object [("RemoveCreature", JE.string cid)]
-    StopCombat -> JE.string "StopCombat"
-    PathCurrentCombatCreature pt -> JE.object [("PathCurrentCombatCreature", point3Encoder pt)]
-    PathCreature cid pt -> JE.object [("PathCreature", JE.list [JE.string cid, point3Encoder pt])]
-    SetCreaturePos cid pt -> JE.object [("SetCreaturePos", JE.list [JE.string cid, point3Encoder pt])]
-    AddCreatureToCombat cid -> JE.object [("AddCreatureToCombat", JE.string cid)]
-    RemoveCreatureFromCombat cid -> JE.object [("RemoveCreatureFromCombat", JE.string cid)]
-    CombatAct abid dtarget -> JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
-    ActCreature cid abid dtarget -> JE.object [("ActCreature", JE.list [JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
-    Done -> JE.string "Done"
-    SelectMap name -> JE.object [("SelectMap", JE.string name)]
-    EditMap name terrain -> JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
-    Rollback snapIdx logIdx -> JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
-    ChangeCreatureInitiative cid newPos -> JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
-    SetCreatureNote cid note -> JE.object [("SetCreatureNote", JE.list [JE.string cid, JE.string note])]
+    CreateScene scene ->
+      JE.object [("CreateScene", sceneEncoder scene)]
+    RegisterPlayer pid ->
+      JE.object [("RegisterPlayer", JE.string pid)]
+    GiveCreaturesToPlayer pid cids ->
+      JE.object [("GiveCreaturesToPlayer", JE.list [JE.string pid, JE.list (List.map JE.string cids)])]
+    StartCombat cids ->
+      JE.object [("StartCombat", JE.list (List.map JE.string cids))]
+    CreateCreature creature ->
+      JE.object [("CreateCreature", creatureCreationEncoder creature)]
+    RemoveCreature cid ->
+      JE.object [("RemoveCreature", JE.string cid)]
+    StopCombat ->
+      JE.string "StopCombat"
+    PathCurrentCombatCreature pt ->
+      JE.object [("PathCurrentCombatCreature", point3Encoder pt)]
+    PathCreature cid pt ->
+      JE.object [("PathCreature", JE.list [JE.string cid, point3Encoder pt])]
+    SetCreaturePos cid pt ->
+      JE.object [("SetCreaturePos", JE.list [JE.string cid, point3Encoder pt])]
+    AddCreatureToCombat cid ->
+      JE.object [("AddCreatureToCombat", JE.string cid)]
+    RemoveCreatureFromCombat cid ->
+      JE.object [("RemoveCreatureFromCombat", JE.string cid)]
+    CombatAct abid dtarget ->
+      JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
+    ActCreature cid abid dtarget ->
+      JE.object [("ActCreature", JE.list [JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
+    Done ->
+      JE.string "Done"
+    SelectMap name ->
+      JE.object [("SelectMap", JE.string name)]
+    EditMap name terrain ->
+      JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
+    Rollback snapIdx logIdx ->
+      JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
+    ChangeCreatureInitiative cid newPos ->
+      JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
+    SetCreatureNote cid note ->
+      JE.object [("SetCreatureNote", JE.list [JE.string cid, JE.string note])]
 
 
 type RustResult

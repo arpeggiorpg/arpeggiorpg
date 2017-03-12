@@ -53,9 +53,7 @@ impl Game {
 
     use self::GameCommand::*;
     let change = match cmd {
-      CreateScene(name, map, creatures) => {
-        self.change_with(GameLog::CreateScene(name, map, creatures))
-      }
+      CreateScene(scene) => self.change_with(GameLog::CreateScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(c) => self.create_creature(c),
       PathCreature(cid, pt) => self.path_creature(cid, pt),
@@ -107,14 +105,9 @@ impl Game {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
-      CreateScene(ref name, ref map_name, ref creature_positions) => {
-        newgame.check_map(map_name)?;
-        let scene = Scene {
-          name: name.to_string(),
-          map: map_name.to_string(),
-          creatures: creature_positions.clone(),
-        };
-        newgame.scenes.insert(scene);
+      CreateScene(ref scene) => {
+        newgame.check_map(&scene.map)?;
+        newgame.scenes.insert(scene.clone());
       }
       DeleteScene(ref name) => {
         newgame.scenes.remove(name);

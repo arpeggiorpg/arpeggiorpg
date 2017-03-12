@@ -79,6 +79,24 @@ update msg model = case msg of
       Just playerID -> (model, sendCommand model.rpiURL (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
+  StartCreatingScene ->
+    ({model | creatingScene = Just {name = "", map = "", creatures = Dict.empty}}, Cmd.none)
+  CancelCreatingScene -> ({model | creatingScene = Nothing}, Cmd.none)
+  SetSceneName name ->
+    let newScene =
+          case model.creatingScene of 
+            Just cscene -> Just {cscene | name = name}
+            Nothing -> Nothing
+    in ({ model | creatingScene = newScene}, Cmd.none)
+  SetSceneMapName mapName ->
+    let newScene =
+          case model.creatingScene of
+            Just cscene -> Just { cscene | map = mapName}
+            Nothing -> Nothing
+    in ({model | creatingScene = newScene}, Cmd.none)
+  CreateScene scene ->
+    ({model | creatingScene = Nothing}, sendCommand model.rpiURL (T.CreateScene scene))
+
   StartCreatingCreature ->
     ( {model | creatingCreature = Just {name = Nothing, class = Nothing}}
     , Cmd.none)

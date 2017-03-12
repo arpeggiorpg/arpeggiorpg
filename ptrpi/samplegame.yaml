@@ -1,6 +1,7 @@
 ---
 players:
 current_game:
+  scenes: {}
   tile_system: Realistic
   current_map: map1
   maps:
