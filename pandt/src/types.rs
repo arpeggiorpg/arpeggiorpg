@@ -409,7 +409,6 @@ pub struct Class {
 pub struct CreatureCreation {
   pub name: String,
   pub class: String,
-  pub pos: Point3,
   pub portrait_url: String,
 }
 

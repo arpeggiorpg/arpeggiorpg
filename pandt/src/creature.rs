@@ -232,7 +232,7 @@ impl Creature {
       id: CreatureID::new(),
       name: spec.name.to_string(),
       class: spec.class.clone(),
-      pos: spec.pos,
+      pos: (0,0,0),
       speed: Distance(STANDARD_CREATURE_SPEED),
       max_energy: Energy(10),
       cur_energy: Energy(10),

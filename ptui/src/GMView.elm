@@ -276,7 +276,7 @@ createCreatureDialog model app {name, class} =
       createCreatureButton =
         case (name, class) of
           (Just name, Just class) ->
-            let cc = T.CreatureCreation name class {x= 0, y= 0, z=0} ""
+            let cc = T.CreatureCreation name class ""
             in button [onClick (M.CreateCreature cc)] [text "Create Creature"]
           _ -> disabledButton
       cancelCreationButton = button [onClick M.CancelCreatingCreature] [text "Cancel Creation"]
