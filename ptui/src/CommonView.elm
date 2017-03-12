@@ -157,7 +157,7 @@ combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
-  let creatures = List.filterMap (T.findCreature game) (T.potentialCreatureTargets model.potentialTargets)
+  let creatures = List.filterMap (T.getCreature game) (T.potentialCreatureTargets model.potentialTargets)
   in hbox <|
     [ case (Dict.get abid game.abilities) of
         Just ability -> case ability.target of

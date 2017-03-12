@@ -459,17 +459,8 @@ combatCreature combat = case List.head (List.drop combat.creatures.cursor combat
   Just c -> c
   Nothing -> Debug.crash "Creature CursorList was invalid"
 
---- Find a creature whether it's in combat or not.
-findCreature : Game -> CreatureID -> Maybe Creature
-findCreature game cid =
-  maybeOr (Maybe.andThen (\combat -> getCreatureInCombat combat cid) game.current_combat)
-          (getCreatureOOC game cid)
-
-getCreatureInCombat : Combat -> CreatureID -> Maybe Creature
-getCreatureInCombat combat cid = listFind (\c -> c.id == cid) combat.creatures.data
-
-getCreatureOOC : Game -> CreatureID -> Maybe Creature
-getCreatureOOC game cid = Dict.get cid game.creatures
+getCreature : Game -> CreatureID -> Maybe Creature
+getCreature game cid = Dict.get cid game.creatures
 
 potentialCreatureTargets : List PotentialTarget -> List CreatureID
 potentialCreatureTargets pts =
@@ -485,7 +476,7 @@ playerIsRegistered app pid = Dict.member pid app.players
 getPlayerCreatures : App -> PlayerID -> List Creature
 getPlayerCreatures app pid =
   -- this sucks because it doesn't throw any kind of error when PID or CID aren't found
-  List.filterMap (findCreature app.current_game)
+  List.filterMap (getCreature app.current_game)
                  (Set.toList (Maybe.withDefault Set.empty (Dict.get pid app.players)))
 
 isCreatureInCombat : Game -> CreatureID -> Bool
