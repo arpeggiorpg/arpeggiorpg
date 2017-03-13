@@ -230,7 +230,7 @@ update msg model = case msg of
                     if not (List.member pt terrain)
                     then pt :: terrain
                     else List.filter (\el -> el /= pt) terrain
-              in M.EditingMap name terrain
+              in M.EditingMap name newTerrain
             x -> x
     in ({model | focus = focus}, Cmd.none)
 
