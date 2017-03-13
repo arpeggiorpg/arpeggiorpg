@@ -207,12 +207,15 @@ availableCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
 availableCreatureEntry model app creature = vbox <|
   [hbox <|
     [ CommonView.creatureCard [noteBox model creature] app creature
-    ] ++ case app.current_game.current_combat of
-        Just _ -> [engageButton creature]
-        Nothing -> []
-    ++ [
-      deleteCreatureButton creature
-    ], hbox (CommonView.oocActionBar app.current_game creature)]
+    , case app.current_game.current_combat of
+        Just combat ->
+          if List.member creature.id combat.creatures.data
+          then text ""
+          else engageButton creature
+        Nothing -> text ""
+    , deleteCreatureButton creature
+    ]
+  , hbox (CommonView.oocActionBar app.current_game creature)]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}
