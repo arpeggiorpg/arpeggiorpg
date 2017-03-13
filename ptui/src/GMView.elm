@@ -301,7 +301,9 @@ createSceneDialog model app scene =
     vbox [h3 [] [text "Create a Scene"]
          , input [type_ "text", placeholder "Name", onInput M.SetSceneName] []
          , mapSelectorMenu "" model app M.SetSceneMapName
-         , hbox [button [onClick (M.CreateScene scene), disabled (not ready)] [text "Create"], button [onClick M.CancelCreatingScene] [text "Cancel"]]]
+         , hbox
+            [ button [onClick (M.CreateScene scene), disabled (not ready)] [text "Create"]
+            , button [onClick M.CancelCreatingScene] [text "Cancel"]]]
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
