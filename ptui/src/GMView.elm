@@ -154,32 +154,39 @@ how we render the map: combat, movement, editing, regular play.
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   let game = app.current_game
-      movementGrid msg mvmtReq creature =
-        Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) creature vCreatures
-      movementMap =
+      movementGrid scene msg mvmtReq creature =
+        case Dict.get creature.id scene.creatures of
+          Just pos -> Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos (vCreatures scene)
+          Nothing -> text "Moving Creature is not in this scene"
+      movementMap scene =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid (M.PathCreature creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid scene (M.PathCreature creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
                     Just creature -> (creature, M.PathCreature creature.id)
                     Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
-            in Just <| movementGrid moveMessage mvmtReq creature
+            in Just <| movementGrid scene moveMessage mvmtReq creature
           _ -> Nothing
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
         in { mapc | highlight = highlight
                   , movable = Just M.GetMovementOptions}
-      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
-      defaultMap terrain () = Grid.terrainMap model terrain vCreatures
+      vCreatures scene = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
+      defaultMap scene () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) (vCreatures scene)
   in 
     case model.focus of
       M.EditingMap name map -> Grid.editMap model map []
       M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
-      M.Scene name -> movementMap |> MaybeEx.unpack (defaultMap (M.getMapForScene model name)) identity
+      M.Scene name ->
+        case Dict.get name game.scenes of
+          Just scene ->
+            movementMap scene
+            |> MaybeEx.unpack (defaultMap scene) identity
+          Nothing -> text ""
       M.NoFocus -> text ""
 
 {-| A navigator for available creatures, i.e., those that aren't in combat. -}

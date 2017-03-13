@@ -1,9 +1,15 @@
 ---
 players:
 current_game:
-  scenes: {}
+  scenes:
+    "The T":
+      creatures:
+        f5fd4b9a-c801-4840-a39b-b5653329dc54: [0, 0, 0]
+        34877b65-1eb6-44bb-b1a8-696c424e9d0f: [1, 1, 0]
+        0420f7db-c7ec-48af-add3-045ad859f47e: [-1, 0, 0]
+      name: "The T"
+      map: map1
   tile_system: Realistic
-  current_map: map1
   maps:
     empty-map:
     map1:
@@ -141,10 +147,6 @@ current_game:
       class: ranger
       max_health: 10
       cur_health: 10
-      pos: 
-        - 1
-        - 0
-        - 0
       conditions:
       can_act: true
       can_move: true
@@ -160,10 +162,6 @@ current_game:
       class: rogue
       max_health: 10
       cur_health: 10
-      pos: 
-        - 0
-        - 1
-        - 0
       conditions:
       can_act: true
       can_move: true
@@ -179,10 +177,6 @@ current_game:
       class: cleric
       max_health: 10
       cur_health: 10
-      pos: 
-        - 1
-        - 1
-        - 0
       conditions:
       can_act: true
       can_move: true

@@ -28,7 +28,7 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{App, RPIApp, AbilityID, CreatureID, GameCommand, GameError, Point3,
+use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneName, GameCommand, GameError, Point3,
                    PotentialTarget};
 
 
@@ -115,19 +115,21 @@ fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
   Ok(CORS::any(JSON(app.get_combat_movement_options()?)))
 }
 
-#[get("/movement_options/<cid>")]
-fn movement_options(pt: State<PT>, cid: &str) -> PTResult<Vec<Point3>> {
+#[get("/movement_options/<scene>/<cid>")]
+fn movement_options(pt: State<PT>, scene: &str, cid: &str) -> PTResult<Vec<Point3>> {
   let app = pt.app()?;
   let cid = CreatureID::from_str(cid)?;
-  Ok(CORS::any(JSON(app.get_movement_options(cid)?)))
+  let scene = SceneName(scene.to_string());
+  Ok(CORS::any(JSON(app.get_movement_options(scene, cid)?)))
 }
 
-#[get("/target_options/<cid>/<abid>")]
-fn target_options(pt: State<PT>, cid: &str, abid: &str) -> PTResult<Vec<PotentialTarget>> {
+#[get("/target_options/<scene>/<cid>/<abid>")]
+fn target_options(pt: State<PT>, scene: &str, cid: &str, abid: &str) -> PTResult<Vec<PotentialTarget>> {
   let app = pt.app()?;
+  let scene = SceneName(scene.to_string());
   let cid = CreatureID::from_str(cid)?;
   let abid = AbilityID::new(abid)?;
-  Ok(CORS::any(JSON(app.get_target_options(cid, abid)?)))
+  Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
 }
 
 fn main() {

@@ -22,18 +22,17 @@ import Elements exposing (..)
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
-visibleCreatures : M.Model -> T.Game -> List Grid.MapCreature
-visibleCreatures model game =
+visibleCreatures : T.Game -> T.Scene -> List Grid.MapCreature
+visibleCreatures game scene =
   let mapInfo creature =
-    Maybe.map (\class -> {creature = creature, highlight = False, movable = Nothing, class = class})
-              (Dict.get creature.class game.classes)
+        Dict.get creature.class game.classes
+          |> Maybe.andThen (\class ->
+              Dict.get creature.id scene.creatures
+                |> Maybe.map (\pos ->
+                  {creature = creature, highlight = False, movable = Nothing, class = class, pos = pos}))
+      creatures = List.filterMap (T.getCreature game) (Dict.keys scene.creatures)
   in
-    case game.current_combat of
-      Just combat ->
-        if model.showOOC
-        then List.filterMap mapInfo <| combat.creatures.data ++ (Dict.values game.creatures)
-        else List.filterMap mapInfo combat.creatures.data
-      Nothing -> (List.filterMap mapInfo (Dict.values game.creatures))
+    List.filterMap mapInfo creatures
 
 creatureCard : List (Html M.Msg) -> T.App -> T.Creature -> Html M.Msg
 creatureCard extras app creature =
@@ -53,8 +52,6 @@ creatureCard extras app creature =
                 [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
           , sdiv (cellStyles (S.rgb 0 255 255))
                 [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
-          , sdiv (cellStyles (S.rgb 255 255 255))
-                [text <| (toString creature.pos.x) ++ ", " ++ (toString creature.pos.y)]
           ]
       -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
       --        , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]

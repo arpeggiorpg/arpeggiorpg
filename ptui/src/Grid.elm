@@ -23,6 +23,7 @@ type alias MapCreature =
   , highlight : Bool
   , movable : Maybe (T.Creature -> M.Msg)
   , class : T.Class
+  , pos : T.Point3
   }
 
 terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
@@ -32,13 +33,13 @@ editMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
 editMap model terrain creatures =
   baseMap model terrain creatures [] True
 
-movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Creature -> List MapCreature -> Svg M.Msg
-movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain creature creatures =
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List MapCreature -> Svg M.Msg
+movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain movingFrom creatures =
   let targetPoints =
         if moveAnywhere
-        then calculateAllMovementOptions creature.pos (max_distance // 100)
+        then calculateAllMovementOptions movingFrom (max_distance // 100)
         else movement_options
-      movementTiles = movementTargets moveMsg targetPoints terrain creature.pos max_distance
+      movementTiles = movementTargets moveMsg targetPoints terrain movingFrom max_distance
       highlightMovingCreature : MapCreature -> MapCreature
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
@@ -110,7 +111,7 @@ gridCreature creature =
           Just fn -> [onClick (fn creature.creature)]
           Nothing -> []
       attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize), rx "10", ry "10"] ++ movableEventHandler
-      pos = creature.creature.pos
+      pos = creature.pos
       creatureNameEl name =
         text_ [ HA.style [("pointer-events", "none")]
               , fontSize "50"
@@ -132,7 +133,7 @@ gridCreature creature =
         then creatureNameEl creature.creature.id
         else creatureImageEl creature.creature.portrait_url
   in g []
-    [ tile creatureColor attrs creature.creature.pos
+    [ tile creatureColor attrs creature.pos
     , foreground ]
 
 baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)

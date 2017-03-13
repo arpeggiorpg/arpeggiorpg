@@ -79,7 +79,7 @@ impl Energy {
 pub struct PlayerID(pub String);
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct SceneName(String);
+pub struct SceneName(pub String);
 
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

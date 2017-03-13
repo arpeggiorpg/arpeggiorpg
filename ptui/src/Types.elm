@@ -129,7 +129,6 @@ type alias Game =
   , classes : Dict String Class
   , creatures : Dict CreatureID Creature
   , maps: Dict MapName Map
-  , current_map: Maybe MapName
   , scenes: Dict String Scene
   }
 
@@ -141,7 +140,6 @@ gameDecoder =
     |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
     |> P.required "maps" (JD.dict mapDecoder)
-    |> P.required "current_map" (JD.maybe JD.string)
     |> P.required "scenes" (JD.dict sceneDecoder)
 
 type alias Scene =
@@ -213,7 +211,6 @@ type alias Creature =
   , cur_energy: Int
   , max_health: Int
   , cur_health: Int
-  , pos: Point3
   , abilities: List AbilityStatus
   , class: String
   , conditions: Dict Int AppliedCondition
@@ -233,7 +230,6 @@ creatureDecoder =
     |> P.required "cur_energy" JD.int
     |> P.required "max_health" JD.int
     |> P.required "cur_health" JD.int
-    |> P.required "pos" point3Decoder
     |> P.required "abilities" (JD.list abilityStatusDecoder)
     |> P.required "class" JD.string
     |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
