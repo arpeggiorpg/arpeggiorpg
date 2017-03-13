@@ -24,10 +24,8 @@ message msg = Task.perform (always msg) (Task.succeed ())
 updateModelFromApp : M.Model -> T.App -> M.Model
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
-      currentMap = if model.editingMap then model.currentMap else M.getMap model2
-      showingMovement =
+      showingMovement = M.NotShowingMovement
         -- TODO: Bring back the PathCreature log!
-        M.NotShowingMovement
         -- case T.mostRecentLog newApp of
         --   Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
         --     -- most recent action was movement. Only start animating it if we haven't already
@@ -43,7 +41,7 @@ updateModelFromApp model newApp =
         --         else M.DoneShowingMovement shown
         --       M.NotShowingMovement -> M.ShowingMovement [first] rest
         --   _ -> M.NotShowingMovement
-  in { model2 | currentMap = currentMap, showingMovement = showingMovement}
+  in { model2 | showingMovement = showingMovement}
 
 start = message Start
 
@@ -78,6 +76,8 @@ update msg model = case msg of
     case model.playerID of
       Just playerID -> (model, sendCommand model.rpiURL (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
+
+  SetFocus focus -> ({model | focus = focus}, Cmd.none)
 
   StartCreatingScene ->
     ({model | creatingScene = Just {name = "", map = "", creatures = Dict.empty}}, Cmd.none)
@@ -206,21 +206,51 @@ update msg model = case msg of
       Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)
   GotCombatMovementOptions (Err e) -> ({model | error = toString e}, Cmd.none)
 
-  StartEditingMap ->  ({ model | editingMap = True},  Cmd.none)
-  CancelEditingMap -> ({ model | editingMap = False}, Cmd.none)
+  StartEditingMap -> 
+    let focus =
+          case model.focus of
+            M.PreviewMap name -> case model.app of
+              Just app -> M.EditingMap name (M.tryGetMapNamed name app)
+              Nothing -> M.EditingMap name []
+            _ -> M.NoFocus
+    in ({model | focus = focus}, Cmd.none)
+  CancelEditingMap ->
+    let focus =
+          case model.focus of
+            M.EditingMap name _ -> M.PreviewMap name
+            _ -> M.NoFocus
+    in ({model | focus = focus}, Cmd.none)
+
 
   ToggleTerrain pt ->
-    let terrain = if not (List.member pt model.currentMap)
-                  then pt :: model.currentMap
-                  else List.filter (\el -> el /= pt) model.currentMap
-    in ({model | currentMap = terrain}, Cmd.none)
+    let focus =
+          case model.focus of
+            M.EditingMap name terrain ->
+              let newTerrain = 
+                    if not (List.member pt terrain)
+                    then pt :: terrain
+                    else List.filter (\el -> el /= pt) terrain
+              in M.EditingMap name terrain
+            x -> x
+    in ({model | focus = focus}, Cmd.none)
 
-  UpdateSaveMapName name -> ( {model | saveMapName = name }
-                            , Cmd.none)
+  UpdateSaveMapName name ->
+    let focus = case model.focus of
+          M.EditingMap _ terrain -> M.EditingMap name terrain
+          x -> x
+    in ( {model | focus = focus } , Cmd.none)
 
-  EditMap terrain ->
-    ( { model | editingMap = False}
-    , sendCommand model.rpiURL (T.EditMap model.saveMapName terrain))
+  SaveMap ->
+    let maybeNameAndTerrain = case model.focus of
+          M.EditingMap name terrain -> Just (name, terrain)
+          _ -> Nothing
+        command = case maybeNameAndTerrain of
+          Just (name, terrain) -> sendCommand model.rpiURL (T.EditMap name terrain)
+          Nothing -> Cmd.none
+        focus = case maybeNameAndTerrain of
+          Just (name, _) -> M.PreviewMap name
+          Nothing -> M.NoFocus
+    in ( { model | focus = focus} , command)
 
   MapZoom zoom ->
     let newSize =

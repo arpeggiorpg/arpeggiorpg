@@ -85,15 +85,18 @@ moveAnywhereToggle model =
 {-| Controls to show when editing the map. -}
 editMapConsole : M.Model -> Html M.Msg
 editMapConsole model =
-  let console =
+  let console name map =
         vbox
           [ button [onClick M.CancelEditingMap] [text "Cancel Editing Map"]
           , hbox
-            [ input [type_ "text", placeholder "map name", onInput M.UpdateSaveMapName ] []
-            , button [onClick (M.EditMap model.currentMap)] [text "Save"]
+            [ input [type_ "text", placeholder "map name", value name, onInput M.UpdateSaveMapName ] []
+            , button [onClick M.SaveMap] [text "Save"]
             ]
           ]
-  in if model.editingMap then console else text ""
+  in
+    case model.focus of
+      M.EditingMap name map -> console name map
+      _ -> text ""
 
 {-| Check if any modals should be rendered and render them. -}
 modalView : M.Model -> T.App -> List (Html M.Msg)
@@ -152,7 +155,7 @@ mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
-        Grid.movementMap model msg mvmtReq model.moveAnywhere model.currentMap creature vCreatures
+        Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) creature vCreatures
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
@@ -165,19 +168,19 @@ mapView model app =
                     Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
-      editMap () = if model.editingMap
-                   then Just <| Grid.editMap model model.currentMap vCreatures
-                   else Nothing
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
         in { mapc | highlight = highlight
                   , movable = Just M.GetMovementOptions}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
-      defaultMap () = Grid.terrainMap model model.currentMap vCreatures
-  in movementMap
-      |> MaybeEx.orElseLazy editMap
-      |> MaybeEx.unpack defaultMap identity
+      defaultMap name () = Grid.terrainMap model (M.tryGetMapNamed name app) vCreatures
+  in 
+    case model.focus of
+      M.EditingMap name map -> Grid.editMap model map vCreatures
+      M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) vCreatures
+      M.Scene name -> movementMap |> MaybeEx.unpack (defaultMap name) identity
+      M.NoFocus -> text ""
 
 {-| A navigator for available creatures, i.e., those that aren't in combat. -}
 availableCreaturesView : M.Model -> T.App -> Html M.Msg
@@ -241,7 +244,7 @@ mapConsole : M.Model -> T.App -> Html M.Msg
 mapConsole model app =
   let
     editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
-    mapSelector = mapSelectorMenu model app (M.SendCommand << T.SelectMap)
+    mapSelector = mapSelectorMenu model app (\name -> M.SetFocus (M.PreviewMap name))
     oocToggler =
         hbox [text "Show Out-of-Combat creatures: "
         , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
@@ -321,7 +324,6 @@ playersView app =
       selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
       playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
   in CommonView.playerList playerButton app.players
-
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg

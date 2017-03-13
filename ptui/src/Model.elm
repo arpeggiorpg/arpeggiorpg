@@ -31,6 +31,7 @@ subscriptions model =
 
 type Msg
     = Start
+    | SetFocus Focus
     | MorePlease
     | PollApp
     | ReceivedAppUpdate (Result Http.Error T.App)
@@ -41,7 +42,7 @@ type Msg
     | RegisterPlayer
     | UpdateSaveMapName T.MapName
     | StartEditingMap
-    | EditMap T.Map
+    | SaveMap
     | CancelEditingMap
 
     | StartCreatingCreature
@@ -97,27 +98,31 @@ type Direction
 
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
-    { app = Nothing
-    , selectedAbility = Nothing
-    , creatingCreature = Nothing
-    , selectingCreatures = Nothing
-    , moving = Nothing
-    , error = ""
-    , saveMapName = "" -- this could be inside of editingMap sumtype
-    , editingMap = False
-    , currentMap = [{x=0, y=0, z=0}]
-    , playerID = Nothing
-    , potentialTargets = []
-    , showOOC = False
-    , moveAnywhere = False
-    , showingMovement = NotShowingMovement
-    , creatureNotes = Dict.empty
-    , rpiURL = flags.rpi
-    , gridSize = 60
-    , gridOffset = {x = -15, y = 10}
-    , collapsed = Dict.empty
-    , creatingScene = Nothing
+  { app = Nothing
+  , selectedAbility = Nothing
+  , creatingCreature = Nothing
+  , selectingCreatures = Nothing
+  , moving = Nothing
+  , error = ""
+  , playerID = Nothing
+  , potentialTargets = []
+  , showOOC = False
+  , moveAnywhere = False
+  , showingMovement = NotShowingMovement
+  , creatureNotes = Dict.empty
+  , rpiURL = flags.rpi
+  , gridSize = 60
+  , gridOffset = {x = -15, y = 10}
+  , collapsed = Dict.empty
+  , creatingScene = Nothing
+  , focus = NoFocus
   }
+
+type Focus
+  = NoFocus
+  | Scene String
+  | EditingMap T.MapName T.Map
+  | PreviewMap T.MapName
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
@@ -136,9 +141,6 @@ type alias Model =
   , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)
   , error: String
   , moving: Maybe MovementRequest
-  , saveMapName: String
-  , currentMap : T.Map
-  , editingMap : Bool
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
   , showOOC: Bool
@@ -151,6 +153,7 @@ type alias Model =
   -- gridOffset: offset in METERS
   , gridOffset : {x : Int, y: Int}
   , collapsed : Dict.Dict String Bool
+  , focus: Focus
   }
   
 
@@ -169,9 +172,29 @@ type alias MovementRequest = {
   ooc_creature: Maybe T.Creature
 }
 
+getScene : Model -> String -> Maybe T.Scene
+getScene model name =
+  case model.app of
+    Just app -> Dict.get name app.current_game.scenes
+    Nothing -> Nothing
+
 getMap : Model -> T.Map
 getMap model =
-  case model.app of
-    Just app -> let mapName = (Maybe.withDefault "empty" app.current_game.current_map)
-                in (Maybe.withDefault [] (Dict.get mapName app.current_game.maps))
-    Nothing -> []
+  case model.focus of
+    EditingMap name terrain -> terrain
+    PreviewMap name ->
+      model.app
+      |> Maybe.andThen (getMapNamed name)
+      |> Maybe.withDefault []
+    Scene name ->
+      getScene model name
+      |> Maybe.andThen (\scene -> model.app |> Maybe.andThen (getMapNamed scene.map))
+      |> Maybe.withDefault []
+    NoFocus -> []
+
+getMapNamed : String -> T.App -> Maybe T.Map
+getMapNamed name app =
+  Dict.get name app.current_game.maps
+
+tryGetMapNamed : String -> T.App -> T.Map
+tryGetMapNamed name app = getMapNamed name app |> Maybe.withDefault []
