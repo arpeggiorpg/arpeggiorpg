@@ -187,10 +187,15 @@ getMap model =
       |> Maybe.andThen (getMapNamed name)
       |> Maybe.withDefault []
     Scene name ->
-      getScene model name
-      |> Maybe.andThen (\scene -> model.app |> Maybe.andThen (getMapNamed scene.map))
-      |> Maybe.withDefault []
+      getMapForScene model name
     NoFocus -> []
+
+getMapForScene : Model -> String -> T.Map
+getMapForScene model name =
+  getScene model name
+  |> Maybe.andThen (\scene -> model.app |> Maybe.andThen (getMapNamed scene.map))
+  |> Maybe.withDefault []
+
 
 getMapNamed : String -> T.App -> Maybe T.Map
 getMapNamed name app =

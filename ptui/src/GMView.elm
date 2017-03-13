@@ -67,7 +67,7 @@ sceneManagementView model app =
   vbox
     [ h3 [] [text "Scenes"]
     , hbox <|
-        List.map (\sceneName -> button [] [text sceneName]) (Dict.keys app.current_game.scenes)
+        List.map (\sceneName -> button [onClick (M.SetFocus (M.Scene sceneName))] [text sceneName]) (Dict.keys app.current_game.scenes)
     , button [onClick M.StartCreatingScene] [text "Create a scene"]
     ]
 
@@ -174,12 +174,12 @@ mapView model app =
         in { mapc | highlight = highlight
                   , movable = Just M.GetMovementOptions}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
-      defaultMap name () = Grid.terrainMap model (M.tryGetMapNamed name app) vCreatures
+      defaultMap terrain () = Grid.terrainMap model terrain vCreatures
   in 
     case model.focus of
-      M.EditingMap name map -> Grid.editMap model map vCreatures
-      M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) vCreatures
-      M.Scene name -> movementMap |> MaybeEx.unpack (defaultMap name) identity
+      M.EditingMap name map -> Grid.editMap model map []
+      M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
+      M.Scene name -> movementMap |> MaybeEx.unpack (defaultMap (M.getMapForScene model name)) identity
       M.NoFocus -> text ""
 
 {-| A navigator for available creatures, i.e., those that aren't in combat. -}
@@ -243,7 +243,11 @@ mapSelectorMenu model app action =
 mapConsole : M.Model -> T.App -> Html M.Msg
 mapConsole model app =
   let
-    editMapButton = button [onClick M.StartEditingMap] [text "Edit this map"]
+    inPreviewMode =
+      case model.focus of
+        M.PreviewMap name -> True
+        _ -> False
+    editMapButton = button [onClick M.StartEditingMap, disabled (not inPreviewMode)] [text "Edit this map"]
     mapSelector = mapSelectorMenu model app (\name -> M.SetFocus (M.PreviewMap name))
     oocToggler =
         hbox [text "Show Out-of-Combat creatures: "
