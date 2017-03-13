@@ -232,9 +232,9 @@ deleteCreatureButton : T.Creature -> Html M.Msg
 deleteCreatureButton creature =
   button [onClick (M.SendCommand (T.RemoveCreature creature.id))] [text "Delete"]
 
-mapSelectorMenu : M.Model -> T.App -> (String -> M.Msg) -> Html M.Msg
-mapSelectorMenu model app action =
-  let isCurrent mapName = (Just mapName) == app.current_game.current_map
+mapSelectorMenu : String -> M.Model -> T.App -> (String -> M.Msg) -> Html M.Msg
+mapSelectorMenu defaultSelection model app action =
+  let isCurrent mapName = mapName == defaultSelection
   in select [onInput action]
     <| [option [value ""] [text "Select a Map"]]
        ++ (List.map (\mapName -> option [value mapName, selected (isCurrent mapName)] [text mapName]) (Dict.keys app.current_game.maps))
@@ -248,7 +248,7 @@ mapConsole model app =
         M.PreviewMap name -> True
         _ -> False
     editMapButton = button [onClick M.StartEditingMap, disabled (not inPreviewMode)] [text "Edit this map"]
-    mapSelector = mapSelectorMenu model app (\name -> M.SetFocus (M.PreviewMap name))
+    mapSelector = mapSelectorMenu "" model app (\name -> M.SetFocus (M.PreviewMap name))
     oocToggler =
         hbox [text "Show Out-of-Combat creatures: "
         , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
@@ -296,10 +296,12 @@ stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Com
 {-| A form for creating a scene. -}
 createSceneDialog : M.Model -> T.App -> T.Scene -> Html M.Msg
 createSceneDialog model app scene =
-  vbox [h3 [] [text "Create a Scene"]
-       , input [type_ "text", placeholder "Name", onInput M.SetSceneName] []
-       , mapSelectorMenu model app M.SetSceneMapName
-       , hbox [button [onClick (M.CreateScene scene)] [text "Create"], button [onClick M.CancelCreatingScene] [text "Cancel"]]]
+  let ready = scene.name /= "" && scene.map /= "" 
+  in
+    vbox [h3 [] [text "Create a Scene"]
+         , input [type_ "text", placeholder "Name", onInput M.SetSceneName] []
+         , mapSelectorMenu "" model app M.SetSceneMapName
+         , hbox [button [onClick (M.CreateScene scene), disabled (not ready)] [text "Create"], button [onClick M.CancelCreatingScene] [text "Cancel"]]]
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
