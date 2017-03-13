@@ -244,7 +244,6 @@ creatureDecoder =
 type alias CreatureData =
   { id: CreatureID
   , name: String
-  , pos: Point3
   , class: String
   , note: String
 }
@@ -253,7 +252,6 @@ creatureDataDecoder =
   P.decode CreatureData
     |> P.required "id" JD.string
     |> P.required "name" JD.string
-    |> P.required "pos" point3Decoder
     |> P.required "class" JD.string
     |> P.required "note" JD.string
 

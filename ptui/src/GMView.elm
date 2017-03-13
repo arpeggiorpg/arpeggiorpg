@@ -50,7 +50,9 @@ viewGame model app =
           , CommonView.collapsible "History" model <| historyView app
           ]
       ]
-    , overlayRight (S.px 0) (S.px 0) [S.width (S.px 325)]
+    , overlayRight (S.px 0) (S.px 0)
+        [ S.width (S.px 325)
+        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
         [ vbox 
             [ CommonView.collapsible "Available Creatures" model (availableCreaturesView model app)
             , combatView model app 
