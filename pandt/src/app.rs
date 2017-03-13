@@ -1,6 +1,7 @@
 use std::collections::{VecDeque, HashMap, HashSet};
 
 use types::*;
+use indexed::IndexedHashMap;
 
 // random misplaced notes
 //
@@ -39,7 +40,7 @@ impl App {
     App {
       current_game: g,
       snapshots: snapshots,
-      players: HashMap::new(),
+      players: IndexedHashMap::new(),
     }
   }
   pub fn perform_unchecked(&mut self, cmd: GameCommand)
@@ -109,7 +110,7 @@ impl App {
     if self.players.contains_key(&pid) {
       Err(GameError::PlayerAlreadyExists(pid.clone()))
     } else {
-      self.players.insert(pid.clone(), HashSet::new());
+      self.players.insert(Player::new(pid.clone()));
       Ok((&self.current_game, vec![]))
     }
   }
@@ -121,34 +122,28 @@ impl App {
 
   fn give_creatures_to_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
                               -> Result<(&Game, Vec<GameLog>), GameError> {
-    let mut creatures =
-      self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
-    let mut cids_to_insert = vec![];
     for cid in cids {
-      self.current_game.get_creature(*cid)?;
-      cids_to_insert.push(cid);
+      self.current_game.check_creature_id(*cid)?;
     }
-    creatures.extend(cids_to_insert);
+    self.players
+      .mutate(pid, |mut p| {
+        p.creatures.extend(cids);
+        p
+      })
+      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 
   fn remove_creatures_from_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
                                   -> Result<(&Game, Vec<GameLog>), GameError> {
-
-    let mut creatures =
-      self.players.get_mut(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
-    let mut cids_to_remove = vec![];
-    for cid in cids {
-      self.current_game.get_creature(*cid)?;
-      if creatures.contains(cid) {
-        cids_to_remove.push(cid);
-      } else {
-        return Err(GameError::PlayerDoesntControlCreature(pid.clone(), *cid));
-      }
-    }
-    for cid in cids_to_remove {
-      creatures.remove(cid);
-    }
+    self.players
+      .mutate(pid, |mut p| {
+        for cid in cids {
+          p.creatures.remove(cid);
+        }
+        p
+      })
+      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 
@@ -156,17 +151,17 @@ impl App {
     &self.current_game
   }
 
-  pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
-    self.current_game.get_movement_options(creature_id)
+  pub fn get_movement_options(&self, scene: SceneName, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
+    self.current_game.get_movement_options(scene, creature_id)
   }
 
   pub fn get_combat_movement_options(&self) -> Result<Vec<Point3>, GameError> {
     Ok(self.current_game.get_combat()?.current_movement_options()?)
   }
 
-  pub fn get_target_options(&self, cid: CreatureID, abid: AbilityID)
+  pub fn get_target_options(&self, scene: SceneName, cid: CreatureID, abid: AbilityID)
                             -> Result<Vec<PotentialTarget>, GameError> {
-    self.current_game.get_target_options(cid, abid)
+    self.current_game.get_target_options(scene, cid, abid)
   }
 }
 

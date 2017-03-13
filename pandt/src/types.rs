@@ -78,6 +78,10 @@ impl Energy {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct PlayerID(pub String);
 
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct SceneName(String);
+
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(uuid::Uuid);
 impl CreatureID {
@@ -110,18 +114,6 @@ pub fn abid(s: &str) -> AbilityID {
   AbilityID::new(s).unwrap()
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct AbilitySetID(StringWrapper<[u8; 64]>);
-impl AbilitySetID {
-  pub fn new(s: &str) -> Result<Self, GameError> {
-    let sw =
-      StringWrapper::from_str_safe(s).ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
-    Ok(AbilitySetID(sw))
-  }
-  pub fn to_string(&self) -> String {
-    self.0.to_string()
-  }
-}
 
 /// Distance in centimeters.
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
@@ -137,22 +129,19 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-
   // ** Scene management **
   /// Create a scene (or, if it already exists, change the existing one).
-  CreateScene(Scene),
+  EditScene(Scene),
   /// Delete a scene.
-  DeleteScene(String),
+  DeleteScene(SceneName),
 
   // ** Map management **
-  /// Select the map that should be used for pathing and collision detection
-  SelectMap(MapName),
   /// Change the terrain data of a map
   EditMap(MapName, Map),
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
-  StartCombat(Vec<CreatureID>),
+  StartCombat(SceneName, Vec<CreatureID>),
   /// Stop the current combat.
   StopCombat,
   /// Add a creature to combat. Combat must already be running; otherwise use `StartCombat`.
@@ -160,7 +149,7 @@ pub enum GameCommand {
   /// Remove a creature from combat. Combat must already be running.
   RemoveCreatureFromCombat(CreatureID),
   /// Use an Ability out of combat.
-  ActCreature(CreatureID, AbilityID, DecidedTarget),
+  ActCreature(SceneName, CreatureID, AbilityID, DecidedTarget),
   /// Make the current creature use an ability.
   CombatAct(AbilityID, DecidedTarget),
   /// Move the current creature in combat to a point.
@@ -174,11 +163,12 @@ pub enum GameCommand {
   // ** Creature Manipulation **
   /// Create a new creature.
   CreateCreature(CreatureCreation),
-  /// Assign a creature's position
-  SetCreaturePos(CreatureID, Point3),
-  /// Move a creature along a path. There must be a clear path according to the current loaded map.
-  /// It doesn't matter whether the creature is in combat.
-  PathCreature(CreatureID, Point3),
+  /// Assign a creature's position within a scene.
+  SetCreaturePos(SceneName, CreatureID, Point3),
+  /// Move a creature along a path within a scene.
+  /// There must be a clear path according to the current loaded map. It doesn't matter whether
+  /// the creature is in combat.
+  PathCreature(SceneName, CreatureID, Point3),
   /// Set a note on a creature.
   SetCreatureNote(CreatureID, String),
   /// Remove a creature from the game entirely. Creature must not be in combat.
@@ -193,6 +183,10 @@ pub enum GameCommand {
   UnregisterPlayer(PlayerID),
   /// Remove control of a creature from a player.
   RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
+  /// Move a player to a particular scene, so they only see what's happening in that scene.
+  /// Note that this doesn't have any affect on a player's *characters*.
+  /// The scene name can be None (null) to not show any scene to the player.
+  SetPlayerScene(PlayerID, Option<SceneName>),
 
   /// Roll back to a specific snapshot + log index
   Rollback(usize, usize),
@@ -210,7 +204,6 @@ pub enum CreatureLog {
   ApplyCondition(ConditionID, ConditionDuration, Condition),
   DecrementConditionRemaining(ConditionID),
   RemoveCondition(ConditionID),
-  SetPos(Point3),
   SetNote(String),
 }
 
@@ -228,21 +221,22 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
-  CreateScene(Scene),
-  DeleteScene(String),
-  SelectMap(MapName),
+  EditScene(Scene),
+  DeleteScene(SceneName),
   EditMap(MapName, Map),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   /// Many of these actually go via CombatLog, since most creature modification happens inside of
   /// a combat context, but things like moving out of combat needs this.
   CreatureLog(CreatureID, CreatureLog),
-  StartCombat(Vec<CreatureID>),
+  SetCreaturePos(SceneName, CreatureID, Point3),
+  PathCreature(SceneName, CreatureID, Point3),
+  StartCombat(SceneName, Vec<CreatureID>),
   StopCombat,
   CreateCreature(Creature),
   RemoveCreature(CreatureID),
   AddCreatureToCombat(CreatureID),
-  RemoveCreatureFromCombat(CreatureID), // PathCreature(CreatureID, Vec<Point3>),
+  RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.
   Rollback(usize, usize),
 }
@@ -256,7 +250,7 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameError {
   CreatureAlreadyExists(CreatureID),
-  GroupNotFound(String),
+  SceneNotFound(SceneName),
   IDTooLong(String),
   ConditionNotFound(ConditionID),
   InvalidCommand(GameCommand),
@@ -432,7 +426,6 @@ pub struct Creature {
   pub class: String,
   pub max_health: HP,
   pub cur_health: HP,
-  pub pos: Point3,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
   pub portrait_url: String,
@@ -440,6 +433,7 @@ pub struct Creature {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
+  pub scene: SceneName,
   pub creatures: nonempty::NonEmptyWithCursor<CreatureID>,
   pub movement_used: Distance,
 }
@@ -457,7 +451,6 @@ pub struct Game {
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: HashMap<CreatureID, Creature>,
   pub maps: HashMap<MapName, Map>,
-  pub current_map: Option<MapName>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
@@ -469,26 +462,69 @@ pub struct Game {
 pub struct App {
   pub current_game: Game,
   pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
-  pub players: HashMap<PlayerID, HashSet<CreatureID>>,
+  pub players: IndexedHashMap<Player>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Player {
+  pub player_id: PlayerID,
+  pub scene: Option<SceneName>,
+  pub creatures: HashSet<CreatureID>,
+}
+
+impl DeriveKey for Player {
+  type KeyType = PlayerID;
+  fn derive_key(&self) -> PlayerID {
+    self.player_id.clone()
+  }
+}
+
+impl Player {
+  pub fn new(name: PlayerID) -> Player {
+    Player {
+      player_id: name,
+      scene: None,
+      creatures: HashSet::new(),
+    }
+  }
+}
+
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Scene {
-  pub name: String,
+  pub name: SceneName,
   pub map: MapName,
   pub creatures: HashMap<CreatureID, Point3>,
 }
 
 impl DeriveKey for Scene {
-  type KeyType = String;
-  fn derive_key(&self) -> String {
+  type KeyType = SceneName;
+  fn derive_key(&self) -> SceneName {
     self.name.clone()
   }
 }
 
+impl Scene {
+  pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
+    self.creatures
+      .get(&creature_id)
+      .map(|x| *x)
+      .ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))
+  }
+
+  pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Scene {
+    let mut new = self.clone();
+    new.creatures.insert(cid, pt);
+    new
+  }
+}
+
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DynamicCombat<'combat, 'game: 'combat> {
-  pub combat: &'combat Combat,
+pub struct DynamicCombat<'game> {
+  pub scene: &'game Scene,
+  pub map: &'game Map,
+  pub combat: &'game Combat,
   pub game: &'game Game,
 }
 
@@ -520,29 +556,15 @@ impl<'a> ser::Serialize for RPIGame<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Game", 8)?;
     let game = self.0;
-    let com = match game.get_combat() {
-      Ok(c) => Some(c),
-      Err(_) => None, // TODO: distinguish between NotInCombat and other errors
-    };
-    str.serialize_field("current_combat", &com)?;
+
+    str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
     str.serialize_field("creatures",
                        &game.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
     str.serialize_field("maps", &game.maps)?;
-    str.serialize_field("current_map", &game.current_map)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
-    str.end()
-  }
-}
-
-impl<'combat, 'game: 'combat> ser::Serialize for DynamicCombat<'combat, 'game> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Combat", 2)?;
-    str.serialize_field("movement_used", &self.combat.movement_used)?;
-    str.serialize_field("creatures",
-                       &self.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
     str.end()
   }
 }
@@ -562,7 +584,6 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("class", &creat.class)?;
     str.serialize_field("max_health", &creat.max_health)?;
     str.serialize_field("cur_health", &creat.cur_health)?;
-    str.serialize_field("pos", &creat.pos)?;
     str.serialize_field("conditions", &creat.conditions)?;
     str.serialize_field("can_act", &self.can_act())?;
     str.serialize_field("can_move", &self.can_move())?;
@@ -591,7 +612,6 @@ pub mod test {
       id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "rogue".to_string(),
-      pos: (0, 0, 0),
       portrait_url: "".to_string(),
     }
   }
@@ -601,7 +621,6 @@ pub mod test {
       id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "cleric".to_string(),
-      pos: (0, 0, 0),
       portrait_url: "".to_string(),
     }
   }
@@ -611,7 +630,6 @@ pub mod test {
       id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "ranger".to_string(),
-      pos: (0, 0, 0),
       portrait_url: "".to_string(),
     }
   }

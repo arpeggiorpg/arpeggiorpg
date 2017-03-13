@@ -35,10 +35,6 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     self.creature.id
   }
 
-  pub fn pos(&self) -> Point3 {
-    self.creature.pos
-  }
-
   pub fn can_act(&self) -> bool {
     conditions_able(self.conditions())
   }
@@ -156,52 +152,6 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
                                 condition.clone())
   }
 
-  pub fn act<'a, GetCreature>(&'a self, get_creature: GetCreature, ability: &Ability,
-                              target: DecidedTarget, mut change: ChangedGame, in_combat: bool)
-                              -> Result<ChangedGame, GameError>
-    where GetCreature: Fn(CreatureID) -> Result<&'a Creature, GameError>
-  {
-    let targets = self.resolve_targets(get_creature, ability.target, target)?;
-    for creature_id in targets.iter() {
-      for effect in &ability.effects {
-        change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
-      }
-    }
-    if in_combat {
-      change = change.apply_creature(self.creature.id, |c| c.creature.reduce_energy(ability.cost))?;
-    }
-    Ok(change)
-  }
-
-  pub fn resolve_targets<'a, F>(&'a self, get_creature: F, target: TargetSpec,
-                                decision: DecidedTarget)
-                                -> Result<Vec<CreatureID>, GameError>
-    where F: Fn(CreatureID) -> Result<&'a Creature, GameError>
-  {
-    match (target, decision) {
-      (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
-        let target_creature = get_creature(cid)?;
-        if self.game
-          .tile_system
-          .creature_within_distance(self.creature, target_creature, MELEE_RANGE) {
-          Ok(vec![cid])
-        } else {
-          Err(GameError::CreatureOutOfRange(cid))
-        }
-      }
-      (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
-        let target_creature = get_creature(cid)?;
-        if self.game.tile_system.creature_within_distance(self.creature, target_creature, max) {
-          Ok(vec![cid])
-        } else {
-          Err(GameError::CreatureOutOfRange(cid))
-        }
-      }
-      (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![self.creature.id]),
-      (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
-    }
-  }
-
   pub fn ability_statuses(&self) -> Vec<AbilityStatus> {
     let mut abs = self.creature.abilities.clone();
     for acondition in self.conditions() {
@@ -232,7 +182,6 @@ impl Creature {
       id: CreatureID::new(),
       name: spec.name.to_string(),
       class: spec.class.clone(),
-      pos: (0, 0, 0),
       speed: Distance(STANDARD_CREATURE_SPEED),
       max_energy: Energy(10),
       cur_energy: Energy(10),
@@ -279,14 +228,9 @@ impl Creature {
       CreatureLog::RemoveCondition(ref id) => {
         new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
       }
-      CreatureLog::SetPos(pt) => new.pos = pt,
       CreatureLog::SetNote(ref note) => new.note = note.clone(),
     }
     Ok(new)
-  }
-
-  pub fn set_pos(&self, pt: Point3) -> Result<ChangedCreature, GameError> {
-    self.change_with(CreatureLog::SetPos(pt))
   }
 
   pub fn set_note(&self, note: String) -> Result<ChangedCreature, GameError> {
@@ -297,9 +241,6 @@ impl Creature {
     self.class.clone()
   }
 
-  pub fn pos(&self) -> Point3 {
-    self.pos
-  }
   pub fn id(&self) -> CreatureID {
     self.id
   }

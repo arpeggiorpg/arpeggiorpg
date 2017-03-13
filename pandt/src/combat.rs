@@ -9,19 +9,7 @@ use creature::ChangedCreature;
 /// diagonally!
 pub const MELEE_RANGE: Distance = Distance(150);
 
-impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
-  pub fn creatures(&self) -> Result<nonempty::NonEmptyWithCursor<DynamicCreature>, GameError> {
-    let mut results = vec![];
-    for creature in self.combat.creatures.iter() {
-      results.push(self.game.get_creature(*creature)?);
-    }
-    let mut ne = nonempty::NonEmptyWithCursor::from_vec(results)
-      .expect("since we built this from another NonEmpty, we know that it must have at least one \
-               element, so from_vec will never fail");
-    ne.set_cursor(self.combat.creatures.get_cursor());
-    Ok(ne)
-  }
-
+impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
     self.combat.remove_from_combat(cid)
   }
@@ -63,14 +51,13 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
   pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
     let current = self.current_creature()?;
-    let current_pos = current.pos();
     let current_speed = current.speed() - self.combat.movement_used;
     Ok(self.game
       .tile_system
-      .get_all_accessible(current_pos, self.game.current_map(), current_speed))
+      .get_all_accessible(self.current_pos()?, self.map, current_speed))
   }
 
-  pub fn get_movement(&'combat self) -> Result<CombatMove<'combat, 'game>, GameError> {
+  pub fn get_movement(&'game self) -> Result<CombatMove<'game>, GameError> {
     let current = self.current_creature()?;
     if current.can_move() {
       Ok(CombatMove {
@@ -84,6 +71,8 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
 
   pub fn change(&self) -> ChangedCombat<'game> {
     ChangedCombat {
+      map: self.map,
+      scene: self.scene,
       combat: self.combat.clone(),
       logs: vec![],
       game: self.game,
@@ -93,22 +82,29 @@ impl<'combat, 'game: 'combat> DynamicCombat<'combat, 'game> {
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
     Ok(ChangedCombat {
+      map: self.map,
+      scene: self.scene,
       combat: combat,
       game: self.game,
       logs: vec![log],
     })
   }
 
-  pub fn current_creature(&self) -> Result<DynamicCreature<'combat, 'game>, GameError> {
+  pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
     self.game.get_creature(self.combat.current_creature_id())
+  }
+
+  pub fn current_pos(&self) -> Result<Point3, GameError> {
+    self.scene.get_pos(self.combat.current_creature_id())
   }
 }
 
 impl Combat {
-  pub fn new(combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
+  pub fn new(scene: SceneName, combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
     nonempty::NonEmptyWithCursor::from_vec(combatants)
       .map(|ne| {
         let com = Combat {
+          scene: scene,
           creatures: ne,
           movement_used: Distance::from_meters(0.0),
         };
@@ -140,12 +136,12 @@ impl Combat {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CombatMove<'combat, 'game: 'combat> {
+pub struct CombatMove<'game> {
   movement_left: Distance,
-  pub combat: &'combat DynamicCombat<'combat, 'game>,
+  pub combat: &'game DynamicCombat<'game>,
 }
 
-impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
+impl<'game> CombatMove<'game> {
   pub fn movement_left(&self) -> Distance {
     self.movement_left
   }
@@ -156,17 +152,15 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
     let (pts, distance) = self.combat
       .game
       .tile_system
-      .find_path(self.combat.current_creature()?.pos(),
-                 self.movement_left,
-                 self.combat.game.current_map(),
-                 pt)
+      .find_path(self.combat.current_pos()?, self.movement_left, self.combat.map, pt)
       .ok_or(GameError::NoPathFound)?;
     debug_assert!(distance <= self.movement_left);
 
     let change = self.combat
       .game
-      .change_with(GameLog::CreatureLog(self.combat.combat.current_creature_id(),
-                                        CreatureLog::SetPos(pt)))?;
+      .change_with(GameLog::PathCreature(self.combat.combat.scene.clone(),
+                                         self.combat.combat.current_creature_id(),
+                                         pt))?;
     change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
   }
 }
@@ -174,6 +168,8 @@ impl<'combat, 'game: 'combat> CombatMove<'combat, 'game> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ChangedCombat<'game> {
   pub combat: Combat,
+  map: &'game Map,
+  scene: &'game Scene,
   game: &'game Game,
   logs: Vec<CombatLog>,
 }
@@ -181,6 +177,8 @@ pub struct ChangedCombat<'game> {
 impl<'game> ChangedCombat<'game> {
   pub fn dyn(&self) -> DynamicCombat {
     DynamicCombat {
+      map: self.map,
+      scene: self.scene,
       game: self.game,
       combat: &self.combat,
     }
@@ -340,8 +338,7 @@ pub mod test {
     let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
       .unwrap()
       .game;
-    assert_eq!(game.get_combat().unwrap().current_creature().unwrap().pos(),
-               (10, 0, 0));
+    assert_eq!(game.get_combat().unwrap().current_creature().unwrap().pos(), (10, 0, 0));
     assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
                Err(GameError::NoPathFound));
   }

@@ -39,8 +39,8 @@ impl TileSystem {
     }
   }
 
-  pub fn creature_within_distance(&self, c1: &Creature, c2: &Creature, d: Distance) -> bool {
-    self.point3_distance(c1.pos(), c2.pos()) <= d
+  pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: Distance) -> bool {
+    self.point3_distance(c1, c2) <= d
   }
 
   pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {

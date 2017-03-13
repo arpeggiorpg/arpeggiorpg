@@ -5,11 +5,6 @@ use types::*;
 use combat::*;
 use creature::ChangedCreature;
 
-
-lazy_static! {
-  static ref BORING_MAP: Vec<Point3> = vec![(0,0,0)];
-}
-
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
@@ -18,17 +13,9 @@ impl Game {
       current_combat: None,
       creatures: HashMap::new(),
       maps: HashMap::new(),
-      current_map: None,
       classes: classes,
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
-    }
-  }
-
-  pub fn current_map(&self) -> &Map {
-    match self.current_map.as_ref() {
-      Some(x) => self.maps.get(x).unwrap_or(&BORING_MAP),
-      None => &BORING_MAP,
     }
   }
 
@@ -47,29 +34,24 @@ impl Game {
 
   /// Perform a GameCommand on the current Game.
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    fn disallowed<T>(cmd: GameCommand) -> Result<T, GameError> {
-      Err(GameError::InvalidCommand(cmd))
-    }
-
     use self::GameCommand::*;
     let change = match cmd {
-      CreateScene(scene) => self.change_with(GameLog::CreateScene(scene)),
+      EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(c) => self.create_creature(c),
-      PathCreature(cid, pt) => self.path_creature(cid, pt),
-      SetCreaturePos(cid, pt) => self.change().apply_creature(cid, |c| c.creature.set_pos(pt)),
+      PathCreature(scene, cid, pt) => self.change_with(GameLog::PathCreature(scene, cid, pt)),
+      SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {
         self.change().apply_creature(cid, |c| c.creature.set_note(note.clone()))
       }
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
-      CombatAct(abid, dtarget) => self.act(abid, dtarget),
-      ActCreature(cid, abid, dtarget) => self.act_ooc(cid, abid, dtarget),
-      SelectMap(ref name) => self.change_with(GameLog::SelectMap(name.clone())),
+      CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
+      ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),
       EditMap(ref name, ref terrain) => {
         self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))
       }
       RemoveCreature(cid) => self.change_with(GameLog::RemoveCreature(cid)),
-      StartCombat(cids) => self.change_with(GameLog::StartCombat(cids)),
+      StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.change_with(GameLog::AddCreatureToCombat(cid)),
       RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
@@ -77,15 +59,21 @@ impl Game {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
       }
       Done => self.next_turn(),
-      _ => disallowed(cmd),
+
+      // These are handled by the app before being passed to the Game:
+      RegisterPlayer(..) => bug("Game RegisterPlayer"),
+      UnregisterPlayer(..) => bug("Game UnregisterPlayer"),
+      GiveCreaturesToPlayer(..) => bug("Game GiveCreaturesToPlayer"),
+      RemoveCreaturesFromPlayer(..) => bug("Game RemoveCreaturesFromPlayer"),
+      Rollback(..) => bug("Game Rollback"),
+      SetPlayerScene(..) => bug("Game SetPlayerScene"),
     }?;
     Ok(change)
   }
 
   fn next_turn(&self) -> Result<ChangedGame, GameError> {
     let change = self.change().apply_combat(|c| c.next_turn())?;
-    change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(),
-                          |c| c.tick())
+    change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(), |c| c.tick())
   }
 
   fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
@@ -93,28 +81,20 @@ impl Game {
     self.change_with(GameLog::CreateCreature(creature))
   }
 
-  fn check_map(&self, map_name: &str) -> Result<(), GameError> {
-    if self.maps.contains_key(map_name) {
-      Ok(())
-    } else {
-      Err(GameError::MapNotFound(map_name.to_string()))
-    }
+  pub fn get_map(&self, map_name: &str) -> Result<&Map, GameError> {
+    self.maps.get(map_name).ok_or_else(|| GameError::MapNotFound(map_name.to_string()))
   }
 
   pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
-      CreateScene(ref scene) => {
+      EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;
         newgame.scenes.insert(scene.clone());
       }
       DeleteScene(ref name) => {
         newgame.scenes.remove(name);
-      }
-      SelectMap(ref name) => {
-        newgame.check_map(name)?;
-        newgame.current_map = Some(name.clone());
       }
       EditMap(ref name, ref terrain) => {
         newgame.maps.insert(name.clone(), terrain.clone());
@@ -151,50 +131,37 @@ impl Game {
         *newgame.get_creature_mut(cid)? = creature;
         return Ok(newgame);
       }
-      StartCombat(ref cids) => {
+      StartCombat(ref scene, ref cids) => {
         for cid in cids {
           self.check_creature_id(*cid)?;
         }
-        newgame.current_combat = Some(Combat::new(cids.clone())?);
+        self.check_scene(scene.clone())?;
+        newgame.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
       }
       StopCombat => {
         newgame.current_combat.take().ok_or(GameError::NotInCombat)?;
       }
-      // Ignore Rollback, since it's something that's handled at the App level.
+      SetCreaturePos(ref scene_name, ref cid, ref pt) => {
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+        newgame.scenes.insert(scene);
+      }
+      PathCreature(ref scene_name, ref cid, ref pt) => {
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+        newgame.scenes.insert(scene);
+      }
+      // Things that are handled at the App level
       Rollback(..) => {
-        return Err(GameError::BuggyProgram("Rollback should be handled by the App".to_string()))
+        return bug("GameLog Rollback");
       }
     }
     Ok(newgame)
   }
 
-  fn path_creature(&self, cid: CreatureID, pt: Point3) -> Result<ChangedGame, GameError> {
-    // TODO: this should use a GameLog::PathCreature instead of just creature.set_pos to the destination.
-    // One reason is so that we check each step in the path to make sure it's valid.
-    self.change().apply_creature(cid, |c| c.creature.set_pos(pt))
-  }
-
-  fn act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
-    self.act_ooc(self.get_combat()?.combat.current_creature_id(),
-                 abid,
-                 target)
-  }
-
-  fn act_ooc(&self, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
-             -> Result<ChangedGame, GameError> {
-    let creature = self.get_creature(cid)?;
-    if creature.can_act() {
-      if creature.has_ability(abid) {
-        self.get_creature(cid)?.act(|cid| self.get_creature(cid).map(|c| c.creature),
-                                    &self.get_ability(&abid)?,
-                                    target,
-                                    self.change(),
-                                    false)
-      } else {
-        Err(GameError::CreatureLacksAbility(creature.id(), abid))
-      }
+  fn check_map(&self, map_name: &str) -> Result<(), GameError> {
+    if self.maps.contains_key(map_name) {
+      Ok(())
     } else {
-      Err(GameError::CannotAct(creature.id()))
+      Err(GameError::MapNotFound(map_name.to_string()))
     }
   }
 
@@ -204,6 +171,10 @@ impl Game {
     } else {
       Err(GameError::CreatureNotFound(cid.to_string()))
     }
+  }
+
+  fn check_scene(&self, scene: SceneName) -> Result<(), GameError> {
+    if self.scenes.contains_key(&scene) { Ok(()) } else { Err(GameError::SceneNotFound(scene)) }
   }
 
   pub fn is_in_combat(&self, cid: CreatureID) -> bool {
@@ -227,60 +198,141 @@ impl Game {
     DynamicCreature::new(creature, self)
   }
 
-  pub fn get_combat<'combat, 'game: 'combat>
-    (&'game self)
-     -> Result<DynamicCombat<'combat, 'game>, GameError> {
-    self.current_combat
-      .as_ref()
-      .map(|com| {
-        DynamicCombat {
-          combat: &com,
-          game: self,
-        }
-      })
-      .ok_or(GameError::NotInCombat)
+  pub fn get_scene(&self, name: SceneName) -> Result<&Scene, GameError> {
+    self.scenes.get(&name).ok_or(GameError::SceneNotFound(name.clone()))
   }
 
-  pub fn get_movement_options(&self, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
+  pub fn get_combat<'game>(&'game self) -> Result<DynamicCombat<'game>, GameError> {
+    let combat = self.current_combat.as_ref().ok_or(GameError::NotInCombat)?;
+    let scene = self.get_scene(combat.scene.clone())?;
+    let map = self.get_map(&scene.map)?;
+    Ok(DynamicCombat {
+      scene: &scene,
+      map: &map,
+      combat: &combat,
+      game: self,
+    })
+  }
+
+  // ** CONSIDER ** moving this chunk of code to... Scene.rs?
+
+  fn combat_act(&self, abid: AbilityID, target: DecidedTarget) -> Result<ChangedGame, GameError> {
+    let combat = self.get_combat()?;
+    let scene = combat.scene;
+    let actor = combat.combat.current_creature_id();
+    self._act(scene, actor, abid, target, true)
+  }
+
+  fn ooc_act(&self, scene: SceneName, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
+             -> Result<ChangedGame, GameError> {
+    let scene = self.get_scene(scene)?;
+    self._act(scene, cid, abid, target, false)
+  }
+
+  fn _act(&self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget,
+          in_combat: bool)
+          -> Result<ChangedGame, GameError> {
+    if !scene.creatures.contains_key(&cid) {
+      return Err(GameError::CreatureNotFound(cid.to_string()));
+    }
+    let creature = self.get_creature(cid)?;
+    if creature.can_act() {
+      if creature.has_ability(abid) {
+        self.creature_act(&creature,
+                          scene,
+                          &self.get_ability(&abid)?,
+                          target,
+                          self.change(),
+                          in_combat)
+      } else {
+        Err(GameError::CreatureLacksAbility(creature.id(), abid))
+      }
+    } else {
+      Err(GameError::CannotAct(creature.id()))
+    }
+  }
+
+  pub fn creature_act(&self, creature: &DynamicCreature, scene: &Scene, ability: &Ability,
+                      target: DecidedTarget, mut change: ChangedGame, in_combat: bool)
+                      -> Result<ChangedGame, GameError> {
+    let targets = self.resolve_targets(creature, scene, ability.target, target)?;
+    for creature_id in targets.iter() {
+      for effect in &ability.effects {
+        change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
+      }
+    }
+    if in_combat {
+      change = change.apply_creature(creature.id(), |c| c.creature.reduce_energy(ability.cost))?;
+    }
+    Ok(change)
+  }
+
+  pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec,
+                         decision: DecidedTarget)
+                         -> Result<Vec<CreatureID>, GameError> {
+    match (target, decision) {
+      (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
+        if self.tile_system
+          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE) {
+          Ok(vec![cid])
+        } else {
+          Err(GameError::CreatureOutOfRange(cid))
+        }
+      }
+      (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+        if self.tile_system
+          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max) {
+          Ok(vec![cid])
+        } else {
+          Err(GameError::CreatureOutOfRange(cid))
+        }
+      }
+      (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
+      (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
+    }
+  }
+
+
+  pub fn get_movement_options(&self, scene: SceneName, creature_id: CreatureID)
+                              -> Result<Vec<Point3>, GameError> {
+    let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
     if creature.can_move() {
-      Ok(self.tile_system.get_all_accessible(creature.pos(), self.current_map(), creature.speed()))
+      Ok(self.tile_system.get_all_accessible(scene.get_pos(creature_id)?,
+                                             self.get_map(&scene.map)?,
+                                             creature.speed()))
     } else {
       Err(GameError::CannotAct(creature.id()))
     }
   }
 
   /// Get a list of possible targets for an ability being used by a creature.
-  pub fn get_target_options(&self, creature_id: CreatureID, ability_id: AbilityID)
+  pub fn get_target_options(&self, scene: SceneName, creature_id: CreatureID,
+                            ability_id: AbilityID)
                             -> Result<Vec<PotentialTarget>, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
     Ok(match ability.target {
-      TargetSpec::Melee => self.creatures_in_range(creature_id, MELEE_RANGE)?,
-      TargetSpec::Range(distance) => self.creatures_in_range(creature_id, distance)?,
+      TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
+      TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
       TargetSpec::Actor => vec![PotentialTarget::CreatureID(creature_id)],
     })
   }
 
-  fn creatures_in_range(&self, creature_id: CreatureID, distance: Distance)
+  fn creatures_in_range(&self, scene: SceneName, creature_id: CreatureID, distance: Distance)
                         -> Result<Vec<PotentialTarget>, GameError> {
-    fn check_in_range(me: DynamicCreature, others: Vec<&DynamicCreature>, distance: Distance,
-                      ts: TileSystem)
-                      -> Vec<PotentialTarget> {
-      let mut results = vec![];
-      for ptarget in others {
-        if ts.creature_within_distance(me.creature, ptarget.creature, distance) {
-          results.push(PotentialTarget::CreatureID(ptarget.id()));
-        }
+    let scene = self.get_scene(scene)?;
+    let my_pos = scene.get_pos(creature_id)?;
+    let mut results = vec![];
+    for (creature_id, creature_pos) in scene.creatures.iter() {
+      if self.tile_system.points_within_distance(my_pos, *creature_pos, distance) {
+        results.push(PotentialTarget::CreatureID(*creature_id));
       }
-      results
     }
-    // TODO: Scene logic. only allow targeting creatures in the same scene. Positions are scene-dependent.
-    Ok(check_in_range(self.get_creature(creature_id)?,
-                      self.creatures()?.values().collect(),
-                      distance,
-                      self.tile_system))
+    Ok(results)
   }
+
+  // ** END CONSIDERATION **
 
   pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
     self.classes.get(class).ok_or_else(|| GameError::ClassNotFound(class.to_string()))
@@ -316,24 +368,16 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn apply_combat<'combat, 'game: 'combat, F>(&'game self, f: F)
-                                                  -> Result<ChangedGame, GameError>
-    where F: FnOnce(DynamicCombat<'combat, 'game>) -> Result<ChangedCombat<'game>, GameError>
+  pub fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
+    where F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>
   {
-    match self.game.current_combat.as_ref() {
-      None => Err(GameError::NotInCombat),
-      Some(combat) => {
-        let change = f(DynamicCombat {
-          combat: &combat,
-          game: &self.game,
-        })?;
-        let (combat, logs) = change.done();
-        let mut new = self.clone();
-        new.game.current_combat = Some(combat);
-        new.logs.extend(combat_logs_into_game_logs(logs));
-        Ok(new)
-      }
-    }
+    let dyn_combat = self.game.get_combat()?;
+    let change = f(dyn_combat)?;
+    let (combat, logs) = change.done();
+    let mut new = self.clone();
+    new.game.current_combat = Some(combat);
+    new.logs.extend(combat_logs_into_game_logs(logs));
+    Ok(new)
   }
 
   pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
@@ -352,6 +396,11 @@ impl ChangedGame {
     (self.game, self.logs)
   }
 }
+
+fn bug<T>(msg: &str) -> Result<T, GameError> {
+  Err(GameError::BuggyProgram(msg.to_string()))
+}
+
 
 #[cfg(test)]
 pub mod test {
@@ -478,8 +527,7 @@ pub mod test {
                  .cur_health(),
                HP(7));
     let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
-    assert_eq!(game.get_creature(cid("ranger")).unwrap().creature.cur_health(),
-               HP(7));
+    assert_eq!(game.get_creature(cid("ranger")).unwrap().creature.cur_health(), HP(7));
   }
 
   #[test]
@@ -495,13 +543,11 @@ pub mod test {
     fn combat_cids(game: &Game) -> Vec<CreatureID> {
       game.get_combat().unwrap().creatures().unwrap().iter().map(|c| c.id()).collect()
     }
-    assert_eq!(combat_cids(&game),
-               vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+    assert_eq!(combat_cids(&game), vec![cid("rogue"), cid("ranger"), cid("cleric")]);
     // move ranger to position 0
     let game =
       game.perform_unchecked(GameCommand::ChangeCreatureInitiative(cid("ranger"), 0)).unwrap().game;
-    assert_eq!(combat_cids(&game),
-               vec![cid("ranger"), cid("rogue"), cid("cleric")]);
+    assert_eq!(combat_cids(&game), vec![cid("ranger"), cid("rogue"), cid("cleric")]);
   }
 
   #[test]
