@@ -10,6 +10,7 @@ import Json.Helpers as JH
 import Set
 
 
+type alias SceneName = String
 type alias PlayerID = String
 type alias CreatureID = String
 type alias AbilityID = String
@@ -59,12 +60,12 @@ type alias GameSnapshot = {}
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
-  = GLCreateScene Scene
+  = GLEditScene Scene
   | GLSelectMap MapName
   | GLEditMap MapName Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
-  | GLStartCombat (List CreatureID)
+  | GLStartCombat SceneName (List CreatureID)
   | GLStopCombat
   | GLCreateCreature CreatureData
   | GLRemoveCreature CreatureID
@@ -74,11 +75,11 @@ type GameLog
 
 gameLogDecoder = sumDecoder "GameLog"
   [("StopCombat", GLStopCombat)]
-  [ ("CreateScene", JD.map GLCreateScene sceneDecoder)
+  [ ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("SelectMap", JD.map GLSelectMap JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
-  , ("StartCombat", JD.map GLStartCombat (JD.list JD.string))
+  , ("StartCombat", JD.map2 GLStartCombat (JD.index 0 JD.string) (JD.index 1 (JD.list JD.string)))
   , ("CreateCreature", (JD.map GLCreateCreature creatureDataDecoder))
   , ("RemoveCreature", (JD.map GLRemoveCreature JD.string))
   , ("AddCreatureToCombat", (JD.map GLAddCreatureToCombat JD.string))
@@ -182,14 +183,16 @@ classDecoder = JD.map3 Class
   (JD.field "color" JD.string)
 
 type alias Combat =
-  { creatures: CursorList Creature
+  { scene: SceneName
+  , creatures: CursorList CreatureID
   , movement_used: Int
   }
 
 combatDecoder : JD.Decoder Combat
 combatDecoder =
-  JD.map2 Combat
-    (JD.field "creatures" (cursorListDecoder creatureDecoder))
+  JD.map3 Combat
+    (JD.field "scene" JD.string)
+    (JD.field "creatures" (cursorListDecoder JD.string))
     (JD.field "movement_used" JD.int)
 
 type alias CursorList a = {
@@ -379,24 +382,16 @@ effectDecoder =
                                      (JD.index 1 (JD.lazy (\_ -> conditionDecoder))))
       , ("MultiEffect", JD.map MultiEffect (JD.list lazyEffectDecoder))
       ])
--- effectEncoder eff =
---   case eff of
---     Heal num -> JE.object [("Heal", JE.int num)]
---     Damage num -> JE.object [("Damage", JE.int num)]
---     GenerateEnergy num -> JE.object [("GenerateEnergy", JE.int num)]
---     MultiEffect effs -> JE.object [("MultiEffect", JE.list (List.map effectEncoder effs))]
---     ApplyCondition cd cond -> JE.object [("ApplyCondition", JE.list [ conditionDurationEncoder cd
---                                                                     , conditionEncoder cond])]
 
 
 -- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
-  = CreateScene Scene
+  = EditScene Scene
   | SelectMap MapName
   | EditMap MapName Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
-  | StartCombat (List CreatureID)
+  | StartCombat SceneName (List CreatureID)
   | StopCombat
   | CombatAct AbilityID DecidedTarget
   | ActCreature CreatureID AbilityID DecidedTarget
@@ -415,14 +410,14 @@ type GameCommand
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
-    CreateScene scene ->
-      JE.object [("CreateScene", sceneEncoder scene)]
+    EditScene scene ->
+      JE.object [("EditScene", sceneEncoder scene)]
     RegisterPlayer pid ->
       JE.object [("RegisterPlayer", JE.string pid)]
     GiveCreaturesToPlayer pid cids ->
       JE.object [("GiveCreaturesToPlayer", JE.list [JE.string pid, JE.list (List.map JE.string cids)])]
-    StartCombat cids ->
-      JE.object [("StartCombat", JE.list (List.map JE.string cids))]
+    StartCombat scene cids ->
+      JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature creature ->
       JE.object [("CreateCreature", creatureCreationEncoder creature)]
     RemoveCreature cid ->
@@ -496,10 +491,14 @@ distance a b =
   round <| sqrt (toFloat <| (a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)
 
 --- Get the current creature in combat.
-combatCreature : Combat -> Creature
-combatCreature combat = case List.head (List.drop combat.creatures.cursor combat.creatures.data) of
-  Just c -> c
-  Nothing -> Debug.crash "Creature CursorList was invalid"
+combatCreature : Game -> Combat -> Creature
+combatCreature game combat =
+  case List.head (List.drop combat.creatures.cursor combat.creatures.data) of
+    Just cid ->
+      case getCreature game cid of
+        Just c -> c
+        Nothing -> Debug.crash "Combat creature wasn't found in game"
+    Nothing -> Debug.crash "Creature CursorList was invalid"
 
 getCreature : Game -> CreatureID -> Maybe Creature
 getCreature game cid = Dict.get cid game.creatures
@@ -525,10 +524,7 @@ isCreatureInCombat : Game -> CreatureID -> Bool
 isCreatureInCombat game cid =
   case game.current_combat of
     Nothing -> False
-    Just combat ->
-      case listFind (\c -> c.id == cid) combat.creatures.data of
-        Just _ -> True
-        Nothing -> False
+    Just combat -> List.member cid combat.creatures.data
 
 isCreatureOOC : Game -> CreatureID -> Bool
 isCreatureOOC game cid = Dict.member cid game.creatures

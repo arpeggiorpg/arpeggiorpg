@@ -22,6 +22,7 @@ import Elements exposing (..)
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
+
 visibleCreatures : T.Game -> T.Scene -> List Grid.MapCreature
 visibleCreatures game scene =
   let mapInfo creature =
@@ -142,7 +143,8 @@ mapControls =
 
 combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
 combatantList extraGutter extraCreatureCard app combat =
-  vbox (List.map (combatantEntry extraGutter extraCreatureCard app combat) (List.indexedMap (,) combat.creatures.data))
+  let creatures = List.filterMap (T.getCreature app.current_game) combat.creatures.data
+  in vbox (List.map (combatantEntry extraGutter extraCreatureCard app combat) (List.indexedMap (,) creatures))
 
 combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> (Int, T.Creature) -> Html M.Msg
 combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <|
@@ -261,7 +263,7 @@ creatureIcon app creature =
 {-| An action bar that renders at the bottom of the screen for the current combat creature. -}
 mainActionBar : T.App -> T.Combat -> Html M.Msg
 mainActionBar app combat =
-  let creature = T.combatCreature combat
+  let creature = T.combatCreature app.current_game combat
   in sdiv 
       [s [ S.position S.fixed
          , S.left (S.pct 50)

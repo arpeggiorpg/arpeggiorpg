@@ -95,7 +95,7 @@ update msg model = case msg of
             Nothing -> Nothing
     in ({model | creatingScene = newScene}, Cmd.none)
   CreateScene scene ->
-    ({model | creatingScene = Nothing}, sendCommand model.rpiURL (T.CreateScene scene))
+    ({model | creatingScene = Nothing}, sendCommand model.rpiURL (T.EditScene scene))
 
   StartCreatingCreature ->
     ( {model | creatingCreature = Just {name = Nothing, class = Nothing}}
@@ -200,7 +200,7 @@ update msg model = case msg of
       Just app ->
         case app.current_game.current_combat of
           Just combat ->
-            let mreq = M.MovementRequest (T.combatCreature combat).speed pts Nothing
+            let mreq = M.MovementRequest (T.combatCreature app.current_game combat).speed pts Nothing
             in ({model | moving = Just mreq}, Cmd.none)
           Nothing -> ({model | error = "No combat when receiving combat movement options"}, Cmd.none)
       Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)

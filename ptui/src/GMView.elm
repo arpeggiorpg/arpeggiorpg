@@ -167,10 +167,10 @@ mapView model app =
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
                     Just creature -> (creature, M.PathCreature creature.id)
-                    Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
+                    Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid scene moveMessage mvmtReq creature
           _ -> Nothing
-      currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+      currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
         in { mapc | highlight = highlight
@@ -267,13 +267,14 @@ combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
   case app.current_game.current_combat of
     Just com -> CommonView.collapsible "Combat" model (inCombatView model app com)
-    Nothing -> startCombatButton
+    Nothing -> startCombatButton model
 
 {-| The content of what's rendered when we're actually in combat. -}
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
 inCombatView model app combat =
   let game = app.current_game
-      disengageButtons = hbox (List.map disengageButton combat.creatures.data)
+      creatures = List.filterMap (T.getCreature game) combat.creatures.data
+      disengageButtons = hbox (List.map disengageButton creatures)
       extraGutter idx creature =
         [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
                  , disabled (idx == 0)]
@@ -291,10 +292,13 @@ inCombatView model app combat =
   in combatView
 
 {-| A button for starting combat. -}
-startCombatButton : Html M.Msg
-startCombatButton =
-  let gotCreatures cids = U.message (M.SendCommand (T.StartCombat cids))
-  in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
+startCombatButton : M.Model -> Html M.Msg
+startCombatButton model =
+  case model.focus of
+    M.Scene sceneName  ->
+      let gotCreatures cids = U.message (M.SendCommand (T.StartCombat sceneName cids))
+      in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
+    _ -> button [disabled True] [text "Select a Scene to Start Combat"]
 
 {-| A button for stopping combat. -}
 stopCombatButton : Html M.Msg
@@ -358,12 +362,12 @@ hsbox = habox [s [S.justifyContent S.spaceBetween]]
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
-    T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
+    T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
     T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
     T.GLRemoveCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
-    T.GLStartCombat combatants -> hsbox <| [dtext "Started Combat"] ++ List.map dtext combatants
+    T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
     T.GLStopCombat -> dtext "Stopped combat"
     T.GLAddCreatureToCombat cid -> hsbox [dtext cid, dtext "Added Creature to Combat"]
     T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", dtext cid]
