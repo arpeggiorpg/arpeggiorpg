@@ -112,6 +112,9 @@ impl Game {
       AddCreatureToCombat(cid) => {
         let mut combat = newgame.current_combat.clone().ok_or(GameError::NotInCombat)?;
         self.check_creature_id(cid)?;
+        if combat.creatures.contains(&cid) {
+          return Err(GameError::AlreadyInCombat(cid));
+        }
         combat.creatures.push(cid);
         newgame.current_combat = Some(combat);
       }

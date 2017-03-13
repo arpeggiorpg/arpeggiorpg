@@ -265,7 +265,7 @@ pub enum GameError {
   InvalidCreatureState,
   BuggyProgram(String),
   NotInCombat,
-  AlreadyInCombat,
+  AlreadyInCombat(CreatureID),
   CannotMove(CreatureID),
   CannotAct(CreatureID),
   NoPathFound,
