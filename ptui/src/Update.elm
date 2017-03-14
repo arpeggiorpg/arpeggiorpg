@@ -271,7 +271,7 @@ update msg model = case msg of
   SelectAbility sceneName cid abid ->
     let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sceneName ++ "/" ++ cid ++ "/" ++ abid
         req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
-    in ({ model | selectedAbility = Just (cid, abid)}, req)
+    in ({ model | selectedAbility = Just (sceneName, cid, abid)}, req)
 
   CancelAbility -> ({model | selectedAbility = Nothing}, Cmd.none)
 
@@ -292,7 +292,7 @@ update msg model = case msg of
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
-  ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature cid abid dtarget))
+  ActCreature sceneName cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
 

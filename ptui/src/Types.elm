@@ -394,7 +394,7 @@ type GameCommand
   | StartCombat SceneName (List CreatureID)
   | StopCombat
   | CombatAct AbilityID DecidedTarget
-  | ActCreature CreatureID AbilityID DecidedTarget
+  | ActCreature SceneName CreatureID AbilityID DecidedTarget
   | PathCurrentCombatCreature Point3
   | PathCreature SceneName CreatureID Point3
   | SetCreaturePos SceneName CreatureID Point3
@@ -436,8 +436,8 @@ gameCommandEncoder gc =
       JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     CombatAct abid dtarget ->
       JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
-    ActCreature cid abid dtarget ->
-      JE.object [("ActCreature", JE.list [JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
+    ActCreature sceneName cid abid dtarget ->
+      JE.object [("ActCreature", JE.list [JE.string sceneName, JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
     Done ->
       JE.string "Done"
     SelectMap name ->

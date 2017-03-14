@@ -234,10 +234,10 @@ checkModal model app =
     selectingTargets =
       -- TODO: target selection should be done on the map
       case model.selectedAbility of
-        Just (cid, abid) ->
+        Just (sceneName, cid, abid) ->
           if T.isCreatureInCombat game cid
           then Just (targetSelector model game M.CombatAct abid)
-          else Just (targetSelector model game (M.ActCreature cid) abid)
+          else Just (targetSelector model game (M.ActCreature sceneName cid) abid)
         Nothing -> Nothing
     error = if model.error /= "" then Just (errorBox model) else Nothing
   in selectingTargets |> MaybeEx.or error

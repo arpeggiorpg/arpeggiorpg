@@ -63,7 +63,7 @@ type Msg
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
     | CombatAct T.AbilityID T.DecidedTarget
-    | ActCreature T.CreatureID T.AbilityID T.DecidedTarget
+    | ActCreature T.SceneName  T.CreatureID T.AbilityID T.DecidedTarget
     | RequestMove MovementRequest
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
@@ -136,7 +136,7 @@ type alias Model =
   { app : Maybe T.App
   , creatingCreature : Maybe PendingCreature
   , creatingScene : Maybe T.Scene
-  , selectedAbility : Maybe (T.CreatureID, T.AbilityID)
+  , selectedAbility : Maybe (T.SceneName, T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
   , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)
   , error: String
