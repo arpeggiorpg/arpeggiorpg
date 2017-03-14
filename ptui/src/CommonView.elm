@@ -286,7 +286,7 @@ theCss = node "style" [] [text """
 
 tabbedView : String -> String -> M.Model -> List ((String, () -> Html M.Msg)) -> Html M.Msg
 tabbedView category defaultView model things =
-  let header = hbox (List.map headerButton things)
+  let header = habox [s [S.justifyContent S.spaceBetween]] (List.map headerButton things)
       buttonText name = if name == selectedView then strong [] [text name] else text name
       headerButton (name, _) = button [onClick (M.SelectView category name)] [buttonText name]
       selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView

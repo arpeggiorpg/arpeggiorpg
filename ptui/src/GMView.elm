@@ -41,17 +41,16 @@ viewGame model app =
         [mapView model app]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
-    , overlay (S.px 440) (S.px 0) [] [sceneManagementView model app]
-    , overlay (S.px 80) (S.px 0) [S.width (S.px 360), S.height (S.px 50)]
-        [ hbox [mapConsole model app, editMapConsole model] ]
     , overlayRight (S.px 0) (S.px 0)
-        [ S.width (S.px 325)
+        [ S.width (S.px 500)
         , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
         [ CommonView.tabbedView "right-side-bar" "All Creatures" model
             [ ("All Creatures", (\_ -> allCreaturesView model app))
             , ("Combat", (\_ -> combatView model app))
             , ("Players", (\_ -> playersView app))
             , ("History", (\_ -> historyView app))
+            , ("Scenes", (\_ -> sceneManagementView model app))
+            , ("Maps", (\_ -> vbox [mapConsole model app, editMapConsole model]))
             ]
         ]
     , CommonView.movementControls [moveAnywhereToggle model] model
@@ -63,9 +62,8 @@ viewGame model app =
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
   vbox
-    [ h3 [] [text "Scenes"]
-    , hbox <| List.map sceneButton (Dict.keys app.current_game.scenes)
-    , button [onClick M.StartCreatingScene] [text "Create a scene"]
+    [ button [onClick M.StartCreatingScene] [text "Create a scene"]
+    , vbox <| List.map sceneButton (Dict.keys app.current_game.scenes)
     ]
 
 sceneButton : String -> Html M.Msg
