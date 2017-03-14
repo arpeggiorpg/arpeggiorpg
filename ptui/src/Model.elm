@@ -56,6 +56,7 @@ type Msg
     | SetSceneName String
     | SetSceneMapName T.MapName
     | CreateScene T.Scene
+    | AddCreatureToScene T.SceneName T.CreatureID
 
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID

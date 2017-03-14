@@ -127,6 +127,17 @@ update msg model = case msg of
   CreateScene scene ->
     ({model | creatingScene = Nothing}, sendCommand model.rpiURL (T.EditScene scene))
 
+  AddCreatureToScene sceneName cid ->
+    case model.app of
+      Just app ->
+        case Dict.get sceneName app.current_game.scenes of
+          Just scene ->
+            let newCreatures = Dict.insert cid {x=0,y=0,z=0} scene.creatures
+                newScene = {scene | creatures = newCreatures}
+            in (model, sendCommand model.rpiURL (T.EditScene newScene))
+          Nothing -> (model, Cmd.none)
+      Nothing -> (model, Cmd.none)
+
   StartCreatingCreature ->
     ( {model | creatingCreature = Just {name = Nothing, class = Nothing}}
     , Cmd.none)

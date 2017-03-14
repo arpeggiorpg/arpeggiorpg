@@ -216,9 +216,23 @@ allCreatureEntry model app creature = vbox <|
           then text ""
           else engageButton creature
         Nothing -> text ""
+    , addCreatureToSceneButton model app creature
     , deleteCreatureButton creature
     ]
   , hbox (CommonView.oocActionBar model app.current_game creature)]
+
+addCreatureToSceneButton : M.Model -> T.App -> T.Creature -> Html M.Msg
+addCreatureToSceneButton model app creature =
+  case model.focus of
+    M.Scene name ->
+      let sceneCreatures =
+            Dict.get name app.current_game.scenes
+            |> Maybe.map (\s -> Dict.keys s.creatures)
+            |> Maybe.withDefault []
+          inScene = List.member creature.id sceneCreatures
+      in button [onClick (M.AddCreatureToScene name creature.id), disabled inScene]
+                [text <| "Add to Scene (" ++ name ++ ")"]
+    _ -> button [disabled True] [text "Add to Scene"]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}
