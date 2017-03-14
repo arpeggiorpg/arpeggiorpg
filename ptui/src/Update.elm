@@ -24,23 +24,22 @@ message msg = Task.perform (always msg) (Task.succeed ())
 updateModelFromApp : M.Model -> T.App -> M.Model
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
-      showingMovement = M.NotShowingMovement
-        -- TODO: Bring back the PathCreature log!
-        -- case T.mostRecentLog newApp of
-        --   Just (T.GLCombatLog (T.ComLPathCurrentCreature (first::rest))) ->
-        --     -- most recent action was movement. Only start animating it if we haven't already
-        --     -- started animating it.
-        --     case model.showingMovement of
-        --       M.ShowingMovement alreadyShown toShow ->
-        --         if (alreadyShown ++ toShow) /= (first::rest)
-        --         then M.ShowingMovement [first] (first::rest)
-        --         else M.ShowingMovement alreadyShown toShow
-        --       M.DoneShowingMovement shown ->
-        --         if shown /= (first::rest)
-        --         then M.ShowingMovement [first] rest
-        --         else M.DoneShowingMovement shown
-        --       M.NotShowingMovement -> M.ShowingMovement [first] rest
-        --   _ -> M.NotShowingMovement
+      showingMovement =
+        case T.mostRecentLog newApp of
+          Just (T.GLPathCreature scene cid (first::rest)) ->
+            -- most recent action was movement. Only start animating it if we haven't already
+            -- started animating it.
+            case model.showingMovement of
+              M.ShowingMovement alreadyShown toShow ->
+                if (alreadyShown ++ toShow) /= (first::rest)
+                then M.ShowingMovement [first] (first::rest)
+                else M.ShowingMovement alreadyShown toShow
+              M.DoneShowingMovement shown ->
+                if shown /= (first::rest)
+                then M.ShowingMovement [first] rest
+                else M.DoneShowingMovement shown
+              M.NotShowingMovement -> M.ShowingMovement [first] rest
+          _ -> M.NotShowingMovement
   in { model2 | showingMovement = showingMovement}
 
 start = message Start
@@ -193,7 +192,7 @@ update msg model = case msg of
   GetCombatMovementOptions ->
     let endpoint = (model.rpiURL ++ "/combat_movement_options")
         cmd = Http.send GotCombatMovementOptions (Http.get endpoint (JD.list T.point3Decoder))
-    in (model, cmd)
+    in ({model | moveAnywhere = False}, cmd)
   
   GotCombatMovementOptions (Ok pts) ->
     case model.app of
