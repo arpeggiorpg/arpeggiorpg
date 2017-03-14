@@ -68,6 +68,7 @@ type Msg
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
     | PathCreature T.SceneName T.CreatureID T.Point3
+    | SetCreaturePos T.SceneName T.CreatureID T.Point3
     | GetMovementOptions T.SceneName T.Creature
     | GetCombatMovementOptions
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))

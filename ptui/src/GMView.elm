@@ -68,10 +68,12 @@ sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
   vbox
     [ h3 [] [text "Scenes"]
-    , hbox <|
-        List.map (\sceneName -> button [onClick (M.SetFocus (M.Scene sceneName))] [text sceneName]) (Dict.keys app.current_game.scenes)
+    , hbox <| List.map sceneButton (Dict.keys app.current_game.scenes)
     , button [onClick M.StartCreatingScene] [text "Create a scene"]
     ]
+
+sceneButton : String -> Html M.Msg
+sceneButton sceneName = button [onClick (M.SetFocus (M.Scene sceneName))] [text sceneName]
 
 bottomActionBar : T.App -> Html M.Msg
 bottomActionBar app =
@@ -81,8 +83,14 @@ bottomActionBar app =
 
 moveAnywhereToggle : M.Model -> Html M.Msg
 moveAnywhereToggle model =
-  hbox [ text "Allow movement anywhere: "
-       , input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
+  case model.moving of
+    Just {ooc_creature} ->
+      case ooc_creature of
+        Just x ->
+          hbox [ text "Allow movement anywhere: "
+               , input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
+        Nothing -> text ""          
+    Nothing -> text "Why is this being called?"
 
 {-| Controls to show when editing the map. -}
 editMapConsole : M.Model -> Html M.Msg
@@ -161,14 +169,15 @@ mapView model app =
           Just pos -> Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos (vCreatures scene)
           Nothing -> text "Moving Creature is not in this scene"
       movementMap scene =
-        case (game.current_combat, model.moving) of
+        let pathOrPort = if model.moveAnywhere then (M.SetCreaturePos scene.name) else (M.PathCreature scene.name)
+        in case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid scene (M.PathCreature scene.name creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid scene (pathOrPort creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
-                    Just creature -> (creature, M.PathCreature scene.name creature.id)
+                    Just creature -> (creature, pathOrPort creature.id)
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid scene moveMessage mvmtReq creature
           _ -> Nothing
@@ -291,7 +300,8 @@ inCombatView model app combat =
       extraCreatureCard creature = [noteBox model creature]
       combatView =
         vbox
-          [ CommonView.combatantList extraGutter extraCreatureCard app combat
+          [ hbox [strong [] [text "Scene: "], sceneButton combat.scene]
+          , CommonView.combatantList extraGutter extraCreatureCard app combat
           , stopCombatButton
           , disengageButtons]
   in combatView
@@ -380,6 +390,7 @@ historyItem snapIdx logIdx log =
     T.GLCombatLog cl -> historyCombatLog cl
     T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
     T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, dtext cid, dtext (maybePos pts)]
+    T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, dtext cid, dtext (renderPt3 pt)]
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [dtext "⟲"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg

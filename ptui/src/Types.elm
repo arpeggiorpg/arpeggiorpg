@@ -73,6 +73,7 @@ type GameLog
   | GLRemoveCreatureFromCombat CreatureID
   | GLRollback Int Int
   | GLPathCreature SceneName CreatureID (List Point3)
+  | GLSetCreaturePos SceneName CreatureID Point3
 
 gameLogDecoder = sumDecoder "GameLog"
   [("StopCombat", GLStopCombat)]
@@ -88,6 +89,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("EditMap", JD.map2 GLEditMap (JD.index 0 JD.string) (JD.index 1 mapDecoder))
   , ("Rollback", JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int))
   , ("PathCreature", JD.map3 GLPathCreature (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 (JD.list point3Decoder)))
+  , ("SetCreaturePos", JD.map3 GLSetCreaturePos (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 point3Decoder))
   ]
 
 type CombatLog

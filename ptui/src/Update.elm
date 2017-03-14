@@ -295,6 +295,7 @@ update msg model = case msg of
   ActCreature sceneName cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
+  SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
