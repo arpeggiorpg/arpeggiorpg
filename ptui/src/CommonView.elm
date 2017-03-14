@@ -2,7 +2,7 @@ module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, mapControls
   , movementControls, modalOverlay, checkModal
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, theCss)
+  , mainActionBar, theCss, tabbedView)
 
 import Dict
 import Set
@@ -283,3 +283,16 @@ theCss = node "style" [] [text """
     box-sizing: border-box;
   }
   """]
+
+tabbedView : String -> String -> M.Model -> List ((String, () -> Html M.Msg)) -> Html M.Msg
+tabbedView category defaultView model things =
+  let header = hbox (List.map headerButton things)
+      buttonText name = if name == selectedView then strong [] [text name] else text name
+      headerButton (name, _) = button [onClick (M.SelectView category name)] [buttonText name]
+      selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
+      renderBody (name, renderer) = if name == selectedView then Just renderer else Nothing
+      body =
+        case List.filterMap renderBody things of
+          [x] -> x ()
+          _ -> text "Select a view"
+  in vbox [header, body]

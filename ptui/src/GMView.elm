@@ -33,8 +33,8 @@ elements on top.
 -}
 viewGame : M.Model -> T.App -> Html M.Msg
 viewGame model app =
-  sdiv
-    (stdStyle ++ [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]])
+  div
+    [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
     <|
     [ CommonView.theCss,
       overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
@@ -43,11 +43,11 @@ viewGame model app =
         [CommonView.mapControls]
     , overlay (S.px 440) (S.px 0) [] [sceneManagementView model app]
     , overlay (S.px 80) (S.px 0) [S.width (S.px 360), S.height (S.px 50)]
-        [ hbox [mapConsole model app , editMapConsole model] ]
+        [ hbox [mapConsole model app, editMapConsole model] ]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 325)
         , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ tabbedView "right-side-bar" "All Creatures" model
+        [ CommonView.tabbedView "right-side-bar" "All Creatures" model
             [ ("All Creatures", (\_ -> allCreaturesView model app))
             , ("Combat", (\_ -> combatView model app))
             , ("Players", (\_ -> playersView app))
@@ -59,18 +59,6 @@ viewGame model app =
     , bottomActionBar app
     ]
     ++ modalView model app
-
-tabbedView : String -> String -> M.Model -> List ((String, () -> Html M.Msg)) -> Html M.Msg
-tabbedView category defaultView model things =
-  let header = hbox (List.map headerButton things)
-      headerButton (name, _) = button [onClick (M.SelectView category name)] [text name]
-      selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
-      renderBody (name, renderer) = if name == selectedView then Just renderer else Nothing
-      body =
-        case List.filterMap renderBody things of
-          [x] -> x ()
-          _ -> text "Select a view"
-  in vbox [header, body]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
