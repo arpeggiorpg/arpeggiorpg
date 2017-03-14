@@ -42,46 +42,38 @@ updateModelFromApp model newApp =
           _ -> M.NotShowingMovement
   in { model2 | showingMovement = showingMovement}
 
-
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
 getLatestPath model newApp =
   case model.app of
     Just oldApp ->
-      -- this is slow. we should do a short-circuiting search starting from the right, not a full
-      -- walk from the left.
-      let newLogs = getNewLogs oldApp newApp
-          processLog log prevLog =
-            case (prevLog, log) of
-              (_, T.GLPathCreature _ _ _) -> Just log
-              (Just x, _) -> Just x
+      let baseSnapIdx = (Array.length oldApp.snapshots) - 1
+          baseLogIdx =
+            Array.get baseSnapIdx oldApp.snapshots
+              |> Maybe.map (\(_, l) -> Array.length l)
+              |> Maybe.withDefault 0
+          findLog (_, logs) = arrayRFind baseLogIdx checkPath logs
+          checkPath log =
+            case log of
+              T.GLPathCreature _ _ _ -> Just log
               _ -> Nothing
-      in List.foldl processLog Nothing newLogs
+      in arrayRFind baseSnapIdx findLog newApp.snapshots
     Nothing -> Nothing
 
-{-| Get game logs that have been newly added since the last time we received an update.
-Probably we will eventually switch to an RPI that only gives us new logs so this will become
-much simpler. -}
-getNewLogs : T.App -> T.App -> List (T.GameLog)
-getNewLogs oldApp newApp =
---   , snapshots : Array.Array (GameSnapshot, (List GameLog))
-  let oldSnapshots = oldApp.snapshots
-      newSnapshots = newApp.snapshots
-  in
-    if Array.length oldSnapshots == Array.length newSnapshots
-    then
-      let oldLogs = Maybe.map (\(snap, logs) -> logs) (arrayLast oldSnapshots) |> Maybe.withDefault []
-          newLogs = Maybe.map (\(snap, logs) -> logs) (arrayLast newSnapshots) |> Maybe.withDefault []
-      in
-          List.drop (List.length oldLogs) newLogs
-    else []
+{-| Search backwards through an array. -}
+arrayRFind : Int -> (a -> Maybe b) -> Array.Array a -> Maybe b
+arrayRFind limit fn data =
+  let walk cur =
+        Array.get cur data
+          |> Maybe.map (\el ->
+              case fn el of
+                Just x -> Just x
+                Nothing -> if cur - 1 == -1 then Nothing else walk (cur - 1))
+          |> Maybe.withDefault (Debug.log ("Couldn't find index" ++ (toString cur)) Nothing)
+      lastIdx = (Array.length data) - 1
+  in walk lastIdx
 
-
-arrayLast : Array.Array a -> Maybe a
-arrayLast ar =
-  let lastArr = Array.slice -1 (Array.length ar) ar
-  in Array.get 0 lastArr
-
+start : Cmd Msg
 start = message Start
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
@@ -98,7 +90,7 @@ update msg model = case msg of
       Nothing -> (model, message Start)
       Just app -> 
         let snapshotLength = Array.length app.snapshots
-            logLength = Maybe.withDefault 0 (Maybe.map (\(g, logs) -> List.length logs) <| Array.get (snapshotLength - 1) app.snapshots)
+            logLength = Maybe.withDefault 0 (Maybe.map (\(g, logs) -> Array.length logs) <| Array.get (snapshotLength - 1) app.snapshots)
             url = model.rpiURL ++ "poll/" ++ (toString snapshotLength) ++ "/" ++ (toString logLength)
             cmd = Http.send ReceivedAppUpdate (Http.get url T.appDecoder)
         in (model, cmd)

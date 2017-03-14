@@ -365,7 +365,7 @@ historyView app =
   let snapIdx = (Array.length app.snapshots) - 1
       items =
         case Array.get snapIdx app.snapshots of
-          Just (_, items) -> items
+          Just (_, items) -> Array.toList items
           Nothing -> []
           -- it'd be nice if the following maxHeight were smarter about avoiding falling off the bottom of the screen.
   in vabox [s [S.width (S.px 325), S.overflow S.auto, S.maxHeight (S.px 600)]]
