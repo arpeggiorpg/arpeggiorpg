@@ -59,7 +59,7 @@ type Msg
 
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
-    | SelectAbility T.CreatureID T.AbilityID
+    | SelectAbility T.SceneName T.CreatureID T.AbilityID
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
     | CombatAct T.AbilityID T.DecidedTarget

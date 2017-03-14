@@ -268,8 +268,8 @@ update msg model = case msg of
             M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
     in ({ model | gridOffset = newOffset}, Cmd.none)
 
-  SelectAbility cid abid ->
-    let endpoint = model.rpiURL ++ "/target_options/" ++ cid ++ "/" ++ abid
+  SelectAbility sceneName cid abid ->
+    let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sceneName ++ "/" ++ cid ++ "/" ++ abid
         req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
     in ({ model | selectedAbility = Just (cid, abid)}, req)
 

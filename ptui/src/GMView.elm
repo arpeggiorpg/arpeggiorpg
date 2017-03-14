@@ -215,7 +215,7 @@ availableCreatureEntry model app creature = vbox <|
         Nothing -> text ""
     , deleteCreatureButton creature
     ]
-  , hbox (CommonView.oocActionBar app.current_game creature)]
+  , hbox (CommonView.oocActionBar model app.current_game creature)]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}
@@ -225,9 +225,9 @@ noteBox model creature =
       inp = input [type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
       saveButton =
         if creature.note /= note
-        then [button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]]
-        else []
-  in hbox <| [inp] ++ saveButton
+        then button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]
+        else text ""
+  in hbox <| [inp, saveButton]
 
 {-| A button for engaging a creature in combat. -}
 engageButton : T.Creature -> Html M.Msg

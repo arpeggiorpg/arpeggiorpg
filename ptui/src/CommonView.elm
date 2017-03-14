@@ -84,26 +84,30 @@ durationEl condDur = case condDur of
   T.Duration n -> text <| "(" ++ toString n ++ ")"
 
 
-baseActionBar : Bool -> T.Game -> T.Creature -> List (Html M.Msg)
-baseActionBar inCombat game creature =
+baseActionBar : T.SceneName -> Bool -> T.Game -> T.Creature -> List (Html M.Msg)
+baseActionBar sceneName inCombat game creature =
   let abinfo abstatus =
         Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
                       (Dict.get abstatus.ability_id game.abilities)
       abilities = List.filterMap abinfo creature.abilities
-  in List.map (abilityButton creature) abilities
+  in List.map (abilityButton sceneName creature) abilities
 
 {-| An action bar for characters who are not in combat. -}
-oocActionBar : T.Game -> T.Creature -> List (Html M.Msg)
-oocActionBar = baseActionBar False
+oocActionBar : M.Model -> T.Game -> T.Creature -> List (Html M.Msg)
+oocActionBar model game creature =
+  case model.focus of
+    M.Scene name -> baseActionBar name False game creature
+    _ -> [dtext "Can't render an action bar without a scene!"]
 
 combatActionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 combatActionBar game combat creature =
-  habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  baseActionBar True game creature)
+  let sceneName = combat.scene
+  in habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  baseActionBar sceneName True game creature)
 
-abilityButton : T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
-abilityButton creature (abid, ability) =
+abilityButton : T.SceneName -> T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
+abilityButton sceneName creature (abid, ability) =
   actionButton
-    [ onClick (M.SelectAbility creature.id abid)
+    [ onClick (M.SelectAbility sceneName creature.id abid)
     , disabled (not creature.can_act)]
     [text ability.name]
 
