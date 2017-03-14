@@ -25,7 +25,7 @@ updateModelFromApp : M.Model -> T.App -> M.Model
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
       showingMovement =
-        case T.mostRecentLog newApp of
+        case getLatestPath model newApp of
           Just (T.GLPathCreature scene cid (first::rest)) ->
             -- most recent action was movement. Only start animating it if we haven't already
             -- started animating it.
@@ -41,6 +41,46 @@ updateModelFromApp model newApp =
               M.NotShowingMovement -> M.ShowingMovement [first] rest
           _ -> M.NotShowingMovement
   in { model2 | showingMovement = showingMovement}
+
+
+{-| Return the most recent PathCreature log item  -}
+getLatestPath : M.Model -> T.App -> Maybe T.GameLog
+getLatestPath model newApp =
+  case model.app of
+    Just oldApp ->
+      -- this is slow. we should do a short-circuiting search starting from the right, not a full
+      -- walk from the left.
+      let newLogs = getNewLogs oldApp newApp
+          processLog log prevLog =
+            case (prevLog, log) of
+              (_, T.GLPathCreature _ _ _) -> Just log
+              (Just x, _) -> Just x
+              _ -> Nothing
+      in List.foldl processLog Nothing newLogs
+    Nothing -> Nothing
+
+{-| Get game logs that have been newly added since the last time we received an update.
+Probably we will eventually switch to an RPI that only gives us new logs so this will become
+much simpler. -}
+getNewLogs : T.App -> T.App -> List (T.GameLog)
+getNewLogs oldApp newApp =
+--   , snapshots : Array.Array (GameSnapshot, (List GameLog))
+  let oldSnapshots = oldApp.snapshots
+      newSnapshots = newApp.snapshots
+  in
+    if Array.length oldSnapshots == Array.length newSnapshots
+    then
+      let oldLogs = Maybe.map (\(snap, logs) -> logs) (arrayLast oldSnapshots) |> Maybe.withDefault []
+          newLogs = Maybe.map (\(snap, logs) -> logs) (arrayLast newSnapshots) |> Maybe.withDefault []
+      in
+          List.drop (List.length oldLogs) newLogs
+    else []
+
+
+arrayLast : Array.Array a -> Maybe a
+arrayLast ar =
+  let lastArr = Array.slice -1 (Array.length ar) ar
+  in Array.get 0 lastArr
 
 start = message Start
 
