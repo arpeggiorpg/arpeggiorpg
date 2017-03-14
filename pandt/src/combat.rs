@@ -45,13 +45,12 @@ impl<'game> DynamicCombat<'game> {
 
   pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
     let change = self.change_with(CombatLog::EndTurn(self.current_creature()?.id()))?;
-    // let change = change.apply_creature(change.dyn().current_creature()?.id(), |c| c.tick())?;
     Ok(change)
   }
 
   pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
     let current = self.current_creature()?;
-    let current_speed = current.speed() - self.combat.movement_used;
+    let current_speed = current.speed().saturating_sub(self.combat.movement_used);
     Ok(self.game
       .tile_system
       .get_all_accessible(self.current_pos()?, self.map, current_speed))
@@ -149,8 +148,12 @@ impl<'game> CombatMove<'game> {
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
   pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
-    let (change, distance) = self.combat.game
-      .path_creature(self.combat.scene.name.clone(), self.combat.combat.current_creature_id(), pt)?;
+    let (change, distance) = self.combat
+      .game
+      .path_creature_distance(self.combat.scene.name.clone(),
+                              self.combat.combat.current_creature_id(),
+                              pt,
+                              self.movement_left)?;
     change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
   }
 }

@@ -77,7 +77,7 @@ impl Game {
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-  fn path_creature_distance(&self, scene_name: SceneName, cid: CreatureID, pt: Point3,
+  pub fn path_creature_distance(&self, scene_name: SceneName, cid: CreatureID, pt: Point3,
                             max_distance: Distance)
                             -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_name.clone())?;

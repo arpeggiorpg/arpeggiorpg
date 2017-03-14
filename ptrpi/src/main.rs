@@ -48,7 +48,6 @@ error_chain! {
   }
 }
 
-
 type PTResult<X> = Result<CORS<JSON<X>>, RPIError>;
 
 #[derive(Clone)]
@@ -68,7 +67,7 @@ impl PT {
 }
 
 #[route(OPTIONS, "/")]
-fn options_handler<'a>() -> PreflightCORS {
+fn options_handler() -> PreflightCORS {
   CORS::preflight("*").methods(vec![Method::Options, Method::Post]).headers(vec!["Content-Type"])
 }
 

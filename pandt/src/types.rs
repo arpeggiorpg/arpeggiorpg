@@ -124,6 +124,12 @@ impl Distance {
   pub fn from_meters(x: f32) -> Distance {
     Distance((x * 100.0) as u32)
   }
+  pub fn saturating_add(self, other: Self) -> Self {
+    Distance(self.0.saturating_add(other.0))
+  }
+  pub fn saturating_sub(self, other: Self) -> Self {
+    Distance(self.0.saturating_sub(other.0))
+  }
 }
 
 /// Top-level commands that can be sent from a client to affect the state of the app.
