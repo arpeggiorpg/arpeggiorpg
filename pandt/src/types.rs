@@ -230,7 +230,7 @@ pub enum GameLog {
   /// a combat context, but things like moving out of combat needs this.
   CreatureLog(CreatureID, CreatureLog),
   SetCreaturePos(SceneName, CreatureID, Point3),
-  PathCreature(SceneName, CreatureID, Point3),
+  PathCreature(SceneName, CreatureID, Vec<Point3>),
   StartCombat(SceneName, Vec<CreatureID>),
   StopCombat,
   CreateCreature(Creature),

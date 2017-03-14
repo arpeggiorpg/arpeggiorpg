@@ -163,21 +163,21 @@ mapView model app =
       movementMap scene =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid scene (M.PathCreature creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid scene (M.PathCreature scene.name creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
-                    Just creature -> (creature, M.PathCreature creature.id)
+                    Just creature -> (creature, M.PathCreature scene.name creature.id)
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid scene moveMessage mvmtReq creature
           _ -> Nothing
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
-      modifyMapCreature mapc =
+      modifyMapCreature scene mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
         in { mapc | highlight = highlight
-                  , movable = Just M.GetMovementOptions}
-      vCreatures scene = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
+                  , movable = Just (M.GetMovementOptions scene.name)}
+      vCreatures scene = List.map (modifyMapCreature scene) (CommonView.visibleCreatures app.current_game scene)
       defaultMap scene () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) (vCreatures scene)
   in 
     case model.focus of
@@ -379,6 +379,7 @@ historyItem snapIdx logIdx log =
     T.GLCreatureLog cid cl -> hsbox [dtext cid, historyCreatureLog cl]
     T.GLCombatLog cl -> historyCombatLog cl
     T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
+    T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, dtext cid, dtext (maybePos pts)]
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [dtext "⟲"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg
@@ -386,6 +387,9 @@ historyCombatLog cl = case cl of
   T.ComLEndTurn cid -> hsbox [dtext cid, dtext "Ended Turn"]
   T.ComLChangeCreatureInitiative cid newPos -> hsbox [dtext cid, dtext "Changed initiative to", dtext <| toString newPos]
   T.ComLConsumeMovement distance -> hsbox [dtext "Used movement", dtext (toString distance)]
+
+renderPt3 : T.Point3 -> String
+renderPt3 {x, y, z} = toString x ++ "," ++ toString y
 
 maybePos : List T.Point3 -> String
 maybePos path =

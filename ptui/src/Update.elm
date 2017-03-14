@@ -180,8 +180,8 @@ update msg model = case msg of
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.collapsed
     in ({model | collapsed = newCollapsed}, Cmd.none)
 
-  GetMovementOptions creature ->
-    let endpoint = (model.rpiURL ++ "/movement_options/" ++ creature.id)
+  GetMovementOptions sceneName creature ->
+    let endpoint = (model.rpiURL ++ "/movement_options/" ++ Http.encodeUri sceneName ++ "/" ++ creature.id)
         cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))
     in (model, cmd)
 
@@ -294,7 +294,7 @@ update msg model = case msg of
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
   ActCreature cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
-  PathCreature cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature cid pt))
+  PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set

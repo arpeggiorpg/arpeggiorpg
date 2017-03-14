@@ -149,18 +149,8 @@ impl<'game> CombatMove<'game> {
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
   pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
-    let (pts, distance) = self.combat
-      .game
-      .tile_system
-      .find_path(self.combat.current_pos()?, self.movement_left, self.combat.map, pt)
-      .ok_or(GameError::NoPathFound)?;
-    debug_assert!(distance <= self.movement_left);
-
-    let change = self.combat
-      .game
-      .change_with(GameLog::PathCreature(self.combat.combat.scene.clone(),
-                                         self.combat.combat.current_creature_id(),
-                                         pt))?;
+    let (change, distance) = self.combat.game
+      .path_creature(self.combat.scene.name.clone(), self.combat.combat.current_creature_id(), pt)?;
     change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
   }
 }

@@ -39,7 +39,7 @@ impl Game {
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(c) => self.create_creature(c),
-      PathCreature(scene, cid, pt) => self.change_with(GameLog::PathCreature(scene, cid, pt)),
+      PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {
         self.change().apply_creature(cid, |c| c.creature.set_note(note.clone()))
@@ -69,6 +69,26 @@ impl Game {
       SetPlayerScene(..) => bug("Game SetPlayerScene"),
     }?;
     Ok(change)
+  }
+
+  pub fn path_creature(&self, scene: SceneName, cid: CreatureID, pt: Point3)
+                       -> Result<(ChangedGame, Distance), GameError> {
+    let creature = self.get_creature(cid)?;
+    self.path_creature_distance(scene, cid, pt, creature.speed())
+  }
+
+  fn path_creature_distance(&self, scene_name: SceneName, cid: CreatureID, pt: Point3,
+                            max_distance: Distance)
+                            -> Result<(ChangedGame, Distance), GameError> {
+    let scene = self.get_scene(scene_name.clone())?;
+    let terrain = self.get_map(&scene.map)?;
+    let (pts, distance) = self.tile_system
+      .find_path(scene.get_pos(cid)?, max_distance, terrain, pt)
+      .ok_or(GameError::NoPathFound)?;
+    debug_assert!(distance <= max_distance);
+
+    let change = self.change_with(GameLog::PathCreature(scene_name, cid, pts))?;
+    Ok((change, distance))
   }
 
   fn next_turn(&self) -> Result<ChangedGame, GameError> {
@@ -148,8 +168,10 @@ impl Game {
         let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
         newgame.scenes.insert(scene);
       }
-      PathCreature(ref scene_name, ref cid, ref pt) => {
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+      PathCreature(ref scene_name, ref cid, ref pts) => {
+        let current_pos = self.get_scene(scene_name.clone())?.get_pos(*cid)?;
+        let dest = pts.last().map(|x| *x).unwrap_or(current_pos);
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest);
         newgame.scenes.insert(scene);
       }
       // Things that are handled at the App level
