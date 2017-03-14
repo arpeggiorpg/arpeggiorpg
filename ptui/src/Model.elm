@@ -85,6 +85,7 @@ type Msg
     | MapZoom MapInOut
     | MapPan Direction
     | ToggleCollapsed String
+    | SelectView String String
 
     | NoMsg
 
@@ -115,6 +116,7 @@ defaultModel flags =
   , gridSize = 60
   , gridOffset = {x = -15, y = 10}
   , collapsed = Dict.empty
+  , selectedViews = Dict.empty
   , creatingScene = Nothing
   , focus = NoFocus
   }
@@ -154,6 +156,7 @@ type alias Model =
   -- gridOffset: offset in METERS
   , gridOffset : {x : Int, y: Int}
   , collapsed : Dict.Dict String Bool
+  , selectedViews : Dict.Dict String String
   , focus: Focus
   }
   

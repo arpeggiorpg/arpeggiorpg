@@ -44,18 +44,14 @@ viewGame model app =
     , overlay (S.px 440) (S.px 0) [] [sceneManagementView model app]
     , overlay (S.px 80) (S.px 0) [S.width (S.px 360), S.height (S.px 50)]
         [ hbox [mapConsole model app , editMapConsole model] ]
-    , overlay (S.px 80) (S.px 50) []
-      [ vbox
-          [ CommonView.collapsible "Players" model <| playersView app
-          , CommonView.collapsible "History" model <| historyView app
-          ]
-      ]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 325)
         , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ vbox 
-            [ CommonView.collapsible "Available Creatures" model (availableCreaturesView model app)
-            , combatView model app 
+        [ tabbedView "right-side-bar" "All Creatures" model
+            [ ("All Creatures", (\_ -> allCreaturesView model app))
+            , ("Combat", (\_ -> combatView model app))
+            , ("Players", (\_ -> playersView app))
+            , ("History", (\_ -> historyView app))
             ]
         ]
     , CommonView.movementControls [moveAnywhereToggle model] model
@@ -63,6 +59,18 @@ viewGame model app =
     , bottomActionBar app
     ]
     ++ modalView model app
+
+tabbedView : String -> String -> M.Model -> List ((String, () -> Html M.Msg)) -> Html M.Msg
+tabbedView category defaultView model things =
+  let header = hbox (List.map headerButton things)
+      headerButton (name, _) = button [onClick (M.SelectView category name)] [text name]
+      selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
+      renderBody (name, renderer) = if name == selectedView then Just renderer else Nothing
+      body =
+        case List.filterMap renderBody things of
+          [x] -> x ()
+          _ -> text "Select a view"
+  in vbox [header, body]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
@@ -89,7 +97,7 @@ moveAnywhereToggle model =
         Just x ->
           hbox [ text "Allow movement anywhere: "
                , input [type_ "checkbox", checked model.moveAnywhere, onClick M.ToggleMoveAnywhere] []]
-        Nothing -> text ""          
+        Nothing -> text ""
     Nothing -> text "Why is this being called?"
 
 {-| Controls to show when editing the map. -}
@@ -200,20 +208,20 @@ mapView model app =
           Nothing -> text ""
       M.NoFocus -> text ""
 
-{-| A navigator for available creatures, i.e., those that aren't in combat. -}
-availableCreaturesView : M.Model -> T.App -> Html M.Msg
-availableCreaturesView model app =
+{-| A navigator for all creatures -}
+allCreaturesView : M.Model -> T.App -> Html M.Msg
+allCreaturesView model app =
   let game = app.current_game
   in
     vbox
       [ button [onClick M.StartCreatingCreature] [text "Create Creature"]
       , hline
-      , vbox (List.map (availableCreatureEntry model app) (Dict.values game.creatures))
+      , vbox (List.map (allCreatureEntry model app) (Dict.values game.creatures))
       ]
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
-availableCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
-availableCreatureEntry model app creature = vbox <|
+allCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
+allCreatureEntry model app creature = vbox <|
   [hbox <|
     [ CommonView.creatureCard [noteBox model creature] app creature
     , case app.current_game.current_combat of
@@ -280,7 +288,7 @@ mapConsole model app =
 combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
   case app.current_game.current_combat of
-    Just com -> CommonView.collapsible "Combat" model (inCombatView model app com)
+    Just com -> inCombatView model app com
     Nothing -> startCombatButton model
 
 {-| The content of what's rendered when we're actually in combat. -}
@@ -367,9 +375,7 @@ historyView app =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> Array.toList items
           Nothing -> []
-          -- it'd be nice if the following maxHeight were smarter about avoiding falling off the bottom of the screen.
-  in vabox [s [S.width (S.px 325), S.overflow S.auto, S.maxHeight (S.px 600)]]
-        <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+  in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox = habox [s [S.justifyContent S.spaceBetween]]

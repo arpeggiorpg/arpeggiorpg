@@ -26,9 +26,8 @@ updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
       showingMovement =
         case getLatestPath model newApp of
-          Just (T.GLPathCreature scene cid (first::rest)) ->
-            -- most recent action was movement. Only start animating it if we haven't already
-            -- started animating it.
+          Just (T.GLPathCreature _ _ (first::rest)) ->
+            -- Only start animating it if we haven't already started animating it.
             case model.showingMovement of
               M.ShowingMovement alreadyShown toShow ->
                 if (alreadyShown ++ toShow) /= (first::rest)
@@ -40,7 +39,7 @@ updateModelFromApp model newApp =
                 else M.DoneShowingMovement shown
               M.NotShowingMovement -> M.ShowingMovement [first] rest
           _ -> M.NotShowingMovement
-  in { model2 | showingMovement = showingMovement}
+  in {model2 | showingMovement = showingMovement}
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
@@ -210,6 +209,10 @@ update msg model = case msg of
     let currentlyCollapsed = Dict.get name model.collapsed |> Maybe.withDefault False
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.collapsed
     in ({model | collapsed = newCollapsed}, Cmd.none)
+  
+  SelectView category name ->
+    let newSelected = Dict.insert category name model.selectedViews
+    in ({model | selectedViews = newSelected}, Cmd.none)
 
   GetMovementOptions sceneName creature ->
     let endpoint = (model.rpiURL ++ "/movement_options/" ++ Http.encodeUri sceneName ++ "/" ++ creature.id)
