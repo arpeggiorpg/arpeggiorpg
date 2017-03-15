@@ -77,7 +77,8 @@ baseMap model terrain creatures extras editable =
         [ -- viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
          preserveAspectRatio "xMinYMid slice"
         , s [ S.width (S.pct 100)
-            , S.height (S.pct 100)]
+            , S.height (S.pct 100)
+            , S.backgroundColor (S.rgb 215 215 215)]
         ]
         [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ creatureEls ++ ghostEl)]
   in
@@ -144,7 +145,7 @@ baseTerrainRects model editable terrain =
 
 gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
-  tile "lightgrey" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
+  tile "white" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
 
 emptyTerrain : List T.Point3 -> List (Svg M.Msg)
