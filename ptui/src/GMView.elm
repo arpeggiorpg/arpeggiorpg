@@ -36,8 +36,9 @@ viewGame model app =
   div
     [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
     <|
-    [ CommonView.theCss,
-      overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+    [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
+    , CommonView.theCss
+    , overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [mapView model app]
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [CommonView.mapControls]
@@ -210,16 +211,37 @@ allCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureEntry model app creature = vbox <|
   [hbox <|
     [ CommonView.creatureCard [noteBox model creature] app creature
-    , case app.current_game.current_combat of
-        Just combat ->
-          if List.member creature.id combat.creatures.data
-          then text ""
-          else engageButton creature
-        Nothing -> text ""
-    , sceneManagementButtons model app creature
-    , deleteCreatureButton creature
+    , allCreatureGearIcon model app creature
     ]
   , hbox (CommonView.oocActionBar model app.current_game creature)]
+
+
+allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
+allCreatureGearIcon model app creature =
+  let engage =
+        case app.current_game.current_combat of
+          Just combat ->
+            if List.member creature.id combat.creatures.data
+            then text ""
+            else engageButton creature
+          Nothing -> text ""
+      addOrRemove = sceneManagementButtons model app creature
+      delete = deleteCreatureButton creature
+      isClicked = Dict.get key model.collapsed |> Maybe.withDefault False
+      openMenu = vabox [s [S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] [engage, addOrRemove, delete]
+      maybeMenu = if isClicked then openMenu else text ""
+      key = "gear-menu-" ++ creature.name
+      iconName = if isClicked then "settings_applications" else "settings"
+  in div [s [S.position S.relative]] [icon [onClick (M.ToggleCollapsed key)] iconName, maybeMenu]
+    -- , case app.current_game.current_combat of
+    --     Just combat ->
+    --       if List.member creature.id combat.creatures.data
+    --       then text ""
+    --       else engageButton creature
+    --     Nothing -> text ""
+    -- , sceneManagementButtons model app creature
+    -- , deleteCreatureButton creature
+
 
 sceneManagementButtons : M.Model -> T.App -> T.Creature -> Html M.Msg
 sceneManagementButtons model app creature =
