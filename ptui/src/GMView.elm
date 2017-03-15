@@ -115,7 +115,7 @@ checkModal model app =
   let
     game = app.current_game
     selectingCreatures =
-      Maybe.map (\(selected, cb, name) -> selectCreaturesView model app selected cb name)
+      Maybe.map (\(selectable, selected, cb, name) -> selectCreaturesView model app selectable selected cb name)
         model.selectingCreatures
     creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
     creatingScene = Maybe.map (createSceneDialog model app) model.creatingScene
@@ -128,8 +128,8 @@ checkModal model app =
 -}
 -- NOTE: I'm sure at some point we'll want to move this to CommonView -- we just need to make sure
 -- that only the GM gets the noteBox in the creatureCard.
-selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
-selectCreaturesView model app selectedCreatures callback commandName =
+selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
+selectCreaturesView model app selectableCreatures selectedCreatures callback commandName =
   let selectButton creature =
         button [onClick (M.ToggleSelectedCreature creature.id)
                , s [S.height (S.px 100), S.width (S.px 100)]]
@@ -141,7 +141,7 @@ selectCreaturesView model app selectedCreatures callback commandName =
       selectableCreature creature =
         hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
       selectableCreatureItems =
-        vbox <| List.map selectableCreature (Dict.values app.current_game.creatures)
+        vbox <| List.map selectableCreature (List.filterMap (T.getCreature app.current_game) selectableCreatures)
       selectedCreatureItem cid =
         hbox [strong [] [text cid], unselectButton cid]
       selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
@@ -292,7 +292,7 @@ combatView : M.Model -> T.App -> Html M.Msg
 combatView model app =
   case app.current_game.current_combat of
     Just com -> inCombatView model app com
-    Nothing -> startCombatButton model
+    Nothing -> startCombatButton model app
 
 {-| The content of what's rendered when we're actually in combat. -}
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
@@ -318,12 +318,16 @@ inCombatView model app combat =
   in combatView
 
 {-| A button for starting combat. -}
-startCombatButton : M.Model -> Html M.Msg
-startCombatButton model =
+startCombatButton : M.Model -> T.App -> Html M.Msg
+startCombatButton model app =
   case model.focus of
     M.Scene sceneName  ->
       let gotCreatures cids = U.message (M.SendCommand (T.StartCombat sceneName cids))
-      in button [onClick (M.SelectCreatures gotCreatures "Start Combat")] [text "Start Combat"]
+          sceneCreatures =
+            case Dict.get sceneName app.current_game.scenes of
+              Just scene -> Dict.keys scene.creatures
+              Nothing -> []
+      in button [onClick (M.SelectCreatures sceneCreatures gotCreatures "Start Combat")] [text "Start Combat"]
     _ -> button [disabled True] [text "Select a Scene to Start Combat"]
 
 {-| A button for stopping combat. -}
@@ -366,7 +370,8 @@ createCreatureDialog model app {name, class} =
 playersView : T.App -> Html M.Msg
 playersView app =
   let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
-      selectCreatures pid = M.SelectCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
+      allCreatures = Dict.keys app.current_game.creatures
+      selectCreatures pid = M.SelectCreatures allCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
       playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
   in CommonView.playerList playerButton app.players
 

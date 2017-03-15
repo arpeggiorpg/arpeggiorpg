@@ -185,23 +185,23 @@ update msg model = case msg of
   ShowError s -> ( {model | error = s}, Cmd.none)
   ClearError -> ({model | error = ""}, Cmd.none)
 
-  SelectCreatures cb commandName ->
-    ( { model | selectingCreatures = Just ([], cb, commandName)}, Cmd.none)
+  SelectCreatures creatureIds cb commandName ->
+    ( { model | selectingCreatures = Just (creatureIds, [], cb, commandName)}, Cmd.none)
 
   ToggleSelectedCreature cid ->
     case model.selectingCreatures of
-      Just (selectedCreatures, cb, descr) ->
+      Just (selectableCreatures, selectedCreatures, cb, descr) ->
         let newSelectedCreatures =
               if List.member cid selectedCreatures
               then List.filter (\c -> c /= cid) selectedCreatures
               else List.append selectedCreatures [cid]
-            newSelectingCreatures = Just (newSelectedCreatures, cb, descr)
+            newSelectingCreatures = Just (selectableCreatures, newSelectedCreatures, cb, descr)
         in ( { model | selectingCreatures = newSelectingCreatures }, Cmd.none)
       Nothing -> ({model | error = "Can't select creature when not selecting creatures"}, Cmd.none)
 
   DoneSelectingCreatures ->
     case model.selectingCreatures of
-      Just (selectedCreatures, cb, _) -> 
+      Just (allC, selectedCreatures, cb, _) -> 
         let cids = selectedCreatures
         in ( { model |selectingCreatures = Nothing}
            , cb cids)

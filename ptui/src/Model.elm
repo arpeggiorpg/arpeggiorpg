@@ -76,7 +76,7 @@ type Msg
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
     | ToggleTerrain T.Point3
-    | SelectCreatures GotCreatures String
+    | SelectCreatures (List T.CreatureID) GotCreatures String
     | DoneSelectingCreatures
     | CancelSelectingCreatures
     | ToggleShowOOC
@@ -143,7 +143,7 @@ type alias Model =
   , creatingScene : Maybe T.Scene
   , selectedAbility : Maybe (T.SceneName, T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
-  , selectingCreatures : Maybe (List T.CreatureID, GotCreatures, String)
+  , selectingCreatures : Maybe (List T.CreatureID, List T.CreatureID, GotCreatures, String)
   , error: String
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
