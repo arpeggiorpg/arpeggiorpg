@@ -39,7 +39,14 @@ updateModelFromApp model newApp =
                 else M.DoneShowingMovement shown
               M.NotShowingMovement -> M.ShowingMovement [first] rest
           _ -> M.NotShowingMovement
-  in {model2 | showingMovement = showingMovement}
+      focus =
+        model.playerID
+        |> Maybe.andThen (flip Dict.get newApp.players)
+        |> Maybe.andThen (\p -> p.scene)
+        |> Maybe.map M.Scene
+        |> Maybe.withDefault model.focus                  
+  in {model2 | showingMovement = showingMovement
+             , focus = focus}
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
