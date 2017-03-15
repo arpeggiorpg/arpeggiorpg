@@ -111,7 +111,7 @@ checkModal model app =
 selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
 selectCreaturesView model app selectableCreatures selectedCreatures callback commandName =
   let selectButton creature =
-        button [onClick (M.ToggleSelectedCreature creature.id)
+        button [ onClick (M.ToggleSelectedCreature creature.id)
                , s [S.height (S.px 100), S.width (S.px 100)]]
                [text "Add"]
       unselectButton cid =
@@ -195,7 +195,6 @@ allCreatureEntry model app creature = vbox <|
     ]
   , hbox (CommonView.oocActionBar model app.current_game creature)]
 
-
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =
   let engage =
@@ -213,15 +212,6 @@ allCreatureGearIcon model app creature =
       key = "gear-menu-" ++ creature.name
       iconName = if isClicked then "settings_applications" else "settings"
   in div [s [S.position S.relative]] [icon [onClick (M.ToggleCollapsed key)] iconName, maybeMenu]
-    -- , case app.current_game.current_combat of
-    --     Just combat ->
-    --       if List.member creature.id combat.creatures.data
-    --       then text ""
-    --       else engageButton creature
-    --     Nothing -> text ""
-    -- , sceneManagementButtons model app creature
-    -- , deleteCreatureButton creature
-
 
 sceneManagementButtons : M.Model -> T.App -> T.Creature -> Html M.Msg
 sceneManagementButtons model app creature =

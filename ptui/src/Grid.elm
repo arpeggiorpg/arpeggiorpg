@@ -130,7 +130,7 @@ gridCreature creature =
           ] []
       foreground =
         if creature.creature.portrait_url == ""
-        then creatureNameEl creature.creature.id
+        then creatureNameEl (String.slice 0 4 creature.creature.name)
         else creatureImageEl creature.creature.portrait_url
   in g []
     [ tile creatureColor attrs creature.pos
