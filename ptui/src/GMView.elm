@@ -24,41 +24,27 @@ button = Elements.button
 gmView : M.Model -> Html M.Msg
 gmView model =
   case model.app of
-    Just app -> viewGame model app
+    Just app ->
+      CommonView.viewGame model app (makeUI model app)
     Nothing -> vbox [text "No app yet. Maybe reload."
                     , hbox [text "Last error:", pre [] [text model.error]]]
 
-{-| Layout the entire game. This renders the map in the "background", and overlays various UI
-elements on top.
--}
-viewGame : M.Model -> T.App -> Html M.Msg
-viewGame model app =
-  div
-    [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
-    <|
-    [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
-    , CommonView.theCss
-    , overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
-        [mapView model app]
-    , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
-        [CommonView.mapControls]
-    , overlayRight (S.px 0) (S.px 0)
-        [ S.width (S.px 500)
-        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ CommonView.tabbedView "right-side-bar" "All Creatures" model
-            [ ("All Creatures", (\_ -> allCreaturesView model app))
-            , ("Combat", (\_ -> combatView model app))
-            , ("Players", (\_ -> playersView app))
-            , ("History", (\_ -> historyView app))
-            , ("Scenes", (\_ -> sceneManagementView model app))
-            , ("Maps", (\_ -> vbox [mapConsole model app, editMapConsole model]))
-            ]
+makeUI : M.Model -> T.App -> CommonView.UI
+makeUI model app =
+ { mapView = mapView model app
+  , sideBar =
+      CommonView.tabbedView "right-side-bar" "All Creatures" model
+        [ ("All Creatures", (\_ -> allCreaturesView model app))
+        , ("Combat", (\_ -> combatView model app))
+        , ("Players", (\_ -> playersView app))
+        , ("History", (\_ -> historyView app))
+        , ("Scenes", (\_ -> sceneManagementView model app))
+        , ("Maps", (\_ -> vbox [mapConsole model app, editMapConsole model]))
         ]
-    , CommonView.movementControls [moveAnywhereToggle model] model
-    , CommonView.errorBox model
-    , bottomActionBar app
-    ]
-    ++ modalView model app
+  , extraMovementOptions = [moveAnywhereToggle model]
+  , extraOverlays = [bottomActionBar app]
+  , modal = checkModal model app
+  }
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
@@ -102,13 +88,6 @@ editMapConsole model =
     case model.focus of
       M.EditingMap name map -> console name map
       _ -> text ""
-
-{-| Check if any modals should be rendered and render them. -}
-modalView : M.Model -> T.App -> List (Html M.Msg)
-modalView model app =
-  checkModal model app
-    |> Maybe.map CommonView.modalOverlay
-    |> Maybe.withDefault []
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -408,6 +387,7 @@ historyView app =
   in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
+hsbox : List (Html M.Msg) -> Html M.Msg
 hsbox = habox [s [S.justifyContent S.spaceBetween]]
 
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg

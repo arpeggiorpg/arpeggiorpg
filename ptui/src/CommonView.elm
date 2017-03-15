@@ -1,8 +1,8 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, mapControls
-  , movementControls, modalOverlay, checkModal
+  , movementControls, checkModal
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, theCss, tabbedView)
+  , mainActionBar, theCss, tabbedView, viewGame, UI)
 
 import Dict
 import Set
@@ -296,3 +296,33 @@ tabbedView category defaultView model things =
           [x] -> x ()
           _ -> text "Select a view"
   in vbox [header, body]
+
+{-| All the parts we need to render the UI, allowing either Player or GM-specific view things to
+be plugged in. -}
+type alias UI =
+  { mapView : Html M.Msg
+  , sideBar : Html M.Msg
+  , extraMovementOptions : List (Html M.Msg)
+  , modal : Maybe (Html M.Msg)
+  , extraOverlays : List (Html M.Msg)}
+
+{-| Top-level UI for an App. -}
+viewGame : M.Model -> T.App -> UI -> Html M.Msg
+viewGame model app ui =
+  div
+    [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
+    <|
+    [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
+    , theCss
+    , overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+        [ui.mapView]
+    , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
+        [mapControls]
+    , overlayRight (S.px 0) (S.px 0)
+        [ S.width (S.px 500)
+        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
+        [ ui.sideBar ]
+    , movementControls ui.extraMovementOptions model
+    , errorBox model
+    ]
+    ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
