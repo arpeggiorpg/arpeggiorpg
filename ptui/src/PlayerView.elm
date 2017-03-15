@@ -1,5 +1,6 @@
 module PlayerView exposing (playerView)
 
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -25,7 +26,7 @@ playerView model =
       case model.playerID of
         Just playerID ->
           if T.playerIsRegistered app playerID
-          then viewGame model app (T.getPlayerCreatures app playerID)
+          then CommonView.viewGame model app (makeUI model app (T.getPlayerCreatures app playerID))
           else registerForm model
         Nothing -> registerForm model
     Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
@@ -37,49 +38,26 @@ registerForm model =
        , s [S.width (S.px 500), S.height (S.px 100)] ] []
        , button [onClick M.RegisterPlayer] [text "Register Player"]]
 
-{-| Show a Player's-eye-view of a game, in the context of a set of controlled characters. -}
-viewGame : M.Model -> T.App -> List T.Creature -> Html M.Msg
-viewGame model app myCreatures = 
-  sdiv
-    [s [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
-    <| 
-    [ overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
-        [mapView model app myCreatures]
-    , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
-        [CommonView.mapControls]
-    , overlay (S.px 0) (S.px 160) []
-        [CommonView.collapsible "Players" model <| CommonView.playerList (always []) app.players]
-    , overlayRight (S.px 0) (S.px 0)
-        [S.width (S.px 325)
-        -- restrict the max-height so that it doesn't collide with the action bar at the bottom of
-        -- the screen.
-        -- The reason that this isn't just "- 50px" (which is the height of the action bar)
-        -- is that the android chrome browser does some... weird, but forgivable stuff with vh when
-        -- scrolling the address bar off the screen.
-        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ combatView model app myCreatures
-        , myCreaturesView model app myCreatures]
-    , CommonView.movementControls [] model
-    , CommonView.errorBox model
-    , bottomActionBar app myCreatures
-    ]
-    ++ modalView model app
+makeUI : M.Model -> T.App -> List T.Creature -> CommonView.UI
+makeUI model app myCreatures =
+  { mapView = mapView model app myCreatures
+  , sideBar =
+      CommonView.tabbedView "right-side-bar" "My Creatures" model
+        [ ("My Creatures", (always <| myCreaturesView model app myCreatures))
+        , ("Combat", (always <| combatView model app myCreatures))]
+  , extraMovementOptions = []
+  , modal = CommonView.checkModal model app
+  , extraOverlays = [bottomActionBar app myCreatures]
+  }
 
 bottomActionBar : T.App -> List T.Creature -> Html M.Msg
 bottomActionBar app myCreatures =
   case app.current_game.current_combat of
     Nothing -> text ""
     Just combat ->
-      if List.member (T.combatCreature combat) myCreatures
+      if List.member (T.combatCreature app.current_game combat) myCreatures
       then CommonView.mainActionBar app combat
       else text ""
-
-{-| Check if any modals should be rendered and render them. -}
-modalView : M.Model -> T.App -> List (Html M.Msg)
-modalView model app =
-  CommonView.checkModal model app
-    |> Maybe.map CommonView.modalOverlay
-    |> Maybe.withDefault []
 
 {-| A navigator for my creatures which aren't in combat. -}
 myCreaturesView : M.Model -> T.App -> List T.Creature -> Html M.Msg
@@ -95,7 +73,7 @@ myCreatureEntry model app creature =
   vbox
     [ CommonView.creatureCard [] app creature
     , case app.current_game.current_combat of
-        Nothing -> hbox (CommonView.oocActionBar app.current_game creature)
+        Nothing -> hbox (CommonView.oocActionBar model app.current_game creature)
         Just _ -> text ""
     ]
 
@@ -103,8 +81,9 @@ myCreatureEntry model app creature =
 mapView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 mapView model app myCreatures =
   let game = app.current_game
-      movementGrid msg mvmtReq creature =
-        Grid.movementMap model msg mvmtReq False model.currentMap creature vCreatures
+      movementGrid scene msg mvmtReq creature =
+        case Dict.get creature.id scene.creatures of
+          Just pos -> Grid.movementMap model msg mvmtReq False (M.getMap model) pos vCreatures
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->

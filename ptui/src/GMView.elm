@@ -132,47 +132,48 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
     , hbox [selectableCreatureItems, selectedCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
 
-{-| Figure out which map to render. There are various modes that the game might be in which affect
-how we render the map: combat, movement, editing, regular play.
--}
+{-| Figure out which map to render based on the focus. -}
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
+  case model.focus of
+    M.EditingMap name map -> Grid.editMap model map []
+    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
+    M.Scene name ->
+      case Dict.get name app.current_game.scenes of
+        Just scene -> sceneMap model app scene
+        Nothing -> text ""
+    M.NoFocus -> text ""
+
+sceneMap : M.Model -> T.App -> T.Scene -> Html M.Msg
+sceneMap model app scene =
   let game = app.current_game
-      movementGrid scene msg mvmtReq creature =
+      movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
-          Just pos -> Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos (vCreatures scene)
+          Just pos -> Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
           Nothing -> text "Moving Creature is not in this scene"
-      movementMap scene =
-        let pathOrPort = if model.moveAnywhere then (M.SetCreaturePos scene.name) else (M.PathCreature scene.name)
-        in case (game.current_combat, model.moving) of
+      pathOrPort =
+        if model.moveAnywhere
+        then (M.SetCreaturePos scene.name)
+        else (M.PathCreature scene.name)
+      movementMap =
+        case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid scene (pathOrPort creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid (pathOrPort creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
                     Just creature -> (creature, pathOrPort creature.id)
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
-            in Just <| movementGrid scene moveMessage mvmtReq creature
+            in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
-      modifyMapCreature scene mapc =
-        let highlight = (Just mapc.creature.id) == currentCombatCreature
-        in { mapc | highlight = highlight
-                  , movable = Just (M.GetMovementOptions scene.name)}
-      vCreatures scene = List.map (modifyMapCreature scene) (CommonView.visibleCreatures app.current_game scene)
-      defaultMap scene () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) (vCreatures scene)
-  in 
-    case model.focus of
-      M.EditingMap name map -> Grid.editMap model map []
-      M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
-      M.Scene name ->
-        case Dict.get name game.scenes of
-          Just scene ->
-            movementMap scene
-            |> MaybeEx.unpack (defaultMap scene) identity
-          Nothing -> text ""
-      M.NoFocus -> text ""
+      modifyMapCreature mapc =
+        { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
+               , movable = Just (M.GetMovementOptions scene.name)}
+      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
+      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
+  in movementMap |> MaybeEx.unpack defaultMap identity
 
 {-| A navigator for all creatures -}
 allCreaturesView : M.Model -> T.App -> Html M.Msg
