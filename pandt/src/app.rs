@@ -54,6 +54,7 @@ impl App {
       &GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
         self.remove_creatures_from_player(pid, cids)
       }
+      &GameCommand::SetPlayerScene(ref pid, ref scene) => self.set_player_scene(pid, scene.clone()),
       &GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
         self.current_game = newgame;
@@ -147,11 +148,23 @@ impl App {
     Ok((&self.current_game, vec![]))
   }
 
+  fn set_player_scene(&mut self, pid: &PlayerID, scene: Option<SceneName>)
+                      -> Result<(&Game, Vec<GameLog>), GameError> {
+    self.players
+      .mutate(pid, move |mut p| {
+        p.scene = scene;
+        p
+      })
+      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+    Ok((&self.current_game, vec![]))
+  }
+
   pub fn game(&self) -> &Game {
     &self.current_game
   }
 
-  pub fn get_movement_options(&self, scene: SceneName, creature_id: CreatureID) -> Result<Vec<Point3>, GameError> {
+  pub fn get_movement_options(&self, scene: SceneName, creature_id: CreatureID)
+                              -> Result<Vec<Point3>, GameError> {
     self.current_game.get_movement_options(scene, creature_id)
   }
 
@@ -231,8 +244,7 @@ mod test {
     app.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (1, 1, 1))).unwrap();
     app.perform_unchecked(GameCommand::Rollback(0, 2)).unwrap();
     assert_eq!(app.current_game.current_combat, None);
-    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(),
-               (0, 0, 0));
+    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(), (0, 0, 0));
   }
 
   ///
@@ -251,11 +263,8 @@ mod test {
     // 5
     app.perform_unchecked(GameCommand::SetCreaturePos(cid("rogue"), (1, 1, 1))).unwrap();
 
-    assert_eq!(app.current_game.get_creature(cid("cleric")).unwrap().pos(),
-               (0, 0, 0));
-    assert_eq!(app.current_game.get_creature(cid("rogue")).unwrap().pos(),
-               (1, 1, 1));
-    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(),
-               (0, 0, 0));
+    assert_eq!(app.current_game.get_creature(cid("cleric")).unwrap().pos(), (0, 0, 0));
+    assert_eq!(app.current_game.get_creature(cid("rogue")).unwrap().pos(), (1, 1, 1));
+    assert_eq!(app.current_game.get_creature(cid("ranger")).unwrap().pos(), (0, 0, 0));
   }
 }

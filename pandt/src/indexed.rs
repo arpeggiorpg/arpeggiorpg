@@ -97,8 +97,15 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     self.data.contains_key(k)
   }
 
+  // If your function panics, the item will disappear from the collection.
+  // We may want to allow FnMut(&mut V) as the mutator, but this would require the following extra
+  // work:
+  // - instead of removing/reinserting the item, we'll need to explicitly check if the key has
+  //   changed, and update the hashmap if it has
+  // - If we want to handle panics without leaving the collection in an inconsistent state, we'll
+  //   need to explicitly catch them.
   pub fn mutate<F>(&mut self, k: &<V as DeriveKey>::KeyType, f: F) -> Option<()>
-    where F: Fn(V) -> V
+    where F: FnOnce(V) -> V
   {
     match self.data.remove(k) {
       Some(thing) => {

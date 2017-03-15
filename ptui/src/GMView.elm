@@ -36,7 +36,7 @@ makeUI model app =
       CommonView.tabbedView "right-side-bar" "All Creatures" model
         [ ("All Creatures", (\_ -> allCreaturesView model app))
         , ("Combat", (\_ -> combatView model app))
-        , ("Players", (\_ -> playersView app))
+        , ("Players", (\_ -> playersView model app))
         , ("History", (\_ -> historyView app))
         , ("Scenes", (\_ -> sceneManagementView model app))
         , ("Maps", (\_ -> vbox [mapConsole model app, editMapConsole model]))
@@ -369,13 +369,21 @@ createCreatureDialog model app {name, class} =
     ]
 
 {-| Show all registered players and which creatures they've been granted -}
-playersView : T.App -> Html M.Msg
-playersView app =
+playersView : M.Model -> T.App -> Html M.Msg
+playersView model app =
   let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
       allCreatures = Dict.keys app.current_game.creatures
       selectCreatures pid = M.SelectCreatures allCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
-      playerButton pid = [button [onClick (selectCreatures pid)] [text "Grant Creatures"]]
-  in CommonView.playerList playerButton app.players
+      grantCreatures player = button [onClick (selectCreatures player.player_id)] [text "Grant Creatures"]
+      sceneName =
+        case model.focus of
+          M.Scene name -> Just name
+          _ -> Nothing
+      sceneButtonText =
+        sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
+      activateScene player = button [onClick (M.SendCommand (T.SetPlayerScene player.player_id sceneName))] [text <| sceneButtonText]
+      extraButtons player = [grantCreatures player, activateScene player]
+  in CommonView.playerList extraButtons app.players
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg

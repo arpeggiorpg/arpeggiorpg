@@ -406,6 +406,7 @@ type GameCommand
   | EditMap MapName Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
+  | SetPlayerScene PlayerID (Maybe SceneName)
   | StartCombat SceneName (List CreatureID)
   | StopCombat
   | CombatAct AbilityID DecidedTarget
@@ -431,6 +432,8 @@ gameCommandEncoder gc =
       JE.object [("RegisterPlayer", JE.string pid)]
     GiveCreaturesToPlayer pid cids ->
       JE.object [("GiveCreaturesToPlayer", JE.list [JE.string pid, JE.list (List.map JE.string cids)])]
+    SetPlayerScene pid scene ->
+      JE.object [("SetPlayerScene", JE.list [JE.string pid, encodeMaybe scene JE.string])]
     StartCombat scene cids ->
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature creature ->
@@ -489,6 +492,13 @@ sumDecoder name nullaryList singleFieldList = JD.oneOf
       (Dict.fromList singleFieldList)
   ]
 
+encodeMaybe : Maybe a -> (a -> JE.Value) -> JE.Value
+encodeMaybe mebbe encoder =
+  case mebbe of
+    Just x -> encoder x
+    Nothing -> JE.null
+
+
 listFind : (a -> Bool) -> List a -> Maybe a
 listFind f l = List.head (List.filter f l)
 
@@ -498,6 +508,7 @@ maybeOr m1 m2 =
     (Just x, _) -> Just x
     (_, Just x) -> Just x
     _ -> Nothing
+
 
 -- MODEL FUNCTIONS
 

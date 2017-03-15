@@ -186,11 +186,11 @@ collapsible header model content =
     , hline
      ] ++ if isCollapsed then [] else [content]
 
-playerList : (T.PlayerID -> List (Html M.Msg)) -> Dict.Dict T.PlayerID T.Player -> Html M.Msg
+playerList : (T.Player -> List (Html M.Msg)) -> Dict.Dict T.PlayerID T.Player -> Html M.Msg
 playerList extra players =
   let playerEntry player =
         habox [s [S.justifyContent S.spaceBetween]] <|
-          [strong [] [text player.player_id]] ++ (List.map (\id -> sdiv [] [text id]) (Set.toList player.creatures)) ++ extra player.player_id
+          [strong [] [text player.player_id]] ++ (List.map (\id -> sdiv [] [text id]) (Set.toList player.creatures)) ++ extra player
   in vabox [s [S.width (S.px 325)]] (List.map playerEntry (Dict.values players))
 
 
