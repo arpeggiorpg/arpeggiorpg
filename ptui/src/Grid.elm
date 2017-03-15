@@ -101,7 +101,7 @@ gridCreature creature =
   let creatureColor = creature.class.color
       strokeColor =
         if creature.highlight
-        then "white"
+        then "blue"
         else "black"
       strokeWidthSize =
         if creature.highlight
