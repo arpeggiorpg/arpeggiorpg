@@ -79,7 +79,6 @@ type Msg
     | SelectCreatures (List T.CreatureID) GotCreatures String
     | DoneSelectingCreatures
     | CancelSelectingCreatures
-    | ToggleShowOOC
     | ToggleMoveAnywhere
     | Tick Time.Time
     | SendCommand T.GameCommand
@@ -110,7 +109,6 @@ defaultModel flags =
   , error = ""
   , playerID = Nothing
   , potentialTargets = []
-  , showOOC = False
   , moveAnywhere = False
   , showingMovement = NotShowingMovement
   , creatureNotes = Dict.empty
@@ -148,7 +146,6 @@ type alias Model =
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
   , potentialTargets: List T.PotentialTarget
-  , showOOC: Bool
   , showingMovement: MovementAnimation
   , creatureNotes : Dict.Dict T.CreatureID String
   , moveAnywhere : Bool

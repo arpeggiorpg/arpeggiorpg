@@ -283,11 +283,7 @@ mapConsole model app =
         _ -> False
     editMapButton = button [onClick M.StartEditingMap, disabled (not inPreviewMode)] [text "Edit this map"]
     mapSelector = mapSelectorMenu "" model app (\name -> M.SetFocus (M.PreviewMap name))
-    oocToggler =
-        hbox [text "Show Out-of-Combat creatures: "
-        , input [type_ "checkbox", checked model.showOOC, onClick M.ToggleShowOOC] []
-        ]
-  in hbox [editMapButton, mapSelector, oocToggler]
+  in hbox [editMapButton, mapSelector]
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg

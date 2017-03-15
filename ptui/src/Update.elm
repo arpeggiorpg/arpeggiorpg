@@ -328,8 +328,6 @@ update msg model = case msg of
   RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
-  ToggleShowOOC -> ({model | showOOC = not model.showOOC}, Cmd.none)
-
   ToggleMoveAnywhere -> ({ model | moveAnywhere = not model.moveAnywhere}, Cmd.none)
 
   SetCreatureNote cid note ->
