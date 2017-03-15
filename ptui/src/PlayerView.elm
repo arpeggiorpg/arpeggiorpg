@@ -80,23 +80,33 @@ myCreatureEntry model app creature =
 {-| Figure out which map should be rendered and render it. -}
 mapView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 mapView model app myCreatures =
+  case model.focus of
+    M.Scene name ->
+      case Dict.get name app.current_game.scenes of
+        Just scene -> sceneMap model app scene myCreatures
+        Nothing -> text ""
+    _ -> text "Waiting for the GM to put you into a scene."
+
+sceneMap : M.Model -> T.App -> T.Scene -> List T.Creature -> Html M.Msg
+sceneMap model app scene myCreatures =
   let game = app.current_game
-      movementGrid scene msg mvmtReq creature =
+      movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
           Just pos -> Grid.movementMap model msg mvmtReq False (M.getMap model) pos vCreatures
+          Nothing -> text "Moving creature is not in this scene."
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid (M.PathCreature creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid (M.PathCreature scene.name creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
-                    Just creature -> (creature, M.PathCreature creature.id)
-                    Nothing -> (T.combatCreature combat, M.PathCurrentCombatCreature)
+                    Just creature -> (creature, M.PathCreature scene.name creature.id)
+                    Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
-      currentCombatCreature = Maybe.map (\com -> (T.combatCreature com).id) game.current_combat
+      currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
@@ -106,11 +116,11 @@ mapView model app myCreatures =
                   if creatureIsMine mapc.creature && Just mapc.creature.id == currentCombatCreature
                   then Just (always M.GetCombatMovementOptions)
                   else Nothing
-                Nothing -> if creatureIsMine mapc.creature then Just M.GetMovementOptions else Nothing
+                Nothing -> if creatureIsMine mapc.creature then Just (M.GetMovementOptions scene.name) else Nothing
         in { mapc | highlight = highlight
                   , movable = movable}
-      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures model app.current_game)
-      defaultMap () = Grid.terrainMap model model.currentMap vCreatures
+      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures game scene)
+      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
   in movementMap
       |> MaybeEx.unpack defaultMap identity
 
@@ -124,7 +134,7 @@ combatView model app myCreatures =
 inCombatView : M.Model -> T.App -> T.Combat -> List T.Creature -> Html M.Msg
 inCombatView model app combat myCreatures =
   let game = app.current_game
-      currentCreature = T.combatCreature combat
+      currentCreature = T.combatCreature game combat
       bar = if List.member currentCreature myCreatures
             then sdiv [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
             else hbox [text "Current creature:", text currentCreature.id]

@@ -47,13 +47,26 @@ potentialTargetDecoder = sumDecoder "PotentialTarget"
 type alias App =
   { current_game : Game
   , snapshots : Array.Array (GameSnapshot, (Array.Array GameLog))
-  , players : Dict PlayerID (Set.Set CreatureID)
+  , players : Dict PlayerID Player
   }
 
 appDecoder = JD.map3 App
   (JD.field "current_game" gameDecoder)
   (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameSnapshotDecoder) (JD.index 1 <| JD.array gameLogDecoder))))
-  (JD.field "players" (JD.dict (JD.map Set.fromList (JD.list JD.string))))
+  (JD.field "players" (JD.dict playerDecoder))
+
+
+type alias Player =
+  { player_id: PlayerID
+  , scene: Maybe SceneName
+  , creatures: Set.Set CreatureID}
+
+playerDecoder : JD.Decoder Player
+playerDecoder =
+  JD.map3 Player
+    (JD.field "player_id" JD.string)
+    (JD.field "scene" (JD.oneOf [JD.map Just JD.string, JD.null Nothing]))
+    (JD.field "creatures" (JD.map Set.fromList (JD.list JD.string)))
 
 type alias GameSnapshot = {}
 
@@ -518,9 +531,11 @@ playerIsRegistered app pid = Dict.member pid app.players
 
 getPlayerCreatures : App -> PlayerID -> List Creature
 getPlayerCreatures app pid =
-  -- this sucks because it doesn't throw any kind of error when PID or CID aren't found
-  List.filterMap (getCreature app.current_game)
-                 (Set.toList (Maybe.withDefault Set.empty (Dict.get pid app.players)))
+  let cids =
+        Dict.get pid app.players
+        |> Maybe.map (\player -> player.creatures)
+        |> Maybe.withDefault Set.empty
+  in List.filterMap (getCreature app.current_game) (Set.toList cids)
 
 isCreatureInCombat : Game -> CreatureID -> Bool
 isCreatureInCombat game cid =
