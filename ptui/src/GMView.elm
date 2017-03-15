@@ -119,17 +119,17 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
                , s [S.height (S.px 100), S.width (S.px 100)]]
                [text "Remove"]
       selectableCreature creature =
-        hbox [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
+        habox [s [S.width (S.px 500)]] [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (List.filterMap (T.getCreature app.current_game) selectableCreatures)
-      selectedCreatureItem cid =
-        hbox [strong [] [text cid], unselectButton cid]
-      selectedCreatureItems = vbox <| List.map selectedCreatureItem selectedCreatures
+      selectedCreatureItem creature =
+        habox [s [S.width (S.px 500)]] [CommonView.creatureCard [noteBox model creature] app creature, unselectButton creature.id]
+      selectedCreatureItems = vbox <| List.map selectedCreatureItem (List.filterMap (T.getCreature app.current_game) selectedCreatures)
       doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
       cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
   in vbox <|
     [h3 [] [text <| "Select Creatures to " ++ commandName]
-    , hbox [selectableCreatureItems, selectedCreatureItems]
+    , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]] [selectableCreatureItems, selectedCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
 
 {-| Figure out which map to render based on the focus. -}
@@ -195,6 +195,15 @@ allCreatureEntry model app creature = vbox <|
     ]
   , hbox (CommonView.oocActionBar model app.current_game creature)]
 
+popUpMenu : M.Model -> String -> String -> List (Html M.Msg) -> Html M.Msg
+popUpMenu model prefix key items =
+  let realKey = prefix ++ "-" ++ key
+      isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
+      openMenu = vabox [s [S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] items
+      maybeMenu = if isClicked then openMenu else text ""
+      iconName = if isClicked then "settings_applications" else "settings"
+  in div [s [S.position S.relative]] [icon [onClick (M.ToggleCollapsed realKey)] iconName, maybeMenu]
+
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =
   let engage =
@@ -206,12 +215,7 @@ allCreatureGearIcon model app creature =
           Nothing -> text ""
       addOrRemove = sceneManagementButtons model app creature
       delete = deleteCreatureButton creature
-      isClicked = Dict.get key model.collapsed |> Maybe.withDefault False
-      openMenu = vabox [s [S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] [engage, addOrRemove, delete]
-      maybeMenu = if isClicked then openMenu else text ""
-      key = "gear-menu-" ++ creature.name
-      iconName = if isClicked then "settings_applications" else "settings"
-  in div [s [S.position S.relative]] [icon [onClick (M.ToggleCollapsed key)] iconName, maybeMenu]
+  in popUpMenu model "all-creature-menu" creature.id [engage, addOrRemove, delete]
 
 sceneManagementButtons : M.Model -> T.App -> T.Creature -> Html M.Msg
 sceneManagementButtons model app creature =
@@ -249,7 +253,7 @@ engageButton creature =
 {-| A button for removing a creature from combat. -}
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =
-  button [onClick (M.SendCommand (T.RemoveCreatureFromCombat creature.id))] [text ("Disengage " ++ creature.id)]
+  button [onClick (M.SendCommand (T.RemoveCreatureFromCombat creature.id))] [text ("Disengage " ++ creature.name)]
 
 {-| A button for deleting a creature entirely -}
 deleteCreatureButton : T.Creature -> Html M.Msg
@@ -368,8 +372,8 @@ playersView model app =
       sceneButtonText =
         sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
       activateScene player = button [onClick (M.SendCommand (T.SetPlayerScene player.player_id sceneName))] [text <| sceneButtonText]
-      extraButtons player = [grantCreatures player, activateScene player]
-  in CommonView.playerList extraButtons app.players
+      extraButtons player = [popUpMenu model "PlayerListOptions" player.player_id [grantCreatures player, activateScene player]]
+  in CommonView.playerList app extraButtons app.players
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg

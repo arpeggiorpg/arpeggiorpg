@@ -186,12 +186,19 @@ collapsible header model content =
     , hline
      ] ++ if isCollapsed then [] else [content]
 
-playerList : (T.Player -> List (Html M.Msg)) -> Dict.Dict T.PlayerID T.Player -> Html M.Msg
-playerList extra players =
-  let playerEntry player =
-        habox [s [S.justifyContent S.spaceBetween]] <|
-          [strong [] [text player.player_id]] ++ (List.map (\id -> sdiv [] [text id]) (Set.toList player.creatures)) ++ extra player
-  in vabox [s [S.width (S.px 325)]] (List.map playerEntry (Dict.values players))
+playerList : T.App -> (T.Player -> List (Html M.Msg)) -> Dict.Dict T.PlayerID T.Player -> Html M.Msg
+playerList app extra players =
+  let header =
+        hbox [ div [s [S.width (S.px 150)]] [strong [] [text "Player"]]
+             , div [s [S.width (S.px 150)]] [strong [] [text "Characters"]]]
+      playerEntry player =
+        let creatures = List.filterMap (T.getCreature app.current_game) (Set.toList player.creatures)
+        in
+          habox [s [S.width (S.px 450)]]
+             <| [ div [s [S.width (S.px 150)]] [strong [] [text player.player_id]]
+                  , vabox [s [S.width (S.px 150)]] (List.map (\c -> sdiv [] [text c.name]) creatures)
+                  ] ++ extra player
+  in vabox [] <| header :: (List.map playerEntry (Dict.values players))
 
 
 movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
@@ -262,7 +269,7 @@ creatureIcon app creature =
     else
       sdiv [s [ S.width (S.px 50), S.height (S.px 50), S.borderRadius (S.px 10), plainBorder]
           , style [("background-color", creatureColor)] ]
-          [text creature.id]
+          [text creature.name]
 
 {-| An action bar that renders at the bottom of the screen for the current combat creature. -}
 mainActionBar : T.App -> T.Combat -> Html M.Msg
@@ -320,7 +327,7 @@ viewGame model app ui =
         [mapControls]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 500)
-        , S.property "max-height" "calc(100vh - 150px)", S.overflowY S.auto]
+        , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
         [ ui.sideBar ]
     , movementControls ui.extraMovementOptions model
     , errorBox model
