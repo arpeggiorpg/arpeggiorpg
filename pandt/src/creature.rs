@@ -66,7 +66,6 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   pub fn tick(&self) -> Result<ChangedCreature, GameError> {
     let mut changes = self.creature.change();
-
     for condition in self.conditions() {
       if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
         condition {
@@ -344,17 +343,19 @@ pub mod test {
 
   #[test]
   fn test_tick_and_expire_condition_remaining() {
-    let game = t_game();
-    let mut c = t_rogue("bob");
-    c.conditions =
-      HashMap::from_iter(vec![(0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
-                              (1,
-                               app_cond(Condition::Incapacitated,
-                                        ConditionDuration::Duration(5))),
-                              (2,
-                               app_cond(Condition::Incapacitated,
-                                        ConditionDuration::Interminate))]);
-    assert_eq!(game.get_creature(c.id).unwrap().tick().unwrap().creature.conditions,
+    let mut game = t_game();
+    {
+      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
+      c.conditions =
+        HashMap::from_iter(vec![(0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
+                                (1,
+                                 app_cond(Condition::Incapacitated,
+                                          ConditionDuration::Duration(5))),
+                                (2,
+                                 app_cond(Condition::Incapacitated,
+                                          ConditionDuration::Interminate))]);
+    }
+    assert_eq!(game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
                HashMap::from_iter(vec![(1,
                                         app_cond(Condition::Incapacitated,
                                                  ConditionDuration::Duration(4))),
@@ -367,16 +368,18 @@ pub mod test {
   /// creature's next two turns.
   #[test]
   fn test_recurring_effect_ticks_duration_times() {
-    let game = t_game();
-    let mut c = t_rogue("bob");
-    c.conditions = HashMap::from_iter(
+    let mut game = t_game();
+    {
+      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
+      c.conditions = HashMap::from_iter(
             vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
                               ConditionDuration::Duration(2)))]);
-    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
+    }
+    let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
-    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
+    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(8));
-    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
+    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(8));
   }
 

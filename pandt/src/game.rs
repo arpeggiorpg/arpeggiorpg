@@ -242,7 +242,8 @@ impl Game {
     self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))
   }
 
-  fn dyn_creature<'creature, 'game: 'creature>
+  /// Only pub for tests.
+  pub fn dyn_creature<'creature, 'game: 'creature>
     (&'game self, creature: &'creature Creature)
      -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)

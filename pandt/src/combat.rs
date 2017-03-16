@@ -372,22 +372,4 @@ pub mod test {
       .game;
     assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));
   }
-
-  #[test]
-  fn tick_on_next_turn() {
-    let mut game = t_combat();
-    game.get_creature_mut(cid_ranger())
-      .unwrap()
-      .conditions
-      .insert(500,
-              Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(5))))
-                .apply(ConditionDuration::Interminate));
-    let combat = game.get_combat()
-      .unwrap()
-      .next_turn()
-      .unwrap();
-    let cur = combat.dyn().current_creature().unwrap().clone();
-    assert_eq!(cur.id(), cid_ranger());
-    assert_eq!(cur.creature.cur_health, HP(5));
-  }
 }
