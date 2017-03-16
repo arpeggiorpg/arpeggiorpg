@@ -522,32 +522,6 @@ pub mod test {
   }
 
   #[test]
-  fn workflow() {
-    let mut creatures = HashMap::new();
-    let punch = t_punch();
-    let punch_id = abid("punch");
-    let bob_id = CreatureID::new();
-    let creature = t_rogue("bob");
-    creatures.insert(bob_id, creature);
-    let mut abilities = HashMap::new();
-    abilities.insert(punch_id.clone(), punch);
-    let game = Game {
-      abilities: abilities,
-      classes: t_classes(),
-      current_combat: None,
-      creatures: creatures,
-      maps: HashMap::from_iter(vec![("huge".to_string(), huge_box())]),
-      scenes: IndexedHashMap::new(),
-      tile_system: TileSystem::Realistic,
-    };
-    let game = t_start_combat(&game, vec![bob_id]);
-    let next =
-      game.perform_unchecked(GameCommand::CombatAct(punch_id, DecidedTarget::Melee(bob_id)));
-    let next: Game = next.expect("punch did not succeed").game;
-    let _: Game = next.perform_unchecked(GameCommand::StopCombat).unwrap().game;
-  }
-
-  #[test]
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::new();
