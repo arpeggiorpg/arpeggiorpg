@@ -286,6 +286,7 @@ pub mod test {
                     Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
     };
     game.abilities.insert(abid("multi"), ab);
+    game.classes.get_mut("rogue").unwrap().abilities.push(abid("multi"));
     let change = t_act(&game, abid("multi"), DecidedTarget::Melee(cid_ranger())).unwrap();
     let next = change.game;
     assert_eq!(next.get_creature(cid_ranger()).unwrap().conditions(),
