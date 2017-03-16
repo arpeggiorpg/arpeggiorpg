@@ -25,26 +25,38 @@ impl<T> FolderTree<T> {
     FolderTree { tree: RoseTree::new(("".to_string(), root_node)).0 }
   }
 
-  pub fn get(&self, path: FolderPath) -> Option<&T> {
-    if path.0.len() == 0 {
-      return None;
-    }
+  pub fn make_dirs(&mut self, path: FolderPath, node: T)
+    where T: Clone
+  {
     let mut cur_idx = NodeIndex::new(ROOT);
-
-    fn find_child<A>(tree: &LabeledTree<A>, idx: NodeIndex, name: String) -> Option<NodeIndex> {
-      let children_indices = tree.children(idx);
-      for cidx in children_indices {
-        let child = &tree[cidx];
-        if child.0 == name {
-          return Some(cidx);
+    for seg in path.0 {
+      match self.find_child_idx(cur_idx, &seg) {
+        Some(child) => cur_idx = child,
+        None => {
+          self.tree.add_child(cur_idx, (seg.clone(), node.clone()));
         }
       }
-      None
     }
+  }
+
+  fn find_child_idx(&self, idx: NodeIndex, name: &str) -> Option<NodeIndex> {
+    let children_indices = self.tree.children(idx);
+    for cidx in children_indices {
+      let child = &self.tree[cidx];
+      if child.0 == name {
+        return Some(cidx);
+      }
+    }
+    None
+  }
+
+  pub fn get(&self, path: FolderPath) -> Option<&T> {
+    let mut cur_idx = NodeIndex::new(ROOT);
+
     for seg in path.0 {
-      match find_child(&self.tree, cur_idx, seg) {
+      match self.find_child_idx(cur_idx, &seg) {
         Some(cidx) => cur_idx = cidx,
-        None => return None
+        None => return None,
       }
     }
     Some(&self.tree[cur_idx].1)
@@ -96,7 +108,10 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
     let mut map = serializer.serialize_map(Some(children_indices.len()))?;
     for idx in children_indices {
       let &(ref name, ref node) = &self.tree[idx];
-      let children_serializer = ChildrenSerializer { tree: &self.tree, index: idx};
+      let children_serializer = ChildrenSerializer {
+        tree: &self.tree,
+        index: idx,
+      };
       let helper = SerializerHelper {
         data: node,
         children: children_serializer,
@@ -125,7 +140,17 @@ impl<T: Serialize> Serialize for FolderTree<T> {
   }
 }
 
-mod test {}
+#[cfg(test)]
+mod test {
+  use foldertree::{FolderTree, FolderPath};
+
+  #[test]
+  fn get_root() {
+    let ftree = FolderTree::new("Root node!".to_string());
+    assert_eq!(ftree.get(FolderPath::from_vec(vec![])), Some(&"Root node!".to_string()))
+  }
+
+}
 
 // impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
 //   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: de::Deserializer {}
