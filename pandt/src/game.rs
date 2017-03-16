@@ -125,8 +125,7 @@ impl Game {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
-      CreateFolder(ref path) => {
-      }
+      CreateFolder(ref path) => {}
       DeleteFolder(ref path) => {}
       LinkFolderCreature(ref path, ref cid) => {}
       UnlinkFolderCreature(ref path, ref cid) => {}
@@ -454,15 +453,17 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
 
 #[cfg(test)]
 pub mod test {
+  use std::collections::HashSet;
+  use std::iter::FromIterator;
+
   use game::*;
   use creature::test::*;
   use combat::test::*;
   use types::test::*;
   use grid::test::*;
-  use std::iter::FromIterator;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-    game.perform_unchecked(GameCommand::StartCombat(combatants)).unwrap().game
+    game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()), combatants)).unwrap().game
   }
 
   pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
@@ -472,16 +473,19 @@ pub mod test {
   pub fn t_game() -> Game {
     let mut game = Game::new(t_classes(), t_abilities());
     game.maps.insert("huge".to_string(), huge_box());
-    game.current_map = Some("huge".to_string());
-    let game = game.perform_unchecked(GameCommand::CreateCreature(t_rogue_creation("rogue")))
-      .unwrap()
-      .game;
-    let game = game.perform_unchecked(GameCommand::CreateCreature(t_ranger_creation("ranger")))
-      .unwrap()
-      .game;
-    let game = game.perform_unchecked(GameCommand::CreateCreature(t_cleric_creation("cleric")))
-      .unwrap()
-      .game;
+    let rogue_creation = t_rogue_creation("rogue");
+    let ranger_creation = t_ranger_creation("ranger");
+    let cleric_creation = t_cleric_creation("cleric");
+    game.creatures.insert(cid_rogue(), Creature::create(&rogue_creation));
+    game.creatures.insert(cid_cleric(), Creature::create(&cleric_creation));
+    game.creatures.insert(cid_ranger(), Creature::create(&ranger_creation));
+    game.scenes.insert(Scene {
+      name: SceneName("Test Scene".to_string()),
+      map: "huge".to_string(),
+      creatures: HashMap::from_iter(vec![(cid_rogue(), (0, 0, 0)),
+                                         (cid_cleric(), (0, 0, 0)),
+                                         (cid_ranger(), (0, 0, 0))]),
+    });
     game
   }
 
@@ -514,7 +518,7 @@ pub mod test {
     let mut creatures = HashMap::new();
     let punch = t_punch();
     let punch_id = abid("punch");
-    let bob_id = cid("bob");
+    let bob_id = CreatureID::new();
     let creature = t_rogue("bob");
     creatures.insert(bob_id, creature);
     let mut abilities = HashMap::new();
@@ -525,7 +529,7 @@ pub mod test {
       current_combat: None,
       creatures: creatures,
       maps: HashMap::from_iter(vec![("huge".to_string(), huge_box())]),
-      current_map: Some("huge".to_string()),
+      scenes: IndexedHashMap::new(),
       tile_system: TileSystem::Realistic,
     };
     let game = t_start_combat(&game, vec![bob_id]);
@@ -538,52 +542,38 @@ pub mod test {
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
-    let non = cid("nonexistent");
-    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(vec![non])),
-               Err(GameError::CreatureNotFound(non)));
+    let non = CreatureID::new();
+    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+                                                             vec![non])),
+               Err(GameError::CreatureNotFound(non.to_string())));
   }
 
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(vec![])),
+    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+                                                             vec![])),
                Err(GameError::CombatMustHaveCreatures));
-  }
-
-  #[test]
-  fn start_combat() {
-    let game = t_game();
-    let game = game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"), cid("ranger")]))
-      .unwrap()
-      .game;
-    assert_eq!(game.creatures.get(&cid("rogue")), None);
-    assert_eq!(game.creatures.get(&cid("ranger")), None);
-    assert!(game.creatures.get(&cid("cleric")).is_some());
   }
 
   #[test]
   fn stop_combat() {
     let game = t_game();
-    let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
-    let game = game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
-                                                DecidedTarget::Melee(cid("ranger"))))
-      .unwrap()
-      .game;
-    assert_eq!(game.current_combat
-                 .as_ref()
-                 .unwrap()
-                 .get_creature_data(cid("ranger"))
-                 .unwrap()
-                 .cur_health(),
-               HP(7));
+    let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
+    let game =
+      game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
+                                                  DecidedTarget::Melee(cid_ranger())))
+        .unwrap()
+        .game;
+    assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
     let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
-    assert_eq!(game.get_creature(cid("ranger")).unwrap().creature.cur_health(), HP(7));
+    assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
   }
 
   #[test]
   fn movement() {
     let game = t_game();
-    let game = t_start_combat(&game, vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+    let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     game.perform_unchecked(GameCommand::PathCurrentCombatCreature((1, 0, 0))).unwrap();
   }
 
@@ -591,32 +581,30 @@ pub mod test {
   fn change_creature_initiative() {
     let game = t_combat();
     fn combat_cids(game: &Game) -> Vec<CreatureID> {
-      game.get_combat().unwrap().creatures().unwrap().iter().map(|c| c.id()).collect()
+      game.get_combat().unwrap().combat.creatures.iter().map(|c| *c).collect()
     }
-    assert_eq!(combat_cids(&game), vec![cid("rogue"), cid("ranger"), cid("cleric")]);
+    assert_eq!(combat_cids(&game), vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     // move ranger to position 0
     let game =
-      game.perform_unchecked(GameCommand::ChangeCreatureInitiative(cid("ranger"), 0)).unwrap().game;
-    assert_eq!(combat_cids(&game), vec![cid("ranger"), cid("rogue"), cid("cleric")]);
+      game.perform_unchecked(GameCommand::ChangeCreatureInitiative(cid_ranger(), 0)).unwrap().game;
+    assert_eq!(combat_cids(&game), vec![cid_ranger(), cid_rogue(), cid_cleric()]);
   }
 
   #[test]
   fn three_char_infinite_combat() {
     let game = t_game();
-    let game = game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"),
-                                                       cid("ranger"),
-                                                       cid("cleric")]))
+    let game = game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]))
       .unwrap()
       .game;
     let iter = |game: &Game| -> Result<Game, GameError> {
-      let game = t_game_act(game, abid("punch"), DecidedTarget::Melee(cid("ranger")));
+      let game = t_game_act(game, abid("punch"), DecidedTarget::Melee(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
       let game = game.perform_unchecked(GameCommand::Done)?.game;
-      let game = t_game_act(&game, abid("heal"), DecidedTarget::Range(cid("ranger")));
+      let game = t_game_act(&game, abid("heal"), DecidedTarget::Range(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
       Ok(game)
     };
     iter(&game).unwrap();
   }
-
 }

@@ -489,8 +489,7 @@ pub struct Game {
   pub maps: HashMap<MapName, Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
-  pub scenes: IndexedHashMap<Scene>,
-  // pub campaign: Campaign,
+  pub scenes: IndexedHashMap<Scene>, // pub campaign: Campaign,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -673,13 +672,13 @@ impl Folder {
 pub mod test {
   use types::*;
   use std::iter::FromIterator;
+  use uuid::Uuid;
 
   use serde_yaml;
   use serde_json;
 
   pub fn t_rogue_creation(name: &str) -> CreatureCreation {
     CreatureCreation {
-      id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "rogue".to_string(),
       portrait_url: "".to_string(),
@@ -688,7 +687,6 @@ pub mod test {
 
   pub fn t_cleric_creation(name: &str) -> CreatureCreation {
     CreatureCreation {
-      id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "cleric".to_string(),
       portrait_url: "".to_string(),
@@ -697,11 +695,20 @@ pub mod test {
 
   pub fn t_ranger_creation(name: &str) -> CreatureCreation {
     CreatureCreation {
-      id: CreatureID::new(name).unwrap(),
       name: name.to_string(),
       class: "ranger".to_string(),
       portrait_url: "".to_string(),
     }
+  }
+
+  pub fn cid_cleric() -> CreatureID {
+    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 0]).unwrap())
+  }
+  pub fn cid_ranger() -> CreatureID {
+    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 1]).unwrap())
+  }
+  pub fn cid_rogue() -> CreatureID {
+    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 2]).unwrap())
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
