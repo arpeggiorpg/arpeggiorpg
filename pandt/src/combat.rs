@@ -261,6 +261,7 @@ pub mod test {
   #[test]
   fn target_range() {
     let game = t_combat();
+    let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
     let game =
       game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
                                                        cid_ranger(),
