@@ -50,7 +50,7 @@ impl<T> FolderTree<T> {
     None
   }
 
-  pub fn get(&self, path: FolderPath) -> Option<&T> {
+  fn get_path_idx(&self, path: FolderPath) -> Option<NodeIndex> {
     let mut cur_idx = NodeIndex::new(ROOT);
 
     for seg in path.0 {
@@ -59,7 +59,15 @@ impl<T> FolderTree<T> {
         None => return None,
       }
     }
-    Some(&self.tree[cur_idx].1)
+    Some(cur_idx)
+  }
+
+  pub fn get(&self, path: FolderPath) -> Option<&T> {
+    self.get_path_idx(path).map(|idx| &self.tree[idx].1)
+  }
+
+  pub fn get_mut(&mut self, path: FolderPath) -> Option<&mut T> {
+    self.get_path_idx(path).map(move |idx| &mut self.tree[idx].1)
   }
 }
 
@@ -168,6 +176,17 @@ mod test {
                Some(&"Folder!".to_string()));
   }
 
+  #[test]
+  fn get_mut_root() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    {
+      let mut root_node = ftree.get_mut(FolderPath::from_vec(vec![])).unwrap();
+      assert_eq!(root_node, &mut "Root node!".to_string());
+      root_node.push_str(" Okay.");
+    }
+    let root_node = ftree.get(FolderPath::from_vec(vec![])).unwrap();
+    assert_eq!(root_node, &"Root node! Okay.".to_string());
+  }
 }
 
 // impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
