@@ -308,7 +308,7 @@ pub mod test {
                                                        (6, 0, 0)))
         .unwrap()
         .game;
-    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger())),
+    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())),
                Err(GameError::CreatureOutOfRange(cid_rogue())));
 
     let game =
