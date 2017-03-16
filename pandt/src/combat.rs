@@ -333,15 +333,12 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let combat = game.get_combat()
+    let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((5, 0, 0)))
       .unwrap()
-      .get_movement()
-      .unwrap()
-      .move_current((5, 0, 0))
-      .unwrap();
+      .game;
     assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
                  .unwrap()
-                 .get_pos(cid_ranger())
+                 .get_pos(cid_rogue())
                  .unwrap(),
                (5, 0, 0));
     let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
@@ -349,7 +346,7 @@ pub mod test {
       .game;
     assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
                  .unwrap()
-                 .get_pos(cid_ranger())
+                 .get_pos(cid_rogue())
                  .unwrap(),
                (10, 0, 0));
     assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
