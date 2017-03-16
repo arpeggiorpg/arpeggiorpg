@@ -205,6 +205,7 @@ pub mod test {
   use combat::*;
   use types::test::*;
   use game::test::t_game;
+  use game::ChangedGame;
 
   #[test]
   fn slide_later() {
@@ -231,46 +232,51 @@ pub mod test {
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
     let game = t_game();
-    game.perform_unchecked(GameCommand::StartCombat(vec![cid("rogue"),
-                                                             cid("ranger"),
-                                                             cid("cleric")]))
-            .unwrap()
-            .game
+    game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]))
+      .unwrap()
+      .game
   }
 
-  pub fn t_act<'game>(game: &'game Game, ab: &Ability, target: DecidedTarget)
-                      -> Result<ChangedCombat<'game>, GameError> {
-    game.get_combat().unwrap().get_able()?.act(ab, target)
+  pub fn t_act<'game>(game: &'game Game, abid: AbilityID, target: DecidedTarget)
+                      -> Result<ChangedGame, GameError> {
+    game.perform_unchecked(GameCommand::CombatAct(abid, target))
   }
 
   /// Try to melee-atack the ranger when the ranger is out of melee range.
   #[test]
   fn target_melee_out_of_range() {
     let game = t_combat();
-    let melee = t_punch();
-    let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (2, 0, 0)))
-      .unwrap()
-      .game;
-    assert_eq!(t_act(&game, &melee, DecidedTarget::Melee(cid("ranger"))),
-               Err(GameError::CreatureOutOfRange(cid("ranger"))));
+    let game =
+      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
+                                                       cid_ranger(),
+                                                       (2, 0, 0)))
+        .unwrap()
+        .game;
+    assert_eq!(t_act(&game, abid("punch"), DecidedTarget::Melee(cid_ranger())),
+               Err(GameError::CreatureOutOfRange(cid_ranger())));
   }
 
   /// Ranged attacks against targets (just) within range are successful.
   #[test]
   fn target_range() {
     let game = t_combat();
-    let range_ab = t_shoot();
-    let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (5, 0, 0)))
+    let game =
+      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
+                                                       cid_ranger(),
+                                                       (5, 0, 0)))
+        .unwrap()
+        .game;
+    let _: DynamicCombat = t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger()))
       .unwrap()
-      .game;
-    let _: Combat = t_act(&game, &range_ab, DecidedTarget::Range(cid("ranger")))
-      .unwrap()
-      .combat;
+      .game
+      .get_combat()
+      .unwrap();
   }
 
   #[test]
   fn multiple_effects_per_target() {
-    let game = t_combat();
+    let mut game = t_combat();
     let ab = Ability {
       name: "MultiEffect".to_string(),
       target: TargetSpec::Melee,
@@ -279,9 +285,10 @@ pub mod test {
       effects: vec![Effect::Damage(Dice::flat(3)),
                     Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
     };
-    let change = t_act(&game, &ab, DecidedTarget::Melee(cid("ranger"))).unwrap();
-    let next = change.dyn();
-    assert_eq!(next.get_creature(cid("ranger")).unwrap().conditions(),
+    game.abilities.insert(abid("multi"), ab);
+    let change = t_act(&game, abid("multi"), DecidedTarget::Melee(cid_ranger())).unwrap();
+    let next = change.game;
+    assert_eq!(next.get_creature(cid_ranger()).unwrap().conditions(),
                vec![AppliedCondition {
                       remaining: ConditionDuration::Interminate,
                       condition: Condition::Dead,
@@ -292,19 +299,24 @@ pub mod test {
   #[test]
   fn target_out_of_range() {
     let game = t_combat();
-    let shoot = t_shoot();
-    let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (6, 0, 0)))
-      .unwrap()
-      .game;
-    assert_eq!(t_act(&game, &shoot, DecidedTarget::Range(cid("ranger"))),
-               Err(GameError::CreatureOutOfRange(cid("ranger"))));
+    let game =
+      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
+                                                       cid_ranger(),
+                                                       (6, 0, 0)))
+        .unwrap()
+        .game;
+    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger())),
+               Err(GameError::CreatureOutOfRange(cid_ranger())));
 
-    let game = game.perform_unchecked(GameCommand::SetCreaturePos(cid("ranger"), (5, 3, 0)))
-      .unwrap()
-      .game;
+    let game =
+      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
+                                                       cid_ranger(),
+                                                       (5, 3, 0)))
+        .unwrap()
+        .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
-    assert_eq!(t_act(&game, &shoot, DecidedTarget::Range(cid("ranger"))),
-               Err(GameError::CreatureOutOfRange(cid("ranger"))));
+    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger())),
+               Err(GameError::CreatureOutOfRange(cid_ranger())));
   }
 
   #[test]
@@ -327,35 +339,44 @@ pub mod test {
       .unwrap()
       .move_current((5, 0, 0))
       .unwrap();
-    assert_eq!(combat.dyn().current_creature().unwrap().pos(), (5, 0, 0));
+    assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
+                 .unwrap()
+                 .get_pos(cid_ranger())
+                 .unwrap(),
+               (5, 0, 0));
     let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
       .unwrap()
       .game;
-    assert_eq!(game.get_combat().unwrap().current_creature().unwrap().pos(), (10, 0, 0));
+    assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
+                 .unwrap()
+                 .get_pos(cid_ranger())
+                 .unwrap(),
+               (10, 0, 0));
     assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
                Err(GameError::NoPathFound));
   }
 
-  /// The length of the past is deducted from combat.movement_used after PathCurrentCreature.
+  /// The length of the path is deducted from combat.movement_used after PathCurrentCreature.
   #[test]
   fn move_honors_path() {
     let mut game = t_combat();
-    game.maps.insert("circuitous".to_string(),
+    game.maps.insert("huge".to_string(),
                      // up, right, right, down
                      vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)]);
-    game.current_map = Some("circuitous".to_string());
-    let combat =
-      game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().combat;
-    assert_eq!(combat.movement_used, Distance(400));
+    let next_game = game.get_combat()
+      .unwrap()
+      .get_movement()
+      .unwrap()
+      .move_current((2, 0, 0))
+      .unwrap()
+      .game;
+    assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));
   }
 
   #[test]
   fn tick_on_next_turn() {
     let mut game = t_combat();
-    game.current_combat
-      .as_mut()
-      .unwrap()
-      .get_creature_mut(cid("ranger"))
+    game.get_creature_mut(cid_ranger())
       .unwrap()
       .conditions
       .insert(500,
@@ -366,7 +387,7 @@ pub mod test {
       .next_turn()
       .unwrap();
     let cur = combat.dyn().current_creature().unwrap().clone();
-    assert_eq!(cur.id(), cid("ranger"));
+    assert_eq!(cur.id(), cid_ranger());
     assert_eq!(cur.creature.cur_health, HP(5));
   }
 }

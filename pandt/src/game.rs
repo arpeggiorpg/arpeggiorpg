@@ -237,7 +237,8 @@ impl Game {
     self.dyn_creature(self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))?)
   }
 
-  fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
+  // this is only public for tests :(
+  pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
     self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))
   }
 
