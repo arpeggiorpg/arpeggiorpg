@@ -33,7 +33,7 @@ impl<T> FolderTree<T> {
       match self.find_child_idx(cur_idx, &seg) {
         Some(child) => cur_idx = child,
         None => {
-          self.tree.add_child(cur_idx, (seg.clone(), node.clone()));
+          cur_idx = self.tree.add_child(cur_idx, (seg.clone(), node.clone()));
         }
       }
     }
@@ -148,6 +148,24 @@ mod test {
   fn get_root() {
     let ftree = FolderTree::new("Root node!".to_string());
     assert_eq!(ftree.get(FolderPath::from_vec(vec![])), Some(&"Root node!".to_string()))
+  }
+
+  #[test]
+  fn get_nonexistent() {
+    let ftree = FolderTree::new("Root node!".to_string());
+    assert_eq!(ftree.get(FolderPath::from_vec(vec!["a".to_string()])), None);
+  }
+
+  #[test]
+  fn make_dirs() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    ftree.make_dirs(FolderPath::from_vec(vec!["usr".to_string(), "bin".to_string()]),
+                    "Folder!".to_string());
+    assert_eq!(ftree.get(FolderPath::from_vec(vec!["usr".to_string()])),
+               Some(&"Folder!".to_string()));
+    assert_eq!(ftree.get(FolderPath::from_vec(vec!["bin".to_string()])), None);
+    assert_eq!(ftree.get(FolderPath::from_vec(vec!["usr".to_string(), "bin".to_string()])),
+               Some(&"Folder!".to_string()));
   }
 
 }
