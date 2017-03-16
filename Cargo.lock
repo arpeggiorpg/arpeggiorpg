@@ -131,6 +131,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixedbitset"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "gcc"
 version = "0.3.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -452,6 +457,7 @@ dependencies = [
  "odds 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "pathfinding 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rose_tree 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -484,6 +490,14 @@ dependencies = [
 name = "pest"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "petgraph"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "fixedbitset 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "ptbuild"
@@ -572,6 +586,14 @@ dependencies = [
  "rocket 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rose_tree"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "petgraph 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -874,6 +896,7 @@ dependencies = [
 "checksum derive_more 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a33585dc6e2acd428644363b1856943be4c55722b0910a7e62dd9588ae41219f"
 "checksum dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "80c8b71fd71146990a9742fc06dcbbde19161a267e0ad4e572c35162f4578c90"
 "checksum error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d9435d864e017c3c6afeac1654189b06cdb491cf2ff73dbf0d73b0f292f42ff8"
+"checksum fixedbitset 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "88c3c33fc4c00db33f5174eb98aea809c4c007db0b71351d810a7e094ea3b64d"
 "checksum gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)" = "c07c758b972368e703a562686adb39125707cc1ef3399da8c019fc6c2498a75d"
 "checksum handlebars 0.25.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b2249f6f0dc5a3bb2b3b1a8f797dfccbc4b053344d773d654ad565e51427d335"
 "checksum httparse 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a6e7a63e511f9edffbab707141fbb8707d1a3098615fb2adbd5769cdfcc9b17d"
@@ -911,6 +934,7 @@ dependencies = [
 "checksum parking_lot_core 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "06f24c980718110494e9cfb7db7438895c3f54505101bb6170329d5e43a53f64"
 "checksum pathfinding 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "f750a8aae340509cb5ca83f0079b83c07992f0af9ffd3d9ae150a60dfd4d724f"
 "checksum pest 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0a6dda33d67c26f0aac90d324ab2eb7239c819fc7b2552fe9faa4fe88441edc8"
+"checksum petgraph 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)" = "bfd1de18b0a5f1777162e5b61aaf498032467d5409ab4ca6dbd03049f5708de1"
 "checksum quick-error 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0aad603e8d7fb67da22dbdf1f4b826ce8829e406124109e73cf1b2454b93a71c"
 "checksum quote 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)" = "6732e32663c9c271bfc7c1823486b471f18c47a2dbf87c066897b7b51afc83be"
 "checksum rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "022e0636ec2519ddae48154b028864bdce4eaf7d35226ab8e65c611be97b189d"
@@ -920,6 +944,7 @@ dependencies = [
 "checksum rocket 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4492fd7b3300f156b699f8033e2aa902b80b8be4a44e9a389f34a54b07981126"
 "checksum rocket_codegen 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "011ec66b6cfccff11e1c1e56fdaac876efe0bff9b477d4d05be4cbe7a0193f14"
 "checksum rocket_contrib 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e1e24cdf302cdd0a09afa987cae6ed92ca18bb34dc8c7883a54dd1a617804e8b"
+"checksum rose_tree 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2ede3689cda7c4b2c6e6911ab289b34ebe9fcdc86f7f520a54706043ac298a4a"
 "checksum rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3058a43ada2c2d0b92b3ae38007a2d0fa5e9db971be260e0171408a4ff471c95"
 "checksum rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)" = "237546c689f20bb44980270c73c3b9edd0891c1be49cc1274406134a66d3957b"
 "checksum rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"
