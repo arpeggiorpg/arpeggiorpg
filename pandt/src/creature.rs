@@ -387,17 +387,19 @@ pub mod test {
   /// on that creature.
   #[test]
   fn test_condition_duration() {
-    let game = t_game();
-    let mut c = t_rogue("bob");
-    c.conditions = HashMap::from_iter(vec![(0,
-                                            app_cond(Condition::Incapacitated,
-                                                     ConditionDuration::Duration(1)))]);
-    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
+    let mut game = t_game();
+    {
+      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
+      c.conditions = HashMap::from_iter(vec![(0,
+                                              app_cond(Condition::Incapacitated,
+                                                       ConditionDuration::Duration(1)))]);
+    }
+    let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions,
                HashMap::from_iter(vec![(0,
                                         app_cond(Condition::Incapacitated,
                                                  ConditionDuration::Duration(0)))]));
-    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
+    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions, HashMap::new());
   }
 }
