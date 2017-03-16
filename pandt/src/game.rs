@@ -9,6 +9,7 @@ use creature::ChangedCreature;
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
+      root_folder: Folder::new("root".to_string()),
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),

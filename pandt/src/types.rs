@@ -460,6 +460,7 @@ pub struct Game {
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
+  pub root_folder: Folder,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -560,17 +561,17 @@ impl<'a> ser::Serialize for RPIApp<'a> {
 
 impl<'a> ser::Serialize for RPIGame<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 8)?;
+    let mut str = serializer.serialize_struct("Game", 9)?;
     let game = self.0;
 
     str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
-    str.serialize_field("creatures",
-                       &game.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
+    str.serialize_field("creatures", &game.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
     str.serialize_field("maps", &game.maps)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
+    str.serialize_field("root_folder", &game.root_folder)?;
     str.end()
   }
 }
@@ -603,6 +604,47 @@ pub enum TileSystem {
   Realistic,
   /// Square grid with diagonal movement costing 1
   DnD,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct Note {
+  pub name: String,
+  pub content: String,
+}
+
+impl DeriveKey for Note {
+  type KeyType = String;
+  fn derive_key(&self) -> String {
+    self.name.clone()
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct Folder {
+  pub name: String,
+  pub scenes: HashSet<SceneName>,
+  pub creatures: HashSet<CreatureID>,
+  pub notes: IndexedHashMap<Note>,
+  pub folders: IndexedHashMap<Folder>,
+}
+
+impl DeriveKey for Folder {
+  type KeyType = String;
+  fn derive_key(&self) -> String {
+    self.name.clone()
+  }
+}
+
+impl Folder {
+  pub fn new(name: String) -> Folder {
+    Folder {
+      name: name,
+      scenes: HashSet::new(),
+      creatures: HashSet::new(),
+      notes: IndexedHashMap::new(),
+      folders: IndexedHashMap::new(),
+    }
+  }
 }
 
 #[cfg(test)]

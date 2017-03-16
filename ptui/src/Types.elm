@@ -66,7 +66,7 @@ playerDecoder =
   JD.map3 Player
     (JD.field "player_id" JD.string)
     (JD.field "scene" (JD.oneOf [JD.map Just JD.string, JD.null Nothing]))
-    (JD.field "creatures" (JD.map Set.fromList (JD.list JD.string)))
+    (JD.field "creatures" (setDecoder JD.string))
 
 type alias GameSnapshot = {}
 
@@ -148,6 +148,7 @@ type alias Game =
   , creatures : Dict CreatureID Creature
   , maps: Dict MapName Map
   , scenes: Dict String Scene
+  , root_folder: Folder
   }
 
 gameDecoder : JD.Decoder Game
@@ -159,6 +160,38 @@ gameDecoder =
     |> P.required "creatures" (JD.dict creatureDecoder)
     |> P.required "maps" (JD.dict mapDecoder)
     |> P.required "scenes" (JD.dict sceneDecoder)
+    |> P.required "root_folder" folderDecoder
+
+type Folder =
+  Folder
+    { name: String
+    , scenes: Set.Set SceneName
+    , creatures: Set.Set CreatureID
+    , notes: Dict.Dict String Note
+    , folders: Dict.Dict String Folder
+    }
+
+dumbFolderHelper name scenes creatures notes folders =
+  Folder { name=name, scenes=scenes, creatures=creatures,notes=notes, folders=folders}
+
+folderDecoder : JD.Decoder Folder
+folderDecoder = 
+  JD.map5 dumbFolderHelper
+    (JD.field "name" JD.string)
+    (JD.field "scenes" (setDecoder JD.string))
+    (JD.field "creatures" (setDecoder JD.string))
+    (JD.field "notes" (JD.dict noteDecoder))
+    (JD.field "folders" (JD.dict (JD.lazy (\_ -> folderDecoder))))
+
+type alias Note =
+  { name: String
+  , content: String
+  }
+
+noteDecoder : JD.Decoder Note
+noteDecoder = JD.map2 Note
+  (JD.field "name" JD.string)
+  (JD.field "content" JD.string)
 
 type alias Scene =
   { name: String
@@ -498,6 +531,7 @@ encodeMaybe mebbe encoder =
     Just x -> encoder x
     Nothing -> JE.null
 
+setDecoder el = JD.map Set.fromList (JD.list el)
 
 listFind : (a -> Bool) -> List a -> Maybe a
 listFind f l = List.head (List.filter f l)

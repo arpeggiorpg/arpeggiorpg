@@ -9,6 +9,12 @@ current_game:
         0420f7db-c7ec-48af-add3-045ad859f47e: [-1, 0, 0]
       name: "The T"
       map: map1
+  root_folder:
+    name: root
+    scenes: []
+    creatures: []
+    notes: {}
+    folders: {}
   tile_system: Realistic
   maps:
     empty-map:
