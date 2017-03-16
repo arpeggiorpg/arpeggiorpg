@@ -4,12 +4,13 @@ use indexed::IndexedHashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
+use foldertree::FolderTree;
 
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
-      root_folder: Folder::new("root".to_string()),
+      // campaign: FolderTree::new(Folder::new()),
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),
@@ -37,9 +38,23 @@ impl Game {
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      // ** Folder Management **
+      CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
+      DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
+      LinkFolderCreature(path, cid) => self.change_with(GameLog::LinkFolderCreature(path, cid)),
+      UnlinkFolderCreature(path, cid) => self.change_with(GameLog::UnlinkFolderCreature(path, cid)),
+      LinkFolderScene(path, sceneName) => {
+        self.change_with(GameLog::LinkFolderScene(path, sceneName))
+      }
+      UnlinkFolderScene(path, sceneName) => {
+        self.change_with(GameLog::UnlinkFolderScene(path, sceneName))
+      }
+      CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
+      DeleteNote(path, noteName) => self.change_with(GameLog::DeleteNote(path, noteName)),
+
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
-      CreateCreature(c) => self.create_creature(c),
+      CreateCreature(c, path) => self.create_creature(c),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {
@@ -79,8 +94,8 @@ impl Game {
   }
 
   pub fn path_creature_distance(&self, scene_name: SceneName, cid: CreatureID, pt: Point3,
-                            max_distance: Distance)
-                            -> Result<(ChangedGame, Distance), GameError> {
+                                max_distance: Distance)
+                                -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_name.clone())?;
     let terrain = self.get_map(&scene.map)?;
     let (pts, distance) = self.tile_system
@@ -110,6 +125,15 @@ impl Game {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
+      CreateFolder(ref path) => {
+      }
+      DeleteFolder(ref path) => {}
+      LinkFolderCreature(ref path, ref cid) => {}
+      UnlinkFolderCreature(ref path, ref cid) => {}
+      LinkFolderScene(ref path, ref sceneName) => {}
+      UnlinkFolderScene(ref path, ref sceneName) => {}
+      CreateNote(ref path, ref note) => {}
+      DeleteNote(ref path, ref noteName) => {}
       EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;
         newgame.scenes.insert(scene.clone());

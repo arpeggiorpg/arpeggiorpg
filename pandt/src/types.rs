@@ -16,6 +16,7 @@ use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
+use foldertree::{FolderTree, FolderPath};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -135,6 +136,24 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+  // ** Folder management **
+  /// Create a folder, given segments leading to it.
+  CreateFolder(FolderPath),
+  /// Delete a folder.
+  DeleteFolder(FolderPath),
+  /// Link a Creature into a Folder.
+  LinkFolderCreature(FolderPath, CreatureID),
+  /// Unlink a Creature from a Folder.
+  UnlinkFolderCreature(FolderPath, CreatureID),
+  /// Link a Scene into a Folder.
+  LinkFolderScene(FolderPath, SceneName),
+  /// Unlink a Scene from a Folder.
+  UnlinkFolderScene(FolderPath, SceneName),
+  /// Create a Note inside of a Folder.
+  CreateNote(FolderPath, Note),
+  /// Delete a Note from a Folder.
+  DeleteNote(FolderPath, String),
+
   // ** Scene management **
   /// Create a scene (or, if it already exists, change the existing one).
   EditScene(Scene),
@@ -142,7 +161,7 @@ pub enum GameCommand {
   DeleteScene(SceneName),
 
   // ** Map management **
-  /// Change the terrain data of a map
+  /// Change the terrain data of a map.
   EditMap(MapName, Map),
 
   // ** Combat management **
@@ -168,7 +187,7 @@ pub enum GameCommand {
 
   // ** Creature Manipulation **
   /// Create a new creature.
-  CreateCreature(CreatureCreation),
+  CreateCreature(CreatureCreation, FolderPath),
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneName, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -227,6 +246,17 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  // ** Folder Management **
+  /// Create a folder, given segments leading to it.
+  CreateFolder(FolderPath),
+  DeleteFolder(FolderPath),
+  LinkFolderCreature(FolderPath, CreatureID),
+  UnlinkFolderCreature(FolderPath, CreatureID),
+  LinkFolderScene(FolderPath, SceneName),
+  UnlinkFolderScene(FolderPath, SceneName),
+  CreateNote(FolderPath, Note),
+  DeleteNote(FolderPath, String),
+
   EditScene(Scene),
   DeleteScene(SceneName),
   EditMap(MapName, Map),
@@ -460,7 +490,7 @@ pub struct Game {
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
-  pub root_folder: Folder,
+  // pub campaign: Campaign,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -571,7 +601,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
-    str.serialize_field("root_folder", &game.root_folder)?;
+    // str.serialize_field("campaign", &game.campaign)?;
     str.end()
   }
 }
@@ -619,30 +649,22 @@ impl DeriveKey for Note {
   }
 }
 
+// #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+// pub struct Campaign(pub FolderTree<Folder>);
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Folder {
-  pub name: String,
   pub scenes: HashSet<SceneName>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
-  pub folders: IndexedHashMap<Folder>,
-}
-
-impl DeriveKey for Folder {
-  type KeyType = String;
-  fn derive_key(&self) -> String {
-    self.name.clone()
-  }
 }
 
 impl Folder {
-  pub fn new(name: String) -> Folder {
+  pub fn new() -> Folder {
     Folder {
-      name: name,
       scenes: HashSet::new(),
       creatures: HashSet::new(),
       notes: IndexedHashMap::new(),
-      folders: IndexedHashMap::new(),
     }
   }
 }

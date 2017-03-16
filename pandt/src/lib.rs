@@ -11,6 +11,7 @@ extern crate string_wrapper;
 extern crate pathfinding;
 extern crate num_traits;
 extern crate uuid;
+extern crate rose_tree;
 
 #[macro_use]
 extern crate lazy_static;
@@ -32,3 +33,4 @@ pub mod creature;
 pub mod grid;
 pub mod types;
 pub mod indexed;
+pub mod foldertree;
