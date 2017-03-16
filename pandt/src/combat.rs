@@ -299,24 +299,25 @@ pub mod test {
   #[test]
   fn target_out_of_range() {
     let game = t_combat();
+    let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
     let game =
       game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_ranger(),
+                                                       cid_rogue(),
                                                        (6, 0, 0)))
         .unwrap()
         .game;
     assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger())),
-               Err(GameError::CreatureOutOfRange(cid_ranger())));
+               Err(GameError::CreatureOutOfRange(cid_rogue())));
 
     let game =
       game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_ranger(),
+                                                       cid_rogue(),
                                                        (5, 3, 0)))
         .unwrap()
         .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
-    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger())),
-               Err(GameError::CreatureOutOfRange(cid_ranger())));
+    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())),
+               Err(GameError::CreatureOutOfRange(cid_rogue())));
   }
 
   #[test]

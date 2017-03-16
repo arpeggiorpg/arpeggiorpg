@@ -478,9 +478,15 @@ pub mod test {
     let rogue_creation = t_rogue_creation("rogue");
     let ranger_creation = t_ranger_creation("ranger");
     let cleric_creation = t_cleric_creation("cleric");
-    game.creatures.insert(cid_rogue(), Creature::create(&rogue_creation));
-    game.creatures.insert(cid_cleric(), Creature::create(&cleric_creation));
-    game.creatures.insert(cid_ranger(), Creature::create(&ranger_creation));
+    let mut rogue = Creature::create(&rogue_creation);
+    rogue.id = cid_rogue();
+    let mut cleric = Creature::create(&cleric_creation);
+    cleric.id = cid_cleric();
+    let mut ranger = Creature::create(&ranger_creation);
+    ranger.id = cid_ranger();
+    game.creatures.insert(cid_rogue(), rogue);
+    game.creatures.insert(cid_cleric(), cleric);
+    game.creatures.insert(cid_ranger(), ranger);
     game.scenes.insert(Scene {
       name: SceneName("Test Scene".to_string()),
       map: "huge".to_string(),
