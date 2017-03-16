@@ -4,8 +4,6 @@ use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
 use types::*;
-use game::ChangedGame;
-use combat::MELEE_RANGE;
 
 /// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
 /// Since we only allow 8-way movement, the available movement options are biased towards
@@ -320,24 +318,28 @@ pub mod test {
 
   pub fn t_creature(name: &str, class: &str) -> Creature {
     Creature::create(&CreatureCreation {
-      id: CreatureID::new(name).expect("Couldn't create CreatureID from given name"),
       name: name.to_string(),
       class: class.to_string(),
-      pos: (0, 0, 0),
       portrait_url: "".to_string(),
     })
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    t_creature(name, "rogue")
+    let mut c = t_creature(name, "rogue");
+    c.id = cid_rogue();
+    c
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    t_creature(name, "ranger")
+    let mut c = t_creature(name, "ranger");
+    c.id = cid_ranger();
+    c
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    t_creature(name, "cleric")
+    let mut c = t_creature(name, "cleric");
+    c.id = cid_rogue();
+    c
   }
 
   #[test]
@@ -352,7 +354,7 @@ pub mod test {
                               (2,
                                app_cond(Condition::Incapacitated,
                                         ConditionDuration::Interminate))]);
-    assert_eq!(game.dyn_creature(&c).unwrap().tick().unwrap().creature.conditions,
+    assert_eq!(game.get_creature(c.id).unwrap().tick().unwrap().creature.conditions,
                HashMap::from_iter(vec![(1,
                                         app_cond(Condition::Incapacitated,
                                                  ConditionDuration::Duration(4))),
@@ -370,11 +372,11 @@ pub mod test {
     c.conditions = HashMap::from_iter(
             vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
                               ConditionDuration::Duration(2)))]);
-    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
+    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
-    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
+    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(8));
-    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
+    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(8));
   }
 
@@ -387,12 +389,12 @@ pub mod test {
     c.conditions = HashMap::from_iter(vec![(0,
                                             app_cond(Condition::Incapacitated,
                                                      ConditionDuration::Duration(1)))]);
-    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
+    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions,
                HashMap::from_iter(vec![(0,
                                         app_cond(Condition::Incapacitated,
                                                  ConditionDuration::Duration(0)))]));
-    let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
+    let c = game.get_creature(c.id).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions, HashMap::new());
   }
 }
