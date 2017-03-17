@@ -22,3 +22,4 @@ lazy_static = "0.1.*"
 rand = "0.3"
 uuid = {version = "0.4", features = ["v4", "serde"]}
 rose_tree = "0.1"
+error-chain = "0.10.0"
