@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use serde::ser::{Serialize, Serializer, SerializeMap};
+use serde::ser::{Serialize, Serializer, SerializeMap, Error};
 use serde::de;
 
 
@@ -27,7 +27,7 @@ error_chain! {
 }
 
 use std::iter::FromIterator;
-#[derive(Debug, Eq, PartialEq, Clone, Serialize)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FolderTree<T> {
   nodes: HashMap<FolderPath, T>,
   children: HashMap<FolderPath, HashSet<String>>,
@@ -73,6 +73,10 @@ impl<T> FolderTree<T> {
 
   pub fn get_mut(&mut self, path: &FolderPath) -> Result<&mut T, FolderTreeError> {
     self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+  }
+
+  pub fn get_children(&self, path: &FolderPath) -> Result<&HashSet<String>, FolderTreeError> {
+    self.children.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
   /// Make a child.
@@ -160,56 +164,63 @@ impl de::Deserialize for FolderPath {
 }
 
 
-// #[derive(Serialize)]
-// struct SerializerHelper<'a, T: 'a> {
-//   data: &'a T,
-//   children: ChildrenSerializer<'a, T>,
-// }
+#[derive(Serialize)]
+struct SerializerHelper<'a, T: 'a> {
+  data: &'a T,
+  children: ChildrenSerializer<'a, T>,
+}
 
-// struct ChildrenSerializer<'a, T: 'a> {
-//   tree: &'a LabeledTree<T>,
-//   index: NodeIndex,
-// }
+struct ChildrenSerializer<'a, T: 'a> {
+  tree: &'a FolderTree<T>,
+  path: &'a FolderPath,
+}
 
-// impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
-//   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where S: Serializer
-//   {
-//     let children_indices: Vec<NodeIndex> = self.tree.children(self.index).collect();
-//     let mut map = serializer.serialize_map(Some(children_indices.len()))?;
-//     for idx in children_indices {
-//       let &(ref name, ref node) = &self.tree[idx];
-//       let children_serializer = ChildrenSerializer {
-//         tree: &self.tree,
-//         index: idx,
-//       };
-//       let helper = SerializerHelper {
-//         data: node,
-//         children: children_serializer,
-//       };
-//       map.serialize_key(&name)?;
-//       map.serialize_value(&helper)?;
-//     }
-//     map.end()
-//   }
-// }
+impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer
+  {
+    let children =
+      self.tree
+        .get_children(self.path)
+        .map_err(|e| {
+          S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e))
+        })?;
+    let mut map = serializer.serialize_map(Some(children.len()))?;
+    for child in children {
+      let full_path = self.path.child(child.to_string());
+      let children_serializer = ChildrenSerializer {
+        tree: &self.tree,
+        path: &full_path,
+      };
+      let helper = SerializerHelper {
+        data: self.tree
+          .get(&full_path)
+          .expect("Child node should definitely exist here, since children() returned in"),
+        children: children_serializer,
+      };
+      map.serialize_key(child)?;
+      map.serialize_value(&helper)?;
+    }
+    map.end()
+  }
+}
 
-// impl<T: Serialize> Serialize for FolderTree<T> {
-//   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where S: Serializer
-//   {
-//     let root_idx = NodeIndex::new(ROOT);
-//     let &(_, ref root) = &self.tree[root_idx];
-//     let helper = SerializerHelper {
-//       data: root,
-//       children: ChildrenSerializer {
-//         tree: &self.tree,
-//         index: root_idx,
-//       },
-//     };
-//     helper.serialize(serializer)
-//   }
-// }
+impl<T: Serialize> Serialize for FolderTree<T> {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer
+  {
+    let root_path = FolderPath::from_vec(vec![]);
+    let root = self.get(&root_path).expect("Root node must always exist.");
+    let helper = SerializerHelper {
+      data: root,
+      children: ChildrenSerializer {
+        tree: &self,
+        path: &root_path,
+      },
+    };
+    helper.serialize(serializer)
+  }
+}
 
 // #[derive(Deserialize)]
 // struct DeserializeHelper<T> {
