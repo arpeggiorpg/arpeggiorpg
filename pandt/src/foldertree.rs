@@ -13,6 +13,10 @@ error_chain! {
   }
 
   errors {
+    InvalidFolderPath(path: String) {
+      description("Couldn't parse a folder path")
+      display("The string '{}' is not a valid folder path", path)
+    }
     FolderNotFound(path: FolderPath) {
       description("A folder wasn't found.")
       display("The folder {} doesn't exist", path.to_string())
@@ -25,7 +29,7 @@ error_chain! {
 }
 
 use std::iter::FromIterator;
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize)]
 pub struct FT3<T> {
   nodes: HashMap<FolderPath, T>,
   children: HashMap<FolderPath, HashSet<String>>,
@@ -106,18 +110,30 @@ pub struct FolderTree<T> {
 pub struct FolderPath(Vec<String>);
 
 impl FolderPath {
-  // this is test-only for now because it can't represent the empty path (which refers to the root
-  // node). Eventually I can figure out a better syntax to support.
-  #[cfg(test)]
-  pub fn from_str(path: &str) -> FolderPath {
-    FolderPath(path.split("/").map(|s| s.to_string()).collect())
-  }
-  pub fn from_vec(segs: Vec<String>) -> FolderPath {
-    FolderPath(segs)
+  pub fn from_str(path: &str) -> Result<FolderPath, FolderTreeError> {
+    let segments: Vec<&str> = path.split("/").collect();
+    if segments.len() == 0 {
+      Ok(FolderPath(vec![]))
+    } else {
+      if segments[0] != "" {
+        Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
+      } else {
+        Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
+      }
+    }
   }
 
   pub fn to_string(&self) -> String {
-    self.0.join("/")
+    let mut s = String::new();
+    for seg in self.0.iter() {
+      s.push_str("/");
+      s.push_str(seg);
+    }
+    s
+  }
+
+  pub fn from_vec(segs: Vec<String>) -> FolderPath {
+    FolderPath(segs)
   }
 
   pub fn child(&self, seg: String) -> FolderPath {
@@ -280,16 +296,20 @@ mod test {
   use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind, FT3};
   use serde_json;
 
+  fn fpath(s: &str) -> FolderPath {
+    FolderPath::from_str(s).unwrap()
+  }
+
   #[test]
   fn get_root_ft3() {
     let ftree = FT3::new("Root node!".to_string());
-    assert_eq!(ftree.get(&FolderPath::from_vec(vec![])).unwrap(), &"Root node!".to_string())
+    assert_eq!(ftree.get(&fpath("")).unwrap(), &"Root node!".to_string())
   }
 
   #[test]
   fn get_nonexistent_ft3() {
     let ftree = FT3::new("Root node!".to_string());
-    let path = FolderPath::from_str("a");
+    let path = fpath("/a");
     match ftree.get(&path) {
       Ok(x) => panic!("Should not have been successful: {:?}", x),
       Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(errpath), _)) => {
@@ -302,28 +322,27 @@ mod test {
   #[test]
   fn make_dirs_ft3() {
     let mut ftree = FT3::new("Root node!".to_string());
-    ftree.make_folders(&FolderPath::from_str("usr/bin"), "Folder!".to_string());
-    assert_eq!(ftree.get(&FolderPath::from_str("usr")).unwrap(), &"Folder!".to_string());
-    match ftree.get(&FolderPath::from_str("bin")) {
+    ftree.make_folders(&fpath("/usr/bin"), "Folder!".to_string());
+    assert_eq!(ftree.get(&fpath("/usr")).unwrap(), &"Folder!".to_string());
+    match ftree.get(&fpath("/bin")) {
       Ok(x) => panic!("unexpected success: {:?}", x),
       Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(errpath), _)) => {
-        assert_eq!(errpath, FolderPath::from_str("bin"));
+        assert_eq!(errpath, fpath("/bin"));
       }
       Err(x) => panic!("Unexpected error: {:?}", x),
     }
-    assert_eq!(ftree.get(&FolderPath::from_str("usr/bin")).unwrap(), &"Folder!".to_string());
+    assert_eq!(ftree.get(&fpath("/usr/bin")).unwrap(), &"Folder!".to_string());
   }
 
   #[test]
   fn make_dir_existing_ft3() {
     let mut ftree = FT3::new("Root node!".to_string());
-    ftree.make_folders(&FolderPath::from_str("foo"), "Folder".to_string());
-    let result =
-      ftree.make_folder(&FolderPath::from_vec(vec![]), "foo".to_string(), "other folder".to_string());
+    ftree.make_folders(&fpath("/foo"), "Folder".to_string());
+    let result = ftree.make_folder(&fpath(""), "foo".to_string(), "other folder".to_string());
     match result {
       Ok(x) => panic!("Got some successful result when I shouldn't have: {:?}", x),
       Err(FolderTreeError(FolderTreeErrorKind::FolderExists(path), _)) => {
-        assert_eq!(path, FolderPath::from_str("foo"))
+        assert_eq!(path, fpath("/foo"))
       }
       Err(x) => panic!("Got some unexpected error {:?}", x),
     }
@@ -333,65 +352,64 @@ mod test {
   fn get_mut_root_ft3() {
     let mut ftree = FT3::new("Root node!".to_string());
     {
-      let mut root_node = ftree.get_mut(&FolderPath::from_vec(vec![])).unwrap();
+      let mut root_node = ftree.get_mut(&fpath("")).unwrap();
       assert_eq!(root_node, &mut "Root node!".to_string());
       root_node.push_str(" Okay.");
     }
-    let root_node = ftree.get(&FolderPath::from_vec(vec![])).unwrap();
+    let root_node = ftree.get(&fpath("")).unwrap();
     assert_eq!(root_node, &"Root node! Okay.".to_string());
   }
 
-  // #[test]
-  // fn serialize_json_ft3() {
-  //   let mut ftree = FT3::new("Root node!".to_string());
-  //   ftree.make_folders(&FolderPath::from_str("usr/bin"), "Folder!".to_string());
-  //   let json = serde_json::to_value(&ftree).unwrap();
+  #[test]
+  fn serialize_json_ft3() {
+    let mut ftree = FT3::new("Root node!".to_string());
+    ftree.make_folders(&fpath("/usr/bin"), "Folder!".to_string());
+    let json = serde_json::to_value(&ftree).unwrap();
 
-  //   let expected = json!({
-  //       "data": "Root node!",
-  //       "children": {
-  //         "usr": {
-  //           "data": "Folder!",
-  //           "children": {
-  //             "bin": {
-  //               "data": "Folder!",
-  //               "children": {}}}}}});
-  //   assert_eq!(json, expected);
-  // }
+    let expected = json!({
+        "data": "Root node!",
+        "children": {
+          "usr": {
+            "data": "Folder!",
+            "children": {
+              "bin": {
+                "data": "Folder!",
+                "children": {}}}}}});
+    assert_eq!(json, expected);
+  }
 
 
 
   #[test]
   fn get_root() {
     let ftree = FolderTree::new("Root node!".to_string());
-    assert_eq!(ftree.get(&FolderPath::from_vec(vec![])), Some(&"Root node!".to_string()))
+    assert_eq!(ftree.get(&fpath("")), Some(&"Root node!".to_string()))
   }
 
   #[test]
   fn get_nonexistent() {
     let ftree = FolderTree::new("Root node!".to_string());
-    assert_eq!(ftree.get(&FolderPath::from_str("a")), None);
+    assert_eq!(ftree.get(&fpath("/a")), None);
   }
 
   #[test]
   fn make_dirs() {
     let mut ftree = FolderTree::new("Root node!".to_string());
-    ftree.make_dirs(&FolderPath::from_str("usr/bin"), "Folder!".to_string());
-    assert_eq!(ftree.get(&FolderPath::from_str("usr")), Some(&"Folder!".to_string()));
-    assert_eq!(ftree.get(&FolderPath::from_str("bin")), None);
-    assert_eq!(ftree.get(&FolderPath::from_str("usr/bin")), Some(&"Folder!".to_string()));
+    ftree.make_dirs(&fpath("/usr/bin"), "Folder!".to_string());
+    assert_eq!(ftree.get(&fpath("/usr")), Some(&"Folder!".to_string()));
+    assert_eq!(ftree.get(&fpath("/bin")), None);
+    assert_eq!(ftree.get(&fpath("/usr/bin")), Some(&"Folder!".to_string()));
   }
 
   #[test]
   fn make_dir_existing() {
     let mut ftree = FolderTree::new("Root node!".to_string());
-    ftree.make_dirs(&FolderPath::from_str("foo"), "Folder".to_string());
-    let result =
-      ftree.make_dir(&FolderPath::from_vec(vec![]), "foo".to_string(), "other folder".to_string());
+    ftree.make_dirs(&fpath("/foo"), "Folder".to_string());
+    let result = ftree.make_dir(&fpath(""), "foo".to_string(), "other folder".to_string());
     match result {
       Ok(x) => panic!("Got some successful result when I shouldn't have: {:?}", x),
       Err(FolderTreeError(FolderTreeErrorKind::FolderExists(path), _)) => {
-        assert_eq!(path, FolderPath::from_str("foo"))
+        assert_eq!(path, fpath("/foo"))
       }
       Err(x) => panic!("Got some unexpected error {:?}", x),
     }
@@ -412,7 +430,7 @@ mod test {
   #[test]
   fn serialize_json() {
     let mut ftree = FolderTree::new("Root node!".to_string());
-    ftree.make_dirs(&FolderPath::from_str("usr/bin"), "Folder!".to_string());
+    ftree.make_dirs(&fpath("/usr/bin"), "Folder!".to_string());
     let json = serde_json::to_value(&ftree).unwrap();
 
     let expected = json!({
@@ -441,9 +459,27 @@ mod test {
     let json = serde_json::to_string(&json).unwrap();
     let ftree: FolderTree<String> = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(ftree.get(&FolderPath::from_str("usr")), Some(&"Folder!".to_string()));
-    assert_eq!(ftree.get(&FolderPath::from_str("bin")), None);
-    assert_eq!(ftree.get(&FolderPath::from_str("usr/bin")), Some(&"Folder!".to_string()));
+    assert_eq!(ftree.get(&fpath("/usr")), Some(&"Folder!".to_string()));
+    assert_eq!(ftree.get(&fpath("/bin")), None);
+    assert_eq!(ftree.get(&fpath("/usr/bin")), Some(&"Folder!".to_string()));
+  }
 
+
+  #[test]
+  fn folderpath_from_str() {
+    assert_eq!(FolderPath::from_str("").unwrap(), FolderPath::from_vec(vec![]));
+    assert_eq!(FolderPath::from_str("/foo").unwrap(), FolderPath::from_vec(vec!["foo".to_string()]));
+    match FolderPath::from_str("foo") {
+      Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
+        assert_eq!(p, "foo".to_string())
+      }
+      x => panic!("Unexpected result: {:?}", x),
+    }
+  }
+
+  #[test]
+  fn folderpath_to_str() {
+    assert_eq!(FolderPath::from_str("").unwrap().to_string(), "");
+    assert_eq!(FolderPath::from_str("/foo/bar").unwrap().to_string(), "/foo/bar");
   }
 }
