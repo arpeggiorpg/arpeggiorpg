@@ -47,17 +47,19 @@ impl<T> FT3<T> {
   }
 
   pub fn make_folders(&mut self, path: &FolderPath, node: T)
-    where T: Clone
+    where T: Clone + ::std::fmt::Debug
   {
     let mut cur_path = FolderPath::from_vec(vec![]);
     for seg in &path.0 {
       let exists = {
+        println!("Checking for {:?} on {:?}", cur_path, self);
         let children = self.children
           .get(&cur_path)
           .expect(&format!("BUG: parent didn't have children: {:?}", cur_path));
         children.contains(seg)
       };
       if !exists {
+        println!("Making child: {:?} {:?} {:?}", cur_path, seg, node);
         self.make_child(&cur_path, seg.clone(), node.clone())
           .expect("make_child must succeed since we know the child doesn't exist here");
       }
@@ -66,11 +68,11 @@ impl<T> FT3<T> {
   }
 
   pub fn get(&self, path: &FolderPath) -> Result<&T, FolderTreeError> {
-    Ok(self.nodes.get(path).expect("Node must exist for folder"))
+    self.nodes.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
   pub fn get_mut(&mut self, path: &FolderPath) -> Result<&mut T, FolderTreeError> {
-    Ok(self.nodes.get_mut(path).expect("Node must exist for folder"))
+    self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
   /// Make a child.
@@ -88,6 +90,7 @@ impl<T> FT3<T> {
       parent_children.insert(new_child);
     }
     self.nodes.insert(new_full_path.clone(), node);
+    self.children.insert(new_full_path.clone(), HashSet::new());
     Ok(new_full_path)
   }
 }
