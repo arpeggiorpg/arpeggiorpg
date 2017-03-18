@@ -31,9 +31,11 @@ error_chain! {
   }
 }
 
-// TODO: I believe a BTree would be a simpler and more efficient storage mechanism.
-// getting all childrens would just be an iteration from parent until we hit a node that doesn't
-// match the parent.
+// Using *just* a BTreeMap, and dropping the extra `children` sets, would be simpler and faster in
+//  some ways, *except* that listing the direct children of a node would be O(descendents).
+// However... consider using a BTreeMap for the `nodes` list, and then tree.walk(path) becomes
+// trivial with BTreeMap.range. We could also change it to
+// `nodes: BTreeMap<FolderPath, (T, HashSet<String>)>`
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FolderTree<T> {
   nodes: HashMap<FolderPath, T>,
@@ -133,6 +135,10 @@ impl FolderPath {
       s.push_str(seg);
     }
     s
+  }
+
+  pub fn up(&self) -> Option<(FolderPath, String)> {
+    self.0.split_last().map(|(last, trunk)| (FolderPath::from_vec(trunk.to_vec()), last.clone()))
   }
 
   pub fn from_vec(segs: Vec<String>) -> FolderPath {
@@ -241,14 +247,23 @@ impl<T> DeserializeHelper<T> {
   fn to_folder_tree(self) -> FolderTree<T> {
     let mut paths: Vec<(FolderPath, T)> = vec![];
     self.serialize_tree(FolderPath::from_vec(vec![]), &mut paths);
-    let iter = paths.into_iter();
+    let mut iter = paths.into_iter();
     let first = iter.next()
       .expect("There must always be at least one element if this data structure exists... right?");
     debug_assert_eq!(first.0, FolderPath::from_vec(vec![]));
-    let tree = FolderTree::new(first.1);
+    let mut tree = FolderTree::new(first.1);
+    for (path, node) in iter {
+      let (parent, child_name) = path.up()
+        .expect("There should always be a parent for these nodes");
+      tree.make_folder(&parent, child_name, node)
+        .expect("Making this folder should be okay... right?");
+    }
+    tree
   }
 
   fn serialize_tree(self, path: FolderPath, paths: &mut Vec<(FolderPath, T)>) {
+    // TODO: this could be more efficient by making this an iterator instead of something that
+    // appends to a vec.
     paths.push((path.clone(), self.data));
     for (k, v) in self.children.into_iter() {
       v.serialize_tree(path.child(k), paths);
