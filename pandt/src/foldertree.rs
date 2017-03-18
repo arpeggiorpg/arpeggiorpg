@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
 
 use serde::ser::{Serialize, Serializer, SerializeMap, Error};
 use serde::de;
@@ -23,10 +24,16 @@ error_chain! {
       description("A folder already existed when trying to insert a new folder node.")
       display("The folder {} already exists", path.to_string())
     }
+    FolderNotEmpty(path: FolderPath) {
+      description("A folder wasn't empty when trying to remove it")
+      display("The folder {} was not empty", path.to_string())
+    }
   }
 }
 
-use std::iter::FromIterator;
+// TODO: I believe a BTree would be a simpler and more efficient storage mechanism.
+// getting all childrens would just be an iteration from parent until we hit a node that doesn't
+// match the parent.
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FolderTree<T> {
   nodes: HashMap<FolderPath, T>,
@@ -42,14 +49,26 @@ impl<T> FolderTree<T> {
     }
   }
 
-  pub fn make_folder(&mut self, path: &FolderPath, new_child: String, node: T)
-                     -> Result<(), FolderTreeError> {
-    self.make_child(path, new_child, node)?;
-    Ok(())
+  /// Make a child folder.
+  /// Returns an error if the child already exists.
+  pub fn make_folder(&mut self, parent: &FolderPath, new_child: String, node: T)
+                     -> Result<FolderPath, FolderTreeError> {
+    let new_full_path = parent.child(new_child.clone());
+    {
+      let mut parent_children =
+        self.children.get_mut(&parent).expect("folder must always have children");
+      if parent_children.contains(&new_child) {
+        return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
+      }
+      parent_children.insert(new_child);
+    }
+    self.nodes.insert(new_full_path.clone(), node);
+    self.children.insert(new_full_path.clone(), HashSet::new());
+    Ok(new_full_path)
   }
 
   pub fn make_folders(&mut self, path: &FolderPath, node: T)
-    where T: Clone + ::std::fmt::Debug
+    where T: Clone
   {
     let mut cur_path = FolderPath::from_vec(vec![]);
     for seg in &path.0 {
@@ -60,7 +79,7 @@ impl<T> FolderTree<T> {
         children.contains(seg)
       };
       if !exists {
-        self.make_child(&cur_path, seg.clone(), node.clone())
+        self.make_folder(&cur_path, seg.clone(), node.clone())
           .expect("make_child must succeed since we know the child doesn't exist here");
       }
       cur_path = cur_path.child(seg.clone());
@@ -79,23 +98,13 @@ impl<T> FolderTree<T> {
     self.children.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
-  /// Make a child.
-  /// Panics if the parent_id doesn't exist yet.
-  /// Returns an error if the child already exists.
-  fn make_child(&mut self, parent: &FolderPath, new_child: String, node: T)
-                -> Result<FolderPath, FolderTreeError> {
-    let new_full_path = parent.child(new_child.clone());
-    {
-      let mut parent_children =
-        self.children.get_mut(&parent).expect("folder must always have children");
-      if parent_children.contains(&new_child) {
-        return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
-      }
-      parent_children.insert(new_child);
+  /// Remove a folder node. The folder must not have any children. The node data for the folder
+  /// will be returned.
+  pub fn remove(&mut self, path: &FolderPath) -> Result<T, FolderTreeError> {
+    if self.get_children(path)?.len() > 0 {
+      return Err(FolderTreeErrorKind::FolderNotEmpty(path.clone()).into());
     }
-    self.nodes.insert(new_full_path.clone(), node);
-    self.children.insert(new_full_path.clone(), HashSet::new());
-    Ok(new_full_path)
+    Ok(self.nodes.remove(path).expect("Folder must exist if it had children"))
   }
 }
 
@@ -222,33 +231,40 @@ impl<T: Serialize> Serialize for FolderTree<T> {
   }
 }
 
-// #[derive(Deserialize)]
-// struct DeserializeHelper<T> {
-//   data: T,
-//   children: HashMap<String, Box<DeserializeHelper<T>>>,
-// }
+#[derive(Deserialize)]
+struct DeserializeHelper<T> {
+  data: T,
+  children: HashMap<String, Box<DeserializeHelper<T>>>,
+}
 
-// impl<T> DeserializeHelper<T> {
-//   fn to_folder_tree(self) -> FolderTree<T> {
-//     let mut tree: FolderTree<T> = FolderTree::new(self.data);
-//     // for (k, v) in self.children.into_iter() {
-//     //   tree.make_dir(FolderPath::from_vec(vec![k]), v.data)
-//     //     .expect("there shouldn't be any way for there to be multiple children with the same name \
-//     //              after deserialization!");
-//     // }
-//     tree
-//   }
-// }
+impl<T> DeserializeHelper<T> {
+  fn to_folder_tree(self) -> FolderTree<T> {
+    let mut paths: Vec<(FolderPath, T)> = vec![];
+    self.serialize_tree(FolderPath::from_vec(vec![]), &mut paths);
+    let iter = paths.into_iter();
+    let first = iter.next()
+      .expect("There must always be at least one element if this data structure exists... right?");
+    debug_assert_eq!(first.0, FolderPath::from_vec(vec![]));
+    let tree = FolderTree::new(first.1);
+  }
+
+  fn serialize_tree(self, path: FolderPath, paths: &mut Vec<(FolderPath, T)>) {
+    paths.push((path.clone(), self.data));
+    for (k, v) in self.children.into_iter() {
+      v.serialize_tree(path.child(k), paths);
+    }
+  }
+}
 
 
-// impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
-//   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where D: de::Deserializer
-//   {
-//     let helper: DeserializeHelper<T> = de::Deserialize::deserialize(deserializer)?;
-//     Ok(helper.to_folder_tree())
-//   }
-// }
+impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: de::Deserializer
+  {
+    let helper: DeserializeHelper<T> = de::Deserialize::deserialize(deserializer)?;
+    Ok(helper.to_folder_tree())
+  }
+}
 
 #[cfg(test)]
 mod test {
@@ -337,24 +353,29 @@ mod test {
     assert_eq!(json, expected);
   }
 
-  // #[test]
-  // fn deserialize_json() {
-  //   let json = json!({
-  //       "data": "Root node!",
-  //       "children": {
-  //         "usr": {
-  //           "data": "Folder!",
-  //           "children": {
-  //             "bin": {
-  //               "data": "Folder!",
-  //               "children": {}}}}}});
-  //   let json = serde_json::to_string(&json).unwrap();
-  //   let ftree: FolderTree<String> = serde_json::from_str(&json).unwrap();
+  #[test]
+  fn deserialize_json() {
+    let json = json!({
+        "data": "Root node!",
+        "children": {
+          "usr": {
+            "data": "Folder!",
+            "children": {
+              "bin": {
+                "data": "Folder!",
+                "children": {}}}}}});
+    let json = serde_json::to_string(&json).unwrap();
+    let ftree: FolderTree<String> = serde_json::from_str(&json).unwrap();
 
-  //   assert_eq!(ftree.get(&fpath("/usr")), Some(&"Folder!".to_string()));
-  //   assert_eq!(ftree.get(&fpath("/bin")), None);
-  //   assert_eq!(ftree.get(&fpath("/usr/bin")), Some(&"Folder!".to_string()));
-  // }
+    assert_eq!(ftree.get(&fpath("/usr")).unwrap(), &"Folder!".to_string());
+    match ftree.get(&fpath("/bin")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => {
+        assert_eq!(p, fpath("/bin"))
+      }
+      x => panic!("Unexpected result: {:?}", x),
+    }
+    assert_eq!(ftree.get(&fpath("/usr/bin")).unwrap(), &"Folder!".to_string());
+  }
 
 
   #[test]
