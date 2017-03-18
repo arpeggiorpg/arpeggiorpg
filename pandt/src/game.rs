@@ -10,7 +10,7 @@ use foldertree::FolderTree;
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
-      // campaign: FolderTree::new(Folder::new()),
+      campaign: FolderTree::new(Folder::new()),
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),
@@ -43,14 +43,14 @@ impl Game {
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       LinkFolderCreature(path, cid) => self.change_with(GameLog::LinkFolderCreature(path, cid)),
       UnlinkFolderCreature(path, cid) => self.change_with(GameLog::UnlinkFolderCreature(path, cid)),
-      LinkFolderScene(path, sceneName) => {
-        self.change_with(GameLog::LinkFolderScene(path, sceneName))
+      LinkFolderScene(path, scene_name) => {
+        self.change_with(GameLog::LinkFolderScene(path, scene_name))
       }
-      UnlinkFolderScene(path, sceneName) => {
-        self.change_with(GameLog::UnlinkFolderScene(path, sceneName))
+      UnlinkFolderScene(path, scene_name) => {
+        self.change_with(GameLog::UnlinkFolderScene(path, scene_name))
       }
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
-      DeleteNote(path, noteName) => self.change_with(GameLog::DeleteNote(path, noteName)),
+      DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
 
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
@@ -125,7 +125,7 @@ impl Game {
     use self::GameLog::*;
     let mut newgame = self.clone();
     match *log {
-      CreateFolder(ref path) => {}
+      CreateFolder(ref path) => newgame.campaign.make_folders(path, Folder::new()),
       DeleteFolder(ref path) => {}
       LinkFolderCreature(ref path, ref cid) => {}
       UnlinkFolderCreature(ref path, ref cid) => {}

@@ -489,7 +489,8 @@ pub struct Game {
   pub maps: HashMap<MapName, Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
-  pub scenes: IndexedHashMap<Scene>, // pub campaign: Campaign,
+  pub scenes: IndexedHashMap<Scene>,
+  pub campaign: FolderTree<Folder>,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -600,7 +601,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
-    // str.serialize_field("campaign", &game.campaign)?;
+    str.serialize_field("campaign", &game.campaign)?;
     str.end()
   }
 }
@@ -647,9 +648,6 @@ impl DeriveKey for Note {
     self.name.clone()
   }
 }
-
-// #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-// pub struct Campaign(pub FolderTree<Folder>);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Folder {
