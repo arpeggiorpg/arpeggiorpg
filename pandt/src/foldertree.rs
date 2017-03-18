@@ -1,10 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rose_tree::{RoseTree, NodeIndex, ROOT};
 
 use serde::ser::{Serialize, Serializer, SerializeMap};
 use serde::de;
-use error_chain;
 
 
 error_chain! {
@@ -25,90 +24,71 @@ error_chain! {
   }
 }
 
-use uuid::Uuid;
 use std::iter::FromIterator;
-// TODO: don't use Uuid, just use paths!
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FT3<T> {
-  nodes: HashMap<Uuid, T>,
-  children: HashMap<Uuid, HashMap<String, Uuid>>,
+  nodes: HashMap<FolderPath, T>,
+  children: HashMap<FolderPath, HashSet<String>>,
 }
 
 impl<T> FT3<T> {
   pub fn new(root: T) -> FT3<T> {
-    let root_key = Uuid::nil();
+    let path = FolderPath::from_vec(vec![]);
     FT3 {
-      nodes: HashMap::from_iter(vec![(root_key, root)]),
-      children: HashMap::from_iter(vec![(root_key, HashMap::new())]),
+      nodes: HashMap::from_iter(vec![(path.clone(), root)]),
+      children: HashMap::from_iter(vec![(path, HashSet::new())]),
     }
   }
 
   pub fn make_folder(&mut self, path: &FolderPath, new_child: String, node: T)
                      -> Result<(), FolderTreeError> {
-    let parent_id = self.get_folder_id(path)?;
-    self.make_child(parent_id, new_child, node)?;
+    self.make_child(path, new_child, node)?;
     Ok(())
   }
 
   pub fn make_folders(&mut self, path: &FolderPath, node: T)
     where T: Clone
   {
-    let mut key = Uuid::nil();
+    let mut cur_path = FolderPath::from_vec(vec![]);
     for seg in &path.0 {
-      let existing_key = {
-        let named_children =
-          self.children.get(&key).expect(&format!("BUG: parent didn't have children: {:?}", key));
-        match named_children.get(seg) {
-          Some(child_uuid) => Some(*child_uuid),
-          None => None,
-        }
+      let exists = {
+        let children = self.children
+          .get(&cur_path)
+          .expect(&format!("BUG: parent didn't have children: {:?}", cur_path));
+        children.contains(seg)
       };
-      key = match existing_key {
-        Some(key) => key,
-        None => {
-          self.make_child(key, seg.clone(), node.clone())
-            .expect("make_child must succeed since we know the child doesn't exist now")
-        }
-      };
+      if !exists {
+        self.make_child(&cur_path, seg.clone(), node.clone())
+          .expect("make_child must succeed since we know the child doesn't exist here");
+      }
+      cur_path = cur_path.child(seg.clone());
     }
   }
 
   pub fn get(&self, path: &FolderPath) -> Result<&T, FolderTreeError> {
-    Ok(self.nodes.get(&self.get_folder_id(path)?).expect("Node must exist for folder"))
+    Ok(self.nodes.get(path).expect("Node must exist for folder"))
   }
 
   pub fn get_mut(&mut self, path: &FolderPath) -> Result<&mut T, FolderTreeError> {
-    let id = self.get_folder_id(path)?;
-    Ok(self.nodes.get_mut(&id).expect("Node must exist for folder"))
-  }
-
-  fn get_folder_id(&self, path: &FolderPath) -> Result<Uuid, FolderTreeError> {
-    let mut key = Uuid::nil();
-    for seg in &path.0 {
-      let children = self.children.get(&key).expect("root node must always exist");
-      key = children.get(seg).ok_or(FolderTreeErrorKind::FolderNotFound(path.clone()))?.clone();
-    }
-    Ok(key)
+    Ok(self.nodes.get_mut(path).expect("Node must exist for folder"))
   }
 
   /// Make a child.
   /// Panics if the parent_id doesn't exist yet.
   /// Returns an error if the child already exists.
-  fn make_child(&mut self, parent_id: Uuid, new_child: String, node: T)
-                -> Result<Uuid, FolderTreeError> {
-    let new_key = Uuid::new_v4();
+  fn make_child(&mut self, parent: &FolderPath, new_child: String, node: T)
+                -> Result<FolderPath, FolderTreeError> {
+    let new_full_path = parent.child(new_child.clone());
     {
       let mut parent_children =
-        self.children.get_mut(&parent_id).expect("folder must always have children");
-      if parent_children.get(&new_child).is_some() {
-        // TODO: when we switch IDs to Paths, this FolderExists error should include the *full* path.
-        return Err(FolderTreeErrorKind::FolderExists(FolderPath::from_vec(vec![new_child])).into());
+        self.children.get_mut(&parent).expect("folder must always have children");
+      if parent_children.contains(&new_child) {
+        return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
       }
-      parent_children.insert(new_child, new_key);
+      parent_children.insert(new_child);
     }
-    self.nodes.insert(new_key, node);
-    self.children.insert(new_key, HashMap::new());
-    Ok(new_key)
+    self.nodes.insert(new_full_path.clone(), node);
+    Ok(new_full_path)
   }
 }
 
@@ -357,6 +337,25 @@ mod test {
     let root_node = ftree.get(&FolderPath::from_vec(vec![])).unwrap();
     assert_eq!(root_node, &"Root node! Okay.".to_string());
   }
+
+  // #[test]
+  // fn serialize_json_ft3() {
+  //   let mut ftree = FT3::new("Root node!".to_string());
+  //   ftree.make_folders(&FolderPath::from_str("usr/bin"), "Folder!".to_string());
+  //   let json = serde_json::to_value(&ftree).unwrap();
+
+  //   let expected = json!({
+  //       "data": "Root node!",
+  //       "children": {
+  //         "usr": {
+  //           "data": "Folder!",
+  //           "children": {
+  //             "bin": {
+  //               "data": "Folder!",
+  //               "children": {}}}}}});
+  //   assert_eq!(json, expected);
+  // }
+
 
 
   #[test]
