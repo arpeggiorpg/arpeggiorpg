@@ -16,7 +16,7 @@ use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
-use foldertree::{FolderTree, FolderPath};
+use foldertree::{FolderTree, FolderPath, FolderTreeError};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -90,7 +90,7 @@ impl CreatureID {
     CreatureID(uuid::Uuid::new_v4())
   }
   pub fn from_str(s: &str) -> Result<CreatureID, GameError> {
-    Ok(CreatureID(uuid::Uuid::parse_str(s).map_err(|_| GameError::CreatureNotFound(s.to_string()))?))
+    Ok(CreatureID(uuid::Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
   }
   pub fn to_string(&self) -> String {
     self.0.hyphenated().to_string()
@@ -102,7 +102,7 @@ pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
   pub fn new(s: &str) -> Result<Self, GameError> {
     let sw =
-      StringWrapper::from_str_safe(s).ok_or_else(|| GameError::IDTooLong(s[..64].to_string()))?;
+      StringWrapper::from_str_safe(s).ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
     Ok(AbilityID(sw))
   }
   pub fn to_string(&self) -> String {
@@ -282,49 +282,124 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 }
 
 /// An error in P&T.
-// TODO: look into using error-chain which hopefully gives us a nice way to hierarchicalize this.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum GameError {
-  CreatureAlreadyExists(CreatureID),
-  SceneNotFound(SceneName),
-  IDTooLong(String),
-  ConditionNotFound(ConditionID),
-  InvalidCommand(GameCommand),
-  ClassNotFound(String),
-  NoAbility(AbilityID),
-  CombatMustHaveCreatures,
-  CreatureLacksAbility(CreatureID, AbilityID),
-  CreatureNotFound(String),
-  InvalidTarget(CreatureID),
-  InvalidTargetForTargetSpec(TargetSpec, DecidedTarget),
-  CreatureOutOfRange(CreatureID),
-  InvalidCreatureState,
-  BuggyProgram(String),
-  NotInCombat,
-  AlreadyInCombat(CreatureID),
-  CannotMove(CreatureID),
-  CannotAct(CreatureID),
-  NoPathFound,
-  /// Returned when a step in a `Move` command was more than one cube away.
-  StepTooBig { from: Point3, to: Point3 },
-  MapNotFound(MapName),
-  NotEnoughEnergy(Energy),
-  PlayerAlreadyExists(PlayerID),
-  PlayerNotFound(PlayerID),
-  PlayerDoesntControlCreature(PlayerID, CreatureID),
-  HistoryNotFound(usize, usize),
-  InitiativeOutOfBounds(usize),
-}
 
-impl fmt::Display for GameError {
-  fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
-    write!(fmter, "{}", format!("{:?}", self))
+
+error_chain! {
+  types { GameError, GameErrorEnum, GameErrorResultExt; }
+
+  foreign_links {
+    FolderTreeError(FolderTreeError);
   }
-}
 
-impl Error for GameError {
-  fn description(&self) -> &str {
-    "A Game Error occurred"
+  errors {
+    CreatureAlreadyExists(cid: CreatureID) {
+      description("A Creature with the given ID already exists")
+      display("The creature with ID {} already exists", cid.to_string())
+    }
+    SceneNotFound(scene: SceneName) {
+      description("A scene wasn't found")
+      display("The scene '{}' wasn't found", scene.0)
+    }
+    IDTooLong(id: String) {
+      description("An identifier was too long.")
+      display("The identifier '{}' is too long.", id)
+    }
+    ConditionNotFound(id: ConditionID) {
+      description("A condition wasn't found.")
+      display("The condition with ID {} wasn't found.", id)
+    }
+    InvalidCommand(cmd: GameCommand) {
+      description("The supplied GameCommand is not valid in the current state.")
+      display("Cannot process {:?} in this state.", cmd)
+    }
+    ClassNotFound(cls: String) {
+      description("A class wasn't found.")
+      display("The class {} was not found.", cls)
+    }
+    NoAbility(abid: AbilityID) {
+      description("An ability wasn't found.")
+      display("The ability with ID {} wasn't found.", abid.to_string())
+    }
+    CombatMustHaveCreatures {
+      description("Combat can't be started without creatures.")
+      display("Creatures must be supplied when starting a combat.")
+    }
+    CreatureLacksAbility(cid: CreatureID, abid: AbilityID) {
+      description("A creature cannot use the supplied ability.")
+      display("The creature with ID {} does not have the ability {}", cid.to_string(), abid.to_string())
+    }
+    CreatureNotFound(id: String) {
+      description("A creature with the supplied ID could not be found.")
+      display("The creature with ID {} could not be found.", id)
+    }
+    InvalidTarget(cid: CreatureID) {
+      description("The specified creature is not a valid target.")
+      display("Creature with ID {} is not a valid target.", cid.to_string())
+    }
+    InvalidTargetForTargetSpec(tspec: TargetSpec, dtarget: DecidedTarget) {
+      description("The supplied DecidedTarget is not valid for the TargetSpec in use.")
+      display("DecidedTarget {:?} is not valid for TargetSpec {:?}.", dtarget, tspec)
+    }
+    CreatureOutOfRange(cid: CreatureID) {
+      description("The specified creature is out of range.")
+      display("Creature {} is out of range.", cid.to_string())
+    }
+    BuggyProgram(msg: String) {
+      description("There was an internal error that is caused by a broken assumption, indicating that this software is garbage.")
+      display("There's a bug in the program: {}", msg)
+    }
+    NotInCombat {
+      description("There is currently no combat when trying to do something combat-specific.")
+      display("There is currently no combat.")
+    }
+    AlreadyInCombat(cid: CreatureID) {
+      description("The specified creature is already in combat.")
+      display("Creature {} is already in combat.", cid.to_string())
+    }
+    CannotMove(cid: CreatureID) {
+      description("A creature cannot move.")
+      display("Creature {} cannot be moved.", cid.to_string())
+    }
+    CannotAct(cid: CreatureID) {
+      description("A creature cannot act.")
+      display("Creature {} cannot act.", cid.to_string())
+    }
+    NoPathFound {
+      description("A path can't be found.")
+      display("A path can't be found.")
+    }
+    StepTooBig(from: Point3, to: Point3) {
+      description("A step from one point to another is too large.")
+      display("Can't step from {} to {}", from, to)
+    }
+    MapNotFound(map: MapName) {
+      description("The specified map was not found.")
+      display("Couldn't find map {}", map)
+    }
+    NotEnoughEnergy(nrg: Energy) {
+      description("There is not enough energy to do something.")
+      display("Not enough energy: {:?}", nrg)
+    }
+    PlayerAlreadyExists(pid: PlayerID) {
+      description("The specified player ID is already registered.")
+      display("Player ID {} is already registered.", pid.0)
+    }
+    PlayerNotFound(pid: PlayerID) {
+      description("The specified player was not found.")
+      display("Player ID {} was not found.", pid.0)
+    }
+    PlayerDoesntControlCreature(pid: PlayerID, cid: CreatureID) {
+      description("The specified creature is not controlled by the current player.")
+      display("Player ID {} does not control creature {}.", pid.0, cid.to_string())
+    }
+    HistoryNotFound(snap_idx: usize, log_idx: usize) {
+      description("The requested history item was not found.")
+      display("Couldn't find history item at snapshot {} log item {}", snap_idx, log_idx)
+    }
+    InitiativeOutOfBounds(idx: usize) {
+      description("The initiative index is out of bound.")
+      display("Initiative index {} is out of bounds.", idx)
+    }
   }
 }
 
