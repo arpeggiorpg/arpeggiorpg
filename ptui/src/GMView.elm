@@ -99,7 +99,7 @@ secondaryFocusView model app =
 
 noteView : M.Model -> T.App -> String -> T.Note -> Html M.Msg
 noteView model app path note =
-  vbox [dtext note.name, dtext path, dtext note.content]
+  vbox [hbox [text path, text "/", text note.name], dtext note.content]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
