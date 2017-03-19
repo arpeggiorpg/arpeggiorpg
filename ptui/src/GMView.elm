@@ -91,11 +91,32 @@ secondaryFocusView model app =
       case T.getCreature app.current_game cid of
         Just creature -> CommonView.creatureCard [noteBox model creature] app creature
         Nothing -> text ""
-    M.Focus2Note path origName note -> noteView model app path note
+    M.Focus2Note path origName note -> noteView model app path origName note
 
-noteView : M.Model -> T.App -> T.FolderPath -> T.Note -> Html M.Msg
-noteView model app path note =
-  vbox [hbox [text (String.join "/" path), text "/", text note.name], dtext note.content]
+noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
+noteView model app path origName note =
+  let noteMsg note = M.SetSecondaryFocus (M.Focus2Note path origName note)
+      saveButton =
+        case T.getFolder app path of
+          Just (T.Folder folder) ->
+            case Dict.get origName folder.data.notes of
+              Just appNote ->
+                if appNote /= note
+                then button [onClick (M.SendCommand (T.EditNote path origName note))] [text "Save"]
+                else text ""
+              Nothing -> text "This note has disappeared!?"
+          Nothing -> text "This folder has disappeared!?"
+  in vbox
+    [ hbox
+        [ text (String.join "/" path)
+        , text "/"
+        , input [ type_ "text", value note.name
+                , onInput (\name -> noteMsg {note | name = name})]
+                []
+        , saveButton
+        ]
+    , textarea [onInput (\c -> noteMsg {note | content = c})] [text note.content]
+    ]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
@@ -443,6 +464,7 @@ hsbox = habox [s [S.justifyContent S.spaceBetween]]
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
+    T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
     T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]

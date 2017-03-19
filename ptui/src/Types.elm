@@ -73,7 +73,8 @@ type alias GameSnapshot = {}
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
-  = GLEditScene Scene
+  = GLEditNote FolderPath String Note
+  | GLEditScene Scene
   | GLSelectMap MapName
   | GLEditMap MapName Map
   | GLCombatLog CombatLog
@@ -90,7 +91,8 @@ type GameLog
 
 gameLogDecoder = sumDecoder "GameLog"
   [("StopCombat", GLStopCombat)]
-  [ ("EditScene", JD.map GLEditScene sceneDecoder)
+  [ ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
+  , ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("SelectMap", JD.map GLSelectMap JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
@@ -193,6 +195,16 @@ folderNodeDecoder =
 
 type alias FolderPath = List String
 
+folderPathDecoder : JD.Decoder FolderPath
+folderPathDecoder = 
+  JD.string
+  |> JD.andThen (\s -> case folderPathFromString s of
+                         Just x -> JD.succeed x
+                         Nothing -> JD.fail ("Couldn't parse path: " ++ s))
+
+folderPathEncoder : FolderPath -> JE.Value
+folderPathEncoder p = JE.string (folderPathToString p)
+
 type alias Note =
   { name: String
   , content: String
@@ -202,6 +214,9 @@ noteDecoder : JD.Decoder Note
 noteDecoder = JD.map2 Note
   (JD.field "name" JD.string)
   (JD.field "content" JD.string)
+
+noteEncoder : Note -> JE.Value
+noteEncoder note = JE.object [("name", JE.string note.name), ("content", JE.string note.content)]
 
 type alias Scene =
   { name: String
@@ -444,7 +459,8 @@ effectDecoder =
 
 -- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
-  = EditScene Scene
+  = EditNote FolderPath String Note
+  | EditScene Scene
   | SelectMap MapName
   | EditMap MapName Map
   | RegisterPlayer PlayerID
@@ -469,6 +485,8 @@ type GameCommand
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
+    EditNote path name note ->
+      JE.object [("EditNote", JE.list [folderPathEncoder path, JE.string name, noteEncoder note])]
     EditScene scene ->
       JE.object [("EditScene", sceneEncoder scene)]
     RegisterPlayer pid ->
@@ -603,3 +621,22 @@ isCreatureInCombat game cid =
 
 isCreatureOOC : Game -> CreatureID -> Bool
 isCreatureOOC game cid = Dict.member cid game.creatures
+
+
+getFolder : App -> FolderPath -> Maybe Folder
+getFolder app path =
+  let getChild seg mFolder = mFolder |> Maybe.andThen (Dict.get seg)
+  in List.foldl (\el acc -> acc) (Just app.current_game.campaign) path
+
+folderPathToString : FolderPath -> String
+folderPathToString p =
+  if List.isEmpty p then "" else ("/" ++ String.join "/" p)
+
+folderPathFromString : String -> Maybe FolderPath
+folderPathFromString ps =
+  if String.isEmpty ps then Just []
+  else
+    if String.startsWith "/" ps
+    then
+      Just <| String.split "/" (String.slice 1 (String.length ps) ps)
+    else Nothing
