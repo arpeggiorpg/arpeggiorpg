@@ -31,7 +31,7 @@ visibleCreatures game scene =
               Dict.get creature.id scene.creatures
                 |> Maybe.map (\pos ->
                   {creature = creature, highlight = False, movable = Nothing, class = class, pos = pos}))
-      creatures = List.filterMap (T.getCreature game) (Dict.keys scene.creatures)
+      creatures = T.getCreatures game (Dict.keys scene.creatures)
   in
     List.filterMap mapInfo creatures
 
@@ -147,7 +147,7 @@ mapControls =
 
 combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
 combatantList extraGutter extraCreatureCard app combat =
-  let creatures = List.filterMap (T.getCreature app.current_game) combat.creatures.data
+  let creatures = T.getCreatures app.current_game combat.creatures.data
   in vbox (List.map (combatantEntry extraGutter extraCreatureCard app combat) (List.indexedMap (,) creatures))
 
 combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> (Int, T.Creature) -> Html M.Msg
@@ -160,7 +160,7 @@ combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
-  let creatures = List.filterMap (T.getCreature game) (T.potentialCreatureTargets model.potentialTargets)
+  let creatures = T.getCreatures game (T.potentialCreatureTargets model.potentialTargets)
   in hbox <|
     [ case (Dict.get abid game.abilities) of
         Just ability -> case ability.target of
@@ -192,7 +192,7 @@ playerList app extra players =
         hbox [ div [s [S.width (S.px 150)]] [strong [] [text "Player"]]
              , div [s [S.width (S.px 150)]] [strong [] [text "Characters"]]]
       playerEntry player =
-        let creatures = List.filterMap (T.getCreature app.current_game) (Set.toList player.creatures)
+        let creatures = T.getCreatures app.current_game (Set.toList player.creatures)
         in
           habox [s [S.width (S.px 450)]]
              <| [ div [s [S.width (S.px 150)]] [strong [] [text player.player_id]]

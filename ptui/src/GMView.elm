@@ -77,7 +77,7 @@ folderView model app path (T.Folder folder) =
                ]
       scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
       creatures =
-        vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
+        vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
       notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
       maps = vbox (List.map viewMap (Set.toList folder.data.maps))
       children = vbox (List.map viewChild (Dict.toList folder.children))
@@ -172,10 +172,10 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
       selectableCreature creature =
         habox [s [S.width (S.px 500)]] [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
       selectableCreatureItems =
-        vbox <| List.map selectableCreature (List.filterMap (T.getCreature app.current_game) selectableCreatures)
+        vbox <| List.map selectableCreature (T.getCreatures app.current_game selectableCreatures)
       selectedCreatureItem creature =
         habox [s [S.width (S.px 500)]] [CommonView.creatureCard [noteBox model creature] app creature, unselectButton creature.id]
-      selectedCreatureItems = vbox <| List.map selectedCreatureItem (List.filterMap (T.getCreature app.current_game) selectedCreatures)
+      selectedCreatureItems = vbox <| List.map selectedCreatureItem (T.getCreatures app.current_game selectedCreatures)
       doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
       cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
   in vbox <|
@@ -341,7 +341,7 @@ combatView model app =
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
 inCombatView model app combat =
   let game = app.current_game
-      creatures = List.filterMap (T.getCreature game) combat.creatures.data
+      creatures = T.getCreatures game combat.creatures.data
       disengageButtons = hbox (List.map disengageButton creatures)
       extraGutter idx creature =
         [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))

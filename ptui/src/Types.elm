@@ -571,6 +571,9 @@ combatCreature game combat =
 getCreature : Game -> CreatureID -> Maybe Creature
 getCreature game cid = Dict.get cid game.creatures
 
+getCreatures : Game -> List CreatureID -> List Creature
+getCreatures game cids = List.filterMap (getCreature game) cids
+
 potentialCreatureTargets : List PotentialTarget -> List CreatureID
 potentialCreatureTargets pts =
   let f pt =
