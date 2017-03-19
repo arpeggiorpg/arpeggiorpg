@@ -132,7 +132,7 @@ type Focus
 type SecondaryFocus
   = Focus2None
   | Focus2Creature T.CreatureID
-  | Focus2Note String T.Note
+  | Focus2Note T.FolderPath String T.Note
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}

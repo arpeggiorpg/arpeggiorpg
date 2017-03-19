@@ -191,6 +191,8 @@ folderNodeDecoder =
     (JD.field "notes" (JD.dict noteDecoder))
     (JD.field "maps" (setDecoder JD.string))
 
+type alias FolderPath = List String
+
 type alias Note =
   { name: String
   , content: String

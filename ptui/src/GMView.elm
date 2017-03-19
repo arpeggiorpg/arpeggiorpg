@@ -62,7 +62,7 @@ folderView model app path (T.Folder folder) =
         fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
       viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
       viewNote (noteName, note) =
-        fentry (M.SetSecondaryFocus (M.Focus2Note (String.join "/" path) note)) "note" noteName
+        fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
       viewMap mapName = fentry (M.SetFocus (M.PreviewMap mapName)) "map" mapName
       viewChild (folderName, childFolder) =
         let childPath = path ++ [folderName]
@@ -91,11 +91,11 @@ secondaryFocusView model app =
       case T.getCreature app.current_game cid of
         Just creature -> CommonView.creatureCard [noteBox model creature] app creature
         Nothing -> text ""
-    M.Focus2Note path note -> noteView model app path note
+    M.Focus2Note path origName note -> noteView model app path note
 
-noteView : M.Model -> T.App -> String -> T.Note -> Html M.Msg
+noteView : M.Model -> T.App -> T.FolderPath -> T.Note -> Html M.Msg
 noteView model app path note =
-  vbox [hbox [text path, text "/", text note.name], dtext note.content]
+  vbox [hbox [text (String.join "/" path), text "/", text note.name], dtext note.content]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
