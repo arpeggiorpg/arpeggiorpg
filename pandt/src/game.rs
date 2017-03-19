@@ -126,13 +126,27 @@ impl Game {
     let mut newgame = self.clone();
     match *log {
       CreateFolder(ref path) => newgame.campaign.make_folders(path, Folder::new()),
-      DeleteFolder(ref path) => {}
-      LinkFolderCreature(ref path, ref cid) => {}
-      UnlinkFolderCreature(ref path, ref cid) => {}
-      LinkFolderScene(ref path, ref scene_name) => {}
-      UnlinkFolderScene(ref path, ref scene_name) => {}
-      CreateNote(ref path, ref note) => {}
-      DeleteNote(ref path, ref note_name) => {}
+      DeleteFolder(ref path) => {
+        newgame.campaign.remove(path)?;
+      }
+      LinkFolderCreature(ref path, ref cid) => {
+        newgame.campaign.get_mut(path)?.creatures.insert(*cid);
+      }
+      UnlinkFolderCreature(ref path, ref cid) => {
+        newgame.campaign.get_mut(path)?.creatures.remove(cid);
+      }
+      LinkFolderScene(ref path, ref scene_name) => {
+        newgame.campaign.get_mut(path)?.scenes.insert(scene_name.clone());
+      }
+      UnlinkFolderScene(ref path, ref scene_name) => {
+        newgame.campaign.get_mut(path)?.scenes.remove(scene_name);
+      }
+      CreateNote(ref path, ref note) => {
+        newgame.campaign.get_mut(path)?.notes.insert(note.clone());
+      }
+      DeleteNote(ref path, ref note_name) => {
+        newgame.campaign.get_mut(path)?.notes.remove(note_name);
+      }
       EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;
         newgame.scenes.insert(scene.clone());
