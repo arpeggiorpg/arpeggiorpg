@@ -103,11 +103,8 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app()?;
-    let result = app.perform_unchecked(command.0);
-    match result {
-      Ok(ref x) => serde_json::to_string(x),
-      Err(x) => serde_json::to_string(&format!("Error: {}", x)),
-    }
+    let result = app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
+    serde_json::to_string(&result)
   };
   pt.pollers()?.broadcast(());
   Ok(CORS::any(json?))
