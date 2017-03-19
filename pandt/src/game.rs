@@ -51,7 +51,8 @@ impl Game {
       }
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
-
+      LinkFolderMap(path, map_name) => self.change_with(GameLog::LinkFolderMap(path, map_name)),
+      UnlinkFolderMap(path, map_name) => self.change_with(GameLog::UnlinkFolderMap(path, map_name)),
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(c, path) => self.create_creature(c),
@@ -146,6 +147,12 @@ impl Game {
       }
       DeleteNote(ref path, ref note_name) => {
         newgame.campaign.get_mut(path)?.notes.remove(note_name);
+      }
+      LinkFolderMap(ref path, ref name) => {
+        newgame.campaign.get_mut(path)?.maps.insert(name.clone());
+      }
+      UnlinkFolderMap(ref path, ref name) => {
+        newgame.campaign.get_mut(path)?.maps.remove(name);
       }
       EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;

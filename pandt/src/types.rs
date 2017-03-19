@@ -151,6 +151,10 @@ pub enum GameCommand {
   CreateNote(FolderPath, Note),
   /// Delete a Note from a Folder.
   DeleteNote(FolderPath, String),
+  /// Link a map into a Folder.
+  LinkFolderMap(FolderPath, MapName),
+  /// Unlink a map from a Folder.
+  UnlinkFolderMap(FolderPath, MapName),
 
   // ** Scene management **
   /// Create a scene (or, if it already exists, change the existing one).
@@ -254,6 +258,8 @@ pub enum GameLog {
   UnlinkFolderScene(FolderPath, SceneName),
   CreateNote(FolderPath, Note),
   DeleteNote(FolderPath, String),
+  LinkFolderMap(FolderPath, MapName),
+  UnlinkFolderMap(FolderPath, MapName),
 
   EditScene(Scene),
   DeleteScene(SceneName),
