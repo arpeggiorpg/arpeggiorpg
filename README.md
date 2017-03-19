@@ -14,6 +14,14 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 # Building/running (for dev/test)
 
-cd ptrpi; cargo run # to start the API server
+To start the backend:
 
-cd ptui; elm reactor; open http://localhost:8000/Main.elm # to load the web UI
+```cd ptrpi; cargo run```
+
+To load the UI:
+
+```
+cd ptui; elm reactor; open http://localhost:8000/src/GMTest.elm
+```
+
+Load PlayerTest.elm to load the Player UI.

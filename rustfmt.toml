@@ -1,6 +1,6 @@
-single_line_if_else_max_width = 100
-ideal_width = 100
+single_line_if_else_max_width = 99
+ideal_width = 99
 tab_spaces = 2
 fn_args_density = "Compressed"
-chain_one_line_max = 100
-fn_call_width = 100
+chain_one_line_max = 99
+fn_call_width = 99
