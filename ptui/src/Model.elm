@@ -32,6 +32,7 @@ subscriptions model =
 type Msg
     = Start
     | SetFocus Focus
+    | SetSecondaryFocus SecondaryFocus
     | MorePlease
     | PollApp
     | ReceivedAppUpdate (Result Http.Error T.App)
@@ -119,6 +120,7 @@ defaultModel flags =
   , selectedViews = Dict.empty
   , creatingScene = Nothing
   , focus = NoFocus
+  , secondaryFocus = Focus2None
   }
 
 type Focus
@@ -126,6 +128,11 @@ type Focus
   | Scene String
   | EditingMap T.MapName T.Map
   | PreviewMap T.MapName
+
+type SecondaryFocus
+  = Focus2None
+  | Focus2Creature T.CreatureID
+  | Focus2Note String T.Note
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
@@ -157,6 +164,7 @@ type alias Model =
   , collapsed : Dict.Dict String Bool
   , selectedViews : Dict.Dict String String
   , focus: Focus
+  , secondaryFocus: SecondaryFocus
   }
   
 

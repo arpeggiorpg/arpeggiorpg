@@ -49,23 +49,48 @@ makeUI model app =
   }
 
 campaignView : M.Model -> T.App -> Html M.Msg
-campaignView model app = 
-  folderView model app app.current_game.campaign
+campaignView model app =
+  let secondaryFocus = secondaryFocusView model app
+  in
+    vbox [folderView model app app.current_game.campaign, secondaryFocus]
 
 folderView : M.Model -> T.App -> T.Folder -> Html M.Msg
 folderView model app (T.Folder folder) =
-  let viewCreature creature = hbox [text "┣", icon [] "contacts", text creature.name]
-      viewScene sceneName = hbox [text "┣", habox [clickable, onClick (M.SetFocus (M.Scene sceneName))] [icon [] "casino", text sceneName]]
-      viewNote noteName = hbox [text "┣", icon [] "note", text noteName]
+  let viewCreature creature =
+        hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Creature creature.id))]
+                              [icon [] "contacts", text creature.name]
+             ]
+      viewScene sceneName =
+        hbox [text "┣", habox [clickable, onClick (M.SetFocus (M.Scene sceneName))]
+                              [icon [] "casino", text sceneName]
+             ]
+      viewNote (noteName, note) =
+        hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Note "" note))]
+                              [icon [] "note", text noteName]
+             ]
       viewChild (folderName, childFolder) =
         vbox [ hbox [text "┣", icon [] "folder", text folderName]
              , div [s [S.marginLeft (S.em 1)]] [folderView model app childFolder]
              ]
       scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
       creatures = vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
-      notes = vbox (List.map viewNote (Dict.keys folder.data.notes))
+      notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
       children = vbox (List.map viewChild (Dict.toList folder.children))
-  in vbox [scenes, creatures, notes, children]
+  in vbox [ scenes, creatures, notes, children]
+
+secondaryFocusView : M.Model -> T.App -> Html M.Msg
+secondaryFocusView model app =
+  case model.secondaryFocus of
+    M.Focus2None -> text ""
+    M.Focus2Creature cid ->
+      case T.getCreature app.current_game cid of
+        Just creature -> CommonView.creatureCard [noteBox model creature] app creature
+        Nothing -> text ""
+    M.Focus2Note path note -> noteView model app path note
+
+noteView : M.Model -> T.App -> String -> T.Note -> Html M.Msg
+noteView model app path note =
+  vbox [dtext note.name, dtext note.content]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
