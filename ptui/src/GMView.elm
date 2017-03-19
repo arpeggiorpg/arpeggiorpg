@@ -57,10 +57,11 @@ folderView model app (T.Folder folder) =
   let viewCreature creature = hbox [text "┣", icon [] "contacts", text creature.name]
       viewScene sceneName = hbox [text "┣", icon [] "casino", text sceneName]
       viewNote noteName = hbox [text "┣", icon [] "note", text noteName]
+      viewChild (folderName, childFolder) = hbox [text "┣", text folderName, folderView model app childFolder]
       scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
       creatures = vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
       notes = vbox (List.map viewNote (Dict.keys folder.data.notes))
-      children = vbox (List.map viewChild folder.children)
+      children = vbox (List.map viewChild (Dict.toList folder.children))
   in vbox [scenes, creatures, notes, children]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg

@@ -14,6 +14,19 @@ current_game:
           name: "The Note"
           content: "I thought I saw a pretty dragon"
     children:
+      subfolder1:
+        children:
+        data:
+          scenes:
+            - The T
+          creatures:
+            - f5fd4b9a-c801-4840-a39b-b5653329dc54
+            - 34877b65-1eb6-44bb-b1a8-696c424e9d0f
+            - 0420f7db-c7ec-48af-add3-045ad859f47e
+          notes:
+            "The Note": 
+              name: "The Note"
+              content: "I thought I saw a pretty dragon"
   scenes:
     "The T":
       creatures:
