@@ -63,9 +63,10 @@ folderView model app path (T.Folder folder) =
       viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
       viewNote (noteName, note) =
         fentry (M.SetSecondaryFocus (M.Focus2Note (String.join "/" path) note)) "note" noteName
+      viewMap mapName = fentry (M.SetFocus (M.PreviewMap mapName)) "map" mapName
       viewChild (folderName, childFolder) =
         let childPath = path ++ [folderName]
-            key = "folder-" ++ (String.join "/" childPath)
+            key = "folder-" ++ String.join "/" childPath
             isShown = Dict.get key model.collapsed |> Maybe.withDefault False
             iconName = if isShown then "folder_open" else "folder"
         in
@@ -78,8 +79,9 @@ folderView model app path (T.Folder folder) =
       creatures =
         vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
       notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
+      maps = vbox (List.map viewMap (Set.toList folder.data.maps))
       children = vbox (List.map viewChild (Dict.toList folder.children))
-  in vbox [ scenes, creatures, notes, children]
+  in vbox [ scenes, maps, creatures, notes, children]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =

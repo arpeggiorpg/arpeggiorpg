@@ -13,6 +13,8 @@ current_game:
         "The Note": 
           name: "The Note"
           content: "I thought I saw a pretty dragon"
+      maps:
+        - "map1"
     children:
       subfolder1:
         children:
@@ -27,6 +29,8 @@ current_game:
             "The Note": 
               name: "The Note"
               content: "I thought I saw a pretty dragon"
+          maps:
+            - "map1"
   scenes:
     "The T":
       creatures:

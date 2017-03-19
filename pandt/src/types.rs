@@ -727,6 +727,7 @@ pub struct Folder {
   pub scenes: HashSet<SceneName>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
+  pub maps: HashSet<MapName>,
 }
 
 impl Folder {
@@ -735,6 +736,7 @@ impl Folder {
       scenes: HashSet::new(),
       creatures: HashSet::new(),
       notes: IndexedHashMap::new(),
+      maps: HashSet::new(),
     }
   }
 }

@@ -180,14 +180,16 @@ type alias FolderNode =
   { scenes: Set.Set SceneName
   , creatures: Set.Set CreatureID
   , notes: Dict.Dict String Note
+  , maps: Set.Set MapName
   }
 
 folderNodeDecoder : JD.Decoder FolderNode
 folderNodeDecoder = 
-  JD.map3 FolderNode
+  JD.map4 FolderNode
     (JD.field "scenes" (setDecoder JD.string))
     (JD.field "creatures" (setDecoder JD.string))
     (JD.field "notes" (JD.dict noteDecoder))
+    (JD.field "maps" (setDecoder JD.string))
 
 type alias Note =
   { name: String
