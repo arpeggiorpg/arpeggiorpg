@@ -90,7 +90,7 @@ type GameLog
   | GLSetCreaturePos SceneName CreatureID Point3
 
 gameLogDecoder = sumDecoder "GameLog"
-  [("StopCombat", GLStopCombat)]
+  [ ("StopCombat", GLStopCombat) ]
   [ ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
   , ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("SelectMap", JD.map GLSelectMap JD.string)
@@ -622,11 +622,12 @@ isCreatureInCombat game cid =
 isCreatureOOC : Game -> CreatureID -> Bool
 isCreatureOOC game cid = Dict.member cid game.creatures
 
-
 getFolder : App -> FolderPath -> Maybe Folder
 getFolder app path =
-  let getChild seg mFolder = mFolder |> Maybe.andThen (Dict.get seg)
-  in List.foldl (\el acc -> acc) (Just app.current_game.campaign) path
+  let getChild seg mFolder =
+        mFolder
+        |> Maybe.andThen (\(Folder folder) -> (Dict.get seg folder.children))
+  in List.foldl getChild (Just app.current_game.campaign) path
 
 folderPathToString : FolderPath -> String
 folderPathToString p =

@@ -91,11 +91,13 @@ secondaryFocusView model app =
       case T.getCreature app.current_game cid of
         Just creature -> CommonView.creatureCard [noteBox model creature] app creature
         Nothing -> text ""
-    M.Focus2Note path origName note -> noteView model app path origName note
+    M.Focus2Note path origName note ->
+      let _ = Debug.log ("Note " ++ origName ++ toString note)  ()
+      in noteView model app path origName note
 
 noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteView model app path origName note =
-  let noteMsg note = M.SetSecondaryFocus (M.Focus2Note path origName note)
+  let noteMsg newNote = M.SetSecondaryFocus (M.Focus2Note path origName newNote)
       saveButton =
         case T.getFolder app path of
           Just (T.Folder folder) ->
@@ -115,7 +117,7 @@ noteView model app path origName note =
                 []
         , saveButton
         ]
-    , textarea [onInput (\c -> noteMsg {note | content = c})] [text note.content]
+    , textarea [onInput (\c -> noteMsg {note | content = c}), value note.content] []
     ]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg

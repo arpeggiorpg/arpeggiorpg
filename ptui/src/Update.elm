@@ -75,7 +75,7 @@ arrayRFind limit fn data =
               case fn el of
                 Just x -> Just x
                 Nothing -> if cur - 1 == -1 then Nothing else walk (cur - 1))
-          |> Maybe.withDefault (Debug.log ("Couldn't find index" ++ (toString cur)) Nothing)
+          |> Maybe.withDefault Nothing
       lastIdx = (Array.length data) - 1
   in walk lastIdx
 
