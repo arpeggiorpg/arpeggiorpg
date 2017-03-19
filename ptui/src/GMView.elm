@@ -56,33 +56,27 @@ campaignView model app =
 
 folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
-  let viewCreature creature =
-        hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Creature creature.id))]
-                              [icon [] "contacts", text creature.name]
-             ]
-      viewScene sceneName =
-        hbox [text "┣", habox [clickable, onClick (M.SetFocus (M.Scene sceneName))]
-                              [icon [] "casino", text sceneName]
-             ]
+  let fentry msg iconName entryName =
+        hbox [text "┣", habox [clickable, onClick msg] [icon [] iconName, text entryName]]
+      viewCreature creature =
+        fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
+      viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
       viewNote (noteName, note) =
-        let strPath = String.join "/" path
-        in 
-          hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Note strPath note))]
-                                [icon [] "note", text noteName]
-              ]
+        fentry (M.SetSecondaryFocus (M.Focus2Note (String.join "/" path) note)) "note" noteName
       viewChild (folderName, childFolder) =
         let childPath = path ++ [folderName]
             key = "folder-" ++ (String.join "/" childPath)
             isShown = Dict.get key model.collapsed |> Maybe.withDefault False
-            arrow = if isShown then "▼" else "▶"
+            iconName = if isShown then "folder_open" else "folder"
         in
-          vbox [ hbox [text arrow, habox [clickable, onClick (M.ToggleCollapsed key)] [icon [] "folder", text folderName]]
+          vbox [ fentry (M.ToggleCollapsed key) iconName folderName
                , if isShown
                  then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
                  else text ""
                ]
       scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
-      creatures = vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
+      creatures =
+        vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
       notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
       children = vbox (List.map viewChild (Dict.toList folder.children))
   in vbox [ scenes, creatures, notes, children]
