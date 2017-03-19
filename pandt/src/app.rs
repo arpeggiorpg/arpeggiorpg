@@ -1,4 +1,4 @@
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
 
 use types::*;
 use indexed::IndexedHashMap;
@@ -80,8 +80,9 @@ impl App {
   /// Rollback to a particular point by replaying logs after a snapshot
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
-    let &(ref baseline, ref logs_to_apply) =
-      self.snapshots.get(snapshot_idx).ok_or(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
+    let &(ref baseline, ref logs_to_apply) = self.snapshots
+      .get(snapshot_idx)
+      .ok_or(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
       bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
     }
@@ -278,7 +279,7 @@ mod test {
                                                      cid_rogue(),
                                                      (1, 1, 1)))
       .unwrap();
-      let scene = app.current_game.get_scene(SceneName("Test Scene".to_string())).unwrap();
+    let scene = app.current_game.get_scene(SceneName("Test Scene".to_string())).unwrap();
     assert_eq!(scene.get_pos(cid_cleric()).unwrap(), (0, 0, 0));
     assert_eq!(scene.get_pos(cid_rogue()).unwrap(), (1, 1, 1));
     assert_eq!(scene.get_pos(cid_ranger()).unwrap(), (0, 0, 0));

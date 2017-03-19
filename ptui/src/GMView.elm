@@ -6,6 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Maybe.Extra as MaybeEx
+import Set
 
 import Model as M
 import Types as T
@@ -33,18 +34,34 @@ makeUI : M.Model -> T.App -> CommonView.UI
 makeUI model app =
  { mapView = mapView model app
   , sideBar =
-      CommonView.tabbedView "right-side-bar" "All Creatures" model
-        [ ("All Creatures", (\_ -> allCreaturesView model app))
-        , ("Combat", (\_ -> combatView model app))
-        , ("Players", (\_ -> playersView model app))
-        , ("History", (\_ -> historyView app))
-        , ("Scenes", (\_ -> sceneManagementView model app))
-        , ("Maps", (\_ -> vbox [mapConsole model app, editMapConsole model]))
+      CommonView.tabbedView "right-side-bar" "Campaign" model
+        [ ("Campaign", always (campaignView model app))
+        , ("All Creatures", always (allCreaturesView model app))
+        , ("Combat", always (combatView model app))
+        , ("Players", always (playersView model app))
+        , ("History", always (historyView app))
+        , ("Scenes", always (sceneManagementView model app))
+        , ("Maps", always (vbox [mapConsole model app, editMapConsole model]))
         ]
   , extraMovementOptions = [moveAnywhereToggle model]
   , extraOverlays = [bottomActionBar app]
   , modal = checkModal model app
   }
+
+campaignView : M.Model -> T.App -> Html M.Msg
+campaignView model app = 
+  folderView model app app.current_game.campaign
+
+folderView : M.Model -> T.App -> T.Folder -> Html M.Msg
+folderView model app (T.Folder folder) =
+  let viewCreature creature = hbox [text "┣", icon [] "contacts", text creature.name]
+      viewScene sceneName = hbox [text "┣", icon [] "casino", text sceneName]
+      viewNote noteName = hbox [text "┣", icon [] "note", text noteName]
+      scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
+      creatures = vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
+      notes = vbox (List.map viewNote (Dict.keys folder.data.notes))
+      children = vbox (List.map viewChild folder.children)
+  in vbox [scenes, creatures, notes, children]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
@@ -202,7 +219,7 @@ popUpMenu model prefix key items =
       openMenu = vabox [s [S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] items
       maybeMenu = if isClicked then openMenu else text ""
       iconName = if isClicked then "settings_applications" else "settings"
-  in div [s [S.position S.relative]] [icon [onClick (M.ToggleCollapsed realKey)] iconName, maybeMenu]
+  in div [s [S.position S.relative]] [clickableIcon [onClick (M.ToggleCollapsed realKey)] iconName, maybeMenu]
 
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =

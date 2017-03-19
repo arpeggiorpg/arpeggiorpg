@@ -51,4 +51,6 @@ sdiv attrs body = div (attrs ++ stdStyle) body
 noUserSelect =
   List.map (\name -> S.property name "none") ["-webkit-user-select", "-khtml-user-select", "-moz-user-select", "-ms-user-select", "user-select"]
 
-icon attrs name = i (attrs ++ [class "material-icons", s ([S.cursor S.pointer] ++ noUserSelect)]) [text name]
+icon attrs name = i (attrs ++ [class "material-icons", s noUserSelect]) [text name]
+
+clickableIcon attrs name = icon (attrs ++ [s [S.cursor S.pointer]]) name
