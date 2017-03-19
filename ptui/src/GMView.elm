@@ -55,7 +55,7 @@ campaignView model app =
 folderView : M.Model -> T.App -> T.Folder -> Html M.Msg
 folderView model app (T.Folder folder) =
   let viewCreature creature = hbox [text "┣", icon [] "contacts", text creature.name]
-      viewScene sceneName = hbox [text "┣", icon [] "casino", text sceneName]
+      viewScene sceneName = hbox [text "┣", habox [clickable, onClick (M.SetFocus (M.Scene sceneName))] [icon [] "casino", text sceneName]]
       viewNote noteName = hbox [text "┣", icon [] "note", text noteName]
       viewChild (folderName, childFolder) =
         vbox [ hbox [text "┣", icon [] "folder", text folderName]

@@ -48,9 +48,11 @@ hline = hr (stdStyle ++ [s [S.width (S.pct 100)]]) []
 
 sdiv attrs body = div (attrs ++ stdStyle) body
 
+clickable = s [S.cursor S.pointer]
+
 noUserSelect =
   List.map (\name -> S.property name "none") ["-webkit-user-select", "-khtml-user-select", "-moz-user-select", "-ms-user-select", "user-select"]
 
 icon attrs name = i (attrs ++ [class "material-icons", s noUserSelect]) [text name]
 
-clickableIcon attrs name = icon (attrs ++ [s [S.cursor S.pointer]]) name
+clickableIcon attrs name = icon (attrs ++ [clickable]) name
