@@ -38,17 +38,13 @@ error_chain! {
 // `nodes: BTreeMap<FolderPath, (T, HashSet<String>)>`
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FolderTree<T> {
-  nodes: HashMap<FolderPath, T>,
-  children: HashMap<FolderPath, HashSet<String>>,
+  nodes: HashMap<FolderPath, (T, HashSet<String>)>,
 }
 
 impl<T> FolderTree<T> {
   pub fn new(root: T) -> FolderTree<T> {
     let path = FolderPath::from_vec(vec![]);
-    FolderTree {
-      nodes: HashMap::from_iter(vec![(path.clone(), root)]),
-      children: HashMap::from_iter(vec![(path, HashSet::new())]),
-    }
+    FolderTree { nodes: HashMap::from_iter(vec![(path.clone(), (root, HashSet::new()))]) }
   }
 
   /// Make a child folder.
@@ -57,15 +53,13 @@ impl<T> FolderTree<T> {
                      -> Result<FolderPath, FolderTreeError> {
     let new_full_path = parent.child(new_child.clone());
     {
-      let mut parent_children =
-        self.children.get_mut(&parent).expect("folder must always have children");
-      if parent_children.contains(&new_child) {
+      let mut pdata = self.get_data_mut(&parent)?;
+      if pdata.1.contains(&new_child) {
         return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
       }
-      parent_children.insert(new_child);
+      pdata.1.insert(new_child);
     }
-    self.nodes.insert(new_full_path.clone(), node);
-    self.children.insert(new_full_path.clone(), HashSet::new());
+    self.nodes.insert(new_full_path.clone(), (node, HashSet::new()));
     Ok(new_full_path)
   }
 
@@ -74,30 +68,26 @@ impl<T> FolderTree<T> {
   {
     let mut cur_path = FolderPath::from_vec(vec![]);
     for seg in &path.0 {
-      let exists = {
-        let children = self.children
-          .get(&cur_path)
-          .expect(&format!("BUG: parent didn't have children: {:?}", cur_path));
-        children.contains(seg)
-      };
+      let child_path = cur_path.child(seg.clone());
+      let exists = self.nodes.contains_key(&child_path);
       if !exists {
         self.make_folder(&cur_path, seg.clone(), node.clone())
           .expect("make_child must succeed since we know the child doesn't exist here");
       }
-      cur_path = cur_path.child(seg.clone());
+      cur_path = child_path;
     }
   }
 
   pub fn get(&self, path: &FolderPath) -> Result<&T, FolderTreeError> {
-    self.nodes.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+    Ok(&self.get_data(path)?.0)
   }
 
   pub fn get_mut(&mut self, path: &FolderPath) -> Result<&mut T, FolderTreeError> {
-    self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+    Ok(&mut self.get_data_mut(path)?.0)
   }
 
   pub fn get_children(&self, path: &FolderPath) -> Result<&HashSet<String>, FolderTreeError> {
-    self.children.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+    Ok(&self.get_data(path)?.1)
   }
 
   /// Remove a folder node. The folder must not have any children. The node data for the folder
@@ -106,7 +96,16 @@ impl<T> FolderTree<T> {
     if self.get_children(path)?.len() > 0 {
       return Err(FolderTreeErrorKind::FolderNotEmpty(path.clone()).into());
     }
-    Ok(self.nodes.remove(path).expect("Folder must exist if it had children"))
+    Ok(self.nodes.remove(path).expect("Folder must exist if it had children").0)
+  }
+
+  fn get_data(&self, path: &FolderPath) -> Result<&(T, HashSet<String>), FolderTreeError> {
+    self.nodes.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+  }
+
+  fn get_data_mut(&mut self, path: &FolderPath)
+                  -> Result<&mut (T, HashSet<String>), FolderTreeError> {
+    self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 }
 
