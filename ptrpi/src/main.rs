@@ -28,15 +28,17 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneName, GameCommand, GameError, Point3,
-                   PotentialTarget};
+use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneName, GameCommand, GameError,
+                   GameErrorEnum, Point3, PotentialTarget};
 
 
 error_chain! {
   types { RPIError, RPIErrorKind, RPIResultExt; }
 
+  links {
+    GameError(GameError, GameErrorEnum); // TODO: make GameError use error-chain
+  }
   foreign_links {
-    GameError(GameError); // TODO: make GameError use error-chain
     JSONError(serde_json::error::Error);
   }
 
@@ -102,7 +104,10 @@ fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, R
   let json = {
     let mut app = pt.app()?;
     let result = app.perform_unchecked(command.0);
-    serde_json::to_string(&result)
+    match result {
+      Ok(ref x) => serde_json::to_string(x),
+      Err(x) => serde_json::to_string(&format!("Error: {}", x)),
+    }
   };
   pt.pollers()?.broadcast(());
   Ok(CORS::any(json?))

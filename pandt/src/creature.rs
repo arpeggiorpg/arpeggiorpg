@@ -203,7 +203,7 @@ impl Creature {
       }
       CreatureLog::ReduceEnergy(ref nrg) => {
         if *nrg > new.cur_energy {
-          return Err(GameError::NotEnoughEnergy(*nrg));
+          return Err(GameErrorEnum::NotEnoughEnergy(*nrg).into());
         } else {
           new.cur_energy = new.cur_energy - *nrg;
         }
@@ -212,10 +212,10 @@ impl Creature {
         new.conditions.insert(*id, con.apply(*dur));
       }
       CreatureLog::DecrementConditionRemaining(ref id) => {
-        let mut cond = new.conditions.get_mut(&id).ok_or(GameError::ConditionNotFound(*id))?;
+        let mut cond = new.conditions.get_mut(&id).ok_or(GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
           ConditionDuration::Interminate => {
-            return Err(GameError::BuggyProgram("Tried to decrease condition duration of an \
+            bail!(GameErrorEnum::BuggyProgram("Tried to decrease condition duration of an \
                                                 interminate condition"
               .to_string()))
           }
@@ -223,7 +223,7 @@ impl Creature {
         }
       }
       CreatureLog::RemoveCondition(ref id) => {
-        new.conditions.remove(id).ok_or(GameError::ConditionNotFound(*id))?;
+        new.conditions.remove(id).ok_or(GameErrorEnum::ConditionNotFound(*id))?;
       }
       CreatureLog::SetNote(ref note) => new.note = note.clone(),
     }

@@ -3,7 +3,6 @@
 use nonempty;
 
 use types::*;
-use creature::ChangedCreature;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
@@ -29,9 +28,9 @@ impl<'game> DynamicCombat<'game> {
         let current_pos = new.creatures
           .iter()
           .position(|c| *c == cid)
-          .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
+          .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?;
         if new_pos >= new.creatures.len() {
-          return Err(GameError::InitiativeOutOfBounds(new.creatures.len() - 1));
+          bail!(GameErrorEnum::InitiativeOutOfBounds(new.creatures.len() - 1));
         }
         new.creatures = new.creatures
           .mutate(|creatures| slide_vec(creatures, current_pos, new_pos))
@@ -64,7 +63,7 @@ impl<'game> DynamicCombat<'game> {
         movement_left: self.current_creature()?.speed() - self.combat.movement_used,
       })
     } else {
-      Err(GameError::CannotAct(current.id()))
+      Err(GameErrorEnum::CannotAct(current.id()).into())
     }
   }
 
@@ -109,7 +108,7 @@ impl Combat {
         };
         com
       })
-      .ok_or(GameError::CombatMustHaveCreatures)
+      .ok_or(GameErrorEnum::CombatMustHaveCreatures.into())
   }
 
   pub fn current_creature_id(&self) -> CreatureID {
@@ -122,14 +121,15 @@ impl Combat {
     let idx = combat.creatures
       .iter()
       .position(|c| *c == cid)
-      .ok_or(GameError::CreatureNotFound(cid.to_string()))?;
+      .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => {
-        Err(GameError::BuggyProgram("can't remove index THAT WE FOUND in remove_from_combat"
-          .to_string()))
+        Err(GameErrorEnum::BuggyProgram("can't remove index THAT WE FOUND in remove_from_combat"
+            .to_string())
+          .into())
       }
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
-      Ok(creature) => Ok(Some(combat)),
+      Ok(_) => Ok(Some(combat)),
     }
   }
 }
@@ -253,8 +253,10 @@ pub mod test {
                                                        (2, 0, 0)))
         .unwrap()
         .game;
-    assert_eq!(t_act(&game, abid("punch"), DecidedTarget::Melee(cid_ranger())),
-               Err(GameError::CreatureOutOfRange(cid_ranger())));
+    match t_act(&game, abid("punch"), DecidedTarget::Melee(cid_ranger())) {
+      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
+      x => panic!("Unexpected result: {:?}", x),
+    }
   }
 
   /// Ranged attacks against targets (just) within range are successful.
@@ -308,8 +310,10 @@ pub mod test {
                                                        (6, 0, 0)))
         .unwrap()
         .game;
-    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())),
-               Err(GameError::CreatureOutOfRange(cid_rogue())));
+    match t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())) {
+      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      x => panic!("Unexpected result: {:?}", x),
+    }
 
     let game =
       game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
@@ -318,19 +322,20 @@ pub mod test {
         .unwrap()
         .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
-    assert_eq!(t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())),
-               Err(GameError::CreatureOutOfRange(cid_rogue())));
+    match t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())) {
+      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      x => panic!("Unexpected result: {:?}", x),
+    }
   }
 
   #[test]
   fn move_too_far() {
     let game = t_combat();
-    assert_eq!(game.get_combat()
-                 .unwrap()
-                 .get_movement()
-                 .unwrap()
-                 .move_current((11, 0, 0)),
-               Err(GameError::NoPathFound))
+    match game.get_combat().unwrap().get_movement().unwrap().move_current((11, 0, 0)) {
+      Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
+      x => panic!("Unexpected result: {:?}", x),
+    }
+
   }
 
   #[test]
@@ -352,8 +357,10 @@ pub mod test {
                  .get_pos(cid_rogue())
                  .unwrap(),
                (10, 0, 0));
-    assert_eq!(game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))),
-               Err(GameError::NoPathFound));
+    match game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))) {
+      Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
+      x => panic!("Unexpected result: {:?}", x),
+    }
   }
 
   /// The length of the path is deducted from combat.movement_used after PathCurrentCreature.

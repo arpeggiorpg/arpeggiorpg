@@ -1,4 +1,4 @@
-use std::collections::{VecDeque, HashMap, HashSet};
+use std::collections::{VecDeque};
 
 use types::*;
 use indexed::IndexedHashMap;
@@ -81,9 +81,9 @@ impl App {
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
     let &(ref baseline, ref logs_to_apply) =
-      self.snapshots.get(snapshot_idx).ok_or(GameError::HistoryNotFound(snapshot_idx, log_idx))?;
+      self.snapshots.get(snapshot_idx).ok_or(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
-      return Err(GameError::HistoryNotFound(snapshot_idx, log_idx));
+      bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
     }
     println!("All logs: {:?}", logs_to_apply);
     let logs_to_apply = &logs_to_apply[..log_idx];
@@ -109,7 +109,7 @@ impl App {
 
   fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
     if self.players.contains_key(&pid) {
-      Err(GameError::PlayerAlreadyExists(pid.clone()))
+      Err(GameErrorEnum::PlayerAlreadyExists(pid.clone()).into())
     } else {
       self.players.insert(Player::new(pid.clone()));
       Ok((&self.current_game, vec![]))
@@ -117,7 +117,7 @@ impl App {
   }
 
   fn unregister_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
-    self.players.remove(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+    self.players.remove(pid).ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 
@@ -131,7 +131,7 @@ impl App {
         p.creatures.extend(cids);
         p
       })
-      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 
@@ -144,7 +144,7 @@ impl App {
         }
         p
       })
-      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 
@@ -155,7 +155,7 @@ impl App {
         p.scene = scene;
         p
       })
-      .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
     Ok((&self.current_game, vec![]))
   }
 

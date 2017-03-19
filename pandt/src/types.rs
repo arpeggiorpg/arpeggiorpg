@@ -1,8 +1,6 @@
 //! Simple types, with pure operations.
 
 use std::collections::{HashMap, VecDeque, HashSet};
-use std::error::Error;
-use std::fmt;
 use string_wrapper::StringWrapper;
 
 use rand;
@@ -16,7 +14,7 @@ use serde::ser::{SerializeStruct, Error as SerError};
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
-use foldertree::{FolderTree, FolderPath, FolderTreeError};
+use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -287,8 +285,8 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 error_chain! {
   types { GameError, GameErrorEnum, GameErrorResultExt; }
 
-  foreign_links {
-    FolderTreeError(FolderTreeError);
+  links {
+    FolderTreeError(FolderTreeError, FolderTreeErrorKind);
   }
 
   errors {
@@ -370,7 +368,7 @@ error_chain! {
     }
     StepTooBig(from: Point3, to: Point3) {
       description("A step from one point to another is too large.")
-      display("Can't step from {} to {}", from, to)
+      display("Can't step from {:?} to {:?}", from, to)
     }
     MapNotFound(map: MapName) {
       description("The specified map was not found.")
@@ -621,7 +619,7 @@ impl Scene {
     self.creatures
       .get(&creature_id)
       .map(|x| *x)
-      .ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))
+      .ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()).into())
   }
 
   pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Scene {

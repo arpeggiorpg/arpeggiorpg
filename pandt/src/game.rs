@@ -31,7 +31,7 @@ impl Game {
 
   pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
     // maybe this should just return &Ability?
-    Ok(self.abilities.get(ability_id).ok_or(GameError::NoAbility(ability_id.clone()))?.clone())
+    Ok(self.abilities.get(ability_id).ok_or(GameErrorEnum::NoAbility(ability_id.clone()))?.clone())
   }
 
   /// Perform a GameCommand on the current Game.
@@ -100,7 +100,7 @@ impl Game {
     let terrain = self.get_map(&scene.map)?;
     let (pts, distance) = self.tile_system
       .find_path(scene.get_pos(cid)?, max_distance, terrain, pt)
-      .ok_or(GameError::NoPathFound)?;
+      .ok_or(GameErrorEnum::NoPathFound)?;
     debug_assert!(distance <= max_distance);
 
     let change = self.change_with(GameLog::PathCreature(scene_name, cid, pts))?;
@@ -118,7 +118,7 @@ impl Game {
   }
 
   pub fn get_map(&self, map_name: &str) -> Result<&Map, GameError> {
-    self.maps.get(map_name).ok_or_else(|| GameError::MapNotFound(map_name.to_string()))
+    self.maps.get(map_name).ok_or_else(|| GameErrorEnum::MapNotFound(map_name.to_string()).into())
   }
 
   pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
@@ -129,10 +129,10 @@ impl Game {
       DeleteFolder(ref path) => {}
       LinkFolderCreature(ref path, ref cid) => {}
       UnlinkFolderCreature(ref path, ref cid) => {}
-      LinkFolderScene(ref path, ref sceneName) => {}
-      UnlinkFolderScene(ref path, ref sceneName) => {}
+      LinkFolderScene(ref path, ref scene_name) => {}
+      UnlinkFolderScene(ref path, ref scene_name) => {}
       CreateNote(ref path, ref note) => {}
-      DeleteNote(ref path, ref noteName) => {}
+      DeleteNote(ref path, ref note_name) => {}
       EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;
         newgame.scenes.insert(scene.clone());
@@ -145,19 +145,21 @@ impl Game {
       }
       CreateCreature(ref c) => {
         if newgame.creatures.contains_key(&c.id()) {
-          return Err(GameError::CreatureAlreadyExists(c.id()));
+          bail!(GameErrorEnum::CreatureAlreadyExists(c.id()));
         } else {
           newgame.creatures.insert(c.id(), c.clone());
         }
       }
       RemoveCreature(cid) => {
-        newgame.creatures.remove(&cid).ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
+        newgame.creatures
+          .remove(&cid)
+          .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
       }
       AddCreatureToCombat(cid) => {
-        let mut combat = newgame.current_combat.clone().ok_or(GameError::NotInCombat)?;
+        let mut combat = newgame.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
         self.check_creature_id(cid)?;
         if combat.creatures.contains(&cid) {
-          return Err(GameError::AlreadyInCombat(cid));
+          bail!(GameErrorEnum::AlreadyInCombat(cid));
         }
         combat.creatures.push(cid);
         newgame.current_combat = Some(combat);
@@ -186,7 +188,7 @@ impl Game {
         newgame.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
       }
       StopCombat => {
-        newgame.current_combat.take().ok_or(GameError::NotInCombat)?;
+        newgame.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
       }
       SetCreaturePos(ref scene_name, ref cid, ref pt) => {
         let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
@@ -210,7 +212,7 @@ impl Game {
     if self.maps.contains_key(map_name) {
       Ok(())
     } else {
-      Err(GameError::MapNotFound(map_name.to_string()))
+      Err(GameErrorEnum::MapNotFound(map_name.to_string()).into())
     }
   }
 
@@ -218,12 +220,16 @@ impl Game {
     if self.creatures.contains_key(&cid) {
       Ok(())
     } else {
-      Err(GameError::CreatureNotFound(cid.to_string()))
+      Err(GameErrorEnum::CreatureNotFound(cid.to_string()).into())
     }
   }
 
   fn check_scene(&self, scene: SceneName) -> Result<(), GameError> {
-    if self.scenes.contains_key(&scene) { Ok(()) } else { Err(GameError::SceneNotFound(scene)) }
+    if self.scenes.contains_key(&scene) {
+      Ok(())
+    } else {
+      Err(GameErrorEnum::SceneNotFound(scene).into())
+    }
   }
 
   pub fn is_in_combat(&self, cid: CreatureID) -> bool {
@@ -234,12 +240,14 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(self.creatures.get(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))?)
+    self.dyn_creature(self.creatures
+      .get(&cid)
+      .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?)
   }
 
   // this is only public for tests :(
   pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
-    self.creatures.get_mut(&cid).ok_or(GameError::CreatureNotFound(cid.to_string()))
+    self.creatures.get_mut(&cid).ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()).into())
   }
 
   /// Only pub for tests.
@@ -250,11 +258,11 @@ impl Game {
   }
 
   pub fn get_scene(&self, name: SceneName) -> Result<&Scene, GameError> {
-    self.scenes.get(&name).ok_or(GameError::SceneNotFound(name.clone()))
+    self.scenes.get(&name).ok_or(GameErrorEnum::SceneNotFound(name.clone()).into())
   }
 
   pub fn get_combat<'game>(&'game self) -> Result<DynamicCombat<'game>, GameError> {
-    let combat = self.current_combat.as_ref().ok_or(GameError::NotInCombat)?;
+    let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
     let scene = self.get_scene(combat.scene.clone())?;
     let map = self.get_map(&scene.map)?;
     Ok(DynamicCombat {
@@ -284,7 +292,7 @@ impl Game {
           in_combat: bool)
           -> Result<ChangedGame, GameError> {
     if !scene.creatures.contains_key(&cid) {
-      return Err(GameError::CreatureNotFound(cid.to_string()));
+      bail!(GameErrorEnum::CreatureNotFound(cid.to_string()));
     }
     let creature = self.get_creature(cid)?;
     if creature.can_act() {
@@ -296,10 +304,10 @@ impl Game {
                           self.change(),
                           in_combat)
       } else {
-        Err(GameError::CreatureLacksAbility(creature.id(), abid))
+        Err(GameErrorEnum::CreatureLacksAbility(creature.id(), abid).into())
       }
     } else {
-      Err(GameError::CannotAct(creature.id()))
+      Err(GameErrorEnum::CannotAct(creature.id()).into())
     }
   }
 
@@ -327,7 +335,7 @@ impl Game {
           .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE) {
           Ok(vec![cid])
         } else {
-          Err(GameError::CreatureOutOfRange(cid))
+          Err(GameErrorEnum::CreatureOutOfRange(cid).into())
         }
       }
       (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
@@ -335,11 +343,11 @@ impl Game {
           .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max) {
           Ok(vec![cid])
         } else {
-          Err(GameError::CreatureOutOfRange(cid))
+          Err(GameErrorEnum::CreatureOutOfRange(cid).into())
         }
       }
       (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
-      (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
+      (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
 
@@ -353,7 +361,7 @@ impl Game {
                                              self.get_map(&scene.map)?,
                                              creature.speed()))
     } else {
-      Err(GameError::CannotAct(creature.id()))
+      Err(GameErrorEnum::CannotAct(creature.id()).into())
     }
   }
 
@@ -386,7 +394,7 @@ impl Game {
   // ** END CONSIDERATION **
 
   pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
-    self.classes.get(class).ok_or_else(|| GameError::ClassNotFound(class.to_string()))
+    self.classes.get(class).ok_or_else(|| GameErrorEnum::ClassNotFound(class.to_string()).into())
   }
 
   pub fn change(&self) -> ChangedGame {
@@ -449,17 +457,15 @@ impl ChangedGame {
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> {
-  Err(GameError::BuggyProgram(msg.to_string()))
+  Err(GameErrorEnum::BuggyProgram(msg.to_string()).into())
 }
 
 
 #[cfg(test)]
 pub mod test {
-  use std::collections::HashSet;
   use std::iter::FromIterator;
 
   use game::*;
-  use creature::test::*;
   use combat::test::*;
   use types::test::*;
   use grid::test::*;
@@ -525,17 +531,24 @@ pub mod test {
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::new();
-    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
-                                                             vec![non])),
-               Err(GameError::CreatureNotFound(non.to_string())));
+    let result =
+      game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+                                                      vec![non]));
+    match result {
+      Err(GameError(GameErrorEnum::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
+      x => panic!("Unexpected result: {:?}", x),
+    }
   }
 
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    assert_eq!(game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
-                                                             vec![])),
-               Err(GameError::CombatMustHaveCreatures));
+    let result =
+      game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()), vec![]));
+    match result {
+      Err(GameError(GameErrorEnum::CombatMustHaveCreatures, _)) => {}
+      x => panic!("Unexpected result: {:?}", x),
+    }
   }
 
   #[test]

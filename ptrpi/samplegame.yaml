@@ -1,6 +1,12 @@
 ---
 players:
 current_game:
+  campaign:
+    data:
+      scenes:
+      creatures:
+      notes:
+    children:
   scenes:
     "The T":
       creatures:
