@@ -50,6 +50,7 @@ impl Game {
         self.change_with(GameLog::UnlinkFolderScene(path, scene_name))
       }
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
+      RenameNote(path, orig, new) => self.change_with(GameLog::RenameNote(path, orig, new)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
       LinkFolderMap(path, map_name) => self.change_with(GameLog::LinkFolderMap(path, map_name)),
       UnlinkFolderMap(path, map_name) => self.change_with(GameLog::UnlinkFolderMap(path, map_name)),
@@ -144,6 +145,13 @@ impl Game {
       }
       CreateNote(ref path, ref note) => {
         newgame.campaign.get_mut(path)?.notes.insert(note.clone());
+      }
+      RenameNote(ref path, ref orig_name, ref new_name) => {
+        let node = newgame.campaign.get_mut(path)?;
+        node.notes.mutate(orig_name, move |mut n| {
+          n.name = new_name.clone();
+          n
+        });
       }
       DeleteNote(ref path, ref note_name) => {
         newgame.campaign.get_mut(path)?.notes.remove(note_name);

@@ -36,7 +36,7 @@ error_chain! {
   types { RPIError, RPIErrorKind, RPIResultExt; }
 
   links {
-    GameError(GameError, GameErrorEnum); // TODO: make GameError use error-chain
+    GameError(GameError, GameErrorEnum);
   }
   foreign_links {
     JSONError(serde_json::error::Error);
