@@ -52,10 +52,10 @@ campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app =
   let secondaryFocus = secondaryFocusView model app
   in
-    vbox [folderView model app app.current_game.campaign, secondaryFocus]
+    vbox [folderView model app [] app.current_game.campaign, secondaryFocus]
 
-folderView : M.Model -> T.App -> T.Folder -> Html M.Msg
-folderView model app (T.Folder folder) =
+folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
+folderView model app path (T.Folder folder) =
   let viewCreature creature =
         hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Creature creature.id))]
                               [icon [] "contacts", text creature.name]
@@ -65,13 +65,22 @@ folderView model app (T.Folder folder) =
                               [icon [] "casino", text sceneName]
              ]
       viewNote (noteName, note) =
-        hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Note "" note))]
-                              [icon [] "note", text noteName]
-             ]
+        let strPath = String.join "/" path
+        in 
+          hbox [text "┣", habox [clickable, onClick (M.SetSecondaryFocus (M.Focus2Note strPath note))]
+                                [icon [] "note", text noteName]
+              ]
       viewChild (folderName, childFolder) =
-        vbox [ hbox [text "┣", icon [] "folder", text folderName]
-             , div [s [S.marginLeft (S.em 1)]] [folderView model app childFolder]
-             ]
+        let childPath = path ++ [folderName]
+            key = "folder-" ++ (String.join "/" childPath)
+            isShown = Dict.get key model.collapsed |> Maybe.withDefault False
+            arrow = if isShown then "▼" else "▶"
+        in
+          vbox [ hbox [text arrow, habox [clickable, onClick (M.ToggleCollapsed key)] [icon [] "folder", text folderName]]
+               , if isShown
+                 then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
+                 else text ""
+               ]
       scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
       creatures = vbox (List.map viewCreature (List.filterMap (T.getCreature app.current_game) (Set.toList folder.data.creatures)))
       notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
@@ -90,7 +99,7 @@ secondaryFocusView model app =
 
 noteView : M.Model -> T.App -> String -> T.Note -> Html M.Msg
 noteView model app path note =
-  vbox [dtext note.name, dtext note.content]
+  vbox [dtext note.name, dtext path, dtext note.content]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
