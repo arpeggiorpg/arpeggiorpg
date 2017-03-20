@@ -52,42 +52,45 @@ campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app =
   let secondaryFocus = secondaryFocusView model app
   in
-    vbox [hbox [icon [] "folder_open", text "Root"], folderView model app [] app.current_game.campaign, secondaryFocus]
+    vbox [hbox [icon [] "folder_open", text "Campaign"], folderView model app [] app.current_game.campaign, secondaryFocus]
 
 folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
-  let fentry msg iconName entryName =
-        hbox [habox [clickable, onClick msg] [icon [] iconName, text entryName]]
-      viewCreature creature =
-        fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
-      viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
-      viewNote (noteName, note) =
-        fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
-      viewMap mapName = fentry (M.SetFocus (M.PreviewMap mapName)) "map" mapName
-      viewChild (folderName, childFolder) =
-        let childPath = path ++ [folderName]
-            key = "folder-" ++ String.join "/" childPath
-            isShown = Dict.get key model.collapsed |> Maybe.withDefault False
-            iconName = if isShown then "folder_open" else "folder"
-        in
-          vbox [ hbox [fentry (M.ToggleCollapsed key) iconName folderName]
-               , if isShown
-                 then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
-                 else text ""
-               ]
-      scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
-      creatures =
-        vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
-      notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
-      maps = vbox (List.map viewMap (Set.toList folder.data.maps))
-      children = vbox (List.map viewChild (Dict.toList folder.children))
-      addMenuItems =
-        [ hbox [icon [] "casino", dtext "Scene"]
-        , hbox [icon [] "map", dtext "Map"]
-        , hbox [icon [] "contacts", dtext "Creature"]
-        , hbox [icon [] "note", dtext "Note"]
-        ]
-      addMenu = popUpMenuIcon model "create-item-in-folder" (T.folderPathToString path) "add_box" "add" addMenuItems
+  let
+    fentry msg iconName entryName =
+      hbox [habox [clickable, onClick msg] [icon [] iconName, text entryName]]
+    viewCreature creature =
+      fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
+    viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
+    viewNote (noteName, note) =
+      fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
+    viewMap mapName = fentry (M.SetFocus (M.PreviewMap mapName)) "map" mapName
+    viewChild (folderName, childFolder) =
+      let childPath = path ++ [folderName]
+          key = "folder-" ++ String.join "/" childPath
+          isShown = Dict.get key model.collapsed |> Maybe.withDefault False
+          iconName = if isShown then "folder_open" else "folder"
+      in
+        vbox [ hbox [fentry (M.ToggleCollapsed key) iconName folderName]
+              , if isShown
+                then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
+                else text ""
+              ]
+    scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
+    creatures =
+      vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
+    notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
+    maps = vbox (List.map viewMap (Set.toList folder.data.maps))
+    children = vbox (List.map viewChild (Dict.toList folder.children))
+    addMenuItems =
+      [ hbox [icon [] "casino", dtext "Scene"]
+      , hbox [icon [] "map", dtext "Map"]
+      , hbox [icon [] "contacts", dtext "Creature"]
+      , hbox [icon [] "note", dtext "Note"]
+      , habox [clickable, onClick (M.SetModal (M.CreateFolder {parent = path, child = ""}))]
+              [icon [] "folder", dtext "Folder"]
+      ]
+    addMenu = popUpMenuIcon model "create-item-in-folder" (T.folderPathToString path) "add_box" "add" addMenuItems
   in vbox [ hbox [addMenu, text "Create New"], scenes, maps, creatures, notes, children]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
@@ -126,6 +129,16 @@ noteView model app path origName note =
         ]
     , textarea [onInput (\c -> noteMsg {note | content = c}), value note.content] []
     ]
+
+createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
+createFolderInPath model app {parent, child} =
+  let
+    updateName newName = M.SetModal (M.CreateFolder {parent=parent, child=newName})
+    msgs = M.Batch [M.SetModal M.NoModal, M.SendCommand (T.CreateFolder (parent ++ [child]))]
+  in
+    vbox [ hbox [text "Creating folder in [", text (T.folderPathToString parent), text "]"]
+         , input [placeholder "Folder Name", onInput updateName] []
+         , button [onClick msgs] [text "Create"]]
 
 sceneManagementView : M.Model -> T.App -> Html M.Msg
 sceneManagementView model app =
@@ -180,9 +193,14 @@ checkModal model app =
         model.selectingCreatures
     creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
     creatingScene = Maybe.map (createSceneDialog model app) model.creatingScene
+    generalModal =
+      case model.modal of
+        M.CreateFolder creating -> Just (createFolderInPath model app creating)
+        M.NoModal -> Nothing
   in selectingCreatures
       |> MaybeEx.orElse creatingCreature
       |> MaybeEx.orElse creatingScene
+      |> MaybeEx.orElse generalModal
       |> MaybeEx.orElse (CommonView.checkModal model app)
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
@@ -484,6 +502,7 @@ hsbox = habox [s [S.justifyContent S.spaceBetween]]
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
+    T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]

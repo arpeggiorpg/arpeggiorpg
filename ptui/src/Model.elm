@@ -31,8 +31,10 @@ subscriptions model =
 
 type Msg
     = Start
+    | Batch (List Msg)
     | SetFocus Focus
     | SetSecondaryFocus SecondaryFocus
+    | SetModal Modal
     | MorePlease
     | PollApp
     | ReceivedAppUpdate (Result Http.Error T.App)
@@ -121,6 +123,7 @@ defaultModel flags =
   , creatingScene = Nothing
   , focus = NoFocus
   , secondaryFocus = Focus2None
+  , modal = NoModal
   }
 
 type Focus
@@ -133,6 +136,14 @@ type SecondaryFocus
   = Focus2None
   | Focus2Creature T.CreatureID
   | Focus2Note T.FolderPath String T.Note
+
+type Modal
+  = NoModal
+  | CreateFolder CreatingFolder
+
+type alias CreatingFolder =
+  { parent: T.FolderPath
+  , child: String}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
@@ -165,6 +176,7 @@ type alias Model =
   , selectedViews : Dict.Dict String String
   , focus: Focus
   , secondaryFocus: SecondaryFocus
+  , modal: Modal
   }
   
 

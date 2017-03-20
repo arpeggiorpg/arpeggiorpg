@@ -115,7 +115,12 @@ update msg model = case msg of
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   SetFocus focus -> ({model | focus = focus}, Cmd.none)
+
   SetSecondaryFocus f2 -> ({model | secondaryFocus = f2}, Cmd.none)
+
+  SetModal m -> ({model | modal = m}, Cmd.none)
+
+  Batch messages -> (model, Cmd.batch (List.map message messages))
 
   StartCreatingScene ->
     ({model | creatingScene = Just {name = "", map = "", creatures = Dict.empty}}, Cmd.none)

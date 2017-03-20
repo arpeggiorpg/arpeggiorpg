@@ -73,7 +73,8 @@ type alias GameSnapshot = {}
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
-  = GLEditNote FolderPath String Note
+  = GLCreateFolder FolderPath
+  | GLEditNote FolderPath String Note
   | GLEditScene Scene
   | GLSelectMap MapName
   | GLEditMap MapName Map
@@ -91,7 +92,8 @@ type GameLog
 
 gameLogDecoder = sumDecoder "GameLog"
   [ ("StopCombat", GLStopCombat) ]
-  [ ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
+  [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
+  , ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
   , ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("SelectMap", JD.map GLSelectMap JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
@@ -459,7 +461,8 @@ effectDecoder =
 
 -- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
-  = EditNote FolderPath String Note
+  = CreateFolder FolderPath
+  | EditNote FolderPath String Note
   | EditScene Scene
   | SelectMap MapName
   | EditMap MapName Map
@@ -485,6 +488,8 @@ type GameCommand
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
   case gc of
+    CreateFolder path ->
+      JE.object [("CreateFolder", folderPathEncoder path)]
     EditNote path name note ->
       JE.object [("EditNote", JE.list [folderPathEncoder path, JE.string name, noteEncoder note])]
     EditScene scene ->
