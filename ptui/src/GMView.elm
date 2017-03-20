@@ -52,12 +52,12 @@ campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app =
   let secondaryFocus = secondaryFocusView model app
   in
-    vbox [folderView model app [] app.current_game.campaign, secondaryFocus]
+    vbox [hbox [icon [] "folder_open", text "Root"], folderView model app [] app.current_game.campaign, secondaryFocus]
 
 folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
   let fentry msg iconName entryName =
-        hbox [text "┣", habox [clickable, onClick msg] [icon [] iconName, text entryName]]
+        hbox [habox [clickable, onClick msg] [icon [] iconName, text entryName]]
       viewCreature creature =
         fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
       viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
@@ -70,7 +70,7 @@ folderView model app path (T.Folder folder) =
             isShown = Dict.get key model.collapsed |> Maybe.withDefault False
             iconName = if isShown then "folder_open" else "folder"
         in
-          vbox [ fentry (M.ToggleCollapsed key) iconName folderName
+          vbox [ hbox [fentry (M.ToggleCollapsed key) iconName folderName]
                , if isShown
                  then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
                  else text ""
@@ -81,7 +81,13 @@ folderView model app path (T.Folder folder) =
       notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
       maps = vbox (List.map viewMap (Set.toList folder.data.maps))
       children = vbox (List.map viewChild (Dict.toList folder.children))
-  in vbox [ scenes, maps, creatures, notes, children]
+      addMenuItems =
+        [ dtext "Creature"
+        , dtext "Map"
+        , dtext "Scene"
+        , dtext "Note"]
+      addMenu = popUpMenuIcon model "create-item-in-folder" (T.folderPathToString path) "add_box" "add" addMenuItems
+  in vbox [ hbox [addMenu, text "Create New"], scenes, maps, creatures, notes, children]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
@@ -269,14 +275,17 @@ allCreatureEntry model app creature = vbox <|
     ]
   , hbox (CommonView.oocActionBar model app.current_game creature)]
 
-popUpMenu : M.Model -> String -> String -> List (Html M.Msg) -> Html M.Msg
-popUpMenu model prefix key items =
+popUpMenuIcon : M.Model -> String -> String -> String -> String -> List (Html M.Msg) -> Html M.Msg
+popUpMenuIcon model prefix key openIcon closedIcon items = 
   let realKey = prefix ++ "-" ++ key
       isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
-      openMenu = vabox [s [S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] items
+      openMenu = vabox [s [plainBorder, S.backgroundColor (S.rgb 255 255 255), S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] items
       maybeMenu = if isClicked then openMenu else text ""
-      iconName = if isClicked then "settings_applications" else "settings"
+      iconName = if isClicked then openIcon else closedIcon
   in div [s [S.position S.relative]] [clickableIcon [onClick (M.ToggleCollapsed realKey)] iconName, maybeMenu]
+
+popUpMenu : M.Model -> String -> String -> List (Html M.Msg) -> Html M.Msg
+popUpMenu model prefix key items = popUpMenuIcon model prefix key "settings_applications" "settings" items
 
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =
