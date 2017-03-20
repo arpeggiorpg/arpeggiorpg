@@ -159,7 +159,7 @@ emptyTerrain terrain =
 
 emptyTerrainTile : T.Point3 -> Svg M.Msg
 emptyTerrainTile pt =
-  tile "white" [onClick (M.ToggleTerrain pt)] pt
+  tile "grey" [onClick (M.ToggleTerrain pt)] pt
 
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
 tile cl attrs pt =

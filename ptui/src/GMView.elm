@@ -280,7 +280,15 @@ popUpMenuIcon : M.Model -> String -> String -> String -> String -> List (Html M.
 popUpMenuIcon model prefix key openIcon closedIcon items = 
   let realKey = prefix ++ "-" ++ key
       isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
-      openMenu = vabox [s [plainBorder, S.backgroundColor (S.rgb 255 255 255), S.width (S.px 150), S.position S.absolute, S.top (S.em 2)]] items
+      openMenu =
+        vabox
+          [s [S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
+             , plainBorder, S.backgroundColor (S.rgb 255 255 255)
+             , S.width (S.px 150)
+             , S.position S.absolute
+             , S.top (S.em 2)]
+          ]
+          items
       maybeMenu = if isClicked then openMenu else text ""
       iconName = if isClicked then openIcon else closedIcon
   in div [s [S.position S.relative]] [clickableIcon [onClick (M.ToggleCollapsed realKey)] iconName, maybeMenu]
