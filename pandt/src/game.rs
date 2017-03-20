@@ -4,7 +4,7 @@ use indexed::IndexedHashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use foldertree::FolderTree;
+use foldertree::{FolderTree, FolderPath};
 
 // Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
@@ -56,7 +56,7 @@ impl Game {
       UnlinkFolderMap(path, map_name) => self.change_with(GameLog::UnlinkFolderMap(path, map_name)),
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
-      CreateCreature(c, path) => self.create_creature(c),
+      CreateCreature(c, path) => self.create_creature(c, path),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {
@@ -114,9 +114,11 @@ impl Game {
     change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(), |c| c.tick())
   }
 
-  fn create_creature(&self, spec: CreatureCreation) -> Result<ChangedGame, GameError> {
+  fn create_creature(&self, spec: CreatureCreation, path: FolderPath) -> Result<ChangedGame, GameError> {
     let creature = Creature::create(&spec);
-    self.change_with(GameLog::CreateCreature(creature))
+    let cid = creature.id;
+    let ch = self.change_with(GameLog::CreateCreature(creature))?;
+    ch.apply(&GameLog::LinkFolderCreature(path, cid))
   }
 
   pub fn get_map(&self, map_name: &str) -> Result<&Map, GameError> {
