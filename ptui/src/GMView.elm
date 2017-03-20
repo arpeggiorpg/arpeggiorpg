@@ -52,7 +52,10 @@ campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app =
   let secondaryFocus = secondaryFocusView model app
   in
-    vbox [hbox [icon [] "folder_open", text "Campaign"], folderView model app [] app.current_game.campaign, secondaryFocus]
+    vbox [ hbox [icon [] "folder_open", text "Campaign"]
+         , div [s [S.marginLeft (S.em 1)]] [folderView model app [] app.current_game.campaign]
+         , secondaryFocus
+         ]
 
 folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
@@ -85,7 +88,7 @@ folderView model app path (T.Folder folder) =
     addMenuItems =
       [ (hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
       , (hbox [icon [] "map", dtext "Map"], M.NoMsg)
-      , (hbox [icon [] "contacts", dtext "Creature"], M.NoMsg)
+      , (hbox [icon [] "contacts", dtext "Creature"], M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
       , (hbox [icon [] "note", dtext "Note"], M.NoMsg)
       , (hbox [icon [] "folder", dtext "Folder"], M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ]
@@ -139,7 +142,7 @@ createFolderInPath model app {parent, child} =
     updateName newName = M.SetModal (M.CreateFolder {parent=parent, child=newName})
     msgs = M.Batch [M.SetModal M.NoModal, M.SendCommand (T.CreateFolder (parent ++ [child]))]
   in
-    vbox [ hbox [text "Creating folder in [", text (T.folderPathToString parent), text "]"]
+    vbox [ hbox [text "Creating folder in ", renderFolderPath parent]
          , input [placeholder "Folder Name", onInput updateName] []
          , button [onClick msgs] [text "Create"]]
 
@@ -194,16 +197,15 @@ checkModal model app =
     selectingCreatures =
       Maybe.map (\(selectable, selected, cb, name) -> selectCreaturesView model app selectable selected cb name)
         model.selectingCreatures
-    creatingCreature = Maybe.map (createCreatureDialog model app) model.creatingCreature
     creatingScene = Maybe.map (createSceneDialog model app) model.creatingScene
     generalModal =
       case model.modal of
         M.CreateFolder creating -> Just (createFolderInPath model app creating)
+        M.CreateCreature pending -> Just (createCreatureDialog model app pending)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
   in selectingCreatures
-      |> MaybeEx.orElse creatingCreature
       |> MaybeEx.orElse creatingScene
       |> MaybeEx.orElse (Maybe.map cancelableModal generalModal)
       |> MaybeEx.orElse (CommonView.checkModal model app)
@@ -293,12 +295,7 @@ sceneMap model app scene =
 allCreaturesView : M.Model -> T.App -> Html M.Msg
 allCreaturesView model app =
   let game = app.current_game
-  in
-    vbox
-      [ button [onClick M.StartCreatingCreature] [text "Create Creature"]
-      , hline
-      , vbox (List.map (allCreatureEntry model app) (Dict.values game.creatures))
-      ]
+  in vbox (List.map (allCreatureEntry model app) (Dict.values game.creatures))
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
 allCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
@@ -456,22 +453,26 @@ createSceneDialog model app scene =
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
-createCreatureDialog model app {name, class} =
+createCreatureDialog model app {name, class, path} =
   let disabledButton = button [disabled True] [text "Create Creature"]
       createCreatureButton =
         case (name, class) of
           (Just name, Just class) ->
             let cc = T.CreatureCreation name class ""
-            in button [onClick (M.CreateCreature cc)] [text "Create Creature"]
+                msg = M.Batch [M.SendCommand (T.CreateCreature cc path), M.SetModal M.NoModal]
+            in button [onClick msg] [text "Create Creature"]
           _ -> disabledButton
-      cancelCreationButton = button [onClick M.CancelCreatingCreature] [text "Cancel Creation"]
+      updatePendingClass : String -> M.Msg
+      updatePendingClass class = M.SetModal (M.CreateCreature {name = name, class = Just class, path = path})
+      updatePendingName name = M.SetModal (M.CreateCreature {name = Just name, class = class, path = path})
   in vbox
-    [ input [type_ "text", placeholder "name", onInput M.SetCreatureName ] []
-    , select [onInput M.SetCreatureClass]
+    [ hbox [text "Creating Creature in ", renderFolderPath path]
+    , input [type_ "text", placeholder "name", onInput updatePendingName ] []
+    , select [onInput updatePendingClass]
              <| [option [value ""] [text "Select a Class"]]
                 ++ (List.map (\className -> option [value className] [text className])
                              (Dict.keys app.current_game.classes))
-    , hbox [createCreatureButton, cancelCreationButton]
+    , createCreatureButton
     ]
 
 {-| Show all registered players and which creatures they've been granted -}
@@ -501,6 +502,13 @@ historyView app =
           Just (_, items) -> Array.toList items
           Nothing -> []
   in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+
+
+renderFolderPath : T.FolderPath -> Html M.Msg
+renderFolderPath path =
+  hbox [ icon [] "folder"
+       , if List.isEmpty path then text "Campaign Root" else text (T.folderPathToString path)]
+
 
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox : List (Html M.Msg) -> Html M.Msg
@@ -556,4 +564,3 @@ historyCreatureLog cl = case cl of
 
 renderDice : List Int -> Html M.Msg
 renderDice dice = dtext <| String.join ", " (List.map toString dice)
-

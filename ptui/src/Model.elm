@@ -48,12 +48,6 @@ type Msg
     | SaveMap
     | CancelEditingMap
 
-    | StartCreatingCreature
-    | CancelCreatingCreature
-    | SetCreatureName String
-    | SetCreatureClass String
-    | CreateCreature T.CreatureCreation
-
     | StartCreatingScene
     | CancelCreatingScene
     | SetSceneName String
@@ -106,7 +100,6 @@ defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
   , selectedAbility = Nothing
-  , creatingCreature = Nothing
   , selectingCreatures = Nothing
   , moving = Nothing
   , error = ""
@@ -140,6 +133,7 @@ type SecondaryFocus
 type Modal
   = NoModal
   | CreateFolder CreatingFolder
+  | CreateCreature PendingCreature
 
 type alias CreatingFolder =
   { parent: T.FolderPath
@@ -151,11 +145,10 @@ devFlags = {rpi = "http://localhost:1337/"}
 type alias ProgramFlags =
   { rpi : String }
 
-type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String}
+type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, path: T.FolderPath}
 
 type alias Model =
   { app : Maybe T.App
-  , creatingCreature : Maybe PendingCreature
   , creatingScene : Maybe T.Scene
   , selectedAbility : Maybe (T.SceneName, T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat

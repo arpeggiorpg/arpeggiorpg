@@ -221,6 +221,8 @@ modalOverlay content =
                 , S.left (S.pct 50)
                 , S.top (S.pct 50)
                 , S.transform (S.translate2 (S.pct -50) (S.pct -50))
+                , S.minWidth (S.pct 50)
+                , S.minHeight (S.pct 50)
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
             [content]

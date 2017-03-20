@@ -146,31 +146,6 @@ update msg model = case msg of
   RemoveCreatureFromScene sceneName cid ->
     (model, modScene model (\scene -> {scene | creatures = Dict.remove cid scene.creatures}) sceneName)
 
-  StartCreatingCreature ->
-    ( {model | creatingCreature = Just {name = Nothing, class = Nothing}}
-    , Cmd.none)
-  CancelCreatingCreature -> ({model | creatingCreature = Nothing}, Cmd.none)
-
-  SetCreatureName input ->
-    let newName = if (String.isEmpty input) then Nothing else Just input
-        newCreating =
-          case model.creatingCreature of
-            Just x -> Just {x | name = newName}
-            Nothing -> Nothing
-    in ( { model | creatingCreature = newCreating }, Cmd.none )
-
-  SetCreatureClass input ->
-    let newClass = if (String.isEmpty input) then Nothing else Just input
-        newCreating =
-          case model.creatingCreature of
-            Just x -> Just {x | class = newClass}
-            Nothing -> Nothing
-    in ( {model | creatingCreature = newCreating}
-       , Cmd.none)
-
-  CreateCreature creation ->
-    ({model | creatingCreature = Nothing}, sendCommand model.rpiURL (T.CreateCreature creation))
-
   CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
   CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)
   CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)

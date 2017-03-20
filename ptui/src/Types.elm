@@ -476,7 +476,7 @@ type GameCommand
   | PathCurrentCombatCreature Point3
   | PathCreature SceneName CreatureID Point3
   | SetCreaturePos SceneName CreatureID Point3
-  | CreateCreature CreatureCreation
+  | CreateCreature CreatureCreation FolderPath
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
@@ -502,8 +502,8 @@ gameCommandEncoder gc =
       JE.object [("SetPlayerScene", JE.list [JE.string pid, encodeMaybe scene JE.string])]
     StartCombat scene cids ->
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
-    CreateCreature creature ->
-      JE.object [("CreateCreature", creatureCreationEncoder creature)]
+    CreateCreature creature path ->
+      JE.object [("CreateCreature", JE.list [creatureCreationEncoder creature, folderPathEncoder path])]
     RemoveCreature cid ->
       JE.object [("RemoveCreature", JE.string cid)]
     StopCombat ->
