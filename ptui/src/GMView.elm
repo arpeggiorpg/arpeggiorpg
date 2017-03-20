@@ -200,17 +200,22 @@ checkModal model app =
       case model.modal of
         M.CreateFolder creating -> Just (createFolderInPath model app creating)
         M.NoModal -> Nothing
+    cancelableModal html =
+      vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
   in selectingCreatures
       |> MaybeEx.orElse creatingCreature
       |> MaybeEx.orElse creatingScene
-      |> MaybeEx.orElse generalModal
+      |> MaybeEx.orElse (Maybe.map cancelableModal generalModal)
       |> MaybeEx.orElse (CommonView.checkModal model app)
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
 -}
 -- NOTE: I'm sure at some point we'll want to move this to CommonView -- we just need to make sure
 -- that only the GM gets the noteBox in the creatureCard.
-selectCreaturesView : M.Model -> T.App -> List T.CreatureID -> List T.CreatureID -> M.GotCreatures -> String -> Html M.Msg
+selectCreaturesView : M.Model -> T.App
+                    -> List T.CreatureID -> List T.CreatureID -> M.GotCreatures
+                    -> String
+                    -> Html M.Msg
 selectCreaturesView model app selectableCreatures selectedCreatures callback commandName =
   let selectButton creature =
         button [ onClick (M.ToggleSelectedCreature creature.id)
@@ -221,17 +226,23 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
                , s [S.height (S.px 100), S.width (S.px 100)]]
                [text "Remove"]
       selectableCreature creature =
-        habox [s [S.width (S.px 500)]] [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
+        habox
+          [s [S.width (S.px 500)]]
+          [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (T.getCreatures app.current_game selectableCreatures)
       selectedCreatureItem creature =
-        habox [s [S.width (S.px 500)]] [CommonView.creatureCard [noteBox model creature] app creature, unselectButton creature.id]
-      selectedCreatureItems = vbox <| List.map selectedCreatureItem (T.getCreatures app.current_game selectedCreatures)
+        habox
+          [s [S.width (S.px 500)]]
+          [CommonView.creatureCard [noteBox model creature] app creature, unselectButton creature.id]
+      selectedCreatureItems =
+        vbox <| List.map selectedCreatureItem (T.getCreatures app.current_game selectedCreatures)
       doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
       cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
   in vbox <|
     [h3 [] [text <| "Select Creatures to " ++ commandName]
-    , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]] [selectableCreatureItems, selectedCreatureItems]
+    , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]]
+            [selectableCreatureItems, selectedCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
 
 {-| Figure out which map to render based on the focus. -}
@@ -251,7 +262,8 @@ sceneMap model app scene =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
-          Just pos -> Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
+          Just pos ->
+            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
           Nothing -> text "Moving Creature is not in this scene"
       pathOrPort =
         if model.moveAnywhere
