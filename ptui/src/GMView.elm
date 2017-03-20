@@ -82,10 +82,11 @@ folderView model app path (T.Folder folder) =
       maps = vbox (List.map viewMap (Set.toList folder.data.maps))
       children = vbox (List.map viewChild (Dict.toList folder.children))
       addMenuItems =
-        [ dtext "Creature"
-        , dtext "Map"
-        , dtext "Scene"
-        , dtext "Note"]
+        [ hbox [icon [] "casino", dtext "Scene"]
+        , hbox [icon [] "map", dtext "Map"]
+        , hbox [icon [] "contacts", dtext "Creature"]
+        , hbox [icon [] "note", dtext "Note"]
+        ]
       addMenu = popUpMenuIcon model "create-item-in-folder" (T.folderPathToString path) "add_box" "add" addMenuItems
   in vbox [ hbox [addMenu, text "Create New"], scenes, maps, creatures, notes, children]
 
