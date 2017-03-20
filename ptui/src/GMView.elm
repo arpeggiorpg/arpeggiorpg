@@ -93,7 +93,7 @@ folderView model app path (T.Folder folder) =
       , (hbox [icon [] "folder", dtext "Folder"], M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ]
     addMenu =
-      popUpMenuIcon model "create-item-in-folder" (T.folderPathToString path)
+      popUpMenu model "create-item-in-folder" (T.folderPathToString path)
         (hbox [icon [] "add", text "Create New"])
         (hbox [icon [] "add_box", text "Create New"])
         addMenuItems
@@ -299,15 +299,17 @@ allCreaturesView model app =
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
 allCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
-allCreatureEntry model app creature = vbox <|
-  [hbox <|
-    [ CommonView.creatureCard [noteBox model creature] app creature
-    , allCreatureGearIcon model app creature
+allCreatureEntry model app creature =
+  vbox
+    [ hbox <|
+        [ CommonView.creatureCard [noteBox model creature] app creature
+        , allCreatureGearIcon model app creature
+        ]
+    , hbox (CommonView.oocActionBar model app.current_game creature)
     ]
-  , hbox (CommonView.oocActionBar model app.current_game creature)]
 
-popUpMenuIcon : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenuIcon model prefix key clicker clickerClicked items = 
+popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
+popUpMenu model prefix key clicker clickerClicked items = 
   let realKey = prefix ++ "-" ++ key
       isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
       renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
@@ -325,10 +327,6 @@ popUpMenuIcon model prefix key clicker clickerClicked items =
                    [if isClicked then clickerClicked else clicker]
   in div [s [S.position S.relative]] [header, maybeMenu]
 
-popUpMenu : M.Model -> String -> String -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenu model prefix key items =
-  popUpMenuIcon model prefix key (icon [] "settings") (icon [] "settings_applications") items
-
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =
   let engage =
@@ -340,7 +338,7 @@ allCreatureGearIcon model app creature =
           Nothing -> []
       addOrRemove = sceneManagementButtons model app creature
       delete = (text "Delete", M.SendCommand (T.RemoveCreature creature.id))
-  in popUpMenu model "all-creature-menu" creature.id <| engage ++ addOrRemove ++ [delete]
+  in popUpMenu model "all-creature-menu" creature.id gear gearBox (engage ++ addOrRemove ++ [delete])
 
 sceneManagementButtons : M.Model -> T.App -> T.Creature -> List (Html M.Msg, M.Msg)
 sceneManagementButtons model app creature =
@@ -490,7 +488,7 @@ playersView model app =
         sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
       activateScene player = (text sceneButtonText, M.SendCommand (T.SetPlayerScene player.player_id sceneName))
       extraButtons player =
-        [popUpMenu model "PlayerListOptions" player.player_id [grantCreatures player, activateScene player]]
+        [popUpMenu model "PlayerListOptions" player.player_id gear gearBox [grantCreatures player, activateScene player]]
   in CommonView.playerList app extraButtons app.players
 
 {-| Show a list of all events that have happened in the game. -}

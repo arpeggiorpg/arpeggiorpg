@@ -55,4 +55,7 @@ noUserSelect =
 
 icon attrs name = i (attrs ++ [class "material-icons", s noUserSelect]) [text name]
 
+gear = icon [] "settings"
+gearBox = icon [] "settings_applications"
+
 clickableIcon attrs name = icon (attrs ++ [clickable]) name
