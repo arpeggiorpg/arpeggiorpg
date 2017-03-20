@@ -41,7 +41,7 @@ makeUI model app =
         , ("Players", always (playersView model app))
         , ("History", always (historyView app))
         , ("Scenes", always (sceneManagementView model app))
-        , ("Maps", always (vbox [mapConsole model app, editMapConsole model]))
+        -- , ("Maps", always (vbox [mapConsole model app, editMapConsole model]))
         ]
   , extraMovementOptions = [moveAnywhereToggle model]
   , extraOverlays = [bottomActionBar app]
@@ -67,7 +67,9 @@ folderView model app path (T.Folder folder) =
     viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
     viewNote (noteName, note) =
       fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
-    viewMap mapName = fentry (M.SetFocus (M.PreviewMap mapName)) "map" mapName
+    viewMap mapName =
+      let msg = M.Batch [M.SetFocus (M.PreviewMap mapName), M.SetSecondaryFocus (M.Focus2Map mapName)]
+      in fentry msg "map" mapName
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
           key = "folder-" ++ String.join "/" childPath
@@ -110,6 +112,8 @@ secondaryFocusView model app =
     M.Focus2Note path origName note ->
       let _ = Debug.log ("Note " ++ origName ++ toString note)  ()
       in noteView model app path origName note
+    M.Focus2Map mapName ->
+      vbox [mapConsole model app mapName, editMapConsole model]
 
 noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteView model app path origName note =
@@ -176,18 +180,19 @@ moveAnywhereToggle model =
 {-| Controls to show when editing the map. -}
 editMapConsole : M.Model -> Html M.Msg
 editMapConsole model =
-  let console name map =
+  case model.focus of
+    M.EditingMap name terrain ->
+      let updateName name = M.SetFocus (M.EditingMap name terrain)
+          saveMap = M.Batch [M.SetFocus (M.PreviewMap name), M.SendCommand (T.EditMap name terrain)]
+      in
         vbox
-          [ button [onClick M.CancelEditingMap] [text "Cancel Editing Map"]
+          [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
           , hbox
-            [ input [type_ "text", placeholder "map name", value name, onInput M.UpdateSaveMapName ] []
-            , button [onClick M.SaveMap] [text "Save"]
+            [ input [type_ "text", placeholder "map name", value name, onInput updateName] []
+            , button [onClick saveMap] [text "Save"]
             ]
           ]
-  in
-    case model.focus of
-      M.EditingMap name map -> console name map
-      _ -> text ""
+    _ -> text ""
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -378,17 +383,12 @@ mapSelectorMenu defaultSelection model app action =
     <| [option [value ""] [text "Select a Map"]]
        ++ (List.map (\mapName -> option [value mapName, selected (isCurrent mapName)] [text mapName]) (Dict.keys app.current_game.maps))
 
-{-| Various GM-specific controls for affecting the map. -}
-mapConsole : M.Model -> T.App -> Html M.Msg
-mapConsole model app =
+-- {-| Various GM-specific controls for affecting the map. -}
+mapConsole : M.Model -> T.App -> T.MapName -> Html M.Msg
+mapConsole model app mapName =
   let
-    inPreviewMode =
-      case model.focus of
-        M.PreviewMap name -> True
-        _ -> False
-    editMapButton = button [onClick M.StartEditingMap, disabled (not inPreviewMode)] [text "Edit this map"]
-    mapSelector = mapSelectorMenu "" model app (\name -> M.SetFocus (M.PreviewMap name))
-  in hbox [editMapButton, mapSelector]
+    editMapButton = button [onClick <| M.SetFocus (M.EditingMap mapName (M.tryGetMapNamed mapName app))] [text "Edit this map"]
+  in editMapButton
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg
@@ -487,9 +487,10 @@ playersView model app =
       sceneButtonText =
         sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
       activateScene player = (text sceneButtonText, M.SendCommand (T.SetPlayerScene player.player_id sceneName))
-      extraButtons player =
-        [popUpMenu model "PlayerListOptions" player.player_id gear gearBox [grantCreatures player, activateScene player]]
-  in CommonView.playerList app extraButtons app.players
+      menu player =
+        [popUpMenu model "PlayerListOptions" player.player_id gear gearBox
+                   [grantCreatures player, activateScene player]]
+  in CommonView.playerList app menu app.players
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg

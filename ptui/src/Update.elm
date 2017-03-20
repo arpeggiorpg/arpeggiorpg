@@ -234,51 +234,12 @@ update msg model = case msg of
       Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)
   GotCombatMovementOptions (Err e) -> ({model | error = toString e}, Cmd.none)
 
-  StartEditingMap -> 
-    let focus =
-          case model.focus of
-            M.PreviewMap name -> case model.app of
-              Just app -> M.EditingMap name (M.tryGetMapNamed name app)
-              Nothing -> M.EditingMap name []
-            _ -> M.NoFocus
-    in ({model | focus = focus}, Cmd.none)
-  CancelEditingMap ->
-    let focus =
-          case model.focus of
-            M.EditingMap name _ -> M.PreviewMap name
-            _ -> M.NoFocus
-    in ({model | focus = focus}, Cmd.none)
-
-
   ToggleTerrain pt ->
     let focus =
           case model.focus of
-            M.EditingMap name terrain ->
-              let newTerrain = 
-                    if not (List.member pt terrain)
-                    then pt :: terrain
-                    else List.filter (\el -> el /= pt) terrain
-              in M.EditingMap name newTerrain
+            M.EditingMap name terrain -> M.EditingMap name (T.toggleTerrain terrain pt)
             x -> x
     in ({model | focus = focus}, Cmd.none)
-
-  UpdateSaveMapName name ->
-    let focus = case model.focus of
-          M.EditingMap _ terrain -> M.EditingMap name terrain
-          x -> x
-    in ( {model | focus = focus } , Cmd.none)
-
-  SaveMap ->
-    let maybeNameAndTerrain = case model.focus of
-          M.EditingMap name terrain -> Just (name, terrain)
-          _ -> Nothing
-        command = case maybeNameAndTerrain of
-          Just (name, terrain) -> sendCommand model.rpiURL (T.EditMap name terrain)
-          Nothing -> Cmd.none
-        focus = case maybeNameAndTerrain of
-          Just (name, _) -> M.PreviewMap name
-          Nothing -> M.NoFocus
-    in ( { model | focus = focus} , command)
 
   MapZoom zoom ->
     let newSize =

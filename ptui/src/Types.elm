@@ -646,3 +646,11 @@ folderPathFromString ps =
     then
       Just <| String.split "/" (String.slice 1 (String.length ps) ps)
     else Nothing
+
+
+toggleTerrain : Map -> Point3 -> Map
+toggleTerrain terrain pt =
+  if List.member pt terrain
+  then List.filter (\el -> el /= pt) terrain
+  else pt :: terrain
+

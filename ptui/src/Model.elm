@@ -43,10 +43,8 @@ type Msg
     | ClearError
     | SetPlayerID T.PlayerID
     | RegisterPlayer
-    | UpdateSaveMapName T.MapName
-    | StartEditingMap
-    | SaveMap
-    | CancelEditingMap
+
+    | ToggleTerrain T.Point3
 
     | StartCreatingScene
     | CancelCreatingScene
@@ -72,7 +70,6 @@ type Msg
     | GetCombatMovementOptions
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
-    | ToggleTerrain T.Point3
     | SelectCreatures (List T.CreatureID) GotCreatures String
     | DoneSelectingCreatures
     | CancelSelectingCreatures
@@ -129,6 +126,7 @@ type SecondaryFocus
   = Focus2None
   | Focus2Creature T.CreatureID
   | Focus2Note T.FolderPath String T.Note
+  | Focus2Map T.MapName
 
 type Modal
   = NoModal

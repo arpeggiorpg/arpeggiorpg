@@ -147,7 +147,6 @@ gridTerrain : Bool -> T.Point3 -> Svg M.Msg
 gridTerrain editable pt =
   tile "white" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
 
-
 emptyTerrain : List T.Point3 -> List (Svg M.Msg)
 emptyTerrain terrain =
   let g x y = let pt = {x = x, y = y, z = 0}
