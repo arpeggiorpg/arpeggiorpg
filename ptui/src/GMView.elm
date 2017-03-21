@@ -70,9 +70,12 @@ folderView model app path (T.Folder folder) =
           Nothing -> text ("Invalid scene in folder: " ++ sceneID)
     viewNote (noteName, note) =
       fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
-    viewMap mapName =
-      let msg = M.Batch [M.SetFocus (M.PreviewMap mapName), M.SetSecondaryFocus (M.Focus2Map path mapName)]
-      in fentry msg "map" mapName
+    viewMap mapID =
+      let map = M.getMapNamed mapID app
+          msg = M.Batch [M.SetFocus (M.PreviewMap mapID), M.SetSecondaryFocus (M.Focus2Map path mapID)]
+      in case map of
+           Just map -> fentry msg "map" map.name
+           Nothing -> text ("Invalid map in folder: " ++ mapID)
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
           key = "folder-" ++ String.join "/" childPath
@@ -94,7 +97,7 @@ folderView model app path (T.Folder folder) =
       [ ( hbox [icon [] "casino", dtext "Scene"]
         , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
       , ( hbox [icon [] "map", dtext "Map"]
-        , M.Batch [M.SetFocus (M.EditingMap path "New Map" []), M.SetSecondaryFocus (M.Focus2Map path "New Map")] )
+        , M.Batch [M.SetFocus (M.EditingMap path "New Map" T.emptyMap), M.SetSecondaryFocus (M.Focus2Map path "New Map")] )
       , ( hbox [icon [] "contacts", dtext "Creature"]
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
       , ( hbox [icon [] "note", dtext "Note"]
@@ -119,8 +122,8 @@ secondaryFocusView model app =
         Nothing -> text ""
     M.Focus2Note path origName note ->
       noteView model app path origName note
-    M.Focus2Map path mapName ->
-      vbox [mapConsole model app path mapName]
+    M.Focus2Map path mapID ->
+      vbox [mapConsole model app path mapID]
 
 noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteView model app path origName note =
@@ -177,8 +180,8 @@ moveAnywhereToggle model =
         Nothing -> text ""
     Nothing -> text "Why is this being called?"
 
-mapConsole : M.Model -> T.App -> T.FolderPath -> String -> Html M.Msg
-mapConsole model app path mapName =
+mapConsole : M.Model -> T.App -> T.FolderPath -> T.MapID -> Html M.Msg
+mapConsole model app path mapID =
   case model.focus of
     M.EditingMap path name terrain ->
       let updateName name = M.SetFocus (M.EditingMap path name terrain)
@@ -191,7 +194,7 @@ mapConsole model app path mapName =
             , button [onClick saveMap] [text "Save"]
             ]
           ]
-    _ -> button [onClick (M.SetFocus (M.EditingMap path mapName (M.tryGetMapNamed mapName app)))] [text "Edit this Map"]
+    _ -> button [onClick (M.SetFocus (M.EditingMap path mapID (M.tryGetMapNamed mapID app)))] [text "Edit this Map"]
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -254,8 +257,8 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap path name map -> Grid.editMap model map []
-    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
+    M.EditingMap path name map -> Grid.editMap model map.terrain []
+    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app).terrain []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene
@@ -268,7 +271,7 @@ sceneMap model app scene =
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
           Just pos ->
-            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
+            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model).terrain pos vCreatures
           Nothing -> text "Moving Creature is not in this scene"
       pathOrPort =
         if model.moveAnywhere
@@ -291,7 +294,7 @@ sceneMap model app scene =
         { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
                , movable = Just (M.GetMovementOptions scene.id)}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
-      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
+      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app).terrain vCreatures
   in movementMap |> MaybeEx.unpack defaultMap identity
 
 {-| A navigator for all creatures -}
@@ -376,10 +379,10 @@ disengageButton creature =
 
 mapSelectorMenu : String -> M.Model -> T.App -> (String -> M.Msg) -> Html M.Msg
 mapSelectorMenu defaultSelection model app action =
-  let isCurrent mapName = mapName == defaultSelection
+  let isCurrent mapID = mapID == defaultSelection
   in select [onInput action]
     <| [option [value ""] [text "Select a Map"]]
-       ++ (List.map (\mapName -> option [value mapName, selected (isCurrent mapName)] [text mapName]) (Dict.keys app.current_game.maps))
+       ++ (List.map (\mapID -> option [value mapID, selected (isCurrent mapID)] [text mapID]) (Dict.keys app.current_game.maps))
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg
@@ -519,7 +522,7 @@ historyItem snapIdx logIdx log =
     T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
-    T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]
+    T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
     T.GLRemoveCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
     T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants

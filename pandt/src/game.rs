@@ -14,7 +14,7 @@ impl Game {
       abilities: abilities,
       current_combat: None,
       creatures: HashMap::new(),
-      maps: HashMap::new(),
+      maps: IndexedHashMap::new(),
       classes: classes,
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
@@ -71,10 +71,13 @@ impl Game {
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
       CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
       ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),
-      EditMap(ref path, ref name, ref terrain) => {
-        let ch = self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))?;
-        ch.apply(&GameLog::LinkFolderMap(path.clone(), name.clone()))
+      CreateMap(ref path, ref creation) => {
+        let map = Map::create(creation.clone());
+        let map_id = map.id;
+        let ch = self.change_with(GameLog::CreateMap(map))?;
+        ch.apply(&GameLog::LinkFolderMap(path.clone(), map_id))
       }
+      EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
       RemoveCreature(cid) => self.change_with(GameLog::RemoveCreature(cid)),
       StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),
       StopCombat => self.change_with(GameLog::StopCombat),
@@ -189,8 +192,17 @@ impl Game {
         // - search for scene in campaign and delete references
         newgame.scenes.remove(name);
       }
-      EditMap(ref name, ref terrain) => {
-        newgame.maps.insert(name.clone(), terrain.clone());
+      CreateMap(ref map) => {
+        if newgame.maps.contains_key(&map.id) {
+          bail!(GameErrorEnum::MapAlreadyExists(map.id));
+        } else {
+          newgame.maps.insert(map.clone());
+        }
+      }
+      EditMap(ref map) => {
+        newgame.maps
+          .mutate(&map.id, move |_| map.clone())
+          .ok_or(GameErrorEnum::MapNotFound(map.id))?;
       }
       CreateCreature(ref c) => {
         if newgame.creatures.contains_key(&c.id()) {
@@ -528,7 +540,7 @@ pub mod test {
 
   pub fn t_game() -> Game {
     let mut game = Game::new(t_classes(), t_abilities());
-    game.maps.insert(t_map_id(), huge_box());
+    game.maps.insert(huge_box());
     let rogue_creation = t_rogue_creation("rogue");
     let ranger_creation = t_ranger_creation("ranger");
     let cleric_creation = t_cleric_creation("cleric");

@@ -18,8 +18,6 @@ use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
-
-pub type Map = Vec<Point3>; // To be extended later. For now just a list of open voxels
 pub type ConditionID = usize;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
@@ -191,8 +189,9 @@ pub enum GameCommand {
   DeleteScene(SceneID),
 
   // ** Map management **
-  /// Change the terrain data of a map.
-  EditMap(FolderPath, MapID, Map),
+  CreateMap(FolderPath, MapCreation),
+  /// Change a map. The ID of the given map bust match an existing map.
+  EditMap(Map),
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -293,7 +292,8 @@ pub enum GameLog {
   CreateScene(Scene),
   EditScene(Scene),
   DeleteScene(SceneID),
-  EditMap(MapID, Map),
+  CreateMap(Map),
+  EditMap(Map),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   /// Many of these actually go via CombatLog, since most creature modification happens inside of
@@ -417,6 +417,10 @@ error_chain! {
     MapNotFound(map: MapID) {
       description("The specified map was not found.")
       display("Couldn't find map {}", map.0)
+    }
+    MapAlreadyExists(map: MapID) {
+      description("The specified map already exists.")
+      display("Map {} already exists", map.0)
     }
     NotEnoughEnergy(nrg: Energy) {
       description("There is not enough energy to do something.")
@@ -603,7 +607,7 @@ pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: HashMap<CreatureID, Creature>,
-  pub maps: HashMap<MapID, Map>,
+  pub maps: IndexedHashMap<Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
@@ -661,7 +665,7 @@ pub struct Scene {
 impl DeriveKey for Scene {
   type KeyType = SceneID;
   fn derive_key(&self) -> SceneID {
-    self.id.clone()
+    self.id
   }
 }
 
@@ -685,6 +689,46 @@ impl Scene {
     let mut new = self.clone();
     new.creatures.insert(cid, pt);
     new
+  }
+}
+
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct MapCreation {
+  pub name: String,
+  pub terrain: Vec<Point3>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct Map {
+  pub id: MapID,
+  pub name: String,
+  pub terrain: Vec<Point3>,
+}
+
+impl Map {
+  pub fn create(c: MapCreation) -> Map {
+    Map::new(c.name, c.terrain)
+  }
+
+  pub fn new(name: String, terrain: Vec<Point3>) -> Map {
+    Map {
+      id: MapID::new(),
+      name: name,
+      terrain: terrain,
+    }
+  }
+
+  pub fn is_open(&self, pt: &Point3) -> bool {
+    self.terrain.contains(pt)
+  }
+}
+
+
+impl DeriveKey for Map {
+  type KeyType = MapID;
+  fn derive_key(&self) -> MapID {
+    self.id
   }
 }
 

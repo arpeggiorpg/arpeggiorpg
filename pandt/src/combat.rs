@@ -359,9 +359,12 @@ pub mod test {
   #[test]
   fn move_honors_path() {
     let mut game = t_combat();
-    game.maps.insert(t_map_id(),
-                     // up, right, right, down
-                     vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)]);
+    game.maps.insert(Map {
+      id: t_map_id(),
+      name: "circuitous".to_string(),
+      // up, right, right, down
+      terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
+    });
     let next_game = game.get_combat()
       .unwrap()
       .get_movement()

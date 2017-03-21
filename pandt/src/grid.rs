@@ -49,7 +49,7 @@ impl TileSystem {
     for x in start.0 - meters..start.0 + meters + 1 {
       for y in start.1 - meters..start.1 + meters + 1 {
         let end_point = (x, y, 0);
-        if end_point == start || !terrain.contains(&end_point) {
+        if end_point == start || !terrain.is_open(&end_point) {
           continue;
         }
         points_to_check.push(end_point);
@@ -98,7 +98,7 @@ impl TileSystem {
           continue;
         }
         let neighbor = (pt.0 + x, pt.1 + y, pt.2);
-        if terrain.contains(&neighbor) {
+        if terrain.is_open(&neighbor) {
           let is_angle = x.abs() == y.abs();
           let cost = if is_angle {
             match *self {
@@ -117,8 +117,8 @@ impl TileSystem {
             }
           };
           // don't allow diagonal movement around corners
-          if is_angle && !terrain.contains(&(neighbor.0, pt.1, pt.2)) ||
-             !terrain.contains(&(pt.0, neighbor.1, pt.2)) {
+          if is_angle && !terrain.is_open(&(neighbor.0, pt.1, pt.2)) ||
+             !terrain.is_open(&(pt.0, neighbor.1, pt.2)) {
             continue;
           }
           results.push((neighbor, cost));
@@ -235,6 +235,7 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
 #[cfg(test)]
 pub mod test {
   use grid::*;
+  use types::test::*;
 
   #[test]
   fn test_biggest_distance() {
@@ -257,8 +258,7 @@ pub mod test {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = (0, 0, 0);
     let pos2 = (1, 0, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2),
-               Distance(100));
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), Distance(100));
   }
 
   #[test]
@@ -289,7 +289,7 @@ pub mod test {
   /// a diagonal neighbor is not considered accessible if it "goes around" a blocked corner
   #[test]
   fn test_neighbors_around_corners() {
-    let terrain = vec![(1, 0, 0)];
+    let terrain = Map::new("single".to_string(), vec![(1, 0, 0)]);
     let pts: Vec<Point3> =
       TileSystem::Realistic.point3_neighbors(&terrain, (0, 0, 0)).iter().map(|&(p, _)| p).collect();
     assert!(!pts.contains(&(1, 1, 0)));
@@ -347,13 +347,12 @@ pub mod test {
                                       successes);
     let ex_path_positive = vec![(0, 0, 0), (1, 1, 0)];
     let ex_path_negative = vec![(0, 0, 0), (-1, -1, 0)];
-    assert_eq!(paths_and_costs,
-               [(ex_path_positive, 141), (ex_path_negative, 141)]);
+    assert_eq!(paths_and_costs, [(ex_path_positive, 141), (ex_path_negative, 141)]);
   }
 
   /// A map containing a "room" that only has one free space in the middle.
   fn box_map() -> Map {
-    vec![(0, 0, 0)]
+    Map::new("box".to_string(), vec![(0, 0, 0)])
   }
 
   pub fn huge_box() -> Map {
@@ -363,7 +362,11 @@ pub mod test {
         map.push((x, y, 0));
       }
     }
-    map
+    Map {
+      id: t_map_id(),
+      name: "huge box".to_string(),
+      terrain: map,
+    }
   }
 
   // #[test]

@@ -14,7 +14,7 @@ type alias SceneID = String
 type alias PlayerID = String
 type alias CreatureID = String
 type alias AbilityID = String
-type alias MapName = String
+type alias MapID = String
 type alias Distance = Int
 
 type alias CreatureCreation =
@@ -78,8 +78,8 @@ type GameLog
   | GLEditNote FolderPath String Note
   | GLCreateScene Scene
   | GLEditScene Scene
-  | GLSelectMap MapName
-  | GLEditMap MapName Map
+  | GLSelectMap MapID
+  | GLEditMap Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat SceneID (List CreatureID)
@@ -107,7 +107,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("RemoveCreature", JD.map GLRemoveCreature JD.string)
   , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
-  , ("EditMap", JD.map2 GLEditMap (JD.index 0 JD.string) (JD.index 1 mapDecoder))
+  , ("EditMap", JD.map GLEditMap (JD.index 0 mapDecoder))
   , ("Rollback", JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int))
   , ("PathCreature", JD.map3 GLPathCreature (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 (JD.list point3Decoder)))
   , ("SetCreaturePos", JD.map3 GLSetCreaturePos (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 point3Decoder))
@@ -154,7 +154,7 @@ type alias Game =
   , abilities : Dict AbilityID Ability
   , classes : Dict String Class
   , creatures : Dict CreatureID Creature
-  , maps: Dict MapName Map
+  , maps: Dict MapID Map
   , scenes: Dict String Scene
   , campaign: Folder
   }
@@ -188,7 +188,7 @@ type alias FolderNode =
   { scenes: Set.Set SceneID
   , creatures: Set.Set CreatureID
   , notes: Dict.Dict String Note
-  , maps: Set.Set MapName
+  , maps: Set.Set MapID
   }
 
 folderNodeDecoder : JD.Decoder FolderNode
@@ -265,10 +265,37 @@ sceneCreationEncoder scene =
     ]
 
 
-type alias Map = List Point3
+type alias Map =
+  { id: MapID
+  , name: String
+  , terrain: List Point3
+  }
 
-mapDecoder = JD.list point3Decoder
-mapEncoder t = JE.list (List.map point3Encoder t)
+mapDecoder : JD.Decoder Map
+mapDecoder = JD.map3 Map
+  (JD.field "id" JD.string)
+  (JD.field "name" JD.string)
+  (JD.field "terrain" (JD.list point3Decoder))
+
+mapEncoder : Map -> JE.Value
+mapEncoder m =
+  JE.object
+    [ ("id", JE.string m.id)
+    , ("name", JE.string m.name)
+    , ("terrain", JE.list (List.map point3Encoder m.terrain))
+    ]
+
+type alias MapCreation =
+  { name: String
+  , terrain: List Point3
+  }
+
+mapCreationEncoder : MapCreation -> JE.Value
+mapCreationEncoder m =
+  JE.object
+    [ ("name", JE.string m.name)
+    , ("terrain", JE.list (List.map point3Encoder m.terrain))
+    ]
 
 type alias Class =
   { abilities: List AbilityID
@@ -482,8 +509,9 @@ type GameCommand
   | EditNote FolderPath String Note
   | CreateScene FolderPath SceneCreation
   | EditScene Scene
-  | SelectMap MapName
-  | EditMap FolderPath MapName Map
+  | SelectMap MapID
+  | CreateMap FolderPath MapCreation
+  | EditMap Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
   | SetPlayerScene PlayerID (Maybe SceneID)
@@ -548,8 +576,10 @@ gameCommandEncoder gc =
       JE.string "Done"
     SelectMap name ->
       JE.object [("SelectMap", JE.string name)]
-    EditMap path name terrain ->
-      JE.object [("EditMap", JE.list [folderPathEncoder path, JE.string name, mapEncoder terrain])]
+    CreateMap path creation ->
+      JE.object [("CreateMap", JE.list [folderPathEncoder path, mapCreationEncoder creation])]
+    EditMap map ->
+      JE.object [("EditMap", JE.list [mapEncoder map])]
     Rollback snapIdx logIdx ->
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->
@@ -674,7 +704,11 @@ folderPathFromString ps =
 
 
 toggleTerrain : Map -> Point3 -> Map
-toggleTerrain terrain pt =
-  if List.member pt terrain
-  then List.filter (\el -> el /= pt) terrain
-  else pt :: terrain
+toggleTerrain {id, name, terrain} pt =
+  let newT = if List.member pt terrain
+             then List.filter (\el -> el /= pt) terrain
+             else pt :: terrain
+  in {id=id, name=name, terrain=newT}
+
+emptyMap : Map
+emptyMap = {id="invalid", name="<empty>", terrain=[]}

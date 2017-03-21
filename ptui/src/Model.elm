@@ -113,14 +113,14 @@ defaultModel flags =
 type Focus
   = NoFocus
   | Scene String
-  | EditingMap T.FolderPath T.MapName T.Map
-  | PreviewMap T.MapName
+  | EditingMap T.FolderPath T.MapID T.Map
+  | PreviewMap T.MapID
 
 type SecondaryFocus
   = Focus2None
   | Focus2Creature T.CreatureID
   | Focus2Note T.FolderPath String T.Note
-  | Focus2Map T.FolderPath T.MapName
+  | Focus2Map T.FolderPath T.MapID
 
 type Modal
   = NoModal
@@ -197,16 +197,16 @@ getMap model =
     PreviewMap name ->
       model.app
       |> Maybe.andThen (getMapNamed name)
-      |> Maybe.withDefault []
+      |> Maybe.withDefault T.emptyMap
     Scene name ->
       getMapForScene model name
-    NoFocus -> []
+    NoFocus -> T.emptyMap
 
 getMapForScene : Model -> String -> T.Map
 getMapForScene model name =
   getScene model name
   |> Maybe.andThen (\scene -> model.app |> Maybe.andThen (getMapNamed scene.map))
-  |> Maybe.withDefault []
+  |> Maybe.withDefault T.emptyMap
 
 
 getMapNamed : String -> T.App -> Maybe T.Map
@@ -214,4 +214,4 @@ getMapNamed name app =
   Dict.get name app.current_game.maps
 
 tryGetMapNamed : String -> T.App -> T.Map
-tryGetMapNamed name app = getMapNamed name app |> Maybe.withDefault []
+tryGetMapNamed name app = getMapNamed name app |> Maybe.withDefault T.emptyMap

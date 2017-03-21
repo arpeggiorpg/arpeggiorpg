@@ -26,14 +26,14 @@ type alias MapCreature =
   , pos : T.Point3
   }
 
-terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
+terrainMap : M.Model -> List T.Point3 -> List MapCreature -> Svg M.Msg
 terrainMap model terrain creatures = baseMap model terrain creatures [] False
 
-editMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
+editMap : M.Model -> List T.Point3 -> List MapCreature -> Svg M.Msg
 editMap model terrain creatures =
   baseMap model terrain creatures [] True
 
-movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List MapCreature -> Svg M.Msg
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> List T.Point3 -> T.Point3 -> List MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain movingFrom creatures =
   let targetPoints =
         if moveAnywhere
@@ -56,7 +56,7 @@ movementGhost model =
     _ -> Nothing
 
 
-baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
+baseMap : M.Model -> List T.Point3 -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
 baseMap model terrain creatures extras editable =
   let creatureEls = List.map gridCreature creatures
       terrainEls = baseTerrainRects model editable terrain
@@ -91,7 +91,7 @@ calculateAllMovementOptions from distance =
       result = List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
   in result
 
-movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> T.Map -> T.Point3 -> Int -> List (Svg M.Msg)
+movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> List T.Point3 -> T.Point3 -> Int -> List (Svg M.Msg)
 movementTargets moveMsg pts terrain origin max_distance =
   let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (moveMsg pt)] pt
   in List.map movementTarget pts
