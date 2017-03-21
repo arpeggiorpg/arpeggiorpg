@@ -237,7 +237,7 @@ update msg model = case msg of
   ToggleTerrain pt ->
     let focus =
           case model.focus of
-            M.EditingMap name terrain -> M.EditingMap name (T.toggleTerrain terrain pt)
+            M.EditingMap path name terrain -> M.EditingMap path name (T.toggleTerrain terrain pt)
             x -> x
     in ({model | focus = focus}, Cmd.none)
 

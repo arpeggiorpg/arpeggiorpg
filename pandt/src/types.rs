@@ -166,7 +166,7 @@ pub enum GameCommand {
 
   // ** Map management **
   /// Change the terrain data of a map.
-  EditMap(MapName, Map),
+  EditMap(FolderPath, MapName, Map),
 
   // ** Combat management **
   /// Start a combat with the specified creatures.

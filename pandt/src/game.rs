@@ -65,8 +65,9 @@ impl Game {
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
       CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
       ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),
-      EditMap(ref name, ref terrain) => {
-        self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))
+      EditMap(ref path, ref name, ref terrain) => {
+        let ch = self.change_with(GameLog::EditMap(name.clone(), terrain.clone()))?;
+        ch.apply(&GameLog::LinkFolderMap(path.clone(), name.clone()))
       }
       RemoveCreature(cid) => self.change_with(GameLog::RemoveCreature(cid)),
       StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),

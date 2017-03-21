@@ -119,14 +119,14 @@ defaultModel flags =
 type Focus
   = NoFocus
   | Scene String
-  | EditingMap T.MapName T.Map
+  | EditingMap T.FolderPath T.MapName T.Map
   | PreviewMap T.MapName
 
 type SecondaryFocus
   = Focus2None
   | Focus2Creature T.CreatureID
   | Focus2Note T.FolderPath String T.Note
-  | Focus2Map T.MapName
+  | Focus2Map T.FolderPath T.MapName
 
 type Modal
   = NoModal
@@ -195,7 +195,7 @@ getScene model name =
 getMap : Model -> T.Map
 getMap model =
   case model.focus of
-    EditingMap name terrain -> terrain
+    EditingMap path name terrain -> terrain
     PreviewMap name ->
       model.app
       |> Maybe.andThen (getMapNamed name)

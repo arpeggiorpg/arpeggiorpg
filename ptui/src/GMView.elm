@@ -68,7 +68,7 @@ folderView model app path (T.Folder folder) =
     viewNote (noteName, note) =
       fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
     viewMap mapName =
-      let msg = M.Batch [M.SetFocus (M.PreviewMap mapName), M.SetSecondaryFocus (M.Focus2Map mapName)]
+      let msg = M.Batch [M.SetFocus (M.PreviewMap mapName), M.SetSecondaryFocus (M.Focus2Map path mapName)]
       in fentry msg "map" mapName
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
@@ -90,7 +90,7 @@ folderView model app path (T.Folder folder) =
     addMenuItems =
       [ ( hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
       , ( hbox [icon [] "map", dtext "Map"]
-        , M.Batch [M.SetFocus (M.EditingMap "" []), M.SetSecondaryFocus (M.Focus2Map "")] )
+        , M.Batch [M.SetFocus (M.EditingMap path "" []), M.SetSecondaryFocus (M.Focus2Map path "")] )
       , ( hbox [icon [] "contacts", dtext "Creature"]
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
       , ( hbox [icon [] "note", dtext "Note"], M.NoMsg)
@@ -115,8 +115,8 @@ secondaryFocusView model app =
     M.Focus2Note path origName note ->
       let _ = Debug.log ("Note " ++ origName ++ toString note)  ()
       in noteView model app path origName note
-    M.Focus2Map mapName ->
-      vbox [mapConsole model app mapName, editMapConsole model]
+    M.Focus2Map path mapName ->
+      vbox [mapConsole model app path mapName]
 
 noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteView model app path origName note =
@@ -180,13 +180,12 @@ moveAnywhereToggle model =
         Nothing -> text ""
     Nothing -> text "Why is this being called?"
 
-{-| Controls to show when editing the map. -}
-editMapConsole : M.Model -> Html M.Msg
-editMapConsole model =
+mapConsole : M.Model -> T.App -> T.FolderPath -> String -> Html M.Msg
+mapConsole model app path mapName =
   case model.focus of
-    M.EditingMap name terrain ->
-      let updateName name = M.SetFocus (M.EditingMap name terrain)
-          saveMap = M.Batch [M.SetFocus (M.PreviewMap name), M.SendCommand (T.EditMap name terrain)]
+    M.EditingMap path name terrain ->
+      let updateName name = M.SetFocus (M.EditingMap path name terrain)
+          saveMap = M.Batch [M.SetFocus (M.PreviewMap name), M.SendCommand (T.EditMap path name terrain)]
       in
         vbox
           [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
@@ -195,7 +194,7 @@ editMapConsole model =
             , button [onClick saveMap] [text "Save"]
             ]
           ]
-    _ -> text ""
+    _ -> button [onClick (M.SetFocus (M.EditingMap path mapName (M.tryGetMapNamed mapName app)))] [text "Edit this Map"]
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -259,7 +258,7 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap name map -> Grid.editMap model map []
+    M.EditingMap path name map -> Grid.editMap model map []
     M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
@@ -385,13 +384,6 @@ mapSelectorMenu defaultSelection model app action =
   in select [onInput action]
     <| [option [value ""] [text "Select a Map"]]
        ++ (List.map (\mapName -> option [value mapName, selected (isCurrent mapName)] [text mapName]) (Dict.keys app.current_game.maps))
-
--- {-| Various GM-specific controls for affecting the map. -}
-mapConsole : M.Model -> T.App -> T.MapName -> Html M.Msg
-mapConsole model app mapName =
-  let
-    editMapButton = button [onClick <| M.SetFocus (M.EditingMap mapName (M.tryGetMapNamed mapName app))] [text "Edit this map"]
-  in editMapButton
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg

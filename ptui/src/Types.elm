@@ -458,7 +458,7 @@ type GameCommand
   | EditNote FolderPath String Note
   | EditScene Scene
   | SelectMap MapName
-  | EditMap MapName Map
+  | EditMap FolderPath MapName Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
   | SetPlayerScene PlayerID (Maybe SceneName)
@@ -519,8 +519,8 @@ gameCommandEncoder gc =
       JE.string "Done"
     SelectMap name ->
       JE.object [("SelectMap", JE.string name)]
-    EditMap name terrain ->
-      JE.object [("EditMap", JE.list [JE.string name, mapEncoder terrain])]
+    EditMap path name terrain ->
+      JE.object [("EditMap", JE.list [folderPathEncoder path, JE.string name, mapEncoder terrain])]
     Rollback snapIdx logIdx ->
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->
