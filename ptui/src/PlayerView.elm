@@ -97,12 +97,12 @@ sceneMap model app scene myCreatures =
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid (M.PathCreature scene.name creature.id) mvmtReq creature)
+            Maybe.map (\creature -> movementGrid (M.PathCreature scene.id creature.id) mvmtReq creature)
                       mvmtReq.ooc_creature
           (Just combat, Just mvmtReq) ->
             let (creature, moveMessage) =
                   case mvmtReq.ooc_creature of
-                    Just creature -> (creature, M.PathCreature scene.name creature.id)
+                    Just creature -> (creature, M.PathCreature scene.id creature.id)
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing

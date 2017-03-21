@@ -19,7 +19,6 @@ use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
 
-pub type MapName = String;
 pub type Map = Vec<Point3>; // To be extended later. For now just a list of open voxels
 pub type ConditionID = usize;
 
@@ -106,6 +105,21 @@ impl SceneID {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct MapID(Uuid);
+impl MapID {
+  pub fn new() -> MapID {
+    MapID(Uuid::new_v4())
+  }
+  pub fn from_str(s: &str) -> Result<MapID, GameError> {
+    Ok(MapID(Uuid::parse_str(s)?))
+  }
+  pub fn to_string(&self) -> String {
+    self.0.hyphenated().to_string()
+  }
+}
+
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
   pub fn new(s: &str) -> Result<Self, GameError> {
@@ -164,9 +178,9 @@ pub enum GameCommand {
   /// Delete a Note from a Folder.
   DeleteNote(FolderPath, String),
   /// Link a map into a Folder.
-  LinkFolderMap(FolderPath, MapName),
+  LinkFolderMap(FolderPath, MapID),
   /// Unlink a map from a Folder.
-  UnlinkFolderMap(FolderPath, MapName),
+  UnlinkFolderMap(FolderPath, MapID),
 
   // ** Scene management **
   /// Create a Scene.
@@ -178,7 +192,7 @@ pub enum GameCommand {
 
   // ** Map management **
   /// Change the terrain data of a map.
-  EditMap(FolderPath, MapName, Map),
+  EditMap(FolderPath, MapID, Map),
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -273,13 +287,13 @@ pub enum GameLog {
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
   DeleteNote(FolderPath, String),
-  LinkFolderMap(FolderPath, MapName),
-  UnlinkFolderMap(FolderPath, MapName),
+  LinkFolderMap(FolderPath, MapID),
+  UnlinkFolderMap(FolderPath, MapID),
 
   CreateScene(Scene),
   EditScene(Scene),
   DeleteScene(SceneID),
-  EditMap(MapName, Map),
+  EditMap(MapID, Map),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   /// Many of these actually go via CombatLog, since most creature modification happens inside of
@@ -400,9 +414,9 @@ error_chain! {
       description("A step from one point to another is too large.")
       display("Can't step from {:?} to {:?}", from, to)
     }
-    MapNotFound(map: MapName) {
+    MapNotFound(map: MapID) {
       description("The specified map was not found.")
-      display("Couldn't find map {}", map)
+      display("Couldn't find map {}", map.0)
     }
     NotEnoughEnergy(nrg: Energy) {
       description("There is not enough energy to do something.")
@@ -589,7 +603,7 @@ pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: HashMap<CreatureID, Creature>,
-  pub maps: HashMap<MapName, Map>,
+  pub maps: HashMap<MapID, Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
@@ -632,7 +646,7 @@ impl Player {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SceneCreation {
   pub name: String,
-  pub map: MapName,
+  pub map: MapID,
   pub creatures: HashMap<CreatureID, Point3>,
 }
 
@@ -640,7 +654,7 @@ pub struct SceneCreation {
 pub struct Scene {
   pub id: SceneID,
   pub name: String,
-  pub map: MapName,
+  pub map: MapID,
   pub creatures: HashMap<CreatureID, Point3>,
 }
 
@@ -772,7 +786,7 @@ pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
-  pub maps: HashSet<MapName>,
+  pub maps: HashSet<MapID>,
 }
 
 impl Folder {
@@ -831,7 +845,10 @@ pub mod test {
 
   pub fn t_scene_id() -> SceneID {
     SceneID::from_str("00000000-0000-0000-0000-000000000003").unwrap()
+  }
 
+  pub fn t_map_id() -> MapID {
+    MapID::from_str("00000000-0000-0000-0000-000000000004").unwrap()
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {

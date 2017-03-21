@@ -106,7 +106,7 @@ impl Game {
                                 max_distance: Distance)
                                 -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_name.clone())?;
-    let terrain = self.get_map(&scene.map)?;
+    let terrain = self.get_map(scene.map)?;
     let (pts, distance) = self.tile_system
       .find_path(scene.get_pos(cid)?, max_distance, terrain, pt)
       .ok_or(GameErrorEnum::NoPathFound)?;
@@ -129,8 +129,8 @@ impl Game {
     ch.apply(&GameLog::LinkFolderCreature(path, cid))
   }
 
-  pub fn get_map(&self, map_name: &str) -> Result<&Map, GameError> {
-    self.maps.get(map_name).ok_or_else(|| GameErrorEnum::MapNotFound(map_name.to_string()).into())
+  pub fn get_map(&self, map_id: MapID) -> Result<&Map, GameError> {
+    self.maps.get(&map_id).ok_or_else(|| GameErrorEnum::MapNotFound(map_id).into())
   }
 
   pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
@@ -177,7 +177,7 @@ impl Game {
         }
       }
       EditScene(ref scene) => {
-        newgame.check_map(&scene.map)?;
+        newgame.check_map(scene.map)?;
         newgame.scenes
           .mutate(&scene.id, move |s| scene.clone())
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
@@ -257,11 +257,11 @@ impl Game {
     Ok(newgame)
   }
 
-  fn check_map(&self, map_name: &str) -> Result<(), GameError> {
-    if self.maps.contains_key(map_name) {
+  fn check_map(&self, map_id: MapID) -> Result<(), GameError> {
+    if self.maps.contains_key(&map_id) {
       Ok(())
     } else {
-      Err(GameErrorEnum::MapNotFound(map_name.to_string()).into())
+      Err(GameErrorEnum::MapNotFound(map_id).into())
     }
   }
 
@@ -313,7 +313,7 @@ impl Game {
   pub fn get_combat<'game>(&'game self) -> Result<DynamicCombat<'game>, GameError> {
     let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
     let scene = self.get_scene(combat.scene.clone())?;
-    let map = self.get_map(&scene.map)?;
+    let map = self.get_map(scene.map)?;
     Ok(DynamicCombat {
       scene: &scene,
       map: &map,
@@ -407,7 +407,7 @@ impl Game {
     let creature = self.get_creature(creature_id)?;
     if creature.can_move() {
       Ok(self.tile_system.get_all_accessible(scene.get_pos(creature_id)?,
-                                             self.get_map(&scene.map)?,
+                                             self.get_map(scene.map)?,
                                              creature.speed()))
     } else {
       Err(GameErrorEnum::CannotAct(creature.id()).into())
@@ -528,7 +528,7 @@ pub mod test {
 
   pub fn t_game() -> Game {
     let mut game = Game::new(t_classes(), t_abilities());
-    game.maps.insert("huge".to_string(), huge_box());
+    game.maps.insert(t_map_id(), huge_box());
     let rogue_creation = t_rogue_creation("rogue");
     let ranger_creation = t_ranger_creation("ranger");
     let cleric_creation = t_cleric_creation("cleric");
@@ -544,7 +544,7 @@ pub mod test {
     game.scenes.insert(Scene {
       id: t_scene_id(),
       name: "Test Scene".to_string(),
-      map: "huge".to_string(),
+      map: t_map_id(),
       creatures: HashMap::from_iter(vec![(cid_rogue(), (0, 0, 0)),
                                          (cid_cleric(), (0, 0, 0)),
                                          (cid_ranger(), (0, 0, 0))]),

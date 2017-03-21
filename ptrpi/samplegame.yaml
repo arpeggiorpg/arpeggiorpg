@@ -14,23 +14,18 @@ current_game:
           name: "Rooty Note"
           content: "This is a note in the root folder."
       maps:
-        - "map1"
+        - 00000000-0000-0000-0000-000000000004
     children:
       subfolder1:
         children:
         data:
           scenes:
-            - 00000000-0000-0000-0000-000000000003
           creatures:
-            - f5fd4b9a-c801-4840-a39b-b5653329dc54
-            - 34877b65-1eb6-44bb-b1a8-696c424e9d0f
-            - 0420f7db-c7ec-48af-add3-045ad859f47e
+          maps:
           notes:
             "Subby note": 
               name: "Subby note"
               content: "This is a note in the subfolder."
-          maps:
-            - "map1"
   scenes:
     00000000-0000-0000-0000-000000000003:
       name: "The T"
@@ -39,7 +34,7 @@ current_game:
         f5fd4b9a-c801-4840-a39b-b5653329dc54: [0, 0, 0]
         34877b65-1eb6-44bb-b1a8-696c424e9d0f: [1, 1, 0]
         0420f7db-c7ec-48af-add3-045ad859f47e: [-1, 0, 0]
-      map: map1
+      map: 00000000-0000-0000-0000-000000000004
   root_folder:
     name: root
     scenes: []
@@ -48,8 +43,8 @@ current_game:
     folders: {}
   tile_system: Realistic
   maps:
-    empty-map:
-    map1:
+    00000000-0000-0000-0000-000000000005:
+    00000000-0000-0000-0000-000000000004:
       - [2, -2, 0]
       - [2, -1, 0]
       - [2, 0, 0]

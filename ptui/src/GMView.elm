@@ -272,8 +272,8 @@ sceneMap model app scene =
           Nothing -> text "Moving Creature is not in this scene"
       pathOrPort =
         if model.moveAnywhere
-        then (M.SetCreaturePos scene.name)
-        else (M.PathCreature scene.name)
+        then M.SetCreaturePos scene.id
+        else M.PathCreature scene.id
       movementMap =
         case (game.current_combat, model.moving) of
           (Nothing, Just mvmtReq) ->

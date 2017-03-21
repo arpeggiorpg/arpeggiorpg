@@ -230,7 +230,7 @@ update msg model = case msg of
             M.Out -> model.gridSize + 5
     in ({ model | gridSize = newSize}, Cmd.none)
   MapPan dir ->
-    let offsetSize = 1 -- pan by meter increments
+    let offsetSize = 1
         newOffset =
           case dir of
             M.Right -> {x = model.gridOffset.x + offsetSize, y = model.gridOffset.y}
