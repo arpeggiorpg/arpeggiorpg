@@ -1,4 +1,4 @@
-#![recursion_limit="128"]
+#![recursion_limit="256"]
 #![feature(test)]
 //! Phone and Tablet.
 #[macro_use]

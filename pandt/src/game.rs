@@ -90,13 +90,13 @@ impl Game {
     Ok(change)
   }
 
-  pub fn path_creature(&self, scene: SceneName, cid: CreatureID, pt: Point3)
+  pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
                        -> Result<(ChangedGame, Distance), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-  pub fn path_creature_distance(&self, scene_name: SceneName, cid: CreatureID, pt: Point3,
+  pub fn path_creature_distance(&self, scene_name: SceneID, cid: CreatureID, pt: Point3,
                                 max_distance: Distance)
                                 -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_name.clone())?;
@@ -115,7 +115,8 @@ impl Game {
     change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(), |c| c.tick())
   }
 
-  fn create_creature(&self, spec: CreatureCreation, path: FolderPath) -> Result<ChangedGame, GameError> {
+  fn create_creature(&self, spec: CreatureCreation, path: FolderPath)
+                     -> Result<ChangedGame, GameError> {
     let creature = Creature::create(&spec);
     let cid = creature.id;
     let ch = self.change_with(GameLog::CreateCreature(creature))?;
@@ -167,6 +168,10 @@ impl Game {
         newgame.scenes.insert(scene.clone());
       }
       DeleteScene(ref name) => {
+        // TODO:
+        // - disallow deleting if in combat
+        // - if any players have the scene, set them to None
+        // - search for scene in campaign and delete references
         newgame.scenes.remove(name);
       }
       EditMap(ref name, ref terrain) => {
@@ -253,7 +258,7 @@ impl Game {
     }
   }
 
-  fn check_scene(&self, scene: SceneName) -> Result<(), GameError> {
+  fn check_scene(&self, scene: SceneID) -> Result<(), GameError> {
     if self.scenes.contains_key(&scene) {
       Ok(())
     } else {
@@ -286,8 +291,8 @@ impl Game {
     DynamicCreature::new(creature, self)
   }
 
-  pub fn get_scene(&self, name: SceneName) -> Result<&Scene, GameError> {
-    self.scenes.get(&name).ok_or(GameErrorEnum::SceneNotFound(name.clone()).into())
+  pub fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
+    self.scenes.get(&id).ok_or(GameErrorEnum::SceneNotFound(id).into())
   }
 
   pub fn get_combat<'game>(&'game self) -> Result<DynamicCombat<'game>, GameError> {
@@ -311,7 +316,7 @@ impl Game {
     self._act(scene, actor, abid, target, true)
   }
 
-  fn ooc_act(&self, scene: SceneName, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
+  fn ooc_act(&self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
              -> Result<ChangedGame, GameError> {
     let scene = self.get_scene(scene)?;
     self._act(scene, cid, abid, target, false)
@@ -381,7 +386,7 @@ impl Game {
   }
 
 
-  pub fn get_movement_options(&self, scene: SceneName, creature_id: CreatureID)
+  pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
                               -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
@@ -395,8 +400,7 @@ impl Game {
   }
 
   /// Get a list of possible targets for an ability being used by a creature.
-  pub fn get_target_options(&self, scene: SceneName, creature_id: CreatureID,
-                            ability_id: AbilityID)
+  pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
                             -> Result<Vec<PotentialTarget>, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
@@ -407,7 +411,7 @@ impl Game {
     })
   }
 
-  fn creatures_in_range(&self, scene: SceneName, creature_id: CreatureID, distance: Distance)
+  fn creatures_in_range(&self, scene: SceneID, creature_id: CreatureID, distance: Distance)
                         -> Result<Vec<PotentialTarget>, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
@@ -500,7 +504,7 @@ pub mod test {
   use grid::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-    game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()), combatants)).unwrap().game
+    game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), combatants)).unwrap().game
   }
 
   pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
@@ -523,7 +527,8 @@ pub mod test {
     game.creatures.insert(cid_cleric(), cleric);
     game.creatures.insert(cid_ranger(), ranger);
     game.scenes.insert(Scene {
-      name: SceneName("Test Scene".to_string()),
+      id: t_scene_id(),
+      name: "Test Scene".to_string(),
       map: "huge".to_string(),
       creatures: HashMap::from_iter(vec![(cid_rogue(), (0, 0, 0)),
                                          (cid_cleric(), (0, 0, 0)),
@@ -560,9 +565,7 @@ pub mod test {
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::new();
-    let result =
-      game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
-                                                      vec![non]));
+    let result = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), vec![non]));
     match result {
       Err(GameError(GameErrorEnum::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -572,8 +575,7 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result =
-      game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()), vec![]));
+    let result = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), vec![]));
     match result {
       Err(GameError(GameErrorEnum::CombatMustHaveCreatures, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -617,7 +619,7 @@ pub mod test {
   #[test]
   fn three_char_infinite_combat() {
     let game = t_game();
-    let game = game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+    let game = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(),
                                                   vec![cid_rogue(), cid_ranger(), cid_cleric()]))
       .unwrap()
       .game;

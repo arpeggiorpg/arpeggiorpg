@@ -7,7 +7,7 @@ use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
-use uuid;
+use uuid::{Uuid, ParseError as UuidParseError};
 
 use serde::ser;
 use serde::ser::{SerializeStruct, Error as SerError};
@@ -77,18 +77,28 @@ impl Energy {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct PlayerID(pub String);
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct SceneName(pub String);
-
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct CreatureID(uuid::Uuid);
+pub struct CreatureID(Uuid);
 impl CreatureID {
   pub fn new() -> CreatureID {
-    CreatureID(uuid::Uuid::new_v4())
+    CreatureID(Uuid::new_v4())
   }
   pub fn from_str(s: &str) -> Result<CreatureID, GameError> {
-    Ok(CreatureID(uuid::Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
+    Ok(CreatureID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
+  }
+  pub fn to_string(&self) -> String {
+    self.0.hyphenated().to_string()
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct SceneID(Uuid);
+impl SceneID {
+  pub fn new() -> SceneID {
+    SceneID(Uuid::new_v4())
+  }
+  pub fn from_str(s: &str) -> Result<SceneID, GameError> {
+    Ok(SceneID(Uuid::parse_str(s)?))
   }
   pub fn to_string(&self) -> String {
     self.0.hyphenated().to_string()
@@ -144,9 +154,9 @@ pub enum GameCommand {
   /// Unlink a Creature from a Folder.
   UnlinkFolderCreature(FolderPath, CreatureID),
   /// Link a Scene into a Folder.
-  LinkFolderScene(FolderPath, SceneName),
+  LinkFolderScene(FolderPath, SceneID),
   /// Unlink a Scene from a Folder.
-  UnlinkFolderScene(FolderPath, SceneName),
+  UnlinkFolderScene(FolderPath, SceneID),
   /// Create a Note inside of a Folder.
   CreateNote(FolderPath, Note),
   /// Rename a Note inside of a Folder.
@@ -162,7 +172,7 @@ pub enum GameCommand {
   /// Create a scene (or, if it already exists, change the existing one).
   EditScene(Scene),
   /// Delete a scene.
-  DeleteScene(SceneName),
+  DeleteScene(SceneID),
 
   // ** Map management **
   /// Change the terrain data of a map.
@@ -170,7 +180,7 @@ pub enum GameCommand {
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
-  StartCombat(SceneName, Vec<CreatureID>),
+  StartCombat(SceneID, Vec<CreatureID>),
   /// Stop the current combat.
   StopCombat,
   /// Add a creature to combat. Combat must already be running; otherwise use `StartCombat`.
@@ -178,7 +188,7 @@ pub enum GameCommand {
   /// Remove a creature from combat. Combat must already be running.
   RemoveCreatureFromCombat(CreatureID),
   /// Use an Ability out of combat.
-  ActCreature(SceneName, CreatureID, AbilityID, DecidedTarget),
+  ActCreature(SceneID, CreatureID, AbilityID, DecidedTarget),
   /// Make the current creature use an ability.
   CombatAct(AbilityID, DecidedTarget),
   /// Move the current creature in combat to a point.
@@ -193,11 +203,11 @@ pub enum GameCommand {
   /// Create a new creature.
   CreateCreature(CreatureCreation, FolderPath),
   /// Assign a creature's position within a scene.
-  SetCreaturePos(SceneName, CreatureID, Point3),
+  SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
   /// There must be a clear path according to the current loaded map. It doesn't matter whether
   /// the creature is in combat.
-  PathCreature(SceneName, CreatureID, Point3),
+  PathCreature(SceneID, CreatureID, Point3),
   /// Set a note on a creature.
   SetCreatureNote(CreatureID, String),
   /// Remove a creature from the game entirely. Creature must not be in combat.
@@ -215,7 +225,7 @@ pub enum GameCommand {
   /// Move a player to a particular scene, so they only see what's happening in that scene.
   /// Note that this doesn't have any affect on a player's *characters*.
   /// The scene name can be None (null) to not show any scene to the player.
-  SetPlayerScene(PlayerID, Option<SceneName>),
+  SetPlayerScene(PlayerID, Option<SceneID>),
 
   /// Roll back to a specific snapshot + log index
   Rollback(usize, usize),
@@ -256,8 +266,8 @@ pub enum GameLog {
   DeleteFolder(FolderPath),
   LinkFolderCreature(FolderPath, CreatureID),
   UnlinkFolderCreature(FolderPath, CreatureID),
-  LinkFolderScene(FolderPath, SceneName),
-  UnlinkFolderScene(FolderPath, SceneName),
+  LinkFolderScene(FolderPath, SceneID),
+  UnlinkFolderScene(FolderPath, SceneID),
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
   DeleteNote(FolderPath, String),
@@ -265,16 +275,16 @@ pub enum GameLog {
   UnlinkFolderMap(FolderPath, MapName),
 
   EditScene(Scene),
-  DeleteScene(SceneName),
+  DeleteScene(SceneID),
   EditMap(MapName, Map),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   /// Many of these actually go via CombatLog, since most creature modification happens inside of
   /// a combat context, but things like moving out of combat needs this.
   CreatureLog(CreatureID, CreatureLog),
-  SetCreaturePos(SceneName, CreatureID, Point3),
-  PathCreature(SceneName, CreatureID, Vec<Point3>),
-  StartCombat(SceneName, Vec<CreatureID>),
+  SetCreaturePos(SceneID, CreatureID, Point3),
+  PathCreature(SceneID, CreatureID, Vec<Point3>),
+  StartCombat(SceneID, Vec<CreatureID>),
   StopCombat,
   CreateCreature(Creature),
   RemoveCreature(CreatureID),
@@ -298,12 +308,16 @@ error_chain! {
     FolderTreeError(FolderTreeError, FolderTreeErrorKind);
   }
 
+  foreign_links {
+    UUIDParseError(UuidParseError);
+  }
+
   errors {
     CreatureAlreadyExists(cid: CreatureID) {
       description("A Creature with the given ID already exists")
       display("The creature with ID {} already exists", cid.to_string())
     }
-    SceneNotFound(scene: SceneName) {
+    SceneNotFound(scene: SceneID) {
       description("A scene wasn't found")
       display("The scene '{}' wasn't found", scene.0)
     }
@@ -551,7 +565,7 @@ pub struct Creature {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
-  pub scene: SceneName,
+  pub scene: SceneID,
   pub creatures: nonempty::NonEmptyWithCursor<CreatureID>,
   pub movement_used: Distance,
 }
@@ -587,7 +601,7 @@ pub struct App {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Player {
   pub player_id: PlayerID,
-  pub scene: Option<SceneName>,
+  pub scene: Option<SceneID>,
   pub creatures: HashSet<CreatureID>,
 }
 
@@ -611,15 +625,16 @@ impl Player {
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Scene {
-  pub name: SceneName,
+  pub id: SceneID,
+  pub name: String,
   pub map: MapName,
   pub creatures: HashMap<CreatureID, Point3>,
 }
 
 impl DeriveKey for Scene {
-  type KeyType = SceneName;
-  fn derive_key(&self) -> SceneName {
-    self.name.clone()
+  type KeyType = SceneID;
+  fn derive_key(&self) -> SceneID {
+    self.id.clone()
   }
 }
 
@@ -733,7 +748,7 @@ impl DeriveKey for Note {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Folder {
-  pub scenes: HashSet<SceneName>,
+  pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
   pub maps: HashSet<MapName>,
@@ -784,13 +799,18 @@ pub mod test {
   }
 
   pub fn cid_cleric() -> CreatureID {
-    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 0]).unwrap())
+    CreatureID::from_str("00000000-0000-0000-0000-000000000000").unwrap()
   }
   pub fn cid_ranger() -> CreatureID {
-    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 1]).unwrap())
+    CreatureID::from_str("00000000-0000-0000-0000-000000000001").unwrap()
   }
   pub fn cid_rogue() -> CreatureID {
-    CreatureID(Uuid::from_fields(0, 0, 0, &[0, 0, 0, 0, 0, 0, 0, 2]).unwrap())
+    CreatureID::from_str("00000000-0000-0000-0000-000000000002").unwrap()
+  }
+
+  pub fn t_scene_id() -> SceneID {
+    SceneID::from_str("00000000-0000-0000-0000-000000000003").unwrap()
+
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {

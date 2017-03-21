@@ -98,7 +98,7 @@ impl<'game> DynamicCombat<'game> {
 }
 
 impl Combat {
-  pub fn new(scene: SceneName, combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
+  pub fn new(scene: SceneID, combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
     nonempty::NonEmptyWithCursor::from_vec(combatants)
       .map(|ne| {
         let com = Combat {
@@ -150,7 +150,7 @@ impl<'game> CombatMove<'game> {
   pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
     let (change, distance) = self.combat
       .game
-      .path_creature_distance(self.combat.scene.name.clone(),
+      .path_creature_distance(self.combat.scene.id,
                               self.combat.combat.current_creature_id(),
                               pt,
                               self.movement_left)?;
@@ -232,7 +232,7 @@ pub mod test {
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
     let game = t_game();
-    game.perform_unchecked(GameCommand::StartCombat(SceneName("Test Scene".to_string()),
+    game.perform_unchecked(GameCommand::StartCombat(t_scene_id(),
                                                   vec![cid_rogue(), cid_ranger(), cid_cleric()]))
       .unwrap()
       .game
@@ -248,9 +248,7 @@ pub mod test {
   fn target_melee_out_of_range() {
     let game = t_combat();
     let game =
-      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_ranger(),
-                                                       (2, 0, 0)))
+      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (2, 0, 0)))
         .unwrap()
         .game;
     match t_act(&game, abid("punch"), DecidedTarget::Melee(cid_ranger())) {
@@ -265,9 +263,7 @@ pub mod test {
     let game = t_combat();
     let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
     let game =
-      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_ranger(),
-                                                       (5, 0, 0)))
+      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (5, 0, 0)))
         .unwrap()
         .game;
     let _: DynamicCombat = t_act(&game, abid("shoot"), DecidedTarget::Range(cid_ranger()))
@@ -305,9 +301,7 @@ pub mod test {
     let game = t_combat();
     let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
     let game =
-      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_rogue(),
-                                                       (6, 0, 0)))
+      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (6, 0, 0)))
         .unwrap()
         .game;
     match t_act(&game, abid("shoot"), DecidedTarget::Range(cid_rogue())) {
@@ -316,9 +310,7 @@ pub mod test {
     }
 
     let game =
-      game.perform_unchecked(GameCommand::SetCreaturePos(SceneName("Test Scene".to_string()),
-                                                       cid_rogue(),
-                                                       (5, 3, 0)))
+      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 3, 0)))
         .unwrap()
         .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
@@ -344,7 +336,7 @@ pub mod test {
     let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((5, 0, 0)))
       .unwrap()
       .game;
-    assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
+    assert_eq!(game.get_scene(t_scene_id())
                  .unwrap()
                  .get_pos(cid_rogue())
                  .unwrap(),
@@ -352,7 +344,7 @@ pub mod test {
     let game = game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0)))
       .unwrap()
       .game;
-    assert_eq!(game.get_scene(SceneName("Test Scene".to_string()))
+    assert_eq!(game.get_scene(t_scene_id())
                  .unwrap()
                  .get_pos(cid_rogue())
                  .unwrap(),
