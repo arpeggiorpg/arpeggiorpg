@@ -90,10 +90,11 @@ folderView model app path (T.Folder folder) =
     addMenuItems =
       [ ( hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
       , ( hbox [icon [] "map", dtext "Map"]
-        , M.Batch [M.SetFocus (M.EditingMap path "" []), M.SetSecondaryFocus (M.Focus2Map path "")] )
+        , M.Batch [M.SetFocus (M.EditingMap path "New Map" []), M.SetSecondaryFocus (M.Focus2Map path "New Map")] )
       , ( hbox [icon [] "contacts", dtext "Creature"]
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
-      , ( hbox [icon [] "note", dtext "Note"], M.NoMsg)
+      , ( hbox [icon [] "note", dtext "Note"]
+        , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
       , ( hbox [icon [] "folder", dtext "Folder"]
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ]
@@ -113,8 +114,7 @@ secondaryFocusView model app =
         Just creature -> CommonView.creatureCard [noteBox model creature] app creature
         Nothing -> text ""
     M.Focus2Note path origName note ->
-      let _ = Debug.log ("Note " ++ origName ++ toString note)  ()
-      in noteView model app path origName note
+      noteView model app path origName note
     M.Focus2Map path mapName ->
       vbox [mapConsole model app path mapName]
 
@@ -129,7 +129,7 @@ noteView model app path origName note =
                 if appNote /= note
                 then button [onClick (M.SendCommand (T.EditNote path origName note))] [text "Save"]
                 else text ""
-              Nothing -> text "This note has disappeared!?"
+              Nothing -> button [onClick (M.SendCommand (T.CreateNote path note))] [text "Create"]
           Nothing -> text "This folder has disappeared!?"
   in vbox
     [ hbox
@@ -512,6 +512,7 @@ historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
     T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
+    T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
