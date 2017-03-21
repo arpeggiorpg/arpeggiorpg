@@ -46,27 +46,22 @@ type Msg
 
     | ToggleTerrain T.Point3
 
-    | StartCreatingScene
-    | CancelCreatingScene
-    | SetSceneName String
-    | SetSceneMapName T.MapName
-    | CreateScene T.Scene
-    | AddCreatureToScene T.SceneName T.CreatureID
-    | RemoveCreatureFromScene T.SceneName T.CreatureID
+    | AddCreatureToScene T.SceneID T.CreatureID
+    | RemoveCreatureFromScene T.SceneID T.CreatureID
 
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
-    | SelectAbility T.SceneName T.CreatureID T.AbilityID
+    | SelectAbility T.SceneID T.CreatureID T.AbilityID
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
     | CombatAct T.AbilityID T.DecidedTarget
-    | ActCreature T.SceneName  T.CreatureID T.AbilityID T.DecidedTarget
+    | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
     | RequestMove MovementRequest
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
-    | PathCreature T.SceneName T.CreatureID T.Point3
-    | SetCreaturePos T.SceneName T.CreatureID T.Point3
-    | GetMovementOptions T.SceneName T.Creature
+    | PathCreature T.SceneID T.CreatureID T.Point3
+    | SetCreaturePos T.SceneID T.CreatureID T.Point3
+    | GetMovementOptions T.SceneID T.Creature
     | GetCombatMovementOptions
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
@@ -110,7 +105,6 @@ defaultModel flags =
   , gridOffset = {x = -15, y = 10}
   , collapsed = Dict.empty
   , selectedViews = Dict.empty
-  , creatingScene = Nothing
   , focus = NoFocus
   , secondaryFocus = Focus2None
   , modal = NoModal
@@ -132,10 +126,15 @@ type Modal
   = NoModal
   | CreateFolder CreatingFolder
   | CreateCreature PendingCreature
+  | CreateScene CreatingScene
 
 type alias CreatingFolder =
   { parent: T.FolderPath
   , child: String}
+
+type alias CreatingScene =
+  { path: T.FolderPath
+  , scene: T.SceneCreation }
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
@@ -147,8 +146,7 @@ type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, pat
 
 type alias Model =
   { app : Maybe T.App
-  , creatingScene : Maybe T.Scene
-  , selectedAbility : Maybe (T.SceneName, T.CreatureID, T.AbilityID)
+  , selectedAbility : Maybe (T.SceneID, T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
   , selectingCreatures : Maybe (List T.CreatureID, List T.CreatureID, GotCreatures, String)
   , error: String

@@ -54,6 +54,12 @@ impl Game {
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
       LinkFolderMap(path, map_name) => self.change_with(GameLog::LinkFolderMap(path, map_name)),
       UnlinkFolderMap(path, map_name) => self.change_with(GameLog::UnlinkFolderMap(path, map_name)),
+      CreateScene(path, sc) => {
+        let scene = Scene::create(sc);
+        let log = GameLog::LinkFolderScene(path, scene.id);
+        let change = self.change_with(GameLog::CreateScene(scene))?;
+        change.apply(&log)
+      }
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(c, path) => self.create_creature(c, path),
@@ -141,8 +147,8 @@ impl Game {
       UnlinkFolderCreature(ref path, ref cid) => {
         newgame.campaign.get_mut(path)?.creatures.remove(cid);
       }
-      LinkFolderScene(ref path, ref scene_name) => {
-        newgame.campaign.get_mut(path)?.scenes.insert(scene_name.clone());
+      LinkFolderScene(ref path, ref sid) => {
+        newgame.campaign.get_mut(path)?.scenes.insert(*sid);
       }
       UnlinkFolderScene(ref path, ref scene_name) => {
         newgame.campaign.get_mut(path)?.scenes.remove(scene_name);
@@ -163,9 +169,18 @@ impl Game {
       UnlinkFolderMap(ref path, ref name) => {
         newgame.campaign.get_mut(path)?.maps.remove(name);
       }
+      CreateScene(ref scene) => {
+        if newgame.scenes.contains_key(&scene.id) {
+          bail!(GameErrorEnum::SceneAlreadyExists(scene.id));
+        } else {
+          newgame.scenes.insert(scene.clone());
+        }
+      }
       EditScene(ref scene) => {
         newgame.check_map(&scene.map)?;
-        newgame.scenes.insert(scene.clone());
+        newgame.scenes
+          .mutate(&scene.id, move |s| scene.clone())
+          .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
       DeleteScene(ref name) => {
         // TODO:

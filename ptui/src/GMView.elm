@@ -40,8 +40,6 @@ makeUI model app =
         , ("Combat", always (combatView model app))
         , ("Players", always (playersView model app))
         , ("History", always (historyView app))
-        , ("Scenes", always (sceneManagementView model app))
-        -- , ("Maps", always (vbox [mapConsole model app, editMapConsole model]))
         ]
   , extraMovementOptions = [moveAnywhereToggle model]
   , extraOverlays = [bottomActionBar app]
@@ -64,7 +62,12 @@ folderView model app path (T.Folder folder) =
       hbox [habox [clickable, onClick msg] [icon [] iconName, text entryName]]
     viewCreature creature =
       fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
-    viewScene sceneName = fentry (M.SetFocus (M.Scene sceneName)) "casino" sceneName
+    viewScene sceneID =
+      let scene = T.getScene app sceneID
+      in
+        case scene of
+          Just scene -> fentry (M.SetFocus (M.Scene sceneID)) "casino" scene.name
+          Nothing -> text ("Invalid scene in folder: " ++ sceneID)
     viewNote (noteName, note) =
       fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
     viewMap mapName =
@@ -88,7 +91,8 @@ folderView model app path (T.Folder folder) =
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
     children = vbox (List.map viewChild (Dict.toList folder.children))
     addMenuItems =
-      [ ( hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
+      [ ( hbox [icon [] "casino", dtext "Scene"]
+        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
       , ( hbox [icon [] "map", dtext "Map"]
         , M.Batch [M.SetFocus (M.EditingMap path "New Map" []), M.SetSecondaryFocus (M.Focus2Map path "New Map")] )
       , ( hbox [icon [] "contacts", dtext "Creature"]
@@ -153,13 +157,6 @@ createFolderInPath model app {parent, child} =
          , input [placeholder "Folder Name", onInput updateName] []
          , button [onClick msgs] [text "Create"]]
 
-sceneManagementView : M.Model -> T.App -> Html M.Msg
-sceneManagementView model app =
-  vbox
-    [ button [onClick M.StartCreatingScene] [text "Create a scene"]
-    , vbox <| List.map sceneButton (Dict.keys app.current_game.scenes)
-    ]
-
 sceneButton : String -> Html M.Msg
 sceneButton sceneName = button [onClick (M.SetFocus (M.Scene sceneName))] [text sceneName]
 
@@ -204,16 +201,15 @@ checkModal model app =
     selectingCreatures =
       Maybe.map (\(selectable, selected, cb, name) -> selectCreaturesView model app selectable selected cb name)
         model.selectingCreatures
-    creatingScene = Maybe.map (createSceneDialog model app) model.creatingScene
     generalModal =
       case model.modal of
         M.CreateFolder creating -> Just (createFolderInPath model app creating)
         M.CreateCreature pending -> Just (createCreatureDialog model app pending)
+        M.CreateScene cs -> Just (createSceneDialog model app cs)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
   in selectingCreatures
-      |> MaybeEx.orElse creatingScene
       |> MaybeEx.orElse (Maybe.map cancelableModal generalModal)
       |> MaybeEx.orElse (CommonView.checkModal model app)
 
@@ -293,7 +289,7 @@ sceneMap model app scene =
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       modifyMapCreature mapc =
         { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
-               , movable = Just (M.GetMovementOptions scene.name)}
+               , movable = Just (M.GetMovementOptions scene.id)}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
       defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
   in movementMap |> MaybeEx.unpack defaultMap identity
@@ -433,16 +429,22 @@ stopCombatButton : Html M.Msg
 stopCombatButton = button [onClick (M.SendCommand T.StopCombat)] [text "Stop Combat"]
 
 {-| A form for creating a scene. -}
-createSceneDialog : M.Model -> T.App -> T.Scene -> Html M.Msg
-createSceneDialog model app scene =
-  let ready = scene.name /= "" && scene.map /= "" 
+createSceneDialog : M.Model -> T.App -> M.CreatingScene -> Html M.Msg
+createSceneDialog model app creating =
+  let ready = creating.scene.name /= "" && creating.scene.map /= ""
+      update : (T.SceneCreation -> String -> T.SceneCreation) -> String -> M.Msg
+      update f inp = M.SetModal (M.CreateScene {path = creating.path, scene = f creating.scene inp})
   in
-    vbox [h3 [] [text "Create a Scene"]
-         , input [type_ "text", placeholder "Name", onInput M.SetSceneName] []
-         , mapSelectorMenu "" model app M.SetSceneMapName
-         , hbox
-            [ button [onClick (M.CreateScene scene), disabled (not ready)] [text "Create"]
-            , button [onClick M.CancelCreatingScene] [text "Cancel"]]]
+    vbox
+      [ h3 [] [text "Create a Scene"]
+      , input [type_ "text", placeholder "Name", onInput (update (\sc inp -> {sc | name = inp}))] []
+      , mapSelectorMenu "" model app (update (\sc inp -> {sc | map = inp}))
+      , button
+          [ onClick
+              (M.Batch [ M.SendCommand (T.CreateScene creating.path creating.scene)
+                       , M.SetModal M.NoModal])
+          , disabled (not ready)] [text "Create"]
+      ]
 
 {-| A form for creating a creature. -}
 createCreatureDialog : M.Model -> T.App -> M.PendingCreature -> Html M.Msg
@@ -514,6 +516,7 @@ historyItem snapIdx logIdx log =
     T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
     T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
+    T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
     T.GLEditMap name _ -> hsbox [dtext "Edited Map", dtext name]

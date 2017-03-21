@@ -10,7 +10,7 @@ import Json.Helpers as JH
 import Set
 
 
-type alias SceneName = String
+type alias SceneID = String
 type alias PlayerID = String
 type alias CreatureID = String
 type alias AbilityID = String
@@ -58,7 +58,7 @@ appDecoder = JD.map3 App
 
 type alias Player =
   { player_id: PlayerID
-  , scene: Maybe SceneName
+  , scene: Maybe SceneID
   , creatures: Set.Set CreatureID}
 
 playerDecoder : JD.Decoder Player
@@ -76,26 +76,28 @@ type GameLog
   = GLCreateFolder FolderPath
   | GLCreateNote FolderPath Note
   | GLEditNote FolderPath String Note
+  | GLCreateScene Scene
   | GLEditScene Scene
   | GLSelectMap MapName
   | GLEditMap MapName Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
-  | GLStartCombat SceneName (List CreatureID)
+  | GLStartCombat SceneID (List CreatureID)
   | GLStopCombat
   | GLCreateCreature CreatureData
   | GLRemoveCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
   | GLRollback Int Int
-  | GLPathCreature SceneName CreatureID (List Point3)
-  | GLSetCreaturePos SceneName CreatureID Point3
+  | GLPathCreature SceneID CreatureID (List Point3)
+  | GLSetCreaturePos SceneID CreatureID Point3
 
 gameLogDecoder = sumDecoder "GameLog"
   [ ("StopCombat", GLStopCombat) ]
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
   , ("CreateNote", JD.map2 GLCreateNote (JD.index 0 folderPathDecoder) (JD.index 1 noteDecoder))
   , ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
+  , ("CreateScene", JD.map GLCreateScene sceneDecoder)
   , ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("SelectMap", JD.map GLSelectMap JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
@@ -183,7 +185,7 @@ folderDecoder =
 
 
 type alias FolderNode =
-  { scenes: Set.Set SceneName
+  { scenes: Set.Set SceneID
   , creatures: Set.Set CreatureID
   , notes: Dict.Dict String Note
   , maps: Set.Set MapName
@@ -223,14 +225,16 @@ noteEncoder : Note -> JE.Value
 noteEncoder note = JE.object [("name", JE.string note.name), ("content", JE.string note.content)]
 
 type alias Scene =
-  { name: String
+  { id: SceneID
+  , name: String
   , map: String
   , creatures: Dict CreatureID Point3
   }
 
 sceneDecoder : JD.Decoder Scene
 sceneDecoder =
-  JD.map3 Scene
+  JD.map4 Scene
+    (JD.field "id" JD.string)
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict point3Decoder))
@@ -239,10 +243,27 @@ sceneEncoder scene =
   let encCreatures = List.map (\(key, value) -> (key, point3Encoder value)) (Dict.toList scene.creatures)
   in 
   JE.object
+    [ ("id", JE.string scene.id)
+    , ("name", JE.string scene.name)
+    , ("map", JE.string scene.map)
+    , ("creatures", JE.object encCreatures)
+    ]
+
+
+type alias SceneCreation =
+  { name: String
+  , map: String
+  , creatures: Dict CreatureID Point3
+  }
+sceneCreationEncoder scene =
+  let encCreatures = List.map (\(key, value) -> (key, point3Encoder value)) (Dict.toList scene.creatures)
+  in
+  JE.object
     [ ("name", JE.string scene.name)
     , ("map", JE.string scene.map)
     , ("creatures", JE.object encCreatures)
     ]
+
 
 type alias Map = List Point3
 
@@ -262,7 +283,7 @@ classDecoder = JD.map3 Class
   (JD.field "color" JD.string)
 
 type alias Combat =
-  { scene: SceneName
+  { scene: SceneID
   , creatures: CursorList CreatureID
   , movement_used: Int
   }
@@ -459,19 +480,20 @@ type GameCommand
   = CreateFolder FolderPath
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
+  | CreateScene FolderPath SceneCreation
   | EditScene Scene
   | SelectMap MapName
   | EditMap FolderPath MapName Map
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
-  | SetPlayerScene PlayerID (Maybe SceneName)
-  | StartCombat SceneName (List CreatureID)
+  | SetPlayerScene PlayerID (Maybe SceneID)
+  | StartCombat SceneID (List CreatureID)
   | StopCombat
   | CombatAct AbilityID DecidedTarget
-  | ActCreature SceneName CreatureID AbilityID DecidedTarget
+  | ActCreature SceneID CreatureID AbilityID DecidedTarget
   | PathCurrentCombatCreature Point3
-  | PathCreature SceneName CreatureID Point3
-  | SetCreaturePos SceneName CreatureID Point3
+  | PathCreature SceneID CreatureID Point3
+  | SetCreaturePos SceneID CreatureID Point3
   | CreateCreature CreatureCreation FolderPath
   | RemoveCreature CreatureID
   | AddCreatureToCombat CreatureID
@@ -490,6 +512,8 @@ gameCommandEncoder gc =
       JE.object [("CreateNote", JE.list [folderPathEncoder path, noteEncoder note])]
     EditNote path name note ->
       JE.object [("EditNote", JE.list [folderPathEncoder path, JE.string name, noteEncoder note])]
+    CreateScene path sc ->
+      JE.object [("CreateScene", JE.list [folderPathEncoder path, sceneCreationEncoder sc])]
     EditScene scene ->
       JE.object [("EditScene", sceneEncoder scene)]
     RegisterPlayer pid ->
@@ -518,8 +542,8 @@ gameCommandEncoder gc =
       JE.object [("RemoveCreatureFromCombat", JE.string cid)]
     CombatAct abid dtarget ->
       JE.object [("CombatAct", JE.list [JE.string abid, decidedTargetEncoder dtarget])]
-    ActCreature sceneName cid abid dtarget ->
-      JE.object [("ActCreature", JE.list [JE.string sceneName, JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
+    ActCreature scene cid abid dtarget ->
+      JE.object [("ActCreature", JE.list [JE.string scene, JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
     Done ->
       JE.string "Done"
     SelectMap name ->
@@ -597,6 +621,9 @@ getCreature game cid = Dict.get cid game.creatures
 getCreatures : Game -> List CreatureID -> List Creature
 getCreatures game cids = List.filterMap (getCreature game) cids
 
+getScene : App -> SceneID -> Maybe Scene
+getScene app sid = Dict.get sid app.current_game.scenes
+
 potentialCreatureTargets : List PotentialTarget -> List CreatureID
 potentialCreatureTargets pts =
   let f pt =
@@ -651,4 +678,3 @@ toggleTerrain terrain pt =
   if List.member pt terrain
   then List.filter (\el -> el /= pt) terrain
   else pt :: terrain
-

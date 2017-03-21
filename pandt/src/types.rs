@@ -169,7 +169,9 @@ pub enum GameCommand {
   UnlinkFolderMap(FolderPath, MapName),
 
   // ** Scene management **
-  /// Create a scene (or, if it already exists, change the existing one).
+  /// Create a Scene.
+  CreateScene(FolderPath, SceneCreation),
+  /// Edit a scene. The ID in the given Scene must match an existing Scene.
   EditScene(Scene),
   /// Delete a scene.
   DeleteScene(SceneID),
@@ -274,6 +276,7 @@ pub enum GameLog {
   LinkFolderMap(FolderPath, MapName),
   UnlinkFolderMap(FolderPath, MapName),
 
+  CreateScene(Scene),
   EditScene(Scene),
   DeleteScene(SceneID),
   EditMap(MapName, Map),
@@ -316,6 +319,10 @@ error_chain! {
     CreatureAlreadyExists(cid: CreatureID) {
       description("A Creature with the given ID already exists")
       display("The creature with ID {} already exists", cid.to_string())
+    }
+    SceneAlreadyExists(scene: SceneID) {
+      description("A scene already exists.")
+      display("The scene {} already exists", scene.0)
     }
     SceneNotFound(scene: SceneID) {
       description("A scene wasn't found")
@@ -622,6 +629,12 @@ impl Player {
   }
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SceneCreation {
+  pub name: String,
+  pub map: MapName,
+  pub creatures: HashMap<CreatureID, Point3>,
+}
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Scene {
@@ -639,6 +652,14 @@ impl DeriveKey for Scene {
 }
 
 impl Scene {
+  pub fn create(creation: SceneCreation) -> Scene {
+    Scene {
+      id: SceneID::new(),
+      name: creation.name,
+      map: creation.map,
+      creatures: creation.creatures,
+    }
+  }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
     self.creatures
       .get(&creature_id)

@@ -84,7 +84,7 @@ durationEl condDur = case condDur of
   T.Duration n -> text <| "(" ++ toString n ++ ")"
 
 
-baseActionBar : T.SceneName -> Bool -> T.Game -> T.Creature -> List (Html M.Msg)
+baseActionBar : T.SceneID -> Bool -> T.Game -> T.Creature -> List (Html M.Msg)
 baseActionBar sceneName inCombat game creature =
   let abinfo abstatus =
         Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
@@ -102,9 +102,14 @@ oocActionBar model game creature =
 combatActionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg
 combatActionBar game combat creature =
   let sceneName = combat.scene
-  in habox [s [S.flexWrap S.wrap]] ([doneButton creature] ++ [moveButton combat creature] ++  baseActionBar sceneName True game creature)
+  in
+    habox [s [S.flexWrap S.wrap]]
+      (  [doneButton creature]
+      ++ [moveButton combat creature]
+      ++ baseActionBar sceneName True game creature
+      )
 
-abilityButton : T.SceneName -> T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
+abilityButton : T.SceneID -> T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
 abilityButton sceneName creature (abid, ability) =
   actionButton
     [ onClick (M.SelectAbility sceneName creature.id abid)

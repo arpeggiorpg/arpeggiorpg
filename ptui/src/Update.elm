@@ -122,24 +122,6 @@ update msg model = case msg of
 
   Batch messages -> (model, Cmd.batch (List.map message messages))
 
-  StartCreatingScene ->
-    ({model | creatingScene = Just {name = "", map = "", creatures = Dict.empty}}, Cmd.none)
-  CancelCreatingScene -> ({model | creatingScene = Nothing}, Cmd.none)
-  SetSceneName name ->
-    let newScene =
-          case model.creatingScene of 
-            Just cscene -> Just {cscene | name = name}
-            Nothing -> Nothing
-    in ({ model | creatingScene = newScene}, Cmd.none)
-  SetSceneMapName mapName ->
-    let newScene =
-          case model.creatingScene of
-            Just cscene -> Just { cscene | map = mapName}
-            Nothing -> Nothing
-    in ({model | creatingScene = newScene}, Cmd.none)
-  CreateScene scene ->
-    ({model | creatingScene = Nothing}, sendCommand model.rpiURL (T.EditScene scene))
-
   AddCreatureToScene sceneName cid ->
     (model, modScene model (\scene -> {scene | creatures = Dict.insert cid {x=0, y=0, z=0} scene.creatures}) sceneName)
 
