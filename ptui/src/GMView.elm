@@ -88,11 +88,14 @@ folderView model app path (T.Folder folder) =
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
     children = vbox (List.map viewChild (Dict.toList folder.children))
     addMenuItems =
-      [ (hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
-      , (hbox [icon [] "map", dtext "Map"], M.NoMsg)
-      , (hbox [icon [] "contacts", dtext "Creature"], M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
-      , (hbox [icon [] "note", dtext "Note"], M.NoMsg)
-      , (hbox [icon [] "folder", dtext "Folder"], M.SetModal (M.CreateFolder {parent = path, child = ""}))
+      [ ( hbox [icon [] "casino", dtext "Scene"], M.NoMsg)
+      , ( hbox [icon [] "map", dtext "Map"]
+        , M.Batch [M.SetFocus (M.EditingMap "" []), M.SetSecondaryFocus (M.Focus2Map "")] )
+      , ( hbox [icon [] "contacts", dtext "Creature"]
+        , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
+      , ( hbox [icon [] "note", dtext "Note"], M.NoMsg)
+      , ( hbox [icon [] "folder", dtext "Folder"]
+        , M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ]
     addMenu =
       popUpMenu model "create-item-in-folder" (T.folderPathToString path)

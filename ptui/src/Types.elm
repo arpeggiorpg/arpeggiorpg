@@ -429,13 +429,6 @@ conditionDecoder = sumDecoder "Condition"
   , ("AddDamageBuff", JD.map AddDamageBuff JD.int)
   , ("ActivateAbility", JD.map ActivateAbility JD.string)]
 
--- conditionEncoder condition =
---   case condition of
---     Dead -> JE.string "Dead"
---     Incapacitated -> JE.string "Incapacitated"
---     AddDamageBuff num -> JE.object [("AddDamageBuff", JE.int num)]
---     RecurringEffect eff -> JE.object [("RecurringEffect", effectEncoder eff)]
---     DoubleMaxMovement -> 
 
 type Effect
   = ApplyCondition ConditionDuration Condition
