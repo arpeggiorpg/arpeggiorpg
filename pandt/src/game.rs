@@ -196,7 +196,15 @@ impl Game {
           .ok_or(GameErrorEnum::MapNotFound(map.id))?;
       }
       DeleteMap(ref mid) => {
-        newgame.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid));
+        let scenes_using_this_map: Vec<SceneID> = newgame.scenes
+          .values()
+          .filter_map(|s| if s.map == *mid { Some(s.id) } else { None })
+          .collect();
+        if scenes_using_this_map.len() > 0 {
+          bail!(GameErrorEnum::MapInUse(*mid, scenes_using_this_map));
+        }
+        // TODO: Also remove the map from all folders!
+        newgame.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid))?;
       }
       CreateCreature(ref c) => {
         if newgame.creatures.contains_key(&c.id()) {

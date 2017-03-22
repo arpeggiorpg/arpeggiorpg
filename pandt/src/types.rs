@@ -413,6 +413,10 @@ error_chain! {
       description("The specified map already exists.")
       display("Map {} already exists", map.0)
     }
+    MapInUse(map: MapID, scenes: Vec<SceneID>) {
+      description("A map can't be deleted because it is being referenced by one or more scenes.")
+      display("Map {} is in use by scenes {:?}", map.0, scenes)
+    }
     NotEnoughEnergy(nrg: Energy) {
       description("There is not enough energy to do something.")
       display("Not enough energy: {:?}", nrg)
