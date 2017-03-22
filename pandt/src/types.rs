@@ -156,29 +156,17 @@ impl Distance {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-  // ** Folder management **
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
   /// Delete a folder.
   DeleteFolder(FolderPath),
-  /// Link a Creature into a Folder.
-  LinkFolderCreature(FolderPath, CreatureID),
-  /// Unlink a Creature from a Folder.
-  UnlinkFolderCreature(FolderPath, CreatureID),
-  /// Link a Scene into a Folder.
-  LinkFolderScene(FolderPath, SceneID),
-  /// Unlink a Scene from a Folder.
-  UnlinkFolderScene(FolderPath, SceneID),
+
   /// Create a Note inside of a Folder.
   CreateNote(FolderPath, Note),
   /// Rename a Note inside of a Folder.
   EditNote(FolderPath, String, Note),
   /// Delete a Note from a Folder.
   DeleteNote(FolderPath, String),
-  /// Link a map into a Folder.
-  LinkFolderMap(FolderPath, MapID),
-  /// Unlink a map from a Folder.
-  UnlinkFolderMap(FolderPath, MapID),
 
   // ** Scene management **
   /// Create a Scene.

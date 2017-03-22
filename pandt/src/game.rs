@@ -41,19 +41,9 @@ impl Game {
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
-      LinkFolderCreature(path, cid) => self.change_with(GameLog::LinkFolderCreature(path, cid)),
-      UnlinkFolderCreature(path, cid) => self.change_with(GameLog::UnlinkFolderCreature(path, cid)),
-      LinkFolderScene(path, scene_name) => {
-        self.change_with(GameLog::LinkFolderScene(path, scene_name))
-      }
-      UnlinkFolderScene(path, scene_name) => {
-        self.change_with(GameLog::UnlinkFolderScene(path, scene_name))
-      }
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
-      LinkFolderMap(path, map_name) => self.change_with(GameLog::LinkFolderMap(path, map_name)),
-      UnlinkFolderMap(path, map_name) => self.change_with(GameLog::UnlinkFolderMap(path, map_name)),
       CreateScene(path, sc) => {
         let scene = Scene::create(sc);
         let log = GameLog::LinkFolderScene(path, scene.id);
