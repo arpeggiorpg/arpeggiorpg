@@ -28,6 +28,10 @@ error_chain! {
       description("A folder wasn't empty when trying to remove it")
       display("The folder {} was not empty", path.to_string())
     }
+    CannotRemoveRoot {
+      description("The user attempted to remove the root folder.")
+      display("The root folder cannot be removed.")
+    }
   }
 }
 
@@ -94,9 +98,15 @@ impl<T> FolderTree<T> {
   /// will be returned.
   pub fn remove(&mut self, path: &FolderPath) -> Result<T, FolderTreeError> {
     if self.get_children(path)?.len() > 0 {
-      return Err(FolderTreeErrorKind::FolderNotEmpty(path.clone()).into());
+      bail!(FolderTreeErrorKind::FolderNotEmpty(path.clone()));
     }
-    Ok(self.nodes.remove(path).expect("Folder must exist if it had children").0)
+    match path.up() {
+      Some((parent, child)) => {
+        self.nodes.get_mut(&parent).expect("Parent must exist").1.remove(&child);
+        Ok(self.nodes.remove(path).expect("Folder must exist if it had children.").0)
+      }
+      None => bail!(FolderTreeErrorKind::CannotRemoveRoot),
+    }
   }
 
   fn get_data(&self, path: &FolderPath) -> Result<&(T, HashSet<String>), FolderTreeError> {
@@ -209,7 +219,7 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
       let helper = SerializerHelper {
         data: self.tree
           .get(&full_path)
-          .expect("Child node should definitely exist here, since children() returned in"),
+          .expect("Child node should definitely exist here, since children() returned it"),
         children: children_serializer,
       };
       map.serialize_key(child)?;

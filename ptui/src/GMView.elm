@@ -94,22 +94,26 @@ folderView model app path (T.Folder folder) =
     notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
     children = vbox (List.map viewChild (Dict.toList folder.children))
+    deleteFolder =
+      if path /= []
+      then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
+      else []
     addMenuItems =
-      [ ( hbox [icon [] "casino", dtext "Scene"]
+      [ ( hbox [icon [] "casino", dtext "Create Scene"]
         , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
-      , ( hbox [icon [] "map", dtext "Map"]
+      , ( hbox [icon [] "map", dtext "Create Map"]
         , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
-      , ( hbox [icon [] "contacts", dtext "Creature"]
+      , ( hbox [icon [] "contacts", dtext "Create Creature"]
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
-      , ( hbox [icon [] "note", dtext "Note"]
+      , ( hbox [icon [] "note", dtext "Create Note"]
         , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
-      , ( hbox [icon [] "folder", dtext "Folder"]
+      , ( hbox [icon [] "folder", dtext "Create Folder"]
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
-      ]
+      ] ++ deleteFolder
     addMenu =
       popUpMenu model "create-item-in-folder" (T.folderPathToString path)
-        (hbox [icon [] "add", text "Create New"])
-        (hbox [icon [] "add_box", text "Create New"])
+        (icon [] "more_horiz")
+        (icon [] "more_horiz")
         addMenuItems
   in vbox [ hbox [addMenu], scenes, maps, creatures, notes, children]
 
@@ -575,6 +579,7 @@ historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
     T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
+    T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", dtext (T.folderPathToString path)]
     T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
     T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", dtext (T.folderPathToString path), dtext name]
