@@ -198,20 +198,27 @@ moveAnywhereToggle model =
 
 mapConsole : M.Model -> T.App -> T.FolderPath -> T.MapID -> Html M.Msg
 mapConsole model app path mapID =
-  case model.focus of
-    M.EditingMap path map ->
-      let updateName name = M.SetFocus (M.EditingMap path {map | name = name})
-          saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
-      in
-        vbox
-          [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
-          , hbox
-            [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
-            , button [onClick saveMap] [text "Save"]
-            ]
-          ]
-    _ -> button [onClick (M.SetFocus (M.EditingMap path (M.tryGetMapNamed mapID app)))] [text "Edit this Map"]
-
+  let map = M.getMapNamed mapID app
+  in
+    case map of
+      Nothing -> text ("Map not found: " ++ mapID)
+      Just map ->
+        vbox [strong [] [text map.name]
+             , 
+        case model.focus of
+          M.EditingMap path map ->
+            let updateName name = M.SetFocus (M.EditingMap path {map | name = name})
+                saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
+            in
+              vbox
+                [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
+                , hbox
+                  [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
+                  , button [onClick saveMap] [text "Save"]
+                  ]
+                ]
+          _ -> button [onClick (M.SetFocus (M.EditingMap path map))] [text "Edit this Map"]
+        ]
 
 createMapDialog : M.Model -> T.App -> M.CreatingMap -> Html M.Msg
 createMapDialog model app cm =
