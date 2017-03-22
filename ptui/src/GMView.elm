@@ -394,7 +394,7 @@ allCreatureGearIcon model app creature =
             else [(text "Engage", M.SendCommand (T.AddCreatureToCombat creature.id))]
           Nothing -> []
       addOrRemove = sceneManagementButtons model app creature
-      delete = (text "Delete", M.SendCommand (T.RemoveCreature creature.id))
+      delete = (text "Delete", M.SendCommand (T.DeleteCreature creature.id))
   in popUpMenu model "all-creature-menu" creature.id gear gearBox (engage ++ addOrRemove ++ [delete])
 
 sceneManagementButtons : M.Model -> T.App -> T.Creature -> List (Html M.Msg, M.Msg)
@@ -576,7 +576,7 @@ historyItem snapIdx logIdx log =
     T.GLCreateMap map -> hsbox [dtext "Created Map", dtext map.name]
     T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
-    T.GLRemoveCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
+    T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
     T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
     T.GLStopCombat -> dtext "Stopped combat"
     T.GLAddCreatureToCombat cid -> hsbox [dtext cid, dtext "Added Creature to Combat"]

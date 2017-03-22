@@ -214,7 +214,7 @@ pub enum GameCommand {
   /// Set a note on a creature.
   SetCreatureNote(CreatureID, String),
   /// Remove a creature from the game entirely. Creature must not be in combat.
-  RemoveCreature(CreatureID),
+  DeleteCreature(CreatureID),
 
   // ** Player Manipulation **
   /// Register a player as available for controlling a creature.
@@ -292,7 +292,7 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<CreatureID>),
   StopCombat,
   CreateCreature(Creature),
-  RemoveCreature(CreatureID),
+  DeleteCreature(CreatureID),
   AddCreatureToCombat(CreatureID),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.

@@ -86,7 +86,7 @@ type GameLog
   | GLStartCombat SceneID (List CreatureID)
   | GLStopCombat
   | GLCreateCreature CreatureData
-  | GLRemoveCreature CreatureID
+  | GLDeleteCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
   | GLRollback Int Int
@@ -105,7 +105,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map2 GLStartCombat (JD.index 0 JD.string) (JD.index 1 (JD.list JD.string)))
   , ("CreateCreature", JD.map GLCreateCreature creatureDataDecoder)
-  , ("RemoveCreature", JD.map GLRemoveCreature JD.string)
+  , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
   , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
   , ("CreateMap", JD.map GLCreateMap mapDecoder)
@@ -525,7 +525,7 @@ type GameCommand
   | PathCreature SceneID CreatureID Point3
   | SetCreaturePos SceneID CreatureID Point3
   | CreateCreature CreatureCreation FolderPath
-  | RemoveCreature CreatureID
+  | DeleteCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
   | Done
@@ -556,8 +556,8 @@ gameCommandEncoder gc =
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature creature path ->
       JE.object [("CreateCreature", JE.list [creatureCreationEncoder creature, folderPathEncoder path])]
-    RemoveCreature cid ->
-      JE.object [("RemoveCreature", JE.string cid)]
+    DeleteCreature cid ->
+      JE.object [("DeleteCreature", JE.string cid)]
     StopCombat ->
       JE.string "StopCombat"
     PathCurrentCombatCreature pt ->

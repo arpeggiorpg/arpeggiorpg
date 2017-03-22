@@ -68,7 +68,7 @@ impl Game {
         ch.apply(&GameLog::LinkFolderMap(path.clone(), map_id))
       }
       EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
-      RemoveCreature(cid) => self.change_with(GameLog::RemoveCreature(cid)),
+      DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
       StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.change_with(GameLog::AddCreatureToCombat(cid)),
@@ -201,7 +201,7 @@ impl Game {
           newgame.creatures.insert(c.id(), c.clone());
         }
       }
-      RemoveCreature(cid) => {
+      DeleteCreature(cid) => {
         newgame.creatures
           .remove(&cid)
           .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
