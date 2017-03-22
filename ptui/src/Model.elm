@@ -118,9 +118,10 @@ type Focus
 
 type SecondaryFocus
   = Focus2None
-  | Focus2Creature T.CreatureID
+  | Focus2Creature T.FolderPath T.CreatureID
   | Focus2Note T.FolderPath String T.Note
   | Focus2Map T.FolderPath T.MapID
+  | Focus2Scene T.FolderPath T.SceneID
 
 type Modal
   = NoModal

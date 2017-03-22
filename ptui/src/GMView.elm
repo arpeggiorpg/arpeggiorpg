@@ -58,21 +58,22 @@ campaignView model app =
 folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
   let
-    fentry msg iconName entryName =
-      hbox [habox [clickable, onClick msg] [icon [] iconName, text entryName]]
+    fentry msg iconName entryName = habox [clickable, onClick msg] [icon [] iconName, text entryName]
     viewCreature creature =
-      fentry (M.SetSecondaryFocus (M.Focus2Creature creature.id)) "contacts" creature.name
+      fentry (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
     viewScene sceneID =
       let scene = T.getScene app sceneID
+          msg = M.Batch [M.SetFocus (M.Scene sceneID), M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
       in
         case scene of
-          Just scene -> fentry (M.SetFocus (M.Scene sceneID)) "casino" scene.name
+          Just scene -> fentry msg "casino" scene.name
           Nothing -> text ("Invalid scene in folder: " ++ sceneID)
     viewNote (noteName, note) =
       fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
     viewMap mapID =
       let map = M.getMapNamed mapID app
-          msg = M.Batch [M.SetFocus (M.PreviewMap mapID), M.SetSecondaryFocus (M.Focus2Map path mapID)]
+          msg = M.Batch [ M.SetFocus (M.PreviewMap mapID)
+                        , M.SetSecondaryFocus (M.Focus2Map path mapID)]
       in case map of
            Just map -> fentry msg "map" map.name
            Nothing -> text ("Invalid map in folder: " ++ mapID)
@@ -116,17 +117,32 @@ secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
   case model.secondaryFocus of
     M.Focus2None -> text ""
-    M.Focus2Creature cid ->
+    M.Focus2Creature path cid ->
       case T.getCreature app.current_game cid of
-        Just creature -> CommonView.creatureCard [noteBox model creature] app creature
+        Just creature ->
+          -- TODO: * move functionality from All Creatures here (add to combat?)
+          console model app path (CommonView.creatureCard [noteBox model creature] app creature)
         Nothing -> text ""
     M.Focus2Note path origName note ->
-      noteView model app path origName note
+      console model app path (noteConsole model app path origName note)
     M.Focus2Map path mapID ->
-      vbox [mapConsole model app path mapID]
+      console model app path (mapConsole model app path mapID)
+    M.Focus2Scene path sceneID ->
+      console model app path (text <| "Scene: " ++ sceneID)
 
-noteView : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
-noteView model app path origName note =
+
+console : M.Model -> T.App -> T.FolderPath -> Html M.Msg -> Html M.Msg
+console model app path content =
+  vabox [s [S.marginTop (S.em 1)]]
+    [ strong [] [hbox [text "In ", renderFolderPath path]]
+    , content
+    -- TODO:
+    -- * move item to another folder
+    -- * delete item
+    ]
+
+noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
+noteConsole model app path origName note =
   let noteMsg newNote = M.SetSecondaryFocus (M.Focus2Note path origName newNote)
       saveButton =
         case T.getFolder app path of
@@ -156,7 +172,7 @@ createFolderInPath model app {parent, child} =
     updateName newName = M.SetModal (M.CreateFolder {parent=parent, child=newName})
     msgs = M.Batch [M.SetModal M.NoModal, M.SendCommand (T.CreateFolder (parent ++ [child]))]
   in
-    vbox [ hbox [text "Creating folder in ", renderFolderPath parent]
+    vbox [ hbox [text "Creating a folder in ", renderFolderPath parent]
          , input [placeholder "Folder Name", onInput updateName] []
          , button [onClick msgs] [text "Create"]]
 
