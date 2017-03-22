@@ -145,7 +145,14 @@ console model app {key, path, prettyName} content =
   let
     menu = popUpMenu model "console-" (toString key) (icon [] "more_horiz") (icon [] "more_horiz")
                      menuItems
-    menuItems = [(text "Delete", M.NoMsg), (text "Move", M.NoMsg)]
+    menuItems = [ (text "Delete", deleteItem)
+                , (text "Move", M.NoMsg)]
+    deleteItem =
+      case key of
+        M.FolderScene k -> M.SendCommand (T.DeleteScene k)
+        M.FolderNote name -> M.SendCommand (T.DeleteNote path name)
+        M.FolderCreature cid -> M.SendCommand (T.DeleteCreature cid)
+        M.FolderMap mid -> M.SendCommand (T.DeleteMap mid)
   in
     vabox [s [S.marginTop (S.em 1)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
@@ -570,11 +577,13 @@ historyItem snapIdx logIdx log =
     T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
     T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
+    T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", dtext (T.folderPathToString path), dtext name]
     T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
-    T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
+    T.GLDeleteScene sid -> hsbox [dtext "Deleted Scene", dtext sid]
     T.GLCreateMap map -> hsbox [dtext "Created Map", dtext map.name]
     T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
+    T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
     T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
     T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants

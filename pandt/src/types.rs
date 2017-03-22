@@ -180,6 +180,8 @@ pub enum GameCommand {
   CreateMap(FolderPath, MapCreation),
   /// Change a map. The ID of the given map bust match an existing map.
   EditMap(Map),
+  /// Delete a map.
+  DeleteMap(MapID),
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -282,6 +284,7 @@ pub enum GameLog {
   DeleteScene(SceneID),
   CreateMap(Map),
   EditMap(Map),
+  DeleteMap(MapID),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   /// Many of these actually go via CombatLog, since most creature modification happens inside of

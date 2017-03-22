@@ -76,11 +76,13 @@ type GameLog
   = GLCreateFolder FolderPath
   | GLCreateNote FolderPath Note
   | GLEditNote FolderPath String Note
+  | GLDeleteNote FolderPath String
   | GLCreateScene Scene
   | GLEditScene Scene
-  | GLSelectMap MapID
+  | GLDeleteScene SceneID
   | GLCreateMap Map
   | GLEditMap Map
+  | GLDeleteMap MapID
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat SceneID (List CreatureID)
@@ -98,9 +100,10 @@ gameLogDecoder = sumDecoder "GameLog"
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
   , ("CreateNote", JD.map2 GLCreateNote (JD.index 0 folderPathDecoder) (JD.index 1 noteDecoder))
   , ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
+  , ("DeleteNote", JD.map2 GLDeleteNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string))
   , ("CreateScene", JD.map GLCreateScene sceneDecoder)
   , ("EditScene", JD.map GLEditScene sceneDecoder)
-  , ("SelectMap", JD.map GLSelectMap JD.string)
+  , ("DeleteScene", JD.map GLDeleteScene JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
   , ("StartCombat", JD.map2 GLStartCombat (JD.index 0 JD.string) (JD.index 1 (JD.list JD.string)))
@@ -110,6 +113,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
   , ("CreateMap", JD.map GLCreateMap mapDecoder)
   , ("EditMap", JD.map GLEditMap mapDecoder)
+  , ("DeleteMap", JD.map GLDeleteMap JD.string)
   , ("Rollback", JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int))
   , ("PathCreature", JD.map3 GLPathCreature (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 (JD.list point3Decoder)))
   , ("SetCreaturePos", JD.map3 GLSetCreaturePos (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 point3Decoder))
@@ -509,11 +513,13 @@ type GameCommand
   = CreateFolder FolderPath
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
+  | DeleteNote FolderPath String
   | CreateScene FolderPath SceneCreation
   | EditScene Scene
-  | SelectMap MapID
+  | DeleteScene SceneID
   | CreateMap FolderPath MapCreation
   | EditMap Map
+  | DeleteMap MapID
   | RegisterPlayer PlayerID
   | GiveCreaturesToPlayer PlayerID (List CreatureID)
   | SetPlayerScene PlayerID (Maybe SceneID)
@@ -542,10 +548,14 @@ gameCommandEncoder gc =
       JE.object [("CreateNote", JE.list [folderPathEncoder path, noteEncoder note])]
     EditNote path name note ->
       JE.object [("EditNote", JE.list [folderPathEncoder path, JE.string name, noteEncoder note])]
+    DeleteNote path name ->
+      JE.object [("DeleteNote", JE.list [folderPathEncoder path, JE.string name])]
     CreateScene path sc ->
       JE.object [("CreateScene", JE.list [folderPathEncoder path, sceneCreationEncoder sc])]
     EditScene scene ->
       JE.object [("EditScene", sceneEncoder scene)]
+    DeleteScene sid ->
+      JE.object [("DeleteScene", JE.string sid)]
     RegisterPlayer pid ->
       JE.object [("RegisterPlayer", JE.string pid)]
     GiveCreaturesToPlayer pid cids ->
@@ -576,12 +586,12 @@ gameCommandEncoder gc =
       JE.object [("ActCreature", JE.list [JE.string scene, JE.string cid, JE.string abid, decidedTargetEncoder dtarget])]
     Done ->
       JE.string "Done"
-    SelectMap name ->
-      JE.object [("SelectMap", JE.string name)]
     CreateMap path creation ->
       JE.object [("CreateMap", JE.list [folderPathEncoder path, mapCreationEncoder creation])]
     EditMap map ->
       JE.object [("EditMap", mapEncoder map)]
+    DeleteMap mid ->
+      JE.object [("DeleteMap", JE.string mid)]
     Rollback snapIdx logIdx ->
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->

@@ -68,6 +68,7 @@ impl Game {
         ch.apply(&GameLog::LinkFolderMap(path.clone(), map_id))
       }
       EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
+      DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
       DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
       StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),
       StopCombat => self.change_with(GameLog::StopCombat),
@@ -193,6 +194,9 @@ impl Game {
         newgame.maps
           .mutate(&map.id, move |_| map.clone())
           .ok_or(GameErrorEnum::MapNotFound(map.id))?;
+      }
+      DeleteMap(ref mid) => {
+        newgame.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid));
       }
       CreateCreature(ref c) => {
         if newgame.creatures.contains_key(&c.id()) {
