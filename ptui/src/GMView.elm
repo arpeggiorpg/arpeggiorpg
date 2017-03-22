@@ -97,7 +97,7 @@ folderView model app path (T.Folder folder) =
       [ ( hbox [icon [] "casino", dtext "Scene"]
         , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
       , ( hbox [icon [] "map", dtext "Map"]
-        , M.Batch [M.SetFocus (M.EditingMap path "New Map" T.emptyMap), M.SetSecondaryFocus (M.Focus2Map path "New Map")] )
+        , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
       , ( hbox [icon [] "contacts", dtext "Creature"]
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
       , ( hbox [icon [] "note", dtext "Note"]
@@ -183,18 +183,31 @@ moveAnywhereToggle model =
 mapConsole : M.Model -> T.App -> T.FolderPath -> T.MapID -> Html M.Msg
 mapConsole model app path mapID =
   case model.focus of
-    M.EditingMap path name terrain ->
-      let updateName name = M.SetFocus (M.EditingMap path name terrain)
-          saveMap = M.Batch [M.SetFocus (M.PreviewMap name), M.SendCommand (T.EditMap path name terrain)]
+    M.EditingMap path map ->
+      let updateName name = M.SetFocus (M.EditingMap path {map | name = name})
+          saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
       in
         vbox
           [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
           , hbox
-            [ input [type_ "text", placeholder "map name", value name, onInput updateName] []
+            [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
             , button [onClick saveMap] [text "Save"]
             ]
           ]
-    _ -> button [onClick (M.SetFocus (M.EditingMap path mapID (M.tryGetMapNamed mapID app)))] [text "Edit this Map"]
+    _ -> button [onClick (M.SetFocus (M.EditingMap path (M.tryGetMapNamed mapID app)))] [text "Edit this Map"]
+
+
+createMapDialog : M.Model -> T.App -> M.CreatingMap -> Html M.Msg
+createMapDialog model app cm =
+  let updateName name = M.SetModal (M.CreateMap {cm | name=name})
+      create = M.Batch [ M.SendCommand (T.CreateMap cm.path {name=cm.name, terrain=[]})
+                       , M.SetModal M.NoModal
+                       ]
+  in 
+    vbox
+      [ input [type_ "text", value cm.name, onInput updateName] []
+      , button [onClick create] [text "Create"]
+      ]
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -209,6 +222,7 @@ checkModal model app =
         M.CreateFolder creating -> Just (createFolderInPath model app creating)
         M.CreateCreature pending -> Just (createCreatureDialog model app pending)
         M.CreateScene cs -> Just (createSceneDialog model app cs)
+        M.CreateMap cm -> Just (createMapDialog model app cm)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -257,7 +271,7 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap path name map -> Grid.editMap model map.terrain []
+    M.EditingMap _ map -> Grid.editMap model map.terrain []
     M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app).terrain []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
@@ -522,6 +536,7 @@ historyItem snapIdx logIdx log =
     T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLSelectMap name ->  hsbox [dtext "Selected Map", dtext name]
+    T.GLCreateMap map -> hsbox [dtext "Created Map", dtext map.name]
     T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
     T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
     T.GLRemoveCreature cid -> hsbox [dtext "Deleted creature", dtext cid]

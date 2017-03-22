@@ -79,6 +79,7 @@ type GameLog
   | GLCreateScene Scene
   | GLEditScene Scene
   | GLSelectMap MapID
+  | GLCreateMap Map
   | GLEditMap Map
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
@@ -107,7 +108,8 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("RemoveCreature", JD.map GLRemoveCreature JD.string)
   , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
-  , ("EditMap", JD.map GLEditMap (JD.index 0 mapDecoder))
+  , ("CreateMap", JD.map GLCreateMap mapDecoder)
+  , ("EditMap", JD.map GLEditMap mapDecoder)
   , ("Rollback", JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int))
   , ("PathCreature", JD.map3 GLPathCreature (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 (JD.list point3Decoder)))
   , ("SetCreaturePos", JD.map3 GLSetCreaturePos (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 point3Decoder))
@@ -579,7 +581,7 @@ gameCommandEncoder gc =
     CreateMap path creation ->
       JE.object [("CreateMap", JE.list [folderPathEncoder path, mapCreationEncoder creation])]
     EditMap map ->
-      JE.object [("EditMap", JE.list [mapEncoder map])]
+      JE.object [("EditMap", mapEncoder map)]
     Rollback snapIdx logIdx ->
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->

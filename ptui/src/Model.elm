@@ -113,7 +113,7 @@ defaultModel flags =
 type Focus
   = NoFocus
   | Scene String
-  | EditingMap T.FolderPath T.MapID T.Map
+  | EditingMap T.FolderPath T.Map
   | PreviewMap T.MapID
 
 type SecondaryFocus
@@ -127,14 +127,11 @@ type Modal
   | CreateFolder CreatingFolder
   | CreateCreature PendingCreature
   | CreateScene CreatingScene
+  | CreateMap CreatingMap
 
-type alias CreatingFolder =
-  { parent: T.FolderPath
-  , child: String}
-
-type alias CreatingScene =
-  { path: T.FolderPath
-  , scene: T.SceneCreation }
+type alias CreatingFolder = {parent: T.FolderPath , child: String}
+type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
+type alias CreatingMap = {path: T.FolderPath, name: String}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
@@ -193,7 +190,7 @@ getScene model name =
 getMap : Model -> T.Map
 getMap model =
   case model.focus of
-    EditingMap path name terrain -> terrain
+    EditingMap path map -> map
     PreviewMap name ->
       model.app
       |> Maybe.andThen (getMapNamed name)
