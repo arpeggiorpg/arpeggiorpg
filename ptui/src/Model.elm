@@ -182,6 +182,18 @@ type alias MovementRequest = {
   ooc_creature: Maybe T.Creature
 }
 
+type FolderItemKey
+  = FolderScene T.SceneID
+  | FolderCreature T.CreatureID
+  | FolderNote String
+  | FolderMap T.MapID
+
+type alias FolderItem =
+  { key: FolderItemKey
+  , path: T.FolderPath
+  , prettyName : String
+  }
+
 getScene : Model -> String -> Maybe T.Scene
 getScene model name =
   case model.app of

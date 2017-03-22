@@ -121,25 +121,39 @@ secondaryFocusView model app =
       case T.getCreature app.current_game cid of
         Just creature ->
           -- TODO: * move functionality from All Creatures here (add to combat?)
-          console model app path (CommonView.creatureCard [noteBox model creature] app creature)
-        Nothing -> text ""
+          let item = {key=M.FolderCreature cid, path=path, prettyName=creature.name}
+          in console model app item (CommonView.creatureCard [noteBox model creature] app creature)
+        Nothing -> text "Creature Disappeared"
     M.Focus2Note path origName note ->
-      console model app path (noteConsole model app path origName note)
+      let item = {key=M.FolderNote origName, path=path, prettyName=origName}
+      in console model app item (noteConsole model app path origName note)
     M.Focus2Map path mapID ->
-      console model app path (mapConsole model app path mapID)
+      case M.getMapNamed mapID app of
+        Just map ->
+          let item = {key=M.FolderMap mapID, path=path, prettyName=map.name}
+          in console model app item (mapConsole model app path mapID)
+        Nothing -> text "Map Disappeared"
     M.Focus2Scene path sceneID ->
-      console model app path (text <| "Scene: " ++ sceneID)
+      case T.getScene app sceneID of
+        Just scene -> 
+          let item = {key=M.FolderScene sceneID, path=path, prettyName=scene.name}
+          in console model app item (text <| "Scene: " ++ sceneID)
+        Nothing -> text "Scene Disappeared"
 
-
-console : M.Model -> T.App -> T.FolderPath -> Html M.Msg -> Html M.Msg
-console model app path content =
-  vabox [s [S.marginTop (S.em 1)]]
-    [ strong [] [hbox [text "In ", renderFolderPath path]]
-    , content
-    -- TODO:
-    -- * move item to another folder
-    -- * delete item
-    ]
+console : M.Model -> T.App -> M.FolderItem -> Html M.Msg -> Html M.Msg
+console model app {key, path, prettyName} content =
+  let
+    menu = popUpMenu model "console-" (toString key) (icon [] "more_horiz") (icon [] "more_horiz")
+                     menuItems
+    menuItems = [(text "Delete", M.NoMsg), (text "Move", M.NoMsg)]
+  in
+    vabox [s [S.marginTop (S.em 1)]]
+      [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
+      , content
+      -- TODO:
+      -- * move item to another folder
+      -- * delete item
+      ]
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteConsole model app path origName note =
