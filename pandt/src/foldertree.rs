@@ -117,6 +117,11 @@ impl<T> FolderTree<T> {
                   -> Result<&mut (T, HashSet<String>), FolderTreeError> {
     self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
+
+  /// Iterate paths to all folders below the given one.
+  pub fn walk_paths<'a>(&'a self, parent: FolderPath) -> impl Iterator<Item=&FolderPath> + 'a {
+    self.nodes.keys().filter(move |p| p.is_child_of(&parent))
+  }
 }
 
 
@@ -158,6 +163,10 @@ impl FolderPath {
     let mut new = self.clone();
     new.0.push(seg);
     new
+  }
+
+  pub fn is_child_of(&self, other: &FolderPath) -> bool {
+    self.0.starts_with(&other.0)
   }
 }
 

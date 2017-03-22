@@ -32,7 +32,7 @@ gmView model =
 
 makeUI : M.Model -> T.App -> CommonView.UI
 makeUI model app =
- { mapView = mapView model app
+  { mapView = mapView model app
   , sideBar =
       CommonView.tabbedView "right-side-bar" "Campaign" model
         [ ("Campaign", always (campaignView model app))

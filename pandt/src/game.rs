@@ -206,6 +206,27 @@ impl Game {
         }
       }
       DeleteCreature(cid) => {
+        let scenes_with_this_creature: Vec<SceneID> = newgame.scenes
+          .values()
+          .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
+          .collect();
+        for sid in scenes_with_this_creature {
+          newgame.scenes.mutate(&sid, |mut sc| {
+            sc.creatures.remove(&cid);
+            sc
+          });
+        }
+        let all_folders: Vec<FolderPath> =
+          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+        for path in all_folders {
+          let node = newgame.campaign.get_mut(&path)?;
+          node.creatures.remove(&cid);
+        }
+        newgame.current_combat = {
+          let combat = newgame.get_combat()?;
+          combat.remove_from_combat(cid)?
+        };
+
         newgame.creatures
           .remove(&cid)
           .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
