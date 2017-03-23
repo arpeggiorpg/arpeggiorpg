@@ -217,7 +217,7 @@ pub enum GameCommand {
 
   // ** Creature Manipulation **
   /// Create a new creature.
-  CreateCreature(CreatureCreation, FolderPath),
+  CreateCreature(FolderPath, CreatureCreation),
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -280,20 +280,15 @@ pub enum GameLog {
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
   DeleteFolder(FolderPath),
-  LinkFolderCreature(FolderPath, CreatureID),
-  UnlinkFolderCreature(FolderPath, CreatureID),
-  LinkFolderScene(FolderPath, SceneID),
-  UnlinkFolderScene(FolderPath, SceneID),
+  MoveFolderItem(FolderPath, FolderItemID, FolderPath),
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
   DeleteNote(FolderPath, String),
-  LinkFolderMap(FolderPath, MapID),
-  UnlinkFolderMap(FolderPath, MapID),
 
-  CreateScene(Scene),
+  CreateScene(FolderPath, Scene),
   EditScene(Scene),
   DeleteScene(SceneID),
-  CreateMap(Map),
+  CreateMap(FolderPath, Map),
   EditMap(Map),
   DeleteMap(MapID),
   CombatLog(CombatLog),
@@ -305,7 +300,7 @@ pub enum GameLog {
   PathCreature(SceneID, CreatureID, Vec<Point3>),
   StartCombat(SceneID, Vec<CreatureID>),
   StopCombat,
-  CreateCreature(Creature),
+  CreateCreature(FolderPath, Creature),
   DeleteCreature(CreatureID),
   AddCreatureToCombat(CreatureID),
   RemoveCreatureFromCombat(CreatureID),
@@ -463,6 +458,10 @@ error_chain! {
     NoteNotFound(path: FolderPath, name: String) {
       description("A note couldn't be found.")
       display("The note in '{}' named '{}' could not be found.", path.to_string(), name)
+    }
+    CannotLinkNotes(path: FolderPath, name: String) {
+      description("Notes can't be linked or unlinked.")
+      display("Notes can't be linked or unlinked. '{}' / '{}'", path.to_string(), name)
     }
   }
 }
