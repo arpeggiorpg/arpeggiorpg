@@ -1,4 +1,4 @@
-module FolderView exposing (campaignFolder, selectFolders)
+module FolderView exposing (campaignFolder, selectFolder)
 
 import Dict
 import Set
@@ -17,22 +17,31 @@ s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
 campaignFolder : M.Model -> T.App -> Html M.Msg
-campaignFolder model app = rootFolder (folderView model app [] app.current_game.campaign)
+campaignFolder model app = rootFolder <| folderView model app [] app.current_game.campaign
 
+rootFolder : Html M.Msg -> Html M.Msg
 rootFolder content = 
-  vbox [ hbox [icon [] "folder_open", text "Campaign (yes this campaign)"]
+  vbox [ hbox [icon [] "folder_open", text "Campaign"]
        , div [s [S.marginLeft (S.em 1)]] [content]]
 
-selectFolders : M.Model -> T.App -> Html M.Msg
-selectFolders model app = rootFolder (folderOnlyView model app [] app.current_game.campaign)
+selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
+selectFolder model app msg = rootFolder <| folderOnlyView model app (\path item -> button [onClick (msg path)] [text "Select"]) [] app.current_game.campaign
 
-folderOnlyView : M.Model -> T.App -> T.FolderPath -> T.Folder -> Html M.Msg
-folderOnlyView model app path folder =
-  folderSubEntries model app path folder folderOnlyView
-  
-folderLine msg iconName entryName = habox [clickable, onClick msg] [icon [] iconName, text entryName]
+folderOnlyView : M.Model -> T.App
+                -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
+                -> T.FolderPath -> T.Folder -> Html M.Msg
+folderOnlyView model app extra path folder =
+  folderSubEntries model app extra path folder (folderOnlyView model app extra)
 
-folderSubEntries model app path (T.Folder folder) recurse =
+folderLine : Html M.Msg -> M.Msg -> String -> String -> Html M.Msg
+folderLine extra msg iconName entryName = habox [clickable, onClick msg] [icon [] iconName, extra, text entryName]
+
+folderSubEntries : M.Model -> T.App
+                 -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
+                 -> T.FolderPath -> T.Folder
+                 -> (T.FolderPath -> T.Folder -> Html M.Msg)
+                 -> Html M.Msg
+folderSubEntries model app extra path (T.Folder folder) recurse =
   let
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
@@ -40,41 +49,40 @@ folderSubEntries model app path (T.Folder folder) recurse =
           isShown = Dict.get key model.collapsed |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
       in
-        vbox [ hbox [folderLine (M.ToggleCollapsed key) iconName folderName]
+        vbox [ hbox [folderLine (extra childPath Nothing) (M.ToggleCollapsed key) iconName folderName]
               , if isShown
-                then div [s [S.marginLeft (S.em 1)]] [recurse model app childPath childFolder]
+                then div [s [S.marginLeft (S.em 1)]] [recurse childPath childFolder]
                 else text ""
               ]
   in vbox (List.map viewChild (Dict.toList folder.children))
-
 
 folderView : M.Model -> T.App -> T.FolderPath -> T.Folder -> Html M.Msg
 folderView model app path (T.Folder folder) =
   let
     viewCreature creature =
-      folderLine (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
+      folderLine (text "") (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
     viewScene sceneID =
       let scene = T.getScene app sceneID
           msg = M.Batch [M.SetFocus (M.Scene sceneID), M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
       in
         case scene of
-          Just scene -> folderLine msg "casino" scene.name
+          Just scene -> folderLine (text "") msg "casino" scene.name
           Nothing -> text ("Invalid scene in folder: " ++ sceneID)
     viewNote (noteName, note) =
-      folderLine (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
+      folderLine (text "") (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
     viewMap mapID =
       let map = M.getMapNamed mapID app
           msg = M.Batch [ M.SetFocus (M.PreviewMap mapID)
                         , M.SetSecondaryFocus (M.Focus2Map path mapID)]
       in case map of
-           Just map -> folderLine msg "map" map.name
+           Just map -> folderLine (text "") msg "map" map.name
            Nothing -> text ("Invalid map in folder: " ++ mapID)
     scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
     creatures =
       vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
     notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
-    children = folderSubEntries model app path (T.Folder folder) folderView
+    children = folderSubEntries model app (\_ _ -> text "") path (T.Folder folder) (folderView model app)
     deleteFolder =
       if path /= []
       then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]

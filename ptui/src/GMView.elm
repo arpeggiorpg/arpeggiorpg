@@ -191,7 +191,11 @@ createMapDialog model app cm =
       ]
 
 moveFolderItemDialog : M.Model -> T.App -> M.MovingFolderItem -> Html M.Msg
-moveFolderItemDialog model app {src, item, dst} = FolderView.selectFolders model app
+moveFolderItemDialog model app {src, item, dst} =
+  let msg path = M.Batch [ M.SendCommand (T.MoveFolderItem src item path)
+                         , M.SetModal M.NoModal
+                         ]
+  in FolderView.selectFolder model app msg
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
