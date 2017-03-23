@@ -100,6 +100,10 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   pub fn values(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
     self.data.values()
   }
+  
+  pub fn len(&self) -> usize {
+    self.data.len()
+  }
 
   // If your function panics, the item will disappear from the collection.
   // We may want to allow FnMut(&mut V) as the mutator, but this would require the following extra

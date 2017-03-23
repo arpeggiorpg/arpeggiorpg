@@ -445,6 +445,10 @@ error_chain! {
       description("The initiative index is out of bound.")
       display("Initiative index {} is out of bounds.", idx)
     }
+    FolderNotEmpty(path: FolderPath) {
+      description("The user attempted to delete a folder when it wasn't empty.")
+      display("The folder {} is not empty", path.to_string())
+    }
   }
 }
 

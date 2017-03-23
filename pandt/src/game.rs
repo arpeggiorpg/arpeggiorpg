@@ -137,6 +137,13 @@ impl Game {
     match *log {
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       DeleteFolder(ref path) => {
+        {
+          let node = self.campaign.get(path)?;
+          if node.scenes.len() > 0 || node.maps.len() > 0 || node.creatures.len() > 0 ||
+             node.notes.len() > 0 {
+            bail!(GameErrorEnum::FolderNotEmpty(path.clone()));
+          }
+        }
         self.campaign.remove(path)?;
       }
       LinkFolderCreature(ref path, ref cid) => {
