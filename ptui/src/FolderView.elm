@@ -17,17 +17,17 @@ s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
 campaignFolder : M.Model -> T.App -> Html M.Msg
-campaignFolder model app = rootFolder <| folderView model app [] app.current_game.campaign
+campaignFolder model app = rootFolder (text "") <| folderView model app [] app.current_game.campaign
 
-rootFolder : Html M.Msg -> Html M.Msg
-rootFolder content = 
-  vbox [ hbox [icon [] "folder_open", text "Campaign"]
+rootFolder : Html M.Msg -> Html M.Msg -> Html M.Msg
+rootFolder extra content = 
+  vbox [ hbox [icon [] "folder_open", extra, text "Campaign"]
        , div [s [S.marginLeft (S.em 1)]] [content]]
 
 selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
 selectFolder model app msg =
   let select path item =  input [type_ "radio", onClick (msg path), name "select-folder"] [text "Select"]
-  in rootFolder <| folderOnlyView model app select [] app.current_game.campaign
+  in rootFolder (select [] Nothing) <| folderOnlyView model app select [] app.current_game.campaign
 
 folderOnlyView : M.Model -> T.App
                 -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
