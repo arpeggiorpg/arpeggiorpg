@@ -6,7 +6,6 @@ use combat::*;
 use creature::ChangedCreature;
 use foldertree::{FolderTree, FolderPath};
 
-// Generic methods for any kind of Game regardless of the CreatureState.
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
     Game {
@@ -128,51 +127,56 @@ impl Game {
   }
 
   pub fn apply_log(&self, log: &GameLog) -> Result<Game, GameError> {
-    use self::GameLog::*;
     let mut newgame = self.clone();
+    newgame.apply_log_mut(log)?;
+    Ok(newgame)
+  }
+
+  fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
+    use self::GameLog::*;
     match *log {
-      CreateFolder(ref path) => newgame.campaign.make_folders(path, Folder::new()),
+      CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       DeleteFolder(ref path) => {
-        newgame.campaign.remove(path)?;
+        self.campaign.remove(path)?;
       }
       LinkFolderCreature(ref path, ref cid) => {
-        newgame.campaign.get_mut(path)?.creatures.insert(*cid);
+        self.campaign.get_mut(path)?.creatures.insert(*cid);
       }
       UnlinkFolderCreature(ref path, ref cid) => {
-        newgame.campaign.get_mut(path)?.creatures.remove(cid);
+        self.campaign.get_mut(path)?.creatures.remove(cid);
       }
       LinkFolderScene(ref path, ref sid) => {
-        newgame.campaign.get_mut(path)?.scenes.insert(*sid);
+        self.campaign.get_mut(path)?.scenes.insert(*sid);
       }
       UnlinkFolderScene(ref path, ref scene_name) => {
-        newgame.campaign.get_mut(path)?.scenes.remove(scene_name);
+        self.campaign.get_mut(path)?.scenes.remove(scene_name);
       }
       CreateNote(ref path, ref note) => {
-        newgame.campaign.get_mut(path)?.notes.insert(note.clone());
+        self.campaign.get_mut(path)?.notes.insert(note.clone());
       }
       EditNote(ref path, ref name, ref new_note) => {
-        let node = newgame.campaign.get_mut(path)?;
+        let node = self.campaign.get_mut(path)?;
         node.notes.mutate(name, move |_| new_note.clone());
       }
       DeleteNote(ref path, ref note_name) => {
-        newgame.campaign.get_mut(path)?.notes.remove(note_name);
+        self.campaign.get_mut(path)?.notes.remove(note_name);
       }
       LinkFolderMap(ref path, ref name) => {
-        newgame.campaign.get_mut(path)?.maps.insert(name.clone());
+        self.campaign.get_mut(path)?.maps.insert(name.clone());
       }
       UnlinkFolderMap(ref path, ref name) => {
-        newgame.campaign.get_mut(path)?.maps.remove(name);
+        self.campaign.get_mut(path)?.maps.remove(name);
       }
       CreateScene(ref scene) => {
-        if newgame.scenes.contains_key(&scene.id) {
+        if self.scenes.contains_key(&scene.id) {
           bail!(GameErrorEnum::SceneAlreadyExists(scene.id));
         } else {
-          newgame.scenes.insert(scene.clone());
+          self.scenes.insert(scene.clone());
         }
       }
       EditScene(ref scene) => {
-        newgame.check_map(scene.map)?;
-        newgame.scenes
+        self.check_map(scene.map)?;
+        self.scenes
           .mutate(&scene.id, move |s| scene.clone())
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
@@ -185,27 +189,27 @@ impl Game {
           }
         }
         let all_folders: Vec<FolderPath> =
-          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
-          let node = newgame.campaign.get_mut(&path)?;
+          let node = self.campaign.get_mut(&path)?;
           node.scenes.remove(&sid);
         }
-        newgame.scenes.remove(sid);
+        self.scenes.remove(sid);
       }
       CreateMap(ref map) => {
-        if newgame.maps.contains_key(&map.id) {
+        if self.maps.contains_key(&map.id) {
           bail!(GameErrorEnum::MapAlreadyExists(map.id));
         } else {
-          newgame.maps.insert(map.clone());
+          self.maps.insert(map.clone());
         }
       }
       EditMap(ref map) => {
-        newgame.maps
+        self.maps
           .mutate(&map.id, move |_| map.clone())
           .ok_or(GameErrorEnum::MapNotFound(map.id))?;
       }
       DeleteMap(ref mid) => {
-        let scenes_using_this_map: Vec<SceneID> = newgame.scenes
+        let scenes_using_this_map: Vec<SceneID> = self.scenes
           .values()
           .filter_map(|s| if s.map == *mid { Some(s.id) } else { None })
           .collect();
@@ -213,94 +217,94 @@ impl Game {
           bail!(GameErrorEnum::MapInUse(*mid, scenes_using_this_map));
         }
         let all_folders: Vec<FolderPath> =
-          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
-          let node = newgame.campaign.get_mut(&path)?;
+          let node = self.campaign.get_mut(&path)?;
           node.maps.remove(&mid);
         }
-        newgame.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid))?;
+        self.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid))?;
       }
       CreateCreature(ref c) => {
-        if newgame.creatures.contains_key(&c.id()) {
+        if self.creatures.contains_key(&c.id()) {
           bail!(GameErrorEnum::CreatureAlreadyExists(c.id()));
         } else {
-          newgame.creatures.insert(c.id(), c.clone());
+          self.creatures.insert(c.id(), c.clone());
         }
       }
       DeleteCreature(cid) => {
-        let scenes_with_this_creature: Vec<SceneID> = newgame.scenes
+        let scenes_with_this_creature: Vec<SceneID> = self.scenes
           .values()
           .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
           .collect();
         for sid in scenes_with_this_creature {
-          newgame.scenes.mutate(&sid, |mut sc| {
+          self.scenes.mutate(&sid, |mut sc| {
             sc.creatures.remove(&cid);
             sc
           });
         }
         let all_folders: Vec<FolderPath> =
-          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
-          let node = newgame.campaign.get_mut(&path)?;
+          let node = self.campaign.get_mut(&path)?;
           node.creatures.remove(&cid);
         }
-        newgame.current_combat = {
-          if let Ok(combat) = newgame.get_combat() { combat.remove_from_combat(cid)? } else { None }
+        self.current_combat = {
+          if let Ok(combat) = self.get_combat() { combat.remove_from_combat(cid)? } else { None }
         };
 
-        newgame.creatures
+        self.creatures
           .remove(&cid)
           .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
       }
       AddCreatureToCombat(cid) => {
-        let mut combat = newgame.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
-        newgame.check_creature_id(cid)?;
+        let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
+        self.check_creature_id(cid)?;
         if combat.creatures.contains(&cid) {
           bail!(GameErrorEnum::AlreadyInCombat(cid));
         }
         combat.creatures.push(cid);
-        newgame.current_combat = Some(combat);
+        self.current_combat = Some(combat);
       }
       RemoveCreatureFromCombat(cid) => {
         let combat = {
-          let combat = newgame.get_combat()?;
+          let combat = self.get_combat()?;
           combat.remove_from_combat(cid)?
         };
-        newgame.current_combat = combat;
+        self.current_combat = combat;
       }
       CombatLog(ref cl) => {
-        newgame.current_combat = Some(newgame.get_combat()?.apply_log(cl)?);
+        self.current_combat = Some(self.get_combat()?.apply_log(cl)?);
       }
       CreatureLog(cid, ref cl) => {
-        let creature = newgame.get_creature(cid)?.creature.apply_log(cl)?;
-        *newgame.get_creature_mut(cid)? = creature;
+        let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
+        *self.get_creature_mut(cid)? = creature;
       }
       StartCombat(ref scene, ref cids) => {
         for cid in cids {
-          newgame.check_creature_id(*cid)?;
+          self.check_creature_id(*cid)?;
         }
-        newgame.check_scene(scene.clone())?;
-        newgame.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
+        self.check_scene(scene.clone())?;
+        self.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
       }
       StopCombat => {
-        newgame.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
+        self.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
       }
       SetCreaturePos(ref scene_name, ref cid, ref pt) => {
-        let scene = newgame.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
-        newgame.scenes.insert(scene);
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+        self.scenes.insert(scene);
       }
       PathCreature(ref scene_name, ref cid, ref pts) => {
-        let current_pos = newgame.get_scene(scene_name.clone())?.get_pos(*cid)?;
+        let current_pos = self.get_scene(scene_name.clone())?.get_pos(*cid)?;
         let dest = pts.last().map(|x| *x).unwrap_or(current_pos);
-        let scene = newgame.get_scene(scene_name.clone())?.set_pos(*cid, dest);
-        newgame.scenes.insert(scene);
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest);
+        self.scenes.insert(scene);
       }
       // Things that are handled at the App level
       Rollback(..) => {
         return bug("GameLog Rollback");
       }
     }
-    Ok(newgame)
+    Ok(())
   }
 
   fn check_map(&self, map_id: MapID) -> Result<(), GameError> {
