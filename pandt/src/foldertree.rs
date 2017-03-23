@@ -125,13 +125,17 @@ impl<T> FolderTree<T> {
                        -> Result<(), FolderTreeError> {
     match path.up() {
       Some((parent, basename)) => {
+        let new_path = parent.child(new_name.clone());
+        if self.nodes.contains_key(&new_path) {
+          bail!(FolderTreeErrorKind::FolderExists(new_path));
+        }
         {
           let mut_data = self.nodes.get_mut(&parent).expect("Parent must exist.");
           mut_data.1.remove(&basename);
           mut_data.1.insert(new_name.clone());
         }
         let data = self.nodes.remove(path).expect("Node must exist.");
-        self.nodes.insert(parent.child(new_name), data);
+        self.nodes.insert(new_path, data);
         Ok(())
       }
       None => bail!(FolderTreeErrorKind::CannotRenameRoot),
@@ -545,6 +549,42 @@ mod test {
       }
       x => panic!("Bad result: {:?}", x),
     }
+  }
+
+  #[test]
+  fn rename_folder_root() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    match ftree.rename_folder(&fpath(""), "foo".to_string()) {
+      Err(FolderTreeError(FolderTreeErrorKind::CannotRenameRoot, _)) => {}
+      x => panic!("Bad result: {:?}", x),
+    }
+  }
+
+  #[test]
+  fn rename_folder_dup() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    ftree.make_folder(&fpath(""), "foo".to_string(), "foo folder".to_string()).unwrap();
+    ftree.make_folder(&fpath(""), "bar".to_string(), "bar folder".to_string()).unwrap();
+    match ftree.rename_folder(&fpath("/foo"), "bar".to_string()) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderExists(p), _)) => assert_eq!(p, fpath("/bar")),
+      x => panic!("Bad result: {:?}", x),
+    }
+  }
+
+  #[test]
+  fn rename_folder() {
+    let mut ftree = FolderTree::new("Root node!".to_string());
+    ftree.make_folder(&fpath(""), "foo".to_string(), "foo folder".to_string()).unwrap();
+    ftree.rename_folder(&fpath("/foo"), "bar".to_string()).unwrap();
+    assert_eq!(ftree.get_children(&fpath("")).unwrap(),
+               &HashSet::from_iter(vec!["bar".to_string()]));
+    match ftree.get(&fpath("/foo")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => {
+        assert_eq!(p, fpath("/foo"))
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
+    assert_eq!(ftree.get(&fpath("/bar")).unwrap(), &"foo folder".to_string());
   }
 
   #[test]
