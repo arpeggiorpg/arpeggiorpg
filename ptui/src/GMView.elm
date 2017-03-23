@@ -447,7 +447,7 @@ createCreatureDialog model app {name, class, path} =
         case (name, class) of
           (Just name, Just class) ->
             let cc = T.CreatureCreation name class ""
-                msg = M.Batch [M.SendCommand (T.CreateCreature cc path), M.SetModal M.NoModal]
+                msg = M.Batch [M.SendCommand (T.CreateCreature path cc), M.SetModal M.NoModal]
             in button [onClick msg] [text "Create Creature"]
           _ -> disabledButton
       updatePendingClass : String -> M.Msg
@@ -508,16 +508,17 @@ historyItem snapIdx logIdx log =
   let logItem = case log of
     T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
     T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", dtext (T.folderPathToString path)]
+    T.GLMoveFolderItem src item dst -> hsbox [dtext "Moved Folder Item", renderFolderPath src, dtext (toString item), renderFolderPath dst]
     T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
-    T.GLEditNote path name note -> hsbox [dtext "Edited Note", dtext (T.folderPathToString path), dtext name]
-    T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", dtext (T.folderPathToString path), dtext name]
-    T.GLCreateScene scene -> hsbox [dtext "Created Scene", dtext scene.name]
+    T.GLEditNote path name note -> hsbox [dtext "Edited Note", renderFolderPath path, dtext name]
+    T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", renderFolderPath path, dtext name]
+    T.GLCreateScene path scene -> hsbox [dtext "Created Scene", dtext scene.name, renderFolderPath path]
     T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
     T.GLDeleteScene sid -> hsbox [dtext "Deleted Scene", dtext sid]
-    T.GLCreateMap map -> hsbox [dtext "Created Map", dtext map.name]
+    T.GLCreateMap path map -> hsbox [dtext "Created Map", dtext map.name, renderFolderPath path]
     T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
     T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
-    T.GLCreateCreature creature -> hsbox [dtext "Created creature", dtext creature.id]
+    T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.id, renderFolderPath path]
     T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
     T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
     T.GLStopCombat -> dtext "Stopped combat"

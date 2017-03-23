@@ -75,20 +75,21 @@ gameSnapshotDecoder = JD.succeed {}
 type GameLog
   = GLCreateFolder FolderPath
   | GLDeleteFolder FolderPath
+  | GLMoveFolderItem FolderPath FolderItemID FolderPath
   | GLCreateNote FolderPath Note
   | GLEditNote FolderPath String Note
   | GLDeleteNote FolderPath String
-  | GLCreateScene Scene
+  | GLCreateScene FolderPath Scene
   | GLEditScene Scene
   | GLDeleteScene SceneID
-  | GLCreateMap Map
+  | GLCreateMap FolderPath Map
   | GLEditMap Map
   | GLDeleteMap MapID
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
   | GLStartCombat SceneID (List CreatureID)
   | GLStopCombat
-  | GLCreateCreature CreatureData
+  | GLCreateCreature FolderPath CreatureData
   | GLDeleteCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
@@ -100,26 +101,30 @@ gameLogDecoder = sumDecoder "GameLog"
   [ ("StopCombat", GLStopCombat) ]
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
   , ("DeleteFolder", JD.map GLDeleteFolder folderPathDecoder)
-  , ("CreateNote", JD.map2 GLCreateNote (JD.index 0 folderPathDecoder) (JD.index 1 noteDecoder))
-  , ("EditNote", JD.map3 GLEditNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string) (JD.index 2 noteDecoder))
-  , ("DeleteNote", JD.map2 GLDeleteNote (JD.index 0 folderPathDecoder) (JD.index 1 JD.string))
-  , ("CreateScene", JD.map GLCreateScene sceneDecoder)
+  , ("MoveFolderItem", fixedList3 GLMoveFolderItem folderPathDecoder folderItemIDDecoder folderPathDecoder)
+  , ("CreateNote", fixedList2 GLCreateNote folderPathDecoder noteDecoder)
+  , ("EditNote", fixedList3 GLEditNote folderPathDecoder JD.string noteDecoder)
+  , ("DeleteNote", fixedList2 GLDeleteNote folderPathDecoder JD.string)
+  , ("CreateScene", fixedList2 GLCreateScene folderPathDecoder sceneDecoder)
   , ("EditScene", JD.map GLEditScene sceneDecoder)
   , ("DeleteScene", JD.map GLDeleteScene JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
-  , ("CreatureLog", JD.map2 GLCreatureLog (JD.index 0 JD.string) (JD.index 1 creatureLogDecoder))
-  , ("StartCombat", JD.map2 GLStartCombat (JD.index 0 JD.string) (JD.index 1 (JD.list JD.string)))
-  , ("CreateCreature", JD.map GLCreateCreature creatureDataDecoder)
+  , ("CreatureLog", fixedList2 GLCreatureLog JD.string creatureLogDecoder)
+  , ("StartCombat", fixedList2 GLStartCombat JD.string (JD.list JD.string))
+  , ("CreateCreature", fixedList2 GLCreateCreature folderPathDecoder creatureDataDecoder)
   , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
   , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
-  , ("CreateMap", JD.map GLCreateMap mapDecoder)
+  , ("CreateMap", fixedList2 GLCreateMap folderPathDecoder mapDecoder)
   , ("EditMap", JD.map GLEditMap mapDecoder)
   , ("DeleteMap", JD.map GLDeleteMap JD.string)
-  , ("Rollback", JD.map2 GLRollback (JD.index 0 JD.int) (JD.index 1 JD.int))
-  , ("PathCreature", JD.map3 GLPathCreature (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 (JD.list point3Decoder)))
-  , ("SetCreaturePos", JD.map3 GLSetCreaturePos (JD.index 0 JD.string) (JD.index 1 JD.string) (JD.index 2 point3Decoder))
+  , ("Rollback", fixedList2 GLRollback JD.int JD.int)
+  , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
+  , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
   ]
+
+fixedList2 cons d0 d1 = JD.map2 cons (JD.index 0 d0) (JD.index 1 d1)
+fixedList3 cons d0 d1 d2 = JD.map3 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2)
 
 type CombatLog
   = ComLEndTurn CreatureID
@@ -534,7 +539,7 @@ type GameCommand
   | PathCurrentCombatCreature Point3
   | PathCreature SceneID CreatureID Point3
   | SetCreaturePos SceneID CreatureID Point3
-  | CreateCreature CreatureCreation FolderPath
+  | CreateCreature FolderPath CreatureCreation
   | DeleteCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
@@ -572,7 +577,7 @@ gameCommandEncoder gc =
       JE.object [("SetPlayerScene", JE.list [JE.string pid, encodeMaybe scene JE.string])]
     StartCombat scene cids ->
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
-    CreateCreature creature path ->
+    CreateCreature path creature ->
       JE.object [("CreateCreature", JE.list [creatureCreationEncoder creature, folderPathEncoder path])]
     DeleteCreature cid ->
       JE.object [("DeleteCreature", JE.string cid)]
