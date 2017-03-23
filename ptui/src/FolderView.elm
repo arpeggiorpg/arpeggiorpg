@@ -25,23 +25,26 @@ rootFolder content =
        , div [s [S.marginLeft (S.em 1)]] [content]]
 
 selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
-selectFolder model app msg = rootFolder <| folderOnlyView model app (\path item -> button [onClick (msg path)] [text "Select"]) [] app.current_game.campaign
+selectFolder model app msg =
+  let select path item =  input [type_ "radio", onClick (msg path), name "select-folder"] [text "Select"]
+  in rootFolder <| folderOnlyView model app select [] app.current_game.campaign
 
 folderOnlyView : M.Model -> T.App
                 -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
                 -> T.FolderPath -> T.Folder -> Html M.Msg
 folderOnlyView model app extra path folder =
-  folderSubEntries model app extra path folder (folderOnlyView model app extra)
+  folderSubEntries model extra path folder (folderOnlyView model app extra)
 
 folderLine : Html M.Msg -> M.Msg -> String -> String -> Html M.Msg
-folderLine extra msg iconName entryName = habox [clickable, onClick msg] [icon [] iconName, extra, text entryName]
+folderLine extra msg iconName entryName =
+  hbox [icon [clickable, onClick msg] iconName, extra, div [clickable, onClick msg] [text entryName]]
 
-folderSubEntries : M.Model -> T.App
+folderSubEntries : M.Model
                  -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
                  -> T.FolderPath -> T.Folder
                  -> (T.FolderPath -> T.Folder -> Html M.Msg)
                  -> Html M.Msg
-folderSubEntries model app extra path (T.Folder folder) recurse =
+folderSubEntries model extra path (T.Folder folder) recurse =
   let
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
@@ -82,7 +85,7 @@ folderView model app path (T.Folder folder) =
       vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
     notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
-    children = folderSubEntries model app (\_ _ -> text "") path (T.Folder folder) (folderView model app)
+    children = folderSubEntries model (\_ _ -> text "") path (T.Folder folder) (folderView model app)
     deleteFolder =
       if path /= []
       then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
