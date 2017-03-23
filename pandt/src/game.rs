@@ -40,6 +40,33 @@ impl Game {
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
+
+      MoveFolderItem(src, item, dst) => {
+        match item {
+          FolderItemID::SceneID(sid) => {
+            let ch = self.change_with(GameLog::UnlinkFolderScene(src, sid))?;
+            ch.apply(&GameLog::LinkFolderScene(dst, sid))
+          }
+          FolderItemID::MapID(mid) => {
+            let ch = self.change_with(GameLog::UnlinkFolderMap(src, mid))?;
+            ch.apply(&GameLog::LinkFolderMap(dst, mid))
+          }
+          FolderItemID::CreatureID(cid) => {
+            let ch = self.change_with(GameLog::UnlinkFolderCreature(src, cid))?;
+            ch.apply(&GameLog::LinkFolderCreature(dst, cid))
+          }
+          FolderItemID::NoteID(name) => {
+            let note = self.campaign
+              .get(&src)?
+              .notes
+              .get(&name)
+              .ok_or_else(|| GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
+            let ch = self.change_with(GameLog::DeleteNote(src, name))?;
+            ch.apply(&GameLog::CreateNote(dst, note.clone()))
+          }
+        }
+      }
+
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),

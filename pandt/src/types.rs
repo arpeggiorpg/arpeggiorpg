@@ -153,6 +153,14 @@ impl Distance {
   }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum FolderItemID {
+  SceneID(SceneID),
+  MapID(MapID),
+  CreatureID(CreatureID),
+  NoteID(String),
+}
+
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
@@ -160,6 +168,9 @@ pub enum GameCommand {
   CreateFolder(FolderPath),
   /// Delete a folder.
   DeleteFolder(FolderPath),
+
+  /// Move some object from one folder to another.
+  MoveFolderItem(FolderPath, FolderItemID, FolderPath),
 
   /// Create a Note inside of a Folder.
   CreateNote(FolderPath, Note),
@@ -448,6 +459,10 @@ error_chain! {
     FolderNotEmpty(path: FolderPath) {
       description("The user attempted to delete a folder when it wasn't empty.")
       display("The folder {} is not empty", path.to_string())
+    }
+    NoteNotFound(path: FolderPath, name: String) {
+      description("A note couldn't be found.")
+      display("The note in '{}' named '{}' could not be found.", path.to_string(), name)
     }
   }
 }
