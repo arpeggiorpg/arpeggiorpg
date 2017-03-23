@@ -129,10 +129,12 @@ type Modal
   | CreateCreature PendingCreature
   | CreateScene CreatingScene
   | CreateMap CreatingMap
+  | MoveFolderItem MovingFolderItem
 
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
 type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
 type alias CreatingMap = {path: T.FolderPath, name: String}
+type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}

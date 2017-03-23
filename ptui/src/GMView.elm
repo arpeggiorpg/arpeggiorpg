@@ -150,7 +150,8 @@ console model app {key, path, prettyName} content =
     menu = popUpMenu model "console-" (toString key) (icon [] "more_horiz") (icon [] "more_horiz")
                      menuItems
     menuItems = [ (text "Delete", deleteItem)
-                , (text "Move", M.NoMsg)]
+                , (text "Move", M.SetModal (M.MoveFolderItem {src=path, item=key, dst=[]}))
+                ]
     deleteItem =
       case key of
         T.FolderScene k -> M.SendCommand (T.DeleteScene k)
@@ -257,6 +258,10 @@ createMapDialog model app cm =
       , button [onClick create] [text "Create"]
       ]
 
+moveFolderItemDialog : M.Model -> T.App -> M.MovingFolderItem -> Html M.Msg
+moveFolderItemDialog model app {src, item, dst} =
+  text "Hello, world!"
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -271,6 +276,7 @@ checkModal model app =
         M.CreateCreature pending -> Just (createCreatureDialog model app pending)
         M.CreateScene cs -> Just (createSceneDialog model app cs)
         M.CreateMap cm -> Just (createMapDialog model app cm)
+        M.MoveFolderItem mfi -> Just (moveFolderItemDialog model app mfi)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
