@@ -204,6 +204,16 @@ moveFolderItemDialog model app {src, item, dst} =
       , button [onClick submit] [text "Select"]
       ]
 
+renameFolderDialog : M.Model -> T.App -> M.RenamingFolder -> Html M.Msg
+renameFolderDialog model app {path, newName} =
+  let
+    changeName name = M.SetModal (M.RenameFolder {path=path, newName=name})
+    submit = M.Batch [M.SetModal M.NoModal, M.SendCommand (T.RenameFolder path newName)]
+  in
+  vbox [ hbox [dtext "Renaming", renderFolderPath path]
+       , input [value newName, onInput changeName] []
+       , button [onClick submit] [text "Submit"]]
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -219,6 +229,7 @@ checkModal model app =
         M.CreateScene cs -> Just (createSceneDialog model app cs)
         M.CreateMap cm -> Just (createMapDialog model app cm)
         M.MoveFolderItem mfi -> Just (moveFolderItemDialog model app mfi)
+        M.RenameFolder rf -> Just (renameFolderDialog model app rf)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -507,8 +518,9 @@ hsbox = habox [s [S.justifyContent S.spaceBetween]]
 historyItem : Int -> Int -> T.GameLog -> Html M.Msg
 historyItem snapIdx logIdx log =
   let logItem = case log of
-    T.GLCreateFolder path -> hsbox [dtext "Created folder", dtext (T.folderPathToString path)]
-    T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", dtext (T.folderPathToString path)]
+    T.GLCreateFolder path -> hsbox [dtext "Created folder", renderFolderPath path]
+    T.GLRenameFolder path newName -> hsbox [dtext "Renamed Folder", renderFolderPath path, dtext newName]
+    T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", renderFolderPath path]
     T.GLMoveFolderItem src item dst -> hsbox [dtext "Moved Folder Item", renderFolderPath src, dtext (toString item), renderFolderPath dst]
     T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
     T.GLEditNote path name note -> hsbox [dtext "Edited Note", renderFolderPath path, dtext name]

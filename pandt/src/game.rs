@@ -39,6 +39,7 @@ impl Game {
     let change = match cmd {
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
+      RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
@@ -158,6 +159,7 @@ impl Game {
     use self::GameLog::*;
     match *log {
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
+      RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       DeleteFolder(ref path) => {
         {
           let node = self.campaign.get(path)?;

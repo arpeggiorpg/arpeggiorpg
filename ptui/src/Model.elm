@@ -130,11 +130,13 @@ type Modal
   | CreateScene CreatingScene
   | CreateMap CreatingMap
   | MoveFolderItem MovingFolderItem
+  | RenameFolder RenamingFolder
 
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
 type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
 type alias CreatingMap = {path: T.FolderPath, name: String}
 type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
+type alias RenamingFolder = {path: T.FolderPath, newName: String}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}

@@ -167,6 +167,8 @@ pub enum FolderItemID {
 pub enum GameCommand {
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
+  /// Rename a folder.
+  RenameFolder(FolderPath, String),
   /// Delete a folder.
   DeleteFolder(FolderPath),
 
@@ -280,6 +282,7 @@ pub enum GameLog {
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
+  RenameFolder(FolderPath, String),
   DeleteFolder(FolderPath),
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
   CreateNote(FolderPath, Note),

@@ -97,6 +97,10 @@ folderView model app path (T.Folder folder) =
       if path /= []
       then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
       else []
+    renameFolder =
+      if path /= []
+      then [(hbox [icon [] "text_format", dtext "Rename Folder"], M.SetModal (M.RenameFolder {path=path, newName="New Name"}))]
+      else []
     addMenuItems =
       [ ( hbox [icon [] "casino", dtext "Create Scene"]
         , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
@@ -108,7 +112,7 @@ folderView model app path (T.Folder folder) =
         , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
       , ( hbox [icon [] "folder", dtext "Create Folder"]
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
-      ] ++  moveFolder ++ deleteFolder
+      ] ++  moveFolder ++ renameFolder ++ deleteFolder
     addMenu =
       CommonView.popUpMenu model "create-item-in-folder" (T.folderPathToString path)
         (icon [] "more_horiz")

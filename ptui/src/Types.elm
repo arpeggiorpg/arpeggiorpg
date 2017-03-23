@@ -75,6 +75,7 @@ gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
   = GLCreateFolder FolderPath
+  | GLRenameFolder FolderPath String
   | GLDeleteFolder FolderPath
   | GLMoveFolderItem FolderPath FolderItemID FolderPath
   | GLCreateNote FolderPath Note
@@ -101,6 +102,7 @@ type GameLog
 gameLogDecoder = sumDecoder "GameLog"
   [ ("StopCombat", GLStopCombat) ]
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
+  , ("RenameFolder", fixedList2 GLRenameFolder folderPathDecoder JD.string)
   , ("DeleteFolder", JD.map GLDeleteFolder folderPathDecoder)
   , ("MoveFolderItem", fixedList3 GLMoveFolderItem folderPathDecoder folderItemIDDecoder folderPathDecoder)
   , ("CreateNote", fixedList2 GLCreateNote folderPathDecoder noteDecoder)
@@ -519,6 +521,7 @@ effectDecoder =
 -- GameCommand represents all possible mutating commands sent to the RPI
 type GameCommand
   = CreateFolder FolderPath
+  | RenameFolder FolderPath String
   | DeleteFolder FolderPath
   | MoveFolderItem FolderPath FolderItemID FolderPath
   | CreateNote FolderPath Note
@@ -554,6 +557,8 @@ gameCommandEncoder gc =
   case gc of
     CreateFolder path ->
       JE.object [("CreateFolder", folderPathEncoder path)]
+    RenameFolder path newName ->
+      JE.object [("RenameFolder", JE.list [folderPathEncoder path, JE.string newName])]
     DeleteFolder path ->
       JE.object [("DeleteFolder", folderPathEncoder path)]
     MoveFolderItem src item dst ->
