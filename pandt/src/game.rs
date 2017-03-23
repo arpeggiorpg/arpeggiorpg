@@ -125,6 +125,7 @@ impl Game {
       &FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
       &FolderItemID::SceneID(sid) => node.scenes.insert(sid),
       &FolderItemID::MapID(mid) => node.maps.insert(mid),
+      &FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
       &FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
       }
@@ -139,6 +140,7 @@ impl Game {
       &FolderItemID::CreatureID(cid) => node.creatures.remove(&cid),
       &FolderItemID::SceneID(sid) => node.scenes.remove(&sid),
       &FolderItemID::MapID(mid) => node.maps.remove(&mid),
+      &FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       &FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
       }
@@ -175,6 +177,9 @@ impl Game {
               .remove(&name)
               .ok_or(GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
             self.campaign.get_mut(dst)?.notes.insert(note.clone());
+          }
+          &FolderItemID::SubfolderID(ref name) => {
+            self.campaign.move_folder(&src.child(name.clone()), dst)?;
           }
           ref item_id => {
             self.unlink_folder_item(src, item_id)?;

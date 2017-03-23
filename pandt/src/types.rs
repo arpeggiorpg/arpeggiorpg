@@ -159,6 +159,7 @@ pub enum FolderItemID {
   MapID(MapID),
   CreatureID(CreatureID),
   NoteID(String),
+  SubfolderID(String),
 }
 
 /// Top-level commands that can be sent from a client to affect the state of the app.

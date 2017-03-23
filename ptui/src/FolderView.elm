@@ -26,7 +26,7 @@ rootFolder extra content =
 
 selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
 selectFolder model app msg =
-  let select path item =  input [type_ "radio", onClick (msg path), name "select-folder"] [text "Select"]
+  let select path _ = input [type_ "radio", onClick (msg path), name "select-folder"] [text "Select"]
   in rootFolder (select [] Nothing) <| folderOnlyView model app select [] app.current_game.campaign
 
 folderOnlyView : M.Model -> T.App
@@ -86,6 +86,13 @@ folderView model app path (T.Folder folder) =
     notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
     maps = vbox (List.map viewMap (Set.toList folder.data.maps))
     children = folderSubEntries model (\_ _ -> text "") path (T.Folder folder) (folderView model app)
+    moveFolder =
+      case T.folderPathBaseName path of
+        Just basename ->
+          [( hbox [icon[] "trending_flat", dtext "Move Folder"]
+           , M.SetModal (M.MoveFolderItem {src=T.folderPathParent path, item=T.FolderSubfolder basename, dst=[]})
+           )]
+        Nothing -> []
     deleteFolder =
       if path /= []
       then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
@@ -101,7 +108,7 @@ folderView model app path (T.Folder folder) =
         , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
       , ( hbox [icon [] "folder", dtext "Create Folder"]
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
-      ] ++ deleteFolder
+      ] ++  moveFolder ++ deleteFolder
     addMenu =
       CommonView.popUpMenu model "create-item-in-folder" (T.folderPathToString path)
         (icon [] "more_horiz")

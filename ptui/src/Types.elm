@@ -2,6 +2,7 @@ module Types exposing (..)
 
 import Array
 import Dict exposing (Dict(..))
+import List.Extra
 import Maybe exposing (withDefault)
 import Json.Decode as JD
 import Json.Encode as JE
@@ -617,6 +618,7 @@ type FolderItemID
   | FolderCreature CreatureID
   | FolderNote String
   | FolderMap MapID
+  | FolderSubfolder String
 
 folderItemIDEncoder : FolderItemID -> JE.Value
 folderItemIDEncoder item = case item of
@@ -624,6 +626,7 @@ folderItemIDEncoder item = case item of
   FolderCreature cid -> JE.object [("CreatureID", JE.string cid)]
   FolderNote nid -> JE.object [("NoteID", JE.string nid)]
   FolderMap mid -> JE.object [("MapID", JE.string mid)]
+  FolderSubfolder name -> JE.object [("SubfolderID", JE.string name)]
 
 folderItemIDDecoder : JD.Decoder FolderItemID
 folderItemIDDecoder = sumDecoder "FolderItemID"
@@ -632,6 +635,7 @@ folderItemIDDecoder = sumDecoder "FolderItemID"
   , ("CreatureID", JD.map FolderCreature JD.string)
   , ("NoteID", JD.map FolderNote JD.string)
   , ("FolderMap", JD.map FolderMap JD.string)
+  , ("SubfolderID", JD.map FolderSubfolder JD.string)
   ]
 
 type RustResult
@@ -758,3 +762,9 @@ toggleTerrain {id, name, terrain} pt =
 
 emptyMap : Map
 emptyMap = {id="invalid", name="<empty>", terrain=[]}
+
+folderPathParent : FolderPath -> FolderPath
+folderPathParent path = Maybe.withDefault [] <| List.Extra.init path
+
+folderPathBaseName : FolderPath -> Maybe String
+folderPathBaseName path = List.Extra.last path

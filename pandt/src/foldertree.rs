@@ -36,6 +36,10 @@ error_chain! {
       description("The user attempted to move the root folder.")
       display("The root folder cannot be removed.")
     }
+    ImpossibleMove(from: FolderPath, to: FolderPath) {
+      description("The user attempted to move an item in an impossible way.")
+      display("Can't move {} to {}", from.to_string(), to.to_string())
+    }
   }
 }
 
@@ -115,6 +119,9 @@ impl<T> FolderTree<T> {
 
   pub fn move_folder(&mut self, path: &FolderPath, new_parent: &FolderPath)
                      -> Result<(), FolderTreeError> {
+    if new_parent.is_child_of(path) {
+      bail!(FolderTreeErrorKind::ImpossibleMove(path.clone(), new_parent.clone()));
+    }
     match path.up() {
       Some((old_parent, basename)) => {
         if !self.nodes.contains_key(new_parent) {
@@ -122,11 +129,8 @@ impl<T> FolderTree<T> {
         }
         let descendants = self.walk_paths(path.clone()).cloned().collect::<Vec<FolderPath>>();
         for subpath in descendants {
-          println!("Moving {:?}", subpath);
           let relative = subpath.relative_to(&old_parent)?;
-          println!("Relative path: {:?}", relative);
           let new_path = new_parent.descendant(relative.0);
-          println!("To {:?}", new_path);
           let path_data = self.nodes
             .remove(&subpath)
             .ok_or(FolderTreeErrorKind::FolderNotFound(subpath.clone()))?;
@@ -472,6 +476,20 @@ mod test {
     assert_eq!(ftree.get(&fpath("/home/usr/share")).unwrap(), &"/usr/share folder".to_string());
     assert_eq!(ftree.get_children(&fpath("/home")).unwrap(),
                &HashSet::from_iter(vec!["usr".to_string()]));
+  }
+
+  #[test]
+  fn move_folder_to_descendant() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    ftree.make_folder(&fpath("/usr"), "bin".to_string(), "/usr/bin folder".to_string()).unwrap();
+    match ftree.move_folder(&fpath("/usr"), &fpath("/usr/bin")) {
+      Err(FolderTreeError(FolderTreeErrorKind::ImpossibleMove(from, to), _)) => {
+        assert_eq!(from, fpath("/usr"));
+        assert_eq!(to, fpath("/usr/bin"));
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
   }
 
   #[test]
