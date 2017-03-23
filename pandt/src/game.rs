@@ -177,10 +177,13 @@ impl Game {
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
       DeleteScene(ref sid) => {
-        // TODO:
+        // TODO: Figure out how to deal with players referencing this scene.
         // - disallow deleting if in combat
-        // - if any players have the scene, set them to None
-        // - search for scene in campaign and delete references
+        if let Ok(combat) = self.get_combat() {
+          if combat.scene.id == *sid {
+            bail!(GameErrorEnum::SceneInUse(*sid));
+          }
+        }
         let all_folders: Vec<FolderPath> =
           newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
@@ -242,8 +245,7 @@ impl Game {
           node.creatures.remove(&cid);
         }
         newgame.current_combat = {
-          let combat = newgame.get_combat()?;
-          combat.remove_from_combat(cid)?
+          if let Ok(combat) = newgame.get_combat() { combat.remove_from_combat(cid)? } else { None }
         };
 
         newgame.creatures
@@ -252,7 +254,7 @@ impl Game {
       }
       AddCreatureToCombat(cid) => {
         let mut combat = newgame.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
-        self.check_creature_id(cid)?;
+        newgame.check_creature_id(cid)?;
         if combat.creatures.contains(&cid) {
           bail!(GameErrorEnum::AlreadyInCombat(cid));
         }
@@ -267,32 +269,30 @@ impl Game {
         newgame.current_combat = combat;
       }
       CombatLog(ref cl) => {
-        return Ok(Game { current_combat: Some(self.get_combat()?.apply_log(cl)?), ..self.clone() });
+        newgame.current_combat = Some(newgame.get_combat()?.apply_log(cl)?);
       }
       CreatureLog(cid, ref cl) => {
-        let mut newgame = self.clone();
-        let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
+        let creature = newgame.get_creature(cid)?.creature.apply_log(cl)?;
         *newgame.get_creature_mut(cid)? = creature;
-        return Ok(newgame);
       }
       StartCombat(ref scene, ref cids) => {
         for cid in cids {
-          self.check_creature_id(*cid)?;
+          newgame.check_creature_id(*cid)?;
         }
-        self.check_scene(scene.clone())?;
+        newgame.check_scene(scene.clone())?;
         newgame.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
       }
       StopCombat => {
         newgame.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
       }
       SetCreaturePos(ref scene_name, ref cid, ref pt) => {
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+        let scene = newgame.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
         newgame.scenes.insert(scene);
       }
       PathCreature(ref scene_name, ref cid, ref pts) => {
-        let current_pos = self.get_scene(scene_name.clone())?.get_pos(*cid)?;
+        let current_pos = newgame.get_scene(scene_name.clone())?.get_pos(*cid)?;
         let dest = pts.last().map(|x| *x).unwrap_or(current_pos);
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest);
+        let scene = newgame.get_scene(scene_name.clone())?.set_pos(*cid, dest);
         newgame.scenes.insert(scene);
       }
       // Things that are handled at the App level

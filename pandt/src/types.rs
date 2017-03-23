@@ -333,6 +333,10 @@ error_chain! {
       description("A scene wasn't found")
       display("The scene '{}' wasn't found", scene.0)
     }
+    SceneInUse(scene: SceneID) {
+      description("The scene can't be deleted because it's in use (likely because it's in combat).")
+      display("The scene {} is in use (by combat, probably).", scene.0)
+    }
     IDTooLong(id: String) {
       description("An identifier was too long.")
       display("The identifier '{}' is too long.", id)

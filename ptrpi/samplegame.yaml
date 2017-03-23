@@ -15,6 +15,7 @@ current_game:
           content: "This is a note in the root folder."
       maps:
         - 00000000-0000-0000-0000-000000000004
+        - 00000000-0000-0000-0000-000000000005
     children:
       subfolder1:
         children:
