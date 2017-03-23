@@ -2,7 +2,7 @@ module CommonView exposing
   ( visibleCreatures, creatureCard, oocActionBar, mapControls
   , movementControls, checkModal
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, theCss, tabbedView, viewGame, UI)
+  , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu)
 
 import Dict
 import Set
@@ -340,3 +340,22 @@ viewGame model app ui =
     , errorBox model
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
+
+popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
+popUpMenu model prefix key clicker clickerClicked items = 
+  let realKey = prefix ++ "-" ++ key
+      isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
+      renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
+      openMenu =
+        vabox
+          [s [S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
+             , plainBorder, S.backgroundColor (S.rgb 255 255 255)
+             , S.width (S.px 150)
+             , S.position S.absolute
+             , S.top (S.em 2)]
+          ]
+          (List.map renderItem items)
+      maybeMenu = if isClicked then openMenu else text ""
+      header = div [clickable, onClick (M.ToggleCollapsed realKey)]
+                   [if isClicked then clickerClicked else clicker]
+  in div [s [S.position S.relative]] [header, maybeMenu]

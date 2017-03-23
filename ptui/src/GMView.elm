@@ -13,8 +13,8 @@ import Types as T
 import Grid
 import Update as U
 import Elements exposing (..)
-
-import CommonView
+import FolderView
+import CommonView exposing (popUpMenu)
 
 import Css as S
 
@@ -47,75 +47,7 @@ makeUI model app =
   }
 
 campaignView : M.Model -> T.App -> Html M.Msg
-campaignView model app =
-  let secondaryFocus = secondaryFocusView model app
-  in
-    vbox [ hbox [icon [] "folder_open", text "Campaign"]
-         , div [s [S.marginLeft (S.em 1)]] [folderView model app [] app.current_game.campaign]
-         , secondaryFocus
-         ]
-
-folderView : M.Model -> T.App -> List String -> T.Folder -> Html M.Msg
-folderView model app path (T.Folder folder) =
-  let
-    fentry msg iconName entryName = habox [clickable, onClick msg] [icon [] iconName, text entryName]
-    viewCreature creature =
-      fentry (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
-    viewScene sceneID =
-      let scene = T.getScene app sceneID
-          msg = M.Batch [M.SetFocus (M.Scene sceneID), M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
-      in
-        case scene of
-          Just scene -> fentry msg "casino" scene.name
-          Nothing -> text ("Invalid scene in folder: " ++ sceneID)
-    viewNote (noteName, note) =
-      fentry (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
-    viewMap mapID =
-      let map = M.getMapNamed mapID app
-          msg = M.Batch [ M.SetFocus (M.PreviewMap mapID)
-                        , M.SetSecondaryFocus (M.Focus2Map path mapID)]
-      in case map of
-           Just map -> fentry msg "map" map.name
-           Nothing -> text ("Invalid map in folder: " ++ mapID)
-    viewChild (folderName, childFolder) =
-      let childPath = path ++ [folderName]
-          key = "folder-" ++ String.join "/" childPath
-          isShown = Dict.get key model.collapsed |> Maybe.withDefault False
-          iconName = if isShown then "folder_open" else "folder"
-      in
-        vbox [ hbox [fentry (M.ToggleCollapsed key) iconName folderName]
-              , if isShown
-                then div [s [S.marginLeft (S.em 1)]] [folderView model app childPath childFolder]
-                else text ""
-              ]
-    scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
-    creatures =
-      vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
-    notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
-    maps = vbox (List.map viewMap (Set.toList folder.data.maps))
-    children = vbox (List.map viewChild (Dict.toList folder.children))
-    deleteFolder =
-      if path /= []
-      then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
-      else []
-    addMenuItems =
-      [ ( hbox [icon [] "casino", dtext "Create Scene"]
-        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
-      , ( hbox [icon [] "map", dtext "Create Map"]
-        , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
-      , ( hbox [icon [] "contacts", dtext "Create Creature"]
-        , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
-      , ( hbox [icon [] "note", dtext "Create Note"]
-        , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
-      , ( hbox [icon [] "folder", dtext "Create Folder"]
-        , M.SetModal (M.CreateFolder {parent = path, child = ""}))
-      ] ++ deleteFolder
-    addMenu =
-      popUpMenu model "create-item-in-folder" (T.folderPathToString path)
-        (icon [] "more_horiz")
-        (icon [] "more_horiz")
-        addMenuItems
-  in vbox [ hbox [addMenu], scenes, maps, creatures, notes, children]
+campaignView model app = vbox [FolderView.campaignFolder model app, secondaryFocusView model app]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
@@ -259,8 +191,7 @@ createMapDialog model app cm =
       ]
 
 moveFolderItemDialog : M.Model -> T.App -> M.MovingFolderItem -> Html M.Msg
-moveFolderItemDialog model app {src, item, dst} =
-  text "Hello, world!"
+moveFolderItemDialog model app {src, item, dst} = FolderView.selectFolders model app
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -381,25 +312,6 @@ allCreatureEntry model app creature =
         ]
     , hbox (CommonView.oocActionBar model app.current_game creature)
     ]
-
-popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenu model prefix key clicker clickerClicked items = 
-  let realKey = prefix ++ "-" ++ key
-      isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
-      renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
-      openMenu =
-        vabox
-          [s [S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
-             , plainBorder, S.backgroundColor (S.rgb 255 255 255)
-             , S.width (S.px 150)
-             , S.position S.absolute
-             , S.top (S.em 2)]
-          ]
-          (List.map renderItem items)
-      maybeMenu = if isClicked then openMenu else text ""
-      header = div [clickable, onClick (M.ToggleCollapsed realKey)]
-                   [if isClicked then clickerClicked else clicker]
-  in div [s [S.position S.relative]] [header, maybeMenu]
 
 allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
 allCreatureGearIcon model app creature =
