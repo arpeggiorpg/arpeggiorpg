@@ -176,12 +176,18 @@ impl Game {
           .mutate(&scene.id, move |s| scene.clone())
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
-      DeleteScene(ref name) => {
+      DeleteScene(ref sid) => {
         // TODO:
         // - disallow deleting if in combat
         // - if any players have the scene, set them to None
         // - search for scene in campaign and delete references
-        newgame.scenes.remove(name);
+        let all_folders: Vec<FolderPath> =
+          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+        for path in all_folders {
+          let node = newgame.campaign.get_mut(&path)?;
+          node.scenes.remove(&sid);
+        }
+        newgame.scenes.remove(sid);
       }
       CreateMap(ref map) => {
         if newgame.maps.contains_key(&map.id) {
