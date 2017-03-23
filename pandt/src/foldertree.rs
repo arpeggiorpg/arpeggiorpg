@@ -32,6 +32,10 @@ error_chain! {
       description("The user attempted to remove the root folder.")
       display("The root folder cannot be removed.")
     }
+    CannotMoveRoot {
+      description("The user attempted to move the root folder.")
+      display("The root folder cannot be removed.")
+    }
   }
 }
 
@@ -109,6 +113,34 @@ impl<T> FolderTree<T> {
     }
   }
 
+  pub fn move_folder(&mut self, path: &FolderPath, new_parent: &FolderPath)
+                     -> Result<(), FolderTreeError> {
+    match path.up() {
+      Some((old_parent, basename)) => {
+        if !self.nodes.contains_key(new_parent) {
+          bail!(FolderTreeErrorKind::FolderNotFound(new_parent.clone()));
+        }
+        let descendants = self.walk_paths(path.clone()).cloned().collect::<Vec<FolderPath>>();
+        for subpath in descendants {
+          println!("Moving {:?}", subpath);
+          let relative = subpath.relative_to(&old_parent)?;
+          println!("Relative path: {:?}", relative);
+          let new_path = new_parent.descendant(relative.0);
+          println!("To {:?}", new_path);
+          let path_data = self.nodes
+            .remove(&subpath)
+            .ok_or(FolderTreeErrorKind::FolderNotFound(subpath.clone()))?;
+          self.nodes.insert(new_path, path_data);
+        }
+
+        self.nodes.get_mut(&old_parent).expect("Parent node must exist").1.remove(&basename);
+        self.nodes.get_mut(new_parent).expect("Target directory must exist").1.insert(basename);
+        Ok(())
+      }
+      None => bail!(FolderTreeErrorKind::CannotMoveRoot),
+    }
+  }
+
   fn get_data(&self, path: &FolderPath) -> Result<&(T, HashSet<String>), FolderTreeError> {
     self.nodes.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
@@ -119,7 +151,7 @@ impl<T> FolderTree<T> {
   }
 
   /// Iterate paths to all folders below the given one.
-  pub fn walk_paths<'a>(&'a self, parent: FolderPath) -> impl Iterator<Item=&FolderPath> + 'a {
+  pub fn walk_paths<'a>(&'a self, parent: FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
     self.nodes.keys().filter(move |p| p.is_child_of(&parent))
   }
 }
@@ -159,14 +191,32 @@ impl FolderPath {
     FolderPath(segs)
   }
 
+  pub fn is_root(&self) -> bool {
+    self.0.len() == 0
+  }
+
   pub fn child(&self, seg: String) -> FolderPath {
     let mut new = self.clone();
     new.0.push(seg);
     new
   }
 
+  pub fn descendant(&self, subpath: Vec<String>) -> FolderPath {
+    let mut new = self.clone();
+    new.0.extend(subpath);
+    new
+  }
+
   pub fn is_child_of(&self, other: &FolderPath) -> bool {
     self.0.starts_with(&other.0)
+  }
+
+  pub fn relative_to(&self, ancestor: &FolderPath) -> Result<FolderPath, FolderTreeError> {
+    if self.is_child_of(ancestor) {
+      Ok(FolderPath::from_vec(self.0[ancestor.0.len()..].to_vec()))
+    } else {
+      bail!("Sorry, relative_to must be passed ancestor.")
+    }
   }
 }
 
@@ -301,6 +351,8 @@ impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
 
 #[cfg(test)]
 mod test {
+  use std::collections::HashSet;
+  use std::iter::FromIterator;
   use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
   use serde_json;
 
@@ -328,7 +380,7 @@ mod test {
   }
 
   #[test]
-  fn make_dirs() {
+  fn make_folders() {
     let mut ftree = FolderTree::new("Root node!".to_string());
     ftree.make_folders(&fpath("/usr/bin"), "Folder!".to_string());
     assert_eq!(ftree.get(&fpath("/usr")).unwrap(), &"Folder!".to_string());
@@ -343,7 +395,7 @@ mod test {
   }
 
   #[test]
-  fn make_dir_existing() {
+  fn make_folder_existing() {
     let mut ftree = FolderTree::new("Root node!".to_string());
     ftree.make_folders(&fpath("/foo"), "Folder".to_string());
     let result = ftree.make_folder(&fpath(""), "foo".to_string(), "other folder".to_string());
@@ -366,6 +418,60 @@ mod test {
     }
     let root_node = ftree.get(&fpath("")).unwrap();
     assert_eq!(root_node, &"Root node! Okay.".to_string());
+  }
+
+  #[test]
+  fn move_folder() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    ftree.make_folder(&fpath(""), "home".to_string(), "home folder".to_string()).unwrap();
+    ftree.move_folder(&fpath("/usr"), &fpath("/home")).unwrap();
+    match ftree.get(&fpath("/usr")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => {
+        assert_eq!(p, fpath("/usr"))
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
+    assert_eq!(ftree.get(&fpath("/home/usr")).unwrap(), &"usr folder".to_string());
+    assert_eq!(ftree.get_children(&fpath("")).unwrap(),
+               &HashSet::from_iter(vec!["home".to_string()]));
+    assert_eq!(ftree.get_children(&fpath("/home")).unwrap(),
+               &HashSet::from_iter(vec!["usr".to_string()]));
+  }
+
+  #[test]
+  fn move_folder_no_target() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    match ftree.move_folder(&fpath("/usr"), &fpath("/home")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => {
+        assert_eq!(p, fpath("/home"))
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
+  }
+
+  #[test]
+  fn move_folder_with_children() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    ftree.make_folder(&fpath("/usr"), "bin".to_string(), "/usr/bin folder".to_string()).unwrap();
+    ftree.make_folder(&fpath("/usr"), "share".to_string(), "/usr/share folder".to_string())
+      .unwrap();
+    ftree.make_folder(&fpath(""), "home".to_string(), "home folder".to_string()).unwrap();
+    ftree.move_folder(&fpath("/usr"), &fpath("/home")).unwrap();
+    for path in vec![fpath("/usr"), fpath("/usr/bin"), fpath("/usr/share")].iter() {
+      match ftree.get(path) {
+        Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => assert_eq!(p, *path),
+        x => panic!("Bad result: {:?}", x),
+      }
+    }
+    assert_eq!(ftree.get(&fpath("/home")).unwrap(), &"home folder".to_string());
+    assert_eq!(ftree.get(&fpath("/home/usr")).unwrap(), &"usr folder".to_string());
+    assert_eq!(ftree.get(&fpath("/home/usr/bin")).unwrap(), &"/usr/bin folder".to_string());
+    assert_eq!(ftree.get(&fpath("/home/usr/share")).unwrap(), &"/usr/share folder".to_string());
+    assert_eq!(ftree.get_children(&fpath("/home")).unwrap(),
+               &HashSet::from_iter(vec!["usr".to_string()]));
   }
 
   #[test]
