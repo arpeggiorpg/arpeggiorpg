@@ -125,22 +125,22 @@ secondaryFocusView model app =
       case T.getCreature app.current_game cid of
         Just creature ->
           -- TODO: * move functionality from All Creatures here (add to combat?)
-          let item = {key=M.FolderCreature cid, path=path, prettyName=creature.name}
+          let item = {key=T.FolderCreature cid, path=path, prettyName=creature.name}
           in console model app item (CommonView.creatureCard [noteBox model creature] app creature)
         Nothing -> text "Creature Disappeared"
     M.Focus2Note path origName note ->
-      let item = {key=M.FolderNote origName, path=path, prettyName=origName}
+      let item = {key=T.FolderNote origName, path=path, prettyName=origName}
       in console model app item (noteConsole model app path origName note)
     M.Focus2Map path mapID ->
       case M.getMapNamed mapID app of
         Just map ->
-          let item = {key=M.FolderMap mapID, path=path, prettyName=map.name}
+          let item = {key=T.FolderMap mapID, path=path, prettyName=map.name}
           in console model app item (mapConsole model app path mapID)
         Nothing -> text "Map Disappeared"
     M.Focus2Scene path sceneID ->
       case T.getScene app sceneID of
         Just scene -> 
-          let item = {key=M.FolderScene sceneID, path=path, prettyName=scene.name}
+          let item = {key=T.FolderScene sceneID, path=path, prettyName=scene.name}
           in console model app item (text <| "Scene: " ++ sceneID)
         Nothing -> text "Scene Disappeared"
 
@@ -153,10 +153,10 @@ console model app {key, path, prettyName} content =
                 , (text "Move", M.NoMsg)]
     deleteItem =
       case key of
-        M.FolderScene k -> M.SendCommand (T.DeleteScene k)
-        M.FolderNote name -> M.SendCommand (T.DeleteNote path name)
-        M.FolderCreature cid -> M.SendCommand (T.DeleteCreature cid)
-        M.FolderMap mid -> M.SendCommand (T.DeleteMap mid)
+        T.FolderScene k -> M.SendCommand (T.DeleteScene k)
+        T.FolderNote name -> M.SendCommand (T.DeleteNote path name)
+        T.FolderCreature cid -> M.SendCommand (T.DeleteCreature cid)
+        T.FolderMap mid -> M.SendCommand (T.DeleteMap mid)
   in
     vabox [s [S.marginTop (S.em 1)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]

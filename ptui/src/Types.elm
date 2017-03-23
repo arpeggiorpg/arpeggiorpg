@@ -514,6 +514,7 @@ effectDecoder =
 type GameCommand
   = CreateFolder FolderPath
   | DeleteFolder FolderPath
+  | MoveFolderItem FolderPath FolderItemID FolderPath
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
   | DeleteNote FolderPath String
@@ -549,6 +550,8 @@ gameCommandEncoder gc =
       JE.object [("CreateFolder", folderPathEncoder path)]
     DeleteFolder path ->
       JE.object [("DeleteFolder", folderPathEncoder path)]
+    MoveFolderItem src item dst ->
+      JE.object [("MoveFolderItem", JE.list [folderPathEncoder src, folderItemIDEncoder item, folderPathEncoder dst])]
     CreateNote path note ->
       JE.object [("CreateNote", JE.list [folderPathEncoder path, noteEncoder note])]
     EditNote path name note ->
@@ -604,6 +607,27 @@ gameCommandEncoder gc =
     SetCreatureNote cid note ->
       JE.object [("SetCreatureNote", JE.list [JE.string cid, JE.string note])]
 
+type FolderItemID
+  = FolderScene SceneID
+  | FolderCreature CreatureID
+  | FolderNote String
+  | FolderMap MapID
+
+folderItemIDEncoder : FolderItemID -> JE.Value
+folderItemIDEncoder item = case item of
+  FolderScene sid -> JE.object [("SceneID", JE.string sid)]
+  FolderCreature cid -> JE.object [("CreatureID", JE.string cid)]
+  FolderNote nid -> JE.object [("NoteID", JE.string nid)]
+  FolderMap mid -> JE.object [("MapID", JE.string mid)]
+
+folderItemIDDecoder : JD.Decoder FolderItemID
+folderItemIDDecoder = sumDecoder "FolderItemID"
+  []
+  [ ("SceneID", JD.map FolderScene JD.string)
+  , ("CreatureID", JD.map FolderCreature JD.string)
+  , ("NoteID", JD.map FolderNote JD.string)
+  , ("FolderMap", JD.map FolderMap JD.string)
+  ]
 
 type RustResult
   = RustOk JD.Value

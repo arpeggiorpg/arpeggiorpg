@@ -182,14 +182,8 @@ type alias MovementRequest = {
   ooc_creature: Maybe T.Creature
 }
 
-type FolderItemKey
-  = FolderScene T.SceneID
-  | FolderCreature T.CreatureID
-  | FolderNote String
-  | FolderMap T.MapID
-
 type alias FolderItem =
-  { key: FolderItemKey
+  { key: T.FolderItemID
   , path: T.FolderPath
   , prettyName : String
   }
