@@ -203,7 +203,12 @@ impl Game {
         if scenes_using_this_map.len() > 0 {
           bail!(GameErrorEnum::MapInUse(*mid, scenes_using_this_map));
         }
-        // TODO: Also remove the map from all folders!
+        let all_folders: Vec<FolderPath> =
+          newgame.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+        for path in all_folders {
+          let node = newgame.campaign.get_mut(&path)?;
+          node.maps.remove(&mid);
+        }
         newgame.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid))?;
       }
       CreateCreature(ref c) => {
