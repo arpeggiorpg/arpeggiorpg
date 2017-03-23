@@ -18,15 +18,19 @@ error_chain! {
     }
     FolderNotFound(path: FolderPath) {
       description("A folder wasn't found.")
-      display("The folder {} doesn't exist", path.to_string())
+      display("The folder '{}' doesn't exist", path.to_string())
     }
     FolderExists(path: FolderPath) {
       description("A folder already existed when trying to insert a new folder node.")
-      display("The folder {} already exists", path.to_string())
+      display("The folder '{}' already exists", path.to_string())
     }
     FolderNotEmpty(path: FolderPath) {
       description("A folder wasn't empty when trying to remove it")
-      display("The folder {} was not empty", path.to_string())
+      display("The folder '{}' was not empty", path.to_string())
+    }
+    CannotRenameRoot {
+      description("The user attempted to rename the root folder.")
+      display("The root folder cannot be renamed.")
     }
     CannotRemoveRoot {
       description("The user attempted to remove the root folder.")
@@ -38,7 +42,7 @@ error_chain! {
     }
     ImpossibleMove(from: FolderPath, to: FolderPath) {
       description("The user attempted to move an item in an impossible way.")
-      display("Can't move {} to {}", from.to_string(), to.to_string())
+      display("Can't move '{}' to '{}'", from.to_string(), to.to_string())
     }
   }
 }
@@ -117,15 +121,38 @@ impl<T> FolderTree<T> {
     }
   }
 
+  pub fn rename_folder(&mut self, path: &FolderPath, new_name: String)
+                       -> Result<(), FolderTreeError> {
+    match path.up() {
+      Some((parent, basename)) => {
+        {
+          let mut_data = self.nodes.get_mut(&parent).expect("Parent must exist.");
+          mut_data.1.remove(&basename);
+          mut_data.1.insert(new_name.clone());
+        }
+        let data = self.nodes.remove(path).expect("Node must exist.");
+        self.nodes.insert(parent.child(new_name), data);
+        Ok(())
+      }
+      None => bail!(FolderTreeErrorKind::CannotRenameRoot),
+    }
+  }
+
   pub fn move_folder(&mut self, path: &FolderPath, new_parent: &FolderPath)
                      -> Result<(), FolderTreeError> {
     if new_parent.is_child_of(path) {
       bail!(FolderTreeErrorKind::ImpossibleMove(path.clone(), new_parent.clone()));
     }
+    if !self.nodes.contains_key(new_parent) {
+      bail!(FolderTreeErrorKind::FolderNotFound(new_parent.clone()));
+    }
+    if !self.nodes.contains_key(path) {
+      bail!(FolderTreeErrorKind::FolderNotFound(path.clone()));
+    }
     match path.up() {
       Some((old_parent, basename)) => {
-        if !self.nodes.contains_key(new_parent) {
-          bail!(FolderTreeErrorKind::FolderNotFound(new_parent.clone()));
+        if self.nodes.contains_key(&new_parent.child(basename.clone())) {
+          bail!(FolderTreeErrorKind::FolderExists(new_parent.child(basename)));
         }
         let descendants = self.walk_paths(path.clone()).cloned().collect::<Vec<FolderPath>>();
         for subpath in descendants {
@@ -454,6 +481,34 @@ mod test {
       x => panic!("Bad result: {:?}", x),
     }
   }
+
+  #[test]
+  fn move_folder_no_src() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    match ftree.move_folder(&fpath("/foobar"), &fpath("/usr")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderNotFound(p), _)) => {
+        assert_eq!(p, fpath("/foobar"))
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
+  }
+
+  #[test]
+  fn move_folder_duplicate() {
+    let mut ftree = FolderTree::new("Root node".to_string());
+    ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
+    ftree.make_folder(&fpath(""), "home".to_string(), "home folder".to_string()).unwrap();
+    ftree.make_folder(&fpath("/home"), "usr".to_string(), "home/usr folder".to_string()).unwrap();
+
+    match ftree.move_folder(&fpath("/usr"), &fpath("/home")) {
+      Err(FolderTreeError(FolderTreeErrorKind::FolderExists(p), _)) => {
+        assert_eq!(p, fpath("/home/usr"))
+      }
+      x => panic!("Bad result: {:?}", x),
+    }
+  }
+
 
   #[test]
   fn move_folder_with_children() {
