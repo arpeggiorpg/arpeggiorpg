@@ -41,7 +41,7 @@ selectCreatures model app addCreature remCreature preselected =
         Just (T.FolderCreature cid) ->
           let isChecked = List.member cid preselected
           in input [type_ "checkbox", checked isChecked, onCheck (toggleCheck cid)] []
-        _ -> text "this should not be rendered: only showCreatures is True"
+        _ -> text ""
     cfg = { showNothing | showCreatures = True, contentControls = extraCheckbox}
   in baseCampaignView model app cfg
 
