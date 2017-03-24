@@ -32,14 +32,16 @@ campaignFolder model app =
       }
   in baseCampaignView model app cfg
 
-selectCreatures : M.Model -> T.App -> (T.CreatureID -> M.Msg) -> (T.CreatureID -> M.Msg) -> Html M.Msg
-selectCreatures model app addCreature remCreature =
+selectCreatures : M.Model -> T.App -> (T.CreatureID -> M.Msg) -> (T.CreatureID -> M.Msg) -> List T.CreatureID -> Html M.Msg
+selectCreatures model app addCreature remCreature preselected =
   let
     toggleCheck cid isChecked = if isChecked then addCreature cid else remCreature cid
     extraCheckbox _ itemId =
       case itemId of
-        Just (T.FolderCreature cid) -> input [type_ "checkbox", onCheck (toggleCheck cid)] []
-        _ -> text ""
+        Just (T.FolderCreature cid) ->
+          let isChecked = List.member cid preselected
+          in input [type_ "checkbox", checked isChecked, onCheck (toggleCheck cid)] []
+        _ -> text "this should not be rendered: only showCreatures is True"
     cfg = { showNothing | showCreatures = True, contentControls = extraCheckbox}
   in baseCampaignView model app cfg
 

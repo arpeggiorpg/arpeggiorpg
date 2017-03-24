@@ -101,14 +101,15 @@ sceneConsole model app scene =
   let
     gotCreatures cids =
       let
-        addCreatureToScene cid scene =
-          {scene | creatures = Dict.insert cid {x=0, y=0, z=0} scene.creatures}
-        newScene =
-          List.foldl addCreatureToScene scene cids
+        selectedCreatures = Dict.fromList (List.map (\c -> (c, {x=0, y=0, z=0})) cids)
+        newCreatures = Dict.merge (\_ _ r -> r) (\cid l r res -> Dict.insert cid l res) Dict.insert
+                                  scene.creatures selectedCreatures
+                                  Dict.empty
+        newScene = {scene | creatures = newCreatures}
       in M.SendCommand (T.EditScene newScene)
     selectCreatures = M.SetModal
       <| M.SelectCreaturesFromCampaign
-          {cb=gotCreatures, reason="Add Creatures to Scene", selectedCreatures=[]}
+          {cb=gotCreatures, reason="Set Creatures in Scene", selectedCreatures=Dict.keys scene.creatures}
   in vbox
     [ hbox [strong [] [text "Scene:"], text scene.name]
     , case app.current_game.current_combat of
@@ -119,7 +120,7 @@ sceneConsole model app scene =
           else text ""
         Nothing -> startCombatButton model app
     , hbox [ strong [] [text "Creatures:"]
-           , clickableIcon [onClick selectCreatures] "add"
+           , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
     , terseCreaturesList model app (Dict.keys scene.creatures)
     ]
@@ -256,7 +257,7 @@ selectCreaturesFromCampaignDialog model app {reason, selectedCreatures, cb} =
     submit = M.Batch [M.SetModal M.NoModal, cb selectedCreatures]
   in
     vbox [ strong [] [text reason]
-         , FolderView.selectCreatures model app select unselect
+         , FolderView.selectCreatures model app select unselect selectedCreatures
          , button [onClick submit] [text "Submit"]
          ]
 
@@ -377,37 +378,9 @@ allCreatureEntry model app creature =
   vbox
     [ hbox <|
         [ CommonView.creatureCard [noteBox model creature] app creature
-        , allCreatureGearIcon model app creature
         ]
     , hbox (CommonView.oocActionBar model app.current_game creature)
     ]
-
-allCreatureGearIcon : M.Model -> T.App -> T.Creature -> Html M.Msg
-allCreatureGearIcon model app creature =
-  let engage =
-        case app.current_game.current_combat of
-          Just combat ->
-            if List.member creature.id combat.creatures.data
-            then []
-            else [(text "Engage", M.SendCommand (T.AddCreatureToCombat creature.id))]
-          Nothing -> []
-      addOrRemove = sceneManagementButtons model app creature
-      delete = (text "Delete", M.SendCommand (T.DeleteCreature creature.id))
-  in popUpMenu model "all-creature-menu" creature.id gear gearBox (engage ++ addOrRemove ++ [delete])
-
-sceneManagementButtons : M.Model -> T.App -> T.Creature -> List (Html M.Msg, M.Msg)
-sceneManagementButtons model app creature =
-  case model.focus of
-    M.Scene name ->
-      let sceneCreatures =
-            Dict.get name app.current_game.scenes
-            |> Maybe.map (\s -> Dict.keys s.creatures)
-            |> Maybe.withDefault []
-          inScene = List.member creature.id sceneCreatures
-          addButton = (text "Add to Scene", M.AddCreatureToScene name creature.id)
-          removeButton = (text "Remove from Scene", M.RemoveCreatureFromScene name creature.id)
-      in [if inScene then removeButton else addButton]
-    _ -> []
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}
