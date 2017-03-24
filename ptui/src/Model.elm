@@ -9,7 +9,7 @@ import Time
 import Types as T
 
 
-type alias GotCreatures = List T.CreatureID -> Cmd Msg
+type alias GotCreatures = List T.CreatureID -> Msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -131,12 +131,14 @@ type Modal
   | CreateMap CreatingMap
   | MoveFolderItem MovingFolderItem
   | RenameFolder RenamingFolder
+  | SelectCreaturesFromCampaign SelectingCreatures
 
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
 type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
 type alias CreatingMap = {path: T.FolderPath, name: String}
 type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
 type alias RenamingFolder = {path: T.FolderPath, newName: String}
+type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}

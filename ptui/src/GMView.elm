@@ -73,7 +73,7 @@ secondaryFocusView model app =
       case T.getScene app sceneID of
         Just scene -> 
           let item = {key=T.FolderScene sceneID, path=path, prettyName=scene.name}
-          in console model app item (text <| "Scene: " ++ sceneID)
+          in console model app item (sceneConsole model app scene)
         Nothing -> text "Scene Disappeared"
 
 console : M.Model -> T.App -> M.FolderItem -> Html M.Msg -> Html M.Msg
@@ -94,11 +94,41 @@ console model app {key, path, prettyName} content =
   in
     vabox [s [S.marginTop (S.em 1)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
-      , content
-      -- TODO:
-      -- * move item to another folder
-      -- * delete item
-      ]
+      , content ]
+
+sceneConsole : M.Model -> T.App -> T.Scene -> Html M.Msg
+sceneConsole model app scene =
+  let
+    gotCreatures cids =
+      let
+        addCreatureToScene cid scene =
+          {scene | creatures = Dict.insert cid {x=0, y=0, z=0} scene.creatures}
+        newScene =
+          List.foldl addCreatureToScene scene cids
+      in M.SendCommand (T.EditScene newScene)
+    selectCreatures = M.SetModal
+      <| M.SelectCreaturesFromCampaign
+          {cb=gotCreatures, reason="Add Creatures to Scene", selectedCreatures=[]}
+  in vbox
+    [ hbox [strong [] [text "Scene:"], text scene.name]
+    , case app.current_game.current_combat of
+        Just combat ->
+          if combat.scene == scene.id
+          then hbox [ text "There is a combat happening in this scene!"
+                    , button [onClick (M.SelectView "right-side-bar" "Combat")] [text "View Combat"]]
+          else text ""
+        Nothing -> startCombatButton model app
+    , hbox [ strong [] [text "Creatures:"]
+           , clickableIcon [onClick selectCreatures] "add"
+           ]
+    , terseCreaturesList model app (Dict.keys scene.creatures)
+    ]
+
+terseCreaturesList : M.Model -> T.App -> List T.CreatureID -> Html M.Msg
+terseCreaturesList model app cids =
+  let creatureLine creature =
+        hbox [strong [] [text creature.name]]
+  in vbox (List.map creatureLine (T.getCreatures app.current_game cids))
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteConsole model app path origName note =
@@ -214,6 +244,22 @@ renameFolderDialog model app {path, newName} =
        , input [value newName, onInput changeName] []
        , button [onClick submit] [text "Submit"]]
 
+selectCreaturesFromCampaignDialog : M.Model -> T.App -> M.SelectingCreatures -> Html M.Msg
+selectCreaturesFromCampaignDialog model app {reason, selectedCreatures, cb} =
+  let
+    select cid =
+      Debug.log ("Selecting cid "++ cid) <|
+      M.SetModal (M.SelectCreaturesFromCampaign {reason=reason, cb=cb, selectedCreatures=selectedCreatures ++ [cid]})
+    unselect cid = 
+      Debug.log ("DEselecting cid "++ cid) <|
+      M.SetModal (M.SelectCreaturesFromCampaign {reason=reason, cb=cb, selectedCreatures=List.filter (\c -> c /= cid) selectedCreatures})
+    submit = M.Batch [M.SetModal M.NoModal, cb selectedCreatures]
+  in
+    vbox [ strong [] [text reason]
+         , FolderView.selectCreatures model app select unselect
+         , button [onClick submit] [text "Submit"]
+         ]
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -230,6 +276,7 @@ checkModal model app =
         M.CreateMap cm -> Just (createMapDialog model app cm)
         M.MoveFolderItem mfi -> Just (moveFolderItemDialog model app mfi)
         M.RenameFolder rf -> Just (renameFolderDialog model app rf)
+        M.SelectCreaturesFromCampaign sc -> Just (selectCreaturesFromCampaignDialog model app sc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -421,7 +468,7 @@ startCombatButton : M.Model -> T.App -> Html M.Msg
 startCombatButton model app =
   case model.focus of
     M.Scene sceneName  ->
-      let gotCreatures cids = U.message (M.SendCommand (T.StartCombat sceneName cids))
+      let gotCreatures cids = M.SendCommand (T.StartCombat sceneName cids)
           sceneCreatures =
             case Dict.get sceneName app.current_game.scenes of
               Just scene -> Dict.keys scene.creatures
@@ -478,7 +525,7 @@ createCreatureDialog model app {name, class, path} =
 {-| Show all registered players and which creatures they've been granted -}
 playersView : M.Model -> T.App -> Html M.Msg
 playersView model app =
-  let gotCreatures pid cids = U.message (M.SendCommand (T.GiveCreaturesToPlayer pid cids))
+  let gotCreatures pid cids = M.SendCommand (T.GiveCreaturesToPlayer pid cids)
       allCreatures = Dict.keys app.current_game.creatures
       selectCreatures pid = M.SelectCreatures allCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
       grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)

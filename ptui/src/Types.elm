@@ -773,3 +773,6 @@ folderPathParent path = Maybe.withDefault [] <| List.Extra.init path
 
 folderPathBaseName : FolderPath -> Maybe String
 folderPathBaseName path = List.Extra.last path
+
+folderPathChild : FolderPath -> String -> FolderPath
+folderPathChild fp name = fp ++ [name]

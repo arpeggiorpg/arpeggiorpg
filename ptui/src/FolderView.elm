@@ -1,10 +1,12 @@
-module FolderView exposing (campaignFolder, selectFolder)
+module FolderView exposing (campaignFolder, selectFolder, selectCreatures)
 
 import Dict
 import Set
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+
+import Json.Decode as JD
 
 import Css as S
 
@@ -17,34 +19,83 @@ s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
 campaignFolder : M.Model -> T.App -> Html M.Msg
-campaignFolder model app = rootFolder (text "") <| folderView model app [] app.current_game.campaign
+campaignFolder model app =
+  let
+    cfg =
+      { mutable = True
+      , showScenes = True
+      , showCreatures = True
+      , showNotes = True
+      , showMaps = True
+      , allowFocus = True
+      , contentControls = \_ _ -> text ""
+      }
+  in baseCampaignView model app cfg
+
+selectCreatures : M.Model -> T.App -> (T.CreatureID -> M.Msg) -> (T.CreatureID -> M.Msg) -> Html M.Msg
+selectCreatures model app addCreature remCreature =
+  let
+    toggleCheck cid isChecked = if isChecked then addCreature cid else remCreature cid
+    extraCheckbox _ itemId =
+      case itemId of
+        Just (T.FolderCreature cid) -> input [type_ "checkbox", onCheck (toggleCheck cid)] []
+        _ -> text ""
+    cfg = { showNothing | showCreatures = True, contentControls = extraCheckbox}
+  in baseCampaignView model app cfg
+
+selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
+selectFolder model app msg =
+  let
+    select path _ =
+      input [ type_ "radio", name "select-folder"
+            , onClick (msg path) ]
+            [text "Select"]
+    cfg = { showNothing | contentControls = select }
+  in
+    baseCampaignView model app cfg
+
+
+type alias FolderViewConfig =
+  { mutable: Bool
+  , showScenes : Bool
+  , showCreatures : Bool
+  , showNotes : Bool
+  , showMaps : Bool
+  , allowFocus : Bool
+  , contentControls : T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg
+  }
+
+showNothing : FolderViewConfig
+showNothing =
+  { mutable = False
+  , showScenes = False
+  , showCreatures = False
+  , showNotes = False
+  , showMaps = False
+  , allowFocus = False
+  , contentControls = \_ _ -> text ""
+  }
+
+baseCampaignView : M.Model -> T.App -> FolderViewConfig -> Html M.Msg
+baseCampaignView model app cfg =
+  rootFolder (cfg.contentControls [] Nothing) (folderView model app cfg [] app.current_game.campaign)
 
 rootFolder : Html M.Msg -> Html M.Msg -> Html M.Msg
 rootFolder extra content = 
   vbox [ hbox [icon [] "folder_open", extra, text "Campaign"]
        , div [s [S.marginLeft (S.em 1)]] [content]]
 
-selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
-selectFolder model app msg =
-  let select path _ = input [type_ "radio", onClick (msg path), name "select-folder"] [text "Select"]
-  in rootFolder (select [] Nothing) <| folderOnlyView model app select [] app.current_game.campaign
+folderLine : FolderViewConfig -> T.FolderPath -> Maybe T.FolderItemID -> M.Msg -> String -> String -> Html M.Msg
+folderLine cfg path mItem msg iconName entryName =
+  let
+    realMsg = if cfg.allowFocus then msg else M.NoMsg
+    click = if cfg.allowFocus then clickable else s []
+    extra = cfg.contentControls path mItem
+  in
+    hbox [icon [click, onClick realMsg] iconName, extra, div [click, onClick realMsg] [text entryName]]
 
-folderOnlyView : M.Model -> T.App
-                -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
-                -> T.FolderPath -> T.Folder -> Html M.Msg
-folderOnlyView model app extra path folder =
-  folderSubEntries model extra path folder (folderOnlyView model app extra)
-
-folderLine : Html M.Msg -> M.Msg -> String -> String -> Html M.Msg
-folderLine extra msg iconName entryName =
-  hbox [icon [clickable, onClick msg] iconName, extra, div [clickable, onClick msg] [text entryName]]
-
-folderSubEntries : M.Model
-                 -> (T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg)
-                 -> T.FolderPath -> T.Folder
-                 -> (T.FolderPath -> T.Folder -> Html M.Msg)
-                 -> Html M.Msg
-folderSubEntries model extra path (T.Folder folder) recurse =
+folderSubEntries : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
+folderSubEntries model app cfg path (T.Folder folder) =
   let
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
@@ -52,40 +103,48 @@ folderSubEntries model extra path (T.Folder folder) recurse =
           isShown = Dict.get key model.collapsed |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
       in
-        vbox [ hbox [folderLine (extra childPath Nothing) (M.ToggleCollapsed key) iconName folderName]
+        vbox [ hbox [folderLine cfg childPath Nothing (M.ToggleCollapsed key) iconName folderName]
               , if isShown
-                then div [s [S.marginLeft (S.em 1)]] [recurse childPath childFolder]
+                then div [s [S.marginLeft (S.em 1)]] [folderView model app cfg childPath childFolder]
                 else text ""
               ]
   in vbox (List.map viewChild (Dict.toList folder.children))
 
-folderView : M.Model -> T.App -> T.FolderPath -> T.Folder -> Html M.Msg
-folderView model app path (T.Folder folder) =
+folderView : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
+folderView model app cfg path (T.Folder folder) =
   let
     viewCreature creature =
-      folderLine (text "") (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
+      folderLine cfg path (Just (T.FolderCreature creature.id)) (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
     viewScene sceneID =
       let scene = T.getScene app sceneID
           msg = M.Batch [M.SetFocus (M.Scene sceneID), M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
       in
         case scene of
-          Just scene -> folderLine (text "") msg "casino" scene.name
+          Just scene -> folderLine cfg path (Just (T.FolderScene sceneID)) msg "casino" scene.name
           Nothing -> text ("Invalid scene in folder: " ++ sceneID)
     viewNote (noteName, note) =
-      folderLine (text "") (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
+      folderLine cfg path (Just (T.FolderNote noteName)) (M.SetSecondaryFocus (M.Focus2Note path noteName note)) "note" noteName
     viewMap mapID =
       let map = M.getMapNamed mapID app
           msg = M.Batch [ M.SetFocus (M.PreviewMap mapID)
                         , M.SetSecondaryFocus (M.Focus2Map path mapID)]
       in case map of
-           Just map -> folderLine (text "") msg "map" map.name
+           Just map -> folderLine cfg path (Just (T.FolderMap mapID)) msg "map" map.name
            Nothing -> text ("Invalid map in folder: " ++ mapID)
-    scenes = vbox (List.map viewScene (Set.toList folder.data.scenes))
+    scenes =
+      if cfg.showScenes then vbox (List.map viewScene (Set.toList folder.data.scenes))
+      else text ""
     creatures =
-      vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
-    notes = vbox (List.map viewNote (Dict.toList folder.data.notes))
-    maps = vbox (List.map viewMap (Set.toList folder.data.maps))
-    children = folderSubEntries model (\_ _ -> text "") path (T.Folder folder) (folderView model app)
+      if cfg.showCreatures
+      then vbox (List.map viewCreature (T.getCreatures app.current_game (Set.toList folder.data.creatures)))
+      else text ""
+    notes =
+      if cfg.showNotes then vbox (List.map viewNote (Dict.toList folder.data.notes))
+      else text ""
+    maps =
+      if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
+      else text ""
+    children = folderSubEntries model app cfg path (T.Folder folder)
     moveFolder =
       case T.folderPathBaseName path of
         Just basename ->
@@ -118,4 +177,5 @@ folderView model app path (T.Folder folder) =
         (icon [] "more_horiz")
         (icon [] "more_horiz")
         addMenuItems
-  in vbox [ hbox [addMenu], scenes, maps, creatures, notes, children]
+    menu = if cfg.mutable then [addMenu] else []
+  in vbox <| menu ++ [ scenes, maps, creatures, notes, children]

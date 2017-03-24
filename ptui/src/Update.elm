@@ -174,7 +174,7 @@ update msg model = case msg of
       Just (allC, selectedCreatures, cb, _) -> 
         let cids = selectedCreatures
         in ( { model |selectingCreatures = Nothing}
-           , cb cids)
+           , message (cb cids))
       Nothing -> ( model , Cmd.none)
 
   CancelSelectingCreatures ->
