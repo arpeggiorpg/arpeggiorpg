@@ -7,6 +7,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Maybe.Extra as MaybeEx
 
+import Json.Decode as JD
+
 import Model as M
 import Types as T
 import Grid
@@ -37,11 +39,23 @@ makeUI model app =
         , ("Combat", always (combatView model app))
         , ("Players", always (playersView model app))
         , ("History", always (historyView app))
+        , ("Saved Games", always (savedGameView model app))
         ]
   , extraMovementOptions = [moveAnywhereToggle model]
   , extraOverlays = [bottomActionBar app]
   , modal = checkModal model app
   }
+
+
+savedGameView : M.Model -> T.App -> Html M.Msg
+savedGameView model app =
+  let
+    loadButton =
+      button [onClick (M.GetSavedGames (M.SetModal << M.ModalLoadGame))] [text "Load Game"]
+    saveButton =
+      button [onClick (M.GetSavedGames (\ns -> M.SetModal (M.ModalSaveGame {existing=ns, newGame=""})))]
+             [text "Save Game"]
+  in hbox [loadButton, saveButton]
 
 campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app = vbox [FolderView.campaignFolder model app, secondaryFocusView model app]
@@ -282,6 +296,21 @@ selectCreaturesFromCampaignDialog model app {reason, selectedCreatures, cb} =
          , button [onClick submit] [text "Submit"]
          ]
 
+saveGameDialog : M.Model -> T.App -> M.SavingGame -> Html M.Msg
+saveGameDialog model app {existing, newGame} =
+  let entry = input [type_ "text", value newGame, placeholder "New Game Name", onInput updateName] []
+      selectors = List.map (\name -> button [onClick (updateName name)] [text name]) existing
+      updateName name = M.SetModal (M.ModalSaveGame {existing=existing, newGame=name})
+      saveMsg = M.Batch [M.SaveGame newGame, M.SetModal M.NoModal]
+      saveButton = button [onClick saveMsg] [text "Save Game!"]
+  in vbox (entry :: selectors ++ [saveButton])
+
+loadGameDialog : M.Model -> T.App -> List String -> Html M.Msg
+loadGameDialog model app names =
+  let loadButton name = button [onClick (M.Batch [M.SetModal M.NoModal, M.LoadGame name])]
+                               [text name]
+  in vbox (List.map loadButton names)
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -299,6 +328,8 @@ checkModal model app =
         M.MoveFolderItem mfi -> Just (moveFolderItemDialog model app mfi)
         M.RenameFolder rf -> Just (renameFolderDialog model app rf)
         M.SelectCreaturesFromCampaign sc -> Just (selectCreaturesFromCampaignDialog model app sc)
+        M.ModalSaveGame sg -> Just (saveGameDialog model app sg)
+        M.ModalLoadGame lg -> Just (loadGameDialog model app lg)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]

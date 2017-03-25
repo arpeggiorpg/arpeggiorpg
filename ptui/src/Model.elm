@@ -71,6 +71,11 @@ type Msg
     | ToggleMoveAnywhere
     | Tick Time.Time
     | SendCommand T.GameCommand
+    | GetSavedGames (List String -> Msg)
+    | GotSavedGames (Result Http.Error (List String))
+    | SaveGame String
+    | SavedGame (Result Http.Error ())
+    | LoadGame String
     | SetCreatureNote T.CreatureID String
     | MapZoom MapInOut
     | MapPan Direction
@@ -108,45 +113,8 @@ defaultModel flags =
   , focus = NoFocus
   , secondaryFocus = Focus2None
   , modal = NoModal
+  , gettingSavedGames = Nothing
   }
-
-type Focus
-  = NoFocus
-  | Scene String
-  | EditingMap T.FolderPath T.Map
-  | PreviewMap T.MapID
-
-type SecondaryFocus
-  = Focus2None
-  | Focus2Creature T.FolderPath T.CreatureID
-  | Focus2Note T.FolderPath String T.Note
-  | Focus2Map T.FolderPath T.MapID
-  | Focus2Scene T.FolderPath T.SceneID
-
-type Modal
-  = NoModal
-  | CreateFolder CreatingFolder
-  | CreateCreature PendingCreature
-  | CreateScene CreatingScene
-  | CreateMap CreatingMap
-  | MoveFolderItem MovingFolderItem
-  | RenameFolder RenamingFolder
-  | SelectCreaturesFromCampaign SelectingCreatures
-
-type alias CreatingFolder = {parent: T.FolderPath , child: String}
-type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
-type alias CreatingMap = {path: T.FolderPath, name: String}
-type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
-type alias RenamingFolder = {path: T.FolderPath, newName: String}
-type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
-
-devFlags : ProgramFlags
-devFlags = {rpi = "http://localhost:1337/"}
-
-type alias ProgramFlags =
-  { rpi : String }
-
-type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, path: T.FolderPath}
 
 type alias Model =
   { app : Maybe T.App
@@ -170,8 +138,49 @@ type alias Model =
   , focus: Focus
   , secondaryFocus: SecondaryFocus
   , modal: Modal
+  , gettingSavedGames: Maybe (List String -> Msg)
   }
   
+type Focus
+  = NoFocus
+  | Scene String
+  | EditingMap T.FolderPath T.Map
+  | PreviewMap T.MapID
+
+type SecondaryFocus
+  = Focus2None
+  | Focus2Creature T.FolderPath T.CreatureID
+  | Focus2Note T.FolderPath String T.Note
+  | Focus2Map T.FolderPath T.MapID
+  | Focus2Scene T.FolderPath T.SceneID
+
+type Modal
+  = NoModal
+  | CreateFolder CreatingFolder
+  | CreateCreature PendingCreature
+  | CreateScene CreatingScene
+  | CreateMap CreatingMap
+  | MoveFolderItem MovingFolderItem
+  | RenameFolder RenamingFolder
+  | SelectCreaturesFromCampaign SelectingCreatures
+  | ModalLoadGame (List String)
+  | ModalSaveGame SavingGame
+
+type alias SavingGame = {existing: List String, newGame: String}
+type alias CreatingFolder = {parent: T.FolderPath , child: String}
+type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
+type alias CreatingMap = {path: T.FolderPath, name: String}
+type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
+type alias RenamingFolder = {path: T.FolderPath, newName: String}
+type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
+
+devFlags : ProgramFlags
+devFlags = {rpi = "http://localhost:1337/"}
+
+type alias ProgramFlags =
+  { rpi : String }
+
+type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, path: T.FolderPath}
 
 type MovementAnimation
   = ShowingMovement (List T.Point3) (List T.Point3) -- first is what's been shown so far, second is what's left to animate

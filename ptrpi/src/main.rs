@@ -14,7 +14,9 @@ extern crate serde_yaml;
 extern crate pandt;
 
 use std::env;
+use std::path::PathBuf;
 use std::fs::File;
+use std::fs;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time;
@@ -40,12 +42,18 @@ error_chain! {
   }
   foreign_links {
     JSONError(serde_json::error::Error);
+    IOError(::std::io::Error);
+    YAMLError(serde_yaml::Error);
   }
 
   errors {
     LockError(resource: String) {
       description("Some locked resource is poisoned. The application probably needs restarted.")
       display("The lock on {} is poisoned. The application probably needs restarted.", resource)
+    }
+    InsecurePath(name: String) {
+      description("A path cannot contain certain characters or elements for security reasons.")
+      display("The path {} is insecure.", name)
     }
   }
 }
@@ -56,6 +64,7 @@ type PTResult<X> = Result<CORS<JSON<X>>, RPIError>;
 struct PT {
   app: Arc<Mutex<App>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
+  saved_game_path: PathBuf,
 }
 
 impl PT {
@@ -134,9 +143,66 @@ fn target_options(pt: State<PT>, scene: String, cid: &str, abid: &str)
   Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
 }
 
+#[get("/saved_games")]
+fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
+  let mut result = vec![];
+  for mpath in fs::read_dir(&pt.saved_game_path)? {
+    let path = mpath?;
+    if path.file_type()?.is_file() {
+      match path.file_name().into_string() {
+        Ok(s) => result.push(s),
+        Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
+      }
+    }
+  }
+  Ok(CORS::any(JSON(result)))
+}
+
+#[post("/saved_games/<name>/load")]
+fn load_saved_game(pt: State<PT>, name: String) -> Result<CORS<String>, RPIError> {
+  let path = child_path(&pt.saved_game_path, name)?;
+  let mut buffer = String::new();
+  File::open(path)?.read_to_string(&mut buffer)?;
+  let app = serde_yaml::from_str(&buffer)?;
+  *(pt.app()?) = app;
+  get_app(pt)
+}
+
+#[post("/saved_games/<name>")]
+fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
+  let new_path = child_path(&pt.saved_game_path, name)?;
+  let yaml = serde_yaml::to_string(&*pt.app()?)?;
+  File::create(new_path)?.write_all(yaml.as_bytes())?;
+  Ok(CORS::any(JSON(())))
+}
+
+fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
+  if name.contains("/") || name.contains(":") || name.contains("\\") {
+    bail!(RPIErrorKind::InsecurePath(name));
+  }
+  let new_path = parent.join(name.clone());
+  for p in &new_path {
+    if p == "." || p == ".." {
+      bail!(RPIErrorKind::InsecurePath(name));
+    }
+  }
+  Ok(new_path)
+}
+
 fn main() {
-  let filename = env::args().nth(1).unwrap_or("samplegame.yaml".to_string());
+  let game_dir = env::args()
+    .nth(1)
+    .unwrap_or_else(|| {
+      env::current_dir()
+        .expect("couldn't get curdir")
+        .into_os_string()
+        .into_string()
+        .expect("Couldn't parse curdir as string")
+    });
+  let game_dir = PathBuf::from(game_dir);
+
   let app: App = {
+    let filename = game_dir.join("samplegame.yaml");
     let mut appf = File::open(filename).unwrap();
     let mut apps = String::new();
     appf.read_to_string(&mut apps).unwrap();
@@ -146,6 +212,7 @@ fn main() {
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
     pollers: Arc::new(Mutex::new(Bus::new(1000))),
+    saved_game_path: game_dir,
   };
 
   rocket::ignite()
@@ -156,7 +223,10 @@ fn main() {
                    post_app,
                    combat_movement_options,
                    movement_options,
-                   target_options])
+                   target_options,
+                   list_saved_games,
+                   load_saved_game,
+                   save_game])
     .manage(pt)
     .launch();
 }

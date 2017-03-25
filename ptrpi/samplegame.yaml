@@ -36,12 +36,6 @@ current_game:
         34877b65-1eb6-44bb-b1a8-696c424e9d0f: [1, 1, 0]
         0420f7db-c7ec-48af-add3-045ad859f47e: [-1, 0, 0]
       map: 00000000-0000-0000-0000-000000000004
-  root_folder:
-    name: root
-    scenes: []
-    creatures: []
-    notes: {}
-    folders: {}
   tile_system: Realistic
   maps:
     00000000-0000-0000-0000-000000000005:

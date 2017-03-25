@@ -258,6 +258,24 @@ update msg model = case msg of
     let newNotes = Dict.insert cid note model.creatureNotes
     in ({model | creatureNotes = newNotes}, Cmd.none)
 
+  GetSavedGames cb ->
+    ( {model | gettingSavedGames = Just cb}
+    , Http.send GotSavedGames (Http.get (model.rpiURL ++ "/saved_games") (JD.list JD.string)))
+  GotSavedGames (Ok ns) ->
+    case model.gettingSavedGames of
+      Just cb -> ({model | gettingSavedGames = Nothing}, message (cb ns))
+      Nothing -> (model, Cmd.none)
+  GotSavedGames (Err x) ->
+    ({model | error = toString x}, Cmd.none)
+
+  SaveGame name ->
+    (model, Http.send SavedGame (Http.post (model.rpiURL ++ "/saved_games/" ++ name) Http.emptyBody (JD.succeed ())))
+  SavedGame (Ok _) -> (model, Cmd.none)
+  SavedGame (Err x) -> ({model | error = toString x}, Cmd.none)
+
+  LoadGame name ->
+    (model, Http.send AppUpdate (Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load") Http.emptyBody (T.appDecoder)))
+
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
