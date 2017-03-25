@@ -57,5 +57,6 @@ icon attrs name = i (attrs ++ [class "material-icons", s noUserSelect]) [text na
 
 gear = icon [] "settings"
 gearBox = icon [] "settings_applications"
+threeDots = icon [] "more_horiz"
 
 clickableIcon attrs name = icon (attrs ++ [clickable]) name

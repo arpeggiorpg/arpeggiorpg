@@ -79,7 +79,7 @@ secondaryFocusView model app =
 console : M.Model -> T.App -> M.FolderItem -> Html M.Msg -> Html M.Msg
 console model app {key, path, prettyName} content =
   let
-    menu = popUpMenu model "console-" (toString key) (icon [] "more_horiz") (icon [] "more_horiz")
+    menu = popUpMenu model "console-" (toString key) threeDots threeDots
                      menuItems
     menuItems = [ (text "Delete", deleteItem)
                 , (text "Move", M.SetModal (M.MoveFolderItem {src=path, item=key, dst=[]}))
@@ -122,13 +122,17 @@ sceneConsole model app scene =
     , hbox [ strong [] [text "Creatures:"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
-    , terseCreaturesList model app (Dict.keys scene.creatures)
+    , terseCreaturesList model app scene (Dict.keys scene.creatures)
     ]
 
-terseCreaturesList : M.Model -> T.App -> List T.CreatureID -> Html M.Msg
-terseCreaturesList model app cids =
-  let creatureLine creature =
-        hbox [strong [] [text creature.name]]
+terseCreaturesList : M.Model -> T.App -> T.Scene -> List T.CreatureID -> Html M.Msg
+terseCreaturesList model app scene cids =
+  let
+    creatureLine creature =
+      let abs = CommonView.creatureAbilities app.current_game scene.id True creature
+      in
+        hbox [CommonView.classIcon creature, strong [] [text creature.name]
+             , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots abs]
   in vbox (List.map creatureLine (T.getCreatures app.current_game cids))
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg

@@ -1,6 +1,7 @@
 module CommonView exposing
-  ( visibleCreatures, creatureCard, oocActionBar, mapControls
+  ( visibleCreatures, creatureCard, creatureAbilities, oocActionBar, mapControls
   , movementControls, checkModal
+  , classIcon
   , combatantList, collapsible, playerList, errorBox
   , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu)
 
@@ -67,6 +68,7 @@ classIcon creature =
     "rogue" -> text "🗡️"
     "ranger" -> text "🏹"
     "creature" -> text "🏃"
+    "baddie" -> text "👹"
     _ -> text ""
 
 conditionIcon : T.AppliedCondition -> Html M.Msg
@@ -84,13 +86,21 @@ durationEl condDur = case condDur of
   T.Duration n -> text <| "(" ++ toString n ++ ")"
 
 
-baseActionBar : T.SceneID -> Bool -> T.Game -> T.Creature -> List (Html M.Msg)
-baseActionBar sceneName inCombat game creature =
-  let abinfo abstatus =
+creatureAbilities : T.Game -> T.SceneID -> Bool -> T.Creature -> List (Html M.Msg, M.Msg)
+creatureAbilities game sceneID inCombat creature =
+  let
+    abinfo abstatus =
         Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
                       (Dict.get abstatus.ability_id game.abilities)
-      abilities = List.filterMap abinfo creature.abilities
-  in List.map (abilityButton sceneName creature) abilities
+    abilities = List.filterMap abinfo creature.abilities
+    toResultTuple (abid, ability) = (text ability.name, M.SelectAbility sceneID creature.id abid)
+  in
+    List.map toResultTuple abilities
+
+baseActionBar : T.SceneID -> Bool -> T.Game -> T.Creature -> List (Html M.Msg)
+baseActionBar sceneID inCombat game creature =
+  let abilityButton (text, msg) = actionButton [onClick msg, disabled (not creature.can_act)] [text]
+  in List.map abilityButton (creatureAbilities game sceneID inCombat creature)
 
 {-| An action bar for characters who are not in combat. -}
 oocActionBar : M.Model -> T.Game -> T.Creature -> List (Html M.Msg)
@@ -108,13 +118,6 @@ combatActionBar game combat creature =
       ++ [moveButton combat creature]
       ++ baseActionBar sceneName True game creature
       )
-
-abilityButton : T.SceneID -> T.Creature -> (T.AbilityID, T.Ability) -> Html M.Msg
-abilityButton sceneName creature (abid, ability) =
-  actionButton
-    [ onClick (M.SelectAbility sceneName creature.id abid)
-    , disabled (not creature.can_act)]
-    [text ability.name]
 
 actionButton : List (Attribute msg) -> List (Html msg) -> Html msg
 actionButton attrs children =
