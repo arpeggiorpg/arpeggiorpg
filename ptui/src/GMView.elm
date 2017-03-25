@@ -139,8 +139,10 @@ terseCreaturesList model app scene cids =
               then [(text "Remove from Combat", M.SendCommand (T.RemoveCreatureFromCombat creature.id))]
               else [(text "Add to Combat", M.SendCommand (T.AddCreatureToCombat creature.id))]
             Nothing -> []
-        extraItems =
-          [(text "View Creature", M.SetSecondaryFocus (M.Focus2Creature [] creature.id))]
+        extraItems = []
+          -- TODO: We can't reasonably add "View Creature" here because we don't know the creature's
+          -- path!
+          -- [(text "View Creature", M.SetSecondaryFocus (M.Focus2Creature [] creature.id))]
         menuItems = extraItems ++ combatRelated ++ abs
         inCombatIcon = if inCombat then text "⚔️" else text ""
       in
