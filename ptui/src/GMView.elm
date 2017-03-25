@@ -131,7 +131,8 @@ terseCreaturesList model app scene cids =
     creatureLine creature =
       let abs = CommonView.creatureAbilities app.current_game scene.id True creature
       in
-        hbox [CommonView.classIcon creature, strong [] [text creature.name]
+        hbox [ CommonView.classIcon creature, strong [] [text creature.name]
+             , CommonView.hpBubble creature, CommonView.nrgBubble creature
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots abs]
   in vbox (List.map creatureLine (T.getCreatures app.current_game cids))
 

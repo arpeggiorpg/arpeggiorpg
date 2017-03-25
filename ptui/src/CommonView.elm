@@ -1,5 +1,7 @@
 module CommonView exposing
-  ( visibleCreatures, creatureCard, creatureAbilities, oocActionBar, mapControls
+  ( visibleCreatures, creatureCard, creatureAbilities, oocActionBar
+  , hpBubble, nrgBubble
+  , mapControls
   , movementControls, checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
@@ -36,28 +38,35 @@ visibleCreatures game scene =
   in
     List.filterMap mapInfo creatures
 
-creatureCard : List (Html M.Msg) -> T.App -> T.Creature -> Html M.Msg
-creatureCard extras app creature =
-  let cellStyles color =
+
+bubbleStyle color =
         [s [ plainBorder
            , S.backgroundColor color
            , S.borderRadius (S.px 10)
            , S.padding (S.px 3)]]
-  in
+
+hpBubble creature =
+  sdiv (bubbleStyle (S.rgb 144 238 144))
+       [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
+
+nrgBubble creature =
+  sdiv (bubbleStyle (S.rgb 0 255 255))
+       [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
+
+creatureCard : List (Html M.Msg) -> T.App -> T.Creature -> Html M.Msg
+creatureCard extras app creature =
     vabox
       [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
       <| 
       [ hbox [strong [] [text creature.name ], classIcon creature]
       , hbox
           [ creatureIcon app creature
-          , sdiv (cellStyles (S.rgb 144 238 144))
-                [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
-          , sdiv (cellStyles (S.rgb 0 255 255))
-                [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]
+          , hpBubble creature
+          , nrgBubble creature
           ]
-      -- , hbox [ div (cellStyles (S.rgb 255 255 255)) [text "💪 10"]
-      --        , div (cellStyles (S.rgb 255 255 255)) [text "🛡️ 10"]
-      --        , div (cellStyles (S.rgb 255 255 255)) [text "🏃 10"]]
+      -- , hbox [ div (bubbleStyle (S.rgb 255 255 255)) [text "💪 10"]
+      --        , div (bubbleStyle (S.rgb 255 255 255)) [text "🛡️ 10"]
+      --        , div (bubbleStyle (S.rgb 255 255 255)) [text "🏃 10"]]
       , hbox (List.map conditionIcon (Dict.values creature.conditions))
       ] ++ extras
 
