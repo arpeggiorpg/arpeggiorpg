@@ -584,7 +584,7 @@ gameCommandEncoder gc =
     StartCombat scene cids ->
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature path creature ->
-      JE.object [("CreateCreature", JE.list [creatureCreationEncoder creature, folderPathEncoder path])]
+      JE.object [("CreateCreature", JE.list [folderPathEncoder path, creatureCreationEncoder creature])]
     DeleteCreature cid ->
       JE.object [("DeleteCreature", JE.string cid)]
     StopCombat ->
