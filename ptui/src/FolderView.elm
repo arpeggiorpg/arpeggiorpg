@@ -1,4 +1,4 @@
-module FolderView exposing (campaignFolder, selectFolder, selectCreatures)
+module FolderView exposing (campaignFolder, selectFolder, selectCreatures, selectMap)
 
 import Dict
 import Set
@@ -55,6 +55,17 @@ selectFolder model app msg =
     cfg = { showNothing | contentControls = select }
   in
     baseCampaignView model app cfg
+
+selectMap : M.Model -> T.App -> (T.MapID -> M.Msg) -> Html M.Msg
+selectMap model app cb =
+  let
+    control path item =
+      case item of
+        Just (T.FolderMap mid) -> input [ type_ "radio", name "select-map", onClick (cb mid) ]
+                                        []
+        _ -> text ""
+    cfg = { showNothing | showMaps = True, contentControls = control }
+  in baseCampaignView model app cfg
 
 
 type alias FolderViewConfig =

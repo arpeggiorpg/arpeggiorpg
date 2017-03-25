@@ -462,8 +462,9 @@ createSceneDialog model app creating =
   in
     vbox
       [ h3 [] [text "Create a Scene"]
-      , input [type_ "text", placeholder "Name", onInput (update (\sc inp -> {sc | name = inp}))] []
-      , mapSelectorMenu "" model app (update (\sc inp -> {sc | map = inp}))
+      , hbox [text "Name:", input [type_ "text", placeholder "Name", onInput (update (\sc inp -> {sc | name = inp}))] []]
+      , text "Map:"
+      , FolderView.selectMap model app (update (\sc inp -> {sc | map = inp}))
       , button
           [ onClick
               (M.Batch [ M.SendCommand (T.CreateScene creating.path creating.scene)
