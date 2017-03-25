@@ -200,9 +200,10 @@ fn main() {
         .expect("Couldn't parse curdir as string")
     });
   let game_dir = PathBuf::from(game_dir);
+  let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
   let app: App = {
-    let filename = game_dir.join("samplegame.yaml");
+    let filename = game_dir.join(initial_file);
     let mut appf = File::open(filename).unwrap();
     let mut apps = String::new();
     appf.read_to_string(&mut apps).unwrap();
