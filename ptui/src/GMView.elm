@@ -129,11 +129,28 @@ terseCreaturesList : M.Model -> T.App -> T.Scene -> List T.CreatureID -> Html M.
 terseCreaturesList model app scene cids =
   let
     creatureLine creature =
-      let abs = CommonView.creatureAbilities app.current_game scene.id True creature
+      let
+        abs = CommonView.creatureAbilities app.current_game scene.id True creature
+        inCombat =
+          case app.current_game.current_combat of
+            Just combat -> List.member creature.id combat.creatures.data
+            Nothing -> False
+        combatRelated =
+          case app.current_game.current_combat of
+            Just combat ->
+              if inCombat
+              then [(text "Remove from Combat", M.SendCommand (T.RemoveCreatureFromCombat creature.id))]
+              else [(text "Add to Combat", M.SendCommand (T.AddCreatureToCombat creature.id))]
+            Nothing -> []
+        extraItems =
+          [(text "View Creature", M.SetSecondaryFocus (M.Focus2Creature [] creature.id))]
+        menuItems = extraItems ++ combatRelated ++ abs
+        inCombatIcon = if inCombat then text "⚔️" else text ""
       in
         hbox [ CommonView.classIcon creature, strong [] [text creature.name]
              , CommonView.hpBubble creature, CommonView.nrgBubble creature
-             , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots abs]
+             , inCombatIcon
+             , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
   in vbox (List.map creatureLine (T.getCreatures app.current_game cids))
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
