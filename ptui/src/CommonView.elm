@@ -360,11 +360,13 @@ popUpMenu model prefix key clicker clickerClicked items =
       renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
       openMenu =
         vabox
-          [s [S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
+          [s [ S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
              , plainBorder, S.backgroundColor (S.rgb 255 255 255)
              , S.width (S.px 150)
              , S.position S.absolute
-             , S.top (S.em 2)]
+             , S.top (S.em 2)
+             , S.zIndex (S.int 1)
+             ]
           ]
           (List.map renderItem items)
       maybeMenu = if isClicked then openMenu else text ""
