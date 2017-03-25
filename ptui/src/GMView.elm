@@ -6,12 +6,10 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Maybe.Extra as MaybeEx
-import Set
 
 import Model as M
 import Types as T
 import Grid
-import Update as U
 import Elements exposing (..)
 import FolderView
 import CommonView exposing (popUpMenu)
@@ -36,7 +34,6 @@ makeUI model app =
   , sideBar =
       CommonView.tabbedView "right-side-bar" "Campaign" model
         [ ("Campaign", always (campaignView model app))
-        , ("All Creatures", always (allCreaturesView model app))
         , ("Combat", always (combatView model app))
         , ("Players", always (playersView model app))
         , ("History", always (historyView app))
@@ -387,22 +384,6 @@ sceneMap model app scene =
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
       defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app).terrain vCreatures
   in movementMap |> MaybeEx.unpack defaultMap identity
-
-{-| A navigator for all creatures -}
-allCreaturesView : M.Model -> T.App -> Html M.Msg
-allCreaturesView model app =
-  let game = app.current_game
-  in vbox (List.map (allCreatureEntry model app) (Dict.values game.creatures))
-
-{-| A creature card plus some UI relevant for when they are out-of-combat. -}
-allCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg
-allCreatureEntry model app creature =
-  vbox
-    [ hbox <|
-        [ CommonView.creatureCard [noteBox model creature] app creature
-        ]
-    , hbox (CommonView.oocActionBar model app.current_game creature)
-    ]
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
 creatureCard. -}

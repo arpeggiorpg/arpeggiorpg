@@ -6,8 +6,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
-import Json.Decode as JD
-
 import Css as S
 
 import Model as M
