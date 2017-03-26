@@ -140,6 +140,28 @@ sceneConsole model app scene =
     , terseCreaturesList model app scene
     ]
 
+terseCreatureLine : M.Model -> T.App -> T.Creature -> Html M.Msg
+terseCreatureLine model app creature =
+  let
+    inCombat =
+      case app.current_game.current_combat of
+        Just combat -> List.member creature.id combat.creatures.data
+        Nothing -> False
+    combatRelated =
+      case app.current_game.current_combat of
+        Just combat ->
+          if inCombat
+          then [(text "Remove from Combat", M.SendCommand (T.RemoveCreatureFromCombat creature.id))]
+          else [(text "Add to Combat", M.SendCommand (T.AddCreatureToCombat creature.id))]
+        Nothing -> []
+    inCombatIcon = if inCombat then text "⚔️" else text ""
+  in
+    hbox [ CommonView.classIcon creature, strong [] [text creature.name]
+          , CommonView.hpBubble creature, CommonView.nrgBubble creature
+          , inCombatIcon ]
+
+-- TODO: parameterise above and use below
+
 terseCreaturesList : M.Model -> T.App -> T.Scene -> Html M.Msg
 terseCreaturesList model app scene =
   let
@@ -205,7 +227,7 @@ noteConsole model app path origName note =
                 []
         , saveButton
         ]
-    , textarea [s [S.height (S.pct 100)], onInput (\c -> noteMsg {note | content = c}), value note.content] []
+    , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), value note.content] []
     ]
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
@@ -364,23 +386,20 @@ selectCreaturesView : M.Model -> T.App
                     -> Html M.Msg
 selectCreaturesView model app selectableCreatures selectedCreatures callback commandName =
   let selectButton creature =
-        button [ onClick (M.ToggleSelectedCreature creature.id)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
+        button [ onClick (M.ToggleSelectedCreature creature.id) ]
                [text "Add"]
       unselectButton cid =
-        button [ onClick (M.ToggleSelectedCreature cid)
-               , s [S.height (S.px 100), S.width (S.px 100)]]
+        button [ onClick (M.ToggleSelectedCreature cid) ]
                [text "Remove"]
       selectableCreature creature =
-        habox
-          [s [S.width (S.px 500)]]
-          [selectButton creature, CommonView.creatureCard [noteBox model creature] app creature]
+        habox [s [S.width (S.px 500)]]
+              [selectButton creature, terseCreatureLine model app creature, noteBox model creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (T.getCreatures app.current_game selectableCreatures)
       selectedCreatureItem creature =
         habox
           [s [S.width (S.px 500)]]
-          [CommonView.creatureCard [noteBox model creature] app creature, unselectButton creature.id]
+          [terseCreatureLine model app creature, noteBox model creature, unselectButton creature.id]
       selectedCreatureItems =
         vbox <| List.map selectedCreatureItem (T.getCreatures app.current_game selectedCreatures)
       doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
@@ -440,7 +459,7 @@ creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
-      inp = input [type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
+      inp = input [s [S.width (S.px 300)], type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
       saveButton =
         if creature.note /= note
         then button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]

@@ -346,7 +346,7 @@ viewGame model app ui =
     , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
         [mapControls]
     , overlayRight (S.px 0) (S.px 0)
-        [ S.width (S.px 500)
+        [ S.width (S.px 350)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
         [ ui.sideBar ]
     , movementControls ui.extraMovementOptions model

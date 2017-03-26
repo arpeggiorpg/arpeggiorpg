@@ -116,7 +116,7 @@ sceneMap model app scene myCreatures =
                   if creatureIsMine mapc.creature && Just mapc.creature.id == currentCombatCreature
                   then Just (always M.GetCombatMovementOptions)
                   else Nothing
-                Nothing -> if creatureIsMine mapc.creature then Just (M.GetMovementOptions scene.name) else Nothing
+                Nothing -> if creatureIsMine mapc.creature then Just (M.GetMovementOptions scene.id) else Nothing
         in { mapc | highlight = highlight
                   , movable = movable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
