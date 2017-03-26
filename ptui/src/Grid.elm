@@ -130,12 +130,12 @@ gridCreature creature =
           , rx "10"
           , ry "10"
           ] []
-      opacity = if creature.visible then "1" else "0.4" 
+      opa = if creature.visible then "1" else "0.4" 
       foreground =
         if creature.creature.portrait_url == ""
         then creatureNameEl (String.slice 0 4 creature.creature.name)
         else creatureImageEl creature.creature.portrait_url
-  in g [fillOpacity opacity]
+  in g [opacity opa]
     [ tile creatureColor attrs creature.pos
     , foreground ]
 
