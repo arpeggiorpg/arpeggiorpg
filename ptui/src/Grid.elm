@@ -24,6 +24,7 @@ type alias MapCreature =
   , movable : Maybe (T.Creature -> M.Msg)
   , class : T.Class
   , pos : T.Point3
+  , visible: Bool
   }
 
 terrainMap : M.Model -> List T.Point3 -> List MapCreature -> Svg M.Msg
@@ -129,11 +130,12 @@ gridCreature creature =
           , rx "10"
           , ry "10"
           ] []
+      opacity = if creature.visible then "1" else "0.4" 
       foreground =
         if creature.creature.portrait_url == ""
         then creatureNameEl (String.slice 0 4 creature.creature.name)
         else creatureImageEl creature.creature.portrait_url
-  in g []
+  in g [fillOpacity opacity]
     [ tile creatureColor attrs creature.pos
     , foreground ]
 

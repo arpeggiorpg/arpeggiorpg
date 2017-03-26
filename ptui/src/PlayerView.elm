@@ -119,10 +119,14 @@ sceneMap model app scene myCreatures =
                 Nothing -> if creatureIsMine mapc.creature then Just (M.GetMovementOptions scene.name) else Nothing
         in { mapc | highlight = highlight
                   , movable = movable}
-      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures game scene)
+      vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
       defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
   in movementMap
       |> MaybeEx.unpack defaultMap identity
+
+visibleCreatures game scene =
+  let mod mapc = if mapc.visible then (Just mapc) else Nothing
+  in List.filterMap mod (CommonView.visibleCreatures game scene)
 
 {-| Show all creatures in combat, with an action bar when it's my turn. -}
 combatView : M.Model -> T.App -> List T.Creature -> Html M.Msg

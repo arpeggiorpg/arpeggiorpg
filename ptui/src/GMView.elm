@@ -137,11 +137,11 @@ sceneConsole model app scene =
     , hbox [ strong [] [text "Creatures:"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
-    , terseCreaturesList model app scene (Dict.keys scene.creatures)
+    , terseCreaturesList model app scene
     ]
 
-terseCreaturesList : M.Model -> T.App -> T.Scene -> List T.CreatureID -> Html M.Msg
-terseCreaturesList model app scene cids =
+terseCreaturesList : M.Model -> T.App -> T.Scene -> Html M.Msg
+terseCreaturesList model app scene =
   let
     creatureLine creature =
       let
@@ -157,18 +157,31 @@ terseCreaturesList model app scene cids =
               then [(text "Remove from Combat", M.SendCommand (T.RemoveCreatureFromCombat creature.id))]
               else [(text "Add to Combat", M.SendCommand (T.AddCreatureToCombat creature.id))]
             Nothing -> []
+        modSceneCreature f =
+          let newCreatures =
+                case Dict.get creature.id scene.creatures of
+                  Just x -> Dict.insert creature.id (f x) scene.creatures
+                  Nothing -> scene.creatures
+          in { scene | creatures = newCreatures }
+        showToPlayersMsg = M.SendCommand (T.EditScene (modSceneCreature (\(pos, _) -> (pos, T.AllPlayers))))
+        hideFromPlayersMsg = M.SendCommand (T.EditScene (modSceneCreature (\(pos, _) -> (pos, T.GMOnly))))
+        visibilityRelated =
+          case Dict.get creature.id scene.creatures of
+            Just (_, T.GMOnly) -> [(text "Show to Players", showToPlayersMsg)]
+            Just (_, T.AllPlayers) -> [(text "Hide from Players", hideFromPlayersMsg)]
+            Nothing -> []
         extraItems = []
           -- TODO: We can't reasonably add "View Creature" here because we don't know the creature's
           -- path!
           -- [(text "View Creature", M.SetSecondaryFocus (M.Focus2Creature [] creature.id))]
-        menuItems = extraItems ++ combatRelated ++ abs
+        menuItems = extraItems ++ visibilityRelated ++ combatRelated ++ abs
         inCombatIcon = if inCombat then text "⚔️" else text ""
       in
         hbox [ CommonView.classIcon creature, strong [] [text creature.name]
              , CommonView.hpBubble creature, CommonView.nrgBubble creature
              , inCombatIcon
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
-  in vbox (List.map creatureLine (T.getCreatures app.current_game cids))
+  in vbox (List.map creatureLine (T.getCreatures app.current_game (Dict.keys scene.creatures)))
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteConsole model app path origName note =
