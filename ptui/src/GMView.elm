@@ -58,7 +58,7 @@ savedGameView model app =
   in hbox [loadButton, saveButton]
 
 campaignView : M.Model -> T.App -> Html M.Msg
-campaignView model app = vbox [FolderView.campaignFolder model app, secondaryFocusView model app]
+campaignView model app = vabox [s [S.height (S.pct 100)]] [FolderView.campaignFolder model app, secondaryFocusView model app]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
@@ -103,7 +103,7 @@ console model app {key, path, prettyName} content =
         T.FolderMap mid -> M.SendCommand (T.DeleteMap mid)
         T.FolderSubfolder name -> M.SendCommand (T.DeleteFolder (path ++ [name]))
   in
-    vabox [s [S.marginTop (S.em 1)]]
+    vabox [s [S.marginTop (S.em 1), S.height (S.pct 100)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
       , content ]
 
@@ -196,7 +196,7 @@ noteConsole model app path origName note =
                 else text ""
               Nothing -> button [onClick (M.SendCommand (T.CreateNote path note))] [text "Create"]
           Nothing -> text "This folder has disappeared!?"
-  in vbox
+  in vabox [s [S.height (S.pct 100)]]
     [ hbox
         [ text (String.join "/" path)
         , text "/"
@@ -205,7 +205,7 @@ noteConsole model app path origName note =
                 []
         , saveButton
         ]
-    , textarea [onInput (\c -> noteMsg {note | content = c}), value note.content] []
+    , textarea [s [S.height (S.pct 100)], onInput (\c -> noteMsg {note | content = c}), value note.content] []
     ]
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg

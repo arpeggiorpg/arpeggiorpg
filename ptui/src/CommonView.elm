@@ -322,7 +322,7 @@ tabbedView category defaultView model things =
         case List.filterMap renderBody things of
           [x] -> x ()
           _ -> text "Select a view"
-  in vbox [header, body]
+  in vabox [s [S.height (S.pct 100)]] [header, body]
 
 {-| All the parts we need to render the UI, allowing either Player or GM-specific view things to
 be plugged in. -}
