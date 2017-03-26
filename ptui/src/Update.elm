@@ -122,12 +122,6 @@ update msg model = case msg of
 
   Batch messages -> (model, Cmd.batch (List.map message messages))
 
-  AddCreatureToScene sceneName cid ->
-    (model, modScene model (\scene -> {scene | creatures = Dict.insert cid {x=0, y=0, z=0} scene.creatures}) sceneName)
-
-  RemoveCreatureFromScene sceneName cid ->
-    (model, modScene model (\scene -> {scene | creatures = Dict.remove cid scene.creatures}) sceneName)
-
   CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
   CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)
   CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
@@ -291,13 +285,3 @@ sendCommand : String -> T.GameCommand -> Cmd Msg
 sendCommand url cmd =
   Debug.log ("[COMMAND] " ++ (toString cmd)) <|
   Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) T.rustResultDecoder)
-
-modScene model fn sceneName =
-  case model.app of
-    Just app ->
-      case Dict.get sceneName app.current_game.scenes of
-        Just scene ->
-          let newScene = fn scene
-          in sendCommand model.rpiURL (T.EditScene newScene)
-        Nothing -> Cmd.none
-    Nothing -> Cmd.none

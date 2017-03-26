@@ -325,13 +325,13 @@ impl Game {
         self.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
       }
       SetCreaturePos(ref scene_name, ref cid, ref pt) => {
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt);
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt)?;
         self.scenes.insert(scene);
       }
       PathCreature(ref scene_name, ref cid, ref pts) => {
         let current_pos = self.get_scene(scene_name.clone())?.get_pos(*cid)?;
         let dest = pts.last().map(|x| *x).unwrap_or(current_pos);
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest);
+        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest)?;
         self.scenes.insert(scene);
       }
       // Things that are handled at the App level
@@ -516,8 +516,8 @@ impl Game {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];
-    for (creature_id, creature_pos) in scene.creatures.iter() {
-      if self.tile_system.points_within_distance(my_pos, *creature_pos, distance) {
+    for (creature_id, &(creature_pos, _)) in scene.creatures.iter() {
+      if self.tile_system.points_within_distance(my_pos, creature_pos, distance) {
         results.push(PotentialTarget::CreatureID(*creature_id));
       }
     }

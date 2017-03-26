@@ -672,7 +672,6 @@ impl Player {
 pub struct SceneCreation {
   pub name: String,
   pub map: MapID,
-  pub creatures: HashMap<CreatureID, Point3>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -680,7 +679,7 @@ pub struct Scene {
   pub id: SceneID,
   pub name: String,
   pub map: MapID,
-  pub creatures: HashMap<CreatureID, Point3>,
+  pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
 }
 
 impl DeriveKey for Scene {
@@ -696,21 +695,32 @@ impl Scene {
       id: SceneID::new(),
       name: creation.name,
       map: creation.map,
-      creatures: creation.creatures,
+      creatures: HashMap::new(),
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
     self.creatures
       .get(&creature_id)
-      .map(|x| *x)
+      .map(|x| x.0)
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()).into())
   }
 
-  pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Scene {
+  pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Result<Scene, GameError> {
     let mut new = self.clone();
-    new.creatures.insert(cid, pt);
-    new
+    {
+      let data = new.creatures
+        .get_mut(&cid)
+        .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
+      data.0 = pt;
+    }
+    Ok(new)
   }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum Visibility {
+  GMOnly,
+  AllPlayers,
 }
 
 

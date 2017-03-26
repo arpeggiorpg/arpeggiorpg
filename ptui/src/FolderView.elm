@@ -173,7 +173,7 @@ folderView model app cfg path (T.Folder folder) =
       else []
     addMenuItems =
       [ ( hbox [icon [] "casino", dtext "Create Scene"]
-        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" Dict.empty}))
+        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" ""}))
       , ( hbox [icon [] "map", dtext "Create Map"]
         , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
       , ( hbox [icon [] "contacts", dtext "Create Creature"]

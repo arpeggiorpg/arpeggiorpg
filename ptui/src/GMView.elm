@@ -113,9 +113,13 @@ sceneConsole model app scene =
     gotCreatures cids =
       let
         selectedCreatures = Dict.fromList (List.map (\c -> (c, {x=0, y=0, z=0})) cids)
-        newCreatures = Dict.merge (\_ _ r -> r) (\cid l r res -> Dict.insert cid l res) Dict.insert
-                                  scene.creatures selectedCreatures
-                                  Dict.empty
+        newCreatures =
+          Dict.merge
+            (\_ _ acc -> acc)
+            (\cid l r acc -> Dict.insert cid l acc)
+            (\cid pos acc -> Dict.insert cid (pos, T.AllPlayers) acc)
+            scene.creatures selectedCreatures
+            Dict.empty
         newScene = {scene | creatures = newCreatures}
       in M.SendCommand (T.EditScene newScene)
     selectCreatures = M.SetModal
@@ -391,7 +395,7 @@ sceneMap model app scene =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
-          Just pos ->
+          Just (pos, vis) ->
             Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model).terrain pos vCreatures
           Nothing -> text "Moving Creature is not in this scene"
       pathOrPort =

@@ -46,9 +46,6 @@ type Msg
 
     | ToggleTerrain T.Point3
 
-    | AddCreatureToScene T.SceneID T.CreatureID
-    | RemoveCreatureFromScene T.SceneID T.CreatureID
-
     | CommandComplete (Result Http.Error T.RustResult)
     | ToggleSelectedCreature T.CreatureID
     | SelectAbility T.SceneID T.CreatureID T.AbilityID

@@ -32,7 +32,7 @@ visibleCreatures game scene =
         Dict.get creature.class game.classes
           |> Maybe.andThen (\class ->
               Dict.get creature.id scene.creatures
-                |> Maybe.map (\pos ->
+                |> Maybe.map (\(pos, vis) ->
                   {creature = creature, highlight = False, movable = Nothing, class = class, pos = pos}))
       creatures = T.getCreatures game (Dict.keys scene.creatures)
   in

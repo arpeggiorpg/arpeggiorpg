@@ -244,7 +244,7 @@ type alias Scene =
   { id: SceneID
   , name: String
   , map: String
-  , creatures: Dict CreatureID Point3
+  , creatures: Dict CreatureID (Point3, Visibility)
   }
 
 sceneDecoder : JD.Decoder Scene
@@ -253,10 +253,12 @@ sceneDecoder =
     (JD.field "id" JD.string)
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
-    (JD.field "creatures" (JD.dict point3Decoder))
+    (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
 
 sceneEncoder scene =
-  let encCreatures = List.map (\(key, value) -> (key, point3Encoder value)) (Dict.toList scene.creatures)
+  let
+    encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
+    encCreatures = List.map encCreature (Dict.toList scene.creatures)
   in 
   JE.object
     [ ("id", JE.string scene.id)
@@ -265,19 +267,32 @@ sceneEncoder scene =
     , ("creatures", JE.object encCreatures)
     ]
 
+type Visibility
+  = GMOnly
+  | AllPlayers
+
+visibilityEncoder : Visibility -> JE.Value
+visibilityEncoder v =
+  case v of
+    GMOnly -> JE.string "GMOnly"
+    AllPlayers -> JE.string "AllPlayers"
+
+visibilityDecoder : JD.Decoder Visibility
+visibilityDecoder = sumDecoder "Visibility"
+  [ ("GMOnly", GMOnly)
+  , ("AllPlayers", AllPlayers)]
+  []
 
 type alias SceneCreation =
   { name: String
   , map: String
-  , creatures: Dict CreatureID Point3
   }
+
+sceneCreationEncoder : SceneCreation -> JE.Value
 sceneCreationEncoder scene =
-  let encCreatures = List.map (\(key, value) -> (key, point3Encoder value)) (Dict.toList scene.creatures)
-  in
   JE.object
     [ ("name", JE.string scene.name)
     , ("map", JE.string scene.map)
-    , ("creatures", JE.object encCreatures)
     ]
 
 
