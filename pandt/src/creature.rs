@@ -225,13 +225,8 @@ impl Creature {
       CreatureLog::RemoveCondition(ref id) => {
         new.conditions.remove(id).ok_or(GameErrorEnum::ConditionNotFound(*id))?;
       }
-      CreatureLog::SetNote(ref note) => new.note = note.clone(),
     }
     Ok(new)
-  }
-
-  pub fn set_note(&self, note: String) -> Result<ChangedCreature, GameError> {
-    self.change_with(CreatureLog::SetNote(note))
   }
 
   pub fn class(&self) -> String {

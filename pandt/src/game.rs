@@ -58,9 +58,6 @@ impl Game {
       EditCreature(creature) => self.change_with(GameLog::EditCreature(creature)),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
-      SetCreatureNote(cid, note) => {
-        self.change().apply_creature(cid, |c| c.creature.set_note(note.clone()))
-      }
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
       CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
       ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),

@@ -229,8 +229,6 @@ pub enum GameCommand {
   /// There must be a clear path according to the current loaded map. It doesn't matter whether
   /// the creature is in combat.
   PathCreature(SceneID, CreatureID, Point3),
-  /// Set a note on a creature.
-  SetCreatureNote(CreatureID, String),
   /// Remove a creature from the game entirely. Creature must not be in combat.
   DeleteCreature(CreatureID),
 
@@ -264,7 +262,6 @@ pub enum CreatureLog {
   ApplyCondition(ConditionID, ConditionDuration, Condition),
   DecrementConditionRemaining(ConditionID),
   RemoveCondition(ConditionID),
-  SetNote(String),
 }
 
 /// Representation of state changes in a Combat. See `CreatureLog`.
