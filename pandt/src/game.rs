@@ -55,7 +55,7 @@ impl Game {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
       }
-      EditCreature(path, creature) => self.change_with(GameLog::EditCreature(creature)),
+      EditCreature(creature) => self.change_with(GameLog::EditCreature(creature)),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {

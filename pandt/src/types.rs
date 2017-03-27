@@ -222,7 +222,7 @@ pub enum GameCommand {
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
   /// Edit an existing creature.
-  EditCreature(FolderPath, Creature),
+  EditCreature(Creature),
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
