@@ -221,6 +221,8 @@ pub enum GameCommand {
   // ** Creature Manipulation **
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
+  /// Edit an existing creature.
+  EditCreature(FolderPath, Creature),
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -305,6 +307,7 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<CreatureID>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
+  EditCreature(Creature),
   DeleteCreature(CreatureID),
   AddCreatureToCombat(CreatureID),
   RemoveCreatureFromCombat(CreatureID),

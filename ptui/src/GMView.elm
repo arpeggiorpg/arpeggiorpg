@@ -69,7 +69,7 @@ secondaryFocusView model app =
         Just creature ->
           -- TODO: * move functionality from All Creatures here (add to combat?)
           let item = {key=T.FolderCreature cid, path=path, prettyName=creature.name}
-          in console model app item (CommonView.creatureCard [noteBox model creature] app creature)
+          in console model app item (creatureConsole model app creature)
         Nothing -> text "Creature Disappeared"
     M.Focus2Note path origName note ->
       let item = {key=T.FolderNote origName, path=path, prettyName=origName}
@@ -106,6 +106,11 @@ console model app {key, path, prettyName} content =
     vabox [s [S.marginTop (S.em 1), S.height (S.pct 100)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
       , content ]
+
+
+creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
+creatureConsole model app creature =
+  CommonView.creatureCard [noteBox model creature] app creature
 
 sceneConsole : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneConsole model app scene =

@@ -654,7 +654,7 @@ folderItemIDDecoder = sumDecoder "FolderItemID"
   [ ("SceneID", JD.map FolderScene JD.string)
   , ("CreatureID", JD.map FolderCreature JD.string)
   , ("NoteID", JD.map FolderNote JD.string)
-  , ("FolderMap", JD.map FolderMap JD.string)
+  , ("MapID", JD.map FolderMap JD.string)
   , ("SubfolderID", JD.map FolderSubfolder JD.string)
   ]
 

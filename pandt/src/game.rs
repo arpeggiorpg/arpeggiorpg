@@ -55,6 +55,7 @@ impl Game {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
       }
+      EditCreature(path, creature) => self.change_with(GameLog::EditCreature(creature)),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       SetCreatureNote(cid, note) => {
@@ -264,6 +265,13 @@ impl Game {
         } else {
           self.creatures.insert(c.id(), c.clone());
           self.link_folder_item(path, &FolderItemID::CreatureID(c.id()))?;
+        }
+      }
+      EditCreature(ref creature) => {
+        if ! self.creatures.contains_key(&creature.id) {
+          bail!(GameErrorEnum::CreatureNotFound(creature.id.to_string()));
+        } else {
+          self.creatures.insert(creature.id, creature.clone());
         }
       }
       DeleteCreature(cid) => {
