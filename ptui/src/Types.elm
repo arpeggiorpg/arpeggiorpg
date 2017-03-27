@@ -92,6 +92,7 @@ type GameLog
   | GLStartCombat SceneID (List CreatureID)
   | GLStopCombat
   | GLCreateCreature FolderPath CreatureData
+  | GLEditCreature CreatureData
   | GLDeleteCreature CreatureID
   | GLAddCreatureToCombat CreatureID
   | GLRemoveCreatureFromCombat CreatureID
@@ -115,6 +116,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("CreatureLog", fixedList2 GLCreatureLog JD.string creatureLogDecoder)
   , ("StartCombat", fixedList2 GLStartCombat JD.string (JD.list JD.string))
   , ("CreateCreature", fixedList2 GLCreateCreature folderPathDecoder creatureDataDecoder)
+  , ("EditCreature", JD.map GLEditCreature creatureDataDecoder)
   , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
   , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
   , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
@@ -401,6 +403,8 @@ creatureDecoder =
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
+  -- NOTE! can_act and can_move aren't included here intentionally, they are calculated properties
+  -- generated when the server sends a creature to us
   JE.object
     [ ("id", JE.string c.id)
     , ("name", JE.string c.name)
@@ -411,8 +415,14 @@ creatureEncoder c =
     , ("cur_health", JE.int c.cur_health)
     , ("abilities", JE.list (List.map abilityStatusEncoder c.abilities))
     , ("class", JE.string c.class)
-    , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))]
+    , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))
+    , ("note", JE.string c.note)
+    , ("portrait_url", JE.string c.portrait_url)
+    ]
 
+
+-- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
+-- (e.g. can_act and can_move), so we can't just use Creature.
 type alias CreatureData =
   { id: CreatureID
   , name: String
@@ -597,7 +607,7 @@ type GameCommand
   | PathCreature SceneID CreatureID Point3
   | SetCreaturePos SceneID CreatureID Point3
   | CreateCreature FolderPath CreatureCreation
-  | EditCreature CreatureID Creature
+  | EditCreature Creature
   | DeleteCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
@@ -639,8 +649,8 @@ gameCommandEncoder gc =
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature path creature ->
       JE.object [("CreateCreature", JE.list [folderPathEncoder path, creatureCreationEncoder creature])]
-    EditCreature cid creature ->
-      JE.object [("EditCreature", JE.list [JE.string cid, creatureEncoder creature])]
+    EditCreature creature ->
+      JE.object [("EditCreature", creatureEncoder creature)]
     DeleteCreature cid ->
       JE.object [("DeleteCreature", JE.string cid)]
     StopCombat ->

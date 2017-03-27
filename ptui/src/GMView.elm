@@ -464,10 +464,11 @@ creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
+      submitMsg = M.SendCommand (T.EditCreature {creature | note = note})
       inp = input [s [S.width (S.px 300)], type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
       saveButton =
         if creature.note /= note
-        then button [onClick (M.SendCommand (T.SetCreatureNote creature.id note))] [text "Save Note"]
+        then button [onClick submitMsg] [text "Save Note"]
         else text ""
   in hbox <| [inp, saveButton]
 
@@ -629,7 +630,8 @@ historyItem snapIdx logIdx log =
     T.GLCreateMap path map -> hsbox [dtext "Created Map", dtext map.name, renderFolderPath path]
     T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
     T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
-    T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.id, renderFolderPath path]
+    T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
+    T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
     T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
     T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
     T.GLStopCombat -> dtext "Stopped combat"
