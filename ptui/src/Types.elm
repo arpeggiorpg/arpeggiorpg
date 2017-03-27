@@ -399,6 +399,20 @@ creatureDecoder =
     |> P.required "note" JD.string
     |> P.required "portrait_url" JD.string
 
+creatureEncoder : Creature -> JE.Value
+creatureEncoder c =
+  JE.object
+    [ ("id", JE.string c.id)
+    , ("name", JE.string c.name)
+    , ("speed", JE.int c.speed)
+    , ("max_energy", JE.int c.max_energy)
+    , ("cur_energy", JE.int c.cur_energy)
+    , ("max_health", JE.int c.max_health)
+    , ("cur_health", JE.int c.cur_health)
+    , ("abilities", JE.list (List.map abilityStatusEncoder c.abilities))
+    , ("class", JE.string c.class)
+    , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))]
+
 type alias CreatureData =
   { id: CreatureID
   , name: String
@@ -481,6 +495,12 @@ appliedConditionDecoder =
     (JD.field "remaining" conditionDurationDecoder)
     (JD.field "condition" conditionDecoder)
 
+appliedConditionEncoder : AppliedCondition -> JE.Value
+appliedConditionEncoder ac =
+  JE.object
+    [ ("remaining", conditionDurationEncoder ac.remaining)
+    , ("condition", conditionEncoder ac.condition)]
+
 type ConditionDuration
   = Interminate
   | Duration Int
@@ -510,6 +530,15 @@ conditionDecoder = sumDecoder "Condition"
   , ("AddDamageBuff", JD.map AddDamageBuff JD.int)
   , ("ActivateAbility", JD.map ActivateAbility JD.string)]
 
+conditionEncoder : Condition -> JE.Value
+conditionEncoder c = case c of
+  RecurringEffect eff -> JE.object [("RecurringEffect", effectEncoder eff)]
+  Dead -> JE.string "Dead"
+  Incapacitated -> JE.string "Incapacitated"
+  AddDamageBuff buff -> JE.object [("AddDamageBuff", JE.int buff)]
+  DoubleMaxMovement -> JE.string "DoubleMaxMovement"
+  ActivateAbility abid -> JE.object [("ActivateAbility", JE.string abid)]
+
 
 type Effect
   = ApplyCondition ConditionDuration Condition
@@ -531,6 +560,15 @@ effectDecoder =
                                      (JD.index 1 (JD.lazy (\_ -> conditionDecoder))))
       , ("MultiEffect", JD.map MultiEffect (JD.list lazyEffectDecoder))
       ])
+
+effectEncoder : Effect -> JE.Value
+effectEncoder eff = case eff of
+  ApplyCondition cd c ->
+    JE.object [("ApplyCondition", JE.list [conditionDurationEncoder cd, conditionEncoder c])]
+  Heal n -> JE.object [("Heal", JE.int n)]
+  Damage n -> JE.object [("Damage", JE.int n)]
+  MultiEffect l -> JE.object [("MultiEffect", JE.list (List.map effectEncoder l))]
+  GenerateEnergy n -> JE.object [("GenerateEnergy", JE.int n)]
 
 
 -- GameCommand represents all possible mutating commands sent to the RPI
@@ -559,6 +597,7 @@ type GameCommand
   | PathCreature SceneID CreatureID Point3
   | SetCreaturePos SceneID CreatureID Point3
   | CreateCreature FolderPath CreatureCreation
+  | EditCreature CreatureID Creature
   | DeleteCreature CreatureID
   | AddCreatureToCombat CreatureID
   | RemoveCreatureFromCombat CreatureID
@@ -600,6 +639,8 @@ gameCommandEncoder gc =
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
     CreateCreature path creature ->
       JE.object [("CreateCreature", JE.list [folderPathEncoder path, creatureCreationEncoder creature])]
+    EditCreature cid creature ->
+      JE.object [("EditCreature", JE.list [JE.string cid, creatureEncoder creature])]
     DeleteCreature cid ->
       JE.object [("DeleteCreature", JE.string cid)]
     StopCombat ->
