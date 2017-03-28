@@ -40,16 +40,20 @@ visibleCreatures game scene =
     List.filterMap mapInfo creatures
 
 
+bubbleStyle : S.ColorValue compatible -> List (Attribute msg)
 bubbleStyle color =
         [s [ plainBorder
            , S.backgroundColor color
            , S.borderRadius (S.px 10)
            , S.padding (S.px 3)]]
 
+
+hpBubble : T.Creature -> Html M.Msg
 hpBubble creature =
   sdiv (bubbleStyle (S.rgb 144 238 144))
        [text <| (toString creature.cur_health) ++ "/" ++ (toString creature.max_health)]
 
+nrgBubble : T.Creature -> Html M.Msg
 nrgBubble creature =
   sdiv (bubbleStyle (S.rgb 0 255 255))
        [text <| (toString creature.cur_energy) ++ "/" ++ (toString creature.max_energy)]

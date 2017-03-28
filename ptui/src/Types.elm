@@ -11,6 +11,7 @@ import Json.Helpers as JH
 import Set
 
 
+type alias Color = String
 type alias SceneID = String
 type alias PlayerID = String
 type alias CreatureID = String
@@ -24,6 +25,7 @@ type alias CreatureCreation =
   , portrait_url: String
   }
 
+creatureCreationEncoder : CreatureCreation -> JE.Value
 creatureCreationEncoder cc = JE.object
   [ ("name", JE.string cc.name)
   , ("class", JE.string cc.class)
@@ -31,7 +33,9 @@ creatureCreationEncoder cc = JE.object
 
 type alias Point3 = {x: Int, y: Int, z: Int}
 
+point3Decoder : JD.Decoder Point3
 point3Decoder = JD.map3 Point3 (JD.index 0 JD.int) (JD.index 1 JD.int) (JD.index 2 JD.int)
+point3Encoder : Point3 -> JE.Value
 point3Encoder {x, y, z} =  JE.list [JE.int x, JE.int y, JE.int z]
 
 
@@ -39,6 +43,7 @@ type PotentialTarget
   = PTCreatureID CreatureID
   | PTPoint Point3
 
+potentialTargetDecoder : JD.Decoder PotentialTarget
 potentialTargetDecoder = sumDecoder "PotentialTarget"
   []
   [ ("CreatureID", JD.map PTCreatureID JD.string)
@@ -51,6 +56,7 @@ type alias App =
   , players : Dict PlayerID Player
   }
 
+appDecoder : JD.Decoder App
 appDecoder = JD.map3 App
   (JD.field "current_game" gameDecoder)
   (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameSnapshotDecoder) (JD.index 1 <| JD.array gameLogDecoder))))
@@ -71,6 +77,7 @@ playerDecoder =
 
 type alias GameSnapshot = {}
 
+gameSnapshotDecoder : JD.Decoder GameSnapshot
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
@@ -100,6 +107,7 @@ type GameLog
   | GLPathCreature SceneID CreatureID (List Point3)
   | GLSetCreaturePos SceneID CreatureID Point3
 
+gameLogDecoder : JD.Decoder GameLog
 gameLogDecoder = sumDecoder "GameLog"
   [ ("StopCombat", GLStopCombat) ]
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
@@ -128,7 +136,9 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
   ]
 
+fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
 fixedList2 cons d0 d1 = JD.map2 cons (JD.index 0 d0) (JD.index 1 d1)
+fixedList3 : (a -> b -> c -> d) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d
 fixedList3 cons d0 d1 d2 = JD.map3 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2)
 
 type CombatLog
@@ -136,6 +146,7 @@ type CombatLog
   | ComLChangeCreatureInitiative CreatureID Int
   | ComLConsumeMovement Int
 
+combatLogDecoder : JD.Decoder CombatLog
 combatLogDecoder = sumDecoder "CombatLog"
   []
   [ ("EndTurn", JD.map ComLEndTurn JD.string)
@@ -154,6 +165,7 @@ type CreatureLog
   | CLDecrementConditionRemaining Int
   | CLSetNote String
 
+creatureLogDecoder : JD.Decoder CreatureLog
 creatureLogDecoder = sumDecoder "CreatureLog"
   []
   [ ("Damage", JD.map2 CLDamage (JD.index 0 JD.int) (JD.index 1 (JD.list JD.int)))
@@ -193,6 +205,7 @@ type Folder =
     { data: FolderNode
     , children: Dict.Dict String Folder}
 
+folderDecoderHelper : FolderNode -> Dict.Dict String Folder -> Folder
 folderDecoderHelper d c = Folder {data = d, children = c}
 
 folderDecoder : JD.Decoder Folder
@@ -257,6 +270,7 @@ sceneDecoder =
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
 
+sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
   let
     encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
@@ -302,20 +316,30 @@ type alias Map =
   { id: MapID
   , name: String
   , terrain: List Point3
+  , specials: List (Point3, Color, String, Visibility)
   }
 
 mapDecoder : JD.Decoder Map
-mapDecoder = JD.map3 Map
+mapDecoder = JD.map4 Map
   (JD.field "id" JD.string)
   (JD.field "name" JD.string)
   (JD.field "terrain" (JD.list point3Decoder))
+  (JD.field "specials" (JD.list (tuple4 point3Decoder JD.string JD.string visibilityDecoder)))
+
+tuple4 : JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder (a, b, c, d)
+tuple4 da db dc dd =
+  JD.map4 (\a b c d -> (a, b, c, d)) (JD.index 0 da) (JD.index 1 db) (JD.index 2 dc) (JD.index 3 dd)
 
 mapEncoder : Map -> JE.Value
 mapEncoder m =
+  let specialEntryEncoder (pos, color, note, vis) =
+        JE.list [point3Encoder pos, JE.string color, JE.string note, visibilityEncoder vis]
+  in
   JE.object
     [ ("id", JE.string m.id)
     , ("name", JE.string m.name)
     , ("terrain", JE.list (List.map point3Encoder m.terrain))
+    , ("specials", JE.list (List.map specialEntryEncoder m.specials))
     ]
 
 type alias MapCreation =
@@ -430,6 +454,7 @@ type alias CreatureData =
   , note: String
 }
 
+creatureDataDecoder : JD.Decoder CreatureData
 creatureDataDecoder =
   P.decode CreatureData
     |> P.required "id" JD.string
@@ -470,6 +495,7 @@ type TargetSpec
   | Range Distance
   | Actor
 
+targetSpecDecoder : JD.Decoder TargetSpec
 targetSpecDecoder = sumDecoder "TargetSpec"
   [ ("Melee", Melee)
   , ("Actor", Actor)]
@@ -480,6 +506,7 @@ type DecidedTarget
   | DecidedRange CreatureID
   | DecidedActor
 
+decidedTargetEncoder : DecidedTarget -> JE.Value
 decidedTargetEncoder dt = case dt of
   DecidedMelee cid -> JE.object [("Melee", JE.string cid)]
   DecidedRange cid -> JE.object [("Range", JE.string cid)]
@@ -487,9 +514,12 @@ decidedTargetEncoder dt = case dt of
 
 type alias AbilityStatus = { ability_id: AbilityID, cooldown: Int }
 
+abilityStatusDecoder : JD.Decoder AbilityStatus
 abilityStatusDecoder = JD.map2 AbilityStatus
                                  (JD.field "ability_id" JD.string)
                                  (JD.field "cooldown" JD.int)
+
+abilityStatusEncoder : AbilityStatus -> JE.Value
 abilityStatusEncoder {ability_id, cooldown} =
   JE.object [ ("ability_id", JE.string ability_id)
             , ("cooldown", JE.int cooldown)
@@ -500,6 +530,7 @@ type alias AppliedCondition =
   , condition: Condition
   }
 
+appliedConditionDecoder : JD.Decoder AppliedCondition
 appliedConditionDecoder =
   JD.map2 AppliedCondition
     (JD.field "remaining" conditionDurationDecoder)
@@ -515,10 +546,12 @@ type ConditionDuration
   = Interminate
   | Duration Int
 
+conditionDurationDecoder : JD.Decoder ConditionDuration
 conditionDurationDecoder = sumDecoder "ConditionDuration"
   [("Interminate", Interminate)]
   [("Duration", JD.map Duration JD.int)]
 
+conditionDurationEncoder : ConditionDuration -> JE.Value
 conditionDurationEncoder cd =
   case cd of
     Interminate -> JE.string "Interminate"
@@ -532,6 +565,7 @@ type Condition
   | DoubleMaxMovement
   | ActivateAbility AbilityID
 
+conditionDecoder : JD.Decoder Condition
 conditionDecoder = sumDecoder "Condition"
   [ ("Dead", Dead)
   , ("Incapacitated", Incapacitated)
@@ -557,8 +591,10 @@ type Effect
   | MultiEffect (List Effect)
   | GenerateEnergy Int
 
+lazyEffectDecoder : JD.Decoder Effect
 lazyEffectDecoder = JD.lazy (\_ -> effectDecoder)
 
+effectDecoder : JD.Decoder Effect
 effectDecoder =
   JH.decodeSumObjectWithSingleField "Effect"
     (Dict.fromList
@@ -713,6 +749,7 @@ type RustResult
   = RustOk JD.Value
   | RustErr JD.Value
 
+rustResultDecoder : JD.Decoder RustResult
 rustResultDecoder = sumDecoder "RustResult"
   []
   [ ("Ok", JD.map RustOk JD.value)
@@ -737,6 +774,7 @@ encodeMaybe mebbe encoder =
     Just x -> encoder x
     Nothing -> JE.null
 
+setDecoder : JD.Decoder comparable -> JD.Decoder (Set.Set comparable)
 setDecoder el = JD.map Set.fromList (JD.list el)
 
 listFind : (a -> Bool) -> List a -> Maybe a
@@ -825,14 +863,14 @@ folderPathFromString ps =
 
 
 toggleTerrain : Map -> Point3 -> Map
-toggleTerrain {id, name, terrain} pt =
+toggleTerrain {id, name, terrain, specials} pt =
   let newT = if List.member pt terrain
              then List.filter (\el -> el /= pt) terrain
              else pt :: terrain
-  in {id=id, name=name, terrain=newT}
+  in {id=id, name=name, terrain=newT, specials=specials}
 
 emptyMap : Map
-emptyMap = {id="invalid", name="<empty>", terrain=[]}
+emptyMap = {id="invalid", name="<empty>", terrain=[], specials=[]}
 
 folderPathParent : FolderPath -> FolderPath
 folderPathParent path = Maybe.withDefault [] <| List.Extra.init path

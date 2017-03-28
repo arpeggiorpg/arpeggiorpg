@@ -19,6 +19,7 @@ use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
+pub type Color = String;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct Dice {
@@ -735,6 +736,7 @@ pub struct Map {
   pub id: MapID,
   pub name: String,
   pub terrain: Vec<Point3>,
+  pub specials: Vec<(Point3, Color, String, Visibility)>,
 }
 
 impl Map {
@@ -747,6 +749,7 @@ impl Map {
       id: MapID::new(),
       name: name,
       terrain: terrain,
+      specials: vec![],
     }
   }
 
