@@ -300,7 +300,7 @@ editingMapConsole model app path map paintingSpecial =
         in M.SetFocus (M.EditingMap path map (Maybe.map (\(color, note, _) -> (color, note, vis)) paintingSpecial))
   in
     vbox
-      [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
+      [ button [onClick (M.SetFocus (M.PreviewMap map.id))] [text "Cancel Editing Map"]
       , hbox
         [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
         , button [onClick saveMap] [text "Save"]]
