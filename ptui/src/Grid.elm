@@ -1,5 +1,6 @@
 module Grid exposing (..)
 
+import Dict
 import Html.Attributes as HA
 import Css as S
 
@@ -63,31 +64,53 @@ baseMap model map creatures extras editable =
       ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
-      specialEls = List.map specialTile map.specials
+      (specialEls, overlays) = List.unzip <| List.map (specialTile model) map.specials
       gridTranslateX = toString <| -model.gridOffset.x * 50
       gridTranslateY = toString <| model.gridOffset.y * 50
       gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
       matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
-      mapSVG = svg
-        [ preserveAspectRatio "xMinYMid slice"
-        , s [ S.width (S.pct 100)
-            , S.height (S.pct 100)
-            , S.backgroundColor (S.rgb 215 215 215)]
-        ]
-        [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl)]
   in
-    mapSVG
+    svg
+      [ preserveAspectRatio "xMinYMid slice"
+      , s [ S.width (S.pct 100)
+          , S.height (S.pct 100)
+          , S.backgroundColor (S.rgb 215 215 215)]
+      ]
+      [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl ++ overlays)]
 
-specialTile : (T.Point3, T.Color, String, T.Visibility) -> Svg M.Msg
-specialTile (pt, color, note, vis) = tile color [] pt
-  
+specialTile : M.Model -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
+specialTile model (pt, color, note, vis) =
+  let
+    positionedText t =
+      text_ [ HA.style [("pointer-events", "none")]
+            , x (toString <| (pt.x * 100) + 50)
+            , y (toString <| (pt.y * 100) + 50)
+            , fontSize "100px"
+            , dominantBaseline "central"
+            , textAnchor "middle"
+            , fill "white"
+            , stroke "black"
+            , strokeWidth "2px"
+            ]
+            [text t]
+    star =
+      if note /= "" && (not <| Maybe.withDefault False (Dict.get key model.collapsed)) then
+        positionedText "*"
+      else text ""
+    expandedNote =
+      if Maybe.withDefault False (Dict.get key model.collapsed)
+      then positionedText note
+      else text ""
+    key = "special-tile:" ++ toString pt
+  in
+    ( g [] [tile color [onClick (M.ToggleCollapsed key)] pt, star]
+    , expandedNote)
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
   let xs = List.range (from.x - distance) (from.x + distance)
       ys = List.range (from.y - distance) (from.y + distance)
-      result = List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
-  in result
+  in List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
 
 movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> List T.Point3 -> T.Point3 -> Int -> List (Svg M.Msg)
 movementTargets moveMsg pts terrain origin max_distance =
@@ -148,16 +171,13 @@ gridTerrain editable pt =
 
 emptyTerrain : List T.Point3 -> List (Svg M.Msg)
 emptyTerrain terrain =
-  let g x y = let pt = {x = x, y = y, z = 0}
+  let emptyTerrainTile pt = tile "grey" [onClick (M.ToggleTerrain pt)] pt
+      g x y = let pt = {x = x, y = y, z = 0}
               in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
       f x = List.concatMap (g x) (List.range -50 50)
       empties = List.concatMap f (List.range -50 50)
       _ = Debug.log "Number of empties: " (List.length empties)
   in empties
-
-emptyTerrainTile : T.Point3 -> Svg M.Msg
-emptyTerrainTile pt =
-  tile "grey" [onClick (M.ToggleTerrain pt)] pt
 
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
 tile cl attrs pt =
