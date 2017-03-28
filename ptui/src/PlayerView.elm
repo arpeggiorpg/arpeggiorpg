@@ -90,9 +90,10 @@ mapView model app myCreatures =
 sceneMap : M.Model -> T.App -> T.Scene -> List T.Creature -> Html M.Msg
 sceneMap model app scene myCreatures =
   let game = app.current_game
+      currentMap = mapMap <| M.tryGetMapNamed scene.map app
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
-          Just (pos, _) -> Grid.movementMap model msg mvmtReq False (M.getMap model) pos vCreatures
+          Just (pos, _) -> Grid.movementMap model msg mvmtReq False currentMap pos vCreatures
           Nothing -> text "Moving creature is not in this scene."
       movementMap =
         case (game.current_combat, model.moving) of
@@ -120,13 +121,21 @@ sceneMap model app scene myCreatures =
         in { mapc | highlight = highlight
                   , movable = movable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
-      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
+      defaultMap () = Grid.terrainMap model currentMap vCreatures
   in movementMap
       |> MaybeEx.unpack defaultMap identity
 
 visibleCreatures game scene =
   let mod mapc = if mapc.visible then (Just mapc) else Nothing
   in List.filterMap mod (CommonView.visibleCreatures game scene)
+
+mapMap : T.Map -> T.Map
+mapMap map =
+  let onlyShowPlayerSpecials (pt, color, note, vis) =
+        case vis of T.AllPlayers -> Just (pt, color, note, T.AllPlayers)
+                    _ -> Nothing
+  in { map | specials = List.filterMap onlyShowPlayerSpecials map.specials}
+
 
 {-| Show all creatures in combat, with an action bar when it's my turn. -}
 combatView : M.Model -> T.App -> List T.Creature -> Html M.Msg
