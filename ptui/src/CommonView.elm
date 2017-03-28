@@ -57,7 +57,9 @@ nrgBubble creature =
 creatureCard : List (Html M.Msg) -> T.App -> T.Creature -> Html M.Msg
 creatureCard extras app creature =
     vabox
-      [s [plainBorder, S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)]]
+      [s [ plainBorder
+         , S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)
+         , S.position S.relative]]
       <| 
       [ hbox [strong [] [text creature.name ], classIcon creature]
       , hbox
@@ -65,9 +67,6 @@ creatureCard extras app creature =
           , hpBubble creature
           , nrgBubble creature
           ]
-      -- , hbox [ div (bubbleStyle (S.rgb 255 255 255)) [text "💪 10"]
-      --        , div (bubbleStyle (S.rgb 255 255 255)) [text "🛡️ 10"]
-      --        , div (bubbleStyle (S.rgb 255 255 255)) [text "🏃 10"]]
       , hbox (List.map conditionIcon (Dict.values creature.conditions))
       ] ++ extras
 

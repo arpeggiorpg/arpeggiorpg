@@ -162,6 +162,7 @@ type Modal
   | SelectCreaturesFromCampaign SelectingCreatures
   | ModalLoadGame (List String)
   | ModalSaveGame SavingGame
+  | ModalEditCreature EditingCreature
 
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
@@ -170,6 +171,7 @@ type alias CreatingMap = {path: T.FolderPath, name: String}
 type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
 type alias RenamingFolder = {path: T.FolderPath, newName: String}
 type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
+type alias EditingCreature = {cid: T.CreatureID, note: String, portrait_url: String}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}

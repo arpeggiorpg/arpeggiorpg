@@ -46,7 +46,6 @@ makeUI model app =
   , modal = checkModal model app
   }
 
-
 savedGameView : M.Model -> T.App -> Html M.Msg
 savedGameView model app =
   let
@@ -110,7 +109,15 @@ console model app {key, path, prettyName} content =
 
 creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =
-  CommonView.creatureCard [noteBox model creature] app creature
+  let editCreatureLink =
+        ( text "Edit Creature"
+        , M.SetModal (M.ModalEditCreature {cid=creature.id, note=creature.note, portrait_url=creature.portrait_url}))
+      menu =
+        div [s [S.position S.absolute, S.top (S.px 0), S.right (S.px 0)]]
+            [popUpMenu model "creature-console-menu" creature.id gear gearBox [editCreatureLink]]
+  in
+  div [s [S.position S.relative]]
+    [ CommonView.creatureCard [noteBox model creature, menu] app creature ]
 
 sceneConsole : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneConsole model app scene =
@@ -355,6 +362,23 @@ loadGameDialog model app names =
                                [text name]
   in vbox (List.map loadButton names)
 
+editCreatureDialog : M.Model -> T.App -> M.EditingCreature -> Html M.Msg
+editCreatureDialog model app editing =
+  case T.getCreature app.current_game editing.cid of
+    Just creature ->
+      let
+        update f inp = M.SetModal (M.ModalEditCreature (f inp))
+        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note, portrait_url = editing.portrait_url})
+      in vbox
+        [ input [type_ "text", value editing.note, placeholder "Note"
+                , onInput (update (\n -> {editing | note=n}))]
+                []
+        , input [type_ "text", value editing.portrait_url, placeholder "Portrait URL"
+                , onInput (update (\u -> {editing | portrait_url=u}))]
+                []
+        , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
+    Nothing -> text "Creature not found"
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -374,6 +398,7 @@ checkModal model app =
         M.SelectCreaturesFromCampaign sc -> Just (selectCreaturesFromCampaignDialog model app sc)
         M.ModalSaveGame sg -> Just (saveGameDialog model app sg)
         M.ModalLoadGame lg -> Just (loadGameDialog model app lg)
+        M.ModalEditCreature ce -> Just (editCreatureDialog model app ce)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
