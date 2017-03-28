@@ -272,34 +272,55 @@ moveAnywhereToggle model =
 
 mapConsole : M.Model -> T.App -> T.FolderPath -> T.MapID -> Html M.Msg
 mapConsole model app path mapID =
-  let map = M.getMapNamed mapID app
+  case M.getMapNamed mapID app of
+    Nothing -> text ("Map not found: " ++ mapID)
+    Just map ->
+      vbox
+        [ strong [] [text map.name]
+        , case model.focus of
+            M.EditingMap path map paintingSpecial ->
+              editingMapConsole model app path map paintingSpecial
+            _ -> button [onClick (M.SetFocus (M.EditingMap path map Nothing))] [text "Edit this Map"]
+        ]
+
+editingMapConsole : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
+editingMapConsole model app path map paintingSpecial =
+  let updateName name = M.SetFocus (M.EditingMap path {map | name = name} paintingSpecial)
+      saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
+      toggleSpecial checked =
+        if checked then
+          M.SetFocus (M.EditingMap path map (Just ("", "", T.AllPlayers)))
+        else M.SetFocus (M.EditingMap path map Nothing)
+      updateSpecialColor color =
+        M.SetFocus (M.EditingMap path map (Maybe.map (\(_, note, vis) -> (color, note, vis)) paintingSpecial))
+      updateSpecialNote note =
+        M.SetFocus (M.EditingMap path map (Maybe.map (\(color, _, vis) -> (color, note, vis)) paintingSpecial))
+      updateSpecialVis isChecked =
+        let vis = if isChecked then T.GMOnly else T.AllPlayers
+        in M.SetFocus (M.EditingMap path map (Maybe.map (\(color, note, _) -> (color, note, vis)) paintingSpecial))
   in
-    case map of
-      Nothing -> text ("Map not found: " ++ mapID)
-      Just map ->
-        vbox
-          [ strong [] [text map.name]
-          , case model.focus of
-              M.EditingMap path map ->
-                let updateName name = M.SetFocus (M.EditingMap path {map | name = name})
-                    saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
-                in
-                  vbox
-                    [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
-                    , hbox
-                      [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
-                      , button [onClick saveMap] [text "Save"]
-                      ]
-                    ]
-              _ -> button [onClick (M.SetFocus (M.EditingMap path map))] [text "Edit this Map"]
-          ]
+    vbox
+      [ button [onClick (M.SetFocus M.NoFocus)] [text "Cancel Editing Map"]
+      , hbox
+        [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
+        , button [onClick saveMap] [text "Save"]]
+      , hbox [ label [] [text "Draw Special Squares"]
+             , input [type_ "checkbox", onCheck toggleSpecial] []]
+      , case paintingSpecial of
+            Just (color, note, vis) ->
+              hbox
+                [ input [type_ "text", placeholder "color", value color, onInput updateSpecialColor] []
+                , input [type_ "text", placeholder "note", value note, onInput updateSpecialNote] []
+                , label [] [text "GM Only"], input [type_ "checkbox", onCheck updateSpecialVis] []
+                ]
+            Nothing -> text ""
+      ]
 
 createMapDialog : M.Model -> T.App -> M.CreatingMap -> Html M.Msg
 createMapDialog model app cm =
   let updateName name = M.SetModal (M.CreateMap {cm | name=name})
       create = M.Batch [ M.SendCommand (T.CreateMap cm.path {name=cm.name, terrain=[]})
-                       , M.SetModal M.NoModal
-                       ]
+                       , M.SetModal M.NoModal ]
   in 
     vbox
       [ input [type_ "text", value cm.name, onInput updateName] []
@@ -442,7 +463,7 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap _ map -> Grid.editMap model map []
+    M.EditingMap _ map _ -> Grid.editMap model map []
     M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of

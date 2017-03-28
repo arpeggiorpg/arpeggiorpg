@@ -141,7 +141,7 @@ type alias Model =
 type Focus
   = NoFocus
   | Scene String
-  | EditingMap T.FolderPath T.Map
+  | EditingMap T.FolderPath T.Map (Maybe (String, String, T.Visibility))
   | PreviewMap T.MapID
 
 type SecondaryFocus
@@ -211,7 +211,7 @@ getScene model name =
 getMap : Model -> T.Map
 getMap model =
   case model.focus of
-    EditingMap path map -> map
+    EditingMap _ map _ -> map
     PreviewMap name ->
       model.app
       |> Maybe.andThen (getMapNamed name)
