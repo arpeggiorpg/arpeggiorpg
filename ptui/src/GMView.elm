@@ -442,8 +442,8 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap _ map -> Grid.editMap model map.terrain []
-    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app).terrain []
+    M.EditingMap _ map -> Grid.editMap model map []
+    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene
@@ -456,7 +456,7 @@ sceneMap model app scene =
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
           Just (pos, vis) ->
-            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model).terrain pos vCreatures
+            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
           Nothing -> text "Moving Creature is not in this scene"
       pathOrPort =
         if model.moveAnywhere
@@ -479,7 +479,7 @@ sceneMap model app scene =
         { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
                , movable = Just (M.GetMovementOptions scene.id)}
       vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
-      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app).terrain vCreatures
+      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
   in movementMap |> MaybeEx.unpack defaultMap identity
 
 {-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 

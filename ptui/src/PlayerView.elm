@@ -92,7 +92,7 @@ sceneMap model app scene myCreatures =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
         case Dict.get creature.id scene.creatures of
-          Just (pos, _) -> Grid.movementMap model msg mvmtReq False (M.getMap model).terrain pos vCreatures
+          Just (pos, _) -> Grid.movementMap model msg mvmtReq False (M.getMap model) pos vCreatures
           Nothing -> text "Moving creature is not in this scene."
       movementMap =
         case (game.current_combat, model.moving) of
@@ -120,7 +120,7 @@ sceneMap model app scene myCreatures =
         in { mapc | highlight = highlight
                   , movable = movable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
-      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app).terrain vCreatures
+      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
   in movementMap
       |> MaybeEx.unpack defaultMap identity
 

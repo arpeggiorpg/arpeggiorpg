@@ -27,20 +27,20 @@ type alias MapCreature =
   , visible: Bool
   }
 
-terrainMap : M.Model -> List T.Point3 -> List MapCreature -> Svg M.Msg
-terrainMap model terrain creatures = baseMap model terrain creatures [] False
+terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
+terrainMap model map creatures = baseMap model map creatures [] False
 
-editMap : M.Model -> List T.Point3 -> List MapCreature -> Svg M.Msg
-editMap model terrain creatures =
-  baseMap model terrain creatures [] True
+editMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
+editMap model map creatures =
+  baseMap model map creatures [] True
 
-movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> List T.Point3 -> T.Point3 -> List MapCreature -> Svg M.Msg
-movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere terrain movingFrom creatures =
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List MapCreature -> Svg M.Msg
+movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere map movingFrom creatures =
   let targetPoints =
         if moveAnywhere
         then calculateAllMovementOptions movingFrom (max_distance // 100)
         else movement_options
-      movementTiles = movementTargets moveMsg targetPoints terrain movingFrom max_distance
+      movementTiles = movementTargets moveMsg targetPoints map.terrain movingFrom max_distance
       highlightMovingCreature : MapCreature -> MapCreature
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
@@ -48,7 +48,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    baseMap model terrain vCreatures movementTiles False
+    baseMap model map vCreatures movementTiles False
 
 movementGhost : M.Model -> Maybe T.Point3
 movementGhost model =
@@ -57,26 +57,19 @@ movementGhost model =
     _ -> Nothing
 
 
-baseMap : M.Model -> List T.Point3 -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap model terrain creatures extras editable =
+baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
+baseMap model {terrain} creatures extras editable =
   let creatureEls = List.map gridCreature creatures
       terrainEls = baseTerrainRects model editable terrain
       ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
-      -- gridSize is 25 ("meters across")
-      -- our coordinate system is in centimeters. We want to pan by 100 * offset.
-      -- gridLeft = (-model.gridSize + model.gridOffset.x * 2) * 50
-      -- gridTop = (-model.gridSize + -model.gridOffset.y * 2) * 50
-      -- gridWidth = model.gridSize * 100
-      -- gridHeight = model.gridSize * 100
       gridTranslateX = toString <| -model.gridOffset.x * 50
       gridTranslateY = toString <| model.gridOffset.y * 50
       gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
       matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
       mapSVG = svg
-        [ -- viewBox (String.join " " (List.map toString [gridLeft, gridTop, gridWidth, gridHeight]))
-         preserveAspectRatio "xMinYMid slice"
+        [ preserveAspectRatio "xMinYMid slice"
         , s [ S.width (S.pct 100)
             , S.height (S.pct 100)
             , S.backgroundColor (S.rgb 215 215 215)]
