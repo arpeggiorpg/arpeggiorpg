@@ -56,14 +56,14 @@ movementGhost model =
     M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
     _ -> Nothing
 
-
 baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap model {terrain} creatures extras editable =
+baseMap model map creatures extras editable =
   let creatureEls = List.map gridCreature creatures
-      terrainEls = baseTerrainRects model editable terrain
+      terrainEls = baseTerrainRects model editable map.terrain
       ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
+      specialEls = List.map specialTile map.specials
       gridTranslateX = toString <| -model.gridOffset.x * 50
       gridTranslateY = toString <| model.gridOffset.y * 50
       gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
@@ -74,9 +74,13 @@ baseMap model {terrain} creatures extras editable =
             , S.height (S.pct 100)
             , S.backgroundColor (S.rgb 215 215 215)]
         ]
-        [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ creatureEls ++ ghostEl)]
+        [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl)]
   in
     mapSVG
+
+specialTile : (T.Point3, T.Color, String, T.Visibility) -> Svg M.Msg
+specialTile (pt, color, note, vis) = tile color [] pt
+  
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
