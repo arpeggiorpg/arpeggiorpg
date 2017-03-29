@@ -274,17 +274,17 @@ mapConsole : M.Model -> T.App -> T.FolderPath -> T.MapID -> Html M.Msg
 mapConsole model app path mapID =
   case M.getMapNamed mapID app of
     Nothing -> text ("Map not found: " ++ mapID)
-    Just map ->
+    Just gameMap ->
       vbox
-        [ strong [] [text map.name]
+        [ strong [] [text gameMap.name]
         , case model.focus of
             M.EditingMap path map paintingSpecial ->
-              editingMapConsole model app path map paintingSpecial
-            _ -> button [onClick (M.SetFocus (M.EditingMap path map Nothing))] [text "Edit this Map"]
+              editingMapConsole model app gameMap path map paintingSpecial
+            _ -> button [onClick (M.SetFocus (M.EditingMap path gameMap Nothing))] [text "Edit this Map"]
         ]
 
-editingMapConsole : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
-editingMapConsole model app path map paintingSpecial =
+editingMapConsole : M.Model -> T.App -> T.Map -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
+editingMapConsole model app origMap path map paintingSpecial =
   let updateName name = M.SetFocus (M.EditingMap path {map | name = name} paintingSpecial)
       saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
       toggleSpecial checked =
@@ -302,7 +302,7 @@ editingMapConsole model app path map paintingSpecial =
     vbox
       [ button [onClick (M.SetFocus (M.PreviewMap map.id))] [text "Cancel Editing Map"]
       , hbox
-        [ input [type_ "text", placeholder "map name", value map.name, onInput updateName] []
+        [ input [type_ "text", placeholder "map name", defaultValue origMap.name, onInput updateName] []
         , button [onClick saveMap] [text "Save"]]
       , hbox [ label [] [text "Draw Special Squares"]
              , input [type_ "checkbox", onCheck toggleSpecial] []]
@@ -323,7 +323,7 @@ createMapDialog model app cm =
                        , M.SetModal M.NoModal ]
   in 
     vbox
-      [ input [type_ "text", value cm.name, onInput updateName] []
+      [ input [type_ "text", placeholder "Map Name", onInput updateName] []
       , button [onClick create] [text "Create"]
       ]
 
@@ -463,13 +463,33 @@ selectCreaturesView model app selectableCreatures selectedCreatures callback com
 mapView : M.Model -> T.App -> Html M.Msg
 mapView model app =
   case model.focus of
-    M.EditingMap _ map _ -> Grid.editMap model map []
+    M.EditingMap path map paintSpecial ->
+      editMap model app path map paintSpecial
     M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene
         Nothing -> text ""
     M.NoFocus -> text ""
+
+editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
+editMap model app path map paintSpecial =
+  let
+    paintSpecialMsg (color, note, vis) pt =
+      let newSpecials =
+            let matcher = (\(pos, _, _, _) -> pos == pt)
+            in
+              case T.listFind matcher map.specials of
+                Just x -> List.filter (not << matcher) map.specials
+                Nothing -> (pt, color, note, vis) :: map.specials
+          newMap = {map | specials = newSpecials}
+      in M.SetFocus (M.EditingMap path newMap paintSpecial)
+    paintMsg =
+      case paintSpecial of
+        Nothing -> M.ToggleTerrain
+        Just x -> paintSpecialMsg x
+  in Grid.editMap model map [] paintMsg
+
 
 sceneMap : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneMap model app scene =

@@ -29,11 +29,11 @@ type alias MapCreature =
   }
 
 terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
-terrainMap model map creatures = baseMap model map creatures [] False
+terrainMap model map creatures = baseMap model map creatures [] Nothing
 
-editMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
-editMap model map creatures =
-  baseMap model map creatures [] True
+editMap : M.Model -> T.Map -> List MapCreature -> (T.Point3 -> M.Msg) -> Svg M.Msg
+editMap model map creatures paint =
+  baseMap model map creatures [] (Just paint)
 
 movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere map movingFrom creatures =
@@ -49,7 +49,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    baseMap model map vCreatures movementTiles False
+    baseMap model map vCreatures movementTiles Nothing
 
 movementGhost : M.Model -> Maybe T.Point3
 movementGhost model =
@@ -57,10 +57,10 @@ movementGhost model =
     M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
     _ -> Nothing
 
-baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Bool -> Svg M.Msg
-baseMap model map creatures extras editable =
+baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Maybe (T.Point3 -> M.Msg) -> Svg M.Msg
+baseMap model map creatures extras paint =
   let creatureEls = List.map gridCreature creatures
-      terrainEls = baseTerrainRects model editable map.terrain
+      terrainEls = baseTerrainRects model paint map.terrain
       ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
@@ -159,24 +159,31 @@ gridCreature creature =
     [ tile creatureColor attrs creature.pos
     , foreground ]
 
-baseTerrainRects : M.Model -> Bool -> List T.Point3 -> List (Svg M.Msg)
-baseTerrainRects model editable terrain =
-  let blocks = List.map (gridTerrain editable) terrain
-      empties = if editable then emptyTerrain terrain else []
+baseTerrainRects : M.Model -> Maybe (T.Point3 -> M.Msg) -> List T.Point3 -> List (Svg M.Msg)
+baseTerrainRects model paint terrain =
+  let blocks = List.map (gridTerrain paint) terrain
+      empties = case paint of
+        Just paint -> emptyTerrain model terrain paint
+        Nothing -> []
   in blocks ++ empties
 
-gridTerrain : Bool -> T.Point3 -> Svg M.Msg
-gridTerrain editable pt =
-  tile "white" (if editable then [onClick (M.ToggleTerrain pt)] else []) pt
+gridTerrain : Maybe (T.Point3 -> M.Msg) -> T.Point3 -> Svg M.Msg
+gridTerrain paint pt =
+  let attrs =
+        case paint of
+          Just paint -> [onClick (paint pt)]
+          Nothing -> []
+  in tile "white" attrs pt
 
-emptyTerrain : List T.Point3 -> List (Svg M.Msg)
-emptyTerrain terrain =
-  let emptyTerrainTile pt = tile "grey" [onClick (M.ToggleTerrain pt)] pt
-      g x y = let pt = {x = x, y = y, z = 0}
-              in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
-      f x = List.concatMap (g x) (List.range -50 50)
-      empties = List.concatMap f (List.range -50 50)
-      _ = Debug.log "Number of empties: " (List.length empties)
+emptyTerrain : M.Model -> List T.Point3 -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
+emptyTerrain model terrain paint =
+  let
+    emptyTerrainTile pt = tile "grey" [onClick (paint pt)] pt
+    g x y = let pt = {x = x, y = y, z = 0}
+            in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
+    f x = List.concatMap (g x) (List.range -50 50)
+    empties = List.concatMap f (List.range -50 50)
+    _ = Debug.log "Number of empties: " (List.length empties)
   in empties
 
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
