@@ -64,7 +64,7 @@ baseMap model map creatures extras paint =
       ghostEl = case movementGhost model of
                   Just pt -> [tile "black" [] pt]
                   Nothing -> []
-      (specialEls, overlays) = List.unzip <| List.map (specialTile model) map.specials
+      (specialEls, overlays) = List.unzip <| List.map (specialTile model paint) map.specials
       gridTranslateX = toString <| -model.gridOffset.x * 50
       gridTranslateY = toString <| model.gridOffset.y * 50
       gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
@@ -78,8 +78,8 @@ baseMap model map creatures extras paint =
       ]
       [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl ++ overlays)]
 
-specialTile : M.Model -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
-specialTile model (pt, color, note, vis) =
+specialTile : M.Model -> Maybe (T.Point3 -> M.Msg) -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
+specialTile model paint (pt, color, note, vis) =
   let
     positionedText t =
       text_ [ HA.style [("pointer-events", "none")]
@@ -102,8 +102,12 @@ specialTile model (pt, color, note, vis) =
       then positionedText note
       else text ""
     key = "special-tile:" ++ toString pt
+    click =
+      case paint of
+        Just f -> f pt
+        Nothing -> M.ToggleCollapsed key
   in
-    ( g [] [tile color [onClick (M.ToggleCollapsed key)] pt, star]
+    ( g [] [tile color [onClick click] pt, star]
     , expandedNote)
 
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
