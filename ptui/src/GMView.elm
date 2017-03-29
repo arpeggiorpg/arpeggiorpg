@@ -135,8 +135,11 @@ sceneConsole model app scene =
     selectCreatures = M.SetModal
       <| M.SelectCreaturesFromCampaign
           {cb=gotCreatures, reason="Set Creatures in Scene", selectedCreatures=Dict.keys scene.creatures}
+    moveAPlayer pid = M.SendCommand (T.SetPlayerScene pid (Just scene.id))
+    moveAllPlayers = M.Batch (List.map moveAPlayer (Dict.keys app.players))
   in vbox
     [ hbox [strong [] [text "Scene:"], text scene.name]
+    , button [onClick moveAllPlayers] [text "Move all Players to this Scene"]
     , case app.current_game.current_combat of
         Just combat ->
           if combat.scene == scene.id
