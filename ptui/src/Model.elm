@@ -35,7 +35,6 @@ type Msg
     | SetFocus Focus
     | SetSecondaryFocus SecondaryFocus
     | SetModal Modal
-    | MorePlease
     | PollApp
     | ReceivedAppUpdate (Result Http.Error T.App)
     | AppUpdate (Result Http.Error T.App)

@@ -89,8 +89,6 @@ update msg model = case msg of
 
   Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder))
 
-  MorePlease -> ( model, message PollApp)
-
   PollApp ->
     case model.app of
       Nothing -> (model, message Start)
@@ -107,7 +105,14 @@ update msg model = case msg of
     in ( { model | error = toString x}
        , delay Time.second PollApp )
 
-  SetPlayerID pid -> ({model | playerID = Just pid}, Cmd.none)
+  SetPlayerID pid ->
+    -- TODO: This stuff shouldn't be in SetPlayerID anyway...
+    let modelWPlayer = {model | playerID = Just pid}
+        newModel =
+          case model.app of
+            Just app -> updateModelFromApp modelWPlayer app
+            Nothing -> modelWPlayer
+    in (newModel, Cmd.none)
 
   RegisterPlayer ->
     case model.playerID of
