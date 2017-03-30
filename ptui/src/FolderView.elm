@@ -98,12 +98,15 @@ rootFolder extra content =
 
 folderLine : FolderViewConfig -> T.FolderPath -> Maybe T.FolderItemID -> M.Msg -> String -> String -> Html M.Msg
 folderLine cfg path mItem msg iconName entryName =
-  let
-    realMsg = if cfg.allowFocus then msg else M.NoMsg
-    click = if cfg.allowFocus then clickable else s []
-    extra = cfg.contentControls path mItem
-  in
-    hbox [icon [click, onClick realMsg] iconName, extra, div [click, onClick realMsg] [text entryName]]
+  baseFolderLine cfg path mItem (if cfg.allowFocus then (Just msg) else Nothing) iconName entryName
+
+baseFolderLine : FolderViewConfig -> T.FolderPath -> Maybe T.FolderItemID -> Maybe M.Msg -> String -> String -> Html M.Msg
+baseFolderLine cfg path mItem mmsg iconName entryName =
+  let attrs = case mmsg of
+                Just msg -> [clickable, onClick msg]
+                Nothing -> []
+      extra = cfg.contentControls path mItem
+  in hbox [icon attrs iconName, extra, div attrs [text entryName]]
 
 folderSubEntries : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
 folderSubEntries model app cfg path (T.Folder folder) =
@@ -114,7 +117,7 @@ folderSubEntries model app cfg path (T.Folder folder) =
           isShown = Dict.get key model.collapsed |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
       in
-        vbox [ hbox [folderLine cfg childPath Nothing (M.ToggleCollapsed key) iconName folderName]
+        vbox [ baseFolderLine cfg path Nothing (Just <| M.ToggleCollapsed key) iconName folderName
               , if isShown
                 then div [s [S.marginLeft (S.em 1)]] [folderView model app cfg childPath childFolder]
                 else text ""
