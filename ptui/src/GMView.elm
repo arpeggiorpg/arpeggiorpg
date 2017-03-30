@@ -104,7 +104,6 @@ console model app {key, path, prettyName} content =
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
       , content ]
 
-
 creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =
   let editCreatureLink =
@@ -406,9 +405,6 @@ checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
   let
     game = app.current_game
-    selectingCreatures =
-      Maybe.map (\(selectable, selected, cb, name) -> selectCreaturesView model app selectable selected cb name)
-        model.selectingCreatures
     generalModal =
       case model.modal of
         M.CreateFolder creating -> Just (createFolderInPath model app creating)
@@ -421,43 +417,49 @@ checkModal model app =
         M.ModalSaveGame sg -> Just (saveGameDialog model app sg)
         M.ModalLoadGame lg -> Just (loadGameDialog model app lg)
         M.ModalEditCreature ce -> Just (editCreatureDialog model app ce)
+        M.SelectOrderedCreatures soc -> Just (selectOrderedCreaturesDialog model app soc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
-  in selectingCreatures
-      |> MaybeEx.orElse (Maybe.map cancelableModal generalModal)
-      |> MaybeEx.orElse (CommonView.checkModal model app)
+  in Maybe.map cancelableModal generalModal |> MaybeEx.orElse (CommonView.checkModal model app)
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
 -}
--- NOTE: I'm sure at some point we'll want to move this to CommonView -- we just need to make sure
--- that only the GM gets the noteBox in the creatureCard.
-selectCreaturesView : M.Model -> T.App
-                    -> List T.CreatureID -> List T.CreatureID -> M.GotCreatures
-                    -> String
-                    -> Html M.Msg
-selectCreaturesView model app selectableCreatures selectedCreatures callback commandName =
-  let selectButton creature =
-        button [ onClick (M.ToggleSelectedCreature creature.id) ]
+selectOrderedCreaturesDialog : M.Model -> T.App -> M.SelectingOrderedCreatures -> Html M.Msg
+selectOrderedCreaturesDialog model app {from, selected, cb, title} =
+  let modModal f = M.SetModal (M.SelectOrderedCreatures (f {from=from, selected=selected, cb=cb, title=title}))
+      selectButton creature =
+        button [ onClick (modModal (\soc -> {soc | selected = Dict.insert creature.id 0 soc.selected}))]
                [text "Add"]
       unselectButton cid =
-        button [ onClick (M.ToggleSelectedCreature cid) ]
+        button [ onClick (modModal (\soc -> {soc | selected = Dict.remove cid soc.selected})) ]
                [text "Remove"]
       selectableCreature creature =
         habox [s [S.width (S.px 500)]]
               [selectButton creature, terseCreatureLine model app creature, noteBox model creature]
       selectableCreatureItems =
-        vbox <| List.map selectableCreature (T.getCreatures app.current_game selectableCreatures)
-      selectedCreatureItem creature =
-        habox
-          [s [S.width (S.px 500)]]
-          [terseCreatureLine model app creature, noteBox model creature, unselectButton creature.id]
+        vbox <| List.map selectableCreature (T.getCreatures app.current_game from)
+      setInit cid newInitStr =
+        let newInit =
+              case String.toInt newInitStr of
+                Ok num -> num
+                Err _ -> if newInitStr == "" then 0 else Dict.get cid selected |> Maybe.withDefault 0
+        in modModal (\soc -> {soc | selected = Dict.insert cid newInit soc.selected})
+      initBox creature init =
+        input [type_ "text", value (if isNaN (toFloat init) then "-" else if init == 0 then "" else (toString init)), onInput (setInit creature.id)] []
+      selectedCreatureItem (cid, init) =
+        case T.getCreature app.current_game cid of
+          Just creature -> habox
+            [s [S.width (S.px 500)]]
+            [CommonView.creatureIcon app creature, initBox creature init, unselectButton creature.id]
+          Nothing -> text ""
       selectedCreatureItems =
-        vbox <| List.map selectedCreatureItem (T.getCreatures app.current_game selectedCreatures)
-      doneSelectingButton = button [onClick M.DoneSelectingCreatures] [text commandName]
-      cancelButton = button [onClick M.CancelSelectingCreatures] [text "Cancel"]
+        vbox <| List.map selectedCreatureItem (Dict.toList selected)
+      done = M.Batch [cb (Dict.keys selected), M.SetModal M.NoModal]
+      doneSelectingButton = button [onClick done] [text title]
+      cancelButton = button [onClick (M.SetModal M.NoModal)] [text "Cancel"]
   in vbox <|
-    [h3 [] [text <| "Select Creatures to " ++ commandName]
+    [h3 [] [text <| "Select Creatures to " ++ title]
     , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]]
             [selectableCreatureItems, selectedCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
@@ -591,7 +593,7 @@ startCombatButton model app =
             case Dict.get sceneName app.current_game.scenes of
               Just scene -> Dict.keys scene.creatures
               Nothing -> []
-      in button [onClick (M.SelectCreatures sceneCreatures gotCreatures "Start Combat")] [text "Start Combat"]
+      in button [onClick (M.SetModal (M.SelectOrderedCreatures {from = sceneCreatures, selected =Dict.empty, cb = gotCreatures, title = "Start Combat"}))] [text "Start Combat"]
     _ -> button [disabled True] [text "Select a Scene to Start Combat"]
 
 {-| A button for stopping combat. -}
@@ -646,7 +648,7 @@ playersView : M.Model -> T.App -> Html M.Msg
 playersView model app =
   let gotCreatures pid cids = M.SendCommand (T.GiveCreaturesToPlayer pid cids)
       allCreatures = Dict.keys app.current_game.creatures
-      selectCreatures pid = M.SelectCreatures allCreatures (gotCreatures pid) ("Grant Creatures to " ++ pid)
+      selectCreatures pid = M.SetModal (M.SelectOrderedCreatures {from=allCreatures, selected=Dict.empty, cb=gotCreatures pid, title="Grant Creatures to " ++ pid})
       grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)
       sceneName =
         case model.focus of

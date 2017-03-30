@@ -46,7 +46,6 @@ type Msg
     | ToggleTerrain T.Point3
 
     | CommandComplete (Result Http.Error T.RustResult)
-    | ToggleSelectedCreature T.CreatureID
     | SelectAbility T.SceneID T.CreatureID T.AbilityID
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
@@ -61,9 +60,6 @@ type Msg
     | GetCombatMovementOptions
     | GotCombatMovementOptions (Result Http.Error (List T.Point3))
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
-    | SelectCreatures (List T.CreatureID) GotCreatures String
-    | DoneSelectingCreatures
-    | CancelSelectingCreatures
     | ToggleMoveAnywhere
     | Tick Time.Time
     | SendCommand T.GameCommand
@@ -93,7 +89,6 @@ defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
   , selectedAbility = Nothing
-  , selectingCreatures = Nothing
   , moving = Nothing
   , error = ""
   , playerID = Nothing
@@ -116,7 +111,6 @@ type alias Model =
   { app : Maybe T.App
   , selectedAbility : Maybe (T.SceneID, T.CreatureID, T.AbilityID)
   -- Creatures which have been selected for combat
-  , selectingCreatures : Maybe (List T.CreatureID, List T.CreatureID, GotCreatures, String)
   , error: String
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
@@ -158,6 +152,7 @@ type Modal
   | CreateMap CreatingMap
   | MoveFolderItem MovingFolderItem
   | RenameFolder RenamingFolder
+  | SelectOrderedCreatures SelectingOrderedCreatures
   | SelectCreaturesFromCampaign SelectingCreatures
   | ModalLoadGame (List String)
   | ModalSaveGame SavingGame
@@ -169,6 +164,7 @@ type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
 type alias CreatingMap = {path: T.FolderPath, name: String}
 type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
 type alias RenamingFolder = {path: T.FolderPath, newName: String}
+type alias SelectingOrderedCreatures = {from: List T.CreatureID, selected: Dict.Dict T.CreatureID Int, cb: GotCreatures, title: String}
 type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
 type alias EditingCreature = {cid: T.CreatureID, note: String, portrait_url: String}
 

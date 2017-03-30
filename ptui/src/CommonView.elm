@@ -1,5 +1,5 @@
 module CommonView exposing
-  ( visibleCreatures, creatureCard, creatureAbilities, oocActionBar
+  ( visibleCreatures, creatureCard, creatureIcon, creatureAbilities, oocActionBar
   , hpBubble, nrgBubble
   , mapControls
   , movementControls, checkModal
