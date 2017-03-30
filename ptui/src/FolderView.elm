@@ -89,12 +89,11 @@ showNothing =
 
 baseCampaignView : M.Model -> T.App -> FolderViewConfig -> Html M.Msg
 baseCampaignView model app cfg =
-  rootFolder (cfg.contentControls [] Nothing) (folderView model app cfg [] app.current_game.campaign)
-
-rootFolder : Html M.Msg -> Html M.Msg -> Html M.Msg
-rootFolder extra content = 
-  vbox [ hbox [icon [] "folder_open", extra, text "Campaign"]
-       , div [s [S.marginLeft (S.em 1)]] [content]]
+  let content = folderView model app cfg [] app.current_game.campaign
+      extra = cfg.contentControls [] Nothing
+      menu = if cfg.mutable then folderMenu model [] else text ""
+  in vbox [ hbox [icon [] "folder_open", extra, text "Campaign", menu]
+          , div [s [S.marginLeft (S.em 1)]] [content]]
 
 folderLine : FolderViewConfig -> T.FolderPath -> Maybe T.FolderItemID -> M.Msg -> String -> String -> Html M.Msg
 folderLine cfg path mItem msg iconName entryName =
@@ -108,6 +107,42 @@ baseFolderLine cfg path mItem mmsg iconName entryName =
       extra = cfg.contentControls path mItem
   in hbox [icon attrs iconName, extra, div attrs [text entryName]]
 
+
+folderMenu : M.Model -> T.FolderPath -> Html M.Msg
+folderMenu model path =
+  let
+    moveFolder =
+      case T.folderPathBaseName path of
+        Just basename ->
+          [( hbox [icon[] "trending_flat", dtext "Move Folder"]
+          , M.SetModal (M.MoveFolderItem {src=T.folderPathParent path, item=T.FolderSubfolder basename, dst=[]})
+          )]
+        Nothing -> []
+    deleteFolder =
+      if path /= []
+      then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
+      else []
+    renameFolder =
+      if path /= []
+      then [(hbox [icon [] "text_format", dtext "Rename Folder"], M.SetModal (M.RenameFolder {path=path, newName="New Name"}))]
+      else []
+    menuItems =
+      [ ( hbox [icon [] "casino", dtext "Create Scene"]
+        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" ""}))
+      , ( hbox [icon [] "map", dtext "Create Map"]
+        , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
+      , ( hbox [icon [] "contacts", dtext "Create Creature"]
+        , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
+      , ( hbox [icon [] "note", dtext "Create Note"]
+        , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
+      , ( hbox [icon [] "folder", dtext "Create Folder"]
+        , M.SetModal (M.CreateFolder {parent = path, child = ""}))
+      ] ++  moveFolder ++ renameFolder ++ deleteFolder
+  in
+    CommonView.popUpMenu model "create-item-in-folder" (T.folderPathToString path)
+      (icon [] "more_horiz") (icon [] "more_horiz")
+      menuItems
+
 folderSubEntries : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
 folderSubEntries model app cfg path (T.Folder folder) =
   let
@@ -116,8 +151,9 @@ folderSubEntries model app cfg path (T.Folder folder) =
           key = "folder-" ++ String.join "/" childPath
           isShown = Dict.get key model.collapsed |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
+          menu = if cfg.mutable && isShown then (folderMenu model childPath) else text ""
       in
-        vbox [ baseFolderLine cfg path Nothing (Just <| M.ToggleCollapsed key) iconName folderName
+        vbox [ hbox [baseFolderLine cfg path Nothing (Just <| M.ToggleCollapsed key) iconName folderName, menu]
               , if isShown
                 then div [s [S.marginLeft (S.em 1)]] [folderView model app cfg childPath childFolder]
                 else text ""
@@ -159,37 +195,4 @@ folderView model app cfg path (T.Folder folder) =
       if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
       else text ""
     children = folderSubEntries model app cfg path (T.Folder folder)
-    moveFolder =
-      case T.folderPathBaseName path of
-        Just basename ->
-          [( hbox [icon[] "trending_flat", dtext "Move Folder"]
-           , M.SetModal (M.MoveFolderItem {src=T.folderPathParent path, item=T.FolderSubfolder basename, dst=[]})
-           )]
-        Nothing -> []
-    deleteFolder =
-      if path /= []
-      then [( hbox [icon [] "delete", dtext "Delete Folder"], M.SendCommand (T.DeleteFolder path))]
-      else []
-    renameFolder =
-      if path /= []
-      then [(hbox [icon [] "text_format", dtext "Rename Folder"], M.SetModal (M.RenameFolder {path=path, newName="New Name"}))]
-      else []
-    addMenuItems =
-      [ ( hbox [icon [] "casino", dtext "Create Scene"]
-        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" ""}))
-      , ( hbox [icon [] "map", dtext "Create Map"]
-        , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
-      , ( hbox [icon [] "contacts", dtext "Create Creature"]
-        , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
-      , ( hbox [icon [] "note", dtext "Create Note"]
-        , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
-      , ( hbox [icon [] "folder", dtext "Create Folder"]
-        , M.SetModal (M.CreateFolder {parent = path, child = ""}))
-      ] ++  moveFolder ++ renameFolder ++ deleteFolder
-    addMenu =
-      CommonView.popUpMenu model "create-item-in-folder" (T.folderPathToString path)
-        (icon [] "more_horiz")
-        (icon [] "more_horiz")
-        addMenuItems
-    menu = if cfg.mutable then [addMenu] else []
-  in vbox <| menu ++ [ scenes, maps, creatures, notes, children]
+  in vbox [ scenes, maps, creatures, notes, children]
