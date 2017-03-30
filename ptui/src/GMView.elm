@@ -455,6 +455,7 @@ selectOrderedCreaturesDialog model app {from, selected, cb, title} =
           Nothing -> text ""
       selectedCreatureItems =
         vbox <| List.map selectedCreatureItem (Dict.toList selected)
+      finishedCreatures = List.sortBy (\(cid, init) -> -init) (Dict.toList selected)
       done = M.Batch [cb (Dict.keys selected), M.SetModal M.NoModal]
       doneSelectingButton = button [onClick done] [text title]
       cancelButton = button [onClick (M.SetModal M.NoModal)] [text "Cancel"]
