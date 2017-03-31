@@ -882,7 +882,6 @@ impl Folder {
 pub mod test {
   use types::*;
   use std::iter::FromIterator;
-  use uuid::Uuid;
 
   use serde_yaml;
   use serde_json;

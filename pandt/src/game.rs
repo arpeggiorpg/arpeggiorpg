@@ -635,9 +635,9 @@ pub mod test {
       id: t_scene_id(),
       name: "Test Scene".to_string(),
       map: t_map_id(),
-      creatures: HashMap::from_iter(vec![(cid_rogue(), (0, 0, 0)),
-                                         (cid_cleric(), (0, 0, 0)),
-                                         (cid_ranger(), (0, 0, 0))]),
+      creatures: HashMap::from_iter(vec![(cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
+                                         (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
+                                         (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers))]),
     });
     game
   }

@@ -366,6 +366,7 @@ pub mod test {
       id: t_map_id(),
       name: "huge box".to_string(),
       terrain: map,
+      specials: vec![],
     }
   }
 

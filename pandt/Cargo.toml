@@ -18,7 +18,6 @@ derive_more = "0.4.0"
 string-wrapper = {version = "0.2", features = ["use_serde"]}
 pathfinding = "0.1.8"
 num-traits = "0.1.36"
-lazy_static = "0.1.*"
 rand = "0.3"
 uuid = {version = "0.4", features = ["v4", "serde"]}
 error-chain = "0.10.0"

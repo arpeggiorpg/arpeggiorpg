@@ -364,6 +364,7 @@ pub mod test {
       name: "circuitous".to_string(),
       // up, right, right, down
       terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
+      specials: vec![],
     });
     let next_game = game.get_combat()
       .unwrap()
