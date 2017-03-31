@@ -332,6 +332,10 @@ error_chain! {
   }
 
   errors {
+    AttributeNotFound(cid: CreatureID, attrid: AttrID) {
+      description("A Creature does not have the supplied Attribute")
+      display("The Creature with ID {} does not have the attribute {}", cid.to_string(), attrid.0)
+    }
     CreatureAlreadyExists(cid: CreatureID) {
       description("A Creature with the given ID already exists")
       display("The creature with ID {} already exists", cid.to_string())
@@ -608,7 +612,11 @@ pub struct Creature {
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
   pub portrait_url: String,
+  pub attributes: HashMap<AttrID, u8>,
 }
+
+#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct AttrID(pub String);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {

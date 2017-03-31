@@ -188,6 +188,7 @@ impl Creature {
       conditions: HashMap::new(),
       note: "".to_string(),
       portrait_url: spec.portrait_url.clone(),
+      attributes: HashMap::new(),
     }
   }
 
@@ -258,6 +259,17 @@ impl Creature {
       creature: creature,
       logs: vec![log],
     })
+  }
+
+  pub fn get_attribute_score(&self, attr: &AttrID) -> Result<u8, GameError> {
+    self.attributes
+      .get(attr)
+      .map(|x| *x)
+      .ok_or(GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
+  }
+
+  pub fn simple_ability_check(&self, attr: &AttrID, target: u8) -> Result<bool, GameError> {
+    Ok(self.get_attribute_score(attr)? >= target)
   }
 }
 
