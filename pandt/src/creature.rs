@@ -268,7 +268,7 @@ impl Creature {
       .ok_or(GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
   }
 
-  pub fn simple_ability_check(&self, attr: &AttrID, target: u8) -> Result<bool, GameError> {
+  pub fn simple_attribute_check(&self, attr: &AttrID, target: u8) -> Result<bool, GameError> {
     Ok(self.get_attribute_score(attr)? >= target)
   }
 }

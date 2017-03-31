@@ -166,6 +166,8 @@ pub enum FolderItemID {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+  SimpleAttributeCheck(CreatureID, AttrID, u8),
+
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
   /// Rename a folder.
@@ -279,6 +281,9 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  // ** Abilities **
+  SimpleAttributeCheckResult(CreatureID, AttrID, u8, bool),
+
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
@@ -297,8 +302,6 @@ pub enum GameLog {
   DeleteMap(MapID),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
-  /// Many of these actually go via CombatLog, since most creature modification happens inside of
-  /// a combat context, but things like moving out of combat needs this.
   CreatureLog(CreatureID, CreatureLog),
   SetCreaturePos(SceneID, CreatureID, Point3),
   PathCreature(SceneID, CreatureID, Vec<Point3>),
@@ -689,6 +692,7 @@ pub struct Scene {
   pub name: String,
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
+  //pub attribute_checks: HashMap<String, (AttrID, u8)>,
 }
 
 impl DeriveKey for Scene {

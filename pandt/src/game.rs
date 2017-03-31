@@ -37,6 +37,8 @@ impl Game {
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      // ** Attribute checks **
+      SimpleAttributeCheck(cid, atid, target) => self.simple_attribute_check(cid, atid, target),
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
@@ -86,6 +88,13 @@ impl Game {
       SetPlayerScene(..) => bug("Game SetPlayerScene"),
     }?;
     Ok(change)
+  }
+
+  fn simple_attribute_check(&self, cid: CreatureID, atid: AttrID, target: u8)
+                            -> Result<ChangedGame, GameError> {
+    let creature = self.get_creature(cid)?;
+    let result = creature.creature.simple_attribute_check(&atid, target)?;
+    self.change_with(GameLog::SimpleAttributeCheckResult(cid, atid, target, result))
   }
 
   pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
@@ -156,6 +165,7 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
+      SimpleAttributeCheckResult(_, _, _, _) => {} //  purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       DeleteFolder(ref path) => {
@@ -265,7 +275,7 @@ impl Game {
         }
       }
       EditCreature(ref creature) => {
-        if ! self.creatures.contains_key(&creature.id) {
+        if !self.creatures.contains_key(&creature.id) {
           bail!(GameErrorEnum::CreatureNotFound(creature.id.to_string()));
         } else {
           self.creatures.insert(creature.id, creature.clone());

@@ -32,9 +32,15 @@ current_game:
       name: "The T"
       id: 00000000-0000-0000-0000-000000000003
       creatures:
-        f5fd4b9a-c801-4840-a39b-b5653329dc54: [0, 0, 0]
-        34877b65-1eb6-44bb-b1a8-696c424e9d0f: [1, 1, 0]
-        0420f7db-c7ec-48af-add3-045ad859f47e: [-1, 0, 0]
+        f5fd4b9a-c801-4840-a39b-b5653329dc54:
+          - [0, 0, 0]
+          - AllPlayers
+        34877b65-1eb6-44bb-b1a8-696c424e9d0f:
+          - [1, 1, 0]
+          - AllPlayers
+        0420f7db-c7ec-48af-add3-045ad859f47e:
+          - [-1, 0, 0]
+          - AllPlayers
       map: 00000000-0000-0000-0000-000000000004
   tile_system: Realistic
   maps:
@@ -42,9 +48,11 @@ current_game:
       id: 00000000-0000-0000-0000-000000000005
       name: empty
       terrain: []
+      specials: []
     00000000-0000-0000-0000-000000000004:
       id: 00000000-0000-0000-0000-000000000004
       name: upside-down T
+      specials: []
       terrain:
         - [2, -2, 0]
         - [2, -1, 0]
@@ -181,8 +189,11 @@ current_game:
       max_health: 10
       cur_health: 10
       conditions:
-      can_act: true
-      can_move: true
+      attributes:
+        finesse: 2
+        strength: 0
+        perception: 1
+        magic: 0
     34877b65-1eb6-44bb-b1a8-696c424e9d0f:
       id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
       name: Kurok To
@@ -196,8 +207,11 @@ current_game:
       max_health: 10
       cur_health: 10
       conditions:
-      can_act: true
-      can_move: true
+      attributes:
+        finesse: 2
+        strength: 1
+        perception: 0
+        magic: 0
     f5fd4b9a-c801-4840-a39b-b5653329dc54:
       id: f5fd4b9a-c801-4840-a39b-b5653329dc54
       name: Silmarillion
@@ -211,6 +225,9 @@ current_game:
       max_health: 10
       cur_health: 10
       conditions:
-      can_act: true
-      can_move: true
+      attributes:
+        finesse: 0
+        strength: 1
+        perception: 0
+        magic: 2
 snapshots:

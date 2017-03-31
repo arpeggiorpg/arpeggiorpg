@@ -14,7 +14,7 @@ extern crate serde_yaml;
 extern crate pandt;
 
 use std::env;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
@@ -189,6 +189,13 @@ fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
   Ok(new_path)
 }
 
+fn load_app_from_path(filename: &Path) -> App {
+  let mut appf = File::open(filename).unwrap();
+  let mut apps = String::new();
+  appf.read_to_string(&mut apps).unwrap();
+  serde_yaml::from_str(&apps).unwrap()
+}
+
 fn main() {
   let game_dir = env::args()
     .nth(1)
@@ -202,13 +209,7 @@ fn main() {
   let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
-  let app: App = {
-    let filename = game_dir.join(initial_file);
-    let mut appf = File::open(filename).unwrap();
-    let mut apps = String::new();
-    appf.read_to_string(&mut apps).unwrap();
-    serde_yaml::from_str(&apps).unwrap()
-  };
+  let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
 
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
@@ -230,4 +231,14 @@ fn main() {
                    save_game])
     .manage(pt)
     .launch();
+}
+
+#[cfg(test)]
+mod test {
+  use std::path::Path;
+  
+  #[test]
+  fn load_samplegame_yaml() {
+    ::load_app_from_path(Path::new("samplegame.yaml"));
+  }
 }
