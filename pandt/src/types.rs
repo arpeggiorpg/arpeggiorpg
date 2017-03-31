@@ -692,7 +692,7 @@ pub struct Scene {
   pub name: String,
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
-  //pub attribute_checks: HashMap<String, (AttrID, u8)>,
+  pub attribute_checks: HashMap<String, (AttrID, u8)>,
 }
 
 impl DeriveKey for Scene {
@@ -709,6 +709,7 @@ impl Scene {
       name: creation.name,
       map: creation.map,
       creatures: HashMap::new(),
+      attribute_checks: HashMap::new(),
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
