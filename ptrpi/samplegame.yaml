@@ -31,7 +31,10 @@ current_game:
     00000000-0000-0000-0000-000000000003:
       name: "The T"
       id: 00000000-0000-0000-0000-000000000003
-      attribute_checks: {}
+      attribute_checks:
+        "Do a random backflip":
+          - finesse
+          - 2
       creatures:
         f5fd4b9a-c801-4840-a39b-b5653329dc54:
           - [0, 0, 0]

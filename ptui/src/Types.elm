@@ -18,6 +18,7 @@ type alias CreatureID = String
 type alias AbilityID = String
 type alias MapID = String
 type alias Distance = Int
+type alias AttrID = String
 
 type alias CreatureCreation =
   { name : String
@@ -260,27 +261,32 @@ type alias Scene =
   , name: String
   , map: String
   , creatures: Dict CreatureID (Point3, Visibility)
+  , attribute_checks: Dict String (AttrID, Int)
   }
 
 sceneDecoder : JD.Decoder Scene
 sceneDecoder =
-  JD.map4 Scene
+  JD.map5 Scene
     (JD.field "id" JD.string)
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
+    (JD.field "attribute_checks" (JD.dict (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
 
 sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
   let
     encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
     encCreatures = List.map encCreature (Dict.toList scene.creatures)
+    encAttrCheck (key, (attrid, target)) = (key, JE.list [JE.string attrid, JE.int target])
+    encAttrChecks = List.map encAttrCheck (Dict.toList scene.attribute_checks)
   in 
   JE.object
     [ ("id", JE.string scene.id)
     , ("name", JE.string scene.name)
     , ("map", JE.string scene.map)
     , ("creatures", JE.object encCreatures)
+    , ("attribute_checks", JE.object encAttrChecks)
     ]
 
 type Visibility
@@ -405,6 +411,7 @@ type alias Creature =
   , can_move: Bool
   , note: String
   , portrait_url: String
+  , attributes: Dict AttrID Int
 }
 
 creatureDecoder : JD.Decoder Creature
@@ -424,6 +431,7 @@ creatureDecoder =
     |> P.required "can_move" JD.bool
     |> P.required "note" JD.string
     |> P.required "portrait_url" JD.string
+    |> P.required "attributes" (JD.dict JD.int)
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
@@ -442,8 +450,11 @@ creatureEncoder c =
     , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))
     , ("note", JE.string c.note)
     , ("portrait_url", JE.string c.portrait_url)
+    , ("attributes", encodeStringDict JE.int c.attributes)
     ]
 
+encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
+encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
 
 -- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
 -- (e.g. can_act and can_move), so we can't just use Creature.

@@ -136,6 +136,11 @@ sceneConsole model app scene =
           {cb=gotCreatures, reason="Set Creatures in Scene", selectedCreatures=Dict.keys scene.creatures}
     moveAPlayer pid = M.SendCommand (T.SetPlayerScene pid (Just scene.id))
     moveAllPlayers = M.Batch (List.map moveAPlayer (Dict.keys app.players))
+    renderCheck (description, (attrid, target)) = hbox [text description, text attrid, text (toString target)]
+    checks =
+      if (Dict.size scene.attribute_checks) > 0
+      then vbox <| [strong [] [text "checks"]] ++ (List.map renderCheck (Dict.toList scene.attribute_checks))
+      else text ""
   in vbox
     [ hbox [strong [] [text "Scene:"], text scene.name]
     , button [onClick moveAllPlayers] [text "Move all Players to this Scene"]
@@ -149,6 +154,7 @@ sceneConsole model app scene =
     , hbox [ strong [] [text "Creatures:"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
+    , checks
     , terseCreaturesList model app scene
     ]
 
