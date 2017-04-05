@@ -136,10 +136,16 @@ sceneConsole model app scene =
           {cb=gotCreatures, reason="Set Creatures in Scene", selectedCreatures=Dict.keys scene.creatures}
     moveAPlayer pid = M.SendCommand (T.SetPlayerScene pid (Just scene.id))
     moveAllPlayers = M.Batch (List.map moveAPlayer (Dict.keys app.players))
-    renderCheck (description, (attrid, target)) = hbox [text description, text attrid, text (toString target)]
+    renderCheck (description, (attrid, target)) =
+      habox
+        [s [S.justifyContent S.spaceBetween]]
+        [ text description
+        , renderAttributeRequirement attrid target
+        , button [] [text "Challenge!"]]
     checks =
       if (Dict.size scene.attribute_checks) > 0
-      then vbox <| [strong [] [text "checks"]] ++ (List.map renderCheck (Dict.toList scene.attribute_checks))
+      then vbox <| [strong [] [text "Challenges"]]
+                ++ List.map renderCheck (Dict.toList scene.attribute_checks)
       else text ""
   in vbox
     [ hbox [strong [] [text "Scene:"], text scene.name]
@@ -157,6 +163,17 @@ sceneConsole model app scene =
     , checks
     , terseCreaturesList model app scene
     ]
+
+renderAttributeRequirement attrid target =
+  hbox [attrIcon attrid, strong [] [text (toString target)]]
+
+attrIcon attrid =
+  case attrid of
+    "finesse" -> text "🐈"
+    "strength" -> text "💪"
+    "magic" -> text "🔮"
+    "perception" -> text "👁️"
+    x -> text attrid
 
 terseCreatureLine : M.Model -> T.App -> T.Creature -> Html M.Msg
 terseCreatureLine model app creature =
