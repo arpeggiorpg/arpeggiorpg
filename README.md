@@ -1,9 +1,8 @@
 # P&T
 
-P&T is a social role-playing game. It's not a video game -- rather, it's akin to tabletop
-role-playing games like Dungeons & Dragons, but instead of needing books and character sheets, the
-app takes care of everything for you. It provides a tactical combat map and makes it easy for
-players and the Game Master to use their abilities.
+P&T is a table-top role-playing game. Think of a RPG like Dungeons & Dragons, but instead of needing
+books and character sheets, the app takes care of everything for you. It provides a tactical combat
+map and makes it easy for players and the Game Master to use their abilities and skills.
 
 # Status: Early development. Not a game yet.
 
