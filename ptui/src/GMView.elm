@@ -136,17 +136,6 @@ sceneConsole model app scene =
           {cb=gotCreatures, reason="Set Creatures in Scene", selectedCreatures=Dict.keys scene.creatures}
     moveAPlayer pid = M.SendCommand (T.SetPlayerScene pid (Just scene.id))
     moveAllPlayers = M.Batch (List.map moveAPlayer (Dict.keys app.players))
-    renderCheck (description, (attrid, target)) =
-      habox
-        [s [S.justifyContent S.spaceBetween]]
-        [ text description
-        , renderAttributeRequirement attrid target
-        , button [] [text "Challenge!"]]
-    checks =
-      if (Dict.size scene.attribute_checks) > 0
-      then vbox <| [strong [] [text "Challenges"]]
-                ++ List.map renderCheck (Dict.toList scene.attribute_checks)
-      else text ""
   in vbox
     [ hbox [strong [] [text "Scene:"], text scene.name]
     , button [onClick moveAllPlayers] [text "Move all Players to this Scene"]
@@ -160,9 +149,33 @@ sceneConsole model app scene =
     , hbox [ strong [] [text "Creatures:"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
-    , checks
+    , sceneChallenges model app scene
     , terseCreaturesList model app scene
     ]
+
+sceneChallenges : M.Model -> T.App -> T.Scene -> Html M.Msg
+sceneChallenges model app scene =
+  let
+    gotCreatures attrid target creatures =
+      M.Batch <| List.map (\cid -> M.SendCommand (T.SimpleAttributeCheck cid attrid target)) creatures
+    challengeCreatures attrid target = M.SetModal <|
+      M.ModalSimpleSelectCreatures
+        { cb = gotCreatures attrid target
+        , title = "Chaltilenge Creatures"
+        , selected = []
+        , from=Dict.keys scene.creatures}
+    renderCheck (description, (attrid, target)) =
+      habox
+        [s [S.justifyContent S.spaceBetween]]
+        [ text description
+        , renderAttributeRequirement attrid target
+        , button [onClick <| challengeCreatures attrid target] [text "Challenge!"]]
+  in 
+    if (Dict.size scene.attribute_checks) > 0
+    then vbox <| [strong [] [text "Challenges"]]
+              ++ List.map renderCheck (Dict.toList scene.attribute_checks)
+    else text ""
+
 
 renderAttributeRequirement attrid target =
   hbox [attrIcon attrid, strong [] [text (toString target)]]
@@ -441,10 +454,40 @@ checkModal model app =
         M.ModalLoadGame lg -> Just (loadGameDialog model app lg)
         M.ModalEditCreature ce -> Just (editCreatureDialog model app ce)
         M.SelectOrderedCreatures soc -> Just (selectOrderedCreaturesDialog model app soc)
+        M.ModalSimpleSelectCreatures sc -> Just (simpleSelectCreaturesDialog model app sc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
   in Maybe.map cancelableModal generalModal |> MaybeEx.orElse (CommonView.checkModal model app)
+
+{-| A view that allows selecting creatures in a particular order and calling a callback when done.
+-}
+simpleSelectCreaturesDialog : M.Model -> T.App -> M.SimpleSelectingCreatures -> Html M.Msg
+simpleSelectCreaturesDialog model app {from, selected, cb, title} =
+  let modModal f =
+        M.SetModal <|
+          M.ModalSimpleSelectCreatures <| f {from=from, selected=selected, cb=cb, title=title}
+      toggleCreature creature checked =
+        if checked
+        then modModal (\soc -> { soc | selected = creature.id :: soc.selected})
+        else modModal (\soc -> { soc | selected = List.filter (\c -> c /= creature.id) soc.selected})
+      checkBox creature =
+        input [ type_ "checkbox", onCheck <| toggleCreature creature]
+               [text "Add"]
+      selectableCreature creature =
+        habox [s [S.width (S.px 500)]]
+              [checkBox creature, terseCreatureLine model app creature, noteBox model creature]
+      selectableCreatureItems =
+        vbox <| List.map selectableCreature (T.getCreatures app.current_game from)
+      done = M.Batch [cb selected, M.SetModal M.NoModal]
+      doneSelectingButton = button [onClick done] [text title]
+      cancelButton = button [onClick (M.SetModal M.NoModal)] [text "Cancel"]
+  in vbox <|
+    [h3 [] [text <| "Select Creatures to " ++ title]
+    , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]]
+            [selectableCreatureItems]
+    , hbox [doneSelectingButton, cancelButton]]
+
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
 -}
@@ -735,6 +778,8 @@ historyItem snapIdx logIdx log =
     T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
     T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, dtext cid, dtext (maybePos pts)]
     T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, dtext cid, dtext (renderPt3 pt)]
+    T.GLSimpleAttributeCheckResult cid attrid target success ->
+      hsbox [dtext "Challenged", dtext cid, dtext attrid, dtext (toString target), dtext (toString success)]
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [icon [] "history"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg

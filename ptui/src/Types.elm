@@ -107,6 +107,7 @@ type GameLog
   | GLRollback Int Int
   | GLPathCreature SceneID CreatureID (List Point3)
   | GLSetCreaturePos SceneID CreatureID Point3
+  | GLSimpleAttributeCheckResult CreatureID AttrID Int Bool
 
 gameLogDecoder : JD.Decoder GameLog
 gameLogDecoder = sumDecoder "GameLog"
@@ -135,12 +136,15 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("Rollback", fixedList2 GLRollback JD.int JD.int)
   , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
   , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
+  , ("SimpleAttributeCheckResult", fixedList4 GLSimpleAttributeCheckResult JD.string JD.string JD.int JD.bool)
   ]
 
 fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
 fixedList2 cons d0 d1 = JD.map2 cons (JD.index 0 d0) (JD.index 1 d1)
 fixedList3 : (a -> b -> c -> d) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d
 fixedList3 cons d0 d1 d2 = JD.map3 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2)
+fixedList4 : (a -> b -> c -> d -> e) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder e
+fixedList4 cons d0 d1 d2 d3 = JD.map4 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2) (JD.index 3 d3)
 
 type CombatLog
   = ComLEndTurn CreatureID
@@ -661,7 +665,7 @@ type GameCommand
   | Done
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
-  | SetCreatureNote CreatureID String
+  | SimpleAttributeCheck CreatureID AttrID Int
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -728,8 +732,8 @@ gameCommandEncoder gc =
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->
       JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
-    SetCreatureNote cid note ->
-      JE.object [("SetCreatureNote", JE.list [JE.string cid, JE.string note])]
+    SimpleAttributeCheck cid attrid target ->
+      JE.object [("SimpleAttributeCheck", JE.list [JE.string cid, JE.string attrid, JE.int target])]
 
 type FolderItemID
   = FolderScene SceneID

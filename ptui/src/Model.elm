@@ -157,6 +157,7 @@ type Modal
   | ModalLoadGame (List String)
   | ModalSaveGame SavingGame
   | ModalEditCreature EditingCreature
+  | ModalSimpleSelectCreatures SimpleSelectingCreatures
 
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
@@ -166,6 +167,7 @@ type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.F
 type alias RenamingFolder = {path: T.FolderPath, newName: String}
 type alias SelectingOrderedCreatures = {from: List T.CreatureID, selected: Dict.Dict T.CreatureID Int, cb: GotCreatures, title: String}
 type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
+type alias SimpleSelectingCreatures = {from: List T.CreatureID, selected: List T.CreatureID, cb: GotCreatures, title: String}
 type alias EditingCreature = {cid: T.CreatureID, note: String, portrait_url: String}
 
 devFlags : ProgramFlags
