@@ -194,10 +194,10 @@ current_game:
       cur_health: 10
       conditions:
       attributes:
-        finesse: 2
-        strength: 0
-        perception: 1
-        magic: 0
+        finesse: Expert
+        strength: Unskilled
+        perception: Skilled
+        magic: Unskilled
     34877b65-1eb6-44bb-b1a8-696c424e9d0f:
       id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
       name: Kurok To
@@ -212,10 +212,10 @@ current_game:
       cur_health: 10
       conditions:
       attributes:
-        finesse: 2
-        strength: 1
-        perception: 0
-        magic: 0
+        finesse: Expert
+        strength: Skilled
+        perception: Unskilled
+        magic: Unskilled
     f5fd4b9a-c801-4840-a39b-b5653329dc54:
       id: f5fd4b9a-c801-4840-a39b-b5653329dc54
       name: Silmarillion
@@ -230,8 +230,8 @@ current_game:
       cur_health: 10
       conditions:
       attributes:
-        finesse: 0
-        strength: 1
-        perception: 0
-        magic: 2
+        finesse: Unskilled
+        strength: Skilled
+        perception: Unskilled
+        magic: Expert
 snapshots:

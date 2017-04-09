@@ -39,6 +39,7 @@ impl Game {
     let change = match cmd {
       // ** Attribute checks **
       SimpleAttributeCheck(cid, atid, target) => self.simple_attribute_check(cid, atid, target),
+      RandomAttributeCheck(cid, atid, target) => self.random_attribute_check(cid, atid, target),
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
@@ -90,11 +91,18 @@ impl Game {
     Ok(change)
   }
 
-  fn simple_attribute_check(&self, cid: CreatureID, atid: AttrID, target: u8)
+  fn simple_attribute_check(&self, cid: CreatureID, atid: AttrID, target: SkillLevel)
                             -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(cid)?;
     let result = creature.creature.simple_attribute_check(&atid, target)?;
     self.change_with(GameLog::SimpleAttributeCheckResult(cid, atid, target, result))
+  }
+
+  fn random_attribute_check(&self, cid: CreatureID, atid: AttrID, target: SkillLevel)
+                            -> Result<ChangedGame, GameError> {
+    let creature = self.get_creature(cid)?;
+    let (rolled, success) = creature.creature.random_attribute_check(&atid, target)?;
+    self.change_with(GameLog::RandomAttributeCheckResult(cid, atid, target, rolled, success))
   }
 
   pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
@@ -165,7 +173,8 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
-      SimpleAttributeCheckResult(_, _, _, _) => {} //  purely informational
+      SimpleAttributeCheckResult(..) => {} // purely informational
+      RandomAttributeCheckResult(..) => {} // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       DeleteFolder(ref path) => {

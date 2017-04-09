@@ -163,10 +163,61 @@ pub enum FolderItemID {
   SubfolderID(String),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+pub enum SkillLevel {
+  // The way to read these are:
+  // "A {variant} person has a 75% chance of doing this."
+  // If you're unskilled and you are doing a Skilled difficulty challenge: 50%?
+  // Trivial to Expert: 10%?
+  Inept,
+  Unskilled,
+  Skilled,
+  Expert,
+  Supernatural,
+}
+
+impl SkillLevel {
+  pub fn to_ord(&self) -> i8 {
+    match self {
+      Inept => -1,
+      Unskilled => 0,
+      Skilled => 1,
+      Expert => 2,
+      Supernatural => 3,
+    }
+  }
+
+  pub fn challenge(&self, difficulty_level: SkillLevel) -> u8 {
+    match difficulty_level.to_ord() - self.to_ord() {
+      // these are totally arbitrary numbers I came up with based on emotions
+      -4 => 100,
+      -3 => 99,
+      -2 => 95,
+      -1 => 85,
+      0 => 75,
+      1 => 50,
+      2 => 10,
+      3 => 1,
+      4 => 0,
+      diff => panic!("[SkillLevel::challenge] Two skill levels were too far apart: {:?}", diff)
+      // so what do these emotional numbers mean?
+      // Going from Unskilled to Skilled means this much of a bonus to your roll:
+      // for an Unskilled check: +10
+      // For a Skilled check: +15
+      // For an Expert check: +40
+      // This means that even the smallest allocation of points to a stat can be a huge boost to your
+      // performance, and it tapers off after that. Maybe this is fine for a system with only 2-3
+      // points per stat?
+    }
+  }
+}
+
+
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-  SimpleAttributeCheck(CreatureID, AttrID, u8),
+  SimpleAttributeCheck(CreatureID, AttrID, SkillLevel),
+  RandomAttributeCheck(CreatureID, AttrID, SkillLevel),
 
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
@@ -282,7 +333,8 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
   // ** Abilities **
-  SimpleAttributeCheckResult(CreatureID, AttrID, u8, bool),
+  SimpleAttributeCheckResult(CreatureID, AttrID, SkillLevel, bool),
+  RandomAttributeCheckResult(CreatureID, AttrID, SkillLevel, u8, bool),
 
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
@@ -615,7 +667,7 @@ pub struct Creature {
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
   pub portrait_url: String,
-  pub attributes: HashMap<AttrID, u8>,
+  pub attributes: HashMap<AttrID, SkillLevel>,
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
