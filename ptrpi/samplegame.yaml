@@ -34,7 +34,7 @@ current_game:
       attribute_checks:
         "Do a random backflip":
           - finesse
-          - 2
+          - Expert
       creatures:
         f5fd4b9a-c801-4840-a39b-b5653329dc54:
           - [0, 0, 0]

@@ -107,7 +107,7 @@ type GameLog
   | GLRollback Int Int
   | GLPathCreature SceneID CreatureID (List Point3)
   | GLSetCreaturePos SceneID CreatureID Point3
-  | GLSimpleAttributeCheckResult CreatureID AttrID Int Bool
+  | GLSimpleAttributeCheckResult CreatureID AttrID SkillLevel Bool
 
 gameLogDecoder : JD.Decoder GameLog
 gameLogDecoder = sumDecoder "GameLog"
@@ -136,7 +136,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("Rollback", fixedList2 GLRollback JD.int JD.int)
   , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
   , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
-  , ("SimpleAttributeCheckResult", fixedList4 GLSimpleAttributeCheckResult JD.string JD.string JD.int JD.bool)
+  , ("SimpleAttributeCheckResult", fixedList4 GLSimpleAttributeCheckResult JD.string JD.string skillLevelDecoder JD.bool)
   ]
 
 fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
@@ -265,7 +265,7 @@ type alias Scene =
   , name: String
   , map: String
   , creatures: Dict CreatureID (Point3, Visibility)
-  , attribute_checks: Dict String (AttrID, Int)
+  , attribute_checks: Dict String (AttrID, SkillLevel)
   }
 
 sceneDecoder : JD.Decoder Scene
@@ -275,14 +275,14 @@ sceneDecoder =
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
-    (JD.field "attribute_checks" (JD.dict (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
+    (JD.field "attribute_checks" (JD.dict (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 skillLevelDecoder))))
 
 sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
   let
     encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
     encCreatures = List.map encCreature (Dict.toList scene.creatures)
-    encAttrCheck (key, (attrid, target)) = (key, JE.list [JE.string attrid, JE.int target])
+    encAttrCheck (key, (attrid, target)) = (key, JE.list [JE.string attrid, skillLevelEncoder target])
     encAttrChecks = List.map encAttrCheck (Dict.toList scene.attribute_checks)
   in 
   JE.object
@@ -415,7 +415,7 @@ type alias Creature =
   , can_move: Bool
   , note: String
   , portrait_url: String
-  , attributes: Dict AttrID Int
+  , attributes: Dict AttrID SkillLevel
 }
 
 creatureDecoder : JD.Decoder Creature
@@ -435,7 +435,7 @@ creatureDecoder =
     |> P.required "can_move" JD.bool
     |> P.required "note" JD.string
     |> P.required "portrait_url" JD.string
-    |> P.required "attributes" (JD.dict JD.int)
+    |> P.required "attributes" (JD.dict skillLevelDecoder)
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
@@ -454,7 +454,7 @@ creatureEncoder c =
     , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))
     , ("note", JE.string c.note)
     , ("portrait_url", JE.string c.portrait_url)
-    , ("attributes", encodeStringDict JE.int c.attributes)
+    , ("attributes", encodeStringDict skillLevelEncoder c.attributes)
     ]
 
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
@@ -665,7 +665,7 @@ type GameCommand
   | Done
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
-  | SimpleAttributeCheck CreatureID AttrID Int
+  | SimpleAttributeCheck CreatureID AttrID SkillLevel
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -733,7 +733,33 @@ gameCommandEncoder gc =
     ChangeCreatureInitiative cid newPos ->
       JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
     SimpleAttributeCheck cid attrid target ->
-      JE.object [("SimpleAttributeCheck", JE.list [JE.string cid, JE.string attrid, JE.int target])]
+      JE.object [("SimpleAttributeCheck", JE.list [JE.string cid, JE.string attrid, skillLevelEncoder target])]
+
+
+type SkillLevel
+  = Inept
+  | Unskilled
+  | Skilled
+  | Expert
+  | Supernatural
+
+skillLevelEncoder : SkillLevel -> JE.Value
+skillLevelEncoder sl = case sl of
+  Inept -> JE.string "Inept"
+  Unskilled -> JE.string "Unskilled"
+  Skilled -> JE.string "Skilled"
+  Expert -> JE.string "Expert"
+  Supernatural -> JE.string "Supernatural"
+
+skillLevelDecoder : JD.Decoder SkillLevel
+skillLevelDecoder = sumDecoder "SkillLevel"
+  [ ("Inept", Inept)
+  , ("Unskilled", Unskilled)
+  , ("Skilled", Skilled)
+  , ("Expert", Expert)
+  , ("Supernatural", Supernatural)
+  ]
+  []
 
 type FolderItemID
   = FolderScene SceneID

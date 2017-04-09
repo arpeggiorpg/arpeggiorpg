@@ -744,7 +744,7 @@ pub struct Scene {
   pub name: String,
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
-  pub attribute_checks: HashMap<String, (AttrID, u8)>,
+  pub attribute_checks: HashMap<String, (AttrID, SkillLevel)>,
 }
 
 impl DeriveKey for Scene {
