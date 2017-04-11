@@ -735,7 +735,14 @@ pub struct Scene {
   pub name: String,
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
-  pub attribute_checks: HashMap<String, (AttrID, SkillLevel)>,
+  pub attribute_checks: HashMap<String, SkillCheck>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct SkillCheck {
+  pub random: bool,
+  pub attr: AttrID,
+  pub target: SkillLevel
 }
 
 impl DeriveKey for Scene {

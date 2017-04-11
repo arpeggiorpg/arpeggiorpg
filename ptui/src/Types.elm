@@ -269,7 +269,7 @@ type alias Scene =
   , name: String
   , map: String
   , creatures: Dict CreatureID (Point3, Visibility)
-  , attribute_checks: Dict String (AttrID, SkillLevel)
+  , attribute_checks: Dict String SkillCheck
   }
 
 sceneDecoder : JD.Decoder Scene
@@ -279,14 +279,14 @@ sceneDecoder =
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
-    (JD.field "attribute_checks" (JD.dict (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 skillLevelDecoder))))
+    (JD.field "attribute_checks" (JD.dict skillCheckDecoder))
 
 sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
   let
     encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
     encCreatures = List.map encCreature (Dict.toList scene.creatures)
-    encAttrCheck (key, (attrid, target)) = (key, JE.list [JE.string attrid, skillLevelEncoder target])
+    encAttrCheck (key, sc) = (key, skillCheckEncoder sc)
     encAttrChecks = List.map encAttrCheck (Dict.toList scene.attribute_checks)
   in 
   JE.object
@@ -296,6 +296,25 @@ sceneEncoder scene =
     , ("creatures", JE.object encCreatures)
     , ("attribute_checks", JE.object encAttrChecks)
     ]
+
+type alias SkillCheck =
+  { random: Bool
+  , attr: AttrID
+  , target: SkillLevel
+  }
+
+skillCheckEncoder : SkillCheck -> JE.Value
+skillCheckEncoder sc = JE.object
+  [ ("random", JE.bool sc.random)
+  , ("attr", JE.string sc.attr)
+  , ("target", skillLevelEncoder sc.target)
+  ]
+
+skillCheckDecoder : JD.Decoder SkillCheck
+skillCheckDecoder = JD.map3 SkillCheck
+  (JD.field "random" JD.bool)
+  (JD.field "attr" JD.string)
+  (JD.field "target" skillLevelDecoder)
 
 type Visibility
   = GMOnly

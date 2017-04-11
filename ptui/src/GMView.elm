@@ -156,20 +156,21 @@ sceneConsole model app scene =
 sceneChallenges : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneChallenges model app scene =
   let
-    gotCreatures attrid target creatures =
-      M.Batch <| List.map (\cid -> M.SendCommand (T.SimpleAttributeCheck cid attrid target)) creatures
-    challengeCreatures attrid target = M.SetModal <|
+    gotCreatures skillCheck creatures =
+      let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
+      in M.Batch <| List.map (\cid -> M.SendCommand (cmd cid skillCheck.attr skillCheck.target)) creatures
+    challengeCreatures skillCheck = M.SetModal <|
       M.ModalSimpleSelectCreatures
-        { cb = gotCreatures attrid target
-        , title = "Chaltilenge Creatures"
+        { cb = gotCreatures skillCheck
+        , title = "Challenge Creatures"
         , selected = []
         , from=Dict.keys scene.creatures}
-    renderCheck (description, (attrid, target)) =
+    renderCheck (description, skillCheck) =
       habox
         [s [S.justifyContent S.spaceBetween]]
         [ text description
-        , renderAttributeRequirement attrid target
-        , button [onClick <| challengeCreatures attrid target] [text "Challenge!"]]
+        , renderAttributeRequirement skillCheck.attr skillCheck.target
+        , button [onClick <| challengeCreatures skillCheck] [text "Challenge!"]]
   in 
     if (Dict.size scene.attribute_checks) > 0
     then vbox <| [strong [] [text "Challenges"]]
