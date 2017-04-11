@@ -812,16 +812,12 @@ folderItemIDDecoder = sumDecoder "FolderItemID"
   , ("SubfolderID", JD.map FolderSubfolder JD.string)
   ]
 
-type RustResult
-  = RustOk JD.Value
-  | RustErr JD.Value
-
-rustResultDecoder : JD.Decoder RustResult
-rustResultDecoder = sumDecoder "RustResult"
+resultDecoder : JD.Decoder error -> JD.Decoder success -> JD.Decoder (Result error success)
+resultDecoder errorDecoder successDecoder = sumDecoder "Result"
   []
-  [ ("Ok", JD.map RustOk JD.value)
-  , ("Err", JD.map RustErr JD.value) ]
-
+  [ ("Ok", JD.map Ok successDecoder)
+  , ("Err", JD.map Err errorDecoder)
+  ]
 
 -- UTILS
 
@@ -876,6 +872,9 @@ getCreature game cid = Dict.get cid game.creatures
 
 getCreatures : Game -> List CreatureID -> List Creature
 getCreatures game cids = List.filterMap (getCreature game) cids
+
+creatureName : App -> CreatureID -> Maybe String
+creatureName app cid = getCreature app.current_game cid |> Maybe.map (\c -> c.name)
 
 getScene : App -> SceneID -> Maybe Scene
 getScene app sid = Dict.get sid app.current_game.scenes

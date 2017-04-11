@@ -36,7 +36,7 @@ makeUI model app =
         [ ("Campaign", always (campaignView model app))
         , ("Combat", always (combatView model app))
         , ("Players", always (playersView model app))
-        , ("History", always (historyView app))
+        , ("History", always (historyView model app))
         , ("Saved Games", always (savedGameView model app))
         ]
   , extraMovementOptions = [moveAnywhereToggle model]
@@ -158,7 +158,7 @@ sceneChallenges model app scene =
   let
     gotCreatures skillCheck creatures =
       let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
-      in M.Batch <| List.map (\cid -> M.SendCommand (cmd cid skillCheck.attr skillCheck.target)) creatures
+      in M.Batch <| List.map (\cid -> M.SendCommandCB (cmd cid skillCheck.attr skillCheck.target) (always M.ShowGameLogs)) creatures
     challengeCreatures skillCheck = M.SetModal <|
       M.ModalSimpleSelectCreatures
         { cb = gotCreatures skillCheck
@@ -177,7 +177,6 @@ sceneChallenges model app scene =
               ++ List.map renderCheck (Dict.toList scene.attribute_checks)
     else text ""
 
-
 renderAttributeRequirement attrid target =
   hbox [attrIcon attrid, strong [] [text (toString target)]]
 
@@ -188,6 +187,10 @@ attrIcon attrid =
     "magic" -> text "🔮"
     "perception" -> text "👁️"
     x -> text attrid
+
+renderRoll num = hbox [text "🎲", text (toString num)]
+
+
 
 terseCreatureLine : M.Model -> T.App -> T.Creature -> Html M.Msg
 terseCreatureLine model app creature =
@@ -437,6 +440,10 @@ editCreatureDialog model app editing =
         , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
     Nothing -> text "Creature not found"
 
+showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg
+showGameLogsDialog model app logs =
+  vbox (List.map (renderGameLog model app) logs)
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -456,6 +463,7 @@ checkModal model app =
         M.ModalEditCreature ce -> Just (editCreatureDialog model app ce)
         M.SelectOrderedCreatures soc -> Just (selectOrderedCreaturesDialog model app soc)
         M.ModalSimpleSelectCreatures sc -> Just (simpleSelectCreaturesDialog model app sc)
+        M.ModalShowGameLogs logs -> Just (showGameLogsDialog model app logs)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -731,14 +739,14 @@ playersView model app =
   in CommonView.playerList app menu app.players
 
 {-| Show a list of all events that have happened in the game. -}
-historyView : T.App -> Html M.Msg
-historyView app = 
+historyView : M.Model -> T.App -> Html M.Msg
+historyView model app = 
   let snapIdx = (Array.length app.snapshots) - 1
       items =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> Array.toList items
           Nothing -> []
-  in vbox <| List.reverse (List.indexedMap (historyItem snapIdx) items)
+  in vbox <| List.reverse (List.indexedMap (historyItem model app snapIdx) items)
 
 
 renderFolderPath : T.FolderPath -> Html M.Msg
@@ -746,43 +754,57 @@ renderFolderPath path =
   hbox [ icon [] "folder"
        , if List.isEmpty path then text "Campaign Root" else text (T.folderPathToString path)]
 
-
 -- just a quick hack which isn't good enough. need to properly align all the log data.
 hsbox : List (Html M.Msg) -> Html M.Msg
 hsbox = habox [s [S.justifyContent S.spaceBetween]]
 
-historyItem : Int -> Int -> T.GameLog -> Html M.Msg
-historyItem snapIdx logIdx log =
-  let logItem = case log of
-    T.GLCreateFolder path -> hsbox [dtext "Created folder", renderFolderPath path]
-    T.GLRenameFolder path newName -> hsbox [dtext "Renamed Folder", renderFolderPath path, dtext newName]
-    T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", renderFolderPath path]
-    T.GLMoveFolderItem src item dst -> hsbox [dtext "Moved Folder Item", renderFolderPath src, dtext (toString item), renderFolderPath dst]
-    T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
-    T.GLEditNote path name note -> hsbox [dtext "Edited Note", renderFolderPath path, dtext name]
-    T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", renderFolderPath path, dtext name]
-    T.GLCreateScene path scene -> hsbox [dtext "Created Scene", dtext scene.name, renderFolderPath path]
-    T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
-    T.GLDeleteScene sid -> hsbox [dtext "Deleted Scene", dtext sid]
-    T.GLCreateMap path map -> hsbox [dtext "Created Map", dtext map.name, renderFolderPath path]
-    T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
-    T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
-    T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
-    T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
-    T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", dtext cid]
-    T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
-    T.GLStopCombat -> dtext "Stopped combat"
-    T.GLAddCreatureToCombat cid -> hsbox [dtext cid, dtext "Added Creature to Combat"]
-    T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", dtext cid]
-    T.GLCreatureLog cid cl -> hsbox [dtext cid, historyCreatureLog cl]
-    T.GLCombatLog cl -> historyCombatLog cl
-    T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
-    T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, dtext cid, dtext (maybePos pts)]
-    T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, dtext cid, dtext (renderPt3 pt)]
-    T.GLSimpleAttributeCheckResult cid attrid target success ->
-      hsbox [dtext "Challenged", dtext cid, dtext attrid, dtext (toString target), dtext (toString success)]
-    T.GLRandomAttributeCheckResult cid attrid target roll success ->
-      hsbox [dtext "Random Challenge", dtext cid, dtext attrid, dtext (toString target), dtext (toString roll), dtext (toString success)]
+renderGameLog : M.Model -> T.App -> T.GameLog -> Html M.Msg
+renderGameLog model app log =
+  let cname cid = dtext (T.creatureName app cid |> Maybe.withDefault cid)
+      creatureWithSkill cid attrid =
+        let creature = T.getCreature app.current_game cid
+            skill = creature |> Maybe.andThen (\c -> Dict.get attrid c.attributes)
+            skillText = Maybe.map toString skill |> Maybe.withDefault "Unknown"
+        in hbox [cname cid, dtext <| "(" ++ skillText ++ ")"]
+  in case log of
+  T.GLCreateFolder path -> hsbox [dtext "Created folder", renderFolderPath path]
+  T.GLRenameFolder path newName -> hsbox [dtext "Renamed Folder", renderFolderPath path, dtext newName]
+  T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", renderFolderPath path]
+  T.GLMoveFolderItem src item dst -> hsbox [dtext "Moved Folder Item", renderFolderPath src, dtext (toString item), renderFolderPath dst]
+  T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
+  T.GLEditNote path name note -> hsbox [dtext "Edited Note", renderFolderPath path, dtext name]
+  T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", renderFolderPath path, dtext name]
+  T.GLCreateScene path scene -> hsbox [dtext "Created Scene", dtext scene.name, renderFolderPath path]
+  T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
+  T.GLDeleteScene sid -> hsbox [dtext "Deleted Scene", dtext sid]
+  T.GLCreateMap path map -> hsbox [dtext "Created Map", dtext map.name, renderFolderPath path]
+  T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
+  T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
+  T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
+  T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
+  T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", cname cid]
+  T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
+  T.GLStopCombat -> dtext "Stopped combat"
+  T.GLAddCreatureToCombat cid -> hsbox [cname cid, dtext "Added Creature to Combat"]
+  T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", cname cid]
+  T.GLCreatureLog cid cl -> hsbox [cname cid, historyCreatureLog cl]
+  T.GLCombatLog cl -> historyCombatLog cl
+  T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
+  T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, cname cid, dtext (maybePos pts)]
+  T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, cname cid, dtext (renderPt3 pt)]
+  T.GLSimpleAttributeCheckResult cid attrid target success ->
+    hsbox [ dtext "Challenge Result", creatureWithSkill cid attrid, renderAttributeRequirement attrid target
+          , dtext (if success then "Success" else "Failure")]
+  T.GLRandomAttributeCheckResult cid attrid target roll success ->
+    hsbox [ dtext "Random Challenge Result"
+          , creatureWithSkill cid attrid
+          , hbox [dtext "Difficulty:", renderAttributeRequirement attrid target]
+          , renderRoll roll
+          , dtext (if success then "Success" else "Failure")]
+
+historyItem : M.Model -> T.App -> Int -> Int -> T.GameLog -> Html M.Msg
+historyItem model app snapIdx logIdx log =
+  let logItem = renderGameLog model app log
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [icon [] "history"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg

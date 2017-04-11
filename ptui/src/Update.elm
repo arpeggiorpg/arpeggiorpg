@@ -127,10 +127,6 @@ update msg model = case msg of
 
   Batch messages -> (model, Cmd.batch (List.map message messages))
 
-  CommandComplete (Ok (T.RustOk x)) -> Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) (model, Cmd.none)
-  CommandComplete (Ok (T.RustErr x)) -> ({model | error = toString x}, Cmd.none)
-  CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
-
   AppUpdate (Ok newApp) ->
     let model2 = updateModelFromApp model newApp
     in ( { model2 | moving = Nothing , selectedAbility = Nothing }, Cmd.none )
@@ -249,8 +245,31 @@ update msg model = case msg of
   LoadGame name ->
     (model, Http.send AppUpdate (Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load") Http.emptyBody (T.appDecoder)))
 
+
+  ShowGameLogs logs ->
+    let newLogs =
+          case model.modal of
+            M.ModalShowGameLogs lgs -> lgs ++ logs
+            _ -> logs
+    in ({model | modal = M.ModalShowGameLogs newLogs}, Cmd.none)
+
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
+
+  CommandComplete (Ok (Ok x)) ->
+    let _ = Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) ()
+    in (model, Cmd.none)
+  CommandComplete (Ok (Err x)) -> ({model | error = toString x}, Cmd.none)
+  CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
+
+  SendCommandCB cmd cb -> (model, sendCommandCB model.rpiURL cmd cb)
+
+  CommandCompleteCB cb (Ok (Ok x)) ->
+    let _ = Debug.log ("[COMMAND-COMPLETE-CB] "++ (toString x)) ()
+    in (model, message (cb model x))
+  CommandCompleteCB _ (Ok (Err x)) -> ({model | error = toString x}, Cmd.none)
+  CommandCompleteCB _ (Err x) -> ({ model | error = toString x}, Cmd.none)
+
   CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
   ActCreature sceneName cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
@@ -263,4 +282,11 @@ toggleSet el set = if Set.member el set then Set.remove el set else Set.insert e
 sendCommand : String -> T.GameCommand -> Cmd Msg
 sendCommand url cmd =
   Debug.log ("[COMMAND] " ++ (toString cmd)) <|
-  Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) T.rustResultDecoder)
+  Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) (T.resultDecoder JD.value JD.value))
+
+sendCommandCB : String -> T.GameCommand -> (M.Model -> List T.GameLog -> Msg) -> Cmd Msg
+sendCommandCB url cmd cb =
+  let decoder = T.resultDecoder JD.value (JD.list T.gameLogDecoder)
+  in Http.send
+    (CommandCompleteCB cb)
+    (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) decoder)

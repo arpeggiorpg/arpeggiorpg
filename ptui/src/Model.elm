@@ -5,6 +5,7 @@ import Http
 import Keyboard
 import Keyboard.Key as Key
 import Time
+import Json.Decode as JD
 
 import Types as T
 
@@ -45,7 +46,6 @@ type Msg
 
     | ToggleTerrain T.Point3
 
-    | CommandComplete (Result Http.Error T.RustResult)
     | SelectAbility T.SceneID T.CreatureID T.AbilityID
     | CancelAbility
     | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
@@ -63,6 +63,10 @@ type Msg
     | ToggleMoveAnywhere
     | Tick Time.Time
     | SendCommand T.GameCommand
+    | CommandComplete (Result Http.Error (Result JD.Value JD.Value))
+    | SendCommandCB T.GameCommand (Model -> List T.GameLog -> Msg)
+    | CommandCompleteCB (Model -> List T.GameLog -> Msg) (Result Http.Error (Result JD.Value (List T.GameLog)))
+
     | GetSavedGames (List String -> Msg)
     | GotSavedGames (Result Http.Error (List String))
     | SaveGame String
@@ -73,6 +77,8 @@ type Msg
     | MapPan Direction
     | ToggleCollapsed String
     | SelectView String String
+
+    | ShowGameLogs (List T.GameLog)
 
     | NoMsg
 
@@ -158,6 +164,7 @@ type Modal
   | ModalSaveGame SavingGame
   | ModalEditCreature EditingCreature
   | ModalSimpleSelectCreatures SimpleSelectingCreatures
+  | ModalShowGameLogs (List T.GameLog)
 
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
