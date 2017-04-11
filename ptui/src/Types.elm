@@ -108,6 +108,7 @@ type GameLog
   | GLPathCreature SceneID CreatureID (List Point3)
   | GLSetCreaturePos SceneID CreatureID Point3
   | GLSimpleAttributeCheckResult CreatureID AttrID SkillLevel Bool
+  | GLRandomAttributeCheckResult CreatureID AttrID SkillLevel Int Bool
 
 gameLogDecoder : JD.Decoder GameLog
 gameLogDecoder = sumDecoder "GameLog"
@@ -137,6 +138,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
   , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
   , ("SimpleAttributeCheckResult", fixedList4 GLSimpleAttributeCheckResult JD.string JD.string skillLevelDecoder JD.bool)
+  , ("RandomAttributeCheckResult", fixedList5 GLRandomAttributeCheckResult JD.string JD.string skillLevelDecoder JD.int JD.bool)
   ]
 
 fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
@@ -145,6 +147,8 @@ fixedList3 : (a -> b -> c -> d) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c 
 fixedList3 cons d0 d1 d2 = JD.map3 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2)
 fixedList4 : (a -> b -> c -> d -> e) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder e
 fixedList4 cons d0 d1 d2 d3 = JD.map4 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2) (JD.index 3 d3)
+fixedList5 : (a -> b -> c -> d -> e -> f) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder e -> JD.Decoder f
+fixedList5 cons d0 d1 d2 d3 d4 = JD.map5 cons (JD.index 0 d0) (JD.index 1 d1) (JD.index 2 d2) (JD.index 3 d3) (JD.index 4 d4)
 
 type CombatLog
   = ComLEndTurn CreatureID
@@ -666,6 +670,7 @@ type GameCommand
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
   | SimpleAttributeCheck CreatureID AttrID SkillLevel
+  | RandomAttributeCheck CreatureID AttrID SkillLevel
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -734,6 +739,8 @@ gameCommandEncoder gc =
       JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
     SimpleAttributeCheck cid attrid target ->
       JE.object [("SimpleAttributeCheck", JE.list [JE.string cid, JE.string attrid, skillLevelEncoder target])]
+    RandomAttributeCheck cid attrid target ->
+      JE.object [("RandomAttributeCheck", JE.list [JE.string cid, JE.string attrid, skillLevelEncoder target])]
 
 
 type SkillLevel

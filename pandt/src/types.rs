@@ -189,7 +189,6 @@ impl SkillLevel {
 
   pub fn challenge(&self, difficulty_level: SkillLevel) -> u8 {
     match difficulty_level.to_ord() - self.to_ord() {
-      // these are totally arbitrary numbers I came up with based on emotions
       -4 => 100,
       -3 => 99,
       -2 => 95,
@@ -199,15 +198,7 @@ impl SkillLevel {
       2 => 10,
       3 => 1,
       4 => 0,
-      diff => panic!("[SkillLevel::challenge] Two skill levels were too far apart: {:?}", diff)
-      // so what do these emotional numbers mean?
-      // Going from Unskilled to Skilled means this much of a bonus to your roll:
-      // for an Unskilled check: +10
-      // For a Skilled check: +15
-      // For an Expert check: +40
-      // This means that even the smallest allocation of points to a stat can be a huge boost to your
-      // performance, and it tapers off after that. Maybe this is fine for a system with only 2-3
-      // points per stat?
+      diff => panic!("[SkillLevel::challenge] Two skill levels were too far apart: {:?}", diff),
     }
   }
 }

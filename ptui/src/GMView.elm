@@ -780,6 +780,8 @@ historyItem snapIdx logIdx log =
     T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, dtext cid, dtext (renderPt3 pt)]
     T.GLSimpleAttributeCheckResult cid attrid target success ->
       hsbox [dtext "Challenged", dtext cid, dtext attrid, dtext (toString target), dtext (toString success)]
+    T.GLRandomAttributeCheckResult cid attrid target roll success ->
+      hsbox [dtext "Random Challenge", dtext cid, dtext attrid, dtext (toString target), dtext (toString roll), dtext (toString success)]
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [icon [] "history"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg
