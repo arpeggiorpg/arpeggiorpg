@@ -276,7 +276,7 @@ impl Creature {
     let dice = Dice {num: 1, size: 100};
     let roll = dice.roll().1 as u8; // panic: 1d100 better fit into a u8!
     let my_skill = self.get_attribute_score(attr)?;
-    let success = roll >= my_skill.challenge(target);
+    let success = roll >= my_skill.difficulty(target);
     Ok((roll, success))
   }
 }

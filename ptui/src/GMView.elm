@@ -159,10 +159,10 @@ sceneChallenges model app scene =
     gotCreatures skillCheck creatures =
       let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
       in M.Batch <| List.map (\cid -> M.SendCommandCB (cmd cid skillCheck.attr skillCheck.target) (always M.ShowGameLogs)) creatures
-    challengeCreatures skillCheck = M.SetModal <|
+    challengeCreatures description skillCheck = M.SetModal <|
       M.ModalSimpleSelectCreatures
         { cb = gotCreatures skillCheck
-        , title = "Challenge Creatures"
+        , title = description
         , selected = []
         , from=Dict.keys scene.creatures}
     renderCheck (description, skillCheck) =
@@ -170,7 +170,7 @@ sceneChallenges model app scene =
         [s [S.justifyContent S.spaceBetween]]
         [ text description
         , renderAttributeRequirement skillCheck.attr skillCheck.target
-        , button [onClick <| challengeCreatures skillCheck] [text "Challenge!"]]
+        , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]]
   in 
     if (Dict.size scene.attribute_checks) > 0
     then vbox <| [strong [] [text "Challenges"]]

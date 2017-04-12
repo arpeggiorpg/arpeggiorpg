@@ -178,17 +178,17 @@ pub enum SkillLevel {
 
 impl SkillLevel {
   pub fn to_ord(&self) -> i8 {
-    match self {
-      Inept => -1,
-      Unskilled => 0,
-      Skilled => 1,
-      Expert => 2,
-      Supernatural => 3,
+    match *self {
+      SkillLevel::Inept => -1,
+      SkillLevel::Unskilled => 0,
+      SkillLevel::Skilled => 1,
+      SkillLevel::Expert => 2,
+      SkillLevel::Supernatural => 3,
     }
   }
 
-  pub fn challenge(&self, difficulty_level: SkillLevel) -> u8 {
-    match difficulty_level.to_ord() - self.to_ord() {
+  pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
+    100 - match difficulty_level.to_ord() - self.to_ord() {
       -4 => 100,
       -3 => 99,
       -2 => 95,
@@ -198,7 +198,7 @@ impl SkillLevel {
       2 => 10,
       3 => 1,
       4 => 0,
-      diff => panic!("[SkillLevel::challenge] Two skill levels were too far apart: {:?}", diff),
+      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
     }
   }
 }
