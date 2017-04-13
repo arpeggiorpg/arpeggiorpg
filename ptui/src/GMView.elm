@@ -169,11 +169,18 @@ sceneChallenges model app scene =
         , selected = []
         , from=Dict.keys scene.creatures}
     renderCheck (description, skillCheck) =
+      let
+        attrChecksWithoutThis = Dict.remove description scene.attribute_checks
+        sceneWithoutThis = {scene | attribute_checks = attrChecksWithoutThis}
+        menuItems = [(text "Delete", M.SendCommand (T.EditScene sceneWithoutThis))]
+      in
       habox
         [s [S.justifyContent S.spaceBetween]]
         [ text description
         , renderAttributeRequirement skillCheck.attr skillCheck.target
-        , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]]
+        , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]
+        , popUpMenu model "scene-challenge" description threeDots threeDots menuItems
+        ]
     premades =
       if (Dict.size scene.attribute_checks) > 0
       then vbox (List.map renderCheck (Dict.toList scene.attribute_checks))
