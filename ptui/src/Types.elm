@@ -107,8 +107,7 @@ type GameLog
   | GLRollback Int Int
   | GLPathCreature SceneID CreatureID (List Point3)
   | GLSetCreaturePos SceneID CreatureID Point3
-  | GLSimpleAttributeCheckResult CreatureID AttrID SkillLevel Bool
-  | GLRandomAttributeCheckResult CreatureID AttrID SkillLevel Int Bool
+  | GLAttributeCheckResult CreatureID AttrCheck Int Bool
 
 gameLogDecoder : JD.Decoder GameLog
 gameLogDecoder = sumDecoder "GameLog"
@@ -137,8 +136,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("Rollback", fixedList2 GLRollback JD.int JD.int)
   , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
   , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
-  , ("SimpleAttributeCheckResult", fixedList4 GLSimpleAttributeCheckResult JD.string JD.string skillLevelDecoder JD.bool)
-  , ("RandomAttributeCheckResult", fixedList5 GLRandomAttributeCheckResult JD.string JD.string skillLevelDecoder JD.int JD.bool)
+  , ("AttributeCheckResult", fixedList4 GLAttributeCheckResult JD.string attrCheckDecoder JD.int JD.bool)
   ]
 
 fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
@@ -269,7 +267,7 @@ type alias Scene =
   , name: String
   , map: String
   , creatures: Dict CreatureID (Point3, Visibility)
-  , attribute_checks: Dict String SkillCheck
+  , attribute_checks: Dict String AttrCheck
   }
 
 sceneDecoder : JD.Decoder Scene
@@ -279,14 +277,14 @@ sceneDecoder =
     (JD.field "name" JD.string)
     (JD.field "map" JD.string)
     (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
-    (JD.field "attribute_checks" (JD.dict skillCheckDecoder))
+    (JD.field "attribute_checks" (JD.dict attrCheckDecoder))
 
 sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
   let
     encCreature (key, (pos, vis)) = (key, JE.list [point3Encoder pos, visibilityEncoder vis])
     encCreatures = List.map encCreature (Dict.toList scene.creatures)
-    encAttrCheck (key, sc) = (key, skillCheckEncoder sc)
+    encAttrCheck (key, sc) = (key, attrCheckEncoder sc)
     encAttrChecks = List.map encAttrCheck (Dict.toList scene.attribute_checks)
   in 
   JE.object
@@ -297,22 +295,22 @@ sceneEncoder scene =
     , ("attribute_checks", JE.object encAttrChecks)
     ]
 
-type alias SkillCheck =
-  { random: Bool
+type alias AttrCheck =
+  { reliable: Bool
   , attr: AttrID
   , target: SkillLevel
   }
 
-skillCheckEncoder : SkillCheck -> JE.Value
-skillCheckEncoder sc = JE.object
-  [ ("random", JE.bool sc.random)
+attrCheckEncoder : AttrCheck -> JE.Value
+attrCheckEncoder sc = JE.object
+  [ ("reliable", JE.bool sc.reliable)
   , ("attr", JE.string sc.attr)
   , ("target", skillLevelEncoder sc.target)
   ]
 
-skillCheckDecoder : JD.Decoder SkillCheck
-skillCheckDecoder = JD.map3 SkillCheck
-  (JD.field "random" JD.bool)
+attrCheckDecoder : JD.Decoder AttrCheck
+attrCheckDecoder = JD.map3 AttrCheck
+  (JD.field "reliable" JD.bool)
   (JD.field "attr" JD.string)
   (JD.field "target" skillLevelDecoder)
 
@@ -688,8 +686,7 @@ type GameCommand
   | Done
   | Rollback Int Int
   | ChangeCreatureInitiative CreatureID Int
-  | SimpleAttributeCheck CreatureID AttrID SkillLevel
-  | RandomAttributeCheck CreatureID AttrID SkillLevel
+  | AttributeCheck CreatureID AttrCheck
 
 gameCommandEncoder : GameCommand -> JE.Value
 gameCommandEncoder gc =
@@ -756,10 +753,8 @@ gameCommandEncoder gc =
       JE.object [("Rollback", JE.list [JE.int snapIdx, JE.int logIdx])]
     ChangeCreatureInitiative cid newPos ->
       JE.object [("ChangeCreatureInitiative", JE.list [JE.string cid, JE.int newPos])]
-    SimpleAttributeCheck cid attrid target ->
-      JE.object [("SimpleAttributeCheck", JE.list [JE.string cid, JE.string attrid, skillLevelEncoder target])]
-    RandomAttributeCheck cid attrid target ->
-      JE.object [("RandomAttributeCheck", JE.list [JE.string cid, JE.string attrid, skillLevelEncoder target])]
+    AttributeCheck cid attrCheck ->
+      JE.object [("AttributeCheck", JE.list [JE.string cid, attrCheckEncoder attrCheck])]
 
 
 type SkillLevel

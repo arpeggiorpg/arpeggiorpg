@@ -38,8 +38,7 @@ impl Game {
     use self::GameCommand::*;
     let change = match cmd {
       // ** Attribute checks **
-      SimpleAttributeCheck(cid, atid, target) => self.simple_attribute_check(cid, atid, target),
-      RandomAttributeCheck(cid, atid, target) => self.random_attribute_check(cid, atid, target),
+      AttributeCheck(cid, check) => self.attribute_check(cid, &check),
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
@@ -91,18 +90,11 @@ impl Game {
     Ok(change)
   }
 
-  fn simple_attribute_check(&self, cid: CreatureID, atid: AttrID, target: SkillLevel)
-                            -> Result<ChangedGame, GameError> {
+  fn attribute_check(&self, cid: CreatureID, check: &AttributeCheck)
+                     -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(cid)?;
-    let result = creature.creature.simple_attribute_check(&atid, target)?;
-    self.change_with(GameLog::SimpleAttributeCheckResult(cid, atid, target, result))
-  }
-
-  fn random_attribute_check(&self, cid: CreatureID, atid: AttrID, target: SkillLevel)
-                            -> Result<ChangedGame, GameError> {
-    let creature = self.get_creature(cid)?;
-    let (rolled, success) = creature.creature.random_attribute_check(&atid, target)?;
-    self.change_with(GameLog::RandomAttributeCheckResult(cid, atid, target, rolled, success))
+    let (rolled, success) = creature.creature.attribute_check(check)?;
+    self.change_with(GameLog::AttributeCheckResult(cid, check.clone(), rolled, success))
   }
 
   pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
@@ -173,8 +165,7 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
-      SimpleAttributeCheckResult(..) => {} // purely informational
-      RandomAttributeCheckResult(..) => {} // purely informational
+      AttributeCheckResult(..) => {} // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       DeleteFolder(ref path) => {
@@ -227,7 +218,7 @@ impl Game {
       EditScene(ref scene) => {
         self.check_map(scene.map)?;
         self.scenes
-          .mutate(&scene.id, move |s| scene.clone())
+          .mutate(&scene.id, move |_| scene.clone())
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
       DeleteScene(ref sid) => {

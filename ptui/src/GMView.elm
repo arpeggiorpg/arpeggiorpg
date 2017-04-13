@@ -153,11 +153,10 @@ sceneConsole model app scene =
     , div [s [S.marginLeft (S.em 1)]] [terseCreaturesList model app scene]
     ]
 
-challengeCreaturesAndShowResults skillCheck cids =
-  let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
-      challengeCreature cid =
-        M.SendCommandCB (cmd cid skillCheck.attr skillCheck.target) (always M.ShowGameLogs)
-  in M.Batch (List.map challengeCreature cids)
+challengeCreaturesAndShowResults : T.AttrCheck -> List T.CreatureID -> M.Msg
+challengeCreaturesAndShowResults attrCheck cids =
+  let challenge cid = M.SendCommandCB (T.AttributeCheck cid attrCheck) (always M.ShowGameLogs)
+  in M.Batch (List.map challenge cids)
 
 sceneChallenges : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneChallenges model app scene =
@@ -177,7 +176,7 @@ sceneChallenges model app scene =
       habox
         [s [S.justifyContent S.spaceBetween]]
         [ text description
-        , renderAttributeRequirement skillCheck.attr skillCheck.target
+        , renderAttributeRequirement skillCheck
         , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]
         , popUpMenu model "scene-challenge" description threeDots threeDots menuItems
         ]
@@ -187,17 +186,22 @@ sceneChallenges model app scene =
       else text ""
     adHocButton =
       button
-        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, attr="", difficulty=T.Unskilled, random=False})]
+        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, check={attr="", target=T.Unskilled, reliable=False}})]
         [text "Ad-Hoc Challenge"]
+    createNewButton =
+      button
+        []
+        [text "Create New"]
   in
     vbox
       [ strong [] [text "Challenges"]
-      , div [s [S.marginLeft (S.em 1)]] [premades, adHocButton]
+      , div [s [S.marginLeft (S.em 1)]] [premades, hbox [createNewButton, adHocButton]]
       ]
-    
 
-renderAttributeRequirement attrid target =
-  hbox [attrIcon attrid, strong [] [text (toString target)]]
+renderAttributeRequirement : T.AttrCheck -> Html M.Msg
+renderAttributeRequirement check =
+  hbox [attrIcon check.attr, strong [] [text (toString check.target)]
+       , text <| if check.reliable then "(reliable)" else ""]
 
 attrIcon attrid =
   case attrid of
@@ -466,7 +470,7 @@ showGameLogsDialog model app logs =
 adHocChallengeDialog : M.Model -> T.App -> M.AdHocChallenge -> Html M.Msg
 adHocChallengeDialog model app ahc =
   let scene = T.getScene app ahc.scene
-      update f inp = M.SetModal (M.ModalAdHocChallenge (f ahc inp))
+      update f inp = M.SetModal (M.ModalAdHocChallenge {ahc | check = f ahc.check inp})
       updateDifficulty value =
         let newDiff =
               case value of
@@ -475,7 +479,7 @@ adHocChallengeDialog model app ahc =
                 "Skilled" -> T.Skilled
                 "Expert" -> T.Expert
                 _ -> Debug.crash "sorry"
-        in update (\ahc inp -> { ahc | difficulty = inp}) newDiff
+        in update (\check inp -> { check | target = inp}) newDiff
   in
     case scene of
       Nothing -> text "Scene not found!"
@@ -483,7 +487,7 @@ adHocChallengeDialog model app ahc =
         let
           challengeCreatures =
             challengeCreaturesAndShowResults
-              {random=ahc.random, attr=ahc.attr, target=ahc.difficulty}
+              {reliable=ahc.check.reliable, attr=ahc.check.attr, target=ahc.check.target}
               (Dict.keys scene.creatures)
         in vbox
            [ select [onInput <| update (\ahc inp -> {ahc | attr = inp})]
@@ -502,11 +506,11 @@ adHocChallengeDialog model app ahc =
                ]
            , hbox
                [ input [ type_ "checkbox"
-                       , onCheck (update (\ahc checked -> {ahc | random = checked}))
+                       , onCheck (update (\ahc checked -> {ahc | reliable = checked}))
                        ] []
-               , text "Random Roll"
+               , text "Reliable check? (if a creature has the skill level, they will automatically succeed)"
                ]
-           , button [disabled (ahc.attr == ""), onClick challengeCreatures] [text "Challenge!"]
+           , button [disabled (ahc.check.attr == ""), onClick challengeCreatures] [text "Challenge!"]
            ]
 
 {-| Check for any GM-specific modals that should be rendered. -}
@@ -851,13 +855,10 @@ renderGameLog model app log =
   T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
   T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, cname cid, dtext (maybePos pts)]
   T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, cname cid, dtext (renderPt3 pt)]
-  T.GLSimpleAttributeCheckResult cid attrid target success ->
-    hsbox [ dtext "Challenge Result", creatureWithSkill cid attrid, renderAttributeRequirement attrid target
-          , dtext (if success then "Success" else "Failure")]
-  T.GLRandomAttributeCheckResult cid attrid target roll success ->
+  T.GLAttributeCheckResult cid check roll success ->
     hsbox [ dtext "Random Challenge Result"
-          , creatureWithSkill cid attrid
-          , hbox [dtext "Difficulty:", renderAttributeRequirement attrid target]
+          , creatureWithSkill cid check.attr
+          , hbox [dtext "Difficulty:", renderAttributeRequirement check]
           , renderRoll roll
           , dtext (if success then "Success" else "Failure")]
 

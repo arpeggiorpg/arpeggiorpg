@@ -28,11 +28,11 @@ pub struct Dice {
 }
 
 impl Dice {
+  pub fn new(n: u8, d: u8) -> Dice {
+    Dice { num: n, size: d }
+  }
   pub fn flat(val: u8) -> Dice {
-    Dice {
-      num: val,
-      size: 1,
-    }
+    Dice::new(val, 1)
   }
   pub fn roll(&self) -> (Vec<u8>, u32) {
     let mut intermediate = vec![];
@@ -188,7 +188,8 @@ impl SkillLevel {
   }
 
   pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
-    100 - match difficulty_level.to_ord() - self.to_ord() {
+    100 -
+    match difficulty_level.to_ord() - self.to_ord() {
       -4 => 100,
       -3 => 99,
       -2 => 95,
@@ -207,8 +208,7 @@ impl SkillLevel {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-  SimpleAttributeCheck(CreatureID, AttrID, SkillLevel),
-  RandomAttributeCheck(CreatureID, AttrID, SkillLevel),
+  AttributeCheck(CreatureID, AttributeCheck),
 
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
@@ -323,9 +323,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
-  // ** Abilities **
-  SimpleAttributeCheckResult(CreatureID, AttrID, SkillLevel, bool),
-  RandomAttributeCheckResult(CreatureID, AttrID, SkillLevel, u8, bool),
+  AttributeCheckResult(CreatureID, AttributeCheck, u8, bool),
 
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
@@ -735,14 +733,14 @@ pub struct Scene {
   pub name: String,
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
-  pub attribute_checks: HashMap<String, SkillCheck>,
+  pub attribute_checks: HashMap<String, AttributeCheck>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct SkillCheck {
-  pub random: bool,
+pub struct AttributeCheck {
+  pub reliable: bool,
   pub attr: AttrID,
-  pub target: SkillLevel
+  pub target: SkillLevel,
 }
 
 impl DeriveKey for Scene {

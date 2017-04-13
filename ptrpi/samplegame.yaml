@@ -33,11 +33,11 @@ current_game:
       id: 00000000-0000-0000-0000-000000000003
       attribute_checks:
         "Do a random backflip":
-          random: true
+          reliable: false
           attr: finesse
           target: Expert
         "Notice the coin in the corner":
-          random: false
+          reliable: true
           attr: perception
           target: Skilled
       creatures:

@@ -268,16 +268,16 @@ impl Creature {
       .ok_or(GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
   }
 
-  pub fn simple_attribute_check(&self, attr: &AttrID, target: SkillLevel) -> Result<bool, GameError> {
-    Ok(self.get_attribute_score(attr)? >= target)
-  }
-
-  pub fn random_attribute_check(&self, attr: &AttrID, target: SkillLevel) -> Result<(u8, bool), GameError> {
-    let dice = Dice {num: 1, size: 100};
-    let roll = dice.roll().1 as u8; // panic: 1d100 better fit into a u8!
-    let my_skill = self.get_attribute_score(attr)?;
-    let success = roll >= my_skill.difficulty(target);
-    Ok((roll, success))
+  pub fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {
+    let my_skill = self.get_attribute_score(&check.attr)?;
+    if check.reliable && check.target <= my_skill {
+      Ok((100, true))
+    } else {
+      let dice = Dice::new(1, 100);
+      let roll = dice.roll().1 as u8; // panic: 1d100 better fit into a u8!
+      let success = roll >= my_skill.difficulty(check.target);
+      Ok((roll, success))
+    }
   }
 }
 
