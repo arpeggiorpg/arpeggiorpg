@@ -180,7 +180,7 @@ sceneChallenges model app scene =
       else text ""
     adHocButton =
       button
-        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, attr="", difficulty=T.Unskilled})]
+        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, attr="", difficulty=T.Unskilled, random=False})]
         [text "Ad-Hoc Challenge"]
   in
     vbox
@@ -476,26 +476,31 @@ adHocChallengeDialog model app ahc =
         let
           challengeCreatures =
             challengeCreaturesAndShowResults
-              {random=True, attr=ahc.attr, target=ahc.difficulty}
+              {random=ahc.random, attr=ahc.attr, target=ahc.difficulty}
               (Dict.keys scene.creatures)
         in vbox
-          [ hbox
-            [ select [onInput <| update (\ahc inp -> {ahc | attr = inp})]
-                [ option [value ""] [text "Select an Attribute"]
-                -- TODO: generalize attributes, get rid of these hard-coded ones
-                , option [value "strength"] [text "Strength"]
-                , option [value "finesse"] [text "Finesse"]
-                , option [value "magic"] [text "Magic"]
-                , option [value "perception"] [text "Perception"]
-                ]
-            , select [onInput updateDifficulty]
-                [ option [value "Inept"] [text "Inept"]
-                , option [value "Unskilled"] [text "Unskilled"]
-                , option [value "Skilled"] [text "Skilled"]
-                , option [value "Expert"] [text "Expert"]
-                ]
-            ]
-          , button [disabled (ahc.attr == ""), onClick challengeCreatures] [text "Challenge!"]]
+           [ select [onInput <| update (\ahc inp -> {ahc | attr = inp})]
+               [ option [value ""] [text "Select an Attribute"]
+               -- TODO: generalize attributes, get rid of these hard-coded ones
+               , option [value "strength"] [text "Strength"]
+               , option [value "finesse"] [text "Finesse"]
+               , option [value "magic"] [text "Magic"]
+               , option [value "perception"] [text "Perception"]
+               ]
+           , select [onInput updateDifficulty]
+               [ option [value "Inept"] [text "Inept"]
+               , option [value "Unskilled"] [text "Unskilled"]
+               , option [value "Skilled"] [text "Skilled"]
+               , option [value "Expert"] [text "Expert"]
+               ]
+           , hbox
+               [ input [ type_ "checkbox"
+                       , onCheck (update (\ahc checked -> {ahc | random = checked}))
+                       ] []
+               , text "Random Roll"
+               ]
+           , button [disabled (ahc.attr == ""), onClick challengeCreatures] [text "Challenge!"]
+           ]
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
