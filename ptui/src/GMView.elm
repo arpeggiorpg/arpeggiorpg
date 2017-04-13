@@ -153,15 +153,18 @@ sceneConsole model app scene =
     , div [s [S.marginLeft (S.em 1)]] [terseCreaturesList model app scene]
     ]
 
+challengeCreaturesAndShowResults skillCheck cids =
+  let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
+      challengeCreature cid =
+        M.SendCommandCB (cmd cid skillCheck.attr skillCheck.target) (always M.ShowGameLogs)
+  in M.Batch (List.map challengeCreature cids)
+
 sceneChallenges : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneChallenges model app scene =
   let
-    gotCreatures skillCheck creatures =
-      let cmd = if skillCheck.random then T.RandomAttributeCheck else T.SimpleAttributeCheck
-      in M.Batch <| List.map (\cid -> M.SendCommandCB (cmd cid skillCheck.attr skillCheck.target) (always M.ShowGameLogs)) creatures
     challengeCreatures description skillCheck = M.SetModal <|
       M.ModalSimpleSelectCreatures
-        { cb = gotCreatures skillCheck
+        { cb = challengeCreaturesAndShowResults skillCheck
         , title = description
         , selected = []
         , from=Dict.keys scene.creatures}
@@ -171,12 +174,20 @@ sceneChallenges model app scene =
         [ text description
         , renderAttributeRequirement skillCheck.attr skillCheck.target
         , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]]
-  in 
-    if (Dict.size scene.attribute_checks) > 0
-    then vbox [ strong [] [text "Challenges"]
-              , div [s [S.marginLeft (S.em 1)]] <| List.map renderCheck (Dict.toList scene.attribute_checks)
-              ]
-    else text ""
+    premades =
+      if (Dict.size scene.attribute_checks) > 0
+      then vbox (List.map renderCheck (Dict.toList scene.attribute_checks))
+      else text ""
+    adHocButton =
+      button
+        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, attr="", difficulty=T.Unskilled})]
+        [text "Ad-Hoc Challenge"]
+  in
+    vbox
+      [ strong [] [text "Challenges"]
+      , div [s [S.marginLeft (S.em 1)]] [premades, adHocButton]
+      ]
+    
 
 renderAttributeRequirement attrid target =
   hbox [attrIcon attrid, strong [] [text (toString target)]]
@@ -445,6 +456,47 @@ showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg
 showGameLogsDialog model app logs =
   vbox (List.map (renderGameLog model app) logs)
 
+adHocChallengeDialog : M.Model -> T.App -> M.AdHocChallenge -> Html M.Msg
+adHocChallengeDialog model app ahc =
+  let scene = T.getScene app ahc.scene
+      update f inp = M.SetModal (M.ModalAdHocChallenge (f ahc inp))
+      updateDifficulty value =
+        let newDiff =
+              case value of
+                "Inept" -> T.Inept
+                "Unskilled" -> T.Unskilled
+                "Skilled" -> T.Skilled
+                "Expert" -> T.Expert
+                _ -> Debug.crash "sorry"
+        in update (\ahc inp -> { ahc | difficulty = inp}) newDiff
+  in
+    case scene of
+      Nothing -> text "Scene not found!"
+      Just scene ->
+        let
+          challengeCreatures =
+            challengeCreaturesAndShowResults
+              {random=True, attr=ahc.attr, target=ahc.difficulty}
+              (Dict.keys scene.creatures)
+        in vbox
+          [ hbox
+            [ select [onInput <| update (\ahc inp -> {ahc | attr = inp})]
+                [ option [value ""] [text "Select an Attribute"]
+                -- TODO: generalize attributes, get rid of these hard-coded ones
+                , option [value "strength"] [text "Strength"]
+                , option [value "finesse"] [text "Finesse"]
+                , option [value "magic"] [text "Magic"]
+                , option [value "perception"] [text "Perception"]
+                ]
+            , select [onInput updateDifficulty]
+                [ option [value "Inept"] [text "Inept"]
+                , option [value "Unskilled"] [text "Unskilled"]
+                , option [value "Skilled"] [text "Skilled"]
+                , option [value "Expert"] [text "Expert"]
+                ]
+            ]
+          , button [disabled (ahc.attr == ""), onClick challengeCreatures] [text "Challenge!"]]
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -465,6 +517,7 @@ checkModal model app =
         M.SelectOrderedCreatures soc -> Just (selectOrderedCreaturesDialog model app soc)
         M.ModalSimpleSelectCreatures sc -> Just (simpleSelectCreaturesDialog model app sc)
         M.ModalShowGameLogs logs -> Just (showGameLogsDialog model app logs)
+        M.ModalAdHocChallenge ahc -> Just (adHocChallengeDialog model app ahc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -622,13 +675,6 @@ noteBox model creature =
 disengageButton : T.Creature -> Html M.Msg
 disengageButton creature =
   button [onClick (M.SendCommand (T.RemoveCreatureFromCombat creature.id))] [text ("Disengage " ++ creature.name)]
-
-mapSelectorMenu : String -> M.Model -> T.App -> (String -> M.Msg) -> Html M.Msg
-mapSelectorMenu defaultSelection model app action =
-  let isCurrent mapID = mapID == defaultSelection
-  in select [onInput action]
-    <| [option [value ""] [text "Select a Map"]]
-       ++ (List.map (\mapID -> option [value mapID, selected (isCurrent mapID)] [text mapID]) (Dict.keys app.current_game.maps))
 
 {-| Render combat if we're in combat, or a Start Combat button if not -}
 combatView : M.Model -> T.App -> Html M.Msg

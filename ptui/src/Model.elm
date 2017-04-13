@@ -165,6 +165,7 @@ type Modal
   | ModalEditCreature EditingCreature
   | ModalSimpleSelectCreatures SimpleSelectingCreatures
   | ModalShowGameLogs (List T.GameLog)
+  | ModalAdHocChallenge AdHocChallenge
 
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
@@ -176,6 +177,7 @@ type alias SelectingOrderedCreatures = {from: List T.CreatureID, selected: Dict.
 type alias SelectingCreatures = {cb: GotCreatures, reason: String, selectedCreatures : List T.CreatureID}
 type alias SimpleSelectingCreatures = {from: List T.CreatureID, selected: List T.CreatureID, cb: GotCreatures, title: String}
 type alias EditingCreature = {cid: T.CreatureID, note: String, portrait_url: String}
+type alias AdHocChallenge = {scene: T.SceneID, attr: T.AttrID, difficulty: T.SkillLevel}
 
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
