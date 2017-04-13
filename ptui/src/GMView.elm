@@ -146,11 +146,11 @@ sceneConsole model app scene =
                     , button [onClick (M.SelectView "right-side-bar" "Combat")] [text "View Combat"]]
           else text ""
         Nothing -> startCombatButton model app
-    , hbox [ strong [] [text "Creatures:"]
+    , sceneChallenges model app scene
+    , hbox [ strong [] [text "Creatures"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
-    , sceneChallenges model app scene
-    , terseCreaturesList model app scene
+    , div [s [S.marginLeft (S.em 1)]] [terseCreaturesList model app scene]
     ]
 
 sceneChallenges : M.Model -> T.App -> T.Scene -> Html M.Msg
@@ -173,8 +173,9 @@ sceneChallenges model app scene =
         , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]]
   in 
     if (Dict.size scene.attribute_checks) > 0
-    then vbox <| [strong [] [text "Challenges"]]
-              ++ List.map renderCheck (Dict.toList scene.attribute_checks)
+    then vbox [ strong [] [text "Challenges"]
+              , div [s [S.marginLeft (S.em 1)]] <| List.map renderCheck (Dict.toList scene.attribute_checks)
+              ]
     else text ""
 
 renderAttributeRequirement attrid target =
