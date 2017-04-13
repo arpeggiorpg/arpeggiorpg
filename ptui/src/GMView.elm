@@ -186,11 +186,11 @@ sceneChallenges model app scene =
       else text ""
     adHocButton =
       button
-        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, check={attr="", target=T.Unskilled, reliable=False}})]
+        [onClick (M.SetModal <| M.ModalAdHocChallenge {scene=scene.id, description="Ad-Hoc", check={attr="", target=T.Unskilled, reliable=False}})]
         [text "Ad-Hoc Challenge"]
     createNewButton =
       button
-        []
+        [onClick (M.SetModal <| M.ModalCreateNewChallenge {scene=scene.id, description="", check={attr="", target=T.Unskilled, reliable=False}})]
         [text "Create New"]
   in
     vbox
@@ -467,10 +467,44 @@ showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg
 showGameLogsDialog model app logs =
   vbox (List.map (renderGameLog model app) logs)
 
-adHocChallengeDialog : M.Model -> T.App -> M.AdHocChallenge -> Html M.Msg
-adHocChallengeDialog model app ahc =
+createNewChallengeDialog : M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
+createNewChallengeDialog model app sc =
+  case T.getScene app sc.scene of
+    Nothing -> text "Scene not found"
+    Just scene ->
+      let
+        newAttrChecks = Dict.insert sc.description sc.check scene.attribute_checks
+        newScene = {scene | attribute_checks = newAttrChecks}
+        saveScene = M.Batch [ M.SetModal M.NoModal, M.SendCommand (T.EditScene newScene)]
+      in
+        vbox
+          [ challengeEditor M.ModalCreateNewChallenge model app sc
+          , button [ disabled (sc.check.attr == "" || sc.description == "")
+                   , onClick saveScene]
+                   [text "Save Challenge"]
+          ]
+
+adHocChallengeDialog : M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
+adHocChallengeDialog model app sc =
+  case T.getScene app sc.scene of
+    Nothing -> text "Scene not found"
+    Just scene ->
+      let
+        challengeCreatures =
+          challengeCreaturesAndShowResults
+            {reliable=sc.check.reliable, attr=sc.check.attr, target=sc.check.target}
+            (Dict.keys scene.creatures)
+      in
+        vbox
+          [ challengeEditor M.ModalAdHocChallenge model app sc
+          , button [disabled (sc.check.attr == ""), onClick challengeCreatures] [text "Challenge!"]
+          ]
+
+challengeEditor : (M.SceneChallenge -> M.Modal) -> M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
+challengeEditor modalConstructor model app ahc =
   let scene = T.getScene app ahc.scene
-      update f inp = M.SetModal (M.ModalAdHocChallenge {ahc | check = f ahc.check inp})
+      updateSC f inp = M.SetModal (modalConstructor (f ahc inp))
+      updateCheck f inp = updateSC (\sc inp -> {sc | check = f sc.check inp}) inp
       updateDifficulty value =
         let newDiff =
               case value of
@@ -479,39 +513,36 @@ adHocChallengeDialog model app ahc =
                 "Skilled" -> T.Skilled
                 "Expert" -> T.Expert
                 _ -> Debug.crash "sorry"
-        in update (\check inp -> { check | target = inp}) newDiff
+        in updateCheck (\check inp -> { check | target = inp}) newDiff
   in
     case scene of
       Nothing -> text "Scene not found!"
       Just scene ->
-        let
-          challengeCreatures =
-            challengeCreaturesAndShowResults
-              {reliable=ahc.check.reliable, attr=ahc.check.attr, target=ahc.check.target}
-              (Dict.keys scene.creatures)
-        in vbox
-           [ select [onInput <| update (\ahc inp -> {ahc | attr = inp})]
-               [ option [value ""] [text "Select an Attribute"]
-               -- TODO: generalize attributes, get rid of these hard-coded ones
-               , option [value "strength"] [text "Strength"]
-               , option [value "finesse"] [text "Finesse"]
-               , option [value "magic"] [text "Magic"]
-               , option [value "perception"] [text "Perception"]
-               ]
-           , select [onInput updateDifficulty]
-               [ option [value "Inept"] [text "Inept"]
-               , option [value "Unskilled"] [text "Unskilled"]
-               , option [value "Skilled"] [text "Skilled"]
-               , option [value "Expert"] [text "Expert"]
-               ]
-           , hbox
-               [ input [ type_ "checkbox"
-                       , onCheck (update (\ahc checked -> {ahc | reliable = checked}))
-                       ] []
-               , text "Reliable check? (if a creature has the skill level, they will automatically succeed)"
-               ]
-           , button [disabled (ahc.check.attr == ""), onClick challengeCreatures] [text "Challenge!"]
-           ]
+        vbox
+          [ input [ type_ "text", defaultValue ahc.description
+                  , onInput <| updateSC (\sc inp -> {sc | description = inp})]
+                  []
+          , select [onInput <| updateCheck (\ahc inp -> {ahc | attr = inp})]
+              [ option [value ""] [text "Select an Attribute"]
+              -- TODO: generalize attributes, get rid of these hard-coded ones
+              , option [value "strength"] [text "Strength"]
+              , option [value "finesse"] [text "Finesse"]
+              , option [value "magic"] [text "Magic"]
+              , option [value "perception"] [text "Perception"]
+              ]
+          , select [onInput updateDifficulty]
+              [ option [value "Inept"] [text "Inept"]
+              , option [value "Unskilled"] [text "Unskilled"]
+              , option [value "Skilled"] [text "Skilled"]
+              , option [value "Expert"] [text "Expert"]
+              ]
+          , hbox
+              [ input [ type_ "checkbox"
+                      , onCheck (updateCheck (\ahc checked -> {ahc | reliable = checked}))
+                      ] []
+              , text "Reliable check? (if a creature has the skill level, they will automatically succeed)"
+              ]
+          ]
 
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
@@ -533,7 +564,8 @@ checkModal model app =
         M.SelectOrderedCreatures soc -> Just (selectOrderedCreaturesDialog model app soc)
         M.ModalSimpleSelectCreatures sc -> Just (simpleSelectCreaturesDialog model app sc)
         M.ModalShowGameLogs logs -> Just (showGameLogsDialog model app logs)
-        M.ModalAdHocChallenge ahc -> Just (adHocChallengeDialog model app ahc)
+        M.ModalAdHocChallenge sc -> Just (adHocChallengeDialog model app sc)
+        M.ModalCreateNewChallenge sc -> Just (createNewChallengeDialog model app sc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
