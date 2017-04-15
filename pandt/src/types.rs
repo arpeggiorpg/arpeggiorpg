@@ -437,6 +437,10 @@ error_chain! {
       description("The specified creature is out of range.")
       display("Creature {} is out of range.", cid.to_string())
     }
+    PointOutOfRange(pt: Point3) {
+      description("The specified point is out of range.")
+      display("Point {:?} is out of range.", pt)
+    }
     BuggyProgram(msg: String) {
       description("There was an internal error that is caused by a broken assumption, indicating that this software is garbage.")
       display("There's a bug in the program: {}", msg)
@@ -569,12 +573,11 @@ pub struct Ability {
   pub usable_ooc: bool,
 }
 
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Volume {
-  Sphere(Point3, Distance),
-  Line(Point3, Point3, Distance),
-  VerticalCylinder(Point3, Distance, Distance), // radius, height
+  Sphere(Distance),
+  Line(Distance),
+  VerticalCylinder { radius: Distance, height: Distance }, // radius, height
 }
 
 // TODO for Effects and Conditions and Targets and Abilities:
@@ -584,7 +587,7 @@ pub enum Volume {
 // - twin attack: attack two targets (with a bow or something)
 // - sneak attack: deal extra damage when there is an ally adjacent to the target
 // - Fireball: deal damage to all enemies in an area around a point
-// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area. (this is opportunity attacks). also
+// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area. (this is opportunity attacks).
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -1047,11 +1050,28 @@ pub mod test {
     }
   }
 
+  pub fn t_fireball() -> Ability {
+    Ability {
+      name: "Fireball".to_string(),
+      target: TargetSpec::AllCreaturesInVolumeInRange {
+        volume: Volume::Sphere(Distance::from_meters(10.0)),
+        range: Distance::from_meters(20.0),
+      },
+      cost: Energy(8),
+      usable_ooc: true,
+      effects: vec![Effect::Damage(Dice::flat(3))],
+    }
+  }
+
   pub fn t_abilities() -> HashMap<AbilityID, Ability> {
     let punch = t_punch();
     let shoot = t_shoot();
     let heal = t_heal();
-    HashMap::from_iter(vec![(abid("punch"), punch), (abid("shoot"), shoot), (abid("heal"), heal)])
+    let fireball = t_fireball();
+    HashMap::from_iter(vec![(abid("punch"), punch),
+                            (abid("shoot"), shoot),
+                            (abid("heal"), heal),
+                            (abid("fireball"), fireball)])
   }
 
   #[test]

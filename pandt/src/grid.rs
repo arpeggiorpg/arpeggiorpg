@@ -6,7 +6,7 @@ use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
-use types::{Point3, Distance, TileSystem, Map};
+use types::{Point3, Distance, TileSystem, Map, Volume};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -41,6 +41,12 @@ impl TileSystem {
 
   pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: Distance) -> bool {
     self.point3_distance(c1, c2) <= d
+  }
+
+  pub fn items_within_volume<I: Clone>(&self, volume: Volume, pt: Point3,
+                                       items: HashMap<I, Point3>)
+                                       -> Vec<I> {
+    unimplemented!();
   }
 
   pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {

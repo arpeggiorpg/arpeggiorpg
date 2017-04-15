@@ -496,6 +496,14 @@ impl Game {
         }
       }
       (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
+      (TargetSpec::AllCreaturesInVolumeInRange { volume, range }, DecidedTarget::Point(pt)) => {
+        if !self.tile_system.points_within_distance(scene.get_pos(creature.id())?, pt, range) {
+          bail!(GameErrorEnum::PointOutOfRange(pt));
+        }
+        let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
+        let cids = self.tile_system.items_within_volume(volume, pt, creature_locations);
+        Ok(cids)
+      }
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
@@ -659,7 +667,7 @@ pub mod test {
   pub fn t_classes() -> HashMap<String, Class> {
     let rogue_abs = vec![abid("punch")];
     let ranger_abs = vec![abid("shoot")];
-    let cleric_abs = vec![abid("heal")];
+    let cleric_abs = vec![abid("heal"), abid("fireball")];
     HashMap::from_iter(vec![("rogue".to_string(),
                              Class {
                                abilities: rogue_abs,
@@ -750,5 +758,16 @@ pub mod test {
       Ok(game)
     };
     iter(&game).unwrap();
+  }
+
+
+  #[test]
+  fn creatures_within_area() {
+    let game = t_game();
+    let game = game.perform_unchecked(GameCommand::ActCreature(t_scene_id(),
+                                                  cid_cleric(),
+                                                  abid("fireball"),
+                                                  DecidedTarget::Point((0, 0, 0))))
+      .unwrap();
   }
 }
