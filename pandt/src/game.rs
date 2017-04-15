@@ -479,7 +479,7 @@ impl Game {
                          decision: DecidedTarget)
                          -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
-      (TargetSpec::Melee, DecidedTarget::Melee(cid)) => {
+      (TargetSpec::Melee, DecidedTarget::Creature(cid)) => {
         if self.tile_system
           .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE) {
           Ok(vec![cid])
@@ -487,7 +487,7 @@ impl Game {
           Err(GameErrorEnum::CreatureOutOfRange(cid).into())
         }
       }
-      (TargetSpec::Range(max), DecidedTarget::Range(cid)) => {
+      (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => {
         if self.tile_system
           .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max) {
           Ok(vec![cid])
@@ -523,6 +523,8 @@ impl Game {
       TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
       TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
       TargetSpec::Actor => vec![PotentialTarget::CreatureID(creature_id)],
+      TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => panic!(),
     })
   }
 
@@ -702,11 +704,10 @@ pub mod test {
   fn stop_combat() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    let game =
-      game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
-                                                  DecidedTarget::Melee(cid_ranger())))
-        .unwrap()
-        .game;
+    let game = game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
+                                                DecidedTarget::Creature(cid_ranger())))
+      .unwrap()
+      .game;
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
     let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
@@ -740,10 +741,10 @@ pub mod test {
       .unwrap()
       .game;
     let iter = |game: &Game| -> Result<Game, GameError> {
-      let game = t_game_act(game, abid("punch"), DecidedTarget::Melee(cid_ranger()));
+      let game = t_game_act(game, abid("punch"), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
       let game = game.perform_unchecked(GameCommand::Done)?.game;
-      let game = t_game_act(&game, abid("heal"), DecidedTarget::Range(cid_ranger()));
+      let game = t_game_act(&game, abid("heal"), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
       Ok(game)
     };

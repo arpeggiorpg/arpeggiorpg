@@ -114,8 +114,7 @@ current_game:
     rogue:
       color: purple
       abilities:
-        - punch
-        - bonk
+        - stab
         - dash
       conditions:
         - RecurringEffect:
@@ -124,6 +123,7 @@ current_game:
       color: lightgreen
       abilities:
         - heal
+        - bonk
         - dash
       conditions:
         - RecurringEffect:
@@ -156,8 +156,8 @@ current_game:
         - Heal:
             num: 2
             size: 2
-    punch: 
-      name: Punch
+    stab: 
+      name: Stab
       usable_ooc: false
       target: Melee
       cost: 8

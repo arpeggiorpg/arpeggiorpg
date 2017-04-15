@@ -202,10 +202,10 @@ mod test {
                                                   vec![cid_rogue(), cid_ranger(), cid_cleric()]))
       .unwrap();
     let iter = |app: &mut App| -> Result<(), GameError> {
-      t_app_act(app, "punch", DecidedTarget::Melee(cid_ranger()))?;
+      t_app_act(app, "punch", DecidedTarget::Creature(cid_ranger()))?;
       app.perform_unchecked(GameCommand::Done)?;
       app.perform_unchecked(GameCommand::Done)?;
-      t_app_act(app, "heal", DecidedTarget::Range(cid_ranger()))?;
+      t_app_act(app, "heal", DecidedTarget::Creature(cid_ranger()))?;
       app.perform_unchecked(GameCommand::Done)?;
       Ok(())
     };

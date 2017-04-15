@@ -531,7 +531,15 @@ pub enum TargetSpec {
                     * Line(Distance),
                     * LineToFirstHit(), */
   Actor,
+  SomeCreaturesInVolumeInRange {
+    volume: Volume,
+    maximum: u8,
+    range: Distance,
+  },
+  AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
 }
+
+
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
 /// "specific creature" targeting (`Melee` and `Ranged`) and "aoe" targeting (the others). The
@@ -539,15 +547,10 @@ pub enum TargetSpec {
 /// targeted by the player.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DecidedTarget {
-  Melee(CreatureID),
-  // MeleeArea(Point3) // creatures can try attacking a square when they can't directly target a
-  // creature -- for example if they think an invisible creature is in the
-  // square. This could also be useful for things like breaking down doors.
-  Range(CreatureID), /* CircleWithinRange(Point3),
-                      * Cone(Angle2d),
-                      * Line(Point3),
-                      * LineToFirstHit(Point3), */
+  Creature(CreatureID),
+  Creatures(Vec<CreatureID>),
   Actor,
+  Point(Point3),
 }
 
 /// Potential targets for an ability.
@@ -566,6 +569,24 @@ pub struct Ability {
   pub usable_ooc: bool,
 }
 
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Volume {
+  Sphere(Point3, Distance),
+  Line(Point3, Point3, Distance),
+  VerticalCylinder(Point3, Distance, Distance), // radius, height
+}
+
+// TODO for Effects and Conditions and Targets and Abilities:
+
+// Abilities I want to have:
+
+// - twin attack: attack two targets (with a bow or something)
+// - sneak attack: deal extra damage when there is an ally adjacent to the target
+// - Fireball: deal damage to all enemies in an area around a point
+// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area. (this is opportunity attacks). also
+
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Effect {
   // Interrupt,
@@ -576,7 +597,6 @@ pub enum Effect {
   MultiEffect(Vec<Effect>),
   GenerateEnergy(Energy),
 }
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Condition {
