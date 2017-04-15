@@ -762,12 +762,14 @@ pub mod test {
 
 
   #[test]
-  fn creatures_within_area() {
+  fn ability_creatures_within_area() {
     let game = t_game();
     let game = game.perform_unchecked(GameCommand::ActCreature(t_scene_id(),
                                                   cid_cleric(),
                                                   abid("fireball"),
                                                   DecidedTarget::Point((0, 0, 0))))
-      .unwrap();
+      .unwrap()
+      .game;
+    assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(7));
   }
 }

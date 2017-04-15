@@ -46,7 +46,7 @@ impl TileSystem {
   pub fn items_within_volume<I: Clone>(&self, volume: Volume, pt: Point3,
                                        items: HashMap<I, Point3>)
                                        -> Vec<I> {
-    unimplemented!();
+    vec![]
   }
 
   pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
