@@ -538,15 +538,17 @@ targetSpecDecoder = sumDecoder "TargetSpec"
   [("Range", JD.map Range JD.int)]
 
 type DecidedTarget
-  = DecidedMelee CreatureID
-  | DecidedRange CreatureID
-  | DecidedActor
+  = TargetedCreature CreatureID
+  | TargetedActor
+  | TargetedCreatures (List CreatureID)
+  | TargetedPoint Point3
 
 decidedTargetEncoder : DecidedTarget -> JE.Value
 decidedTargetEncoder dt = case dt of
-  DecidedMelee cid -> JE.object [("Melee", JE.string cid)]
-  DecidedRange cid -> JE.object [("Range", JE.string cid)]
-  DecidedActor -> JE.string "Actor"
+  TargetedCreature cid -> JE.object [("Creature", JE.string cid)]
+  TargetedActor -> JE.string "Actor"
+  TargetedCreatures cids -> JE.object [("Creatures", JE.list (List.map JE.string cids))]
+  TargetedPoint pt -> JE.object [("Point", point3Encoder pt)]
 
 type alias AbilityStatus = { ability_id: AbilityID, cooldown: Int }
 

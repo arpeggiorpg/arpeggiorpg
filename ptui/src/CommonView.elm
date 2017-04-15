@@ -185,9 +185,9 @@ targetSelector model game msgConstructor abid =
   in hbox <|
     [ case (Dict.get abid game.abilities) of
         Just ability -> case ability.target of
-          T.Melee -> creatureTargetSelector (msgConstructor abid) T.DecidedMelee creatures
-          T.Range distance -> creatureTargetSelector (msgConstructor abid) T.DecidedRange creatures
-          T.Actor -> sqButton 100 [onClick (msgConstructor abid T.DecidedActor)] [text "Use on Self"]
+          T.Melee -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
+          T.Range distance -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
+          T.Actor -> sqButton 100 [onClick (msgConstructor abid T.TargetedActor)] [text "Use on Self"]
         Nothing -> text "Sorry, that ability was not found. Please reload."
     , sqButton 100 [onClick M.CancelAbility] [text "Cancel ability"]
     ]
