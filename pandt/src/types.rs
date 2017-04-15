@@ -361,9 +361,6 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
   ls.into_iter().map(|l| GameLog::CombatLog(l)).collect()
 }
 
-/// An error in P&T.
-
-
 error_chain! {
   types { GameError, GameErrorEnum, GameErrorResultExt; }
 
@@ -537,6 +534,9 @@ pub enum TargetSpec {
     range: Distance,
   },
   AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
+  /// Volume is for applying an effect to the terrain, instead of to a creature. e.g., setting it
+  /// on fire, or putting down a patch of oil, or filling a space with fog.
+  Volume { volume: Volume, range: Distance },
 }
 
 

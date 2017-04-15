@@ -525,6 +525,7 @@ impl Game {
       TargetSpec::Actor => vec![PotentialTarget::CreatureID(creature_id)],
       TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
       TargetSpec::AllCreaturesInVolumeInRange { volume, range } => panic!(),
+      TargetSpec::Volume { volume, range } => panic!(),
     })
   }
 
