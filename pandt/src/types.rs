@@ -152,6 +152,9 @@ impl Distance {
   pub fn saturating_sub(self, other: Self) -> Self {
     Distance(self.0.saturating_sub(other.0))
   }
+  pub fn to_meters(&self) -> f32 {
+    self.0 as f32
+  }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

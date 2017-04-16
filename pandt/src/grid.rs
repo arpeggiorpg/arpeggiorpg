@@ -5,6 +5,7 @@ use odds::vec::VecExt;
 use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
+use self::nc::query;
 
 use types::{Point3, Distance, TileSystem, Map, Volume};
 
@@ -18,14 +19,17 @@ use types::{Point3, Distance, TileSystem, Map, Volume};
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
+fn na_point(pt: Point3) -> Isometry3<f32> {
+  Isometry3::new(Vector3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32), na::zero())
+}
+
 
 impl TileSystem {
   pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> Distance {
     match *self {
       TileSystem::Realistic => {
         let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
-        let ncpos1 = Isometry3::new(Vector3::new(pos1.0 as f32, pos1.1 as f32, pos1.2 as f32),
-                                    na::zero());
+        let ncpos1 = na_point(pos1);
         let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
         let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
         Distance::from_meters(distance)
@@ -43,10 +47,27 @@ impl TileSystem {
     self.point3_distance(c1, c2) <= d
   }
 
-  pub fn items_within_volume<I: Clone>(&self, volume: Volume, pt: Point3,
-                                       items: HashMap<I, Point3>)
-                                       -> Vec<I> {
-    vec![]
+  pub fn items_within_volume<I: Clone + Eq + Hash>(&self, volume: Volume, pt: Point3,
+                                                   items: HashMap<I, Point3>)
+                                                   -> Vec<I> {
+    let mut results = vec![];
+    match volume {
+      Volume::Sphere(radius) => {
+        let nasphere = nc::shape::Ball::new(radius.to_meters());
+        let nasphere_pos = na_point(pt);
+
+        for (item, item_pos) in items.iter() {
+          let naitem_pos = na_point(*item_pos);
+          let nacube = nc::shape::Cuboid::new(Vector3::new(1.0, 1.0, 1.0));
+          if query::contact(&nasphere_pos, &nasphere, &naitem_pos, &nacube, 0.0).is_some() {
+            results.push(item.clone());
+          }
+        }
+      }
+      Volume::Line(length) => {}
+      Volume::VerticalCylinder { radius, height } => {}
+    }
+    results
   }
 
   pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
