@@ -630,11 +630,11 @@ pub mod test {
   use grid::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-    game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), combatants)).unwrap().game
+    t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))
   }
 
   pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
-    game.perform_unchecked(GameCommand::CombatAct(ability_id, target)).unwrap().game
+    t_perform(game, GameCommand::CombatAct(ability_id, target))
   }
 
   pub fn t_game() -> Game {
@@ -688,6 +688,10 @@ pub mod test {
                              })])
   }
 
+  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
+    game.perform_unchecked(cmd).unwrap().game
+  }
+
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
@@ -713,12 +717,11 @@ pub mod test {
   fn stop_combat() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    let game = game.perform_unchecked(GameCommand::CombatAct(abid("punch"),
-                                                DecidedTarget::Creature(cid_ranger())))
-      .unwrap()
-      .game;
+    let game = t_perform(&game,
+                         GameCommand::CombatAct(abid("punch"),
+                                                DecidedTarget::Creature(cid_ranger())));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
-    let game = game.perform_unchecked(GameCommand::StopCombat).unwrap().game;
+    let game = t_perform(&game, GameCommand::StopCombat);
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
   }
 
@@ -726,7 +729,7 @@ pub mod test {
   fn movement() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    game.perform_unchecked(GameCommand::PathCurrentCombatCreature((1, 0, 0))).unwrap();
+    t_perform(&game, GameCommand::PathCurrentCombatCreature((1, 0, 0)));
   }
 
   #[test]
@@ -737,18 +740,16 @@ pub mod test {
     }
     assert_eq!(combat_cids(&game), vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     // move ranger to position 0
-    let game =
-      game.perform_unchecked(GameCommand::ChangeCreatureInitiative(cid_ranger(), 0)).unwrap().game;
+    let game = t_perform(&game, GameCommand::ChangeCreatureInitiative(cid_ranger(), 0));
     assert_eq!(combat_cids(&game), vec![cid_ranger(), cid_rogue(), cid_cleric()]);
   }
 
   #[test]
   fn three_char_infinite_combat() {
     let game = t_game();
-    let game = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(),
-                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]))
-      .unwrap()
-      .game;
+    let game = t_perform(&game,
+                         GameCommand::StartCombat(t_scene_id(),
+                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]));
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid("punch"), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
@@ -760,21 +761,17 @@ pub mod test {
     iter(&game).unwrap();
   }
 
-
   #[test]
   fn ability_creatures_within_area() {
     // the cleric moves away, then casts a fireball at the ranger and rogue.
     let game = t_game();
-    let game =
-      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)))
-        .unwrap()
-        .game;
-    let game = game.perform_unchecked(GameCommand::ActCreature(t_scene_id(),
+    let game = t_perform(&game,
+                         GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)));
+    let game = t_perform(&game,
+                         GameCommand::ActCreature(t_scene_id(),
                                                   cid_cleric(),
                                                   abid("fireball"),
-                                                  DecidedTarget::Point((0, 0, 0))))
-      .unwrap()
-      .game;
+                                                  DecidedTarget::Point((0, 0, 0))));
     assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(10));
