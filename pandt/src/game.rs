@@ -763,13 +763,20 @@ pub mod test {
 
   #[test]
   fn ability_creatures_within_area() {
+    // the cleric moves away, then casts a fireball at the ranger and rogue.
     let game = t_game();
+    let game =
+      game.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)))
+        .unwrap()
+        .game;
     let game = game.perform_unchecked(GameCommand::ActCreature(t_scene_id(),
                                                   cid_cleric(),
                                                   abid("fireball"),
                                                   DecidedTarget::Point((0, 0, 0))))
       .unwrap()
       .game;
-    assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(7));
+    assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
+    assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health, HP(7));
+    assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(10));
   }
 }
