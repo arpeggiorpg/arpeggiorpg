@@ -174,7 +174,7 @@ impl App {
   }
 
   pub fn get_target_options(&self, scene: SceneID, cid: CreatureID, abid: AbilityID)
-                            -> Result<Vec<PotentialTarget>, GameError> {
+                            -> Result<PotentialTargets, GameError> {
     self.current_game.get_target_options(scene, cid, abid)
   }
 }

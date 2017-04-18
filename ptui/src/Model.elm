@@ -48,7 +48,7 @@ type Msg
 
     | SelectAbility T.SceneID T.CreatureID T.AbilityID
     | CancelAbility
-    | GotTargetOptions (Result Http.Error (List T.PotentialTarget))
+    | GotTargetOptions (Result Http.Error T.PotentialTargets)
     | CombatAct T.AbilityID T.DecidedTarget
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
     | RequestMove MovementRequest
@@ -94,11 +94,10 @@ type Direction
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
-  , selectedAbility = Nothing
+  , selectingAbility = Nothing
   , moving = Nothing
   , error = ""
   , playerID = Nothing
-  , potentialTargets = []
   , moveAnywhere = False
   , showingMovement = NotShowingMovement
   , creatureNotes = Dict.empty
@@ -115,12 +114,11 @@ defaultModel flags =
 
 type alias Model =
   { app : Maybe T.App
-  , selectedAbility : Maybe (T.SceneID, T.CreatureID, T.AbilityID)
+  , selectingAbility : Maybe SelectingAbility
   -- Creatures which have been selected for combat
   , error: String
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
-  , potentialTargets: List T.PotentialTarget
   , showingMovement: MovementAnimation
   , creatureNotes : Dict.Dict T.CreatureID String
   , moveAnywhere : Bool
@@ -136,7 +134,14 @@ type alias Model =
   , modal: Modal
   , gettingSavedGames: Maybe (List String -> Msg)
   }
-  
+
+type alias SelectingAbility = 
+  { scene: T.SceneID
+  , creature: T.CreatureID
+  , ability: T.AbilityID
+  , potentialTargets: Maybe T.PotentialTargets
+  }
+
 type Focus
   = NoFocus
   | Scene String

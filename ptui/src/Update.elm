@@ -129,7 +129,7 @@ update msg model = case msg of
 
   AppUpdate (Ok newApp) ->
     let model2 = updateModelFromApp model newApp
-    in ( { model2 | moving = Nothing , selectedAbility = Nothing }, Cmd.none )
+    in ( { model2 | moving = Nothing , selectingAbility = Nothing }, Cmd.none )
   AppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
     in ({model | error = toString x}, Cmd.none)
@@ -208,14 +208,18 @@ update msg model = case msg of
             M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
     in ({ model | gridOffset = newOffset}, Cmd.none)
 
-  SelectAbility sceneName cid abid ->
-    let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sceneName ++ "/" ++ cid ++ "/" ++ abid
-        req = Http.send GotTargetOptions (Http.get endpoint (JD.list T.potentialTargetDecoder))
-    in ({ model | selectedAbility = Just (sceneName, cid, abid)}, req)
+  SelectAbility sid cid abid ->
+    let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sid ++ "/" ++ cid ++ "/" ++ abid
+        req = Http.send GotTargetOptions (Http.get endpoint T.potentialTargetsDecoder)
+    in ({ model | selectingAbility = Just {scene=sid, creature=cid, ability=abid, potentialTargets=Nothing}}, req)
 
-  CancelAbility -> ({model | selectedAbility = Nothing}, Cmd.none)
+  CancelAbility -> ({model | selectingAbility = Nothing}, Cmd.none)
 
-  GotTargetOptions (Ok potTargets) -> ({model | potentialTargets = potTargets}, Cmd.none)
+  GotTargetOptions (Ok potTargets) ->
+    let newSA = case model.selectingAbility of
+          Just oldSA -> Just {oldSA | potentialTargets = Just potTargets}
+          Nothing -> Nothing
+    in ({model | selectingAbility = newSA}, Cmd.none)
   GotTargetOptions (Err e) -> ({ model | error = toString e}, Cmd.none)
 
   RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
@@ -270,8 +274,8 @@ update msg model = case msg of
   CommandCompleteCB _ (Ok (Err x)) -> ({model | error = toString x}, Cmd.none)
   CommandCompleteCB _ (Err x) -> ({ model | error = toString x}, Cmd.none)
 
-  CombatAct abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
-  ActCreature sceneName cid abid dtarget -> ({model | selectedAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
+  CombatAct abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
+  ActCreature sceneName cid abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))

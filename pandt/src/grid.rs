@@ -70,22 +70,29 @@ impl TileSystem {
     results
   }
 
-  pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
-    let meters = (speed.0 / 100) as i16;
-    let mut points_to_check = vec![];
+  pub fn open_points_in_range(&self, start: Point3, terrain: &Map, range: Distance) -> Vec<Point3> {
+    let meters = (range.0 / 100) as i16;
+    let mut open = vec![];
     for x in start.0 - meters..start.0 + meters + 1 {
       for y in start.1 - meters..start.1 + meters + 1 {
         let end_point = (x, y, 0);
-        if end_point == start || !terrain.is_open(&end_point) {
+        if !terrain.is_open(&end_point) {
           continue;
         }
-        points_to_check.push(end_point);
+        open.push(end_point);
       }
     }
+    open
+  }
+
+  pub fn get_all_accessible(&self, start: Point3, terrain: &Map, speed: Distance) -> Vec<Point3> {
+    let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
     for pt in points_to_check {
-      success_fns.push(Box::new(move |n: &Point3| *n == pt.clone()));
+      if pt != start {
+        success_fns.push(Box::new(move |n: &Point3| *n == pt.clone()));
+      }
     }
     let mut final_points = vec![];
     for (path, cost) in astar_multi(&start,

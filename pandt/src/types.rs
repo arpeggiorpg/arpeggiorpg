@@ -562,9 +562,9 @@ pub enum DecidedTarget {
 
 /// Potential targets for an ability.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum PotentialTarget {
-  CreatureID(CreatureID),
-  Point(Point3),
+pub enum PotentialTargets {
+  CreatureIDs(Vec<CreatureID>),
+  Points(Vec<Point3>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -580,7 +580,7 @@ pub struct Ability {
 pub enum Volume {
   Sphere(Distance),
   Line(Distance),
-  VerticalCylinder { radius: Distance, height: Distance }, // radius, height
+  VerticalCylinder { radius: Distance, height: Distance },
 }
 
 // TODO for Effects and Conditions and Targets and Abilities:

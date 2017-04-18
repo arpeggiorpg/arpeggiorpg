@@ -40,15 +40,15 @@ point3Encoder : Point3 -> JE.Value
 point3Encoder {x, y, z} =  JE.list [JE.int x, JE.int y, JE.int z]
 
 
-type PotentialTarget
-  = PTCreatureID CreatureID
-  | PTPoint Point3
+type PotentialTargets
+  = PTCreatureIDs (List CreatureID)
+  | PTPoints (List Point3)
 
-potentialTargetDecoder : JD.Decoder PotentialTarget
-potentialTargetDecoder = sumDecoder "PotentialTarget"
+potentialTargetsDecoder : JD.Decoder PotentialTargets
+potentialTargetsDecoder = sumDecoder "PotentialTargets"
   []
-  [ ("CreatureID", JD.map PTCreatureID JD.string)
-  , ("Point", JD.map PTPoint point3Decoder)
+  [ ("CreatureIDs", JD.map PTCreatureIDs (JD.list JD.string))
+  , ("Point", JD.map PTPoints (JD.list point3Decoder))
   ]
 
 type alias App =
@@ -530,12 +530,29 @@ type TargetSpec
   = Melee
   | Range Distance
   | Actor
+  | AllCreaturesInVolumeInRange {volume: Volume, range: Distance}
+
+acivir vol r = AllCreaturesInVolumeInRange {volume=vol, range=r}
 
 targetSpecDecoder : JD.Decoder TargetSpec
 targetSpecDecoder = sumDecoder "TargetSpec"
   [ ("Melee", Melee)
   , ("Actor", Actor)]
-  [("Range", JD.map Range JD.int)]
+  [ ("Range", JD.map Range JD.int)
+  , ("AllCreaturesInVolumeInRange",
+     JD.map2 acivir (JD.field "volume" volumeDecoder) (JD.field "range" JD.int))
+  ]
+
+
+type Volume
+  = Sphere Distance
+  -- Line(Distance),
+  -- VerticalCylinder { radius: Distance, height: Distance },
+
+volumeDecoder : JD.Decoder Volume
+volumeDecoder = sumDecoder "Volume"
+  []
+  [("Sphere", JD.map Sphere JD.int)]
 
 type DecidedTarget
   = TargetedCreature CreatureID
@@ -875,14 +892,6 @@ creatureName app cid = getCreature app.current_game cid |> Maybe.map (\c -> c.na
 
 getScene : App -> SceneID -> Maybe Scene
 getScene app sid = Dict.get sid app.current_game.scenes
-
-potentialCreatureTargets : List PotentialTarget -> List CreatureID
-potentialCreatureTargets pts =
-  let f pt =
-        case pt of
-          PTCreatureID cid -> Just cid
-          PTPoint _ -> Nothing
-  in List.filterMap f pts
 
 playerIsRegistered : App -> PlayerID -> Bool
 playerIsRegistered app pid = Dict.member pid app.players

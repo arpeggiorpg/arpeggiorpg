@@ -125,6 +125,7 @@ current_game:
         - heal
         - bonk
         - dash
+        - fireball
       conditions:
         - RecurringEffect:
             GenerateEnergy: 10
@@ -169,7 +170,7 @@ current_game:
       name: Shoot
       usable_ooc: false
       target: 
-        Range: 500
+        Range: 1000
       cost: 8
       effects: 
         - Damage:
@@ -184,7 +185,20 @@ current_game:
         - ApplyCondition:
             - Duration: 1
             - Incapacitated
-  creatures: 
+    fireball:
+      name: Fireball
+      usable_ooc: false
+      cost: 10
+      target:
+        AllCreaturesInVolumeInRange:
+          volume:
+            Sphere: 500
+          range: 1000
+      effects:
+        - Damage:
+            num: 2
+            size: 5
+  creatures:
     0420f7db-c7ec-48af-add3-045ad859f47e:
       id: 0420f7db-c7ec-48af-add3-045ad859f47e
       name: Elron

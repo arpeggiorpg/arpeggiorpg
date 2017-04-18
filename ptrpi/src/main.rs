@@ -31,7 +31,7 @@ mod cors;
 use cors::{CORS, PreflightCORS};
 
 use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneID, GameCommand, GameError,
-                   GameErrorEnum, Point3, PotentialTarget};
+                   GameErrorEnum, Point3, PotentialTargets};
 
 
 error_chain! {
@@ -136,7 +136,7 @@ fn movement_options(pt: State<PT>, scene_name: String, cid: &str) -> PTResult<Ve
 
 #[get("/target_options/<scene>/<cid>/<abid>")]
 fn target_options(pt: State<PT>, scene: String, cid: &str, abid: &str)
-                  -> PTResult<Vec<PotentialTarget>> {
+                  -> PTResult<PotentialTargets> {
   let app = pt.app()?;
   let scene = SceneID::from_str(&scene)?;
   let cid = CreatureID::from_str(cid)?;

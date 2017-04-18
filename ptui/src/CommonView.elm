@@ -181,13 +181,20 @@ combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <
 
 targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
 targetSelector model game msgConstructor abid =
-  let creatures = T.getCreatures game (T.potentialCreatureTargets model.potentialTargets)
+  let creatures =
+        case model.selectingAbility of
+          Just {potentialTargets} -> 
+            case potentialTargets of
+              Just (T.PTCreatureIDs cids) -> T.getCreatures game cids
+              _ -> []
+          _ -> []
   in hbox <|
     [ case (Dict.get abid game.abilities) of
         Just ability -> case ability.target of
           T.Melee -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
           T.Range distance -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
           T.Actor -> sqButton 100 [onClick (msgConstructor abid T.TargetedActor)] [text "Use on Self"]
+          T.AllCreaturesInVolumeInRange {volume, range} -> text ""
         Nothing -> text "Sorry, that ability was not found. Please reload."
     , sqButton 100 [onClick M.CancelAbility] [text "Cancel ability"]
     ]
@@ -263,11 +270,11 @@ checkModal model app =
     game = app.current_game
     selectingTargets =
       -- TODO: target selection should be done on the map
-      case model.selectedAbility of
-        Just (sceneName, cid, abid) ->
-          if T.isCreatureInCombat game cid
-          then Just (targetSelector model game M.CombatAct abid)
-          else Just (targetSelector model game (M.ActCreature sceneName cid) abid)
+      case model.selectingAbility of
+        Just {scene, creature, ability} ->
+          if T.isCreatureInCombat game creature
+          then Just (targetSelector model game M.CombatAct ability)
+          else Just (targetSelector model game (M.ActCreature scene creature) ability)
         Nothing -> Nothing
     error = if model.error /= "" then Just (errorBox model) else Nothing
   in selectingTargets |> MaybeEx.or error

@@ -524,30 +524,41 @@ impl Game {
 
   /// Get a list of possible targets for an ability being used by a creature.
   pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
-                            -> Result<Vec<PotentialTarget>, GameError> {
+                            -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
     Ok(match ability.target {
       TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
       TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
-      TargetSpec::Actor => vec![PotentialTarget::CreatureID(creature_id)],
+      TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
       TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => panic!(),
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+        self.open_terrain_in_range(scene, creature_id, range)?
+      }
       TargetSpec::Volume { volume, range } => panic!(),
     })
   }
 
+  fn open_terrain_in_range(&self, scene: SceneID, creature_id: CreatureID, range: Distance)
+                           -> Result<PotentialTargets, GameError> {
+    let scene = self.get_scene(scene)?;
+    let creature_pos = scene.get_pos(creature_id)?;
+    let map = self.get_map(scene.map)?;
+    let pts = self.tile_system.open_points_in_range(creature_pos, map, range);
+    Ok(PotentialTargets::Points(pts))
+  }
+
   fn creatures_in_range(&self, scene: SceneID, creature_id: CreatureID, distance: Distance)
-                        -> Result<Vec<PotentialTarget>, GameError> {
+                        -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];
     for (creature_id, &(creature_pos, _)) in scene.creatures.iter() {
       if self.tile_system.points_within_distance(my_pos, creature_pos, distance) {
-        results.push(PotentialTarget::CreatureID(*creature_id));
+        results.push(*creature_id);
       }
     }
-    Ok(results)
+    Ok(PotentialTargets::CreatureIDs(results))
   }
 
   // ** END CONSIDERATION **
