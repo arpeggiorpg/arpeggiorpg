@@ -46,7 +46,7 @@ type Msg
 
     | ToggleTerrain T.Point3
 
-    | SelectAbility T.SceneID T.CreatureID T.AbilityID
+    | SelectAbility SelectingAbility
     | CancelAbility
     | GotTargetOptions (Result Http.Error T.PotentialTargets)
     | CombatAct T.AbilityID T.DecidedTarget

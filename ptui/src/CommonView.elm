@@ -33,7 +33,7 @@ visibleCreatures game scene =
           |> Maybe.andThen (\class ->
               Dict.get creature.id scene.creatures
                 |> Maybe.map (\(pos, vis) ->
-                  { creature = creature, highlight = False, movable = Nothing, class = class, pos = pos
+                  { creature = creature, highlight = False, clickable = Nothing, class = class, pos = pos
                   , visible = vis == T.AllPlayers}))
       creatures = T.getCreatures game (Dict.keys scene.creatures)
   in
@@ -98,7 +98,6 @@ durationEl condDur = case condDur of
   T.Interminate -> text "∞"
   T.Duration n -> text <| "(" ++ toString n ++ ")"
 
-
 creatureAbilities : T.Game -> T.SceneID -> Bool -> T.Creature -> List (Html M.Msg, M.Msg)
 creatureAbilities game sceneID inCombat creature =
   let
@@ -106,7 +105,10 @@ creatureAbilities game sceneID inCombat creature =
         Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
                       (Dict.get abstatus.ability_id game.abilities)
     abilities = List.filterMap abinfo creature.abilities
-    toResultTuple (abid, ability) = (text ability.name, M.SelectAbility sceneID creature.id abid)
+    toResultTuple (abid, ability) =
+      ( text ability.name
+      , M.SelectAbility { scene=sceneID, creature=creature.id, ability=abid
+                        , potentialTargets=Nothing})
   in
     List.map toResultTuple abilities
 
@@ -229,16 +231,22 @@ playerList app extra players =
   in vabox [] <| header :: (List.map playerEntry (Dict.values players))
 
 
-movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
-movementControls extras model =
-  case model.moving of
-    Just _ ->
-      sdiv [s [ S.position S.absolute
+mapModeControlsOverlay : Html M.Msg -> Html M.Msg
+mapModeControlsOverlay content =
+  sdiv [s [ S.position S.absolute
                 , S.left (S.pct 50)
                 , S.transform (S.translate (S.pct -50))
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
-        <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement] [text "Cancel Movement"]] ++ extras
+       [content]
+
+movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
+movementControls extras model =
+  case model.moving of
+    Just _ ->
+      vbox <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement]
+                       [text "Cancel Movement"]
+              ] ++ extras
     Nothing -> text ""
 
 {-| Render a modal dialog which disables use of all other UI. -}
@@ -277,7 +285,7 @@ checkModal model app =
           else Just (targetSelector model game (M.ActCreature scene creature) ability)
         Nothing -> Nothing
     error = if model.error /= "" then Just (errorBox model) else Nothing
-  in selectingTargets |> MaybeEx.or error
+  in error
 
 errorBox : M.Model -> Html M.Msg
 errorBox model =
@@ -338,6 +346,7 @@ tabbedView category defaultView model things =
 be plugged in. -}
 type alias UI =
   { mapView : Html M.Msg
+  , mapModeControls : Html M.Msg
   , sideBar : Html M.Msg
   , extraMovementOptions : List (Html M.Msg)
   , modal : Maybe (Html M.Msg)
@@ -359,7 +368,7 @@ viewGame model app ui =
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
         [ ui.sideBar ]
-    , movementControls ui.extraMovementOptions model
+    , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])

@@ -111,7 +111,7 @@ sceneMap model app scene myCreatures =
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
         let highlight = (Just mapc.creature.id) == currentCombatCreature
-            movable =
+            clickable =
               case game.current_combat of
                 Just combat ->
                   if creatureIsMine mapc.creature && Just mapc.creature.id == currentCombatCreature
@@ -119,7 +119,7 @@ sceneMap model app scene myCreatures =
                   else Nothing
                 Nothing -> if creatureIsMine mapc.creature then Just (M.GetMovementOptions scene.id) else Nothing
         in { mapc | highlight = highlight
-                  , movable = movable}
+                  , clickable = clickable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
       defaultMap () = Grid.terrainMap model currentMap vCreatures
   in movementMap

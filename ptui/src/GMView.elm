@@ -30,7 +30,9 @@ gmView model =
 
 makeUI : M.Model -> T.App -> CommonView.UI
 makeUI model app =
-  { mapView = mapView model app
+  let (map, mapModeControls) = mapView model app in
+  { mapView = map
+  , mapModeControls = mapModeControls
   , sideBar =
       CommonView.tabbedView "right-side-bar" "Campaign" model
         [ ("Campaign", always (campaignView model app))
@@ -643,29 +645,32 @@ selectOrderedCreaturesDialog model app {from, selected, cb, title} =
     , hbox [doneSelectingButton, cancelButton]]
 
 {-| Figure out which map to render based on the focus. -}
-mapView : M.Model -> T.App -> Html M.Msg
+mapView : M.Model -> T.App -> (Html M.Msg, Html M.Msg)
 mapView model app =
   case model.focus of
     M.EditingMap path map paintSpecial ->
-      editMap model app path map paintSpecial
-    M.PreviewMap name -> Grid.terrainMap model (M.tryGetMapNamed name app) []
+      ( editMap model app path map paintSpecial
+      , text "Edit this map!")
+    M.PreviewMap name ->
+      ( Grid.terrainMap model (M.tryGetMapNamed name app) []
+      , text "Previewing Map")
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene
-        Nothing -> text ""
-    M.NoFocus -> text ""
+        Nothing -> (text "", text "Scene does not exist")
+    M.NoFocus -> (text "", text "No Focus")
 
 editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
 editMap model app path map paintSpecial =
   let
     paintSpecialMsg (color, note, vis) pt =
-      let newSpecials =
-            let matcher = (\(pos, _, _, _) -> pos == pt)
-            in
-              case T.listFind matcher map.specials of
-                Just x -> List.filter (not << matcher) map.specials
-                Nothing -> (pt, color, note, vis) :: map.specials
-          newMap = {map | specials = newSpecials}
+      let
+        matcher (pos, _, _, _) = pos == pt
+        newSpecials =
+          case T.listFind matcher map.specials of
+            Just x -> List.filter (not << matcher) map.specials
+            Nothing -> (pt, color, note, vis) :: map.specials
+        newMap = {map | specials = newSpecials}
       in M.SetFocus (M.EditingMap path newMap paintSpecial)
     paintMsg =
       case paintSpecial of
@@ -673,8 +678,30 @@ editMap model app path map paintSpecial =
         Just x -> paintSpecialMsg x
   in Grid.editMap model map [] paintMsg
 
+targetMap : M.Model -> T.App -> T.Scene -> (List Grid.MapCreature) -> Maybe (Html M.Msg, Html M.Msg)
+targetMap model app scene vCreatures =
+  let
+    makeMap {creature, ability} targets =
+      let
+        mapTargetable mapc =
+          case targets of
+            T.PTCreatureIDs cids ->
+              if List.member mapc.creature.id cids
+              then
+                let msg = if T.isCreatureInCombat app.current_game mapc.creature.id
+                          then M.CombatAct
+                          else M.ActCreature scene.id creature
+                    fullMsg = (\c -> c.id) >> T.TargetedCreature >> msg ability
+                in {mapc | clickable = Just fullMsg}
+              else {mapc | clickable = Nothing}
+            _ -> mapc
+        targetable = List.map mapTargetable vCreatures
+      in ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) targetable
+         , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]]
+         )
+  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (makeMap sa) sa.potentialTargets)
 
-sceneMap : M.Model -> T.App -> T.Scene -> Html M.Msg
+sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
       movementGrid msg mvmtReq creature =
@@ -698,16 +725,19 @@ sceneMap model app scene =
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
+      movementMapAndControls = movementMap |> Maybe.map (\m -> (m, CommonView.movementControls [] model))
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
-      modifyMapCreature mapc =
+      enableMovement mapc =
         { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
-               , movable = Just (M.GetMovementOptions scene.id)}
-      vCreatures = List.map modifyMapCreature (CommonView.visibleCreatures app.current_game scene)
-      defaultMap () = Grid.terrainMap model (M.tryGetMapNamed scene.map app) vCreatures
-  in movementMap |> MaybeEx.unpack defaultMap identity
+               , clickable = Just (M.GetMovementOptions scene.id)}
+      vCreatures = (CommonView.visibleCreatures app.current_game scene) 
+      defaultMap () =
+        ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) (List.map enableMovement vCreatures)
+        , text "Click a creature to move")
+  in movementMapAndControls |> MaybeEx.or (targetMap model app scene vCreatures) |> MaybeEx.unpack defaultMap identity
 
-{-| An area for writing notes about a Creature. Intended to be passed as the "extras" argument to 
-creatureCard. -}
+{-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument
+    to creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)

@@ -22,7 +22,7 @@ coord c = toString (c * 100)
 type alias MapCreature =
   { creature: T.Creature
   , highlight : Bool
-  , movable : Maybe (T.Creature -> M.Msg)
+  , clickable : Maybe (T.Creature -> M.Msg)
   , class : T.Class
   , pos : T.Point3
   , visible: Bool
@@ -132,11 +132,11 @@ gridCreature creature =
         if creature.highlight
         then 10
         else 1
-      movableEventHandler =
-        case creature.movable of
+      clickableEventHandler =
+        case creature.clickable of
           Just fn -> [onClick (fn creature.creature)]
           Nothing -> []
-      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize), rx "10", ry "10"] ++ movableEventHandler
+      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize), rx "10", ry "10"] ++ clickableEventHandler
       pos = creature.pos
       creatureNameEl name =
         text_ [ HA.style [("pointer-events", "none")]

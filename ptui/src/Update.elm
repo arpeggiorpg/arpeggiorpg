@@ -208,10 +208,10 @@ update msg model = case msg of
             M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
     in ({ model | gridOffset = newOffset}, Cmd.none)
 
-  SelectAbility sid cid abid ->
-    let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sid ++ "/" ++ cid ++ "/" ++ abid
+  SelectAbility sa ->
+    let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sa.scene ++ "/" ++ sa.creature ++ "/" ++ sa.ability
         req = Http.send GotTargetOptions (Http.get endpoint T.potentialTargetsDecoder)
-    in ({ model | selectingAbility = Just {scene=sid, creature=cid, ability=abid, potentialTargets=Nothing}}, req)
+    in ({ model | selectingAbility = Just sa}, req)
 
   CancelAbility -> ({model | selectingAbility = Nothing}, Cmd.none)
 
