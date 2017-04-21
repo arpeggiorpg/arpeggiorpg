@@ -48,7 +48,7 @@ potentialTargetsDecoder : JD.Decoder PotentialTargets
 potentialTargetsDecoder = sumDecoder "PotentialTargets"
   []
   [ ("CreatureIDs", JD.map PTCreatureIDs (JD.list JD.string))
-  , ("Point", JD.map PTPoints (JD.list point3Decoder))
+  , ("Points", JD.map PTPoints (JD.list point3Decoder))
   ]
 
 type alias App =

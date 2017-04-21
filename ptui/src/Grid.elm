@@ -13,7 +13,7 @@ import Types as T
 import Model as M
 
 
--- Convert Point3 coordinates to on-screen corodinates.
+-- Convert Point3 coordinates to on-screen coordinates.
 -- Point3 coordinates are in METERS, and Distances are in CENTIMETERS.
 coord : Int -> String
 coord c = toString (c * 100)
@@ -76,7 +76,9 @@ baseMap model map creatures extras paint =
           , S.height (S.pct 100)
           , S.backgroundColor (S.rgb 215 215 215)]
       ]
-      [g [transform <| "matrix(" ++ matrixArgs ++ ")"] (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl ++ overlays)]
+      [g [transform <| "matrix(" ++ matrixArgs ++ ")"]
+         (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl ++ overlays)
+      ]
 
 specialTile : M.Model -> Maybe (T.Point3 -> M.Msg) -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
 specialTile model paint (pt, color, note, vis) =

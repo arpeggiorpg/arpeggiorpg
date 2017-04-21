@@ -678,14 +678,14 @@ editMap model app path map paintSpecial =
         Just x -> paintSpecialMsg x
   in Grid.editMap model map [] paintMsg
 
-targetMap : M.Model -> T.App -> T.Scene -> (List Grid.MapCreature) -> Maybe (Html M.Msg, Html M.Msg)
+targetMap : M.Model -> T.App -> T.Scene -> List Grid.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
 targetMap model app scene vCreatures =
   let
     makeMap {creature, ability} targets =
-      let
-        mapTargetable mapc =
-          case targets of
-            T.PTCreatureIDs cids ->
+      case targets of
+        T.PTCreatureIDs cids ->
+          let
+            enableTargeting mapc =
               if List.member mapc.creature.id cids
               then
                 let msg = if T.isCreatureInCombat app.current_game mapc.creature.id
@@ -694,12 +694,13 @@ targetMap model app scene vCreatures =
                     fullMsg = (\c -> c.id) >> T.TargetedCreature >> msg ability
                 in {mapc | clickable = Just fullMsg}
               else {mapc | clickable = Nothing}
-            _ -> mapc
-        targetable = List.map mapTargetable vCreatures
-      in ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) targetable
-         , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]]
-         )
-  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (makeMap sa) sa.potentialTargets)
+            targetable = List.map enableTargeting vCreatures
+          in Grid.terrainMap model (M.tryGetMapNamed scene.map app) targetable
+        T.PTPoints pts -> text ""
+    mapAndInfo sa targets =
+      ( makeMap sa targets
+      , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]])
+  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (mapAndInfo sa) sa.potentialTargets)
 
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
