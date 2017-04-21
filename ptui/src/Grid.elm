@@ -41,21 +41,31 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         if moveAnywhere
         then calculateAllMovementOptions movingFrom (max_distance // 100)
         else movement_options
-      movementTiles = movementTargets moveMsg targetPoints map.terrain movingFrom max_distance
-      highlightMovingCreature : MapCreature -> MapCreature
+      movementTiles = targetTiles moveMsg targetPoints
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
         then {mapc | highlight = True}
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    baseMap model map vCreatures movementTiles Nothing
+    tileTargetingMap model moveMsg map targetPoints vCreatures
+
+targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> List (Svg M.Msg)
+targetTiles targetMsg pts =
+  let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (targetMsg pt)] pt
+  in List.map movementTarget pts
 
 movementGhost : M.Model -> Maybe T.Point3
 movementGhost model =
   case model.showingMovement of
     M.ShowingMovement soFar rest -> List.head (List.reverse soFar)
     _ -> Nothing
+
+-- a map with arbitrary clickable tiles. Clicking those tiles will trigger the targetMsg.
+tileTargetingMap : M.Model -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List MapCreature -> Svg M.Msg
+tileTargetingMap model targetMsg map targetableTiles vCreatures =
+  let extras = targetTiles targetMsg targetableTiles
+  in baseMap model map vCreatures extras Nothing
 
 baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Maybe (T.Point3 -> M.Msg) -> Svg M.Msg
 baseMap model map creatures extras paint =
@@ -112,16 +122,12 @@ specialTile model paint (pt, color, note, vis) =
     ( g [] [tile color [onClick click] pt, star]
     , expandedNote)
 
+-- return all points within a square with half-distance `distance`.
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
 calculateAllMovementOptions from distance =
   let xs = List.range (from.x - distance) (from.x + distance)
       ys = List.range (from.y - distance) (from.y + distance)
   in List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
-
-movementTargets : (T.Point3 -> M.Msg) -> List T.Point3 -> List T.Point3 -> T.Point3 -> Int -> List (Svg M.Msg)
-movementTargets moveMsg pts terrain origin max_distance =
-  let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (moveMsg pt)] pt
-  in List.map movementTarget pts
 
 gridCreature : MapCreature -> Svg M.Msg
 gridCreature creature =
