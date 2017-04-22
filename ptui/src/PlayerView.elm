@@ -40,7 +40,9 @@ registerForm model =
 
 makeUI : M.Model -> T.App -> List T.Creature -> CommonView.UI
 makeUI model app myCreatures =
-  { mapView = mapView model app myCreatures
+  let (map, mapModeControls) = mapView model app myCreatures in
+  { mapView = map
+  , mapModeControls = mapModeControls
   , sideBar =
       CommonView.tabbedView "right-side-bar" "My Creatures" model
         [ ("My Creatures", (always <| myCreaturesView model app myCreatures))
@@ -78,16 +80,16 @@ myCreatureEntry model app creature =
     ]
 
 {-| Figure out which map should be rendered and render it. -}
-mapView : M.Model -> T.App -> List T.Creature -> Html M.Msg
+mapView : M.Model -> T.App -> List T.Creature -> (Html M.Msg, Html M.Msg)
 mapView model app myCreatures =
   case model.focus of
     M.Scene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene myCreatures
-        Nothing -> text ""
-    _ -> text "Waiting for the GM to put you into a scene."
+        Nothing -> (text "", text "")
+    _ -> (text "", text "Waiting for the GM to put you into a scene.")
 
-sceneMap : M.Model -> T.App -> T.Scene -> List T.Creature -> Html M.Msg
+sceneMap : M.Model -> T.App -> T.Scene -> List T.Creature -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene myCreatures =
   let game = app.current_game
       currentMap = mapMap <| M.tryGetMapNamed scene.map app
@@ -107,6 +109,7 @@ sceneMap model app scene myCreatures =
                     Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
             in Just <| movementGrid moveMessage mvmtReq creature
           _ -> Nothing
+      movementMapAndNote = movementMap |> Maybe.map (\m -> (m, text "Click where you want to move."))
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
@@ -121,8 +124,9 @@ sceneMap model app scene myCreatures =
         in { mapc | highlight = highlight
                   , clickable = clickable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
-      defaultMap () = Grid.terrainMap model currentMap vCreatures
-  in movementMap
+      defaultMap () = (Grid.terrainMap model currentMap vCreatures, text "Click a creature to move it.")
+  in movementMapAndNote
+      |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
       |> MaybeEx.unpack defaultMap identity
 
 visibleCreatures game scene =

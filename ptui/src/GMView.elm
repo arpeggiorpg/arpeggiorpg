@@ -711,7 +711,9 @@ sceneMap model app scene =
       defaultMap () =
         ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) (List.map enableMovement vCreatures)
         , text "Click a creature to move")
-  in movementMapAndControls |> MaybeEx.or (CommonView.targetMap model app scene vCreatures) |> MaybeEx.unpack defaultMap identity
+  in movementMapAndControls
+      |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
+      |> MaybeEx.unpack defaultMap identity
 
 {-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument
     to creatureCard. -}
