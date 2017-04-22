@@ -87,7 +87,7 @@ baseMap model map creatures extras paint =
           , S.backgroundColor (S.rgb 215 215 215)]
       ]
       [g [transform <| "matrix(" ++ matrixArgs ++ ")"]
-         (terrainEls ++ extras ++ specialEls ++ creatureEls ++ ghostEl ++ overlays)
+         (terrainEls ++ specialEls ++ extras ++ creatureEls ++ ghostEl ++ overlays)
       ]
 
 specialTile : M.Model -> Maybe (T.Point3 -> M.Msg) -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
