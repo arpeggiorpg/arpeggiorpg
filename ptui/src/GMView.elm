@@ -678,34 +678,6 @@ editMap model app path map paintSpecial =
         Just x -> paintSpecialMsg x
   in Grid.editMap model map [] paintMsg
 
-targetMap : M.Model -> T.App -> T.Scene -> List Grid.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
-targetMap model app scene vCreatures =
-  let
-    map = M.tryGetMapNamed scene.map app
-    makeMap {creature, ability} targets =
-      let activateAbility =
-            if T.isCreatureInCombat app.current_game creature
-            then M.CombatAct
-            else M.ActCreature scene.id creature
-      in case targets of
-        T.PTCreatureIDs cids ->
-          let
-            enableTargeting mapc =
-              if List.member mapc.creature.id cids
-              then
-                let fullMsg = (\c -> c.id) >> T.TargetedCreature >> activateAbility ability
-                in {mapc | clickable = Just fullMsg}
-              else {mapc | clickable = Nothing}
-            targetable = List.map enableTargeting vCreatures
-          in Grid.terrainMap model map targetable
-        T.PTPoints pts ->
-          let fullMsg pt = activateAbility ability (T.TargetedPoint pt)
-          in Grid.tileTargetingMap model fullMsg map pts vCreatures
-    mapAndInfo sa targets =
-      ( makeMap sa targets
-      , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]])
-  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (mapAndInfo sa) sa.potentialTargets)
-
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
@@ -739,7 +711,7 @@ sceneMap model app scene =
       defaultMap () =
         ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) (List.map enableMovement vCreatures)
         , text "Click a creature to move")
-  in movementMapAndControls |> MaybeEx.or (targetMap model app scene vCreatures) |> MaybeEx.unpack defaultMap identity
+  in movementMapAndControls |> MaybeEx.or (CommonView.targetMap model app scene vCreatures) |> MaybeEx.unpack defaultMap identity
 
 {-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument
     to creatureCard. -}
