@@ -1,8 +1,8 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, creatureIcon, creatureAbilities, oocActionBar
   , hpBubble, nrgBubble
-  , mapControls
-  , movementControls, checkModal
+  , movementMap, mapControls, movementControls
+  , checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
   , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu, targetMap)
@@ -249,6 +249,28 @@ movementControls extras model =
               ] ++ extras
     Nothing -> text ""
 
+movementMap : M.Model -> T.App -> T.Scene -> List Grid.MapCreature -> Maybe (Html M.Msg)
+movementMap model app scene vCreatures =
+  let
+    movementGrid msg mvmtReq creature =
+      case Dict.get creature.id scene.creatures of
+        Just (pos, _) ->
+          Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
+        Nothing -> text "Moving Creature is not in this scene"
+    pathOrPort = if model.moveAnywhere then M.SetCreaturePos scene.id else M.PathCreature scene.id
+  in
+    case (app.current_game.current_combat, model.moving) of
+      (Nothing, Just mvmtReq) ->
+        Maybe.map (\creature -> movementGrid (pathOrPort creature.id) mvmtReq creature)
+                  mvmtReq.ooc_creature
+      (Just combat, Just mvmtReq) ->
+        let (creature, moveMessage) =
+              case mvmtReq.ooc_creature of
+                Just creature -> (creature, pathOrPort creature.id)
+                Nothing -> (T.combatCreature app.current_game combat, M.PathCurrentCombatCreature)  
+        in Just <| movementGrid moveMessage mvmtReq creature
+      _ -> Nothing
+
 {-| Render a modal dialog which disables use of all other UI. -}
 modalOverlay : Html M.Msg -> List (Html M.Msg)
 modalOverlay content =
@@ -348,7 +370,6 @@ type alias UI =
   { mapView : Html M.Msg
   , mapModeControls : Html M.Msg
   , sideBar : Html M.Msg
-  , extraMovementOptions : List (Html M.Msg)
   , modal : Maybe (Html M.Msg)
   , extraOverlays : List (Html M.Msg)}
 

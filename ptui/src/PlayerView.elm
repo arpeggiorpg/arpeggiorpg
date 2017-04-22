@@ -47,7 +47,6 @@ makeUI model app myCreatures =
       CommonView.tabbedView "right-side-bar" "My Creatures" model
         [ ("My Creatures", (always <| myCreaturesView model app myCreatures))
         , ("Combat", (always <| combatView model app myCreatures))]
-  , extraMovementOptions = []
   , modal = CommonView.checkModal model app
   , extraOverlays = [bottomActionBar app myCreatures]
   }
@@ -92,24 +91,7 @@ mapView model app myCreatures =
 sceneMap : M.Model -> T.App -> T.Scene -> List T.Creature -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene myCreatures =
   let game = app.current_game
-      currentMap = mapMap <| M.tryGetMapNamed scene.map app
-      movementGrid msg mvmtReq creature =
-        case Dict.get creature.id scene.creatures of
-          Just (pos, _) -> Grid.movementMap model msg mvmtReq False currentMap pos vCreatures
-          Nothing -> text "Moving creature is not in this scene."
-      movementMap =
-        case (game.current_combat, model.moving) of
-          (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid (M.PathCreature scene.id creature.id) mvmtReq creature)
-                      mvmtReq.ooc_creature
-          (Just combat, Just mvmtReq) ->
-            let (creature, moveMessage) =
-                  case mvmtReq.ooc_creature of
-                    Just creature -> (creature, M.PathCreature scene.id creature.id)
-                    Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
-            in Just <| movementGrid moveMessage mvmtReq creature
-          _ -> Nothing
-      movementMapAndNote = movementMap |> Maybe.map (\m -> (m, text "Click where you want to move."))
+      currentMap = filterMapSpecials <| M.tryGetMapNamed scene.map app
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
@@ -125,16 +107,18 @@ sceneMap model app scene myCreatures =
                   , clickable = clickable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
       defaultMap () = (Grid.terrainMap model currentMap vCreatures, text "Click a creature to move it.")
-  in movementMapAndNote
-      |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
-      |> MaybeEx.unpack defaultMap identity
+  in
+    (CommonView.movementMap model app scene vCreatures
+      |> Maybe.map (\g -> (g, CommonView.movementControls [] model)))
+    |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
+    |> MaybeEx.unpack defaultMap identity
 
 visibleCreatures game scene =
   let mod mapc = if mapc.visible then (Just mapc) else Nothing
   in List.filterMap mod (CommonView.visibleCreatures game scene)
 
-mapMap : T.Map -> T.Map
-mapMap map =
+filterMapSpecials : T.Map -> T.Map
+filterMapSpecials map =
   let onlyShowPlayerSpecials (pt, color, note, vis) =
         case vis of T.AllPlayers -> Just (pt, color, note, T.AllPlayers)
                     _ -> Nothing

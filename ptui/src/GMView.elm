@@ -41,7 +41,6 @@ makeUI model app =
         , ("History", always (historyView model app))
         , ("Saved Games", always (savedGameView model app))
         ]
-  , extraMovementOptions = [moveAnywhereToggle model]
   , extraOverlays = [bottomActionBar app]
   , modal = checkModal model app
   }
@@ -681,28 +680,6 @@ editMap model app path map paintSpecial =
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
-      movementGrid msg mvmtReq creature =
-        case Dict.get creature.id scene.creatures of
-          Just (pos, vis) ->
-            Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
-          Nothing -> text "Moving Creature is not in this scene"
-      pathOrPort =
-        if model.moveAnywhere
-        then M.SetCreaturePos scene.id
-        else M.PathCreature scene.id
-      movementMap =
-        case (game.current_combat, model.moving) of
-          (Nothing, Just mvmtReq) ->
-            Maybe.map (\creature -> movementGrid (pathOrPort creature.id) mvmtReq creature)
-                      mvmtReq.ooc_creature
-          (Just combat, Just mvmtReq) ->
-            let (creature, moveMessage) =
-                  case mvmtReq.ooc_creature of
-                    Just creature -> (creature, pathOrPort creature.id)
-                    Nothing -> (T.combatCreature game combat, M.PathCurrentCombatCreature)
-            in Just <| movementGrid moveMessage mvmtReq creature
-          _ -> Nothing
-      movementMapAndControls = movementMap |> Maybe.map (\m -> (m, CommonView.movementControls [] model))
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       enableMovement mapc =
         { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
@@ -711,9 +688,11 @@ sceneMap model app scene =
       defaultMap () =
         ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) (List.map enableMovement vCreatures)
         , text "Click a creature to move")
-  in movementMapAndControls
-      |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
-      |> MaybeEx.unpack defaultMap identity
+  in
+    (CommonView.movementMap model app scene vCreatures
+      |> Maybe.map (\g -> (g, CommonView.movementControls [moveAnywhereToggle model] model)))
+    |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
+    |> MaybeEx.unpack defaultMap identity
 
 {-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument
     to creatureCard. -}
