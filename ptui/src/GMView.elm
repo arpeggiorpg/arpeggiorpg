@@ -682,7 +682,7 @@ sceneMap model app scene =
   let game = app.current_game
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       enableMovement mapc =
-        { mapc | highlight = (Just mapc.creature.id) == currentCombatCreature
+        { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just Grid.Current else Nothing
                , clickable = Just (M.GetMovementOptions scene.id)}
       vCreatures = (CommonView.visibleCreatures app.current_game scene) 
       defaultMap () =

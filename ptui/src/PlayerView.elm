@@ -95,7 +95,7 @@ sceneMap model app scene myCreatures =
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
-        let highlight = (Just mapc.creature.id) == currentCombatCreature
+        let highlight = if (Just mapc.creature.id) == currentCombatCreature then Just Grid.Current else Nothing
             clickable =
               case game.current_combat of
                 Just combat ->

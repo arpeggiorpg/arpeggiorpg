@@ -8,6 +8,8 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
 
+import Maybe.Extra as MEx
+
 import Elements exposing (hbox, vbox, s)
 import Types as T
 import Model as M
@@ -21,12 +23,17 @@ coord c = toString (c * 100)
 -- Information about a creature that is relevant to the map.
 type alias MapCreature =
   { creature: T.Creature
-  , highlight : Bool
+  , highlight : Maybe Highlight
   , clickable : Maybe (T.Creature -> M.Msg)
   , class : T.Class
   , pos : T.Point3
   , visible: Bool
   }
+
+type Highlight
+  = Moving
+  | Targetable
+  | Current
 
 terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
 terrainMap model map creatures = baseMap model map creatures [] Nothing
@@ -44,7 +51,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
       movementTiles = targetTiles moveMsg targetPoints
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
-        then {mapc | highlight = True}
+        then {mapc | highlight = Just Moving}
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
@@ -133,11 +140,13 @@ gridCreature : MapCreature -> Svg M.Msg
 gridCreature creature =
   let creatureColor = creature.class.color
       strokeColor =
-        if creature.highlight
-        then "blue"
-        else "black"
+        case creature.highlight of
+          Nothing -> "black"
+          Just Moving -> "blue"
+          Just Targetable -> "red"
+          Just Current -> "black"
       strokeWidthSize =
-        if creature.highlight
+        if MEx.isJust creature.highlight
         then 10
         else 1
       clickableEventHandler =

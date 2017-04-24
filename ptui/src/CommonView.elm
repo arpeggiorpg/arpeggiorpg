@@ -14,7 +14,6 @@ import Css as S
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -33,7 +32,7 @@ visibleCreatures game scene =
           |> Maybe.andThen (\class ->
               Dict.get creature.id scene.creatures
                 |> Maybe.map (\(pos, vis) ->
-                  { creature = creature, highlight = False, clickable = Nothing, class = class, pos = pos
+                  { creature = creature, highlight = Nothing, clickable = Nothing, class = class, pos = pos
                   , visible = vis == T.AllPlayers}))
       creatures = T.getCreatures game (Dict.keys scene.creatures)
   in
@@ -149,8 +148,7 @@ moveButton combat creature =
             , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString (movement_left // 100), ")"])]
 
-{-| The map controls: panning and zooming buttons
--}
+{-| The map controls: panning and zooming buttons -}
 mapControls : Html M.Msg
 mapControls =
   vabox
@@ -410,7 +408,7 @@ targetMap model app scene vCreatures =
               if List.member mapc.creature.id cids
               then
                 let fullMsg = (\c -> c.id) >> T.TargetedCreature >> activateAbility ability
-                in {mapc | clickable = Just fullMsg}
+                in {mapc | clickable = Just fullMsg, highlight = Just Grid.Targetable}
               else {mapc | clickable = Nothing}
             targetable = List.map enableTargeting vCreatures
           in Grid.terrainMap model map targetable
