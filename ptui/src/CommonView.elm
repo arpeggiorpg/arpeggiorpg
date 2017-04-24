@@ -179,31 +179,6 @@ combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <
       gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature]
   in gutter ++ [ creatureCard (extraCreatureCard creature) app creature ]
 
-targetSelector : M.Model -> T.Game -> (T.AbilityID -> T.DecidedTarget -> M.Msg) -> String -> Html M.Msg
-targetSelector model game msgConstructor abid =
-  let creatures =
-        case model.selectingAbility of
-          Just {potentialTargets} -> 
-            case potentialTargets of
-              Just (T.PTCreatureIDs cids) -> T.getCreatures game cids
-              _ -> []
-          _ -> []
-  in hbox <|
-    [ case (Dict.get abid game.abilities) of
-        Just ability -> case ability.target of
-          T.Melee -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
-          T.Range distance -> creatureTargetSelector (msgConstructor abid) T.TargetedCreature creatures
-          T.Actor -> sqButton 100 [onClick (msgConstructor abid T.TargetedActor)] [text "Use on Self"]
-          T.AllCreaturesInVolumeInRange {volume, range} -> text ""
-        Nothing -> text "Sorry, that ability was not found. Please reload."
-    , sqButton 100 [onClick M.CancelAbility] [text "Cancel ability"]
-    ]
-
-creatureTargetSelector : (T.DecidedTarget -> M.Msg) -> (T.CreatureID -> T.DecidedTarget) -> List T.Creature -> Html M.Msg
-creatureTargetSelector msgConstructor targetConstructor creatures = vbox <|
-  let targetCreatureButton c = sqButton 100 [onClick (msgConstructor (targetConstructor c.id))] [text c.name]
-  in List.map targetCreatureButton creatures
-
 collapsible : String -> M.Model -> Html M.Msg -> Html M.Msg
 collapsible header model content =
   let isCollapsed = Dict.get header model.collapsed |> Maybe.withDefault False
@@ -293,19 +268,7 @@ modalOverlay content =
 
 {-| Check for any modals that both GMs and Players may need to render. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
-checkModal model app =
-  let
-    game = app.current_game
-    selectingTargets =
-      -- TODO: target selection should be done on the map
-      case model.selectingAbility of
-        Just {scene, creature, ability} ->
-          if T.isCreatureInCombat game creature
-          then Just (targetSelector model game M.CombatAct ability)
-          else Just (targetSelector model game (M.ActCreature scene creature) ability)
-        Nothing -> Nothing
-    error = if model.error /= "" then Just (errorBox model) else Nothing
-  in error
+checkModal model app = if model.error /= "" then Just (errorBox model) else Nothing
 
 errorBox : M.Model -> Html M.Msg
 errorBox model =
