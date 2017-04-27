@@ -48,19 +48,14 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         if moveAnywhere
         then calculateAllMovementOptions movingFrom (max_distance // 100)
         else movement_options
-      movementTiles = targetTiles moveMsg targetPoints
+      movementTiles = targetTiles moveMsg targetPoints (always M.NoMsg)
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
         then {mapc | highlight = Just Moving}
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    tileTargetingMap model moveMsg map targetPoints vCreatures
-
-targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> List (Svg M.Msg)
-targetTiles targetMsg pts =
-  let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (targetMsg pt)] pt
-  in List.map movementTarget pts
+    tileTargetingMap model moveMsg map targetPoints vCreatures (always M.NoMsg)
 
 movementGhost : M.Model -> Maybe T.Point3
 movementGhost model =
@@ -69,12 +64,20 @@ movementGhost model =
     _ -> Nothing
 
 -- a map with arbitrary clickable tiles. Clicking those tiles will trigger the targetMsg.
-tileTargetingMap : M.Model -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List MapCreature -> Svg M.Msg
-tileTargetingMap model targetMsg map targetableTiles vCreatures =
-  let extras = targetTiles targetMsg targetableTiles
+tileTargetingMap : M.Model -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List MapCreature
+                 -> (T.Point3 -> M.Msg)
+                 -> Svg M.Msg
+tileTargetingMap model targetMsg map targetableTiles vCreatures onHover =
+  let extras = targetTiles targetMsg targetableTiles onHover
   in baseMap model map vCreatures extras Nothing
 
-baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Maybe (T.Point3 -> M.Msg) -> Svg M.Msg
+targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
+targetTiles targetMsg pts onHover =
+  let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (targetMsg pt), onMouseOver (onHover pt)] pt
+  in List.map movementTarget pts
+
+baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Maybe (T.Point3 -> M.Msg)
+        -> Svg M.Msg
 baseMap model map creatures extras paint =
   let creatureEls = List.map gridCreature creatures
       terrainEls = baseTerrainRects model paint map.terrain

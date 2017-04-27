@@ -140,6 +140,9 @@ type alias SelectingAbility =
   , creature: T.CreatureID
   , ability: T.AbilityID
   , potentialTargets: Maybe T.PotentialTargets
+  -- volumeAt indicates which area will be affected by the ability, if it's an area effect. This is
+  -- used to highlight the tiles on the map.
+  , volumeAt : Maybe (T.Volume, T.Point3)
   }
 
 type Focus

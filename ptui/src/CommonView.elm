@@ -109,7 +109,7 @@ creatureAbilities game sceneID inCombat creature =
         T.Actor -> if inCombat then M.CombatAct abid T.TargetedActor
                                else M.ActCreature sceneID creature.id abid T.TargetedActor
         _ -> M.SelectAbility { scene=sceneID, creature=creature.id, ability=abid
-                             , potentialTargets=Nothing}
+                             , potentialTargets=Nothing, volumeAt = Nothing}
     toResultTuple (abid, ability) = (text ability.name, abilityMsg abid ability)
   in
     List.map toResultTuple abilities
@@ -380,7 +380,7 @@ targetMap model app scene vCreatures =
           in Grid.terrainMap model map targetable
         T.PTPoints pts ->
           let fullMsg pt = activateAbility ability (T.TargetedPoint pt)
-          in Grid.tileTargetingMap model fullMsg map pts vCreatures
+          in Grid.tileTargetingMap model fullMsg map pts vCreatures (always M.NoMsg)
     mapAndInfo sa targets =
       ( makeMap sa targets
       , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]])

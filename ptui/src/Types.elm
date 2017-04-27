@@ -543,7 +543,6 @@ targetSpecDecoder = sumDecoder "TargetSpec"
      JD.map2 acivir (JD.field "volume" volumeDecoder) (JD.field "range" JD.int))
   ]
 
-
 type Volume
   = Sphere Distance
   -- Line(Distance),
