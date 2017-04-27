@@ -807,7 +807,7 @@ playersView : M.Model -> T.App -> Html M.Msg
 playersView model app =
   let gotCreatures pid cids = M.SendCommand (T.GiveCreaturesToPlayer pid cids)
       allCreatures = Dict.keys app.current_game.creatures
-      selectCreatures pid = M.SetModal (M.SelectOrderedCreatures {from=allCreatures, selected=Dict.empty, cb=gotCreatures pid, title="Grant Creatures to " ++ pid})
+      selectCreatures pid = M.SetModal (M.SelectCreaturesFromCampaign {selectedCreatures=[], cb=gotCreatures pid, reason="Grant Creatures to " ++ pid})
       grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)
       sceneName =
         case model.focus of
