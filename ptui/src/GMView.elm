@@ -351,19 +351,19 @@ mapConsole model app path mapID =
 
 editingMapConsole : M.Model -> T.App -> T.Map -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
 editingMapConsole model app origMap path map paintingSpecial =
-  let updateName name = M.SetFocus (M.EditingMap path {map | name = name} paintingSpecial)
-      saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
-      toggleSpecial checked =
-        if checked then
-          M.SetFocus (M.EditingMap path map (Just ("", "", T.AllPlayers)))
-        else M.SetFocus (M.EditingMap path map Nothing)
-      updateSpecialColor color =
-        M.SetFocus (M.EditingMap path map (Maybe.map (\(_, note, vis) -> (color, note, vis)) paintingSpecial))
-      updateSpecialNote note =
-        M.SetFocus (M.EditingMap path map (Maybe.map (\(color, _, vis) -> (color, note, vis)) paintingSpecial))
-      updateSpecialVis isChecked =
-        let vis = if isChecked then T.GMOnly else T.AllPlayers
-        in M.SetFocus (M.EditingMap path map (Maybe.map (\(color, note, _) -> (color, note, vis)) paintingSpecial))
+  let
+    updateName name = M.SetFocus (M.EditingMap path {map | name = name} paintingSpecial)
+    saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
+    toggleSpecial checked =
+      if checked then M.SetFocus (M.EditingMap path map (Just ("", "", T.AllPlayers)))
+      else M.SetFocus (M.EditingMap path map Nothing)
+    updateSpecialColor color =
+      M.SetFocus (M.EditingMap path map (Maybe.map (\(_, note, vis) -> (color, note, vis)) paintingSpecial))
+    updateSpecialNote note =
+      M.SetFocus (M.EditingMap path map (Maybe.map (\(color, _, vis) -> (color, note, vis)) paintingSpecial))
+    updateSpecialVis isChecked =
+      let vis = if isChecked then T.GMOnly else T.AllPlayers
+      in M.SetFocus (M.EditingMap path map (Maybe.map (\(color, note, _) -> (color, note, vis)) paintingSpecial))
   in
     vbox
       [ button [onClick (M.SetFocus (M.PreviewMap map.id))] [text "Cancel Editing Map"]
@@ -375,8 +375,8 @@ editingMapConsole model app origMap path map paintingSpecial =
       , case paintingSpecial of
             Just (color, note, vis) ->
               hbox
-                [ input [type_ "text", placeholder "color", value color, onInput updateSpecialColor] []
-                , input [type_ "text", placeholder "note", value note, onInput updateSpecialNote] []
+                [ input [type_ "text", placeholder "color", onInput updateSpecialColor] []
+                , input [type_ "text", placeholder "note", onInput updateSpecialNote] []
                 , label [] [text "GM Only"], input [type_ "checkbox", onCheck updateSpecialVis] []
                 ]
             Nothing -> text ""
@@ -659,16 +659,17 @@ mapView model app =
         Nothing -> (text "", text "Scene does not exist")
     M.NoFocus -> (text "", text "No Focus")
 
-editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
+editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility)
+        -> Html M.Msg
 editMap model app path map paintSpecial =
   let
     paintSpecialMsg (color, note, vis) pt =
       let
-        matcher (pos, _, _, _) = pos == pt
+        ptTup = T.point3ToTup pt
         newSpecials =
-          case T.listFind matcher map.specials of
-            Just x -> List.filter (not << matcher) map.specials
-            Nothing -> (pt, color, note, vis) :: map.specials
+          if Dict.member ptTup map.specials
+          then Dict.remove ptTup map.specials
+          else Dict.insert ptTup (color, note, vis) map.specials
         newMap = {map | specials = newSpecials}
       in M.SetFocus (M.EditingMap path newMap paintSpecial)
     paintMsg =

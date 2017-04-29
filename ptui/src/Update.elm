@@ -257,6 +257,8 @@ update msg model = case msg of
             _ -> logs
     in ({model | modal = M.ModalShowGameLogs newLogs}, Cmd.none)
 
+  Lazy f -> (model, message <| f ())
+
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
 

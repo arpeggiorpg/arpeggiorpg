@@ -3,6 +3,7 @@ module Grid exposing (..)
 import Dict
 import Html.Attributes as HA
 import Css as S
+import Set
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -73,22 +74,28 @@ tileTargetingMap model targetMsg map targetableTiles vCreatures onHover =
 
 targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
 targetTiles targetMsg pts onHover =
-  let movementTarget pt = tile "lawngreen" [fillOpacity "0.3", onClick (targetMsg pt), onMouseOver (onHover pt)] pt
+  let movementTarget pt =
+        tile "lawngreen" [fillOpacity "0.3", onClick (targetMsg pt), onMouseOver (onHover pt)]
+             (T.point3ToTup pt)
   in List.map movementTarget pts
 
 baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> Maybe (T.Point3 -> M.Msg)
         -> Svg M.Msg
 baseMap model map creatures extras paint =
-  let creatureEls = List.map gridCreature creatures
-      terrainEls = baseTerrainRects model paint map.terrain
-      ghostEl = case movementGhost model of
-                  Just pt -> [tile "black" [] pt]
-                  Nothing -> []
-      (specialEls, overlays) = List.unzip <| List.map (specialTile model paint) map.specials
-      gridTranslateX = toString <| -model.gridOffset.x * 50
-      gridTranslateY = toString <| model.gridOffset.y * 50
-      gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
-      matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
+  let
+    contents =
+      let creatureEls = List.map gridCreature creatures
+          terrainEls = baseTerrainRects model paint map.terrain
+          ghostEl = case movementGhost model of
+                      Just pt -> [tile "black" [] (T.point3ToTup pt)]
+                      Nothing -> []
+          (specialEls, overlays) = List.unzip <| List.map (specialTile model paint) (Dict.toList map.specials)
+          _ = Debug.log "Updating map contents!" ()
+      in g [] (terrainEls ++ specialEls ++ extras ++ creatureEls ++ ghostEl ++ overlays)
+    gridTranslateX = toString <| -model.gridOffset.x * 50
+    gridTranslateY = toString <| model.gridOffset.y * 50
+    gridScale = toString <|  1 + (toFloat -model.gridSize / 100)
+    matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
   in
     svg
       [ preserveAspectRatio "xMinYMid slice"
@@ -97,16 +104,16 @@ baseMap model map creatures extras paint =
           , S.backgroundColor (S.rgb 215 215 215)]
       ]
       [g [transform <| "matrix(" ++ matrixArgs ++ ")"]
-         (terrainEls ++ specialEls ++ extras ++ creatureEls ++ ghostEl ++ overlays)
+        [contents]
       ]
 
-specialTile : M.Model -> Maybe (T.Point3 -> M.Msg) -> (T.Point3, T.Color, String, T.Visibility) -> (Svg M.Msg, Svg M.Msg)
-specialTile model paint (pt, color, note, vis) =
+specialTile : M.Model -> Maybe (T.Point3 -> M.Msg) -> (T.Point3Tup, (T.Color, String, T.Visibility)) -> (Svg M.Msg, Svg M.Msg)
+specialTile model paint ((ptx, pty, ptz), (color, note, vis)) =
   let
     positionedText t =
       text_ [ HA.style [("pointer-events", "none")]
-            , x (toString <| (pt.x * 100) + 50)
-            , y (toString <| (pt.y * 100) + 50)
+            , x (toString <| (ptx * 100) + 50)
+            , y (toString <| (pty * 100) + 50)
             , fontSize "100px"
             , dominantBaseline "central"
             , textAnchor "middle"
@@ -123,13 +130,13 @@ specialTile model paint (pt, color, note, vis) =
       if Maybe.withDefault False (Dict.get key model.collapsed)
       then positionedText note
       else text ""
-    key = "special-tile:" ++ toString pt
+    key = "special-tile:" ++ toString ptx ++ "," ++ toString pty
     click =
       case paint of
-        Just f -> f pt
+        Just f -> M.Lazy (\() -> f (T.tupToPoint3 (ptx, pty, ptz)))
         Nothing -> M.ToggleCollapsed key
   in
-    ( g [] [tile color [onClick click] pt, star]
+    ( g [] [tile color [onClick click] (ptx, pty, ptz), star]
     , expandedNote)
 
 -- return all points within a square with half-distance `distance`.
@@ -180,42 +187,42 @@ gridCreature creature =
         then creatureNameEl (String.slice 0 4 creature.creature.name)
         else creatureImageEl creature.creature.portrait_url
   in g [opacity opa]
-    [ tile creatureColor attrs creature.pos
+    [ tile creatureColor attrs (T.point3ToTup creature.pos)
     , foreground ]
 
-baseTerrainRects : M.Model -> Maybe (T.Point3 -> M.Msg) -> List T.Point3 -> List (Svg M.Msg)
+baseTerrainRects : M.Model -> Maybe (T.Point3 -> M.Msg) -> Set.Set T.Point3Tup -> List (Svg M.Msg)
 baseTerrainRects model paint terrain =
-  let blocks = List.map (gridTerrain paint) terrain
+  let blocks = List.map (gridTerrain paint) (Set.toList terrain)
       empties = case paint of
         Just paint -> emptyTerrain model terrain paint
         Nothing -> []
   in blocks ++ empties
 
-gridTerrain : Maybe (T.Point3 -> M.Msg) -> T.Point3 -> Svg M.Msg
+gridTerrain : Maybe (T.Point3 -> M.Msg) -> T.Point3Tup -> Svg M.Msg
 gridTerrain paint pt =
   let attrs =
         case paint of
-          Just paint -> [onClick (paint pt)]
+          Just paint -> [onClick (M.Lazy (\() -> paint (T.tupToPoint3 pt)))]
           Nothing -> []
   in tile "white" attrs pt
 
-emptyTerrain : M.Model -> List T.Point3 -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
+emptyTerrain : M.Model -> Set.Set T.Point3Tup -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
 emptyTerrain model terrain paint =
   let
-    emptyTerrainTile pt = tile "grey" [onClick (paint pt)] pt
+    ptTup {x, y, z} = (x, y, z)
+    emptyTerrainTile pt = tile "grey" [onClick (M.Lazy (\() -> paint pt))] (T.point3ToTup pt)
     g x y = let pt = {x = x, y = y, z = 0}
-            in if not (List.member pt terrain) then [emptyTerrainTile pt] else []
+            in if not (Set.member (ptTup pt) terrain) then [emptyTerrainTile pt] else []
     f x = List.concatMap (g x) (List.range -50 50)
     empties = List.concatMap f (List.range -50 50)
-    _ = Debug.log "Number of empties: " (List.length empties)
   in empties
 
-tile : String -> List (Svg.Attribute M.Msg) -> T.Point3 -> Svg M.Msg
-tile cl attrs pt =
+tile : String -> List (Svg.Attribute M.Msg) -> T.Point3Tup -> Svg M.Msg
+tile cl attrs (ptx, pty, _) =
   rect ([ width "100"
        , height "100"
-       , x (coord pt.x)
-       , y (coord pt.y)
+       , x (coord ptx)
+       , y (coord pty)
        , fill cl
        , stroke "black"
        , strokeWidth "1" ] ++ attrs)

@@ -80,6 +80,8 @@ type Msg
 
     | ShowGameLogs (List T.GameLog)
 
+    | Lazy (() -> Msg)
+
     | NoMsg
 
 type MapInOut
@@ -150,6 +152,7 @@ type Focus
   | Scene String
   | EditingMap T.FolderPath T.Map (Maybe (String, String, T.Visibility))
   | PreviewMap T.MapID
+
 
 type SecondaryFocus
   = Focus2None

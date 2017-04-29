@@ -33,12 +33,22 @@ creatureCreationEncoder cc = JE.object
   , ("portrait_url", JE.string cc.portrait_url)]
 
 type alias Point3 = {x: Int, y: Int, z: Int}
+type alias Point3Tup = (Int, Int, Int)
 
 point3Decoder : JD.Decoder Point3
 point3Decoder = JD.map3 Point3 (JD.index 0 JD.int) (JD.index 1 JD.int) (JD.index 2 JD.int)
 point3Encoder : Point3 -> JE.Value
 point3Encoder {x, y, z} =  JE.list [JE.int x, JE.int y, JE.int z]
 
+
+point3ToTup : Point3 -> Point3Tup
+point3ToTup {x, y, z} = (x, y, z)
+
+tupToPoint3 : Point3Tup -> Point3
+tupToPoint3 (x, y, z) = {x=x, y=y, z=z}
+
+point3TupEncoder : Point3Tup -> JE.Value
+point3TupEncoder = tupToPoint3 >> point3Encoder
 
 type PotentialTargets
   = PTCreatureIDs (List CreatureID)
@@ -346,16 +356,33 @@ sceneCreationEncoder scene =
 type alias Map =
   { id: MapID
   , name: String
+  , terrain: Set.Set (Int, Int, Int)
+  , specials: Dict.Dict (Int, Int, Int) (Color, String, Visibility)}
+
+rustMap2BetterMap : RustMap -> Map
+rustMap2BetterMap map =
+  let specialKV (pt, color, note, vis) = (point3ToTup pt, (color, note, vis))
+  in { id = map.id
+  , name = map.name
+  , terrain = Set.fromList (List.map point3ToTup map.terrain)
+  , specials = Dict.fromList (List.map specialKV map.specials)
+  }
+
+type alias RustMap =
+  { id: MapID
+  , name: String
   , terrain: List Point3
   , specials: List (Point3, Color, String, Visibility)
   }
 
-mapDecoder : JD.Decoder Map
-mapDecoder = JD.map4 Map
+rustMapDecoder : JD.Decoder RustMap
+rustMapDecoder = JD.map4 RustMap
   (JD.field "id" JD.string)
   (JD.field "name" JD.string)
   (JD.field "terrain" (JD.list point3Decoder))
   (JD.field "specials" (JD.list (tuple4 point3Decoder JD.string JD.string visibilityDecoder)))
+
+mapDecoder = rustMapDecoder |> JD.map rustMap2BetterMap
 
 tuple4 : JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder (a, b, c, d)
 tuple4 da db dc dd =
@@ -363,14 +390,14 @@ tuple4 da db dc dd =
 
 mapEncoder : Map -> JE.Value
 mapEncoder m =
-  let specialEntryEncoder (pos, color, note, vis) =
-        JE.list [point3Encoder pos, JE.string color, JE.string note, visibilityEncoder vis]
+  let specialEntryEncoder (pos, (color, note, vis)) =
+        JE.list [point3Encoder (tupToPoint3 pos), JE.string color, JE.string note, visibilityEncoder vis]
   in
   JE.object
     [ ("id", JE.string m.id)
     , ("name", JE.string m.name)
-    , ("terrain", JE.list (List.map point3Encoder m.terrain))
-    , ("specials", JE.list (List.map specialEntryEncoder m.specials))
+    , ("terrain", JE.list (List.map point3TupEncoder (Set.toList m.terrain)))
+    , ("specials", JE.list (List.map specialEntryEncoder (Dict.toList m.specials)))
     ]
 
 type alias MapCreation =
@@ -935,13 +962,14 @@ folderPathFromString ps =
 
 toggleTerrain : Map -> Point3 -> Map
 toggleTerrain {id, name, terrain, specials} pt =
-  let newT = if List.member pt terrain
-             then List.filter (\el -> el /= pt) terrain
-             else pt :: terrain
+  let ptTup = point3ToTup pt
+      newT = if Set.member ptTup terrain
+             then Set.remove ptTup terrain
+             else Set.insert ptTup terrain
   in {id=id, name=name, terrain=newT, specials=specials}
 
 emptyMap : Map
-emptyMap = {id="invalid", name="<empty>", terrain=[], specials=[]}
+emptyMap = {id="invalid", name="<empty>", terrain=Set.empty, specials=Dict.empty}
 
 folderPathParent : FolderPath -> FolderPath
 folderPathParent path = Maybe.withDefault [] <| List.Extra.init path
