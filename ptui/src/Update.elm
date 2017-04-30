@@ -249,7 +249,6 @@ update msg model = case msg of
   LoadGame name ->
     (model, Http.send AppUpdate (Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load") Http.emptyBody (T.appDecoder)))
 
-
   ShowGameLogs logs ->
     let newLogs =
           case model.modal of
@@ -257,7 +256,7 @@ update msg model = case msg of
             _ -> logs
     in ({model | modal = M.ModalShowGameLogs newLogs}, Cmd.none)
 
-  Lazy f -> (model, message <| f ())
+  Lazy f -> (model, message <| f model)
 
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)

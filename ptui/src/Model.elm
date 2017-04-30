@@ -6,6 +6,7 @@ import Keyboard
 import Keyboard.Key as Key
 import Time
 import Json.Decode as JD
+import Html
 
 import Types as T
 
@@ -80,7 +81,7 @@ type Msg
 
     | ShowGameLogs (List T.GameLog)
 
-    | Lazy (() -> Msg)
+    | Lazy (Model -> Msg)
 
     | NoMsg
 

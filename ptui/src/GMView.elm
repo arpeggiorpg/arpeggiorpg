@@ -663,20 +663,11 @@ editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.
         -> Html M.Msg
 editMap model app path map paintSpecial =
   let
-    paintSpecialMsg (color, note, vis) pt =
-      let
-        ptTup = T.point3ToTup pt
-        newSpecials =
-          if Dict.member ptTup map.specials
-          then Dict.remove ptTup map.specials
-          else Dict.insert ptTup (color, note, vis) map.specials
-        newMap = {map | specials = newSpecials}
-      in M.SetFocus (M.EditingMap path newMap paintSpecial)
-    paintMsg =
+    paintStyle =
       case paintSpecial of
-        Nothing -> M.ToggleTerrain
-        Just x -> paintSpecialMsg x
-  in Grid.editMap model map [] paintMsg
+        Nothing -> Grid.PaintTerrain
+        Just (color, note, vis) -> Grid.PaintSpecial color note vis
+  in Grid.editMap model map [] paintStyle
 
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
