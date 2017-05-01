@@ -95,7 +95,7 @@ sceneMap model app scene myCreatures =
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       creatureIsMine creature = List.any (\myC -> myC.id == creature.id) myCreatures
       modifyMapCreature mapc =
-        let highlight = if (Just mapc.creature.id) == currentCombatCreature then Just Grid.Current else Nothing
+        let highlight = if (Just mapc.creature.id) == currentCombatCreature then Just M.Current else Nothing
             clickable =
               case game.current_combat of
                 Just combat ->
@@ -119,10 +119,10 @@ visibleCreatures game scene =
 
 filterMapSpecials : T.Map -> T.Map
 filterMapSpecials map =
-  let onlyShowPlayerSpecials (pt, color, note, vis) =
-        case vis of T.AllPlayers -> Just (pt, color, note, T.AllPlayers)
-                    _ -> Nothing
-  in { map | specials = List.filterMap onlyShowPlayerSpecials map.specials}
+  let onlyShowPlayerSpecials pt (color, note, vis) =
+        case vis of T.AllPlayers -> True
+                    _ -> False
+  in { map | specials = Dict.filter onlyShowPlayerSpecials map.specials}
 
 
 {-| Show all creatures in combat, with an action bar when it's my turn. -}
