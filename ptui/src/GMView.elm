@@ -346,7 +346,7 @@ mapConsole model app path mapID =
         , case model.focus of
             M.EditingMap path gridData ->
               editingMapConsole model app gameMap path gridData
-            _ -> button [onClick (M.SetFocus (M.EditingMap path {map=gameMap, paintStyle=M.PaintTerrain, focusedSpecial=Nothing}))] [text "Edit this Map"]
+            _ -> button [onClick (M.SetFocus (M.EditingMap path {map=gameMap, paintStyle=M.PaintTerrain}))] [text "Edit this Map"]
         ]
 
 editingMapConsole : M.Model -> T.App -> T.Map -> T.FolderPath -> M.GridData -> Html M.Msg
@@ -668,7 +668,7 @@ mapView model app =
 
 editMap : M.Model -> T.App -> T.FolderPath -> M.GridData -> Html M.Msg
 editMap model app path gridData =
-  Grid.editMap model gridData.map [] gridData.paintStyle
+  Grid.editMap model gridData.map []
 
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =

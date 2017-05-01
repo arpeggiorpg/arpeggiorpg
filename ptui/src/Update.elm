@@ -210,6 +210,15 @@ update msg model = case msg of
             M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
     in ({ model | gridOffset = newOffset}, Cmd.none)
 
+  ToggleGridSpecial pt ->
+    let newExpanded =
+          case model.gridSpecialExpanded of
+            Just pt_ ->
+              if pt_ == pt then Nothing
+              else Just pt
+            Nothing -> Just pt
+    in ({model | gridSpecialExpanded = newExpanded}, Cmd.none)
+
   SelectAbility sa ->
     let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sa.scene ++ "/" ++ sa.creature ++ "/" ++ sa.ability
         req = Http.send GotTargetOptions (Http.get endpoint T.potentialTargetsDecoder)

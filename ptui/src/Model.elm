@@ -76,6 +76,7 @@ type Msg
     | SetCreatureNote T.CreatureID String
     | MapZoom MapInOut
     | MapPan Direction
+    | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
     | SelectView String String
 
@@ -107,6 +108,7 @@ defaultModel flags =
   , rpiURL = flags.rpi
   , gridSize = 60
   , gridOffset = {x = -15, y = 10}
+  , gridSpecialExpanded = Nothing
   , collapsed = Dict.empty
   , selectedViews = Dict.empty
   , focus = NoFocus
@@ -127,9 +129,10 @@ type alias Model =
   , moveAnywhere : Bool
   , rpiURL : String
   -- gridSize: how many SQUARE METERS to show
-  , gridSize : Int
+  , gridSize: Int
   -- gridOffset: offset in METERS
-  , gridOffset : {x : Int, y: Int}
+  , gridOffset: {x : Int, y: Int}
+  , gridSpecialExpanded: Maybe T.Point3
   , collapsed : Dict.Dict String Bool
   , selectedViews : Dict.Dict String String
   , focus: Focus
@@ -140,7 +143,6 @@ type alias Model =
 
 type alias GridData =
   { paintStyle: PaintStyle
-  , focusedSpecial: Maybe T.Point3
   , map: T.Map
   }
 
@@ -159,7 +161,6 @@ type Focus
   | Scene String
   | EditingMap T.FolderPath GridData
   | PreviewMap T.MapID
-
 
 type SecondaryFocus
   = Focus2None
