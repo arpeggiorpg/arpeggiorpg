@@ -188,7 +188,9 @@ update msg model = case msg of
   ToggleTerrain pt ->
     let focus =
           case model.focus of
-            M.EditingMap path terrain ex -> M.EditingMap path (T.toggleTerrain terrain pt) ex
+            M.EditingMap path gridData ->
+              let newGrid = {gridData | map = T.toggleTerrain gridData.map pt}
+              in M.EditingMap path newGrid
             x -> x
     in ({model | focus = focus}, Cmd.none)
 

@@ -138,6 +138,12 @@ type alias Model =
   , gettingSavedGames: Maybe (List String -> Msg)
   }
 
+type alias GridData =
+  { paintStyle: PaintStyle
+  , focusedSpecial: Maybe T.Point3
+  , map: T.Map
+  }
+
 type alias SelectingAbility = 
   { scene: T.SceneID
   , creature: T.CreatureID
@@ -151,7 +157,7 @@ type alias SelectingAbility =
 type Focus
   = NoFocus
   | Scene String
-  | EditingMap T.FolderPath T.Map (Maybe (String, String, T.Visibility))
+  | EditingMap T.FolderPath GridData
   | PreviewMap T.MapID
 
 
@@ -221,6 +227,27 @@ type alias FolderItem =
   , prettyName : String
   }
 
+-- Information about a creature that is relevant to the map.
+type alias MapCreature =
+  { creature: T.Creature
+  , highlight : Maybe Highlight
+  , clickable : Maybe (T.Creature -> Msg)
+  , class : T.Class
+  , pos : T.Point3
+  , visible: Bool
+  }
+
+type Highlight
+  = Moving
+  | Targetable
+  | Current
+
+type PaintStyle
+  = NoPaint
+  | PaintTerrain
+  | PaintSpecial {color: T.Color, note: String, vis: T.Visibility}
+
+
 getScene : Model -> String -> Maybe T.Scene
 getScene model name =
   case model.app of
@@ -230,7 +257,7 @@ getScene model name =
 getMap : Model -> T.Map
 getMap model =
   case model.focus of
-    EditingMap _ map _ -> map
+    EditingMap _ gridData -> gridData.map
     PreviewMap name ->
       model.app
       |> Maybe.andThen (getMapNamed name)

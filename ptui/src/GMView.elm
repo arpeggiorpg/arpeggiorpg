@@ -344,42 +344,49 @@ mapConsole model app path mapID =
       vbox
         [ strong [] [text gameMap.name]
         , case model.focus of
-            M.EditingMap path map paintingSpecial ->
-              editingMapConsole model app gameMap path map paintingSpecial
-            _ -> button [onClick (M.SetFocus (M.EditingMap path gameMap Nothing))] [text "Edit this Map"]
+            M.EditingMap path gridData ->
+              editingMapConsole model app gameMap path gridData
+            _ -> button [onClick (M.SetFocus (M.EditingMap path {map=gameMap, paintStyle=M.PaintTerrain, focusedSpecial=Nothing}))] [text "Edit this Map"]
         ]
 
-editingMapConsole : M.Model -> T.App -> T.Map -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility) -> Html M.Msg
-editingMapConsole model app origMap path map paintingSpecial =
+editingMapConsole : M.Model -> T.App -> T.Map -> T.FolderPath -> M.GridData -> Html M.Msg
+editingMapConsole model app origMap path gridData =
   let
-    updateName name = M.SetFocus (M.EditingMap path {map | name = name} paintingSpecial)
-    saveMap = M.Batch [M.SetFocus (M.PreviewMap map.id), M.SendCommand (T.EditMap map)]
+    updateName name =
+      let map = gridData.map
+          newGrid = {gridData | map = {map | name = name}}
+      in M.SetFocus (M.EditingMap path newGrid)
     toggleSpecial checked =
-      if checked then M.SetFocus (M.EditingMap path map (Just ("", "", T.AllPlayers)))
-      else M.SetFocus (M.EditingMap path map Nothing)
-    updateSpecialColor color =
-      M.SetFocus (M.EditingMap path map (Maybe.map (\(_, note, vis) -> (color, note, vis)) paintingSpecial))
-    updateSpecialNote note =
-      M.SetFocus (M.EditingMap path map (Maybe.map (\(color, _, vis) -> (color, note, vis)) paintingSpecial))
+      let style = if checked then M.PaintSpecial {color="", note="", vis=T.AllPlayers} else M.PaintTerrain
+      in M.SetFocus (M.EditingMap path {gridData | paintStyle = style})
+    updateSpecial f =
+      let newStyle =
+            case gridData.paintStyle of
+              M.PaintSpecial rec -> M.PaintSpecial (f rec)
+              x -> x
+      in M.SetFocus (M.EditingMap path {gridData | paintStyle = newStyle})
+    updateSpecialColor color = updateSpecial (\special -> {special | color = color}) 
+    updateSpecialNote note = updateSpecial (\special -> {special | note = note})
     updateSpecialVis isChecked =
       let vis = if isChecked then T.GMOnly else T.AllPlayers
-      in M.SetFocus (M.EditingMap path map (Maybe.map (\(color, note, _) -> (color, note, vis)) paintingSpecial))
+      in updateSpecial (\special -> {special | vis = vis})
+    saveMap = M.Batch [M.SetFocus (M.PreviewMap gridData.map.id), M.SendCommand (T.EditMap gridData.map)]
   in
     vbox
-      [ button [onClick (M.SetFocus (M.PreviewMap map.id))] [text "Cancel Editing Map"]
+      [ button [onClick (M.SetFocus (M.PreviewMap gridData.map.id))] [text "Cancel Editing Map"]
       , hbox
         [ input [type_ "text", placeholder "map name", defaultValue origMap.name, onInput updateName] []
         , button [onClick saveMap] [text "Save"]]
       , hbox [ label [] [text "Draw Special Squares"]
              , input [type_ "checkbox", onCheck toggleSpecial] []]
-      , case paintingSpecial of
-            Just (color, note, vis) ->
+      , case gridData.paintStyle of
+            M.PaintSpecial _ ->
               hbox
                 [ input [type_ "text", placeholder "color", onInput updateSpecialColor] []
                 , input [type_ "text", placeholder "note", onInput updateSpecialNote] []
                 , label [] [text "GM Only"], input [type_ "checkbox", onCheck updateSpecialVis] []
                 ]
-            Nothing -> text ""
+            _ -> text ""
       ]
 
 createMapDialog : M.Model -> T.App -> M.CreatingMap -> Html M.Msg
@@ -647,8 +654,8 @@ selectOrderedCreaturesDialog model app {from, selected, cb, title} =
 mapView : M.Model -> T.App -> (Html M.Msg, Html M.Msg)
 mapView model app =
   case model.focus of
-    M.EditingMap path map paintSpecial ->
-      ( editMap model app path map paintSpecial
+    M.EditingMap path gridData ->
+      ( editMap model app path gridData
       , text "Edit this map!")
     M.PreviewMap name ->
       ( Grid.terrainMap model (M.tryGetMapNamed name app) []
@@ -659,22 +666,16 @@ mapView model app =
         Nothing -> (text "", text "Scene does not exist")
     M.NoFocus -> (text "", text "No Focus")
 
-editMap : M.Model -> T.App -> T.FolderPath -> T.Map -> Maybe (String, String, T.Visibility)
-        -> Html M.Msg
-editMap model app path map paintSpecial =
-  let
-    paintStyle =
-      case paintSpecial of
-        Nothing -> Grid.PaintTerrain
-        Just (color, note, vis) -> Grid.PaintSpecial color note vis
-  in Grid.editMap model map [] paintStyle
+editMap : M.Model -> T.App -> T.FolderPath -> M.GridData -> Html M.Msg
+editMap model app path gridData =
+  Grid.editMap model gridData.map [] gridData.paintStyle
 
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       enableMovement mapc =
-        { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just Grid.Current else Nothing
+        { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just M.Current else Nothing
                , clickable = Just (M.GetMovementOptions scene.id)}
       vCreatures = (CommonView.visibleCreatures app.current_game scene) 
       defaultMap () =

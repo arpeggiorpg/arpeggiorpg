@@ -25,7 +25,7 @@ s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
 
-visibleCreatures : T.Game -> T.Scene -> List Grid.MapCreature
+visibleCreatures : T.Game -> T.Scene -> List M.MapCreature
 visibleCreatures game scene =
   let mapInfo creature =
         Dict.get creature.class game.classes
@@ -225,7 +225,7 @@ movementControls extras model =
               ] ++ extras
     Nothing -> text ""
 
-movementMap : M.Model -> T.App -> T.Scene -> List Grid.MapCreature -> Maybe (Html M.Msg)
+movementMap : M.Model -> T.App -> T.Scene -> List M.MapCreature -> Maybe (Html M.Msg)
 movementMap model app scene vCreatures =
   let
     movementGrid msg mvmtReq creature =
@@ -358,7 +358,7 @@ viewGame model app ui =
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
-targetMap : M.Model -> T.App -> T.Scene -> List Grid.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
+targetMap : M.Model -> T.App -> T.Scene -> List M.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
 targetMap model app scene vCreatures =
   let
     map = M.tryGetMapNamed scene.map app
@@ -374,7 +374,7 @@ targetMap model app scene vCreatures =
               if List.member mapc.creature.id cids
               then
                 let fullMsg = (\c -> c.id) >> T.TargetedCreature >> activateAbility ability
-                in {mapc | clickable = Just fullMsg, highlight = Just Grid.Targetable}
+                in {mapc | clickable = Just fullMsg, highlight = Just M.Targetable}
               else {mapc | clickable = Nothing}
             targetable = List.map enableTargeting vCreatures
           in Grid.terrainMap model map targetable

@@ -22,34 +22,14 @@ import Model as M
 coord : Int -> String
 coord c = toString (c * 100)
 
--- Information about a creature that is relevant to the map.
-type alias MapCreature =
-  { creature: T.Creature
-  , highlight : Maybe Highlight
-  , clickable : Maybe (T.Creature -> M.Msg)
-  , class : T.Class
-  , pos : T.Point3
-  , visible: Bool
-  }
+terrainMap : M.Model -> T.Map -> List M.MapCreature -> Svg M.Msg
+terrainMap model map creatures = baseMap model map creatures [] M.NoPaint
 
-type Highlight
-  = Moving
-  | Targetable
-  | Current
-
-type PaintStyle
-  = NoPaint
-  | PaintTerrain
-  | PaintSpecial T.Color String T.Visibility
-
-terrainMap : M.Model -> T.Map -> List MapCreature -> Svg M.Msg
-terrainMap model map creatures = baseMap model map creatures [] NoPaint
-
-editMap : M.Model -> T.Map -> List MapCreature -> PaintStyle -> Svg M.Msg
+editMap : M.Model -> T.Map -> List M.MapCreature -> M.PaintStyle -> Svg M.Msg
 editMap model map creatures paint =
   baseMap model map creatures [] paint
 
-movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List MapCreature -> Svg M.Msg
+movementMap : M.Model -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List M.MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere map movingFrom creatures =
   let targetPoints =
         if moveAnywhere
@@ -58,7 +38,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
       movementTiles = targetTiles moveMsg targetPoints (always M.NoMsg)
       highlightMovingCreature mapc =
         if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
-        then {mapc | highlight = Just Moving}
+        then {mapc | highlight = Just M.Moving}
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
@@ -71,12 +51,12 @@ movementGhost anim =
     _ -> Nothing
 
 -- a map with arbitrary clickable tiles. Clicking those tiles will trigger the targetMsg.
-tileTargetingMap : M.Model -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List MapCreature
+tileTargetingMap : M.Model -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List M.MapCreature
                  -> (T.Point3 -> M.Msg)
                  -> Svg M.Msg
 tileTargetingMap model targetMsg map targetableTiles vCreatures onHover =
   let extras = targetTiles targetMsg targetableTiles onHover
-  in baseMap model map vCreatures extras NoPaint
+  in baseMap model map vCreatures extras M.NoPaint
 
 targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> (T.Point3 -> M.Msg) -> List (Svg M.Msg)
 targetTiles targetMsg pts onHover =
@@ -85,7 +65,7 @@ targetTiles targetMsg pts onHover =
              (T.point3ToTup pt)
   in List.map movementTarget pts
 
-baseMap : M.Model -> T.Map -> List MapCreature -> List (Svg M.Msg) -> PaintStyle -> Svg M.Msg
+baseMap : M.Model -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> M.PaintStyle -> Svg M.Msg
 baseMap model map creatures extras paint =
   let
     gridTranslateX = toString <| -model.gridOffset.x * 50
@@ -99,21 +79,21 @@ baseMap model map creatures extras paint =
           , S.height (S.pct 100)
           , S.backgroundColor (S.rgb 215 215 215)]
       ]
-      [g [transform <| "matrix(" ++ matrixArgs ++ ")"] [Lazy.lazy mapContents (model.showingMovement, model.collapsed, map, creatures, paint, extras)]
+      [g [transform <| "matrix(" ++ matrixArgs ++ ")"]
+         [mapContents model.showingMovement model.collapsed map creatures extras paint]
       ]
 
-mapContents (showingMovement, collapsed, map, creatures, paint, extras) =
+mapContents showingMovement collapsed map creatures extras paint =
   let creatureEls = List.map gridCreature creatures
-      terrainEls = baseTerrainRects paint map.terrain
+      terrainEls = Lazy.lazy2 baseTerrainRects paint map.terrain
       ghostEl = case movementGhost showingMovement of
                   Just pt -> [tile "black" [] (T.point3ToTup pt)]
                   Nothing -> []
       (specialEls, overlays) = List.unzip <| List.map (specialTile collapsed paint) (Dict.toList map.specials)
-      _ = Debug.log "OMG OMG RENDERING" ()
-  in g [] (terrainEls ++ specialEls ++ extras ++ creatureEls ++ ghostEl ++ overlays)
+  in g [] <| [terrainEls] ++ (specialEls ++ extras ++ creatureEls ++ ghostEl ++ overlays)
 
-
-specialTile : Dict.Dict String Bool -> PaintStyle -> (T.Point3Tup, (T.Color, String, T.Visibility)) -> (Svg M.Msg, Svg M.Msg)
+specialTile : Dict.Dict String Bool -> M.PaintStyle -> (T.Point3Tup, (T.Color, String, T.Visibility))
+            -> (Svg M.Msg, Svg M.Msg)
 specialTile collapsed paint (pt, (color, note, vis)) =
   let
     (ptx, pty, ptz) = pt
@@ -130,8 +110,8 @@ specialTile collapsed paint (pt, (color, note, vis)) =
             ]
             [text t]
     star =
-      if note /= "" && (not <| Maybe.withDefault False (Dict.get key collapsed)) then
-        positionedText "*"
+      if note /= "" && (not <| Maybe.withDefault False (Dict.get key collapsed))
+      then positionedText "*"
       else text ""
     expandedNote =
       if Maybe.withDefault False (Dict.get key collapsed)
@@ -140,14 +120,16 @@ specialTile collapsed paint (pt, (color, note, vis)) =
     key = "special-tile:" ++ toString ptx ++ "," ++ toString pty
     click model =
       case model.focus of
-        M.EditingMap path map special ->
-          case paint of
-            NoPaint -> M.ToggleCollapsed key
-            PaintSpecial _ _ _ ->
+        M.EditingMap path gridData ->
+          case gridData.paintStyle of
+            M.NoPaint -> M.ToggleCollapsed key
+            M.PaintSpecial _ ->
               let
+                map = gridData.map
                 newSpecials = Dict.remove pt map.specials
                 newMap = {map | specials = newSpecials}
-              in M.SetFocus (M.EditingMap path newMap special)
+                newGrid = {gridData | map = newMap}
+              in M.SetFocus (M.EditingMap path newGrid)
             _ -> M.NoMsg
         _ -> M.NoMsg
   in
@@ -161,15 +143,15 @@ calculateAllMovementOptions from distance =
       ys = List.range (from.y - distance) (from.y + distance)
   in List.concatMap (\x -> List.map (\y -> { x=x, y=y, z=0 }) ys) xs
 
-gridCreature : MapCreature -> Svg M.Msg
+gridCreature : M.MapCreature -> Svg M.Msg
 gridCreature creature =
   let creatureColor = creature.class.color
       strokeColor =
         case creature.highlight of
           Nothing -> "black"
-          Just Moving -> "blue"
-          Just Targetable -> "red"
-          Just Current -> "black"
+          Just M.Moving -> "blue"
+          Just M.Targetable -> "red"
+          Just M.Current -> "black"
       strokeWidthSize =
         if MEx.isJust creature.highlight
         then 10
@@ -205,34 +187,39 @@ gridCreature creature =
     [ tile creatureColor attrs (T.point3ToTup creature.pos)
     , foreground ]
 
-baseTerrainRects : PaintStyle -> Set.Set T.Point3Tup -> List (Svg M.Msg)
+baseTerrainRects : M.PaintStyle -> Set.Set T.Point3Tup -> Svg M.Msg
 baseTerrainRects paint terrain =
   let blocks = List.map (gridTerrain paint) (Set.toList terrain)
       empties = case paint of
-        NoPaint -> []
+        M.NoPaint -> []
         p -> emptyTerrain terrain p
-  in blocks ++ empties
+      _ = Debug.log "RENDERING BASE TERRAIN RECTS" ()
+  in g [] (blocks ++ empties)
 
-gridTerrain : PaintStyle -> T.Point3Tup -> Svg M.Msg
+gridTerrain : M.PaintStyle -> T.Point3Tup -> Svg M.Msg
 gridTerrain paint pt =
   let click model =
         case paint of
-          NoPaint -> M.NoMsg
-          PaintTerrain ->
+          M.NoPaint -> M.NoMsg
+          M.PaintTerrain ->
             case model.focus of
-              M.EditingMap path map special ->
-                let newMap = {map | terrain = Set.remove pt map.terrain}
-                in M.SetFocus (M.EditingMap path newMap special)
+              M.EditingMap path gridData ->
+                let map = gridData.map
+                    newGrid = {gridData | map = {map | terrain = Set.remove pt map.terrain}}
+                in M.SetFocus (M.EditingMap path gridData)
               _ -> M.NoMsg
-          PaintSpecial color note vis -> 
+          M.PaintSpecial special -> 
             case model.focus of
-              M.EditingMap path map special ->
-                let newMap = {map | specials = Dict.insert pt (color, note, vis) map.specials}
-                in M.SetFocus (M.EditingMap path newMap special)
+              M.EditingMap path gridData ->
+                let
+                  map = gridData.map
+                  newSpecials = Dict.insert pt (special.color, special.note, special.vis) map.specials
+                  newGrid = {gridData | map = {map | specials = newSpecials}}
+                in M.SetFocus (M.EditingMap path newGrid)
               _ -> M.NoMsg
   in tile "white" [onClick (M.Lazy click)] pt
 
-emptyTerrain : Set.Set T.Point3Tup -> PaintStyle -> List (Svg M.Msg)
+emptyTerrain : Set.Set T.Point3Tup -> M.PaintStyle -> List (Svg M.Msg)
 emptyTerrain terrain paint =
   let
     ptTup {x, y, z} = (x, y, z)
@@ -240,13 +227,16 @@ emptyTerrain terrain paint =
       let
         click model =
           case model.focus of
-            M.EditingMap path map special ->
+            M.EditingMap path gridData ->
               case paint of
-                NoPaint -> M.NoMsg
-                PaintTerrain -> M.ToggleTerrain pt
-                PaintSpecial color note vis ->
-                  let newMap = {map | specials = Dict.insert (ptTup pt) (color, note, vis) map.specials}
-                  in M.SetFocus (M.EditingMap path newMap special)
+                M.NoPaint -> M.NoMsg
+                M.PaintTerrain -> M.ToggleTerrain pt
+                M.PaintSpecial special ->
+                  let
+                    map = gridData.map
+                    newSpecials = Dict.insert (ptTup pt) (special.color, special.note, special.vis) map.specials
+                    newGrid = {gridData | map = {map | specials = newSpecials}}
+                  in M.SetFocus (M.EditingMap path newGrid)
             _ -> M.NoMsg
       in tile "grey" [onClick (M.Lazy click)] (T.point3ToTup pt)
     g x y = let pt = {x = x, y = y, z = 0}
