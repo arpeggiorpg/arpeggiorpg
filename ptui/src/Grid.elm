@@ -122,7 +122,10 @@ specialTile expanded (pt, (color, note, vis)) =
             , strokeWidth "2px"
             ]
             [text t]
-    star = if note /= "" && (not noteExpanded) then positionedText "*" else text ""
+    star =
+      if note /= "" && (not noteExpanded)
+      then positionedText (if vis == T.GMOnly then "(*)" else "*")
+      else text ""
     expandedNote = if noteExpanded then positionedText note else text ""
     key = "special-tile:" ++ toString ptx ++ "," ++ toString pty
     click model =
@@ -141,7 +144,7 @@ specialTile expanded (pt, (color, note, vis)) =
         _ -> M.ToggleGridSpecial (T.tupToPoint3 pt)
   in
     ( g [] [tile color [onClick (M.Lazy click)] (ptx, pty, ptz), star]
-    , expandedNote)
+    , g [] [expandedNote])
 
 -- return all points within a square with half-distance `distance`.
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
