@@ -5,6 +5,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Lazy as Lazy
 import Maybe.Extra as MaybeEx
 
 import Model as M
@@ -38,7 +39,7 @@ makeUI model app =
         [ ("Campaign", always (campaignView model app))
         , ("Combat", always (combatView model app))
         , ("Players", always (playersView model app))
-        , ("History", always (historyView model app))
+        , ("History", always (Lazy.lazy historyView app))
         , ("Saved Games", always (savedGameView model app))
         ]
   , extraOverlays = [bottomActionBar app]
@@ -473,7 +474,7 @@ editCreatureDialog model app editing =
 
 showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg
 showGameLogsDialog model app logs =
-  vbox (List.map (renderGameLog model app) logs)
+  vbox (List.map (renderGameLog app) logs)
 
 createNewChallengeDialog : M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
 createNewChallengeDialog model app sc =
@@ -815,14 +816,15 @@ playersView model app =
   in CommonView.playerList app menu app.players
 
 {-| Show a list of all events that have happened in the game. -}
-historyView : M.Model -> T.App -> Html M.Msg
-historyView model app = 
+historyView : T.App -> Html M.Msg
+historyView app = 
   let snapIdx = (Array.length app.snapshots) - 1
+      _ = Debug.log "[EXPENSIVE:historyView]" ()
       items =
         case Array.get snapIdx app.snapshots of
           Just (_, items) -> Array.toList items
           Nothing -> []
-  in vbox <| List.reverse (List.indexedMap (historyItem model app snapIdx) items)
+  in vbox <| List.reverse (List.indexedMap (historyItem app snapIdx) items)
 
 
 renderFolderPath : T.FolderPath -> Html M.Msg
@@ -834,8 +836,8 @@ renderFolderPath path =
 hsbox : List (Html M.Msg) -> Html M.Msg
 hsbox = habox [s [S.justifyContent S.spaceBetween]]
 
-renderGameLog : M.Model -> T.App -> T.GameLog -> Html M.Msg
-renderGameLog model app log =
+renderGameLog : T.App -> T.GameLog -> Html M.Msg
+renderGameLog app log =
   let cname cid = dtext (T.creatureName app cid |> Maybe.withDefault cid)
       creatureWithSkill cid attrid =
         let creature = T.getCreature app.current_game cid
@@ -875,9 +877,9 @@ renderGameLog model app log =
           , renderRoll roll
           , dtext (if success then "Success" else "Failure")]
 
-historyItem : M.Model -> T.App -> Int -> Int -> T.GameLog -> Html M.Msg
-historyItem model app snapIdx logIdx log =
-  let logItem = renderGameLog model app log
+historyItem : T.App -> Int -> Int -> T.GameLog -> Html M.Msg
+historyItem app snapIdx logIdx log =
+  let logItem = renderGameLog app log
   in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [icon [] "history"]]
 
 historyCombatLog : T.CombatLog -> Html M.Msg
