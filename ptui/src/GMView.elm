@@ -110,7 +110,7 @@ creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =
   let editCreatureLink =
         ( text "Edit Creature"
-        , M.SetModal (M.ModalEditCreature {cid=creature.id, note=creature.note, portrait_url=creature.portrait_url}))
+        , M.SetModal (M.ModalEditCreature {cid=creature.id, name=creature.name, note=creature.note, portrait_url=creature.portrait_url}))
       menu =
         div [s [S.position S.absolute, S.top (S.px 0), S.right (S.px 0)]]
             [popUpMenu model "creature-console-menu" creature.id gear gearBox [editCreatureLink]]
@@ -461,14 +461,12 @@ editCreatureDialog model app editing =
     Just creature ->
       let
         update f inp = M.SetModal (M.ModalEditCreature (f inp))
-        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note, portrait_url = editing.portrait_url})
+        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note, portrait_url = editing.portrait_url, name=editing.name})
+        entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
       in vbox
-        [ input [type_ "text", value editing.note, placeholder "Note"
-                , onInput (update (\n -> {editing | note=n}))]
-                []
-        , input [type_ "text", value editing.portrait_url, placeholder "Portrait URL"
-                , onInput (update (\u -> {editing | portrait_url=u}))]
-                []
+        [ entry "Name" creature.name (\n -> {editing | name=n})
+        , entry "Note" creature.note (\n -> {editing | note=n})
+        , entry "Portrait URL" creature.portrait_url (\u -> {editing | portrait_url=u})
         , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
     Nothing -> text "Creature not found"
 
