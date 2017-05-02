@@ -45,7 +45,7 @@ type Msg
     | SetPlayerID T.PlayerID
     | RegisterPlayer
 
-    | ToggleTerrain T.Point3
+    | GridPaint T.Point3
 
     | SelectAbility SelectingAbility
     | CancelAbility

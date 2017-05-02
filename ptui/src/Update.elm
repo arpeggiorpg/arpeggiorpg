@@ -185,15 +185,28 @@ update msg model = case msg of
       Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)
   GotCombatMovementOptions (Err e) -> ({model | error = toString e}, Cmd.none)
 
-  ToggleTerrain pt ->
-    let focus =
-          case model.focus of
-            M.EditingMap path gridData ->
-              let newGrid = {gridData | map = T.toggleTerrain gridData.map pt}
-              in M.EditingMap path newGrid
-            x -> x
-    in ({model | focus = focus}, Cmd.none)
-
+  GridPaint pt ->
+    let tup = T.point3ToTup pt
+    in case model.focus of
+      M.EditingMap path gridData ->
+        let
+          map = gridData.map
+          newGrid =
+            case gridData.paintStyle of
+              M.NoPaint -> gridData
+              M.PaintTerrain ->
+                let newT = (if Set.member tup map.terrain then Set.remove else Set.insert)
+                           tup map.terrain
+                in {gridData | map = {map | terrain = newT}}
+              M.PaintSpecial special ->
+                let newSpecials = 
+                      if Dict.member tup map.specials
+                      then Dict.remove tup map.specials
+                      else Dict.insert tup (special.color, special.note, special.vis) map.specials
+                in {gridData | map = {map | specials = newSpecials}}
+        in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
+      _ -> (model, Cmd.none)
+ 
   MapZoom zoom ->
     let newSize =
           case zoom of

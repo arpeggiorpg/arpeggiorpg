@@ -959,15 +959,6 @@ folderPathFromString ps =
       Just <| String.split "/" (String.slice 1 (String.length ps) ps)
     else Nothing
 
-
-toggleTerrain : Map -> Point3 -> Map
-toggleTerrain {id, name, terrain, specials} pt =
-  let ptTup = point3ToTup pt
-      newT = if Set.member ptTup terrain
-             then Set.remove ptTup terrain
-             else Set.insert ptTup terrain
-  in {id=id, name=name, terrain=newT, specials=specials}
-
 emptyMap : Map
 emptyMap = {id="invalid", name="<empty>", terrain=Set.empty, specials=Dict.empty}
 
