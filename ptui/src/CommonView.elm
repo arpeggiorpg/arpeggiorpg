@@ -380,7 +380,7 @@ targetMap model app scene vCreatures =
           in Grid.terrainMap model map targetable
         T.PTPoints pts ->
           let fullMsg pt = activateAbility ability (T.TargetedPoint pt)
-          in Grid.tileTargetingMap model fullMsg map pts vCreatures (always M.NoMsg)
+          in Grid.tileTargetingMap model fullMsg map pts vCreatures
     mapAndInfo sa targets =
       ( makeMap sa targets
       , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]])
