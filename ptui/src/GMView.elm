@@ -36,11 +36,11 @@ makeUI model app =
   , mapModeControls = mapModeControls
   , sideBar =
       CommonView.tabbedView "right-side-bar" "Campaign" model
-        [ ("Campaign", always (campaignView model app))
-        , ("Combat", always (combatView model app))
-        , ("Players", always (playersView model app))
-        , ("History", always (Lazy.lazy historyView app))
-        , ("Saved Games", always (savedGameView model app))
+        [ ("Campaign", (\() -> campaignView model app))
+        , ("Combat", (\() -> combatView model app))
+        , ("Players", (\() -> playersView model app))
+        , ("History", (\() -> Lazy.lazy historyView app))
+        , ("Saved Games", (\() -> savedGameView model app))
         ]
   , extraOverlays = [bottomActionBar app]
   , modal = checkModal model app
