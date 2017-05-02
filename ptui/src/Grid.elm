@@ -16,7 +16,12 @@ import Elements exposing (hbox, vbox, s)
 import Types as T
 import Model as M
 
+
 type alias GridModel a =
+  -- The subset of the model that we care about in grid rendering.
+  -- it'd be nice if this were actually a regular record that was embedded in the main Model, but
+  -- using this instead of M.Model at least ensures we're not doing too much wacky stuff with the 
+  -- main app model.
   { a
   | gridOffset: {x: Int, y: Int}
   , gridSize: Int
@@ -107,6 +112,7 @@ mapContents editable model map creatures extras =
         else Lazy.lazy2 specialTerrainView model.gridSpecialExpanded map.specials
   in g [] <| [terrainEls, emptyEls, specialEls] ++ extras ++ creatureEls ++ ghostEl
 
+-- these specialized versions of specialTerrain are necessary due to the way Svg.Lazy works.
 specialTerrainView : Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
 specialTerrainView = specialTerrain False
 
@@ -206,6 +212,7 @@ baseTerrainRects editable terrain =
       _ = Debug.log "[EXPENSIVE:baseTerrainRects]" ()
   in g [] blocks
 
+-- these specialized versions of baseTerrainRects are necessary due to the way Svg.Lazy works.
 editTerrainRects = baseTerrainRects True
 viewTerrainRects = baseTerrainRects False
 
