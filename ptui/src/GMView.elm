@@ -299,12 +299,12 @@ noteConsole model app path origName note =
     [ hbox
         [ text (String.join "/" path)
         , text "/"
-        , input [ type_ "text", value note.name
+        , input [ type_ "text", defaultValue origName
                 , onInput (\name -> noteMsg {note | name = name})]
                 []
         , saveButton
         ]
-    , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), value note.content] []
+    , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
     ]
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
