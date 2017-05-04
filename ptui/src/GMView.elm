@@ -57,7 +57,9 @@ savedGameView model app =
   in hbox [loadButton, saveButton]
 
 campaignView : M.Model -> T.App -> Html M.Msg
-campaignView model app = vabox [s [S.height (S.pct 100)]] [FolderView.campaignFolder model app, secondaryFocusView model app]
+campaignView model app =
+  vabox [s [S.height (S.pct 100)]]
+        [FolderView.campaignFolder model.folderState app, secondaryFocusView model app]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
@@ -226,8 +228,6 @@ terseCreatureLine app creature =
          , CommonView.hpBubble creature, CommonView.nrgBubble creature
          , inCombatIcon ]
 
--- TODO: parameterise above and use below
-
 terseCreaturesList : M.Model -> T.App -> T.Scene -> Html M.Msg
 terseCreaturesList model app scene =
   let
@@ -393,7 +393,7 @@ moveFolderItemDialog model app {src, item, dst} =
                       ]
   in
     vbox
-      [ FolderView.selectFolder model app select
+      [ FolderView.selectFolder model.folderState app select
       , button [onClick submit] [text "Select"]
       ]
 
@@ -419,7 +419,7 @@ selectCreaturesFromCampaignDialog model app {reason, selectedCreatures, cb} =
     submit = M.Batch [M.SetModal M.NoModal, cb selectedCreatures]
   in
     vbox [ strong [] [text reason]
-         , FolderView.selectCreatures model app select unselect selectedCreatures
+         , FolderView.selectCreatures model.folderState app select unselect selectedCreatures
          , button [onClick submit] [text "Submit"]
          ]
 
@@ -745,7 +745,7 @@ createSceneDialog model app creating =
       [ h3 [] [text "Create a Scene"]
       , hbox [text "Name:", input [type_ "text", placeholder "Name", onInput (update (\sc inp -> {sc | name = inp}))] []]
       , text "Map:"
-      , FolderView.selectMap model app (update (\sc inp -> {sc | map = inp}))
+      , FolderView.selectMap model.folderState app (update (\sc inp -> {sc | map = inp}))
       , button
           [ onClick
               (M.Batch [ M.SendCommand (T.CreateScene creating.path creating.scene)

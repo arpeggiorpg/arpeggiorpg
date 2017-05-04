@@ -16,8 +16,8 @@ import Elements exposing (..)
 s = Elements.s -- to disambiguate `s`, which Html also exports
 button = Elements.button
 
-campaignFolder : M.Model -> T.App -> Html M.Msg
-campaignFolder model app =
+campaignFolder : M.FolderState -> T.App -> Html M.Msg
+campaignFolder fstate app =
   let
     cfg =
       { mutable = True
@@ -28,10 +28,10 @@ campaignFolder model app =
       , allowFocus = True
       , contentControls = \_ _ -> text ""
       }
-  in baseCampaignView model app cfg
+  in baseCampaignView fstate app cfg
 
-selectCreatures : M.Model -> T.App -> (T.CreatureID -> M.Msg) -> (T.CreatureID -> M.Msg) -> List T.CreatureID -> Html M.Msg
-selectCreatures model app addCreature remCreature preselected =
+selectCreatures : M.FolderState -> T.App -> (T.CreatureID -> M.Msg) -> (T.CreatureID -> M.Msg) -> List T.CreatureID -> Html M.Msg
+selectCreatures fstate app addCreature remCreature preselected =
   let
     toggleCheck cid isChecked = if isChecked then addCreature cid else remCreature cid
     extraCheckbox _ itemId =
@@ -41,10 +41,10 @@ selectCreatures model app addCreature remCreature preselected =
           in input [type_ "checkbox", checked isChecked, onCheck (toggleCheck cid)] []
         _ -> text ""
     cfg = { showNothing | showCreatures = True, contentControls = extraCheckbox}
-  in baseCampaignView model app cfg
+  in baseCampaignView fstate app cfg
 
-selectFolder : M.Model -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
-selectFolder model app msg =
+selectFolder : M.FolderState -> T.App -> (T.FolderPath -> M.Msg) -> Html M.Msg
+selectFolder fstate app msg =
   let
     select path _ =
       input [ type_ "radio", name "select-folder"
@@ -52,10 +52,10 @@ selectFolder model app msg =
             [text "Select"]
     cfg = { showNothing | contentControls = select }
   in
-    baseCampaignView model app cfg
+    baseCampaignView fstate app cfg
 
-selectMap : M.Model -> T.App -> (T.MapID -> M.Msg) -> Html M.Msg
-selectMap model app cb =
+selectMap : M.FolderState -> T.App -> (T.MapID -> M.Msg) -> Html M.Msg
+selectMap fstate app cb =
   let
     control path item =
       case item of
@@ -63,7 +63,7 @@ selectMap model app cb =
                                         []
         _ -> text ""
     cfg = { showNothing | showMaps = True, contentControls = control }
-  in baseCampaignView model app cfg
+  in baseCampaignView fstate app cfg
 
 
 type alias FolderViewConfig =
@@ -87,11 +87,11 @@ showNothing =
   , contentControls = \_ _ -> text ""
   }
 
-baseCampaignView : M.Model -> T.App -> FolderViewConfig -> Html M.Msg
-baseCampaignView model app cfg =
-  let content = folderView model app cfg [] app.current_game.campaign
+baseCampaignView : M.FolderState -> T.App -> FolderViewConfig -> Html M.Msg
+baseCampaignView fstate app cfg =
+  let content = folderView fstate app cfg [] app.current_game.campaign
       extra = cfg.contentControls [] Nothing
-      menu = if cfg.mutable then folderMenu model [] else text ""
+      menu = if cfg.mutable then folderMenu fstate [] else text ""
   in vbox [ hbox [icon [] "folder_open", extra, text "Campaign", menu]
           , div [s [S.marginLeft (S.em 1)]] [content]]
 
@@ -108,8 +108,8 @@ baseFolderLine cfg path mItem mmsg iconName entryName =
   in hbox [icon attrs iconName, extra, div attrs [text entryName]]
 
 
-folderMenu : M.Model -> T.FolderPath -> Html M.Msg
-folderMenu model path =
+folderMenu : M.FolderState -> T.FolderPath -> Html M.Msg
+folderMenu fstate path =
   let
     moveFolder =
       case T.folderPathBaseName path of
@@ -139,29 +139,29 @@ folderMenu model path =
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ] ++  moveFolder ++ renameFolder ++ deleteFolder
   in
-    CommonView.popUpMenu model "create-item-in-folder" (T.folderPathToString path)
+    CommonView.popUpMenu_ fstate "create-item-in-folder" (T.folderPathToString path)
       (icon [] "more_horiz") (icon [] "more_horiz")
       menuItems
 
-folderSubEntries : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
-folderSubEntries model app cfg path (T.Folder folder) =
+folderSubEntries : M.FolderState -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
+folderSubEntries fstate app cfg path (T.Folder folder) =
   let
     viewChild (folderName, childFolder) =
       let childPath = path ++ [folderName]
           key = "folder-" ++ String.join "/" childPath
-          isShown = Dict.get key model.collapsed |> Maybe.withDefault False
+          isShown = Dict.get key fstate |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
-          menu = if cfg.mutable && isShown then (folderMenu model childPath) else text ""
+          menu = if cfg.mutable && isShown then (folderMenu fstate childPath) else text ""
       in
-        vbox [ hbox [baseFolderLine cfg path Nothing (Just <| M.ToggleCollapsed key) iconName folderName, menu]
+        vbox [ hbox [baseFolderLine cfg path Nothing (Just <| M.ToggleFolderCollapsed key) iconName folderName, menu]
               , if isShown
-                then div [s [S.marginLeft (S.em 1)]] [folderView model app cfg childPath childFolder]
+                then div [s [S.marginLeft (S.em 1)]] [folderView fstate app cfg childPath childFolder]
                 else text ""
               ]
   in vbox (List.map viewChild (Dict.toList folder.children))
 
-folderView : M.Model -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
-folderView model app cfg path (T.Folder folder) =
+folderView : M.FolderState -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
+folderView fstate app cfg path (T.Folder folder) =
   let
     viewCreature creature =
       folderLine cfg path (Just (T.FolderCreature creature.id)) (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
@@ -194,5 +194,5 @@ folderView model app cfg path (T.Folder folder) =
     maps =
       if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
       else text ""
-    children = folderSubEntries model app cfg path (T.Folder folder)
+    children = folderSubEntries fstate app cfg path (T.Folder folder)
   in vbox [ scenes, maps, creatures, notes, children]

@@ -5,7 +5,7 @@ module CommonView exposing
   , checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu, targetMap)
+  , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap)
 
 import Dict
 import Set
@@ -387,9 +387,12 @@ targetMap model app scene vCreatures =
   in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (mapAndInfo sa) sa.potentialTargets)
 
 popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenu model prefix key clicker clickerClicked items = 
+popUpMenu model = popUpMenu_ model.collapsed
+
+popUpMenu_ : Dict.Dict String Bool -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
+popUpMenu_ collapsed prefix key clicker clickerClicked items =
   let realKey = prefix ++ "-" ++ key
-      isClicked = Dict.get realKey model.collapsed |> Maybe.withDefault False
+      isClicked = Dict.get realKey collapsed |> Maybe.withDefault False
       renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
       openMenu =
         vabox

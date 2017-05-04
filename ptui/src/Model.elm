@@ -78,6 +78,7 @@ type Msg
     | MapPan Direction
     | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
+    | ToggleFolderCollapsed String
     | SelectView String String
 
     | ShowGameLogs (List T.GameLog)
@@ -115,6 +116,7 @@ defaultModel flags =
   , secondaryFocus = Focus2None
   , modal = NoModal
   , gettingSavedGames = Nothing
+  , folderState = Dict.empty
   }
 
 type alias Model =
@@ -134,6 +136,7 @@ type alias Model =
   , gridOffset: {x : Int, y: Int}
   , gridSpecialExpanded: Maybe T.Point3
   , collapsed : Dict.Dict String Bool
+  , folderState: FolderState
   , selectedViews : Dict.Dict String String
   , focus: Focus
   , secondaryFocus: SecondaryFocus
@@ -145,6 +148,8 @@ type alias GridData =
   { paintStyle: PaintStyle
   , map: T.Map
   }
+
+type alias FolderState = Dict.Dict String Bool
 
 type alias SelectingAbility = 
   { scene: T.SceneID

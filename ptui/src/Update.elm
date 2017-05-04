@@ -155,6 +155,11 @@ update msg model = case msg of
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.collapsed
     in ({model | collapsed = newCollapsed}, Cmd.none)
   
+  ToggleFolderCollapsed name ->
+    let currentlyCollapsed = Dict.get name model.folderState |> Maybe.withDefault False
+        newCollapsed = Dict.insert name (not currentlyCollapsed) model.folderState
+    in ({model | folderState = newCollapsed}, Cmd.none)
+  
   SelectView category name ->
     let newSelected = Dict.insert category name model.selectedViews
     in ({model | selectedViews = newSelected}, Cmd.none)
