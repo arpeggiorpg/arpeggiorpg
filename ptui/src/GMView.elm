@@ -216,26 +216,15 @@ attrIcon attrid =
 renderRoll num = hbox [text "🎲", text (toString num)]
 
 
-
-terseCreatureLine : M.Model -> T.App -> T.Creature -> Html M.Msg
-terseCreatureLine model app creature =
+terseCreatureLine : T.App -> T.Creature -> Html M.Msg
+terseCreatureLine app creature =
   let
-    inCombat =
-      case app.current_game.current_combat of
-        Just combat -> List.member creature.id combat.creatures.data
-        Nothing -> False
-    combatRelated =
-      case app.current_game.current_combat of
-        Just combat ->
-          if inCombat
-          then [(text "Remove from Combat", M.SendCommand (T.RemoveCreatureFromCombat creature.id))]
-          else [(text "Add to Combat", M.SendCommand (T.AddCreatureToCombat creature.id))]
-        Nothing -> []
+    inCombat = T.isCreatureInCombat app.current_game creature.id
     inCombatIcon = if inCombat then text "⚔️" else text ""
   in
     hbox [ CommonView.classIcon creature, strong [] [text creature.name]
-          , CommonView.hpBubble creature, CommonView.nrgBubble creature
-          , inCombatIcon ]
+         , CommonView.hpBubble creature, CommonView.nrgBubble creature
+         , inCombatIcon ]
 
 -- TODO: parameterise above and use below
 
@@ -245,10 +234,7 @@ terseCreaturesList model app scene =
     creatureLine creature =
       let
         abs = CommonView.creatureAbilities app.current_game scene.id True creature
-        inCombat =
-          case app.current_game.current_combat of
-            Just combat -> List.member creature.id combat.creatures.data
-            Nothing -> False
+        inCombat = T.isCreatureInCombat app.current_game creature.id
         combatRelated =
           case app.current_game.current_combat of
             Just combat ->
@@ -274,11 +260,8 @@ terseCreaturesList model app scene =
           -- path!
           -- [(text "View Creature", M.SetSecondaryFocus (M.Focus2Creature [] creature.id))]
         menuItems = extraItems ++ visibilityRelated ++ combatRelated ++ abs
-        inCombatIcon = if inCombat then text "⚔️" else text ""
       in
-        hbox [ CommonView.classIcon creature, strong [] [text creature.name]
-             , CommonView.hpBubble creature, CommonView.nrgBubble creature
-             , inCombatIcon
+        hbox [ terseCreatureLine app creature
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
   in vbox (List.map creatureLine (T.getCreatures app.current_game (Dict.keys scene.creatures)))
 
@@ -594,7 +577,7 @@ simpleSelectCreaturesDialog model app {from, selected, cb, title} =
                [text "Add"]
       selectableCreature creature =
         habox [s [S.width (S.px 500)]]
-              [checkBox creature, terseCreatureLine model app creature, noteBox model creature]
+              [checkBox creature, terseCreatureLine app creature, noteBox model creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (T.getCreatures app.current_game from)
       done = M.Batch [cb selected, M.SetModal M.NoModal]
@@ -620,7 +603,7 @@ selectOrderedCreaturesDialog model app {from, selected, cb, title} =
                [text "Remove"]
       selectableCreature creature =
         habox [s [S.width (S.px 500)]]
-              [selectButton creature, terseCreatureLine model app creature, noteBox model creature]
+              [selectButton creature, terseCreatureLine app creature, noteBox model creature]
       selectableCreatureItems =
         vbox <| List.map selectableCreature (T.getCreatures app.current_game from)
       setInit cid newInitStr =
