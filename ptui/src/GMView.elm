@@ -675,7 +675,9 @@ noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature = 
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
       submitMsg = M.SendCommand (T.EditCreature {creature | note = note})
-      inp = input [s [S.width (S.px 300)], type_ "text", value note, onInput (M.SetCreatureNote creature.id)] []
+      inp = input [s [S.width (S.px 300)], type_ "text", defaultValue creature.note
+                  , onInput (M.SetCreatureNote creature.id)]
+                  []
       saveButton =
         if creature.note /= note
         then button [onClick submitMsg] [text "Save Note"]
