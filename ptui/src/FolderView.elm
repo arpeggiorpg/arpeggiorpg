@@ -140,7 +140,7 @@ folderMenu fstate path =
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ] ++  moveFolder ++ renameFolder ++ deleteFolder
   in
-    CommonView.popUpMenu_ fstate "create-item-in-folder" (T.folderPathToString path)
+    CommonView.popUpMenu_ M.ToggleFolderCollapsed fstate "create-item-in-folder" (T.folderPathToString path)
       (icon [] "more_horiz") (icon [] "more_horiz")
       menuItems
 

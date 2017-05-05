@@ -387,13 +387,13 @@ targetMap model app scene vCreatures =
   in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (mapAndInfo sa) sa.potentialTargets)
 
 popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenu model = popUpMenu_ model.collapsed
+popUpMenu model = popUpMenu_ M.ToggleCollapsed model.collapsed
 
-popUpMenu_ : Dict.Dict String Bool -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
-popUpMenu_ collapsed prefix key clicker clickerClicked items =
+popUpMenu_ : (String -> M.Msg) -> Dict.Dict String Bool -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
+popUpMenu_ collapser collapsed prefix key clicker clickerClicked items =
   let realKey = prefix ++ "-" ++ key
       isClicked = Dict.get realKey collapsed |> Maybe.withDefault False
-      renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, M.ToggleCollapsed realKey])] [html]
+      renderItem (html, msg) = habox [clickable, onClick (M.Batch [msg, collapser realKey])] [html]
       openMenu =
         vabox
           [s [ S.boxShadow5 (S.px 5) (S.px 5) (S.px 2) (S.px -2) (S.rgb 128 128 128)
@@ -406,6 +406,6 @@ popUpMenu_ collapsed prefix key clicker clickerClicked items =
           ]
           (List.map renderItem items)
       maybeMenu = if isClicked then openMenu else text ""
-      header = div [clickable, onClick (M.ToggleCollapsed realKey)]
+      header = div [clickable, onClick (collapser realKey)]
                    [if isClicked then clickerClicked else clicker]
   in div [s [S.position S.relative]] [header, maybeMenu]
