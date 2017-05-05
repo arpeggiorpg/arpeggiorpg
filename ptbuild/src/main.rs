@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::path;
+use std::env;
+use std::process::Command;
 
 fn main() {
   let matches = clap::App::new("PT Builder Tool")
@@ -18,6 +20,10 @@ fn main() {
       .value_name("DIR")
       .required(true)
       .help("Directory of PTUI root"))
+    .arg(clap::Arg::with_name("watch")
+      .long("watch")
+      .help("If specified, continuously watch for changes to Elm code and rebuild. Requires \
+             watchexec."))
     .get_matches();
 
   let rpi = matches.value_of("rpi-url").expect("rpi-url required");
@@ -29,17 +35,35 @@ fn main() {
       .expect(&format!("Couldn't create directory {:?}", build_dir.to_str()));
   }
 
-  build_js(ptui_dir, build_dir.as_path());
-
-  build_html(ptui_dir, build_dir.as_path(), rpi);
+  if matches.is_present("watch") {
+    println!("Starting watchexec...");
+    let me = env::current_exe().expect("Couldn't get current executable!");
+    let mut child = Command::new("watchexec")
+      .arg("--exts")
+      .arg("elm")
+      .arg("-r")
+      .arg("-w")
+      .arg(ptui_dir)
+      .arg("--")
+      .arg(me)
+      .arg("--ptui-dir")
+      .arg(ptui_dir)
+      .arg("--rpi-url")
+      .arg(rpi)
+      .spawn()
+      .expect(&format!("Couldn't run watchexec :("));
+    child.wait().expect("watchexec exited");
+  } else {
+    build_js(ptui_dir, build_dir.as_path());
+    build_html(ptui_dir, build_dir.as_path(), rpi);
+  }
 }
 
 fn build_js(ptui_dir: &path::Path, build_dir: &path::Path) {
-  use std::process::Command;
   for &(elm, js) in [("Player.elm", "Player.js"), ("GM.elm", "GM.js")].iter() {
     let mut child = Command::new("elm")
       .arg("make")
-      .arg(ptui_dir.join("src").join(elm))
+      .arg(path::Path::new("src").join(elm))
       .arg("--output")
       .arg(build_dir.join(js))
       .current_dir(ptui_dir)
