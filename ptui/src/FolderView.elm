@@ -19,6 +19,7 @@ button = Elements.button
 campaignFolder : M.FolderState -> T.App -> Html M.Msg
 campaignFolder fstate app =
   let
+    _ = Debug.log "[EXPENSIVE:campaignFolder]" ()
     cfg =
       { mutable = True
       , showScenes = True

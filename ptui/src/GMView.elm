@@ -59,7 +59,8 @@ savedGameView model app =
 campaignView : M.Model -> T.App -> Html M.Msg
 campaignView model app =
   vabox [s [S.height (S.pct 100)]]
-        [FolderView.campaignFolder model.folderState app, secondaryFocusView model app]
+        [ Lazy.lazy2 FolderView.campaignFolder model.folderState app
+        , secondaryFocusView model app]
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
