@@ -54,18 +54,18 @@ fn main() {
       .expect(&format!("Couldn't run watchexec :("));
     child.wait().expect("watchexec exited");
   } else {
-    build_js(ptui_dir, build_dir.as_path());
+    build_js(ptui_dir);
     build_html(ptui_dir, build_dir.as_path(), rpi);
   }
 }
 
-fn build_js(ptui_dir: &path::Path, build_dir: &path::Path) {
+fn build_js(ptui_dir: &path::Path) {
   for &(elm, js) in [("Player.elm", "Player.js"), ("GM.elm", "GM.js")].iter() {
     let mut child = Command::new("elm")
       .arg("make")
       .arg(path::Path::new("src").join(elm))
       .arg("--output")
-      .arg(build_dir.join(js))
+      .arg(path::Path::new("build").join(js))
       .current_dir(ptui_dir)
       .spawn()
       .expect(&format!("Couldn't build {}", elm));
