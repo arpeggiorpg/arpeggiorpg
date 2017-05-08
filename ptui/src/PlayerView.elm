@@ -106,11 +106,12 @@ sceneMap model app scene myCreatures =
         in { mapc | highlight = highlight
                   , clickable = clickable}
       vCreatures = List.map modifyMapCreature (visibleCreatures game scene)
-      defaultMap () = (Grid.terrainMap model currentMap vCreatures, text "Click a creature to move it.")
+      defaultMap () = ( Grid.terrainMap model currentMap vCreatures
+                      , text "Click a creature to move it.")
   in
-    (CommonView.movementMap model app scene vCreatures
+    (CommonView.movementMap model app scene currentMap vCreatures
       |> Maybe.map (\g -> (g, CommonView.movementControls [] model)))
-    |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
+    |> MaybeEx.or (CommonView.targetMap model app scene currentMap vCreatures)
     |> MaybeEx.unpack defaultMap identity
 
 visibleCreatures game scene =

@@ -656,18 +656,19 @@ editMap model app path gridData =
 sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
+      currentMap = M.tryGetMapNamed scene.map app
       currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
       enableMovement mapc =
         { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just M.Current else Nothing
                , clickable = Just (M.GetMovementOptions scene.id)}
       vCreatures = (CommonView.visibleCreatures app.current_game scene) 
       defaultMap () =
-        ( Grid.terrainMap model (M.tryGetMapNamed scene.map app) (List.map enableMovement vCreatures)
+        ( Grid.terrainMap model currentMap (List.map enableMovement vCreatures)
         , text "Click a creature to move")
   in
-    (CommonView.movementMap model app scene vCreatures
+    (CommonView.movementMap model app scene currentMap vCreatures
       |> Maybe.map (\g -> (g, CommonView.movementControls [moveAnywhereToggle model] model)))
-    |> MaybeEx.or (CommonView.targetMap model app scene vCreatures)
+    |> MaybeEx.or (CommonView.targetMap model app scene currentMap vCreatures)
     |> MaybeEx.unpack defaultMap identity
 
 {-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument

@@ -225,13 +225,13 @@ movementControls extras model =
               ] ++ extras
     Nothing -> text ""
 
-movementMap : M.Model -> T.App -> T.Scene -> List M.MapCreature -> Maybe (Html M.Msg)
-movementMap model app scene vCreatures =
+movementMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature -> Maybe (Html M.Msg)
+movementMap model app scene map vCreatures =
   let
     movementGrid msg mvmtReq creature =
       case Dict.get creature.id scene.creatures of
         Just (pos, _) ->
-          Grid.movementMap model msg mvmtReq model.moveAnywhere (M.getMap model) pos vCreatures
+          Grid.movementMap model msg mvmtReq model.moveAnywhere map pos vCreatures
         Nothing -> text "Moving Creature is not in this scene"
     pathOrPort = if model.moveAnywhere then M.SetCreaturePos scene.id else M.PathCreature scene.id
   in
@@ -358,10 +358,9 @@ viewGame model app ui =
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
-targetMap : M.Model -> T.App -> T.Scene -> List M.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
-targetMap model app scene vCreatures =
+targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
+targetMap model app scene map vCreatures =
   let
-    map = M.tryGetMapNamed scene.map app
     makeMap {creature, ability} targets =
       let activateAbility =
             if T.isCreatureInCombat app.current_game creature
