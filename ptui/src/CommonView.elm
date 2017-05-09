@@ -123,7 +123,7 @@ baseActionBar sceneID inCombat game creature =
 oocActionBar : M.Model -> T.Game -> T.Creature -> List (Html M.Msg)
 oocActionBar model game creature =
   case model.focus of
-    M.Scene name -> baseActionBar name False game creature
+    M.FocusScene name -> baseActionBar name False game creature
     _ -> [dtext "Can't render an action bar without a scene!"]
 
 combatActionBar : T.Game -> T.Combat -> T.Creature -> Html M.Msg

@@ -168,7 +168,8 @@ folderView fstate app cfg path (T.Folder folder) =
       folderLine cfg path (Just (T.FolderCreature creature.id)) (M.SetSecondaryFocus (M.Focus2Creature path creature.id)) "contacts" creature.name
     viewScene sceneID =
       let scene = T.getScene app sceneID
-          msg = M.Batch [M.SetFocus (M.Scene sceneID), M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
+          msg = M.Batch [ M.SetFocus (M.FocusScene sceneID)
+                        , M.SetSecondaryFocus (M.Focus2Scene path sceneID)]
       in
         case scene of
           Just scene -> folderLine cfg path (Just (T.FolderScene sceneID)) msg "casino" scene.name

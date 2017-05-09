@@ -302,7 +302,7 @@ createFolderInPath model app {parent, child} =
          , button [onClick msgs] [text "Create"]]
 
 sceneButton : String -> Html M.Msg
-sceneButton sceneName = button [onClick (M.SetFocus (M.Scene sceneName))] [text sceneName]
+sceneButton sceneName = button [onClick (M.SetFocus (M.FocusScene sceneName))] [text sceneName]
 
 bottomActionBar : T.App -> Html M.Msg
 bottomActionBar app =
@@ -643,7 +643,7 @@ mapView model app =
     M.PreviewMap name ->
       ( Grid.terrainMap model (M.tryGetMapNamed name app) []
       , text "Previewing Map")
-    M.Scene name ->
+    M.FocusScene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene
         Nothing -> (text "", text "Scene does not exist")
@@ -725,7 +725,7 @@ inCombatView model app combat =
 startCombatButton : M.Model -> T.App -> Html M.Msg
 startCombatButton model app =
   case model.focus of
-    M.Scene sceneName  ->
+    M.FocusScene sceneName  ->
       let gotCreatures cids = M.SendCommand (T.StartCombat sceneName cids)
           sceneCreatures =
             case Dict.get sceneName app.current_game.scenes of
@@ -790,7 +790,7 @@ playersView model app =
       grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)
       sceneName =
         case model.focus of
-          M.Scene name -> Just name
+          M.FocusScene name -> Just name
           _ -> Nothing
       sceneButtonText =
         sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"

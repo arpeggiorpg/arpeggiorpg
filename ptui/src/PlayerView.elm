@@ -82,7 +82,7 @@ myCreatureEntry model app creature =
 mapView : M.Model -> T.App -> List T.Creature -> (Html M.Msg, Html M.Msg)
 mapView model app myCreatures =
   case model.focus of
-    M.Scene name ->
+    M.FocusScene name ->
       case Dict.get name app.current_game.scenes of
         Just scene -> sceneMap model app scene myCreatures
         Nothing -> (text "", text "")

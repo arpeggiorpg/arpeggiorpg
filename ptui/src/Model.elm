@@ -163,7 +163,7 @@ type alias SelectingAbility =
 
 type Focus
   = NoFocus
-  | Scene String
+  | FocusScene String
   | EditingMap T.FolderPath GridData
   | PreviewMap T.MapID
 
@@ -268,7 +268,7 @@ getMap model =
       model.app
       |> Maybe.andThen (getMapNamed name)
       |> Maybe.withDefault T.emptyMap
-    Scene name ->
+    FocusScene name ->
       getMapForScene model name
     NoFocus -> T.emptyMap
 

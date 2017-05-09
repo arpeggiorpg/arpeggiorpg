@@ -21,6 +21,10 @@ delay time msg =
 message : msg -> Cmd msg
 message msg = Task.perform (always msg) (Task.succeed ())
 
+-- Merge a new app into an existing model.
+-- This is where we handle various "transitionary" effects that rely on knowledge of both the old
+-- and new state of the game.
+-- e.g., when a player is becoming registered, or when we receive a new PathCreature GameLog.
 updateModelFromApp : M.Model -> T.App -> M.Model
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
@@ -43,7 +47,7 @@ updateModelFromApp model newApp =
         model.playerID
         |> Maybe.andThen (flip Dict.get newApp.players)
         |> Maybe.andThen (\p -> p.scene)
-        |> Maybe.map M.Scene
+        |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus                  
   in {model2 | showingMovement = showingMovement
              , focus = focus}
