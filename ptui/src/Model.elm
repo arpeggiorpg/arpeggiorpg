@@ -151,7 +151,7 @@ type alias GridData =
 
 type alias FolderState = Dict.Dict String Bool
 
-type alias SelectingAbility = 
+type alias SelectingAbility =
   { scene: T.SceneID
   , creature: T.CreatureID
   , ability: T.AbilityID

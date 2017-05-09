@@ -20,7 +20,7 @@ import Model as M
 type alias GridModel a =
   -- The subset of the model that we care about in grid rendering.
   -- it'd be nice if this were actually a regular record that was embedded in the main Model, but
-  -- using this instead of M.Model at least ensures we're not doing too much wacky stuff with the 
+  -- using this instead of M.Model at least ensures we're not doing too much wacky stuff with the
   -- main app model.
   { a
   | gridOffset: {x: Int, y: Int}
@@ -196,7 +196,7 @@ gridCreature creature =
           , rx "10"
           , ry "10"
           ] []
-      opa = if creature.visible then "1" else "0.4" 
+      opa = if creature.visible then "1" else "0.4"
       foreground =
         if creature.creature.portrait_url == ""
         then creatureNameEl (String.slice 0 4 creature.creature.name)

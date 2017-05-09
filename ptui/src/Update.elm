@@ -48,7 +48,7 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (flip Dict.get newApp.players)
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
-        |> Maybe.withDefault model.focus                  
+        |> Maybe.withDefault model.focus
   in {model2 | showingMovement = showingMovement
              , focus = focus}
 
@@ -96,7 +96,7 @@ update msg model = case msg of
   PollApp ->
     case model.app of
       Nothing -> (model, message Start)
-      Just app -> 
+      Just app ->
         let snapshotLength = Array.length app.snapshots
             logLength = Maybe.withDefault 0 (Maybe.map (\(g, logs) -> Array.length logs) <| Array.get (snapshotLength - 1) app.snapshots)
             url = model.rpiURL ++ "poll/" ++ (toString snapshotLength) ++ "/" ++ (toString logLength)
@@ -142,7 +142,7 @@ update msg model = case msg of
     let _ = Debug.log "[TICK]" ()
         showingMovement =
           case model.showingMovement of
-            M.ShowingMovement soFar rest -> 
+            M.ShowingMovement soFar rest ->
               let newSoFar = soFar ++ (List.take 1 rest)
                   newRest = List.drop 1 rest
               in if (List.length newRest) == 0
@@ -158,12 +158,12 @@ update msg model = case msg of
     let currentlyCollapsed = Dict.get name model.collapsed |> Maybe.withDefault False
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.collapsed
     in ({model | collapsed = newCollapsed}, Cmd.none)
-  
+
   ToggleFolderCollapsed name ->
     let currentlyCollapsed = Dict.get name model.folderState |> Maybe.withDefault False
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.folderState
     in ({model | folderState = newCollapsed}, Cmd.none)
-  
+
   SelectView category name ->
     let newSelected = Dict.insert category name model.selectedViews
     in ({model | selectedViews = newSelected}, Cmd.none)
@@ -182,7 +182,7 @@ update msg model = case msg of
     let endpoint = (model.rpiURL ++ "/combat_movement_options")
         cmd = Http.send GotCombatMovementOptions (Http.get endpoint (JD.list T.point3Decoder))
     in ({model | moveAnywhere = False}, cmd)
-  
+
   GotCombatMovementOptions (Ok pts) ->
     case model.app of
       Just app ->
@@ -208,14 +208,14 @@ update msg model = case msg of
                            tup map.terrain
                 in {gridData | map = {map | terrain = newT}}
               M.PaintSpecial special ->
-                let newSpecials = 
+                let newSpecials =
                       if Dict.member tup map.specials
                       then Dict.remove tup map.specials
                       else Dict.insert tup (special.color, special.note, special.vis) map.specials
                 in {gridData | map = {map | specials = newSpecials}}
         in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
       _ -> (model, Cmd.none)
- 
+
   MapZoom zoom ->
     let newSize =
           case zoom of

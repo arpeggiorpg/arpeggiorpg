@@ -84,7 +84,7 @@ secondaryFocusView model app =
         Nothing -> text "Map Disappeared"
     M.Focus2Scene path sceneID ->
       case T.getScene app sceneID of
-        Just scene -> 
+        Just scene ->
           let item = {key=T.FolderScene sceneID, path=path, prettyName=scene.name}
           in console model app item (sceneConsole model app scene)
         Nothing -> text "Scene Disappeared"
@@ -350,7 +350,7 @@ editingMapConsole model app origMap path gridData =
               M.PaintSpecial rec -> M.PaintSpecial (f rec)
               x -> x
       in M.SetFocus (M.EditingMap path {gridData | paintStyle = newStyle})
-    updateSpecialColor color = updateSpecial (\special -> {special | color = color}) 
+    updateSpecialColor color = updateSpecial (\special -> {special | color = color})
     updateSpecialNote note = updateSpecial (\special -> {special | note = note})
     updateSpecialVis isChecked =
       let vis = if isChecked then T.GMOnly else T.AllPlayers
@@ -379,7 +379,7 @@ createMapDialog model app cm =
   let updateName name = M.SetModal (M.CreateMap {cm | name=name})
       create = M.Batch [ M.SendCommand (T.CreateMap cm.path {name=cm.name, terrain=[]})
                        , M.SetModal M.NoModal ]
-  in 
+  in
     vbox
       [ input [type_ "text", placeholder "Map Name", onInput updateName] []
       , button [onClick create] [text "Create"]
@@ -414,7 +414,7 @@ selectCreaturesFromCampaignDialog model app {reason, selectedCreatures, cb} =
     select cid =
       Debug.log ("Selecting cid "++ cid) <|
       M.SetModal (M.SelectCreaturesFromCampaign {reason=reason, cb=cb, selectedCreatures=selectedCreatures ++ [cid]})
-    unselect cid = 
+    unselect cid =
       Debug.log ("DEselecting cid "++ cid) <|
       M.SetModal (M.SelectCreaturesFromCampaign {reason=reason, cb=cb, selectedCreatures=List.filter (\c -> c /= cid) selectedCreatures})
     submit = M.Batch [M.SetModal M.NoModal, cb selectedCreatures]
@@ -661,7 +661,7 @@ sceneMap model app scene =
       enableMovement mapc =
         { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just M.Current else Nothing
                , clickable = Just (M.GetMovementOptions scene.id)}
-      vCreatures = (CommonView.visibleCreatures app.current_game scene) 
+      vCreatures = (CommonView.visibleCreatures app.current_game scene)
       defaultMap () =
         ( Grid.terrainMap model currentMap (List.map enableMovement vCreatures)
         , text "Click a creature to move")
@@ -674,7 +674,7 @@ sceneMap model app scene =
 {-| An area for writing terse notes about a Creature. Intended to be passed as the "extras" argument
     to creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
-noteBox model creature = 
+noteBox model creature =
   let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
       submitMsg = M.SendCommand (T.EditCreature {creature | note = note})
       inp = input [s [S.width (S.px 300)], type_ "text", defaultValue creature.note
@@ -802,7 +802,7 @@ playersView model app =
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg
-historyView app = 
+historyView app =
   let snapIdx = (Array.length app.snapshots) - 1
       _ = Debug.log "[EXPENSIVE:historyView]" ()
       items =

@@ -63,7 +63,7 @@ creatureCard extras app creature =
       [s [ plainBorder
          , S.width (S.px 300), S.height (S.px 100), S.borderRadius (S.px 10), S.padding (S.px 3)
          , S.position S.relative]]
-      <| 
+      <|
       [ hbox [strong [] [text creature.name ], classIcon creature]
       , hbox
           [ creatureIcon app creature
@@ -84,7 +84,7 @@ classIcon creature =
     _ -> text ""
 
 conditionIcon : T.AppliedCondition -> Html M.Msg
-conditionIcon ac = case ac.condition of 
+conditionIcon ac = case ac.condition of
   T.RecurringEffect eff -> text (toString eff)
   T.Dead -> text "💀"
   T.Incapacitated -> text "😞"
@@ -243,7 +243,7 @@ movementMap model app scene map vCreatures =
         let (creature, moveMessage) =
               case mvmtReq.ooc_creature of
                 Just creature -> (creature, pathOrPort creature.id)
-                Nothing -> (T.combatCreature app.current_game combat, M.PathCurrentCombatCreature)  
+                Nothing -> (T.combatCreature app.current_game combat, M.PathCurrentCombatCreature)
         in Just <| movementGrid moveMessage mvmtReq creature
       _ -> Nothing
 
@@ -279,7 +279,7 @@ errorBox model =
   vbox [text "Error", button [onClick M.ClearError] [text "OK"], pre [] [text model.error]]
 
 creatureIcon : T.App -> T.Creature -> Html M.Msg
-creatureIcon app creature = 
+creatureIcon app creature =
   let creatureColor =
         case Dict.get creature.class app.current_game.classes of
           Just class -> class.color
@@ -299,7 +299,7 @@ creatureIcon app creature =
 mainActionBar : T.App -> T.Combat -> Html M.Msg
 mainActionBar app combat =
   let creature = T.combatCreature app.current_game combat
-  in sdiv 
+  in sdiv
       [s [ S.position S.fixed
          , S.left (S.pct 50)
          , S.bottom (S.px 0)
