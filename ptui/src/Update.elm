@@ -49,8 +49,20 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus
+      newGridOffset = maybeResetGridOffset model.gridOffset model.focus focus 
   in {model2 | showingMovement = showingMovement
              , focus = focus}
+
+maybeResetGridOffset oldOffset oldFocus newFocus =
+  case oldFocus of
+    M.FocusScene x ->
+      case newFocus of
+        M.FocusScene y -> if x /= y then Debug.log "[CHANGING-SCENE]" {x=0, y=0} else oldOffset
+        _ -> oldOffset
+    _ ->
+      case oldFocus of
+        M.FocusScene x -> {x=0, y=0}
+        _ -> oldOffset
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
@@ -123,7 +135,11 @@ update msg model = case msg of
       Just playerID -> (model, sendCommand model.rpiURL (T.RegisterPlayer playerID))
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
-  SetFocus focus -> ({model | focus = focus}, Cmd.none)
+  SetFocus focus ->
+    let
+      newGridOffset = maybeResetGridOffset model.gridOffset model.focus focus
+      m_ = {model | focus = focus, gridOffset = newGridOffset}
+    in (m_, Cmd.none)
 
   SetSecondaryFocus f2 -> ({model | secondaryFocus = f2}, Cmd.none)
 
