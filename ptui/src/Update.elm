@@ -53,6 +53,7 @@ updateModelFromApp model newApp =
   in {model2 | showingMovement = showingMovement
              , focus = focus}
 
+maybeResetGridOffset : {x: Int, y: Int} -> M.Focus -> M.Focus -> {x: Int, y: Int}
 maybeResetGridOffset oldOffset oldFocus newFocus =
   case oldFocus of
     M.FocusScene x ->
