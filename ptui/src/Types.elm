@@ -240,7 +240,7 @@ type alias FolderNode =
   }
 
 folderNodeDecoder : JD.Decoder FolderNode
-folderNodeDecoder = 
+folderNodeDecoder =
   JD.map4 FolderNode
     (JD.field "scenes" (setDecoder JD.string))
     (JD.field "creatures" (setDecoder JD.string))
@@ -250,7 +250,7 @@ folderNodeDecoder =
 type alias FolderPath = List String
 
 folderPathDecoder : JD.Decoder FolderPath
-folderPathDecoder = 
+folderPathDecoder =
   JD.string
   |> JD.andThen (\s -> case folderPathFromString s of
                          Just x -> JD.succeed x
@@ -296,7 +296,7 @@ sceneEncoder scene =
     encCreatures = List.map encCreature (Dict.toList scene.creatures)
     encAttrCheck (key, sc) = (key, attrCheckEncoder sc)
     encAttrChecks = List.map encAttrCheck (Dict.toList scene.attribute_checks)
-  in 
+  in
   JE.object
     [ ("id", JE.string scene.id)
     , ("name", JE.string scene.name)
@@ -532,7 +532,7 @@ stringKeyDictToIntKeyDict d =
       foldFunc key value accumulator =
         case accumulator of
           Err x -> Err x
-          Ok intMap -> 
+          Ok intMap ->
             case (String.toInt key) of
               Ok intKey -> Ok (Dict.insert intKey value intMap)
               Err x -> Err x
@@ -970,3 +970,6 @@ folderPathBaseName path = List.Extra.last path
 
 folderPathChild : FolderPath -> String -> FolderPath
 folderPathChild fp name = fp ++ [name]
+
+getCreaturePos : CreatureID -> Scene -> Maybe Point3
+getCreaturePos cid scene = Dict.get cid scene.creatures |> Maybe.map (\(p, _) -> p)

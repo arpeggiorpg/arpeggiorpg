@@ -49,21 +49,40 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus
-      newGridOffset = maybeResetGridOffset model.gridOffset model.focus focus 
+      newGridOffset = maybeResetGridOffset model focus 
   in {model2 | showingMovement = showingMovement
              , focus = focus}
 
-maybeResetGridOffset : {x: Int, y: Int} -> M.Focus -> M.Focus -> {x: Int, y: Int}
-maybeResetGridOffset oldOffset oldFocus newFocus =
-  case oldFocus of
-    M.FocusScene x ->
-      case newFocus of
-        M.FocusScene y -> if x /= y then Debug.log "[CHANGING-SCENE]" {x=0, y=0} else oldOffset
-        _ -> oldOffset
-    _ ->
-      case oldFocus of
-        M.FocusScene x -> {x=0, y=0}
-        _ -> oldOffset
+maybeResetGridOffset : M.Model -> M.Focus -> {x: Int, y: Int}
+maybeResetGridOffset model newFocus =
+  let
+    getRelevantCreatureID app sceneID =
+      case model.playerID of
+        Just pid ->
+          List.head (T.getPlayerCreatures app pid)
+          |> Maybe.map (.id)
+        Nothing -> Nothing
+    getCreatureOffset app sceneID cid =
+      T.getScene app sceneID
+      |> Maybe.andThen (T.getCreaturePos cid)
+      |> Maybe.map (\pos -> {x=pos.x, y=pos.y})
+    resetOffset app sceneID =
+      getRelevantCreatureID app sceneID
+      |> Maybe.andThen (getCreatureOffset app sceneID)
+      |> Maybe.withDefault {x=-15, y=10} -- FIXME: magic constant, duplicated from Model.elm
+  in
+    case (model.app, model.focus) of
+      (Just app, M.FocusScene oldSceneID) ->
+        case newFocus of
+          M.FocusScene newSceneID ->
+            if oldSceneID /= newSceneID then Debug.log "[RESET-OFFSET]" (resetOffset app newSceneID)
+            else model.gridOffset
+          _ -> model.gridOffset
+      (Just app, _) ->
+        case model.focus of
+          M.FocusScene sceneID -> resetOffset app sceneID
+          _ -> model.gridOffset
+      _ -> model.gridOffset
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
@@ -138,7 +157,7 @@ update msg model = case msg of
 
   SetFocus focus ->
     let
-      newGridOffset = maybeResetGridOffset model.gridOffset model.focus focus
+      newGridOffset = maybeResetGridOffset model focus
       m_ = {model | focus = focus, gridOffset = newGridOffset}
     in (m_, Cmd.none)
 
