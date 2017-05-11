@@ -355,7 +355,6 @@ viewGame model app ui =
         [ ui.sideBar ]
     , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
-    , overlay (S.px 400) (S.px 0) [S.height (S.px 100), S.width (S.px 250)] [text "Grid Offset: ", text (toString model.gridOffset)]
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
