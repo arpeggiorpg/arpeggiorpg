@@ -81,7 +81,8 @@ targetTiles targetMsg pts =
   in List.map movementTarget pts
 
 baseMap : GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg M.Msg
-baseMap model map creatures extras = mapContainer model (mapContents False model map creatures extras)
+baseMap model map creatures extras =
+  mapContainer model (mapContents False model map creatures extras)
 
 mapContainer : GridModel a -> Svg M.Msg -> Svg M.Msg
 mapContainer {gridOffset, gridSize} content =
@@ -100,7 +101,6 @@ mapContainer {gridOffset, gridSize} content =
                             (JD.map M.DragStart Mouse.position)
       ]
       [g [transform <| "matrix(" ++ matrixArgs ++ ")"] [content]]
-
 
 mapContents : Bool -> GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg M.Msg
 mapContents editable model map creatures extras =

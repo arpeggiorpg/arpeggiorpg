@@ -335,7 +335,8 @@ type alias UI =
   , mapModeControls : Html M.Msg
   , sideBar : Html M.Msg
   , modal : Maybe (Html M.Msg)
-  , extraOverlays : List (Html M.Msg)}
+  , extraOverlays : List (Html M.Msg)
+  }
 
 {-| Top-level UI for an App. -}
 viewGame : M.Model -> T.App -> UI -> Html M.Msg
