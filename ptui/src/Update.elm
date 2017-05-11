@@ -53,7 +53,7 @@ updateModelFromApp model newApp =
   in {model2 | showingMovement = showingMovement
              , focus = focus}
 
-maybeResetGridOffset : M.Model -> M.Focus -> {x: Int, y: Int}
+maybeResetGridOffset : M.Model -> M.Focus -> {x: Float, y: Float}
 maybeResetGridOffset model newFocus =
   let
     getRelevantCreatureID app sceneID =
@@ -65,11 +65,11 @@ maybeResetGridOffset model newFocus =
     getCreatureOffset app sceneID cid =
       T.getScene app sceneID
       |> Maybe.andThen (T.getCreaturePos cid)
-      |> Maybe.map (\pos -> {x=pos.x, y=pos.y})
+      |> Maybe.map (\pos -> {x=toFloat pos.x, y=toFloat pos.y})
     resetOffset app sceneID =
       getRelevantCreatureID app sceneID
       |> Maybe.andThen (getCreatureOffset app sceneID)
-      |> Maybe.withDefault {x=-15, y=10} -- FIXME: magic constant, duplicated from Model.elm
+      |> Maybe.withDefault {x=-15.0, y=10.0} -- FIXME: magic constant, duplicated from Model.elm
   in
     case (model.app, model.focus) of
       (Just app, M.FocusScene oldSceneID) ->
@@ -349,6 +349,17 @@ update msg model = case msg of
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))
+
+  DragStart pos -> let _ = Debug.log ("[DragStart]" ++ toString pos) () in ({model | gridPanning = Just (pos, model.gridOffset)}, Cmd.none)
+  DragAt pos ->
+    case model.gridPanning of
+      Just (startedDraggingPos, origGridOffset) ->
+        let diffx = toFloat (pos.x - startedDraggingPos.x) / 10
+            diffy = toFloat (pos.y - startedDraggingPos.y) / 10
+            newGridOffset = {x=origGridOffset.x - diffx, y=origGridOffset.y + diffy}
+        in ({model | gridOffset = newGridOffset}, Cmd.none)
+      Nothing -> (model, Cmd.none)
+  DragEnd pos -> let _ = Debug.log ("[DragEnd]" ++ toString pos) () in ({model | gridPanning = Nothing}, Cmd.none)
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set

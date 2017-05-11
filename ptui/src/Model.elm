@@ -4,6 +4,7 @@ import Dict
 import Http
 import Keyboard
 import Keyboard.Key as Key
+import Mouse
 import Time
 import Json.Decode as JD
 import Html
@@ -29,7 +30,7 @@ subscriptions model =
           -- Key.Add -> MapZoom In
           -- Key.Subtract -> MapZoom Out
       keys = Keyboard.downs handleKey
-  in Sub.batch [ticks, keys]
+  in Sub.batch [ticks, keys, Mouse.moves DragAt, Mouse.ups DragEnd]
 
 type Msg
     = Start
@@ -44,6 +45,10 @@ type Msg
     | ClearError
     | SetPlayerID T.PlayerID
     | RegisterPlayer
+
+    | DragStart Mouse.Position
+    | DragAt Mouse.Position
+    | DragEnd Mouse.Position
 
     | GridPaint T.Point3
 
@@ -110,6 +115,7 @@ defaultModel flags =
   , gridSize = 60
   , gridOffset = {x = -15, y = 10}
   , gridSpecialExpanded = Nothing
+  , gridPanning = Nothing
   , collapsed = Dict.empty
   , selectedViews = Dict.empty
   , focus = NoFocus
@@ -133,8 +139,9 @@ type alias Model =
   -- gridSize: how many SQUARE METERS to show
   , gridSize: Int
   -- gridOffset: offset in METERS
-  , gridOffset: {x : Int, y: Int}
+  , gridOffset: {x: Float, y: Float}
   , gridSpecialExpanded: Maybe T.Point3
+  , gridPanning: Maybe (Mouse.Position, {x: Float, y: Float})
   , collapsed : Dict.Dict String Bool
   , folderState: FolderState
   , selectedViews : Dict.Dict String String

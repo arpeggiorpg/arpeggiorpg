@@ -345,9 +345,9 @@ viewGame model app ui =
     <|
     [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
     , theCss
-    , overlay (S.px 0)  (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+    , overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [ui.mapView]
-    , overlay (S.px 0)  (S.px 0) [S.width (S.px 80)]
+    , overlay (S.px 0) (S.px 0) [S.width (S.px 80)]
         [mapControls]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
@@ -355,6 +355,7 @@ viewGame model app ui =
         [ ui.sideBar ]
     , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
+    , overlay (S.px 400) (S.px 0) [S.height (S.px 100), S.width (S.px 250)] [text "Grid Offset: ", text (toString model.gridOffset)]
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 

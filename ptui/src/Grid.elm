@@ -2,8 +2,11 @@ module Grid exposing (..)
 
 import Dict
 import Html.Attributes as HA
+import Html.Events as HE
 import Css as S
+import Json.Decode as JD
 import Set
+import Mouse
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -23,7 +26,7 @@ type alias GridModel a =
   -- using this instead of M.Model at least ensures we're not doing too much wacky stuff with the
   -- main app model.
   { a
-  | gridOffset: {x: Int, y: Int}
+  | gridOffset: {x: Float, y: Float}
   , gridSize: Int
   , showingMovement: M.MovementAnimation
   , gridSpecialExpanded: Maybe T.Point3
@@ -93,6 +96,8 @@ mapContainer {gridOffset, gridSize} content =
       , s [ S.width (S.pct 100)
           , S.height (S.pct 100)
           , S.backgroundColor (S.rgb 215 215 215)]
+      , HE.onWithOptions "mousedown" {preventDefault=True, stopPropagation=True}
+                            (JD.map M.DragStart Mouse.position)
       ]
       [g [transform <| "matrix(" ++ matrixArgs ++ ")"] [content]]
 
@@ -217,7 +222,11 @@ viewTerrainRects = baseTerrainRects False
 
 gridTerrain : Bool -> T.Point3Tup -> Svg M.Msg
 gridTerrain editable pt =
-  let attrs = if editable then [onClick (M.GridPaint (T.tupToPoint3 pt))] else []
+  let 
+    attrs =
+      if editable
+      then [onClick (M.GridPaint (T.tupToPoint3 pt))]
+      else []
   in tile "white" attrs pt
 
 emptyTerrain : Set.Set T.Point3Tup -> Svg M.Msg
