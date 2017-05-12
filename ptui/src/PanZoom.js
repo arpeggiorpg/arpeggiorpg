@@ -8,6 +8,9 @@ function init(state, el) {
     state[el].resize();
     state[el].center();
     state[el].fit();
+    state[el].zoomOut();
+    state[el].zoomOut();
+    state[el].zoomOut();
 });
 }
 
@@ -19,6 +22,9 @@ function update(state, el) {
     state[el].resize();
     state[el].center();
     state[el].fit();
+    state[el].zoomOut();
+    state[el].zoomOut();
+    state[el].zoomOut();
   });
   
 }
