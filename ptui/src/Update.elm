@@ -26,7 +26,7 @@ message msg = Task.perform (always msg) (Task.succeed ())
 -- This is where we handle various "transitionary" effects that rely on knowledge of both the old
 -- and new state of the game.
 -- e.g., when a player is becoming registered, or when we receive a new PathCreature GameLog.
-updateModelFromApp : M.Model -> T.App -> M.Model
+updateModelFromApp : M.Model -> T.App -> (M.Model, M.Msg)
 updateModelFromApp model newApp =
   let model2 = { model | app = Just newApp}
       showingMovement =
@@ -50,8 +50,9 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus
-  in {model2 | showingMovement = showingMovement
-             , focus = focus}
+  in ( {model2 | showingMovement = showingMovement
+               , focus = focus}
+     , mapChangeShenanigans model focus)
 
 mapChangeShenanigans : M.Model -> M.Focus -> M.Msg
 mapChangeShenanigans model newFocus =
@@ -141,7 +142,9 @@ update msg model = case msg of
             cmd = Http.send ReceivedAppUpdate (Http.get url T.appDecoder)
         in (model, cmd)
 
-  ReceivedAppUpdate (Ok newApp) -> (updateModelFromApp model newApp, message PollApp)
+  ReceivedAppUpdate (Ok newApp) ->
+    let (newModel, msg) = updateModelFromApp model newApp
+    in (newModel, message (M.Batch [msg, PollApp]))
   ReceivedAppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
     in ( { model | error = toString x}
@@ -150,11 +153,11 @@ update msg model = case msg of
   SetPlayerID pid ->
     -- TODO: This stuff shouldn't be in SetPlayerID anyway...
     let modelWPlayer = {model | playerID = Just pid}
-        newModel =
+        (newModel, msg) =
           case model.app of
             Just app -> updateModelFromApp modelWPlayer app
-            Nothing -> modelWPlayer
-    in (newModel, Cmd.none)
+            Nothing -> (modelWPlayer, M.NoMsg)
+    in (newModel, message msg)
 
   RegisterPlayer ->
     case model.playerID of
@@ -174,8 +177,8 @@ update msg model = case msg of
   Batch messages -> (model, Cmd.batch (List.map message messages))
 
   AppUpdate (Ok newApp) ->
-    let model2 = updateModelFromApp model newApp
-    in ( { model2 | moving = Nothing , selectingAbility = Nothing }, Cmd.none )
+    let (model2, msg) = updateModelFromApp model newApp
+    in ( { model2 | moving = Nothing , selectingAbility = Nothing }, message msg )
   AppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
     in ({model | error = toString x}, Cmd.none)
