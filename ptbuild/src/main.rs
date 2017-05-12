@@ -4,6 +4,7 @@ extern crate handlebars;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Write};
+use std::io;
 use std::path;
 use std::env;
 use std::process::Command;
@@ -11,18 +12,18 @@ use std::process::Command;
 fn main() {
   let matches = clap::App::new("PT Builder Tool")
     .arg(clap::Arg::with_name("rpi-url")
-      .long("rpi-url")
-      .value_name("URL")
-      .required(true)
-      .help("URL pointing at the P&T RPI"))
+           .long("rpi-url")
+           .value_name("URL")
+           .required(true)
+           .help("URL pointing at the P&T RPI"))
     .arg(clap::Arg::with_name("ptui-dir")
-      .long("ptui-dir")
-      .value_name("DIR")
-      .required(true)
-      .help("Directory of PTUI root"))
+           .long("ptui-dir")
+           .value_name("DIR")
+           .required(true)
+           .help("Directory of PTUI root"))
     .arg(clap::Arg::with_name("watch")
-      .long("watch")
-      .help("If specified, continuously watch for changes to Elm code and rebuild. Requires \
+           .long("watch")
+           .help("If specified, continuously watch for changes to Elm code and rebuild. Requires \
              watchexec."))
     .get_matches();
 
@@ -31,8 +32,8 @@ fn main() {
   let build_dir = ptui_dir.join("build");
 
   if !build_dir.exists() {
-    fs::create_dir(&build_dir)
-      .expect(&format!("Couldn't create directory {:?}", build_dir.to_str()));
+    fs::create_dir(&build_dir).expect(&format!("Couldn't create directory {:?}",
+                                               build_dir.to_str()));
   }
 
   if matches.is_present("watch") {
@@ -56,6 +57,7 @@ fn main() {
   } else {
     build_js(ptui_dir);
     build_html(ptui_dir, build_dir.as_path(), rpi);
+    copy_others(ptui_dir, build_dir.as_path()).expect("Couldn't copy other files to build dir");
   }
 }
 
@@ -76,19 +78,33 @@ fn build_js(ptui_dir: &path::Path) {
   }
 }
 
+fn copy_others(ptui_dir: &path::Path, build_dir: &path::Path) -> Result<(), io::Error> {
+  /// Copy all javascript (.js) files in ptui_dir/src to the build dir.
+  for direntry in fs::read_dir(ptui_dir.join("src"))? {
+    let direntry = direntry?;
+    if direntry.file_name().to_str().expect("Couldn't parse file as utf-8").ends_with(".js") {
+      let filename = direntry.path();
+      fs::copy(filename, build_dir.join(direntry.file_name()))?;
+    }
+  }
+  Ok(())
+}
+
 fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
   let template = load_template(ptui_dir);
   let mut handlebars = handlebars::Handlebars::new();
-  handlebars.register_template_string("template.html", template)
+  handlebars
+    .register_template_string("template.html", template)
     .expect("Couldn't register_template_string");
 
   for &(js_fn, html_fn) in [("GM.js", "GM.html"), ("Player.js", "Player.html")].iter() {
     let data = template_data(rpi.to_string(), js_fn.to_string());
     let populated = handlebars.render("template.html", &data).expect("Couldn't render template");
     let html_path = build_dir.join(html_fn);
-    let mut outfile = fs::File::create(&html_path)
-      .expect(&format!("Couldn't create {:?}", html_path.to_str()));
-    outfile.write_all(populated.as_bytes())
+    let mut outfile =
+      fs::File::create(&html_path).expect(&format!("Couldn't create {:?}", html_path.to_str()));
+    outfile
+      .write_all(populated.as_bytes())
       .expect(&format!("Couldn't write populated data to {:?}", html_path.to_str()));
     println!("Wrote file {:?}", html_path.to_str());
   }

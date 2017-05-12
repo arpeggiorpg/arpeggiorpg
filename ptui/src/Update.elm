@@ -9,6 +9,7 @@ import Process
 import Task
 import Time
 
+import PanZoom
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
@@ -49,19 +50,24 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus
-      newGridOffset = maybeResetGridOffset model focus 
   in {model2 | showingMovement = showingMovement
              , focus = focus}
+
+mapChangeShenanigans : M.Model -> M.Focus -> M.Msg
+mapChangeShenanigans model newFocus =
+  case (model.focus, newFocus) of
+    (_, M.NoFocus) -> M.NoMsg
+    (M.NoFocus, _) -> M.GridInitializePanZoom
+    _ -> if model.focus /= newFocus then M.GridRefreshPanZoom else M.NoMsg
 
 maybeResetGridOffset : M.Model -> M.Focus -> {x: Float, y: Float}
 maybeResetGridOffset model newFocus =
   let
     getRelevantCreatureID app sceneID =
       case model.playerID of
-        Just pid ->
-          List.head (T.getPlayerCreatures app pid)
-          |> Maybe.map (.id)
+        Just pid -> List.head (T.getPlayerCreatures app pid) |> Maybe.map (.id)
         Nothing -> Nothing
+          -- TODO: Get *any* creature in the scene
     getCreatureOffset app sceneID cid =
       T.getScene app sceneID
       |> Maybe.andThen (T.getCreaturePos cid)
@@ -156,10 +162,10 @@ update msg model = case msg of
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   SetFocus focus ->
-    let
-      newGridOffset = maybeResetGridOffset model focus
-      m_ = {model | focus = focus, gridOffset = newGridOffset}
-    in (m_, Cmd.none)
+    -- RADIX FIXME TODO HERE CONTINUE!!!!
+    -- consciousness: I need to initialize the panzoom library once the svg is rendered (a switch from nothing to a map (scene, preview, edit...))
+    -- and then also updateBBox any time we change it (including editing tiles!). I hope it's fast.
+    ({model | focus = focus}, message (mapChangeShenanigans model focus))
 
   SetSecondaryFocus f2 -> ({model | secondaryFocus = f2}, Cmd.none)
 
@@ -230,6 +236,8 @@ update msg model = case msg of
       Nothing -> ({model | error = "No app when receiving combat movement options"}, Cmd.none)
   GotCombatMovementOptions (Err e) -> ({model | error = toString e}, Cmd.none)
 
+  GridInitializePanZoom -> (model, PanZoom.initializePanZoom "#grid-svg")
+  GridRefreshPanZoom -> (model, PanZoom.updateBoundingBox "#grid-svg")
   GridPaint pt ->
     let tup = T.point3ToTup pt
     in case model.focus of
@@ -251,22 +259,6 @@ update msg model = case msg of
                 in {gridData | map = {map | specials = newSpecials}}
         in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
       _ -> (model, Cmd.none)
-
-  MapZoom zoom ->
-    let newSize =
-          case zoom of
-            M.In -> model.gridSize - 5
-            M.Out -> model.gridSize + 5
-    in ({ model | gridSize = newSize}, Cmd.none)
-  MapPan dir ->
-    let offsetSize = 1
-        newOffset =
-          case dir of
-            M.Right -> {x = model.gridOffset.x + offsetSize, y = model.gridOffset.y}
-            M.Left -> {x = model.gridOffset.x - offsetSize, y = model.gridOffset.y}
-            M.Up -> {x = model.gridOffset.x, y = model.gridOffset.y + offsetSize}
-            M.Down -> {x = model.gridOffset.x, y = model.gridOffset.y - offsetSize}
-    in ({ model | gridOffset = newOffset}, Cmd.none)
 
   ToggleGridSpecial pt ->
     let newExpanded =

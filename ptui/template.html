@@ -1,12 +1,18 @@
 <html>
 <head>
+  <meta name="viewport" content="width=device-width; initial-scale=0.5; maximum-scale=0.5; user-scalable=0;"> 
   <script type="text/javascript" src="{{js-source}}"></script>
   <script type="text/javascript">
     var rpi = "{{rpi-url}}";
   </script>
-  <meta name="viewport" content="width=device-width; initial-scale=0.5; maximum-scale=0.5; user-scalable=0;"> 
+  <script type="text/javascript" src="http://ariutta.github.io/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
+  <script type="text/javascript" src="PanZoom.js"></script>
 </head>
 <body>
-  <script type="text/javascript">Elm.Main.fullscreen({'rpi': rpi})</script>
+  <script type="text/javascript">
+    var app = Elm.Main.fullscreen({'rpi': rpi});
+
+    PanZoom_initializePorts(app);
+  </script>
 </body>
 </html>

@@ -2,12 +2,9 @@ module Model exposing (..)
 
 import Dict
 import Http
-import Keyboard
-import Keyboard.Key as Key
 import Mouse
 import Time
 import Json.Decode as JD
-import Html
 
 import Types as T
 
@@ -20,17 +17,7 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-      handleKey key =
-        case (Key.fromCode key) of
-          Key.Up -> MapPan Up
-          Key.Down -> MapPan Down
-          Key.Left -> MapPan Left
-          Key.Right -> MapPan Right
-          _ -> NoMsg
-          -- Key.Add -> MapZoom In
-          -- Key.Subtract -> MapZoom Out
-      keys = Keyboard.downs handleKey
-  in Sub.batch [ticks, keys, Mouse.moves DragAt, Mouse.ups DragEnd]
+  in Sub.batch [ticks]
 
 type Msg
     = Start
@@ -51,6 +38,12 @@ type Msg
     | DragEnd Mouse.Position
 
     | GridPaint T.Point3
+
+    -- This is to refesh the PanZoom state when we change the svg significantly (in a way that can
+    -- change the bounding box of all elements)
+    | GridRefreshPanZoom -- svg-pan-zoom: updateBBox
+    -- This is to initialize the PanZoom state when we first render SVG to the screen.
+    | GridInitializePanZoom -- svg-pan-zoom: svgPanZoom
 
     | SelectAbility SelectingAbility
     | CancelAbility
@@ -79,8 +72,6 @@ type Msg
     | SavedGame (Result Http.Error ())
     | LoadGame String
     | SetCreatureNote T.CreatureID String
-    | MapZoom MapInOut
-    | MapPan Direction
     | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
     | ToggleFolderCollapsed String
@@ -92,14 +83,6 @@ type Msg
 
     | NoMsg
 
-type MapInOut
-  = In | Out
-
-type Direction
-  = Left
-  | Right
-  | Up
-  | Down
 
 defaultModel : ProgramFlags -> Model
 defaultModel flags =

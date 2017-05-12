@@ -1,7 +1,7 @@
 module CommonView exposing
   ( visibleCreatures, creatureCard, creatureIcon, creatureAbilities, oocActionBar
   , hpBubble, nrgBubble
-  , movementMap, mapControls, movementControls
+  , movementMap, movementControls
   , checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
@@ -150,24 +150,6 @@ moveButton combat creature =
   in actionButton [ onClick M.GetCombatMovementOptions
             , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString (movement_left // 100), ")"])]
-
-{-| The map controls: panning and zooming buttons -}
-mapControls : Html M.Msg
-mapControls =
-  vabox
-    [s [ S.backgroundColor (S.rgb 230 230 230)]]
-    [ hbox [ sqButton 40 [onClick (M.MapZoom M.Out)] [text "-"]
-           , sqButton 40 [onClick (M.MapZoom M.In)] [text "+"]
-           ]
-    , vbox
-        [ sqButton 40 [s [S.alignSelf S.center], onClick (M.MapPan M.Up)] [text "^"]
-        , hbox
-            [ sqButton 40 [s [S.flexGrow (S.int 1)], onClick (M.MapPan M.Left)] [text "<"]
-            , sqButton 40 [s [S.flexGrow (S.int 1)], onClick (M.MapPan M.Right)] [text ">"]
-            ]
-        , sqButton 40 [s [S.alignSelf S.center], onClick (M.MapPan M.Down)] [text "v"]
-        ]
-    ]
 
 combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
 combatantList extraGutter extraCreatureCard app combat =
@@ -346,15 +328,8 @@ viewGame model app ui =
     <|
     [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
     , theCss
-    , node "script" [src "https://cdn.rawgit.com/anvaka/panzoom/v2.5.0/dist/panzoom.min.js"] []
     , overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [ui.mapView]
-    , if ui.mapView /= text ""
-      then node "script" []
-                [text "var x = document.getElementById('panzoom-element'); document.PTPZ = panzoom(x);"]
-      else text ""
-    , overlay (S.px 0) (S.px 0) [S.width (S.px 80)]
-        [mapControls]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]

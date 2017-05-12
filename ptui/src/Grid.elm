@@ -40,7 +40,7 @@ terrainMap model map creatures = baseMap model map creatures []
 
 editMap : GridModel a -> T.Map -> List M.MapCreature -> Svg M.Msg
 editMap model map creatures =
-  mapContainer model (mapContents True model map creatures [])
+  mapContainer (mapContents True model map creatures [])
 
 movementMap : GridModel a -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List M.MapCreature -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere map movingFrom creatures =
@@ -79,17 +79,18 @@ targetTiles targetMsg pts =
 
 baseMap : GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg M.Msg
 baseMap model map creatures extras =
-  mapContainer model (mapContents False model map creatures extras)
+  mapContainer (mapContents False model map creatures extras)
 
-mapContainer : a -> Svg M.Msg -> Svg M.Msg
-mapContainer _ content =
+mapContainer : Svg M.Msg -> Svg M.Msg
+mapContainer content =
   svg
-    [ preserveAspectRatio "xMinYMid slice"
+    [ id "grid-svg"
+    , preserveAspectRatio "xMinYMid slice"
     , s [ S.width (S.pct 100)
         , S.height (S.pct 100)
         , S.backgroundColor (S.rgb 215 215 215)]
     ]
-    [g [id "panzoom-element", transform "matrix(0.3 0 0 0.3 0 0)"] [content]]
+    [g [] [content]]
 
 mapContents : Bool -> GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg M.Msg
 mapContents editable model map creatures extras =
