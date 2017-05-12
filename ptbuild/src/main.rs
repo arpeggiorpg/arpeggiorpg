@@ -40,8 +40,6 @@ fn main() {
     println!("Starting watchexec...");
     let me = env::current_exe().expect("Couldn't get current executable!");
     let mut child = Command::new("watchexec")
-      .arg("--exts")
-      .arg("elm")
       .arg("-r")
       .arg("-w")
       .arg(ptui_dir)
@@ -119,7 +117,7 @@ fn template_data(rpi: String, js_source: String) -> HashMap<String, String> {
 
 
 fn load_template(ptui_dir: &path::Path) -> String {
-  let path = ptui_dir.join("template.html");
+  let path = ptui_dir.join("src/template.html");
   let mut f = fs::File::open(&path).expect(&format!("Couldn't open {:?}", path.to_str()));
   let mut s = String::new();
   f.read_to_string(&mut s).expect(&format!("Couldn't read data from {:?}", path.to_str()));

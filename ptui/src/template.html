@@ -5,13 +5,12 @@
   <script type="text/javascript">
     var rpi = "{{rpi-url}}";
   </script>
-  <script type="text/javascript" src="http://ariutta.github.io/svg-pan-zoom/dist/svg-pan-zoom.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.5.1/dist/svg-pan-zoom.min.js"></script>
   <script type="text/javascript" src="PanZoom.js"></script>
 </head>
 <body>
   <script type="text/javascript">
     var app = Elm.Main.fullscreen({'rpi': rpi});
-
     PanZoom_initializePorts(app);
   </script>
 </body>
