@@ -346,8 +346,13 @@ viewGame model app ui =
     <|
     [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
     , theCss
+    , node "script" [src "https://cdn.rawgit.com/anvaka/panzoom/v2.5.0/dist/panzoom.min.js"] []
     , overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [ui.mapView]
+    , if ui.mapView /= text ""
+      then node "script" []
+                [text "var x = document.getElementById('panzoom-element'); document.PTPZ = panzoom(x);"]
+      else text ""
     , overlay (S.px 0) (S.px 0) [S.width (S.px 80)]
         [mapControls]
     , overlayRight (S.px 0) (S.px 0)

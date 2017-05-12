@@ -2,11 +2,8 @@ module Grid exposing (..)
 
 import Dict
 import Html.Attributes as HA
-import Html.Events as HE
 import Css as S
-import Json.Decode as JD
 import Set
-import Mouse
 
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -84,23 +81,15 @@ baseMap : GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg 
 baseMap model map creatures extras =
   mapContainer model (mapContents False model map creatures extras)
 
-mapContainer : GridModel a -> Svg M.Msg -> Svg M.Msg
-mapContainer {gridOffset, gridSize} content =
-  let
-    gridTranslateX = toString <| -gridOffset.x * 50
-    gridTranslateY = toString <| gridOffset.y * 50
-    gridScale = toString <|  1 + (toFloat -gridSize / 100)
-    matrixArgs = String.join ", " [gridScale, "0", "0", gridScale, gridTranslateX, gridTranslateY]
-  in
-    svg
-      [ preserveAspectRatio "xMinYMid slice"
-      , s [ S.width (S.pct 100)
-          , S.height (S.pct 100)
-          , S.backgroundColor (S.rgb 215 215 215)]
-      , HE.onWithOptions "mousedown" {preventDefault=True, stopPropagation=True}
-                            (JD.map M.DragStart Mouse.position)
-      ]
-      [g [transform <| "matrix(" ++ matrixArgs ++ ")"] [content]]
+mapContainer : a -> Svg M.Msg -> Svg M.Msg
+mapContainer _ content =
+  svg
+    [ preserveAspectRatio "xMinYMid slice"
+    , s [ S.width (S.pct 100)
+        , S.height (S.pct 100)
+        , S.backgroundColor (S.rgb 215 215 215)]
+    ]
+    [g [id "panzoom-element", transform "matrix(0.3 0 0 0.3 0 0)"] [content]]
 
 mapContents : Bool -> GridModel a -> T.Map -> List M.MapCreature -> List (Svg M.Msg) -> Svg M.Msg
 mapContents editable model map creatures extras =
