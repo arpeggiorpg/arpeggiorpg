@@ -1,6 +1,6 @@
 
 
-function init(state, el) {
+function init(app, state, el) {
   console.log("[initializePanZoom]", el);
   window.requestAnimationFrame(function(_) {
     console.log("[initializePanZoom:animation]");
@@ -11,11 +11,15 @@ function init(state, el) {
       , center: true
       , fit: true
       , customEventsHandler: state.eventsHandler
+      , zoomScaleSensitivity: 0.5
+      , beforePan: function() {
+          app.ports.panning.send(null);
+      }
       });
     state.managedElements[el].zoomOut();
     state.managedElements[el].zoomOut();
     state.managedElements[el].zoomOut();
-});
+  });
 }
 
 function update(state, el) {
@@ -83,6 +87,6 @@ function PanZoom_initializePorts(app) {
   var eventsHandler = get_svgpanzoom_hammerjs_touch_event_handler();
       
   var state = {managedElements: {}, eventsHandler: eventsHandler};
-  app.ports.initializePanZoom.subscribe(function(s) {init(state, s)});
+  app.ports.initializePanZoom.subscribe(function(s) {init(app, state, s)});
   app.ports.updateBoundingBox.subscribe(function(s) {update(state, s)});
 }

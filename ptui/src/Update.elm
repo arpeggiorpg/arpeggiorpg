@@ -246,35 +246,42 @@ update msg model = case msg of
   GridInitializePanZoom -> (model, PanZoom.initializePanZoom "#grid-svg")
   GridRefreshPanZoom -> (model, PanZoom.updateBoundingBox "#grid-svg")
   GridPaint pt ->
-    let tup = T.point3ToTup pt
-    in case model.focus of
-      M.EditingMap path gridData ->
-        let
-          map = gridData.map
-          newGrid =
-            case gridData.paintStyle of
-              M.NoPaint -> gridData
-              M.PaintTerrain ->
-                let newT = (if Set.member tup map.terrain then Set.remove else Set.insert)
-                           tup map.terrain
-                in {gridData | map = {map | terrain = newT}}
-              M.PaintSpecial special ->
-                let newSpecials =
-                      if Dict.member tup map.specials
-                      then Dict.remove tup map.specials
-                      else Dict.insert tup (special.color, special.note, special.vis) map.specials
-                in {gridData | map = {map | specials = newSpecials}}
-        in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
-      _ -> (model, Cmd.none)
+    if model.gridPanning then
+      ({model | gridPanning = False}, Cmd.none)
+    else
+      let tup = T.point3ToTup pt
+      in case model.focus of
+        M.EditingMap path gridData ->
+          let
+            map = gridData.map
+            newGrid =
+              case gridData.paintStyle of
+                M.NoPaint -> gridData
+                M.PaintTerrain ->
+                  let newT = (if Set.member tup map.terrain then Set.remove else Set.insert)
+                            tup map.terrain
+                  in {gridData | map = {map | terrain = newT}}
+                M.PaintSpecial special ->
+                  let newSpecials =
+                        if Dict.member tup map.specials
+                        then Dict.remove tup map.specials
+                        else Dict.insert tup (special.color, special.note, special.vis) map.specials
+                  in {gridData | map = {map | specials = newSpecials}}
+          in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
+        _ -> (model, Cmd.none)
+  GridStartPanning () -> ({model | gridPanning = True}, Cmd.none)
 
   ToggleGridSpecial pt ->
-    let newExpanded =
-          case model.gridSpecialExpanded of
-            Just pt_ ->
-              if pt_ == pt then Nothing
-              else Just pt
-            Nothing -> Just pt
-    in ({model | gridSpecialExpanded = newExpanded}, Cmd.none)
+    if model.gridPanning then
+      ({model | gridPanning = False}, Cmd.none)
+    else
+      let newExpanded =
+            case model.gridSpecialExpanded of
+              Just pt_ ->
+                if pt_ == pt then Nothing
+                else Just pt
+              Nothing -> Just pt
+      in ({model | gridSpecialExpanded = newExpanded}, Cmd.none)
 
   SelectAbility sa ->
     let endpoint = model.rpiURL ++ "/target_options/" ++ Http.encodeUri sa.scene ++ "/" ++ sa.creature ++ "/" ++ sa.ability
@@ -372,17 +379,6 @@ update msg model = case msg of
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))
-
-  DragStart pos -> let _ = Debug.log ("[DragStart]" ++ toString pos) () in ({model | gridPanning = Just (pos, model.gridOffset)}, Cmd.none)
-  DragAt pos ->
-    case model.gridPanning of
-      Just (startedDraggingPos, origGridOffset) ->
-        let diffx = toFloat (pos.x - startedDraggingPos.x) / 10
-            diffy = toFloat (pos.y - startedDraggingPos.y) / 10
-            newGridOffset = {x=origGridOffset.x - diffx, y=origGridOffset.y + diffy}
-        in ({model | gridOffset = newGridOffset}, Cmd.none)
-      Nothing -> (model, Cmd.none)
-  DragEnd pos -> let _ = Debug.log ("[DragEnd]" ++ toString pos) () in ({model | gridPanning = Nothing}, Cmd.none)
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set

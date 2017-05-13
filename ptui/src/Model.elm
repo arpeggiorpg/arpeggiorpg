@@ -7,7 +7,7 @@ import Time
 import Json.Decode as JD
 
 import Types as T
-
+import PanZoom
 
 type alias GotCreatures = List T.CreatureID -> Msg
 
@@ -17,7 +17,7 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-  in Sub.batch [ticks]
+  in Sub.batch [ticks, PanZoom.panning GridStartPanning]
 
 type Msg
     = Start
@@ -33,10 +33,6 @@ type Msg
     | SetPlayerID T.PlayerID
     | RegisterPlayer
 
-    | DragStart Mouse.Position
-    | DragAt Mouse.Position
-    | DragEnd Mouse.Position
-
     | GridPaint T.Point3
 
     -- This is to refesh the PanZoom state when we change the svg significantly (in a way that can
@@ -44,6 +40,7 @@ type Msg
     | GridRefreshPanZoom -- svg-pan-zoom: updateBBox
     -- This is to initialize the PanZoom state when we first render SVG to the screen.
     | GridInitializePanZoom -- svg-pan-zoom: svgPanZoom
+    | GridStartPanning ()
 
     -- Ability-related messages
     | SelectAbility SelectingAbility
@@ -101,7 +98,7 @@ defaultModel flags =
   , gridSize = 60
   , gridOffset = {x = -15, y = 10}
   , gridSpecialExpanded = Nothing
-  , gridPanning = Nothing
+  , gridPanning = False
   , collapsed = Dict.empty
   , selectedViews = Dict.empty
   , focus = NoFocus
@@ -126,7 +123,7 @@ type alias Model =
   -- gridOffset: offset in METERS
   , gridOffset: {x: Float, y: Float}
   , gridSpecialExpanded: Maybe T.Point3
-  , gridPanning: Maybe (Mouse.Position, {x: Float, y: Float})
+  , gridPanning: Bool
   , collapsed : Dict.Dict String Bool
   , folderState: FolderState
   , selectedViews : Dict.Dict String String
