@@ -191,9 +191,10 @@ playerList app extra players =
 
 mapModeControlsOverlay : Html M.Msg -> Html M.Msg
 mapModeControlsOverlay content =
-  sdiv [s [ S.position S.absolute
+  sdiv [s [ S.position S.fixed
                 , S.left (S.pct 50)
                 , S.transform (S.translate (S.pct -50))
+                , S.top (S.px 0)
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
        [content]

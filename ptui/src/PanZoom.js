@@ -85,8 +85,4 @@ function PanZoom_initializePorts(app) {
   var state = {managedElements: {}, eventsHandler: eventsHandler};
   app.ports.initializePanZoom.subscribe(function(s) {init(state, s)});
   app.ports.updateBoundingBox.subscribe(function(s) {update(state, s)});
-
-
-
-
 }
