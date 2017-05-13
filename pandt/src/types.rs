@@ -537,6 +537,7 @@ pub enum TargetSpec {
   Actor,
   SomeCreaturesInVolumeInRange {
     volume: Volume,
+    /// maximum number of creatures that can be hit
     maximum: u8,
     range: Distance,
   },
@@ -545,8 +546,6 @@ pub enum TargetSpec {
   /// on fire, or putting down a patch of oil, or filling a space with fog.
   Volume { volume: Volume, range: Distance },
 }
-
-
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
 /// "specific creature" targeting (`Melee` and `Ranged`) and "aoe" targeting (the others). The

@@ -45,11 +45,15 @@ type Msg
     -- This is to initialize the PanZoom state when we first render SVG to the screen.
     | GridInitializePanZoom -- svg-pan-zoom: svgPanZoom
 
+    -- Ability-related messages
     | SelectAbility SelectingAbility
     | CancelAbility
     | GotTargetOptions (Result Http.Error T.PotentialTargets)
+    | SelectVolumeTarget T.Point3
+    | GotCreaturesInVolume T.Point3 (Result Http.Error (List T.CreatureID))
     | CombatAct T.AbilityID T.DecidedTarget
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
+
     | RequestMove MovementRequest
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
@@ -83,7 +87,6 @@ type Msg
 
     | NoMsg
 
-
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
@@ -111,7 +114,6 @@ defaultModel flags =
 type alias Model =
   { app : Maybe T.App
   , selectingAbility : Maybe SelectingAbility
-  -- Creatures which have been selected for combat
   , error: String
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
@@ -146,9 +148,10 @@ type alias SelectingAbility =
   , creature: T.CreatureID
   , ability: T.AbilityID
   , potentialTargets: Maybe T.PotentialTargets
-  -- volumeAt indicates which area will be affected by the ability, if it's an area effect. This is
-  -- used to highlight the tiles on the map.
-  , volumeAt : Maybe (T.Volume, T.Point3)
+  -- affectedCreatures will be a list of creature IDs that are affected by an area-effect. This is
+  -- populated after the player chooses a point for an area ability, and is used to show the player
+  -- who will be affected before they confirm the ability.
+  , chosenPoint : Maybe (T.Point3, List T.CreatureID)
   }
 
 type Focus
@@ -194,6 +197,7 @@ type alias SimpleSelectingCreatures = {from: List T.CreatureID, selected: List T
 type alias EditingCreature = {cid: T.CreatureID, name: String, note: String, portrait_url: String}
 type alias SceneChallenge = {scene: T.SceneID, description: String, check: T.AttrCheck}
 
+
 devFlags : ProgramFlags
 devFlags = {rpi = "http://localhost:1337/"}
 
@@ -237,6 +241,7 @@ type Highlight
   = Moving
   | Targetable
   | Current
+  | Affected
 
 type PaintStyle
   = NoPaint

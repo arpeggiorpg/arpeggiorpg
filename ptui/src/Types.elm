@@ -580,6 +580,10 @@ volumeDecoder = sumDecoder "Volume"
   []
   [("Sphere", JD.map Sphere JD.int)]
 
+volumeEncoder : Volume -> JE.Value
+volumeEncoder v = case v of
+  Sphere d -> JE.object [("Sphere", JE.int d)]
+
 type DecidedTarget
   = TargetedCreature CreatureID
   | TargetedActor

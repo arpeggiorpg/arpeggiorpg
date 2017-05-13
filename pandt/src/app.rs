@@ -66,8 +66,7 @@ impl App {
         let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
 
         if self.snapshots.len() == 0 || self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
-          self.snapshots
-            .push_back((self.current_game.clone(), Vec::with_capacity(100)));
+          self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(100)));
         }
 
         self.snapshots.back_mut().unwrap().1.extend(logs.clone());
@@ -127,7 +126,8 @@ impl App {
     for cid in cids {
       self.current_game.check_creature_id(*cid)?;
     }
-    self.players
+    self
+      .players
       .mutate(pid, |mut p| {
         p.creatures.extend(cids);
         p
@@ -138,7 +138,8 @@ impl App {
 
   fn remove_creatures_from_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
                                   -> Result<(&Game, Vec<GameLog>), GameError> {
-    self.players
+    self
+      .players
       .mutate(pid, |mut p| {
         for cid in cids {
           p.creatures.remove(cid);
@@ -151,7 +152,8 @@ impl App {
 
   fn set_player_scene(&mut self, pid: &PlayerID, scene: Option<SceneID>)
                       -> Result<(&Game, Vec<GameLog>), GameError> {
-    self.players
+    self
+      .players
       .mutate(pid, move |mut p| {
         p.scene = scene;
         p
@@ -177,6 +179,12 @@ impl App {
                             -> Result<PotentialTargets, GameError> {
     self.current_game.get_target_options(scene, cid, abid)
   }
+
+  pub fn get_creatures_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
+                                 -> Result<Vec<CreatureID>, GameError> {
+    let scene = self.current_game.get_scene(sid)?;
+    Ok(self.current_game.creatures_in_volume(scene, pt, volume))
+  }
 }
 
 #[cfg(test)]
@@ -198,7 +206,8 @@ mod test {
   #[bench]
   fn three_char_infinite_combat(bencher: &mut Bencher) {
     let mut app = t_app();
-    app.perform_unchecked(GameCommand::StartCombat(t_scene_id(),
+    app
+      .perform_unchecked(GameCommand::StartCombat(t_scene_id(),
                                                   vec![cid_rogue(), cid_ranger(), cid_cleric()]))
       .unwrap();
     let iter = |app: &mut App| -> Result<(), GameError> {
@@ -210,9 +219,9 @@ mod test {
       Ok(())
     };
     bencher.iter(|| {
-      iter(&mut app).unwrap();
-      app.clone()
-    });
+                   iter(&mut app).unwrap();
+                   app.clone()
+                 });
   }
 
   #[test]
@@ -220,7 +229,8 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+    app
+      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
       .unwrap();
     app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap();
     let ranger = app.current_game.get_creature(cid_ranger()).unwrap();
@@ -237,13 +247,15 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app.perform_unchecked(GameCommand::StartCombat(t_scene_id(),
+    app
+      .perform_unchecked(GameCommand::StartCombat(t_scene_id(),
                                                   vec![cid_ranger(), cid_rogue(), cid_cleric()]))
       .unwrap();
     // 2
     app.perform_unchecked(GameCommand::StopCombat).unwrap();
     // 3
-    app.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+    app
+      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
       .unwrap();
     app.perform_unchecked(GameCommand::Rollback(0, 2)).unwrap();
     assert_eq!(app.current_game.current_combat, None);
@@ -257,17 +269,20 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+    app
+      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
       .unwrap();
     // 2
     app.perform_unchecked(GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
     // 3
-    app.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (1, 1, 1)))
+    app
+      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (1, 1, 1)))
       .unwrap();
     // 4
     app.perform_unchecked(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
     // 5
-    app.perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 1, 1)))
+    app
+      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 1, 1)))
       .unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(cid_cleric()).unwrap(), (0, 0, 0));

@@ -125,6 +125,10 @@ arrayRFind limit fn data =
 start : Cmd Msg
 start = message Start
 
+-- TODO: to reduce the amount of case-boilerplate in each of these cases, refactor as follows:
+-- updateApp : M.Model -> T.App -> Msg -> (M.Model, Cmd Msg)
+-- updatePlayerApp : M.Model -> T.App -> T.PlayerID -> Msg -> (M.Model, Cmd Msg)
+
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
@@ -286,6 +290,27 @@ update msg model = case msg of
     in ({model | selectingAbility = newSA}, Cmd.none)
   GotTargetOptions (Err e) -> ({ model | error = toString e}, Cmd.none)
 
+  SelectVolumeTarget pt ->
+    case (model.app, model.selectingAbility) of
+      (Just app, Just {scene, ability}) ->
+        case Dict.get ability app.current_game.abilities of
+          Just {target} ->
+            case target of
+              T.AllCreaturesInVolumeInRange {volume} -> 
+                let url = model.rpiURL ++ "creatures_in_volume/" ++ scene ++ "/"
+                      ++ toString pt.x ++ "/" ++ toString pt.y ++ "/" ++ toString pt.z
+                    post = Http.post url (Http.jsonBody (T.volumeEncoder volume)) (JD.list JD.string)
+                in ( model, Http.send (GotCreaturesInVolume pt) post)
+              _ -> (model, Cmd.none)
+          Nothing -> (model, Cmd.none)
+      _ -> (model, Cmd.none)
+
+  GotCreaturesInVolume pt (Ok cids) ->
+    case model.selectingAbility of
+      Just sa -> ({model | selectingAbility = Just {sa | chosenPoint = Just (pt, cids)}}, Cmd.none)
+      Nothing -> (model, Cmd.none)
+  GotCreaturesInVolume pt (Err e) -> ({model | error = toString e}, Cmd.none)
+
   RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
@@ -306,12 +331,15 @@ update msg model = case msg of
     ({model | error = toString x}, Cmd.none)
 
   SaveGame name ->
-    (model, Http.send SavedGame (Http.post (model.rpiURL ++ "/saved_games/" ++ name) Http.emptyBody (JD.succeed ())))
+    let post = Http.post (model.rpiURL ++ "/saved_games/" ++ name) Http.emptyBody (JD.succeed ())
+    in (model, Http.send SavedGame post)
   SavedGame (Ok _) -> (model, Cmd.none)
   SavedGame (Err x) -> ({model | error = toString x}, Cmd.none)
 
   LoadGame name ->
-    (model, Http.send AppUpdate (Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load") Http.emptyBody (T.appDecoder)))
+    let post = Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load")
+                         Http.emptyBody (T.appDecoder)
+    in (model, Http.send AppUpdate post)
 
   ShowGameLogs logs ->
     let newLogs =

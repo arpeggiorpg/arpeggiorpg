@@ -500,14 +500,16 @@ impl Game {
         if !self.tile_system.points_within_distance(scene.get_pos(creature.id())?, pt, range) {
           bail!(GameErrorEnum::PointOutOfRange(pt));
         }
-        let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
-        let cids = self.tile_system.items_within_volume(volume, pt, creature_locations);
-        Ok(cids)
+        Ok(self.creatures_in_volume(scene, pt, volume))
       }
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
 
+  pub fn creatures_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume) -> Vec<CreatureID> {
+    let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
+    self.tile_system.items_within_volume(volume, pt, creature_locations)
+  }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
                               -> Result<Vec<Point3>, GameError> {
@@ -526,13 +528,13 @@ impl Game {
   pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
                             -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
-
+  
     Ok(match ability.target {
       TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
       TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
       TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
       TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+      TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
       TargetSpec::Volume { volume, range } => panic!(),

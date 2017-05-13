@@ -109,7 +109,7 @@ creatureAbilities game sceneID inCombat creature =
         T.Actor -> if inCombat then M.CombatAct abid T.TargetedActor
                                else M.ActCreature sceneID creature.id abid T.TargetedActor
         _ -> M.SelectAbility { scene=sceneID, creature=creature.id, ability=abid
-                             , potentialTargets=Nothing, volumeAt = Nothing}
+                             , potentialTargets=Nothing, chosenPoint=Nothing }
     toResultTuple (abid, ability) = (text ability.name, abilityMsg abid ability)
   in
     List.map toResultTuple abilities
@@ -340,10 +340,13 @@ viewGame model app ui =
     ]
     ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
-targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature -> Maybe (Html M.Msg, Html M.Msg)
+targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
+         -> Maybe (Html M.Msg, Html M.Msg)
 targetMap model app scene map vCreatures =
   let
-    makeMap {creature, ability} targets =
+    standardInfoBox = vbox [ text "Select Targets!"
+                           , button [onClick M.CancelAbility] [text "Cancel Ability"]]
+    makeMap {creature, ability, chosenPoint} targets =
       let activateAbility =
             if T.isCreatureInCombat app.current_game creature
             then M.CombatAct
@@ -354,18 +357,32 @@ targetMap model app scene map vCreatures =
             enableTargeting mapc =
               if List.member mapc.creature.id cids
               then
-                let fullMsg = (\c -> c.id) >> T.TargetedCreature >> activateAbility ability
+                let fullMsg = .id >> T.TargetedCreature >> activateAbility ability
                 in {mapc | clickable = Just fullMsg, highlight = Just M.Targetable}
               else {mapc | clickable = Nothing}
             targetable = List.map enableTargeting vCreatures
-          in Grid.terrainMap model map targetable
+          in ( Grid.terrainMap model map targetable , standardInfoBox )
         T.PTPoints pts ->
-          let fullMsg pt = activateAbility ability (T.TargetedPoint pt)
-          in Grid.tileTargetingMap model fullMsg map pts vCreatures
-    mapAndInfo sa targets =
-      ( makeMap sa targets
-      , vbox [text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]])
-  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (mapAndInfo sa) sa.potentialTargets)
+          -- Either we're still selecting a point, or we have selected a point and we want to
+          -- confirm with the user whether it's okay to use the ability on the affected creatures.
+          case chosenPoint of
+            Nothing ->
+              ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts vCreatures , standardInfoBox )
+            Just (targetedPoint, cids) ->
+              let
+                highlightAffected mapc =
+                  if List.member mapc.creature.id cids then
+                    {mapc | highlight = Just M.Affected}
+                  else mapc
+                highlightedTargets = List.map highlightAffected vCreatures
+                confirmAbilityBox =
+                  vbox [ text "Use ability? The highlighted creatures will be affected."
+                       , button [onClick <| activateAbility ability (T.TargetedPoint targetedPoint)]
+                                [text "Do it live!"]
+                       , button [onClick M.CancelAbility] [text "Never mind!"]]
+              in ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts highlightedTargets
+                 , confirmAbilityBox )
+  in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (makeMap sa) sa.potentialTargets)
 
 popUpMenu : M.Model -> String -> String -> Html M.Msg -> Html M.Msg -> List (Html M.Msg, M.Msg) -> Html M.Msg
 popUpMenu model = popUpMenu_ M.ToggleCollapsed model.collapsed

@@ -31,7 +31,7 @@ mod cors;
 use cors::{CORS, PreflightCORS};
 
 use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneID, GameCommand, GameError,
-                   GameErrorEnum, Point3, PotentialTargets};
+                   GameErrorEnum, Point3, PotentialTargets, Volume};
 
 
 error_chain! {
@@ -108,7 +108,7 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
   get_app(pt)
 }
 
-#[post("/", format = "application/json", data = "<command>")]
+#[post("/", format="application/json", data="<command>")]
 fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app()?;
@@ -142,6 +142,20 @@ fn target_options(pt: State<PT>, scene: String, cid: &str, abid: &str)
   let cid = CreatureID::from_str(cid)?;
   let abid = AbilityID::new(abid)?;
   Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
+}
+
+#[route(OPTIONS, "/creatures_in_volume/<scene>/<x>/<y>/<z>")]
+fn options_creatures_in_volume(scene: &str, x: &str, y: &str, z: &str) -> PreflightCORS {
+  options_handler()
+}
+
+#[post("/creatures_in_volume/<scene>/<x>/<y>/<z>", format="application/json", data="<volume>")]
+fn creatures_in_volume(pt: State<PT>, scene: String, x: i16, y: i16, z: i16, volume: JSON<Volume>)
+                       -> PTResult<Vec<CreatureID>> {
+  let app = pt.app()?;
+  let sid = SceneID::from_str(&scene)?;
+  let point = (x, y, z);
+  Ok(CORS::any(JSON(app.get_creatures_in_volume(sid, point, volume.0)?)))
 }
 
 #[get("/saved_games")]
@@ -201,12 +215,12 @@ fn main() {
   let game_dir = env::args()
     .nth(1)
     .unwrap_or_else(|| {
-      env::current_dir()
-        .expect("couldn't get curdir")
-        .into_os_string()
-        .into_string()
-        .expect("Couldn't parse curdir as string")
-    });
+                      env::current_dir()
+                        .expect("couldn't get curdir")
+                        .into_os_string()
+                        .into_string()
+                        .expect("Couldn't parse curdir as string")
+                    });
   let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
@@ -227,9 +241,12 @@ fn main() {
                    combat_movement_options,
                    movement_options,
                    target_options,
+                   options_creatures_in_volume,
+                   creatures_in_volume,
                    list_saved_games,
                    load_saved_game,
-                   save_game])
+                   save_game,
+                   ])
     .manage(pt)
     .launch();
 }

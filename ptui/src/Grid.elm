@@ -165,6 +165,7 @@ gridCreature creature =
           Just M.Moving -> "blue"
           Just M.Targetable -> "red"
           Just M.Current -> "black"
+          Just M.Affected -> "red"
       strokeWidthSize =
         if MEx.isJust creature.highlight
         then 10
