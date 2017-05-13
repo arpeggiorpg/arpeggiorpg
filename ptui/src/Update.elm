@@ -59,37 +59,9 @@ mapChangeShenanigans model newFocus =
   case (model.focus, newFocus) of
     (_, M.NoFocus) -> M.NoMsg
     (M.NoFocus, _) -> M.GridInitializePanZoom
+    (M.EditingMap fp1 gd1, M.EditingMap fp2 gd2) ->
+      if fp1 /= fp2 && gd1.map /= gd2.map then M.GridRefreshPanZoom else M.NoMsg
     _ -> if model.focus /= newFocus then M.GridRefreshPanZoom else M.NoMsg
-
-maybeResetGridOffset : M.Model -> M.Focus -> {x: Float, y: Float}
-maybeResetGridOffset model newFocus =
-  let
-    getRelevantCreatureID app sceneID =
-      case model.playerID of
-        Just pid -> List.head (T.getPlayerCreatures app pid) |> Maybe.map (.id)
-        Nothing -> Nothing
-          -- TODO: Get *any* creature in the scene
-    getCreatureOffset app sceneID cid =
-      T.getScene app sceneID
-      |> Maybe.andThen (T.getCreaturePos cid)
-      |> Maybe.map (\pos -> {x=toFloat pos.x, y=toFloat pos.y})
-    resetOffset app sceneID =
-      getRelevantCreatureID app sceneID
-      |> Maybe.andThen (getCreatureOffset app sceneID)
-      |> Maybe.withDefault {x=-15.0, y=10.0} -- FIXME: magic constant, duplicated from Model.elm
-  in
-    case (model.app, model.focus) of
-      (Just app, M.FocusScene oldSceneID) ->
-        case newFocus of
-          M.FocusScene newSceneID ->
-            if oldSceneID /= newSceneID then Debug.log "[RESET-OFFSET]" (resetOffset app newSceneID)
-            else model.gridOffset
-          _ -> model.gridOffset
-      (Just app, _) ->
-        case model.focus of
-          M.FocusScene sceneID -> resetOffset app sceneID
-          _ -> model.gridOffset
-      _ -> model.gridOffset
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog

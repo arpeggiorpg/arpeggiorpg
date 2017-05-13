@@ -2,7 +2,6 @@ module Model exposing (..)
 
 import Dict
 import Http
-import Mouse
 import Time
 import Json.Decode as JD
 
