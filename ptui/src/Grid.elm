@@ -50,7 +50,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else movement_options
       movementTiles = targetTiles moveMsg targetPoints
       highlightMovingCreature mapc =
-        if (Just mapc.creature.id) == (Maybe.map (\c -> c.id) ooc_creature)
+        if (Just mapc.creature.id) == (Maybe.map .id ooc_creature)
         then {mapc | highlight = Just M.Moving}
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
@@ -104,7 +104,11 @@ mapContents editable model map creatures extras =
         if editable
         then Lazy.lazy2 specialTerrainEdit model.gridSpecialExpanded map.specials
         else Lazy.lazy2 specialTerrainView model.gridSpecialExpanded map.specials
-  in g [] <| [terrainEls, emptyEls, specialEls] ++ extras ++ creatureEls ++ ghostEl
+      origin = rect [ width "10" , height "10" , x "0", y "0"
+                    , fill "black"
+                    , stroke "black" , strokeWidth "1" ]
+                    []
+  in g [] <| [origin, terrainEls, emptyEls, specialEls] ++ extras ++ creatureEls ++ ghostEl
 
 -- these specialized versions of specialTerrain are necessary due to the way Svg.Lazy works.
 specialTerrainView : Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
