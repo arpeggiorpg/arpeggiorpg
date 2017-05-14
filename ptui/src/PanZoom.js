@@ -26,7 +26,7 @@
  */
 
 
-function init(app, state, el) {
+function init(app, state, eventsHandler, el) {
   console.log("[initializePanZoom]", el);
   window.requestAnimationFrame(function(_) {
     console.log("[initializePanZoom:animation]");
@@ -36,12 +36,12 @@ function init(app, state, el) {
       , resize: true
       , center: true
       , fit: true
-      , customEventsHandler: state.eventsHandler
+      , customEventsHandler: eventsHandler
       , zoomScaleSensitivity: 0.5
-      , beforePan: function() {
-          // See [Note: Panning/Clicking State Management]
-          app.ports.panning.send(true);
-       }
+      // , beforePan: function() {
+      //     // See [Note: Panning/Clicking State Management]
+      //     app.ports.panning.send(true);
+      //  }
       });
     state.managedElements[el].zoomOut();
     state.managedElements[el].zoomOut();
@@ -64,7 +64,7 @@ function update(state, el) {
   
 }
 
-function get_svgpanzoom_hammerjs_touch_event_handler() {
+function get_svgpanzoom_hammerjs_touch_event_handler(state) {
   // This code was largely copied from the SVG-pan-zoom mobile.html example:
   // https://github.com/ariutta/svg-pan-zoom/blob/master/demo/mobile.html
   return {
@@ -105,11 +105,23 @@ function get_svgpanzoom_hammerjs_touch_event_handler() {
         options.svgElement.addEventListener('touchmove', function(e){ e.preventDefault(); });
 
         // See [Note: Panning/Clicking State Management]
+        options.svgElement.addEventListener('mousedown', function() {
+          state.isMouseDown = true;
+        });
+        options.svgElement.addEventListener('mousemove', function() {
+          if (state.isMouseDown) {
+            app.ports.panning.send(true);
+          }
+        });
         options.svgElement.addEventListener('touchend', function(e) {
           app.ports.panning.send(false);
         });
+        options.svgElement.addEventListener('mouseup', function() {
+          state.isMouseDown = false;
+        })
         options.svgElement.addEventListener('click', function() {
           app.ports.panning.send(false);
+          state.isMouseDown = false;
         });
       }
     , destroy: function(){ this.hammer.destroy() }
@@ -118,9 +130,9 @@ function get_svgpanzoom_hammerjs_touch_event_handler() {
 
 
 function PanZoom_initializePorts(app) {
-  var eventsHandler = get_svgpanzoom_hammerjs_touch_event_handler();
-      
-  var state = {managedElements: {}, eventsHandler: eventsHandler};
-  app.ports.initializePanZoom.subscribe(function(s) {init(app, state, s)});
+  var state = {managedElements: {}, isMouseDown: false};
+  var eventsHandler = get_svgpanzoom_hammerjs_touch_event_handler(state);
+
+  app.ports.initializePanZoom.subscribe(function(s) {init(app, state, eventsHandler, s)});
   app.ports.updateBoundingBox.subscribe(function(s) {update(state, s)});
 }
