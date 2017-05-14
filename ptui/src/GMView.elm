@@ -36,11 +36,11 @@ makeUI model app =
   , mapModeControls = mapModeControls
   , defaultTab = "Campaign"
   , sideBar =
-        [ ("Campaign", (\() -> campaignView model app))
-        , ("Combat", (\() -> combatView model app))
-        , ("Players", (\() -> playersView model app))
-        , ("History", (\() -> Lazy.lazy historyView app))
-        , ("Saved Games", (\() -> savedGameView model app))
+        [ ("Campaign", (\() -> campaignView model app), Nothing)
+        , ("Combat", (\() -> combatView model app), Nothing)
+        , ("Players", (\() -> playersView model app), Nothing)
+        , ("History", (\() -> Lazy.lazy historyView app), Nothing)
+        , ("Saved Games", (\() -> savedGameView model app), Nothing)
         ]
   , extraOverlays = [bottomActionBar app]
   , modal = checkModal model app
@@ -148,7 +148,7 @@ sceneConsole model app scene =
         Just combat ->
           if combat.scene == scene.id
           then hbox [ text "There is a combat happening in this scene!"
-                    , button [onClick (M.SelectView "right-side-bar" "Combat")] [text "View Combat"]]
+                    , button [onClick (M.SelectView "right-side-bar" "Combat" Nothing)] [text "View Combat"]]
           else text ""
         Nothing -> startCombatButton model app
     , sceneChallenges model app scene

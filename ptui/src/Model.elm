@@ -76,7 +76,7 @@ type Msg
     | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
     | ToggleFolderCollapsed String
-    | SelectView String String
+    | SelectView String String (Maybe Msg)
 
     | ShowGameLogs (List T.GameLog)
 

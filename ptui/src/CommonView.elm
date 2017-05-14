@@ -298,16 +298,16 @@ theCss = node "style" [] [text """
   }
   """]
 
-tabbedView : String -> String -> M.Model -> List ((String, () -> Html M.Msg)) -> Html M.Msg
+tabbedView : String -> String -> M.Model -> List (String, () -> Html M.Msg, Maybe M.Msg) -> Html M.Msg
 tabbedView category defaultView model things =
   let header = habox [s [S.justifyContent S.spaceBetween]] (List.map headerButton things)
       buttonText name = if name == selectedView then strong [] [text name] else text name
-      headerButton (name, _) = button [onClick (M.SelectView category name)] [buttonText name]
+      headerButton (name, _, msg) = button [onClick (M.SelectView category name msg)] [buttonText name]
       selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
-      renderBody (name, renderer) = if name == selectedView then Just renderer else Nothing
+      renderBody (name, renderer, _) = if name == selectedView then Just renderer else Nothing
       body =
         case List.filterMap renderBody things of
-          [x] -> x ()
+          [f] -> f ()
           _ -> text "Select a view"
   in vabox [s [S.height (S.pct 100)]] [header, body]
 
@@ -317,7 +317,7 @@ type alias UI =
   { mapView: Html M.Msg
   , mapModeControls: Html M.Msg
   , defaultTab: String
-  , sideBar: List ((String, () -> Html M.Msg))
+  , sideBar: List (String, () -> Html M.Msg, Maybe M.Msg)
   , modal: Maybe (Html M.Msg)
   , extraOverlays: List (Html M.Msg)
   }
@@ -327,12 +327,11 @@ viewGame : M.Model -> T.App -> UI -> Html M.Msg
 viewGame model app ui =
   div
     [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
-    <|
-    [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
-    , theCss
-    ] ++ dynamicGameView model app ui 
+    <| [ theCss ]
+    ++ dynamicGameView model app ui 
     ++ [errorBox model]
-    ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
+    ++ ui.extraOverlays
+    ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
 dynamicGameView : M.Model -> T.App -> UI -> List (Html M.Msg)
 dynamicGameView model app ui =
@@ -346,7 +345,10 @@ dynamicGameView model app ui =
     , mapModeControlsOverlay ui.mapModeControls
     ]
   else
-    let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView))] in
+    -- Portrait-mode mobile view!
+    -- TODO: show the mapModeControls somewhere
+    -- TODO: fix panzoom on mobile map
+    let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView), Just M.GridInitializePanZoom)] in
     [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [ tabbedView "right-side-bar" ui.defaultTab model tabs]
     ]

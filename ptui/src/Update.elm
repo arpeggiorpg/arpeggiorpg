@@ -97,10 +97,6 @@ arrayRFind limit fn data =
 start : Cmd Msg
 start = message Start
 
--- TODO: to reduce the amount of case-boilerplate in each of these cases, refactor as follows:
--- updateApp : M.Model -> T.App -> Msg -> (M.Model, Cmd Msg)
--- updatePlayerApp : M.Model -> T.App -> T.PlayerID -> Msg -> (M.Model, Cmd Msg)
-
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model = case msg of
 
@@ -143,9 +139,6 @@ update msg model = case msg of
       Nothing -> ({model | error = "Can't register without player ID"}, Cmd.none)
 
   SetFocus focus ->
-    -- RADIX FIXME TODO HERE CONTINUE!!!!
-    -- consciousness: I need to initialize the panzoom library once the svg is rendered (a switch from nothing to a map (scene, preview, edit...))
-    -- and then also updateBBox any time we change it (including editing tiles!). I hope it's fast.
     ({model | focus = focus}, message (mapChangeShenanigans model focus))
 
   SetSecondaryFocus f2 -> ({model | secondaryFocus = f2}, Cmd.none)
@@ -187,9 +180,13 @@ update msg model = case msg of
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.folderState
     in ({model | folderState = newCollapsed}, Cmd.none)
 
-  SelectView category name ->
+  SelectView category name nextMsg ->
     let newSelected = Dict.insert category name model.selectedViews
-    in ({model | selectedViews = newSelected}, Cmd.none)
+    in ( {model | selectedViews = newSelected}
+       , case nextMsg of
+           Just nextMsg -> message nextMsg
+           Nothing -> Cmd.none
+       )
 
   GetMovementOptions sceneName creature ->
     if model.gridPanning then (model, Cmd.none) else

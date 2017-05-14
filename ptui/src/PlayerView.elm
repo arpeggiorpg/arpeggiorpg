@@ -45,8 +45,8 @@ makeUI model app myCreatures =
   , mapModeControls = mapModeControls
   , defaultTab = "My Creatures"
   , sideBar =
-        [ ("My Creatures", (\() -> myCreaturesView model app myCreatures))
-        , ("Combat", (\() -> combatView model app myCreatures))]
+        [ ("My Creatures", (\() -> myCreaturesView model app myCreatures), Nothing)
+        , ("Combat", (\() -> combatView model app myCreatures), Nothing)]
   , modal = CommonView.checkModal model app
   , extraOverlays = [bottomActionBar app myCreatures]
   }
