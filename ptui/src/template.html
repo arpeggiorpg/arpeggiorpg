@@ -11,7 +11,7 @@
 </head>
 <body>
   <script type="text/javascript">
-    var app = Elm.Main.fullscreen({'rpi': rpi});
+    var app = Elm.Main.fullscreen({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight]});
     PanZoom_initializePorts(app);
   </script>
 </body>

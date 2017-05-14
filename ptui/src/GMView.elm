@@ -34,8 +34,8 @@ makeUI model app =
   let (map, mapModeControls) = mapView model app in
   { mapView = map
   , mapModeControls = mapModeControls
+  , defaultTab = "Campaign"
   , sideBar =
-      CommonView.tabbedView "right-side-bar" "Campaign" model
         [ ("Campaign", (\() -> campaignView model app))
         , ("Combat", (\() -> combatView model app))
         , ("Players", (\() -> playersView model app))

@@ -106,6 +106,8 @@ update msg model = case msg of
 
   NoMsg -> (model, Cmd.none)
 
+  WindowResized s -> ({model | windowSize = s}, Cmd.none)
+
   Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder))
 
   PollApp ->

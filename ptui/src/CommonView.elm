@@ -314,11 +314,12 @@ tabbedView category defaultView model things =
 {-| All the parts we need to render the UI, allowing either Player or GM-specific view things to
 be plugged in. -}
 type alias UI =
-  { mapView : Html M.Msg
-  , mapModeControls : Html M.Msg
-  , sideBar : Html M.Msg
-  , modal : Maybe (Html M.Msg)
-  , extraOverlays : List (Html M.Msg)
+  { mapView: Html M.Msg
+  , mapModeControls: Html M.Msg
+  , defaultTab: String
+  , sideBar: List ((String, () -> Html M.Msg))
+  , modal: Maybe (Html M.Msg)
+  , extraOverlays: List (Html M.Msg)
   }
 
 {-| Top-level UI for an App. -}
@@ -329,16 +330,26 @@ viewGame model app ui =
     <|
     [ node "link" [rel "stylesheet", href "https://fonts.googleapis.com/icon?family=Material+Icons"] []
     , theCss
-    , overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+    ] ++ dynamicGameView model app ui 
+    ++ [errorBox model]
+    ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
+
+dynamicGameView : M.Model -> T.App -> UI -> List (Html M.Msg)
+dynamicGameView model app ui =
+  if model.windowSize.width >= 880 then
+    [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
         [ui.mapView]
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ ui.sideBar ]
+        [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
     , mapModeControlsOverlay ui.mapModeControls
-    , errorBox model
     ]
-    ++ ui.extraOverlays ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
+  else
+    let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView))] in
+    [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+        [ tabbedView "right-side-bar" ui.defaultTab model tabs]
+    ]
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)

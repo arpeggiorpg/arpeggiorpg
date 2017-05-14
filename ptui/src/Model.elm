@@ -4,6 +4,7 @@ import Dict
 import Http
 import Time
 import Json.Decode as JD
+import Window
 
 import Types as T
 import PanZoom
@@ -16,10 +17,11 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-  in Sub.batch [ticks, PanZoom.panning GridPanning]
+  in Sub.batch [ticks, PanZoom.panning GridPanning, Window.resizes WindowResized]
 
 type Msg
     = Start
+    | WindowResized Window.Size
     | Batch (List Msg)
     | SetFocus Focus
     | SetSecondaryFocus SecondaryFocus
@@ -85,6 +87,7 @@ type Msg
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
+  , windowSize = let (w, h) = flags.windowSize in {width = w, height = h}
   , selectingAbility = Nothing
   , moving = Nothing
   , error = ""
@@ -108,6 +111,7 @@ defaultModel flags =
 
 type alias Model =
   { app : Maybe T.App
+  , windowSize: Window.Size
   , selectingAbility : Maybe SelectingAbility
   , error: String
   , moving: Maybe MovementRequest
@@ -194,10 +198,10 @@ type alias SceneChallenge = {scene: T.SceneID, description: String, check: T.Att
 
 
 devFlags : ProgramFlags
-devFlags = {rpi = "http://localhost:1337/"}
+devFlags = {rpi = "http://localhost:1337/", windowSize = (0, 0)}
 
 type alias ProgramFlags =
-  { rpi : String }
+  { rpi : String, windowSize: (Int, Int) }
 
 type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, path: T.FolderPath}
 

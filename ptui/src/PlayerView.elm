@@ -43,8 +43,8 @@ makeUI model app myCreatures =
   let (map, mapModeControls) = mapView model app myCreatures in
   { mapView = map
   , mapModeControls = mapModeControls
+  , defaultTab = "My Creatures"
   , sideBar =
-      CommonView.tabbedView "right-side-bar" "My Creatures" model
         [ ("My Creatures", (\() -> myCreaturesView model app myCreatures))
         , ("Combat", (\() -> combatView model app myCreatures))]
   , modal = CommonView.checkModal model app
