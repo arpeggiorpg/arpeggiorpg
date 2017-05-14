@@ -190,6 +190,7 @@ update msg model = case msg of
     in ({model | selectedViews = newSelected}, Cmd.none)
 
   GetMovementOptions sceneName creature ->
+    if model.gridPanning then (model, Cmd.none) else
     let endpoint = (model.rpiURL ++ "/movement_options/" ++ Http.encodeUri sceneName ++ "/" ++ creature.id)
         cmd = Http.send (GotMovementOptions creature) (Http.get endpoint (JD.list T.point3Decoder))
     in (model, cmd)
@@ -242,8 +243,6 @@ update msg model = case msg of
           in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
         _ -> (model, Cmd.none)
   GridPanning bool ->
-    -- let _ = Debug.log "[GridPanning]" bool
-    -- in
     ({model | gridPanning = bool}, Cmd.none)
 
   ToggleGridSpecial pt ->
@@ -273,6 +272,7 @@ update msg model = case msg of
   GotTargetOptions (Err e) -> ({ model | error = toString e}, Cmd.none)
 
   SelectVolumeTarget pt ->
+    if model.gridPanning then (model, Cmd.none) else
     case (model.app, model.selectingAbility) of
       (Just app, Just {scene, ability}) ->
         case Dict.get ability app.current_game.abilities of
@@ -293,7 +293,6 @@ update msg model = case msg of
       Nothing -> (model, Cmd.none)
   GotCreaturesInVolume pt (Err e) -> ({model | error = toString e}, Cmd.none)
 
-  RequestMove movement -> ({model | moving = Just movement}, Cmd.none)
   CancelMovement -> ({model | moving = Nothing}, Cmd.none)
 
   ToggleMoveAnywhere -> ({ model | moveAnywhere = not model.moveAnywhere}, Cmd.none)

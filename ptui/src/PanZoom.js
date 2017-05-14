@@ -1,3 +1,8 @@
+// Interop between the Elm app and svg-pan-zoom.js.
+// This isn't quite a general purpose wrapper for svg-pan-zoom.js, but it's an okay example.
+// It receives from messages from the Elm app (for initing and updating the panzoom interface)
+// and also sends some events back.
+
 
 /* [Panning/Clicking State Management]
  * We have to do some tricky shenanigans to distinguish between a click-and-drag (or touch-and-swipe)

@@ -50,7 +50,6 @@ type Msg
     | CombatAct T.AbilityID T.DecidedTarget
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
 
-    | RequestMove MovementRequest
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
     | PathCreature T.SceneID T.CreatureID T.Point3
