@@ -241,7 +241,10 @@ update msg model = case msg of
                   in {gridData | map = {map | specials = newSpecials}}
           in ({model | focus = M.EditingMap path newGrid}, Cmd.none)
         _ -> (model, Cmd.none)
-  GridStartPanning () -> ({model | gridPanning = True}, Cmd.none)
+  GridPanning bool ->
+    -- let _ = Debug.log "[GridPanning]" bool
+    -- in
+    ({model | gridPanning = bool}, Cmd.none)
 
   ToggleGridSpecial pt ->
     if model.gridPanning then

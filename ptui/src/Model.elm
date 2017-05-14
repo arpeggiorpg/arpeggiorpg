@@ -16,7 +16,7 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-  in Sub.batch [ticks, PanZoom.panning GridStartPanning]
+  in Sub.batch [ticks, PanZoom.panning GridPanning]
 
 type Msg
     = Start
@@ -39,7 +39,7 @@ type Msg
     | GridRefreshPanZoom -- svg-pan-zoom: updateBBox
     -- This is to initialize the PanZoom state when we first render SVG to the screen.
     | GridInitializePanZoom -- svg-pan-zoom: svgPanZoom
-    | GridStartPanning ()
+    | GridPanning Bool
 
     -- Ability-related messages
     | SelectAbility SelectingAbility
