@@ -508,7 +508,7 @@ impl Game {
 
   pub fn creatures_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume) -> Vec<CreatureID> {
     let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
-    self.tile_system.items_within_volume(volume, pt, creature_locations)
+    self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)

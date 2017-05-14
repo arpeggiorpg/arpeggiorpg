@@ -48,18 +48,13 @@ impl TileSystem {
   }
 
   pub fn items_within_volume<I: Clone + Eq + Hash>(&self, volume: Volume, pt: Point3,
-                                                   items: HashMap<I, Point3>)
+                                                   items: &HashMap<I, Point3>)
                                                    -> Vec<I> {
     let mut results = vec![];
     match volume {
       Volume::Sphere(radius) => {
-        let nasphere = nc::shape::Ball::new(radius.to_meters());
-        let nasphere_pos = na_point(pt);
-
-        for (item, item_pos) in items.iter() {
-          let naitem_pos = na_point(*item_pos);
-          let nacube = nc::shape::Cuboid::new(Vector3::new(1.0, 1.0, 1.0));
-          if query::contact(&nasphere_pos, &nasphere, &naitem_pos, &nacube, 0.0).is_some() {
+        for (item, item_pos) in items {
+          if self.point3_distance(pt, *item_pos) <= radius {
             results.push(item.clone());
           }
         }
@@ -270,6 +265,8 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
 pub mod test {
   use grid::*;
   use types::test::*;
+  use types::*;
+  use std::iter::FromIterator;
 
   #[test]
   fn test_biggest_distance() {
@@ -469,5 +466,29 @@ pub mod test {
     bencher.iter(|| {
       test_accessible_average_speed();
     });
+  }
+
+  #[test]
+  fn items_within_volume() {
+    let ts = TileSystem::Realistic;
+    let vol = Volume::Sphere(Distance(500));
+    let vol_pt = (4, 4, 0);
+    let item_1 = ("Elron", (-1, 0, 0));
+    let item_2 = ("Kurok To", (1, 1, 0));
+    let item_3 = ("Silmarillion", (0, 0, 0));
+    let items = HashMap::from_iter(vec![item_1.clone(), item_2.clone(), item_3.clone()]);
+    let results = ts.items_within_volume(vol, vol_pt, &items);
+    println!("{:?}", results);
+    for result in results.iter() {
+      let result_pos = items.get(result).expect("Got result that wasn't in input");
+      let dist = ts.point3_distance(*result_pos, vol_pt);
+      println!("Checking distance between {:?} and {:?}: {:?}", result_pos, vol_pt, dist);
+      assert!(dist <= Distance(500));
+    }
+    for (item, item_pos) in items.iter() {
+      if !results.contains(item) {
+        assert!(ts.point3_distance(*item_pos, vol_pt) > Distance(500))
+      }
+    }
   }
 }
