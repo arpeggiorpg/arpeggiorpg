@@ -48,25 +48,23 @@ makeUI model app myCreatures =
         [ ("My Creatures", (\() -> myCreaturesView model app myCreatures), Nothing)
         , ("Combat", (\() -> combatView model app myCreatures), Nothing)]
   , modal = CommonView.checkModal model app
-  , extraOverlays = [bottomActionBar app myCreatures]
+  , bottomBar = bottomActionBar app myCreatures
   }
 
-bottomActionBar : T.App -> List T.Creature -> Html M.Msg
+bottomActionBar : T.App -> List T.Creature -> Maybe (Html M.Msg)
 bottomActionBar app myCreatures =
-  case app.current_game.current_combat of
-    Nothing -> text ""
-    Just combat ->
+  app.current_game.current_combat |>
+    Maybe.andThen (\combat ->
       if List.member (T.combatCreature app.current_game combat) myCreatures
-      then CommonView.mainActionBar app combat
-      else text ""
+      then Just (CommonView.mainActionBar app combat)
+      else Nothing
+    )      
 
 {-| A navigator for my creatures which aren't in combat. -}
 myCreaturesView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 myCreaturesView model app creatures =
   let game = app.current_game
-  in
-    CommonView.collapsible "My Creatures" model
-      <| vbox (List.map (myCreatureEntry model app) creatures)
+  in vbox (List.map (myCreatureEntry model app) creatures)
 
 {-| A creature card plus some UI relevant for when they are out-of-combat. -}
 myCreatureEntry : M.Model -> T.App -> T.Creature -> Html M.Msg

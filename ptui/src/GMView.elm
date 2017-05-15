@@ -42,7 +42,7 @@ makeUI model app =
         , ("History", (\() -> Lazy.lazy historyView app), Nothing)
         , ("Saved Games", (\() -> savedGameView model app), Nothing)
         ]
-  , extraOverlays = [bottomActionBar app]
+  , bottomBar = bottomActionBar app
   , modal = checkModal model app
   }
 
@@ -155,7 +155,8 @@ sceneConsole model app scene =
     , hbox [ strong [] [text "Creatures"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
-    , div [s [S.marginLeft (S.em 1)]] [terseCreaturesList model app scene]
+    , div [s [S.marginLeft (S.em 1)]]
+          [terseCreaturesList model app scene]
     ]
 
 challengeCreaturesAndShowResults : T.AttrCheck -> List T.CreatureID -> M.Msg
@@ -304,11 +305,9 @@ createFolderInPath model app {parent, child} =
 sceneButton : String -> Html M.Msg
 sceneButton sceneName = button [onClick (M.SetFocus (M.FocusScene sceneName))] [text sceneName]
 
-bottomActionBar : T.App -> Html M.Msg
+bottomActionBar : T.App -> Maybe (Html M.Msg)
 bottomActionBar app =
-  case app.current_game.current_combat of
-    Nothing -> text ""
-    Just combat -> CommonView.mainActionBar app combat
+  app.current_game.current_combat |> Maybe.map (CommonView.mainActionBar app)
 
 moveAnywhereToggle : M.Model -> Html M.Msg
 moveAnywhereToggle model =

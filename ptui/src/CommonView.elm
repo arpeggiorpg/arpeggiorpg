@@ -5,7 +5,7 @@ module CommonView exposing
   , checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, theCss, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap)
+  , mainActionBar, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap)
 
 import Dict
 import Set
@@ -282,33 +282,22 @@ creatureIcon app creature =
 mainActionBar : T.App -> T.Combat -> Html M.Msg
 mainActionBar app combat =
   let creature = T.combatCreature app.current_game combat
-  in sdiv
-      [s [ S.position S.fixed
-         , S.left (S.pct 50)
-         , S.bottom (S.px 0)
-         , S.transform (S.translate (S.pct -50))
-         , plainBorder
-         , S.backgroundColor (S.rgb 255 255 255)]]
-      [hbox [creatureIcon app creature, combatActionBar app.current_game combat creature]]
-
-theCss : Html M.Msg
-theCss = node "style" [] [text """
-  * {
-    box-sizing: border-box;
-  }
-  """]
+  in hbox [creatureIcon app creature, combatActionBar app.current_game combat creature]
 
 tabbedView : String -> String -> M.Model -> List (String, () -> Html M.Msg, Maybe M.Msg) -> Html M.Msg
 tabbedView category defaultView model things =
-  let header = habox [s [S.justifyContent S.spaceBetween]] (List.map headerButton things)
-      buttonText name = if name == selectedView then strong [] [text name] else text name
-      headerButton (name, _, msg) = button [onClick (M.SelectView category name msg)] [buttonText name]
-      selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
-      renderBody (name, renderer, _) = if name == selectedView then Just renderer else Nothing
-      body =
-        case List.filterMap renderBody things of
-          [f] -> f ()
-          _ -> text "Select a view"
+  let
+    header = habox [s [S.justifyContent S.spaceBetween]] (List.map headerButton things)
+    buttonText name = if name == selectedView then strong [] [text name] else text name
+    headerButton (name, _, msg) =
+      button [ s [S.height (S.px 50)], onClick (M.SelectView category name msg)]
+             [buttonText name]
+    selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
+    renderBody (name, renderer, _) = if name == selectedView then Just renderer else Nothing
+    body =
+      case List.filterMap renderBody things of
+        [f] -> f ()
+        _ -> text "Select a view"
   in vabox [s [S.height (S.pct 100)]] [header, body]
 
 {-| All the parts we need to render the UI, allowing either Player or GM-specific view things to
@@ -319,39 +308,50 @@ type alias UI =
   , defaultTab: String
   , sideBar: List (String, () -> Html M.Msg, Maybe M.Msg)
   , modal: Maybe (Html M.Msg)
-  , extraOverlays: List (Html M.Msg)
+  , bottomBar: Maybe (Html M.Msg)
   }
 
 {-| Top-level UI for an App. -}
 viewGame : M.Model -> T.App -> UI -> Html M.Msg
 viewGame model app ui =
-  div
-    [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
-    <| [ theCss ]
-    ++ dynamicGameView model app ui 
-    ++ [errorBox model]
-    ++ ui.extraOverlays
-    ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
-
-dynamicGameView : M.Model -> T.App -> UI -> List (Html M.Msg)
-dynamicGameView model app ui =
   if model.windowSize.width >= 880 then
-    [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
-        [ui.mapView]
-    , overlayRight (S.px 0) (S.px 0)
-        [ S.width (S.px 400)
-        , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
-    , mapModeControlsOverlay ui.mapModeControls
-    ]
+    div [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
+        <|
+        [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+            [ui.mapView]
+        , overlayRight (S.px 0) (S.px 0)
+            [ S.width (S.px 400)
+            , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
+            [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
+        , mapModeControlsOverlay ui.mapModeControls
+        , errorBox model
+        , case ui.bottomBar of
+            Nothing -> text ""
+            Just bar ->
+              sdiv
+                [s [ S.position S.fixed
+                  , S.left (S.pct 50)
+                  , S.bottom (S.px 0)
+                  , S.transform (S.translate (S.pct -50))
+                  , plainBorder
+                  , S.backgroundColor (S.rgb 255 255 255)]]
+                [ bar ]
+        ]
+        ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
   else
     -- Portrait-mode mobile view!
     -- TODO: show the mapModeControls somewhere
     -- TODO: fix panzoom on mobile map
-    let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView), Just M.GridInitializePanZoom)] in
-    [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
-        [ tabbedView "right-side-bar" ui.defaultTab model tabs]
-    ]
+    -- TODO: render the bottomBar
+    if model.error /= "" then errorBox model
+    else
+      case ui.modal of
+        Just m -> m
+        Nothing ->
+          let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView), Just M.GridInitializePanZoom)] in
+          div [s [S.height (S.pct 100), S.width (S.pct 100)]]
+              [ tabbedView "right-side-bar" ui.defaultTab model tabs]
+              
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
