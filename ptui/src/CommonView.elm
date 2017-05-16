@@ -359,8 +359,8 @@ viewGame model app ui =
               ( name
               , (\() -> div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
                             [ div [style [ ("transform-origin", "top left")
-                                        , ("transform", "scale(" ++ scale ++ ")")
-                                        ]
+                                         , ("transform", "scale(" ++ scale ++ ")")
+                                         ]
                                   ]
                                   [f ()]
                             ]

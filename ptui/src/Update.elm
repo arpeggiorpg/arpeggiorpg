@@ -103,7 +103,12 @@ update msg model = case msg of
   NoMsg -> (model, Cmd.none)
 
   WindowResized s ->
-    ({model | windowSize = s}, Cmd.none)
+    let maybeReinitMap =
+          if (model.windowSize.width < 880 && s.width >= 880)
+          || (model.windowSize.width >= 880 && s.width < 880)
+          then M.GridInitializePanZoom
+          else M.NoMsg
+    in ({model | windowSize = s}, message maybeReinitMap)
 
   Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder))
 
