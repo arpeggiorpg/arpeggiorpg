@@ -339,10 +339,6 @@ viewGame model app ui =
         ]
         ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
   else
-    -- Portrait-mode mobile view!
-    -- TODO: show the mapModeControls somewhere
-    -- TODO: fix panzoom on mobile map
-    -- TODO: render the bottomBar
     if model.error /= "" then errorBox model
     else
       case ui.modal of
