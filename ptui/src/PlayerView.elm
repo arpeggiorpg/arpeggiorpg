@@ -128,8 +128,8 @@ filterMapSpecials map =
 combatView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 combatView model app myCreatures =
   case app.current_game.current_combat of
-    Just combat -> CommonView.collapsible "Combat" model <| inCombatView model app combat myCreatures
-    Nothing -> text ""
+    Just combat -> inCombatView model app combat myCreatures
+    Nothing -> text "There is no current combat."
 
 inCombatView : M.Model -> T.App -> T.Combat -> List T.Creature -> Html M.Msg
 inCombatView model app combat myCreatures =

@@ -656,7 +656,7 @@ sceneMap : M.Model -> T.App -> T.Scene -> (Html M.Msg, Html M.Msg)
 sceneMap model app scene =
   let game = app.current_game
       currentMap = M.tryGetMapNamed scene.map app
-      currentCombatCreature = Maybe.map (\com -> (T.combatCreature game com).id) game.current_combat
+      currentCombatCreature = Maybe.map (T.combatCreature game >> .id) game.current_combat
       enableMovement mapc =
         { mapc | highlight = if (Just mapc.creature.id) == currentCombatCreature then Just M.Current else Nothing
                , clickable = Just (M.GetMovementOptions scene.id)}

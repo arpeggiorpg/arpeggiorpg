@@ -330,11 +330,11 @@ viewGame model app ui =
             Just bar ->
               sdiv
                 [s [ S.position S.fixed
-                  , S.left (S.pct 50)
-                  , S.bottom (S.px 0)
-                  , S.transform (S.translate (S.pct -50))
-                  , plainBorder
-                  , S.backgroundColor (S.rgb 255 255 255)]]
+                   , S.left (S.pct 50)
+                   , S.bottom (S.px 0)
+                   , S.transform (S.translate (S.pct -50))
+                   , plainBorder
+                   , S.backgroundColor (S.rgb 255 255 255)]]
                 [ bar ]
         ]
         ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
@@ -348,10 +348,18 @@ viewGame model app ui =
       case ui.modal of
         Just m -> m
         Nothing ->
-          let tabs = ui.sideBar ++ [("Map", (\() -> ui.mapView), Just M.GridInitializePanZoom)] in
-          div [s [S.height (S.pct 100), S.width (S.pct 100)]]
-              [ tabbedView "right-side-bar" ui.defaultTab model tabs]
-              
+          let
+            mapView = vabox [s [S.height (S.pct 100)]]
+                            [ habox [s [S.justifyContent S.spaceAround]]
+                                    [ui.mapModeControls]
+                            , ui.mapView]
+            tabs = ui.sideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
+          in
+            vabox [s [S.height (S.pct 100), S.width (S.pct 100)]]
+                  [ tabbedView "right-side-bar" ui.defaultTab model tabs
+                  , habox [s [S.justifyContent S.spaceAround]]
+                          [ui.bottomBar |> Maybe.withDefault (text "")]]
+                
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
