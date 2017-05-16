@@ -28,6 +28,14 @@
 
 function init(app, state, eventsHandler, el) {
   console.log("[initializePanZoom]", el);
+  if (state.managedElements.hasOwnProperty(el)) {
+    console.log("[initializePanZoom]", "Destroying existing SVG panzoom state before re-initializing");
+    try {
+      state.managedElements[el].destroy();
+    } catch(err) {
+      console.log("[initializePanZoom]", "Couldn't destroy existing SVG panzoom state.")
+    }
+  }
   window.requestAnimationFrame(function(_) {
     console.log("[initializePanZoom:animation]");
     state.managedElements[el] = svgPanZoom(
