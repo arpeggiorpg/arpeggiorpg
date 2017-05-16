@@ -353,7 +353,21 @@ viewGame model app ui =
                             [ habox [s [S.justifyContent S.spaceAround]]
                                     [ui.mapModeControls]
                             , ui.mapView]
-            tabs = ui.sideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
+            scale = toString <| toFloat (model.windowSize.width - 25) / 325.0
+            scaleTab : (String, () -> Html M.Msg, Maybe M.Msg) -> (String, () -> Html M.Msg, Maybe M.Msg)
+            scaleTab (name, f, m) =
+              ( name
+              , (\() -> div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
+                            [ div [style [ ("transform-origin", "top left")
+                                        , ("transform", "scale(" ++ scale ++ ")")
+                                        ]
+                                  ]
+                                  [f ()]
+                            ]
+                )
+              , m)
+            scaledSideBar = List.map scaleTab ui.sideBar
+            tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
           in
             vabox [s [S.height (S.pct 100), S.width (S.pct 100)]]
                   [ tabbedView "right-side-bar" ui.defaultTab model tabs

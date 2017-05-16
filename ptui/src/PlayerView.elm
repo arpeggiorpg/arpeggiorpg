@@ -133,11 +133,4 @@ combatView model app myCreatures =
 
 inCombatView : M.Model -> T.App -> T.Combat -> List T.Creature -> Html M.Msg
 inCombatView model app combat myCreatures =
-  let game = app.current_game
-      currentCreature = T.combatCreature game combat
-      bar = if List.member currentCreature myCreatures
-            then sdiv [s [S.width (S.px 100)]] [strong [] [text currentCreature.name]]
-            else hbox [text "Current creature:", text currentCreature.id]
-      combatantList =
-        CommonView.combatantList (always << always []) (always []) app combat
-  in vbox <| [bar] ++ [combatantList]
+  CommonView.combatantList (always << always []) (always []) app combat
