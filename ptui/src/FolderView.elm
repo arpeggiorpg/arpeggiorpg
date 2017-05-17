@@ -148,13 +148,13 @@ folderSubEntries : M.FolderState -> T.App -> FolderViewConfig -> T.FolderPath ->
 folderSubEntries fstate app cfg path (T.Folder folder) =
   let
     viewChild (folderName, childFolder) =
-      let childPath = path ++ [folderName]
-          key = "folder-" ++ String.join "/" childPath
+      let childPath = T.folderPathChild path folderName
+          key = "folder-" ++ (T.folderPathToString childPath)
           isShown = Dict.get key fstate |> Maybe.withDefault False
           iconName = if isShown then "folder_open" else "folder"
           menu = if cfg.mutable && isShown then (folderMenu fstate childPath) else text ""
       in
-        vbox [ hbox [baseFolderLine cfg path Nothing (Just <| M.ToggleFolderCollapsed key) iconName folderName, menu]
+        vbox [ hbox [baseFolderLine cfg childPath Nothing (Just <| M.ToggleFolderCollapsed key) iconName folderName, menu]
               , if isShown
                 then div [s [S.marginLeft (S.em 1)]] [folderView fstate app cfg childPath childFolder]
                 else text ""
@@ -196,5 +196,5 @@ folderView fstate app cfg path (T.Folder folder) =
     maps =
       if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
       else text ""
-    children = folderSubEntries fstate app cfg path (T.Folder folder)
-  in vbox [ scenes, maps, creatures, notes, children]
+    subfolders = folderSubEntries fstate app cfg path (T.Folder folder)
+  in vbox [ scenes, maps, creatures, notes, subfolders]
