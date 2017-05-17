@@ -144,18 +144,18 @@ fn target_options(pt: State<PT>, scene: String, cid: &str, abid: &str)
   Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
 }
 
-#[route(OPTIONS, "/creatures_in_volume/<scene>/<x>/<y>/<z>")]
+#[route(OPTIONS, "/affected_by_volume/<scene>/<x>/<y>/<z>")]
 fn options_creatures_in_volume(scene: &str, x: &str, y: &str, z: &str) -> PreflightCORS {
   options_handler()
 }
 
-#[post("/creatures_in_volume/<scene>/<x>/<y>/<z>", format="application/json", data="<volume>")]
+#[post("/affected_by_volume/<scene>/<x>/<y>/<z>", format="application/json", data="<volume>")]
 fn creatures_in_volume(pt: State<PT>, scene: String, x: i16, y: i16, z: i16, volume: JSON<Volume>)
-                       -> PTResult<Vec<CreatureID>> {
+                       -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app()?;
   let sid = SceneID::from_str(&scene)?;
   let point = (x, y, z);
-  Ok(CORS::any(JSON(app.get_creatures_in_volume(sid, point, volume.0)?)))
+  Ok(CORS::any(JSON(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
 }
 
 #[get("/saved_games")]

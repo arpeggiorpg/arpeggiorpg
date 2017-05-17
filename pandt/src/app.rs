@@ -180,10 +180,10 @@ impl App {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
-  pub fn get_creatures_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
-                                 -> Result<Vec<CreatureID>, GameError> {
+  pub fn get_creatures_and_terrain_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
+                                             -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
-    Ok(self.current_game.creatures_in_volume(scene, pt, volume))
+    self.current_game.creatures_and_terrain_in_volume(scene, pt, volume)
   }
 }
 

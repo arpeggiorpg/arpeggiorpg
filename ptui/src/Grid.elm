@@ -42,7 +42,9 @@ editMap : GridModel a -> T.Map -> List M.MapCreature -> Svg M.Msg
 editMap model map creatures =
   mapContainer (mapContents True model map creatures [])
 
-movementMap : GridModel a -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3 -> List M.MapCreature -> Svg M.Msg
+movementMap : GridModel a -> (T.Point3 -> M.Msg) -> M.MovementRequest -> Bool -> T.Map -> T.Point3
+           -> List M.MapCreature
+           -> Svg M.Msg
 movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAnywhere map movingFrom creatures =
   let targetPoints =
         if moveAnywhere
@@ -55,7 +57,7 @@ movementMap model moveMsg {max_distance, movement_options, ooc_creature} moveAny
         else mapc
       vCreatures = List.map highlightMovingCreature creatures
   in
-    tileTargetingMap model moveMsg map targetPoints vCreatures
+    tileTargetingMap model moveMsg map targetPoints [] vCreatures
 
 movementGhost : M.MovementAnimation -> Maybe T.Point3
 movementGhost anim =
@@ -64,11 +66,19 @@ movementGhost anim =
     _ -> Nothing
 
 -- a map with arbitrary clickable tiles. Clicking those tiles will trigger the targetMsg.
-tileTargetingMap : GridModel a -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List M.MapCreature
+tileTargetingMap : GridModel a -> (T.Point3 -> M.Msg) -> T.Map -> List T.Point3 -> List T.Point3
+                 -> List M.MapCreature
                  -> Svg M.Msg
-tileTargetingMap model targetMsg map targetableTiles vCreatures =
-  let extras = targetTiles targetMsg targetableTiles
+tileTargetingMap model targetMsg map targetableTiles highlightedPoints vCreatures =
+  let extras = targetTiles targetMsg targetableTiles ++ highlightedTiles highlightedPoints
   in baseMap model map vCreatures extras
+
+highlightedTiles : List T.Point3 -> List (Svg M.Msg)
+highlightedTiles pts =
+  let
+    ht pt = tile "pink" [fillOpacity "0.9", HA.style [("pointer-events", "none")]]
+                 (T.point3ToTup pt)
+  in List.map ht pts
 
 targetTiles : (T.Point3 -> M.Msg) -> List T.Point3 -> List (Svg M.Msg)
 targetTiles targetMsg pts =

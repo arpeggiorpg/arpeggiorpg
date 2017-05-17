@@ -108,7 +108,8 @@ impl Game {
                                 -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_name.clone())?;
     let terrain = self.get_map(scene.map)?;
-    let (pts, distance) = self.tile_system
+    let (pts, distance) = self
+      .tile_system
       .find_path(scene.get_pos(cid)?, max_distance, terrain, pt)
       .ok_or(GameErrorEnum::NoPathFound)?;
     debug_assert!(distance <= max_distance);
@@ -181,7 +182,8 @@ impl Game {
       MoveFolderItem(ref src, ref item_id, ref dst) => {
         match item_id {
           &FolderItemID::NoteID(ref name) => {
-            let note = self.campaign
+            let note = self
+              .campaign
               .get_mut(src)?
               .notes
               .remove(&name)
@@ -217,7 +219,8 @@ impl Game {
       }
       EditScene(ref scene) => {
         self.check_map(scene.map)?;
-        self.scenes
+        self
+          .scenes
           .mutate(&scene.id, move |_| scene.clone())
           .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
       }
@@ -246,12 +249,11 @@ impl Game {
         }
       }
       EditMap(ref map) => {
-        self.maps
-          .mutate(&map.id, move |_| map.clone())
-          .ok_or(GameErrorEnum::MapNotFound(map.id))?;
+        self.maps.mutate(&map.id, move |_| map.clone()).ok_or(GameErrorEnum::MapNotFound(map.id))?;
       }
       DeleteMap(ref mid) => {
-        let scenes_using_this_map: Vec<SceneID> = self.scenes
+        let scenes_using_this_map: Vec<SceneID> = self
+          .scenes
           .values()
           .filter_map(|s| if s.map == *mid { Some(s.id) } else { None })
           .collect();
@@ -282,15 +284,18 @@ impl Game {
         }
       }
       DeleteCreature(cid) => {
-        let scenes_with_this_creature: Vec<SceneID> = self.scenes
+        let scenes_with_this_creature: Vec<SceneID> = self
+          .scenes
           .values()
           .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
           .collect();
         for sid in scenes_with_this_creature {
-          self.scenes.mutate(&sid, |mut sc| {
-            sc.creatures.remove(&cid);
-            sc
-          });
+          self
+            .scenes
+            .mutate(&sid, |mut sc| {
+              sc.creatures.remove(&cid);
+              sc
+            });
         }
         let all_folders: Vec<FolderPath> =
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
@@ -389,9 +394,10 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(self.creatures
-      .get(&cid)
-      .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?)
+    self.dyn_creature(self
+                        .creatures
+                        .get(&cid)
+                        .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?)
   }
 
   // this is only public for tests :(
@@ -415,11 +421,11 @@ impl Game {
     let scene = self.get_scene(combat.scene.clone())?;
     let map = self.get_map(scene.map)?;
     Ok(DynamicCombat {
-      scene: &scene,
-      map: &map,
-      combat: &combat,
-      game: self,
-    })
+         scene: &scene,
+         map: &map,
+         combat: &combat,
+         game: self,
+       })
   }
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
@@ -480,16 +486,20 @@ impl Game {
                          -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
       (TargetSpec::Melee, DecidedTarget::Creature(cid)) => {
-        if self.tile_system
-          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE) {
+        if self
+             .tile_system
+             .points_within_distance(scene.get_pos(creature.id())?,
+                                     scene.get_pos(cid)?,
+                                     MELEE_RANGE) {
           Ok(vec![cid])
         } else {
           Err(GameErrorEnum::CreatureOutOfRange(cid).into())
         }
       }
       (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => {
-        if self.tile_system
-          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max) {
+        if self.tile_system.points_within_distance(scene.get_pos(creature.id())?,
+                                                   scene.get_pos(cid)?,
+                                                   max) {
           Ok(vec![cid])
         } else {
           Err(GameErrorEnum::CreatureOutOfRange(cid).into())
@@ -511,14 +521,25 @@ impl Game {
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
+  pub fn creatures_and_terrain_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume)
+                                         -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+    let cids = self.creatures_in_volume(scene, pt, volume);
+    let terrain = self.get_map(scene.map)?.terrain.iter();
+    let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
+    let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
+    Ok((cids, result_tiles))
+  }
+
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
                               -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
     if creature.can_move() {
-      Ok(self.tile_system.get_all_accessible(scene.get_pos(creature_id)?,
-                                             self.get_map(scene.map)?,
-                                             creature.speed()))
+      Ok(self
+           .tile_system
+           .get_all_accessible(scene.get_pos(creature_id)?,
+                               self.get_map(scene.map)?,
+                               creature.speed()))
     } else {
       Err(GameErrorEnum::CannotAct(creature.id()).into())
     }
@@ -528,17 +549,21 @@ impl Game {
   pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
                             -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
-  
+
     Ok(match ability.target {
-      TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
-      TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
-      TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
-      TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
-        self.open_terrain_in_range(scene, creature_id, range)?
-      }
-      TargetSpec::Volume { volume, range } => panic!(),
-    })
+         TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
+         TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
+         TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
+         TargetSpec::SomeCreaturesInVolumeInRange {
+           volume,
+           maximum,
+           range,
+         } => panic!(),
+         TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
+           self.open_terrain_in_range(scene, creature_id, range)?
+         }
+         TargetSpec::Volume { volume, range } => panic!(),
+       })
   }
 
   fn open_terrain_in_range(&self, scene: SceneID, creature_id: CreatureID, range: Distance)
@@ -579,9 +604,9 @@ impl Game {
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
     Ok(ChangedGame {
-      game: game,
-      logs: vec![log],
-    })
+         game: game,
+         logs: vec![log],
+       })
   }
 }
 
@@ -665,15 +690,20 @@ pub mod test {
     game.creatures.insert(cid_rogue(), rogue);
     game.creatures.insert(cid_cleric(), cleric);
     game.creatures.insert(cid_ranger(), ranger);
-    game.scenes.insert(Scene {
-      id: t_scene_id(),
-      name: "Test Scene".to_string(),
-      map: t_map_id(),
-      attribute_checks: HashMap::new(),
-      creatures: HashMap::from_iter(vec![(cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
-                                         (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
-                                         (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers))]),
-    });
+    game
+      .scenes
+      .insert(Scene {
+                id: t_scene_id(),
+                name: "Test Scene".to_string(),
+                map: t_map_id(),
+                attribute_checks: HashMap::new(),
+                creatures: HashMap::from_iter(vec![(cid_rogue(),
+                                                    ((0, 0, 0), Visibility::AllPlayers)),
+                                                   (cid_cleric(),
+                                                    ((0, 0, 0), Visibility::AllPlayers)),
+                                                   (cid_ranger(),
+                                                    ((0, 0, 0), Visibility::AllPlayers))]),
+              });
     game
   }
 

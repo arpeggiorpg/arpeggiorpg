@@ -284,17 +284,19 @@ update msg model = case msg of
           Just {target} ->
             case target of
               T.AllCreaturesInVolumeInRange {volume} -> 
-                let url = model.rpiURL ++ "creatures_in_volume/" ++ scene ++ "/"
+                let url = model.rpiURL ++ "affected_by_volume/" ++ scene ++ "/"
                       ++ toString pt.x ++ "/" ++ toString pt.y ++ "/" ++ toString pt.z
-                    post = Http.post url (Http.jsonBody (T.volumeEncoder volume)) (JD.list JD.string)
+                    post = Http.post url
+                                     (Http.jsonBody (T.volumeEncoder volume))
+                                     (JD.map2 (,) (JD.index 0 (JD.list JD.string)) (JD.index 1 (JD.list T.point3Decoder)))
                 in ( model, Http.send (GotCreaturesInVolume pt) post)
               _ -> (model, Cmd.none)
           Nothing -> (model, Cmd.none)
       _ -> (model, Cmd.none)
 
-  GotCreaturesInVolume pt (Ok cids) ->
+  GotCreaturesInVolume pt (Ok (cids, pts)) ->
     case model.selectingAbility of
-      Just sa -> ({model | selectingAbility = Just {sa | chosenPoint = Just (pt, cids)}}, Cmd.none)
+      Just sa -> ({model | selectingAbility = Just {sa | chosenPoint = Just (pt, cids, pts)}}, Cmd.none)
       Nothing -> (model, Cmd.none)
   GotCreaturesInVolume pt (Err e) -> ({model | error = toString e}, Cmd.none)
 

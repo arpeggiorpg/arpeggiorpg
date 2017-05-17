@@ -48,7 +48,7 @@ type Msg
     | CancelAbility
     | GotTargetOptions (Result Http.Error T.PotentialTargets)
     | SelectVolumeTarget T.Point3
-    | GotCreaturesInVolume T.Point3 (Result Http.Error (List T.CreatureID))
+    | GotCreaturesInVolume T.Point3 (Result Http.Error (List T.CreatureID, List T.Point3))
     | CombatAct T.AbilityID T.DecidedTarget
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
 
@@ -147,10 +147,10 @@ type alias SelectingAbility =
   , creature: T.CreatureID
   , ability: T.AbilityID
   , potentialTargets: Maybe T.PotentialTargets
-  -- affectedCreatures will be a list of creature IDs that are affected by an area-effect. This is
-  -- populated after the player chooses a point for an area ability, and is used to show the player
-  -- who will be affected before they confirm the ability.
-  , chosenPoint : Maybe (T.Point3, List T.CreatureID)
+  -- chosenPoint is data about what is affected by the current selected target. This is
+  -- populated after the player chooses a point for a volume-affecting ability, and is used to show
+  -- the player who and what will be affected before they confirm the ability.
+  , chosenPoint : Maybe (T.Point3, List T.CreatureID, List T.Point3)
   }
 
 type Focus

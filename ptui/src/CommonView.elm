@@ -398,8 +398,8 @@ targetMap model app scene map vCreatures =
           -- confirm with the user whether it's okay to use the ability on the affected creatures.
           case chosenPoint of
             Nothing ->
-              ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts vCreatures , standardInfoBox )
-            Just (targetedPoint, cids) ->
+              ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts [] vCreatures , standardInfoBox )
+            Just (targetedPoint, cids, affectedPts) ->
               let
                 highlightAffected mapc =
                   if List.member mapc.creature.id cids then
@@ -411,7 +411,7 @@ targetMap model app scene map vCreatures =
                        , button [onClick <| activateAbility ability (T.TargetedPoint targetedPoint)]
                                 [text "Do it live!"]
                        , button [onClick M.CancelAbility] [text "Never mind!"]]
-              in ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts highlightedTargets
+              in ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts affectedPts highlightedTargets
                  , confirmAbilityBox )
   in model.selectingAbility |> Maybe.andThen (\sa -> Maybe.map (makeMap sa) sa.potentialTargets)
 
