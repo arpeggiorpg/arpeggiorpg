@@ -361,18 +361,14 @@ viewGameMobile model app ui =
     scaleTab (name, f, m) = (name, scaled f, m)
     scaledSideBar = List.map scaleTab ui.sideBar
     tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
-  in
-    div
+    mainContent = vabox
       [s [S.height (S.pct 100), S.width (S.pct 100)]]
-      [ vabox
-          [s [S.height (S.pct 100), S.width (S.pct 100)]]
-          [ tabbedView "right-side-bar" ui.defaultTab model tabs
-          , habox [s [S.justifyContent S.spaceAround]]
-                  [ui.bottomBar |> Maybe.withDefault (text "")]
-          ]
-      , error
-      , modal
-      ]
+      [ tabbedView "right-side-bar" ui.defaultTab model tabs
+      , habox [s [S.justifyContent S.spaceAround]]
+              [ui.bottomBar |> Maybe.withDefault (text "")]]
+  in
+    div [s [S.height (S.pct 100), S.width (S.pct 100)]]
+        [mainContent, error, modal]
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
