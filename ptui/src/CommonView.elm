@@ -354,15 +354,10 @@ viewGameMobile model app ui =
                     [ habox [s [S.justifyContent S.spaceAround]]
                             [ui.mapModeControls]
                     , ui.mapView]
-    scale = toString <| toFloat (model.windowSize.width - 25) / 325.0
+    scale = toFloat (model.windowSize.width - 25) / 325.0
     scaled f () =
       div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
-                    [ div [style [ ("transform-origin", "top left")
-                                 , ("transform", "scale(" ++ scale ++ ")")
-                                 ]
-                          ]
-                          [f ()]
-                    ]
+          [div [style (scaleStyle scale)] [f ()]]
     scaleTab (name, f, m) = (name, scaled f, m)
     scaledSideBar = List.map scaleTab ui.sideBar
     tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
@@ -378,14 +373,6 @@ viewGameMobile model app ui =
       , error
       , modal
       ]
-
-fullscreen : Html M.Msg -> Html M.Msg
-fullscreen content =
-  div [s [ S.position S.fixed
-         , S.left (S.px 0), S.top (S.px 0)
-         , S.height (S.pct 100), S.width (S.pct 100)
-         , S.backgroundColor (S.rgb 255 255 255)]]
-      [content]
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
