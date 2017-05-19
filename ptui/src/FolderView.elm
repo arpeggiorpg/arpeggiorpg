@@ -115,9 +115,9 @@ folderMenu fstate path =
     moveFolder =
       case T.folderPathBaseName path of
         Just basename ->
-          [( hbox [icon[] "trending_flat", dtext "Move Folder"]
-          , M.SetModal (M.MoveFolderItem {src=T.folderPathParent path, item=T.FolderSubfolder basename, dst=[]})
-          )]
+          [( hbox [icon [] "trending_flat", dtext "Move Folder"]
+           , M.SetModal (M.MoveFolderItem {src=T.folderPathParent path, item=T.FolderSubfolder basename, dst=[]})
+           )]
         Nothing -> []
     deleteFolder =
       if path /= []

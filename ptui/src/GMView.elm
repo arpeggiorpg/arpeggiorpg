@@ -389,8 +389,9 @@ moveFolderItemDialog model app {src, item, dst} =
   let
     select path = M.SetModal (M.MoveFolderItem {src=src, item=item, dst=path})
     submit = M.Batch [ M.SendCommand (T.MoveFolderItem src item dst)
-                      , M.SetModal M.NoModal
-                      ]
+                     , M.SetModal M.NoModal
+                     , M.SetSecondaryFocus M.Focus2None
+                     ]
   in
     vbox
       [ FolderView.selectFolder model.folderState app select
