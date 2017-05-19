@@ -140,11 +140,11 @@ specialTile editable expanded (pt, (color, note, vis)) =
   let
     (ptx, pty, ptz) = pt
     noteExpanded = expanded == Just (T.tupToPoint3 pt)
-    positionedText t =
+    positionedText t (ptx, pty) fsize =
       text_ [ HA.style [("pointer-events", "none")]
-            , x (toString <| (ptx * 100) + 50)
-            , y (toString <| (pty * 100) + 50)
-            , fontSize "100px"
+            , x (toString <| ptx)
+            , y (toString <| pty)
+            , fontSize fsize
             , dominantBaseline "central"
             , textAnchor "middle"
             , fill "white"
@@ -152,15 +152,17 @@ specialTile editable expanded (pt, (color, note, vis)) =
             , strokeWidth "2px"
             ]
             [text t]
+    centeredText note = positionedText note (((ptx * 100) + 50), ((pty * 100) + 50)) "100px"
     star =
       if note /= "" && (not noteExpanded)
-      then positionedText (if vis == T.GMOnly then "(*)" else "*")
+      then centeredText "*"
       else text ""
-    expandedNote = if noteExpanded then positionedText note else text ""
+    expandedNote = if noteExpanded then centeredText note else text ""
     key = "special-tile:" ++ toString ptx ++ "," ++ toString pty
     click = if editable then M.GridPaint else M.ToggleGridSpecial
+    hiddenIcon = if vis == T.GMOnly then positionedText "👁️" ((ptx * 100) + 85, ((pty * 100) + 85)) "25px" else text ""
   in
-    ( g [] [tile color [onClick (click (T.tupToPoint3 pt))] (ptx, pty, ptz), star]
+    ( g [] [tile color [onClick (click (T.tupToPoint3 pt))] (ptx, pty, ptz), star, hiddenIcon]
     , g [] [expandedNote])
 
 -- return all points within a square with half-distance `distance`.
