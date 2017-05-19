@@ -375,8 +375,7 @@ targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
 targetMap model app scene map vCreatures =
   let
-    standardInfoBox = vbox [ text "Select Targets!"
-                           , button [onClick M.CancelAbility] [text "Cancel Ability"]]
+    standardInfoBox = hbox [ text "Select Targets!", button [onClick M.CancelAbility] [text "Cancel Ability"]]
     makeMap {creature, ability, chosenPoint} targets =
       let activateAbility =
             if T.isCreatureInCombat app.current_game creature
@@ -392,13 +391,13 @@ targetMap model app scene map vCreatures =
                 in {mapc | clickable = Just fullMsg, highlight = Just M.Targetable}
               else {mapc | clickable = Nothing}
             targetable = List.map enableTargeting vCreatures
-          in ( Grid.terrainMap model map targetable , standardInfoBox )
+          in ( Grid.terrainMap model map targetable, standardInfoBox )
         T.PTPoints pts ->
           -- Either we're still selecting a point, or we have selected a point and we want to
           -- confirm with the user whether it's okay to use the ability on the affected creatures.
           case chosenPoint of
             Nothing ->
-              ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts [] vCreatures , standardInfoBox )
+              ( Grid.tileTargetingMap model M.SelectVolumeTarget map pts [] vCreatures, standardInfoBox )
             Just (targetedPoint, cids, affectedPts) ->
               let
                 highlightAffected mapc =
@@ -407,7 +406,7 @@ targetMap model app scene map vCreatures =
                   else mapc
                 highlightedTargets = List.map highlightAffected vCreatures
                 confirmAbilityBox =
-                  vbox [ text "Use ability? The highlighted creatures will be affected."
+                  hbox [ text "Use ability? The highlighted creatures will be affected."
                        , button [onClick <| activateAbility ability (T.TargetedPoint targetedPoint)]
                                 [text "Do it live!"]
                        , button [onClick M.CancelAbility] [text "Never mind!"]]
