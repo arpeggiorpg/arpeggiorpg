@@ -144,11 +144,19 @@ impl Game {
 
   fn unlink_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
                         -> Result<(), GameError> {
+    fn remove_set<T: ::std::hash::Hash + Eq>(path: &FolderPath, item: &FolderItemID,
+                                             s: &mut ::std::collections::HashSet<T>, key: &T)
+                                             -> Result<(), GameError> {
+      if !s.remove(key) {
+        bail!(GameErrorEnum::FolderItemNotFound(path.clone(), item.clone()))
+      }
+      Ok(())
+    }
     let node = self.campaign.get_mut(path)?;
     match item_id {
-      &FolderItemID::CreatureID(cid) => node.creatures.remove(&cid),
-      &FolderItemID::SceneID(sid) => node.scenes.remove(&sid),
-      &FolderItemID::MapID(mid) => node.maps.remove(&mid),
+      &FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
+      &FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
+      &FolderItemID::MapID(mid) => remove_set(path, item_id, &mut node.maps, &mid)?,
       &FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       &FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))

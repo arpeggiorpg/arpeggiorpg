@@ -512,6 +512,10 @@ error_chain! {
       description("The user attempted to delete a folder when it wasn't empty.")
       display("The folder {} is not empty", path.to_string())
     }
+    FolderItemNotFound(path: FolderPath, item: FolderItemID) {
+      description("The given folder item was not found in the given folder path.")
+      display("The folder {} does not contain item {:?}", path.to_string(), item)
+    }
     NoteNotFound(path: FolderPath, name: String) {
       description("A note couldn't be found.")
       display("The note in '{}' named '{}' could not be found.", path.to_string(), name)
