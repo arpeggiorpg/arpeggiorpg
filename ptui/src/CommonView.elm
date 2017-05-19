@@ -314,62 +314,78 @@ type alias UI =
 {-| Top-level UI for an App. -}
 viewGame : M.Model -> T.App -> UI -> Html M.Msg
 viewGame model app ui =
-  if model.windowSize.width >= 880 then
-    div [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
-        <|
-        [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
-            [ui.mapView]
-        , overlayRight (S.px 0) (S.px 0)
-            [ S.width (S.px 400)
-            , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-            [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
-        , mapModeControlsOverlay ui.mapModeControls
-        , errorBox model
-        , case ui.bottomBar of
-            Nothing -> text ""
-            Just bar ->
-              sdiv
-                [s [ S.position S.fixed
-                   , S.left (S.pct 50)
-                   , S.bottom (S.px 0)
-                   , S.transform (S.translate (S.pct -50))
-                   , plainBorder
-                   , S.backgroundColor (S.rgb 255 255 255)]]
-                [ bar ]
-        ]
-        ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
-  else
-    if model.error /= "" then errorBox model
-    else
-      case ui.modal of
-        Just m -> m
-        Nothing ->
-          let
-            mapView = vabox [s [S.height (S.pct 100)]]
-                            [ habox [s [S.justifyContent S.spaceAround]]
-                                    [ui.mapModeControls]
-                            , ui.mapView]
-            scale = toString <| toFloat (model.windowSize.width - 25) / 325.0
-            scaleTab : (String, () -> Html M.Msg, Maybe M.Msg) -> (String, () -> Html M.Msg, Maybe M.Msg)
-            scaleTab (name, f, m) =
-              ( name
-              , (\() -> div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
-                            [ div [style [ ("transform-origin", "top left")
-                                         , ("transform", "scale(" ++ scale ++ ")")
-                                         ]
-                                  ]
-                                  [f ()]
-                            ]
-                )
-              , m)
-            scaledSideBar = List.map scaleTab ui.sideBar
-            tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
-          in
-            vabox [s [S.height (S.pct 100), S.width (S.pct 100)]]
-                  [ tabbedView "right-side-bar" ui.defaultTab model tabs
-                  , habox [s [S.justifyContent S.spaceAround]]
-                          [ui.bottomBar |> Maybe.withDefault (text "")]]
-                
+  if model.windowSize.width >= 880
+  then viewGameWide model app ui
+  else viewGameMobile model app ui
+
+viewGameWide : M.Model -> T.App -> UI -> Html M.Msg
+viewGameWide model app ui =
+  div
+    [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
+    <|
+    [ overlay (S.px 0) (S.px 0) [S.height (S.pct 100), S.width (S.pct 100)]
+        [ui.mapView]
+    , overlayRight (S.px 0) (S.px 0)
+        [ S.width (S.px 400)
+        , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
+        [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
+    , mapModeControlsOverlay ui.mapModeControls
+    , errorBox model
+    , case ui.bottomBar of
+        Nothing -> text ""
+        Just bar ->
+          sdiv
+            [s [ S.position S.fixed
+                , S.left (S.pct 50)
+                , S.bottom (S.px 0)
+                , S.transform (S.translate (S.pct -50))
+                , plainBorder
+                , S.backgroundColor (S.rgb 255 255 255)]]
+            [ bar ]
+    ]
+    ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
+
+viewGameMobile : M.Model -> T.App -> UI -> Html M.Msg
+viewGameMobile model app ui =
+  let
+    error = if model.error /= "" then fullscreen (errorBox model) else text ""
+    modal = ui.modal |> Maybe.map fullscreen |> Maybe.withDefault (text "")
+    mapView = vabox [s [S.height (S.pct 100)]]
+                    [ habox [s [S.justifyContent S.spaceAround]]
+                            [ui.mapModeControls]
+                    , ui.mapView]
+    scale = toString <| toFloat (model.windowSize.width - 25) / 325.0
+    scaled f () =
+      div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
+                    [ div [style [ ("transform-origin", "top left")
+                                 , ("transform", "scale(" ++ scale ++ ")")
+                                 ]
+                          ]
+                          [f ()]
+                    ]
+    scaleTab (name, f, m) = (name, scaled f, m)
+    scaledSideBar = List.map scaleTab ui.sideBar
+    tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
+  in
+    div
+      [s [S.height (S.pct 100), S.width (S.pct 100)]]
+      [ vabox
+          [s [S.height (S.pct 100), S.width (S.pct 100)]]
+          [ tabbedView "right-side-bar" ui.defaultTab model tabs
+          , habox [s [S.justifyContent S.spaceAround]]
+                  [ui.bottomBar |> Maybe.withDefault (text "")]
+          ]
+      , error
+      , modal
+      ]
+
+fullscreen : Html M.Msg -> Html M.Msg
+fullscreen content =
+  div [s [ S.position S.fixed
+         , S.left (S.px 0), S.top (S.px 0)
+         , S.height (S.pct 100), S.width (S.pct 100)
+         , S.backgroundColor (S.rgb 255 255 255)]]
+      [content]
 
 targetMap : M.Model -> T.App -> T.Scene -> T.Map -> List M.MapCreature
          -> Maybe (Html M.Msg, Html M.Msg)
