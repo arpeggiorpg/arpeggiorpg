@@ -5,7 +5,6 @@ use odds::vec::VecExt;
 use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
-use self::nc::query;
 
 use types::{Point3, Distance, TileSystem, Map, Volume};
 
@@ -59,8 +58,8 @@ impl TileSystem {
           }
         }
       }
-      Volume::Line(length) => {}
-      Volume::VerticalCylinder { radius, height } => {}
+      Volume::Line(length) => unimplemented!(),
+      Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
     results
   }
@@ -86,7 +85,7 @@ impl TileSystem {
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
     for pt in points_to_check {
       if pt != start {
-        success_fns.push(Box::new(move |n: &Point3| *n == pt.clone()));
+        success_fns.push(Box::new(move |n: &Point3| *n == pt));
       }
     }
     let mut final_points = vec![];
@@ -98,7 +97,7 @@ impl TileSystem {
       if Distance(cost) <= speed {
         // FIXME: we should NOT be checking cost here, instead astar_multi should support
         // max distance.
-        final_points.push(path.last().unwrap().clone())
+        final_points.push(*path.last().unwrap())
       }
     }
     final_points
@@ -191,7 +190,7 @@ impl<K: Ord, P> Ord for InvCmpHolder<K, P> {
 }
 
 /// Find a path through the given DAG.
-/// parents: a HashMap containing a DAG of nodes, decorated with the cost of those connections.
+/// parents: a `HashMap` containing a DAG of nodes, decorated with the cost of those connections.
 /// start: The node to start at, but actually *this is the *END* node of the A* search!!!!
 fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
   let mut path = vec![start];
@@ -225,7 +224,7 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
       }
       !was_successful
     });
-    if successes.len() == 0 {
+    if successes.is_empty() {
       break;
     }
     // We may have inserted a node several time into the binary heap if we found

@@ -28,9 +28,9 @@ impl Game {
     Ok(map)
   }
 
-  pub fn get_ability(&self, ability_id: &AbilityID) -> Result<Ability, GameError> {
+  pub fn get_ability(&self, abid: &AbilityID) -> Result<&Ability, GameError> {
     // maybe this should just return &Ability?
-    Ok(self.abilities.get(ability_id).ok_or(GameErrorEnum::NoAbility(ability_id.clone()))?.clone())
+    self.abilities.get(abid).ok_or_else(|| GameErrorEnum::NoAbility(*abid).into())
   }
 
   /// Perform a GameCommand on the current Game.
@@ -103,10 +103,10 @@ impl Game {
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-  pub fn path_creature_distance(&self, scene_name: SceneID, cid: CreatureID, pt: Point3,
+  pub fn path_creature_distance(&self, scene_id: SceneID, cid: CreatureID, pt: Point3,
                                 max_distance: Distance)
                                 -> Result<(ChangedGame, Distance), GameError> {
-    let scene = self.get_scene(scene_name.clone())?;
+    let scene = self.get_scene(scene_id)?;
     let terrain = self.get_map(scene.map)?;
     let (pts, distance) = self
       .tile_system
@@ -114,7 +114,7 @@ impl Game {
       .ok_or(GameErrorEnum::NoPathFound)?;
     debug_assert!(distance <= max_distance);
 
-    let change = self.change_with(GameLog::PathCreature(scene_name, cid, pts))?;
+    let change = self.change_with(GameLog::PathCreature(scene_id, cid, pts))?;
     Ok((change, distance))
   }
 
@@ -130,12 +130,12 @@ impl Game {
   fn link_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
                       -> Result<(), GameError> {
     let node = self.campaign.get_mut(path)?;
-    match item_id {
-      &FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
-      &FolderItemID::SceneID(sid) => node.scenes.insert(sid),
-      &FolderItemID::MapID(mid) => node.maps.insert(mid),
-      &FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
-      &FolderItemID::NoteID(ref nid) => {
+    match *item_id {
+      FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
+      FolderItemID::SceneID(sid) => node.scenes.insert(sid),
+      FolderItemID::MapID(mid) => node.maps.insert(mid),
+      FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
+      FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
       }
     };
@@ -153,12 +153,12 @@ impl Game {
       Ok(())
     }
     let node = self.campaign.get_mut(path)?;
-    match item_id {
-      &FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
-      &FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
-      &FolderItemID::MapID(mid) => remove_set(path, item_id, &mut node.maps, &mid)?,
-      &FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
-      &FolderItemID::NoteID(ref nid) => {
+    match *item_id {
+      FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
+      FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
+      FolderItemID::MapID(mid) => remove_set(path, item_id, &mut node.maps, &mid)?,
+      FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
+      FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
       }
     };
@@ -180,28 +180,28 @@ impl Game {
       DeleteFolder(ref path) => {
         {
           let node = self.campaign.get(path)?;
-          if node.scenes.len() > 0 || node.maps.len() > 0 || node.creatures.len() > 0 ||
-             node.notes.len() > 0 {
+          if node.scenes.is_empty() || node.maps.is_empty() || node.creatures.is_empty() ||
+             node.notes.is_empty() {
             bail!(GameErrorEnum::FolderNotEmpty(path.clone()));
           }
         }
         self.campaign.remove(path)?;
       }
       MoveFolderItem(ref src, ref item_id, ref dst) => {
-        match item_id {
-          &FolderItemID::NoteID(ref name) => {
+        match *item_id {
+          FolderItemID::NoteID(ref name) => {
             let note = self
               .campaign
               .get_mut(src)?
               .notes
-              .remove(&name)
-              .ok_or(GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
+              .remove(name)
+              .ok_or_else(|| GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
             self.campaign.get_mut(dst)?.notes.insert(note.clone());
           }
-          &FolderItemID::SubfolderID(ref name) => {
+          FolderItemID::SubfolderID(ref name) => {
             self.campaign.move_folder(&src.child(name.clone()), dst)?;
           }
-          ref item_id => {
+          _ => {
             self.unlink_folder_item(src, item_id)?;
             self.link_folder_item(dst, item_id)?;
           }
@@ -230,7 +230,7 @@ impl Game {
         self
           .scenes
           .mutate(&scene.id, move |_| scene.clone())
-          .ok_or(GameErrorEnum::SceneNotFound(scene.id))?;
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene.id))?;
       }
       DeleteScene(ref sid) => {
         // TODO: Figure out how to deal with players referencing this scene.
@@ -244,7 +244,7 @@ impl Game {
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
           let node = self.campaign.get_mut(&path)?;
-          node.scenes.remove(&sid);
+          node.scenes.remove(sid);
         }
         self.scenes.remove(sid);
       }
@@ -257,7 +257,10 @@ impl Game {
         }
       }
       EditMap(ref map) => {
-        self.maps.mutate(&map.id, move |_| map.clone()).ok_or(GameErrorEnum::MapNotFound(map.id))?;
+        self
+          .maps
+          .mutate(&map.id, move |_| map.clone())
+          .ok_or_else(|| GameErrorEnum::MapNotFound(map.id))?;
       }
       DeleteMap(ref mid) => {
         let scenes_using_this_map: Vec<SceneID> = self
@@ -265,16 +268,16 @@ impl Game {
           .values()
           .filter_map(|s| if s.map == *mid { Some(s.id) } else { None })
           .collect();
-        if scenes_using_this_map.len() > 0 {
+        if scenes_using_this_map.is_empty() {
           bail!(GameErrorEnum::MapInUse(*mid, scenes_using_this_map));
         }
         let all_folders: Vec<FolderPath> =
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         for path in all_folders {
           let node = self.campaign.get_mut(&path)?;
-          node.maps.remove(&mid);
+          node.maps.remove(mid);
         }
-        self.maps.remove(mid).ok_or(GameErrorEnum::MapNotFound(*mid))?;
+        self.maps.remove(mid).ok_or_else(|| GameErrorEnum::MapNotFound(*mid))?;
       }
       CreateCreature(ref path, ref c) => {
         if self.creatures.contains_key(&c.id()) {
@@ -346,20 +349,23 @@ impl Game {
         for cid in cids {
           self.check_creature_id(*cid)?;
         }
-        self.check_scene(scene.clone())?;
-        self.current_combat = Some(Combat::new(scene.clone(), cids.clone())?);
+        self.check_scene(*scene)?;
+        self.current_combat = Some(Combat::new(*scene, cids.clone())?);
       }
       StopCombat => {
         self.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
       }
-      SetCreaturePos(ref scene_name, ref cid, ref pt) => {
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, *pt)?;
+      SetCreaturePos(ref scene_id, ref cid, ref pt) => {
+        let scene = self.get_scene(*scene_id)?.set_pos(*cid, *pt)?;
         self.scenes.insert(scene);
       }
-      PathCreature(ref scene_name, ref cid, ref pts) => {
-        let current_pos = self.get_scene(scene_name.clone())?.get_pos(*cid)?;
-        let dest = pts.last().map(|x| *x).unwrap_or(current_pos);
-        let scene = self.get_scene(scene_name.clone())?.set_pos(*cid, dest)?;
+      PathCreature(ref scene_id, ref cid, ref pts) => {
+        let scene = {
+          let scene = self.get_scene(*scene_id)?;
+          let current_pos = scene.get_pos(*cid)?;
+          let dest = pts.last().cloned().unwrap_or(current_pos);
+          scene.set_pos(*cid, dest)?
+        };
         self.scenes.insert(scene);
       }
       // Things that are handled at the App level
@@ -405,12 +411,15 @@ impl Game {
     self.dyn_creature(self
                         .creatures
                         .get(&cid)
-                        .ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()))?)
+                        .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?)
   }
 
   // this is only public for tests :(
   pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
-    self.creatures.get_mut(&cid).ok_or(GameErrorEnum::CreatureNotFound(cid.to_string()).into())
+    self
+      .creatures
+      .get_mut(&cid)
+      .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()).into())
   }
 
   /// Only pub for tests.
@@ -421,17 +430,17 @@ impl Game {
   }
 
   pub fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
-    self.scenes.get(&id).ok_or(GameErrorEnum::SceneNotFound(id).into())
+    self.scenes.get(&id).ok_or_else(|| GameErrorEnum::SceneNotFound(id).into())
   }
 
-  pub fn get_combat<'game>(&'game self) -> Result<DynamicCombat<'game>, GameError> {
+  pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
     let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
-    let scene = self.get_scene(combat.scene.clone())?;
+    let scene = self.get_scene(combat.scene)?;
     let map = self.get_map(scene.map)?;
     Ok(DynamicCombat {
-         scene: &scene,
-         map: &map,
-         combat: &combat,
+         scene: scene,
+         map: map,
+         combat: combat,
          game: self,
        })
   }
@@ -462,7 +471,7 @@ impl Game {
       if creature.has_ability(abid) {
         self.creature_act(&creature,
                           scene,
-                          &self.get_ability(&abid)?,
+                          self.get_ability(&abid)?,
                           target,
                           self.change(),
                           in_combat)
@@ -478,7 +487,7 @@ impl Game {
                       target: DecidedTarget, mut change: ChangedGame, in_combat: bool)
                       -> Result<ChangedGame, GameError> {
     let targets = self.resolve_targets(creature, scene, ability.target, target)?;
-    for creature_id in targets.iter() {
+    for creature_id in &targets {
       for effect in &ability.effects {
         change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
       }
@@ -588,7 +597,7 @@ impl Game {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];
-    for (creature_id, &(creature_pos, _)) in scene.creatures.iter() {
+    for (creature_id, &(creature_pos, _)) in &scene.creatures {
       if self.tile_system.points_within_distance(my_pos, creature_pos, distance) {
         results.push(*creature_id);
       }

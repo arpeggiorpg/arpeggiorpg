@@ -45,17 +45,17 @@ impl App {
   }
   pub fn perform_unchecked(&mut self, cmd: GameCommand)
                            -> Result<(&Game, Vec<GameLog>), GameError> {
-    match &cmd {
-      &GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
-      &GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
-      &GameCommand::GiveCreaturesToPlayer(ref pid, ref cids) => {
+    match cmd {
+      GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
+      GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
+      GameCommand::GiveCreaturesToPlayer(ref pid, ref cids) => {
         self.give_creatures_to_player(pid, cids)
       }
-      &GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+      GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
         self.remove_creatures_from_player(pid, cids)
       }
-      &GameCommand::SetPlayerScene(ref pid, ref scene) => self.set_player_scene(pid, scene.clone()),
-      &GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
+      GameCommand::SetPlayerScene(ref pid, ref scene) => self.set_player_scene(pid, *scene),
+      GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
         self.current_game = newgame;
         let log = GameLog::Rollback(*snapshot_idx, *log_idx);
@@ -65,7 +65,7 @@ impl App {
       _ => {
         let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
 
-        if self.snapshots.len() == 0 || self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
+        if self.snapshots.is_empty() || self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
           self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(100)));
         }
 
@@ -81,7 +81,7 @@ impl App {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
     let &(ref baseline, ref logs_to_apply) = self.snapshots
       .get(snapshot_idx)
-      .ok_or(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
+      .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
       bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
     }
@@ -93,7 +93,7 @@ impl App {
   fn apply_game_logs(baseline: Game, mut game: Game, logs: &[GameLog]) -> Result<Game, GameError> {
     for log in logs {
       println!("Applying log {:?}", log);
-      if let &GameLog::Rollback(sni, li) = log {
+      if let GameLog::Rollback(sni, li) = *log {
         // 1. assert li is within bounds?
         // 2. need to handle SnapshotIndex -- this assumes it's always based on the same snapshot
         // 3. this is super inefficient
@@ -108,7 +108,7 @@ impl App {
   }
 
   fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
-    if self.players.contains_key(&pid) {
+    if self.players.contains_key(pid) {
       Err(GameErrorEnum::PlayerAlreadyExists(pid.clone()).into())
     } else {
       self.players.insert(Player::new(pid.clone()));

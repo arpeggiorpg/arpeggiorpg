@@ -30,8 +30,8 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{App, RPIApp, AbilityID, CreatureID, SceneID, GameCommand, GameError,
-                   GameErrorEnum, Point3, PotentialTargets, Volume};
+use pandt::types::{App, RPIApp, AbilityID, CreatureID, GameCommand, GameError, GameErrorEnum,
+                   Point3, PotentialTargets, Volume};
 
 
 error_chain! {
@@ -126,20 +126,20 @@ fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
   Ok(CORS::any(JSON(app.get_combat_movement_options()?)))
 }
 
-#[get("/movement_options/<scene_name>/<cid>")]
-fn movement_options(pt: State<PT>, scene_name: String, cid: &str) -> PTResult<Vec<Point3>> {
+#[get("/movement_options/<scene_id>/<cid>")]
+fn movement_options(pt: State<PT>, scene_id: String, cid: &str) -> PTResult<Vec<Point3>> {
   let app = pt.app()?;
-  let cid = CreatureID::from_str(cid)?;
-  let scene = SceneID::from_str(&scene_name)?;
+  let cid = cid.parse()?;
+  let scene = scene_id.parse()?;
   Ok(CORS::any(JSON(app.get_movement_options(scene, cid)?)))
 }
 
-#[get("/target_options/<scene>/<cid>/<abid>")]
-fn target_options(pt: State<PT>, scene: String, cid: &str, abid: &str)
+#[get("/target_options/<scene_id>/<cid>/<abid>")]
+fn target_options(pt: State<PT>, scene_id: String, cid: &str, abid: &str)
                   -> PTResult<PotentialTargets> {
   let app = pt.app()?;
-  let scene = SceneID::from_str(&scene)?;
-  let cid = CreatureID::from_str(cid)?;
+  let scene = scene_id.parse()?;
+  let cid = cid.parse()?;
   let abid = AbilityID::new(abid)?;
   Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
 }
@@ -149,11 +149,12 @@ fn options_creatures_in_volume(scene: &str, x: &str, y: &str, z: &str) -> Prefli
   options_handler()
 }
 
-#[post("/affected_by_volume/<scene>/<x>/<y>/<z>", format="application/json", data="<volume>")]
-fn creatures_in_volume(pt: State<PT>, scene: String, x: i16, y: i16, z: i16, volume: JSON<Volume>)
+#[post("/affected_by_volume/<scene_id>/<x>/<y>/<z>", format="application/json", data="<volume>")]
+fn creatures_in_volume(pt: State<PT>, scene_id: String, x: i16, y: i16, z: i16,
+                       volume: JSON<Volume>)
                        -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app()?;
-  let sid = SceneID::from_str(&scene)?;
+  let sid = scene_id.parse()?;
   let point = (x, y, z);
   Ok(CORS::any(JSON(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
 }

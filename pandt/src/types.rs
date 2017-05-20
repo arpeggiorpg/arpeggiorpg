@@ -81,11 +81,15 @@ impl CreatureID {
   pub fn new() -> CreatureID {
     CreatureID(Uuid::new_v4())
   }
-  pub fn from_str(s: &str) -> Result<CreatureID, GameError> {
-    Ok(CreatureID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
-  }
   pub fn to_string(&self) -> String {
     self.0.hyphenated().to_string()
+  }
+}
+
+impl ::std::str::FromStr for CreatureID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<CreatureID, GameError> {
+    Ok(CreatureID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
   }
 }
 
@@ -95,11 +99,15 @@ impl SceneID {
   pub fn new() -> SceneID {
     SceneID(Uuid::new_v4())
   }
-  pub fn from_str(s: &str) -> Result<SceneID, GameError> {
-    Ok(SceneID(Uuid::parse_str(s)?))
-  }
   pub fn to_string(&self) -> String {
     self.0.hyphenated().to_string()
+  }
+}
+
+impl ::std::str::FromStr for SceneID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<SceneID, GameError> {
+    Ok(SceneID(Uuid::parse_str(s)?))
   }
 }
 
@@ -109,11 +117,15 @@ impl MapID {
   pub fn new() -> MapID {
     MapID(Uuid::new_v4())
   }
-  pub fn from_str(s: &str) -> Result<MapID, GameError> {
-    Ok(MapID(Uuid::parse_str(s)?))
-  }
   pub fn to_string(&self) -> String {
     self.0.hyphenated().to_string()
+  }
+}
+
+impl ::std::str::FromStr for MapID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<MapID, GameError> {
+    Ok(MapID(Uuid::parse_str(s)?))
   }
 }
 
@@ -122,8 +134,8 @@ impl MapID {
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
   pub fn new(s: &str) -> Result<Self, GameError> {
-    let sw =
-      StringWrapper::from_str_safe(s).ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
+    let sw = StringWrapper::from_str_safe(s)
+      .ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
     Ok(AbilityID(sw))
   }
   pub fn to_string(&self) -> String {
@@ -321,7 +333,7 @@ pub enum CombatLog {
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
-  ls.into_iter().map(|l| GameLog::CreatureLog(cid.clone(), l)).collect()
+  ls.into_iter().map(|l| GameLog::CreatureLog(cid, l)).collect()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -361,7 +373,7 @@ pub enum GameLog {
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
-  ls.into_iter().map(|l| GameLog::CombatLog(l)).collect()
+  ls.into_iter().map(GameLog::CombatLog).collect()
 }
 
 error_chain! {
@@ -530,14 +542,11 @@ error_chain! {
 /// A specification for what kind of targeting an ability uses. i.e., this describes the rules of
 /// targeting for an ability definition, not the choice of a specific target during gameplay. See
 /// `DecidedTarget` for that. The parameters of these variants indicate things like how far an
-/// arrow can travel or what the radius of an AoE is.
+/// arrow can travel or what the radius of an area-effect is.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TargetSpec {
   Melee,
-  Range(Distance), /* CircleWithinRange(Distance, u8), // radius
-                    * Cone(Distance, u8), // radians of angle of cone (should this be steradians? is it the same?)
-                    * Line(Distance),
-                    * LineToFirstHit(), */
+  Range(Distance),
   Actor,
   SomeCreaturesInVolumeInRange {
     volume: Volume,
@@ -790,7 +799,8 @@ impl Scene {
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
-    self.creatures
+    self
+      .creatures
       .get(&creature_id)
       .map(|x| x.0)
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()).into())
@@ -799,7 +809,8 @@ impl Scene {
   pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Result<Scene, GameError> {
     let mut new = self.clone();
     {
-      let data = new.creatures
+      let data = new
+        .creatures
         .get_mut(&cid)
         .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
       data.0 = pt;
@@ -875,7 +886,7 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
 /// A newtype wrapper over App that has a special Serialize implementation, which includes extra
 /// data dynamically as a convenience for the client.
 pub struct RPIApp<'a>(pub &'a App);
-/// Like RPIApp for Game.
+/// Like `RPIApp` for Game.
 pub struct RPIGame<'a>(pub &'a Game);
 
 impl<'a> ser::Serialize for RPIApp<'a> {

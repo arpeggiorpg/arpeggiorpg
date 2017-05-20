@@ -15,7 +15,7 @@ pub trait DeriveKey {
   fn derive_key(&self) -> Self::KeyType;
 }
 
-/// A HashMap which uses keys intrinsic to values with the DeriveKey trait.
+/// A `HashMap` which uses keys intrinsic to values with the `DeriveKey` trait.
 #[derive(Eq, PartialEq)]
 pub struct IndexedHashMap<V: DeriveKey> {
   data: HashMap<<V as DeriveKey>::KeyType, V>,
@@ -103,6 +103,10 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   
   pub fn len(&self) -> usize {
     self.data.len()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.data.is_empty()
   }
 
   // If your function panics, the item will disappear from the collection.

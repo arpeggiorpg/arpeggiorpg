@@ -87,7 +87,8 @@ impl<T> FolderTree<T> {
       let child_path = cur_path.child(seg.clone());
       let exists = self.nodes.contains_key(&child_path);
       if !exists {
-        self.make_folder(&cur_path, seg.clone(), node.clone())
+        self
+          .make_folder(&cur_path, seg.clone(), node.clone())
           .expect("make_child must succeed since we know the child doesn't exist here");
       }
       cur_path = child_path;
@@ -162,7 +163,8 @@ impl<T> FolderTree<T> {
         for subpath in descendants {
           let relative = subpath.relative_to(&old_parent)?;
           let new_path = new_parent.descendant(relative.0);
-          let path_data = self.nodes
+          let path_data = self
+            .nodes
             .remove(&subpath)
             .ok_or(FolderTreeErrorKind::FolderNotFound(subpath.clone()))?;
           self.nodes.insert(new_path, path_data);
@@ -182,7 +184,10 @@ impl<T> FolderTree<T> {
 
   fn get_data_mut(&mut self, path: &FolderPath)
                   -> Result<&mut (T, HashSet<String>), FolderTreeError> {
-    self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
+    self
+      .nodes
+      .get_mut(path)
+      .ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
   /// Iterate paths to all folders below the given one.
@@ -200,12 +205,10 @@ impl FolderPath {
     let segments: Vec<&str> = path.split("/").collect();
     if segments.len() == 0 {
       Ok(FolderPath(vec![]))
+    } else if segments[0] != "" {
+      Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
     } else {
-      if segments[0] != "" {
-        Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
-      } else {
-        Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
-      }
+      Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
     }
   }
 
@@ -297,12 +300,12 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer
   {
-    let children =
-      self.tree
-        .get_children(self.path)
-        .map_err(|e| {
-          S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e))
-        })?;
+    let children = self
+      .tree
+      .get_children(self.path)
+      .map_err(|e| {
+                 S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e))
+               })?;
     let mut map = serializer.serialize_map(Some(children.len()))?;
     for child in children {
       let full_path = self.path.child(child.to_string());
@@ -311,7 +314,8 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
         path: &full_path,
       };
       let helper = SerializerHelper {
-        data: self.tree
+        data: self
+          .tree
           .get(&full_path)
           .expect("Child node should definitely exist here, since children() returned it"),
         children: children_serializer,
@@ -356,9 +360,10 @@ impl<T> DeserializeHelper<T> {
     debug_assert_eq!(first.0, FolderPath::from_vec(vec![]));
     let mut tree = FolderTree::new(first.1);
     for (path, node) in iter {
-      let (parent, child_name) = path.up()
-        .expect("There should always be a parent for these nodes");
-      tree.make_folder(&parent, child_name, node)
+      let (parent, child_name) =
+        path.up().expect("There should always be a parent for these nodes");
+      tree
+        .make_folder(&parent, child_name, node)
         .expect("Making this folder should be okay... right?");
     }
     tree
@@ -519,7 +524,8 @@ mod test {
     let mut ftree = FolderTree::new("Root node".to_string());
     ftree.make_folder(&fpath(""), "usr".to_string(), "usr folder".to_string()).unwrap();
     ftree.make_folder(&fpath("/usr"), "bin".to_string(), "/usr/bin folder".to_string()).unwrap();
-    ftree.make_folder(&fpath("/usr"), "share".to_string(), "/usr/share folder".to_string())
+    ftree
+      .make_folder(&fpath("/usr"), "share".to_string(), "/usr/share folder".to_string())
       .unwrap();
     ftree.make_folder(&fpath(""), "home".to_string(), "home folder".to_string()).unwrap();
     ftree.move_folder(&fpath("/usr"), &fpath("/home")).unwrap();

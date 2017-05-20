@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 
 use types::*;
 
-/// STANDARD_CREATURE_SPEED is carefully chosen to allow for circular-looking movement options.
+/// `STANDARD_CREATURE_SPEED` is carefully chosen to allow for circular-looking movement options.
 /// Since we only allow 8-way movement, the available movement options are biased towards
 /// horizontal and diagonal lines, which gives what basically looks like a star shape when you
 /// render all potential destinations in the UI. By increasing the speed above 10 meters but still
@@ -23,10 +23,10 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(creature: &'creature Creature, game: &'game Game)
              -> Result<DynamicCreature<'creature, 'game>, GameError> {
     Ok(DynamicCreature {
-      creature: creature,
-      game: game,
-      class: game.get_class(&creature.class)?,
-    })
+         creature: creature,
+         game: game,
+         class: game.get_class(&creature.class)?,
+       })
   }
 
   pub fn id(&self) -> CreatureID {
@@ -34,11 +34,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   pub fn can_act(&self) -> bool {
-    conditions_able(self.conditions())
+    conditions_able(&self.conditions())
   }
 
   pub fn can_move(&self) -> bool {
-    conditions_able(self.conditions())
+    conditions_able(&self.conditions())
   }
 
   pub fn speed(&self) -> Distance {
@@ -56,10 +56,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn conditions(&self) -> Vec<AppliedCondition> {
     let mut conditions: Vec<AppliedCondition> =
       self.creature.conditions.values().cloned().collect();
-    let applied_class_conditions = self.class
-      .conditions
-      .iter()
-      .map(|c| c.apply(ConditionDuration::Interminate));
+    let applied_class_conditions =
+      self.class.conditions.iter().map(|c| c.apply(ConditionDuration::Interminate));
     conditions.extend(applied_class_conditions);
     conditions
   }
@@ -67,23 +65,21 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn tick(&self) -> Result<ChangedCreature, GameError> {
     let mut changes = self.creature.change();
     for condition in self.conditions() {
-      if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
-        condition {
-        if match remaining {
-          &ConditionDuration::Interminate => true,
-          &ConditionDuration::Duration(0) => false,
-          &ConditionDuration::Duration(_) => true,
-        } {
+      if let AppliedCondition {
+               condition: Condition::RecurringEffect(ref eff),
+               ref remaining,
+             } = condition {
+        if match *remaining {
+             ConditionDuration::Duration(0) => false,
+             ConditionDuration::Interminate |
+             ConditionDuration::Duration(_) => true,
+           } {
           changes = changes.merge(changes.creature(self.game)?.apply_effect(eff)?);
         }
       }
     }
 
-    for condition_id in changes.creature
-      .conditions
-      .keys()
-      .cloned()
-      .collect::<Vec<ConditionID>>() {
+    for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
       match changes.creature.conditions[&condition_id].remaining {
         ConditionDuration::Interminate => {}
         ConditionDuration::Duration(remaining) => {
@@ -128,7 +124,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
       Effect::GenerateEnergy(amt) => self.generate_energy(amt),
       Effect::MultiEffect(ref effects) => effects.iter().flat_map(|x| self.eff2log(x)).collect(),
       Effect::ApplyCondition(ref duration, ref condition) => {
-        vec![Self::apply_condition_log(duration.clone(), condition.clone())]
+        vec![Self::apply_condition_log(*duration, condition.clone())]
       }
     }
   }
@@ -137,7 +133,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let ops = Self::eff2log(self, effect);
     let mut changes = self.creature.change();
     for op in &ops {
-      changes = changes.apply(&op)?;
+      changes = changes.apply(op)?;
     }
     Ok(changes)
   }
@@ -145,7 +141,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
     static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
     CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
-                                duration.clone(),
+                                duration,
                                 condition.clone())
   }
 
@@ -154,16 +150,16 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     for acondition in self.conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
         abs.push(AbilityStatus {
-          ability_id: abid,
-          cooldown: 0,
-        });
+                   ability_id: abid,
+                   cooldown: 0,
+                 });
       }
     }
-    for abid in self.class.abilities.iter() {
+    for abid in &self.class.abilities {
       abs.push(AbilityStatus {
-        ability_id: *abid,
-        cooldown: 0,
-      });
+                 ability_id: *abid,
+                 cooldown: 0,
+               });
     }
     abs
   }
@@ -213,18 +209,19 @@ impl Creature {
         new.conditions.insert(*id, con.apply(*dur));
       }
       CreatureLog::DecrementConditionRemaining(ref id) => {
-        let mut cond = new.conditions.get_mut(&id).ok_or(GameErrorEnum::ConditionNotFound(*id))?;
+        let mut cond =
+          new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
           ConditionDuration::Interminate => {
             bail!(GameErrorEnum::BuggyProgram("Tried to decrease condition duration of an \
                                                 interminate condition"
-              .to_string()))
+                                                  .to_string()))
           }
           ConditionDuration::Duration(ref mut dur) => *dur -= 1,
         }
       }
       CreatureLog::RemoveCondition(ref id) => {
-        new.conditions.remove(id).ok_or(GameErrorEnum::ConditionNotFound(*id))?;
+        new.conditions.remove(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
       }
     }
     Ok(new)
@@ -256,16 +253,17 @@ impl Creature {
   pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
     let creature = self.apply_log(&log)?;
     Ok(ChangedCreature {
-      creature: creature,
-      logs: vec![log],
-    })
+         creature: creature,
+         logs: vec![log],
+       })
   }
 
   pub fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
-    self.attributes
+    self
+      .attributes
       .get(attr)
-      .map(|x| *x)
-      .ok_or(GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
+      .cloned()
+      .ok_or_else(|| GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
   }
 
   pub fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {
@@ -296,7 +294,7 @@ impl ChangedCreature {
 
   pub fn apply(&self, log: &CreatureLog) -> Result<ChangedCreature, GameError> {
     let mut new = self.clone();
-    new.creature = new.creature.apply_log(&log)?;
+    new.creature = new.creature.apply_log(log)?;
     new.logs.push(log.clone());
     Ok(new)
   }
@@ -313,11 +311,12 @@ impl ChangedCreature {
   }
 }
 
-fn conditions_able(conditions: Vec<AppliedCondition>) -> bool {
-  !conditions.iter()
-    .any(|&AppliedCondition { ref condition, .. }| {
-      condition == &Condition::Incapacitated || condition == &Condition::Dead
-    })
+fn conditions_able(conditions: &[AppliedCondition]) -> bool {
+  !conditions
+     .iter()
+     .any(|&AppliedCondition { ref condition, .. }| {
+            condition == &Condition::Incapacitated || condition == &Condition::Dead
+          })
 }
 
 
@@ -332,10 +331,10 @@ pub mod test {
 
   pub fn t_creature(name: &str, class: &str) -> Creature {
     Creature::create(&CreatureCreation {
-      name: name.to_string(),
-      class: class.to_string(),
-      portrait_url: "".to_string(),
-    })
+                        name: name.to_string(),
+                        class: class.to_string(),
+                        portrait_url: "".to_string(),
+                      })
   }
 
   pub fn t_rogue(name: &str) -> Creature {
