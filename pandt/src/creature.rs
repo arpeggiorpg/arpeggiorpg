@@ -359,15 +359,20 @@ pub mod test {
   fn test_tick_and_expire_condition_remaining() {
     let mut game = t_game();
     {
-      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
-      c.conditions =
-        HashMap::from_iter(vec![(0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
-                                (1,
-                                 app_cond(Condition::Incapacitated,
-                                          ConditionDuration::Duration(5))),
-                                (2,
-                                 app_cond(Condition::Incapacitated,
-                                          ConditionDuration::Interminate))]);
+      let mut c = game
+        .creatures
+        .mutate(&cid_rogue(), |mut c| {
+          c.conditions = HashMap::from_iter(vec![(0,
+                                                  app_cond(Condition::Dead,
+                                                           ConditionDuration::Duration(0))),
+                                                 (1,
+                                                  app_cond(Condition::Incapacitated,
+                                                           ConditionDuration::Duration(5))),
+                                                 (2,
+                                                  app_cond(Condition::Incapacitated,
+                                                           ConditionDuration::Interminate))]);
+          c
+        });
     }
     assert_eq!(game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
                HashMap::from_iter(vec![(1,
@@ -384,10 +389,14 @@ pub mod test {
   fn test_recurring_effect_ticks_duration_times() {
     let mut game = t_game();
     {
-      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
-      c.conditions = HashMap::from_iter(
+      let mut c = game
+        .creatures
+        .mutate(&cid_rogue(), |mut c| {
+          c.conditions = HashMap::from_iter(
             vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
                               ConditionDuration::Duration(2)))]);
+          c
+        });
     }
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
@@ -403,10 +412,14 @@ pub mod test {
   fn test_condition_duration() {
     let mut game = t_game();
     {
-      let mut c = game.get_creature_mut(cid_rogue()).unwrap();
-      c.conditions = HashMap::from_iter(vec![(0,
-                                              app_cond(Condition::Incapacitated,
-                                                       ConditionDuration::Duration(1)))]);
+      let mut c = game
+        .creatures
+        .mutate(&cid_rogue(), |mut c| {
+          c.conditions = HashMap::from_iter(vec![(0,
+                                                  app_cond(Condition::Incapacitated,
+                                                           ConditionDuration::Duration(1)))]);
+          c
+        });
     }
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions,

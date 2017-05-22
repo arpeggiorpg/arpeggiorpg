@@ -718,7 +718,7 @@ impl DeriveKey for Creature {
 pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
-  pub creatures: HashMap<CreatureID, Creature>,
+  pub creatures: IndexedHashMap<Creature>,
   pub maps: IndexedHashMap<Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
@@ -1013,21 +1013,21 @@ pub mod test {
   }
 
   pub fn cid_cleric() -> CreatureID {
-    CreatureID::from_str("00000000-0000-0000-0000-000000000000").unwrap()
+    "00000000-0000-0000-0000-000000000000".parse().unwrap()
   }
   pub fn cid_ranger() -> CreatureID {
-    CreatureID::from_str("00000000-0000-0000-0000-000000000001").unwrap()
+    "00000000-0000-0000-0000-000000000001".parse().unwrap()
   }
   pub fn cid_rogue() -> CreatureID {
-    CreatureID::from_str("00000000-0000-0000-0000-000000000002").unwrap()
+    "00000000-0000-0000-0000-000000000002".parse().unwrap()
   }
 
   pub fn t_scene_id() -> SceneID {
-    SceneID::from_str("00000000-0000-0000-0000-000000000003").unwrap()
+    "00000000-0000-0000-0000-000000000003".parse().unwrap()
   }
 
   pub fn t_map_id() -> MapID {
-    MapID::from_str("00000000-0000-0000-0000-000000000004").unwrap()
+    "00000000-0000-0000-0000-000000000004".parse().unwrap()
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {

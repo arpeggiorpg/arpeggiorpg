@@ -12,7 +12,7 @@ impl Game {
       campaign: FolderTree::new(Folder::new()),
       abilities: abilities,
       current_combat: None,
-      creatures: HashMap::new(),
+      creatures: IndexedHashMap::new(),
       maps: IndexedHashMap::new(),
       classes: classes,
       tile_system: TileSystem::Realistic,
@@ -283,7 +283,7 @@ impl Game {
         if self.creatures.contains_key(&c.id()) {
           bail!(GameErrorEnum::CreatureAlreadyExists(c.id()));
         } else {
-          self.creatures.insert(c.id(), c.clone());
+          self.creatures.insert(c.clone());
           self.link_folder_item(path, &FolderItemID::CreatureID(c.id()))?;
         }
       }
@@ -291,7 +291,7 @@ impl Game {
         if !self.creatures.contains_key(&creature.id) {
           bail!(GameErrorEnum::CreatureNotFound(creature.id.to_string()));
         } else {
-          self.creatures.insert(creature.id, creature.clone());
+          self.creatures.insert(creature.clone());
         }
       }
       DeleteCreature(cid) => {
@@ -343,7 +343,7 @@ impl Game {
       }
       CreatureLog(cid, ref cl) => {
         let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
-        *self.get_creature_mut(cid)? = creature;
+        self.creatures.mutate(&cid, |_| creature);
       }
       StartCombat(ref scene, ref cids) => {
         for cid in cids {
@@ -412,14 +412,6 @@ impl Game {
                         .creatures
                         .get(&cid)
                         .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?)
-  }
-
-  // this is only public for tests :(
-  pub fn get_creature_mut(&mut self, cid: CreatureID) -> Result<&mut Creature, GameError> {
-    self
-      .creatures
-      .get_mut(&cid)
-      .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()).into())
   }
 
   /// Only pub for tests.
@@ -660,7 +652,7 @@ impl ChangedGame {
     let change = f(creature)?;
     let mut new = self.clone();
     let (creature, logs) = change.done();
-    *new.game.get_creature_mut(cid)? = creature;
+    new.game.creatures.mutate(&cid, |_| creature);
     new.logs.extend(creature_logs_into_game_logs(cid, logs));
     Ok(new)
   }
@@ -704,9 +696,9 @@ pub mod test {
     cleric.id = cid_cleric();
     let mut ranger = Creature::create(&ranger_creation);
     ranger.id = cid_ranger();
-    game.creatures.insert(cid_rogue(), rogue);
-    game.creatures.insert(cid_cleric(), cleric);
-    game.creatures.insert(cid_ranger(), ranger);
+    game.creatures.insert(rogue);
+    game.creatures.insert(cleric);
+    game.creatures.insert(ranger);
     game
       .scenes
       .insert(Scene {
