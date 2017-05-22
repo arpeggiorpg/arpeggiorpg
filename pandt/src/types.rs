@@ -21,19 +21,31 @@ pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
 pub type Color = String;
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct Dice {
   pub num: u8,
   pub size: u8,
+  pub plus: Option<Box<Dice>>,
 }
 
 impl Dice {
   pub fn new(n: u8, d: u8) -> Dice {
-    Dice { num: n, size: d }
+    Dice {
+      num: n,
+      size: d,
+      plus: None,
+    }
+  }
+  pub fn plus(&self, d: Dice) -> Dice {
+    Dice {
+      plus: Some(Box::new(d)),
+      ..self.clone()
+    }
   }
   pub fn flat(val: u8) -> Dice {
     Dice::new(val, 1)
   }
+  /// Roll the dice, returning a vector containing all of the individual die rolls, and then the final result.
   pub fn roll(&self) -> (Vec<u8>, u32) {
     let mut intermediate = vec![];
     let mut result = 0u32;
@@ -43,6 +55,11 @@ impl Dice {
       let val = range.ind_sample(&mut rng);
       result += val as u32;
       intermediate.push(val);
+    }
+    if let Some(ref extra) = self.plus {
+      let (extra_intermediate, extra_result) = extra.roll();
+      intermediate.extend(extra_intermediate);
+      result += extra_result;
     }
     (intermediate, result)
   }
@@ -695,6 +712,7 @@ pub struct Creature {
   pub note: String,
   pub portrait_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
+  pub initiative: Dice,
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1103,5 +1121,11 @@ pub mod test {
     assert_eq!(serde_json::to_string(&cd).unwrap(), "\"Interminate\"");
     let cd = ConditionDuration::Duration(3);
     assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Duration\":3}");
+  }
+
+  #[test]
+  fn dice_plus() {
+    let d = Dice::new(1,1).plus(Dice::new(1,1));
+    assert_eq!(d.roll(), (vec![1, 1], 2));
   }
 }

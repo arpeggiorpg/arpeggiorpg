@@ -99,7 +99,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     if delta > Energy(0) { vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))] } else { vec![] }
   }
 
-  fn damage(&self, expr: Dice) -> Vec<CreatureLog> {
+  fn damage(&self, expr: &Dice) -> Vec<CreatureLog> {
     let (dice, amt) = expr.roll();
     let amt = HP(amt as u8);
     if amt >= self.creature.cur_health {
@@ -110,7 +110,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     }
   }
 
-  fn heal(&self, expr: Dice) -> Vec<CreatureLog> {
+  fn heal(&self, expr: &Dice) -> Vec<CreatureLog> {
     let (dice, amt) = expr.roll();
     let amt = HP(amt as u8);
     let missing = self.creature.max_health - self.creature.cur_health;
@@ -119,8 +119,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   fn eff2log(&self, effect: &Effect) -> Vec<CreatureLog> {
     match *effect {
-      Effect::Damage(expr) => self.damage(expr),
-      Effect::Heal(expr) => self.heal(expr),
+      Effect::Damage(ref expr) => self.damage(expr),
+      Effect::Heal(ref expr) => self.heal(expr),
       Effect::GenerateEnergy(amt) => self.generate_energy(amt),
       Effect::MultiEffect(ref effects) => effects.iter().flat_map(|x| self.eff2log(x)).collect(),
       Effect::ApplyCondition(ref duration, ref condition) => {
@@ -185,6 +185,7 @@ impl Creature {
       note: "".to_string(),
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
+      initiative: Dice::new(1, 20)
     }
   }
 
