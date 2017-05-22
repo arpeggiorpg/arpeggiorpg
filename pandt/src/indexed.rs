@@ -100,7 +100,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   pub fn values(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
     self.data.values()
   }
-  
+
   pub fn len(&self) -> usize {
     self.data.len()
   }
@@ -125,6 +125,15 @@ impl<V: DeriveKey> IndexedHashMap<V> {
         Some(())
       }
       None => None,
+    }
+  }
+
+  pub fn try_insert(&mut self, v: V) -> Option<()> {
+    if let ::std::collections::hash_map::Entry::Vacant(entry) = self.data.entry(v.derive_key()) {
+      entry.insert(v);
+      Some(())
+    } else {
+      None
     }
   }
 }

@@ -249,12 +249,8 @@ impl Game {
         self.scenes.remove(sid);
       }
       CreateMap(ref path, ref map) => {
-        if self.maps.contains_key(&map.id) {
-          bail!(GameErrorEnum::MapAlreadyExists(map.id));
-        } else {
-          self.maps.insert(map.clone());
-          self.link_folder_item(path, &FolderItemID::MapID(map.id))?;
-        }
+        self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;
+        self.link_folder_item(path, &FolderItemID::MapID(map.id))?;
       }
       EditMap(ref map) => {
         self
