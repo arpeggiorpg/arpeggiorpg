@@ -272,20 +272,14 @@ impl Game {
         }
         self.maps.remove(mid).ok_or_else(|| GameErrorEnum::MapNotFound(*mid))?;
       }
-      CreateCreature(ref path, ref c) => {
-        if self.creatures.contains_key(&c.id()) {
-          bail!(GameErrorEnum::CreatureAlreadyExists(c.id()));
-        } else {
-          self.creatures.insert(c.clone());
-          self.link_folder_item(path, &FolderItemID::CreatureID(c.id()))?;
-        }
+      CreateCreature(ref path, ref rc) => {
+        let c = rc.clone();
+        self.creatures.try_insert(c).ok_or_else(|| GameErrorEnum::CreatureAlreadyExists(rc.id()))?;
+        self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
       }
       EditCreature(ref creature) => {
-        if !self.creatures.contains_key(&creature.id) {
-          bail!(GameErrorEnum::CreatureNotFound(creature.id.to_string()));
-        } else {
-          self.creatures.insert(creature.clone());
-        }
+        let mutated = self.creatures.mutate(&creature.id, |_| creature.clone());
+        mutated.ok_or_else(|| GameErrorEnum::CreatureNotFound(creature.id.to_string()))?;
       }
       DeleteCreature(cid) => {
         let scenes_with_this_creature: Vec<SceneID> = self
