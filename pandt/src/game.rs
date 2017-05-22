@@ -217,13 +217,10 @@ impl Game {
       DeleteNote(ref path, ref note_name) => {
         self.campaign.get_mut(path)?.notes.remove(note_name);
       }
-      CreateScene(ref path, ref scene) => {
-        if self.scenes.contains_key(&scene.id) {
-          bail!(GameErrorEnum::SceneAlreadyExists(scene.id));
-        } else {
-          self.scenes.insert(scene.clone());
-          self.link_folder_item(path, &FolderItemID::SceneID(scene.id))?;
-        }
+      CreateScene(ref path, ref rscene) => {
+        let scene = rscene.clone();
+        self.scenes.try_insert(scene).ok_or_else(|| GameErrorEnum::SceneAlreadyExists(rscene.id))?;
+        self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
       }
       EditScene(ref scene) => {
         self.check_map(scene.map)?;
