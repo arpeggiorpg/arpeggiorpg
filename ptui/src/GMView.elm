@@ -702,12 +702,13 @@ combatView model app =
 inCombatView : M.Model -> T.App -> T.Combat -> Html M.Msg
 inCombatView model app combat =
   let game = app.current_game
-      creatures = T.getCreatures game combat.creatures.data
+      creatures = List.map Tuple.first <| T.getCombatCreatures game combat
       disengageButtons = hbox (List.map disengageButton creatures)
-      extraGutter idx creature =
+      extraGutter idx creature init =
         [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
                  , disabled (idx == 0)]
                  [text "⬆️️"]
+        , text (toString init)
         , button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx + 1)))
                  , disabled (idx == (List.length combat.creatures.data) - 1)]
                  [text "⬇️️"]
@@ -846,7 +847,7 @@ renderGameLog app log =
   T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
   T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
   T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", cname cid]
-  T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext combatants
+  T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext (List.map Tuple.first combatants)
   T.GLStopCombat -> dtext "Stopped combat"
   T.GLAddCreatureToCombat cid -> hsbox [cname cid, dtext "Added Creature to Combat"]
   T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", cname cid]

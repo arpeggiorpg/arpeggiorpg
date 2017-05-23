@@ -123,7 +123,6 @@ filterMapSpecials map =
                     _ -> False
   in { map | specials = Dict.filter onlyShowPlayerSpecials map.specials}
 
-
 {-| Show all creatures in combat, with an action bar when it's my turn. -}
 combatView : M.Model -> T.App -> List T.Creature -> Html M.Msg
 combatView model app myCreatures =
@@ -133,4 +132,4 @@ combatView model app myCreatures =
 
 inCombatView : M.Model -> T.App -> T.Combat -> List T.Creature -> Html M.Msg
 inCombatView model app combat myCreatures =
-  CommonView.combatantList (always << always []) (always []) app combat
+  CommonView.combatantList (always << always << always []) (always []) app combat

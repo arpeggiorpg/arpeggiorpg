@@ -937,7 +937,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
 
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Creature", 17)?;
+    let mut str = serializer.serialize_struct("Creature", 18)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
     str.serialize_field("name", &creat.name)?;
@@ -954,6 +954,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("attributes", &creat.attributes)?;
     str.serialize_field("can_act", &self.can_act())?;
     str.serialize_field("can_move", &self.can_move())?;
+    str.serialize_field("initiative", &creat.initiative)?;
     str.end()
   }
 }

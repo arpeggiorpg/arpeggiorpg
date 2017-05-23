@@ -151,17 +151,17 @@ moveButton combat creature =
             , disabled (not creature.can_move) ]
             [text (String.join "" ["Move (", toString (movement_left // 100), ")"])]
 
-combatantList : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
+combatantList : (Int -> T.Creature -> Int -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> Html M.Msg
 combatantList extraGutter extraCreatureCard app combat =
-  let creatures = T.getCreatures app.current_game combat.creatures.data
+  let creatures = T.getCombatCreatures app.current_game combat
   in vbox (List.map (combatantEntry extraGutter extraCreatureCard app combat) (List.indexedMap (,) creatures))
 
-combatantEntry : (Int -> T.Creature -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> (Int, T.Creature) -> Html M.Msg
-combatantEntry extraGutter extraCreatureCard app combat (idx, creature) = hbox <|
+combatantEntry : (Int -> T.Creature -> Int -> List (Html M.Msg)) -> (T.Creature -> List (Html M.Msg)) -> T.App -> T.Combat -> (Int, (T.Creature, Int)) -> Html M.Msg
+combatantEntry extraGutter extraCreatureCard app combat (idx, (creature, init)) = hbox <|
   let marker = if combat.creatures.cursor == idx
                then [ datext [s [S.width (S.px 25)]] "▶️️" ]
                else []
-      gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature]
+      gutter = [vabox [s [(S.width (S.px 25))]] <| marker ++ extraGutter idx creature init]
   in gutter ++ [ creatureCard (extraCreatureCard creature) app creature ]
 
 collapsible : String -> M.Model -> Html M.Msg -> Html M.Msg

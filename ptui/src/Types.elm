@@ -107,7 +107,7 @@ type GameLog
   | GLDeleteMap MapID
   | GLCombatLog CombatLog
   | GLCreatureLog CreatureID CreatureLog
-  | GLStartCombat SceneID (List CreatureID)
+  | GLStartCombat SceneID (List (CreatureID, Int))
   | GLStopCombat
   | GLCreateCreature FolderPath CreatureData
   | GLEditCreature CreatureData
@@ -134,7 +134,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("DeleteScene", JD.map GLDeleteScene JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", fixedList2 GLCreatureLog JD.string creatureLogDecoder)
-  , ("StartCombat", fixedList2 GLStartCombat JD.string (JD.list JD.string))
+  , ("StartCombat", fixedList2 GLStartCombat JD.string (JD.list (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
   , ("CreateCreature", fixedList2 GLCreateCreature folderPathDecoder creatureDataDecoder)
   , ("EditCreature", JD.map GLEditCreature creatureDataDecoder)
   , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
@@ -426,7 +426,7 @@ classDecoder = JD.map3 Class
 
 type alias Combat =
   { scene: SceneID
-  , creatures: CursorList CreatureID
+  , creatures: CursorList (CreatureID, Int)
   , movement_used: Int
   }
 
@@ -434,7 +434,7 @@ combatDecoder : JD.Decoder Combat
 combatDecoder =
   JD.map3 Combat
     (JD.field "scene" JD.string)
-    (JD.field "creatures" (cursorListDecoder JD.string))
+    (JD.field "creatures" (cursorListDecoder (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
     (JD.field "movement_used" JD.int)
 
 type alias CursorList a = {
@@ -905,7 +905,7 @@ distance a b =
 combatCreature : Game -> Combat -> Creature
 combatCreature game combat =
   case List.head (List.drop combat.creatures.cursor combat.creatures.data) of
-    Just cid ->
+    Just (cid, _) ->
       case getCreature game cid of
         Just c -> c
         Nothing -> Debug.crash "Combat creature wasn't found in game"
@@ -916,6 +916,12 @@ getCreature game cid = Dict.get cid game.creatures
 
 getCreatures : Game -> List CreatureID -> List Creature
 getCreatures game cids = List.filterMap (getCreature game) cids
+
+getCombatCreatures : Game -> Combat -> List (Creature, Int)
+getCombatCreatures game combat =
+  let
+    gc (cid, init) = getCreature game cid |> Maybe.map (\c -> (c,init))
+  in List.filterMap gc combat.creatures.data
 
 creatureName : App -> CreatureID -> Maybe String
 creatureName app cid = getCreature app.current_game cid |> Maybe.map (\c -> c.name)
@@ -938,7 +944,7 @@ isCreatureInCombat : Game -> CreatureID -> Bool
 isCreatureInCombat game cid =
   case game.current_combat of
     Nothing -> False
-    Just combat -> List.member cid combat.creatures.data
+    Just combat -> List.any (\(c, _) -> c == cid) combat.creatures.data
 
 isCreatureOOC : Game -> CreatureID -> Bool
 isCreatureOOC game cid = Dict.member cid game.creatures
