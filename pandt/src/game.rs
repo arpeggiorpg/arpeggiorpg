@@ -697,13 +697,16 @@ pub mod test {
     let cleric_creation = t_cleric_creation("cleric");
     let mut rogue = Creature::create(&rogue_creation);
     rogue.id = cid_rogue();
-    let mut cleric = Creature::create(&cleric_creation);
-    cleric.id = cid_cleric();
+    rogue.initiative = Dice::flat(20);
     let mut ranger = Creature::create(&ranger_creation);
     ranger.id = cid_ranger();
+    ranger.initiative = Dice::flat(10);
+    let mut cleric = Creature::create(&cleric_creation);
+    cleric.id = cid_cleric();
+    cleric.initiative = Dice::flat(0);
     game.creatures.insert(rogue);
-    game.creatures.insert(cleric);
     game.creatures.insert(ranger);
+    game.creatures.insert(cleric);
     game
       .scenes
       .insert(Scene {

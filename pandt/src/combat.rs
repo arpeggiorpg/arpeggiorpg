@@ -98,7 +98,8 @@ impl<'game> DynamicCombat<'game> {
 }
 
 impl Combat {
-  pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
+  pub fn new(scene: SceneID, mut combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
+    combatants.sort_by_key(|&(_, i)| -i);
     nonempty::NonEmptyWithCursor::from_vec(combatants)
       .map(|ne| {
              Combat {
