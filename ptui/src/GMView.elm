@@ -717,10 +717,20 @@ inCombatView model app combat =
       combatView =
         vbox
           [ hbox [strong [] [text "Scene: "], sceneButton combat.scene]
+          , rerollButton model app combat
           , CommonView.combatantList extraGutter extraCreatureCard app combat
           , stopCombatButton
           , disengageButtons]
   in combatView
+
+
+{-| A button for rerolling initiative -}
+rerollButton : M.Model -> T.App -> T.Combat -> Html M.Msg
+rerollButton model app combat =
+  let firstTurn = combat.creatures.cursor == 0
+  in button [disabled (not firstTurn)
+            , onClick (M.SendCommand T.RerollCombatInitiative)]
+            [text "Reroll Initiative"]
 
 {-| A button for starting combat. -}
 startCombatButton : M.Model -> T.App -> Html M.Msg
@@ -847,7 +857,9 @@ renderGameLog app log =
   T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
   T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
   T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", cname cid]
-  T.GLStartCombat scene combatants -> hsbox <| [dtext "Started Combat in scene", dtext scene] ++ List.map dtext (List.map Tuple.first combatants)
+  T.GLStartCombat scene combatants ->
+    hsbox <| [dtext "Started Combat in scene", dtext scene]
+          ++ List.map dtext (List.map Tuple.first combatants)
   T.GLStopCombat -> dtext "Stopped combat"
   T.GLAddCreatureToCombat cid -> hsbox [cname cid, dtext "Added Creature to Combat"]
   T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", cname cid]
@@ -873,6 +885,10 @@ historyCombatLog cl = case cl of
   T.ComLEndTurn cid -> hsbox [dtext cid, dtext "Ended Turn"]
   T.ComLChangeCreatureInitiative cid newPos -> hsbox [dtext cid, dtext "Changed initiative to", dtext <| toString newPos]
   T.ComLConsumeMovement distance -> hsbox [dtext "Used movement", dtext (toString distance)]
+  T.ComLRerollInitiative combatants ->
+    hsbox <| [dtext "Rerolled Initiative"]
+          ++ List.map dtext (List.map Tuple.first combatants)
+
 
 renderPt3 : T.Point3 -> String
 renderPt3 {x, y, z} = toString x ++ "," ++ toString y

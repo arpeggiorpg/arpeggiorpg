@@ -134,7 +134,7 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("DeleteScene", JD.map GLDeleteScene JD.string)
   , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
   , ("CreatureLog", fixedList2 GLCreatureLog JD.string creatureLogDecoder)
-  , ("StartCombat", fixedList2 GLStartCombat JD.string (JD.list (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
+  , ("StartCombat", fixedList2 GLStartCombat JD.string initiativeListDecoder)
   , ("CreateCreature", fixedList2 GLCreateCreature folderPathDecoder creatureDataDecoder)
   , ("EditCreature", JD.map GLEditCreature creatureDataDecoder)
   , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
@@ -149,6 +149,13 @@ gameLogDecoder = sumDecoder "GameLog"
   , ("AttributeCheckResult", fixedList4 GLAttributeCheckResult JD.string attrCheckDecoder JD.int JD.bool)
   ]
 
+initiativeListDecoder : JD.Decoder (List (CreatureID, Int))
+initiativeListDecoder = JD.list initiativeEntryDecoder
+
+initiativeEntryDecoder : JD.Decoder (CreatureID, Int)
+initiativeEntryDecoder = JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int)
+
+
 fixedList2 : (a -> b -> c) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c
 fixedList2 cons d0 d1 = JD.map2 cons (JD.index 0 d0) (JD.index 1 d1)
 fixedList3 : (a -> b -> c -> d) -> JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d
@@ -162,6 +169,7 @@ type CombatLog
   = ComLEndTurn CreatureID
   | ComLChangeCreatureInitiative CreatureID Int
   | ComLConsumeMovement Int
+  | ComLRerollInitiative (List (CreatureID, Int))
 
 combatLogDecoder : JD.Decoder CombatLog
 combatLogDecoder = sumDecoder "CombatLog"
@@ -169,6 +177,7 @@ combatLogDecoder = sumDecoder "CombatLog"
   [ ("EndTurn", JD.map ComLEndTurn JD.string)
   , ("ChangeCreatureInitiative", JD.map2 ComLChangeCreatureInitiative (JD.index 0 JD.string) (JD.index 1 JD.int))
   , ("ConsumeMovement", JD.map ComLConsumeMovement (JD.int))
+  , ("RerollInitiative", JD.map ComLRerollInitiative initiativeListDecoder)
   ]
 
 type CreatureLog
@@ -382,6 +391,7 @@ rustMapDecoder = JD.map4 RustMap
   (JD.field "terrain" (JD.list point3Decoder))
   (JD.field "specials" (JD.list (tuple4 point3Decoder JD.string JD.string visibilityDecoder)))
 
+mapDecoder : JD.Decoder Map
 mapDecoder = rustMapDecoder |> JD.map rustMap2BetterMap
 
 tuple4 : JD.Decoder a -> JD.Decoder b -> JD.Decoder c -> JD.Decoder d -> JD.Decoder (a, b, c, d)
@@ -434,7 +444,7 @@ combatDecoder : JD.Decoder Combat
 combatDecoder =
   JD.map3 Combat
     (JD.field "scene" JD.string)
-    (JD.field "creatures" (cursorListDecoder (JD.map2 (,) (JD.index 0 JD.string) (JD.index 1 JD.int))))
+    (JD.field "creatures" (cursorListDecoder initiativeEntryDecoder))
     (JD.field "movement_used" JD.int)
 
 type alias CursorList a = {
@@ -722,6 +732,8 @@ type GameCommand
   | SetPlayerScene PlayerID (Maybe SceneID)
   | StartCombat SceneID (List CreatureID)
   | StopCombat
+  | ChangeCreatureInitiative CreatureID Int
+  | RerollCombatInitiative
   | CombatAct AbilityID DecidedTarget
   | ActCreature SceneID CreatureID AbilityID DecidedTarget
   | PathCurrentCombatCreature Point3
@@ -734,7 +746,6 @@ type GameCommand
   | RemoveCreatureFromCombat CreatureID
   | Done
   | Rollback Int Int
-  | ChangeCreatureInitiative CreatureID Int
   | AttributeCheck CreatureID AttrCheck
 
 gameCommandEncoder : GameCommand -> JE.Value
@@ -768,14 +779,16 @@ gameCommandEncoder gc =
       JE.object [("SetPlayerScene", JE.list [JE.string pid, encodeMaybe scene JE.string])]
     StartCombat scene cids ->
       JE.object [("StartCombat", JE.list [JE.string scene, JE.list (List.map JE.string cids)])]
+    StopCombat ->
+      JE.string "StopCombat"
+    RerollCombatInitiative ->
+      JE.string "RerollCombatInitiative"
     CreateCreature path creature ->
       JE.object [("CreateCreature", JE.list [folderPathEncoder path, creatureCreationEncoder creature])]
     EditCreature creature ->
       JE.object [("EditCreature", creatureEncoder creature)]
     DeleteCreature cid ->
       JE.object [("DeleteCreature", JE.string cid)]
-    StopCombat ->
-      JE.string "StopCombat"
     PathCurrentCombatCreature pt ->
       JE.object [("PathCurrentCombatCreature", point3Encoder pt)]
     PathCreature scene cid pt ->
