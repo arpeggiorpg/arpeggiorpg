@@ -283,6 +283,12 @@ pub enum GameCommand {
   AddCreatureToCombat(CreatureID),
   /// Remove a creature from combat. Combat must already be running.
   RemoveCreatureFromCombat(CreatureID),
+  /// Modify a creature's order in the combat list.
+  ChangeCreatureInitiative(CreatureID, usize),
+  /// Reroll initiative for all creatures in combat, and sort the combat list
+  RerollCombatInitiative,
+
+  // ** Combat **
   /// Use an Ability out of combat.
   ActCreature(SceneID, CreatureID, AbilityID, DecidedTarget),
   /// Make the current creature use an ability.
@@ -292,8 +298,6 @@ pub enum GameCommand {
   PathCurrentCombatCreature(Point3),
   /// End the current creature's turn.
   Done,
-  /// Modify a creature's order in the combat list.
-  ChangeCreatureInitiative(CreatureID, usize),
 
   // ** Creature Manipulation **
   /// Create a new creature.
@@ -341,12 +345,14 @@ pub enum CreatureLog {
   RemoveCondition(ConditionID),
 }
 
+// TODO: get rid of CombatLog, it's dumb... unless we ever support multiple Combats
 /// Representation of state changes in a Combat. See `CreatureLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
   ConsumeMovement(Distance),
   ChangeCreatureInitiative(CreatureID, usize),
   EndTurn(CreatureID), // the end of this creature's turn
+  RerollCombatInitiative(Vec<(CreatureID, i16)>),
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
@@ -1126,7 +1132,7 @@ pub mod test {
 
   #[test]
   fn dice_plus() {
-    let d = Dice::new(1,1).plus(Dice::new(1,1));
+    let d = Dice::new(1, 1).plus(Dice::new(1, 1));
     assert_eq!(d.roll(), (vec![1, 1], 2));
   }
 }
