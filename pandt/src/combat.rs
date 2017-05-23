@@ -24,6 +24,12 @@ impl<'game> DynamicCombat<'game> {
         new.creatures.next_circular();
         new.movement_used = Distance(0);
       }
+      CombatLog::RerollInitiative(ref combatants) => {
+        if new.creatures.get_cursor() != 0 {
+          bail!(GameErrorEnum::MustRerollAtStartOfRound);
+        }
+        new.creatures = sort_combatants(combatants.clone())?;
+      }
       CombatLog::ChangeCreatureInitiative(cid, new_pos) => {
         let current_pos = new
           .creatures
@@ -67,6 +73,12 @@ impl<'game> DynamicCombat<'game> {
     }
   }
 
+  pub fn reroll_initiative(&self) -> Result<ChangedCombat<'game>, GameError> {
+    let cids = self.combat.creatures.iter().map(|&(cid, _)| cid).collect();
+    let combatants = Combat::roll_initiative(self.game, cids)?;
+    self.change_with(CombatLog::RerollInitiative(combatants))
+  }
+
   pub fn change(&self) -> ChangedCombat<'game> {
     ChangedCombat {
       map: self.map,
@@ -97,18 +109,31 @@ impl<'game> DynamicCombat<'game> {
   }
 }
 
+fn sort_combatants(mut combatants: Vec<(CreatureID, i16)>)
+                   -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
+  combatants.sort_by_key(|&(_, i)| -i);
+  nonempty::NonEmptyWithCursor::from_vec(combatants)
+    .ok_or_else(|| GameErrorEnum::CombatMustHaveCreatures.into())
+}
+
 impl Combat {
-  pub fn new(scene: SceneID, mut combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
-    combatants.sort_by_key(|&(_, i)| -i);
-    nonempty::NonEmptyWithCursor::from_vec(combatants)
-      .map(|ne| {
-             Combat {
-               scene: scene,
-               creatures: ne,
-               movement_used: Distance::from_meters(0.0),
-             }
+  pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
+    Ok(Combat {
+         scene: scene,
+         movement_used: Distance(0),
+         creatures: sort_combatants(combatants)?,
+       })
+  }
+
+  pub fn roll_initiative(game: &Game, cids: Vec<CreatureID>)
+                         -> Result<Vec<(CreatureID, i16)>, GameError> {
+    cids
+      .iter()
+      .map(|cid| {
+             let creature = game.get_creature(*cid)?;
+             Ok((*cid, creature.creature.initiative.roll().1 as i16))
            })
-      .ok_or_else(|| GameErrorEnum::CombatMustHaveCreatures.into())
+      .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()
   }
 
   pub fn current_creature_id(&self) -> CreatureID {

@@ -74,6 +74,7 @@ impl Game {
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
       RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
+      RerollCombatInitiative => self.change().apply_combat(|c| c.reroll_initiative()),
       ChangeCreatureInitiative(cid, new_pos) => {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
       }
@@ -92,13 +93,7 @@ impl Game {
 
   fn start_combat(&self, scene_id: SceneID, cids: Vec<CreatureID>)
                   -> Result<ChangedGame, GameError> {
-    let cids_with_inits = cids
-      .iter()
-      .map(|cid| {
-             let creature = self.get_creature(*cid)?;
-             Ok((*cid, creature.creature.initiative.roll().1 as i16))
-           })
-      .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()?;
+    let cids_with_inits = Combat::roll_initiative(self, cids)?;
     self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
   }
 

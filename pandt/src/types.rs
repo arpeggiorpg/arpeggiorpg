@@ -352,7 +352,7 @@ pub enum CombatLog {
   ConsumeMovement(Distance),
   ChangeCreatureInitiative(CreatureID, usize),
   EndTurn(CreatureID), // the end of this creature's turn
-  RerollCombatInitiative(Vec<(CreatureID, i16)>),
+  RerollInitiative(Vec<(CreatureID, i16)>),
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
@@ -454,6 +454,10 @@ error_chain! {
     CombatMustHaveCreatures {
       description("Combat can't be started without creatures.")
       display("Creatures must be supplied when starting a combat.")
+    }
+    MustRerollAtStartOfRound {
+      description("RerollInitiative can only be invoked at the beginning of a round.")
+      display("RerollInitiative can only be invoked at the beginning of a roud.")
     }
     CreatureLacksAbility(cid: CreatureID, abid: AbilityID) {
       description("A creature cannot use the supplied ability.")
