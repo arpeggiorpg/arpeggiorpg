@@ -202,6 +202,9 @@ current_game:
     0420f7db-c7ec-48af-add3-045ad859f47e:
       id: 0420f7db-c7ec-48af-add3-045ad859f47e
       name: Elron
+      initiative:
+        num: 1
+        size: 20
       portrait_url: ""
       note:
       speed: 1086
@@ -220,6 +223,9 @@ current_game:
     34877b65-1eb6-44bb-b1a8-696c424e9d0f:
       id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
       name: Kurok To
+      initiative:
+        num: 1
+        size: 20
       portrait_url: "http://i.imgur.com/g09XhxI.jpg"
       note:
       speed: 1086
@@ -238,6 +244,9 @@ current_game:
     f5fd4b9a-c801-4840-a39b-b5653329dc54:
       id: f5fd4b9a-c801-4840-a39b-b5653329dc54
       name: Silmarillion
+      initiative:
+        num: 1
+        size: 20
       portrait_url: ""
       note:
       speed: 1086

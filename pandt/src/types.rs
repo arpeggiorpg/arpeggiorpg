@@ -378,12 +378,12 @@ pub enum GameLog {
   CreatureLog(CreatureID, CreatureLog),
   SetCreaturePos(SceneID, CreatureID, Point3),
   PathCreature(SceneID, CreatureID, Vec<Point3>),
-  StartCombat(SceneID, Vec<CreatureID>),
+  StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
   EditCreature(Creature),
   DeleteCreature(CreatureID),
-  AddCreatureToCombat(CreatureID),
+  AddCreatureToCombat(CreatureID, i16),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.
   Rollback(usize, usize),
@@ -721,7 +721,7 @@ pub struct AttrID(pub String);
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Combat {
   pub scene: SceneID,
-  pub creatures: nonempty::NonEmptyWithCursor<CreatureID>,
+  pub creatures: nonempty::NonEmptyWithCursor<(CreatureID, i16)>,
   pub movement_used: Distance,
 }
 

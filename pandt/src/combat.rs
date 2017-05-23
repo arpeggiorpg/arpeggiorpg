@@ -20,7 +20,7 @@ impl<'game> DynamicCombat<'game> {
         new.movement_used = new.movement_used + distance;
       }
       CombatLog::EndTurn(ref cid) => {
-        assert_eq!(*cid, *new.creatures.get_current());
+        assert_eq!(*cid, new.current_creature_id());
         new.creatures.next_circular();
         new.movement_used = Distance(0);
       }
@@ -28,7 +28,7 @@ impl<'game> DynamicCombat<'game> {
         let current_pos = new
           .creatures
           .iter()
-          .position(|c| *c == cid)
+          .position(|&(c, _)| c == cid)
           .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
         if new_pos >= new.creatures.len() {
           bail!(GameErrorEnum::InitiativeOutOfBounds(new.creatures.len() - 1));
@@ -98,7 +98,7 @@ impl<'game> DynamicCombat<'game> {
 }
 
 impl Combat {
-  pub fn new(scene: SceneID, combatants: Vec<CreatureID>) -> Result<Combat, GameError> {
+  pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     nonempty::NonEmptyWithCursor::from_vec(combatants)
       .map(|ne| {
              Combat {
@@ -111,7 +111,11 @@ impl Combat {
   }
 
   pub fn current_creature_id(&self) -> CreatureID {
-    *self.creatures.get_current()
+    self.creatures.get_current().0
+  }
+
+  pub fn contains_creature(&self, cid: CreatureID) -> bool {
+    self.creatures.iter().position(|&(c, _)| c == cid).is_some()
   }
 
   /// the Option<Combat> will be None if you're removing the last creature from a combat.
@@ -120,7 +124,7 @@ impl Combat {
     let idx = combat
       .creatures
       .iter()
-      .position(|c| *c == cid)
+      .position(|&(c, _)| c == cid)
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => {

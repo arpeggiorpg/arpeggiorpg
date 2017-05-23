@@ -70,9 +70,9 @@ impl Game {
       EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
       DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
       DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
-      StartCombat(scene, cids) => self.change_with(GameLog::StartCombat(scene, cids)),
+      StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
-      AddCreatureToCombat(cid) => self.change_with(GameLog::AddCreatureToCombat(cid)),
+      AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
       RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
       ChangeCreatureInitiative(cid, new_pos) => {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
@@ -88,6 +88,24 @@ impl Game {
       SetPlayerScene(..) => bug("Game SetPlayerScene"),
     }?;
     Ok(change)
+  }
+
+  fn start_combat(&self, scene_id: SceneID, cids: Vec<CreatureID>)
+                  -> Result<ChangedGame, GameError> {
+    let cids_with_inits = cids
+      .iter()
+      .map(|cid| {
+             let creature = self.get_creature(*cid)?;
+             Ok((*cid, creature.creature.initiative.roll().1 as i16))
+           })
+      .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()?;
+    self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
+  }
+
+  fn add_creature_to_combat(&self, cid: CreatureID) -> Result<ChangedGame, GameError> {
+    let creature = self.get_creature(cid)?;
+    let init = creature.creature.initiative.roll().1 as i16;
+    self.change_with(GameLog::AddCreatureToCombat(cid, init))
   }
 
   fn attribute_check(&self, cid: CreatureID, check: &AttributeCheck)
@@ -309,13 +327,13 @@ impl Game {
           .remove(&cid)
           .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
       }
-      AddCreatureToCombat(cid) => {
+      AddCreatureToCombat(cid, init) => {
         let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
         self.check_creature_id(cid)?;
-        if combat.creatures.contains(&cid) {
+        if combat.creatures.iter().position(|&(c, _)| c == cid).is_some() {
           bail!(GameErrorEnum::AlreadyInCombat(cid));
         }
-        combat.creatures.push(cid);
+        combat.creatures.push((cid, init));
         self.current_combat = Some(combat);
       }
       RemoveCreatureFromCombat(cid) => {
@@ -332,12 +350,12 @@ impl Game {
         let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
         self.creatures.mutate(&cid, |_| creature);
       }
-      StartCombat(ref scene, ref cids) => {
-        for cid in cids {
-          self.check_creature_id(*cid)?;
+      StartCombat(ref scene, ref cids_with_init) => {
+        for &(cid, _) in cids_with_init {
+          self.check_creature_id(cid)?;
         }
         self.check_scene(*scene)?;
-        self.current_combat = Some(Combat::new(*scene, cids.clone())?);
+        self.current_combat = Some(Combat::new(*scene, cids_with_init.clone())?);
       }
       StopCombat => {
         self.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
@@ -389,7 +407,7 @@ impl Game {
 
   pub fn is_in_combat(&self, cid: CreatureID) -> bool {
     match self.get_combat() {
-      Ok(combat) => combat.combat.creatures.contains(&cid),
+      Ok(combat) => combat.combat.contains_creature(cid),
       Err(_) => false,
     }
   }
@@ -775,7 +793,7 @@ pub mod test {
   fn change_creature_initiative() {
     let game = t_combat();
     fn combat_cids(game: &Game) -> Vec<CreatureID> {
-      game.get_combat().unwrap().combat.creatures.iter().map(|c| *c).collect()
+      game.get_combat().unwrap().combat.creatures.iter().map(|&(c, _)| c).collect()
     }
     assert_eq!(combat_cids(&game), vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     // move ranger to position 0
