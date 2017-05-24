@@ -170,10 +170,13 @@ type CombatLog
   | ComLChangeCreatureInitiative CreatureID Int
   | ComLConsumeMovement Int
   | ComLRerollInitiative (List (CreatureID, Int))
+  | ComLForceNextTurn
+  | ComLForcePrevTurn
 
 combatLogDecoder : JD.Decoder CombatLog
 combatLogDecoder = sumDecoder "CombatLog"
-  []
+  [("ForceNextTurn", ComLForceNextTurn)
+  , ("ForcePrevTurn", ComLForcePrevTurn)]
   [ ("EndTurn", JD.map ComLEndTurn JD.string)
   , ("ChangeCreatureInitiative", JD.map2 ComLChangeCreatureInitiative (JD.index 0 JD.string) (JD.index 1 JD.int))
   , ("ConsumeMovement", JD.map ComLConsumeMovement (JD.int))
@@ -760,6 +763,8 @@ type GameCommand
   | StopCombat
   | ChangeCreatureInitiative CreatureID Int
   | RerollCombatInitiative
+  | ForceNextTurn
+  | ForcePrevTurn
   | CombatAct AbilityID DecidedTarget
   | ActCreature SceneID CreatureID AbilityID DecidedTarget
   | PathCurrentCombatCreature Point3
@@ -809,6 +814,9 @@ gameCommandEncoder gc =
       JE.string "StopCombat"
     RerollCombatInitiative ->
       JE.string "RerollCombatInitiative"
+    ForceNextTurn ->
+      JE.string "ForceNextTurn"
+    ForcePrevTurn -> JE.string "ForcePrevTurn"
     CreateCreature path creature ->
       JE.object [("CreateCreature", JE.list [folderPathEncoder path, creatureCreationEncoder creature])]
     EditCreature creature ->

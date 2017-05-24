@@ -735,12 +735,13 @@ inCombatView model app combat =
                 ]
               else notEditing
             Nothing -> notEditing
-
       extraCreatureCard creature = [noteBox model creature]
+      prevButton = icon [onClick (M.SendCommand (T.ForcePrevTurn))] "skip_previous"
+      nextButton = icon [onClick (M.SendCommand (T.ForceNextTurn))] "skip_next"
       combatView =
         vbox
           [ hbox [strong [] [text "Scene: "], sceneButton combat.scene]
-          , rerollButton model app combat
+          , hbox [rerollButton model app combat, prevButton, nextButton]
           , CommonView.combatantList extraGutter extraCreatureCard app combat
           , stopCombatButton
           , disengageButtons]
@@ -911,6 +912,8 @@ historyCombatLog cl = case cl of
   T.ComLRerollInitiative combatants ->
     hsbox <| [dtext "Rerolled Initiative"]
           ++ List.map dtext (List.map Tuple.first combatants)
+  T.ComLForceNextTurn -> dtext "Forced next turn"
+  T.ComLForcePrevTurn -> dtext "Forced previous turn"
 
 
 renderPt3 : T.Point3 -> String
