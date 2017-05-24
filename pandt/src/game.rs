@@ -790,13 +790,12 @@ pub mod test {
   #[test]
   fn change_creature_initiative() {
     let game = t_combat();
-    fn combat_cids(game: &Game) -> Vec<CreatureID> {
-      game.get_combat().unwrap().combat.creatures.iter().map(|&(c, _)| c).collect()
-    }
-    assert_eq!(combat_cids(&game), vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    // move ranger to position 0
-    let game = t_perform(&game, GameCommand::ChangeCreatureInitiative(cid_ranger(), 0));
-    assert_eq!(combat_cids(&game), vec![cid_ranger(), cid_rogue(), cid_cleric()]);
+    assert_eq!(game.get_combat().unwrap().combat.creature_ids(),
+               vec![cid_rogue(), cid_ranger(), cid_cleric()]);
+    // move ranger to have an initiative higher than the rogue
+    let game = t_perform(&game, GameCommand::ChangeCreatureInitiative(cid_ranger(), 30));
+    assert_eq!(game.get_combat().unwrap().combat.creature_ids(),
+               vec![cid_ranger(), cid_rogue(), cid_cleric()]);
   }
 
   #[test]

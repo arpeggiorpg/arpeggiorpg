@@ -30,21 +30,11 @@ impl<'game> DynamicCombat<'game> {
         }
         new.creatures = sort_combatants(combatants.clone())?;
       }
-      CombatLog::ChangeCreatureInitiative(cid, new_pos) => {
-        let current_pos = new
-          .creatures
-          .iter()
-          .position(|&(c, _)| c == cid)
-          .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
-        if new_pos >= new.creatures.len() {
-          bail!(GameErrorEnum::InitiativeOutOfBounds(new.creatures.len() - 1));
-        }
-        new.creatures = new
-          .creatures
-          .mutate(|creatures| slide_vec(creatures, current_pos, new_pos))
-          .0
-          .expect("We do bounds-checking ahead of time, and our mutator doesn't change the \
-                   number of elements");
+      CombatLog::ChangeCreatureInitiative(cid, new_init) => {
+        let update_init = |&(c, i)| if c == cid { (c, new_init) } else { (c, i) };
+        let creatures_with_inits =
+          sort_combatants(new.creatures.iter().map(update_init).collect())?;
+        new.creatures = creatures_with_inits;
       }
     }
     Ok(new)
@@ -74,7 +64,7 @@ impl<'game> DynamicCombat<'game> {
   }
 
   pub fn reroll_initiative(&self) -> Result<ChangedCombat<'game>, GameError> {
-    let cids = self.combat.creatures.iter().map(|&(cid, _)| cid).collect();
+    let cids = self.combat.creature_ids();
     let combatants = Combat::roll_initiative(self.game, cids)?;
     self.change_with(CombatLog::RerollInitiative(combatants))
   }
@@ -123,6 +113,10 @@ impl Combat {
          movement_used: Distance(0),
          creatures: sort_combatants(combatants)?,
        })
+  }
+
+  pub fn creature_ids(&self) -> Vec<CreatureID> {
+    self.creatures.iter().map(|&(c, _)| c).collect()
   }
 
   pub fn roll_initiative(game: &Game, cids: Vec<CreatureID>)

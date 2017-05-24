@@ -284,7 +284,7 @@ pub enum GameCommand {
   /// Remove a creature from combat. Combat must already be running.
   RemoveCreatureFromCombat(CreatureID),
   /// Modify a creature's order in the combat list.
-  ChangeCreatureInitiative(CreatureID, usize),
+  ChangeCreatureInitiative(CreatureID, i16),
   /// Reroll initiative for all creatures in combat, and sort the combat list
   RerollCombatInitiative,
 
@@ -350,7 +350,7 @@ pub enum CreatureLog {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
   ConsumeMovement(Distance),
-  ChangeCreatureInitiative(CreatureID, usize),
+  ChangeCreatureInitiative(CreatureID, i16),
   EndTurn(CreatureID), // the end of this creature's turn
   RerollInitiative(Vec<(CreatureID, i16)>),
 }
