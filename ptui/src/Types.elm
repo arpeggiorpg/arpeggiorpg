@@ -218,7 +218,7 @@ type alias Game =
 gameDecoder : JD.Decoder Game
 gameDecoder =
   P.decode Game
-    |> P.required "current_combat" (JD.oneOf [JD.map Just combatDecoder, JD.null Nothing])
+    |> P.required "current_combat" (maybeDecoder combatDecoder)
     |> P.required "abilities" (JD.dict abilityDecoder)
     |> P.required "classes" (JD.dict classDecoder)
     |> P.required "creatures" (JD.dict creatureDecoder)
@@ -462,6 +462,7 @@ type alias Creature =
   { id: CreatureID
   , name: String
   , speed: Int
+  , initiative: Dice
   , max_energy: Int
   , cur_energy: Int
   , max_health: Int
@@ -482,6 +483,7 @@ creatureDecoder =
     |> P.required "id" JD.string
     |> P.required "name" JD.string
     |> P.required "speed" JD.int
+    |> P.required "initiative" diceDecoder
     |> P.required "max_energy" JD.int
     |> P.required "cur_energy" JD.int
     |> P.required "max_health" JD.int
@@ -503,6 +505,7 @@ creatureEncoder c =
     [ ("id", JE.string c.id)
     , ("name", JE.string c.name)
     , ("speed", JE.int c.speed)
+    , ("initiative", diceEncoder c.initiative)
     , ("max_energy", JE.int c.max_energy)
     , ("cur_energy", JE.int c.cur_energy)
     , ("max_health", JE.int c.max_health)
@@ -517,6 +520,29 @@ creatureEncoder c =
 
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
 encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
+
+type Dice = Dice
+  { num: Int
+  , size: Int
+  , plus: Maybe Dice}
+
+diceHelper : Int -> Int -> Maybe Dice -> Dice
+diceHelper n s p = Dice { num=n, size=s, plus=p }
+
+flatDice : Int -> Dice
+flatDice n = Dice { num=n, size=1, plus=Nothing }
+
+diceDecoder : JD.Decoder Dice
+diceDecoder = JD.map3 diceHelper
+  (JD.field "num" JD.int)
+  (JD.field "size" JD.int)
+  (JD.field "plus" (JD.lazy (\_ -> maybeDecoder diceDecoder)))
+
+diceEncoder : Dice -> JE.Value
+diceEncoder (Dice dice) = JE.object
+  [ ("num", JE.int dice.num)
+  , ("size", JE.int dice.size)
+  , ("plus", encodeMaybe dice.plus diceEncoder)]
 
 -- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
 -- (e.g. can_act and can_move), so we can't just use Creature.
@@ -893,6 +919,8 @@ encodeMaybe mebbe encoder =
   case mebbe of
     Just x -> encoder x
     Nothing -> JE.null
+
+maybeDecoder d = JD.oneOf [JD.map Just d, JD.null Nothing]
 
 setDecoder : JD.Decoder comparable -> JD.Decoder (Set.Set comparable)
 setDecoder el = JD.map Set.fromList (JD.list el)
