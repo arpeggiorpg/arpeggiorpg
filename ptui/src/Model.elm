@@ -52,6 +52,8 @@ type Msg
     | CombatAct T.AbilityID T.DecidedTarget
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
 
+    | EditInitiativeFor (Maybe (T.CreatureID, Int))
+
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
     | PathCreature T.SceneID T.CreatureID T.Point3
@@ -107,6 +109,7 @@ defaultModel flags =
   , modal = NoModal
   , gettingSavedGames = Nothing
   , folderState = Dict.empty
+  , editingInitiative = Nothing
   }
 
 type alias Model =
@@ -133,6 +136,7 @@ type alias Model =
   , secondaryFocus: SecondaryFocus
   , modal: Modal
   , gettingSavedGames: Maybe (List String -> Msg)
+  , editingInitiative: Maybe (T.CreatureID, Int)
   }
 
 type alias GridData =

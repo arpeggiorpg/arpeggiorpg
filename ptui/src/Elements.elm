@@ -4,7 +4,9 @@ module Elements exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Css as S
+import Json.Decode as JD
 
 stdStyle = []
 
@@ -72,3 +74,19 @@ fullscreen content =
 scaleStyle : Float -> List (String, String)
 scaleStyle scale = [ ("transform-origin", "top left")
                    , ("transform", "scale(" ++ toString scale ++ ")") ]
+
+onEnterOrEsc : msg -> msg -> List (Attribute msg)
+onEnterOrEsc submit cancel =
+  let
+    gotKey code =
+      if code == 13 then JD.succeed submit
+      else if code == 27 then JD.succeed cancel
+      else JD.fail "not key we want"
+  in
+    [ on "keydown" (JD.andThen gotKey keyCode)
+    , onBlur cancel ]
+
+textInput : List (Attribute msg) -> msg -> msg -> Html msg
+textInput attrs submit cancel =
+  input ([type_ "text"] ++ attrs ++ onEnterOrEsc submit cancel) []
+

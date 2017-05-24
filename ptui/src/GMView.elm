@@ -716,15 +716,26 @@ inCombatView model app combat =
   let game = app.current_game
       creatures = List.map Tuple.first <| T.getCombatCreatures game combat
       disengageButtons = hbox (List.map disengageButton creatures)
+      updateTempInitiative cid inp =
+        case String.toInt inp of
+          Ok newInit -> M.EditInitiativeFor (Just (cid, newInit))
+          Err _ -> M.NoMsg
       extraGutter idx creature init =
-        [ button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx - 1)))
-                 , disabled (idx == 0)]
-                 [text "⬆️️"]
-        , text (toString init)
-        , button [ onClick (M.SendCommand (T.ChangeCreatureInitiative creature.id (idx + 1)))
-                 , disabled (idx == (List.length combat.creatures.data) - 1)]
-                 [text "⬇️️"]
-        ]
+        let notEditing =
+              [ a [onClick (M.EditInitiativeFor (Just (creature.id, init)))] [text (toString init)] ]
+        in 
+          case model.editingInitiative of
+            Just (cid, newInit) ->
+              if cid == creature.id then
+                [ textInput [ defaultValue (toString init)
+                            , onInput <| updateTempInitiative creature.id ]
+                            (M.Batch [ M.SendCommand (T.ChangeCreatureInitiative cid newInit)
+                                     , M.EditInitiativeFor Nothing])
+                            (M.EditInitiativeFor Nothing)
+                ]
+              else notEditing
+            Nothing -> notEditing
+
       extraCreatureCard creature = [noteBox model creature]
       combatView =
         vbox
