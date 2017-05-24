@@ -38,6 +38,14 @@ impl<'game> DynamicCombat<'game> {
         new.creatures = creatures_with_inits;
         new.creatures.set_cursor(cursor);
       }
+      CombatLog::ForceNextTurn => {
+        new.movement_used = Distance(0);
+        new.creatures.next_circular();
+      }
+      CombatLog::ForcePrevTurn => {
+        new.movement_used = Distance(0);
+        new.creatures.prev_circular();
+      }
     }
     Ok(new)
   }

@@ -78,6 +78,8 @@ impl Game {
       ChangeCreatureInitiative(cid, new_pos) => {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
       }
+      ForceNextTurn => self.change_with(GameLog::CombatLog(CombatLog::ForceNextTurn)),
+      ForcePrevTurn => self.change_with(GameLog::CombatLog(CombatLog::ForcePrevTurn)),
       Done => self.next_turn(),
 
       // These are handled by the app before being passed to the Game:

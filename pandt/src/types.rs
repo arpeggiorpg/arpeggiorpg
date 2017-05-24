@@ -287,6 +287,10 @@ pub enum GameCommand {
   ChangeCreatureInitiative(CreatureID, i16),
   /// Reroll initiative for all creatures in combat, and sort the combat list
   RerollCombatInitiative,
+  /// Move to the next creature in the initiative list. This does *not* run any end-of-turn or start-turn events.
+  ForceNextTurn,
+  /// Move to the previous creature in the initiative list. This does *not* run any end-of-turn or start-turn events.
+  ForcePrevTurn,
 
   // ** Combat **
   /// Use an Ability out of combat.
@@ -352,6 +356,8 @@ pub enum CombatLog {
   ConsumeMovement(Distance),
   ChangeCreatureInitiative(CreatureID, i16),
   EndTurn(CreatureID), // the end of this creature's turn
+  ForceNextTurn,
+  ForcePrevTurn,
   RerollInitiative(Vec<(CreatureID, i16)>),
 }
 
