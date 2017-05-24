@@ -727,7 +727,8 @@ inCombatView model app combat =
           case model.editingInitiative of
             Just (cid, newInit) ->
               if cid == creature.id then
-                [ textInput [ defaultValue (toString init)
+                [ textInput [ id "focus-me"
+                            , defaultValue (toString init)
                             , onInput <| updateTempInitiative creature.id ]
                             (M.Batch [ M.SendCommand (T.ChangeCreatureInitiative cid newInit)
                                      , M.EditInitiativeFor Nothing])

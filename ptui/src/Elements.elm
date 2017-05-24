@@ -84,7 +84,8 @@ onEnterOrEsc submit cancel =
       else JD.fail "not key we want"
   in
     [ on "keydown" (JD.andThen gotKey keyCode)
-    , onBlur cancel ]
+    , onBlur cancel
+    , on "focusout" (JD.succeed cancel)]
 
 textInput : List (Attribute msg) -> msg -> msg -> Html msg
 textInput attrs submit cancel =
