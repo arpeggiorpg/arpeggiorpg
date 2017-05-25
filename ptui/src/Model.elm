@@ -53,6 +53,7 @@ type Msg
     | ActCreature T.SceneID  T.CreatureID T.AbilityID T.DecidedTarget
 
     | EditInitiativeFor (Maybe (T.CreatureID, Int))
+    | EditCreatureNote (Maybe (T.CreatureID, String))
 
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
@@ -74,7 +75,6 @@ type Msg
     | SaveGame String
     | SavedGame (Result Http.Error ())
     | LoadGame String
-    | SetCreatureNote T.CreatureID String
     | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
     | ToggleFolderCollapsed String
@@ -96,7 +96,6 @@ defaultModel flags =
   , playerID = Nothing
   , moveAnywhere = False
   , showingMovement = NotShowingMovement
-  , creatureNotes = Dict.empty
   , rpiURL = flags.rpi
   , gridSize = 60
   , gridOffset = {x = -15, y = 10}
@@ -110,6 +109,7 @@ defaultModel flags =
   , gettingSavedGames = Nothing
   , folderState = Dict.empty
   , editingInitiative = Nothing
+  , editingNote = Nothing
   }
 
 type alias Model =
@@ -120,7 +120,6 @@ type alias Model =
   , moving: Maybe MovementRequest
   , playerID : Maybe T.PlayerID
   , showingMovement: MovementAnimation
-  , creatureNotes : Dict.Dict T.CreatureID String
   , moveAnywhere : Bool
   , rpiURL : String
   -- gridSize: how many SQUARE METERS to show
@@ -137,6 +136,7 @@ type alias Model =
   , modal: Modal
   , gettingSavedGames: Maybe (List String -> Msg)
   , editingInitiative: Maybe (T.CreatureID, Int)
+  , editingNote: Maybe (T.CreatureID, String)
   }
 
 type alias GridData =

@@ -11,6 +11,7 @@ import Time
 import Dom
 
 import PanZoom
+import DomUtils
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
@@ -305,10 +306,6 @@ update msg model = case msg of
 
   ToggleMoveAnywhere -> ({ model | moveAnywhere = not model.moveAnywhere}, Cmd.none)
 
-  SetCreatureNote cid note ->
-    let newNotes = Dict.insert cid note model.creatureNotes
-    in ({model | creatureNotes = newNotes}, Cmd.none)
-
   GetSavedGames cb ->
     ( {model | gettingSavedGames = Just cb}
     , Http.send GotSavedGames (Http.get (model.rpiURL ++ "/saved_games") (JD.list JD.string)))
@@ -358,10 +355,26 @@ update msg model = case msg of
 
   CombatAct abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
   ActCreature sceneName cid abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
-  EditInitiativeFor x -> ({model| editingInitiative = x}, Dom.focus "focus-me" |> Task.attempt (always M.NoMsg) )
+  EditInitiativeFor x -> ({model| editingInitiative = x}, maybeFocusAndSelect "focus-me" model.editingInitiative x)
+  EditCreatureNote mnote -> ({model | editingNote = mnote}, maybeFocusAndSelect "focus-me" model.editingNote mnote)
+
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))
+
+maybeFocusAndSelect : String -> Maybe a -> Maybe a -> Cmd M.Msg
+maybeFocusAndSelect id oldm newm =
+  case oldm of
+    Just _ -> Cmd.none
+    Nothing ->
+      case newm of
+        Just _ -> focusAndSelect id
+        Nothing -> Cmd.none
+
+focusAndSelect : String -> Cmd M.Msg
+focusAndSelect id =
+  Cmd.batch [ Dom.focus id |> Task.attempt (always M.NoMsg)
+            , DomUtils.select id]
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set

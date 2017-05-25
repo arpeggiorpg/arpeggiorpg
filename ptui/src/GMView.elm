@@ -687,16 +687,19 @@ sceneMap model app scene =
     to creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature =
-  let note = Maybe.withDefault creature.note (Dict.get creature.id model.creatureNotes)
-      submitMsg = M.SendCommand (T.EditCreature {creature | note = note})
-      inp = input [s [S.width (S.px 300)], type_ "text", defaultValue creature.note
-                  , onInput (M.SetCreatureNote creature.id)]
-                  []
-      saveButton =
-        if creature.note /= note
-        then button [onClick submitMsg] [text "Save Note"]
-        else text ""
-  in hbox <| [inp, saveButton]
+  let edit note =
+        textInput [ id "focus-me"
+                  , s [S.width (S.px 300)]
+                  , defaultValue creature.note
+                  , onInput <| \inp -> (M.EditCreatureNote (Just (creature.id, inp)))]
+                  (M.Batch [ M.SendCommand (T.EditCreature {creature | note = note})
+                           , M.EditCreatureNote Nothing])
+                  (M.EditCreatureNote Nothing)
+      view = a [onClick (M.EditCreatureNote (Just (creature.id, creature.note)))] [dtext creature.note]
+  in
+    case model.editingNote of
+      Just (cid, note) -> if cid == creature.id then edit note else view
+      Nothing -> view
 
 {-| A button for removing a creature from combat. -}
 disengageButton : T.Creature -> Html M.Msg
