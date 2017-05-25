@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "outDir": ".",
+        "sourceMap": true,
+        "target": "es5",
+        "module": "commonjs",
+        "jsx": "react",
+        "strict": true
+    },
+    "include": [
+        "src/typescript/*.tsx",
+        "src/typescript/*.ts"
+    ],
+    "exclude": []
+}

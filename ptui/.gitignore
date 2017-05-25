@@ -7,3 +7,5 @@ dist/main.js
 elm-stuff
 index.html
 build
+src/typescript/*.js
+*.js.map
