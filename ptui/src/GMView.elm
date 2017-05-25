@@ -767,7 +767,7 @@ startCombatButton model app =
             case Dict.get sceneName app.current_game.scenes of
               Just scene -> Dict.keys scene.creatures
               Nothing -> []
-      in button [onClick (M.SetModal (M.SelectOrderedCreatures {from = sceneCreatures, selected =Dict.empty, cb = gotCreatures, title = "Start Combat"}))] [text "Start Combat"]
+      in button [onClick (M.SetModal (M.ModalSimpleSelectCreatures {from = sceneCreatures, selected = [], cb = gotCreatures, title = "Start Combat"}))] [text "Start Combat"]
     _ -> button [disabled True] [text "Select a Scene to Start Combat"]
 
 {-| A button for stopping combat. -}
