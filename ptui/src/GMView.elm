@@ -35,12 +35,13 @@ makeUI model app =
   { mapView = map
   , mapModeControls = mapModeControls
   , defaultTab = "Campaign"
-  , sideBar =
+  , tabs =
         [ ("Campaign", (\() -> campaignView model app), Nothing)
         , ("Combat", (\() -> combatView model app), Nothing)
         , ("Players", (\() -> playersView model app), Nothing)
         , ("History", (\() -> Lazy.lazy historyView app), Nothing)
         , ("Saved Games", (\() -> savedGameView model app), Nothing)
+        , ("Hello!", (\() -> div [id "react-example"] [text "React Example Goes Here"]), Just (M.RenderHello "react-example"))
         ]
   , bottomBar = bottomActionBar app
   , modal = checkModal model app

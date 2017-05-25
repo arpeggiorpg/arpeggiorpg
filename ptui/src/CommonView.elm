@@ -306,7 +306,7 @@ type alias UI =
   { mapView: Html M.Msg
   , mapModeControls: Html M.Msg
   , defaultTab: String
-  , sideBar: List (String, () -> Html M.Msg, Maybe M.Msg)
+  , tabs: List (String, () -> Html M.Msg, Maybe M.Msg)
   , modal: Maybe (Html M.Msg)
   , bottomBar: Maybe (Html M.Msg)
   }
@@ -328,7 +328,7 @@ viewGameWide model app ui =
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ tabbedView "right-side-bar" ui.defaultTab model ui.sideBar ]
+        [ tabbedView "right-side-bar" ui.defaultTab model ui.tabs ]
     , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
     , case ui.bottomBar of
@@ -359,7 +359,7 @@ viewGameMobile model app ui =
       div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
           [div [style (scaleStyle scale)] [f ()]]
     scaleTab (name, f, m) = (name, scaled f, m)
-    scaledSideBar = List.map scaleTab ui.sideBar
+    scaledSideBar = List.map scaleTab ui.tabs
     tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
     mainContent = vabox
       [s [S.height (S.pct 100), S.width (S.pct 100)]]

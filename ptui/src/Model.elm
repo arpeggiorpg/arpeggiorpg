@@ -86,6 +86,10 @@ type Msg
 
     | NoMsg
 
+    -- External components
+
+    | RenderHello String
+
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing

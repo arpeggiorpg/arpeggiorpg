@@ -12,6 +12,7 @@ import Dom
 
 import PanZoom
 import DomUtils
+import Components
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
 
@@ -361,6 +362,9 @@ update msg model = case msg of
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))
+
+  -- External Components
+  RenderHello id -> (model, Components.renderHello id)
 
 maybeFocusAndSelect : String -> Maybe a -> Maybe a -> Cmd M.Msg
 maybeFocusAndSelect id oldm newm =

@@ -44,7 +44,7 @@ makeUI model app myCreatures =
   { mapView = map
   , mapModeControls = mapModeControls
   , defaultTab = "My Creatures"
-  , sideBar =
+  , tabs =
         [ ("My Creatures", (\() -> myCreaturesView model app myCreatures), Nothing)
         , ("Combat", (\() -> combatView model app myCreatures), Nothing)]
   , modal = CommonView.checkModal model app

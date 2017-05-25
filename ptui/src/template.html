@@ -8,8 +8,14 @@
   </script>
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.5.1/dist/svg-pan-zoom.js"></script>
+  <script src="https://unpkg.com/react@15/dist/react.js"></script>
+  <script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
+
+  <script type="text/javascript" src="bundle.js"></script>
   <script type="text/javascript" src="PanZoom.js"></script>
   <script type="text/javascript" src="DomUtils.js"></script>
+  <script type="text/javascript" src="Components.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -26,6 +32,7 @@
     var app = Elm.Main.fullscreen({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight]});
     PanZoom_initializePorts(app);
     DomUtils_initializePorts(app);
+    Components_initializePorts(app);
   </script>
 </body>
 </html>
