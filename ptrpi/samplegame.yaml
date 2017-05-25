@@ -210,7 +210,7 @@ current_game:
       speed: 1086
       max_energy: 10
       cur_energy: 10
-      abilities: []
+      abilities: {}
       class: ranger
       max_health: 10
       cur_health: 10
@@ -231,7 +231,7 @@ current_game:
       speed: 1086
       max_energy: 10
       cur_energy: 10
-      abilities: []
+      abilities: {}
       class: rogue
       max_health: 10
       cur_health: 10
@@ -252,7 +252,7 @@ current_game:
       speed: 1086
       max_energy: 10
       cur_energy: 10
-      abilities: []
+      abilities: {}
       class: cleric
       max_health: 10
       cur_health: 10

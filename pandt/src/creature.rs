@@ -3,6 +3,7 @@ use std::cmp;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
 
+use indexed::*;
 use types::*;
 
 /// `STANDARD_CREATURE_SPEED` is carefully chosen to allow for circular-looking movement options.
@@ -145,21 +146,24 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
                                 condition.clone())
   }
 
-  pub fn ability_statuses(&self) -> Vec<AbilityStatus> {
-    let mut abs = self.creature.abilities.clone();
+  pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {
+    let mut abs = IndexedHashMap::new();
     for acondition in self.conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
-        abs.push(AbilityStatus {
+        abs.insert(AbilityStatus {
                    ability_id: abid,
                    cooldown: 0,
                  });
       }
     }
     for abid in &self.class.abilities {
-      abs.push(AbilityStatus {
+      abs.insert(AbilityStatus {
                  ability_id: *abid,
                  cooldown: 0,
                });
+    }
+    for ab in &self.creature.abilities {
+      abs.insert(*ab);
     }
     abs
   }
@@ -178,7 +182,7 @@ impl Creature {
       speed: Distance(STANDARD_CREATURE_SPEED),
       max_energy: Energy(10),
       cur_energy: Energy(10),
-      abilities: vec![],
+      abilities: IndexedHashMap::new(),
       max_health: HP(10),
       cur_health: HP(10),
       conditions: HashMap::new(),

@@ -72,11 +72,23 @@ impl<V> FromIterator<V> for IndexedHashMap<V>
   }
 }
 
+impl<'a, V: DeriveKey> IntoIterator for &'a IndexedHashMap<V> {
+  type Item = &'a V;
+  type IntoIter = ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V>;
+  fn into_iter(self) -> Self::IntoIter {
+    self.data.values()
+  }
+}
+
 // Deserialize
 
 impl<V: DeriveKey> IndexedHashMap<V> {
   pub fn new() -> IndexedHashMap<V> {
     IndexedHashMap { data: HashMap::new() }
+  }
+
+  pub fn iter<'a>(&'a self) -> ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V> {
+    self.into_iter()
   }
 
   pub fn insert(&mut self, v: V) -> Option<V> {

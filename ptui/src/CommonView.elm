@@ -103,7 +103,7 @@ creatureAbilities game sceneID inCombat creature =
     abinfo abstatus =
         Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
                       (Dict.get abstatus.ability_id game.abilities)
-    abilities = List.filterMap abinfo creature.abilities
+    abilities = List.filterMap abinfo (Dict.values creature.abilities)
     abilityMsg abid ability =
       case ability.target of
         T.Actor -> if inCombat then M.CombatAct abid T.TargetedActor

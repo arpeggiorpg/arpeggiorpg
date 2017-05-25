@@ -470,7 +470,7 @@ type alias Creature =
   , cur_energy: Int
   , max_health: Int
   , cur_health: Int
-  , abilities: List AbilityStatus
+  , abilities: Dict AbilityID AbilityStatus
   , class: String
   , conditions: Dict Int AppliedCondition
   , can_act: Bool
@@ -491,7 +491,7 @@ creatureDecoder =
     |> P.required "cur_energy" JD.int
     |> P.required "max_health" JD.int
     |> P.required "cur_health" JD.int
-    |> P.required "abilities" (JD.list abilityStatusDecoder)
+    |> P.required "abilities" (JD.dict abilityStatusDecoder)
     |> P.required "class" JD.string
     |> P.required "conditions" (JD.andThen stringKeyDictToIntKeyDict (JD.dict appliedConditionDecoder))
     |> P.required "can_act" JD.bool
@@ -513,7 +513,7 @@ creatureEncoder c =
     , ("cur_energy", JE.int c.cur_energy)
     , ("max_health", JE.int c.max_health)
     , ("cur_health", JE.int c.cur_health)
-    , ("abilities", JE.list (List.map abilityStatusEncoder c.abilities))
+    , ("abilities", encodeStringDict abilityStatusEncoder c.abilities)
     , ("class", JE.string c.class)
     , ("conditions", JE.object <| List.map (\(k, v) -> (toString k, appliedConditionEncoder v)) (Dict.toList c.conditions))
     , ("note", JE.string c.note)

@@ -682,10 +682,17 @@ pub struct AppliedCondition {
 }
 
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
   pub ability_id: AbilityID,
   pub cooldown: u8,
+}
+
+impl DeriveKey for AbilityStatus {
+  type KeyType = AbilityID;
+  fn derive_key(&self) -> AbilityID {
+    self.ability_id
+  }
 }
 
 /// A creature class, e.g. rogue, mage, warrior
@@ -720,7 +727,7 @@ pub struct Creature {
   pub speed: Distance,
   pub max_energy: Energy,
   pub cur_energy: Energy,
-  pub abilities: Vec<AbilityStatus>,
+  pub abilities: IndexedHashMap<AbilityStatus>,
   pub class: String,
   pub max_health: HP,
   pub cur_health: HP,
