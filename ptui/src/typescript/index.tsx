@@ -1,17 +1,9 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import { Hello } from "./Hello";
+import * as Hello from "./Hello";
 
-function renderHello(id: string) {
-  console.log("[renderHello]", id);
-  ReactDOM.render(
-    <Hello compiler="TypeScript" framework="React" />,
-    document.getElementById(id)
-  );
-}
-
-function unloadHello(id: string) {
+function unloadComponent(id: string) {
   let el =  document.getElementById(id);
   if (el !== null) {
     ReactDOM.unmountComponentAtNode(el);
@@ -29,8 +21,8 @@ function afterView(f: any) {
 }
 
 function PT_initializeComponents(app: any) {
-  app.ports.renderHello.subscribe(afterView(renderHello));
-  app.ports.unloadHello.subscribe(afterView(unloadHello));
+  app.ports.renderHello.subscribe(afterView(Hello.renderHello));
+  app.ports.unloadComponent.subscribe(afterView(unloadComponent));
 }
 
 // I can't figure out any other way to export these functions such that they can be called from plain
