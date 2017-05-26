@@ -8,6 +8,7 @@ use std::io;
 use std::path;
 use std::env;
 use std::process::Command;
+use std::thread;
 
 fn main() {
   let matches = clap::App::new("PT Builder Tool")
@@ -25,11 +26,13 @@ fn main() {
            .long("watch")
            .help("If specified, continuously watch for changes to Elm code and rebuild. Requires \
              watchexec."))
-    .get_matches();
+    .get_matches()
+    .clone();
 
-  let rpi = matches.value_of("rpi-url").expect("rpi-url required");
-  let ptui_dir = path::Path::new(matches.value_of("ptui-dir").expect("ptui-dir required"));
-  let build_dir = ptui_dir.join("build");
+  let rpi: String = matches.value_of("rpi-url").expect("rpi-url required").to_string();
+  let ptui_dir: path::PathBuf =
+    path::Path::new(matches.value_of("ptui-dir").expect("ptui-dir required")).to_path_buf();
+  let build_dir: path::PathBuf = ptui_dir.join("build");
 
   if !build_dir.exists() {
     fs::create_dir(&build_dir).expect(&format!("Couldn't create directory {:?}",
@@ -37,26 +40,46 @@ fn main() {
   }
 
   if matches.is_present("watch") {
-    println!("Starting watchexec...");
-    let me = env::current_exe().expect("Couldn't get current executable!");
-    let mut child = Command::new("watchexec")
-      .arg("-r")
-      .arg("-w")
-      .arg(ptui_dir)
-      .arg("--")
-      .arg(me)
-      .arg("--ptui-dir")
-      .arg(ptui_dir)
-      .arg("--rpi-url")
-      .arg(rpi)
-      .spawn()
-      .expect(&format!("Couldn't run watchexec :("));
-    child.wait().expect("watchexec exited");
+    watch(&ptui_dir, &rpi);
   } else {
-    build_js(ptui_dir);
-    build_html(ptui_dir, build_dir.as_path(), rpi);
-    copy_others(ptui_dir, build_dir.as_path()).expect("Couldn't copy other files to build dir");
+    let thread1 = {
+      let ptui_dir = ptui_dir.clone();
+      thread::spawn(move || build_js(&ptui_dir))
+    };
+    let thread2 = {
+      let ptui_dir = ptui_dir.clone();
+      let build_dir = build_dir.clone();
+      thread::spawn(move || build_html(&ptui_dir, build_dir.as_path(), &rpi))
+    };
+    let thread3 = {
+      let ptui_dir = ptui_dir.clone();
+      thread::spawn(move || webpack(&ptui_dir))
+    };
+    thread1.join().expect("build_js thread failed");
+    thread2.join().expect("build_html thread failed");
+    thread3.join().expect("webpack thread failed");
+
+    copy_others(&ptui_dir, build_dir.as_path()).expect("Couldn't copy other files to build dir");
+    println!("Done! Build successful!");
   }
+}
+
+fn watch(ptui_dir: &path::Path, rpi: &str) {
+  println!("Starting watchexec...");
+  let me = env::current_exe().expect("Couldn't get current executable!");
+  let mut child = Command::new("watchexec")
+    .arg("-r")
+    .arg("-w")
+    .arg(ptui_dir)
+    .arg("--")
+    .arg(me)
+    .arg("--ptui-dir")
+    .arg(ptui_dir)
+    .arg("--rpi-url")
+    .arg(rpi)
+    .spawn()
+    .expect(&format!("Couldn't run watchexec :("));
+  child.wait().expect("watchexec exited");
 }
 
 fn build_js(ptui_dir: &path::Path) {
@@ -73,6 +96,17 @@ fn build_js(ptui_dir: &path::Path) {
     if !code.success() {
       panic!("elm make {} was unsuccessful: {:?}", elm, code);
     }
+  }
+}
+
+fn webpack(ptui_dir: &path::Path) {
+  // This unfortunately doesn't work if I just use `webpack`, so for now this code is
+  // windows-specific :(
+  let mut child =
+    Command::new("webpack.cmd").current_dir(ptui_dir).spawn().expect("Couldn't build command?");
+  let code = child.wait().expect("webpack failed!");
+  if !code.success() {
+    panic!("webpack failed! {:?}", code);
   }
 }
 
