@@ -22,7 +22,7 @@
     }
     body {
       margin: 0px;
-      overflow-x: hidden; /* I'm not sure why this is necessary. :-( */
+      overflow-x: hidden; /* I'm not sure why this is necessary, something invisible was adding a huge horizontal scrollbar to the page */
     }
   </style>
 
@@ -32,7 +32,7 @@
     var app = Elm.Main.fullscreen({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight]});
     PanZoom_initializePorts(app);
     DomUtils_initializePorts(app);
-    Components_initializePorts(app);
+    PT_initializeComponents(app);
   </script>
 </body>
 </html>
