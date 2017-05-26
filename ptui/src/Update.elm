@@ -4,6 +4,7 @@ import Array
 import Dict
 import Http
 import Json.Decode as JD
+import Json.Encode as JE
 import Set
 import Process
 import Task
@@ -356,8 +357,21 @@ update msg model = case msg of
 
   CombatAct abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.CombatAct abid dtarget))
   ActCreature sceneName cid abid dtarget -> ({model | selectingAbility = Nothing}, sendCommand model.rpiURL (T.ActCreature sceneName cid abid dtarget))
-  EditInitiativeFor x -> ({model| editingInitiative = x}, maybeFocusAndSelect "focus-me" model.editingInitiative x)
-  EditCreatureNote mnote -> ({model | editingNote = mnote}, maybeFocusAndSelect "focus-me" model.editingNote mnote)
+  EditInitiativeFor x ->
+    case (model.editingInitiative, x) of
+      (_, Just (cid, i)) ->
+        ( {model | editingInitiative = Just cid}
+        , message <| LoadTextInput "focus-me" (toString i) Dict.empty )
+      (Just _, Nothing) ->
+        ( {model | editingInitiative = Nothing}, Components.unloadComponent "focus-me")
+      (Nothing, Nothing) -> (model, Cmd.none)
+  EditCreatureNote mnote ->
+    case (model.editingNote, mnote) of
+      (_, Just (c, n)) ->
+        ({model | editingNote = Just c}, message <| LoadTextInput "focus-me" n Dict.empty)
+      (Just _, Nothing) ->
+        ({model | editingNote = Nothing}, Components.unloadComponent "focus-me" )
+      (Nothing, Nothing) -> (model, Cmd.none)
 
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
@@ -365,6 +379,12 @@ update msg model = case msg of
 
   -- External Components
   RenderHello id -> (model, Components.renderHello id)
+  LoadTextInput id defaultValue style ->
+    let styleValue = T.encodeStringDict JE.string style
+    in (model, Components.renderTextInput (id, defaultValue, styleValue))
+  TextInputSubmit (id, content) ->
+    (model, Cmd.none)
+  TextInputCancel (id, content) -> (model, Cmd.none)
 
 maybeFocusAndSelect : String -> Maybe a -> Maybe a -> Cmd M.Msg
 maybeFocusAndSelect id oldm newm =

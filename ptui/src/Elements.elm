@@ -86,8 +86,3 @@ onEnterOrEsc submit cancel =
     [ on "keydown" (JD.andThen gotKey keyCode)
     , onBlur cancel
     , on "focusout" (JD.succeed cancel)]
-
-textInput : List (Attribute msg) -> msg -> msg -> Html msg
-textInput attrs submit cancel =
-  input ([type_ "text"] ++ attrs ++ onEnterOrEsc submit cancel) []
-

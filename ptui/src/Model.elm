@@ -8,6 +8,7 @@ import Window
 
 import Types as T
 import PanZoom
+import Components
 
 type alias GotCreatures = List T.CreatureID -> Msg
 
@@ -17,7 +18,9 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-  in Sub.batch [ticks, PanZoom.panning GridPanning, Window.resizes WindowResized]
+  in Sub.batch [ ticks, PanZoom.panning GridPanning, Window.resizes WindowResized
+               , Components.textInputSubmit TextInputSubmit
+               , Components.textInputCancel TextInputCancel]
 
 type Msg
     = Start
@@ -89,6 +92,9 @@ type Msg
     -- External components
 
     | RenderHello String
+    | LoadTextInput String String (Dict.Dict String String)
+    | TextInputSubmit (String, String)
+    | TextInputCancel (String, String)
 
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
@@ -139,8 +145,8 @@ type alias Model =
   , secondaryFocus: SecondaryFocus
   , modal: Modal
   , gettingSavedGames: Maybe (List String -> Msg)
-  , editingInitiative: Maybe (T.CreatureID, Int)
-  , editingNote: Maybe (T.CreatureID, String)
+  , editingInitiative: Maybe T.CreatureID
+  , editingNote: Maybe T.CreatureID
   }
 
 type alias GridData =
