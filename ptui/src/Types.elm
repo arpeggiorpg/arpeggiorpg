@@ -62,15 +62,17 @@ potentialTargetsDecoder = sumDecoder "PotentialTargets"
   ]
 
 type alias App =
-  { current_game : Game
-  , snapshots : Array.Array (GameSnapshot, (Array.Array GameLog))
-  , players : Dict PlayerID Player
+  { current_game: Game
+  , snapshots: Array.Array (GameSnapshot, (Array.Array GameLog))
+  , raw_snapshots: JE.Value
+  , players: Dict PlayerID Player
   }
 
 appDecoder : JD.Decoder App
-appDecoder = JD.map3 App
+appDecoder = JD.map4 App
   (JD.field "current_game" gameDecoder)
   (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameSnapshotDecoder) (JD.index 1 <| JD.array gameLogDecoder))))
+  (JD.field "snapshots" JD.value)
   (JD.field "players" (JD.dict playerDecoder))
 
 
