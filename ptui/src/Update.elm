@@ -190,13 +190,15 @@ update msg model = case msg of
         newCollapsed = Dict.insert name (not currentlyCollapsed) model.folderState
     in ({model | folderState = newCollapsed}, Cmd.none)
 
-  SelectView category name nextMsg ->
-    let newSelected = Dict.insert category name model.selectedViews
-    in ( {model | selectedViews = newSelected}
-       , case nextMsg of
-           Just nextMsg -> message nextMsg
-           Nothing -> Cmd.none
-       )
+  SelectView name ->
+    if name == model.selectedView then (model, Cmd.none) else 
+    let
+      msg =
+        case (model.selectedView, name) of
+          (_, "Map") -> message M.GridInitializePanZoom
+          ("Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
+          _ -> Cmd.none
+    in ( {model | selectedView = name}, msg)
 
   GetMovementOptions sceneName creature ->
     if model.gridPanning then (model, Cmd.none) else

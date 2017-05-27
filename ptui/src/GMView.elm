@@ -36,12 +36,11 @@ makeUI model app =
   , mapModeControls = mapModeControls
   , defaultTab = "Campaign"
   , tabs =
-        [ ("Campaign", (\() -> campaignView model app), Nothing)
-        , ("Combat", (\() -> combatView model app), Nothing)
-        , ("Players", (\() -> playersView model app), Nothing)
-        , ("History", (\() -> Lazy.lazy historyView app), Nothing)
-        , ("Saved Games", (\() -> savedGameView model app), Nothing)
-        , ("Hello!", (\() -> div [id "react-example"] [text "React Example Goes Here"]), Just (M.RenderHello "react-example"))
+        [ ("Campaign", (\() -> campaignView model app))
+        , ("Combat", (\() -> combatView model app))
+        , ("Players", (\() -> playersView model app))
+        , ("History", (\() -> Lazy.lazy historyView app))
+        , ("Saved Games", (\() -> savedGameView model app))
         ]
   , bottomBar = bottomActionBar app
   , modal = checkModal model app
@@ -157,7 +156,7 @@ sceneConsole model app scene =
         Just combat ->
           if combat.scene == scene.id
           then hbox [ text "There is a combat happening in this scene!"
-                    , button [onClick (M.SelectView "right-side-bar" "Combat" Nothing)] [text "View Combat"]]
+                    , button [onClick (M.SelectView "Combat")] [text "View Combat"]]
           else text ""
         Nothing -> startCombatButton model app
     , sceneChallenges model app scene

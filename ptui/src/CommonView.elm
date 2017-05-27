@@ -284,16 +284,15 @@ mainActionBar app combat =
   let creature = T.combatCreature app.current_game combat
   in hbox [creatureIcon app creature, combatActionBar app.current_game combat creature]
 
-tabbedView : String -> String -> M.Model -> List (String, () -> Html M.Msg, Maybe M.Msg) -> Html M.Msg
+tabbedView : String -> String -> M.Model -> List (String, () -> Html M.Msg) -> Html M.Msg
 tabbedView category defaultView model things =
   let
     header = habox [s [S.justifyContent S.spaceBetween]] (List.map headerButton things)
-    buttonText name = if name == selectedView then strong [] [text name] else text name
-    headerButton (name, _, msg) =
-      button [ s [S.height (S.px 50)], onClick (M.SelectView category name msg)]
+    buttonText name = if name == model.selectedView then strong [] [text name] else text name
+    headerButton (name, _) =
+      button [ s [S.height (S.px 50)], onClick (M.SelectView name)]
              [buttonText name]
-    selectedView = Dict.get category model.selectedViews |> Maybe.withDefault defaultView
-    renderBody (name, renderer, _) = if name == selectedView then Just renderer else Nothing
+    renderBody (name, renderer) = if name == model.selectedView then Just renderer else Nothing
     body =
       case List.filterMap renderBody things of
         [f] -> f ()
@@ -306,7 +305,7 @@ type alias UI =
   { mapView: Html M.Msg
   , mapModeControls: Html M.Msg
   , defaultTab: String
-  , tabs: List (String, () -> Html M.Msg, Maybe M.Msg)
+  , tabs: List (String, () -> Html M.Msg)
   , modal: Maybe (Html M.Msg)
   , bottomBar: Maybe (Html M.Msg)
   }
@@ -358,9 +357,9 @@ viewGameMobile model app ui =
     scaled f () =
       div [s [S.overflowY S.auto, S.overflowX S.hidden, S.height (S.pct 100)]]
           [div [style (scaleStyle scale)] [f ()]]
-    scaleTab (name, f, m) = (name, scaled f, m)
+    scaleTab (name, f) = (name, scaled f)
     scaledSideBar = List.map scaleTab ui.tabs
-    tabs = scaledSideBar ++ [("Map", (\() -> mapView), Just M.GridInitializePanZoom)]
+    tabs = scaledSideBar ++ [("Map", (\() -> mapView))]
     mainContent = vabox
       [s [S.height (S.pct 100), S.width (S.pct 100)]]
       [ tabbedView "right-side-bar" ui.defaultTab model tabs

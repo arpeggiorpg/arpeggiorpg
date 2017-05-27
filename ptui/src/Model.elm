@@ -81,7 +81,7 @@ type Msg
     | ToggleGridSpecial T.Point3
     | ToggleCollapsed String
     | ToggleFolderCollapsed String
-    | SelectView String String (Maybe Msg)
+    | SelectView String
 
     | ShowGameLogs (List T.GameLog)
 
@@ -112,7 +112,7 @@ defaultModel flags =
   , gridSpecialExpanded = Nothing
   , gridPanning = False
   , collapsed = Dict.empty
-  , selectedViews = Dict.empty
+  , selectedView = ""
   , focus = NoFocus
   , secondaryFocus = Focus2None
   , modal = NoModal
@@ -140,7 +140,7 @@ type alias Model =
   , gridPanning: Bool
   , collapsed : Dict.Dict String Bool
   , folderState: FolderState
-  , selectedViews : Dict.Dict String String
+  , selectedView: String
   , focus: Focus
   , secondaryFocus: SecondaryFocus
   , modal: Modal
