@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 
 import * as Hello from "./Hello";
+import * as History from "./History";
 import * as TextInput from "./TextInput";
 
 function unloadComponent(id: string) {
@@ -16,6 +17,9 @@ function PT_initializeComponents(app: any) {
   app.ports.renderTextInput.subscribe(afterView(
     function (x: [string, string, object, boolean]) { TextInput.renderTextInput(app, x) }
   ));
+
+  app.ports.renderHistory.subscribe(afterView(History.renderHistory));
+
   app.ports.unloadComponent.subscribe(unloadComponent);
 }
 

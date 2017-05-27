@@ -111,7 +111,11 @@ update msg model = case msg of
     let maybeReinitMap =
           if (model.windowSize.width < 880 && s.width >= 880)
           || (model.windowSize.width >= 880 && s.width < 880)
-          then M.GridInitializePanZoom
+          then 
+            -- TODO: If we are switching from wide to narrow, and we already have a map on the
+            -- screen, and we know that we will not have a map on the screen after this switch
+            -- (model.selectedView != "Map"), then run PanZoom.destroyPanZoom.
+            M.GridInitializePanZoom
           else M.NoMsg
     in ({model | windowSize = s}, message maybeReinitMap)
 
@@ -196,6 +200,8 @@ update msg model = case msg of
     let
       msg =
         case (model.selectedView, name) of
+          (_, "History") -> Components.renderHistory ("history-view", JE.string "From Elm!")
+          ("History", _) -> Components.unloadComponent "history-view"
           (_, "Map") -> message M.GridInitializePanZoom
           ("Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
           _ -> Cmd.none

@@ -825,13 +825,14 @@ playersView model app =
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg
 historyView app =
-  let snapIdx = (Array.length app.snapshots) - 1
-      _ = Debug.log "[EXPENSIVE:historyView]" ()
-      items =
-        case Array.get snapIdx app.snapshots of
-          Just (_, items) -> Array.toList items
-          Nothing -> []
-  in vbox <| List.reverse (List.indexedMap (historyItem app snapIdx) items)
+  div [id "history-view"] []
+  -- let snapIdx = (Array.length app.snapshots) - 1
+  --     _ = Debug.log "[EXPENSIVE:historyView]" ()
+  --     items =
+  --       case Array.get snapIdx app.snapshots of
+  --         Just (_, items) -> Array.toList items
+  --         Nothing -> []
+  -- in vbox <| List.reverse (List.indexedMap (historyItem app snapIdx) items)
 
 
 renderFolderPath : T.FolderPath -> Html M.Msg
