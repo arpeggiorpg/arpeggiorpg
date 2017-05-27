@@ -32,6 +32,10 @@ class History extends React.Component<{ data: any }, any> {
         </Flexbox>;
       case "CreateFolder":
         return <Flexbox><div>Created Folder</div><div>{log.path}</div></Flexbox>;
+      case "StartCombat":
+        return <Flexbox>Combat started. Combatants: <div>{log.creatures.toString()}</div></Flexbox>
+      case "StopCombat":
+        return <Flexbox>Combat stopped.</Flexbox>;
     }
   }
 }
