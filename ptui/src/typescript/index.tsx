@@ -14,7 +14,7 @@ function unloadComponent(id: string) {
 function PT_initializeComponents(app: any) {
   app.ports.renderHello.subscribe(afterView(Hello.renderHello));
   app.ports.renderTextInput.subscribe(afterView(
-    function (x: [string, string, object]) { TextInput.renderTextInput(app, x) }
+    function (x: [string, string, object, boolean]) { TextInput.renderTextInput(app, x) }
   ));
   app.ports.unloadComponent.subscribe(unloadComponent);
 }

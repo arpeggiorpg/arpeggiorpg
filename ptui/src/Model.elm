@@ -92,7 +92,7 @@ type Msg
     -- External components
 
     | RenderHello String
-    | LoadTextInput String String (Dict.Dict String String)
+    | LoadTextInput String String (Dict.Dict String String) Bool
     | TextInputSubmit (String, String)
     | TextInputCancel (String, String)
 

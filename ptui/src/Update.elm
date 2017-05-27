@@ -361,14 +361,14 @@ update msg model = case msg of
     case (model.editingInitiative, x) of
       (_, Just (cid, i)) ->
         ( {model | editingInitiative = Just cid}
-        , message <| LoadTextInput "focus-init" (toString i) (Dict.fromList [("width", "25px")]) )
+        , message <| LoadTextInput "focus-init" (toString i) (Dict.fromList [("width", "25px")]) True )
       (Just _, Nothing) ->
         ( {model | editingInitiative = Nothing}, Components.unloadComponent "focus-init")
       (Nothing, Nothing) -> (model, Cmd.none)
   EditCreatureNote mnote ->
     case (model.editingNote, mnote) of
       (_, Just (c, n)) ->
-        ({model | editingNote = Just c}, message <| LoadTextInput "focus-note" n Dict.empty)
+        ({model | editingNote = Just c}, message <| LoadTextInput "focus-note" n Dict.empty False)
       (Just _, Nothing) ->
         ({model | editingNote = Nothing}, Components.unloadComponent "focus-note" )
       (Nothing, Nothing) -> (model, Cmd.none)
@@ -379,9 +379,9 @@ update msg model = case msg of
 
   -- External Components
   RenderHello id -> (model, Components.renderHello id)
-  LoadTextInput id defaultValue style ->
+  LoadTextInput id defaultValue style numbersOnly ->
     let styleValue = T.encodeStringDict JE.string style
-    in (model, Components.renderTextInput (id, defaultValue, styleValue))
+    in (model, Components.renderTextInput (id, defaultValue, styleValue, numbersOnly))
   TextInputSubmit (id, content) ->
     if id == "focus-init" then
       case model.editingInitiative of 
