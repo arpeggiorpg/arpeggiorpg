@@ -49,5 +49,5 @@ function decodeSkillLevel(i: any): SkillLevel {
   if (SkillLevel_values.indexOf(i) > -1) {
     return i;
   }
-  throw new Error(`${i} is not a SkillLevel.`);
+  throw new Error(`Expected a SkillLevel, got ${i}.`);
 }

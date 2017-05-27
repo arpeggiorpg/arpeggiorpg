@@ -21,11 +21,11 @@ class TextInput extends React.Component<TextInputProps, { value: string }> {
   cancel(): void { this.props.onCancel(this.state.value); }
 
   handleKeyDown(this: TextInput, event: React.KeyboardEvent<HTMLInputElement>): void {
-    if (event.keyCode == 13) {
-      if ((this.props.numbersOnly && this.state.value != "-") || !this.props.numbersOnly) {
+    if (event.keyCode === 13) {
+      if ((this.props.numbersOnly && this.state.value !== "-") || !this.props.numbersOnly) {
         this.props.onSubmit(this.state.value);
       }
-    } else if (event.keyCode == 27) {
+    } else if (event.keyCode === 27) {
       this.cancel();
     }
   }
@@ -35,7 +35,7 @@ class TextInput extends React.Component<TextInputProps, { value: string }> {
     if (this.props.numbersOnly) {
       if (!isNaN(Number(value))) {
         this.setState({ value: value });
-      } else if (value == "-") {
+      } else if (value === "-") {
         this.setState({ value: value });
       } else {
         console.log("Not a number!", value);

@@ -4,20 +4,20 @@
 type JSObject = { [index: string]: any };
 
 export function bool(i: any): boolean {
-  if (typeof i == "boolean") {
+  if (typeof i === "boolean") {
     return i as boolean;
   }
-  throw new Error(`Not a boolean: ${i}.`);
+  throw new Error(`Expected boolean, got ${i}.`);
 }
 
 export function string(i: any): string {
-  if (typeof i == "string") { return i as string; }
-  throw new Error(`Not a string: ${i}.`);
+  if (typeof i === "string") { return i as string; }
+  throw new Error(`Expected string, got ${i}.`);
 }
 
 export function number(i: any): number {
-  if (typeof i == "number") { return i as number; }
-  throw new Error(`Not a number: ${i}.`);
+  if (typeof i === "number") { return i as number; }
+  throw new Error(`Expected number, got ${i}.`);
 }
 
 type Decoder<T> = (i: any) => T;
@@ -36,22 +36,25 @@ export function index<T>(arr: any, idx: number, decoder: Decoder<T>): T {
     }
     throw new Error(`Expected index ${idx} in array ${arr}.`)
   }
-  throw new Error(`Expected an array: ${arr}.`)
+  throw new Error(`Expected array, got ${arr}.`)
 }
 
-export function sum<T>(name: string, obj: any, nullaryDecoders: { [index: string]: T }, decoders: { [index: string]: Decoder<T> }): T {
+export function sum<T>(
+    name: string, obj: any,
+    nullaryDecoders: { [index: string]: T },
+    decoders: { [index: string]: Decoder<T> }): T {
   /// This decoder is specific to the Serde-serialized JSON format:
   /// Nullary variants are just strings like "VariantName"
   /// Unary variants are {"VariantName": value}
   /// "tuple" variants are {"VariantName": [values, ...]}
   /// record variants are {"VariantName": {...}}
-  for (var variant in nullaryDecoders) {
+  for (let variant in nullaryDecoders) {
     if (obj === variant) {
       return nullaryDecoders[variant];
     }
   }
-  if (typeof (obj) == 'object') {
-    for (var variant in decoders) {
+  if (typeof (obj) === 'object') {
+    for (let variant in decoders) {
       if (obj.hasOwnProperty(variant)) {
         let decoder = decoders[variant];
         return decoder(obj[variant]);

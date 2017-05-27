@@ -9,7 +9,7 @@ import * as PTTypes from "./PTTypes";
 
 function unloadComponent(id: string) {
   let el = document.getElementById(id);
-  if (el != null) {
+  if (el !== null) {
     ReactDOM.unmountComponentAtNode(el);
   }
 }
