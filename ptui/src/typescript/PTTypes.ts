@@ -1,8 +1,25 @@
-import { validate } from 'interface-validator';
 import * as JD from './JsonDecode';
 
 type CreatureID = string;
 type AttrID = string;
+
+
+export interface App {
+  snapshots: AppSnapshots
+};
+
+export type AppSnapshots = Array<{snapshot: GameSnapshot, logs: Array<GameLog>}>
+
+export interface GameSnapshot {};
+
+export function decodeAppSnapshots(obj: any): AppSnapshots {
+  let decodeArrayGameLogs = (l:any): Array<GameLog> => { console.log("Log Array:", l); return JD.array(l, decodeGameLog) };
+  let gs: GameSnapshot = {};
+  console.log("Top-level:", obj);
+  return JD.array(obj, (item) => {
+    console.log("Two-Tuple:", item);
+    return ({snapshot: gs, logs: JD.index(item, 1, decodeArrayGameLogs)}) } );
+}
 
 export type GameLog =
   | {
@@ -15,8 +32,7 @@ export type GameLog =
   | { t: "CreateFolder"; path: string }
 
 export function decodeGameLog(obj: object): GameLog {
-  return JD.sum<GameLog>("GameLog", obj, {
-  }, {
+  return JD.sum<GameLog>("GameLog", obj, {}, {
       "CreateFolder": (path) => ({ t: "CreateFolder", path: JD.string(path) }),
       "AttributeCheckResult": (data) => ({
         t: "AttributeCheckResult",

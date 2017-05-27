@@ -39,6 +39,17 @@ export function index<T>(arr: any, idx: number, decoder: Decoder<T>): T {
   throw new Error(`Expected array, got ${arr}.`)
 }
 
+export function array<T>(arr: any, decoder: Decoder<T>): Array<T> {
+  let result = [];
+  if (! (arr instanceof Array)) {
+    throw Error('Expected array, got ${arr}.');
+  }
+  for (let i in arr) {
+    result.push(decoder(arr[i]));
+  }
+  return result;
+}
+
 export function sum<T>(
     name: string, obj: any,
     nullaryDecoders: { [index: string]: T },
@@ -61,5 +72,6 @@ export function sum<T>(
       }
     }
   }
+  console.log(`${name}`, obj);
   throw new Error(`Couldn't decode a ${name} from ${obj}.`);
 }

@@ -19,6 +19,7 @@
   "dependencies": {
     "@types/react": "^15.0.25",
     "@types/react-dom": "^15.5.0",
+    "flexbox-react": "^4.3.3",
     "react": "^15.5.4",
     "react-dom": "^15.5.4"
   },

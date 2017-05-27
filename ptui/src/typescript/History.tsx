@@ -1,9 +1,11 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import Flexbox from 'flexbox-react';
 
 import * as PTTypes from './PTTypes';
 
 export function renderHistory([id, data]: [string, Array<Array<[any, Array<any>]>>]) {
+  console.log("Rendering History", id, data);
   ReactDOM.render(
     <History data={data} />,
     document.getElementById(id)
@@ -12,19 +14,27 @@ export function renderHistory([id, data]: [string, Array<Array<[any, Array<any>]
 
 class History extends React.Component<{ data: any }, any> {
   render(): JSX.Element {
-    return <ul>{
-      this.props.data[0][1].map(
-        (l: any, i: number) => <li key={i}>{this.gameLog(PTTypes.decodeGameLog(l))}</li>
+  let snaps = PTTypes.decodeAppSnapshots(this.props.data);
+    return <Flexbox flexDirection="column">{
+      snaps.map(
+        ({snapshot, logs}) =>
+          logs.map((log, i) => <Flexbox key={i}>{this.gameLog(log)}</Flexbox>)
       )
-    }</ul>;
+    }</Flexbox>;
   }
 
   gameLog(log: PTTypes.GameLog): JSX.Element {
     switch (log.t) {
-      case "AttributeCheckResult": return <div>Creature ID: {log.cid}<br />Success? {log.success.toString()}</div>;
-      case "CreateFolder": return <div>Created Folder {log.path}</div>
+      case "AttributeCheckResult":
+        return <Flexbox>
+          <div>Creature ID: {log.cid}</div>
+          <div>Success? {log.success.toString()}</div>
+        </Flexbox>;
+      case "CreateFolder":
+        return <Flexbox><div>Created Folder</div><div>{log.path}</div></Flexbox>;
     }
   }
 }
 
 interface AttributeCheckResult { t: "AttributeCheckResult"; }
+
