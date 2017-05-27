@@ -1,4 +1,5 @@
 import * as JD from './JsonDecode';
+import { Decoder } from './JsonDecode';
 
 type CreatureID = string;
 type SceneID = string;
@@ -13,14 +14,10 @@ export type AppSnapshots = Array<{ snapshot: GameSnapshot, logs: Array<GameLog> 
 
 export interface GameSnapshot { };
 
-export function decodeAppSnapshots(obj: any): AppSnapshots {
-  let decodeArrayGameLogs = (l: any): Array<GameLog> => { console.log("Log Array:", l); return JD.array(l, decodeGameLog) };
-  let gs: GameSnapshot = {};
-  console.log("Top-level:", obj);
-  return JD.array(obj, (item) => {
-    console.log("Two-Tuple:", item);
-    return ({ snapshot: gs, logs: JD.index(item, 1, decodeArrayGameLogs) })
-  });
+interface AttributeCheck {
+  reliable: boolean;
+  attr: AttrID;
+  target: SkillLevel;
 }
 
 export type GameLog =
@@ -35,42 +32,50 @@ export type GameLog =
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
   | { t: "StopCombat" }
 
-export function decodeGameLog(obj: object): GameLog {
-  return JD.sum<GameLog>("GameLog", obj, {
-    "StopCombat": { t: "StopCombat" }
-  }, {
-      "StartCombat": (rec) => ({
-        t: "StartCombat",
-        scene: JD.index(rec, 0, JD.string),
-        creatures: JD.index(rec, 1, (a) => JD.array(a, (carr) => ({cid: JD.index(carr, 0, JD.string), init: JD.index(carr, 1, JD.number)}))),
-      }),
-      "CreateFolder": (path) => ({ t: "CreateFolder", path: JD.string(path) }),
-      "AttributeCheckResult": (data) => ({
-        t: "AttributeCheckResult",
-        cid: JD.index(data, 0, JD.string),
-        check: JD.index(data, 1, decodeAttributeCheck),
-        actual: JD.index(data, 2, JD.number),
-        success: JD.index(data, 3, JD.bool)
-      })
-    });
-}
-
-interface AttributeCheck {
-  reliable: boolean;
-  attr: AttrID;
-  target: SkillLevel;
-}
-
-export function decodeAttributeCheck(obj: object): AttributeCheck {
-  return {
-    reliable: JD.field(obj, "reliable", JD.bool),
-    attr: JD.field(obj, "attr", JD.string),
-    target: JD.field(obj, "target", decodeSkillLevel),
-  };
-}
-
 type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural"
 let SkillLevel_values: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
+
+/// Decoders
+
+const decodeAttributeCheck: Decoder<AttributeCheck> = JD.map3(
+  (r, a, t): AttributeCheck => ({ reliable: r, attr: a, target: t }),
+  JD.field("reliable", JD.bool),
+  JD.field("attr", JD.string),
+  JD.field("target", decodeSkillLevel),
+)
+
+export const decodeGameLog: Decoder<GameLog> =
+  JD.sum<GameLog>("GameLog", {
+    "StopCombat": { t: "StopCombat" }
+  }, {
+      "StartCombat": JD.map2(
+        (scene, creatures): GameLog => ({
+          t: "StartCombat",
+          scene: scene,
+          creatures: creatures,
+        }),
+        JD.index(0, JD.string),
+        JD.index(1, JD.array(JD.map2((cid, init) => ({ cid: cid, init: init }),
+          JD.index(0, JD.string),
+          JD.index(1, JD.number))))
+      ),
+      "CreateFolder": JD.map((p: string): GameLog => ({ t: "CreateFolder", path: p }), JD.string),
+      "AttributeCheckResult":
+      JD.map4(
+        (cid, check, actual, success): GameLog => ({
+          t: "AttributeCheckResult", cid: cid, check: check, actual: actual, success: success
+        }),
+        JD.index(0, JD.string),
+        JD.index(1, decodeAttributeCheck),
+        JD.index(2, JD.number),
+        JD.index(3, JD.bool)
+      )
+    });
+
+export const decodeAppSnapshots: Decoder<AppSnapshots> =
+  JD.array(JD.map(
+    (ls) => ({ snapshot: {} as GameSnapshot, logs: ls }),
+    JD.index(1, JD.array(decodeGameLog))))
 
 function decodeSkillLevel(i: any): SkillLevel {
   if (SkillLevel_values.indexOf(i) > -1) {
