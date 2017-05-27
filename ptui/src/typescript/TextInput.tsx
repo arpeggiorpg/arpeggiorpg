@@ -40,6 +40,7 @@ class TextInput extends React.Component<TextInputProps, { value: string }> {
       onChange={e => this.setState({ value: e.target.value })}
       onKeyDown={e => this.handleKeyDown(e)}
       onBlur={e => this.cancel()}
+      style={this.props.styles}
       ></input>;
   }
 }
