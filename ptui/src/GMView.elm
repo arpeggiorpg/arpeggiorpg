@@ -689,7 +689,7 @@ sceneMap model app scene =
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature =
   let edit =
-        div [id "focus-me"] []
+        div [id "focus-note"] []
         --  creature.note
         --           [ s [S.width (S.px 300)]
         --           , onInput <| \inp -> (M.EditCreatureNote (Just (creature.id, inp)))]
@@ -721,23 +721,13 @@ inCombatView model app combat =
   let game = app.current_game
       creatures = List.map Tuple.first <| T.getCombatCreatures game combat
       disengageButtons = hbox (List.map disengageButton creatures)
-      updateTempInitiative cid inp =
-        case String.toInt inp of
-          Ok newInit -> M.EditInitiativeFor (Just (cid, newInit))
-          Err _ -> M.NoMsg
       extraGutter idx creature init =
         let notEditing =
               [ a [onClick (M.EditInitiativeFor (Just (creature.id, init)))] [text (toString init)] ]
         in 
           case model.editingInitiative of
             Just cid ->
-              if cid == creature.id then
-                [ div [id "focus-me"] []
-                            -- [ onInput <| updateTempInitiative creature.id ]
-                            -- (M.Batch [ M.SendCommand (T.ChangeCreatureInitiative cid newInit)
-                            --          , M.EditInitiativeFor Nothing])
-                            -- (M.EditInitiativeFor Nothing)
-                ]
+              if cid == creature.id then [ div [id "focus-init"] [] ]
               else notEditing
             Nothing -> notEditing
       extraCreatureCard creature = [noteBox model creature]

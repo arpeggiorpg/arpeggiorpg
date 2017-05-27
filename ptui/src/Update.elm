@@ -361,16 +361,16 @@ update msg model = case msg of
     case (model.editingInitiative, x) of
       (_, Just (cid, i)) ->
         ( {model | editingInitiative = Just cid}
-        , message <| LoadTextInput "focus-me" (toString i) Dict.empty )
+        , message <| LoadTextInput "focus-init" (toString i) Dict.empty )
       (Just _, Nothing) ->
-        ( {model | editingInitiative = Nothing}, Components.unloadComponent "focus-me")
+        ( {model | editingInitiative = Nothing}, Components.unloadComponent "focus-init")
       (Nothing, Nothing) -> (model, Cmd.none)
   EditCreatureNote mnote ->
     case (model.editingNote, mnote) of
       (_, Just (c, n)) ->
-        ({model | editingNote = Just c}, message <| LoadTextInput "focus-me" n Dict.empty)
+        ({model | editingNote = Just c}, message <| LoadTextInput "focus-note" n Dict.empty)
       (Just _, Nothing) ->
-        ({model | editingNote = Nothing}, Components.unloadComponent "focus-me" )
+        ({model | editingNote = Nothing}, Components.unloadComponent "focus-note" )
       (Nothing, Nothing) -> (model, Cmd.none)
 
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
@@ -383,22 +383,34 @@ update msg model = case msg of
     let styleValue = T.encodeStringDict JE.string style
     in (model, Components.renderTextInput (id, defaultValue, styleValue))
   TextInputSubmit (id, content) ->
-    (model, Cmd.none)
-  TextInputCancel (id, content) -> (model, Cmd.none)
-
-maybeFocusAndSelect : String -> Maybe a -> Maybe a -> Cmd M.Msg
-maybeFocusAndSelect id oldm newm =
-  case oldm of
-    Just _ -> Cmd.none
-    Nothing ->
-      case newm of
-        Just _ -> focusAndSelect id
-        Nothing -> Cmd.none
-
-focusAndSelect : String -> Cmd M.Msg
-focusAndSelect id =
-  Cmd.batch [ Dom.focus id |> Task.attempt (always M.NoMsg)
-            , DomUtils.select id]
+    if id == "focus-init" then
+      case model.editingInitiative of 
+        Nothing -> (model, Cmd.none)
+        Just cid ->
+          case String.toInt content of
+            Ok num -> 
+              ( {model | editingInitiative = Nothing}
+              , message (M.SendCommand (T.ChangeCreatureInitiative cid num)))
+            Err _ -> (model, Cmd.none)
+    else if id == "focus-note" then
+      case model.editingNote of
+        Nothing -> (model, Cmd.none)
+        Just cid ->
+          case model.app of
+            Just app ->
+              case T.getCreature app.current_game cid of
+                Just creature ->
+                  ( {model | editingNote = Nothing}
+                  , message (M.SendCommand (T.EditCreature {creature | note = content})))
+                Nothing -> (model, Cmd.none)
+            Nothing -> (model, Cmd.none)
+    else (model, Cmd.none)
+  TextInputCancel (id, content) ->
+    if id == "focus-init" then
+      ({model | editingInitiative = Nothing}, Cmd.none)
+    else if id == "focus-note" then
+      ({model | editingNote = Nothing}, Cmd.none)
+    else (model, Cmd.none)
 
 toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
 toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
