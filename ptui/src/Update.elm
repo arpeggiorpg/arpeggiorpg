@@ -361,7 +361,7 @@ update msg model = case msg of
     case (model.editingInitiative, x) of
       (_, Just (cid, i)) ->
         ( {model | editingInitiative = Just cid}
-        , message <| LoadTextInput "focus-init" (toString i) Dict.empty )
+        , message <| LoadTextInput "focus-init" (toString i) (Dict.fromList [("width", "25px")]) )
       (Just _, Nothing) ->
         ( {model | editingInitiative = Nothing}, Components.unloadComponent "focus-init")
       (Nothing, Nothing) -> (model, Cmd.none)

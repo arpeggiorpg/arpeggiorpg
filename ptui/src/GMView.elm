@@ -688,14 +688,7 @@ sceneMap model app scene =
     to creatureCard. -}
 noteBox : M.Model -> T.Creature -> Html M.Msg
 noteBox model creature =
-  let edit =
-        div [id "focus-note"] []
-        --  creature.note
-        --           [ s [S.width (S.px 300)]
-        --           , onInput <| \inp -> (M.EditCreatureNote (Just (creature.id, inp)))]
-        --           (M.Batch [ M.SendCommand (T.EditCreature {creature | note = note})
-        --                    , M.EditCreatureNote Nothing])
-        --           (M.EditCreatureNote Nothing)
+  let edit = div [id "focus-note"] []
       view = a [onClick (M.EditCreatureNote (Just (creature.id, creature.note)))]
                [dtext (if creature.note /= "" then creature.note else "NOTE")]
   in
@@ -727,7 +720,7 @@ inCombatView model app combat =
         in 
           case model.editingInitiative of
             Just cid ->
-              if cid == creature.id then [ div [id "focus-init"] [] ]
+              if cid == creature.id then [ div [s [S.width (S.px 25)], id "focus-init"] [] ]
               else notEditing
             Nothing -> notEditing
       extraCreatureCard creature = [noteBox model creature]
