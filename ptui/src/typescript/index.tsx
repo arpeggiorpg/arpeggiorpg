@@ -5,6 +5,8 @@ import * as Hello from "./Hello";
 import * as History from "./History";
 import * as TextInput from "./TextInput";
 
+import * as PTTypes from "./PTTypes";
+
 function unloadComponent(id: string) {
   let el = document.getElementById(id);
   if (el != null) {
@@ -41,3 +43,8 @@ function afterView(f: any) {
 // old javascript callers
 
 (window as any).PT_initializeComponents = PT_initializeComponents;
+
+(window as any).PTT = PTTypes;
+
+import * as JD from './JsonDecode';
+(window as any).JD = JD;

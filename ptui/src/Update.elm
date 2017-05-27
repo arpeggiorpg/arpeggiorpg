@@ -199,11 +199,11 @@ update msg model = case msg of
     if name == model.selectedView then (model, Cmd.none) else 
     let
       msg =
-        case (model.selectedView, name) of
-          (_, "History") -> Components.renderHistory ("history-view", JE.string "From Elm!")
-          ("History", _) -> Components.unloadComponent "history-view"
-          (_, "Map") -> message M.GridInitializePanZoom
-          ("Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
+        case (model.app, model.selectedView, name) of
+          (Just app, _, "History") -> Components.renderHistory ("history-view", app.raw_snapshots)
+          (_, "History", _) -> Components.unloadComponent "history-view"
+          (_, _, "Map") -> message M.GridInitializePanZoom
+          (_, "Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
           _ -> Cmd.none
     in ( {model | selectedView = name}, msg)
 
