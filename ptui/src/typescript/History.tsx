@@ -14,7 +14,7 @@ export function renderHistory([id, data]: [string, Array<Array<[any, Array<any>]
 
 class History extends React.Component<{ data: any }, any> {
   render(): JSX.Element {
-  let snaps = PTTypes.decodeAppSnapshots(this.props.data);
+  let snaps = PTTypes.decodeAppSnapshots.decodeAny(this.props.data);
     return <Flexbox flexDirection="column">{
       snaps.map(
         ({snapshot, logs}) =>

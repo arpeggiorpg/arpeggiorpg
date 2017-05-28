@@ -17,11 +17,14 @@
   },
   "homepage": "https://github.com/radix/pandt#readme",
   "dependencies": {
+    "@types/lodash": "^4.14.64",
     "@types/react": "^15.0.25",
     "@types/react-dom": "^15.5.0",
     "flexbox-react": "^4.3.3",
+    "lodash": "^4.17.4",
     "react": "^15.5.4",
-    "react-dom": "^15.5.4"
+    "react-dom": "^15.5.4",
+    "type-safe-json-decoder": "^0.1.0"
   },
   "devDependencies": {
     "source-map-loader": "^0.2.1",

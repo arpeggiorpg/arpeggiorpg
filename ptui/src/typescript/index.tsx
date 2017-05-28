@@ -45,6 +45,3 @@ function afterView(f: any) {
 (window as any).PT_initializeComponents = PT_initializeComponents;
 
 (window as any).PTT = PTTypes;
-
-import * as JD from './JsonDecode';
-(window as any).JD = JD;
