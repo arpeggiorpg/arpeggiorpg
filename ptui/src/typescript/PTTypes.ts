@@ -54,12 +54,11 @@ export type GameLog =
 
 export type CombatLog =
   | { t: "ConsumeMovement"; distance: Distance }
-// ConsumeMovement(Distance),
-// ChangeCreatureInitiative(CreatureID, i16),
-// EndTurn(CreatureID), // the end of this creature's turn
-// ForceNextTurn,
-// ForcePrevTurn,
-// RerollInitiative(Vec<(CreatureID, i16)>),
+  | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
+  | { t: "EndTurn", creature_id: CreatureID }
+  | { t: "ForceNextTurn" }
+  | { t: "ForcePrevTurn" }
+  | { t: "RerollInitiative", combatants: Array<[CreatureID, number]> }
 
 export type CreatureLog =
   | { t: "Damage"; hp: HP; rolls: Array<number> }
@@ -211,11 +210,22 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
   })
 
 export const decodeCombatLog: Decoder<CombatLog> =
-  sum<CombatLog>("CombatLog", {}, {
-    "ConsumeMovement": JD.map(
-      (distance): CombatLog => ({ t: "ConsumeMovement", distance }),
-      JD.number()),
-  });
+  sum<CombatLog>("CombatLog",
+    {
+      "ForceNextTurn": { t: "ForceNextTurn" },
+      "ForcePrevTurn": { t: "ForcePrevTurn" }
+    },
+    {
+      "ConsumeMovement": JD.map(
+        (distance): CombatLog => ({ t: "ConsumeMovement", distance }),
+        JD.number()),
+      "ChangeCreatureInitiative": JD.map(
+        ([creature_id, init]): CombatLog => ({ t: "ChangeCreatureInitiative", creature_id, init }),
+        JD.tuple(JD.string(), JD.number())),
+      "EndTurn": JD.map((creature_id): CombatLog => ({ t: "EndTurn", creature_id }), JD.string()),
+      "RerollInitiative": JD.map((combatants): CombatLog => ({ t: "RerollInitiative", combatants }),
+        JD.array(JD.tuple(JD.string(), JD.number()))),
+    });
 
 export const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { "StopCombat": { t: "StopCombat" } }, {
