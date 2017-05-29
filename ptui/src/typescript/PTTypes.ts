@@ -7,6 +7,8 @@ type SceneID = string;
 type AttrID = string;
 type MapID = string;
 type Color = string;
+type Distance = number;
+type HP = number;
 
 export interface App {
   snapshots: AppSnapshots
@@ -35,8 +37,58 @@ export type GameLog =
   | { t: "EditScene"; scene: Scene }
   | { t: "DeleteScene"; scene_id: SceneID }
   | { t: "CreateMap"; path: string; map: Map }
+  | { t: "EditMap"; map: Map }
+  | { t: "DeleteMap"; map_id: MapID }
+  | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
+  | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
+  | { t: "CreateCreature"; path: string; creature: Creature }
+  | { t: "EditCreature"; creature: Creature }
+  | { t: "DeleteCreature"; creature_id: CreatureID }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
+  | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
+  | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
+  | { t: "CombatLog"; log: CombatLog }
+  | { t: "CreatureLog"; creature_id: CreatureID; log: CreatureLog }
   | { t: "StopCombat" }
+  | { t: "Rollback"; snapshot_index: number; log_index: number }
+
+export type CombatLog =
+  | { t: "ConsumeMovement"; distance: Distance }
+// ConsumeMovement(Distance),
+// ChangeCreatureInitiative(CreatureID, i16),
+// EndTurn(CreatureID), // the end of this creature's turn
+// ForceNextTurn,
+// ForcePrevTurn,
+// RerollInitiative(Vec<(CreatureID, i16)>),
+
+export type CreatureLog =
+  | { t: "Damage"; hp: HP; rolls: Array<number> }
+  ;
+// Damage(HP, Vec<u8>),
+// Heal(HP, Vec<u8>),
+// GenerateEnergy(Energy),
+// ReduceEnergy(Energy),
+// ApplyCondition(ConditionID, ConditionDuration, Condition),
+// DecrementConditionRemaining(ConditionID),
+// RemoveCondition(ConditionID),
+
+export interface Creature {
+  id: CreatureID;
+  name: string;
+  //   pub speed: Distance,
+  //   pub max_energy: Energy,
+  //   pub cur_energy: Energy,
+  //   pub abilities: IndexedHashMap<AbilityStatus>,
+  //   pub class: String,
+  //   pub max_health: HP,
+  //   pub cur_health: HP,
+  //   pub conditions: HashMap<ConditionID, AppliedCondition>,
+  //   pub note: String,
+  //   pub portrait_url: String,
+  //   pub attributes: HashMap<AttrID, SkillLevel>,
+  //   pub initiative: Dice,
+}
+
 
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
@@ -80,26 +132,13 @@ export type Visibility =
   | { t: "GMOnly" }
   | { t: "AllPlayers" }
 
-// CreateMap(FolderPath, Map),
-// EditMap(Map),
-// DeleteMap(MapID),
-// CombatLog(CombatLog),
-// /// A creature log wrapped in a game log.
-// CreatureLog(CreatureID, CreatureLog),
-// SetCreaturePos(SceneID, CreatureID, Point3),
-// PathCreature(SceneID, CreatureID, Vec<Point3>),
-// StartCombat(SceneID, Vec<(CreatureID, i16)>),
-// StopCombat,
-// CreateCreature(FolderPath, Creature),
-// EditCreature(Creature),
-// DeleteCreature(CreatureID),
-// AddCreatureToCombat(CreatureID, i16),
-// RemoveCreatureFromCombat(CreatureID),
-// /// Indexes into snapshots and logs.
-// Rollback(usize, usize),
-
-
 /// Decoders
+
+const decodeCreature: Decoder<Creature> = JD.object(
+  ["id", JD.string()],
+  ["name", JD.string()],
+  (id, name) => ({ id, name })
+);
 
 const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
 
@@ -163,6 +202,20 @@ const decodeNote: Decoder<Note> =
     (name, content) => ({ name, content })
   );
 
+export const decodeCreatureLog: Decoder<CreatureLog> =
+  sum<CreatureLog>("CreatureLog", {}, {
+    "Damage": JD.map(
+      ([hp, rolls]): CreatureLog => ({ t: "Damage", hp, rolls }),
+      JD.tuple(JD.number(), JD.array(JD.number()))
+    ),
+  })
+
+export const decodeCombatLog: Decoder<CombatLog> =
+  sum<CombatLog>("CombatLog", {}, {
+    "ConsumeMovement": JD.map(
+      (distance): CombatLog => ({ t: "ConsumeMovement", distance }),
+      JD.number()),
+  });
 
 export const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { "StopCombat": { t: "StopCombat" } }, {
@@ -197,11 +250,36 @@ export const decodeGameLog: Decoder<GameLog> =
     "CreateMap": JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(JD.string(), decodeMap)),
+    "EditMap": JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
+    "DeleteMap": JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
+    "SetCreaturePos": JD.map(
+      ([scene_id, creature_id, pos]): GameLog =>
+        ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
+      JD.tuple(JD.string(), JD.string(), decodePoint3)),
+    "PathCreature": JD.map(
+      ([scene_id, creature_id, path]): GameLog => ({ t: "PathCreature", scene_id, creature_id, path }),
+      JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
+    "CreateCreature": JD.map(
+      ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
+      JD.tuple(JD.string(), decodeCreature)),
+    "EditCreature": JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
+    "DeleteCreature": JD.map(
+      (creature_id): GameLog => ({ t: "DeleteCreature", creature_id }),
+      JD.string()),
+    "AddCreatureToCombat": JD.map(
+      ([creature_id, init]): GameLog => ({ t: "AddCreatureToCombat", creature_id, init }),
+      JD.tuple(JD.string(), JD.number())),
+    "RemoveCreatureFromCombat": JD.map(
+      (creature_id): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id }),
+      JD.string()),
     "AttributeCheckResult": JD.map(
       ([cid, check, actual, success]): GameLog =>
         ({ t: "AttributeCheckResult", cid, check, actual, success }),
       JD.tuple(JD.string(), decodeAttributeCheck, JD.number(), JD.boolean())
-    )
+    ),
+    "Rollback": JD.map(
+      ([snapshot_index, log_index]): GameLog => ({ t: "Rollback", snapshot_index, log_index }),
+      JD.tuple(JD.number(), JD.number())),
   });
 
 export const decodeAppSnapshots: Decoder<AppSnapshots> =
