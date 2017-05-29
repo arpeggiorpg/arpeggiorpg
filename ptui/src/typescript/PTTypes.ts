@@ -9,6 +9,8 @@ type MapID = string;
 type Color = string;
 type Distance = number;
 type HP = number;
+type Energy = number;
+type ConditionID = number;
 
 export interface App {
   snapshots: AppSnapshots
@@ -62,14 +64,19 @@ export type CombatLog =
 
 export type CreatureLog =
   | { t: "Damage"; hp: HP; rolls: Array<number> }
-  ;
-// Damage(HP, Vec<u8>),
-// Heal(HP, Vec<u8>),
-// GenerateEnergy(Energy),
-// ReduceEnergy(Energy),
-// ApplyCondition(ConditionID, ConditionDuration, Condition),
-// DecrementConditionRemaining(ConditionID),
-// RemoveCondition(ConditionID),
+  | { t: "Heal"; hp: HP; rolls: Array<number> }
+  | { t: "GenerateEnergy"; energy: Energy }
+  | { t: "ReduceEnergy"; energy: Energy }
+  | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO: Condition
+  | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
+  | { t: "RemoveCondition"; condition_id: ConditionID }
+
+export type ConditionDuration =
+  | { t: "Interminate" }
+  | { t: "Duration"; duration: number }
+
+export type Condition =
+  | { t: "Condition" }
 
 export interface Creature {
   id: CreatureID;
@@ -131,7 +138,15 @@ export type Visibility =
   | { t: "GMOnly" }
   | { t: "AllPlayers" }
 
-/// Decoders
+// ** Decoders **
+
+const decodeConditionDuration: Decoder<ConditionDuration> =
+  sum<ConditionDuration>("ConditionDuration", { "Interminate": { t: "Interminate" } },
+    {
+      "Duration": JD.map(
+        (duration): ConditionDuration => ({ t: "Duration", duration }),
+        JD.number())
+    })
 
 const decodeCreature: Decoder<Creature> = JD.object(
   ["id", JD.string()],
@@ -205,8 +220,21 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
   sum<CreatureLog>("CreatureLog", {}, {
     "Damage": JD.map(
       ([hp, rolls]): CreatureLog => ({ t: "Damage", hp, rolls }),
-      JD.tuple(JD.number(), JD.array(JD.number()))
-    ),
+      JD.tuple(JD.number(), JD.array(JD.number()))),
+    "Heal": JD.map(([hp, rolls]): CreatureLog => ({ t: "Heal", hp, rolls }),
+      JD.tuple(JD.number(), JD.array(JD.number()))),
+    "GenerateEnergy": JD.map((energy): CreatureLog => ({ t: "GenerateEnergy", energy }),
+      JD.number()),
+    "ReduceEnergy": JD.map((energy): CreatureLog => ({ t: "ReduceEnergy", energy }),
+      JD.number()),
+    "ApplyCondition": JD.map(
+      ([condition_id, duration]): CreatureLog => ({ t: "ApplyCondition", condition_id, duration }),
+      JD.tuple(JD.number(), decodeConditionDuration)),
+    "DecrementConditionRemaining": JD.map(
+      (condition_id): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id }),
+      JD.number()),
+    "RemoveCondition": JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
+      JD.number()),
   })
 
 export const decodeCombatLog: Decoder<CombatLog> =
