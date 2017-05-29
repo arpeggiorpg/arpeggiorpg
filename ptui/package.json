@@ -24,7 +24,7 @@
     "lodash": "^4.17.4",
     "react": "^15.5.4",
     "react-dom": "^15.5.4",
-    "type-safe-json-decoder": "^0.1.0"
+    "type-safe-json-decoder": "file:..\\..\\type-safe-json-decoder\\dist"
   },
   "devDependencies": {
     "source-map-loader": "^0.2.1",

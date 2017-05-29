@@ -128,8 +128,8 @@ interface Scene {
   id: SceneID,
   name: string,
   map: MapID,
-  // creatures: { [index: string]: [Point3, Visibility] },
-  // attribute_checks: { [index: string]: AttributeCheck },
+  creatures: { [index: string]: [Point3, Visibility] },
+  attribute_checks: { [index: string]: AttributeCheck },
 }
 
 type Point3 = [number, number, number];
@@ -184,16 +184,10 @@ const decodeScene: Decoder<Scene> =
     ["id", JD.string()],
     ["name", JD.string()],
     ["map", JD.string()],
-    // ["creatures", JD.string()],
-    // ["attribute_checks", JD.dict(decodeAttributeCheck)],
-    (id, name, map,
-      // creatures, 
-      // attribute_checks
-    ): Scene => ({
-      id, name, map,
-      //  creatures, 
-      // attribute_checks
-    })
+    ["creatures", JD.dict(JD.tuple(decodePoint3, decodeVisibility))],
+    ["attribute_checks", JD.dict(decodeAttributeCheck)],
+    (id, name, map, creatures, attribute_checks): Scene =>
+      ({ id, name, map, creatures, attribute_checks })
   );
 ;
 
@@ -356,7 +350,7 @@ export function sum<T>(
 
 function assertEq<T>(a: T, b: T, msg?: string) {
   if (!Lodash.isEqual(a, b)) {
-    console.log("Not equal", a, "!==", b, msg);
+    console.log("Not equal", JSON.stringify(a, null, 2), "!==", JSON.stringify(b, null, 2), msg);
     throw new Error(`Not equal (${msg}) ${a} !== ${b}`)
   }
 }
@@ -392,6 +386,32 @@ export function test() {
   for (let [x, y] of gameLogTests) {
     assertEq<GameLog>(decodeGameLog.decodeAny(x), y);
   }
+
+  assertEq<Visibility>(decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
+  assertEq<Visibility>(decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
+
+  // A test for type-safe-json-decoder -- apparently `dict` is buggy.
+  assertEq(JD.dict(JD.map((x): string => "foo", JD.number())).decodeAny({ key: 3 }), { key: "foo" });
+
+  let sceneJSON = {
+    id: "Scene ID",
+    name: "Scene Name",
+    map: "Map ID",
+    creatures: { "Creature ID": [[0, 0, 0], "GMOnly"] },
+    attribute_checks: {
+      "Do a backflip": exAttrCheck,
+    },
+  };
+  let exScene: Scene = {
+    id: "Scene ID",
+    name: "Scene Name",
+    map: "Map ID",
+    creatures: { "Creature ID": [[0, 0, 0], { t: "GMOnly" }] },
+    attribute_checks: {
+      "Do a backflip": exAttrCheck,
+    },
+  };
+  assertEq<Scene>(decodeScene.decodeAny(sceneJSON), exScene);
   console.log("OK");
 }
 
