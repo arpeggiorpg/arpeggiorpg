@@ -18,7 +18,9 @@ subscriptions model =
         case model.showingMovement of
           ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
           _ -> Sub.none
-  in Sub.batch [ ticks, PanZoom.panning GridPanning, Window.resizes WindowResized
+
+          -- TODO: put ticks back in here once it works better
+  in Sub.batch [ PanZoom.panning GridPanning, Window.resizes WindowResized
                , Components.textInputSubmit TextInputSubmit
                , Components.textInputCancel TextInputCancel]
 

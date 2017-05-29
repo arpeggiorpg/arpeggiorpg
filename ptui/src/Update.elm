@@ -54,8 +54,9 @@ updateModelFromApp model newApp =
         |> Maybe.andThen (\p -> p.scene)
         |> Maybe.map M.FocusScene
         |> Maybe.withDefault model.focus
-  in ( {model2 | showingMovement = showingMovement
-               , focus = focus}
+  -- TODO: fix animation
+  in ( {model2 | -- showingMovement = showingMovement
+                focus = focus}
      , mapChangeShenanigans model focus)
 
 mapChangeShenanigans : M.Model -> M.Focus -> M.Msg

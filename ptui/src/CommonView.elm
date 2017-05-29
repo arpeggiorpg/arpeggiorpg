@@ -202,9 +202,13 @@ mapModeControlsOverlay content =
 movementControls : List (Html M.Msg) -> M.Model -> Html M.Msg
 movementControls extras model =
   case model.moving of
-    Just _ ->
-      vbox <| [ button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement]
-                       [text "Cancel Movement"]
+    Just {ooc_creature} ->
+      let name = case ooc_creature of
+                  Just creature -> hbox [dtext "Moving ", dtext creature.name]
+                  Nothing -> text ""
+      in 
+      vbox <| [ hbox [ name, button [s [S.height (S.px 50), S.width (S.px 150)], onClick M.CancelMovement]
+                                    [text "Cancel Movement"] ]
               ] ++ extras
     Nothing -> text ""
 
