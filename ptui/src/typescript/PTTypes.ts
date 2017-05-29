@@ -81,16 +81,16 @@ export type Condition =
 export interface Creature {
   id: CreatureID;
   name: string;
-  //   pub speed: Distance,
-  //   pub max_energy: Energy,
-  //   pub cur_energy: Energy,
+  speed: Distance;
+  max_energy: Energy;
+  cur_energy: Energy;
   //   pub abilities: IndexedHashMap<AbilityStatus>,
-  //   pub class: String,
-  //   pub max_health: HP,
-  //   pub cur_health: HP,
+  class_: string;
+  max_health: HP;
+  cur_health: HP;
   //   pub conditions: HashMap<ConditionID, AppliedCondition>,
-  //   pub note: String,
-  //   pub portrait_url: String,
+  note: string;
+  portrait_url: string;
   //   pub attributes: HashMap<AttrID, SkillLevel>,
   //   pub initiative: Dice,
 }
@@ -151,7 +151,16 @@ const decodeConditionDuration: Decoder<ConditionDuration> =
 const decodeCreature: Decoder<Creature> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
-  (id, name) => ({ id, name })
+  ["speed", JD.number()],
+  ["max_energy", JD.number()],
+  ["cur_energy", JD.number()],
+  ["class", JD.string()],
+  ["max_health", JD.number()],
+  ["cur_health", JD.number()],
+  ["note", JD.string()],
+  ["portrait_url", JD.string()],
+  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url) =>
+    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url })
 );
 
 const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
