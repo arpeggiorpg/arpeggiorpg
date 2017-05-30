@@ -459,11 +459,11 @@ struct FakeNEC<T> {
 }
 
 #[cfg(feature="use_serde")]
-impl<T> Deserialize for NonEmptyWithCursor<T>
-  where T: Deserialize
+impl<'de, T> Deserialize<'de> for NonEmptyWithCursor<T>
+  where T: Deserialize<'de>
 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer
+    where D: Deserializer<'de>
   {
     let x: FakeNEC<T> = Deserialize::deserialize(deserializer)?;
     if x.data.len() == 0 {
@@ -483,11 +483,11 @@ impl<T> Deserialize for NonEmptyWithCursor<T>
 
 // *** Likewise for NonEmpty
 #[cfg(feature="use_serde")]
-impl<T> Deserialize for NonEmpty<T>
-  where T: Deserialize
+impl<'de, T> Deserialize<'de> for NonEmpty<T>
+  where T: Deserialize<'de>
 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer
+    where D: Deserializer<'de>
   {
     let x: Vec<T> = Deserialize::deserialize(deserializer)?;
     if x.len() == 0 {

@@ -127,7 +127,7 @@ fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
 }
 
 #[get("/movement_options/<scene_id>/<cid>")]
-fn movement_options(pt: State<PT>, scene_id: String, cid: &str) -> PTResult<Vec<Point3>> {
+fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Vec<Point3>> {
   let app = pt.app()?;
   let cid = cid.parse()?;
   let scene = scene_id.parse()?;
@@ -135,17 +135,17 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: &str) -> PTResult<Vec<
 }
 
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
-fn target_options(pt: State<PT>, scene_id: String, cid: &str, abid: &str)
+fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
                   -> PTResult<PotentialTargets> {
   let app = pt.app()?;
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
-  let abid = AbilityID::new(abid)?;
+  let abid = abid.parse()?;
   Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
 }
 
 #[route(OPTIONS, "/affected_by_volume/<scene>/<x>/<y>/<z>")]
-fn options_creatures_in_volume(scene: &str, x: &str, y: &str, z: &str) -> PreflightCORS {
+fn options_creatures_in_volume(scene: String, x: String, y: String, z: String) -> PreflightCORS {
   options_handler()
 }
 

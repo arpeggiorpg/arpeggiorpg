@@ -50,12 +50,12 @@ impl<V> ser::Serialize for IndexedHashMap<V>
   }
 }
 
-impl<V> de::Deserialize for IndexedHashMap<V>
-  where V: DeriveKey + de::Deserialize,
-        <V as DeriveKey>::KeyType: de::Deserialize
+impl<'de, V> de::Deserialize<'de> for IndexedHashMap<V>
+  where V: DeriveKey + de::Deserialize<'de>,
+        <V as DeriveKey>::KeyType: de::Deserialize<'de>
 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: de::Deserializer
+    where D: de::Deserializer<'de>
   {
     let hm: HashMap<<V as DeriveKey>::KeyType, V> = de::Deserialize::deserialize(deserializer)?;
     Ok(IndexedHashMap { data: hm })

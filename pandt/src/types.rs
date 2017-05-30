@@ -177,6 +177,13 @@ impl AbilityID {
   }
 }
 
+impl ::std::str::FromStr for AbilityID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<AbilityID, GameError> {
+    AbilityID::new(s)
+  }
+}
+
 #[cfg(test)]
 pub fn abid(s: &str) -> AbilityID {
   AbilityID::new(s).unwrap()

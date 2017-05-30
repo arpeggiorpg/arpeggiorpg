@@ -266,9 +266,9 @@ impl Serialize for FolderPath {
   }
 }
 
-impl de::Deserialize for FolderPath {
+impl<'de> de::Deserialize<'de> for FolderPath {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: de::Deserializer
+    where D: de::Deserializer<'de>
   {
     let st: String = de::Deserialize::deserialize(deserializer)?;
     match FolderPath::from_str(&st) {
@@ -380,9 +380,9 @@ impl<T> DeserializeHelper<T> {
 }
 
 
-impl<T: de::Deserialize> de::Deserialize for FolderTree<T> {
+impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: de::Deserializer
+    where D: de::Deserializer<'de>
   {
     let helper: DeserializeHelper<T> = de::Deserialize::deserialize(deserializer)?;
     Ok(helper.to_folder_tree())
