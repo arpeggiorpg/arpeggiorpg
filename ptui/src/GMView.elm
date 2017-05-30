@@ -468,7 +468,28 @@ editCreatureDialog model app editing =
 
 showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg
 showGameLogsDialog model app logs =
-  vbox (List.map (renderGameLog app) logs)
+  vbox (List.map (renderAttributeChecks app) logs)
+
+renderAttributeChecks : T.App -> T.GameLog -> Html M.Msg
+renderAttributeChecks app log =
+  let 
+    cname cid = dtext (T.creatureName app cid |> Maybe.withDefault cid)
+    creatureWithSkill cid attrid =
+      let creature = T.getCreature app.current_game cid
+          skill = creature |> Maybe.andThen (\c -> Dict.get attrid c.attributes)
+          skillText = Maybe.map toString skill |> Maybe.withDefault "Unknown"
+      in hbox [cname cid, dtext <| "(" ++ skillText ++ ")"]
+  in
+  case log of
+    T.GLAttributeCheckResult cid check roll success ->
+      habox [s [S.justifyContent S.spaceBetween]]
+      [ dtext "Random Challenge Result"
+      , creatureWithSkill cid check.attr
+      , hbox [dtext "Difficulty:", renderAttributeRequirement check]
+      , renderRoll roll
+      , dtext (if success then "Success" else "Failure")]
+    _ -> text ""
+
 
 createNewChallengeDialog : M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
 createNewChallengeDialog model app sc =
@@ -826,104 +847,8 @@ playersView model app =
 historyView : T.App -> Html M.Msg
 historyView app =
   div [id "history-view"] []
-  -- let snapIdx = (Array.length app.snapshots) - 1
-  --     _ = Debug.log "[EXPENSIVE:historyView]" ()
-  --     items =
-  --       case Array.get snapIdx app.snapshots of
-  --         Just (_, items) -> Array.toList items
-  --         Nothing -> []
-  -- in vbox <| List.reverse (List.indexedMap (historyItem app snapIdx) items)
-
 
 renderFolderPath : T.FolderPath -> Html M.Msg
 renderFolderPath path =
   hbox [ icon [] "folder"
        , if List.isEmpty path then text "Campaign Root" else text (T.folderPathToString path)]
-
--- just a quick hack which isn't good enough. need to properly align all the log data.
-hsbox : List (Html M.Msg) -> Html M.Msg
-hsbox = habox [s [S.justifyContent S.spaceBetween]]
-
-renderGameLog : T.App -> T.GameLog -> Html M.Msg
-renderGameLog app log =
-  let cname cid = dtext (T.creatureName app cid |> Maybe.withDefault cid)
-      creatureWithSkill cid attrid =
-        let creature = T.getCreature app.current_game cid
-            skill = creature |> Maybe.andThen (\c -> Dict.get attrid c.attributes)
-            skillText = Maybe.map toString skill |> Maybe.withDefault "Unknown"
-        in hbox [cname cid, dtext <| "(" ++ skillText ++ ")"]
-  in case log of
-  T.GLCreateFolder path -> hsbox [dtext "Created folder", renderFolderPath path]
-  T.GLRenameFolder path newName -> hsbox [dtext "Renamed Folder", renderFolderPath path, dtext newName]
-  T.GLDeleteFolder path -> hsbox [dtext "Deleted Folder", renderFolderPath path]
-  T.GLMoveFolderItem src item dst -> hsbox [dtext "Moved Folder Item", renderFolderPath src, dtext (toString item), renderFolderPath dst]
-  T.GLCreateNote path note -> hsbox [dtext "Created Note", dtext note.name]
-  T.GLEditNote path name note -> hsbox [dtext "Edited Note", renderFolderPath path, dtext name]
-  T.GLDeleteNote path name -> hsbox [dtext "Deleted Note", renderFolderPath path, dtext name]
-  T.GLCreateScene path scene -> hsbox [dtext "Created Scene", dtext scene.name, renderFolderPath path]
-  T.GLEditScene scene -> hsbox [dtext "Edited Scene", dtext scene.name]
-  T.GLDeleteScene sid -> hsbox [dtext "Deleted Scene", dtext sid]
-  T.GLCreateMap path map -> hsbox [dtext "Created Map", dtext map.name, renderFolderPath path]
-  T.GLEditMap map -> hsbox [dtext "Edited Map", dtext map.name]
-  T.GLDeleteMap mid -> hsbox [dtext "Deleted Map", dtext mid]
-  T.GLCreateCreature path creature -> hsbox [dtext "Created creature", dtext creature.name, renderFolderPath path]
-  T.GLEditCreature creature -> hsbox [dtext "Edited Creature", dtext creature.name]
-  T.GLDeleteCreature cid -> hsbox [dtext "Deleted creature", cname cid]
-  T.GLStartCombat scene combatants ->
-    hsbox <| [dtext "Started Combat in scene", dtext scene]
-          ++ List.map dtext (List.map Tuple.first combatants)
-  T.GLStopCombat -> dtext "Stopped combat"
-  T.GLAddCreatureToCombat cid -> hsbox [cname cid, dtext "Added Creature to Combat"]
-  T.GLRemoveCreatureFromCombat cid -> hsbox [dtext "Removed creature from Combat: ", cname cid]
-  T.GLCreatureLog cid cl -> hsbox [cname cid, historyCreatureLog cl]
-  T.GLCombatLog cl -> historyCombatLog cl
-  T.GLRollback si li -> hsbox [dtext "Rolled back. Snapshot: ", dtext (toString si), dtext " Log: ", dtext (toString li)]
-  T.GLPathCreature scene cid pts -> hsbox [dtext "Pathed creature in scene", dtext scene, cname cid, dtext (maybePos pts)]
-  T.GLSetCreaturePos scene cid pt -> hsbox [dtext "Ported creature in scene", dtext scene, cname cid, dtext (renderPt3 pt)]
-  T.GLAttributeCheckResult cid check roll success ->
-    hsbox [ dtext "Random Challenge Result"
-          , creatureWithSkill cid check.attr
-          , hbox [dtext "Difficulty:", renderAttributeRequirement check]
-          , renderRoll roll
-          , dtext (if success then "Success" else "Failure")]
-
-historyItem : T.App -> Int -> Int -> T.GameLog -> Html M.Msg
-historyItem app snapIdx logIdx log =
-  let logItem = renderGameLog app log
-  in hsbox [logItem, button [onClick (M.SendCommand (T.Rollback snapIdx logIdx))] [icon [] "history"]]
-
-historyCombatLog : T.CombatLog -> Html M.Msg
-historyCombatLog cl = case cl of
-  T.ComLEndTurn cid -> hsbox [dtext cid, dtext "Ended Turn"]
-  T.ComLChangeCreatureInitiative cid newPos -> hsbox [dtext cid, dtext "Changed initiative to", dtext <| toString newPos]
-  T.ComLConsumeMovement distance -> hsbox [dtext "Used movement", dtext (toString distance)]
-  T.ComLRerollInitiative combatants ->
-    hsbox <| [dtext "Rerolled Initiative"]
-          ++ List.map dtext (List.map Tuple.first combatants)
-  T.ComLForceNextTurn -> dtext "Forced next turn"
-  T.ComLForcePrevTurn -> dtext "Forced previous turn"
-
-
-renderPt3 : T.Point3 -> String
-renderPt3 {x, y, z} = toString x ++ "," ++ toString y
-
-maybePos : List T.Point3 -> String
-maybePos path =
-  case List.head (List.reverse path) of
-    Just {x, y, z} -> toString x ++ "," ++ toString y
-    Nothing -> "nowhere"
-
-historyCreatureLog : T.CreatureLog -> Html M.Msg
-historyCreatureLog cl = case cl of
-  T.CLDamage dmg dice -> hsbox [dtext <| "Took damage", dtext <| toString dmg, dtext <| " Dice: ", renderDice dice]
-  T.CLHeal dmg dice -> hsbox [dtext <| "Healed: " ++ toString dmg, dtext <| "Dice: ", renderDice dice]
-  T.CLGenerateEnergy nrg -> dtext <| "Regenerated energy: " ++ toString nrg
-  T.CLReduceEnergy nrg -> dtext <| "Lost energy: " ++ toString nrg
-  T.CLApplyCondition conid duration con -> dtext <| "Got condition: " ++ toString con
-  T.CLRemoveCondition conid -> dtext <| "Lost condition: " ++ toString conid
-  T.CLSetPos pos -> dtext <| "Moved  to " ++ toString pos
-  T.CLDecrementConditionRemaining conID -> dtext <| "Tick condition: " ++ toString conID
-  T.CLSetNote note -> hsbox [dtext "Set note to", dtext note]
-
-renderDice : List Int -> Html M.Msg
-renderDice dice = dtext <| String.join ", " (List.map toString dice)
