@@ -845,8 +845,7 @@ playersView model app =
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg
-historyView app =
-  div [id "history-view"] []
+historyView app = div [id "history-view"] []
 
 renderFolderPath : T.FolderPath -> Html M.Msg
 renderFolderPath path =
