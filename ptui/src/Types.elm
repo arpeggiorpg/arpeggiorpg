@@ -530,6 +530,7 @@ type Dice
   = DiceExpr {num: Int, size: Int}
   | DicePlus Dice Dice
   | DiceFlat Int
+  | DiceBestOf Int Dice
 
 exprHelper : Int -> Int -> Dice
 exprHelper n s = DiceExpr { num=n, size=s}
@@ -540,6 +541,7 @@ diceDecoder = sumDecoder "Dice" []
   , ("Plus", JD.map2 DicePlus (JD.index 0 (JD.lazy (\_ -> diceDecoder)))
                               (JD.index 1 (JD.lazy (\_ -> diceDecoder))))
   , ("Flat", JD.map DiceFlat JD.int)
+  , ("BestOf", JD.map2 DiceBestOf JD.int (JD.lazy (\_ -> diceDecoder)))
   ]
 
 
@@ -549,6 +551,7 @@ diceEncoder dice = case dice of
     JE.object [("Expr", JE.object [("num", JE.int num), ("size", JE.int size)])]
   DicePlus l r -> JE.object [("Plus", JE.list [diceEncoder l, diceEncoder r])]
   DiceFlat v -> JE.object [("Flat", JE.int v)]
+  DiceBestOf count dice -> JE.object [("BestOf", JE.list [JE.int count, diceEncoder dice])]
 
 -- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
 -- (e.g. can_act and can_move), so we can't just use Creature.

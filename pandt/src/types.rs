@@ -1175,5 +1175,4 @@ pub mod test {
     let d = Dice::flat(1).plus(Dice::flat(-5));
     assert_eq!(d.roll(), (vec![1, -5], -4));
   }
-
 }

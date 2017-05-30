@@ -453,8 +453,26 @@ editCreatureDialog model app editing =
     Just creature ->
       let
         update f inp = M.SetModal (M.ModalEditCreature (f inp))
-        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note, portrait_url = editing.portrait_url, name=editing.name, initiative=editing.initiative})
+        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note
+                                                            , portrait_url = editing.portrait_url
+                                                            , name=editing.name
+                                                            , initiative=editing.initiative})
         entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
+        hasAdvantage =
+          case editing.initiative of
+            T.DiceBestOf _ _ -> True
+            _ -> False
+        swapAdvantage shouldHaveAdvantage =
+          let 
+            initiative =
+              case editing.initiative of
+                T.DiceBestOf count dice ->
+                  if shouldHaveAdvantage then editing.initiative
+                  else dice
+                _ -> if shouldHaveAdvantage
+                    then T.DiceBestOf 2 editing.initiative
+                    else editing.initiative
+          in M.SetModal (M.ModalEditCreature {editing | initiative = initiative})
       in vbox
         [ entry "Name" creature.name (\n -> {editing | name=n})
         , entry "Note" creature.note (\n -> {editing | note=n})
@@ -463,6 +481,8 @@ editCreatureDialog model app editing =
                 (\i -> case String.toInt i of 
                   Ok i -> {editing | initiative = T.DicePlus (T.DiceExpr {num=1, size=20}) (T.DiceFlat i)}
                   Err _ -> editing)
+        , hbox [input [type_ "checkbox", onCheck swapAdvantage, checked hasAdvantage] [], text "Advantage"]
+        , text (toString editing.initiative)
         , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
     Nothing -> text "Creature not found"
 
