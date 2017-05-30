@@ -26,6 +26,7 @@ pub enum Dice {
   Expr { num: u8, size: u8 },
   Plus(Box<Dice>, Box<Dice>),
   Flat(i8),
+  BestOf(u8, Box<Dice>),
 }
 
 impl Dice {
@@ -62,6 +63,20 @@ impl Dice {
         let (right_intermediate, right_result) = r.roll();
         intermediate.extend(right_intermediate);
         (intermediate, left_result + right_result)
+      }
+      Dice::BestOf(count, ref dice) => {
+        if count == 0 {
+          panic!("Sorry, can't roll best of 0.")
+        }
+        let (mut best_rolls, mut best_result) = dice.roll();
+        for _ in 1..count {
+          let (rolls, result) = dice.roll();
+          if result > best_result {
+            best_rolls = rolls;
+            best_result = result;
+          }
+        }
+        (best_rolls, best_result)
       }
     }
   }
@@ -1160,4 +1175,5 @@ pub mod test {
     let d = Dice::flat(1).plus(Dice::flat(-5));
     assert_eq!(d.roll(), (vec![1, -5], -4));
   }
+
 }
