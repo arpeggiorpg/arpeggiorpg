@@ -41,7 +41,6 @@ describe("dice parsing", function () {
   it("ignores whitespace", function () {
     expect(D.parse(" BestOf ( 5 ,1 d 20 ) "))
       .toEqual({ t: "BestOf", num: 5, dice: { t: "Expr", num: 1, size: 20 } });
-
   });
 });
 

@@ -7,6 +7,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Lazy as Lazy
 import Maybe.Extra as MaybeEx
+import Json.Decode as JD
 
 import Model as M
 import Types as T
@@ -14,6 +15,7 @@ import Grid
 import Elements exposing (..)
 import FolderView
 import CommonView exposing (popUpMenu)
+import Native.NativePT
 
 import Css as S
 
@@ -119,7 +121,7 @@ creatureConsole model app creature =
               , name=creature.name
               , note=creature.note
               , portrait_url=creature.portrait_url
-              , initiative=creature.initiative
+              , initiative=formatDice creature.initiative
               })
         )
       menu =
@@ -447,43 +449,44 @@ loadGameDialog model app names =
                                [text name]
   in vbox (List.map loadButton names)
 
+
+formatDice : T.Dice -> String
+formatDice dice = Native.NativePT.formatDice (T.diceTSEncoder dice)
+
+parseDice : String -> Maybe T.Dice
+parseDice s =
+  case JD.decodeValue T.diceTSDecoder (Native.NativePT.parseDice s) of
+    Ok dice -> Just dice
+    _ -> Nothing
+
 editCreatureDialog : M.Model -> T.App -> M.EditingCreature -> Html M.Msg
 editCreatureDialog model app editing =
   case T.getCreature app.current_game editing.cid of
     Just creature ->
       let
         update f inp = M.SetModal (M.ModalEditCreature (f inp))
-        submitMsg = M.SendCommand (T.EditCreature {creature | note = editing.note
-                                                            , portrait_url = editing.portrait_url
-                                                            , name=editing.name
-                                                            , initiative=editing.initiative})
+        submitMsg =
+          case currentDice of
+            Just initiative ->
+              M.SendCommand (T.EditCreature {creature | note = editing.note
+                                                      , portrait_url = editing.portrait_url
+                                                      , name=editing.name
+                                                      , initiative=initiative})
+            Nothing -> M.NoMsg
         entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
-        hasAdvantage =
-          case editing.initiative of
-            T.DiceBestOf _ _ -> True
-            _ -> False
-        swapAdvantage shouldHaveAdvantage =
-          let 
-            initiative =
-              case editing.initiative of
-                T.DiceBestOf count dice ->
-                  if shouldHaveAdvantage then editing.initiative
-                  else dice
-                _ -> if shouldHaveAdvantage
-                    then T.DiceBestOf 2 editing.initiative
-                    else editing.initiative
-          in M.SetModal (M.ModalEditCreature {editing | initiative = initiative})
+        startingInit = formatDice creature.initiative
+        currentDice = parseDice editing.initiative          
+        currentIsValid = case currentDice of
+          Just _ -> True
+          Nothing -> False
       in vbox
         [ entry "Name" creature.name (\n -> {editing | name=n})
         , entry "Note" creature.note (\n -> {editing | note=n})
         , entry "Portrait URL" creature.portrait_url (\u -> {editing | portrait_url=u})
-        , entry "Initiative bonus" (toString creature.initiative)
-                (\i -> case String.toInt i of 
-                  Ok i -> {editing | initiative = T.DicePlus (T.DiceExpr {num=1, size=20}) (T.DiceFlat i)}
-                  Err _ -> editing)
-        , hbox [input [type_ "checkbox", onCheck swapAdvantage, checked hasAdvantage] [], text "Advantage"]
-        , text (toString editing.initiative)
-        , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
+        , entry "Initiative" startingInit (\i -> {editing | initiative = i})
+        , text (toString currentDice)
+        , button [ onClick (M.Batch [submitMsg, M.SetModal M.NoModal])
+                 , disabled (not currentIsValid)] [text "Submit"]]
     Nothing -> text "Creature not found"
 
 showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg

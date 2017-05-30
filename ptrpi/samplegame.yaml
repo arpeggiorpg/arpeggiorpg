@@ -1,5 +1,5 @@
 ---
-players:
+players: {}
 current_game:
   campaign:
     data:
@@ -18,11 +18,11 @@ current_game:
         - 00000000-0000-0000-0000-000000000005
     children:
       subfolder1:
-        children:
+        children: {}
         data:
-          scenes:
-          creatures:
-          maps:
+          scenes: []
+          creatures: []
+          maps: []
           notes:
             "Subby note": 
               name: "Subby note"
@@ -219,7 +219,7 @@ current_game:
       class: ranger
       max_health: 10
       cur_health: 10
-      conditions:
+      conditions: {}
       attributes:
         finesse: Expert
         strength: Unskilled
@@ -241,7 +241,7 @@ current_game:
       class: rogue
       max_health: 10
       cur_health: 10
-      conditions:
+      conditions: {}
       attributes:
         finesse: Expert
         strength: Skilled
@@ -263,10 +263,10 @@ current_game:
       class: cleric
       max_health: 10
       cur_health: 10
-      conditions:
+      conditions: {}
       attributes:
         finesse: Unskilled
         strength: Skilled
         perception: Unskilled
         magic: Expert
-snapshots:
+snapshots: []

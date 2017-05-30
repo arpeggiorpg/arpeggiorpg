@@ -6,6 +6,7 @@ import * as History from "./History";
 import * as TextInput from "./TextInput";
 
 import * as PTTypes from "./PTTypes";
+import * as PTDice from "./Dice";
 
 function unloadComponent(id: string) {
   let el = document.getElementById(id);
@@ -45,3 +46,4 @@ function afterView(f: any) {
 (window as any).PT_initializeComponents = PT_initializeComponents;
 
 (window as any).PTT = PTTypes;
+(window as any).PTDice = PTDice;

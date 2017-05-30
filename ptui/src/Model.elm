@@ -217,7 +217,7 @@ type alias EditingCreature =
   , name: String
   , note: String
   , portrait_url: String
-  , initiative: T.Dice
+  , initiative: String
   }
 type alias SceneChallenge = {scene: T.SceneID, description: String, check: T.AttrCheck}
 

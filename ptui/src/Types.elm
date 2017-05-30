@@ -544,7 +544,6 @@ diceDecoder = sumDecoder "Dice" []
   , ("BestOf", JD.map2 DiceBestOf (JD.index 0 JD.int) (JD.index 1 (JD.lazy (\_ -> diceDecoder))))
   ]
 
-
 diceEncoder : Dice -> JE.Value
 diceEncoder dice = case dice of
   DiceExpr {num, size} ->
@@ -552,6 +551,40 @@ diceEncoder dice = case dice of
   DicePlus l r -> JE.object [("Plus", JE.list [diceEncoder l, diceEncoder r])]
   DiceFlat v -> JE.object [("Flat", JE.int v)]
   DiceBestOf count dice -> JE.object [("BestOf", JE.list [JE.int count, diceEncoder dice])]
+
+diceTSEncoder : Dice -> JE.Value
+diceTSEncoder dice = case dice of
+  DiceExpr {num, size} ->
+    JE.object [ ("t", JE.string "Expr")
+              , ("num", JE.int num)
+              , ("size", JE.int size) ]
+  DicePlus l r ->
+    JE.object [("t", JE.string "Plus")
+              , ("left", diceTSEncoder l)
+              , ("right", diceTSEncoder r)]
+  DiceFlat v ->
+    JE.object [ ("t", JE.string "Flat"), ("val", JE.int v)]
+  DiceBestOf count dice ->
+    JE.object [ ("t", JE.string "BestOf")
+              , ("num", JE.int count)
+              , ("dice", diceTSEncoder dice) ]
+
+diceTSDecoder : JD.Decoder Dice
+diceTSDecoder =
+  let decodeExpr = JD.map2 exprHelper (JD.field "num" JD.int) (JD.field "size" JD.int)
+      decodeFlat = JD.map DiceFlat (JD.field "val" JD.int)
+      decodePlus = JD.map2 DicePlus (JD.field "left" (JD.lazy (\_ -> diceTSDecoder)))
+                                    (JD.field "right" (JD.lazy (\_ -> diceTSDecoder)))
+      decodeBestOf = JD.map2 DiceBestOf (JD.field "num" JD.int)
+                                        (JD.field "dice" (JD.lazy (\_ -> diceTSDecoder)))
+  in JD.field "t" JD.string |> JD.andThen
+    (\typ ->
+      case typ of
+        "Expr" -> decodeExpr
+        "Flat" -> decodeFlat
+        "Plus" -> decodePlus
+        "BestOf" -> decodeBestOf
+        _ -> JD.fail ("Bad Dice variant: " ++ typ))
 
 -- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
 -- (e.g. can_act and can_move), so we can't just use Creature.

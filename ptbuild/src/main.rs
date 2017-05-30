@@ -60,7 +60,7 @@ fn main() {
     thread3.join().expect("webpack thread failed");
 
     copy_others(&ptui_dir, build_dir.as_path()).expect("Couldn't copy other files to build dir");
-    println!("Done! Build successful!");
+    println!("[ptbuild] P&T Build Successful");
   }
 }
 
