@@ -196,9 +196,7 @@ const decodeScene: Decoder<Scene> =
     ["creatures", JD.dict(JD.tuple(decodePoint3, decodeVisibility))],
     ["attribute_checks", JD.dict(decodeAttributeCheck)],
     (id, name, map, creatures, attribute_checks): Scene =>
-      ({ id, name, map, creatures, attribute_checks })
-  );
-;
+      ({ id, name, map, creatures, attribute_checks }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
   return JD.map((id) => ({ t, id } as FolderItemID), JD.string());
@@ -313,6 +311,9 @@ export const decodeGameLog: Decoder<GameLog> =
     "RemoveCreatureFromCombat": JD.map(
       (creature_id): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id }),
       JD.string()),
+    "CombatLog": JD.map((log): GameLog => ({ t: "CombatLog", log }), decodeCombatLog),
+    "CreatureLog": JD.map(([creature_id, log]): GameLog => ({ t: "CreatureLog", creature_id, log }),
+      JD.tuple(JD.string(), decodeCreatureLog)),
     "AttributeCheckResult": JD.map(
       ([cid, check, actual, success]): GameLog =>
         ({ t: "AttributeCheckResult", cid, check, actual, success }),

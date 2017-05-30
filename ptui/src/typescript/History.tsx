@@ -23,7 +23,7 @@ class History extends React.Component<{ data: any }, any> {
     }</Flexbox>;
   }
 
-  gameLog(log: PTTypes.GameLog): JSX.Element {
+  gameLog(log: PTTypes.GameLog): JSX.Element|null {
     switch (log.t) {
       case "AttributeCheckResult":
         return <Flexbox>
@@ -84,10 +84,10 @@ class History extends React.Component<{ data: any }, any> {
   }
 }
 
-function combat_log(log: PTTypes.CombatLog): JSX.Element {
+function combat_log(log: PTTypes.CombatLog): JSX.Element|null {
   switch (log.t) {
     case "ConsumeMovement":
-      return <noscript />;
+      return null;
     case "ChangeCreatureInitiative":
       return <Flexbox>Creature initiative changed</Flexbox>
     case "EndTurn":
@@ -101,7 +101,7 @@ function combat_log(log: PTTypes.CombatLog): JSX.Element {
   }
 }
 
-function creature_log(log: PTTypes.CreatureLog): JSX.Element {
+function creature_log(log: PTTypes.CreatureLog): JSX.Element|null {
   switch (log.t) {
     case "Damage":
       return <Flexbox>A creature took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</Flexbox>
