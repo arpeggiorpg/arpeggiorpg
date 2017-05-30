@@ -27,16 +27,25 @@ playerView model =
         Just playerID ->
           if T.playerIsRegistered app playerID
           then CommonView.viewGame model app (makeUI model app (T.getPlayerCreatures app playerID))
-          else registerForm model
-        Nothing -> registerForm model
+          else registerForm model app
+        Nothing -> registerForm model app
     Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
 
 {-| Show a form where the player can type their name to register. -}
-registerForm : M.Model -> Html M.Msg
-registerForm model =
-  hbox [ input [type_ "text", placeholder "player ID", onInput M.SetPlayerID
-       , s [S.width (S.px 500), S.height (S.px 100)] ] []
-       , button [onClick M.RegisterPlayer] [text "Register Player"]]
+registerForm : M.Model -> T.App -> Html M.Msg
+registerForm model app =
+  let playerButton pid =
+        button [s [S.width (S.px 250), S.height (S.px 100)]
+               , onClick (M.SetPlayerID pid)]
+               [text pid]
+  in 
+  vbox <|
+    [ hbox [ input [type_ "text", placeholder "player ID", onInput M.SetPlayerID
+         , s [S.width (S.px 500), S.height (S.px 100)] ] []
+         , button [onClick M.RegisterPlayer] [text "Register Player"]]
+    , text "Or select an existing player:"
+    , habox [s [S.flexWrap S.wrap]] (List.map playerButton (Dict.keys app.players))
+    ]
 
 makeUI : M.Model -> T.App -> List T.Creature -> CommonView.UI
 makeUI model app myCreatures =
