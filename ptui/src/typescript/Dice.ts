@@ -38,3 +38,23 @@ const _dice = P.alt(bestof, plus, expr, flat);
 export function parse(input: string): T.Dice {
   return dice.tryParse(input);
 }
+
+export function format(d: T.Dice): string {
+  switch (d.t) {
+    case "Flat": return d.val.toString();
+    case "Expr": return (d.num.toString() + "d" + d.size.toString());
+    case "Plus":
+      let def = format(d.left) + "+" + format(d.right);
+      switch (d.right.t) {
+        case "Flat":
+          if (d.right.val < 0) {
+            return (format(d.left) + "-" + (-d.right.val))
+          } else {
+            return def;
+          }
+        default: return def;
+      }
+    case "BestOf":
+      return "BestOf(" + d.num.toString() + ", " + format(d.dice) + ")";
+  }
+}
