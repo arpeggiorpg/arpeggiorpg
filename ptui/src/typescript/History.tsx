@@ -4,21 +4,29 @@ import Flexbox from 'flexbox-react';
 
 import * as PTTypes from './PTTypes';
 
-export function renderHistory([id, data]: [string, Array<Array<[any, Array<any>]>>]) {
+export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
   console.log("Rendering History", id, data);
+  let onRollback = (si: number, li: number) => app.ports.historyRollback.send([si, li]);
   ReactDOM.render(
-    <History data={data} />,
+    <History data={data} onRollback={onRollback} />,
     document.getElementById(id)
   );
 }
 
-class History extends React.Component<{ data: any }, any> {
+class History extends React.Component<{ data: any, onRollback: (snapshot_index: number, log_index: number) => void }, any> {
   render(): JSX.Element {
     let snaps = PTTypes.decodeAppSnapshots.decodeAny(this.props.data);
     return <Flexbox flexDirection="column">{
       snaps.map(
-        ({ snapshot, logs }) =>
-          logs.map((log, i) => <Flexbox key={i}>{this.gameLog(log)}</Flexbox>)
+        ({ snapshot, logs }, snapshot_index) =>
+          logs.map((log, log_index) =>
+            <Flexbox key={snapshot_index.toString() + "-" + log_index.toString()}
+                     justifyContent="space-between">
+              {this.gameLog(log)}
+              <button className="material-icons"
+                      onClick={() => this.props.onRollback(snapshot_index, log_index)}
+                      >history</button>
+            </Flexbox>)
       )
     }</Flexbox>;
   }

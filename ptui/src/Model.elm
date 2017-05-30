@@ -22,7 +22,10 @@ subscriptions model =
           -- TODO: put ticks back in here once it works better
   in Sub.batch [ PanZoom.panning GridPanning, Window.resizes WindowResized
                , Components.textInputSubmit TextInputSubmit
-               , Components.textInputCancel TextInputCancel]
+               , Components.textInputCancel TextInputCancel
+               , Components.historyRollback
+                   (\(snapIdx, logIdx) -> (SendCommand (T.Rollback snapIdx logIdx)))
+               ]
 
 type Msg
     = Start

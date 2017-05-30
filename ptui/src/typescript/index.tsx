@@ -20,7 +20,7 @@ function PT_initializeComponents(app: any) {
     function (x: [string, string, object, boolean]) { TextInput.renderTextInput(app, x) }
   ));
 
-  app.ports.renderHistory.subscribe(afterView(History.renderHistory));
+  app.ports.renderHistory.subscribe(afterView(function(x: [string, any]) { History.renderHistory(app, x) }));
 
   app.ports.unloadComponent.subscribe(unloadComponent);
 }
