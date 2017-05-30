@@ -541,7 +541,7 @@ diceDecoder = sumDecoder "Dice" []
   , ("Plus", JD.map2 DicePlus (JD.index 0 (JD.lazy (\_ -> diceDecoder)))
                               (JD.index 1 (JD.lazy (\_ -> diceDecoder))))
   , ("Flat", JD.map DiceFlat JD.int)
-  , ("BestOf", JD.map2 DiceBestOf JD.int (JD.lazy (\_ -> diceDecoder)))
+  , ("BestOf", JD.map2 DiceBestOf (JD.index 0 JD.int) (JD.index 1 (JD.lazy (\_ -> diceDecoder))))
   ]
 
 
