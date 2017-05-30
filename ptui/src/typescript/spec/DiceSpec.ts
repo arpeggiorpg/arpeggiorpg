@@ -25,6 +25,10 @@ describe("dice parsing", function () {
         right: { t: "Expr", num: 5, size: 8 }
       });
   });
+  it("parses a minus", function () {
+    expect(D.parse("1d20-2"))
+      .toEqual({ t: "Plus", left: { t: "Expr", num: 1, size: 20 }, right: { t: "Flat", val: -2 } });
+  });
   // it("parses a plus with the flat on the left", function () {
   //   expect(D.parse("1+1d20"))
   //     .toEqual({ t: "Plus", left: { t: "Flat", val: 1 }, right: { t: "Expr", num: 1, size: 20 } });
