@@ -23,7 +23,7 @@ class History extends React.Component<{ data: any }, any> {
     }</Flexbox>;
   }
 
-  gameLog(log: PTTypes.GameLog): JSX.Element|null {
+  gameLog(log: PTTypes.GameLog): JSX.Element | null {
     switch (log.t) {
       case "AttributeCheckResult":
         return <Flexbox>
@@ -57,9 +57,13 @@ class History extends React.Component<{ data: any }, any> {
       case "DeleteMap":
         return <Flexbox>Deleted a map</Flexbox>
       case "SetCreaturePos":
-        return <Flexbox>Set a creature position</Flexbox>
+        return <Flexbox>Set a creature position to {log.pos.toString()}</Flexbox>
       case "PathCreature":
-        return <Flexbox>Creature followed a path</Flexbox>
+        let last;
+        if (log.path.length > 0) {
+          last = log.path[log.path.length - 1].toString();
+        } else { last = "Nowhere" }
+        return <Flexbox>Creature followed a path to {last}</Flexbox>
       case "CreateCreature":
         return <Flexbox>Created a creature {log.creature.name}</Flexbox>
       case "EditCreature":
@@ -84,7 +88,7 @@ class History extends React.Component<{ data: any }, any> {
   }
 }
 
-function combat_log(log: PTTypes.CombatLog): JSX.Element|null {
+function combat_log(log: PTTypes.CombatLog): JSX.Element | null {
   switch (log.t) {
     case "ConsumeMovement":
       return null;
@@ -101,7 +105,7 @@ function combat_log(log: PTTypes.CombatLog): JSX.Element|null {
   }
 }
 
-function creature_log(log: PTTypes.CreatureLog): JSX.Element|null {
+function creature_log(log: PTTypes.CreatureLog): JSX.Element | null {
   switch (log.t) {
     case "Damage":
       return <Flexbox>A creature took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</Flexbox>
@@ -119,6 +123,3 @@ function creature_log(log: PTTypes.CreatureLog): JSX.Element|null {
       return <Flexbox>A condition was removed from a creature.</Flexbox>
   }
 }
-
-interface AttributeCheckResult { t: "AttributeCheckResult"; }
-
