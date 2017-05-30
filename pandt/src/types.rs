@@ -22,46 +22,48 @@ pub type ConditionID = usize;
 pub type Color = String;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
-pub struct Dice {
-  pub num: u8,
-  pub size: u8,
-  pub plus: Option<Box<Dice>>,
+pub enum Dice {
+  Expr { num: u8, size: u8 },
+  Plus(Box<Dice>, Box<Dice>),
+  Flat(i8),
 }
 
 impl Dice {
-  pub fn new(n: u8, d: u8) -> Dice {
-    Dice {
-      num: n,
-      size: d,
-      plus: None,
-    }
+  pub fn expr(n: u8, d: u8) -> Dice {
+    Dice::Expr { num: n, size: d }
   }
+
+  pub fn flat(val: i8) -> Dice {
+    Dice::Flat(val)
+  }
+
   pub fn plus(&self, d: Dice) -> Dice {
-    Dice {
-      plus: Some(Box::new(d)),
-      ..self.clone()
-    }
+    Dice::Plus(Box::new(self.clone()), Box::new(d))
   }
-  pub fn flat(val: u8) -> Dice {
-    Dice::new(val, 1)
-  }
+
   /// Roll the dice, returning a vector containing all of the individual die rolls, and then the final result.
-  pub fn roll(&self) -> (Vec<u8>, u32) {
-    let mut intermediate = vec![];
-    let mut result = 0u32;
-    let range: dist::Range<u8> = dist::Range::new(1, self.size + 1);
-    let mut rng = rand::thread_rng();
-    for _ in 0..self.num {
-      let val = range.ind_sample(&mut rng);
-      result += val as u32;
-      intermediate.push(val);
+  pub fn roll(&self) -> (Vec<i16>, i32) {
+    match *self {
+      Dice::Expr { num, size } => {
+        let mut intermediate = vec![];
+        let mut result = 0i32;
+        let range: dist::Range<i32> = dist::Range::new(1, size as i32 + 1);
+        let mut rng = rand::thread_rng();
+        for _ in 0..num {
+          let val = range.ind_sample(&mut rng);
+          result += val;
+          intermediate.push(val as i16);
+        }
+        (intermediate, result)
+      }
+      Dice::Flat(val) => (vec![val as i16], val as i32),
+      Dice::Plus(ref l, ref r) => {
+        let (mut intermediate, left_result) = l.roll();
+        let (right_intermediate, right_result) = r.roll();
+        intermediate.extend(right_intermediate);
+        (intermediate, left_result + right_result)
+      }
     }
-    if let Some(ref extra) = self.plus {
-      let (extra_intermediate, extra_result) = extra.roll();
-      intermediate.extend(extra_intermediate);
-      result += extra_result;
-    }
-    (intermediate, result)
   }
 }
 
@@ -340,8 +342,8 @@ pub enum GameCommand {
 /// deterministic results.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureLog {
-  Damage(HP, Vec<u8>),
-  Heal(HP, Vec<u8>),
+  Damage(HP, Vec<i16>),
+  Heal(HP, Vec<i16>),
   GenerateEnergy(Energy),
   ReduceEnergy(Energy),
   ApplyCondition(ConditionID, ConditionDuration, Condition),
@@ -1149,7 +1151,13 @@ pub mod test {
 
   #[test]
   fn dice_plus() {
-    let d = Dice::new(1, 1).plus(Dice::new(1, 1));
+    let d = Dice::flat(1).plus(Dice::flat(1));
     assert_eq!(d.roll(), (vec![1, 1], 2));
+  }
+
+  #[test]
+  fn dice_negative() {
+    let d = Dice::flat(1).plus(Dice::flat(-5));
+    assert_eq!(d.roll(), (vec![1, -5], -4));
   }
 }

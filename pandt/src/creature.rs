@@ -101,13 +101,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn damage(&self, expr: &Dice) -> Vec<CreatureLog> {
-    let (dice, amt) = expr.roll();
+    let (rolls, amt) = expr.roll();
     let amt = HP(amt as u8);
     if amt >= self.creature.cur_health {
-      vec![CreatureLog::Damage(self.creature.cur_health, dice),
+      vec![CreatureLog::Damage(self.creature.cur_health, rolls),
            Self::apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
     } else {
-      vec![CreatureLog::Damage(amt, dice)]
+      vec![CreatureLog::Damage(amt, rolls)]
     }
   }
 
@@ -189,7 +189,7 @@ impl Creature {
       note: "".to_string(),
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
-      initiative: Dice::new(1, 20)
+      initiative: Dice::expr(1, 20)
     }
   }
 
@@ -276,7 +276,7 @@ impl Creature {
     if check.reliable && check.target <= my_skill {
       Ok((100, true))
     } else {
-      let dice = Dice::new(1, 100);
+      let dice = Dice::expr(1, 100);
       let roll = dice.roll().1 as u8; // panic: 1d100 better fit into a u8!
       let success = roll >= my_skill.difficulty(check.target);
       Ok((roll, success))
