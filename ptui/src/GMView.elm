@@ -461,7 +461,7 @@ editCreatureDialog model app editing =
         , entry "Portrait URL" creature.portrait_url (\u -> {editing | portrait_url=u})
         , entry "Initiative bonus" (toString creature.initiative)
                 (\i -> case String.toInt i of 
-                  Ok i -> {editing | initiative = T.Dice {num=1, size=20, plus=Just <| T.flatDice i}}
+                  Ok i -> {editing | initiative = T.DicePlus (T.DiceExpr {num=1, size=20}) (T.DiceFlat i)}
                   Err _ -> editing)
         , button [onClick (M.Batch [submitMsg, M.SetModal M.NoModal])] [text "Submit"]]
     Nothing -> text "Creature not found"

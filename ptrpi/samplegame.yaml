@@ -155,8 +155,9 @@ current_game:
       cost: 8
       effects:
         - Heal:
-            num: 2
-            size: 2
+            Expr:
+              num: 2
+              size: 2
     stab: 
       name: Stab
       usable_ooc: false
@@ -164,8 +165,9 @@ current_game:
       cost: 8
       effects: 
         - Damage:
-            num: 3
-            size: 1
+            Expr:
+              num: 3
+              size: 1
     shoot: 
       name: Shoot
       usable_ooc: false
@@ -174,8 +176,9 @@ current_game:
       cost: 8
       effects: 
         - Damage:
-            size: 2
-            num: 2
+            Expr:
+              size: 2
+              num: 2
     bonk:
       name: Bonk
       usable_ooc: false
@@ -196,15 +199,17 @@ current_game:
           range: 1000
       effects:
         - Damage:
-            num: 2
-            size: 5
+            Expr:
+              num: 2
+              size: 5
   creatures:
     0420f7db-c7ec-48af-add3-045ad859f47e:
       id: 0420f7db-c7ec-48af-add3-045ad859f47e
       name: Elron
       initiative:
-        num: 1
-        size: 20
+        Expr:
+          num: 1
+          size: 20
       portrait_url: ""
       note:
       speed: 1086
@@ -224,8 +229,9 @@ current_game:
       id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
       name: Kurok To
       initiative:
-        num: 1
-        size: 20
+        Expr:
+          num: 1
+          size: 20
       portrait_url: "http://i.imgur.com/g09XhxI.jpg"
       note:
       speed: 1086
@@ -245,8 +251,9 @@ current_game:
       id: f5fd4b9a-c801-4840-a39b-b5653329dc54
       name: Silmarillion
       initiative:
-        num: 1
-        size: 20
+        Expr:
+          num: 1
+          size: 20
       portrait_url: ""
       note:
       speed: 1086

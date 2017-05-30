@@ -526,28 +526,29 @@ creatureEncoder c =
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
 encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
 
-type Dice = Dice
-  { num: Int
-  , size: Int
-  , plus: Maybe Dice}
+type Dice
+  = DiceExpr {num: Int, size: Int}
+  | DicePlus Dice Dice
+  | DiceFlat Int
 
-diceHelper : Int -> Int -> Maybe Dice -> Dice
-diceHelper n s p = Dice { num=n, size=s, plus=p }
-
-flatDice : Int -> Dice
-flatDice n = Dice { num=n, size=1, plus=Nothing }
+exprHelper : Int -> Int -> Dice
+exprHelper n s = DiceExpr { num=n, size=s}
 
 diceDecoder : JD.Decoder Dice
-diceDecoder = JD.map3 diceHelper
-  (JD.field "num" JD.int)
-  (JD.field "size" JD.int)
-  (JD.field "plus" (JD.lazy (\_ -> maybeDecoder diceDecoder)))
+diceDecoder = sumDecoder "Dice" []
+  [ ("Expr", JD.map2 exprHelper (JD.field "num" JD.int) (JD.field "size" JD.int))
+  , ("Plus", JD.map2 DicePlus (JD.index 0 (JD.lazy (\_ -> diceDecoder)))
+                              (JD.index 1 (JD.lazy (\_ -> diceDecoder))))
+  , ("Flat", JD.map DiceFlat JD.int)
+  ]
+
 
 diceEncoder : Dice -> JE.Value
-diceEncoder (Dice dice) = JE.object
-  [ ("num", JE.int dice.num)
-  , ("size", JE.int dice.size)
-  , ("plus", encodeMaybe dice.plus diceEncoder)]
+diceEncoder dice = case dice of
+  DiceExpr {num, size} ->
+    JE.object [("Expr", JE.object [("num", JE.int num), ("size", JE.int size)])]
+  DicePlus l r -> JE.object [("Plus", JE.list [diceEncoder l, diceEncoder r])]
+  DiceFlat v -> JE.object [("Flat", JE.int v)]
 
 -- This is separate from Creature beacuse GameLogs don't have the "calculated" properties
 -- (e.g. can_act and can_move), so we can't just use Creature.
