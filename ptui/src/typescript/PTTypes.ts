@@ -1,6 +1,5 @@
 import * as JD from 'type-safe-json-decoder';
 import { Decoder } from 'type-safe-json-decoder';
-import * as Lodash from 'lodash';
 
 type CreatureID = string;
 type SceneID = string;
@@ -95,7 +94,6 @@ export interface Creature {
   //   pub initiative: Dice,
 }
 
-
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
   | { t: "MapID"; id: MapID }
@@ -103,28 +101,28 @@ export type FolderItemID =
   | { t: "NoteID"; id: string }
   | { t: "SubfolderID"; id: string }
 
-interface Map {
+export interface Map {
   id: MapID,
   name: string,
   terrain: Array<Point3>,
   specials: Array<[Point3, Color, string, Visibility]>,
 }
 
-interface AttributeCheck {
+export interface AttributeCheck {
   reliable: boolean;
   attr: AttrID;
   target: SkillLevel;
 }
 
-type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural"
+export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural"
 let SkillLevel_values: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
-interface Note {
+export interface Note {
   name: string,
   content: string,
 }
 
-interface Scene {
+export interface Scene {
   id: SceneID,
   name: string,
   map: MapID,
@@ -132,15 +130,21 @@ interface Scene {
   attribute_checks: { [index: string]: AttributeCheck },
 }
 
-type Point3 = [number, number, number];
+export type Point3 = [number, number, number];
 
 export type Visibility =
   | { t: "GMOnly" }
   | { t: "AllPlayers" }
 
+export type Dice =
+  | { t: "Flat", val: number }
+  | { t: "Expr", num: number, size: number }
+  | { t: "Plus", left: Dice, right: Dice }
+  | { t: "BestOf", num: number, dice: Dice }
+
 // ** Decoders **
 
-const decodeConditionDuration: Decoder<ConditionDuration> =
+export const decodeConditionDuration: Decoder<ConditionDuration> =
   sum<ConditionDuration>("ConditionDuration", { "Interminate": { t: "Interminate" } },
     {
       "Duration": JD.map(
@@ -148,7 +152,7 @@ const decodeConditionDuration: Decoder<ConditionDuration> =
         JD.number())
     })
 
-const decodeCreature: Decoder<Creature> = JD.object(
+export const decodeCreature: Decoder<Creature> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -163,9 +167,9 @@ const decodeCreature: Decoder<Creature> = JD.object(
     ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url })
 );
 
-const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
+export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
 
-const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
+export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   switch (x) {
     case "GMOnly": return { t: "GMOnly" };
     case "AllPlayers": return { t: "AllPlayers" };
@@ -173,7 +177,7 @@ const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   }
 }, JD.string());
 
-const decodeMap: Decoder<Map> = JD.object(
+export const decodeMap: Decoder<Map> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
   ["terrain", JD.array(decodePoint3)],
@@ -181,14 +185,14 @@ const decodeMap: Decoder<Map> = JD.object(
   (id, name, terrain, specials) => ({ id, name, terrain, specials })
 );
 
-const decodeSkillLevel: Decoder<SkillLevel> =
+export const decodeSkillLevel: Decoder<SkillLevel> =
   JD.oneOf.apply(null, SkillLevel_values.map(JD.equal));
 
-const decodeAttributeCheck: Decoder<AttributeCheck> =
+export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
     (reliable, attr, target) => ({ reliable, attr, target }))
 
-const decodeScene: Decoder<Scene> =
+export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
@@ -201,7 +205,7 @@ const decodeScene: Decoder<Scene> =
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
   return JD.map((id) => ({ t, id } as FolderItemID), JD.string());
 }
-const decodeFolderItemID: Decoder<FolderItemID> =
+export const decodeFolderItemID: Decoder<FolderItemID> =
   sum<FolderItemID>("FolderItemID", {}, {
     "SceneID": _mkFolderItem("SceneID"),
     "MapID": _mkFolderItem("MapID"),
@@ -210,7 +214,7 @@ const decodeFolderItemID: Decoder<FolderItemID> =
     "SubfolderID": _mkFolderItem("SubfolderID"),
   });
 
-const decodeNote: Decoder<Note> =
+export const decodeNote: Decoder<Note> =
   JD.object(
     ["name", JD.string()],
     ["content", JD.string()],
@@ -357,72 +361,3 @@ export function sum<T>(
     JD.oneOf.apply(null, _decoders),
   );
 }
-
-function assertEq<T>(a: T, b: T, msg?: string) {
-  if (!Lodash.isEqual(a, b)) {
-    console.log("Not equal", JSON.stringify(a, null, 2), "!==", JSON.stringify(b, null, 2), msg);
-    throw new Error(`Not equal (${msg}) ${a} !== ${b}`)
-  }
-}
-
-function assertRaises(f: () => void, msg?: string) {
-  try {
-    f()
-  } catch (e) {
-    return;
-  }
-  throw new Error(`function did not raise (${msg}): ${f}.`)
-}
-
-export function test() {
-  assertRaises(() => decodeSkillLevel.decodeAny("Foo"));
-  assertEq(decodeSkillLevel.decodeAny("Skilled"), "Skilled");
-
-  let exAttrCheck: AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
-  assertEq(
-    decodeAttributeCheck.decodeAny(exAttrCheck as any),
-    exAttrCheck);
-
-  let gameLogTests: [[any, any]] = [
-    ["StopCombat", { t: "StopCombat" }],
-    [
-      { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
-      { t: "StartCombat", scene: "coolScene", creatures: [{ cid: "coolCreature", init: 5 }] }],
-    [{ "CreateFolder": "foo/bar" }, { t: "CreateFolder", path: "foo/bar" }],
-    [
-      { "AttributeCheckResult": ["coolCreature", exAttrCheck, 50, true] },
-      { t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50, success: true }]
-  ];
-  for (let [x, y] of gameLogTests) {
-    assertEq<GameLog>(decodeGameLog.decodeAny(x), y);
-  }
-
-  assertEq<Visibility>(decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
-  assertEq<Visibility>(decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
-
-  // A test for type-safe-json-decoder -- apparently `dict` is buggy.
-  assertEq(JD.dict(JD.map((x): string => "foo", JD.number())).decodeAny({ key: 3 }), { key: "foo" });
-
-  let sceneJSON = {
-    id: "Scene ID",
-    name: "Scene Name",
-    map: "Map ID",
-    creatures: { "Creature ID": [[0, 0, 0], "GMOnly"] },
-    attribute_checks: {
-      "Do a backflip": exAttrCheck,
-    },
-  };
-  let exScene: Scene = {
-    id: "Scene ID",
-    name: "Scene Name",
-    map: "Map ID",
-    creatures: { "Creature ID": [[0, 0, 0], { t: "GMOnly" }] },
-    attribute_checks: {
-      "Do a backflip": exAttrCheck,
-    },
-  };
-  assertEq<Scene>(decodeScene.decodeAny(sceneJSON), exScene);
-  console.log("OK");
-}
-
-// test()
