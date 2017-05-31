@@ -21,6 +21,13 @@ pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
 pub type Color = String;
 
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+pub struct AABB {
+  pub x: u8,
+  pub y: u8,
+  pub z: u8,
+}
+
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub enum Dice {
   Expr { num: u8, size: u8 },
@@ -760,6 +767,7 @@ pub struct Creature {
   pub portrait_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
+  pub size: AABB,
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -984,7 +992,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
 
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Creature", 18)?;
+    let mut str = serializer.serialize_struct("Creature", 19)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
     str.serialize_field("name", &creat.name)?;
@@ -1002,6 +1010,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("can_act", &self.can_act())?;
     str.serialize_field("can_move", &self.can_move())?;
     str.serialize_field("initiative", &creat.initiative)?;
+    str.serialize_field("size", &creat.size)?;
     str.end()
   }
 }

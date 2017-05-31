@@ -1,272 +1,212 @@
----
-players: {}
 current_game:
+  abilities:
+    bonk:
+      cost: 8
+      effects:
+      - ApplyCondition:
+        - {Duration: 1}
+        - Incapacitated
+      name: Bonk
+      target: Melee
+      usable_ooc: false
+    dash:
+      cost: 8
+      effects:
+      - ApplyCondition:
+        - {Duration: 0}
+        - DoubleMaxMovement
+      name: Dash
+      target: Actor
+      usable_ooc: true
+    fireball:
+      cost: 10
+      effects:
+      - Damage:
+          Expr: {num: 2, size: 5}
+      name: Fireball
+      target:
+        AllCreaturesInVolumeInRange:
+          range: 1000
+          volume: {Sphere: 500}
+      usable_ooc: false
+    heal:
+      cost: 8
+      effects:
+      - Heal:
+          Expr: {num: 2, size: 2}
+      name: Heal
+      target: {Range: 500}
+      usable_ooc: true
+    shoot:
+      cost: 8
+      effects:
+      - Damage:
+          Expr: {num: 2, size: 2}
+      name: Shoot
+      target: {Range: 1000}
+      usable_ooc: false
+    stab:
+      cost: 8
+      effects:
+      - Damage:
+          Expr: {num: 3, size: 1}
+      name: Stab
+      target: Melee
+      usable_ooc: false
   campaign:
-    data:
-      scenes:
-        - 00000000-0000-0000-0000-000000000003
-      creatures:
-        - f5fd4b9a-c801-4840-a39b-b5653329dc54
-        - 34877b65-1eb6-44bb-b1a8-696c424e9d0f
-        - 0420f7db-c7ec-48af-add3-045ad859f47e
-      notes:
-        "Rooty Note": 
-          name: "Rooty Note"
-          content: "This is a note in the root folder."
-      maps:
-        - 00000000-0000-0000-0000-000000000004
-        - 00000000-0000-0000-0000-000000000005
     children:
       subfolder1:
         children: {}
         data:
-          scenes: []
           creatures: []
           maps: []
           notes:
-            "Subby note": 
-              name: "Subby note"
-              content: "This is a note in the subfolder."
-  scenes:
-    00000000-0000-0000-0000-000000000003:
-      name: "The T"
-      id: 00000000-0000-0000-0000-000000000003
-      attribute_checks:
-        "Do a random backflip":
-          reliable: false
-          attr: finesse
-          target: Expert
-        "Notice the coin in the corner":
-          reliable: true
-          attr: perception
-          target: Skilled
-      creatures:
-        f5fd4b9a-c801-4840-a39b-b5653329dc54:
-          - [0, 0, 0]
-          - AllPlayers
-        34877b65-1eb6-44bb-b1a8-696c424e9d0f:
-          - [1, 1, 0]
-          - AllPlayers
-        0420f7db-c7ec-48af-add3-045ad859f47e:
-          - [-1, 0, 0]
-          - AllPlayers
-      map: 00000000-0000-0000-0000-000000000004
-  tile_system: Realistic
+            Subby note: {content: This is a note in the subfolder., name: Subby note}
+          scenes: []
+    data:
+      creatures: [f5fd4b9a-c801-4840-a39b-b5653329dc54, 34877b65-1eb6-44bb-b1a8-696c424e9d0f,
+        0420f7db-c7ec-48af-add3-045ad859f47e]
+      maps: [00000000-0000-0000-0000-000000000004, 00000000-0000-0000-0000-000000000005]
+      notes:
+        Rooty Note: {content: This is a note in the root folder., name: Rooty Note}
+      scenes: [00000000-0000-0000-0000-000000000003]
+  classes:
+    cleric:
+      abilities: [heal, bonk, dash, fireball]
+      color: lightgreen
+      conditions:
+      - RecurringEffect: {GenerateEnergy: 10}
+    ranger:
+      abilities: [shoot, dash]
+      color: darkgreen
+      conditions:
+      - RecurringEffect: {GenerateEnergy: 10}
+    rogue:
+      abilities: [stab, dash]
+      color: purple
+      conditions:
+      - RecurringEffect: {GenerateEnergy: 10}
+  creatures:
+    0420f7db-c7ec-48af-add3-045ad859f47e:
+      abilities: {}
+      attributes: {finesse: Expert, magic: Unskilled, perception: Skilled, strength: Unskilled}
+      class: ranger
+      conditions: {}
+      cur_energy: 10
+      cur_health: 10
+      id: 0420f7db-c7ec-48af-add3-045ad859f47e
+      initiative:
+        Expr: {num: 1, size: 20}
+      max_energy: 10
+      max_health: 10
+      name: Elron
+      note: null
+      portrait_url: ''
+      size: {x: 1, y: 1, z: 1}
+      speed: 1086
+    34877b65-1eb6-44bb-b1a8-696c424e9d0f:
+      abilities: {}
+      attributes: {finesse: Expert, magic: Unskilled, perception: Unskilled, strength: Skilled}
+      class: rogue
+      conditions: {}
+      cur_energy: 10
+      cur_health: 10
+      id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
+      initiative:
+        Expr: {num: 1, size: 20}
+      max_energy: 10
+      max_health: 10
+      name: Kurok To
+      note: null
+      portrait_url: http://i.imgur.com/g09XhxI.jpg
+      size: {x: 1, y: 1, z: 1}
+      speed: 1086
+    f5fd4b9a-c801-4840-a39b-b5653329dc54:
+      abilities: {}
+      attributes: {finesse: Unskilled, magic: Expert, perception: Unskilled, strength: Skilled}
+      class: cleric
+      conditions: {}
+      cur_energy: 10
+      cur_health: 10
+      id: f5fd4b9a-c801-4840-a39b-b5653329dc54
+      initiative:
+        Expr: {num: 1, size: 20}
+      max_energy: 10
+      max_health: 10
+      name: Silmarillion
+      note: null
+      portrait_url: ''
+      size: {x: 1, y: 1, z: 1}
+      speed: 1086
+  current_combat: null
   maps:
-    00000000-0000-0000-0000-000000000005:
-      id: 00000000-0000-0000-0000-000000000005
-      name: empty
-      terrain: []
-      specials: []
     00000000-0000-0000-0000-000000000004:
       id: 00000000-0000-0000-0000-000000000004
       name: upside-down T
       specials: []
       terrain:
-        - [2, -2, 0]
-        - [2, -1, 0]
-        - [2, 0, 0]
-        - [2, 1, 0]
-        - [2, 2, 0]
-        - [2, 3, 0]
-
-        - [1, -2, 0]
-        - [1, -1, 0]
-        - [1, 0, 0]
-        - [1, 1, 0]
-        - [1, 2, 0]
-        - [1, 3, 0]
-
-        - [0, -2, 0]
-        - [0, -1, 0]
-        - [0, 0, 0]
-        - [0, 1, 0]
-        - [0, 2, 0]
-        - [0, 3, 0]
-
-        - [-1, -2, 0]
-        - [-1, -1, 0]
+      - [2, -2, 0]
+      - [2, -1, 0]
+      - [2, 0, 0]
+      - [2, 1, 0]
+      - [2, 2, 0]
+      - [2, 3, 0]
+      - [1, -2, 0]
+      - [1, -1, 0]
+      - [1, 0, 0]
+      - [1, 1, 0]
+      - [1, 2, 0]
+      - [1, 3, 0]
+      - [0, -2, 0]
+      - [0, -1, 0]
+      - [0, 0, 0]
+      - [0, 1, 0]
+      - [0, 2, 0]
+      - [0, 3, 0]
+      - [-1, -2, 0]
+      - [-1, -1, 0]
+      - [-1, 0, 0]
+      - [-1, 1, 0]
+      - [-1, 2, 0]
+      - [-1, 3, 0]
+      - [-2, -2, 0]
+      - [-2, -1, 0]
+      - [-2, 0, 0]
+      - [-2, 1, 0]
+      - [-2, 2, 0]
+      - [-2, 3, 0]
+      - [0, 4, 0]
+      - [-4, 4, 0]
+      - [-3, 4, 0]
+      - [-2, 4, 0]
+      - [-1, 4, 0]
+      - [1, 4, 0]
+      - [2, 4, 0]
+      - [3, 4, 0]
+      - [4, 4, 0]
+    00000000-0000-0000-0000-000000000005:
+      id: 00000000-0000-0000-0000-000000000005
+      name: empty
+      specials: []
+      terrain: []
+  scenes:
+    00000000-0000-0000-0000-000000000003:
+      attribute_checks:
+        Do a random backflip: {attr: finesse, reliable: false, target: Expert}
+        Notice the coin in the corner: {attr: perception, reliable: true, target: Skilled}
+      creatures:
+        0420f7db-c7ec-48af-add3-045ad859f47e:
         - [-1, 0, 0]
-        - [-1, 1, 0]
-        - [-1, 2, 0]
-        - [-1, 3, 0]
-        
-        - [-2, -2, 0]
-        - [-2, -1, 0]
-        - [-2, 0, 0]
-        - [-2, 1, 0]
-        - [-2, 2, 0]
-        - [-2, 3, 0]
-
-        - [0, 4, 0]
-
-        - [-4, 4, 0]
-        - [-3, 4, 0]
-        - [-2, 4, 0]
-        - [-1, 4, 0]
-        - [1, 4, 0]
-        - [2, 4, 0]
-        - [3, 4, 0]
-        - [4, 4, 0]
-  
-  current_combat: ~
-  classes:
-    rogue:
-      color: purple
-      abilities:
-        - stab
-        - dash
-      conditions:
-        - RecurringEffect:
-            GenerateEnergy: 10
-    cleric:
-      color: lightgreen
-      abilities:
-        - heal
-        - bonk
-        - dash
-        - fireball
-      conditions:
-        - RecurringEffect:
-            GenerateEnergy: 10
-    ranger:
-      color: darkgreen
-      abilities:
-        - shoot
-        - dash
-      conditions:
-        - RecurringEffect:
-            GenerateEnergy: 10
-  abilities:
-    dash:
-      name: Dash
-      usable_ooc: true
-      target: Actor
-      cost: 8
-      effects:
-        - ApplyCondition:
-            - Duration: 0
-            - DoubleMaxMovement
-    heal: 
-      name: Heal
-      usable_ooc: true
-      target:
-        Range: 500
-      cost: 8
-      effects:
-        - Heal:
-            Expr:
-              num: 2
-              size: 2
-    stab: 
-      name: Stab
-      usable_ooc: false
-      target: Melee
-      cost: 8
-      effects: 
-        - Damage:
-            Expr:
-              num: 3
-              size: 1
-    shoot: 
-      name: Shoot
-      usable_ooc: false
-      target: 
-        Range: 1000
-      cost: 8
-      effects: 
-        - Damage:
-            Expr:
-              size: 2
-              num: 2
-    bonk:
-      name: Bonk
-      usable_ooc: false
-      target: Melee
-      cost: 8
-      effects:
-        - ApplyCondition:
-            - Duration: 1
-            - Incapacitated
-    fireball:
-      name: Fireball
-      usable_ooc: false
-      cost: 10
-      target:
-        AllCreaturesInVolumeInRange:
-          volume:
-            Sphere: 500
-          range: 1000
-      effects:
-        - Damage:
-            Expr:
-              num: 2
-              size: 5
-  creatures:
-    0420f7db-c7ec-48af-add3-045ad859f47e:
-      id: 0420f7db-c7ec-48af-add3-045ad859f47e
-      name: Elron
-      initiative:
-        Expr:
-          num: 1
-          size: 20
-      portrait_url: ""
-      note:
-      speed: 1086
-      max_energy: 10
-      cur_energy: 10
-      abilities: {}
-      class: ranger
-      max_health: 10
-      cur_health: 10
-      conditions: {}
-      attributes:
-        finesse: Expert
-        strength: Unskilled
-        perception: Skilled
-        magic: Unskilled
-    34877b65-1eb6-44bb-b1a8-696c424e9d0f:
-      id: 34877b65-1eb6-44bb-b1a8-696c424e9d0f
-      name: Kurok To
-      initiative:
-        Expr:
-          num: 1
-          size: 20
-      portrait_url: "http://i.imgur.com/g09XhxI.jpg"
-      note:
-      speed: 1086
-      max_energy: 10
-      cur_energy: 10
-      abilities: {}
-      class: rogue
-      max_health: 10
-      cur_health: 10
-      conditions: {}
-      attributes:
-        finesse: Expert
-        strength: Skilled
-        perception: Unskilled
-        magic: Unskilled
-    f5fd4b9a-c801-4840-a39b-b5653329dc54:
-      id: f5fd4b9a-c801-4840-a39b-b5653329dc54
-      name: Silmarillion
-      initiative:
-        Expr:
-          num: 1
-          size: 20
-      portrait_url: ""
-      note:
-      speed: 1086
-      max_energy: 10
-      cur_energy: 10
-      abilities: {}
-      class: cleric
-      max_health: 10
-      cur_health: 10
-      conditions: {}
-      attributes:
-        finesse: Unskilled
-        strength: Skilled
-        perception: Unskilled
-        magic: Expert
+        - AllPlayers
+        34877b65-1eb6-44bb-b1a8-696c424e9d0f:
+        - [1, 1, 0]
+        - AllPlayers
+        f5fd4b9a-c801-4840-a39b-b5653329dc54:
+        - [0, 0, 0]
+        - AllPlayers
+      id: 00000000-0000-0000-0000-000000000003
+      map: 00000000-0000-0000-0000-000000000004
+      name: The T
+  tile_system: Realistic
+players: {}
 snapshots: []

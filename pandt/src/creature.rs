@@ -189,7 +189,8 @@ impl Creature {
       note: "".to_string(),
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
-      initiative: Dice::expr(1, 20)
+      initiative: Dice::expr(1, 20),
+      size: AABB {x: 1, y: 1, z: 1},
     }
   }
 

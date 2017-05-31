@@ -480,6 +480,7 @@ type alias Creature =
   , note: String
   , portrait_url: String
   , attributes: Dict AttrID SkillLevel
+  , size: AABB
 }
 
 creatureDecoder : JD.Decoder Creature
@@ -501,6 +502,7 @@ creatureDecoder =
     |> P.required "note" JD.string
     |> P.required "portrait_url" JD.string
     |> P.required "attributes" (JD.dict skillLevelDecoder)
+    |> P.required "size" aabbDecoder
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
@@ -521,10 +523,25 @@ creatureEncoder c =
     , ("note", JE.string c.note)
     , ("portrait_url", JE.string c.portrait_url)
     , ("attributes", encodeStringDict skillLevelEncoder c.attributes)
+    , ("size", aabbEncoder c.size)
     ]
 
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
 encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
+
+type alias AABB =
+  { x: Int
+  , y: Int
+  , z: Int}
+
+aabbDecoder : JD.Decoder AABB
+aabbDecoder = JD.map3 AABB (JD.field "x" JD.int) (JD.field "y" JD.int) (JD.field "z" JD.int)
+
+aabbEncoder : AABB -> JE.Value
+aabbEncoder box = JE.object
+  [ ("x", JE.int box.x)
+  , ("y", JE.int box.y)
+  , ("z", JE.int box.z)]
 
 type Dice
   = DiceExpr {num: Int, size: Int}
