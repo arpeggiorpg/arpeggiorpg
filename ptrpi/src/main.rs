@@ -230,7 +230,7 @@ fn main() {
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
     pollers: Arc::new(Mutex::new(Bus::new(1000))),
-    saved_game_path: game_dir,
+    saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
   rocket::ignite()
