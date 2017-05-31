@@ -190,7 +190,12 @@ gridCreature creature =
         case creature.clickable of
           Just fn -> [onClick (fn creature.creature)]
           Nothing -> []
-      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize), rx "10", ry "10"] ++ clickableEventHandler
+      creatureWidth = creature.creature.size.x * 100
+      creatureHeight = creature.creature.size.y * 100
+      attrs = [stroke strokeColor, strokeWidth (toString strokeWidthSize)
+              , rx "10", ry "10"
+              , width (toString creatureWidth), height (toString creatureHeight)
+              ] ++ clickableEventHandler
       pos = creature.pos
       creatureNameEl name =
         text_ [ HA.style [("pointer-events", "none")]
@@ -204,8 +209,9 @@ gridCreature creature =
           [ HA.style [ ("pointer-events", "none") ]
           , x (coord pos.x), y (coord pos.y)
           , xlinkHref url
-          , width "100", height "100"
-          , rx "10"
+          , width (toString creatureWidth)
+          , height (toString creatureHeight)
+          , rx "10" 
           , ry "10"
           ] []
       opa = if creature.visible then "1" else "0.4"
@@ -251,10 +257,10 @@ emptyTerrain terrain =
 tile : String -> List (Svg.Attribute M.Msg) -> T.Point3Tup -> Svg M.Msg
 tile cl attrs (ptx, pty, _) =
   rect ([ width "100"
-       , height "100"
-       , x (coord ptx)
-       , y (coord pty)
-       , fill cl
-       , stroke "black"
-       , strokeWidth "1" ] ++ attrs)
-       []
+        , height "100"
+        , x (coord ptx)
+        , y (coord pty)
+        , fill cl
+        , stroke "black"
+        , strokeWidth "1" ] ++ attrs)
+        []
