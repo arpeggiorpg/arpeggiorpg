@@ -58,7 +58,13 @@ impl<'game> DynamicCombat<'game> {
   pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
     let current = self.current_creature()?;
     let current_speed = current.speed().saturating_sub(self.combat.movement_used);
-    Ok(self.game.tile_system.get_all_accessible(self.current_pos()?, self.map, current_speed))
+    Ok(self
+         .game
+         .tile_system
+         .get_all_accessible(self.current_pos()?,
+                             self.map,
+                             Volume::AABB(current.creature.size),
+                             current_speed))
   }
 
   pub fn get_movement(&'game self) -> Result<CombatMove<'game>, GameError> {

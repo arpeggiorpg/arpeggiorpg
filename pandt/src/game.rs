@@ -123,9 +123,14 @@ impl Game {
                                 -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_id)?;
     let terrain = self.get_map(scene.map)?;
+    let creature = self.get_creature(cid)?;
     let (pts, distance) = self
       .tile_system
-      .find_path(scene.get_pos(cid)?, max_distance, terrain, pt)
+      .find_path(scene.get_pos(cid)?,
+                 max_distance,
+                 terrain,
+                 Volume::AABB(creature.creature.size),
+                 pt)
       .ok_or(GameErrorEnum::NoPathFound)?;
     debug_assert!(distance <= max_distance);
 
@@ -550,6 +555,7 @@ impl Game {
            .tile_system
            .get_all_accessible(scene.get_pos(creature_id)?,
                                self.get_map(scene.map)?,
+                               Volume::AABB(creature.creature.size),
                                creature.speed()))
     } else {
       Err(GameErrorEnum::CannotAct(creature.id()).into())
