@@ -114,11 +114,12 @@ mapContents editable model map creatures extras =
         if editable
         then Lazy.lazy2 specialTerrainEdit model.gridSpecialExpanded map.specials
         else Lazy.lazy2 specialTerrainView model.gridSpecialExpanded map.specials
+      annotationEl = expandedNote model.gridSpecialExpanded map.specials
       origin = rect [ width "10" , height "10" , x "0", y "0"
                     , fill "black"
                     , stroke "black" , strokeWidth "1" ]
                     []
-  in g [] <| [origin, terrainEls, emptyEls, specialEls] ++ extras ++ creatureEls ++ ghostEl
+  in g [] <| [origin, terrainEls, emptyEls, specialEls] ++ extras ++ creatureEls ++ [annotationEl] ++ ghostEl
 
 -- these specialized versions of specialTerrain are necessary due to the way Svg.Lazy works.
 specialTerrainView : Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
@@ -127,43 +128,53 @@ specialTerrainView = specialTerrain False
 specialTerrainEdit : Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
 specialTerrainEdit = specialTerrain True
 
+expandedNote : Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
+expandedNote expanded specials =
+  case expanded of
+    Just pt ->
+      case Dict.get (T.point3ToTup pt) specials of
+        Just (_, note, _) -> positionedText note ((pt.x * 100) + 50, (pt.y * 100) + 50) "100px"
+        Nothing -> text ""
+    Nothing -> text ""
+
 specialTerrain : Bool -> Maybe T.Point3 -> Dict.Dict T.Point3Tup (T.Color, String, T.Visibility) -> Svg M.Msg
 specialTerrain editable expanded specials =
   let
     _ = Debug.log "[EXPENSIVE:specialTerrain]" ()
-    (specialEls, notes) = List.unzip <| List.map (specialTile editable expanded) (Dict.toList specials)
-  in g [] [g [] specialEls, g [] notes]
+    specialEls = List.map (specialTile editable expanded) (Dict.toList specials)
+  in g [] specialEls
 
-specialTile : Bool -> Maybe T.Point3 -> (T.Point3Tup, (T.Color, String, T.Visibility))
-            -> (Svg M.Msg, Svg M.Msg)
+
+positionedText t (ptx, pty) fsize =
+  text_ [ HA.style [("pointer-events", "none")]
+        , x (toString <| ptx)
+        , y (toString <| pty)
+        , fontSize fsize
+        , dominantBaseline "central"
+        , textAnchor "middle"
+        , fill "white"
+        , stroke "black"
+        , strokeWidth "2px"
+        ]
+        [text t]
+
+specialTile : Bool -> Maybe T.Point3 -> (T.Point3Tup, (T.Color, String, T.Visibility)) -> Svg M.Msg
 specialTile editable expanded (pt, (color, note, vis)) =
   let
     (ptx, pty, ptz) = pt
     noteExpanded = expanded == Just (T.tupToPoint3 pt)
-    positionedText t (ptx, pty) fsize =
-      text_ [ HA.style [("pointer-events", "none")]
-            , x (toString <| ptx)
-            , y (toString <| pty)
-            , fontSize fsize
-            , dominantBaseline "central"
-            , textAnchor "middle"
-            , fill "white"
-            , stroke "black"
-            , strokeWidth "2px"
-            ]
-            [text t]
     centeredText note = positionedText note (((ptx * 100) + 50), ((pty * 100) + 50)) "100px"
     star =
       if note /= "" && (not noteExpanded)
       then centeredText "*"
       else text ""
-    expandedNote = if noteExpanded then centeredText note else text ""
     key = "special-tile:" ++ toString ptx ++ "," ++ toString pty
     click = if editable then M.GridPaint else M.ToggleGridSpecial
     hiddenIcon = if vis == T.GMOnly then positionedText "👁️" ((ptx * 100) + 85, ((pty * 100) + 85)) "25px" else text ""
   in
-    ( g [] [tile color [onClick (click (T.tupToPoint3 pt))] (ptx, pty, ptz), star, hiddenIcon]
-    , g [] [expandedNote])
+    g [] [tile color [onClick (click (T.tupToPoint3 pt))] (ptx, pty, ptz)
+         , star
+         , hiddenIcon]
 
 -- return all points within a square with half-distance `distance`.
 calculateAllMovementOptions : T.Point3 -> Int -> List T.Point3
