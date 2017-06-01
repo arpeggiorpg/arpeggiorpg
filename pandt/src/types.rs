@@ -657,6 +657,9 @@ pub enum Volume {
   Sphere(Distance),
   Line(Distance),
   VerticalCylinder { radius: Distance, height: Distance },
+  // An Axis-Aligned Bounding Box, origin at top-left,
+  // with x going east, y going south, and z going up.
+  AABB(AABB),
 }
 
 // TODO for Effects and Conditions and Targets and Abilities:

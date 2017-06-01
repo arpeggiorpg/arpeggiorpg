@@ -49,6 +49,8 @@ impl TileSystem {
   pub fn items_within_volume<I: Clone + Eq + Hash>(&self, volume: Volume, pt: Point3,
                                                    items: &HashMap<I, Point3>)
                                                    -> Vec<I> {
+    // TODO: this function is really dumb, and instead should probably work on a HashSet of Point3s,
+    // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
     let mut results = vec![];
     match volume {
       Volume::Sphere(radius) => {
@@ -58,6 +60,7 @@ impl TileSystem {
           }
         }
       }
+      Volume::AABB(aabb) => unimplemented!(),
       Volume::Line(length) => unimplemented!(),
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
@@ -118,6 +121,36 @@ impl TileSystem {
     }
   }
 
+  fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
+    match volume {
+      Volume::Sphere(radius) => {
+        unimplemented!();
+      }
+      Volume::AABB(aabb) => {
+        (pt.0..(pt.0 + aabb.x as i16))
+          .flat_map(|x| {
+                      (pt.1..(pt.1 + aabb.y as i16)).flat_map(move |y| {
+                                                                (pt.2..(pt.2 + aabb.z as i16))
+                                                                  .map(move |z| (x, y, z))
+                                                              })
+                    })
+          .collect()
+      }
+      Volume::Line(length) => unimplemented!(),
+      Volume::VerticalCylinder { radius, height } => unimplemented!(),
+    }
+  }
+
+  fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
+    for pt in self.points_in_volume(volume, pt) {
+      if !map.terrain.contains(&pt) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Find neighbors of the given point that the given volume can fit in, given the terrain.
   fn point3_neighbors(&self, terrain: &Map, pt: Point3) -> Vec<(Point3, u32)> {
     let mut results = vec![];
     for x in -1..2 {
@@ -126,7 +159,9 @@ impl TileSystem {
           continue;
         }
         let neighbor = (pt.0 + x, pt.1 + y, pt.2);
-        if terrain.is_open(&neighbor) {
+        if terrain.is_open(&neighbor)
+        // && volume_fits_at_point(volume, terrain, neighbor)
+        {
           let is_angle = x.abs() == y.abs();
           let cost = if is_angle {
             match *self {
@@ -211,19 +246,19 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
 {
   let mut to_see = BinaryHeap::new();
   to_see.push(InvCmpHolder {
-    key: heuristic(start),
-    payload: (Zero::zero(), start.clone()),
-  });
+                key: heuristic(start),
+                payload: (Zero::zero(), start.clone()),
+              });
   let mut parents: HashMap<N, (N, C)> = HashMap::new();
   let mut found_nodes = vec![];
   while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
     successes.retain_mut(|ref mut success_fn| {
-      let was_successful = success_fn(&node);
-      if was_successful {
-        found_nodes.push((node.clone(), cost));
-      }
-      !was_successful
-    });
+                           let was_successful = success_fn(&node);
+                           if was_successful {
+                             found_nodes.push((node.clone(), cost));
+                           }
+                           !was_successful
+                         });
     if successes.is_empty() {
       break;
     }
@@ -242,9 +277,9 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
         parents.insert(neighbour.clone(), (node.clone(), new_cost));
         let new_predicted_cost = new_cost + heuristic(&neighbour);
         to_see.push(InvCmpHolder {
-          key: new_predicted_cost,
-          payload: (new_cost, neighbour),
-        });
+                      key: new_predicted_cost,
+                      payload: (new_cost, neighbour),
+                    });
       }
     }
   }
@@ -277,7 +312,7 @@ pub mod test {
     let pos2p = (pos2.0 as f64, pos2.1 as f64, pos2.2 as f64);
     let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2) +
                          (pos1p.2 - pos2p.2).powi(2))
-      .sqrt();
+        .sqrt();
     println!("My calculated distance: {:?};", test_distance);
     assert_eq!((TileSystem::Realistic.point3_distance(pos1, pos2)),
                Distance::from_meters(test_distance as f32));
@@ -462,9 +497,7 @@ pub mod test {
   use self::test::Bencher;
   #[bench]
   fn accessible_average_speed_bench(bencher: &mut Bencher) {
-    bencher.iter(|| {
-      test_accessible_average_speed();
-    });
+    bencher.iter(|| { test_accessible_average_speed(); });
   }
 
   #[test]
@@ -489,5 +522,14 @@ pub mod test {
         assert!(ts.point3_distance(*item_pos, vol_pt) > Distance(500))
       }
     }
+  }
+
+  #[test]
+  fn points_in_volume() {
+    let ts = TileSystem::Realistic;
+    let vol = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let vol_pt = (1, 1, 0);
+    let results = ts.points_in_volume(vol, vol_pt);
+    assert_eq!(results, vec![(1, 1, 0), (1, 2, 0), (2, 1, 0), (2, 2, 0)]);
   }
 }
