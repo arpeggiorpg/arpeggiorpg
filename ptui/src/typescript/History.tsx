@@ -32,7 +32,6 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
   }
 
   gameLog(log: T.GameLog): JSX.Element | null {
-    console.log("Rendering a game log.", log);
     switch (log.t) {
       case "AttributeCheckResult":
         return <Flexbox>
