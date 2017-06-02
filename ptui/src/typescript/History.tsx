@@ -2,10 +2,9 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Flexbox from 'flexbox-react';
 
-import * as PTTypes from './PTTypes';
+import * as T from './PTTypes';
 
 export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
-  console.log("Rendering History", id, data);
   let onRollback = (si: number, li: number) => app.ports.historyRollback.send([si, li]);
   ReactDOM.render(
     <History data={data} onRollback={onRollback} />,
@@ -15,11 +14,12 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
 
 class History extends React.Component<{ data: any, onRollback: (snapshot_index: number, log_index: number) => void }, any> {
   render(): JSX.Element {
-    let snaps = PTTypes.decodeAppSnapshots.decodeAny(this.props.data);
+    let app = T.decodeApp.decodeAny(this.props.data);
+    console.log("rendering history. successfully decoded app.", app.snapshots);
     return <Flexbox flexDirection="column">{
-      snaps.map(
+      app.snapshots.map(
         ({ snapshot, logs }, snapshot_index) =>
-          logs.map((log, log_index) =>
+          logs.map((log: T.GameLog, log_index) =>
             <Flexbox key={snapshot_index.toString() + "-" + log_index.toString()}
                      justifyContent="space-between">
               {this.gameLog(log)}
@@ -31,7 +31,8 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
     }</Flexbox>;
   }
 
-  gameLog(log: PTTypes.GameLog): JSX.Element | null {
+  gameLog(log: T.GameLog): JSX.Element | null {
+    console.log("Rendering a game log.", log);
     switch (log.t) {
       case "AttributeCheckResult":
         return <Flexbox>
@@ -53,7 +54,7 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
       case "DeleteNote":
         return <Flexbox>Deleted note {log.name}</Flexbox>
       case "CreateScene":
-        return <Flexbox>Created scene {log.scene}</Flexbox>
+        return <Flexbox>Created scene {log.scene.name}</Flexbox>
       case "EditScene":
         return <Flexbox>Edited scene {log.scene.name}</Flexbox>
       case "DeleteScene":
@@ -96,7 +97,7 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
   }
 }
 
-function combat_log(log: PTTypes.CombatLog): JSX.Element | null {
+function combat_log(log: T.CombatLog): JSX.Element | null {
   switch (log.t) {
     case "ConsumeMovement":
       return null;
@@ -113,7 +114,7 @@ function combat_log(log: PTTypes.CombatLog): JSX.Element | null {
   }
 }
 
-function creature_log(log: PTTypes.CreatureLog): JSX.Element | null {
+function creature_log(log: T.CreatureLog): JSX.Element | null {
   switch (log.t) {
     case "Damage":
       return <Flexbox>A creature took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</Flexbox>

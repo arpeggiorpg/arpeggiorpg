@@ -15,12 +15,17 @@ export type ConditionID = number;
 export interface App {
   snapshots: AppSnapshots,
   players: AppPlayers,
+  current_game: Game,
 };
 
+export interface Game {
+  creatures: { [index: string]: Creature };
+}
+
 export interface Player {
-  player_id: PlayerID,
-  scene?: SceneID,
-  creatures: Set<CreatureID>,
+  player_id: PlayerID;
+  scene?: SceneID;
+  creatures: Set<CreatureID>;
 }
 
 export type AppSnapshots = Array<{ snapshot: GameSnapshot, logs: Array<GameLog> }>
@@ -350,6 +355,18 @@ export const decodePlayer: Decoder<Player> = JD.object(
 );
 
 export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
+
+export const decodeGame: Decoder<Game> = JD.object(
+  ["creatures", JD.dict(decodeCreature)],
+  (creatures) => ({creatures})
+);
+
+export const decodeApp: Decoder<App> = JD.object(
+  ["snapshots", decodeAppSnapshots],
+  ["players", decodeAppPlayers],
+  ["current_game", decodeGame],
+  (snapshots, players, current_game) => ({snapshots, players, current_game})
+);
 
 
 // Utility Functions

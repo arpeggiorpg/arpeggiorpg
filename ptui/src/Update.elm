@@ -30,9 +30,9 @@ message msg = Task.perform (always msg) (Task.succeed ())
 -- This is where we handle various "transitionary" effects that rely on knowledge of both the old
 -- and new state of the game.
 -- e.g., when a player is becoming registered, or when we receive a new PathCreature GameLog.
-updateModelFromApp : M.Model -> T.App -> (M.Model, M.Msg)
-updateModelFromApp model newApp =
-  let model2 = { model | app = Just newApp}
+updateModelFromApp : M.Model -> T.App -> JD.Value -> (M.Model, M.Msg)
+updateModelFromApp model newApp rawApp =
+  let model2 = { model | app = Just newApp, raw_app = rawApp}
       showingMovement =
         case getLatestPath model newApp of
           Just (T.GLPathCreature _ _ (first::rest)) ->
@@ -119,7 +119,7 @@ update msg model = case msg of
           else M.NoMsg
     in ({model | windowSize = s}, message maybeReinitMap)
 
-  Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL T.appDecoder))
+  Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL (JD.map2 (,) T.appDecoder JD.value)))
 
   PollApp ->
     case model.app of
@@ -128,11 +128,11 @@ update msg model = case msg of
         let snapshotLength = Array.length app.snapshots
             logLength = Maybe.withDefault 0 (Maybe.map (\(g, logs) -> Array.length logs) <| Array.get (snapshotLength - 1) app.snapshots)
             url = model.rpiURL ++ "poll/" ++ (toString snapshotLength) ++ "/" ++ (toString logLength)
-            cmd = Http.send ReceivedAppUpdate (Http.get url T.appDecoder)
+            cmd = Http.send ReceivedAppUpdate (Http.get url (JD.map2 (,) T.appDecoder JD.value))
         in (model, cmd)
 
-  ReceivedAppUpdate (Ok newApp) ->
-    let (newModel, msg) = updateModelFromApp model newApp
+  ReceivedAppUpdate (Ok (newApp, rawApp)) ->
+    let (newModel, msg) = updateModelFromApp model newApp rawApp
     in (newModel, message (M.Batch [msg, PollApp]))
   ReceivedAppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
@@ -144,7 +144,7 @@ update msg model = case msg of
     let modelWPlayer = {model | playerID = Just pid}
         (newModel, msg) =
           case model.app of
-            Just app -> updateModelFromApp modelWPlayer app
+            Just app -> updateModelFromApp modelWPlayer app model.raw_app
             Nothing -> (modelWPlayer, M.NoMsg)
     in (newModel, message msg)
 
@@ -162,8 +162,8 @@ update msg model = case msg of
 
   Batch messages -> (model, Cmd.batch (List.map message messages))
 
-  AppUpdate (Ok newApp) ->
-    let (model2, msg) = updateModelFromApp model newApp
+  AppUpdate (Ok (newApp, rawApp)) ->
+    let (model2, msg) = updateModelFromApp model newApp rawApp
     in ( { model2 | moving = Nothing , selectingAbility = Nothing }, message msg )
   AppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
@@ -200,13 +200,13 @@ update msg model = case msg of
     let
       msg =
         case (model.app, model.selectedView, name) of
-          (Just app, _, "History") -> Components.renderHistory ("history-view", app.raw_snapshots)
+          (Just app, _, "History") -> Components.renderHistory ("history-view", model.raw_app)
           (_, "History", _) -> Components.unloadComponent "history-view"
           (Just app, _, "Players") ->
             let scene = case model.focus of
                           M.FocusScene scene -> Just scene
                           _ -> Nothing
-            in Components.renderPlayers ("players-view", scene, app.raw_players)
+            in Components.renderPlayers ("players-view", scene, model.raw_app)
           (_, "Players", _) -> Components.unloadComponent "players-view"
           (_, _, "Map") -> message M.GridInitializePanZoom
           (_, "Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
@@ -341,7 +341,7 @@ update msg model = case msg of
 
   LoadGame name ->
     let post = Http.post (model.rpiURL ++ "/saved_games/" ++ name ++ "/load")
-                         Http.emptyBody (T.appDecoder)
+                         Http.emptyBody (JD.map2 (,) T.appDecoder JD.value)
     in (model, Http.send AppUpdate post)
 
   ShowGameLogs logs ->

@@ -25,7 +25,6 @@ interface PlayersProps {
   onGrantCreatures: (pid: T.PlayerID) => void;
 };
 
-
 class Players extends React.Component<PlayersProps, undefined> {
 
   setSceneButton(pid: T.PlayerID, text: string, scene: T.SceneID | null): JSX.Element {
@@ -33,14 +32,14 @@ class Players extends React.Component<PlayersProps, undefined> {
   }
 
   render(): JSX.Element {
-    let players = T.decodeAppPlayers.decodeAny(this.props.data);
+    let app = T.decodeApp.decodeAny(this.props.data);
     return <Flexbox flexDirection="column">{
-      Object.keys(players).map((pid) => {
+      Object.keys(app.players).map((pid) => {
         let sceneButtons = [];
-        if (players[pid].scene) {
+        if (app.players[pid].scene) {
           sceneButtons.push(this.setSceneButton(pid, "Remove from Scene", null));
         }
-        if (this.props.currentScene && players[pid].scene !== this.props.currentScene) {
+        if (this.props.currentScene && app.players[pid].scene !== this.props.currentScene) {
           sceneButtons.push(this.setSceneButton(pid, "Move to this scene", this.props.currentScene));
         }
 

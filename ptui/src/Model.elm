@@ -4,6 +4,7 @@ import Dict
 import Http
 import Time
 import Json.Decode as JD
+import Json.Encode as JE
 import Window
 
 import Types as T
@@ -43,8 +44,8 @@ type Msg
     | SetSecondaryFocus SecondaryFocus
     | SetModal Modal
     | PollApp
-    | ReceivedAppUpdate (Result Http.Error T.App)
-    | AppUpdate (Result Http.Error T.App)
+    | ReceivedAppUpdate (Result Http.Error (T.App, JD.Value))
+    | AppUpdate (Result Http.Error (T.App, JD.Value))
     | ShowError String
     | ClearError
     | SetPlayerID T.PlayerID
@@ -112,6 +113,7 @@ type Msg
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
+  , raw_app = JE.null
   , windowSize = let (w, h) = flags.windowSize in {width = w, height = h}
   , selectingAbility = Nothing
   , moving = Nothing
@@ -136,7 +138,8 @@ defaultModel flags =
   }
 
 type alias Model =
-  { app : Maybe T.App
+  { app: Maybe T.App
+  , raw_app: JD.Value
   , windowSize: Window.Size
   , selectingAbility : Maybe SelectingAbility
   , error: String
