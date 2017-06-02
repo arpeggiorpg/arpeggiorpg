@@ -102,8 +102,11 @@ fn build_js(ptui_dir: &path::Path) {
 fn webpack(ptui_dir: &path::Path) {
   // This unfortunately doesn't work if I just use `webpack`, so for now this code is
   // windows-specific :(
-  let mut child =
-    Command::new("webpack.cmd").current_dir(ptui_dir).spawn().expect("Couldn't build command?");
+  let mut child = Command::new("webpack.cmd")
+    .arg("--hide-modules")
+    .current_dir(ptui_dir)
+    .spawn()
+    .expect("Couldn't build command?");
   let code = child.wait().expect("webpack failed!");
   if !code.success() {
     panic!("webpack failed! {:?}", code);
