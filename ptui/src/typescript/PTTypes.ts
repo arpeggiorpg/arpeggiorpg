@@ -1,16 +1,16 @@
 import * as JD from 'type-safe-json-decoder';
 import { Decoder } from 'type-safe-json-decoder';
 
-type CreatureID = string;
-type PlayerID = string;
-type SceneID = string;
-type AttrID = string;
-type MapID = string;
-type Color = string;
-type Distance = number;
-type HP = number;
-type Energy = number;
-type ConditionID = number;
+export type CreatureID = string;
+export type PlayerID = string;
+export type SceneID = string;
+export type AttrID = string;
+export type MapID = string;
+export type Color = string;
+export type Distance = number;
+export type HP = number;
+export type Energy = number;
+export type ConditionID = number;
 
 export interface App {
   snapshots: AppSnapshots,

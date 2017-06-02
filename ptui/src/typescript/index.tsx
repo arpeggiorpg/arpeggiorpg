@@ -24,7 +24,7 @@ function PT_initializeComponents(app: any) {
 
   app.ports.renderHistory.subscribe(afterView(function(x: [string, any]) { History.renderHistory(app, x) }));
 
-  app.ports.renderPlayers.subscribe(afterView(function(x: [string, any]) {Players.renderPlayers(app, x)}));
+  app.ports.renderPlayers.subscribe(afterView(function(x: any) {Players.renderPlayers(app, x)}));
 
   app.ports.unloadComponent.subscribe(unloadComponent);
 }

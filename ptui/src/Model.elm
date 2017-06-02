@@ -25,7 +25,15 @@ subscriptions model =
                , Components.textInputCancel TextInputCancel
                , Components.historyRollback
                    (\(snapIdx, logIdx) -> (SendCommand (T.Rollback snapIdx logIdx)))
+               , Components.playersGrantCreatures grantCreatures
+               , Components.playersSetScene (\(pid, scene) -> SendCommand (T.SetPlayerScene pid scene))
                ]
+
+grantCreatures pid =
+  let gotCreatures cids = SendCommand (T.GiveCreaturesToPlayer pid cids)
+  in SetModal (SelectCreaturesFromCampaign {selectedCreatures=[]
+                                           , cb=gotCreatures
+                                           , reason="Grant Creatures to " ++ pid})
 
 type Msg
     = Start

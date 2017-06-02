@@ -202,7 +202,11 @@ update msg model = case msg of
         case (model.app, model.selectedView, name) of
           (Just app, _, "History") -> Components.renderHistory ("history-view", app.raw_snapshots)
           (_, "History", _) -> Components.unloadComponent "history-view"
-          (Just app, _, "Players") -> Components.renderPlayers ("players-view", app.raw_players)
+          (Just app, _, "Players") ->
+            let scene = case model.focus of
+                          M.FocusScene scene -> Just scene
+                          _ -> Nothing
+            in Components.renderPlayers ("players-view", scene, app.raw_players)
           (_, "Players", _) -> Components.unloadComponent "players-view"
           (_, _, "Map") -> message M.GridInitializePanZoom
           (_, "Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
