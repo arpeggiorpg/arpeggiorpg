@@ -2,6 +2,7 @@ import * as JD from 'type-safe-json-decoder';
 import { Decoder } from 'type-safe-json-decoder';
 
 type CreatureID = string;
+type PlayerID = string;
 type SceneID = string;
 type AttrID = string;
 type MapID = string;
@@ -12,10 +13,18 @@ type Energy = number;
 type ConditionID = number;
 
 export interface App {
-  snapshots: AppSnapshots
+  snapshots: AppSnapshots,
+  players: AppPlayers,
 };
 
+export interface Player {
+  player_id: PlayerID,
+  scene?: SceneID,
+  creatures: Set<CreatureID>,
+}
+
 export type AppSnapshots = Array<{ snapshot: GameSnapshot, logs: Array<GameLog> }>
+export type AppPlayers = { [index: string]: Player }
 
 export interface GameSnapshot { };
 
@@ -333,7 +342,21 @@ export const decodeAppSnapshots: Decoder<AppSnapshots> =
     (ls) => ({ snapshot: {} as GameSnapshot, logs: ls }),
     JD.at([1], JD.array(decodeGameLog))))
 
+export const decodePlayer: Decoder<Player> = JD.object(
+  ["player_id", JD.string()],
+  ["scene", maybe(JD.string())],
+  ["creatures", JD.array(JD.string())],
+  (player_id, scene, creatures) => ({ player_id, scene, creatures })
+);
+
+export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
+
+
 // Utility Functions
+
+export function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
+  return JD.oneOf(JD.map((_) => undefined, JD.equal(null)), d);
+}
 
 export function sum<T>(
   name: string,
