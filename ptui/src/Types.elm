@@ -66,14 +66,16 @@ type alias App =
   , snapshots: Array.Array (GameSnapshot, (Array.Array GameLog))
   , raw_snapshots: JE.Value
   , players: Dict PlayerID Player
+  , raw_players: JE.Value
   }
 
 appDecoder : JD.Decoder App
-appDecoder = JD.map4 App
+appDecoder = JD.map5 App
   (JD.field "current_game" gameDecoder)
   (JD.field "snapshots" (JD.array (JD.map2 (,) (JD.index 0 gameSnapshotDecoder) (JD.index 1 <| JD.array gameLogDecoder))))
   (JD.field "snapshots" JD.value)
   (JD.field "players" (JD.dict playerDecoder))
+  (JD.field "players" JD.value)
 
 
 type alias Player =
