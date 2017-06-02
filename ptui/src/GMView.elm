@@ -850,21 +850,22 @@ createCreatureDialog model app {name, class, path} =
 {-| Show all registered players and which creatures they've been granted -}
 playersView : M.Model -> T.App -> Html M.Msg
 playersView model app =
-  let gotCreatures pid cids = M.SendCommand (T.GiveCreaturesToPlayer pid cids)
-      allCreatures = Dict.keys app.current_game.creatures
-      selectCreatures pid = M.SetModal (M.SelectCreaturesFromCampaign {selectedCreatures=[], cb=gotCreatures pid, reason="Grant Creatures to " ++ pid})
-      grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)
-      sceneName =
-        case model.focus of
-          M.FocusScene name -> Just name
-          _ -> Nothing
-      sceneButtonText =
-        sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
-      activateScene player = (text sceneButtonText, M.SendCommand (T.SetPlayerScene player.player_id sceneName))
-      menu player =
-        [popUpMenu model "PlayerListOptions" player.player_id gear gearBox
-                   [grantCreatures player, activateScene player]]
-  in CommonView.playerList app menu app.players
+  div [id "players-view"] []
+  -- let gotCreatures pid cids = M.SendCommand (T.GiveCreaturesToPlayer pid cids)
+  --     allCreatures = Dict.keys app.current_game.creatures
+  --     selectCreatures pid = M.SetModal (M.SelectCreaturesFromCampaign {selectedCreatures=[], cb=gotCreatures pid, reason="Grant Creatures to " ++ pid})
+  --     grantCreatures player = (text "Grant Creatures", selectCreatures player.player_id)
+  --     sceneName =
+  --       case model.focus of
+  --         M.FocusScene name -> Just name
+  --         _ -> Nothing
+  --     sceneButtonText =
+  --       sceneName |> Maybe.map (\name -> "Move Player to " ++ name) |> Maybe.withDefault "Remove player from scene"
+  --     activateScene player = (text sceneButtonText, M.SendCommand (T.SetPlayerScene player.player_id sceneName))
+  --     menu player =
+  --       [popUpMenu model "PlayerListOptions" player.player_id gear gearBox
+  --                  [grantCreatures player, activateScene player]]
+  -- in CommonView.playerList app menu app.players
 
 {-| Show a list of all events that have happened in the game. -}
 historyView : T.App -> Html M.Msg
