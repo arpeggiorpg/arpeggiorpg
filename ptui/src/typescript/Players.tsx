@@ -31,20 +31,32 @@ class Players extends React.Component<PlayersProps, undefined> {
     return <button onClick={() => this.props.onSetScene(pid, scene)}>{text}</button >
   }
 
+  playerCreatures(app: T.App, player: T.Player): JSX.Element {
+    return <Flexbox flexDirection="column">
+      <ul>
+        {player.creatures.map((cid) => {
+          return <li>{app.current_game.creatures[cid].name}</li>;
+        })}
+      </ul>
+    </Flexbox>
+  }
+
   render(): JSX.Element {
     let app = T.decodeApp.decodeAny(this.props.data);
     return <Flexbox flexDirection="column">{
       Object.keys(app.players).map((pid) => {
+        let player = app.players[pid];
         let sceneButtons = [];
-        if (app.players[pid].scene) {
+        if (player.scene) {
           sceneButtons.push(this.setSceneButton(pid, "Remove from Scene", null));
         }
-        if (this.props.currentScene && app.players[pid].scene !== this.props.currentScene) {
+        if (this.props.currentScene && player.scene !== this.props.currentScene) {
           sceneButtons.push(this.setSceneButton(pid, "Move to this scene", this.props.currentScene));
         }
 
-        return <Flexbox justifyContent="space-between" key={pid}>
-          {pid}
+        return <Flexbox alignItems="center" justifyContent="space-between" key={pid}>
+          <div>{pid}</div>
+          {this.playerCreatures(app, player)}
           {sceneButtons}
           <button onClick={() => this.props.onGrantCreatures(pid)}>Grant creatures</button>
         </Flexbox>;

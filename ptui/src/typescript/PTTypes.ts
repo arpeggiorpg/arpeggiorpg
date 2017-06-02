@@ -25,7 +25,7 @@ export interface Game {
 export interface Player {
   player_id: PlayerID;
   scene?: SceneID;
-  creatures: Set<CreatureID>;
+  creatures: Array<CreatureID>;
 }
 
 export type AppSnapshots = Array<{ snapshot: GameSnapshot, logs: Array<GameLog> }>
