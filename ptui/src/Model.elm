@@ -110,6 +110,9 @@ type Msg
     | TextInputSubmit (String, String)
     | TextInputCancel (String, String)
 
+    | LoadComponent String ReactComponent
+    | UnloadComponent String
+
 defaultModel : ProgramFlags -> Model
 defaultModel flags =
   { app = Nothing
@@ -135,6 +138,7 @@ defaultModel flags =
   , folderState = Dict.empty
   , editingInitiative = Nothing
   , editingNote = Nothing
+  , reactComponents = Dict.empty
   }
 
 type alias Model =
@@ -163,7 +167,13 @@ type alias Model =
   , gettingSavedGames: Maybe (List String -> Msg)
   , editingInitiative: Maybe T.CreatureID
   , editingNote: Maybe T.CreatureID
+  , reactComponents : Dict.Dict String ReactComponent
   }
+
+type ReactComponent
+  = ReactTextInput
+  | ReactHistory
+  | ReactPlayers
 
 type alias GridData =
   { paintStyle: PaintStyle

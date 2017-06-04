@@ -200,18 +200,30 @@ update msg model = case msg of
     let
       msg =
         case (model.app, model.selectedView, name) of
-          (Just app, _, "History") -> Components.renderHistory ("history-view", model.raw_app)
-          (_, "History", _) -> Components.unloadComponent "history-view"
-          (Just app, _, "Players") ->
-            let scene = case model.focus of
-                          M.FocusScene scene -> Just scene
-                          _ -> Nothing
-            in Components.renderPlayers ("players-view", scene, model.raw_app)
-          (_, "Players", _) -> Components.unloadComponent "players-view"
+          (Just app, _, "History") -> message <| M.LoadComponent "history-view" M.ReactHistory
+          (_, "History", _) -> message <| M.UnloadComponent "history-view"
+          (Just app, _, "Players") -> message <| M.LoadComponent "players-view" M.ReactPlayers
+          (_, "Players", _) -> message <| M.UnloadComponent "players-view"
           (_, _, "Map") -> message M.GridInitializePanZoom
           (_, "Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
           _ -> Cmd.none
     in ( {model | selectedView = name}, msg)
+
+  LoadComponent id componentType ->
+    ( {model | reactComponents = Dict.insert id componentType model.reactComponents}
+    , case componentType of
+        M.ReactHistory -> Components.renderHistory ("history-view", model.raw_app)
+        M.ReactPlayers ->
+          let scene = case model.focus of
+                        M.FocusScene scene -> Just scene
+                        _ -> Nothing
+          in Components.renderPlayers ("players-view", scene, model.raw_app)
+        M.ReactTextInput -> Cmd.none
+    )
+
+  UnloadComponent id ->
+    ( {model | reactComponents = Dict.remove id model.reactComponents}
+    , Components.unloadComponent id)
 
   GetMovementOptions sceneName creature ->
     if model.gridPanning then (model, Cmd.none) else
