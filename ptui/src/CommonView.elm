@@ -5,7 +5,8 @@ module CommonView exposing
   , checkModal
   , classIcon
   , combatantList, collapsible, playerList, errorBox
-  , mainActionBar, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap)
+  , mainActionBar, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap
+  , noteEditor)
 
 import Dict
 import Set
@@ -440,3 +441,30 @@ popUpMenu_ collapser collapsed prefix key clicker clickerClicked items =
       header = div [clickable, onClick (collapser realKey)]
                    [if isClicked then clickerClicked else clicker]
   in div [s [S.position S.relative]] [header, maybeMenu]
+
+noteEditor : M.Model -> T.App -> (T.Note -> M.Msg) -> T.FolderPath -> String -> T.Note -> Bool -> Html M.Msg
+noteEditor model app noteMsg path origName note titleEditable =
+  let saveButton =
+        case T.getFolder app path of
+          Just (T.Folder folder) ->
+            case Dict.get origName folder.data.notes of
+              Just appNote ->
+                if appNote /= note
+                then button [onClick (M.SendCommand (T.EditNote path origName note))] [text "Save"]
+                else text ""
+              Nothing -> button [onClick (M.SendCommand (T.CreateNote path note))] [text "Create"]
+          Nothing -> text "This folder has disappeared!?"
+  in vabox [s [S.height (S.pct 100)]]
+    [ hbox
+        [ text (String.join "/" path)
+        , text "/"
+        , if titleEditable
+          then input [ type_ "text", defaultValue origName
+                     , onInput (\name -> noteMsg {note | name = name})]
+                     []
+          else strong [] [text origName]
+        , saveButton
+        ]
+    , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
+    ]
+

@@ -26,7 +26,7 @@ playerView model =
       case model.playerID of
         Just playerID ->
           if T.playerIsRegistered app playerID
-          then CommonView.viewGame model app (makeUI model app (T.getPlayerCreatures app playerID))
+          then CommonView.viewGame model app (makeUI model app playerID)
           else registerForm model app
         Nothing -> registerForm model app
     Nothing -> vbox [text "No app yet. Maybe reload.", hbox [text "Last error:", pre [] [text model.error]]]
@@ -47,19 +47,37 @@ registerForm model app =
     , habox [s [S.flexWrap S.wrap]] (List.map playerButton (Dict.keys app.players))
     ]
 
-makeUI : M.Model -> T.App -> List T.Creature -> CommonView.UI
-makeUI model app myCreatures =
-  let (map, mapModeControls) = mapView model app myCreatures in
-  { mapView = map
-  , mapModeControls = mapModeControls
-  , defaultTab = "My Creatures"
-  , tabs =
-        [ ("My Creatures", (\() -> myCreaturesView model app myCreatures))
-        , ("Combat", (\() -> combatView model app myCreatures))]
-  , modal = CommonView.checkModal model app
-  , bottomBar = bottomActionBar app myCreatures
-  , extra = []
-  }
+makeUI : M.Model -> T.App -> String -> CommonView.UI
+makeUI model app playerID =
+  let
+    myCreatures = T.getPlayerCreatures app playerID
+    (map, mapModeControls) = mapView model app myCreatures
+  in
+    { mapView = map
+    , mapModeControls = mapModeControls
+    , defaultTab = "My Creatures"
+    , tabs =
+          [ ("My Creatures", (\() -> myCreaturesView model app myCreatures))
+          , ("Combat", (\() -> combatView model app myCreatures))
+          , ("Notes", (\() -> playerNote model app playerID))]
+    , modal = CommonView.checkModal model app
+    , bottomBar = bottomActionBar app myCreatures
+    , extra = []
+    }
+
+playerNote : M.Model -> T.App -> String -> Html M.Msg
+playerNote model app playerID =
+  let path = ["Players", playerID] in
+  case T.getFolder app path of
+    Just (T.Folder folder) ->
+      let
+        scratchNote =
+          model.scratchNote
+          |> Maybe.withDefault (Dict.get "Scratch" folder.data.notes |> Maybe.map .content |> Maybe.withDefault "Enter notes here")
+        update newNote = M.UpdateScratchNote newNote.content
+      in CommonView.noteEditor model app update path "Scratch" {name="Scratch", content=scratchNote} False
+    _ -> text ("Note editing disabled until your GM creates the folder " ++ T.folderPathToString path)
+
 
 bottomActionBar : T.App -> List T.Creature -> Maybe (Html M.Msg)
 bottomActionBar app myCreatures =

@@ -1,6 +1,5 @@
 module GMView exposing (gmView)
 
-import Array
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -57,7 +56,8 @@ gmNotes model app =
       scratchNote =
         model.scratchNote
         |> Maybe.withDefault (Dict.get "Scratch" root.data.notes |> Maybe.map .content |> Maybe.withDefault "Enter notes here")
-  in noteEditor model app (\newNote -> M.UpdateScratchNote newNote.content) [] "Scratch" {name="Scratch", content=scratchNote} False
+  in CommonView.noteEditor model app (\newNote -> M.UpdateScratchNote newNote.content)
+                           [] "Scratch" {name="Scratch", content=scratchNote} False
 
 savedGameView : M.Model -> T.App -> Html M.Msg
 savedGameView model app =
@@ -288,35 +288,11 @@ terseCreaturesList model app scene =
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
   in vbox (List.map creatureLine (T.getCreatures app.current_game (Dict.keys scene.creatures)))
 
-noteEditor : M.Model -> T.App -> (T.Note -> M.Msg) -> T.FolderPath -> String -> T.Note -> Bool -> Html M.Msg
-noteEditor model app noteMsg path origName note titleEditable =
-  let saveButton =
-        case T.getFolder app path of
-          Just (T.Folder folder) ->
-            case Dict.get origName folder.data.notes of
-              Just appNote ->
-                if appNote /= note
-                then button [onClick (M.SendCommand (T.EditNote path origName note))] [text "Save"]
-                else text ""
-              Nothing -> button [onClick (M.SendCommand (T.CreateNote path note))] [text "Create"]
-          Nothing -> text "This folder has disappeared!?"
-  in vabox [s [S.height (S.pct 100)]]
-    [ hbox
-        [ text (String.join "/" path)
-        , text "/"
-        , if titleEditable
-          then input [ type_ "text", defaultValue origName
-                     , onInput (\name -> noteMsg {note | name = name})]
-                     []
-          else strong [] [text origName]
-        , saveButton
-        ]
-    , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
-    ]
-
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteConsole model app path origName note =
-  noteEditor model app (\updatedNote -> M.SetSecondaryFocus (M.Focus2Note path origName updatedNote)) path origName note True
+  CommonView.noteEditor
+    model app (\updatedNote -> M.SetSecondaryFocus (M.Focus2Note path origName updatedNote))
+    path origName note True
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
 createFolderInPath model app {parent, child} =
