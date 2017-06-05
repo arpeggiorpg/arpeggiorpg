@@ -5,16 +5,17 @@ import Flexbox from 'flexbox-react';
 import * as T from './PTTypes';
 
 export function renderPlayers(app: any, [id, currentScene, data]: [string, string, any]) {
-  console.log("Rendering Players", id, currentScene, data);
   let onSetScene = (pid: T.PlayerID, scene: T.SceneID | null) =>
     app.ports.playersSetScene.send([pid, scene]);
   let onGrantCreatures = (pid: T.PlayerID) =>
     app.ports.playersGrantCreatures.send(pid);
+  let element = document.getElementById(id);
+  console.log("[renderPlayers] loading Players component", id, element, currentScene, data);
   ReactDOM.render(
     <Players data={data} currentScene={currentScene}
       onSetScene={onSetScene}
       onGrantCreatures={onGrantCreatures} />,
-    document.getElementById(id)
+    element
   );
 }
 

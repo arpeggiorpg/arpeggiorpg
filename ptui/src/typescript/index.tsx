@@ -10,6 +10,7 @@ import * as PTTypes from "./PTTypes";
 import * as PTDice from "./Dice";
 
 function unloadComponent(id: string) {
+  console.log("[unloadComponent]", id);
   let el = document.getElementById(id);
   if (el !== null) {
     ReactDOM.unmountComponentAtNode(el);

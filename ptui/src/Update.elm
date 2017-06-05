@@ -9,10 +9,9 @@ import Set
 import Process
 import Task
 import Time
-import Dom
 
+import DomUtils -- Even though we don't use this import, it must be imported for a port to be declared
 import PanZoom
-import DomUtils
 import Components
 import Model as M exposing (Msg(..))
 import Types as T exposing (CreatureID, AbilityID)
@@ -102,8 +101,28 @@ arrayRFind limit fn data =
 start : Cmd Msg
 start = message Start
 
+renderComponent : M.Model -> M.Model -> String -> M.ReactComponent -> Cmd Msg
+renderComponent oldModel newModel id componentType =
+  if oldModel.app /= newModel.app || oldModel.reactComponents /= newModel.reactComponents then
+    case componentType of
+      M.ReactHistory -> Components.renderHistory ("history-view", newModel.raw_app)
+      M.ReactPlayers ->
+        let scene = case newModel.focus of
+                      M.FocusScene scene -> Just scene
+                      _ -> Nothing
+        in Components.renderPlayers ("players-view", scene, newModel.raw_app)
+      M.ReactTextInput -> Cmd.none
+  else Cmd.none
+
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
-update msg model = case msg of
+update msg model =
+  let (newModel, cmd) = update_ msg model
+      refreshReactComponent (id, componentType) = renderComponent model newModel id componentType
+      refreshReactComponents = List.map refreshReactComponent (Dict.toList newModel.reactComponents)
+  in (newModel, Cmd.batch <| [cmd] ++ refreshReactComponents)
+
+update_ : Msg -> M.Model -> (M.Model, Cmd Msg)
+update_ msg model = case msg of
 
   NoMsg -> (model, Cmd.none)
 
@@ -198,28 +217,23 @@ update msg model = case msg of
   SelectView name ->
     if name == model.selectedView then (model, Cmd.none) else 
     let
-      msg =
-        case (model.app, model.selectedView, name) of
-          (Just app, _, "History") -> message <| M.LoadComponent "history-view" M.ReactHistory
-          (_, "History", _) -> message <| M.UnloadComponent "history-view"
-          (Just app, _, "Players") -> message <| M.LoadComponent "players-view" M.ReactPlayers
-          (_, "Players", _) -> message <| M.UnloadComponent "players-view"
-          (_, _, "Map") -> message M.GridInitializePanZoom
-          (_, "Map", _) -> PanZoom.destroyPanZoom "#grid-svg"
+      onLoad =
+        case (model.app, name) of
+          (Just app, "History") -> message <| M.LoadComponent "history-view" M.ReactHistory
+          (Just app, "Players") -> message <| M.LoadComponent "players-view" M.ReactPlayers
+          (_, "Map") -> message M.GridInitializePanZoom
           _ -> Cmd.none
-    in ( {model | selectedView = name}, msg)
+      onUnload = 
+        case model.selectedView of
+          "History" -> message <| M.UnloadComponent "history-view"
+          "Players" -> message <| M.UnloadComponent "players-view"
+          "Map" -> PanZoom.destroyPanZoom "#grid-svg"
+          _ -> Cmd.none
+    in ( {model | selectedView = name}, Cmd.batch [onLoad, onUnload])
 
   LoadComponent id componentType ->
-    ( {model | reactComponents = Dict.insert id componentType model.reactComponents}
-    , case componentType of
-        M.ReactHistory -> Components.renderHistory ("history-view", model.raw_app)
-        M.ReactPlayers ->
-          let scene = case model.focus of
-                        M.FocusScene scene -> Just scene
-                        _ -> Nothing
-          in Components.renderPlayers ("players-view", scene, model.raw_app)
-        M.ReactTextInput -> Cmd.none
-    )
+    let newModel = {model | reactComponents = Dict.insert id componentType model.reactComponents}
+    in ( newModel, Cmd.none ) --renderComponent newModel id componentType )
 
   UnloadComponent id ->
     ( {model | reactComponents = Dict.remove id model.reactComponents}
