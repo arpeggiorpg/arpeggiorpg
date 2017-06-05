@@ -57,7 +57,7 @@ gmNotes model app =
       scratchNote =
         model.scratchNote
         |> Maybe.withDefault (Dict.get "Scratch" root.data.notes |> Maybe.map .content |> Maybe.withDefault "Enter notes here")
-  in noteEditor model app (\newNote -> M.UpdateScratchNote newNote.content) [] "Scratch" {name="Scratch", content=scratchNote}
+  in noteEditor model app (\newNote -> M.UpdateScratchNote newNote.content) [] "Scratch" {name="Scratch", content=scratchNote} False
 
 savedGameView : M.Model -> T.App -> Html M.Msg
 savedGameView model app =
@@ -288,8 +288,8 @@ terseCreaturesList model app scene =
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
   in vbox (List.map creatureLine (T.getCreatures app.current_game (Dict.keys scene.creatures)))
 
-noteEditor : M.Model -> T.App -> (T.Note -> M.Msg) -> T.FolderPath -> String -> T.Note -> Html M.Msg
-noteEditor model app noteMsg path origName note =
+noteEditor : M.Model -> T.App -> (T.Note -> M.Msg) -> T.FolderPath -> String -> T.Note -> Bool -> Html M.Msg
+noteEditor model app noteMsg path origName note titleEditable =
   let saveButton =
         case T.getFolder app path of
           Just (T.Folder folder) ->
@@ -304,9 +304,11 @@ noteEditor model app noteMsg path origName note =
     [ hbox
         [ text (String.join "/" path)
         , text "/"
-        , input [ type_ "text", defaultValue origName
-                , onInput (\name -> noteMsg {note | name = name})]
-                []
+        , if titleEditable
+          then input [ type_ "text", defaultValue origName
+                     , onInput (\name -> noteMsg {note | name = name})]
+                     []
+          else strong [] [text origName]
         , saveButton
         ]
     , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
@@ -314,7 +316,7 @@ noteEditor model app noteMsg path origName note =
 
 noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
 noteConsole model app path origName note =
-  noteEditor model app (\updatedNote -> M.SetSecondaryFocus (M.Focus2Note path origName updatedNote)) path origName note
+  noteEditor model app (\updatedNote -> M.SetSecondaryFocus (M.Focus2Note path origName updatedNote)) path origName note True
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
 createFolderInPath model app {parent, child} =
