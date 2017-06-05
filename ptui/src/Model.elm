@@ -97,6 +97,8 @@ type Msg
     | ToggleFolderCollapsed String
     | SelectView String
 
+    | UpdateScratchNote String
+
     | ShowGameLogs (List T.GameLog)
 
     | Lazy (Model -> Msg)
@@ -139,6 +141,7 @@ defaultModel flags =
   , editingInitiative = Nothing
   , editingNote = Nothing
   , reactComponents = Dict.empty
+  , scratchNote = Nothing
   }
 
 type alias Model =
@@ -168,6 +171,7 @@ type alias Model =
   , editingInitiative: Maybe T.CreatureID
   , editingNote: Maybe T.CreatureID
   , reactComponents : Dict.Dict String ReactComponent
+  , scratchNote: Maybe String
   }
 
 type ReactComponent

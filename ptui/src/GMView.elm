@@ -38,15 +38,26 @@ makeUI model app =
   , mapModeControls = mapModeControls
   , defaultTab = "Campaign"
   , tabs =
-        [ ("Campaign", (\() -> campaignView model app))
-        , ("Combat", (\() -> combatView model app))
-        , ("Players", (\() -> playersView model app))
-        , ("History", (\() -> Lazy.lazy historyView app))
-        , ("Saved Games", (\() -> savedGameView model app))
-        ]
+      [ ("Campaign", (\() -> campaignView model app))
+      , ("Combat", (\() -> combatView model app))
+      , ("Players", (\() -> playersView model app))
+      , ("History", (\() -> Lazy.lazy historyView app))
+      , ("Saved Games", (\() -> savedGameView model app))
+      ]
   , bottomBar = bottomActionBar app
   , modal = checkModal model app
+  , extra =
+      [ overlay (S.px 0) (S.pct 50) [S.height (S.pct 50), S.width (S.px 300)] [gmNotes model app]
+      ]
   }
+
+gmNotes : M.Model -> T.App -> Html M.Msg
+gmNotes model app =
+  let (T.Folder root) = app.current_game.campaign
+      scratchNote =
+        model.scratchNote
+        |> Maybe.withDefault (Dict.get "Scratch" root.data.notes |> Maybe.map .content |> Maybe.withDefault "Enter notes here")
+  in noteEditor model app (\newNote -> M.UpdateScratchNote newNote.content) [] "Scratch" {name="Scratch", content=scratchNote}
 
 savedGameView : M.Model -> T.App -> Html M.Msg
 savedGameView model app =
@@ -277,10 +288,9 @@ terseCreaturesList model app scene =
              , popUpMenu model "terse-creature-abilities" creature.id threeDots threeDots menuItems]
   in vbox (List.map creatureLine (T.getCreatures app.current_game (Dict.keys scene.creatures)))
 
-noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
-noteConsole model app path origName note =
-  let noteMsg newNote = M.SetSecondaryFocus (M.Focus2Note path origName newNote)
-      saveButton =
+noteEditor : M.Model -> T.App -> (T.Note -> M.Msg) -> T.FolderPath -> String -> T.Note -> Html M.Msg
+noteEditor model app noteMsg path origName note =
+  let saveButton =
         case T.getFolder app path of
           Just (T.Folder folder) ->
             case Dict.get origName folder.data.notes of
@@ -301,6 +311,10 @@ noteConsole model app path origName note =
         ]
     , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
     ]
+
+noteConsole : M.Model -> T.App -> T.FolderPath -> String -> T.Note -> Html M.Msg
+noteConsole model app path origName note =
+  noteEditor model app (\updatedNote -> M.SetSecondaryFocus (M.Focus2Note path origName updatedNote)) path origName note
 
 createFolderInPath : M.Model -> T.App -> M.CreatingFolder -> Html M.Msg
 createFolderInPath model app {parent, child} =

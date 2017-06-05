@@ -312,6 +312,7 @@ type alias UI =
   , tabs: List (String, () -> Html M.Msg)
   , modal: Maybe (Html M.Msg)
   , bottomBar: Maybe (Html M.Msg)
+  , extra: List (Html M.Msg)
   }
 
 {-| Top-level UI for an App. -}
@@ -345,7 +346,7 @@ viewGameWide model app ui =
                 , plainBorder
                 , S.backgroundColor (S.rgb 255 255 255)]]
             [ bar ]
-    ]
+    ] ++ ui.extra
     ++ (ui.modal |> Maybe.map modalOverlay |> Maybe.withDefault [])
 
 viewGameMobile : M.Model -> T.App -> UI -> Html M.Msg

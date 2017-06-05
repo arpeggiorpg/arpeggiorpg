@@ -414,6 +414,9 @@ update_ msg model = case msg of
         ({model | editingNote = Nothing}, Components.unloadComponent "focus-note" )
       (Nothing, Nothing) -> (model, Cmd.none)
 
+  UpdateScratchNote note ->
+    ({model | scratchNote = Just note}, Cmd.none)
+
   PathCurrentCombatCreature pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCurrentCombatCreature pt))
   PathCreature scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.PathCreature scene cid pt))
   SetCreaturePos scene cid pt -> ({model | moving = Nothing}, sendCommand model.rpiURL (T.SetCreaturePos scene cid pt))

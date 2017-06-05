@@ -58,6 +58,7 @@ makeUI model app myCreatures =
         , ("Combat", (\() -> combatView model app myCreatures))]
   , modal = CommonView.checkModal model app
   , bottomBar = bottomActionBar app myCreatures
+  , extra = []
   }
 
 bottomActionBar : T.App -> List T.Creature -> Maybe (Html M.Msg)
