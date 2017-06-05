@@ -479,6 +479,7 @@ type alias Creature =
   , portrait_url: String
   , attributes: Dict AttrID SkillLevel
   , size: AABB
+  , inventory: List Item
 }
 
 creatureDecoder : JD.Decoder Creature
@@ -501,6 +502,7 @@ creatureDecoder =
     |> P.required "portrait_url" JD.string
     |> P.required "attributes" (JD.dict skillLevelDecoder)
     |> P.required "size" aabbDecoder
+    |> P.required "inventory" (JD.list itemDecoder)
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
@@ -522,10 +524,27 @@ creatureEncoder c =
     , ("portrait_url", JE.string c.portrait_url)
     , ("attributes", encodeStringDict skillLevelEncoder c.attributes)
     , ("size", aabbEncoder c.size)
+    , ("inventory", JE.list (List.map itemEncoder c.inventory))
     ]
 
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
 encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
+
+type Item
+  = ItemID String
+  | ItemPlot String
+
+itemEncoder : Item -> JE.Value
+itemEncoder i =
+  case i of
+    ItemID s -> JE.object [("ID", JE.string s)]
+    ItemPlot s -> JE.object [("Plot", JE.string s)]
+
+itemDecoder : JD.Decoder Item
+itemDecoder = sumDecoder "Item" []
+  [ ("ID", JD.map ItemID JD.string)
+  , ("Plot", JD.map ItemPlot JD.string)
+  ]
 
 type alias AABB =
   { x: Int
