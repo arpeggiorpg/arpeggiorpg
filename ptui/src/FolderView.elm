@@ -26,6 +26,7 @@ campaignFolder fstate app =
       , showCreatures = True
       , showNotes = True
       , showMaps = True
+      , showItems = True
       , allowFocus = True
       , contentControls = \_ _ -> text ""
       }
@@ -73,6 +74,7 @@ type alias FolderViewConfig =
   , showCreatures : Bool
   , showNotes : Bool
   , showMaps : Bool
+  , showItems : Bool
   , allowFocus : Bool
   , contentControls : T.FolderPath -> Maybe T.FolderItemID -> Html M.Msg
   }
@@ -84,6 +86,7 @@ showNothing =
   , showCreatures = False
   , showNotes = False
   , showMaps = False
+  , showItems = False
   , allowFocus = False
   , contentControls = \_ _ -> text ""
   }
@@ -183,6 +186,14 @@ folderView fstate app cfg path (T.Folder folder) =
       in case map of
            Just map -> folderLine cfg path (Just (T.FolderMap mapID)) msg "map" map.name
            Nothing -> text ("Invalid map in folder: " ++ mapID)
+    viewItem itemID =
+      let
+        itemName =
+          case Dict.get itemID app.current_game.items of
+            Just item -> item.name
+            Nothing -> "Item definition not found"
+      in
+        folderLine cfg path (Just (T.FolderItem itemID)) M.NoMsg "attachment" itemName
     scenes =
       if cfg.showScenes then vbox (List.map viewScene (Set.toList folder.data.scenes))
       else text ""
@@ -196,5 +207,8 @@ folderView fstate app cfg path (T.Folder folder) =
     maps =
       if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
       else text ""
+    items =
+      if cfg.showItems then vbox (List.map viewItem (Set.toList folder.data.items))
+      else text ""
     subfolders = folderSubEntries fstate app cfg path (T.Folder folder)
-  in vbox [ scenes, maps, creatures, notes, subfolders]
+  in vbox [ scenes, maps, creatures, notes, items, subfolders]

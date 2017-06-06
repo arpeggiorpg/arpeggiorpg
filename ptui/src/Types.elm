@@ -252,15 +252,17 @@ type alias FolderNode =
   , creatures: Set.Set CreatureID
   , notes: Dict.Dict String Note
   , maps: Set.Set MapID
+  , items: Set.Set ItemID
   }
 
 folderNodeDecoder : JD.Decoder FolderNode
 folderNodeDecoder =
-  JD.map4 FolderNode
+  JD.map5 FolderNode
     (JD.field "scenes" (setDecoder JD.string))
     (JD.field "creatures" (setDecoder JD.string))
     (JD.field "notes" (JD.dict noteDecoder))
     (JD.field "maps" (setDecoder JD.string))
+    (JD.field "items" (setDecoder JD.string))
 
 type alias FolderPath = List String
 
@@ -957,6 +959,7 @@ type FolderItemID
   | FolderCreature CreatureID
   | FolderNote String
   | FolderMap MapID
+  | FolderItem ItemID
   | FolderSubfolder String
 
 folderItemIDEncoder : FolderItemID -> JE.Value
@@ -966,6 +969,7 @@ folderItemIDEncoder item = case item of
   FolderNote nid -> JE.object [("NoteID", JE.string nid)]
   FolderMap mid -> JE.object [("MapID", JE.string mid)]
   FolderSubfolder name -> JE.object [("SubfolderID", JE.string name)]
+  FolderItem iid -> JE.object [("ItemID", JE.string iid)]
 
 folderItemIDDecoder : JD.Decoder FolderItemID
 folderItemIDDecoder = sumDecoder "FolderItemID"
@@ -975,6 +979,7 @@ folderItemIDDecoder = sumDecoder "FolderItemID"
   , ("NoteID", JD.map FolderNote JD.string)
   , ("MapID", JD.map FolderMap JD.string)
   , ("SubfolderID", JD.map FolderSubfolder JD.string)
+  , ("ItemID", JD.map FolderItem JD.string)
   ]
 
 resultDecoder : JD.Decoder error -> JD.Decoder success -> JD.Decoder (Result error success)
