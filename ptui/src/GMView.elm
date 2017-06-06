@@ -121,7 +121,7 @@ console model app {key, path, prettyName} content =
         T.FolderCreature cid -> M.SendCommand (T.DeleteCreature cid)
         T.FolderMap mid -> M.SendCommand (T.DeleteMap mid)
         T.FolderSubfolder name -> M.SendCommand (T.DeleteFolder (path ++ [name]))
-        T.FolderItem iid -> M.NoMsg -- M.SendCommand (T.DeleteFolderItem path key)
+        T.FolderItem _ -> M.SendCommand (T.DeleteFolderItem path key)
   in
     vabox [s [S.marginTop (S.em 1), S.height (S.pct 100)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]

@@ -96,6 +96,7 @@ type GameLog
   = GLCreateFolder FolderPath
   | GLRenameFolder FolderPath String
   | GLDeleteFolder FolderPath
+  | GLDeleteFolderItem FolderPath FolderItemID
   | GLMoveFolderItem FolderPath FolderItemID FolderPath
   | GLCreateNote FolderPath Note
   | GLEditNote FolderPath String Note
@@ -126,6 +127,7 @@ gameLogDecoder = sumDecoder "GameLog"
   [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
   , ("RenameFolder", fixedList2 GLRenameFolder folderPathDecoder JD.string)
   , ("DeleteFolder", JD.map GLDeleteFolder folderPathDecoder)
+  , ("DeleteFolderItem", fixedList2 GLDeleteFolderItem folderPathDecoder folderItemIDDecoder)
   , ("MoveFolderItem", fixedList3 GLMoveFolderItem folderPathDecoder folderItemIDDecoder folderPathDecoder)
   , ("CreateNote", fixedList2 GLCreateNote folderPathDecoder noteDecoder)
   , ("EditNote", fixedList3 GLEditNote folderPathDecoder JD.string noteDecoder)
@@ -822,6 +824,7 @@ type GameCommand
   = CreateFolder FolderPath
   | RenameFolder FolderPath String
   | DeleteFolder FolderPath
+  | DeleteFolderItem FolderPath FolderItemID
   | MoveFolderItem FolderPath FolderItemID FolderPath
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
@@ -864,6 +867,8 @@ gameCommandEncoder gc =
       JE.object [("RenameFolder", JE.list [folderPathEncoder path, JE.string newName])]
     DeleteFolder path ->
       JE.object [("DeleteFolder", folderPathEncoder path)]
+    DeleteFolderItem path itemID ->
+      JE.object [("DeleteFolderItem", JE.list [folderPathEncoder path, folderItemIDEncoder itemID])]
     MoveFolderItem src item dst ->
       JE.object [("MoveFolderItem", JE.list [folderPathEncoder src, folderItemIDEncoder item, folderPathEncoder dst])]
     CreateNote path note ->

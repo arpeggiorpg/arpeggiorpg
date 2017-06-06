@@ -43,9 +43,11 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
       case "RenameFolder":
         return <Flexbox>Renamed Folder</Flexbox>
       case "DeleteFolder":
-        return <Flexbox>Deleted folder</Flexbox>
+        return <Flexbox>Deleted folder {log.path}</Flexbox>
+      case "DeleteFolderItem":
+        return <Flexbox>Deleted folder item in {log.path}</Flexbox>
       case "MoveFolderItem":
-        return <Flexbox>Moved folder item</Flexbox>
+        return <Flexbox>Moved folder item from {log.path} to {log.newPath}</Flexbox>
       case "CreateNote":
         return <Flexbox>Created note {log.note.name}</Flexbox>
       case "EditNote":

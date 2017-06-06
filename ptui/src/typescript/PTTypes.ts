@@ -4,6 +4,7 @@ import { Decoder } from 'type-safe-json-decoder';
 export type CreatureID = string;
 export type PlayerID = string;
 export type SceneID = string;
+export type ItemID = string;
 export type AttrID = string;
 export type MapID = string;
 export type Color = string;
@@ -44,6 +45,7 @@ export type GameLog =
   | { t: "CreateFolder"; path: string }
   | { t: "RenameFolder"; path: string; newName: string }
   | { t: "DeleteFolder"; path: string }
+  | { t: "DeleteFolderItem"; path: string; item: FolderItemID }
   | { t: "MoveFolderItem"; path: string; item: FolderItemID; newPath: string }
   | { t: "CreateNote"; path: string; note: Note }
   | { t: "EditNote"; path: string; name: string; newNote: Note }
@@ -114,6 +116,7 @@ export type FolderItemID =
   | { t: "CreatureID"; id: CreatureID }
   | { t: "NoteID"; id: string }
   | { t: "SubfolderID"; id: string }
+  | { t: "ItemID"; id: ItemID }
 
 export interface Map {
   id: MapID,
@@ -225,6 +228,7 @@ export const decodeFolderItemID: Decoder<FolderItemID> =
     "MapID": _mkFolderItem("MapID"),
     "CreatureID": _mkFolderItem("CreatureID"),
     "NoteID": _mkFolderItem("NoteID"),
+    "ItemID": _mkFolderItem("ItemID"),
     "SubfolderID": _mkFolderItem("SubfolderID"),
   });
 
@@ -287,6 +291,8 @@ export const decodeGameLog: Decoder<GameLog> =
       ([path, newName]): GameLog => ({ t: "RenameFolder", path, newName }),
       JD.tuple(JD.string(), JD.string())),
     "DeleteFolder": JD.map((path): GameLog => ({ t: "DeleteFolder", path }), JD.string()),
+    "DeleteFolderItem": JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
+      JD.tuple(JD.string(), decodeFolderItemID)),
     "MoveFolderItem": JD.map(
       ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
       JD.tuple(JD.string(), decodeFolderItemID, JD.string())),
@@ -358,14 +364,14 @@ export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
 
 export const decodeGame: Decoder<Game> = JD.object(
   ["creatures", JD.dict(decodeCreature)],
-  (creatures) => ({creatures})
+  (creatures) => ({ creatures })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
   ["snapshots", decodeAppSnapshots],
   ["players", decodeAppPlayers],
   ["current_game", decodeGame],
-  (snapshots, players, current_game) => ({snapshots, players, current_game})
+  (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
 
 
