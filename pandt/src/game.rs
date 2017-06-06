@@ -45,7 +45,7 @@ impl Game {
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
-      DeleteFolderItem(path, itemID) => self.change_with(GameLog::DeleteFolderItem(path, itemID)),
+      DeleteFolderItem(path, item_id) => self.change_with(GameLog::DeleteFolderItem(path, item_id)),
 
       CreateItem(path, name) => {
         let item = Item { id: ItemID::new(), name };
@@ -202,6 +202,9 @@ impl Game {
     Ok(newgame)
   }
 
+  /// Apply a log to a *mutable* Game.
+  // This is done so that we don't have to worry about `self` vs `newgame` -- all
+  // manipulations here work on &mut self.
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
@@ -248,6 +251,17 @@ impl Game {
             for folder in all_folders {
               let node = self.campaign.get_mut(&folder)?;
               node.items.remove(&iid);
+            }
+            // Also delete the item from all creature inventory slots
+            let cids: Vec<CreatureID> = self.creatures.keys().cloned().collect();
+            for cid in cids {
+              self
+                .creatures
+                .mutate(&cid, |mut c| {
+                  c.inventory.remove(&iid);
+                  c
+                })
+                .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
             }
             self.items.remove(&iid);
           }

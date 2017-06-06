@@ -100,6 +100,10 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     self.into_iter()
   }
 
+  pub fn keys<'a>(&'a self) -> ::std::collections::hash_map::Keys<'a, <V as DeriveKey>::KeyType, V> {
+    self.data.keys()
+  }
+
   pub fn insert(&mut self, v: V) -> Option<V> {
     self.data.insert(v.derive_key(), v)
   }
