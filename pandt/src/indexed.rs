@@ -30,6 +30,14 @@ impl<V> Clone for IndexedHashMap<V>
   }
 }
 
+impl<V> Default for IndexedHashMap<V>
+  where V: DeriveKey
+{
+  fn default() -> IndexedHashMap<V> {
+    IndexedHashMap::new()
+  }
+}
+
 impl<V> fmt::Debug for IndexedHashMap<V>
   where V: DeriveKey + fmt::Debug,
         <V as DeriveKey>::KeyType: fmt::Debug
@@ -87,7 +95,8 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     IndexedHashMap { data: HashMap::new() }
   }
 
-  pub fn iter<'a>(&'a self) -> ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V> {
+  pub fn iter<'a>(&'a self)
+                  -> ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V> {
     self.into_iter()
   }
 

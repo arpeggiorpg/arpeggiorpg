@@ -135,6 +135,25 @@ impl ::std::str::FromStr for CreatureID {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct ItemID(Uuid);
+impl ItemID {
+  pub fn new() -> ItemID {
+    ItemID(Uuid::new_v4())
+  }
+  pub fn to_string(&self) -> String {
+    self.0.hyphenated().to_string()
+  }
+}
+
+impl ::std::str::FromStr for ItemID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<ItemID, GameError> {
+    Ok(ItemID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
+  }
+}
+
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct SceneID(Uuid);
 impl SceneID {
   pub fn new() -> SceneID {
@@ -223,6 +242,7 @@ pub enum FolderItemID {
   MapID(MapID),
   CreatureID(CreatureID),
   NoteID(String),
+  ItemID(ItemID),
   SubfolderID(String),
 }
 
@@ -282,6 +302,12 @@ pub enum GameCommand {
 
   /// Move some object from one folder to another.
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  DeleteFolderItem(FolderPath, FolderItemID),
+
+  /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
+  CreateItem(FolderPath, String),
+  /// Edit an Item. The ID in the given Item must match an existing Item.
+  EditItem(Item),
 
   /// Create a Note inside of a Folder.
   CreateNote(FolderPath, Note),
@@ -406,6 +432,11 @@ pub enum GameLog {
   RenameFolder(FolderPath, String),
   DeleteFolder(FolderPath),
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  DeleteFolderItem(FolderPath, FolderItemID),
+
+  CreateItem(FolderPath, Item),
+  EditItem(Item),
+
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
   DeleteNote(FolderPath, String),
@@ -455,6 +486,14 @@ error_chain! {
     CreatureAlreadyExists(cid: CreatureID) {
       description("A Creature with the given ID already exists")
       display("The creature with ID {} already exists", cid.to_string())
+    }
+    ItemAlreadyExists(iid: ItemID) {
+      description("An Item already exists.")
+      display("The Item {} already exists", iid.0)
+    }
+    ItemNotFound(iid: ItemID) {
+      description("An Item couldn't be found.")
+      display("The Item {} couldn't be found.", iid.0)
     }
     SceneAlreadyExists(scene: SceneID) {
       description("A scene already exists.")
@@ -772,13 +811,20 @@ pub struct Creature {
   pub initiative: Dice,
   pub size: AABB,
   #[serde(default)]
-  pub inventory: HashSet<Item>,
+  pub inventory: HashMap<ItemID, u64>,
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub enum Item {
-  Plot(String),
-  ID(Uuid),
+pub struct Item {
+  pub id: ItemID,
+  pub name: String,
+}
+
+impl DeriveKey for Item {
+  type KeyType = ItemID;
+  fn derive_key(&self) -> Self::KeyType {
+    self.id
+  }
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -807,6 +853,8 @@ pub struct Game {
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
+  #[serde(default)]
+  pub items: IndexedHashMap<Item>,
   pub campaign: FolderTree<Folder>,
 }
 
@@ -1053,6 +1101,7 @@ pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
+  pub items: HashSet<ItemID>,
   pub maps: HashSet<MapID>,
 }
 
@@ -1062,6 +1111,7 @@ impl Folder {
       scenes: HashSet::new(),
       creatures: HashSet::new(),
       notes: IndexedHashMap::new(),
+      items: HashSet::new(),
       maps: HashSet::new(),
     }
   }

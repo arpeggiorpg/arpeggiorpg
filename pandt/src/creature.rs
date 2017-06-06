@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use std::cmp;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
@@ -191,7 +191,7 @@ impl Creature {
       attributes: HashMap::new(),
       initiative: Dice::expr(1, 20),
       size: AABB {x: 1, y: 1, z: 1},
-      inventory: HashSet::new(),
+      inventory: HashMap::new(),
     }
   }
 

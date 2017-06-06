@@ -17,6 +17,7 @@ impl Game {
       classes: classes,
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
+      items: IndexedHashMap::new(),
     }
   }
 
@@ -44,6 +45,14 @@ impl Game {
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
+      DeleteFolderItem(path, itemID) => self.change_with(GameLog::DeleteFolderItem(path, itemID)),
+
+      CreateItem(path, name) => {
+        let item = Item { id: ItemID::new(), name };
+        self.change_with(GameLog::CreateItem(path, item))
+      }
+      EditItem(item) => self.change_with(GameLog::EditItem(item)),
+
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
@@ -154,6 +163,7 @@ impl Game {
       FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
       FolderItemID::SceneID(sid) => node.scenes.insert(sid),
       FolderItemID::MapID(mid) => node.maps.insert(mid),
+      FolderItemID::ItemID(iid) => node.items.insert(iid),
       FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -177,6 +187,7 @@ impl Game {
       FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
       FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
       FolderItemID::MapID(mid) => remove_set(path, item_id, &mut node.maps, &mid)?,
+      FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
       FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -227,6 +238,35 @@ impl Game {
           }
         }
       }
+      DeleteFolderItem(ref path, ref item_id) => {
+        // this is pretty silly, not even using path...
+        // (though we will definitely need it for deleting notes)
+        let all_folders: Vec<FolderPath> =
+          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+        match *item_id {
+          FolderItemID::ItemID(iid) => {
+            for folder in all_folders {
+              let node = self.campaign.get_mut(&folder)?;
+              node.items.remove(&iid);
+            }
+            self.items.remove(&iid);
+          }
+          _ => unimplemented!(),
+        }
+      }
+
+      CreateItem(ref path, ref ritem) => {
+        let item = ritem.clone();
+        self.items.try_insert(item).ok_or_else(|| GameErrorEnum::ItemAlreadyExists(ritem.id))?;
+        self.link_folder_item(path, &FolderItemID::ItemID(ritem.id))?;
+      }
+      EditItem(ref item) => {
+        self
+          .items
+          .mutate(&item.id, move |_| item.clone())
+          .ok_or_else(|| GameErrorEnum::ItemNotFound(item.id))?;
+      }
+
       CreateNote(ref path, ref note) => {
         self.campaign.get_mut(path)?.notes.insert(note.clone());
       }
@@ -436,12 +476,7 @@ impl Game {
     let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
     let scene = self.get_scene(combat.scene)?;
     let map = self.get_map(scene.map)?;
-    Ok(DynamicCombat {
-         scene: scene,
-         map: map,
-         combat: combat,
-         game: self,
-       })
+    Ok(DynamicCombat { scene: scene, map: map, combat: combat, game: self })
   }
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
@@ -571,11 +606,7 @@ impl Game {
          TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
          TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
          TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
-         TargetSpec::SomeCreaturesInVolumeInRange {
-           volume,
-           maximum,
-           range,
-         } => panic!(),
+         TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
          TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
            self.open_terrain_in_range(scene, creature_id, range)?
          }
@@ -612,18 +643,12 @@ impl Game {
   }
 
   pub fn change(&self) -> ChangedGame {
-    ChangedGame {
-      game: self.clone(),
-      logs: vec![],
-    }
+    ChangedGame { game: self.clone(), logs: vec![] }
   }
 
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
-    Ok(ChangedGame {
-         game: game,
-         logs: vec![log],
-       })
+    Ok(ChangedGame { game: game, logs: vec![log] })
   }
 }
 
