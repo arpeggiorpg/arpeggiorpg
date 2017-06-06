@@ -814,6 +814,7 @@ pub struct Creature {
   pub inventory: HashMap<ItemID, u64>,
 }
 
+/// A definition of an Item, which can be referenced by creatures' inventories.
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Item {
   pub id: ItemID,
@@ -904,6 +905,8 @@ pub struct Scene {
   pub map: MapID,
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
+  #[serde(default)]
+  pub inventory: HashMap<ItemID, u64>
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -928,6 +931,7 @@ impl Scene {
       map: creation.map,
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),
+      inventory: HashMap::new(),
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {

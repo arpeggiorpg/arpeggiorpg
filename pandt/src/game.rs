@@ -263,6 +263,16 @@ impl Game {
                 })
                 .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
             }
+            let sids: Vec<SceneID> = self.scenes.keys().cloned().collect();
+            for sid in sids {
+              self
+                .scenes
+                .mutate(&sid, |mut s| {
+                  s.inventory.remove(&iid);
+                  s
+                })
+                .ok_or_else(|| GameErrorEnum::SceneNotFound(sid))?;
+            }
             self.items.remove(&iid);
           }
           _ => unimplemented!(),
