@@ -1101,6 +1101,7 @@ pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
+  #[serde(default)]
   pub items: HashSet<ItemID>,
   pub maps: HashSet<MapID>,
 }
