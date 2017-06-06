@@ -173,12 +173,28 @@ sceneConsole model app scene =
           else text ""
         Nothing -> startCombatButton model app
     , sceneChallenges model app scene
+    , sceneInventory model app scene
     , hbox [ strong [] [text "Creatures"]
            , clickableIcon [onClick selectCreatures] "more_horiz"
            ]
     , div [s [S.marginLeft (S.em 1)]]
           [terseCreaturesList model app scene]
     ]
+
+sceneInventory : M.Model -> T.App -> T.Scene -> Html M.Msg
+sceneInventory model app scene =
+  let
+    items = List.map renderInventoryItem (Dict.toList scene.inventory)
+    renderInventoryItem (itemId, count) =
+      let itemName =
+            case Dict.get itemId app.current_game.items of
+              Just item -> item.name
+              Nothing -> "Item definition not found"
+      in hbox [text itemName, text ": ", text (toString count)]
+  in
+    vbox
+      [ strong [] [text "Inventory"]
+      , div [s [S.marginLeft (S.em 1)]] items]
 
 challengeCreaturesAndShowResults : T.AttrCheck -> List T.CreatureID -> M.Msg
 challengeCreaturesAndShowResults attrCheck cids =
