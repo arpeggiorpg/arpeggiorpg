@@ -217,6 +217,7 @@ type alias Game =
   , maps: Dict MapID Map
   , scenes: Dict String Scene
   , campaign: Folder
+  , items: Dict ItemID Item
   }
 
 gameDecoder : JD.Decoder Game
@@ -229,6 +230,7 @@ gameDecoder =
     |> P.required "maps" (JD.dict mapDecoder)
     |> P.required "scenes" (JD.dict sceneDecoder)
     |> P.required "campaign" folderDecoder
+    |> P.required "items" (JD.dict itemDecoder)
 
 type Folder =
   Folder
@@ -291,16 +293,17 @@ type alias Scene =
   , map: String
   , creatures: Dict CreatureID (Point3, Visibility)
   , attribute_checks: Dict String AttrCheck
+  , inventory: Dict ItemID Int
   }
 
 sceneDecoder : JD.Decoder Scene
-sceneDecoder =
-  JD.map5 Scene
-    (JD.field "id" JD.string)
-    (JD.field "name" JD.string)
-    (JD.field "map" JD.string)
-    (JD.field "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder))))
-    (JD.field "attribute_checks" (JD.dict attrCheckDecoder))
+sceneDecoder = P.decode Scene
+  |> P.required "id" JD.string
+  |> P.required "name" JD.string
+  |> P.required "map" JD.string
+  |> P.required "creatures" (JD.dict (JD.map2 (,) (JD.index 0 point3Decoder) (JD.index 1 visibilityDecoder)))
+  |> P.required "attribute_checks" (JD.dict attrCheckDecoder)
+  |> P.required "inventory" (JD.dict JD.int)
 
 sceneEncoder : Scene -> JE.Value
 sceneEncoder scene =
@@ -316,6 +319,7 @@ sceneEncoder scene =
     , ("map", JE.string scene.map)
     , ("creatures", JE.object encCreatures)
     , ("attribute_checks", JE.object encAttrChecks)
+    , ("inventory", encodeStringDict JE.int scene.inventory)
     ]
 
 type alias AttrCheck =
