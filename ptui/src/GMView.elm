@@ -77,30 +77,34 @@ campaignView model app =
 
 secondaryFocusView : M.Model -> T.App -> Html M.Msg
 secondaryFocusView model app =
-  case model.secondaryFocus of
+  let
+    consoleView key path prettyName content =
+      let folderItem = {key=key, path=path, prettyName=prettyName}
+      in console model app folderItem content
+  in case model.secondaryFocus of
     M.Focus2None -> text ""
     M.Focus2Creature path cid ->
       case T.getCreature app.current_game cid of
         Just creature ->
-          -- TODO: * move functionality from All Creatures here (add to combat?)
-          let item = {key=T.FolderCreature cid, path=path, prettyName=creature.name}
-          in console model app item (creatureConsole model app creature)
+          consoleView (T.FolderCreature cid) path creature.name (creatureConsole model app creature)
         Nothing -> text "Creature Disappeared"
     M.Focus2Note path origName note ->
-      let item = {key=T.FolderNote origName, path=path, prettyName=origName}
-      in console model app item (noteConsole model app path origName note)
+      consoleView (T.FolderNote origName) path origName (noteConsole model app path origName note)
     M.Focus2Map path mapID ->
       case M.getMapNamed mapID app of
         Just map ->
-          let item = {key=T.FolderMap mapID, path=path, prettyName=map.name}
-          in console model app item (mapConsole model app path mapID)
+          consoleView (T.FolderMap mapID) path map.name (mapConsole model app path mapID)
         Nothing -> text "Map Disappeared"
     M.Focus2Scene path sceneID ->
       case T.getScene app sceneID of
         Just scene ->
-          let item = {key=T.FolderScene sceneID, path=path, prettyName=scene.name}
-          in console model app item (sceneConsole model app scene)
+          consoleView (T.FolderScene sceneID) path scene.name (sceneConsole model app scene)
         Nothing -> text "Scene Disappeared"
+    M.Focus2Item path itemID ->
+      case T.getItem itemID app of
+        Just item ->
+          consoleView (T.FolderItem itemID) path item.name (itemConsole model app item)
+        Nothing -> text "Item Disappeared"
 
 console : M.Model -> T.App -> M.FolderItem -> Html M.Msg -> Html M.Msg
 console model app {key, path, prettyName} content =
@@ -122,6 +126,10 @@ console model app {key, path, prettyName} content =
     vabox [s [S.marginTop (S.em 1), S.height (S.pct 100)]]
       [ hbox [text prettyName, text " in ", renderFolderPath path, menu]
       , content ]
+
+itemConsole : M.Model -> T.App -> T.Item -> Html M.Msg
+itemConsole model app item =
+  text item.name
 
 creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =
@@ -188,7 +196,7 @@ sceneInventory model app scene =
     items = List.map renderInventoryItem (Dict.toList scene.inventory)
     renderInventoryItem (itemId, count) =
       let itemName =
-            case Dict.get itemId app.current_game.items of
+            case T.getItem itemId app of
               Just item -> item.name
               Nothing -> "Item definition not found"
       in hbox [text itemName, text ": ", text (toString count)]

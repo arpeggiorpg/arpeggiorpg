@@ -209,6 +209,7 @@ type SecondaryFocus
   | Focus2Note T.FolderPath String T.Note
   | Focus2Map T.FolderPath T.MapID
   | Focus2Scene T.FolderPath T.SceneID
+  | Focus2Item T.FolderPath T.ItemID
 
 type Modal
   = NoModal

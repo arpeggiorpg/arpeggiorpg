@@ -188,12 +188,13 @@ folderView fstate app cfg path (T.Folder folder) =
            Nothing -> text ("Invalid map in folder: " ++ mapID)
     viewItem itemID =
       let
+        msg = M.SetSecondaryFocus (M.Focus2Item path itemID)
         itemName =
           case Dict.get itemID app.current_game.items of
             Just item -> item.name
             Nothing -> "Item definition not found"
       in
-        folderLine cfg path (Just (T.FolderItem itemID)) M.NoMsg "attachment" itemName
+        folderLine cfg path (Just (T.FolderItem itemID)) msg "attachment" itemName
     scenes =
       if cfg.showScenes then vbox (List.map viewScene (Set.toList folder.data.scenes))
       else text ""

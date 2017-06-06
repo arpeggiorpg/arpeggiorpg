@@ -1111,3 +1111,6 @@ folderPathChild fp name = fp ++ [name]
 
 getCreaturePos : CreatureID -> Scene -> Maybe Point3
 getCreaturePos cid scene = Dict.get cid scene.creatures |> Maybe.map (\(p, _) -> p)
+
+getItem : ItemID -> App -> Maybe Item
+getItem iid app = Dict.get iid app.current_game.items
