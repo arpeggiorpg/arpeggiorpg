@@ -19,6 +19,7 @@ type alias AbilityID = String
 type alias MapID = String
 type alias Distance = Int
 type alias AttrID = String
+type alias ItemID = String
 
 type alias CreatureCreation =
   { name : String
@@ -479,7 +480,7 @@ type alias Creature =
   , portrait_url: String
   , attributes: Dict AttrID SkillLevel
   , size: AABB
-  , inventory: List Item
+  , inventory: Dict ItemID Int
 }
 
 creatureDecoder : JD.Decoder Creature
@@ -502,7 +503,7 @@ creatureDecoder =
     |> P.required "portrait_url" JD.string
     |> P.required "attributes" (JD.dict skillLevelDecoder)
     |> P.required "size" aabbDecoder
-    |> P.required "inventory" (JD.list itemDecoder)
+    |> P.required "inventory" (JD.dict JD.int)
 
 creatureEncoder : Creature -> JE.Value
 creatureEncoder c =
@@ -524,27 +525,23 @@ creatureEncoder c =
     , ("portrait_url", JE.string c.portrait_url)
     , ("attributes", encodeStringDict skillLevelEncoder c.attributes)
     , ("size", aabbEncoder c.size)
-    , ("inventory", JE.list (List.map itemEncoder c.inventory))
+    , ("inventory", encodeStringDict JE.int c.inventory)
     ]
 
 encodeStringDict : (a -> JE.Value) -> Dict.Dict String a -> JE.Value
 encodeStringDict vEncoder d = JE.object <| List.map (\(k, v) -> (k, vEncoder v)) (Dict.toList d)
 
-type Item
-  = ItemID String
-  | ItemPlot String
+type alias Item =
+  { id: ItemID
+  , name: String}
 
 itemEncoder : Item -> JE.Value
-itemEncoder i =
-  case i of
-    ItemID s -> JE.object [("ID", JE.string s)]
-    ItemPlot s -> JE.object [("Plot", JE.string s)]
+itemEncoder i = JE.object
+  [ ("id", JE.string i.id)
+  , ("name", JE.string i.name)]
 
 itemDecoder : JD.Decoder Item
-itemDecoder = sumDecoder "Item" []
-  [ ("ID", JD.map ItemID JD.string)
-  , ("Plot", JD.map ItemPlot JD.string)
-  ]
+itemDecoder = JD.map2 Item (JD.field "id" JD.string) (JD.field "name" JD.string)
 
 type alias AABB =
   { x: Int
