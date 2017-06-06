@@ -1,6 +1,10 @@
 ---
 current_game: 
   current_combat: ~
+  items:
+    "00000000-0000-0000-0000-000000000006":
+      id: "00000000-0000-0000-0000-000000000006"
+      name: "Gold Coin"
   abilities: 
     shoot: 
       name: Shoot
@@ -378,6 +382,8 @@ current_game:
       id: "00000000-0000-0000-0000-000000000003"
       name: The T
       map: "00000000-0000-0000-0000-000000000004"
+      inventory:
+        "00000000-0000-0000-0000-000000000006": 50
       creatures: 
         "f5fd4b9a-c801-4840-a39b-b5653329dc54": 
           - 
@@ -835,8 +841,17 @@ snapshots:
           maps: 
             - "00000000-0000-0000-0000-000000000005"
             - "00000000-0000-0000-0000-000000000004"
-        children: 
-          subfolder1: 
+        children:
+          Items:
+            data:
+              scenes: []
+              creatures: []
+              notes: {}
+              maps: []
+              items:
+                - "00000000-0000-0000-0000-000000000006"
+            children: {} 
+          SubFolder1: 
             data: 
               scenes: []
               creatures: []

@@ -1049,6 +1049,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
     str.serialize_field("campaign", &game.campaign)?;
+    str.serialize_field("items", &game.items)?;
     str.end()
   }
 }
