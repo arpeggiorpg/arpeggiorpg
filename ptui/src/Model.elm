@@ -232,7 +232,9 @@ type Modal
   | ModalShowGameLogs (List T.GameLog)
   | ModalAdHocChallenge SceneChallenge
   | ModalCreateNewChallenge SceneChallenge
+  | ModalAddItemToScene AddingItemToScene
 
+type alias AddingItemToScene = {scene: T.SceneID, item: Maybe T.ItemID, count: Int}
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
 type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}

@@ -203,10 +203,12 @@ sceneInventory model app scene =
               Just item -> item.name
               Nothing -> "Item definition not found"
       in hbox [text itemName, text ": ", text (toString count)]
+    addToSceneMsg = M.SetModal (M.ModalAddItemToScene {scene=scene.id, item=Nothing, count=1})
   in
     vbox
       [ strong [] [text "Inventory"]
-      , div [s [S.marginLeft (S.em 1)]] items]
+      , div [s [S.marginLeft (S.em 1)]] items
+      , button [onClick addToSceneMsg] [text "Add Items to Scene"]]
 
 challengeCreaturesAndShowResults : T.AttrCheck -> List T.CreatureID -> M.Msg
 challengeCreaturesAndShowResults attrCheck cids =
@@ -619,6 +621,39 @@ challengeEditor modalConstructor model app ahc =
               ]
           ]
 
+addItemToSceneDialog : M.Model -> T.App -> M.AddingItemToScene -> Html M.Msg
+addItemToSceneDialog model app ats =
+  let
+    scene = T.getScene app ats.scene
+    itemSelector =
+      FolderView.selectItem model.folderState app
+                            (\item -> M.SetModal (M.ModalAddItemToScene {ats | item = Just item}))
+    updateCount input =
+      case String.toInt input of
+        Ok num -> M.SetModal (M.ModalAddItemToScene {ats | count = num})
+        Err _ -> M.NoMsg
+    addToSceneMsg scene updatedInventory =
+      M.Batch [ M.SetModal M.NoModal
+              , M.SendCommand (T.EditScene {scene | inventory = updatedInventory})]
+    countInput = input [type_ "text", value (toString ats.count), onInput updateCount] []
+    submit scene updatedInventory =
+      button [onClick (addToSceneMsg scene updatedInventory), disabled (MaybeEx.isNothing ats.item)]
+             [text "Add to Scene"]
+  in
+    case scene of
+      Just scene ->
+        let updatedInventory =
+              case ats.item of
+                Just iid -> Dict.insert iid ats.count scene.inventory
+                Nothing -> scene.inventory
+        in vbox
+          [ dtext ("Adding an item to " ++ scene.name)
+          , itemSelector
+          , countInput
+          , submit scene updatedInventory]
+      Nothing ->
+        text "Can't find scene"
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -642,6 +677,7 @@ checkModal model app =
         M.ModalAdHocChallenge sc -> Just (adHocChallengeDialog model app sc)
         M.ModalCreateNewChallenge sc -> Just (createNewChallengeDialog model app sc)
         M.ModalCreateItem ci -> Just (createNewItemDialog model app ci)
+        M.ModalAddItemToScene ats -> Just (addItemToSceneDialog model app ats)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]

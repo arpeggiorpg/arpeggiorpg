@@ -1,4 +1,4 @@
-module FolderView exposing (campaignFolder, selectFolder, selectCreatures, selectMap)
+module FolderView exposing (campaignFolder, selectFolder, selectCreatures, selectMap, selectItem)
 
 import Dict
 import Set
@@ -67,6 +67,15 @@ selectMap fstate app cb =
     cfg = { showNothing | showMaps = True, contentControls = control }
   in baseCampaignView fstate app cfg
 
+selectItem : M.FolderState -> T.App -> (T.ItemID -> M.Msg) -> Html M.Msg
+selectItem fstate app cb =
+  let
+    control path item =
+      case item of
+        Just (T.FolderItem iid) -> input [ type_ "radio", name "select-item", onClick (cb iid) ] []
+        _ -> text ""
+    cfg = { showNothing | showItems = True, contentControls = control }
+  in baseCampaignView fstate app cfg
 
 type alias FolderViewConfig =
   { mutable: Bool
