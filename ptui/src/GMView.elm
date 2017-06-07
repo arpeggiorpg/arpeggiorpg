@@ -129,7 +129,10 @@ console model app {key, path, prettyName} content =
 
 itemConsole : M.Model -> T.App -> T.Item -> Html M.Msg
 itemConsole model app item =
-  text item.name
+  let view = a [onClick (M.EditItemName (Just (item.id, item.name)))] [text item.name]
+  in case model.editingItemName of
+    Just iid -> if iid == item.id then div [id "focus-item-name"] [] else view
+    Nothing -> view
 
 creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =
@@ -531,6 +534,14 @@ renderAttributeChecks app log =
     _ -> text ""
 
 
+createNewItemDialog : M.Model -> T.App -> M.CreatingItem -> Html M.Msg
+createNewItemDialog model app {path, name} =
+  let saveItem =
+    M.Batch [M.SetModal M.NoModal, M.SendCommand (T.CreateItem path name)]
+  in vbox
+    [ input [type_ "text", onInput (\inp -> M.SetModal (M.ModalCreateItem {path=path, name=inp}))] []
+    , button [disabled (name == ""), onClick saveItem] [text "Create"] ]
+
 createNewChallengeDialog : M.Model -> T.App -> M.SceneChallenge -> Html M.Msg
 createNewChallengeDialog model app sc =
   case T.getScene app sc.scene of
@@ -630,6 +641,7 @@ checkModal model app =
         M.ModalShowGameLogs logs -> Just (showGameLogsDialog model app logs)
         M.ModalAdHocChallenge sc -> Just (adHocChallengeDialog model app sc)
         M.ModalCreateNewChallenge sc -> Just (createNewChallengeDialog model app sc)
+        M.ModalCreateItem ci -> Just (createNewItemDialog model app ci)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]

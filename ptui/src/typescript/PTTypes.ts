@@ -47,6 +47,7 @@ export type GameLog =
   | { t: "DeleteFolder"; path: string }
   | { t: "DeleteFolderItem"; path: string; item: FolderItemID }
   | { t: "MoveFolderItem"; path: string; item: FolderItemID; newPath: string }
+  | { t: "CreateItem"; path: string; item: Item }
   | { t: "CreateNote"; path: string; note: Note }
   | { t: "EditNote"; path: string; name: string; newNote: Note }
   | { t: "DeleteNote"; path: string; name: string }
@@ -85,6 +86,11 @@ export type CreatureLog =
   | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO: Condition
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID }
+
+export interface Item {
+  id: ItemID;
+  name: string;
+}
 
 export type ConditionDuration =
   | { t: "Interminate" }
@@ -232,6 +238,13 @@ export const decodeFolderItemID: Decoder<FolderItemID> =
     "SubfolderID": _mkFolderItem("SubfolderID"),
   });
 
+export const decodeItem: Decoder<Item> =
+  JD.object(
+    ["id", JD.string()],
+    ["name", JD.string()],
+    (id, name) => ({ id, name })
+  )
+
 export const decodeNote: Decoder<Note> =
   JD.object(
     ["name", JD.string()],
@@ -296,6 +309,9 @@ export const decodeGameLog: Decoder<GameLog> =
     "MoveFolderItem": JD.map(
       ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
       JD.tuple(JD.string(), decodeFolderItemID, JD.string())),
+    "CreateItem": JD.map(
+      ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
+      JD.tuple(JD.string(), decodeItem)),
     "CreateNote": JD.map(
       ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
       JD.tuple(JD.string(), decodeNote)),

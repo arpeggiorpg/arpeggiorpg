@@ -71,6 +71,7 @@ type Msg
 
     | EditInitiativeFor (Maybe (T.CreatureID, Int))
     | EditCreatureNote (Maybe (T.CreatureID, String))
+    | EditItemName (Maybe (T.ItemID, String))
 
     | CancelMovement
     | PathCurrentCombatCreature T.Point3
@@ -140,6 +141,7 @@ defaultModel flags =
   , folderState = Dict.empty
   , editingInitiative = Nothing
   , editingNote = Nothing
+  , editingItemName = Nothing
   , reactComponents = Dict.empty
   , scratchNote = Nothing
   }
@@ -170,6 +172,7 @@ type alias Model =
   , gettingSavedGames: Maybe (List String -> Msg)
   , editingInitiative: Maybe T.CreatureID
   , editingNote: Maybe T.CreatureID
+  , editingItemName: Maybe T.ItemID
   , reactComponents : Dict.Dict String ReactComponent
   , scratchNote: Maybe String
   }
@@ -217,6 +220,7 @@ type Modal
   | CreateCreature PendingCreature
   | CreateScene CreatingScene
   | CreateMap CreatingMap
+  | ModalCreateItem CreatingItem
   | MoveFolderItem MovingFolderItem
   | RenameFolder RenamingFolder
   | SelectOrderedCreatures SelectingOrderedCreatures
@@ -233,6 +237,7 @@ type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}
 type alias CreatingScene = {path: T.FolderPath , scene: T.SceneCreation}
 type alias CreatingMap = {path: T.FolderPath, name: String}
+type alias CreatingItem = {path: T.FolderPath, name: String}
 type alias MovingFolderItem = {src: T.FolderPath, item: T.FolderItemID, dst: T.FolderPath}
 type alias RenamingFolder = {path: T.FolderPath, newName: String}
 type alias SelectingOrderedCreatures = {from: List T.CreatureID, selected: Dict.Dict T.CreatureID Int, cb: GotCreatures, title: String}

@@ -139,6 +139,8 @@ folderMenu fstate path =
         , M.SetModal (M.CreateCreature {path = path, name = Nothing, class = Nothing}))
       , ( hbox [icon [] "note", dtext "Create Note"]
         , M.SetSecondaryFocus (M.Focus2Note path "New Note" {name="New Note", content=""}))
+      , ( hbox [icon [] "attachment", dtext "Create New Item"]
+        , M.SetModal (M.ModalCreateItem {path = path, name = ""}) )
       , ( hbox [icon [] "folder", dtext "Create Folder"]
         , M.SetModal (M.CreateFolder {parent = path, child = ""}))
       ] ++  moveFolder ++ renameFolder ++ deleteFolder

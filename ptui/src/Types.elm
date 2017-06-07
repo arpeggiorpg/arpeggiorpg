@@ -93,64 +93,19 @@ gameSnapshotDecoder : JD.Decoder GameSnapshot
 gameSnapshotDecoder = JD.succeed {}
 
 type GameLog
-  = GLCreateFolder FolderPath
-  | GLRenameFolder FolderPath String
-  | GLDeleteFolder FolderPath
-  | GLDeleteFolderItem FolderPath FolderItemID
-  | GLMoveFolderItem FolderPath FolderItemID FolderPath
-  | GLCreateNote FolderPath Note
-  | GLEditNote FolderPath String Note
-  | GLDeleteNote FolderPath String
-  | GLCreateScene FolderPath Scene
-  | GLEditScene Scene
-  | GLDeleteScene SceneID
-  | GLCreateMap FolderPath Map
-  | GLEditMap Map
-  | GLDeleteMap MapID
-  | GLCombatLog CombatLog
-  | GLCreatureLog CreatureID CreatureLog
-  | GLStartCombat SceneID (List (CreatureID, Int))
-  | GLStopCombat
-  | GLCreateCreature FolderPath CreatureData
-  | GLEditCreature CreatureData
-  | GLDeleteCreature CreatureID
-  | GLAddCreatureToCombat CreatureID
-  | GLRemoveCreatureFromCombat CreatureID
-  | GLRollback Int Int
-  | GLPathCreature SceneID CreatureID (List Point3)
-  | GLSetCreaturePos SceneID CreatureID Point3
+  = GLPathCreature SceneID CreatureID (List Point3)
   | GLAttributeCheckResult CreatureID AttrCheck Int Bool
+  | GLUnknown JD.Value
 
 gameLogDecoder : JD.Decoder GameLog
-gameLogDecoder = sumDecoder "GameLog"
-  [ ("StopCombat", GLStopCombat) ]
-  [ ("CreateFolder", JD.map GLCreateFolder folderPathDecoder)
-  , ("RenameFolder", fixedList2 GLRenameFolder folderPathDecoder JD.string)
-  , ("DeleteFolder", JD.map GLDeleteFolder folderPathDecoder)
-  , ("DeleteFolderItem", fixedList2 GLDeleteFolderItem folderPathDecoder folderItemIDDecoder)
-  , ("MoveFolderItem", fixedList3 GLMoveFolderItem folderPathDecoder folderItemIDDecoder folderPathDecoder)
-  , ("CreateNote", fixedList2 GLCreateNote folderPathDecoder noteDecoder)
-  , ("EditNote", fixedList3 GLEditNote folderPathDecoder JD.string noteDecoder)
-  , ("DeleteNote", fixedList2 GLDeleteNote folderPathDecoder JD.string)
-  , ("CreateScene", fixedList2 GLCreateScene folderPathDecoder sceneDecoder)
-  , ("EditScene", JD.map GLEditScene sceneDecoder)
-  , ("DeleteScene", JD.map GLDeleteScene JD.string)
-  , ("CombatLog", JD.map GLCombatLog combatLogDecoder)
-  , ("CreatureLog", fixedList2 GLCreatureLog JD.string creatureLogDecoder)
-  , ("StartCombat", fixedList2 GLStartCombat JD.string initiativeListDecoder)
-  , ("CreateCreature", fixedList2 GLCreateCreature folderPathDecoder creatureDataDecoder)
-  , ("EditCreature", JD.map GLEditCreature creatureDataDecoder)
-  , ("DeleteCreature", JD.map GLDeleteCreature JD.string)
-  , ("AddCreatureToCombat", JD.map GLAddCreatureToCombat JD.string)
-  , ("RemoveCreatureFromCombat", JD.map GLRemoveCreatureFromCombat JD.string)
-  , ("CreateMap", fixedList2 GLCreateMap folderPathDecoder mapDecoder)
-  , ("EditMap", JD.map GLEditMap mapDecoder)
-  , ("DeleteMap", JD.map GLDeleteMap JD.string)
-  , ("Rollback", fixedList2 GLRollback JD.int JD.int)
-  , ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
-  , ("SetCreaturePos", fixedList3 GLSetCreaturePos JD.string JD.string point3Decoder)
-  , ("AttributeCheckResult", fixedList4 GLAttributeCheckResult JD.string attrCheckDecoder JD.int JD.bool)
-  ]
+gameLogDecoder =
+  JD.oneOf
+    [ sumDecoder "GameLog"
+      []
+      [ ("PathCreature", fixedList3 GLPathCreature JD.string JD.string (JD.list point3Decoder))
+      , ("AttributeCheckResult", fixedList4 GLAttributeCheckResult JD.string attrCheckDecoder JD.int JD.bool)
+      ]
+    , JD.map GLUnknown JD.value ]
 
 initiativeListDecoder : JD.Decoder (List (CreatureID, Int))
 initiativeListDecoder = JD.list initiativeEntryDecoder
@@ -826,6 +781,7 @@ type GameCommand
   | DeleteFolder FolderPath
   | DeleteFolderItem FolderPath FolderItemID
   | MoveFolderItem FolderPath FolderItemID FolderPath
+  | CreateItem FolderPath String
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
   | DeleteNote FolderPath String
@@ -871,6 +827,8 @@ gameCommandEncoder gc =
       JE.object [("DeleteFolderItem", JE.list [folderPathEncoder path, folderItemIDEncoder itemID])]
     MoveFolderItem src item dst ->
       JE.object [("MoveFolderItem", JE.list [folderPathEncoder src, folderItemIDEncoder item, folderPathEncoder dst])]
+    CreateItem path name ->
+      JE.object [("CreateItem", JE.list [folderPathEncoder path, JE.string name])]
     CreateNote path note ->
       JE.object [("CreateNote", JE.list [folderPathEncoder path, noteEncoder note])]
     EditNote path name note ->
