@@ -1077,3 +1077,21 @@ getCreaturePos cid scene = Dict.get cid scene.creatures |> Maybe.map (\(p, _) ->
 
 getItem : ItemID -> App -> Maybe Item
 getItem iid app = Dict.get iid app.current_game.items
+
+removeFromInventory : ItemID -> Int -> Dict.Dict ItemID Int -> Dict.Dict ItemID Int
+removeFromInventory item_id count inventory =
+  case Dict.get item_id inventory of
+    Just already_there ->
+      let remaining = already_there - count
+      in if remaining <= 0 then
+        Dict.remove item_id inventory
+      else
+        Dict.insert item_id remaining inventory
+    Nothing -> inventory
+
+addToInventory : ItemID -> Int -> Dict.Dict ItemID Int -> Dict.Dict ItemID Int
+addToInventory item_id count inventory =
+  case Dict.get item_id inventory of
+    Just already_there ->
+      Dict.insert item_id (already_there + count) inventory
+    Nothing -> inventory

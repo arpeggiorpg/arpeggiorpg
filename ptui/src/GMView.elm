@@ -202,7 +202,12 @@ sceneInventory model app scene =
             case T.getItem itemId app of
               Just item -> item.name
               Nothing -> "Item definition not found"
-      in hbox [text itemName, text ": ", text (toString count)]
+      in habox [s [S.justifyContent S.spaceBetween]]
+           [ text itemName, text ": ", text (toString count)
+           , button [onClick (giveToCreatureMsg itemId count)] [text "Give to Creature"] ]
+    giveToCreatureMsg iid count =
+      let gitc = {scene_id=scene.id, item_id=iid, creature_id=Nothing, count=count, remove_from_scene=True}
+      in M.SetModal (M.ModalGiveItemToCreature gitc)
     addToSceneMsg = M.SetModal (M.ModalAddItemToScene {scene=scene.id, item=Nothing, count=1})
   in
     vbox
@@ -654,6 +659,60 @@ addItemToSceneDialog model app ats =
       Nothing ->
         text "Can't find scene"
 
+giveItemToCreatureDialog : M.Model -> T.App -> M.GivingItemToCreature -> Html M.Msg
+giveItemToCreatureDialog model app gitc =
+  let
+    update = M.SetModal << M.ModalGiveItemToCreature
+    selectCreatureMsg cid = update {gitc | creature_id = cid}
+    updateCountMsg maxCount inp =
+      case String.toInt inp of
+        Ok num -> update {gitc | count = Basics.min num maxCount}
+        Err _ -> if inp == "" then update {gitc | count = 0} else M.NoMsg
+    creatureLine scene =
+      case gitc.creature_id of
+        Just cid ->
+          case T.getCreature app.current_game cid of
+            Just creature -> hbox [dtext "Selected Creature: ", dtext creature.name
+                                  , button [onClick (selectCreatureMsg Nothing)] [text "Change"]]
+            Nothing -> selectCreature scene
+        Nothing -> selectCreature scene
+    selectableCreature creature =
+      button [onClick (selectCreatureMsg (Just creature.id))]
+             [text creature.name]
+    selectCreature scene =
+      vbox (List.map selectableCreature (T.getCreatures app.current_game (Dict.keys scene.creatures)))
+    saveMsg scene =
+      case gitc.creature_id |> Maybe.andThen (T.getCreature app.current_game) of
+        Just creature -> 
+          let
+            newSceneInv = T.removeFromInventory gitc.item_id gitc.count scene.inventory
+            newCreatureInv = T.addToInventory gitc.item_id gitc.count creature.inventory
+            removeMsg =
+              if gitc.remove_from_scene then
+                M.SendCommand (T.EditScene {scene | inventory = newSceneInv})
+              else M.NoMsg
+          in M.Batch [ M.SetModal M.NoModal, removeMsg
+                     , M.SendCommand (T.EditCreature {creature | inventory = newCreatureInv})]
+        Nothing -> M.NoMsg
+    toggleRemove checked = update {gitc | remove_from_scene = checked}
+    view item scene maxCount = vbox
+      [ hbox [dtext "Scene: ", strong [] [text scene.name]]
+      , hbox [dtext "Item: ", strong [] [text item.name]]
+      , hbox [dtext "Remove from scene?", input [type_ "checkbox", checked gitc.remove_from_scene, onCheck toggleRemove] []]
+      , hbox [ dtext <| "Count (max " ++ toString maxCount ++ "): "
+             , input [ defaultValue (toString maxCount), value (if gitc.count == 0 then "" else toString gitc.count)
+                     , onInput (updateCountMsg maxCount)] []]
+      , creatureLine scene
+      , button [onClick (saveMsg scene), disabled (MaybeEx.isNothing gitc.creature_id)] [text "Give!"]
+      ]
+  in
+    case (T.getItem gitc.item_id app, T.getScene app gitc.scene_id) of
+      (Just item, Just scene) ->
+        case Dict.get gitc.item_id scene.inventory of
+          Just count -> view item scene count
+          Nothing -> text "Item wasn't in scene"
+      _ -> text "Couldn't find Item and/or Scene"
+
 {-| Check for any GM-specific modals that should be rendered. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
 checkModal model app =
@@ -678,6 +737,7 @@ checkModal model app =
         M.ModalCreateNewChallenge sc -> Just (createNewChallengeDialog model app sc)
         M.ModalCreateItem ci -> Just (createNewItemDialog model app ci)
         M.ModalAddItemToScene ats -> Just (addItemToSceneDialog model app ats)
+        M.ModalGiveItemToCreature gitc -> Just (giveItemToCreatureDialog model app gitc)
         M.NoModal -> Nothing
     cancelableModal html =
       vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
@@ -687,9 +747,14 @@ checkModal model app =
 -}
 simpleSelectCreaturesDialog : M.Model -> T.App -> M.SimpleSelectingCreatures -> Html M.Msg
 simpleSelectCreaturesDialog model app {from, selected, cb, title} =
-  let modModal f =
-        M.SetModal <|
-          M.ModalSimpleSelectCreatures <| f {from=from, selected=selected, cb=cb, title=title}
+  simpleSelectCreaturesView model app {from=from, selected=selected, cb=cb, title=title}
+    (\ssc -> M.SetModal (M.ModalSimpleSelectCreatures ssc))
+
+simpleSelectCreaturesView : M.Model -> T.App -> M.SimpleSelectingCreatures
+  -> (M.SimpleSelectingCreatures -> M.Msg)
+  -> Html M.Msg
+simpleSelectCreaturesView model app {from, selected, cb, title} updateState =
+  let modModal f = updateState <| f {from=from, selected=selected, cb=cb, title=title}
       toggleCreature creature checked =
         if checked
         then modModal (\soc -> { soc | selected = creature.id :: soc.selected})
@@ -710,7 +775,6 @@ simpleSelectCreaturesDialog model app {from, selected, cb, title} =
     , habox [s [S.width (S.px 1000), S.justifyContent S.spaceBetween]]
             [selectableCreatureItems]
     , hbox [doneSelectingButton, cancelButton]]
-
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
 -}
