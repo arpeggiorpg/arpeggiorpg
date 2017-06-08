@@ -164,7 +164,7 @@ creatureConsole model app creature =
             [popUpMenu model "creature-console-menu" creature.id gear gearBox [editCreatureLink]]
   in
   div [s [S.position S.relative]]
-    [ CommonView.creatureCard [noteBox model creature, menu] app creature ]
+      [ CommonView.creatureCard [noteBox model creature, menu] app creature ]
 
 sceneConsole : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneConsole model app scene =
@@ -216,11 +216,19 @@ sceneInventory model app scene =
               Nothing -> "Item definition not found"
       in habox [s [S.justifyContent S.spaceBetween]]
            [ text itemName, text ": ", text (toString count)
-           , button [onClick (giveToCreatureMsg itemId count)] [text "Give to Creature"] ]
+           , menu itemId count]
     giveToCreatureMsg iid count =
       let gitc = {scene_id=scene.id, item_id=iid, creature_id=Nothing, count=count, remove_from_scene=True}
       in M.SetModal (M.ModalGiveItemToCreature gitc)
     addToSceneMsg = M.SetModal (M.ModalAddItemToScene {scene=scene.id, item=Nothing, count=1})
+    removeItemMsg iid count = M.SendCommand (T.EditScene {scene | inventory = T.removeFromInventory iid count scene.inventory})
+    menu iid count =
+      popUpMenu model "sceneInventory-" (toString iid) threeDots threeDots (menuItems iid count)
+    menuItems iid count =
+      [ (text "Delete", removeItemMsg iid count)
+      , (text "Give to Creature", giveToCreatureMsg iid count)
+      ]
+
   in
     vbox
       [ strong [] [text "Inventory"]
@@ -245,13 +253,13 @@ sceneChallenges model app scene =
       let
         attrChecksWithoutThis = Dict.remove description scene.attribute_checks
         sceneWithoutThis = {scene | attribute_checks = attrChecksWithoutThis}
-        menuItems = [(text "Delete", M.SendCommand (T.EditScene sceneWithoutThis))]
+        menuItems = [ (text "Delete", M.SendCommand (T.EditScene sceneWithoutThis))
+                    , (text "Challenge!", challengeCreatures description skillCheck)]
       in
       habox
         [s [S.justifyContent S.spaceBetween]]
         [ text description
         , renderAttributeRequirement skillCheck
-        , button [onClick <| challengeCreatures description skillCheck] [text "Challenge!"]
         , popUpMenu model "scene-challenge" description threeDots threeDots menuItems
         ]
     premades =
