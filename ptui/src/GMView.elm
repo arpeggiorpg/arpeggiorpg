@@ -669,7 +669,7 @@ addItemToSceneDialog model app ats =
       Just scene ->
         let updatedInventory =
               case ats.item of
-                Just iid -> Dict.insert iid ats.count scene.inventory
+                Just iid -> T.addToInventory iid ats.count scene.inventory
                 Nothing -> scene.inventory
         in vbox
           [ dtext ("Adding an item to " ++ scene.name)
