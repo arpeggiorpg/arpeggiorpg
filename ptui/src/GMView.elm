@@ -157,6 +157,7 @@ creatureConsole model app creature =
               , note=creature.note
               , portrait_url=creature.portrait_url
               , initiative=formatDice creature.initiative
+              , inventory=creature.inventory
               })
         )
       menu =
@@ -508,30 +509,37 @@ parseDice s =
 
 editCreatureDialog : M.Model -> T.App -> M.EditingCreature -> Html M.Msg
 editCreatureDialog model app editing =
+  -- FIXME: This form has some consistency issues.
+  -- Most importantly is the Inventory management, which involves modifying a table of inventory
+  -- items that may be updated elsewhere by player action.
   case T.getCreature app.current_game editing.cid of
     Just creature ->
       let
-        update f inp = M.SetModal (M.ModalEditCreature (f inp))
+        change = M.ModalEditCreature >> M.SetModal
+        update f inp = change (f inp)
         submitMsg =
           case currentDice of
             Just initiative ->
               M.SendCommand (T.EditCreature {creature | note = editing.note
                                                       , portrait_url = editing.portrait_url
                                                       , name=editing.name
-                                                      , initiative=initiative})
+                                                      , initiative=initiative
+                                                      , inventory=editing.inventory})
             Nothing -> M.NoMsg
         entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
         startingInit = formatDice creature.initiative
         currentDice = parseDice editing.initiative
         inventoryItem (itemId, count) =
-          let name =
-            case T.getItem itemId app of
-              Just item -> item.name
-              Nothing -> "Lost item"
-          in hbox [dtext name, text (toString count)]
+          let
+            removeMsg = change {editing | inventory = T.removeFromInventory itemId count editing.inventory}
+            name =
+              case T.getItem itemId app of
+                Just item -> item.name
+                Nothing -> "Lost item"
+          in hbox [dtext name, text (toString count), button [onClick removeMsg] [text "Remove"]]
         inventory = vbox
           [ strong [] [text "Inventory"]
-          , vabox [s [S.left (S.em 1)]] (List.map inventoryItem (Dict.toList creature.inventory))]
+          , vabox [s [S.marginLeft (S.em 1)]] (List.map inventoryItem (Dict.toList editing.inventory))]
       in vbox
         [ entry "Name" creature.name (\n -> {editing | name=n})
         , entry "Note" creature.note (\n -> {editing | note=n})
@@ -699,7 +707,7 @@ giveItemToCreatureDialog model app gitc =
       case gitc.creature_id of
         Just cid ->
           case T.getCreature app.current_game cid of
-            Just creature -> hbox [dtext "Selected Creature: ", dtext creature.name
+            Just creature -> hbox [ dtext "Selected Creature: ", dtext creature.name
                                   , button [onClick (selectCreatureMsg Nothing)] [text "Change"]]
             Nothing -> selectCreature scene
         Nothing -> selectCreature scene
