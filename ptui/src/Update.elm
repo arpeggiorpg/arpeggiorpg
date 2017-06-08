@@ -253,6 +253,9 @@ update_ msg model = case msg of
     ( {model | reactComponents = Dict.remove id model.reactComponents}
     , Components.unloadComponent id)
 
+  ToggleAltSideBar bool ->
+    ({ model | altSideBar = bool}, Cmd.none)
+
   GetMovementOptions sceneName creature ->
     if model.gridPanning then (model, Cmd.none) else
     let endpoint = (model.rpiURL ++ "/movement_options/" ++ Http.encodeUri sceneName ++ "/" ++ creature.id)

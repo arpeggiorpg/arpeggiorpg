@@ -388,6 +388,23 @@ viewGame model app ui =
 
 viewGameWide : M.Model -> T.App -> UI -> Html M.Msg
 viewGameWide model app ui =
+  let
+    normieSideBar = tabbedView "right-side-bar" ui.defaultTab model ui.tabs
+    sidebarContent =
+      case ui.right of
+        -- To simplify react component handling, we *always* render the alt sidebar even when
+        -- we've switched it off, so that the DOM node doesn't disappear and require us to clean up
+        Nothing -> normieSideBar
+        Just r ->
+          let altStyle = if model.altSideBar then [S.display S.block] else [S.display S.none]
+              normieStyle = if model.altSideBar then [S.display S.none] else [S.display S.block]
+          in
+            div []
+              [ hbox [ input [type_ "checkbox", onCheck M.ToggleAltSideBar] []
+                     , text "use react sidebar"]
+              , div [s altStyle] [r]
+              , div [s normieStyle] [normieSideBar]]
+  in
   div
     [s <| [S.position S.relative, S.width (S.pct 100), S.height (S.vh 100)]]
     <|
@@ -396,9 +413,7 @@ viewGameWide model app ui =
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ case ui.right of
-            Nothing -> tabbedView "right-side-bar" ui.defaultTab model ui.tabs 
-            Just r -> r]
+        [ sidebarContent ]
     , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
     , case ui.bottomBar of

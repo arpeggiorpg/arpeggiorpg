@@ -108,6 +108,7 @@ type Msg
 
     -- External components
 
+    | ToggleAltSideBar Bool
     | RenderHello String
     | LoadTextInput String String (Dict.Dict String String) Bool
     | TextInputSubmit (String, String)
@@ -144,6 +145,7 @@ defaultModel flags =
   , editingItemName = Nothing
   , reactComponents = Dict.fromList [("right-bar", ReactSideBar)]
   , scratchNote = Nothing
+  , altSideBar = False
   }
 
 type alias Model =
@@ -175,6 +177,7 @@ type alias Model =
   , editingItemName: Maybe (T.ItemID, String)
   , reactComponents : Dict.Dict String ReactComponent
   , scratchNote: Maybe String
+  , altSideBar: Bool
   }
 
 type ReactComponent

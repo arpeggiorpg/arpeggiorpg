@@ -14,17 +14,23 @@ export function renderPlayerUI(elmApp: any, [id, playerID, currentScene, data]: 
   );
 }
 
-interface PlayerUIProps {
-  playerID: T.PlayerID;
-  currentScene: string | undefined;
-  app: T.App;
-};
-
-class PlayerUI extends React.Component<PlayerUIProps, undefined> {
+class PlayerUI extends React.Component<
+  { playerID: T.PlayerID; currentScene: string | undefined; app: T.App; },
+  undefined> {
 
   render(): JSX.Element {
     return <div style={{display: "flex", flexDirection: "column"}}>
-      Player: {this.props.playerID}
+      <div>Player: {this.props.playerID}</div>
+      <PlayerCreatures playerID={this.props.playerID} app={this.props.app} />
     </div>;
+  }
+}
+
+class PlayerCreatures extends React.Component<
+  { playerID: T.PlayerID; app: T.App; },
+  undefined> {
+
+  render(): JSX.Element {
+    return <div>Player creatures!</div>
   }
 }
