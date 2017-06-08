@@ -414,14 +414,7 @@ update_ msg model = case msg of
         ({model | editingNote = Nothing}, Components.unloadComponent "focus-note" )
       (Nothing, Nothing) -> (model, Cmd.none)
   EditItemName x ->
-    case (model.editingItemName, x) of
-      (_, Just (iid, name)) ->
-        ( { model | editingItemName = Just iid}
-        , message <| LoadTextInput "focus-item-name" name Dict.empty False)
-      (Just _, Nothing) ->
-        ({model | editingItemName = Nothing}, Components.unloadComponent "focus-item-name")
-      (Nothing, Nothing) -> (model, Cmd.none)
-
+    ({ model | editingItemName = x}, Cmd.none)
   UpdateScratchNote note ->
     ({model | scratchNote = Just note}, Cmd.none)
 
@@ -434,9 +427,10 @@ update_ msg model = case msg of
   LoadTextInput id defaultValue style numbersOnly ->
     let styleValue = T.encodeStringDict JE.string style
     in (model, Components.renderTextInput (id, defaultValue, styleValue, numbersOnly))
+
   TextInputSubmit (id, content) ->
     if id == "focus-init" then
-      case model.editingInitiative of 
+      case model.editingInitiative of
         Nothing -> (model, Cmd.none)
         Just cid ->
           case String.toInt content of
@@ -457,6 +451,7 @@ update_ msg model = case msg of
                 Nothing -> (model, Cmd.none)
             Nothing -> (model, Cmd.none)
     else (model, Cmd.none)
+
   TextInputCancel (id, content) ->
     if id == "focus-init" then
       ({model | editingInitiative = Nothing}, Cmd.none)

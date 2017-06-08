@@ -782,6 +782,7 @@ type GameCommand
   | DeleteFolderItem FolderPath FolderItemID
   | MoveFolderItem FolderPath FolderItemID FolderPath
   | CreateItem FolderPath String
+  | EditItem Item
   | CreateNote FolderPath Note
   | EditNote FolderPath String Note
   | DeleteNote FolderPath String
@@ -829,6 +830,8 @@ gameCommandEncoder gc =
       JE.object [("MoveFolderItem", JE.list [folderPathEncoder src, folderItemIDEncoder item, folderPathEncoder dst])]
     CreateItem path name ->
       JE.object [("CreateItem", JE.list [folderPathEncoder path, JE.string name])]
+    EditItem item ->
+      JE.object [("EditItem", itemEncoder item)]
     CreateNote path note ->
       JE.object [("CreateNote", JE.list [folderPathEncoder path, noteEncoder note])]
     EditNote path name note ->

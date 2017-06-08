@@ -129,10 +129,22 @@ console model app {key, path, prettyName} content =
 
 itemConsole : M.Model -> T.App -> T.Item -> Html M.Msg
 itemConsole model app item =
-  let view = a [onClick (M.EditItemName (Just (item.id, item.name)))] [text item.name]
-  in case model.editingItemName of
-    Just iid -> if iid == item.id then div [id "focus-item-name"] [] else view
-    Nothing -> view
+  let
+    update input = M.EditItemName (Just (item.id, input))
+    save iid name =
+      M.Batch [M.EditItemName Nothing, M.SendCommand (T.EditItem {id=iid, name=name})]
+    edit iid name = hbox
+      [ input [type_ "input", value name, onInput update ] []
+      , button [onClick (save iid name)] [text "Save"]
+      ]
+    view =
+      hbox [ dtext item.name
+           , button [onClick (M.EditItemName (Just (item.id, item.name)))] [text "Change Name"]
+           ]
+  in
+    case model.editingItemName of
+      Just (iid, name) -> if iid == item.id then edit iid name else view
+      Nothing -> view
 
 creatureConsole : M.Model -> T.App -> T.Creature -> Html M.Msg
 creatureConsole model app creature =

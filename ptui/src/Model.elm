@@ -172,7 +172,7 @@ type alias Model =
   , gettingSavedGames: Maybe (List String -> Msg)
   , editingInitiative: Maybe T.CreatureID
   , editingNote: Maybe T.CreatureID
-  , editingItemName: Maybe T.ItemID
+  , editingItemName: Maybe (T.ItemID, String)
   , reactComponents : Dict.Dict String ReactComponent
   , scratchNote: Maybe String
   }
