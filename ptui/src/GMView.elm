@@ -157,15 +157,15 @@ creatureConsole model app creature =
               , note=creature.note
               , portrait_url=creature.portrait_url
               , initiative=formatDice creature.initiative
-              , inventory=creature.inventory
               })
         )
       menu =
         div [s [S.position S.absolute, S.top (S.px 0), S.right (S.px 0)]]
             [popUpMenu model "creature-console-menu" creature.id gear gearBox [editCreatureLink]]
   in
-  div [s [S.position S.relative]]
-      [ CommonView.creatureCard [noteBox model creature, menu] app creature ]
+  vabox [s [S.position S.relative]]
+      [ CommonView.creatureCard [noteBox model creature, menu] app creature
+      , CommonView.inventoryView model app creature]
 
 sceneConsole : M.Model -> T.App -> T.Scene -> Html M.Msg
 sceneConsole model app scene =
@@ -509,29 +509,25 @@ parseDice s =
 
 editCreatureDialog : M.Model -> T.App -> M.EditingCreature -> Html M.Msg
 editCreatureDialog model app editing =
-  -- FIXME: This form has some consistency issues.
-  -- Most importantly is the Inventory management, which involves modifying a table of inventory
-  -- items that may be updated elsewhere by player action.
   case T.getCreature app.current_game editing.cid of
     Just creature ->
       let
+        sendEdit = T.EditCreature >> M.SendCommand
         change = M.ModalEditCreature >> M.SetModal
         update f inp = change (f inp)
         submitMsg =
           case currentDice of
-            Just initiative ->
-              M.SendCommand (T.EditCreature {creature | note = editing.note
-                                                      , portrait_url = editing.portrait_url
-                                                      , name=editing.name
-                                                      , initiative=initiative
-                                                      , inventory=editing.inventory})
+            Just initiative -> sendEdit {creature | note = editing.note
+                                                  , portrait_url = editing.portrait_url
+                                                  , name=editing.name
+                                                  , initiative=initiative}
             Nothing -> M.NoMsg
         entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
         startingInit = formatDice creature.initiative
         currentDice = parseDice editing.initiative
         inventoryItem (itemId, count) =
           let
-            removeMsg = change {editing | inventory = T.removeFromInventory itemId count editing.inventory}
+            removeMsg = sendEdit {creature | inventory = T.removeFromInventory itemId count creature.inventory}
             name =
               case T.getItem itemId app of
                 Just item -> item.name
@@ -541,7 +537,7 @@ editCreatureDialog model app editing =
                   ]
         inventory = vbox
           [ strong [] [text "Inventory"]
-          , vabox [s [S.marginLeft (S.em 1)]] (List.map inventoryItem (Dict.toList editing.inventory))]
+          , vabox [s [S.marginLeft (S.em 1)]] (List.map inventoryItem (Dict.toList creature.inventory))]
       in vbox
         [ entry "Name" creature.name (\n -> {editing | name=n})
         , entry "Note" creature.note (\n -> {editing | note=n})

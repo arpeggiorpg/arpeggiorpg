@@ -102,25 +102,8 @@ myCreatureEntry model app creature =
     , case app.current_game.current_combat of
         Nothing -> hbox (CommonView.oocActionBar model app.current_game creature)
         Just _ -> text ""
-    , inventoryView model app creature
+    , CommonView.inventoryView model app creature
     ]
-
-inventoryView : M.Model -> T.App -> T.Creature -> Html M.Msg
-inventoryView model app creature =
-  let
-    inventoryItem (itemId, count) =
-      let
-        name =
-          case T.getItem itemId app of
-            Just item -> item.name
-            Nothing -> "Item not found"
-        gitc = {from=creature.id, item_id=itemId, to=Nothing, count=count}
-      in hbox [ dtext name, text ": ", dtext (toString count)
-              , button [onClick (M.SetModal (M.ModalGiveItemCreatureToCreature gitc))]
-                       [text "Give"]]
-  in
-    CommonView.collapsible "Inventory" model
-      <| vbox (List.map inventoryItem (Dict.toList creature.inventory))
 
 
 {-| Figure out which map should be rendered and render it. -}

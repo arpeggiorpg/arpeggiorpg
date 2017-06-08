@@ -8,7 +8,8 @@ module CommonView exposing
   , combatantList, collapsible, playerList, errorBox
   , mainActionBar, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap
   , noteEditor
-  , cancelableModal)
+  , cancelableModal
+  , inventoryView)
 
 import Dict
 import Set
@@ -529,3 +530,19 @@ noteEditor model app noteMsg path origName note titleEditable =
     , textarea [s [S.height (S.vh 100)], onInput (\c -> noteMsg {note | content = c}), defaultValue note.content] []
     ]
 
+inventoryView : M.Model -> T.App -> T.Creature -> Html M.Msg
+inventoryView model app creature =
+  let
+    inventoryItem (itemId, count) =
+      let
+        name =
+          case T.getItem itemId app of
+            Just item -> item.name
+            Nothing -> "Item not found"
+        gitc = {from=creature.id, item_id=itemId, to=Nothing, count=count}
+      in hbox [ dtext name, text ": ", dtext (toString count)
+              , button [onClick (M.SetModal (M.ModalGiveItemCreatureToCreature gitc))]
+                       [text "Give"]]
+  in
+    collapsible "Inventory" model
+      <| vbox (List.map inventoryItem (Dict.toList creature.inventory))
