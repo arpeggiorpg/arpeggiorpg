@@ -4,9 +4,11 @@ module CommonView exposing
   , movementMap, movementControls
   , checkModal
   , classIcon
+  , inputInt
   , combatantList, collapsible, playerList, errorBox
   , mainActionBar, tabbedView, viewGame, UI, popUpMenu, popUpMenu_, targetMap
-  , noteEditor)
+  , noteEditor
+  , cancelableModal)
 
 import Dict
 import Set
@@ -15,6 +17,7 @@ import Css as S
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Maybe.Extra as MaybeEx
 
 import Model as M
 import Types as T
@@ -246,7 +249,9 @@ modalOverlay content =
                 , S.minWidth (S.pct 50)
                 , S.minHeight (S.pct 50)
                 , plainBorder
-                , S.backgroundColor (S.rgb 255 255 255)]]
+                , S.backgroundColor (S.rgb 255 255 255)
+                , S.overflowY S.auto
+                , S.maxHeight (S.vh 100)]]
             [content]
       cover =
         sdiv [s [ S.position S.fixed
@@ -257,9 +262,65 @@ modalOverlay content =
             []
   in [cover, box]
 
+cancelableModal html = vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
+
 {-| Check for any modals that both GMs and Players may need to render. -}
 checkModal : M.Model -> T.App -> Maybe (Html M.Msg)
-checkModal model app = if model.error /= "" then Just (errorBox model) else Nothing
+checkModal model app =
+  if model.error /= "" then Just (errorBox model) else
+  case model.modal of
+    M.ModalGiveItemCreatureToCreature gitc ->
+      Just <| cancelableModal (giveItemCreatureToCreatureDialog model app gitc)
+    _ -> Nothing
+
+inputInt inp =
+  case String.toInt inp of
+    Ok num -> Just num
+    Err _ -> if inp == "" then Just 0 else Nothing
+
+giveItemCreatureToCreatureDialog : M.Model -> T.App -> M.GivingItemCreatureToCreature -> Html M.Msg
+giveItemCreatureToCreatureDialog model app gitc =
+  let
+    change = M.ModalGiveItemCreatureToCreature >> M.SetModal
+    creatureChoice creature =
+      button [onClick (change {gitc | to = Just creature.id})] [text creature.name]
+    updateCount inp =
+      case inputInt inp of
+        Just num -> change {gitc | count = num}
+        Nothing -> M.NoMsg
+    count = input [type_ "text", onInput updateCount, value (toString gitc.count)] []
+    creatureSelector scene =
+      case gitc.to of
+        Just cid ->
+          let name = case T.getCreature app.current_game cid of
+                      Just creature -> creature.name
+                      Nothing -> "Creature lost!"
+          in
+            hbox [dtext name, button [onClick (change {gitc | to = Nothing})] [text "Change"]]
+        Nothing -> vbox (List.map creatureChoice (T.getCreatures app.current_game (Dict.keys scene.creatures)))
+    giveMsg from = 
+      case (gitc.to |> Maybe.andThen (T.getCreature app.current_game)) of
+        Just to ->
+          M.Batch [ M.SetModal M.NoModal
+                  , M.SendCommand (T.EditCreature {from | inventory = T.removeFromInventory gitc.item_id gitc.count from.inventory})
+                  , M.SendCommand (T.EditCreature {to | inventory = T.addToInventory gitc.item_id gitc.count to.inventory})]
+        Nothing -> M.NoMsg
+    view scene from =
+      vbox
+        [ h3 [] [text "Give an Item to another Creature"]
+        , count
+        , creatureSelector scene
+        , button [ disabled (MaybeEx.isNothing gitc.to)
+                 , onClick (giveMsg from)]
+                 [text "Give"]
+        ]
+  in case model.focus of
+    M.FocusScene sid ->
+      case (T.getScene app sid, T.getCreature app.current_game gitc.from) of
+        (Just scene, Just from) ->
+          view scene from
+        _ -> text "Scene or from creature not found"
+    _ -> text "Need to be in a scene to trade items"
 
 errorBox : M.Model -> Html M.Msg
 errorBox model =

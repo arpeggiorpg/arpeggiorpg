@@ -234,6 +234,7 @@ type Modal
   | ModalCreateNewChallenge SceneChallenge
   | ModalAddItemToScene AddingItemToScene
   | ModalGiveItemToCreature GivingItemToCreature
+  | ModalGiveItemCreatureToCreature GivingItemCreatureToCreature
 
 type alias GivingItemToCreature =
   { scene_id: T.SceneID
@@ -242,6 +243,13 @@ type alias GivingItemToCreature =
   , count: Int
   , remove_from_scene: Bool
   }
+type alias GivingItemCreatureToCreature =
+  { from: T.CreatureID
+  , item_id: T.ItemID
+  , to: Maybe T.CreatureID
+  , count: Int
+  }
+
 type alias AddingItemToScene = {scene: T.SceneID, item: Maybe T.ItemID, count: Int}
 type alias SavingGame = {existing: List String, newGame: String}
 type alias CreatingFolder = {parent: T.FolderPath , child: String}

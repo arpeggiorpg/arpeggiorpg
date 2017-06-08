@@ -1009,7 +1009,9 @@ getCreature : Game -> CreatureID -> Maybe Creature
 getCreature game cid = Dict.get cid game.creatures
 
 getCreatures : Game -> List CreatureID -> List Creature
-getCreatures game cids = List.filterMap (getCreature game) cids
+getCreatures game cids =
+  List.sortBy (\c -> (c.class, c.name)) 
+              (List.filterMap (getCreature game) cids)
 
 getCombatCreatures : Game -> Combat -> List (Creature, Int)
 getCombatCreatures game combat =

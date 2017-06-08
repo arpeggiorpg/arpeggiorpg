@@ -66,7 +66,10 @@ clickableIcon attrs name = icon (attrs ++ [clickable]) name
 fullscreen : Html msg -> Html msg
 fullscreen content =
   div [s [ S.position S.fixed
-         , S.left (S.px 0), S.top (S.px 0)
+         , S.left (S.px 0)
+         , S.top (S.px 0)
+         , S.bottom (S.px 0)
+         , S.overflowY S.auto
          , S.height (S.pct 100), S.width (S.pct 100)
          , S.backgroundColor (S.rgb 255 255 255)]]
       [content]

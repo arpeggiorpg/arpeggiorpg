@@ -536,7 +536,9 @@ editCreatureDialog model app editing =
               case T.getItem itemId app of
                 Just item -> item.name
                 Nothing -> "Lost item"
-          in hbox [dtext name, text (toString count), button [onClick removeMsg] [text "Remove"]]
+          in hbox [ dtext name, text (toString count)
+                  , button [onClick removeMsg] [text "Remove"]
+                  ]
         inventory = vbox
           [ strong [] [text "Inventory"]
           , vabox [s [S.marginLeft (S.em 1)]] (List.map inventoryItem (Dict.toList editing.inventory))]
@@ -700,9 +702,9 @@ giveItemToCreatureDialog model app gitc =
     update = M.SetModal << M.ModalGiveItemToCreature
     selectCreatureMsg cid = update {gitc | creature_id = cid}
     updateCountMsg maxCount inp =
-      case String.toInt inp of
-        Ok num -> update {gitc | count = Basics.min num maxCount}
-        Err _ -> if inp == "" then update {gitc | count = 0} else M.NoMsg
+      case CommonView.inputInt inp of
+        Just num -> update {gitc | count = Basics.min num maxCount}
+        Nothing -> M.NoMsg
     creatureLine scene =
       case gitc.creature_id of
         Just cid ->
@@ -773,10 +775,11 @@ checkModal model app =
         M.ModalCreateItem ci -> Just (createNewItemDialog model app ci)
         M.ModalAddItemToScene ats -> Just (addItemToSceneDialog model app ats)
         M.ModalGiveItemToCreature gitc -> Just (giveItemToCreatureDialog model app gitc)
+        M.ModalGiveItemCreatureToCreature gitc -> Nothing -- Handled by CommonView
         M.NoModal -> Nothing
-    cancelableModal html =
-      vbox [html, button [onClick (M.SetModal M.NoModal)] [text "Cancel"]]
-  in Maybe.map cancelableModal generalModal |> MaybeEx.orElse (CommonView.checkModal model app)
+    
+  in CommonView.checkModal model app 
+     |> MaybeEx.orElse (Maybe.map CommonView.cancelableModal generalModal)
 
 {-| A view that allows selecting creatures in a particular order and calling a callback when done.
 -}
