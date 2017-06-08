@@ -142,7 +142,7 @@ defaultModel flags =
   , editingInitiative = Nothing
   , editingNote = Nothing
   , editingItemName = Nothing
-  , reactComponents = Dict.empty
+  , reactComponents = Dict.fromList [("right-bar", ReactSideBar)]
   , scratchNote = Nothing
   }
 
@@ -181,6 +181,7 @@ type ReactComponent
   = ReactTextInput
   | ReactHistory
   | ReactPlayers
+  | ReactSideBar
 
 type alias GridData =
   { paintStyle: PaintStyle

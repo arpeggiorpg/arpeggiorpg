@@ -63,6 +63,7 @@ makeUI model app playerID =
     , modal = CommonView.checkModal model app
     , bottomBar = bottomActionBar app myCreatures
     , extra = []
+    , right = Just (div [id "right-bar"] [])
     }
 
 playerNote : M.Model -> T.App -> String -> Html M.Msg

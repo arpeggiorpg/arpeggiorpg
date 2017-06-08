@@ -376,6 +376,7 @@ type alias UI =
   , modal: Maybe (Html M.Msg)
   , bottomBar: Maybe (Html M.Msg)
   , extra: List (Html M.Msg)
+  , right: Maybe (Html M.Msg)
   }
 
 {-| Top-level UI for an App. -}
@@ -395,7 +396,9 @@ viewGameWide model app ui =
     , overlayRight (S.px 0) (S.px 0)
         [ S.width (S.px 400)
         , S.property "height" "calc(100vh - 150px)", S.overflowY S.auto]
-        [ tabbedView "right-side-bar" ui.defaultTab model ui.tabs ]
+        [ case ui.right of
+            Nothing -> tabbedView "right-side-bar" ui.defaultTab model ui.tabs 
+            Just r -> r]
     , mapModeControlsOverlay ui.mapModeControls
     , errorBox model
     , case ui.bottomBar of

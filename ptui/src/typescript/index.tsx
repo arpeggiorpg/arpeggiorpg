@@ -5,6 +5,7 @@ import * as Hello from "./Hello";
 import * as History from "./History";
 import * as TextInput from "./TextInput";
 import * as Players from "./Players";
+import * as PlayerView from "./PlayerView";
 
 import * as PTTypes from "./PTTypes";
 import * as PTDice from "./Dice";
@@ -26,6 +27,8 @@ function PT_initializeComponents(app: any) {
   app.ports.renderHistory.subscribe(afterView(function(x: [string, any]) { History.renderHistory(app, x) }));
 
   app.ports.renderPlayers.subscribe(afterView(function(x: any) {Players.renderPlayers(app, x)}));
+
+  app.ports.renderPlayerUI.subscribe(afterView(function(x: any) {PlayerView.renderPlayerUI(app, x)}))
 
   app.ports.unloadComponent.subscribe(unloadComponent);
 }

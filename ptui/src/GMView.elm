@@ -48,6 +48,7 @@ makeUI model app =
   , extra =
       [ overlay (S.px 0) (S.pct 50) [S.height (S.pct 50), S.width (S.px 300)] [gmNotes model app]
       ]
+  , right = Nothing
   }
 
 gmNotes : M.Model -> T.App -> Html M.Msg
