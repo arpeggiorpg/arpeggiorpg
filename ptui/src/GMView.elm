@@ -522,18 +522,25 @@ editCreatureDialog model app editing =
             Nothing -> M.NoMsg
         entry p d f = input [type_ "text", placeholder p, defaultValue d, onInput (update f)] []
         startingInit = formatDice creature.initiative
-        currentDice = parseDice editing.initiative          
-        currentIsValid = case currentDice of
-          Just _ -> True
-          Nothing -> False
+        currentDice = parseDice editing.initiative
+        inventoryItem (itemId, count) =
+          let name =
+            case T.getItem itemId app of
+              Just item -> item.name
+              Nothing -> "Lost item"
+          in hbox [dtext name, text (toString count)]
+        inventory = vbox
+          [ strong [] [text "Inventory"]
+          , vabox [s [S.left (S.em 1)]] (List.map inventoryItem (Dict.toList creature.inventory))]
       in vbox
         [ entry "Name" creature.name (\n -> {editing | name=n})
         , entry "Note" creature.note (\n -> {editing | note=n})
         , entry "Portrait URL" creature.portrait_url (\u -> {editing | portrait_url=u})
         , entry "Initiative" startingInit (\i -> {editing | initiative = i})
         , text (toString currentDice)
+        , inventory
         , button [ onClick (M.Batch [submitMsg, M.SetModal M.NoModal])
-                 , disabled (not currentIsValid)] [text "Submit"]]
+                 , disabled (MaybeEx.isNothing currentDice)] [text "Submit"]]
     Nothing -> text "Creature not found"
 
 showGameLogsDialog : M.Model -> T.App -> List T.GameLog -> Html M.Msg

@@ -1094,7 +1094,8 @@ removeFromInventory item_id count inventory =
 
 addToInventory : ItemID -> Int -> Dict.Dict ItemID Int -> Dict.Dict ItemID Int
 addToInventory item_id count inventory =
-  case Dict.get item_id inventory of
-    Just already_there ->
-      Dict.insert item_id (already_there + count) inventory
-    Nothing -> inventory
+  let existing_count =
+        case Dict.get item_id inventory of
+          Just already_there -> already_there
+          Nothing -> 0
+  in Dict.insert item_id (existing_count + count) inventory

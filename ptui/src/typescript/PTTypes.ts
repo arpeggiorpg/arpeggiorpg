@@ -48,6 +48,7 @@ export type GameLog =
   | { t: "DeleteFolderItem"; path: string; item: FolderItemID }
   | { t: "MoveFolderItem"; path: string; item: FolderItemID; newPath: string }
   | { t: "CreateItem"; path: string; item: Item }
+  | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: string; note: Note }
   | { t: "EditNote"; path: string; name: string; newNote: Note }
   | { t: "DeleteNote"; path: string; name: string }
@@ -312,6 +313,7 @@ export const decodeGameLog: Decoder<GameLog> =
     "CreateItem": JD.map(
       ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
       JD.tuple(JD.string(), decodeItem)),
+    "EditItem": JD.map((item): GameLog => ({t: "EditItem", item}), decodeItem),
     "CreateNote": JD.map(
       ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
       JD.tuple(JD.string(), decodeNote)),

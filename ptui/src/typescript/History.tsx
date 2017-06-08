@@ -50,6 +50,8 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
         return <Flexbox>Moved folder item from {log.path} to {log.newPath}</Flexbox>
       case "CreateItem":
         return <Flexbox>Created item {log.item.name} in {log.path}</Flexbox>
+      case "EditItem":
+        return <Flexbox>Edited item {log.item.name}</Flexbox>
       case "CreateNote":
         return <Flexbox>Created note {log.note.name}</Flexbox>
       case "EditNote":
