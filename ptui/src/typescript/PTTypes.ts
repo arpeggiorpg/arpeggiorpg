@@ -21,6 +21,12 @@ export interface App {
 
 export interface Game {
   creatures: { [index: string]: Creature };
+  classes: {[index: string]: Class};
+}
+
+export interface Class{
+  // abilities, conditions
+  color: string;
 }
 
 export interface Player {
@@ -380,9 +386,15 @@ export const decodePlayer: Decoder<Player> = JD.object(
 
 export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
 
+const decodeClass: Decoder<Class> = JD.object(
+  ["color", JD.string()],
+  (color) => ({color})
+);
+
 export const decodeGame: Decoder<Game> = JD.object(
   ["creatures", JD.dict(decodeCreature)],
-  (creatures) => ({ creatures })
+  ["classes", JD.dict(decodeClass)],
+  (creatures, classes) => ({ creatures, classes })
 );
 
 export const decodeApp: Decoder<App> = JD.object(

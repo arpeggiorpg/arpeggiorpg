@@ -6,7 +6,7 @@ import * as T from './PTTypes';
 
 export function renderPlayerUI(elmApp: any, [id, playerID, currentScene, data]: [string, T.PlayerID, T.SceneID | undefined, any]) {
   let element = document.getElementById(id);
-  console.log("[renderPlayerUI] Rendering Player component", id, element, playerID, currentScene);
+  console.log("[renderPlayerUI] Rendering Player component from Elm", id, element, playerID, currentScene);
   let app = T.decodeApp.decodeAny(data);
   ReactDOM.render(
     <PlayerUI app={app} playerID={playerID} currentScene={currentScene} />,
@@ -19,7 +19,7 @@ class PlayerUI extends React.Component<
   undefined> {
 
   render(): JSX.Element {
-    console.log("Rendering PlayerUI");
+    console.log("[PlayerUI:render]");
     return <div style={{ display: "flex", flexDirection: "column" }}>
       <div>Player: {this.props.playerID}</div>
       <PlayerCreatures playerID={this.props.playerID} app={this.props.app} />
@@ -80,29 +80,18 @@ function classIcon(creature: T.Creature): string {
 }
 
 function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
+  let squareStyle = {width: "50px", height: "50px", borderRadius: "10px", border: "solid 1px black"};
   if (props.creature.portrait_url !== "") {
-    return <img src={props.creature.portrait_url} style={{ width: "50px", height: "50px", borderRadius: "10px", border: "solid 1px black" }} />
+    return <img src={props.creature.portrait_url}
+      style={squareStyle} />
   } else {
-    return null;
+    let class_ = props.app.current_game.classes[props.creature.class_];
+    let color;
+    if (class_) {
+      color = class_.color;
+    } else {
+      color = "red";
+    }
+    return <div style={{backgroundColor: color, ...squareStyle}}>{props.creature.name}</div>
   }
 };
-
-// function creatureIcon(app: T.App, creature: T.Creature): JSX.Element | null {
-
-  // let class_ = app.current_game.classes[creature.class_];
-  //   let creatureColor =
-  //         case Dict.get creature.class app.current_game.classes of
-  //           Just class -> class.color
-  //           Nothing -> "red"
-  //   in
-  //     if creature.portrait_url /= ""
-  //     then
-  //       img (stdStyle ++ [src creature.portrait_url
-  //           , s [S.width (S.px 50), S.height (S.px 50), S.borderRadius (S.px 10), plainBorder]])
-  //           []
-  //     else
-  //       sdiv [s [ S.width (S.px 50), S.height (S.px 50), S.borderRadius (S.px 10), plainBorder]
-  //           , style [("background-color", creatureColor)] ]
-  //           [text creature.name]
-
-// }
