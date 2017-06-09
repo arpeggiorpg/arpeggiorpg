@@ -22,7 +22,7 @@ class PlayerUI extends React.Component<
 
   render(): JSX.Element {
     console.log("[PlayerUI:render]");
-    return <div style={{ display: "flex", flexDirection: "column" }}>
+    return <div>
       <div>Player: {this.props.playerID}</div>
       <PlayerCreatures playerID={this.props.playerID} app={this.props.app} />
     </div>;
@@ -52,16 +52,15 @@ class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App },
     let creature = this.props.creature;
     return <div
       style={{
-        display: "flex", flexDirection: "column",
         width: "300px",
         borderRadius: "10px", border: "1px solid black",
         padding: "3px"
       }}>
-      <div><strong>{creature.name}</strong> {classIcon(creature)}</div>
+      <div>{classIcon(creature)} <strong>{creature.name}</strong>
+        {Object.keys(creature.conditions).map((key) => conditionIcon(creature.conditions[key].condition))}
+      </div>
       <div style={{ display: "flex" }}>
         <CreatureIcon app={this.props.app} creature={creature} />
-        {/*, hbox (List.map conditionIcon (Dict.values creature.conditions))
-    ] ++ extras*/}
       </div>
     </div>;
   }
@@ -102,6 +101,21 @@ function CreatureInventory(props: { app: T.App, creature: T.Creature }): JSX.Ele
     (item) =>
       <div key={item.id}>{item.name} ({inv[item.id]})</div>
   )}</div>;
-
 }
 
+function conditionIcon(cond: T.Condition): string {
+  switch (cond.t) {
+    case "RecurringEffect": return cond.effect.toString();
+    case "Dead": return "💀";
+    case "Incapacitated": return "😞";
+    case "AddDamageBuff": return "😈";
+    case "DoubleMaxMovement": return "🏃";
+    case "ActivateAbility": return "Ability Activated: " + cond.ability_id;
+  }
+}
+  // T.RecurringEffect eff -> text (toString eff)
+  // T.Dead -> text "💀"
+  // T.Incapacitated -> text "😞"
+  // T.AddDamageBuff dmg -> text "😈"
+  // T.DoubleMaxMovement -> text "🏃"
+  // T.ActivateAbility abid -> hbox [text <| "ACTIVE: " ++ abid, durationEl ac.remaining]

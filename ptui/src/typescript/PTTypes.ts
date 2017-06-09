@@ -1,6 +1,7 @@
 import * as JD from 'type-safe-json-decoder';
 import { Decoder } from 'type-safe-json-decoder';
 
+export type AbilityID = string;
 export type CreatureID = string;
 export type PlayerID = string;
 export type SceneID = string;
@@ -21,11 +22,11 @@ export interface App {
 
 export interface Game {
   creatures: { [index: string]: Creature };
-  classes: {[index: string]: Class};
-  items: {[index: string]: Item};
+  classes: { [index: string]: Class };
+  items: { [index: string]: Item };
 }
 
-export interface Class{
+export interface Class {
   // abilities, conditions
   color: string;
 }
@@ -100,12 +101,29 @@ export interface Item {
   name: string;
 }
 
+export type Effect =
+  | { t: "ApplyCondition"; duration: ConditionDuration; condition: Condition }
+  | { t: "Heal"; dice: Dice }
+  | { t: "Damage"; dice: Dice }
+  | { t: "MultiEffect"; effects: Array<Effect> }
+  | { t: "GenerateEnergy"; energy: Energy }
+
 export type ConditionDuration =
   | { t: "Interminate" }
   | { t: "Duration"; duration: number }
 
 export type Condition =
-  | { t: "Condition" }
+  | { t: "RecurringEffect"; effect: Effect }
+  | { t: "Dead" }
+  | { t: "Incapacitated" }
+  | { t: "AddDamageBuff", hp: HP }
+  | { t: "DoubleMaxMovement" }
+  | { t: "ActivateAbility"; ability_id: AbilityID }
+
+export interface AppliedCondition {
+  remaining: ConditionDuration;
+  condition: Condition;
+};
 
 export interface Creature {
   id: CreatureID;
@@ -117,12 +135,12 @@ export interface Creature {
   class_: string;
   max_health: HP;
   cur_health: HP;
-  //   pub conditions: HashMap<ConditionID, AppliedCondition>,
+  conditions: { [index: string]: AppliedCondition }, // key: ConditionID
   note: string;
   portrait_url: string;
   //   pub attributes: HashMap<AttrID, SkillLevel>,
   //   pub initiative: Dice,
-  inventory: {[index: string]: number}; // key is ItemID
+  inventory: { [index: string]: number }; // key: ItemID
 }
 
 export type FolderItemID =
@@ -176,6 +194,23 @@ export type Dice =
 
 // ** Decoders **
 
+export const decodeDiceLazy = JD.lazy(() => decodeDice);
+export const decodeConditionLazy = JD.lazy(() => decodeCondition);
+export const decodeEffectLazy = JD.lazy(() => decodeEffect);
+
+export const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
+  "Flat": JD.map((val): Dice => ({ t: "Flat", val }), JD.number()),
+  "Expr": JD.map(
+    ({ num, size }): Dice => ({ t: "Expr", num, size }),
+    JD.object(["num", JD.number()], ["size", JD.number()], (num, size) => ({ num, size }))),
+  "Plus": JD.map(
+    ([left, right]): Dice => ({ t: "Plus", left, right }),
+    JD.tuple(decodeDiceLazy, decodeDiceLazy)),
+  "BestOf": JD.map(
+    ([num, dice]): Dice => ({ t: "BestOf", num, dice }),
+    JD.tuple(JD.number(), decodeDiceLazy))
+});
+
 export const decodeConditionDuration: Decoder<ConditionDuration> =
   sum<ConditionDuration>("ConditionDuration", { "Interminate": { t: "Interminate" } },
     {
@@ -183,6 +218,44 @@ export const decodeConditionDuration: Decoder<ConditionDuration> =
         (duration): ConditionDuration => ({ t: "Duration", duration }),
         JD.number())
     })
+
+export const decodeEffect: Decoder<Effect> = sum<Effect>("Effect", {},
+  {
+    "Heal": JD.map((dice): Effect => ({ t: "Heal", dice }), decodeDice),
+    "Damage": JD.map((dice): Effect => ({ t: "Damage", dice }), decodeDice),
+    "ApplyCondition": JD.map(
+      ([duration, condition]): Effect => ({ t: "ApplyCondition", duration, condition }),
+      JD.tuple(decodeConditionDuration, decodeConditionLazy)),
+    "MultiEffect": JD.map(
+      (effects): Effect => ({ t: "MultiEffect", effects }),
+      JD.array(decodeEffectLazy)),
+    "GenerateEffect": JD.map(
+      (energy): Effect => ({ t: "GenerateEnergy", energy }),
+      JD.number())
+  });
+
+export const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
+  {
+    "Incapacitated": { t: "Incapacitated" },
+    "Dead": { t: "Dead" },
+    "DoubleMaxMovement": { t: "DoubleMaxMovement" }
+  }, {
+    "RecurringEffect": JD.map(
+      (effect): Condition => ({ t: "RecurringEffect", effect }),
+      decodeEffect),
+    "ActivateAbility": JD.map(
+      (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
+      JD.string())
+    // | { t: "ActivateAbility"; ability_id: AbilityID }
+
+  }
+);
+
+export const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
+  ["remaining", decodeConditionDuration],
+  ["condition", decodeCondition],
+  (remaining, condition) => ({ remaining, condition })
+);
 
 export const decodeCreature: Decoder<Creature> = JD.object(
   ["id", JD.string()],
@@ -196,8 +269,9 @@ export const decodeCreature: Decoder<Creature> = JD.object(
   ["note", JD.string()],
   ["portrait_url", JD.string()],
   ["inventory", JD.dict(JD.number())],
-  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory) =>
-    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory })
+  ["conditions", JD.dict(decodeAppliedCondition)],
+  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory, conditions) =>
+    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory, conditions })
 );
 
 export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -391,7 +465,7 @@ export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
 
 const decodeClass: Decoder<Class> = JD.object(
   ["color", JD.string()],
-  (color) => ({color})
+  (color) => ({ color })
 );
 
 export const decodeGame: Decoder<Game> = JD.object(
