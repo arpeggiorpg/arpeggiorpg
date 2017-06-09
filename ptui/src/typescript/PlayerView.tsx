@@ -19,7 +19,8 @@ class PlayerUI extends React.Component<
   undefined> {
 
   render(): JSX.Element {
-    return <div style={{display: "flex", flexDirection: "column"}}>
+    console.log("Rendering PlayerUI");
+    return <div style={{ display: "flex", flexDirection: "column" }}>
       <div>Player: {this.props.playerID}</div>
       <PlayerCreatures playerID={this.props.playerID} app={this.props.app} />
     </div>;
@@ -30,7 +31,15 @@ class PlayerCreatures extends React.Component<
   { playerID: T.PlayerID; app: T.App; },
   undefined> {
 
+  creatureCard(creature: T.Creature): JSX.Element {
+    return <div>{creature.name}</div>;
+  }
+
   render(): JSX.Element {
-    return <div>Player creatures!</div>
+    let cids = this.props.app.players[this.props.playerID].creatures;
+    let creatures = T.getCreatures(this.props.app, cids);
+    return <div>Player creatures!
+      {creatures.map(this.creatureCard)}
+    </div>
   }
 }
