@@ -33,7 +33,9 @@ class PlayerCreatures extends React.Component<{ playerID: T.PlayerID; app: T.App
   creatureSection(creature: T.Creature): JSX.Element {
     return <div key={creature.id}>
       <CreatureCard app={this.props.app} creature={creature} />
-      <CreatureInventory app={this.props.app} creature={creature} />
+      <Collapsible name="Inventory">
+        <CreatureInventory app={this.props.app} creature={creature} />
+      </Collapsible>
     </div>;
   }
 
@@ -45,6 +47,33 @@ class PlayerCreatures extends React.Component<{ playerID: T.PlayerID; app: T.App
     </div>
   }
 }
+
+class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
+  constructor(props: { name: string }) {
+    super(props);
+    this.state = { collapsed: false };
+  }
+  toggle() {
+    this.setState({ collapsed: !this.state.collapsed });
+  }
+  render(): JSX.Element {
+    let buttonText, noneOrBlock;
+    if (this.state.collapsed) {
+      buttonText = "▶"; noneOrBlock = "none";
+    }
+    else {
+      buttonText = "▼"; noneOrBlock = "block";
+    };
+    return <div>
+      <div style={{ display: "flex" }}>
+        <strong>{this.props.name}</strong>
+        <button onClick={this.toggle.bind(this)}>{buttonText}</button>
+      </div>
+      <div style={{ display: noneOrBlock }}>{this.props.children}</div>
+    </div>
+  }
+}
+
 
 class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App }, undefined> {
   render(): JSX.Element {
@@ -94,9 +123,7 @@ function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element 
 function CreatureInventory(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
   let inv = props.creature.inventory;
   let items = T.getItems(props.app, LD.keys(inv));
-  return <div>{items.map(
-    (item) =>
-      <div key={item.id}>{item.name} ({inv[item.id]})</div>
+  return <div>{items.map((item) => <div key={item.id}>{item.name} ({inv[item.id]})</div>
   )}</div>;
 }
 
@@ -110,9 +137,3 @@ function conditionIcon(cond: T.Condition): string {
     case "ActivateAbility": return "Ability Activated: " + cond.ability_id;
   }
 }
-  // T.RecurringEffect eff -> text (toString eff)
-  // T.Dead -> text "💀"
-  // T.Incapacitated -> text "😞"
-  // T.AddDamageBuff dmg -> text "😈"
-  // T.DoubleMaxMovement -> text "🏃"
-  // T.ActivateAbility abid -> hbox [text <| "ACTIVE: " ++ abid, durationEl ac.remaining]
