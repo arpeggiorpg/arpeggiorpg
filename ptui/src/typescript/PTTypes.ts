@@ -313,7 +313,7 @@ export const decodeGameLog: Decoder<GameLog> =
     "CreateItem": JD.map(
       ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
       JD.tuple(JD.string(), decodeItem)),
-    "EditItem": JD.map((item): GameLog => ({t: "EditItem", item}), decodeItem),
+    "EditItem": JD.map((item): GameLog => ({ t: "EditItem", item }), decodeItem),
     "CreateNote": JD.map(
       ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
       JD.tuple(JD.string(), decodeNote)),
@@ -393,7 +393,7 @@ export const decodeApp: Decoder<App> = JD.object(
 );
 
 
-// Utility Functions
+// Utility Functions for Decoding
 
 export function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
   return JD.oneOf(JD.map((_) => undefined, JD.equal(null)), d);
@@ -424,4 +424,20 @@ export function sum<T>(
     JD.map(nullary, JD.string()),
     JD.oneOf.apply(null, _decoders),
   );
+}
+
+// Utility functions for interacting with the model
+
+export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
+  // I can't "naturally" convince TypeScript that this filter makes an
+  // Array<R> instead of Array<R|undefined>, hence the typecast
+  return coll.map(f).filter((el) => (el)) as Array<R>;
+}
+
+export function getCreature(app: App, cid: CreatureID): Creature | undefined {
+  return app.current_game.creatures[cid];
+}
+
+export function getCreatures(app: App, cids: Array<CreatureID>) {
+  return filterMap(cids, getCreature.bind(undefined, app));
 }

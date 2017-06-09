@@ -1,5 +1,6 @@
 import * as Lodash from 'lodash';
-import * as PTTypes from '../PTTypes';
+import * as T from '../PTTypes';
+import J = require("jasmine");
 
 function assertEq<T>(a: T, b: T, msg?: string) {
   if (!Lodash.isEqual(a, b)) {
@@ -18,12 +19,12 @@ function assertRaises(f: () => void, msg?: string) {
 }
 
 export function test(): boolean {
-  assertRaises(() => PTTypes.decodeSkillLevel.decodeAny("Foo"));
-  assertEq(PTTypes.decodeSkillLevel.decodeAny("Skilled"), "Skilled");
+  assertRaises(() => T.decodeSkillLevel.decodeAny("Foo"));
+  assertEq(T.decodeSkillLevel.decodeAny("Skilled"), "Skilled");
 
-  let exAttrCheck: PTTypes.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
+  let exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
   assertEq(
-    PTTypes.decodeAttributeCheck.decodeAny(exAttrCheck as any),
+    T.decodeAttributeCheck.decodeAny(exAttrCheck as any),
     exAttrCheck);
 
   let gameLogTests: [[any, any]] = [
@@ -37,11 +38,11 @@ export function test(): boolean {
       { t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50, success: true }]
   ];
   for (let [x, y] of gameLogTests) {
-    assertEq<PTTypes.GameLog>(PTTypes.decodeGameLog.decodeAny(x), y);
+    assertEq<T.GameLog>(T.decodeGameLog.decodeAny(x), y);
   }
 
-  assertEq<PTTypes.Visibility>(PTTypes.decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
-  assertEq<PTTypes.Visibility>(PTTypes.decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
+  assertEq<T.Visibility>(T.decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
+  assertEq<T.Visibility>(T.decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
 
   let sceneJSON = {
     id: "Scene ID",
@@ -52,7 +53,7 @@ export function test(): boolean {
       "Do a backflip": exAttrCheck,
     },
   };
-  let exScene: PTTypes.Scene = {
+  let exScene: T.Scene = {
     id: "Scene ID",
     name: "Scene Name",
     map: "Map ID",
@@ -61,7 +62,7 @@ export function test(): boolean {
       "Do a backflip": exAttrCheck,
     },
   };
-  assertEq<PTTypes.Scene>(PTTypes.decodeScene.decodeAny(sceneJSON), exScene);
+  assertEq<T.Scene>(T.decodeScene.decodeAny(sceneJSON), exScene);
   console.log("OK");
   return true;
 }
@@ -69,8 +70,25 @@ export function test(): boolean {
 // test()
 
 describe("PTTypes serialization", function () {
-  it("is cool", function () {
+  it("original test function works", function () {
     expect(test()).toBe(true);
   })
-}
-)
+});
+
+describe("filterMap", function () {
+  it("filters and maps", function () {
+    expect(
+      T.filterMap(
+        ["0", "one", "2", "3"],
+        Number)
+    ).toEqual([2, 3]);
+  });
+});
+
+describe("getCreatures", function() {
+  it("Gets creatures", function() {
+    let creature = {id: "0x00", name: "Bob"};
+    let app = {current_game: {creatures: {"0x00": creature}}} as any as T.App; // lol
+    expect(T.getCreatures(app, ["0x00", "0x01"])).toEqual([creature]);
+  });
+});
