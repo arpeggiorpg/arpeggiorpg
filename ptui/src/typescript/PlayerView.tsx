@@ -56,8 +56,7 @@ class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App },
         padding: "3px"
       }}>
       <div>{classIcon(creature)} <strong>{creature.name}</strong>
-        {LD.keys(creature.conditions).map(
-          (key) => conditionIcon(creature.conditions[key].condition))}
+        {LD.values(creature.conditions).map((ac) => conditionIcon(ac.condition))}
       </div>
       <CreatureIcon app={this.props.app} creature={creature} />
     </div>;
