@@ -22,6 +22,7 @@ export interface App {
 export interface Game {
   creatures: { [index: string]: Creature };
   classes: {[index: string]: Class};
+  items: {[index: string]: Item};
 }
 
 export interface Class{
@@ -121,6 +122,7 @@ export interface Creature {
   portrait_url: string;
   //   pub attributes: HashMap<AttrID, SkillLevel>,
   //   pub initiative: Dice,
+  inventory: {[index: string]: number}; // key is ItemID
 }
 
 export type FolderItemID =
@@ -193,8 +195,9 @@ export const decodeCreature: Decoder<Creature> = JD.object(
   ["cur_health", JD.number()],
   ["note", JD.string()],
   ["portrait_url", JD.string()],
-  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url) =>
-    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url })
+  ["inventory", JD.dict(JD.number())],
+  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory) =>
+    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory })
 );
 
 export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -394,7 +397,8 @@ const decodeClass: Decoder<Class> = JD.object(
 export const decodeGame: Decoder<Game> = JD.object(
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
-  (creatures, classes) => ({ creatures, classes })
+  ["items", JD.dict(decodeItem)],
+  (creatures, classes, items) => ({ creatures, classes, items })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
@@ -450,6 +454,14 @@ export function getCreature(app: App, cid: CreatureID): Creature | undefined {
   return app.current_game.creatures[cid];
 }
 
-export function getCreatures(app: App, cids: Array<CreatureID>) {
-  return filterMap(cids, getCreature.bind(undefined, app));
+export function getCreatures(app: App, cids: Array<CreatureID>): Array<Creature> {
+  return filterMap(cids, getCreature.bind(undefined, app)) as Array<Creature>;
+}
+
+export function getItem(app: App, iid: ItemID): Item | undefined {
+  return app.current_game.items[iid];
+}
+
+export function getItems(app: App, iids: Array<ItemID>): Array<Item> {
+  return filterMap(iids, getItem.bind(undefined, app)) as Array<Item>;
 }
