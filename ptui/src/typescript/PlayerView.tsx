@@ -33,9 +33,11 @@ class PlayerCreatures extends React.Component<{ playerID: T.PlayerID; app: T.App
   creatureSection(creature: T.Creature): JSX.Element {
     return <div key={creature.id}>
       <CreatureCard app={this.props.app} creature={creature} />
-      <Collapsible name="Inventory">
-        <CreatureInventory app={this.props.app} creature={creature} />
-      </Collapsible>
+      <div style={{ marginLeft: "1em" }}>
+        <Collapsible name="Inventory">
+          <CreatureInventory app={this.props.app} creature={creature} />
+        </Collapsible>
+      </div>
     </div>;
   }
 
@@ -73,7 +75,6 @@ class Collapsible extends React.Component<{ name: string }, { collapsed: boolean
     </div>
   }
 }
-
 
 class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App }, undefined> {
   render(): JSX.Element {
@@ -120,11 +121,38 @@ function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element 
   }
 }
 
-function CreatureInventory(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
-  let inv = props.creature.inventory;
-  let items = T.getItems(props.app, LD.keys(inv));
-  return <div>{items.map((item) => <div key={item.id}>{item.name} ({inv[item.id]})</div>
-  )}</div>;
+class CreatureInventory extends React.Component<{ app: T.App, creature: T.Creature }, { giving: [T.ItemID, T.CreatureID | undefined] | undefined }> {
+  constructor(props: { app: T.App, creature: T.Creature }) {
+    super(props);
+    this.state = { giving: undefined };
+  }
+  render(): JSX.Element | null {
+    let inv = this.props.creature.inventory;
+    let items = T.getItems(this.props.app, LD.keys(inv));
+
+    let give = <noscript />;
+    if (this.state.giving) {
+      let [iid, cid] = this.state.giving;
+      let item = T.getItem(this.props.app, iid);
+      if (item) {
+        give = <div>Giving! {item.name}</div>;
+      }
+    }
+
+    return <div>
+      {items.map((item) =>
+        <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
+          {item.name} ({inv[item.id]})
+        <button onClick={this.give.bind(this, item)}>Give</button>
+        </div>
+      )}
+      {give}
+    </div>;
+  }
+
+  give(item: T.Item) {
+    this.setState({ giving: [item.id, undefined] });
+  }
 }
 
 function conditionIcon(cond: T.Condition): string {

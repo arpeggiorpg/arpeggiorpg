@@ -19,7 +19,8 @@
   "dependencies": {
     "@types/lodash": "^4.14.64",
     "@types/parsimmon": "^1.0.4",
-    "@types/react": "^15.0.25",
+    "@types/react": "^15.0.27",
+
     "@types/react-dom": "^15.5.0",
     "flexbox-react": "^4.3.3",
     "lodash": "^4.17.4",
