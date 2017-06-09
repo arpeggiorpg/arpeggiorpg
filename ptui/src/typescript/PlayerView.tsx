@@ -59,7 +59,7 @@ class CreatureCard extends React.Component<{ creature_id: T.CreatureID; app: T.A
         }}>
         <div><strong>{creature.name}</strong> {classIcon(creature)}</div>
         <div style={{ display: "flex" }}>
-          {creatureIcon(this.props.app, creature)}
+          <CreatureIcon app={this.props.app} creature={creature} />
           {/*, hbox (List.map conditionIcon (Dict.values creature.conditions))
       ] ++ extras*/}
         </div>
@@ -79,12 +79,16 @@ function classIcon(creature: T.Creature): string {
   }
 }
 
-function creatureIcon(app: T.App, creature: T.Creature): JSX.Element | null {
-  if (creature.portrait_url !== "") {
-    return <img src={creature.portrait_url} style={{ width: "50px", height: "50px", borderRadius: "10px", border: "solid 1px black" }} />
+function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
+  if (props.creature.portrait_url !== "") {
+    return <img src={props.creature.portrait_url} style={{ width: "50px", height: "50px", borderRadius: "10px", border: "solid 1px black" }} />
   } else {
     return null;
   }
+};
+
+// function creatureIcon(app: T.App, creature: T.Creature): JSX.Element | null {
+
   // let class_ = app.current_game.classes[creature.class_];
   //   let creatureColor =
   //         case Dict.get creature.class app.current_game.classes of
@@ -101,4 +105,4 @@ function creatureIcon(app: T.App, creature: T.Creature): JSX.Element | null {
   //           , style [("background-color", creatureColor)] ]
   //           [text creature.name]
 
-}
+// }
