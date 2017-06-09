@@ -1,7 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import Flexbox from 'flexbox-react';
-
+import * as LD from "lodash";
 import * as T from './PTTypes';
 
 export function renderPlayerUI(
@@ -57,11 +56,10 @@ class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App },
         padding: "3px"
       }}>
       <div>{classIcon(creature)} <strong>{creature.name}</strong>
-        {Object.keys(creature.conditions).map((key) => conditionIcon(creature.conditions[key].condition))}
+        {LD.keys(creature.conditions).map(
+          (key) => conditionIcon(creature.conditions[key].condition))}
       </div>
-      <div style={{ display: "flex" }}>
-        <CreatureIcon app={this.props.app} creature={creature} />
-      </div>
+      <CreatureIcon app={this.props.app} creature={creature} />
     </div>;
   }
 }
@@ -96,7 +94,7 @@ function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element 
 
 function CreatureInventory(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
   let inv = props.creature.inventory;
-  let items = T.getItems(props.app, Object.keys(inv));
+  let items = T.getItems(props.app, LD.keys(inv));
   return <div>{items.map(
     (item) =>
       <div key={item.id}>{item.name} ({inv[item.id]})</div>
