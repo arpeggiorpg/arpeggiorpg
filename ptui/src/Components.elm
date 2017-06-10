@@ -20,3 +20,5 @@ port playersSetScene : ((String, Maybe String) -> msg) -> Sub msg
 port renderPlayerUI : (String, T.PlayerID, Maybe T.SceneID, JE.Value) -> Cmd msg
 
 port unloadComponent : String -> Cmd msg
+
+port sendCommand: (JE.Value -> msg) -> Sub msg

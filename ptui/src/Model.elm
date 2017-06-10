@@ -28,6 +28,11 @@ subscriptions model =
                    (\(snapIdx, logIdx) -> (SendCommand (T.Rollback snapIdx logIdx)))
                , Components.playersGrantCreatures grantCreatures
                , Components.playersSetScene (\(pid, scene) -> SendCommand (T.SetPlayerScene pid scene))
+               , Components.sendCommand
+                    (\command ->
+                     case JD.decodeValue T.gameCommandDecoder command of
+                       Ok command -> SendCommand command
+                       Err x -> ShowError (toString x))
                ]
 
 grantCreatures pid =
