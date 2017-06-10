@@ -2,6 +2,7 @@ import * as React from "react";
 import * as LD from "lodash";
 import * as T from './PTTypes';
 import { PTUI } from './Model';
+import * as M from './Model';
 
 export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
   constructor(props: { name: string }) {
@@ -77,7 +78,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
   }
   render(): JSX.Element | null {
     let inv = this.props.creature.inventory;
-    let items = T.getItems(this.props.ptui.app, LD.keys(inv));
+    let items = this.props.ptui.getItems(LD.keys(inv));
 
     let give = this.state.giving
       ? <GiveItem ptui={this.props.ptui} current_scene={this.props.current_scene}
@@ -103,17 +104,17 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
-    let app = this.props.ptui.app;
+    let ptui = this.props.ptui;
     if (!this.props.current_scene) { return <div>You can only transfer items in a scene.</div> }
-    let scene = app.current_game.scenes[this.props.current_scene];
+    let scene = ptui.app.current_game.scenes[this.props.current_scene];
     if (!scene) { return <div>Couldn't find your scene</div> }
     let other_cids_in_scene = LD.keys(scene.creatures);
     LD.pull(other_cids_in_scene, this.props.giver);
-    let other_creatures = T.getCreatures(app, other_cids_in_scene);
+    let other_creatures = ptui.getCreatures(other_cids_in_scene);
     if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div> }
-    let item = T.getItem(app, this.props.item_id);
+    let item = ptui.getItem(this.props.item_id);
     if (!item) { return <div>The Item definition cannot be found.</div> }
-    let _giver = T.getCreature(app, this.props.giver);
+    let _giver = ptui.getCreature(this.props.giver);
     if (!_giver) { return <div>Giver not found!</div> }
     let giver = _giver;
     let giver_count = giver.inventory[this.props.item_id];
@@ -150,8 +151,8 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
       return;
     }
 
-    let newGiver = LD.assign({}, giver, { inventory: T.removeFromInventory(giver.inventory, this.props.item_id, count) });
-    let newReceiver = LD.assign({}, receiver, { inventory: T.addToInventory(receiver.inventory, this.props.item_id, count) });
+    let newGiver = LD.assign({}, giver, { inventory: M.removeFromInventory(giver.inventory, this.props.item_id, count) });
+    let newReceiver = LD.assign({}, receiver, { inventory: M.addToInventory(receiver.inventory, this.props.item_id, count) });
 
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newGiver });
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newReceiver });
@@ -220,9 +221,9 @@ export function Combat(props: {ptui: PTUI }): JSX.Element {
     return <div>There is no combat!</div>
   }
   let combat = props.ptui.app.current_game.current_combat;
-  let creatures_with_init = T.filterMap(combat.creatures.data,
+  let creatures_with_init = M.filterMap(combat.creatures.data,
     ([cid, init]) => {
-      let creature = T.getCreature(props.ptui.app, cid);
+      let creature = props.ptui.getCreature(cid);
       if (creature) { return [creature, init]; }
     }) as Array<[T.Creature, number]>;
 

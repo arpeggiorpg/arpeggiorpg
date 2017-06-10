@@ -36,7 +36,8 @@ function PlayerCreatures(
   props: { current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: PTUI; })
   : JSX.Element {
   let cids = props.ptui.app.players[props.player_id].creatures;
-  let creatures = T.getCreatures(props.ptui.app, cids);
+  let creatures = props.ptui.getCreatures(cids);
+  console.log("[PlayerCreatures]", cids, creatures);
   return <div>
     {creatures.map((creature) =>
       <div key={creature.id}>
