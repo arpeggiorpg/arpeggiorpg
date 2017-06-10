@@ -24,6 +24,7 @@ export interface Game {
   creatures: { [index: string]: Creature };
   classes: { [index: string]: Class };
   items: { [index: string]: Item };
+  scenes: { [index: string]: Scene };
 }
 
 export interface Class {
@@ -472,7 +473,8 @@ export const decodeGame: Decoder<Game> = JD.object(
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
-  (creatures, classes, items) => ({ creatures, classes, items })
+  ["scenes", JD.dict(decodeScene)],
+  (creatures, classes, items, scenes) => ({ creatures, classes, items, scenes })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
