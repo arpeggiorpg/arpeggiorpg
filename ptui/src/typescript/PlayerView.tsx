@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import * as LD from "lodash";
 import * as T from './PTTypes';
 import * as CommonView from './CommonView';
 
