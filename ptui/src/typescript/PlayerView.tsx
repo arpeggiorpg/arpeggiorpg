@@ -63,9 +63,9 @@ function PlayerCombat(props: { player_id: T.PlayerID; ptui: PTUI }): JSX.Element
 
   return <div>
     {creatures_with_init.map(([creature, init], index) => {
-      return <div style={{ display: "flex" }}>
-        {index === combat.creatures.cursor ? <div>&gt;</div> : <noscript />}
-        <CommonView.CreatureCard key={creature.id} app={props.ptui.app} creature={creature} />
+      return <div key={creature.id} style={{ display: "flex" }}>
+        <div style={{width: "25px"}}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
+        <CommonView.CreatureCard app={props.ptui.app} creature={creature} />
       </div>;
     })
     }
