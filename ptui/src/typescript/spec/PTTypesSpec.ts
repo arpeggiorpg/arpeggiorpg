@@ -125,8 +125,9 @@ describe("filterMap", function () {
 
 describe("getCreatures", function() {
   it("Gets creatures", function() {
-    let creature = {id: "0x00", name: "Bob"};
+    let creature = {id: "0x00", name: "Bob"} as T.Creature;
     let app = {current_game: {creatures: {"0x00": creature}}} as any as T.App; // lol
-    // expect(T.getCreatures(app, ["0x00", "0x01"])).toEqual([creature]);
+    let ptui = new M.PTUI(undefined, app);
+    expect(ptui.getCreatures(["0x00", "0x01"])).toEqual([creature]);
   });
 });
