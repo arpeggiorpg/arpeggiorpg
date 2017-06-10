@@ -2,7 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as T from './PTTypes';
 import * as CommonView from './CommonView';
-import {PTUI} from './Model';
+import { PTUI } from './Model';
 
 export function renderPlayerUI(
   elmApp: any,
@@ -23,10 +23,15 @@ class PlayerUI extends React.Component<
 
   render(): JSX.Element {
     console.log("[PlayerUI:render]");
-    return <div>
-      <div>Player: {this.props.player_id}</div>
-      <PlayerCreatures player_id={this.props.player_id} current_scene={this.props.current_scene} ptui={this.props.ptui} />
-    </div>;
+
+    return <CommonView.TabbedView>
+      <CommonView.Tab name="Creatures">
+        <PlayerCreatures player_id={this.props.player_id} current_scene={this.props.current_scene} ptui={this.props.ptui} />
+      </CommonView.Tab>
+      <CommonView.Tab name="Combat">
+        <div>Combat!</div>
+      </CommonView.Tab>
+    </CommonView.TabbedView>;
   }
 }
 

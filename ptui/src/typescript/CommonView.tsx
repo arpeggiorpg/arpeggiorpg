@@ -150,8 +150,8 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
       return;
     }
 
-    let newGiver = LD.assign({}, giver, {inventory: T.removeFromInventory(giver.inventory, this.props.item_id, count)});
-    let newReceiver = LD.assign({}, receiver, {inventory: T.addToInventory(receiver.inventory, this.props.item_id, count)});
+    let newGiver = LD.assign({}, giver, { inventory: T.removeFromInventory(giver.inventory, this.props.item_id, count) });
+    let newReceiver = LD.assign({}, receiver, { inventory: T.addToInventory(receiver.inventory, this.props.item_id, count) });
 
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newGiver });
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newReceiver });
@@ -181,5 +181,37 @@ export function conditionIcon(cond: T.Condition): string {
     case "AddDamageBuff": return "😈";
     case "DoubleMaxMovement": return "🏃";
     case "ActivateAbility": return "Ability Activated: " + cond.ability_id;
+  }
+}
+
+
+interface TabbedViewProps { children: Array<JSX.Element> }
+export class TabbedView extends React.Component<TabbedViewProps, { selected: number }> {
+
+  constructor(props: TabbedViewProps) {
+    super(props);
+    this.state = { selected: 0 };
+  }
+
+  render(): JSX.Element {
+    let children_names = React.Children.map(
+      this.props.children,
+      (c: any): string | undefined => { if (c.type === Tab) { return c.props.name; } });
+    let selectedView = this.props.children[this.state.selected];
+    return <div>
+      <div style={{ display: "flex" }}>
+        {children_names.map((name, index) =>
+          <button key={name} onClick={() => this.setState({ selected: index })}>{name}</button>)
+        }
+      </div>
+      {selectedView}
+    </div>;
+  }
+}
+
+interface TabProps { name: string }
+export class Tab extends React.Component<TabProps, undefined> {
+  render(): JSX.Element {
+    return React.Children.only(this.props.children);
   }
 }
