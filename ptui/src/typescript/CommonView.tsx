@@ -184,7 +184,6 @@ export function conditionIcon(cond: T.Condition): string {
   }
 }
 
-
 interface TabbedViewProps { children: Array<JSX.Element> }
 export class TabbedView extends React.Component<TabbedViewProps, { selected: number }> {
 
@@ -214,4 +213,26 @@ export class Tab extends React.Component<TabProps, undefined> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);
   }
+}
+
+export function Combat(props: {ptui: PTUI }): JSX.Element {
+  if (!props.ptui.app.current_game.current_combat) {
+    return <div>There is no combat!</div>
+  }
+  let combat = props.ptui.app.current_game.current_combat;
+  let creatures_with_init = T.filterMap(combat.creatures.data,
+    ([cid, init]) => {
+      let creature = T.getCreature(props.ptui.app, cid);
+      if (creature) { return [creature, init]; }
+    }) as Array<[T.Creature, number]>;
+
+  return <div>
+    {creatures_with_init.map(([creature, init], index) => {
+      return <div key={creature.id} style={{ display: "flex" }}>
+        <div style={{ width: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
+        <CreatureCard app={props.ptui.app} creature={creature} />
+      </div>;
+    })
+    }
+  </div>;
 }

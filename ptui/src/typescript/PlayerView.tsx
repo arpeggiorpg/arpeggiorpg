@@ -24,11 +24,10 @@ function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefi
       <PlayerCreatures player_id={props.player_id} current_scene={props.current_scene} ptui={props.ptui} />
     </CommonView.Tab>
     <CommonView.Tab name="Combat">
-      <PlayerCombat player_id={props.player_id} ptui={props.ptui} />
+      <CommonView.Combat ptui={props.ptui} />
     </CommonView.Tab>
   </CommonView.TabbedView>;
 }
-
 
 function PlayerCreatures(
   props: { current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: PTUI; })
@@ -48,26 +47,4 @@ function PlayerCreatures(
       </div>
     )}
   </div>
-}
-
-function PlayerCombat(props: { player_id: T.PlayerID; ptui: PTUI }): JSX.Element {
-  if (!props.ptui.app.current_game.current_combat) {
-    return <div>There is no combat!</div>
-  }
-  let combat = props.ptui.app.current_game.current_combat;
-  let creatures_with_init = T.filterMap(combat.creatures.data,
-    ([cid, init]) => {
-      let creature = T.getCreature(props.ptui.app, cid);
-      if (creature) { return [creature, init]; }
-    }) as Array<[T.Creature, number]>;
-
-  return <div>
-    {creatures_with_init.map(([creature, init], index) => {
-      return <div key={creature.id} style={{ display: "flex" }}>
-        <div style={{width: "25px"}}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
-        <CommonView.CreatureCard app={props.ptui.app} creature={creature} />
-      </div>;
-    })
-    }
-  </div>;
 }
