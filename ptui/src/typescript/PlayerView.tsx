@@ -26,6 +26,9 @@ function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefi
     <CommonView.Tab name="Combat">
       <CommonView.Combat ptui={props.ptui} />
     </CommonView.Tab>
+    <CommonView.Tab name="Notes">
+      <PlayerNote player_id={props.player_id} ptui={props.ptui} />
+    </CommonView.Tab>
   </CommonView.TabbedView>;
 }
 
@@ -47,4 +50,19 @@ function PlayerCreatures(
       </div>
     )}
   </div>
+}
+
+interface PlayerNoteProps {player_id: T.PlayerID; ptui: PTUI; }
+class PlayerNote extends React.Component<PlayerNoteProps, {currentContent: string}> {
+  constructor(props: PlayerNoteProps) {
+    super(props);
+    this.state = {currentContent: ""};
+  }
+
+  render(): JSX.Element {
+    return <div>
+      <div><button>Save</button></div>
+      <div><textarea style={{width: "100%", height: "100%"}} value={this.state.currentContent} /></div>
+      </div>;
+  }
 }
