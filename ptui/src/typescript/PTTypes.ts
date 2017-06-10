@@ -52,6 +52,8 @@ export interface FolderNode {
 
 export type GameCommand =
   | { t: "EditCreature"; creature: Creature }
+  | { t: "CreateNote"; path: FolderPath; note: Note }
+  | { t: "EditNote"; path: FolderPath; name: string; note: Note }
 
 // AttributeCheck(CreatureID, AttributeCheck),
 // CreateFolder(FolderPath),
@@ -628,20 +630,34 @@ export const decodeApp: Decoder<App> = JD.object(
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
 
-export function encodeGameCommand(cmd: GameCommand): any {
+export function encodeGameCommand(cmd: GameCommand): object {
   switch (cmd.t) {
     case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
+    case "CreateNote": return { "CreateNote": [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
+    case "EditNote": return { "EditNote": [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
   }
 }
 
-function encodeConditionDuration(cd: ConditionDuration): any {
+function encodeFolderPath(path: FolderPath): string {
+  if (path.length === 0) {
+    return ""
+  } else {
+    return "/" + LD.join(path, "/");
+  }
+}
+
+function encodeNote(note: Note): object {
+  return note;
+}
+
+function encodeConditionDuration(cd: ConditionDuration): string | object {
   switch (cd.t) {
     case "Interminate": return "Interminate";
     case "Duration": return { "Duration": cd.duration };
   }
 }
 
-function encodeDice(d: Dice): any {
+function encodeDice(d: Dice): object {
   switch (d.t) {
     case "Flat": return { "Flat": d.val };
     case "Expr": return { "Expr": { "num": d.num, "size": d.size } };
@@ -650,7 +666,7 @@ function encodeDice(d: Dice): any {
   }
 }
 
-function encodeEffect(eff: Effect): any {
+function encodeEffect(eff: Effect): object {
   switch (eff.t) {
     case "ApplyCondition": return { "ApplyCondition": [encodeConditionDuration(eff.duration), encodeCondition(eff.condition)] };
     case "Heal": return { "Heal": encodeDice(eff.dice) };
@@ -661,7 +677,7 @@ function encodeEffect(eff: Effect): any {
   }
 }
 
-function encodeCondition(c: Condition): any {
+function encodeCondition(c: Condition): string | object {
   switch (c.t) {
     case "RecurringEffect": return { "RecurringEffect": encodeEffect(c.effect) };
     case "Dead": return "Dead";
@@ -672,19 +688,19 @@ function encodeCondition(c: Condition): any {
   }
 }
 
-function encodeAppliedCondition(ac: AppliedCondition): any {
+function encodeAppliedCondition(ac: AppliedCondition): object {
   return {
     remaining: encodeConditionDuration(ac.remaining),
     condition: encodeCondition(ac.condition),
   }
 }
 
-function encodeAbilityStatus(as: AbilityStatus): any {
+function encodeAbilityStatus(as: AbilityStatus): object {
   return as;
 }
 
 
-export function encodeCreature(c: Creature): any {
+export function encodeCreature(c: Creature): object {
   return {
     id: c.id,
     name: c.name,

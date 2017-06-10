@@ -75,7 +75,7 @@ describe("PTTypes decoding", function () {
     expect(test()).toBe(true);
   });
 
-  it("Decoding a super-basic creature", function() {
+  it("Decoding a super-basic creature", function () {
     let sample = {
       id: "0x00",
       name: "Elron",
@@ -95,8 +95,8 @@ describe("PTTypes decoding", function () {
       note: "AC15",
       portrait_url: "",
       attributes: {},
-      initiative: {"BestOf": [2, {"Plus": [{"Expr": {num: 1, size: 20}}, {"Flat": 4}]}]},
-      size: {x: 1, y: 1, z: 1},
+      initiative: { "BestOf": [2, { "Plus": [{ "Expr": { num: 1, size: 20 } }, { "Flat": 4 }] }] },
+      size: { x: 1, y: 1, z: 1 },
       inventory: {},
     };
     let creature = T.decodeCreature.decodeAny(sample);
@@ -105,8 +105,8 @@ describe("PTTypes decoding", function () {
       num: 2,
       dice: {
         t: "Plus",
-        left: {t: "Expr", num: 1, size: 20},
-        right: {t: "Flat", val: 4},
+        left: { t: "Expr", num: 1, size: 20 },
+        right: { t: "Flat", val: 4 },
       }
     });
     expect(T.encodeCreature(creature)).toEqual(sample);
@@ -123,10 +123,10 @@ describe("filterMap", function () {
   });
 });
 
-describe("getCreatures", function() {
-  it("Gets creatures", function() {
-    let creature = {id: "0x00", name: "Bob"} as T.Creature;
-    let app = {current_game: {creatures: {"0x00": creature}}} as any as T.App; // lol
+describe("getCreatures", function () {
+  it("Gets creatures", function () {
+    let creature = { id: "0x00", name: "Bob" } as T.Creature;
+    let app = { current_game: { creatures: { "0x00": creature } } } as any as T.App; // lol
     let ptui = new M.PTUI(undefined, app);
     expect(ptui.getCreatures(["0x00", "0x01"])).toEqual([creature]);
   });

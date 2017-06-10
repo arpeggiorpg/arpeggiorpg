@@ -12,6 +12,7 @@ export class PTUI {
   sendCommand(cmd: T.GameCommand) {
     console.log("[sendCommand:TS]", cmd);
     let json = T.encodeGameCommand(cmd);
+    console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);
   }
 
@@ -33,6 +34,14 @@ export class PTUI {
     return filterMap(iids, this.getItem.bind(this)) as Array<T.Item>;
   }
 
+  getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
+    let cur = this.app.current_game.campaign;
+    for (let seg of path) {
+      cur = cur.children[seg];
+      if (!cur) { return undefined; }
+    }
+    return cur.data;
+  }
 }
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {

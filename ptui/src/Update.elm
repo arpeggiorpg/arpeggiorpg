@@ -398,6 +398,7 @@ update_ msg model = case msg of
 
   -- Basic GameCommands
   SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
+  SendCommandRaw cmd -> (model, sendCommandRaw model.rpiURL cmd)
 
   CommandComplete (Ok (Ok x)) ->
     let _ = Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) ()
@@ -481,8 +482,12 @@ toggleSet el set = if Set.member el set then Set.remove el set else Set.insert e
 
 sendCommand : String -> T.GameCommand -> Cmd Msg
 sendCommand url cmd =
-  Debug.log ("[COMMAND] " ++ (toString cmd)) <|
-  Http.send CommandComplete (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) (T.resultDecoder JD.value JD.value))
+  sendCommandRaw url (T.gameCommandEncoder cmd)
+
+sendCommandRaw : String -> JE.Value -> Cmd Msg
+sendCommandRaw url cmd =
+  let _ = Debug.log "[sendCommandRaw]" cmd in
+  Http.send CommandComplete (Http.post url (Http.jsonBody cmd) (T.resultDecoder JD.value JD.value))
 
 sendCommandCB : String -> T.GameCommand -> (M.Model -> List T.GameLog -> Msg) -> Cmd Msg
 sendCommandCB url cmd cb =

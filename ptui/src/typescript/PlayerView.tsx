@@ -53,17 +53,38 @@ function PlayerCreatures(
   </div>
 }
 
-interface PlayerNoteProps {player_id: T.PlayerID; ptui: PTUI; }
-class PlayerNote extends React.Component<PlayerNoteProps, {currentContent: string}> {
+interface PlayerNoteProps { player_id: T.PlayerID; ptui: PTUI; }
+class PlayerNote extends React.Component<PlayerNoteProps, { content: string | undefined }> {
+  private path: Array<string>;
   constructor(props: PlayerNoteProps) {
     super(props);
-    this.state = {currentContent: ""};
+    this.state = { content: undefined };
+    this.path = ["Players", props.player_id];
   }
 
   render(): JSX.Element {
+    let player_folder = this.props.ptui.getFolderNode(this.path);
+    if (!player_folder) {
+      return <div>Please ask your GM to creature the folder "{this.path}"</div>;
+    }
+    let note = player_folder.notes["Scratch"];
+    let origContent = note ? note.content : "Enter notes here!";
     return <div>
-      <div><button>Save</button></div>
-      <div><textarea style={{width: "100%", height: "100%"}} value={this.state.currentContent} /></div>
-      </div>;
+      <div><button
+        disabled={this.state.content === origContent}
+        onClick={() => this.submit(note)}>Save</button></div>
+      <div><textarea style={{ width: "100%", height: "100%" }}
+        defaultValue={origContent} value={this.state.content}
+        onChange={(e) => this.setState({ content: e.currentTarget.value })} /></div>
+    </div>;
+  }
+
+  submit(origNote: T.Note | undefined) {
+    if (!this.state.content) { return; }
+    let note = { name: "Scratch", content: this.state.content };
+    let cmd: T.GameCommand = origNote
+      ? { t: "EditNote", path: this.path, name: "Scratch", note }
+      : { t: "CreateNote", path: this.path, note };
+    this.props.ptui.sendCommand(cmd);
   }
 }

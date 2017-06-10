@@ -28,11 +28,7 @@ subscriptions model =
                    (\(snapIdx, logIdx) -> (SendCommand (T.Rollback snapIdx logIdx)))
                , Components.playersGrantCreatures grantCreatures
                , Components.playersSetScene (\(pid, scene) -> SendCommand (T.SetPlayerScene pid scene))
-               , Components.sendCommand
-                    (\command ->
-                     case JD.decodeValue T.gameCommandDecoder command of
-                       Ok command -> SendCommand command
-                       Err x -> ShowError (toString x))
+               , Components.sendCommand SendCommandRaw
                ]
 
 grantCreatures pid =
@@ -88,6 +84,7 @@ type Msg
     | GotMovementOptions T.Creature (Result Http.Error (List T.Point3))
     | ToggleMoveAnywhere
     | Tick Time.Time
+    | SendCommandRaw JE.Value
     | SendCommand T.GameCommand
     | CommandComplete (Result Http.Error (Result JD.Value JD.Value))
     | SendCommandCB T.GameCommand (Model -> List T.GameLog -> Msg)
