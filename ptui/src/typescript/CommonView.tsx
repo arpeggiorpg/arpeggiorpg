@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as LD from "lodash";
 import * as T from './PTTypes';
+import { PTUI } from './Model';
 
 export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
   constructor(props: { name: string }) {
@@ -68,7 +69,7 @@ export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.E
   }
 }
 
-interface CreatureInventoryProps { app: T.App; current_scene: T.SceneID | undefined; creature: T.Creature }
+interface CreatureInventoryProps { ptui: PTUI; current_scene: T.SceneID | undefined; creature: T.Creature }
 export class CreatureInventory extends React.Component<CreatureInventoryProps, { giving: T.ItemID | undefined }> {
   constructor(props: CreatureInventoryProps) {
     super(props);
@@ -76,48 +77,47 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
   }
   render(): JSX.Element | null {
     let inv = this.props.creature.inventory;
-    let items = T.getItems(this.props.app, LD.keys(inv));
+    let items = T.getItems(this.props.ptui.app, LD.keys(inv));
 
     let give = this.state.giving
-      ? <GiveItem app={this.props.app} current_scene={this.props.current_scene} giver={this.props.creature.id} item_id={this.state.giving} />
+      ? <GiveItem ptui={this.props.ptui} current_scene={this.props.current_scene}
+        giver={this.props.creature.id} item_id={this.state.giving} onCancel={() => { this.setState({ giving: undefined }) }} />
       : <noscript />;
 
     return <div>
       {items.map((item) =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
           {item.name} ({inv[item.id]})
-        <button onClick={this.give.bind(this, item)}>Give</button>
+        <button onClick={(e) => this.setState({ giving: item.id })}>Give</button>
         </div>
       )}
       {give}
     </div>;
   }
-
-  give(item: T.Item) {
-    this.setState({ giving: item.id });
-  }
 }
 
-interface GiveItemProps { app: T.App; current_scene: T.SceneID | undefined; item_id: T.ItemID, giver: T.CreatureID }
+interface GiveItemProps { ptui: PTUI; current_scene: T.SceneID | undefined; item_id: T.ItemID; giver: T.CreatureID; onCancel: () => void }
 export class GiveItem extends React.Component<GiveItemProps, { receiver: T.CreatureID | undefined; count: number | undefined }> {
   constructor(props: GiveItemProps) {
     super(props);
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
+    let app = this.props.ptui.app;
     if (!this.props.current_scene) { return <div>You can only transfer items in a scene.</div> }
-    let scene = this.props.app.current_game.scenes[this.props.current_scene];
+    let scene = app.current_game.scenes[this.props.current_scene];
     if (!scene) { return <div>Couldn't find your scene</div> }
     let other_cids_in_scene = LD.keys(scene.creatures);
     LD.pull(other_cids_in_scene, this.props.giver);
-    let other_creatures = T.getCreatures(this.props.app, other_cids_in_scene);
+    let other_creatures = T.getCreatures(app, other_cids_in_scene);
     if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div> }
-    let item = T.getItem(this.props.app, this.props.item_id);
+    let item = T.getItem(app, this.props.item_id);
     if (!item) { return <div>The Item definition cannot be found.</div> }
-    let creature = T.getCreature(this.props.app, this.props.giver);
-    if (!creature) { return <div>Giver not found!</div> }
-    let giver_count = creature.inventory[this.props.item_id];
-    if (!giver_count) { return <div>{creature.name} does not have any {item.name} to give.</div> }
+    let _giver = T.getCreature(app, this.props.giver);
+    if (!_giver) { return <div>Giver not found!</div> }
+    let giver = _giver;
+    let giver_count = giver.inventory[this.props.item_id];
+    if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div> }
     return <div>
       Giving
       <PositiveIntegerInput
@@ -125,15 +125,15 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
         onChange={(num) => this.setState({ count: num })}
         value={this.state.count} />
       {item.name}
-      from {creature.name} to
+      from {giver.name} to
       <select value={this.state.receiver} onChange={(ev) => this.onSelectCreature(ev)}>
         <option key="undefined" value="">Choose a creature</option>
         {other_creatures.map(
           (creature) => <option key={creature.id} value={creature.id}>{creature.name}</option>
         )}
       </select>
-      <button disabled={!(this.state.receiver && this.state.count)}>Give</button>
-      <button>Cancel</button>
+      <button disabled={!(this.state.receiver && this.state.count)} onClick={ev => this.give(giver)}>Give</button>
+      <button onClick={ev => this.props.onCancel()}>Cancel</button>
     </div>;
   }
 
@@ -141,6 +141,21 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
     this.setState({ receiver: event.currentTarget.value });
   }
 
+  give(giver: T.Creature) {
+    let count = this.state.count as number; // Protected by button `disabled`
+    let receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
+    let receiver = this.props.ptui.app.current_game.creatures[receiver_id];
+    if (!receiver) {
+      console.log("[give] Receiver has disappeared", receiver_id);
+      return;
+    }
+
+    let newGiver = LD.assign({}, giver, {inventory: T.removeFromInventory(giver.inventory, this.props.item_id, count)});
+    let newReceiver = LD.assign({}, receiver, {inventory: T.addToInventory(receiver.inventory, this.props.item_id, count)});
+
+    this.props.ptui.sendCommand({ t: "EditCreature", creature: newGiver });
+    this.props.ptui.sendCommand({ t: "EditCreature", creature: newReceiver });
+  }
 }
 
 interface PositiveIntegerInputProps { max?: number; value: number | undefined; onChange: (num: number | undefined) => void }
