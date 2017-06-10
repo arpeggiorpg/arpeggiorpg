@@ -27,6 +27,7 @@ export interface Game {
   classes: { [index: string]: Class };
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
+  campaign: Folder,
 }
 
 export interface Combat {
@@ -35,6 +36,18 @@ export interface Combat {
   movement_used: number;
 }
 
+export interface Folder {
+  data: FolderNode;
+  children: { [index: string]: Folder };
+}
+
+export interface FolderNode {
+  scenes: Array<SceneID>;
+  creatures: Array<CreatureID>;
+  notes: { [index: string]: Note };
+  maps: Array<MapID>;
+  items: Array<ItemID>;
+}
 
 export type GameCommand =
   | { t: "EditCreature"; creature: Creature }
@@ -567,13 +580,33 @@ export const decodeCombat: Decoder<Combat> = JD.object(
   (scene, creatures, movement_used) => ({ scene, creatures, movement_used })
 );
 
+
+const decodeFolderNode: Decoder<FolderNode> = JD.object(
+  ["scenes", JD.array(JD.string())],
+  ["creatures", JD.array(JD.string())],
+  ["maps", JD.array(JD.string())],
+  ["items", JD.array(JD.string())],
+  ["notes", JD.dict(decodeNote)],
+  (scenes, creatures, maps, items, notes) => ({ scenes, creatures, maps, items, notes })
+);
+
+const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);
+
+const decodeFolder: Decoder<Folder> = JD.object(
+  ["data", decodeFolderNode],
+  ["children", JD.dict(decodeFolderLazy)],
+  (data, children) => ({ data, children })
+)
+
 export const decodeGame: Decoder<Game> = JD.object(
   ["current_combat", JD.oneOf(decodeCombat, JD.map((_) => undefined, JD.equal(null)))],
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
-  (current_combat, creatures, classes, items, scenes) => ({ current_combat, creatures, classes, items, scenes })
+  ["campaign", decodeFolder],
+  (current_combat, creatures, classes, items, scenes, campaign) =>
+    ({ current_combat, creatures, classes, items, scenes, campaign })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
