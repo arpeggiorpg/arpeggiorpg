@@ -71,7 +71,7 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
     let origContent = note ? note.content : "Enter notes here!";
     return <div>
       <div><button
-        disabled={this.state.content === origContent}
+        disabled={this.state.content === undefined || this.state.content === origContent}
         onClick={() => this.submit(note)}>Save</button></div>
       <div><textarea style={{ width: "100%", height: "100%" }}
         defaultValue={origContent} value={this.state.content}
