@@ -1,5 +1,6 @@
 import * as Lodash from 'lodash';
 import * as T from '../PTTypes';
+import * as M from '../Model';
 import J = require("jasmine");
 
 function assertEq<T>(a: T, b: T, msg?: string) {
@@ -32,7 +33,7 @@ export function test(): boolean {
     [
       { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
       { t: "StartCombat", scene: "coolScene", creatures: [{ cid: "coolCreature", init: 5 }] }],
-    [{ "CreateFolder": "foo/bar" }, { t: "CreateFolder", path: "foo/bar" }],
+    [{ "CreateFolder": "/foo/bar" }, { t: "CreateFolder", path: ["foo", "bar"] }],
     [
       { "AttributeCheckResult": ["coolCreature", exAttrCheck, 50, true] },
       { t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50, success: true }]
@@ -115,7 +116,7 @@ describe("PTTypes decoding", function () {
 describe("filterMap", function () {
   it("filters and maps", function () {
     expect(
-      T.filterMap(
+      M.filterMap(
         ["0", "one", "2", "3"],
         Number)
     ).toEqual([2, 3]);

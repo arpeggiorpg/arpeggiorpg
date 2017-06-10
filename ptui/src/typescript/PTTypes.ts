@@ -14,6 +14,7 @@ export type Distance = number;
 export type HP = number;
 export type Energy = number;
 export type ConditionID = number;
+export type FolderPath = Array<string>;
 
 export interface App {
   snapshots: AppSnapshots,
@@ -119,25 +120,25 @@ export type GameLog =
     actual: number;
     success: boolean;
   }
-  | { t: "CreateFolder"; path: string }
-  | { t: "RenameFolder"; path: string; newName: string }
-  | { t: "DeleteFolder"; path: string }
-  | { t: "DeleteFolderItem"; path: string; item: FolderItemID }
-  | { t: "MoveFolderItem"; path: string; item: FolderItemID; newPath: string }
-  | { t: "CreateItem"; path: string; item: Item }
+  | { t: "CreateFolder"; path: FolderPath }
+  | { t: "RenameFolder"; path: FolderPath; newName: string }
+  | { t: "DeleteFolder"; path: FolderPath }
+  | { t: "DeleteFolderItem"; path: FolderPath; item: FolderItemID }
+  | { t: "MoveFolderItem"; path: FolderPath; item: FolderItemID; newPath: FolderPath }
+  | { t: "CreateItem"; path: FolderPath; item: Item }
   | { t: "EditItem"; item: Item }
-  | { t: "CreateNote"; path: string; note: Note }
-  | { t: "EditNote"; path: string; name: string; newNote: Note }
-  | { t: "DeleteNote"; path: string; name: string }
-  | { t: "CreateScene"; path: string; scene: Scene }
+  | { t: "CreateNote"; path: FolderPath; note: Note }
+  | { t: "EditNote"; path: FolderPath; name: string; newNote: Note }
+  | { t: "DeleteNote"; path: FolderPath; name: string }
+  | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
   | { t: "DeleteScene"; scene_id: SceneID }
-  | { t: "CreateMap"; path: string; map: Map }
+  | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "DeleteMap"; map_id: MapID }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
-  | { t: "CreateCreature"; path: string; creature: Creature }
+  | { t: "CreateCreature"; path: FolderPath; creature: Creature }
   | { t: "EditCreature"; creature: Creature }
   | { t: "DeleteCreature"; creature_id: CreatureID }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
@@ -420,6 +421,17 @@ export const decodeFolderItemID: Decoder<FolderItemID> =
     "SubfolderID": _mkFolderItem("SubfolderID"),
   });
 
+export const decodeFolderPath: Decoder<FolderPath> =
+  JD.map((strpath) => {
+    if (strpath === "") {
+      return [];
+    } else if (LD.startsWith(strpath, "/")) {
+      return LD.slice(LD.split(strpath, "/"), 1);
+    } else {
+      throw new Error(`Not a path: ${strpath}.`)
+    }
+  }, JD.string());
+
 export const decodeItem: Decoder<Item> =
   JD.object(
     ["id", JD.string()],
@@ -481,37 +493,37 @@ export const decodeGameLog: Decoder<GameLog> =
         JD.string(),
         JD.array(JD.map(([cid, init]) => ({ cid, init }), JD.tuple(JD.string(), JD.number())))
       )),
-    "CreateFolder": JD.map((p): GameLog => ({ t: "CreateFolder", path: p }), JD.string()),
+    "CreateFolder": JD.map((p): GameLog => ({ t: "CreateFolder", path: p }), decodeFolderPath),
     "RenameFolder": JD.map(
       ([path, newName]): GameLog => ({ t: "RenameFolder", path, newName }),
-      JD.tuple(JD.string(), JD.string())),
-    "DeleteFolder": JD.map((path): GameLog => ({ t: "DeleteFolder", path }), JD.string()),
+      JD.tuple(decodeFolderPath, JD.string())),
+    "DeleteFolder": JD.map((path): GameLog => ({ t: "DeleteFolder", path }), decodeFolderPath),
     "DeleteFolderItem": JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
-      JD.tuple(JD.string(), decodeFolderItemID)),
+      JD.tuple(decodeFolderPath, decodeFolderItemID)),
     "MoveFolderItem": JD.map(
       ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
-      JD.tuple(JD.string(), decodeFolderItemID, JD.string())),
+      JD.tuple(decodeFolderPath, decodeFolderItemID, decodeFolderPath)),
     "CreateItem": JD.map(
       ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
-      JD.tuple(JD.string(), decodeItem)),
+      JD.tuple(decodeFolderPath, decodeItem)),
     "EditItem": JD.map((item): GameLog => ({ t: "EditItem", item }), decodeItem),
     "CreateNote": JD.map(
       ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
-      JD.tuple(JD.string(), decodeNote)),
+      JD.tuple(decodeFolderPath, decodeNote)),
     "EditNote": JD.map(
       ([path, name, newNote]): GameLog => ({ t: "EditNote", path, name, newNote }),
-      JD.tuple(JD.string(), JD.string(), decodeNote)),
+      JD.tuple(decodeFolderPath, JD.string(), decodeNote)),
     "DeleteNote": JD.map(
       ([path, name]): GameLog => ({ t: "DeleteNote", path, name }),
-      JD.tuple(JD.string(), JD.string())),
+      JD.tuple(decodeFolderPath, JD.string())),
     "CreateScene": JD.map(
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
-      JD.tuple(JD.string(), decodeScene)),
+      JD.tuple(decodeFolderPath, decodeScene)),
     "EditScene": JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
     "DeleteScene": JD.map((scene_id): GameLog => ({ t: "DeleteScene", scene_id }), JD.string()),
     "CreateMap": JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
-      JD.tuple(JD.string(), decodeMap)),
+      JD.tuple(decodeFolderPath, decodeMap)),
     "EditMap": JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
     "DeleteMap": JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
     "SetCreaturePos": JD.map(
@@ -523,7 +535,7 @@ export const decodeGameLog: Decoder<GameLog> =
       JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
     "CreateCreature": JD.map(
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
-      JD.tuple(JD.string(), decodeCreature)),
+      JD.tuple(decodeFolderPath, decodeCreature)),
     "EditCreature": JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
     "DeleteCreature": JD.map(
       (creature_id): GameLog => ({ t: "DeleteCreature", creature_id }),
