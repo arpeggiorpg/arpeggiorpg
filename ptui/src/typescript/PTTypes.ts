@@ -22,11 +22,19 @@ export interface App {
 };
 
 export interface Game {
+  current_combat: Combat | undefined;
   creatures: { [index: string]: Creature };
   classes: { [index: string]: Class };
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
 }
+
+export interface Combat {
+  scene: SceneID;
+  creatures: { cursor: number; data: Array<[CreatureID, number]> };
+  movement_used: number;
+}
+
 
 export type GameCommand =
   | { t: "EditCreature"; creature: Creature }
@@ -545,12 +553,27 @@ const decodeClass: Decoder<Class> = JD.object(
   (color) => ({ color })
 );
 
+function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number, data: Array<T> }> {
+  return JD.object(
+    ["cursor", JD.number()],
+    ["data", JD.array(valueDecoder)],
+    (cursor, data) => ({ cursor, data }))
+}
+
+export const decodeCombat: Decoder<Combat> = JD.object(
+  ["scene", JD.string()],
+  ["creatures", decodeNonEmpty(JD.tuple(JD.string(), JD.number()))],
+  ["movement_used", JD.number()],
+  (scene, creatures, movement_used) => ({ scene, creatures, movement_used })
+);
+
 export const decodeGame: Decoder<Game> = JD.object(
+  ["current_combat", JD.oneOf(decodeCombat, JD.map((_) => undefined, JD.equal(null)))],
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
-  (creatures, classes, items, scenes) => ({ creatures, classes, items, scenes })
+  (current_combat, creatures, classes, items, scenes) => ({ current_combat, creatures, classes, items, scenes })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
@@ -674,7 +697,7 @@ export function sum<T>(
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   // I can't "naturally" convince TypeScript that this filter makes an
-  // Array<R> instead of Array<R|undefined>, hence the typecast
+  // Array<R> instead of Array<R|undefined>, hence the assertion
   return coll.map(f).filter((el) => (el)) as Array<R>;
 }
 

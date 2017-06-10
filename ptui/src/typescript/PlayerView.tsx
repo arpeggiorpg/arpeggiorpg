@@ -17,42 +17,57 @@ export function renderPlayerUI(
   );
 }
 
-class PlayerUI extends React.Component<
-  { player_id: T.PlayerID; current_scene: string | undefined; ptui: PTUI; },
-  undefined> {
-
-  render(): JSX.Element {
-    console.log("[PlayerUI:render]");
-
-    return <CommonView.TabbedView>
-      <CommonView.Tab name="Creatures">
-        <PlayerCreatures player_id={this.props.player_id} current_scene={this.props.current_scene} ptui={this.props.ptui} />
-      </CommonView.Tab>
-      <CommonView.Tab name="Combat">
-        <div>Combat!</div>
-      </CommonView.Tab>
-    </CommonView.TabbedView>;
-  }
+function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: PTUI; })
+  : JSX.Element {
+  return <CommonView.TabbedView>
+    <CommonView.Tab name="Creatures">
+      <PlayerCreatures player_id={props.player_id} current_scene={props.current_scene} ptui={props.ptui} />
+    </CommonView.Tab>
+    <CommonView.Tab name="Combat">
+      <PlayerCombat player_id={props.player_id} ptui={props.ptui} />
+    </CommonView.Tab>
+  </CommonView.TabbedView>;
 }
 
-class PlayerCreatures extends React.Component<{ current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: PTUI; }, undefined> {
 
-  creatureSection(creature: T.Creature): JSX.Element {
-    return <div key={creature.id}>
-      <CommonView.CreatureCard app={this.props.ptui.app} creature={creature} />
-      <div style={{ marginLeft: "1em" }}>
-        <CommonView.Collapsible name="Inventory">
-          <CommonView.CreatureInventory ptui={this.props.ptui} current_scene={this.props.current_scene} creature={creature} />
-        </CommonView.Collapsible>
+function PlayerCreatures(
+  props: { current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: PTUI; })
+  : JSX.Element {
+  let cids = props.ptui.app.players[props.player_id].creatures;
+  let creatures = T.getCreatures(props.ptui.app, cids);
+  return <div>
+    {creatures.map((creature) =>
+      <div key={creature.id}>
+        <CommonView.CreatureCard app={props.ptui.app} creature={creature} />
+        <div style={{ marginLeft: "1em" }}>
+          <CommonView.Collapsible name="Inventory">
+            <CommonView.CreatureInventory ptui={props.ptui} current_scene={props.current_scene}
+              creature={creature} />
+          </CommonView.Collapsible>
+        </div>
       </div>
-    </div>;
-  }
+    )}
+  </div>
+}
 
-  render(): JSX.Element {
-    let cids = this.props.ptui.app.players[this.props.player_id].creatures;
-    let creatures = T.getCreatures(this.props.ptui.app, cids);
-    return <div>
-      {creatures.map(this.creatureSection.bind(this))}
-    </div>
+function PlayerCombat(props: { player_id: T.PlayerID; ptui: PTUI }): JSX.Element {
+  if (!props.ptui.app.current_game.current_combat) {
+    return <div>There is no combat!</div>
   }
+  let combat = props.ptui.app.current_game.current_combat;
+  let creatures_with_init = T.filterMap(combat.creatures.data,
+    ([cid, init]) => {
+      let creature = T.getCreature(props.ptui.app, cid);
+      if (creature) { return [creature, init]; }
+    }) as Array<[T.Creature, number]>;
+
+  return <div>
+    {creatures_with_init.map(([creature, init], index) => {
+      return <div style={{ display: "flex" }}>
+        {index === combat.creatures.cursor ? <div>&gt;</div> : <noscript />}
+        <CommonView.CreatureCard key={creature.id} app={props.ptui.app} creature={creature} />
+      </div>;
+    })
+    }
+  </div>;
 }
