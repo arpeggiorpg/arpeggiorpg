@@ -1,5 +1,6 @@
 import * as JD from 'type-safe-json-decoder';
 import { Decoder } from 'type-safe-json-decoder';
+import * as LD from 'lodash';
 
 export type AbilityID = string;
 export type CreatureID = string;
@@ -26,6 +27,52 @@ export interface Game {
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
 }
+
+export type GameCommand =
+  | { t: "EditCreature"; creature: Creature }
+
+// AttributeCheck(CreatureID, AttributeCheck),
+// CreateFolder(FolderPath),
+// RenameFolder(FolderPath, String),
+// DeleteFolder(FolderPath),
+// MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+// DeleteFolderItem(FolderPath, FolderItemID),
+// CreateItem(FolderPath, String),
+// EditItem(Item),
+// CreateNote(FolderPath, Note),
+// EditNote(FolderPath, String, Note),
+// DeleteNote(FolderPath, String),
+// CreateScene(FolderPath, SceneCreation),
+// EditScene(Scene),
+// DeleteScene(SceneID),
+// CreateMap(FolderPath, MapCreation),
+// EditMap(Map),
+// DeleteMap(MapID),
+// StartCombat(SceneID, Vec<CreatureID>),
+// StopCombat,
+// AddCreatureToCombat(CreatureID),
+// RemoveCreatureFromCombat(CreatureID),
+// ChangeCreatureInitiative(CreatureID, i16),
+// RerollCombatInitiative,
+// ForceNextTurn,
+// ForcePrevTurn,
+// ActCreature(SceneID, CreatureID, AbilityID, DecidedTarget),
+// CombatAct(AbilityID, DecidedTarget),
+// PathCurrentCombatCreature(Point3),
+// Done,
+// CreateCreature(FolderPath, CreatureCreation),
+// EditCreature(Creature),
+// SetCreaturePos(SceneID, CreatureID, Point3),
+// PathCreature(SceneID, CreatureID, Point3),
+// DeleteCreature(CreatureID),
+// RegisterPlayer(PlayerID),
+// GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
+// UnregisterPlayer(PlayerID),
+// RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
+// SetPlayerScene(PlayerID, Option<SceneID>),
+// Rollback(usize, usize),
+
+
 
 export interface Class {
   // abilities, conditions
@@ -126,23 +173,31 @@ export interface AppliedCondition {
   condition: Condition;
 };
 
+export interface AbilityStatus {
+  ability_id: AbilityID;
+  cooldown: number;
+}
+
 export interface Creature {
   id: CreatureID;
   name: string;
   speed: Distance;
   max_energy: Energy;
   cur_energy: Energy;
-  //   pub abilities: IndexedHashMap<AbilityStatus>,
+  abilities: { [index: string]: AbilityStatus };
   class_: string;
   max_health: HP;
   cur_health: HP;
-  conditions: { [index: string]: AppliedCondition }, // key: ConditionID
+  conditions: { [index: string]: AppliedCondition }; // key: ConditionID
   note: string;
   portrait_url: string;
-  //   pub attributes: HashMap<AttrID, SkillLevel>,
-  //   pub initiative: Dice,
+  attributes: { [index: string]: SkillLevel } // key: AttrID
+  initiative: Dice;
   inventory: { [index: string]: number }; // key: ItemID
+  size: AABB;
 }
+
+export interface AABB { x: number; y: number; z: number }
 
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
@@ -258,21 +313,45 @@ export const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
   (remaining, condition) => ({ remaining, condition })
 );
 
-export const decodeCreature: Decoder<Creature> = JD.object(
+export const decodeSkillLevel: Decoder<SkillLevel> =
+  JD.oneOf.apply(null, SkillLevel_values.map(JD.equal));
+
+export const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
+  ["ability_id", JD.string()],
+  ["cooldown", JD.number()],
+  (ability_id, cooldown) => ({ ability_id, cooldown })
+)
+
+const decodeAABB: Decoder<AABB> = JD.object(
+  ["x", JD.number()],
+  ["y", JD.number()],
+  ["z", JD.number()],
+  (x, y, z) => ({ x, y, z })
+)
+
+export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(ad: JD.EntryDecoder<A>, bd: JD.EntryDecoder<B>, cd: JD.EntryDecoder<C>, dd: JD.EntryDecoder<D>, ed: JD.EntryDecoder<E>, fd: JD.EntryDecoder<F>, gd: JD.EntryDecoder<G>, hd: JD.EntryDecoder<H>, id: JD.EntryDecoder<I>, jd: JD.EntryDecoder<J>, kd: JD.EntryDecoder<K>, ld: JD.EntryDecoder<L>, md: JD.EntryDecoder<M>, nd: JD.EntryDecoder<N>, od: JD.EntryDecoder<O>, pd: JD.EntryDecoder<P>, cons: (a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O, p: P) => T): Decoder<T> {
+  return JD.object.apply(undefined, arguments)
+}
+
+export const decodeCreature: Decoder<Creature> = object16(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
   ["max_energy", JD.number()],
   ["cur_energy", JD.number()],
+  ["abilities", JD.dict(decodeAbilityStatus)],
   ["class", JD.string()],
   ["max_health", JD.number()],
   ["cur_health", JD.number()],
   ["note", JD.string()],
   ["portrait_url", JD.string()],
+  ["attributes", JD.dict(decodeSkillLevel)],
   ["inventory", JD.dict(JD.number())],
   ["conditions", JD.dict(decodeAppliedCondition)],
-  (id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory, conditions) =>
-    ({ id, name, speed, max_energy, cur_energy, class_, max_health, cur_health, note, portrait_url, inventory, conditions })
+  ["initiative", decodeDice],
+  ["size", decodeAABB],
+  (id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, portrait_url, attributes, inventory, conditions, initiative, size) =>
+    ({ id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, portrait_url, attributes, inventory, conditions, initiative, size })
 );
 
 export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -292,9 +371,6 @@ export const decodeMap: Decoder<Map> = JD.object(
   ["specials", JD.array(JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility))],
   (id, name, terrain, specials) => ({ id, name, terrain, specials })
 );
-
-export const decodeSkillLevel: Decoder<SkillLevel> =
-  JD.oneOf.apply(null, SkillLevel_values.map(JD.equal));
 
 export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
@@ -484,6 +560,82 @@ export const decodeApp: Decoder<App> = JD.object(
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
 
+export function encodeGameCommand(cmd: GameCommand): any {
+  switch (cmd.t) {
+    case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
+  }
+}
+
+function encodeConditionDuration(cd: ConditionDuration): any {
+  switch (cd.t) {
+    case "Interminate": return "Interminate";
+    case "Duration": return { "Duration": cd.duration };
+  }
+}
+
+function encodeDice(d: Dice): any {
+  switch (d.t) {
+    case "Flat": return { "Flat": d.val };
+    case "Expr": return { "Expr": { "num": d.num, "size": d.size } };
+    case "Plus": return { "Plus": [encodeDice(d.left), encodeDice(d.right)] };
+    case "BestOf": return { "BestOf": [d.num, encodeDice(d.dice)] };
+  }
+}
+
+function encodeEffect(eff: Effect): any {
+  switch (eff.t) {
+    case "ApplyCondition": return { "ApplyCondition": [encodeConditionDuration(eff.duration), encodeCondition(eff.condition)] };
+    case "Heal": return { "Heal": encodeDice(eff.dice) };
+    case "Damage": return { "Damage": encodeDice(eff.dice) };
+    case "MultiEffect": return { "MultiEffect": eff.effects.map(encodeEffect) };
+    case "GenerateEnergy": return { "GenerateEnergy": eff.energy };
+
+  }
+}
+
+function encodeCondition(c: Condition): any {
+  switch (c.t) {
+    case "RecurringEffect": return { "RecurringEffect": encodeEffect(c.effect) };
+    case "Dead": return "Dead";
+    case "Incapacitated": return "Incapacitated";
+    case "AddDamageBuff": return { "AddDamageBuff": c.hp };
+    case "DoubleMaxMovement": return "DoubleMaxMovement";
+    case "ActivateAbility": return { "ActivateAbility": c.ability_id };
+  }
+}
+
+function encodeAppliedCondition(ac: AppliedCondition): any {
+  return {
+    remaining: encodeConditionDuration(ac.remaining),
+    condition: encodeCondition(ac.condition),
+  }
+}
+
+function encodeAbilityStatus(as: AbilityStatus): any {
+  return as;
+}
+
+
+export function encodeCreature(c: Creature): any {
+  return {
+    id: c.id,
+    name: c.name,
+    speed: c.speed,
+    max_energy: c.max_energy,
+    cur_energy: c.cur_energy,
+    abilities: LD.mapValues(c.abilities, encodeAbilityStatus),
+    "class": c.class_,
+    max_health: c.max_health,
+    cur_health: c.cur_health,
+    conditions: LD.mapValues(c.conditions, encodeAppliedCondition),
+    note: c.note,
+    portrait_url: c.portrait_url,
+    attributes: c.attributes,
+    initiative: encodeDice(c.initiative),
+    inventory: c.inventory,
+    size: c.size,
+  }
+}
 
 // Utility Functions for Decoding
 
@@ -540,4 +692,23 @@ export function getItem(app: App, iid: ItemID): Item | undefined {
 
 export function getItems(app: App, iids: Array<ItemID>): Array<Item> {
   return filterMap(iids, getItem.bind(undefined, app)) as Array<Item>;
+}
+
+
+// TODO: these functions should be replaced by GameCommands so the backend handles this stuff
+type Inventory = { [index: string]: number };
+export function addToInventory(inventory: Inventory, item_id: ItemID, count: number): Inventory {
+  let new_count = LD.get(inventory, item_id, 0) + count;
+  let x: Inventory = {}; x[item_id] = new_count;
+  return LD.assign({}, inventory, x);
+}
+
+export function removeFromInventory(inventory: Inventory, item_id: ItemID, count: number): Inventory {
+  let new_count = LD.get(inventory, item_id, 0) - count;
+  if (new_count <= 0) {
+    return LD.omit(inventory, [item_id]) as Inventory; // I'm not sure why I need this `as`, the typedef for `omit` may be insufficient
+  } else {
+    let x: Inventory = {}; x[item_id] = new_count;
+    return LD.assign({}, inventory, x);
+  }
 }
