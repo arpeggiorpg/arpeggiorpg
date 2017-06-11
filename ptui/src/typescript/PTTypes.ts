@@ -28,6 +28,7 @@ export interface Game {
   classes: { [index: string]: Class };
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
+  abilities: { [index: string]: Ability };
   campaign: Folder,
 }
 
@@ -36,6 +37,28 @@ export interface Combat {
   creatures: { cursor: number; data: Array<[CreatureID, number]> };
   movement_used: number;
 }
+
+export interface Ability {
+  name: string;
+  // target: TargetSpec;
+  // cost: Energy;
+  // effects: Array<Effect>;
+  usable_ooc: boolean;
+}
+
+export type TargetSpec =
+  | { t: "Melee" }
+  | { t: "Range"; distance: Distance }
+  | { t: "Actor" }
+  | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
+  | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
+  | { t: "Volume"; volume: Volume; range: Distance }
+
+export type Volume =
+  | { t: "Sphere"; radius: Distance }
+  | { t: "Line"; length: Distance }
+  | { t: "VerticalCylinder"; radius: Distance; height: Distance }
+  | { t: "AABB"; aabb: AABB }
 
 export interface Folder {
   data: FolderNode;
@@ -54,6 +77,7 @@ export type GameCommand =
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
+  | { t: "Done" }
 
 // AttributeCheck(CreatureID, AttributeCheck),
 // CreateFolder(FolderPath),
@@ -612,15 +636,22 @@ const decodeFolder: Decoder<Folder> = JD.object(
   (data, children) => ({ data, children })
 )
 
+const decodeAbility: Decoder<Ability> = JD.object(
+  ["name", JD.string()],
+  ["usable_ooc", JD.boolean()],
+  (name, usable_ooc) => ({ name, usable_ooc })
+);
+
 export const decodeGame: Decoder<Game> = JD.object(
   ["current_combat", JD.oneOf(decodeCombat, JD.map((_) => undefined, JD.equal(null)))],
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
+  ["abilities", JD.dict(decodeAbility)],
   ["campaign", decodeFolder],
-  (current_combat, creatures, classes, items, scenes, campaign) =>
-    ({ current_combat, creatures, classes, items, scenes, campaign })
+  (current_combat, creatures, classes, items, scenes, abilities, campaign) =>
+    ({ current_combat, creatures, classes, items, scenes, abilities, campaign })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
@@ -630,11 +661,12 @@ export const decodeApp: Decoder<App> = JD.object(
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
 
-export function encodeGameCommand(cmd: GameCommand): object {
+export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
     case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
     case "CreateNote": return { "CreateNote": [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote": return { "EditNote": [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "Done": return "Done";
   }
 }
 

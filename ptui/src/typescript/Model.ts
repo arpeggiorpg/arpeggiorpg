@@ -15,6 +15,10 @@ export class PTUI {
     console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);
   }
+  requestCombatMovement() {
+    console.log("[requestMovement]");
+    this.elm_app.ports.requestCombatMovement.send(null);
+  }
 
   // Utility functions for interacting with the model
 
@@ -41,6 +45,19 @@ export class PTUI {
       if (!cur) { return undefined; }
     }
     return cur.data;
+  }
+
+  getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
+    let cid = combat.creatures.data[combat.creatures.cursor][0];
+    if (!cid) { throw new Error(`No combat creature at ${combat.creatures.cursor}`) }
+    return cid;
+  }
+
+  getCurrentCombatCreature(combat: T.Combat): T.Creature {
+    let cid = this.getCurrentCombatCreatureID(combat);
+    let creature = this.getCreature(cid);
+    if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`) }
+    return creature;
   }
 }
 

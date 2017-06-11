@@ -218,7 +218,7 @@ export class Tab extends React.Component<TabProps, undefined> {
   }
 }
 
-export function Combat(props: {ptui: PTUI }): JSX.Element {
+export function Combat(props: { ptui: PTUI }): JSX.Element {
   if (!props.ptui.app.current_game.current_combat) {
     return <div>There is no combat!</div>
   }
@@ -238,4 +238,40 @@ export function Combat(props: {ptui: PTUI }): JSX.Element {
     })
     }
   </div>;
+}
+
+export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat }): JSX.Element {
+  let abilities = M.filterMap(LD.values(props.creature.abilities),
+    (abstatus) => {
+      return props.ptui.app.current_game.abilities[abstatus.ability_id]
+    });
+  return <div style={{ display: "flex" }}>
+    <CreatureIcon app={props.ptui.app} creature={props.creature} />
+    {props.combat ? <DoneButton ptui={props.ptui} /> : <noscript />}
+    <MoveButton ptui={props.ptui} creature={props.creature} combat={props.combat} />
+    {abilities.map((ability) =>
+      <AbilityButton ptui={props.ptui} creature={props.creature} ability={ability} />
+    )}
+  </div>;
+}
+
+function DoneButton(props: { ptui: PTUI }): JSX.Element {
+  let command: T.GameCommand = { t: "Done" };
+  return <button style={{ width: "50px", height: "50px" }}
+    onClick={() => props.ptui.sendCommand(command)}>
+    Done
+    </button>
+}
+
+function AbilityButton(props: { ptui: PTUI, creature: T.Creature, ability: T.Ability }): JSX.Element {
+  return <button style={{ width: "50px", height: "50px" }}>{props.ability.name}</button>;
+}
+
+function MoveButton(props: { ptui: PTUI, creature: T.Creature; combat?: T.Combat }): JSX.Element {
+  let movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
+  let suffix = props.combat ? " (" + movement_left / 100 + ")" : "";
+  return <button style={{ width: "50px", height: "50px" }}
+    onClick={() => props.ptui.requestCombatMovement()}>
+    Move {suffix}
+  </button>
 }

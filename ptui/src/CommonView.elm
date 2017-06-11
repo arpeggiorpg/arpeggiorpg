@@ -106,8 +106,11 @@ creatureAbilities : T.Game -> T.SceneID -> Bool -> T.Creature -> List (Html M.Ms
 creatureAbilities game sceneID inCombat creature =
   let
     abinfo abstatus =
-        Maybe.andThen (\ability -> if ability.usable_ooc || inCombat then Just (abstatus.ability_id, ability) else Nothing)
-                      (Dict.get abstatus.ability_id game.abilities)
+        Dict.get abstatus.ability_id game.abilities
+        |> Maybe.andThen (\ability ->
+            if ability.usable_ooc || inCombat 
+            then Just (abstatus.ability_id, ability)
+            else Nothing)
     abilities = List.filterMap abinfo (Dict.values creature.abilities)
     abilityMsg abid ability =
       case ability.target of
@@ -398,12 +401,11 @@ sidebarContent model ui tabs =
       let altStyle = if model.altSideBar then [S.display S.block] else [S.display S.none]
           normieStyle = if model.altSideBar then [S.display S.none] else [S.display S.block]
       in
-        div [s [S.width (S.pct 100), S.height (S.pct 100)]]
+        div [s [S.width (S.pct 100), S.height (S.pct 100), S.displayFlex, S.flexDirection S.column]]
           [ hbox [ input [type_ "checkbox", onCheck M.ToggleAltSideBar] []
-                  , text "use react sidebar"]
-          , div [s <| altStyle ++ [S.width (S.pct 100), S.height (S.pct 100)]] [r]
-          , div [s <| normieStyle  ++ [S.width (S.pct 100), S.height (S.pct 100)]] [normieSideBar]]
-
+                 , text "use react sidebar"]
+          , div [s <| altStyle ++ [S.width (S.pct 100), S.flex (S.int 1)]] [r]
+          , div [s <| normieStyle  ++ [S.width (S.pct 100), S.flex (S.int 1)]] [normieSideBar]]
 
 viewGameWide : M.Model -> T.App -> UI -> Html M.Msg
 viewGameWide model app ui =

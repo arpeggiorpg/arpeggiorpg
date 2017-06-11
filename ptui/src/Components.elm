@@ -22,3 +22,5 @@ port renderPlayerUI : (String, T.PlayerID, Maybe T.SceneID, JE.Value) -> Cmd msg
 port unloadComponent : String -> Cmd msg
 
 port sendCommand: (JE.Value -> msg) -> Sub msg
+
+port requestCombatMovement : (() -> msg) -> Sub msg

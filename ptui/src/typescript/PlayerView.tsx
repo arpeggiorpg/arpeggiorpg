@@ -3,6 +3,7 @@ import * as ReactDOM from "react-dom";
 import * as T from './PTTypes';
 import * as CommonView from './CommonView';
 import { PTUI } from './Model';
+import * as LD from 'lodash';
 
 export function renderPlayerUI(
   elmApp: any,
@@ -19,17 +20,24 @@ export function renderPlayerUI(
 
 function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: PTUI; })
   : JSX.Element {
-  return <CommonView.TabbedView>
-    <CommonView.Tab name="Creatures">
-      <PlayerCreatures player_id={props.player_id} current_scene={props.current_scene} ptui={props.ptui} />
-    </CommonView.Tab>
-    <CommonView.Tab name="Combat">
-      <CommonView.Combat ptui={props.ptui} />
-    </CommonView.Tab>
-    <CommonView.Tab name="Notes">
-      <PlayerNote player_id={props.player_id} ptui={props.ptui} />
-    </CommonView.Tab>
-  </CommonView.TabbedView>;
+  return <div style={{ display: "flex", flexDirection: "column", height: "100%"}}>
+    <div style={{ flex: "1 0 auto" }}>
+      <CommonView.TabbedView>
+        <CommonView.Tab name="Creatures">
+          <PlayerCreatures player_id={props.player_id} current_scene={props.current_scene} ptui={props.ptui} />
+        </CommonView.Tab>
+        <CommonView.Tab name="Combat">
+          <CommonView.Combat ptui={props.ptui} />
+        </CommonView.Tab>
+        <CommonView.Tab name="Notes">
+          <PlayerNote player_id={props.player_id} ptui={props.ptui} />
+        </CommonView.Tab>
+      </CommonView.TabbedView>
+    </div>
+    <div>
+      <PlayerActionBar player_id={props.player_id} ptui={props.ptui}></PlayerActionBar>
+    </div>
+  </div>;
 }
 
 function PlayerCreatures(
@@ -87,4 +95,19 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
       : { t: "CreateNote", path: this.path, note };
     this.props.ptui.sendCommand(cmd);
   }
+}
+
+function PlayerActionBar(props: { player_id: T.PlayerID; ptui: PTUI }): JSX.Element {
+  if (props.ptui.app.current_game.current_combat) {
+    let combat = props.ptui.app.current_game.current_combat;
+    let cid = props.ptui.getCurrentCombatCreatureID(combat);
+    let player = props.ptui.app.players[props.player_id];
+    if (LD.includes(player.creatures, cid)) {
+      let creature = props.ptui.getCreature(cid);
+      if (creature) {
+        return <CommonView.ActionBar combat={combat} creature={creature} ptui={props.ptui}></CommonView.ActionBar>;
+      }
+    }
+  }
+  return <noscript />;
 }
