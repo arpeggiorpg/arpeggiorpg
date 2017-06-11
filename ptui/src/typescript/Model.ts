@@ -9,18 +9,29 @@ export class PTUI {
     this.app = app;
     this.elm_app = elm_app;
   }
+
   sendCommand(cmd: T.GameCommand) {
     console.log("[sendCommand:TS]", cmd);
     let json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);
   }
+
   requestCombatMovement() {
     console.log("[requestMovement]");
     this.elm_app.ports.requestCombatMovement.send(null);
   }
 
+  requestCombatAbility(cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
+    switch (ability.target.t) {
+      case "Actor": return this.sendCommand({ t: "CombatAct", ability_id: ability_id, target: { t: "Actor" } });
+      default:
+        return this.elm_app.selectAbility(scene_id, cid, ability_id);
+    }
+  }
+
   // Utility functions for interacting with the model
+  // TODO: Make Creature, Combat, App classes and move these methods to them
 
   getCreature(cid: T.CreatureID): T.Creature | undefined {
     return this.app.current_game.creatures[cid];

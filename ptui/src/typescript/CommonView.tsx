@@ -243,15 +243,28 @@ export function Combat(props: { ptui: PTUI }): JSX.Element {
 export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat }): JSX.Element {
   let abilities = M.filterMap(LD.values(props.creature.abilities),
     (abstatus) => {
-      return props.ptui.app.current_game.abilities[abstatus.ability_id]
+      let ability = props.ptui.app.current_game.abilities[abstatus.ability_id];
+      if (ability) {
+        return { ability_id: abstatus.ability_id, ability: ability };
+      }
     });
+
+  let abilityButtons;
+  if (props.combat) {
+    let combat = props.combat;
+    abilityButtons = abilities.map((abinfo) =>
+      <AbilityButton key={abinfo.ability_id}
+        ptui={props.ptui} creature={props.creature} abinfo={abinfo}
+        scene_id={combat.scene} />);
+  }
+  else {
+    abilityButtons = <noscript />;
+  }
   return <div style={{ display: "flex" }}>
     <CreatureIcon app={props.ptui.app} creature={props.creature} />
     {props.combat ? <DoneButton ptui={props.ptui} /> : <noscript />}
     <MoveButton ptui={props.ptui} creature={props.creature} combat={props.combat} />
-    {abilities.map((ability) =>
-      <AbilityButton ptui={props.ptui} creature={props.creature} ability={ability} />
-    )}
+    {abilityButtons}
   </div>;
 }
 
@@ -263,8 +276,20 @@ function DoneButton(props: { ptui: PTUI }): JSX.Element {
     </button>
 }
 
-function AbilityButton(props: { ptui: PTUI, creature: T.Creature, ability: T.Ability }): JSX.Element {
-  return <button style={{ width: "50px", height: "50px" }}>{props.ability.name}</button>;
+interface AbilityButtonProps {
+  ptui: PTUI;
+  creature: T.Creature;
+  abinfo: { ability_id: T.AbilityID; ability: T.Ability };
+  scene_id: T.SceneID;
+}
+function AbilityButton(props: AbilityButtonProps): JSX.Element {
+  let onClick = () =>
+    props.ptui.requestCombatAbility(
+      props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
+  return <button style={{ width: "50px", height: "50px" }}
+    onClick={onClick}>
+    {props.abinfo.ability.name}
+  </button>;
 }
 
 function MoveButton(props: { ptui: PTUI, creature: T.Creature; combat?: T.Combat }): JSX.Element {

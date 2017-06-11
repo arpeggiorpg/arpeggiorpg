@@ -40,7 +40,7 @@ export interface Combat {
 
 export interface Ability {
   name: string;
-  // target: TargetSpec;
+  target: TargetSpec;
   // cost: Energy;
   // effects: Array<Effect>;
   usable_ooc: boolean;
@@ -53,6 +53,12 @@ export type TargetSpec =
   | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
   | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
   | { t: "Volume"; volume: Volume; range: Distance }
+
+export type DecidedTarget =
+  | { t: "Creature"; creature_id: CreatureID; }
+  | { t: "Creatures"; creature_ids: Array<CreatureID>; }
+  | { t: "Actor" }
+  | { t: "Point"; point: Point3 }
 
 export type Volume =
   | { t: "Sphere"; radius: Distance }
@@ -77,6 +83,7 @@ export type GameCommand =
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
+  | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "Done" }
 
 // AttributeCheck(CreatureID, AttributeCheck),
@@ -636,10 +643,47 @@ const decodeFolder: Decoder<Folder> = JD.object(
   (data, children) => ({ data, children })
 )
 
+const decodeVolume: Decoder<Volume> = sum("Volume", {},
+  {
+    "Sphere": JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
+    "Line": JD.map((length): Volume => ({ t: "Line", length }), JD.number()),
+    "VerticalCylinder": JD.object(
+      ["radius", JD.number()],
+      ["height", JD.number()],
+      (radius, height): Volume => ({ t: "VerticalCylinder", radius, height })
+    ),
+    "AABB": JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
+  });
+
+const decodeTargetSpec: Decoder<TargetSpec> = sum<TargetSpec>("TargetSpec",
+  {
+    "Actor": { t: "Actor" },
+    "Melee": { t: "Melee" }
+  },
+  // | { t: "Volume"; volume: Volume; range: Distance }
+
+  {
+    "Range": JD.map((distance): TargetSpec => ({ t: "Range", distance }), JD.number()),
+    "SomeCreaturesInVolumeInRange": JD.object(
+      ["volume", decodeVolume], ["maximum", JD.number()], ["range", JD.number()],
+      (volume, maximum, range): TargetSpec =>
+        ({ t: "SomeCreaturesInVolumeInRange", volume, maximum, range })),
+    "AllCreaturesInVolumeInRange": JD.object(
+      ["volume", decodeVolume],
+      ["range", JD.number()],
+      (volume, range): TargetSpec => ({ t: "AllCreaturesInVolumeInRange", volume, range })),
+    "Volume": JD.object(
+      ["volume", decodeVolume],
+      ["range", JD.number()],
+      (volume, range): TargetSpec => ({ t: "Volume", volume, range })
+    )
+  });
+
 const decodeAbility: Decoder<Ability> = JD.object(
   ["name", JD.string()],
+  ["target", decodeTargetSpec],
   ["usable_ooc", JD.boolean()],
-  (name, usable_ooc) => ({ name, usable_ooc })
+  (name, target, usable_ooc) => ({ name, target, usable_ooc })
 );
 
 export const decodeGame: Decoder<Game> = JD.object(
@@ -666,6 +710,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
     case "CreateNote": return { "CreateNote": [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote": return { "EditNote": [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "CombatAct": return { "CombatAct": [cmd.ability_id, encodeDecidedTarget(cmd.target)] }
     case "Done": return "Done";
   }
 }
@@ -705,7 +750,6 @@ function encodeEffect(eff: Effect): object {
     case "Damage": return { "Damage": encodeDice(eff.dice) };
     case "MultiEffect": return { "MultiEffect": eff.effects.map(encodeEffect) };
     case "GenerateEnergy": return { "GenerateEnergy": eff.energy };
-
   }
 }
 
@@ -731,6 +775,18 @@ function encodeAbilityStatus(as: AbilityStatus): object {
   return as;
 }
 
+function encodeDecidedTarget(dt: DecidedTarget): object | string {
+  switch (dt.t) {
+    case "Actor": return "Actor";
+    case "Creature": return { "Creature": dt.creature_id };
+    case "Creatures": return { "Creatures": dt.creature_ids };
+    case "Point": return { "Point": encodePoint3(dt.point) };
+  }
+}
+
+function encodePoint3(pt: Point3): Point3 {
+  return pt;
+}
 
 export function encodeCreature(c: Creature): object {
   return {
