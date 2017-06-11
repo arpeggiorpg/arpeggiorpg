@@ -82,7 +82,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
 
     let give = this.state.giving
       ? <GiveItem ptui={this.props.ptui} current_scene={this.props.current_scene}
-        giver={this.props.creature.id} item_id={this.state.giving} onCancel={() => { this.setState({ giving: undefined }) }} />
+        giver={this.props.creature.id} item_id={this.state.giving} onClose={() => { this.setState({ giving: undefined }) }} />
       : <noscript />;
 
     return <div>
@@ -97,7 +97,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
   }
 }
 
-interface GiveItemProps { ptui: PTUI; current_scene: T.SceneID | undefined; item_id: T.ItemID; giver: T.CreatureID; onCancel: () => void }
+interface GiveItemProps { ptui: PTUI; current_scene: T.SceneID | undefined; item_id: T.ItemID; giver: T.CreatureID; onClose: () => void }
 export class GiveItem extends React.Component<GiveItemProps, { receiver: T.CreatureID | undefined; count: number | undefined }> {
   constructor(props: GiveItemProps) {
     super(props);
@@ -134,7 +134,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
         )}
       </select>
       <button disabled={!(this.state.receiver && this.state.count)} onClick={ev => this.give(giver)}>Give</button>
-      <button onClick={ev => this.props.onCancel()}>Cancel</button>
+      <button onClick={ev => this.props.onClose()}>Cancel</button>
     </div>;
   }
 
@@ -148,6 +148,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
     let receiver = this.props.ptui.app.current_game.creatures[receiver_id];
     if (!receiver) {
       console.log("[give] Receiver has disappeared", receiver_id);
+      this.props.onClose();
       return;
     }
 
@@ -156,6 +157,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
 
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newGiver });
     this.props.ptui.sendCommand({ t: "EditCreature", creature: newReceiver });
+    this.props.onClose();
   }
 }
 
