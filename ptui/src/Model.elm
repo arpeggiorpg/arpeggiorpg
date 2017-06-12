@@ -30,6 +30,7 @@ subscriptions model =
                , Components.playersSetScene (\(pid, scene) -> SendCommand (T.SetPlayerScene pid scene))
                , Components.sendCommand SendCommandRaw
                , Components.requestCombatMovement (\() -> GetCombatMovementOptions)
+               , Components.selectAbility (\(sid, cid, abid) -> SelectAbility { scene=sid, creature=cid, ability=abid, potentialTargets=Nothing, chosenPoint=Nothing } )
                ]
 
 grantCreatures pid =

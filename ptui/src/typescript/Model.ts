@@ -21,12 +21,14 @@ export class PTUI {
     console.log("[requestMovement]");
     this.elm_app.ports.requestCombatMovement.send(null);
   }
+  selectAbility(scene_id: T.SceneID, cid: T.CreatureID, abid: T.AbilityID) {
+    return this.elm_app.ports.selectAbility.send([scene_id, cid, abid]);
+  }
 
   requestCombatAbility(cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
     switch (ability.target.t) {
       case "Actor": return this.sendCommand({ t: "CombatAct", ability_id: ability_id, target: { t: "Actor" } });
-      default:
-        return this.elm_app.selectAbility(scene_id, cid, ability_id);
+      default: this.selectAbility(scene_id, cid, ability_id);
     }
   }
 

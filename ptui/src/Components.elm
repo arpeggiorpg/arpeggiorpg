@@ -24,3 +24,4 @@ port unloadComponent : String -> Cmd msg
 port sendCommand: (JE.Value -> msg) -> Sub msg
 
 port requestCombatMovement : (() -> msg) -> Sub msg
+port selectAbility: ((T.SceneID, T.CreatureID, T.AbilityID) -> msg) -> Sub msg
