@@ -14,7 +14,7 @@ export function renderPlayerUI(
   let app = T.decodeApp.decodeAny(data);
   let ptui = new M.PTUI(elmApp, app);
   ReactDOM.render(
-    <PlayerUI ptui={ptui} player_id={player_id} current_scene={current_scene} />,
+    <PlayerSideBar ptui={ptui} player_id={player_id} current_scene={current_scene} />,
     element
   );
 }
@@ -41,8 +41,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
       return <div>Waiting for initial data from server.</div>
     }
     if (this.state.player_id) {
-      let pid = this.state.player_id;
-      return <PlayerUI player_id={pid} current_scene={undefined} ptui={this.state.ptui} />;
+      return <PlayerGameView player_id={this.state.player_id} ptui={this.state.ptui} />;
     } else {
       return <div>
         <h1>P&T</h1>
@@ -50,8 +49,8 @@ export class PlayerMain extends React.Component<PlayerMainProps,
         {LD.keys(this.state.ptui.app.players).length > 0
           ? <div>
             <p>You can rejoin a session if you've already registered as a player.</p>
-            {LD.keys(this.state.ptui.app.players).map((pid) => 
-              <button key={pid} onClick={() => this.setState({player_id: pid})}>{pid}</button>)}
+            {LD.keys(this.state.ptui.app.players).map((pid) =>
+              <button key={pid} onClick={() => this.setState({ player_id: pid })}>{pid}</button>)}
           </div>
           : <noscript />}
         <p>You can register a new player. Enter your name (not your character's name) here:</p>
@@ -73,7 +72,16 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
 }
 
-function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: M.PTUI; })
+function PlayerGameView(props: { player_id: T.PlayerID; ptui: M.PTUI }): JSX.Element {
+  let player = props.ptui.app.players[props.player_id];
+  return <div>
+    <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 450}}>
+      <PlayerSideBar player_id={props.player_id} current_scene={player.scene} ptui={props.ptui} />
+    </div>
+  </div>;
+}
+
+function PlayerSideBar(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: M.PTUI; })
   : JSX.Element {
   return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ flex: "1 0 auto" }}>
