@@ -201,9 +201,11 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
       (c: any): string | undefined => { if (c.type === Tab) { return c.props.name; } });
     let selectedView = this.props.children[this.state.selected];
     return <div>
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
         {children_names.map((name, index) =>
-          <button key={name} onClick={() => this.setState({ selected: index })}>{name}</button>)
+          <button key={name} style={{height: 60, width: 150}}
+            onClick={() => this.setState({ selected: index })}>
+            {name}</button>)
         }
       </div>
       {selectedView}

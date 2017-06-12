@@ -74,8 +74,9 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 
 function PlayerGameView(props: { player_id: T.PlayerID; ptui: M.PTUI }): JSX.Element {
   let player = props.ptui.app.players[props.player_id];
-  return <div>
-    <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 450}}>
+  return <div style={{display: "flex", justifyContent: "space-between"}}>
+    <div>The Grid</div>
+    <div style={{ width: 450}}>
       <PlayerSideBar player_id={props.player_id} current_scene={player.scene} ptui={props.ptui} />
     </div>
   </div>;
