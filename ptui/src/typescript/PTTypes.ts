@@ -80,6 +80,7 @@ export interface FolderNode {
 }
 
 export type GameCommand =
+  | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
@@ -707,6 +708,7 @@ export const decodeApp: Decoder<App> = JD.object(
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
+    case "RegisterPlayer": return { "RegisterPlayer": cmd.player_id }
     case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
     case "CreateNote": return { "CreateNote": [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote": return { "EditNote": [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };

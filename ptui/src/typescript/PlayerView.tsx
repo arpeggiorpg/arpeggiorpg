@@ -19,34 +19,57 @@ export function renderPlayerUI(
   );
 }
 
-export class PlayerMain extends React.Component<{ app?: object; elm_app: any }, { player_id: T.PlayerID | undefined }> {
-  // RADIX THOUGHTS:
-  // * Woops, I'm going to need to keep calling ReactDOM.render on this PlayerMain component in my
-  //   Elm workflow.
-  //   I should add a new port, "renderReactMain" that causes this component to be re-rendered,
-  //   and is always called on every App update from Update.elm.
-  // * Point 2: This component could take `app?: any` which would be undefined in the initial render
-  //   and then provided by the renderReactMain elm port.
-  // * Point 3: In addition to getting the App from renderReactMain, we need the ElmApp, which can
-  //   just be passed in.
-  // * Point 4: I need a player_id to invoke PlayerUI, so I need to write a registration form!
-
-  constructor(props: { elm_app: any; app?: object }) {
+interface PlayerMainProps { app?: object; elm_app: any };
+export class PlayerMain extends React.Component<PlayerMainProps,
+  { player_id: T.PlayerID | undefined; typing_player_id: string; ptui: M.PTUI | undefined }> {
+  constructor(props: PlayerMainProps) {
     super(props);
-    this.state = { player_id: undefined };
+    let ptui = props.app ? new M.PTUI(props.elm_app, T.decodeApp.decodeAny(props.app)) : undefined;
+    this.state = { player_id: undefined, typing_player_id: "", ptui };
   }
+  componentWillReceiveProps(nextProps: PlayerMainProps) {
+    console.log("[PlayerMain:componentWillReceiveProps");
+    if (!LD.isEqual(this.props, nextProps)) {
+      let ptui = nextProps.app ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
+        : undefined;
+      this.setState({ ptui });
+    }
+  }
+
   render(): JSX.Element {
-    if (!this.props.app) {
-      return <div>Waiting for initial data</div>;
+    if (!this.state.ptui) {
+      return <div>Waiting for initial data from server.</div>
     }
     if (this.state.player_id) {
-    let app = T.decodeApp.decodeAny(this.props.app);
       let pid = this.state.player_id;
-      let ptui = new M.PTUI(this.props.elm_app, app);
-      return <PlayerUI player_id={pid} current_scene={undefined} ptui={ptui} />;
+      return <PlayerUI player_id={pid} current_scene={undefined} ptui={this.state.ptui} />;
     } else {
-      return <div>Player Registration form goes here!</div>;
+      return <div>
+        <h1>P&T</h1>
+        <p>Welcome to P&T!</p>
+        {LD.keys(this.state.ptui.app.players).length > 0
+          ? <div>
+            <p>You can rejoin a session if you've already registered as a player.</p>
+            {LD.keys(this.state.ptui.app.players).map((pid) => 
+              <button key={pid} onClick={() => this.setState({player_id: pid})}>{pid}</button>)}
+          </div>
+          : <noscript />}
+        <p>You can register a new player. Enter your name (not your character's name) here:</p>
+        <input type="text" value={this.state.typing_player_id}
+          onChange={(e) => this.setState({ typing_player_id: e.currentTarget.value })} />
+        <button
+          onClick={() => this.registerPlayer()}>
+          Register</button>
+      </div>;
     }
+  }
+  registerPlayer() {
+    if (!this.state.ptui) {
+      console.log("[PlayerMain] registerPlayer called without PTUI state.")
+      return;
+    }
+    this.state.ptui.sendCommand({ t: "RegisterPlayer", player_id: this.state.typing_player_id });
+    this.setState({ player_id: this.state.typing_player_id });
   }
 }
 
