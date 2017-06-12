@@ -3,6 +3,7 @@ import * as ReactDOM from "react-dom";
 import * as T from './PTTypes';
 import * as CommonView from './CommonView';
 import { PTUI } from './Model';
+import * as M from './Model';
 import * as LD from 'lodash';
 
 export function renderPlayerUI(
@@ -11,14 +12,14 @@ export function renderPlayerUI(
   let element = document.getElementById(id);
   console.log("[renderPlayerUI] Rendering Player component from Elm", id, element, player_id, current_scene);
   let app = T.decodeApp.decodeAny(data);
-  let ptui = new PTUI(elmApp, app);
+  let ptui = new M.PTUI(elmApp, app);
   ReactDOM.render(
     <PlayerUI ptui={ptui} player_id={player_id} current_scene={current_scene} />,
     element
   );
 }
 
-function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: PTUI; })
+function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: M.PTUI; })
   : JSX.Element {
   return <div style={{ display: "flex", flexDirection: "column", height: "100%"}}>
     <div style={{ flex: "1 0 auto" }}>
@@ -41,7 +42,7 @@ function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefi
 }
 
 function PlayerCreatures(
-  props: { current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: PTUI; })
+  props: { current_scene: T.SceneID | undefined; player_id: T.PlayerID; ptui: M.PTUI; })
   : JSX.Element {
   let cids = props.ptui.app.players[props.player_id].creatures;
   let creatures = props.ptui.getCreatures(cids);
@@ -61,7 +62,7 @@ function PlayerCreatures(
   </div>
 }
 
-interface PlayerNoteProps { player_id: T.PlayerID; ptui: PTUI; }
+interface PlayerNoteProps { player_id: T.PlayerID; ptui: M.PTUI; }
 class PlayerNote extends React.Component<PlayerNoteProps, { content: string | undefined }> {
   private path: Array<string>;
   constructor(props: PlayerNoteProps) {
@@ -73,7 +74,7 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
   render(): JSX.Element {
     let player_folder = this.props.ptui.getFolderNode(this.path);
     if (!player_folder) {
-      return <div>Please ask your GM to creature the folder "{this.path}"</div>;
+      return <div>Please ask your GM to creature the folder "{M.folderPathToString(this.path)}"</div>;
     }
     let note = player_folder.notes["Scratch"];
     let origContent = note ? note.content : "Enter notes here!";
@@ -97,7 +98,7 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
   }
 }
 
-function PlayerActionBar(props: { player_id: T.PlayerID; ptui: PTUI }): JSX.Element {
+function PlayerActionBar(props: { player_id: T.PlayerID; ptui: M.PTUI }): JSX.Element {
   if (props.ptui.app.current_game.current_combat) {
     let combat = props.ptui.app.current_game.current_combat;
     let cid = props.ptui.getCurrentCombatCreatureID(combat);

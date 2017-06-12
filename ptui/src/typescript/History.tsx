@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import Flexbox from 'flexbox-react';
 
+import * as M from './Model';
 import * as T from './PTTypes';
 
 export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
@@ -39,17 +40,17 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
           <div>Success? {log.success.toString()}</div>
         </Flexbox>;
       case "CreateFolder":
-        return <Flexbox><div>Created Folder</div><div>{log.path}</div></Flexbox>;
+        return <Flexbox><div>Created Folder</div><div>{M.folderPathToString(log.path)}</div></Flexbox>;
       case "RenameFolder":
         return <Flexbox>Renamed Folder</Flexbox>
       case "DeleteFolder":
-        return <Flexbox>Deleted folder {log.path}</Flexbox>
+        return <Flexbox>Deleted folder {M.folderPathToString(log.path)}</Flexbox>
       case "DeleteFolderItem":
-        return <Flexbox>Deleted folder item in {log.path}</Flexbox>
+        return <Flexbox>Deleted folder item in {M.folderPathToString(log.path)}</Flexbox>
       case "MoveFolderItem":
-        return <Flexbox>Moved folder item from {log.path} to {log.newPath}</Flexbox>
+        return <Flexbox>Moved folder item from {M.folderPathToString(log.path)} to {M.folderPathToString(log.newPath)}</Flexbox>
       case "CreateItem":
-        return <Flexbox>Created item {log.item.name} in {log.path}</Flexbox>
+        return <Flexbox>Created item {log.item.name} in {M.folderPathToString(log.path)}</Flexbox>
       case "EditItem":
         return <Flexbox>Edited item {log.item.name}</Flexbox>
       case "CreateNote":

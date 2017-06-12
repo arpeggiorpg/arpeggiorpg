@@ -715,7 +715,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
   }
 }
 
-function encodeFolderPath(path: FolderPath): string {
+export function encodeFolderPath(path: FolderPath): string {
   if (path.length === 0) {
     return ""
   } else {

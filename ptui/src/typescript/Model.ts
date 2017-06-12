@@ -33,8 +33,9 @@ export class PTUI {
   }
 
   // Utility functions for interacting with the model
-  // TODO: Make Creature, Combat, App classes and move these methods to them
-
+  // TODO: Consider making Game, Combat, Folder classes and moving these methods to those classes.
+  // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
+  // then it would be a good way forward, but I'm not sure it will be necessary.
   getCreature(cid: T.CreatureID): T.Creature | undefined {
     return this.app.current_game.creatures[cid];
   }
@@ -97,4 +98,8 @@ export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, cou
     let x: Inventory = {}; x[item_id] = new_count;
     return LD.assign({}, inventory, x);
   }
+}
+
+export function folderPathToString(path: T.FolderPath): string {
+  return T.encodeFolderPath(path)
 }
