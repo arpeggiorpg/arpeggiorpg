@@ -19,9 +19,40 @@ export function renderPlayerUI(
   );
 }
 
+export class PlayerMain extends React.Component<{ app?: object; elm_app: any }, { player_id: T.PlayerID | undefined }> {
+  // RADIX THOUGHTS:
+  // * Woops, I'm going to need to keep calling ReactDOM.render on this PlayerMain component in my
+  //   Elm workflow.
+  //   I should add a new port, "renderReactMain" that causes this component to be re-rendered,
+  //   and is always called on every App update from Update.elm.
+  // * Point 2: This component could take `app?: any` which would be undefined in the initial render
+  //   and then provided by the renderReactMain elm port.
+  // * Point 3: In addition to getting the App from renderReactMain, we need the ElmApp, which can
+  //   just be passed in.
+  // * Point 4: I need a player_id to invoke PlayerUI, so I need to write a registration form!
+
+  constructor(props: { elm_app: any; app?: object }) {
+    super(props);
+    this.state = { player_id: undefined };
+  }
+  render(): JSX.Element {
+    if (!this.props.app) {
+      return <div>Waiting for initial data</div>;
+    }
+    if (this.state.player_id) {
+    let app = T.decodeApp.decodeAny(this.props.app);
+      let pid = this.state.player_id;
+      let ptui = new M.PTUI(this.props.elm_app, app);
+      return <PlayerUI player_id={pid} current_scene={undefined} ptui={ptui} />;
+    } else {
+      return <div>Player Registration form goes here!</div>;
+    }
+  }
+}
+
 function PlayerUI(props: { player_id: T.PlayerID; current_scene: string | undefined; ptui: M.PTUI; })
   : JSX.Element {
-  return <div style={{ display: "flex", flexDirection: "column", height: "100%"}}>
+  return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ flex: "1 0 auto" }}>
       <CommonView.TabbedView>
         <CommonView.Tab name="Creatures">

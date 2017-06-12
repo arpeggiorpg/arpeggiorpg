@@ -27,11 +27,14 @@
 
 </head>
 <body>
+  <div id="react-main"></div>
   <script type="text/javascript">
-    var app = Elm.Main.fullscreen({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight], 'mainReactComponent': '', 'mainReactElement': ''});
-    PanZoom_initializePorts(app);
-    DomUtils_initializePorts(app);
+    var app = Elm.Main.worker({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight], 
+                               'mainReactComponent': '{{react-component}}',
+                               'mainReactElement': 'react-main'});
     PT_initializeComponents(app);
+
+    PT_renderMain(app, "{{react-component}}", "react-main");
   </script>
 </body>
 </html>

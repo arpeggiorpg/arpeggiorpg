@@ -103,36 +103,37 @@ start = message Start
 
 renderComponent : M.Model -> M.Model -> String -> M.ReactComponent -> Cmd Msg
 renderComponent oldModel newModel id componentType =
-  if oldModel.app /= newModel.app || oldModel.reactComponents /= newModel.reactComponents || oldModel.playerID /= newModel.playerID then
-    case componentType of
-      M.ReactHistory -> Components.renderHistory (id, newModel.raw_app)
-      M.ReactPlayers ->
-        let scene = case newModel.focus of
-                      M.FocusScene scene -> Just scene
-                      _ -> Nothing
-        in Components.renderPlayers (id, scene, newModel.raw_app)
-      M.ReactTextInput -> Cmd.none
-      M.ReactSideBar ->
-        let
-          _ = Debug.log "A ReactSideBar appears!" id
-          scene =
-            case newModel.focus of
-              M.FocusScene sid -> Just sid
-              _ -> Nothing
-        in
-          case newModel.playerID of
-            Just pid ->
-              let _ = Debug.log "[RENDERPLAYERUI]" pid
-              in Components.renderPlayerUI (id, pid, scene, newModel.raw_app)
-            Nothing -> Cmd.none
-  else Cmd.none
+  case componentType of
+    M.ReactHistory -> Components.renderHistory (id, newModel.raw_app)
+    M.ReactPlayers ->
+      let scene = case newModel.focus of
+                    M.FocusScene scene -> Just scene
+                    _ -> Nothing
+      in Components.renderPlayers (id, scene, newModel.raw_app)
+    M.ReactTextInput -> Cmd.none
+    M.ReactSideBar ->
+      let
+        _ = Debug.log "A ReactSideBar appears!" id
+        scene =
+          case newModel.focus of
+            M.FocusScene sid -> Just sid
+            _ -> Nothing
+      in
+        case newModel.playerID of
+          Just pid ->
+            let _ = Debug.log "[RENDERPLAYERUI]" pid
+            in Components.renderPlayerUI (id, pid, scene, newModel.raw_app)
+          Nothing -> Cmd.none
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model =
   let (newModel, cmd) = update_ msg model
       refreshReactComponent (id, componentType) = renderComponent model newModel id componentType
       refreshReactComponents =
-        List.map refreshReactComponent (Dict.toList newModel.reactComponents)
+        if model.app /= newModel.app || model.reactComponents /= newModel.reactComponents || model.playerID /= newModel.playerID then
+          (if newModel.mainReactComponent /= "" then Components.renderReactMain (newModel.mainReactElement, newModel.mainReactComponent, newModel.raw_app) else Cmd.none)
+          :: (List.map refreshReactComponent (Dict.toList newModel.reactComponents))
+        else []
   in (newModel, Cmd.batch <| [cmd] ++ refreshReactComponents)
 
 update_ : Msg -> M.Model -> (M.Model, Cmd Msg)
@@ -152,7 +153,9 @@ update_ msg model = case msg of
           else M.NoMsg
     in ({model | windowSize = s}, message maybeReinitMap)
 
-  Start -> (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL (JD.map2 (,) T.appDecoder JD.value)))
+  Start ->
+    let _ = Debug.log "[Update:Start] Starting up Elm app!" ()
+    in (model, Http.send ReceivedAppUpdate (Http.get model.rpiURL (JD.map2 (,) T.appDecoder JD.value)))
 
   PollApp ->
     case model.app of

@@ -31,6 +31,7 @@ function PT_initializeComponents(app: any) {
   app.ports.renderPlayerUI.subscribe(afterView(function(x: any) {PlayerView.renderPlayerUI(app, x)}))
 
   app.ports.unloadComponent.subscribe(unloadComponent);
+  app.ports.renderReactMain.subscribe(function([elemID, componentName, pt_app]: [string, string, any]) {PT_renderMain(app, componentName, elemID, pt_app)});
 }
 
 function afterView(f: any) {
@@ -47,6 +48,18 @@ function afterView(f: any) {
   }
 }
 
+
+function PT_renderMain(elm_app: any, component_name: string, id: string, pt_app: any) {
+  let el = document.getElementById(id);
+  let component;
+  switch (component_name) {
+    // case "GM": component = <GMMain />;
+    case "Player": component = <PlayerView.PlayerMain elm_app={elm_app} app={pt_app}/>; break;
+    default: throw new Error(`Unknown component ${component}`);
+  };
+  ReactDOM.render(component, el);
+}
+
 // I can't figure out any other way to export these functions such that they can be called from plain
 // old javascript callers
 
@@ -54,3 +67,4 @@ function afterView(f: any) {
 
 (window as any).PTT = PTTypes;
 (window as any).PTDice = PTDice;
+(window as any).PT_renderMain = PT_renderMain;

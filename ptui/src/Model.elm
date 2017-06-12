@@ -150,6 +150,8 @@ defaultModel flags =
   , reactComponents = Dict.fromList [("right-bar", ReactSideBar)]
   , scratchNote = Nothing
   , altSideBar = False
+  , mainReactComponent = flags.mainReactComponent
+  , mainReactElement = flags.mainReactElement
   }
 
 type alias Model =
@@ -182,6 +184,8 @@ type alias Model =
   , reactComponents : Dict.Dict String ReactComponent
   , scratchNote: Maybe String
   , altSideBar: Bool
+  , mainReactComponent: String
+  , mainReactElement: String
   }
 
 type ReactComponent
@@ -280,10 +284,10 @@ type alias SceneChallenge = {scene: T.SceneID, description: String, check: T.Att
 
 
 devFlags : ProgramFlags
-devFlags = {rpi = "http://localhost:1337/", windowSize = (0, 0)}
+devFlags = {rpi = "http://localhost:1337/", windowSize = (0, 0), mainReactComponent = "", mainReactElement =  ""}
 
 type alias ProgramFlags =
-  { rpi : String, windowSize: (Int, Int) }
+  { rpi : String, windowSize: (Int, Int), mainReactComponent: String, mainReactElement: String }
 
 type alias PendingCreature = {name: Maybe T.CreatureID, class: Maybe String, path: T.FolderPath}
 

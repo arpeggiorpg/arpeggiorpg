@@ -83,7 +83,10 @@ fn watch(ptui_dir: &path::Path, rpi: &str) {
 }
 
 fn build_js(ptui_dir: &path::Path) {
-  for &(elm, js) in [("Player.elm", "Player.js"), ("GM.elm", "GM.js")].iter() {
+  for &(elm, js) in [("Player.elm", "Player.js"),
+                     ("ReactPlayer.elm", "ReactPlayer.js"),
+                     ("GM.elm", "GM.js")]
+          .iter() {
     let mut child = Command::new("elm")
       .arg("make")
       .arg(path::Path::new("src").join(elm))
@@ -126,23 +129,44 @@ fn copy_others(ptui_dir: &path::Path, build_dir: &path::Path) -> Result<(), io::
 }
 
 fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
-  let template = load_template(ptui_dir);
+  let template = load_template(&ptui_dir.join("src/template.html"));
   let mut handlebars = handlebars::Handlebars::new();
   handlebars
-    .register_template_string("template.html", template)
+    .register_template_string("html-template", template)
     .expect("Couldn't register_template_string");
 
   for &(js_fn, html_fn) in [("GM.js", "GM.html"), ("Player.js", "Player.html")].iter() {
     let data = template_data(rpi.to_string(), js_fn.to_string());
-    let populated = handlebars.render("template.html", &data).expect("Couldn't render template");
+    let populated = handlebars.render("html-template", &data).expect("Couldn't render template");
     let html_path = build_dir.join(html_fn);
     let mut outfile =
       fs::File::create(&html_path).expect(&format!("Couldn't create {:?}", html_path.to_str()));
     outfile
       .write_all(populated.as_bytes())
       .expect(&format!("Couldn't write populated data to {:?}", html_path.to_str()));
-    println!("Wrote file {:?}", html_path.to_str());
   }
+
+  let template = load_template(&ptui_dir.join("src/react-template.html"));
+  let mut handlebars = handlebars::Handlebars::new();
+  handlebars
+    .register_template_string("react-html-template", template)
+    .expect("Couldn't register_template_string");
+  for &(js_fn, react_component, html_fn) in
+    [// ("GM.js", "GM", "ReactGM.html"),
+     ("ReactPlayer.js", "Player", "ReactPlayer.html")]
+        .iter() {
+    let mut data = template_data(rpi.to_string(), js_fn.to_string());
+    data.insert("react-component".to_string(), react_component.to_string());
+    let populated =
+      handlebars.render("react-html-template", &data).expect("Couldn't render template");
+    let html_path = build_dir.join(html_fn);
+    let mut outfile =
+      fs::File::create(&html_path).expect(&format!("Couldn't create {:?}", html_path.to_str()));
+    outfile
+      .write_all(populated.as_bytes())
+      .expect(&format!("Couldn't write populated data to {:?}", html_path.to_str()));
+  }
+
 }
 
 fn template_data(rpi: String, js_source: String) -> HashMap<String, String> {
@@ -153,9 +177,8 @@ fn template_data(rpi: String, js_source: String) -> HashMap<String, String> {
 }
 
 
-fn load_template(ptui_dir: &path::Path) -> String {
-  let path = ptui_dir.join("src/template.html");
-  let mut f = fs::File::open(&path).expect(&format!("Couldn't open {:?}", path.to_str()));
+fn load_template(path: &path::Path) -> String {
+  let mut f = fs::File::open(path).expect(&format!("Couldn't open {:?}", path.to_str()));
   let mut s = String::new();
   f.read_to_string(&mut s).expect(&format!("Couldn't read data from {:?}", path.to_str()));
   s
