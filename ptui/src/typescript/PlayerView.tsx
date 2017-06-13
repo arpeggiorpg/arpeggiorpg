@@ -81,9 +81,9 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 }
 
 function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
-  return <div style={{ display: "flex", justifyContent: "space-between" }}>
+  return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%"}}>
     <div>The Grid</div>
-    <div style={{ width: 450 }}>
+    <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
       <PlayerSideBar player={props.player} current_scene={props.player.scene} ptui={props.ptui} />
     </div>
   </div>;
@@ -117,6 +117,9 @@ function PlayerCreatures(
   let cids = props.player.creatures;
   let creatures = props.ptui.getCreatures(cids);
   console.log("[PlayerCreatures]", cids, creatures);
+  if (creatures.length === 0) {
+    return <div>You have no creatures in your control yet.</div>
+  }
   return <div>
     {creatures.map((creature) =>
       <div key={creature.id}>
