@@ -1,11 +1,17 @@
 {
+	"extends": [
+		"tslint-eslint-rules"
+	],
 	"rules": {
+		"no-constant-condition": true, // tslint-eslint-rules says this
 		"no-unused-expression": true,
 		"no-duplicate-variable": true,
 		"no-unused-variable": true,
 		"curly": true,
 		"class-name": true,
-		"semicolon": ["always"],
+		"semicolon": [
+			"always"
+		],
 		"triple-equals": true
 	}
 }
