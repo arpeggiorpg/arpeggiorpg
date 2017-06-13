@@ -83,7 +83,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 
 function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
   let grid = props.player.scene
-    ? <Grid.Grid ptui={props.ptui} scene={props.player.scene} />
+    ? <Grid.Grid ptui={props.ptui} scene_id={props.player.scene} />
     : <div>No scene loaded</div>
 
   return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%" }}>

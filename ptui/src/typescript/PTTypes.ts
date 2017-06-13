@@ -29,7 +29,8 @@ export interface Game {
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
   abilities: { [index: string]: Ability };
-  campaign: Folder,
+  maps: {[index: string]: Map};
+  campaign: Folder;
 }
 
 export interface Combat {
@@ -694,9 +695,10 @@ export const decodeGame: Decoder<Game> = JD.object(
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
   ["abilities", JD.dict(decodeAbility)],
+  ["maps", JD.dict(decodeMap)],
   ["campaign", decodeFolder],
-  (current_combat, creatures, classes, items, scenes, abilities, campaign) =>
-    ({ current_combat, creatures, classes, items, scenes, abilities, campaign })
+  (current_combat, creatures, classes, items, scenes, abilities, maps, campaign) =>
+    ({ current_combat, creatures, classes, items, scenes, abilities, maps, campaign })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
