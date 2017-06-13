@@ -326,7 +326,7 @@ export const decodeConditionDuration: Decoder<ConditionDuration> =
     {
       Duration: JD.map(
         (duration): ConditionDuration => ({ t: "Duration", duration }),
-        JD.number())
+        JD.number()),
     })
 
 export const decodeEffect: Decoder<Effect> = sum<Effect>("Effect", {},
@@ -381,7 +381,14 @@ const decodeAABB: Decoder<AABB> = JD.object(
   (x, y, z) => ({ x, y, z })
 )
 
-export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(ad: JD.EntryDecoder<A>, bd: JD.EntryDecoder<B>, cd: JD.EntryDecoder<C>, dd: JD.EntryDecoder<D>, ed: JD.EntryDecoder<E>, fd: JD.EntryDecoder<F>, gd: JD.EntryDecoder<G>, hd: JD.EntryDecoder<H>, id: JD.EntryDecoder<I>, jd: JD.EntryDecoder<J>, kd: JD.EntryDecoder<K>, ld: JD.EntryDecoder<L>, md: JD.EntryDecoder<M>, nd: JD.EntryDecoder<N>, od: JD.EntryDecoder<O>, pd: JD.EntryDecoder<P>, cons: (a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O, p: P) => T): Decoder<T> {
+export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+  ad: JD.EntryDecoder<A>, bd: JD.EntryDecoder<B>, cd: JD.EntryDecoder<C>, dd: JD.EntryDecoder<D>,
+  ed: JD.EntryDecoder<E>, fd: JD.EntryDecoder<F>, gd: JD.EntryDecoder<G>, hd: JD.EntryDecoder<H>,
+  id: JD.EntryDecoder<I>, jd: JD.EntryDecoder<J>, kd: JD.EntryDecoder<K>, ld: JD.EntryDecoder<L>,
+  md: JD.EntryDecoder<M>, nd: JD.EntryDecoder<N>, od: JD.EntryDecoder<O>, pd: JD.EntryDecoder<P>,
+  cons: (
+    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
+    p: P) => T): Decoder<T> {
   return JD.object.apply(undefined, arguments)
 }
 
@@ -402,8 +409,13 @@ export const decodeCreature: Decoder<Creature> = object16(
   ["conditions", JD.dict(decodeAppliedCondition)],
   ["initiative", decodeDice],
   ["size", decodeAABB],
-  (id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, portrait_url, attributes, inventory, conditions, initiative, size) =>
-    ({ id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, portrait_url, attributes, inventory, conditions, initiative, size })
+  (
+    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note,
+    portrait_url, attributes, inventory, conditions, initiative, size) =>
+    ({
+      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note,
+      portrait_url, attributes, inventory, conditions, initiative, size,
+    })
 );
 
 export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -443,12 +455,12 @@ function _mkFolderItem(t: string): Decoder<FolderItemID> {
 }
 export const decodeFolderItemID: Decoder<FolderItemID> =
   sum<FolderItemID>("FolderItemID", {}, {
-    "SceneID": _mkFolderItem("SceneID"),
-    "MapID": _mkFolderItem("MapID"),
-    "CreatureID": _mkFolderItem("CreatureID"),
-    "NoteID": _mkFolderItem("NoteID"),
-    "ItemID": _mkFolderItem("ItemID"),
-    "SubfolderID": _mkFolderItem("SubfolderID"),
+    SceneID: _mkFolderItem("SceneID"),
+    MapID: _mkFolderItem("MapID"),
+    CreatureID: _mkFolderItem("CreatureID"),
+    NoteID: _mkFolderItem("NoteID"),
+    ItemID: _mkFolderItem("ItemID"),
+    SubfolderID: _mkFolderItem("SubfolderID"),
   });
 
 export const decodeFolderPath: Decoder<FolderPath> =
@@ -478,113 +490,113 @@ export const decodeNote: Decoder<Note> =
 
 export const decodeCreatureLog: Decoder<CreatureLog> =
   sum<CreatureLog>("CreatureLog", {}, {
-    "Damage": JD.map(
+    Damage: JD.map(
       ([hp, rolls]): CreatureLog => ({ t: "Damage", hp, rolls }),
       JD.tuple(JD.number(), JD.array(JD.number()))),
-    "Heal": JD.map(([hp, rolls]): CreatureLog => ({ t: "Heal", hp, rolls }),
+    Heal: JD.map(([hp, rolls]): CreatureLog => ({ t: "Heal", hp, rolls }),
       JD.tuple(JD.number(), JD.array(JD.number()))),
-    "GenerateEnergy": JD.map((energy): CreatureLog => ({ t: "GenerateEnergy", energy }),
+    GenerateEnergy: JD.map((energy): CreatureLog => ({ t: "GenerateEnergy", energy }),
       JD.number()),
-    "ReduceEnergy": JD.map((energy): CreatureLog => ({ t: "ReduceEnergy", energy }),
+    ReduceEnergy: JD.map((energy): CreatureLog => ({ t: "ReduceEnergy", energy }),
       JD.number()),
-    "ApplyCondition": JD.map(
+    ApplyCondition: JD.map(
       ([condition_id, duration]): CreatureLog => ({ t: "ApplyCondition", condition_id, duration }),
       JD.tuple(JD.number(), decodeConditionDuration)),
-    "DecrementConditionRemaining": JD.map(
+    DecrementConditionRemaining: JD.map(
       (condition_id): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id }),
       JD.number()),
-    "RemoveCondition": JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
+    RemoveCondition: JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
       JD.number()),
   })
 
 export const decodeCombatLog: Decoder<CombatLog> =
   sum<CombatLog>("CombatLog",
     {
-      "ForceNextTurn": { t: "ForceNextTurn" },
-      "ForcePrevTurn": { t: "ForcePrevTurn" }
+      ForceNextTurn: { t: "ForceNextTurn" },
+      ForcePrevTurn: { t: "ForcePrevTurn" },
     },
     {
-      "ConsumeMovement": JD.map(
+      ConsumeMovement: JD.map(
         (distance): CombatLog => ({ t: "ConsumeMovement", distance }),
         JD.number()),
-      "ChangeCreatureInitiative": JD.map(
+      ChangeCreatureInitiative: JD.map(
         ([creature_id, init]): CombatLog => ({ t: "ChangeCreatureInitiative", creature_id, init }),
         JD.tuple(JD.string(), JD.number())),
-      "EndTurn": JD.map((creature_id): CombatLog => ({ t: "EndTurn", creature_id }), JD.string()),
-      "RerollInitiative": JD.map((combatants): CombatLog => ({ t: "RerollInitiative", combatants }),
+      EndTurn: JD.map((creature_id): CombatLog => ({ t: "EndTurn", creature_id }), JD.string()),
+      RerollInitiative: JD.map((combatants): CombatLog => ({ t: "RerollInitiative", combatants }),
         JD.array(JD.tuple(JD.string(), JD.number()))),
     });
 
 export const decodeGameLog: Decoder<GameLog> =
-  sum<GameLog>("GameLog", { "StopCombat": { t: "StopCombat" } }, {
-    "StartCombat": JD.map(
+  sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
+    StartCombat: JD.map(
       ([scene, creatures]): GameLog => ({ t: "StartCombat", scene, creatures }),
       JD.tuple(
         JD.string(),
         JD.array(JD.map(([cid, init]) => ({ cid, init }), JD.tuple(JD.string(), JD.number())))
       )),
-    "CreateFolder": JD.map((p): GameLog => ({ t: "CreateFolder", path: p }), decodeFolderPath),
-    "RenameFolder": JD.map(
+    CreateFolder: JD.map((p): GameLog => ({ t: "CreateFolder", path: p }), decodeFolderPath),
+    RenameFolder: JD.map(
       ([path, newName]): GameLog => ({ t: "RenameFolder", path, newName }),
       JD.tuple(decodeFolderPath, JD.string())),
-    "DeleteFolder": JD.map((path): GameLog => ({ t: "DeleteFolder", path }), decodeFolderPath),
-    "DeleteFolderItem": JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
+    DeleteFolder: JD.map((path): GameLog => ({ t: "DeleteFolder", path }), decodeFolderPath),
+    DeleteFolderItem: JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
       JD.tuple(decodeFolderPath, decodeFolderItemID)),
-    "MoveFolderItem": JD.map(
+    MoveFolderItem: JD.map(
       ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
       JD.tuple(decodeFolderPath, decodeFolderItemID, decodeFolderPath)),
-    "CreateItem": JD.map(
+    CreateItem: JD.map(
       ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
       JD.tuple(decodeFolderPath, decodeItem)),
-    "EditItem": JD.map((item): GameLog => ({ t: "EditItem", item }), decodeItem),
-    "CreateNote": JD.map(
+    EditItem: JD.map((item): GameLog => ({ t: "EditItem", item }), decodeItem),
+    CreateNote: JD.map(
       ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
       JD.tuple(decodeFolderPath, decodeNote)),
-    "EditNote": JD.map(
+    EditNote: JD.map(
       ([path, name, newNote]): GameLog => ({ t: "EditNote", path, name, newNote }),
       JD.tuple(decodeFolderPath, JD.string(), decodeNote)),
-    "DeleteNote": JD.map(
+    DeleteNote: JD.map(
       ([path, name]): GameLog => ({ t: "DeleteNote", path, name }),
       JD.tuple(decodeFolderPath, JD.string())),
-    "CreateScene": JD.map(
+    CreateScene: JD.map(
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
-    "EditScene": JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
-    "DeleteScene": JD.map((scene_id): GameLog => ({ t: "DeleteScene", scene_id }), JD.string()),
-    "CreateMap": JD.map(
+    EditScene: JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
+    DeleteScene: JD.map((scene_id): GameLog => ({ t: "DeleteScene", scene_id }), JD.string()),
+    CreateMap: JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),
-    "EditMap": JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
-    "DeleteMap": JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
-    "SetCreaturePos": JD.map(
+    EditMap: JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
+    DeleteMap: JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
+    SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
       JD.tuple(JD.string(), JD.string(), decodePoint3)),
-    "PathCreature": JD.map(
+    PathCreature: JD.map(
       ([scene_id, creature_id, path]): GameLog => ({ t: "PathCreature", scene_id, creature_id, path }),
       JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
-    "CreateCreature": JD.map(
+    CreateCreature: JD.map(
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
       JD.tuple(decodeFolderPath, decodeCreature)),
-    "EditCreature": JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
-    "DeleteCreature": JD.map(
+    EditCreature: JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
+    DeleteCreature: JD.map(
       (creature_id): GameLog => ({ t: "DeleteCreature", creature_id }),
       JD.string()),
-    "AddCreatureToCombat": JD.map(
+    AddCreatureToCombat: JD.map(
       ([creature_id, init]): GameLog => ({ t: "AddCreatureToCombat", creature_id, init }),
       JD.tuple(JD.string(), JD.number())),
-    "RemoveCreatureFromCombat": JD.map(
+    RemoveCreatureFromCombat: JD.map(
       (creature_id): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id }),
       JD.string()),
-    "CombatLog": JD.map((log): GameLog => ({ t: "CombatLog", log }), decodeCombatLog),
-    "CreatureLog": JD.map(([creature_id, log]): GameLog => ({ t: "CreatureLog", creature_id, log }),
+    CombatLog: JD.map((log): GameLog => ({ t: "CombatLog", log }), decodeCombatLog),
+    CreatureLog: JD.map(([creature_id, log]): GameLog => ({ t: "CreatureLog", creature_id, log }),
       JD.tuple(JD.string(), decodeCreatureLog)),
-    "AttributeCheckResult": JD.map(
+    AttributeCheckResult: JD.map(
       ([cid, check, actual, success]): GameLog =>
         ({ t: "AttributeCheckResult", cid, check, actual, success }),
       JD.tuple(JD.string(), decodeAttributeCheck, JD.number(), JD.boolean())
     ),
-    "Rollback": JD.map(
+    Rollback: JD.map(
       ([snapshot_index, log_index]): GameLog => ({ t: "Rollback", snapshot_index, log_index }),
       JD.tuple(JD.number(), JD.number())),
   });
@@ -642,38 +654,38 @@ const decodeFolder: Decoder<Folder> = JD.object(
 
 const decodeVolume: Decoder<Volume> = sum("Volume", {},
   {
-    "Sphere": JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
+    Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
     Line: JD.map((length): Volume => ({ t: "Line", length }), JD.number()),
-    "VerticalCylinder": JD.object(
+    VerticalCylinder: JD.object(
       ["radius", JD.number()],
       ["height", JD.number()],
       (radius, height): Volume => ({ t: "VerticalCylinder", radius, height })
     ),
-    "AABB": JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
+    AABB: JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
   });
 
 const decodeTargetSpec: Decoder<TargetSpec> = sum<TargetSpec>("TargetSpec",
   {
-    "Actor": { t: "Actor" },
-    "Melee": { t: "Melee" }
+    Actor: { t: "Actor" },
+    Melee: { t: "Melee" },
   },
   // | { t: "Volume"; volume: Volume; range: Distance }
 
   {
-    "Range": JD.map((distance): TargetSpec => ({ t: "Range", distance }), JD.number()),
-    "SomeCreaturesInVolumeInRange": JD.object(
+    Range: JD.map((distance): TargetSpec => ({ t: "Range", distance }), JD.number()),
+    SomeCreaturesInVolumeInRange: JD.object(
       ["volume", decodeVolume], ["maximum", JD.number()], ["range", JD.number()],
       (volume, maximum, range): TargetSpec =>
         ({ t: "SomeCreaturesInVolumeInRange", volume, maximum, range })),
-    "AllCreaturesInVolumeInRange": JD.object(
+    AllCreaturesInVolumeInRange: JD.object(
       ["volume", decodeVolume],
       ["range", JD.number()],
       (volume, range): TargetSpec => ({ t: "AllCreaturesInVolumeInRange", volume, range })),
-    "Volume": JD.object(
+    Volume: JD.object(
       ["volume", decodeVolume],
       ["range", JD.number()],
       (volume, range): TargetSpec => ({ t: "Volume", volume, range })
-    )
+    ),
   });
 
 const decodeAbility: Decoder<Ability> = JD.object(
@@ -705,11 +717,11 @@ export const decodeApp: Decoder<App> = JD.object(
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
-    case "RegisterPlayer": return { "RegisterPlayer": cmd.player_id }
-    case "EditCreature": return { "EditCreature": encodeCreature(cmd.creature) };
-    case "CreateNote": return { "CreateNote": [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
-    case "EditNote": return { "EditNote": [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
-    case "CombatAct": return { "CombatAct": [cmd.ability_id, encodeDecidedTarget(cmd.target)] }
+    case "RegisterPlayer": return { RegisterPlayer: cmd.player_id }
+    case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
+    case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
+    case "EditNote": return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] }
     case "Done": return "Done";
   }
 }
@@ -729,37 +741,42 @@ function encodeNote(note: Note): object {
 function encodeConditionDuration(cd: ConditionDuration): string | object {
   switch (cd.t) {
     case "Interminate": return "Interminate";
-    case "Duration": return { "Duration": cd.duration };
+    case "Duration": return { Duration: cd.duration };
   }
 }
 
 function encodeDice(d: Dice): object {
   switch (d.t) {
-    case "Flat": return { "Flat": d.val };
-    case "Expr": return { "Expr": { "num": d.num, "size": d.size } };
-    case "Plus": return { "Plus": [encodeDice(d.left), encodeDice(d.right)] };
-    case "BestOf": return { "BestOf": [d.num, encodeDice(d.dice)] };
+    case "Flat": return { Flat: d.val };
+    case "Expr": return { Expr: { num: d.num, size: d.size } };
+    case "Plus": return { Plus: [encodeDice(d.left), encodeDice(d.right)] };
+    case "BestOf": return { BestOf: [d.num, encodeDice(d.dice)] };
   }
 }
 
 function encodeEffect(eff: Effect): object {
   switch (eff.t) {
-    case "ApplyCondition": return { "ApplyCondition": [encodeConditionDuration(eff.duration), encodeCondition(eff.condition)] };
-    case "Heal": return { "Heal": encodeDice(eff.dice) };
-    case "Damage": return { "Damage": encodeDice(eff.dice) };
-    case "MultiEffect": return { "MultiEffect": eff.effects.map(encodeEffect) };
-    case "GenerateEnergy": return { "GenerateEnergy": eff.energy };
+    case "ApplyCondition":
+      return {
+        ApplyCondition: [
+          encodeConditionDuration(eff.duration),
+          encodeCondition(eff.condition)],
+      };
+    case "Heal": return { Heal: encodeDice(eff.dice) };
+    case "Damage": return { Damage: encodeDice(eff.dice) };
+    case "MultiEffect": return { MultiEffect: eff.effects.map(encodeEffect) };
+    case "GenerateEnergy": return { GenerateEnergy: eff.energy };
   }
 }
 
 function encodeCondition(c: Condition): string | object {
   switch (c.t) {
-    case "RecurringEffect": return { "RecurringEffect": encodeEffect(c.effect) };
+    case "RecurringEffect": return { RecurringEffect: encodeEffect(c.effect) };
     case "Dead": return "Dead";
     case "Incapacitated": return "Incapacitated";
-    case "AddDamageBuff": return { "AddDamageBuff": c.hp };
+    case "AddDamageBuff": return { AddDamageBuff: c.hp };
     case "DoubleMaxMovement": return "DoubleMaxMovement";
-    case "ActivateAbility": return { "ActivateAbility": c.ability_id };
+    case "ActivateAbility": return { ActivateAbility: c.ability_id };
   }
 }
 
@@ -777,9 +794,9 @@ function encodeAbilityStatus(as: AbilityStatus): object {
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
   switch (dt.t) {
     case "Actor": return "Actor";
-    case "Creature": return { "Creature": dt.creature_id };
-    case "Creatures": return { "Creatures": dt.creature_ids };
-    case "Point": return { "Point": encodePoint3(dt.point) };
+    case "Creature": return { Creature: dt.creature_id };
+    case "Creatures": return { Creatures: dt.creature_ids };
+    case "Point": return { Point: encodePoint3(dt.point) };
   }
 }
 
@@ -795,7 +812,7 @@ export function encodeCreature(c: Creature): object {
     max_energy: c.max_energy,
     cur_energy: c.cur_energy,
     abilities: LD.mapValues(c.abilities, encodeAbilityStatus),
-    "class": c.class_,
+    class: c.class_,
     max_health: c.max_health,
     cur_health: c.cur_health,
     conditions: LD.mapValues(c.conditions, encodeAppliedCondition),
@@ -832,11 +849,12 @@ export function sum<T>(
     }
   }
 
-  let variants = Object.keys(decoders);
-  let _decoders: Array<Decoder<T>> = variants.map((variant) => JD.at([variant], decoders[variant]));
+  const variants = Object.keys(decoders);
+  const mapped_decoders: Array<Decoder<T>> =
+    variants.map((variant) => JD.at([variant], decoders[variant]));
 
   return JD.oneOf(
     JD.map(nullary, JD.string()),
-    JD.oneOf.apply(null, _decoders),
+    JD.oneOf.apply(null, mapped_decoders),
   );
 }
