@@ -26,7 +26,8 @@ export class PTUI {
     return this.elm_app.ports.selectAbility.send([scene_id, cid, abid]);
   }
 
-  requestCombatAbility(cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
+  requestCombatAbility(
+    cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
     switch (ability.target.t) {
       case "Actor": return this.sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
       default: this.selectAbility(scene_id, cid, ability_id);
@@ -91,7 +92,8 @@ export function addToInventory(inventory: Inventory, item_id: T.ItemID, count: n
   return LD.assign({}, inventory, x);
 }
 
-export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
+export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number):
+  Inventory {
   const new_count = LD.get(inventory, item_id, 0) - count;
   if (new_count <= 0) {
     // I'm not sure why I need this `as`, the typedef for `omit` may be insufficient

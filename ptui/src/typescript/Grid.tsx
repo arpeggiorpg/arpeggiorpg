@@ -34,7 +34,10 @@ interface MapCreature {
 }
 
 interface GridSvgProps { map: T.Map; creatures: Array<MapCreature>; }
-class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.Instance | undefined }> {
+class GridSvg extends React.Component<
+  GridSvgProps,
+  { spz_element: SvgPanZoom.Instance | undefined }> {
+
   constructor(props: GridSvgProps) {
     super(props);
     this.state = { spz_element: undefined };
@@ -93,25 +96,22 @@ function text_tile(text: string, pos: T.Point3) {
   return <text fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>{text}</text>;
 }
 
-function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number, y: number },
-): JSX.Element {
+function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number, y: number })
+  : JSX.Element {
   const key = `${keyPrefix}-${pos[0]}-${pos[1]}`;
   const props = tile_props(color, pos, size);
   return <rect key={key} {...props} />;
 }
 
-function tile_props(color: string, [ptx, pty, _]: T.Point3, size?: { x: number, y: number },
-): {
-    width: number, height: number, rx: number, ry: number, x: number, y: number, stroke: string,
-    strokeWidth: number, fill: string,
-  } {
+function tile_props(color: string, pt: T.Point3, size?: { x: number, y: number })
+  : React.SVGProps<SVGElement> {
   if (!size) {
     size = { x: 1, y: 1 };
   }
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
-    x: ptx * 100, y: (pty * 100) - 50,
+    x: pt[0] * 100, y: (pt[1] * 100) - 50,
     stroke: "black", strokeWidth: 1,
     fill: color,
   };
