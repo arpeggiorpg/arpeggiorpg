@@ -14,14 +14,23 @@ export function Grid({ ptui, scene_id }: { ptui: M.PTUI; scene_id: T.SceneID; })
   let def_scene = scene;
   let map = M.get(ptui.app.current_game.maps, scene.map);
   if (!map) { return <div>Couldn't find map</div>; }
-  let creatures = ptui.getCreatures(LD.keys(scene.creatures)).map(
-    (creature) => ({ creature, pos: def_scene.creatures[creature.id][0] }));
+  let creatures = M.filterMap(
+    ptui.getCreatures(LD.keys(scene.creatures)),
+    (creature) => {
+      let pos = def_scene.creatures[creature.id][0]; // map over keys -> [] is okay
+      let class_ = M.get(ptui.app.current_game.classes, creature.class_);
+      if (class_) {
+        return { creature, pos, class_ };
+      }
+    }
+  );
   return <GridSvg map={map} creatures={creatures} />;
 }
 
 interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
+  class_: T.Class;
 }
 
 
@@ -65,18 +74,39 @@ class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.In
 }
 
 function creature_tile(creature: MapCreature) {
+  if (creature.creature.portrait_url !== "") {
+    let props = tile_props("white", creature.pos, creature.creature.size);
+    return <image xlinkHref={creature.creature.portrait_url} {...props} />;
+  }
   return <g key={creature.creature.name}>
-    {tile("blue", "creature-tile", creature.pos)}
-    {textTile(creature.creature.name.slice(0, 4), creature.pos)}
+    {tile(creature.class_.color, "creature-tile", creature.pos, creature.creature.size)}
+    {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
   </g>;
 }
 
-function textTile(text: string, pos: T.Point3) {
+function text_tile(text: string, pos: T.Point3) {
   return <text fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>{text}</text>;
 }
 
-function tile(color: string, keyPrefix: string, [ptx, pty, _]: T.Point3): JSX.Element {
-  let key = `${keyPrefix}-${ptx}-${pty}`;
-  return <rect key={key} width={100} height={100} x={ptx * 100} y={pty * 100 - 50}
-    fill={color} stroke="black" strokeWidth="1" />
+function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number, y: number }
+): JSX.Element {
+  let key = `${keyPrefix}-${pos[0]}-${pos[1]}`;
+  let props = tile_props(color, pos, size);
+  return <rect key={key} {...props} />
+}
+
+function tile_props(color: string, [ptx, pty, _]: T.Point3, size?: { x: number, y: number }
+): {
+  width: number, height: number, rx: number, ry: number, x: number, y: number, stroke: string,
+    strokeWidth: number, fill: string
+  } {
+  if (!size) {
+    size = { x: 1, y: 1 };
+  }
+  return {
+    width: 100 * size.x, height: 100 * size.y,
+    rx: 5, ry: 5,
+    x: ptx * 100, y: (pty * 100) - 50,
+    stroke: "black", strokeWidth: 1, fill: color
+  };
 }
