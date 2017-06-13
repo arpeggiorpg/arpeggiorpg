@@ -11,12 +11,21 @@ import * as svgPanZoom from 'svg-pan-zoom';
 export function Grid({ ptui, scene_id }: { ptui: M.PTUI; scene_id: T.SceneID; }): JSX.Element {
   let scene = M.get(ptui.app.current_game.scenes, scene_id);
   if (!scene) { return <div>Couldn't find scene</div>; }
+  let def_scene = scene;
   let map = M.get(ptui.app.current_game.maps, scene.map);
   if (!map) { return <div>Couldn't find map</div>; }
-  return <GridSvg map={map} />;
+  let creatures = ptui.getCreatures(LD.keys(scene.creatures)).map(
+    (creature) => ({ creature, pos: def_scene.creatures[creature.id][0] }));
+  return <GridSvg map={map} creatures={creatures} />;
 }
 
-interface GridSvgProps { map: T.Map; }
+interface MapCreature {
+  creature: T.Creature;
+  pos: T.Point3;
+}
+
+
+interface GridSvgProps { map: T.Map; creatures: Array<MapCreature> }
 class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.Instance | undefined }> {
   constructor(props: GridSvgProps) {
     super(props);
@@ -45,16 +54,29 @@ class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.In
     console.log("[EXPENSIVE:Grid.render]");
     let open_terrain = this.props.map.terrain;
     let terrain_els = open_terrain.map((pt) => tile("white", "base-terrain", pt));
+    let creature_els = this.props.creatures.map((c) => creature_tile(c));
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
       {terrain_els}
+      {creature_els}
     </svg>;
   }
 }
 
+function creature_tile(creature: MapCreature) {
+  return <g key={creature.creature.name}>
+    {tile("blue", "creature-tile", creature.pos)}
+    {textTile(creature.creature.name.slice(0, 4), creature.pos)}
+  </g>;
+}
+
+function textTile(text: string, pos: T.Point3) {
+  return <text fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>{text}</text>;
+}
+
 function tile(color: string, keyPrefix: string, [ptx, pty, _]: T.Point3): JSX.Element {
   let key = `${keyPrefix}-${ptx}-${pty}`;
-  return <rect key={key} width={100} height={100} x={ptx * 100} y={pty * 100}
+  return <rect key={key} width={100} height={100} x={ptx * 100} y={pty * 100 - 50}
     fill={color} stroke="black" strokeWidth="1" />
 }
