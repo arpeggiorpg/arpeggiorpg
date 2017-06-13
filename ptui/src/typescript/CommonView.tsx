@@ -64,7 +64,7 @@ export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.E
     return <img src={props.creature.portrait_url}
       style={squareStyle} />
   } else {
-    let class_ = props.app.current_game.classes[props.creature.class_];
+    let class_ = M.get(props.app.current_game.classes, props.creature.class_);
     let color = class_ ? class_.color : "red";
     return <div style={{ backgroundColor: color, ...squareStyle }}>{props.creature.name}</div>
   }
@@ -88,7 +88,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
     return <div>
       {items.map((item) =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
-          {item.name} ({inv[item.id]})
+          {item.name} ({M.get(inv, item.id)})
         <button onClick={(e) => this.setState({ giving: item.id })}>Give</button>
         </div>
       )}
@@ -106,7 +106,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
   render(): JSX.Element {
     let ptui = this.props.ptui;
     if (!this.props.current_scene) { return <div>You can only transfer items in a scene.</div> }
-    let scene = ptui.app.current_game.scenes[this.props.current_scene];
+    let scene = M.get(ptui.app.current_game.scenes, this.props.current_scene);
     if (!scene) { return <div>Couldn't find your scene</div> }
     let other_cids_in_scene = LD.keys(scene.creatures);
     LD.pull(other_cids_in_scene, this.props.giver);
@@ -117,7 +117,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
     let _giver = ptui.getCreature(this.props.giver);
     if (!_giver) { return <div>Giver not found!</div> }
     let giver = _giver;
-    let giver_count = giver.inventory[this.props.item_id];
+    let giver_count = M.get(giver.inventory, this.props.item_id);
     if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div> }
     return <div>
       Giving
@@ -145,7 +145,7 @@ export class GiveItem extends React.Component<GiveItemProps, { receiver: T.Creat
   give(giver: T.Creature) {
     let count = this.state.count as number; // Protected by button `disabled`
     let receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
-    let receiver = this.props.ptui.app.current_game.creatures[receiver_id];
+    let receiver = M.get(this.props.ptui.app.current_game.creatures, receiver_id);
     if (!receiver) {
       console.log("[give] Receiver has disappeared", receiver_id);
       this.props.onClose();
@@ -199,11 +199,11 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
     let children_names = React.Children.map(
       this.props.children,
       (c: any): string | undefined => { if (c.type === Tab) { return c.props.name; } });
-    let selectedView = this.props.children[this.state.selected];
+    let selectedView = M.idx(this.props.children, this.state.selected);
     return <div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div style={{ display: "flex" }}>
         {children_names.map((name, index) =>
-          <button key={name} style={{height: 60, width: 150}}
+          <button key={name} style={{ display: "block", width: "auto", height: "auto" }}
             onClick={() => this.setState({ selected: index })}>
             {name}</button>)
         }
@@ -245,7 +245,7 @@ export function Combat(props: { ptui: PTUI }): JSX.Element {
 export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat }): JSX.Element {
   let abilities = M.filterMap(LD.values(props.creature.abilities),
     (abstatus) => {
-      let ability = props.ptui.app.current_game.abilities[abstatus.ability_id];
+      let ability = M.get(props.ptui.app.current_game.abilities, abstatus.ability_id);
       if (ability) {
         return { ability_id: abstatus.ability_id, ability: ability };
       }

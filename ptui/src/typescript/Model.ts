@@ -37,7 +37,7 @@ export class PTUI {
   // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
   // then it would be a good way forward, but I'm not sure it will be necessary.
   getCreature(cid: T.CreatureID): T.Creature | undefined {
-    return this.app.current_game.creatures[cid];
+    return get(this.app.current_game.creatures, cid);
   }
 
   getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
@@ -45,7 +45,7 @@ export class PTUI {
   }
 
   getItem(iid: T.ItemID): T.Item | undefined {
-    return this.app.current_game.items[iid];
+    return get(this.app.current_game.items, iid);
   }
 
   getItems(iids: Array<T.ItemID>): Array<T.Item> {
@@ -53,18 +53,18 @@ export class PTUI {
   }
 
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
-    let cur = this.app.current_game.campaign;
+    let cur: T.Folder | undefined = this.app.current_game.campaign;
     for (let seg of path) {
-      cur = cur.children[seg];
+      cur = get(cur.children, seg);
       if (!cur) { return undefined; }
     }
     return cur.data;
   }
 
   getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
-    let cid = combat.creatures.data[combat.creatures.cursor][0];
-    if (!cid) { throw new Error(`No combat creature at ${combat.creatures.cursor}`) }
-    return cid;
+    let entry = idx(combat.creatures.data, combat.creatures.cursor);
+    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`) }
+    return entry[0];
   }
 
   getCurrentCombatCreature(combat: T.Combat): T.Creature {
@@ -102,4 +102,12 @@ export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, cou
 
 export function folderPathToString(path: T.FolderPath): string {
   return T.encodeFolderPath(path)
+}
+
+export function get<T>(obj: { [index: string]: T }, key: string): T | undefined {
+  return obj[key];
+}
+
+export function idx<T>(arr: Array<T>, index: number): T | undefined {
+  return arr[index];
 }
