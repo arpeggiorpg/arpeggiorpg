@@ -8,13 +8,17 @@ import * as LD from 'lodash';
 
 import * as svgPanZoom from 'svg-pan-zoom';
 
-interface GridProps {
-  ptui: M.PTUI;
-  scene_id: T.SceneID;
+export function Grid({ ptui, scene_id }: { ptui: M.PTUI; scene_id: T.SceneID; }): JSX.Element {
+  let scene = M.get(ptui.app.current_game.scenes, scene_id);
+  if (!scene) { return <div>Couldn't find scene</div>; }
+  let map = M.get(ptui.app.current_game.maps, scene.map);
+  if (!map) { return <div>Couldn't find map</div>; }
+  return <GridSvg map={map} />;
 }
 
-export class Grid extends React.Component<GridProps, { spz_element: object | undefined }> {
-  constructor(props: GridProps) {
+interface GridSvgProps { map: T.Map; }
+class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.Instance | undefined }> {
+  constructor(props: GridSvgProps) {
     super(props);
     this.state = { spz_element: undefined };
   }
@@ -22,22 +26,24 @@ export class Grid extends React.Component<GridProps, { spz_element: object | und
   componentDidMount() {
     let pz = svgPanZoom("#pt-grid", {
       dblClickZoomEnabled: false,
-      // , resize: true
       center: true,
       fit: true,
+      // TODO: Hammer.js integration
       // , customEventsHandler: eventsHandler
       zoomScaleSensitivity: 0.5,
     });
     this.setState({ spz_element: pz });
   }
 
-  render(): JSX.Element {
-    let scene = M.get(this.props.ptui.app.current_game.scenes, this.props.scene_id);
-    if (!scene) { return <div>Couldn't find scene</div>; }
-    let map = M.get(this.props.ptui.app.current_game.maps, scene.map);
-    if (!map) { return <div>Couldn't find map</div>; }
+  componentWillUnmount() {
+    if (this.state.spz_element) {
+      this.state.spz_element.destroy()
+    }
+  }
 
-    let open_terrain = map.terrain;
+  render(): JSX.Element {
+    console.log("[EXPENSIVE:Grid.render]");
+    let open_terrain = this.props.map.terrain;
     let terrain_els = open_terrain.map((pt) => tile("white", "base-terrain", pt));
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
