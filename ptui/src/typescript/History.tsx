@@ -1,32 +1,34 @@
+import Flexbox from 'flexbox-react';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import Flexbox from 'flexbox-react';
 
 import * as M from './Model';
 import * as T from './PTTypes';
 
 export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
-  let onRollback = (si: number, li: number) => app.ports.historyRollback.send([si, li]);
+  const onRollback = (si: number, li: number) => app.ports.historyRollback.send([si, li]);
   ReactDOM.render(
     <History data={data} onRollback={onRollback} />,
     document.getElementById(id)
   );
 }
 
-class History extends React.Component<{ data: any, onRollback: (snapshot_index: number, log_index: number) => void }, any> {
+class History extends React.Component<
+  { data: any, onRollback: (snapshot_index: number, log_index: number) => void },
+  any> {
   render(): JSX.Element {
-    let app = T.decodeApp.decodeAny(this.props.data);
+    const app = T.decodeApp.decodeAny(this.props.data);
     console.log("rendering history. successfully decoded app.", app.snapshots);
     return <Flexbox flexDirection="column">{
       app.snapshots.map(
         ({ snapshot, logs }, snapshot_index) =>
           logs.map((log: T.GameLog, log_index) =>
             <Flexbox key={snapshot_index.toString() + "-" + log_index.toString()}
-                     justifyContent="space-between">
+              justifyContent="space-between">
               {this.gameLog(log)}
               <button className="material-icons"
-                      onClick={() => this.props.onRollback(snapshot_index, log_index)}
-                      >history</button>
+                onClick={() => this.props.onRollback(snapshot_index, log_index)}
+              >history</button>
             </Flexbox>)
       )
     }</Flexbox>;
@@ -48,7 +50,8 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
       case "DeleteFolderItem":
         return <Flexbox>Deleted folder item in {M.folderPathToString(log.path)}</Flexbox>
       case "MoveFolderItem":
-        return <Flexbox>Moved folder item from {M.folderPathToString(log.path)} to {M.folderPathToString(log.newPath)}</Flexbox>
+        return <Flexbox>Moved folder item from {M.folderPathToString(log.path)}
+          to {M.folderPathToString(log.newPath)}</Flexbox>
       case "CreateItem":
         return <Flexbox>Created item {log.item.name} in {M.folderPathToString(log.path)}</Flexbox>
       case "EditItem":
@@ -74,10 +77,9 @@ class History extends React.Component<{ data: any, onRollback: (snapshot_index: 
       case "SetCreaturePos":
         return <Flexbox>Set a creature position to {log.pos.toString()}</Flexbox>
       case "PathCreature":
-        let last;
-        if (log.path.length > 0) {
-          last = log.path[log.path.length - 1].toString();
-        } else { last = "Nowhere" }
+        const last = log.path.length > 0
+          ? log.path[log.path.length - 1].toString()
+          : "Nowhere";
         return <Flexbox>Creature followed a path to {last}</Flexbox>
       case "CreateCreature":
         return <Flexbox>Created a creature {log.creature.name}</Flexbox>

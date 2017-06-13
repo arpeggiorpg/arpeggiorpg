@@ -16,7 +16,7 @@ export function Grid({ ptui, scene_id }: { ptui: M.PTUI; scene_id: T.SceneID; })
   if (!map) { return <div>Couldn't find map</div>; }
   const creatures = M.filterMap(
     ptui.getCreatures(LD.keys(scene.creatures)),
-    (creature) => {
+    creature => {
       const pos = defScene.creatures[creature.id][0]; // map over keys -> [] is okay
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
@@ -33,7 +33,7 @@ interface MapCreature {
   class_: T.Class;
 }
 
-interface GridSvgProps { map: T.Map; creatures: Array<MapCreature> }
+interface GridSvgProps { map: T.Map; creatures: Array<MapCreature>; }
 class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.Instance | undefined }> {
   constructor(props: GridSvgProps) {
     super(props);
@@ -41,7 +41,7 @@ class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.In
   }
 
   componentDidMount() {
-    let pz = svgPanZoom("#pt-grid", {
+    const pz = svgPanZoom("#pt-grid", {
       dblClickZoomEnabled: false,
       center: true,
       fit: true,
@@ -54,21 +54,21 @@ class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.In
 
   componentWillUnmount() {
     if (this.state.spz_element) {
-      this.state.spz_element.destroy()
+      this.state.spz_element.destroy();
     }
   }
 
   render(): JSX.Element {
     console.log("[EXPENSIVE:Grid.render]");
     const open_terrain = this.props.map.terrain;
-    let terrain_els = open_terrain.map((pt) => tile("white", "base-terrain", pt));
-    let creature_els = this.props.creatures.map((c) => creature_tile(c));
+    const terrain_els = open_terrain.map(pt => tile("white", "base-terrain", pt));
+    const creature_els = this.props.creatures.map(c => creature_tile(c));
     // let special_els = this.props.map.specials.map()
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
       <g>
-        {/* this <g> needs to be here for svg-pan-zoom. Otherwise svg-pan-zoom will reparent all 
+        {/* this <g> needs to be here for svg-pan-zoom. Otherwise svg-pan-zoom will reparent all
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
           virtualdom rendering */}
         {terrain_els}
@@ -97,7 +97,7 @@ function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: numbe
 ): JSX.Element {
   const key = `${keyPrefix}-${pos[0]}-${pos[1]}`;
   const props = tile_props(color, pos, size);
-  return <rect key={key} {...props} />
+  return <rect key={key} {...props} />;
 }
 
 function tile_props(color: string, [ptx, pty, _]: T.Point3, size?: { x: number, y: number },

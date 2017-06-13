@@ -1,15 +1,15 @@
+import Flexbox from 'flexbox-react';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import Flexbox from 'flexbox-react';
 
 import * as T from './PTTypes';
 
 export function renderPlayers(app: any, [id, currentScene, data]: [string, string, any]) {
-  let onSetScene = (pid: T.PlayerID, scene: T.SceneID | null) =>
+  const onSetScene = (pid: T.PlayerID, scene: T.SceneID | null) =>
     app.ports.playersSetScene.send([pid, scene]);
-  let onGrantCreatures = (pid: T.PlayerID) =>
+  const onGrantCreatures = (pid: T.PlayerID) =>
     app.ports.playersGrantCreatures.send(pid);
-  let element = document.getElementById(id);
+  const element = document.getElementById(id);
   console.log("[renderPlayers] loading Players component", id, element, currentScene, data);
   ReactDOM.render(
     <Players data={data} currentScene={currentScene}
@@ -35,7 +35,7 @@ class Players extends React.Component<PlayersProps, undefined> {
   playerCreatures(app: T.App, player: T.Player): JSX.Element {
     return <Flexbox flexDirection="column">
       <ul>
-        {player.creatures.map((cid) => {
+        {player.creatures.map(cid => {
           return <li>{app.current_game.creatures[cid].name}</li>;
         })}
       </ul>
@@ -43,11 +43,11 @@ class Players extends React.Component<PlayersProps, undefined> {
   }
 
   render(): JSX.Element {
-    let app = T.decodeApp.decodeAny(this.props.data);
+    const app = T.decodeApp.decodeAny(this.props.data);
     return <Flexbox flexDirection="column">{
-      Object.keys(app.players).map((pid) => {
-        let player = app.players[pid];
-        let sceneButtons = [];
+      Object.keys(app.players).map(pid => {
+        const player = app.players[pid];
+        const sceneButtons = [];
         if (player.scene) {
           sceneButtons.push(this.setSceneButton(pid, "Remove from Scene", null));
         }

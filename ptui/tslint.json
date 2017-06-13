@@ -6,12 +6,14 @@
 	],
 	"rules": {
 		"no-constant-condition": true, // tslint-eslint-rules says this
+		"max-line-length": [true, 120],
 		"no-unused-expression": true,
 		"no-duplicate-variable": true,
 		"no-unused-variable": true,
 		"curly": true,
 		"class-name": true,
 		"semicolon": [
+			true,
 			"always"
 		],
 		"triple-equals": true,
@@ -32,10 +34,28 @@
 		],
 		"no-object-literal-type-assertion": false,
 		"object-literal-sort-keys": false,
+		"arrow-parens": [
+			true,
+			"ban-single-arg-parens"
+		],
+		"member-access": false,
+		"no-console": false,
+		"jsx-wrap-multiline": false,
+		"jsx-no-multiline-js": false,
+		"jsx-alignment": false,
+		"jsx-no-lambda": false,
+		"max-classes-per-file": false,
+		"quotemark": [
+			"avoid-escape"
+		],
+		"space-before-function-paren": false,
+		"type-literal-delimiter": true,
 		"trailing-comma": [
 			true,
 			{
-				"multiline": {"objects": "always"},
+				"multiline": {
+					"objects": "always"
+				},
 				"singleline": "never"
 			}
 		]

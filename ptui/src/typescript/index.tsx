@@ -1,18 +1,17 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
+import * as PTDice from "./Dice";
 import * as Hello from "./Hello";
 import * as History from "./History";
-import * as TextInput from "./TextInput";
 import * as Players from "./Players";
 import * as PlayerView from "./PlayerView";
-
 import * as PTTypes from "./PTTypes";
-import * as PTDice from "./Dice";
+import * as TextInput from "./TextInput";
 
 function unloadComponent(id: string) {
   console.log("[unloadComponent]", id);
-  let el = document.getElementById(id);
+  const el = document.getElementById(id);
   if (el !== null) {
     ReactDOM.unmountComponentAtNode(el);
   }
@@ -21,40 +20,39 @@ function unloadComponent(id: string) {
 function PT_initializeComponents(app: any) {
   app.ports.renderHello.subscribe(afterView(Hello.renderHello));
   app.ports.renderTextInput.subscribe(afterView(
-    function (x: [string, string, object, boolean]) { TextInput.renderTextInput(app, x) }
+    (x: [string, string, object, boolean]) => TextInput.renderTextInput(app, x)
   ));
 
-  app.ports.renderHistory.subscribe(afterView(function(x: [string, any]) { History.renderHistory(app, x) }));
+  app.ports.renderHistory.subscribe(afterView((x: [string, any]) => History.renderHistory(app, x)));
 
-  app.ports.renderPlayers.subscribe(afterView(function(x: any) {Players.renderPlayers(app, x)}));
+  app.ports.renderPlayers.subscribe(afterView((x: any) => Players.renderPlayers(app, x)));
 
-  app.ports.renderPlayerUI.subscribe(afterView(function(x: any) {PlayerView.renderPlayerUI(app, x)}))
+  app.ports.renderPlayerUI.subscribe(afterView((x: any) => PlayerView.renderPlayerUI(app, x)))
 
   app.ports.unloadComponent.subscribe(unloadComponent);
-  app.ports.renderReactMain.subscribe(function([elemID, componentName, pt_app]: [string, string, any]) {PT_renderMain(app, componentName, elemID, pt_app)});
+  app.ports.renderReactMain.subscribe(([elemID, componentName, pt_app]: [string, string, any]) =>
+    PT_renderMain(app, componentName, elemID, pt_app));
 }
 
 function afterView(f: any) {
   /// A small wrapper that delays a function call until the next animation frame.
-  /// This is critical for Elm, since it emits messages to the native javascript code before 
+  /// This is critical for Elm, since it emits messages to the native javascript code before
   /// rendering is finished, but it guarantees (I think) that views are completely calculated
   /// and updated before the next browser animation frame.
   return function (this: any) {
-    let args = arguments;
-    let self = this;
-    window.requestAnimationFrame(function (_) {
-      f.apply(self, args);
-    });
+    const args = arguments;
+    const self = this;
+    window.requestAnimationFrame(_ => f.apply(self, args));
   }
 }
 
 
 function PT_renderMain(elm_app: any, component_name: string, id: string, pt_app: any) {
-  let el = document.getElementById(id);
+  const el = document.getElementById(id);
   let component;
   switch (component_name) {
     // case "GM": component = <GMMain />;
-    case "Player": component = <PlayerView.PlayerMain elm_app={elm_app} app={pt_app}/>; break;
+    case "Player": component = <PlayerView.PlayerMain elm_app={elm_app} app={pt_app} />; break;
     default: throw new Error(`Unknown component ${component}`);
   };
   ReactDOM.render(component, el);

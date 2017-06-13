@@ -17,10 +17,10 @@ export type ConditionID = number;
 export type FolderPath = Array<string>;
 
 export interface App {
-  snapshots: AppSnapshots,
-  players: AppPlayers,
-  current_game: Game,
-};
+  snapshots: AppSnapshots;
+  players: AppPlayers;
+  current_game: Game;
+}
 
 export interface Game {
   current_combat: Combat | undefined;
@@ -53,19 +53,19 @@ export type TargetSpec =
   | { t: "Actor" }
   | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
   | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
-  | { t: "Volume"; volume: Volume; range: Distance }
+  | { t: "Volume"; volume: Volume; range: Distance };
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID; }
   | { t: "Creatures"; creature_ids: Array<CreatureID>; }
   | { t: "Actor" }
-  | { t: "Point"; point: Point3 }
+  | { t: "Point"; point: Point3 };
 
 export type Volume =
   | { t: "Sphere"; radius: Distance }
   | { t: "Line"; length: Distance }
   | { t: "VerticalCylinder"; radius: Distance; height: Distance }
-  | { t: "AABB"; aabb: AABB }
+  | { t: "AABB"; aabb: AABB };
 
 export interface Folder {
   data: FolderNode;
@@ -86,7 +86,7 @@ export type GameCommand =
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
-  | { t: "Done" }
+  | { t: "Done" };
 
 // AttributeCheck(CreatureID, AttributeCheck),
 // CreateFolder(FolderPath),
@@ -141,8 +141,8 @@ export interface Player {
   creatures: Array<CreatureID>;
 }
 
-export type AppSnapshots = Array<{ snapshot: {}, logs: Array<GameLog> }>
-export interface AppPlayers { [index: string]: Player }
+export type AppSnapshots = Array<{ snapshot: {}, logs: Array<GameLog> }>;
+export interface AppPlayers { [index: string]: Player; }
 
 export type GameLog =
   | {
@@ -179,7 +179,7 @@ export type GameLog =
   | { t: "CombatLog"; log: CombatLog }
   | { t: "CreatureLog"; creature_id: CreatureID; log: CreatureLog }
   | { t: "StopCombat" }
-  | { t: "Rollback"; snapshot_index: number; log_index: number }
+  | { t: "Rollback"; snapshot_index: number; log_index: number };
 
 export type CombatLog =
   | { t: "ConsumeMovement"; distance: Distance }
@@ -187,7 +187,7 @@ export type CombatLog =
   | { t: "EndTurn", creature_id: CreatureID }
   | { t: "ForceNextTurn" }
   | { t: "ForcePrevTurn" }
-  | { t: "RerollInitiative", combatants: Array<[CreatureID, number]> }
+  | { t: "RerollInitiative", combatants: Array<[CreatureID, number]> };
 
 export type CreatureLog =
   | { t: "Damage"; hp: HP; rolls: Array<number> }
@@ -196,7 +196,7 @@ export type CreatureLog =
   | { t: "ReduceEnergy"; energy: Energy }
   | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO: Condition
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
-  | { t: "RemoveCondition"; condition_id: ConditionID }
+  | { t: "RemoveCondition"; condition_id: ConditionID };
 
 export interface Item {
   id: ItemID;
@@ -208,11 +208,11 @@ export type Effect =
   | { t: "Heal"; dice: Dice }
   | { t: "Damage"; dice: Dice }
   | { t: "MultiEffect"; effects: Array<Effect> }
-  | { t: "GenerateEnergy"; energy: Energy }
+  | { t: "GenerateEnergy"; energy: Energy };
 
 export type ConditionDuration =
   | { t: "Interminate" }
-  | { t: "Duration"; duration: number }
+  | { t: "Duration"; duration: number };
 
 export type Condition =
   | { t: "RecurringEffect"; effect: Effect }
@@ -220,12 +220,12 @@ export type Condition =
   | { t: "Incapacitated" }
   | { t: "AddDamageBuff", hp: HP }
   | { t: "DoubleMaxMovement" }
-  | { t: "ActivateAbility"; ability_id: AbilityID }
+  | { t: "ActivateAbility"; ability_id: AbilityID };
 
 export interface AppliedCondition {
   remaining: ConditionDuration;
   condition: Condition;
-};
+}
 
 export interface AbilityStatus {
   ability_id: AbilityID;
@@ -245,13 +245,13 @@ export interface Creature {
   conditions: { [index: string]: AppliedCondition }; // key: ConditionID
   note: string;
   portrait_url: string;
-  attributes: { [index: string]: SkillLevel } // key: AttrID
+  attributes: { [index: string]: SkillLevel }; // key: AttrID
   initiative: Dice;
   inventory: { [index: string]: number }; // key: ItemID
   size: AABB;
 }
 
-export interface AABB { x: number; y: number; z: number }
+export interface AABB { x: number; y: number; z: number; }
 
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
@@ -259,13 +259,13 @@ export type FolderItemID =
   | { t: "CreatureID"; id: CreatureID }
   | { t: "NoteID"; id: string }
   | { t: "SubfolderID"; id: string }
-  | { t: "ItemID"; id: ItemID }
+  | { t: "ItemID"; id: ItemID };
 
 export interface Map {
-  id: MapID,
-  name: string,
-  terrain: Array<Point3>,
-  specials: Array<[Point3, Color, string, Visibility]>,
+  id: MapID;
+  name: string;
+  terrain: Array<Point3>;
+  specials: Array<[Point3, Color, string, Visibility]>;
 }
 
 export interface AttributeCheck {
@@ -274,33 +274,33 @@ export interface AttributeCheck {
   target: SkillLevel;
 }
 
-export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural"
+export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
 const SKILL_LEVELS: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
 export interface Note {
-  name: string,
-  content: string,
+  name: string;
+  content: string;
 }
 
 export interface Scene {
-  id: SceneID,
-  name: string,
-  map: MapID,
-  creatures: { [index: string]: [Point3, Visibility] },
-  attribute_checks: { [index: string]: AttributeCheck },
+  id: SceneID;
+  name: string;
+  map: MapID;
+  creatures: { [index: string]: [Point3, Visibility] };
+  attribute_checks: { [index: string]: AttributeCheck };
 }
 
 export type Point3 = [number, number, number];
 
 export type Visibility =
   | { t: "GMOnly" }
-  | { t: "AllPlayers" }
+  | { t: "AllPlayers" };
 
 export type Dice =
   | { t: "Flat", val: number }
   | { t: "Expr", num: number, size: number }
   | { t: "Plus", left: Dice, right: Dice }
-  | { t: "BestOf", num: number, dice: Dice }
+  | { t: "BestOf", num: number, dice: Dice };
 
 // ** Decoders **
 
@@ -327,7 +327,7 @@ export const decodeConditionDuration: Decoder<ConditionDuration> =
       Duration: JD.map(
         (duration): ConditionDuration => ({ t: "Duration", duration }),
         JD.number()),
-    })
+    });
 
 export const decodeEffect: Decoder<Effect> = sum<Effect>("Effect", {},
   {
@@ -372,14 +372,14 @@ export const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
   ["ability_id", JD.string()],
   ["cooldown", JD.number()],
   (ability_id, cooldown) => ({ ability_id, cooldown })
-)
+);
 
 const decodeAABB: Decoder<AABB> = JD.object(
   ["x", JD.number()],
   ["y", JD.number()],
   ["z", JD.number()],
   (x, y, z) => ({ x, y, z })
-)
+);
 
 export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   ad: JD.EntryDecoder<A>, bd: JD.EntryDecoder<B>, cd: JD.EntryDecoder<C>, dd: JD.EntryDecoder<D>,
@@ -389,7 +389,7 @@ export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
   cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
     p: P) => T): Decoder<T> {
-  return JD.object.apply(undefined, arguments)
+  return JD.object.apply(undefined, arguments);
 }
 
 export const decodeCreature: Decoder<Creature> = object16(
@@ -438,7 +438,7 @@ export const decodeMap: Decoder<Map> = JD.object(
 
 export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
-    (reliable, attr, target) => ({ reliable, attr, target }))
+    (reliable, attr, target) => ({ reliable, attr, target }));
 
 export const decodeScene: Decoder<Scene> =
   JD.object(
@@ -451,7 +451,7 @@ export const decodeScene: Decoder<Scene> =
       ({ id, name, map, creatures, attribute_checks }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
-  return JD.map((id) => ({ t, id } as FolderItemID), JD.string());
+  return JD.map(id => ({ t, id } as FolderItemID), JD.string());
 }
 export const decodeFolderItemID: Decoder<FolderItemID> =
   sum<FolderItemID>("FolderItemID", {}, {
@@ -464,13 +464,13 @@ export const decodeFolderItemID: Decoder<FolderItemID> =
   });
 
 export const decodeFolderPath: Decoder<FolderPath> =
-  JD.map((strpath) => {
+  JD.map(strpath => {
     if (strpath === "") {
       return [];
     } else if (LD.startsWith(strpath, "/")) {
       return LD.slice(LD.split(strpath, "/"), 1);
     } else {
-      throw new Error(`Not a path: ${strpath}.`)
+      throw new Error(`Not a path: ${strpath}.`);
     }
   }, JD.string());
 
@@ -479,7 +479,7 @@ export const decodeItem: Decoder<Item> =
     ["id", JD.string()],
     ["name", JD.string()],
     (id, name) => ({ id, name })
-  )
+  );
 
 export const decodeNote: Decoder<Note> =
   JD.object(
@@ -507,7 +507,7 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
       JD.number()),
     RemoveCondition: JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
       JD.number()),
-  })
+  });
 
 export const decodeCombatLog: Decoder<CombatLog> =
   sum<CombatLog>("CombatLog",
@@ -603,8 +603,8 @@ export const decodeGameLog: Decoder<GameLog> =
 
 export const decodeAppSnapshots: Decoder<AppSnapshots> =
   JD.array(JD.map(
-    (ls) => ({ snapshot: {}, logs: ls }),
-    JD.at([1], JD.array(decodeGameLog))))
+    ls => ({ snapshot: {}, logs: ls }),
+    JD.at([1], JD.array(decodeGameLog))));
 
 export const decodePlayer: Decoder<Player> = JD.object(
   ["player_id", JD.string()],
@@ -617,14 +617,14 @@ export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
 
 const decodeClass: Decoder<Class> = JD.object(
   ["color", JD.string()],
-  (color) => ({ color })
+  color => ({ color })
 );
 
 function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number, data: Array<T> }> {
   return JD.object(
     ["cursor", JD.number()],
     ["data", JD.array(valueDecoder)],
-    (cursor, data) => ({ cursor, data }))
+    (cursor, data) => ({ cursor, data }));
 }
 
 export const decodeCombat: Decoder<Combat> = JD.object(
@@ -650,7 +650,7 @@ const decodeFolder: Decoder<Folder> = JD.object(
   ["data", decodeFolderNode],
   ["children", JD.dict(decodeFolderLazy)],
   (data, children) => ({ data, children })
-)
+);
 
 const decodeVolume: Decoder<Volume> = sum("Volume", {},
   {
@@ -696,7 +696,7 @@ const decodeAbility: Decoder<Ability> = JD.object(
 );
 
 export const decodeGame: Decoder<Game> = JD.object(
-  ["current_combat", JD.oneOf(decodeCombat, JD.map((_) => undefined, JD.equal(null)))],
+  ["current_combat", JD.oneOf(decodeCombat, JD.map(_ => undefined, JD.equal(null)))],
   ["creatures", JD.dict(decodeCreature)],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
@@ -717,18 +717,18 @@ export const decodeApp: Decoder<App> = JD.object(
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
-    case "RegisterPlayer": return { RegisterPlayer: cmd.player_id }
+    case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote": return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
-    case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] }
+    case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
     case "Done": return "Done";
   }
 }
 
 export function encodeFolderPath(path: FolderPath): string {
   if (path.length === 0) {
-    return ""
+    return "";
   } else {
     return "/" + LD.join(path, "/");
   }
@@ -784,7 +784,7 @@ function encodeAppliedCondition(ac: AppliedCondition): object {
   return {
     remaining: encodeConditionDuration(ac.remaining),
     condition: encodeCondition(ac.condition),
-  }
+  };
 }
 
 function encodeAbilityStatus(as: AbilityStatus): object {
@@ -822,13 +822,13 @@ export function encodeCreature(c: Creature): object {
     initiative: encodeDice(c.initiative),
     inventory: c.inventory,
     size: c.size,
-  }
+  };
 }
 
 // Utility Functions for Decoding
 
 export function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
-  return JD.oneOf(JD.map((_) => undefined, JD.equal(null)), d);
+  return JD.oneOf(JD.map(_ => undefined, JD.equal(null)), d);
 }
 
 export function sum<T>(
@@ -851,7 +851,7 @@ export function sum<T>(
 
   const variants = Object.keys(decoders);
   const mapped_decoders: Array<Decoder<T>> =
-    variants.map((variant) => JD.at([variant], decoders[variant]));
+    variants.map(variant => JD.at([variant], decoders[variant]));
 
   return JD.oneOf(
     JD.map(nullary, JD.string()),

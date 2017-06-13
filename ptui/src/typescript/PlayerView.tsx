@@ -1,20 +1,21 @@
+import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import * as T from './PTTypes';
-import * as CommonView from './CommonView';
+
+import * as CommonView from "./CommonView";
+import * as Grid from './Grid';
 import { PTUI } from './Model';
 import * as M from './Model';
-import * as LD from 'lodash';
-import * as Grid from './Grid';
+import * as T from './PTTypes';
 
 export function renderPlayerUI(
   elmApp: any,
   [id, player_id, current_scene, data]: [string, T.PlayerID, T.SceneID | undefined, any]) {
-  let element = document.getElementById(id);
+  const element = document.getElementById(id);
   console.log("[renderPlayerUI] Rendering Player component from Elm", id, element, player_id, current_scene);
-  let app = T.decodeApp.decodeAny(data);
-  let ptui = new M.PTUI(elmApp, app);
-  let player = M.get(ptui.app.players, player_id);
+  const app = T.decodeApp.decodeAny(data);
+  const ptui = new M.PTUI(elmApp, app);
+  const player = M.get(ptui.app.players, player_id);
   if (player) {
     ReactDOM.render(
       <PlayerSideBar ptui={ptui} player={player} current_scene={current_scene} />,
@@ -23,18 +24,18 @@ export function renderPlayerUI(
   }
 }
 
-interface PlayerMainProps { app?: object; elm_app: any };
+interface PlayerMainProps { app?: object; elm_app: any; }
 export class PlayerMain extends React.Component<PlayerMainProps,
   { player_id: T.PlayerID | undefined; typing_player_id: string; ptui: M.PTUI | undefined }> {
   constructor(props: PlayerMainProps) {
     super(props);
-    let ptui = props.app ? new M.PTUI(props.elm_app, T.decodeApp.decodeAny(props.app)) : undefined;
+    const ptui = props.app ? new M.PTUI(props.elm_app, T.decodeApp.decodeAny(props.app)) : undefined;
     this.state = { player_id: undefined, typing_player_id: "", ptui };
   }
   componentWillReceiveProps(nextProps: PlayerMainProps) {
     console.log("[PlayerMain:componentWillReceiveProps]");
     if (!LD.isEqual(this.props, nextProps)) {
-      let ptui = nextProps.app ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
+      const ptui = nextProps.app ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
         : undefined;
       this.setState({ ptui });
     }
@@ -42,10 +43,10 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 
   render(): JSX.Element {
     if (!this.state.ptui) {
-      return <div>Waiting for initial data from server.</div>
+      return <div>Waiting for initial data from server.</div>;
     }
     if (this.state.player_id) {
-      let player = M.get(this.state.ptui.app.players, this.state.player_id);
+      const player = M.get(this.state.ptui.app.players, this.state.player_id);
       if (player) {
         return <PlayerGameView player={player} ptui={this.state.ptui} />;
       } else {
@@ -58,13 +59,13 @@ export class PlayerMain extends React.Component<PlayerMainProps,
         {LD.keys(this.state.ptui.app.players).length > 0
           ? <div>
             <p>You can rejoin a session if you've already registered as a player.</p>
-            {LD.keys(this.state.ptui.app.players).map((pid) =>
+            {LD.keys(this.state.ptui.app.players).map(pid =>
               <button key={pid} onClick={() => this.setState({ player_id: pid })}>{pid}</button>)}
           </div>
           : <noscript />}
         <p>You can register a new player. Enter your name (not your character's name) here:</p>
         <input type="text" value={this.state.typing_player_id}
-          onChange={(e) => this.setState({ typing_player_id: e.currentTarget.value })} />
+          onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
         <button
           onClick={() => this.registerPlayer()}>
           Register</button>
@@ -73,7 +74,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
   registerPlayer() {
     if (!this.state.ptui) {
-      console.log("[PlayerMain] registerPlayer called without PTUI state.")
+      console.log("[PlayerMain] registerPlayer called without PTUI state.");
       return;
     }
     this.state.ptui.sendCommand({ t: "RegisterPlayer", player_id: this.state.typing_player_id });
@@ -82,9 +83,9 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 }
 
 function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
-  let grid = props.player.scene
+  const grid = props.player.scene
     ? <Grid.Grid ptui={props.ptui} scene_id={props.player.scene} />
-    : <div>No scene loaded</div>
+    : <div>No scene loaded</div>;
 
   return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%" }}>
     {grid}
@@ -111,7 +112,7 @@ function PlayerSideBar(props: { player: T.Player; current_scene: string | undefi
       </CommonView.TabbedView>
     </div>
     <div>
-      <PlayerActionBar player={props.player} ptui={props.ptui}></PlayerActionBar>
+      <PlayerActionBar player={props.player} ptui={props.ptui} />
     </div>
   </div>;
 }
@@ -123,10 +124,10 @@ function PlayerCreatures(
   const creatures = props.ptui.getCreatures(cids);
   console.log("[PlayerCreatures]", cids, creatures);
   if (creatures.length === 0) {
-    return <div>You have no creatures in your control yet.</div>
+    return <div>You have no creatures in your control yet.</div>;
   }
   return <div>
-    {creatures.map((creature) =>
+    {creatures.map(creature =>
       <div key={creature.id}>
         <CommonView.CreatureCard app={props.ptui.app} creature={creature} />
         <div style={{ marginLeft: "1em" }}>
@@ -137,7 +138,7 @@ function PlayerCreatures(
         </div>
       </div>
     )}
-  </div>
+  </div>;
 }
 
 interface PlayerNoteProps { player_id: T.PlayerID; ptui: M.PTUI; }
@@ -150,26 +151,26 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
   }
 
   render(): JSX.Element {
-    let player_folder = this.props.ptui.getFolderNode(this.path);
+    const player_folder = this.props.ptui.getFolderNode(this.path);
     if (!player_folder) {
       return <div>Please ask your GM to creature the folder "{M.folderPathToString(this.path)}"</div>;
     }
-    let note = M.get(player_folder.notes, "Scratch");
-    let origContent = note ? note.content : "Enter notes here!";
+    const note = M.get(player_folder.notes, "Scratch");
+    const origContent = note ? note.content : "Enter notes here!";
     return <div>
       <div><button
         disabled={this.state.content === undefined || this.state.content === origContent}
         onClick={() => this.submit(note)}>Save</button></div>
       <div><textarea style={{ width: "100%", height: "100%" }}
         defaultValue={origContent} value={this.state.content}
-        onChange={(e) => this.setState({ content: e.currentTarget.value })} /></div>
+        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
     </div>;
   }
 
   submit(origNote: T.Note | undefined) {
     if (!this.state.content) { return; }
-    let note = { name: "Scratch", content: this.state.content };
-    let cmd: T.GameCommand = origNote
+    const note = { name: "Scratch", content: this.state.content };
+    const cmd: T.GameCommand = origNote
       ? { t: "EditNote", path: this.path, name: "Scratch", note }
       : { t: "CreateNote", path: this.path, note };
     this.props.ptui.sendCommand(cmd);
@@ -178,12 +179,12 @@ class PlayerNote extends React.Component<PlayerNoteProps, { content: string | un
 
 function PlayerActionBar(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
   if (props.ptui.app.current_game.current_combat) {
-    let combat = props.ptui.app.current_game.current_combat;
-    let cid = props.ptui.getCurrentCombatCreatureID(combat);
+    const combat = props.ptui.app.current_game.current_combat;
+    const cid = props.ptui.getCurrentCombatCreatureID(combat);
     if (LD.includes(props.player.creatures, cid)) {
-      let creature = props.ptui.getCreature(cid);
+      const creature = props.ptui.getCreature(cid);
       if (creature) {
-        return <CommonView.ActionBar combat={combat} creature={creature} ptui={props.ptui}></CommonView.ActionBar>;
+        return <CommonView.ActionBar combat={combat} creature={creature} ptui={props.ptui} />;
       }
     }
   }

@@ -1,5 +1,6 @@
-import * as T from './PTTypes';
 import * as LD from 'lodash';
+
+import * as T from './PTTypes';
 
 export class PTUI {
   app: T.App;
@@ -12,7 +13,7 @@ export class PTUI {
 
   sendCommand(cmd: T.GameCommand) {
     console.log("[sendCommand:TS]", cmd);
-    let json = T.encodeGameCommand(cmd);
+    const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);
   }
@@ -27,7 +28,7 @@ export class PTUI {
 
   requestCombatAbility(cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
     switch (ability.target.t) {
-      case "Actor": return this.sendCommand({ t: "CombatAct", ability_id: ability_id, target: { t: "Actor" } });
+      case "Actor": return this.sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
       default: this.selectAbility(scene_id, cid, ability_id);
     }
   }
@@ -54,7 +55,7 @@ export class PTUI {
 
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
     let cur: T.Folder | undefined = this.app.current_game.campaign;
-    for (let seg of path) {
+    for (const seg of path) {
       cur = get(cur.children, seg);
       if (!cur) { return undefined; }
     }
@@ -62,15 +63,15 @@ export class PTUI {
   }
 
   getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
-    let entry = idx(combat.creatures.data, combat.creatures.cursor);
-    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`) }
+    const entry = idx(combat.creatures.data, combat.creatures.cursor);
+    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
     return entry[0];
   }
 
   getCurrentCombatCreature(combat: T.Combat): T.Creature {
-    let cid = this.getCurrentCombatCreatureID(combat);
-    let creature = this.getCreature(cid);
-    if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`) }
+    const cid = this.getCurrentCombatCreatureID(combat);
+    const creature = this.getCreature(cid);
+    if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`); }
     return creature;
   }
 }
@@ -78,30 +79,31 @@ export class PTUI {
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   // I can't "naturally" convince TypeScript that this filter makes an
   // Array<R> instead of Array<R|undefined>, hence the assertion
-  return coll.map(f).filter((el) => (el)) as Array<R>;
+  return coll.map(f).filter(el => (el)) as Array<R>;
 }
 
-type Inventory = { [index: string]: number };
+interface Inventory { [index: string]: number; }
 
 // TODO: these functions should be replaced by GameCommands so the backend handles this stuff
 export function addToInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
-  let new_count = LD.get(inventory, item_id, 0) + count;
-  let x: Inventory = {}; x[item_id] = new_count;
+  const new_count = LD.get(inventory, item_id, 0) + count;
+  const x: Inventory = {}; x[item_id] = new_count;
   return LD.assign({}, inventory, x);
 }
 
 export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
-  let new_count = LD.get(inventory, item_id, 0) - count;
+  const new_count = LD.get(inventory, item_id, 0) - count;
   if (new_count <= 0) {
-    return LD.omit(inventory, [item_id]) as Inventory; // I'm not sure why I need this `as`, the typedef for `omit` may be insufficient
+    // I'm not sure why I need this `as`, the typedef for `omit` may be insufficient
+    return LD.omit(inventory, [item_id]) as Inventory;
   } else {
-    let x: Inventory = {}; x[item_id] = new_count;
+    const x: Inventory = {}; x[item_id] = new_count;
     return LD.assign({}, inventory, x);
   }
 }
 
 export function folderPathToString(path: T.FolderPath): string {
-  return T.encodeFolderPath(path)
+  return T.encodeFolderPath(path);
 }
 
 export function get<T>(obj: { [index: string]: T }, key: string): T | undefined {

@@ -31,17 +31,17 @@ class TextInput extends React.Component<TextInputProps, { value: string }> {
   }
 
   handleInput(event: React.FormEvent<HTMLInputElement>) {
-    let value = event.currentTarget.value;
+    const value = event.currentTarget.value;
     if (this.props.numbersOnly) {
       if (!isNaN(Number(value))) {
-        this.setState({ value: value });
+        this.setState({ value });
       } else if (value === "-") {
-        this.setState({ value: value });
+        this.setState({ value });
       } else {
         console.log("Not a number!", value);
       }
     } else {
-      this.setState({ value: value })
+      this.setState({ value })
     }
   }
 
@@ -49,22 +49,22 @@ class TextInput extends React.Component<TextInputProps, { value: string }> {
 
   render() {
     return <input type="text"
-      autoFocus
-      ref={(input) => this.input = input}
+      autoFocus={true}
+      ref={input => this.input = input}
       value={this.state.value}
       onChange={e => this.handleInput(e)}
       onKeyDown={e => this.handleKeyDown(e)}
       onBlur={e => this.cancel()}
       style={this.props.styles}
-    ></input>;
+    />;
   }
 }
 
 export function renderTextInput(app: any, [id, defaultValue, styles, numbersOnly]: [string, string, object, boolean]) {
-  let onSubmit = (content: string) => {
+  const onSubmit = (content: string) => {
     app.ports.textInputSubmit.send([id, content]);
   };
-  let onCancel = (content: string) => {
+  const onCancel = (content: string) => {
     app.ports.textInputCancel.send([id, content]);
   };
   ReactDOM.render(
