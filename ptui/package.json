@@ -26,6 +26,7 @@
     "parsimmon": "^1.4.0",
     "react": "^15.5.4",
     "react-dom": "^15.5.4",
+    "svg-pan-zoom": "^3.5.1",
     "type-safe-json-decoder": "^0.2.0"
   },
   "devDependencies": {
