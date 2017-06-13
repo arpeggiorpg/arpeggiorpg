@@ -1,5 +1,7 @@
 {
 	"extends": [
+		"tslint:latest",
+		"tslint-react",
 		"tslint-eslint-rules"
 	],
 	"rules": {
@@ -12,6 +14,28 @@
 		"semicolon": [
 			"always"
 		],
-		"triple-equals": true
+		"triple-equals": true,
+		"variable-name": [
+			true,
+			"allow-trailing-underscore",
+			"allow-snake-case"
+		],
+		"interface-name": [
+			"never-prefix"
+		],
+		"no-consecutive-blank-lines": [
+			true,
+			2
+		],
+		"array-type": [
+			"generic"
+		],
+		"trailing-comma": [
+			true,
+			{
+				"multiline": {"objects": "always"},
+				"singleline": "never"
+			}
+		]
 	}
 }

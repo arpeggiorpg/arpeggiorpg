@@ -1,6 +1,6 @@
-import * as JD from 'type-safe-json-decoder';
-import { Decoder } from 'type-safe-json-decoder';
-import * as LD from 'lodash';
+import * as LD from "lodash";
+import * as JD from "type-safe-json-decoder";
+import { Decoder } from "type-safe-json-decoder";
 
 export type AbilityID = string;
 export type CreatureID = string;
@@ -29,7 +29,7 @@ export interface Game {
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
   abilities: { [index: string]: Ability };
-  maps: {[index: string]: Map};
+  maps: { [index: string]: Map };
   campaign: Folder;
 }
 
@@ -130,7 +130,6 @@ export type GameCommand =
 // Rollback(usize, usize),
 
 
-
 export interface Class {
   // abilities, conditions
   color: string;
@@ -142,10 +141,8 @@ export interface Player {
   creatures: Array<CreatureID>;
 }
 
-export type AppSnapshots = Array<{ snapshot: GameSnapshot, logs: Array<GameLog> }>
-export type AppPlayers = { [index: string]: Player }
-
-export interface GameSnapshot { };
+export type AppSnapshots = Array<{ snapshot: {}, logs: Array<GameLog> }>
+export interface AppPlayers { [index: string]: Player }
 
 export type GameLog =
   | {
@@ -278,7 +275,7 @@ export interface AttributeCheck {
 }
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural"
-let SkillLevel_values: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
+const SKILL_LEVELS: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
 export interface Note {
   name: string,
@@ -312,55 +309,53 @@ export const decodeConditionLazy = JD.lazy(() => decodeCondition);
 export const decodeEffectLazy = JD.lazy(() => decodeEffect);
 
 export const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
-  "Flat": JD.map((val): Dice => ({ t: "Flat", val }), JD.number()),
-  "Expr": JD.map(
+  BestOf: JD.map(
+    ([num, dice]): Dice => ({ t: "BestOf", num, dice }),
+    JD.tuple(JD.number(), decodeDiceLazy)),
+  Expr: JD.map(
     ({ num, size }): Dice => ({ t: "Expr", num, size }),
     JD.object(["num", JD.number()], ["size", JD.number()], (num, size) => ({ num, size }))),
-  "Plus": JD.map(
+  Flat: JD.map((val): Dice => ({ t: "Flat", val }), JD.number()),
+  Plus: JD.map(
     ([left, right]): Dice => ({ t: "Plus", left, right }),
     JD.tuple(decodeDiceLazy, decodeDiceLazy)),
-  "BestOf": JD.map(
-    ([num, dice]): Dice => ({ t: "BestOf", num, dice }),
-    JD.tuple(JD.number(), decodeDiceLazy))
 });
 
 export const decodeConditionDuration: Decoder<ConditionDuration> =
-  sum<ConditionDuration>("ConditionDuration", { "Interminate": { t: "Interminate" } },
+  sum<ConditionDuration>("ConditionDuration", { Interminate: { t: "Interminate" } },
     {
-      "Duration": JD.map(
+      Duration: JD.map(
         (duration): ConditionDuration => ({ t: "Duration", duration }),
         JD.number())
     })
 
 export const decodeEffect: Decoder<Effect> = sum<Effect>("Effect", {},
   {
-    "Heal": JD.map((dice): Effect => ({ t: "Heal", dice }), decodeDice),
-    "Damage": JD.map((dice): Effect => ({ t: "Damage", dice }), decodeDice),
-    "ApplyCondition": JD.map(
+    ApplyCondition: JD.map(
       ([duration, condition]): Effect => ({ t: "ApplyCondition", duration, condition }),
       JD.tuple(decodeConditionDuration, decodeConditionLazy)),
-    "MultiEffect": JD.map(
+    Damage: JD.map((dice): Effect => ({ t: "Damage", dice }), decodeDice),
+    GenerateEffect: JD.map(
+      (energy): Effect => ({ t: "GenerateEnergy", energy }),
+      JD.number()),
+    Heal: JD.map((dice): Effect => ({ t: "Heal", dice }), decodeDice),
+    MultiEffect: JD.map(
       (effects): Effect => ({ t: "MultiEffect", effects }),
       JD.array(decodeEffectLazy)),
-    "GenerateEffect": JD.map(
-      (energy): Effect => ({ t: "GenerateEnergy", energy }),
-      JD.number())
   });
 
 export const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
   {
-    "Incapacitated": { t: "Incapacitated" },
-    "Dead": { t: "Dead" },
-    "DoubleMaxMovement": { t: "DoubleMaxMovement" }
+    Dead: { t: "Dead" },
+    DoubleMaxMovement: { t: "DoubleMaxMovement" },
+    Incapacitated: { t: "Incapacitated" },
   }, {
-    "RecurringEffect": JD.map(
+    ActivateAbility: JD.map(
+      (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
+      JD.string()),
+    RecurringEffect: JD.map(
       (effect): Condition => ({ t: "RecurringEffect", effect }),
       decodeEffect),
-    "ActivateAbility": JD.map(
-      (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
-      JD.string())
-    // | { t: "ActivateAbility"; ability_id: AbilityID }
-
   }
 );
 
@@ -371,7 +366,7 @@ export const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
 );
 
 export const decodeSkillLevel: Decoder<SkillLevel> =
-  JD.oneOf.apply(null, SkillLevel_values.map(JD.equal));
+  JD.oneOf.apply(null, SKILL_LEVELS.map(JD.equal));
 
 export const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
   ["ability_id", JD.string()],
@@ -596,7 +591,7 @@ export const decodeGameLog: Decoder<GameLog> =
 
 export const decodeAppSnapshots: Decoder<AppSnapshots> =
   JD.array(JD.map(
-    (ls) => ({ snapshot: {} as GameSnapshot, logs: ls }),
+    (ls) => ({ snapshot: {}, logs: ls }),
     JD.at([1], JD.array(decodeGameLog))))
 
 export const decodePlayer: Decoder<Player> = JD.object(
@@ -648,7 +643,7 @@ const decodeFolder: Decoder<Folder> = JD.object(
 const decodeVolume: Decoder<Volume> = sum("Volume", {},
   {
     "Sphere": JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
-    "Line": JD.map((length): Volume => ({ t: "Line", length }), JD.number()),
+    Line: JD.map((length): Volume => ({ t: "Line", length }), JD.number()),
     "VerticalCylinder": JD.object(
       ["radius", JD.number()],
       ["height", JD.number()],
@@ -838,7 +833,7 @@ export function sum<T>(
   }
 
   let variants = Object.keys(decoders);
-  let _decoders: Array<Decoder<T>> = variants.map(variant => JD.at([variant], decoders[variant]));
+  let _decoders: Array<Decoder<T>> = variants.map((variant) => JD.at([variant], decoders[variant]));
 
   return JD.oneOf(
     JD.map(nullary, JD.string()),

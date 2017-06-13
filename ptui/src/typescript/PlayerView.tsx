@@ -119,8 +119,8 @@ function PlayerSideBar(props: { player: T.Player; current_scene: string | undefi
 function PlayerCreatures(
   props: { current_scene: T.SceneID | undefined; player: T.Player; ptui: M.PTUI; })
   : JSX.Element {
-  let cids = props.player.creatures;
-  let creatures = props.ptui.getCreatures(cids);
+  const cids = props.player.creatures;
+  const creatures = props.ptui.getCreatures(cids);
   console.log("[PlayerCreatures]", cids, creatures);
   if (creatures.length === 0) {
     return <div>You have no creatures in your control yet.</div>
