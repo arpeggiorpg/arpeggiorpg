@@ -32,7 +32,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
     this.state = { player_id: undefined, typing_player_id: "", ptui };
   }
   componentWillReceiveProps(nextProps: PlayerMainProps) {
-    console.log("[PlayerMain:componentWillReceiveProps");
+    console.log("[PlayerMain:componentWillReceiveProps]");
     if (!LD.isEqual(this.props, nextProps)) {
       let ptui = nextProps.app ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
         : undefined;
@@ -87,7 +87,7 @@ function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element 
     : <div>No scene loaded</div>
 
   return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%" }}>
-    <div>{grid}</div>
+    {grid}
     <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
       <PlayerSideBar player={props.player} current_scene={props.player.scene} ptui={props.ptui} />
     </div>

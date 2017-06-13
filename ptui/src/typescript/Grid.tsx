@@ -67,8 +67,10 @@ class GridSvg extends React.Component<GridSvgProps, { spz_element: SvgPanZoom.In
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
-      {terrain_els}
-      {creature_els}
+      <g>
+        {terrain_els}
+        {creature_els}
+      </g>
     </svg>;
   }
 }
@@ -97,7 +99,7 @@ function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: numbe
 
 function tile_props(color: string, [ptx, pty, _]: T.Point3, size?: { x: number, y: number }
 ): {
-  width: number, height: number, rx: number, ry: number, x: number, y: number, stroke: string,
+    width: number, height: number, rx: number, ry: number, x: number, y: number, stroke: string,
     strokeWidth: number, fill: string
   } {
   if (!size) {
@@ -107,6 +109,7 @@ function tile_props(color: string, [ptx, pty, _]: T.Point3, size?: { x: number, 
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
     x: ptx * 100, y: (pty * 100) - 50,
-    stroke: "black", strokeWidth: 1, fill: color
+    stroke: "black", strokeWidth: 1,
+    fill: color
   };
 }
