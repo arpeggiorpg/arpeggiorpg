@@ -5,6 +5,7 @@ import * as CommonView from './CommonView';
 import { PTUI } from './Model';
 import * as M from './Model';
 import * as LD from 'lodash';
+import * as Grid from './Grid';
 
 export function renderPlayerUI(
   elmApp: any,
@@ -81,8 +82,12 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 }
 
 function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
-  return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%"}}>
-    <div>The Grid</div>
+  let grid = props.player.scene
+    ? <Grid.Grid ptui={props.ptui} scene={props.player.scene} />
+    : <div>No scene loaded</div>
+
+  return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%" }}>
+    <div>{grid}</div>
     <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
       <PlayerSideBar player={props.player} current_scene={props.player.scene} ptui={props.ptui} />
     </div>
