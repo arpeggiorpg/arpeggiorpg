@@ -8,6 +8,7 @@ import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
+/// renders the player *sidebar*
 export function renderPlayerUI(
   elmApp: any,
   [id, player_id, current_scene, data]: [string, T.PlayerID, T.SceneID | undefined, any]) {

@@ -27,7 +27,7 @@ function PT_initializeComponents(app: any) {
 
   app.ports.renderPlayers.subscribe(afterView((x: any) => Players.renderPlayers(app, x)));
 
-  app.ports.renderPlayerUI.subscribe(afterView((x: any) => PlayerView.renderPlayerUI(app, x)))
+  app.ports.renderPlayerUI.subscribe(afterView((x: any) => PlayerView.renderPlayerUI(app, x)));
 
   app.ports.unloadComponent.subscribe(unloadComponent);
   app.ports.renderReactMain.subscribe(([elemID, componentName, pt_app]: [string, string, any]) =>
@@ -43,7 +43,7 @@ function afterView(f: any) {
     const args = arguments;
     const self = this;
     window.requestAnimationFrame(_ => f.apply(self, args));
-  }
+  };
 }
 
 
@@ -54,7 +54,7 @@ function PT_renderMain(elm_app: any, component_name: string, id: string, pt_app:
     // case "GM": component = <GMMain />;
     case "Player": component = <PlayerView.PlayerMain elm_app={elm_app} app={pt_app} />; break;
     default: throw new Error(`Unknown component ${component}`);
-  };
+  }
   ReactDOM.render(component, el);
 }
 

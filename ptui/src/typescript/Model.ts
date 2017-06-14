@@ -1,10 +1,13 @@
 import * as LD from 'lodash';
+import * as reactRedux from 'react-redux';
+import * as redux from 'redux';
 
 import * as T from './PTTypes';
 
+
 export class PTUI {
-  app: T.App;
-  elm_app: any;
+  readonly app: T.App;
+  readonly elm_app: any;
 
   constructor(elm_app: any, app: T.App) {
     this.app = app;
@@ -88,19 +91,16 @@ interface Inventory { [index: string]: number; }
 // TODO: these functions should be replaced by GameCommands so the backend handles this stuff
 export function addToInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
   const new_count = LD.get(inventory, item_id, 0) + count;
-  const x: Inventory = {}; x[item_id] = new_count;
-  return LD.assign({}, inventory, x);
+  return {...inventory, [item_id]: new_count};
 }
 
 export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number):
   Inventory {
   const new_count = LD.get(inventory, item_id, 0) - count;
   if (new_count <= 0) {
-    // I'm not sure why I need this `as`, the typedef for `omit` may be insufficient
     return LD.omit(inventory, [item_id]) as Inventory;
   } else {
-    const x: Inventory = {}; x[item_id] = new_count;
-    return LD.assign({}, inventory, x);
+    return {...inventory, [item_id]: new_count};
   }
 }
 
