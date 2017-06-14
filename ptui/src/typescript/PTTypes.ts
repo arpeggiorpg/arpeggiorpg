@@ -823,7 +823,7 @@ export function encodeCreature(c: Creature): object {
     portrait_url: c.portrait_url,
     attributes: c.attributes,
     initiative: encodeDice(c.initiative),
-    inventory: c.inventory,
+    inventory: c.inventory.toJS(),
     size: c.size,
   };
 }

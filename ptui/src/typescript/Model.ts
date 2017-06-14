@@ -1,10 +1,23 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
-import * as reactRedux from 'react-redux';
-import * as redux from 'redux';
+import * as Redux from 'redux';
 
 import * as T from './PTTypes';
 
+export type Action =
+  | { type: "RefreshApp"; app: T.App }
+  | { type: "NoOp" }
+  // wow redux is dumb
+  | { type: "@@redux/INIT" };
+
+
+export function update(ptui: PTUI, action: Action): PTUI {
+  switch (action.type) {
+    case "@@redux/INIT": return ptui;
+    case "RefreshApp": return new PTUI(ptui.elm_app, action.app);
+    case "NoOp": return ptui;
+  }
+}
 
 export class PTUI {
   readonly app: T.App;
@@ -16,7 +29,6 @@ export class PTUI {
   }
 
   sendCommand(cmd: T.GameCommand) {
-    console.log("[sendCommand:TS]", cmd);
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);

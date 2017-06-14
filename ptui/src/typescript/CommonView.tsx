@@ -87,6 +87,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps,
   }
   render(): JSX.Element | null {
     const inv = this.props.creature.inventory;
+    console.log("[CreatureInventory:render] INVENTORY", inv);
     const items = this.props.ptui.getItems(inv.keySeq().toArray());
 
     const give = this.state.giving

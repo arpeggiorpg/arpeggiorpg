@@ -1,6 +1,8 @@
 import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import { Provider } from 'react-redux';
+import * as Redux from 'redux';
 
 import * as CommonView from "./CommonView";
 import * as Grid from './Grid';
@@ -29,30 +31,49 @@ export function renderPlayerUI(
 
 interface PlayerMainProps { app?: object; elm_app: any; }
 export class PlayerMain extends React.Component<PlayerMainProps,
-  { player_id: T.PlayerID | undefined; typing_player_id: string; ptui: M.PTUI | undefined }> {
+  {
+    player_id: T.PlayerID | undefined;
+    typing_player_id: string;
+    store: Redux.Store<M.PTUI> | undefined;
+    ptui: M.PTUI | undefined
+  }> {
   constructor(props: PlayerMainProps) {
     super(props);
     const ptui = props.app ? new M.PTUI(props.elm_app, T.decodeApp.decodeAny(props.app)) : undefined;
-    this.state = { player_id: undefined, typing_player_id: "", ptui };
+    const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
+    this.state = { player_id: undefined, typing_player_id: "", ptui, store };
   }
+
   componentWillReceiveProps(nextProps: PlayerMainProps) {
-    console.log("[PlayerMain:componentWillReceiveProps]");
     if (!M.isEqual(this.props, nextProps)) {
-      const ptui = nextProps.app
-        ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
-        : undefined;
-      this.setState({ ptui });
+      if (this.state.store) {
+        if (nextProps.app) {
+          this.state.store.dispatch(
+            { type: "RefreshApp", app: T.decodeApp.decodeAny(nextProps.app) });
+        }
+      } else {
+        if (nextProps.app) {
+          const ptui = new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app));
+          const store = Redux.createStore(M.update, ptui);
+          this.setState({ store });
+        }
+      }
     }
   }
 
   render(): JSX.Element {
-    if (!this.state.ptui) {
+    if (!this.state.store) {
       return <div>Waiting for initial data from server.</div>;
     }
+    const ptui = this.state.store.getState();
+    return <Provider store={this.state.store}>{this.ptui(ptui)}</Provider>;
+  }
+
+  ptui(ptui: M.PTUI): JSX.Element {
     if (this.state.player_id) {
-      const player = M.get(this.state.ptui.app.players, this.state.player_id);
+      const player = M.get(ptui.app.players, this.state.player_id);
       if (player) {
-        return <PlayerGameView player={player} ptui={this.state.ptui} />;
+        return <PlayerGameView player={player} ptui={ptui} />;
       } else {
         return <div>Couldn't find player {this.state.player_id}</div>;
       }
@@ -60,10 +81,10 @@ export class PlayerMain extends React.Component<PlayerMainProps,
       return <div>
         <h1>P&T</h1>
         <p>Welcome to P&T!</p>
-        {LD.keys(this.state.ptui.app.players).length > 0
+        {LD.keys(ptui.app.players).length > 0
           ? <div>
             <p>You can rejoin a session if you've already registered as a player.</p>
-            {LD.keys(this.state.ptui.app.players).map(pid =>
+            {LD.keys(ptui.app.players).map(pid =>
               <button key={pid} onClick={() => this.setState({ player_id: pid })}>{pid}</button>)}
           </div>
           : <noscript />}
