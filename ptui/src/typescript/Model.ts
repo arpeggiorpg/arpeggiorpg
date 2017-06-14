@@ -8,7 +8,7 @@ import * as T from './PTTypes';
 export type Action =
   | { type: "RefreshApp"; app: T.App }
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
-  // wow redux is dumb
+  | { type: "RequestMove"; cid: T.CreatureID; }
   | { type: "@@redux/INIT" };
 
 
@@ -23,6 +23,9 @@ export function update(ptui: PTUI, action: Action): PTUI {
           : { cid: action.cid, rect: action.rect };
       return new PTUI(ptui.elm_app, ptui.app,
         { ...ptui.state, grid: { ...ptui.state.grid, active_menu: new_active } });
+    case "RequestMove":
+      console.log("TODO RADIX: implement RequestMove");
+      return ptui;
     case "@@redux/INIT":
       return ptui;
   }
@@ -157,11 +160,13 @@ export function isEqual<T>(l: T, r: T): boolean {
 
 
 interface StoreProps { ptui: PTUI; }
-interface DispatchProps { dispatch: Redux.Dispatch<PTUI>; }
+interface DispatchProps { dispatch: (a: Action) => Action; }
 
+export type Dispatch = (action: Action) => Action;
 export type ReduxProps = StoreProps & DispatchProps;
 
-export function connectRedux<T>(x: React.ComponentClass<T & StoreProps & DispatchProps>)
-  : React.ComponentClass<T> {
+export function connectRedux<BaseProps>(
+  x: React.ComponentType<BaseProps & StoreProps & DispatchProps>)
+  : React.ComponentType<BaseProps> {
   return ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }))(x);
 }

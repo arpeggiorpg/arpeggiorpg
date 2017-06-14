@@ -73,7 +73,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
     if (this.state.player_id) {
       const player = M.get(ptui.app.players, this.state.player_id);
       if (player) {
-        return <PlayerGameView player={player} ptui={ptui} />;
+        return <PlayerGameView player={player} />;
       } else {
         return <div>Couldn't find player {this.state.player_id}</div>;
       }
@@ -107,11 +107,13 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
 }
 
-function PlayerGameView({ player, ptui }: { player: T.Player; ptui: M.PTUI }): JSX.Element {
+interface PlayerGameViewProps { player: T.Player; }
+function playerGameView_comp({ player, ptui, dispatch }: PlayerGameViewProps & M.ReduxProps)
+  : JSX.Element {
   const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
 
   const grid = scene
-    ? <Grid.Grid scene={scene} creatures={selectMapCreatures(ptui, player, scene)} />
+    ? <Grid.Grid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
     : <div>No scene loaded</div>;
 
   return <div style={{
@@ -125,7 +127,16 @@ function PlayerGameView({ player, ptui }: { player: T.Player; ptui: M.PTUI }): J
   </div>;
 }
 
-function selectMapCreatures(ptui: M.PTUI, player: T.Player, scene: T.Scene)
+export const PlayerGameView = M.connectRedux(playerGameView_comp);
+
+
+/**
+ * Figure out which creatures to display, and create [[Grid.MapCreature]] for each of them.
+ * This involves figuring out what kind of actions this player can perform on each creature, such as
+ * moving them (if the player has control of them).
+ */
+function selectMapCreatures(
+  ptui: M.PTUI, player: T.Player, scene: T.Scene, dispatch: M.Dispatch)
   : { [index: string]: Grid.MapCreature } {
   const creatures = M.filterMap(
     ptui.getCreatures(LD.keys(scene.creatures)),
@@ -133,11 +144,18 @@ function selectMapCreatures(ptui: M.PTUI, player: T.Player, scene: T.Scene)
       const pos = scene.creatures[creature.id][0]; // map over keys -> [] is okay
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
-        const actions = { move: (cid: T.CreatureID) => console.log("Moving creature!", cid) };
+        // const move_action: M.Action = { type: "RequestMove", cid };
+        const actions = LD.includes(player.creatures, creature.id)
+          ? {
+            "Move this creature": (cid: T.CreatureID) => {
+              console.log("Moving creature!", cid);
+              dispatch({ type: "RequestMove", cid });
+            },
+          }
+          : {};
         return { creature, pos, class_, actions };
       }
-    }
-  );
+    });
   const result: { [index: string]: Grid.MapCreature } = {};
   for (const creature of creatures) {
     result[creature.creature.id] = creature;

@@ -17,35 +17,41 @@ export interface GridProps {
   creatures: Obj<MapCreature>;
 }
 
-export class GridBase extends React.Component<GridProps & M.ReduxProps, undefined> {
-  render(): JSX.Element {
-    const map = M.get(this.props.ptui.app.current_game.maps, this.props.scene.map);
-    if (!map) { return <div>Couldn't find map</div>; }
+export function grid_comp(props: GridProps & M.ReduxProps) {
+  const map = M.get(props.ptui.app.current_game.maps, props.scene.map);
+  if (!map) { return <div>Couldn't find map</div>; }
 
-    const menu = this.props.ptui.state.grid.active_menu
-      ? this.renderMenu(this.props.ptui.state.grid.active_menu)
-      : <noscript />;
+  const menu = props.ptui.state.grid.active_menu
+    ? renderMenu(props.ptui.state.grid.active_menu)
+    : <noscript />;
 
-    return <div style={{ width: "100%", height: "100%" }}>
-      {menu}
-      <GridSvg map={map} creatures={LD.values(this.props.creatures)} />
-    </div>;
-  }
+  return <div style={{ width: "100%", height: "100%" }}>
+    {menu}
+    <GridSvg map={map} creatures={LD.values(props.creatures)} />
+  </div>;
 
-  renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
-    const creature = M.get(this.props.creatures, cid);
+  function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
+    const creature = M.get(props.creatures, cid);
     if (!creature) {
       return <noscript />;
     }
     return <div
       style={{
         position: "fixed",
+        paddingLeft: "0.5em",
+        paddingRight: "0.5em",
         top: rect.sw.y, left: rect.sw.x,
         backgroundColor: "white",
         border: "1px solid black",
         borderRadius: "5px",
       }}
     >
+      <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
+      <div style={{ borderBottom: "1px solid grey" }}>
+        <a style={{ cursor: "pointer" }}
+          onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+          (Close menu)</a>
+      </div>
       {
         LD.keys(creature.actions).map(
           actionName => {
@@ -61,7 +67,8 @@ export class GridBase extends React.Component<GridProps & M.ReduxProps, undefine
   }
 }
 
-export const Grid: React.ComponentClass<GridProps> = M.connectRedux(GridBase);
+export const Grid = M.connectRedux(grid_comp);
+
 
 export interface MapCreature {
   creature: T.Creature;
@@ -128,32 +135,28 @@ class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
 
 
 interface GridCreatureProps { creature: MapCreature; }
-class GridCreatureBase extends React.Component<GridCreatureProps & M.ReduxProps, undefined> {
-  render(): JSX.Element {
-    let element: SVGRectElement | SVGImageElement;
-    const self = this;
-    const creature = this.props.creature;
-    function onClick() {
-      const act = {
-        type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
-      };
-      self.props.dispatch(act);
-    }
-    if (creature.creature.portrait_url !== "") {
-      const props = tile_props("white", creature.pos, creature.creature.size);
-      return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
-        xlinkHref={creature.creature.portrait_url} {...props} />;
-    } else {
-      const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-      return <g key={creature.creature.name} onClick={() => onClick()}>
-        {<rect ref={el => element = el} {...props} />}
-        {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
-      </g >;
-    }
+function gridCreature_comp({ creature, dispatch }: GridCreatureProps & M.ReduxProps): JSX.Element {
+  let element: SVGRectElement | SVGImageElement;
+  function onClick() {
+    const act: M.Action = {
+      type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
+    };
+    dispatch(act);
+  }
+  if (creature.creature.portrait_url !== "") {
+    const props = tile_props("white", creature.pos, creature.creature.size);
+    return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
+      xlinkHref={creature.creature.portrait_url} {...props} />;
+  } else {
+    const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
+    return <g key={creature.creature.name} onClick={() => onClick()}>
+      {<rect ref={el => element = el} {...props} />}
+      {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
+    </g >;
   }
 }
 
-const GridCreature: React.ComponentClass<GridCreatureProps> = M.connectRedux(GridCreatureBase);
+const GridCreature = M.connectRedux(gridCreature_comp);
 
 function text_tile(text: string, pos: T.Point3): JSX.Element {
   return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>
