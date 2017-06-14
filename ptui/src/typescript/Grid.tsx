@@ -1,6 +1,8 @@
 import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import * as ReactRedux from "react-redux";
+import * as Redux from "redux";
 import * as svgPanZoom from "svg-pan-zoom";
 
 import * as CommonView from "./CommonView";
@@ -11,38 +13,26 @@ import * as T from "./PTTypes";
 interface Obj<T> { [index: string]: T; }
 
 export interface GridProps {
-  ptui: M.PTUI;
   scene: T.Scene;
   creatures: Obj<MapCreature>;
 }
 
-export class Grid extends React.Component<GridProps, { active?: [T.CreatureID, Rect] }> {
-  constructor(props: GridProps) {
-    super(props);
-    this.state = {};
-  }
-
+export class GridBase extends React.Component<GridProps & M.ReduxProps, undefined> {
   render(): JSX.Element {
     const map = M.get(this.props.ptui.app.current_game.maps, this.props.scene.map);
     if (!map) { return <div>Couldn't find map</div>; }
-    const self = this;
-    function onClickCreature(c: MapCreature, rect: Rect) {
-      if (self.state.active && M.isEqual(self.state.active[0], c.creature.id)) {
-        self.setState({ active: undefined });
-      } else if (LD.keys(c.actions).length > 0) {
-        self.setState({ active: [c.creature.id, rect] });
-      }
-    }
-    const menu = this.state.active ? this.renderMenu(this.state.active) : <noscript />;
+
+    const menu = this.props.ptui.state.grid.active_menu
+      ? this.renderMenu(this.props.ptui.state.grid.active_menu)
+      : <noscript />;
 
     return <div style={{ width: "100%", height: "100%" }}>
       {menu}
-      <GridSvg map={map} creatures={LD.values(this.props.creatures)}
-        onClickCreature={onClickCreature} />
+      <GridSvg map={map} creatures={LD.values(this.props.creatures)} />
     </div>;
   }
 
-  renderMenu([cid, rect]: [T.CreatureID, Rect]): JSX.Element {
+  renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
     const creature = M.get(this.props.creatures, cid);
     if (!creature) {
       return <noscript />;
@@ -71,6 +61,8 @@ export class Grid extends React.Component<GridProps, { active?: [T.CreatureID, R
   }
 }
 
+export const Grid: React.ComponentClass<GridProps> = M.connectRedux(GridBase);
+
 export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
@@ -81,8 +73,6 @@ export interface MapCreature {
 interface GridSvgProps {
   map: T.Map;
   creatures: Array<MapCreature>;
-  // FIXME: closures are Bad News Bears for component render caching!
-  onClickCreature?: (c: MapCreature, rect: Rect) => void;
 }
 interface GridSvgState { spz_element: SvgPanZoom.Instance | undefined; }
 class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
@@ -110,20 +100,17 @@ class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
     }
   }
 
+  shouldComponentUpdate(nextProps: GridSvgProps): boolean {
+    return !LD.isEqual(this.props, nextProps);
+  }
+
   render(): JSX.Element {
     console.log("[EXPENSIVE:GridSvg.render]");
     const open_terrain = this.props.map.terrain;
     const terrain_els = open_terrain.map(pt => tile("white", "base-terrain", pt));
     const self = this;
     const creature_els = this.props.creatures.map(
-      c => {
-        function onClick(rect: Rect) {
-          if (self.props.onClickCreature) {
-            self.props.onClickCreature(c, rect);
-          }
-        }
-        return <GridCreature key={c.creature.id} creature={c} onClick={onClick} />;
-      });
+      c => <GridCreature key={c.creature.id} creature={c} />);
     // let special_els = this.props.map.specials.map()
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
@@ -139,17 +126,19 @@ class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
   }
 }
 
-interface GridCreatureProps { creature: MapCreature; onClick?: (r: Rect) => void; }
-class GridCreature extends React.Component<GridCreatureProps, undefined> {
+
+interface GridCreatureProps { creature: MapCreature; }
+class GridCreatureBase extends React.Component<GridCreatureProps & M.ReduxProps, undefined> {
   render(): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     const self = this;
-    function onClick() {
-      if (self.props.onClick) {
-        self.props.onClick(screenCoordsForRect(element));
-      }
-    }
     const creature = this.props.creature;
+    function onClick() {
+      const act = {
+        type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
+      };
+      self.props.dispatch(act);
+    }
     if (creature.creature.portrait_url !== "") {
       const props = tile_props("white", creature.pos, creature.creature.size);
       return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
@@ -163,6 +152,8 @@ class GridCreature extends React.Component<GridCreatureProps, undefined> {
     }
   }
 }
+
+const GridCreature: React.ComponentClass<GridCreatureProps> = M.connectRedux(GridCreatureBase);
 
 function text_tile(text: string, pos: T.Point3): JSX.Element {
   return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>
@@ -187,9 +178,7 @@ function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }): React.S
   };
 }
 
-interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; }
-
-function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): Rect {
+function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
   const matrix = rect.getScreenCTM();
   const pt = svg.createSVGPoint();

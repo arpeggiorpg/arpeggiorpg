@@ -17,11 +17,7 @@
 			"always"
 		],
 		"triple-equals": true,
-		"variable-name": [
-			true,
-			"allow-trailing-underscore",
-			"allow-snake-case"
-		],
+		"variable-name": false,
 		"interface-name": [
 			"never-prefix"
 		],

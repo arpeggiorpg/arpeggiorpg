@@ -1,31 +1,52 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
+import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
 
 import * as T from './PTTypes';
 
 export type Action =
   | { type: "RefreshApp"; app: T.App }
-  | { type: "NoOp" }
+  | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   // wow redux is dumb
   | { type: "@@redux/INIT" };
 
 
 export function update(ptui: PTUI, action: Action): PTUI {
   switch (action.type) {
-    case "@@redux/INIT": return ptui;
-    case "RefreshApp": return new PTUI(ptui.elm_app, action.app);
-    case "NoOp": return ptui;
+    case "RefreshApp":
+      return new PTUI(ptui.elm_app, action.app, ptui.state);
+    case "ActivateGridCreature":
+      const new_active =
+        (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
+          ? undefined
+          : { cid: action.cid, rect: action.rect };
+      return new PTUI(ptui.elm_app, ptui.app,
+        { ...ptui.state, grid: { ...ptui.state.grid, active_menu: new_active } });
+    case "@@redux/INIT":
+      return ptui;
   }
+}
+
+export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; }
+
+export interface GridModel {
+  active_menu?: { cid: T.CreatureID; rect: Rect };
+}
+
+export interface PTUIState {
+  grid: GridModel;
 }
 
 export class PTUI {
   readonly app: T.App;
   readonly elm_app: any;
+  readonly state: PTUIState;
 
-  constructor(elm_app: any, app: T.App) {
+  constructor(elm_app: any, app: T.App, state: PTUIState = { grid: {} }) {
     this.app = app;
     this.elm_app = elm_app;
+    this.state = state;
   }
 
   sendCommand(cmd: T.GameCommand) {
@@ -132,4 +153,15 @@ export function idx<T>(arr: Array<T>, index: number): T | undefined {
 /// A version of isEqual that requires both arguments to be the same type.
 export function isEqual<T>(l: T, r: T): boolean {
   return LD.isEqual(l, r);
+}
+
+
+interface StoreProps { ptui: PTUI; }
+interface DispatchProps { dispatch: Redux.Dispatch<PTUI>; }
+
+export type ReduxProps = StoreProps & DispatchProps;
+
+export function connectRedux<T>(x: React.ComponentClass<T & StoreProps & DispatchProps>)
+  : React.ComponentClass<T> {
+  return ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }))(x);
 }

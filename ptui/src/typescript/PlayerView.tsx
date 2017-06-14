@@ -111,7 +111,7 @@ function PlayerGameView({ player, ptui }: { player: T.Player; ptui: M.PTUI }): J
   const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
 
   const grid = scene
-    ? <Grid.Grid ptui={ptui} scene={scene} creatures={selectMapCreatures(ptui, player, scene)} />
+    ? <Grid.Grid scene={scene} creatures={selectMapCreatures(ptui, player, scene)} />
     : <div>No scene loaded</div>;
 
   return <div style={{
