@@ -6,7 +6,7 @@
 	],
 	"rules": {
 		"no-constant-condition": true, // tslint-eslint-rules says this
-		"max-line-length": [true, 120],
+		"max-line-length": [true, 101],
 		"no-unused-expression": true,
 		"no-duplicate-variable": true,
 		"no-unused-variable": true,

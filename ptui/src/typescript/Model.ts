@@ -115,3 +115,8 @@ export function get<T>(obj: { [index: string]: T }, key: string): T | undefined 
 export function idx<T>(arr: Array<T>, index: number): T | undefined {
   return arr[index];
 }
+
+/// A version of isEqual that requires both arguments to be the same type.
+export function isEqual<T>(l: T, r: T): boolean {
+  return LD.isEqual(l, r);
+}

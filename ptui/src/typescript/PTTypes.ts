@@ -194,7 +194,7 @@ export type CreatureLog =
   | { t: "Heal"; hp: HP; rolls: Array<number> }
   | { t: "GenerateEnergy"; energy: Energy }
   | { t: "ReduceEnergy"; energy: Energy }
-  | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO: Condition
+  | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO Condition
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID };
 
@@ -573,7 +573,8 @@ export const decodeGameLog: Decoder<GameLog> =
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
       JD.tuple(JD.string(), JD.string(), decodePoint3)),
     PathCreature: JD.map(
-      ([scene_id, creature_id, path]): GameLog => ({ t: "PathCreature", scene_id, creature_id, path }),
+      ([scene_id, creature_id, path]): GameLog =>
+        ({ t: "PathCreature", scene_id, creature_id, path }),
       JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
     CreateCreature: JD.map(
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
@@ -720,7 +721,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
-    case "EditNote": return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "EditNote":
+      return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
     case "Done": return "Done";
   }

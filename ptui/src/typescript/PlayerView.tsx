@@ -12,7 +12,9 @@ export function renderPlayerUI(
   elmApp: any,
   [id, player_id, current_scene, data]: [string, T.PlayerID, T.SceneID | undefined, any]) {
   const element = document.getElementById(id);
-  console.log("[renderPlayerUI] Rendering Player component from Elm", id, element, player_id, current_scene);
+  console.log(
+    "[renderPlayerUI] Rendering Player component from Elm",
+    id, element, player_id, current_scene);
   const app = T.decodeApp.decodeAny(data);
   const ptui = new M.PTUI(elmApp, app);
   const player = M.get(ptui.app.players, player_id);
@@ -34,8 +36,9 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
   componentWillReceiveProps(nextProps: PlayerMainProps) {
     console.log("[PlayerMain:componentWillReceiveProps]");
-    if (!LD.isEqual(this.props, nextProps)) {
-      const ptui = nextProps.app ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
+    if (!M.isEqual(this.props, nextProps)) {
+      const ptui = nextProps.app
+        ? new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app))
         : undefined;
       this.setState({ ptui });
     }
@@ -82,18 +85,44 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
 }
 
-function PlayerGameView(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
-  const grid = props.player.scene
-    ? <Grid.Grid ptui={props.ptui} scene_id={props.player.scene} />
+function PlayerGameView({ player, ptui }: { player: T.Player; ptui: M.PTUI }): JSX.Element {
+  const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
+
+  const grid = scene
+    ? <Grid.Grid ptui={ptui} scene={scene} creatures={selectMapCreatures(ptui, player, scene)} />
     : <div>No scene loaded</div>;
 
-  return <div style={{ display: "flex", justifyContent: "space-between", height: "100%", width: "100%" }}>
+  return <div style={{
+    display: "flex", justifyContent: "space-between",
+    height: "100%", width: "100%",
+  }}>
     {grid}
     <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
-      <PlayerSideBar player={props.player} current_scene={props.player.scene} ptui={props.ptui} />
+      <PlayerSideBar player={player} current_scene={player.scene} ptui={ptui} />
     </div>
   </div>;
 }
+
+function selectMapCreatures(ptui: M.PTUI, player: T.Player, scene: T.Scene)
+  : { [index: string]: Grid.MapCreature } {
+  const creatures = M.filterMap(
+    ptui.getCreatures(LD.keys(scene.creatures)),
+    creature => {
+      const pos = scene.creatures[creature.id][0]; // map over keys -> [] is okay
+      const class_ = M.get(ptui.app.current_game.classes, creature.class_);
+      if (class_) {
+        const actions = { move: (cid: T.CreatureID) => console.log("Moving creature!", cid) };
+        return { creature, pos, class_, actions };
+      }
+    }
+  );
+  const result: { [index: string]: Grid.MapCreature } = {};
+  for (const creature of creatures) {
+    result[creature.creature.id] = creature;
+  }
+  return result;
+}
+
 
 function PlayerSideBar(props: { player: T.Player; current_scene: string | undefined; ptui: M.PTUI; })
   : JSX.Element {
@@ -101,7 +130,8 @@ function PlayerSideBar(props: { player: T.Player; current_scene: string | undefi
     <div style={{ flex: "1 0 auto" }}>
       <CommonView.TabbedView>
         <CommonView.Tab name="Creatures">
-          <PlayerCreatures player={props.player} current_scene={props.current_scene} ptui={props.ptui} />
+          <PlayerCreatures player={props.player} current_scene={props.current_scene}
+            ptui={props.ptui} />
         </CommonView.Tab>
         <CommonView.Tab name="Combat">
           <CommonView.Combat ptui={props.ptui} />
@@ -141,39 +171,32 @@ function PlayerCreatures(
   </div>;
 }
 
-interface PlayerNoteProps { player_id: T.PlayerID; ptui: M.PTUI; }
-class PlayerNote extends React.Component<PlayerNoteProps, { content: string | undefined }> {
-  private path: Array<string>;
-  constructor(props: PlayerNoteProps) {
-    super(props);
-    this.state = { content: undefined };
-    this.path = ["Players", props.player_id];
-  }
+function PlayerNote({ player_id, ptui }: { player_id: T.PlayerID; ptui: M.PTUI; }): JSX.Element {
+  let content: string | undefined;
 
-  render(): JSX.Element {
-    const player_folder = this.props.ptui.getFolderNode(this.path);
-    if (!player_folder) {
-      return <div>Please ask your GM to creature the folder "{M.folderPathToString(this.path)}"</div>;
-    }
-    const note = M.get(player_folder.notes, "Scratch");
-    const origContent = note ? note.content : "Enter notes here!";
-    return <div>
-      <div><button
-        disabled={this.state.content === undefined || this.state.content === origContent}
-        onClick={() => this.submit(note)}>Save</button></div>
-      <div><textarea style={{ width: "100%", height: "100%" }}
-        defaultValue={origContent} value={this.state.content}
-        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
-    </div>;
+  const path = ["Players", player_id];
+  const player_folder = ptui.getFolderNode(path);
+  if (!player_folder) {
+    return <div>Please ask your GM to creature the folder "{M.folderPathToString(path)}"</div>;
   }
+  const note = M.get(player_folder.notes, "Scratch");
+  const origContent = note ? note.content : "Enter notes here!";
+  return <div>
+    <div><button
+      disabled={content === undefined || content === origContent}
+      onClick={() => submit(note)}>Save</button></div>
+    <div><textarea style={{ width: "100%", height: "100%" }}
+      defaultValue={origContent} value={content}
+      onChange={e => content = e.currentTarget.value} /></div>
+  </div>;
 
-  submit(origNote: T.Note | undefined) {
-    if (!this.state.content) { return; }
-    const note = { name: "Scratch", content: this.state.content };
+  function submit(origNote: T.Note | undefined) {
+    if (!content) { return; }
+    const newNote = { name: "Scratch", content };
     const cmd: T.GameCommand = origNote
-      ? { t: "EditNote", path: this.path, name: "Scratch", note }
-      : { t: "CreateNote", path: this.path, note };
-    this.props.ptui.sendCommand(cmd);
+      ? { t: "EditNote", path, name: "Scratch", note: newNote }
+      : { t: "CreateNote", path, note: newNote };
+    ptui.sendCommand(cmd);
   }
 }
 
