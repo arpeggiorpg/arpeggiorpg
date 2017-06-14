@@ -1,3 +1,4 @@
+import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as reactRedux from 'react-redux';
 import * as redux from 'redux';
@@ -86,21 +87,21 @@ export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Arr
   return coll.map(f).filter(el => (el)) as Array<R>;
 }
 
-interface Inventory { [index: string]: number; }
+type Inventory = I.Map<T.ItemID, number>;
 
 // TODO: these functions should be replaced by GameCommands so the backend handles this stuff
 export function addToInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
-  const new_count = LD.get(inventory, item_id, 0) + count;
-  return {...inventory, [item_id]: new_count};
+  return inventory.set(item_id, inventory.get(item_id, 0) + count);
 }
 
+// TODO: this allows over-withdrawing from the inventory.
 export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number):
   Inventory {
-  const new_count = LD.get(inventory, item_id, 0) - count;
+  const new_count = inventory.get(item_id, 0) - count;
   if (new_count <= 0) {
-    return LD.omit(inventory, [item_id]) as Inventory;
+    return inventory.delete(item_id);
   } else {
-    return {...inventory, [item_id]: new_count};
+    return inventory.set(item_id, new_count);
   }
 }
 

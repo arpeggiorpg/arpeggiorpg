@@ -74,15 +74,20 @@ export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.E
   }
 }
 
-interface CreatureInventoryProps { ptui: PTUI; current_scene: T.SceneID | undefined; creature: T.Creature; }
-export class CreatureInventory extends React.Component<CreatureInventoryProps, { giving: T.ItemID | undefined }> {
+interface CreatureInventoryProps {
+  ptui: PTUI;
+  current_scene: T.SceneID | undefined;
+  creature: T.Creature;
+}
+export class CreatureInventory extends React.Component<CreatureInventoryProps,
+  { giving: T.ItemID | undefined }> {
   constructor(props: CreatureInventoryProps) {
     super(props);
     this.state = { giving: undefined };
   }
   render(): JSX.Element | null {
     const inv = this.props.creature.inventory;
-    const items = this.props.ptui.getItems(LD.keys(inv));
+    const items = this.props.ptui.getItems(inv.keySeq().toArray());
 
     const give = this.state.giving
       ? <GiveItem ptui={this.props.ptui} current_scene={this.props.current_scene}
@@ -94,7 +99,7 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps, {
     return <div>
       {items.map(item =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
-          {item.name} ({M.get(inv, item.id)})
+          {item.name} ({inv.get(item.id)})
         <button onClick={e => this.setState({ giving: item.id })}>Give</button>
         </div>
       )}
@@ -131,7 +136,7 @@ export class GiveItem extends React.Component<
     const giver_ = ptui.getCreature(this.props.giver);
     if (!giver_) { return <div>Giver not found!</div>; }
     const giver = giver_;
-    const giver_count = M.get(giver.inventory, this.props.item_id);
+    const giver_count = giver.inventory.get(this.props.item_id);
     if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
     return <div>
       Giving
@@ -147,7 +152,9 @@ export class GiveItem extends React.Component<
           creature => <option key={creature.id} value={creature.id}>{creature.name}</option>
         )}
       </select>
-      <button disabled={!(this.state.receiver && this.state.count)} onClick={ev => this.give(giver)}>Give</button>
+      <button disabled={!(this.state.receiver && this.state.count)} onClick={ev => this.give(giver)}>
+        Give
+      </button>
       <button onClick={ev => this.props.onClose()}>Cancel</button>
     </div>;
   }
@@ -183,15 +190,16 @@ interface PositiveIntegerInputProps {
 }
 export class PositiveIntegerInput extends React.Component<PositiveIntegerInputProps, undefined> {
   render(): JSX.Element {
-    return <input type="text" value={this.props.value === undefined ? "" : this.props.value} onChange={event => {
-      let num = Number(event.currentTarget.value);
-      if (event.currentTarget.value === "") {
-        this.props.onChange(undefined);
-      } else if (num) {
-        if (this.props.max !== undefined && num > this.props.max) { num = this.props.max; }
-        this.props.onChange(num);
-      }
-    }} />;
+    return <input type="text" value={this.props.value === undefined ? "" : this.props.value}
+      onChange={event => {
+        let num = Number(event.currentTarget.value);
+        if (event.currentTarget.value === "") {
+          this.props.onChange(undefined);
+        } else if (num) {
+          if (this.props.max !== undefined && num > this.props.max) { num = this.props.max; }
+          this.props.onChange(num);
+        }
+      }} />;
   }
 }
 
@@ -261,7 +269,8 @@ export function Combat(props: { ptui: PTUI }): JSX.Element {
   </div>;
 }
 
-export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat }): JSX.Element {
+export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat })
+  : JSX.Element {
   const abilities = M.filterMap(LD.values(props.creature.abilities),
     abstatus => {
       const ability = M.get(props.ptui.app.current_game.abilities, abstatus.ability_id);

@@ -1,3 +1,4 @@
+import * as I from 'immutable';
 import * as LD from "lodash";
 import * as JD from "type-safe-json-decoder";
 import { Decoder } from "type-safe-json-decoder";
@@ -247,7 +248,7 @@ export interface Creature {
   portrait_url: string;
   attributes: { [index: string]: SkillLevel }; // key: AttrID
   initiative: Dice;
-  inventory: { [index: string]: number }; // key: ItemID
+  inventory: I.Map<ItemID, number>;
   size: AABB;
 }
 
@@ -405,7 +406,7 @@ export const decodeCreature: Decoder<Creature> = object16(
   ["note", JD.string()],
   ["portrait_url", JD.string()],
   ["attributes", JD.dict(decodeSkillLevel)],
-  ["inventory", JD.dict(JD.number())],
+  ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
   ["conditions", JD.dict(decodeAppliedCondition)],
   ["initiative", decodeDice],
   ["size", decodeAABB],
