@@ -160,7 +160,6 @@ function selectMapCreatures(
             "Move this creature": (cid: T.CreatureID) => {
               console.log("Moving creature!", cid);
               ptui.requestMove(dispatch, cid);
-              // dispatch({ type: "RequestMove", cid });
             },
           }
           : {};

@@ -31,10 +31,11 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
   </div>;
 
   function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
-    const creature = M.get(props.creatures, cid);
-    if (!creature) {
+    const creature_ = M.get(props.creatures, cid);
+    if (!creature_) {
       return <noscript />;
     }
+    const creature = creature_; // WHY TYPESCRIPT, WHY???
     return <div
       style={{
         position: "fixed",
@@ -55,11 +56,14 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
       {
         LD.keys(creature.actions).map(
           actionName => {
-            const onClick = creature.actions[actionName];
+            function onClick() {
+              props.dispatch({ type: "ActivateGridCreature", cid, rect });
+              creature.actions[actionName](cid);
+            }
             return <div key={actionName}
               style={{ fontSize: "24px", borderBottom: "1px solid grey", cursor: "pointer" }}
             >
-              <a onClick={() => onClick(creature.creature.id)}>{actionName}</a>
+              <a onClick={() => onClick()}>{actionName}</a>
             </div>;
           })
       }
@@ -82,9 +86,9 @@ interface GridSvgProps {
   creatures: Array<MapCreature>;
 }
 interface GridSvgState { spz_element: SvgPanZoom.Instance | undefined; }
-class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
+class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgState> {
 
-  constructor(props: GridSvgProps) {
+  constructor(props: GridSvgProps & M.ReduxProps) {
     super(props);
     this.state = { spz_element: undefined };
   }
@@ -112,12 +116,15 @@ class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
   }
 
   render(): JSX.Element {
+    const { map, creatures, ptui } = this.props;
     console.log("[EXPENSIVE:GridSvg.render]");
-    const open_terrain = this.props.map.terrain;
-    const terrain_els = open_terrain.map(pt => tile("white", "base-terrain", pt));
-    const self = this;
-    const creature_els = this.props.creatures.map(
+    const terrain_els = map.terrain.map(pt => tile("white", "base-terrain", pt));
+    const creature_els = creatures.map(
       c => <GridCreature key={c.creature.id} creature={c} />);
+    const move = ptui.state.grid.movement_options;
+    const movement_target_els = move
+      ? move.options.map(pt => tile("cyan", "movement-target", pt))
+      : [];
     // let special_els = this.props.map.specials.map()
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
@@ -128,10 +135,13 @@ class GridSvg extends React.Component<GridSvgProps, GridSvgState> {
           virtualdom rendering */}
         {terrain_els}
         {creature_els}
+        {movement_target_els}
       </g>
     </svg>;
   }
 }
+
+export const GridSvg = M.connectRedux(GridSvgComp);
 
 
 interface GridCreatureProps { creature: MapCreature; }

@@ -33,7 +33,11 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
     case "GotMovementOptions":
-      return ptui;
+      return ptui.updateGridState(
+        grid => ({
+          ...ptui.state.grid,
+          movement_options: { cid: action.cid, options: action.options },
+        }));
     case "@@redux/INIT":
       return ptui;
   }
@@ -43,6 +47,7 @@ export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; 
 
 export interface GridModel {
   active_menu?: { cid: T.CreatureID; rect: Rect };
+  movement_options?: { cid: T.CreatureID; options: Array<T.Point3> };
 }
 
 export interface PTUIState {
@@ -65,6 +70,9 @@ export class PTUI {
 
   updateState(updater: (state: PTUIState) => PTUIState): PTUI {
     return new PTUI(this.rpi_url, this.elm_app, this.app, updater(this.state));
+  }
+  updateGridState(updater: (state: GridModel) => GridModel): PTUI {
+    return this.updateState(state => ({ ...state, grid: updater(state.grid) }));
   }
 
   requestMove(dispatch: Dispatch, cid: T.CreatureID) {
