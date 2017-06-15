@@ -1,4 +1,5 @@
 import * as I from 'immutable';
+import "isomorphic-fetch";
 import * as LD from 'lodash';
 import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
