@@ -321,7 +321,7 @@ const AbilityButton = M.connectRedux(abilityButton);
 
 function moveButton(props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
-  const suffix = props.combat ? " (" + movement_left / 100 + ")" : "";
+  const suffix = props.combat ? " (" + Number(movement_left / 100).toFixed(0) + ")" : "";
   return <button style={{ height: "50px" }}
     onClick={() => props.ptui.requestCombatMovement(props.dispatch)}>
     Move {suffix}
