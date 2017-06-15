@@ -45,7 +45,6 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
         top: rect.sw.y, left: rect.sw.x,
         border: "1px solid black", borderRadius: "5px",
         backgroundColor: "white",
-        zIndex: 2,
       }}>{special[2]}</div>
     </CommonView.ClickAway>;
   }
@@ -68,7 +67,6 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
           border: "1px solid black",
           borderRadius: "5px",
           fontSize: "24px",
-          zIndex: 2,
         }}
       >
         <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>

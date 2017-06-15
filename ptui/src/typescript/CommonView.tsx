@@ -330,6 +330,11 @@ function moveButton(props: { creature: T.Creature; combat?: T.Combat } & M.Redux
 const MoveButton = M.connectRedux(moveButton);
 
 
+/** A component which renders a very light grey translucent block over the entire screen,
+ * and then renders child elements inside of it.
+ *
+ * Caveat: child elements should be position: fixed.
+ */
 export function ClickAway({ onClick, children }: { onClick: () => void, children: React.ReactNode })
   : JSX.Element {
   return <div><div style={{
@@ -338,7 +343,7 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
     zIndex: 1,
   }}
     onClick={() => onClick()} />
-    {children}
+    <div style={{ position: "fixed", zIndex: 2 }}>{children}</div>
   </div>;
 
 }
