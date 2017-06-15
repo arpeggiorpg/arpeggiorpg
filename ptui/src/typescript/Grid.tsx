@@ -129,7 +129,14 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
     const movement_target_els = move
       ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} />)
       : [];
-    // let special_els = this.props.map.specials.map()
+    const special_els = this.props.map.specials.map(
+      ([pt, color, _, vis]) => <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis} />);
+    const annotation_els = M.filterMap(this.props.map.specials,
+      ([pt, _, note, vis]) => {
+        if (note !== "") {
+          return <Annotation key={pt.toString()} pt={pt} note={note} vis={vis} />;
+        }
+      });
 
     return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
@@ -140,6 +147,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
         {terrain_els}
         {creature_els}
         {movement_target_els}
+        {special_els}
+        {annotation_els}
       </g>
     </svg>;
   }
@@ -150,10 +159,35 @@ function movementTarget(
   { cid, pt, ptui, dispatch }: { cid: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
   : JSX.Element {
   const tprops = tile_props("cyan", pt);
-  return <rect key={"movement-target-" + pt.toString()} {...tprops} fillOpacity="0.4"
+  return <rect {...tprops} fillOpacity="0.4"
     onClick={() => ptui.moveCreature(dispatch, cid, pt)} />;
 }
 const MovementTarget = M.connectRedux(movementTarget);
+
+function specialTile(
+  { color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
+  : JSX.Element {
+  if (LD.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+    return <noscript />;
+  }
+  const tprops = tile_props(color, pt);
+  return <rect {...tprops} />;
+}
+const SpecialTile = M.connectRedux(specialTile);
+
+
+function annotation(
+  { ptui, pt, note, vis }: { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
+  : JSX.Element {
+  if (LD.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+    return <noscript />;
+  }
+  return <text
+    style={{ pointerEvents: "none" }}
+    x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
+    fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>;
+}
+const Annotation = M.connectRedux(annotation);
 
 
 interface GridCreatureProps { creature: MapCreature; }
