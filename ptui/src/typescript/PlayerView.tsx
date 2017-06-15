@@ -118,7 +118,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 }
 
 interface PlayerGameViewProps { player: T.Player; }
-function playerGameView_comp({ player, ptui, dispatch }: PlayerGameViewProps & M.ReduxProps)
+function playerGameView({ player, ptui, dispatch }: PlayerGameViewProps & M.ReduxProps)
   : JSX.Element {
   const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
 
@@ -134,11 +134,38 @@ function playerGameView_comp({ player, ptui, dispatch }: PlayerGameViewProps & M
     <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
       <PlayerSideBar player={player} current_scene={player.scene} ptui={ptui} />
     </div>
+    <PlayerModal />
   </div>;
 }
 
-export const PlayerGameView = M.connectRedux(playerGameView_comp);
+export const PlayerGameView = M.connectRedux(playerGameView);
 
+
+function playerModal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+  if (ptui.state.error) {
+    return <div style={{
+      position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+      backgroundColor: "white",
+      border: "1px solid black",
+      minHeight: "30%",
+      minWidth: "30%",
+      borderRadius: "5px",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <h1>Error</h1>
+      <div style={{ flex: "1 0 auto" }}>{ptui.state.error}</div>
+      <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div>
+          <button style={{ minHeight: "40px", minWidth: "80px" }}
+            onClick={() => dispatch({ type: "ClearError" })}>Ok</button>
+        </div>
+      </div>
+    </div>;
+  }
+  return <noscript />;
+}
+export const PlayerModal = M.connectRedux(playerModal);
 
 /**
  * Figure out which creatures to display, and create [[Grid.MapCreature]] for each of them.

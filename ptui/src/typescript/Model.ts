@@ -13,12 +13,9 @@ export type Action =
   | { type: "GotMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
   | { type: "ClearMovementOptions" }
   | { type: "SetPlayerID"; pid: T.PlayerID }
+  | { type: "DisplayError"; error: string }
+  | { type: "ClearError" }
   | { type: "@@redux/INIT" };
-
-// TODO:
-// put player_id in PTUI
-// add PTUI.focused_scene()
-// add PTUI.rpi_url
 
 export function update(ptui: PTUI, action: Action): PTUI {
   console.log("[Model.update]", action.type);
@@ -42,6 +39,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
         }));
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
+    case "DisplayError":
+      return ptui.updateState(state => ({ ...state, error: action.error }));
+    case "ClearError":
+      return ptui.updateState(state => ({ ...state, error: undefined }));
     case "@@redux/INIT":
       return ptui;
   }
@@ -57,6 +58,17 @@ export interface GridModel {
 export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
+  error?: string;
+}
+
+function ptfetch(
+  dispatch: Dispatch, url: string, init: RequestInit | undefined, then: (json: object) => void)
+  : Promise<void> {
+  return fetch(url, init)
+    .then(response => response.json())
+    .then(then)
+    .catch(e => dispatch({ type: "DisplayError", error: e.toString() }));
+
 }
 
 export class PTUI {
@@ -82,10 +94,9 @@ export class PTUI {
   requestMove(dispatch: Dispatch, cid: T.CreatureID) {
     const scene = this.focused_scene();
     if (scene) {
-      // TODO FIXME: handle errors from this fetch
-      fetch(this.rpi_url + "/movement_options/" + scene.id + "/" + cid)
-        .then(response => response.json())
-        .then(json => dispatch({
+      return ptfetch(dispatch, this.rpi_url + "/movement_options/" + scene.id + "/" + cid,
+        undefined,
+        json => dispatch({
           type: "GotMovementOptions",
           cid,
           options: JD.array(T.decodePoint3).decodeAny(json),
@@ -106,7 +117,8 @@ export class PTUI {
   sendCommand(cmd: T.GameCommand) {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
-    // TODO FIXME: handle results and errors from this fetch
+    // TODO FIXME: handle results and errors from this fetch.
+    // Requires passing a `dispatch` into this function.
     fetch(this.rpi_url,
       {
         method: "POST",
@@ -229,8 +241,8 @@ export function isEqual<T>(l: T, r: T): boolean {
 
 interface StoreProps { ptui: PTUI; }
 interface DispatchProps { dispatch: (a: Action) => Action; }
-
 export type Dispatch = (action: Action) => Action;
+
 export type ReduxProps = StoreProps & DispatchProps;
 
 export function connectRedux<BaseProps>(
