@@ -123,7 +123,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
       c => <GridCreature key={c.creature.id} creature={c} />);
     const move = ptui.state.grid.movement_options;
     const movement_target_els = move
-      ? move.options.map(pt => tile("cyan", "movement-target", pt))
+      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} />)
       : [];
     // let special_els = this.props.map.specials.map()
 
@@ -142,6 +142,16 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
 }
 
 export const GridSvg = M.connectRedux(GridSvgComp);
+
+function movement_target_comp(
+  { cid, pt, ptui, dispatch }: { cid: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
+  : JSX.Element {
+  const tprops = tile_props("cyan", pt);
+  return <rect key={"movement-target-" + pt.toString()} {...tprops}
+    onClick={() => ptui.moveCreature(dispatch, cid, pt)} />;
+}
+
+const MovementTarget = M.connectRedux(movement_target_comp);
 
 
 interface GridCreatureProps { creature: MapCreature; }

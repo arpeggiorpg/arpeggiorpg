@@ -87,6 +87,7 @@ export type GameCommand =
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
+  | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
   | { t: "Done" };
 
 // AttributeCheck(CreatureID, AttributeCheck),
@@ -725,6 +726,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "EditNote":
       return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
+    case "PathCreature":
+      return { PathCreature: [cmd.scene_id, cmd.creature_id, encodePoint3(cmd.dest)] };
     case "Done": return "Done";
   }
 }

@@ -11,6 +11,7 @@ export type Action =
   | { type: "RefreshApp"; app: T.App }
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | { type: "GotMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
+  | { type: "ClearMovementOptions" }
   | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "@@redux/INIT" };
 
@@ -39,6 +40,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
           ...ptui.state.grid,
           movement_options: { cid: action.cid, options: action.options },
         }));
+    case "ClearMovementOptions":
+      return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
     case "@@redux/INIT":
       return ptui;
   }
@@ -88,6 +91,17 @@ export class PTUI {
         }));
     }
   }
+
+  moveCreature(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
+    dispatch({ type: "ClearMovementOptions" });
+    const scene = this.focused_scene();
+    if (scene) {
+      this.sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
+    } else {
+      throw new Error(`Tried moving when there is no scene`);
+    }
+  }
+
   sendCommand(cmd: T.GameCommand) {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
