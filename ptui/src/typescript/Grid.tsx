@@ -111,8 +111,12 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
     }
   }
 
-  shouldComponentUpdate(nextProps: GridSvgProps): boolean {
-    return !LD.isEqual(this.props, nextProps);
+  shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
+    const mvmt_diff = !LD.isEqual(
+      this.props.ptui.state.grid.movement_options,
+      nextProps.ptui.state.grid.movement_options);
+    const app_diff = !LD.isEqual(this.props.ptui.app, nextProps.ptui.app);
+    return app_diff || mvmt_diff;
   }
 
   render(): JSX.Element {
