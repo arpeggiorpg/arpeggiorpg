@@ -319,7 +319,7 @@ function abilityButton(props: AbilityButtonProps & M.ReduxProps): JSX.Element {
 }
 const AbilityButton = M.connectRedux(abilityButton);
 
-function moveButton(props: {creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
+function moveButton(props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
   const suffix = props.combat ? " (" + movement_left / 100 + ")" : "";
   return <button style={{ width: "50px", height: "50px" }}
@@ -328,3 +328,17 @@ function moveButton(props: {creature: T.Creature; combat?: T.Combat } & M.ReduxP
   </button>;
 }
 const MoveButton = M.connectRedux(moveButton);
+
+
+export function ClickAway({ onClick, children }: { onClick: () => void, children: React.ReactNode })
+  : JSX.Element {
+  return <div><div style={{
+    position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+    backgroundColor: "rgba(0,0,0, 0.1)",
+    zIndex: 1,
+  }}
+    onClick={() => onClick()} />
+    {children}
+  </div>;
+
+}

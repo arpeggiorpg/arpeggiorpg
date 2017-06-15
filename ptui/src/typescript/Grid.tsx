@@ -37,13 +37,17 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
   function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
     const special = LD.find(map.specials, ([pt_, _, note, _2]) => M.isEqual(pt, pt_));
     if (!special) { return <noscript />; }
-    return <div style={{
-      position: "fixed",
-      fontSize: "24px",
-      top: rect.sw.y, left: rect.sw.x,
-      border: "1px solid black", borderRadius: "5px",
-      backgroundColor: "white",
-    }}>{special[2]}</div>;
+    return <CommonView.ClickAway
+      onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
+      <div style={{
+        position: "fixed",
+        fontSize: "24px",
+        top: rect.sw.y, left: rect.sw.x,
+        border: "1px solid black", borderRadius: "5px",
+        backgroundColor: "white",
+        zIndex: 2,
+      }}>{special[2]}</div>
+    </CommonView.ClickAway>;
   }
 
   function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
@@ -52,38 +56,37 @@ export function grid_comp(props: GridProps & M.ReduxProps) {
       return <noscript />;
     }
     const creature = creature_; // WHY TYPESCRIPT, WHY???
-    return <div
-      style={{
-        position: "fixed",
-        paddingLeft: "0.5em",
-        paddingRight: "0.5em",
-        top: rect.sw.y, left: rect.sw.x,
-        backgroundColor: "white",
-        border: "1px solid black",
-        borderRadius: "5px",
-      }}
-    >
-      <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
-      <div style={{ borderBottom: "1px solid grey" }}>
-        <a style={{ cursor: "pointer" }}
-          onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
-          (Close menu)</a>
+    return <CommonView.ClickAway
+      onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+      <div
+        style={{
+          position: "fixed",
+          paddingLeft: "0.5em",
+          paddingRight: "0.5em",
+          top: rect.sw.y, left: rect.sw.x,
+          backgroundColor: "white",
+          border: "1px solid black",
+          borderRadius: "5px",
+          fontSize: "24px",
+          zIndex: 2,
+        }}
+      >
+        <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
+        {
+          LD.keys(creature.actions).map(
+            actionName => {
+              function onClick() {
+                props.dispatch({ type: "ActivateGridCreature", cid, rect });
+                creature.actions[actionName](cid);
+              }
+              return <div key={actionName}
+                style={{ borderBottom: "1px solid grey", cursor: "pointer" }}>
+                <a onClick={() => onClick()}>{actionName}</a>
+              </div>;
+            })
+        }
       </div>
-      {
-        LD.keys(creature.actions).map(
-          actionName => {
-            function onClick() {
-              props.dispatch({ type: "ActivateGridCreature", cid, rect });
-              creature.actions[actionName](cid);
-            }
-            return <div key={actionName}
-              style={{ fontSize: "24px", borderBottom: "1px solid grey", cursor: "pointer" }}
-            >
-              <a onClick={() => onClick()}>{actionName}</a>
-            </div>;
-          })
-      }
-    </div>;
+    </CommonView.ClickAway>;
   }
 }
 
@@ -214,10 +217,9 @@ function annotation(
   }
 
   return <g>
-    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50}
-      onClick={() => onClick()}
-      fillOpacity="0"
-      ref={el => element = el} />
+    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
+      ref={el => element = el} onClick={onClick}
+    />
     <text
       style={{ pointerEvents: "none" }}
       x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}

@@ -15,7 +15,7 @@ export type Action =
   | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "DisplayError"; error: string }
   | { type: "ClearError" }
-  | { type: "ToggleAnnotation"; pt: T.Point3; rect: Rect }
+  | { type: "ToggleAnnotation"; pt: T.Point3; rect?: Rect }
   | { type: "@@redux/INIT" };
 
 export function update(ptui: PTUI, action: Action): PTUI {
@@ -38,7 +38,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "ToggleAnnotation":
       const curDisplay = ptui.state.grid.display_annotation;
       const nv =
-        curDisplay && isEqual(curDisplay.pt, action.pt)
+        (curDisplay && isEqual(curDisplay.pt, action.pt)) || !action.rect
           ? undefined
           : { pt: action.pt, rect: action.rect };
       return ptui.updateGridState(grid => ({ ...grid, display_annotation: nv }));
