@@ -15,6 +15,7 @@ export type Action =
   | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "DisplayError"; error: string }
   | { type: "ClearError" }
+  | { type: "ToggleAnnotation"; pt: T.Point3; rect: Rect }
   | { type: "@@redux/INIT" };
 
 export function update(ptui: PTUI, action: Action): PTUI {
@@ -31,6 +32,16 @@ export function update(ptui: PTUI, action: Action): PTUI {
         state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
+
+
+    // Grid-related
+    case "ToggleAnnotation":
+      const curDisplay = ptui.state.grid.display_annotation;
+      const nv =
+        curDisplay && isEqual(curDisplay.pt, action.pt)
+          ? undefined
+          : { pt: action.pt, rect: action.rect };
+      return ptui.updateGridState(grid => ({ ...grid, display_annotation: nv }));
     case "DisplayMovementOptions":
       return ptui.updateGridState(
         grid => ({
@@ -53,6 +64,7 @@ export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; 
 export interface GridModel {
   active_menu?: { cid: T.CreatureID; rect: Rect };
   movement_options?: { cid: T.CreatureID; options: Array<T.Point3> };
+  display_annotation?: { pt: T.Point3, rect: Rect };
 }
 
 export interface PTUIState {

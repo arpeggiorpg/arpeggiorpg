@@ -18,17 +18,33 @@ export interface GridProps {
 }
 
 export function grid_comp(props: GridProps & M.ReduxProps) {
-  const map = M.get(props.ptui.app.current_game.maps, props.scene.map);
-  if (!map) { return <div>Couldn't find map</div>; }
+  const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
+  if (!map_) { return <div>Couldn't find map</div>; }
+  const map = map_; // WHY TYPESCRIPT, WHY???
 
-  const menu = props.ptui.state.grid.active_menu
-    ? renderMenu(props.ptui.state.grid.active_menu)
+  const grid = props.ptui.state.grid;
+
+  const menu = grid.active_menu ? renderMenu(grid.active_menu) : <noscript />;
+  const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
     : <noscript />;
 
   return <div style={{ width: "100%", height: "100%" }}>
     {menu}
+    {annotation}
     <GridSvg map={map} creatures={LD.values(props.creatures)} />
   </div>;
+
+  function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
+    const special = LD.find(map.specials, ([pt_, _, note, _2]) => M.isEqual(pt, pt_));
+    if (!special) { return <noscript />; }
+    return <div style={{
+      position: "fixed",
+      fontSize: "24px",
+      top: rect.sw.y, left: rect.sw.x,
+      border: "1px solid black", borderRadius: "5px",
+      backgroundColor: "white",
+    }}>{special[2]}</div>;
+  }
 
   function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
     const creature_ = M.get(props.creatures, cid);
@@ -112,10 +128,10 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
   }
 
   shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
-    const mvmt_diff = !LD.isEqual(
+    const mvmt_diff = !M.isEqual(
       this.props.ptui.state.grid.movement_options,
       nextProps.ptui.state.grid.movement_options);
-    const app_diff = !LD.isEqual(this.props.ptui.app, nextProps.ptui.app);
+    const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
     return app_diff || mvmt_diff;
   }
 
@@ -167,7 +183,7 @@ const MovementTarget = M.connectRedux(movementTarget);
 function specialTile(
   { color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
   : JSX.Element {
-  if (LD.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+  if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
     return <noscript />;
   }
   const tprops = tile_props(color, pt);
@@ -177,15 +193,29 @@ const SpecialTile = M.connectRedux(specialTile);
 
 
 function annotation(
-  { ptui, pt, note, vis }: { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
+  { ptui, dispatch, pt, note, vis }:
+    { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
   : JSX.Element {
-  if (LD.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+  if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
     return <noscript />;
   }
-  return <text
-    style={{ pointerEvents: "none" }}
-    x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
-    fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>;
+
+  let element: SVGRectElement;
+
+  function onClick() {
+    dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+  }
+
+  return <g>
+    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50}
+      onClick={() => onClick()}
+      fillOpacity="0"
+      ref={el => element = el} />
+    <text
+      style={{ pointerEvents: "none" }}
+      x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
+      fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
+  </g>;
 }
 const Annotation = M.connectRedux(annotation);
 
