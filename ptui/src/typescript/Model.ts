@@ -82,6 +82,7 @@ export class PTUI {
   requestMove(dispatch: Dispatch, cid: T.CreatureID) {
     const scene = this.focused_scene();
     if (scene) {
+      // TODO FIXME: handle errors from this fetch
       fetch(this.rpi_url + "/movement_options/" + scene.id + "/" + cid)
         .then(response => response.json())
         .then(json => dispatch({
@@ -105,7 +106,13 @@ export class PTUI {
   sendCommand(cmd: T.GameCommand) {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
-    this.elm_app.ports.sendCommand.send(json);
+    // TODO FIXME: handle results and errors from this fetch
+    fetch(this.rpi_url,
+      {
+        method: "POST",
+        body: JSON.stringify(json),
+        headers: { "content-type": "application/json" },
+      });
   }
 
   focused_scene(): T.Scene | undefined {
@@ -118,7 +125,6 @@ export class PTUI {
       }
     }
   }
-
 
   requestCombatMovement() {
     console.log("[requestMovement]");
