@@ -30,8 +30,9 @@ function PT_initializeComponents(app: any) {
   app.ports.renderPlayerUI.subscribe(afterView((x: any) => PlayerView.renderPlayerUI(app, x)));
 
   app.ports.unloadComponent.subscribe(unloadComponent);
-  app.ports.renderReactMain.subscribe(([elemID, componentName, pt_app]: [string, string, any]) =>
-    PT_renderMain(app, componentName, elemID, pt_app));
+  app.ports.renderReactMain.subscribe(([elemID, rpi_url, componentName, pt_app]:
+    [string, string, string, any]) =>
+    PT_renderMain(app, rpi_url, componentName, elemID, pt_app));
 }
 
 function afterView(f: any) {
@@ -47,12 +48,15 @@ function afterView(f: any) {
 }
 
 
-function PT_renderMain(elm_app: any, component_name: string, id: string, pt_app: any) {
+function PT_renderMain(
+  elm_app: any, rpi_url: string, component_name: string, id: string, pt_app: any) {
   const el = document.getElementById(id);
   let component;
   switch (component_name) {
     // case "GM": component = <GMMain />;
-    case "Player": component = <PlayerView.PlayerMain elm_app={elm_app} app={pt_app} />; break;
+    case "Player":
+      component = <PlayerView.PlayerMain rpi_url={rpi_url} elm_app={elm_app} app={pt_app} />;
+      break;
     default: throw new Error(`Unknown component ${component}`);
   }
   ReactDOM.render(component, el);

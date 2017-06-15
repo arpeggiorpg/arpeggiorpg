@@ -13,13 +13,14 @@ import * as T from './PTTypes';
 /// renders the player *sidebar*
 export function renderPlayerUI(
   elmApp: any,
-  [id, player_id, current_scene, data]: [string, T.PlayerID, T.SceneID | undefined, any]) {
+  [id, rpi_url, player_id, current_scene, data]:
+    [string, string, T.PlayerID, T.SceneID | undefined, any]) {
   const element = document.getElementById(id);
   console.log(
     "[renderPlayerUI] Rendering Player component from Elm",
     id, element, player_id, current_scene);
   const app = T.decodeApp.decodeAny(data);
-  const ptui = new M.PTUI(elmApp, app);
+  const ptui = new M.PTUI(rpi_url, elmApp, app);
   const player = M.get(ptui.app.players, player_id);
   if (player) {
     ReactDOM.render(
@@ -29,19 +30,23 @@ export function renderPlayerUI(
   }
 }
 
-interface PlayerMainProps { app?: object; elm_app: any; }
+interface PlayerMainProps {
+  app?: object;
+  elm_app: any;
+  rpi_url: string;
+}
 export class PlayerMain extends React.Component<PlayerMainProps,
   {
-    player_id: T.PlayerID | undefined;
     typing_player_id: string;
     store: Redux.Store<M.PTUI> | undefined;
-    ptui: M.PTUI | undefined
   }> {
   constructor(props: PlayerMainProps) {
     super(props);
-    const ptui = props.app ? new M.PTUI(props.elm_app, T.decodeApp.decodeAny(props.app)) : undefined;
+    const ptui = props.app
+      ? new M.PTUI(props.rpi_url, props.elm_app, T.decodeApp.decodeAny(props.app))
+      : undefined;
     const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
-    this.state = { player_id: undefined, typing_player_id: "", ptui, store };
+    this.state = { typing_player_id: "", store };
   }
 
   componentWillReceiveProps(nextProps: PlayerMainProps) {
@@ -53,7 +58,8 @@ export class PlayerMain extends React.Component<PlayerMainProps,
         }
       } else {
         if (nextProps.app) {
-          const ptui = new M.PTUI(nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app));
+          const ptui = new M.PTUI(
+            nextProps.rpi_url, nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app));
           const store = Redux.createStore(M.update, ptui);
           this.setState({ store });
         }
@@ -66,16 +72,16 @@ export class PlayerMain extends React.Component<PlayerMainProps,
       return <div>Waiting for initial data from server.</div>;
     }
     const ptui = this.state.store.getState();
-    return <Provider store={this.state.store}>{this.ptui(ptui)}</Provider>;
+    return <Provider store={this.state.store}>{this.renderGame(this.state.store, ptui)}</Provider>;
   }
 
-  ptui(ptui: M.PTUI): JSX.Element {
-    if (this.state.player_id) {
-      const player = M.get(ptui.app.players, this.state.player_id);
+  renderGame(store: Redux.Store<M.PTUI>, ptui: M.PTUI): JSX.Element {
+    if (ptui.state.player_id) {
+      const player = M.get(ptui.app.players, ptui.state.player_id);
       if (player) {
         return <PlayerGameView player={player} />;
       } else {
-        return <div>Couldn't find player {this.state.player_id}</div>;
+        return <div>Couldn't find player {ptui.state.player_id}</div>;
       }
     } else {
       return <div>
@@ -85,25 +91,29 @@ export class PlayerMain extends React.Component<PlayerMainProps,
           ? <div>
             <p>You can rejoin a session if you've already registered as a player.</p>
             {LD.keys(ptui.app.players).map(pid =>
-              <button key={pid} onClick={() => this.setState({ player_id: pid })}>{pid}</button>)}
+              <button key={pid}
+                onClick={() => {
+                  store.dispatch({ type: "SetPlayerID", pid });
+                  // TODO FIXME: This whole component's lifecycle/props/state is GARBAGE
+                  this.forceUpdate();
+                }}>
+                {pid}
+              </button>)}
           </div>
           : <noscript />}
         <p>You can register a new player. Enter your name (not your character's name) here:</p>
         <input type="text" value={this.state.typing_player_id}
           onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
         <button
-          onClick={() => this.registerPlayer()}>
+          onClick={() => this.registerPlayer(store)}>
           Register</button>
       </div>;
     }
   }
-  registerPlayer() {
-    if (!this.state.ptui) {
-      console.log("[PlayerMain] registerPlayer called without PTUI state.");
-      return;
-    }
-    this.state.ptui.sendCommand({ t: "RegisterPlayer", player_id: this.state.typing_player_id });
-    this.setState({ player_id: this.state.typing_player_id });
+  registerPlayer(store: Redux.Store<M.PTUI>) {
+    const ptui = store.getState();
+    ptui.sendCommand({ t: "RegisterPlayer", player_id: this.state.typing_player_id });
+    store.dispatch({ type: "SetPlayerID", pid: this.state.typing_player_id });
   }
 }
 
@@ -149,7 +159,8 @@ function selectMapCreatures(
           ? {
             "Move this creature": (cid: T.CreatureID) => {
               console.log("Moving creature!", cid);
-              dispatch({ type: "RequestMove", cid });
+              ptui.requestMove(dispatch, cid);
+              // dispatch({ type: "RequestMove", cid });
             },
           }
           : {};
@@ -192,7 +203,6 @@ function PlayerCreatures(
   : JSX.Element {
   const cids = props.player.creatures;
   const creatures = props.ptui.getCreatures(cids);
-  console.log("[PlayerCreatures]", cids, creatures);
   if (creatures.length === 0) {
     return <div>You have no creatures in your control yet.</div>;
   }

@@ -2,29 +2,37 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
+import * as JD from "type-safe-json-decoder";
 
 import * as T from './PTTypes';
 
 export type Action =
   | { type: "RefreshApp"; app: T.App }
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
-  | { type: "RequestMove"; cid: T.CreatureID; }
+  | { type: "GotMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
+  | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "@@redux/INIT" };
 
+// TODO:
+// put player_id in PTUI
+// add PTUI.focused_scene()
+// add PTUI.rpi_url
 
 export function update(ptui: PTUI, action: Action): PTUI {
+  console.log("[Model.update]", action.type);
   switch (action.type) {
     case "RefreshApp":
-      return new PTUI(ptui.elm_app, action.app, ptui.state);
+      return new PTUI(ptui.rpi_url, ptui.elm_app, action.app, ptui.state);
     case "ActivateGridCreature":
       const new_active =
         (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
           ? undefined
           : { cid: action.cid, rect: action.rect };
-      return new PTUI(ptui.elm_app, ptui.app,
-        { ...ptui.state, grid: { ...ptui.state.grid, active_menu: new_active } });
-    case "RequestMove":
-      console.log("TODO RADIX: implement RequestMove");
+      return ptui.updateState(
+        state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
+    case "SetPlayerID":
+      return ptui.updateState(state => ({ ...state, player_id: action.pid }));
+    case "GotMovementOptions":
       return ptui;
     case "@@redux/INIT":
       return ptui;
@@ -39,24 +47,55 @@ export interface GridModel {
 
 export interface PTUIState {
   grid: GridModel;
+  player_id?: T.PlayerID;
 }
 
 export class PTUI {
   readonly app: T.App;
   readonly elm_app: any;
   readonly state: PTUIState;
+  rpi_url: string;
 
-  constructor(elm_app: any, app: T.App, state: PTUIState = { grid: {} }) {
-    this.app = app;
+  constructor(rpi_url: string, elm_app: any, app: T.App, state: PTUIState = { grid: {} }) {
     this.elm_app = elm_app;
+    this.app = app;
     this.state = state;
+    this.rpi_url = rpi_url;
   }
 
+  updateState(updater: (state: PTUIState) => PTUIState): PTUI {
+    return new PTUI(this.rpi_url, this.elm_app, this.app, updater(this.state));
+  }
+
+  requestMove(dispatch: Dispatch, cid: T.CreatureID) {
+    const scene = this.focused_scene();
+    if (scene) {
+      fetch(this.rpi_url + "/movement_options/" + scene.id + "/" + cid)
+        .then(response => response.json())
+        .then(json => dispatch({
+          type: "GotMovementOptions",
+          cid,
+          options: JD.array(T.decodePoint3).decodeAny(json),
+        }));
+    }
+  }
   sendCommand(cmd: T.GameCommand) {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     this.elm_app.ports.sendCommand.send(json);
   }
+
+  focused_scene(): T.Scene | undefined {
+    // oh for Rust's "?" operator
+    const pid = this.state.player_id;
+    if (pid) {
+      const player = this.app.players[pid];
+      if (player && player.scene) {
+        return this.app.current_game.scenes[player.scene];
+      }
+    }
+  }
+
 
   requestCombatMovement() {
     console.log("[requestMovement]");

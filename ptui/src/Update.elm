@@ -122,7 +122,7 @@ renderComponent oldModel newModel id componentType =
         case newModel.playerID of
           Just pid ->
             let _ = Debug.log "[RENDERPLAYERUI]" pid
-            in Components.renderPlayerUI (id, pid, scene, newModel.raw_app)
+            in Components.renderPlayerUI (id, newModel.rpiURL, pid, scene, newModel.raw_app)
           Nothing -> Cmd.none
 
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
@@ -131,7 +131,7 @@ update msg model =
       refreshReactComponent (id, componentType) = renderComponent model newModel id componentType
       refreshReactComponents =
         if model.app /= newModel.app || model.reactComponents /= newModel.reactComponents || model.playerID /= newModel.playerID then
-          (if newModel.mainReactComponent /= "" then Components.renderReactMain (newModel.mainReactElement, newModel.mainReactComponent, newModel.raw_app) else Cmd.none)
+          (if newModel.mainReactComponent /= "" then Components.renderReactMain (newModel.mainReactElement, newModel.rpiURL, newModel.mainReactComponent, newModel.raw_app) else Cmd.none)
           :: (List.map refreshReactComponent (Dict.toList newModel.reactComponents))
         else []
   in (newModel, Cmd.batch <| [cmd] ++ refreshReactComponents)

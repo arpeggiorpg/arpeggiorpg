@@ -42,6 +42,7 @@ fn main() {
   if matches.is_present("watch") {
     watch(&ptui_dir, &rpi);
   } else {
+    println!("[ptbuild] Starting build...");
     let thread1 = {
       let ptui_dir = ptui_dir.clone();
       thread::spawn(move || build_js(&ptui_dir))
