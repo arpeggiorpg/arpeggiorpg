@@ -90,10 +90,8 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps,
     const items = this.props.ptui.getItems(inv.keySeq().toArray());
 
     const give = this.state.giving
-      ? <GiveItem ptui={this.props.ptui} current_scene={this.props.current_scene}
-        giver={this.props.creature.id} item_id={this.state.giving} onClose={() => {
-          this.setState({ giving: undefined });
-        }} />
+      ? <GiveItem giver={this.props.creature.id} item_id={this.state.giving}
+        onClose={() => this.setState({ giving: undefined })} />
       : <noscript />;
 
     return <div>
@@ -109,24 +107,21 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps,
 }
 
 interface GiveItemProps {
-  ptui: PTUI;
-  current_scene: T.SceneID | undefined;
   item_id: T.ItemID;
   giver: T.CreatureID;
   onClose: () => void;
 }
-export class GiveItem extends React.Component<
-  GiveItemProps,
+export class GiveItemComp extends React.Component<
+  GiveItemProps & M.ReduxProps,
   { receiver: T.CreatureID | undefined; count: number | undefined }> {
-  constructor(props: GiveItemProps) {
+  constructor(props: GiveItemProps & M.ReduxProps) {
     super(props);
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
     const ptui = this.props.ptui;
-    if (!this.props.current_scene) { return <div>You can only transfer items in a scene.</div>; }
-    const scene = M.get(ptui.app.current_game.scenes, this.props.current_scene);
-    if (!scene) { return <div>Couldn't find your scene</div>; }
+    const scene = this.props.ptui.focused_scene();
+    if (!scene) { return <div>You can only transfer items in a scene.</div>; }
     const other_cids_in_scene = LD.keys(scene.creatures);
     LD.pull(other_cids_in_scene, this.props.giver);
     const other_creatures = ptui.getCreatures(other_cids_in_scene);
@@ -178,11 +173,13 @@ export class GiveItem extends React.Component<
     const newReceiver = LD.assign({}, receiver,
       { inventory: M.addToInventory(receiver.inventory, this.props.item_id, count) });
 
-    this.props.ptui.sendCommand({ t: "EditCreature", creature: newGiver });
-    this.props.ptui.sendCommand({ t: "EditCreature", creature: newReceiver });
+    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newGiver });
+    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newReceiver });
     this.props.onClose();
   }
 }
+export const GiveItem = M.connectRedux(GiveItemComp);
+
 
 interface PositiveIntegerInputProps {
   max?: number; value: number | undefined;
@@ -284,48 +281,50 @@ export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.
     const combat = props.combat;
     abilityButtons = abilities.map(abinfo =>
       <AbilityButton key={abinfo.ability_id}
-        ptui={props.ptui} creature={props.creature} abinfo={abinfo}
+        creature={props.creature} abinfo={abinfo}
         scene_id={combat.scene} />);
   } else {
     abilityButtons = <noscript />;
   }
   return <div style={{ display: "flex" }}>
     <CreatureIcon app={props.ptui.app} creature={props.creature} />
-    {props.combat ? <DoneButton ptui={props.ptui} /> : <noscript />}
-    <MoveButton ptui={props.ptui} creature={props.creature} combat={props.combat} />
+    {props.combat ? <DoneButton /> : <noscript />}
+    <MoveButton creature={props.creature} combat={props.combat} />
     {abilityButtons}
   </div>;
 }
 
-function DoneButton(props: { ptui: PTUI }): JSX.Element {
+function doneButton({ ptui, dispatch }: M.ReduxProps): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
   return <button style={{ width: "50px", height: "50px" }}
-    onClick={() => props.ptui.sendCommand(command)}>
+    onClick={() => ptui.sendCommand(dispatch, command)}>
     Done
     </button>;
 }
+export const DoneButton = M.connectRedux(doneButton);
 
 interface AbilityButtonProps {
-  ptui: PTUI;
   creature: T.Creature;
   abinfo: { ability_id: T.AbilityID; ability: T.Ability };
   scene_id: T.SceneID;
 }
-function AbilityButton(props: AbilityButtonProps): JSX.Element {
+function abilityButton(props: AbilityButtonProps & M.ReduxProps): JSX.Element {
   const onClick = () =>
-    props.ptui.requestCombatAbility(
+    props.ptui.requestCombatAbility(props.dispatch,
       props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
   return <button style={{ width: "50px", height: "50px" }}
     onClick={onClick}>
     {props.abinfo.ability.name}
   </button>;
 }
+const AbilityButton = M.connectRedux(abilityButton);
 
-function MoveButton(props: { ptui: PTUI, creature: T.Creature; combat?: T.Combat }): JSX.Element {
+function moveButton(props: {creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
   const suffix = props.combat ? " (" + movement_left / 100 + ")" : "";
   return <button style={{ width: "50px", height: "50px" }}
-    onClick={() => props.ptui.requestCombatMovement()}>
+    onClick={() => props.ptui.requestCombatMovement(props.dispatch)}>
     Move {suffix}
   </button>;
 }
+const MoveButton = M.connectRedux(moveButton);

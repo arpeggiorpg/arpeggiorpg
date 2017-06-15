@@ -172,11 +172,18 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
 export const GridSvg = M.connectRedux(GridSvgComp);
 
 function movementTarget(
-  { cid, pt, ptui, dispatch }: { cid: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
+  { cid, pt, ptui, dispatch }: { cid?: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
   : JSX.Element {
   const tprops = tile_props("cyan", pt);
+  function moveCreature() {
+    if (cid) {
+      ptui.moveCreature(dispatch, cid, pt);
+    } else {
+      ptui.moveCombatCreature(dispatch, pt);
+    }
+  }
   return <rect {...tprops} fillOpacity="0.4"
-    onClick={() => ptui.moveCreature(dispatch, cid, pt)} />;
+    onClick={moveCreature} />;
 }
 const MovementTarget = M.connectRedux(movementTarget);
 

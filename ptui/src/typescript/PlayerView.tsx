@@ -10,26 +10,6 @@ import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-/// renders the player *sidebar*
-export function renderPlayerUI(
-  elmApp: any,
-  [id, rpi_url, player_id, current_scene, data]:
-    [string, string, T.PlayerID, T.SceneID | undefined, any]) {
-  const element = document.getElementById(id);
-  console.log(
-    "[renderPlayerUI] Rendering Player component from Elm",
-    id, element, player_id, current_scene);
-  const app = T.decodeApp.decodeAny(data);
-  const ptui = new M.PTUI(rpi_url, elmApp, app);
-  const player = M.get(ptui.app.players, player_id);
-  if (player) {
-    ReactDOM.render(
-      <PlayerSideBar ptui={ptui} player={player} current_scene={current_scene} />,
-      element
-    );
-  }
-}
-
 interface PlayerMainProps {
   app?: object;
   elm_app: any;
@@ -112,7 +92,8 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   }
   registerPlayer(store: Redux.Store<M.PTUI>) {
     const ptui = store.getState();
-    ptui.sendCommand({ t: "RegisterPlayer", player_id: this.state.typing_player_id });
+    ptui.sendCommand(store.dispatch,
+      { t: "RegisterPlayer", player_id: this.state.typing_player_id });
     store.dispatch({ type: "SetPlayerID", pid: this.state.typing_player_id });
   }
 }
@@ -181,15 +162,7 @@ function selectMapCreatures(
       const pos = scene.creatures[creature.id][0]; // map over keys -> [] is okay
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
-        // const move_action: M.Action = { type: "RequestMove", cid };
-        const actions = LD.includes(player.creatures, creature.id)
-          ? {
-            "Move this creature": (cid: T.CreatureID) => {
-              console.log("Moving creature!", cid);
-              ptui.requestMove(dispatch, cid);
-            },
-          }
-          : {};
+        const actions = creatureMenuActions(ptui, dispatch, player, creature);
         return { creature, pos, class_, actions };
       }
     });
@@ -198,6 +171,21 @@ function selectMapCreatures(
     result[creature.creature.id] = creature;
   }
   return result;
+}
+
+function creatureMenuActions(
+  ptui: M.PTUI, dispatch: M.Dispatch, player: T.Player, creature: T.Creature) {
+  if (!LD.includes(player.creatures, creature.id)) { return {}; }
+  const combat = ptui.app.current_game.current_combat;
+  if (combat) {
+    if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
+      return { "Move this creature": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch) };
+    } else {
+      return {};
+    }
+  } else {
+    return { "Move this creature": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid) };
+  }
 }
 
 
@@ -214,7 +202,7 @@ function PlayerSideBar(props: { player: T.Player; current_scene: string | undefi
           <CommonView.Combat ptui={props.ptui} />
         </CommonView.Tab>
         <CommonView.Tab name="Notes">
-          <PlayerNote player_id={props.player.player_id} ptui={props.ptui} />
+          <PlayerNote player_id={props.player.player_id} />
         </CommonView.Tab>
       </CommonView.TabbedView>
     </div>
@@ -247,7 +235,8 @@ function PlayerCreatures(
   </div>;
 }
 
-function PlayerNote({ player_id, ptui }: { player_id: T.PlayerID; ptui: M.PTUI; }): JSX.Element {
+function playerNote({ player_id, ptui, dispatch }: { player_id: T.PlayerID; } & M.ReduxProps)
+  : JSX.Element {
   let content: string | undefined;
 
   const path = ["Players", player_id];
@@ -272,9 +261,10 @@ function PlayerNote({ player_id, ptui }: { player_id: T.PlayerID; ptui: M.PTUI; 
     const cmd: T.GameCommand = origNote
       ? { t: "EditNote", path, name: "Scratch", note: newNote }
       : { t: "CreateNote", path, note: newNote };
-    ptui.sendCommand(cmd);
+    ptui.sendCommand(dispatch, cmd);
   }
 }
+const PlayerNote = M.connectRedux(playerNote);
 
 function PlayerActionBar(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
   if (props.ptui.app.current_game.current_combat) {

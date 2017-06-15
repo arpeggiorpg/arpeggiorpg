@@ -27,8 +27,6 @@ function PT_initializeComponents(app: any) {
 
   app.ports.renderPlayers.subscribe(afterView((x: any) => Players.renderPlayers(app, x)));
 
-  app.ports.renderPlayerUI.subscribe(afterView((x: any) => PlayerView.renderPlayerUI(app, x)));
-
   app.ports.unloadComponent.subscribe(unloadComponent);
   app.ports.renderReactMain.subscribe(([elemID, rpi_url, componentName, pt_app]:
     [string, string, string, any]) =>

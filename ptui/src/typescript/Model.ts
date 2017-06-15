@@ -10,7 +10,7 @@ import * as T from './PTTypes';
 export type Action =
   | { type: "RefreshApp"; app: T.App }
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
-  | { type: "DisplayMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
+  | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
   | { type: "ClearMovementOptions" }
   | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "DisplayError"; error: string }
@@ -63,7 +63,7 @@ export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; 
 
 export interface GridModel {
   active_menu?: { cid: T.CreatureID; rect: Rect };
-  movement_options?: { cid: T.CreatureID; options: Array<T.Point3> };
+  movement_options?: { cid?: T.CreatureID; options: Array<T.Point3> };
   display_annotation?: { pt: T.Point3, rect: Rect };
 }
 
@@ -73,11 +73,19 @@ export interface PTUIState {
   error?: string;
 }
 
-function ptfetch(
-  dispatch: Dispatch, url: string, init: RequestInit | undefined, then: (json: object) => void)
+function ptfetch<T>(
+  dispatch: Dispatch, url: string, init: RequestInit | undefined,
+  decoder: JD.Decoder<T>, then: (result: T) => void)
   : Promise<void> {
   return fetch(url, init)
     .then(response => response.json())
+    .then(json => {
+      try {
+        return decoder.decodeAny(json);
+      } catch (e) {
+        dispatch({ type: "DisplayError", error: "Failed to decode JSON: " + e.toString() });
+      }
+    })
     .then(then)
     .catch(e => dispatch({ type: "DisplayError", error: e.toString() }));
 
@@ -108,10 +116,11 @@ export class PTUI {
     if (scene) {
       return ptfetch(dispatch, this.rpi_url + "/movement_options/" + scene.id + "/" + cid,
         undefined,
-        json => dispatch({
+        JD.array(T.decodePoint3),
+        options => dispatch({
           type: "DisplayMovementOptions",
           cid,
-          options: JD.array(T.decodePoint3).decodeAny(json),
+          options,
         }));
     }
   }
@@ -120,23 +129,29 @@ export class PTUI {
     dispatch({ type: "ClearMovementOptions" });
     const scene = this.focused_scene();
     if (scene) {
-      this.sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
+      this.sendCommand(dispatch, { t: "PathCreature", scene_id: scene.id, creature_id, dest });
     } else {
       throw new Error(`Tried moving when there is no scene`);
     }
   }
 
-  sendCommand(cmd: T.GameCommand) {
+  moveCombatCreature(dispatch: Dispatch, dest: T.Point3) {
+    dispatch({ type: "ClearMovementOptions" });
+    this.sendCommand(dispatch, { t: "PathCurrentCombatCreature", dest });
+  }
+
+  sendCommand(dispatch: Dispatch, cmd: T.GameCommand) {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
-    // TODO FIXME: handle results and errors from this fetch.
-    // Requires passing a `dispatch` into this function.
-    fetch(this.rpi_url,
+    ptfetch(
+      dispatch, this.rpi_url,
       {
         method: "POST",
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
-      });
+      },
+      JD.succeed(undefined),
+      x => x);
   }
 
   focused_scene(): T.Scene | undefined {
@@ -150,18 +165,23 @@ export class PTUI {
     }
   }
 
-  requestCombatMovement() {
-    console.log("[requestMovement]");
-    this.elm_app.ports.requestCombatMovement.send(null);
+  requestCombatMovement(dispatch: Dispatch) {
+    return ptfetch(
+      dispatch, this.rpi_url + "/combat_movement_options", undefined,
+      JD.array(T.decodePoint3),
+      options => dispatch({ type: "DisplayMovementOptions", options }));
   }
+
   selectAbility(scene_id: T.SceneID, cid: T.CreatureID, abid: T.AbilityID) {
     return this.elm_app.ports.selectAbility.send([scene_id, cid, abid]);
   }
 
   requestCombatAbility(
+    dispatch: Dispatch,
     cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
     switch (ability.target.t) {
-      case "Actor": return this.sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
+      case "Actor": return this.sendCommand(
+        dispatch, { t: "CombatAct", ability_id, target: { t: "Actor" } });
       default: this.selectAbility(scene_id, cid, ability_id);
     }
   }
