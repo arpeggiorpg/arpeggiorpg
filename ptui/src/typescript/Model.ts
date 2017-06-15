@@ -10,7 +10,7 @@ import * as T from './PTTypes';
 export type Action =
   | { type: "RefreshApp"; app: T.App }
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
-  | { type: "GotMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
+  | { type: "DisplayMovementOptions"; cid: T.CreatureID; options: Array<T.Point3> }
   | { type: "ClearMovementOptions" }
   | { type: "SetPlayerID"; pid: T.PlayerID }
   | { type: "DisplayError"; error: string }
@@ -31,7 +31,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
         state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
-    case "GotMovementOptions":
+    case "DisplayMovementOptions":
       return ptui.updateGridState(
         grid => ({
           ...ptui.state.grid,
@@ -97,7 +97,7 @@ export class PTUI {
       return ptfetch(dispatch, this.rpi_url + "/movement_options/" + scene.id + "/" + cid,
         undefined,
         json => dispatch({
-          type: "GotMovementOptions",
+          type: "DisplayMovementOptions",
           cid,
           options: JD.array(T.decodePoint3).decodeAny(json),
         }));
