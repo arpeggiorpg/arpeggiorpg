@@ -296,7 +296,7 @@ export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.
 
 function doneButton({ ptui, dispatch }: M.ReduxProps): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
-  return <button style={{ width: "50px", height: "50px" }}
+  return <button style={{ height: "50px" }}
     onClick={() => ptui.sendCommand(dispatch, command)}>
     Done
     </button>;
@@ -312,7 +312,7 @@ function abilityButton(props: AbilityButtonProps & M.ReduxProps): JSX.Element {
   const onClick = () =>
     props.ptui.requestCombatAbility(props.dispatch,
       props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
-  return <button style={{ width: "50px", height: "50px" }}
+  return <button style={{ height: "50px" }}
     onClick={onClick}>
     {props.abinfo.ability.name}
   </button>;
@@ -322,7 +322,7 @@ const AbilityButton = M.connectRedux(abilityButton);
 function moveButton(props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
   const suffix = props.combat ? " (" + movement_left / 100 + ")" : "";
-  return <button style={{ width: "50px", height: "50px" }}
+  return <button style={{ height: "50px" }}
     onClick={() => props.ptui.requestCombatMovement(props.dispatch)}>
     Move {suffix}
   </button>;

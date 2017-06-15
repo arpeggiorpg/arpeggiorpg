@@ -206,9 +206,7 @@ function PlayerSideBar(props: { player: T.Player; current_scene: string | undefi
         </CommonView.Tab>
       </CommonView.TabbedView>
     </div>
-    <div>
-      <PlayerActionBar player={props.player} ptui={props.ptui} />
-    </div>
+    <PlayerActionBar player={props.player} ptui={props.ptui} />
   </div>;
 }
 
