@@ -224,9 +224,8 @@ const Annotation = M.connectRedux(
   });
 
 
-interface GridCreatureProps { creature: MapCreature; }
 const GridCreature = M.connectRedux(
-  ({ creature, dispatch }: GridCreatureProps & M.ReduxProps): JSX.Element => {
+  ({ ptui, dispatch, creature }: { creature: MapCreature; } & M.ReduxProps): JSX.Element => {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
       const act: M.Action = {
@@ -234,14 +233,23 @@ const GridCreature = M.connectRedux(
       };
       dispatch(act);
     }
+    const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
+    const target_opts = ptui.state.grid.target_options;
+    if (target_opts && target_opts.options.t === "CreatureIDs") {
+      if (LD.includes(target_opts.options.cids, creature.creature.id)) {
+        highlightProps.stroke = "red";
+        highlightProps.strokeWidth = 3;
+      }
+    }
+
     if (creature.creature.portrait_url !== "") {
       const props = tile_props("white", creature.pos, creature.creature.size);
       return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
-        xlinkHref={creature.creature.portrait_url} {...props} />;
+        xlinkHref={creature.creature.portrait_url} {...props} {...highlightProps} />;
     } else {
       const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
       return <g key={creature.creature.name} onClick={() => onClick()}>
-        {<rect ref={el => element = el} {...props} />}
+        {<rect ref={el => element = el} {...props} {...highlightProps} />}
         {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
       </g >;
     }
