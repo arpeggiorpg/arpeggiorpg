@@ -150,7 +150,8 @@ export const PlayerModal = M.connectRedux(playerModal);
 /**
  * Figure out which creatures to display, and create [[Grid.MapCreature]] for each of them.
  * This involves figuring out what kind of actions this player can perform on each creature, such as
- * moving them (if the player has control of them).
+ * moving them (if the player has control of them), or targeting them for an ability that has been
+ * selected.
  */
 function selectMapCreatures(
   ptui: M.PTUI, player: T.Player, scene: T.Scene, dispatch: M.Dispatch)
@@ -190,12 +191,12 @@ function creatureMenuActions(
     const combat = ptui.app.current_game.current_combat;
     if (combat) {
       if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-        return (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch);
+        return cid => ptui.requestCombatMovement(dispatch);
       } else {
         return undefined;
       }
     } else {
-      return (cid: T.CreatureID) => ptui.requestMove(dispatch, cid);
+      return cid => ptui.requestMove(dispatch, cid);
     }
   }
 
@@ -204,7 +205,7 @@ function creatureMenuActions(
       const { options } = ptui.state.grid.target_options;
       if (options.t !== "CreatureIDs") { return undefined; }
       if (LD.includes(options.cids, creature.id)) {
-        return (cid: T.CreatureID) => { console.log("BOOM!"); };
+        return cid => { ptui.executeCombatAbility(dispatch, cid); };
       }
     }
   }

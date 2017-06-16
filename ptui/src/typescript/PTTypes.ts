@@ -17,6 +17,13 @@ export type Energy = number;
 export type ConditionID = number;
 export type FolderPath = Array<string>;
 
+
+// Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
+//     const target = T.MkDecidedTarget.Creature({creature_id});
+// as equivalent to
+//     const target: T.DecidedTarget = {t: "DecidedTarget", creature_id};
+
+
 export interface App {
   snapshots: AppSnapshots;
   players: AppPlayers;

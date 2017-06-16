@@ -20,6 +20,7 @@ export type Action =
     type: "DisplayPotentialTargets";
     cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
   }
+  | { type: "ClearPotentialTargets" }
   // | { type: "SelectTarget"; target: T.DecidedTarget }
   | { type: "ClearPotentialTargets" }
   | { type: "@@redux/INIT" };
@@ -57,6 +58,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
       const { cid, ability_id, options } = action;
       return ptui.updateGridState(
         grid => ({ ...grid, target_options: { cid, ability_id, options } }));
+    case "ClearPotentialTargets":
+      return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
     case "ClearPotentialTargets":
       return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
     case "ClearMovementOptions":
@@ -203,6 +206,19 @@ export class PTUI {
         dispatch, { t: "CombatAct", ability_id, target: { t: "Actor" } });
       default: this.selectAbility(dispatch, scene_id, cid, ability_id);
     }
+  }
+
+  /** Execute an ability that has already been selected, with a target.
+   * This relies on the state being set up ahead of time: we must have a target_options already.
+   */
+  executeCombatAbility(dispatch: Dispatch, target_id: T.CreatureID) {
+    const opts = this.state.grid.target_options;
+    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+    const { cid: actor_id, ability_id, options } = opts;
+    if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
+    const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
+    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
+    dispatch({ type: "ClearPotentialTargets" });
   }
 
   // Utility functions for interacting with the model
