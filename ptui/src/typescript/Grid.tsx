@@ -190,12 +190,29 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
       customEventsHandler: this.panzoomEvents(),
       zoomScaleSensitivity: 0.5,
     });
+    pz.zoomOut();
+    pz.zoomOut();
+    pz.zoomOut();
     this.setState({ spz_element: pz });
   }
 
   componentWillUnmount() {
     if (this.state.spz_element) {
       this.state.spz_element.destroy();
+    }
+  }
+
+  componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
+    if (!M.isEqual(prevProps.map, this.props.map) && this.state.spz_element) {
+      const panzoom = this.state.spz_element;
+      console.log("[GridSvg.componentWillReceiveProps] Refreshing PanZoom");
+      panzoom.updateBBox();
+      panzoom.resize();
+      panzoom.center();
+      panzoom.fit();
+      panzoom.zoomOut();
+      panzoom.zoomOut();
+      panzoom.zoomOut();
     }
   }
 
@@ -233,6 +250,9 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
         {/* this <g> needs to be here for svg-pan-zoom. Otherwise svg-pan-zoom will reparent all
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
           virtualdom rendering */}
+        <rect fillOpacity="0" x="0" y="0" width="5" height="5" />
+        {/* This <rect> needs to be here for svg-pan-zoom, and it needs to have a non-0 width and
+            height. Otherwise various internal bugs crop up in the panzoom code. */}
         {terrain_els}
         {special_els}
         {annotation_els}
