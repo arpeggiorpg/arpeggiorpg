@@ -294,40 +294,38 @@ export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.
   </div>;
 }
 
-function doneButton({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+export const DoneButton = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   const command: T.GameCommand = { t: "Done" };
-  return <button style={{ height: "50px" }}
+  return <button style={{ height: "50px", flex: "1" }}
     onClick={() => ptui.sendCommand(dispatch, command)}>
     Done
-    </button>;
-}
-export const DoneButton = M.connectRedux(doneButton);
+  </button >;
+});
 
 interface AbilityButtonProps {
   creature: T.Creature;
   abinfo: { ability_id: T.AbilityID; ability: T.Ability };
   scene_id: T.SceneID;
 }
-function abilityButton(props: AbilityButtonProps & M.ReduxProps): JSX.Element {
+const AbilityButton = M.connectRedux((props: AbilityButtonProps & M.ReduxProps): JSX.Element => {
   const onClick = () =>
     props.ptui.requestCombatAbility(props.dispatch,
       props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
-  return <button style={{ height: "50px" }}
+  return <button style={{ height: "50px", flex: "1" }}
     onClick={onClick}>
     {props.abinfo.ability.name}
   </button>;
-}
-const AbilityButton = M.connectRedux(abilityButton);
+});
 
-function moveButton(props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
+const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps)
+  : JSX.Element => {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
   const suffix = props.combat ? " (" + Number(movement_left / 100).toFixed(0) + ")" : "";
-  return <button style={{ height: "50px" }}
+  return <button style={{ height: "50px", flex: "1" }}
     onClick={() => props.ptui.requestCombatMovement(props.dispatch)}>
     Move {suffix}
   </button>;
-}
-const MoveButton = M.connectRedux(moveButton);
+});
 
 
 /** A component which renders a very light grey translucent block over the entire screen,
@@ -345,5 +343,4 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
     onClick={() => onClick()} />
     <div style={{ position: "fixed", zIndex: 2 }}>{children}</div>
   </div>;
-
 }
