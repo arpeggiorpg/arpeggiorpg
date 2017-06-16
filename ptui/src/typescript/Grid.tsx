@@ -244,11 +244,15 @@ const GridCreature = M.connectRedux(
 
     if (creature.creature.portrait_url !== "") {
       const props = tile_props("white", creature.pos, creature.creature.size);
-      return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
-        xlinkHref={creature.creature.portrait_url} {...props} {...highlightProps} />;
+      const bare_props = bare_tile_props(creature.pos, creature.creature.size);
+      return <g>
+        <image ref={el => element = el} key={creature.creature.id}
+          xlinkHref={creature.creature.portrait_url} {...props} />
+        <rect {...bare_props} {...highlightProps} fillOpacity="0" onClick={() => onClick()} />
+      </g>;
     } else {
       const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-      return <g key={creature.creature.name} onClick={() => onClick()}>
+      return <g onClick={() => onClick()}>
         {<rect ref={el => element = el} {...props} {...highlightProps} />}
         {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
       </g >;
@@ -269,14 +273,16 @@ function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: numbe
   return <rect key={key} {...props} />;
 }
 
-function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
+function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
     x: pt[0] * 100, y: (pt[1] * 100) - 50,
-    stroke: "black", strokeWidth: 1,
-    fill: color,
   };
+}
+
+function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
+  return { ...bare_tile_props(pt, size), stroke: "black", strokeWidth: 1, fill: color };
 }
 
 function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
