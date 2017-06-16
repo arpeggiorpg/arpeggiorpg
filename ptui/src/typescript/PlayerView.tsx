@@ -182,7 +182,7 @@ function creatureMenuActions(
   }
   const target = targetAction();
   if (target) {
-    actions["Target this creature"] = target;
+    actions[target.name] = target.action;
   }
   return actions;
 
@@ -200,12 +200,18 @@ function creatureMenuActions(
     }
   }
 
-  function targetAction(): ((cid: T.CreatureID) => void) | undefined {
+  function targetAction(): { name: string, action: ((cid: T.CreatureID) => void) } | undefined {
     if (ptui.state.grid.target_options) {
-      const { options } = ptui.state.grid.target_options;
+      const { ability_id, options } = ptui.state.grid.target_options;
       if (options.t !== "CreatureIDs") { return undefined; }
       if (LD.includes(options.cids, creature.id)) {
-        return cid => { ptui.executeCombatAbility(dispatch, cid); };
+        const ability = M.get(ptui.app.current_game.abilities, ability_id);
+        if (ability) {
+          return {
+            name: `${ability.name} this creature`,
+            action: cid => { ptui.executeCombatAbility(dispatch, cid); }
+          };
+        }
       }
     }
   }
