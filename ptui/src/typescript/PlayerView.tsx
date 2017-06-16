@@ -63,29 +63,32 @@ export class PlayerMain extends React.Component<PlayerMainProps,
         return <div>Couldn't find player {ptui.state.player_id}</div>;
       }
     } else {
-      return <div>
-        <h1>P&T</h1>
-        <p>Welcome to P&T!</p>
-        {LD.keys(ptui.app.players).length > 0
-          ? <div>
-            <p>You can rejoin a session if you've already registered as a player.</p>
-            {LD.keys(ptui.app.players).map(pid =>
-              <button key={pid}
-                onClick={() => {
-                  store.dispatch({ type: "SetPlayerID", pid });
-                  // TODO FIXME: This whole component's lifecycle/props/state is GARBAGE
-                  this.forceUpdate();
-                }}>
-                {pid}
-              </button>)}
-          </div>
-          : <noscript />}
-        <p>You can register a new player. Enter your name (not your character's name) here:</p>
-        <input type="text" value={this.state.typing_player_id}
-          onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
-        <button
-          onClick={() => this.registerPlayer(store)}>
-          Register</button>
+      return <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div style={{ width: "600px" }}>
+          <h1>P&T</h1>
+          <p>Welcome to P&T!</p>
+          {LD.keys(ptui.app.players).length > 0
+            ? <div>
+              <p>You can rejoin a session if you've already registered as a player.</p>
+              {LD.keys(ptui.app.players).map(pid =>
+                <button key={pid}
+                style={{height: "40px", width: "80px"}}
+                 onClick={() => {
+                    store.dispatch({ type: "SetPlayerID", pid });
+                    // TODO FIXME: This whole component's lifecycle/props/state is GARBAGE
+                    this.forceUpdate();
+                  }}>
+                  {pid}
+                </button>)}
+            </div>
+            : <noscript />}
+          <p>You can register a new player. Enter your name (not your character's name) here:</p>
+          <input style={{fontSize: "20px"}} type="text" value={this.state.typing_player_id}
+            onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
+          <button style={{height: "40px", width: "80px"}}
+            onClick={() => this.registerPlayer(store)}>
+            Register</button>
+        </div>
       </div>;
     }
   }
@@ -209,7 +212,7 @@ function creatureMenuActions(
         if (ability) {
           return {
             name: `${ability.name} this creature`,
-            action: cid => { ptui.executeCombatAbility(dispatch, cid); }
+            action: cid => { ptui.executeCombatAbility(dispatch, cid); },
           };
         }
       }
