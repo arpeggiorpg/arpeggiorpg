@@ -162,9 +162,9 @@ function selectMapCreatures(
   const creatures = M.filterMap(
     ptui.getCreatures(LD.keys(scene.creatures)),
     creature => {
-      const pos = scene.creatures[creature.id][0]; // map over keys -> [] is okay
+      const [pos, vis] = scene.creatures[creature.id]; // map over keys -> [] is okay
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
-      if (class_) {
+      if (class_ && vis.t === "AllPlayers") {
         const actions = creatureMenuActions(ptui, dispatch, player, creature);
         return { creature, pos, class_, actions };
       }

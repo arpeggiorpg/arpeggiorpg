@@ -130,7 +130,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
           inputClass: (Hammer as any).SUPPORT_POINTER_EVENTS
             ? Hammer.PointerEventInput : Hammer.TouchInput,
         });
-        self.setState({hammer});
+        self.setState({ hammer });
         // Enable pinch
         hammer.get('pinch').set({ enable: true });
         // Handle pan
@@ -234,10 +234,10 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
           virtualdom rendering */}
         {terrain_els}
-        {creature_els}
-        {movement_target_els}
         {special_els}
         {annotation_els}
+        {creature_els}
+        {movement_target_els}
       </g>
     </svg>;
   }
@@ -255,8 +255,7 @@ const MovementTarget = M.connectRedux(
         ptui.moveCombatCreature(dispatch, pt);
       }
     }
-    return <rect {...tprops} fillOpacity="0.4"
-      onClick={moveCreature} />;
+    return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
   });
 
 const SpecialTile = M.connectRedux(
