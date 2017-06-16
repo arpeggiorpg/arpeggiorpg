@@ -234,6 +234,11 @@ const GridCreature = M.connectRedux(
       dispatch(act);
     }
     const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
+    const combat = ptui.app.current_game.current_combat;
+    if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.creature.id) {
+      highlightProps.stroke = "black";
+      highlightProps.strokeWidth = 3;
+    }
     const target_opts = ptui.state.grid.target_options;
     if (target_opts && target_opts.options.t === "CreatureIDs") {
       if (LD.includes(target_opts.options.cids, creature.creature.id)) {
