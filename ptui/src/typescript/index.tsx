@@ -30,7 +30,7 @@ function PT_initializeComponents(app: any) {
   app.ports.unloadComponent.subscribe(unloadComponent);
   app.ports.renderReactMain.subscribe(([elemID, rpi_url, componentName, pt_app]:
     [string, string, string, any]) =>
-    PT_renderMain(app, rpi_url, componentName, elemID, pt_app));
+    PT_renderMain(rpi_url, componentName, elemID, pt_app));
 }
 
 function afterView(f: any) {
@@ -47,13 +47,13 @@ function afterView(f: any) {
 
 
 function PT_renderMain(
-  elm_app: any, rpi_url: string, component_name: string, id: string, pt_app: any) {
+  rpi_url: string, component_name: string, id: string, pt_app: any) {
   const el = document.getElementById(id);
   let component;
   switch (component_name) {
     // case "GM": component = <GMMain />;
     case "Player":
-      component = <PlayerView.PlayerMain rpi_url={rpi_url} elm_app={elm_app} app={pt_app} />;
+      component = <PlayerView.PlayerMain rpi_url={rpi_url} app={pt_app} />;
       break;
     default: throw new Error(`Unknown component ${component}`);
   }

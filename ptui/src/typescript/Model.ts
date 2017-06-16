@@ -16,13 +16,19 @@ export type Action =
   | { type: "DisplayError"; error: string }
   | { type: "ClearError" }
   | { type: "ToggleAnnotation"; pt: T.Point3; rect?: Rect }
+  | {
+    type: "DisplayPotentialTargets";
+    cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
+  }
+  // | { type: "SelectTarget"; target: T.DecidedTarget }
+  | { type: "ClearPotentialTargets" }
   | { type: "@@redux/INIT" };
 
 export function update(ptui: PTUI, action: Action): PTUI {
   console.log("[Model.update]", action.type);
   switch (action.type) {
     case "RefreshApp":
-      return new PTUI(ptui.rpi_url, ptui.elm_app, action.app, ptui.state);
+      return new PTUI(ptui.rpi_url, action.app, ptui.state);
     case "ActivateGridCreature":
       const new_active =
         (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
@@ -32,7 +38,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
         state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
-
 
     // Grid-related
     case "ToggleAnnotation":
@@ -48,8 +53,15 @@ export function update(ptui: PTUI, action: Action): PTUI {
           ...ptui.state.grid,
           movement_options: { cid: action.cid, options: action.options },
         }));
+    case "DisplayPotentialTargets":
+      const { cid, ability_id, options } = action;
+      return ptui.updateGridState(
+        grid => ({ ...grid, target_options: { cid, ability_id, options } }));
+    case "ClearPotentialTargets":
+      return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
+
     case "DisplayError":
       return ptui.updateState(state => ({ ...state, error: action.error }));
     case "ClearError":
@@ -63,8 +75,12 @@ export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; 
 
 export interface GridModel {
   active_menu?: { cid: T.CreatureID; rect: Rect };
-  movement_options?: { cid?: T.CreatureID; options: Array<T.Point3> };
+  movement_options?: {
+    cid?: T.CreatureID; // undefined when we're moving in combat
+    options: Array<T.Point3>
+  };
   display_annotation?: { pt: T.Point3, rect: Rect };
+  target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets; };
 }
 
 export interface PTUIState {
@@ -93,19 +109,17 @@ function ptfetch<T>(
 
 export class PTUI {
   readonly app: T.App;
-  readonly elm_app: any;
   readonly state: PTUIState;
   rpi_url: string;
 
-  constructor(rpi_url: string, elm_app: any, app: T.App, state: PTUIState = { grid: {} }) {
-    this.elm_app = elm_app;
+  constructor(rpi_url: string, app: T.App, state: PTUIState = { grid: {} }) {
     this.app = app;
     this.state = state;
     this.rpi_url = rpi_url;
   }
 
   updateState(updater: (state: PTUIState) => PTUIState): PTUI {
-    return new PTUI(this.rpi_url, this.elm_app, this.app, updater(this.state));
+    return new PTUI(this.rpi_url, this.app, updater(this.state));
   }
   updateGridState(updater: (state: GridModel) => GridModel): PTUI {
     return this.updateState(state => ({ ...state, grid: updater(state.grid) }));
@@ -172,17 +186,22 @@ export class PTUI {
       options => dispatch({ type: "DisplayMovementOptions", options }));
   }
 
-  selectAbility(scene_id: T.SceneID, cid: T.CreatureID, abid: T.AbilityID) {
-    return this.elm_app.ports.selectAbility.send([scene_id, cid, abid]);
+  selectAbility(
+    dispatch: Dispatch, scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
+    ptfetch(dispatch,
+      `${this.rpi_url}/target_options/${scene_id}/${cid}/${ability_id}`,
+      undefined,
+      T.decodePotentialTargets,
+      options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
   }
 
   requestCombatAbility(
-    dispatch: Dispatch,
-    cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID) {
+    dispatch: Dispatch, cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability,
+    scene_id: T.SceneID) {
     switch (ability.target.t) {
       case "Actor": return this.sendCommand(
         dispatch, { t: "CombatAct", ability_id, target: { t: "Actor" } });
-      default: this.selectAbility(scene_id, cid, ability_id);
+      default: this.selectAbility(dispatch, scene_id, cid, ability_id);
     }
   }
 

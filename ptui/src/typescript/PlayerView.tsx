@@ -12,7 +12,6 @@ import * as T from './PTTypes';
 
 interface PlayerMainProps {
   app?: object;
-  elm_app: any;
   rpi_url: string;
 }
 export class PlayerMain extends React.Component<PlayerMainProps,
@@ -23,7 +22,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
   constructor(props: PlayerMainProps) {
     super(props);
     const ptui = props.app
-      ? new M.PTUI(props.rpi_url, props.elm_app, T.decodeApp.decodeAny(props.app))
+      ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
       : undefined;
     const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
     this.state = { typing_player_id: "", store };
@@ -39,7 +38,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
       } else {
         if (nextProps.app) {
           const ptui = new M.PTUI(
-            nextProps.rpi_url, nextProps.elm_app, T.decodeApp.decodeAny(nextProps.app));
+            nextProps.rpi_url, T.decodeApp.decodeAny(nextProps.app));
           const store = Redux.createStore(M.update, ptui);
           this.setState({ store });
         }
@@ -175,17 +174,41 @@ function selectMapCreatures(
 
 function creatureMenuActions(
   ptui: M.PTUI, dispatch: M.Dispatch, player: T.Player, creature: T.Creature) {
-  if (!LD.includes(player.creatures, creature.id)) { return {}; }
-  const combat = ptui.app.current_game.current_combat;
-  if (combat) {
-    if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-      return { "Move this creature": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch) };
-    } else {
-      return {};
-    }
-  } else {
-    return { "Move this creature": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid) };
+  const actions: { [index: string]: (cid: T.CreatureID) => void } = {};
+  const move = moveAction();
+  if (move) {
+    actions["Move this creature"] = move;
   }
+  const target = targetAction();
+  if (target) {
+    actions["Target this creature"] = target;
+  }
+  return actions;
+
+  function moveAction(): ((cid: T.CreatureID) => void) | undefined {
+    if (!LD.includes(player.creatures, creature.id)) { return undefined; }
+    const combat = ptui.app.current_game.current_combat;
+    if (combat) {
+      if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
+        return (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch);
+      } else {
+        return undefined;
+      }
+    } else {
+      return (cid: T.CreatureID) => ptui.requestMove(dispatch, cid);
+    }
+  }
+
+  function targetAction(): ((cid: T.CreatureID) => void) | undefined {
+    if (ptui.state.grid.target_options) {
+      const { options } = ptui.state.grid.target_options;
+      if (options.t !== "CreatureIDs") { return undefined; }
+      if (LD.includes(options.cids, creature.id)) {
+        return (cid: T.CreatureID) => { console.log("BOOM!"); };
+      }
+    }
+  }
+
 }
 
 

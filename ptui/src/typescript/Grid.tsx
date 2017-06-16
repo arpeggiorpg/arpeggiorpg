@@ -17,78 +17,77 @@ export interface GridProps {
   creatures: Obj<MapCreature>;
 }
 
-export function grid_comp(props: GridProps & M.ReduxProps) {
-  const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
-  if (!map_) { return <div>Couldn't find map</div>; }
-  const map = map_; // WHY TYPESCRIPT, WHY???
+export const Grid = M.connectRedux(
+  (props: GridProps & M.ReduxProps): JSX.Element => {
+    const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
+    if (!map_) { return <div>Couldn't find map</div>; }
+    const map = map_; // WHY TYPESCRIPT, WHY???
 
-  const grid = props.ptui.state.grid;
+    const grid = props.ptui.state.grid;
 
-  const menu = grid.active_menu ? renderMenu(grid.active_menu) : <noscript />;
-  const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
-    : <noscript />;
+    const menu = grid.active_menu ? renderMenu(grid.active_menu) : <noscript />;
+    const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
+      : <noscript />;
 
-  return <div style={{ width: "100%", height: "100%" }}>
-    {menu}
-    {annotation}
-    <GridSvg map={map} creatures={LD.values(props.creatures)} />
-  </div>;
+    return <div style={{ width: "100%", height: "100%" }}>
+      {menu}
+      {annotation}
+      <GridSvg map={map} creatures={LD.values(props.creatures)} />
+    </div>;
 
-  function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
-    const special = LD.find(map.specials, ([pt_, _, note, _2]) => M.isEqual(pt, pt_));
-    if (!special) { return <noscript />; }
-    return <CommonView.ClickAway
-      onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
-      <div style={{
-        position: "fixed",
-        fontSize: "24px",
-        top: rect.sw.y, left: rect.sw.x,
-        border: "1px solid black", borderRadius: "5px",
-        backgroundColor: "white",
-      }}>{special[2]}</div>
-    </CommonView.ClickAway>;
-  }
-
-  function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
-    const creature_ = M.get(props.creatures, cid);
-    if (!creature_) {
-      return <noscript />;
-    }
-    const creature = creature_; // WHY TYPESCRIPT, WHY???
-    return <CommonView.ClickAway
-      onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
-      <div
-        style={{
+    function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
+      const special = LD.find(map.specials, ([pt_, _, note, _2]) => M.isEqual(pt, pt_));
+      if (!special) { return <noscript />; }
+      return <CommonView.ClickAway
+        onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
+        <div style={{
           position: "fixed",
-          paddingLeft: "0.5em",
-          paddingRight: "0.5em",
-          top: rect.sw.y, left: rect.sw.x,
-          backgroundColor: "white",
-          border: "1px solid black",
-          borderRadius: "5px",
           fontSize: "24px",
-        }}
-      >
-        <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
-        {
-          LD.keys(creature.actions).map(
-            actionName => {
-              function onClick() {
-                props.dispatch({ type: "ActivateGridCreature", cid, rect });
-                creature.actions[actionName](cid);
-              }
-              return <div key={actionName}
-                style={{ borderBottom: "1px solid grey", cursor: "pointer" }}>
-                <a onClick={() => onClick()}>{actionName}</a>
-              </div>;
-            })
-        }
-      </div>
-    </CommonView.ClickAway>;
-  }
-}
+          top: rect.sw.y, left: rect.sw.x,
+          border: "1px solid black", borderRadius: "5px",
+          backgroundColor: "white",
+        }}>{special[2]}</div>
+      </CommonView.ClickAway>;
+    }
 
-export const Grid = M.connectRedux(grid_comp);
+    function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
+      const creature_ = M.get(props.creatures, cid);
+      if (!creature_) {
+        return <noscript />;
+      }
+      const creature = creature_; // WHY TYPESCRIPT, WHY???
+      return <CommonView.ClickAway
+        onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+        <div
+          style={{
+            position: "fixed",
+            paddingLeft: "0.5em",
+            paddingRight: "0.5em",
+            top: rect.sw.y, left: rect.sw.x,
+            backgroundColor: "white",
+            border: "1px solid black",
+            borderRadius: "5px",
+            fontSize: "24px",
+          }}
+        >
+          <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
+          {
+            LD.keys(creature.actions).map(
+              actionName => {
+                function onClick() {
+                  props.dispatch({ type: "ActivateGridCreature", cid, rect });
+                  creature.actions[actionName](cid);
+                }
+                return <div key={actionName}
+                  style={{ borderBottom: "1px solid grey", cursor: "pointer" }}>
+                  <a onClick={() => onClick()}>{actionName}</a>
+                </div>;
+              })
+          }
+        </div>
+      </CommonView.ClickAway>;
+    }
+  });
 
 
 export interface MapCreature {
@@ -142,7 +141,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
     const terrain_els = map.terrain.map(pt => tile("white", "base-terrain", pt));
     const creature_els = creatures.map(
       c => <GridCreature key={c.creature.id} creature={c} />);
-    const move = ptui.state.grid.movement_options;
+    const grid = ptui.state.grid;
+    const move = grid.movement_options;
     const movement_target_els = move
       ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} />)
       : [];
@@ -172,84 +172,81 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
 }
 export const GridSvg = M.connectRedux(GridSvgComp);
 
-function movementTarget(
-  { cid, pt, ptui, dispatch }: { cid?: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
-  : JSX.Element {
-  const tprops = tile_props("cyan", pt);
-  function moveCreature() {
-    if (cid) {
-      ptui.moveCreature(dispatch, cid, pt);
-    } else {
-      ptui.moveCombatCreature(dispatch, pt);
+const MovementTarget = M.connectRedux(
+  ({ cid, pt, ptui, dispatch }: { cid?: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
+    : JSX.Element => {
+    const tprops = tile_props("cyan", pt);
+    function moveCreature() {
+      if (cid) {
+        ptui.moveCreature(dispatch, cid, pt);
+      } else {
+        ptui.moveCombatCreature(dispatch, pt);
+      }
     }
-  }
-  return <rect {...tprops} fillOpacity="0.4"
-    onClick={moveCreature} />;
-}
-const MovementTarget = M.connectRedux(movementTarget);
+    return <rect {...tprops} fillOpacity="0.4"
+      onClick={moveCreature} />;
+  });
 
-function specialTile(
-  { color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
-  : JSX.Element {
-  if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
-    return <noscript />;
-  }
-  const tprops = tile_props(color, pt);
-  return <rect {...tprops} />;
-}
-const SpecialTile = M.connectRedux(specialTile);
+const SpecialTile = M.connectRedux(
+  ({ color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
+    : JSX.Element => {
+    if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+      return <noscript />;
+    }
+    const tprops = tile_props(color, pt);
+    return <rect {...tprops} />;
+  });
 
 
-function annotation(
-  { ptui, dispatch, pt, note, vis }:
+const Annotation = M.connectRedux(
+  ({ ptui, dispatch, pt, note, vis }:
     { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
-  : JSX.Element {
-  if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
-    return <noscript />;
-  }
+    : JSX.Element => {
+    if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+      return <noscript />;
+    }
 
-  let element: SVGRectElement;
+    let element: SVGRectElement;
 
-  function onClick() {
-    dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
-  }
+    function onClick() {
+      dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+    }
 
-  return <g>
-    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
-      ref={el => element = el} onClick={onClick}
-    />
-    <text
-      style={{ pointerEvents: "none" }}
-      x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
-      fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
-  </g>;
-}
-const Annotation = M.connectRedux(annotation);
+    return <g>
+      <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
+        ref={el => element = el} onClick={onClick}
+      />
+      <text
+        style={{ pointerEvents: "none" }}
+        x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
+        fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
+    </g>;
+  });
 
 
 interface GridCreatureProps { creature: MapCreature; }
-function gridCreature_comp({ creature, dispatch }: GridCreatureProps & M.ReduxProps): JSX.Element {
-  let element: SVGRectElement | SVGImageElement;
-  function onClick() {
-    const act: M.Action = {
-      type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
-    };
-    dispatch(act);
-  }
-  if (creature.creature.portrait_url !== "") {
-    const props = tile_props("white", creature.pos, creature.creature.size);
-    return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
-      xlinkHref={creature.creature.portrait_url} {...props} />;
-  } else {
-    const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-    return <g key={creature.creature.name} onClick={() => onClick()}>
-      {<rect ref={el => element = el} {...props} />}
-      {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
-    </g >;
-  }
-}
+const GridCreature = M.connectRedux(
+  ({ creature, dispatch }: GridCreatureProps & M.ReduxProps): JSX.Element => {
+    let element: SVGRectElement | SVGImageElement;
+    function onClick() {
+      const act: M.Action = {
+        type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
+      };
+      dispatch(act);
+    }
+    if (creature.creature.portrait_url !== "") {
+      const props = tile_props("white", creature.pos, creature.creature.size);
+      return <image ref={el => element = el} key={creature.creature.id} onClick={() => onClick()}
+        xlinkHref={creature.creature.portrait_url} {...props} />;
+    } else {
+      const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
+      return <g key={creature.creature.name} onClick={() => onClick()}>
+        {<rect ref={el => element = el} {...props} />}
+        {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
+      </g >;
+    }
+  });
 
-const GridCreature = M.connectRedux(gridCreature_comp);
 
 function text_tile(text: string, pos: T.Point3): JSX.Element {
   return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>

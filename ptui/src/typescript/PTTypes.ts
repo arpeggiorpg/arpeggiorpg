@@ -305,7 +305,20 @@ export type Dice =
   | { t: "Plus", left: Dice, right: Dice }
   | { t: "BestOf", num: number, dice: Dice };
 
+export type PotentialTargets =
+  | { t: "CreatureIDs"; cids: Array<CreatureID> }
+  | { t: "Points"; points: Array<Point3> }
+  ;
+
 // ** Decoders **
+
+export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
+
+export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", {}, {
+  CreatureIDs: JD.map((cids): PotentialTargets =>
+    ({ t: "CreatureIDs", cids }), JD.array(JD.string())),
+  Points: JD.map((points): PotentialTargets => ({ t: "Points", points }), JD.array(decodePoint3)),
+});
 
 export const decodeDiceLazy = JD.lazy(() => decodeDice);
 export const decodeConditionLazy = JD.lazy(() => decodeCondition);
@@ -420,8 +433,6 @@ export const decodeCreature: Decoder<Creature> = object16(
       portrait_url, attributes, inventory, conditions, initiative, size,
     })
 );
-
-export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
 
 export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   switch (x) {
