@@ -120,12 +120,9 @@ class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxPr
 
     console.log("[PlayerGameView.render]");
 
-    const contents = this.state.width >= 880 ? wideView() : narrowView();
+    const contents = this.state.width >= 880 ? wideView() : narrowView(this.state.width);
 
-    return <div style={{
-      display: "flex", justifyContent: "space-between",
-      height: "100%", width: "100%",
-    }} >
+    return <div style={{ height: "100%", width: "100%" }} >
       <WindowResizeListener
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
@@ -143,8 +140,20 @@ class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxPr
       </div>;
     }
 
-    function narrowView() {
-      return <PlayerSideBar player={player} current_scene={player.scene} is_narrow={grid} />;
+    function narrowView(width: number) {
+      const scale = width / 450;
+      return <div style={{
+        height: "100%",
+        width: "450px",
+        // transformOrigin: "top left",
+        // transform: `scale(${scale})`,
+        // overflow: "hidden",
+        zoom: `${scale * 100}%`,
+      }}>
+        <div style={{ width: 450}}>
+          <PlayerSideBar player={player} current_scene={player.scene} is_narrow={grid} />
+        </div>
+      </div>;
     }
   }
 }
