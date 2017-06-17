@@ -115,9 +115,6 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
 
   panzoomEvents() {
     const self = this;
-    // init: (options: CustomEventOptions) => void;
-    // haltEventListeners: string[];
-    // destroy: Function;
     return {
       haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
       init: (options: SvgPanZoom.CustomEventOptions) => {

@@ -211,7 +211,7 @@ export function conditionIcon(cond: T.Condition): string {
   }
 }
 
-interface TabbedViewProps { children: Array<JSX.Element>; }
+interface TabbedViewProps { children: Array<JSX.Element | null>; }
 export class TabbedView extends React.Component<TabbedViewProps, { selected: number }> {
 
   constructor(props: TabbedViewProps) {
@@ -222,8 +222,9 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   render(): JSX.Element {
     const children_names = React.Children.map(
       this.props.children,
-      (c: any): string | undefined => { if (c.type === Tab) { return c.props.name; } });
-    const selectedView = M.idx(this.props.children, this.state.selected);
+      (c: any): string | undefined => { if (c && c.type === Tab) { return c.props.name; } });
+    const selectedView = M.idx<JSX.Element | null>(this.props.children, this.state.selected);
+    if (!selectedView) { return <div>woops</div>; }
     return <div>
       <div style={{ display: "flex" }}>
         {children_names.map((name, index) =>

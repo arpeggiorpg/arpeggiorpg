@@ -2,6 +2,7 @@ import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Provider } from 'react-redux';
+import { WindowResizeListener } from 'react-window-resize-listener';
 import * as Redux from 'redux';
 
 import * as CommonView from "./CommonView";
@@ -72,8 +73,8 @@ export class PlayerMain extends React.Component<PlayerMainProps,
               <p>You can rejoin a session if you've already registered as a player.</p>
               {LD.keys(ptui.app.players).map(pid =>
                 <button key={pid}
-                style={{height: "40px", width: "80px"}}
-                 onClick={() => {
+                  style={{ height: "40px", width: "80px" }}
+                  onClick={() => {
                     store.dispatch({ type: "SetPlayerID", pid });
                     // TODO FIXME: This whole component's lifecycle/props/state is GARBAGE
                     this.forceUpdate();
@@ -83,9 +84,9 @@ export class PlayerMain extends React.Component<PlayerMainProps,
             </div>
             : <noscript />}
           <p>You can register a new player. Enter your name (not your character's name) here:</p>
-          <input style={{fontSize: "20px"}} type="text" value={this.state.typing_player_id}
+          <input style={{ fontSize: "20px" }} type="text" value={this.state.typing_player_id}
             onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
-          <button style={{height: "40px", width: "80px"}}
+          <button style={{ height: "40px", width: "80px" }}
             onClick={() => this.registerPlayer(store)}>
             Register</button>
         </div>
@@ -101,27 +102,54 @@ export class PlayerMain extends React.Component<PlayerMainProps,
 }
 
 interface PlayerGameViewProps { player: T.Player; }
-function playerGameView({ player, ptui, dispatch }: PlayerGameViewProps & M.ReduxProps)
-  : JSX.Element {
-  const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
+class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxProps,
+  { width: number; height: number }> {
 
-  const grid = scene
-    ? <Grid.Grid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
-    : <div>No scene loaded</div>;
+  constructor(props: PlayerGameViewProps & M.ReduxProps) {
+    super(props);
+    this.state = { width: window.innerWidth, height: window.innerHeight };
+  }
 
-  return <div style={{
-    display: "flex", justifyContent: "space-between",
-    height: "100%", width: "100%",
-  }}>
-    {grid}
-    <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
-      <PlayerSideBar player={player} current_scene={player.scene} ptui={ptui} />
-    </div>
-    <PlayerModal />
-  </div>;
+  render(): JSX.Element {
+    const { player, ptui, dispatch } = this.props;
+    const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
+
+    const grid = scene
+      ? <Grid.Grid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
+      : <div>No scene loaded</div>;
+
+    console.log("[PlayerGameView.render]");
+
+    const contents = this.state.width >= 880 ? wideView() : narrowView();
+
+    return <div style={{
+      display: "flex", justifyContent: "space-between",
+      height: "100%", width: "100%",
+    }} >
+      <WindowResizeListener
+        onResize={({ windowWidth, windowHeight }) =>
+          this.setState({ width: windowWidth, height: windowHeight })} />
+      {contents}
+      <PlayerModal />
+    </div >;
+
+
+    function wideView() {
+      return <div style={{ width: "100%", height: "100%", display: "flex" }}>
+        <div style={{ flex: "1" }}>{grid}</div>
+        <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
+          <PlayerSideBar player={player} current_scene={player.scene} />
+        </div>
+      </div>;
+    }
+
+    function narrowView() {
+      return <PlayerSideBar player={player} current_scene={player.scene} is_narrow={grid} />;
+    }
+  }
 }
 
-export const PlayerGameView = M.connectRedux(playerGameView);
+export const PlayerGameView = M.connectRedux(PlayerGameViewComp);
 
 
 function playerModal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
@@ -222,26 +250,30 @@ function creatureMenuActions(
 }
 
 
-function PlayerSideBar(props: { player: T.Player; current_scene: string | undefined; ptui: M.PTUI; })
-  : JSX.Element {
-  return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-    <div style={{ flex: "1 0 auto" }}>
-      <CommonView.TabbedView>
-        <CommonView.Tab name="Creatures">
-          <PlayerCreatures player={props.player} current_scene={props.current_scene}
-            ptui={props.ptui} />
-        </CommonView.Tab>
-        <CommonView.Tab name="Combat">
-          <CommonView.Combat ptui={props.ptui} />
-        </CommonView.Tab>
-        <CommonView.Tab name="Notes">
-          <PlayerNote player_id={props.player.player_id} />
-        </CommonView.Tab>
-      </CommonView.TabbedView>
-    </div>
-    <PlayerActionBar player={props.player} ptui={props.ptui} />
-  </div>;
-}
+export const PlayerSideBar = M.connectRedux(
+  (props: {
+    player: T.Player; current_scene: string | undefined;
+    is_narrow?: JSX.Element;
+  } & M.ReduxProps): JSX.Element => {
+    return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flex: "1 0 auto" }}>
+        <CommonView.TabbedView>
+          <CommonView.Tab name="Creatures">
+            <PlayerCreatures player={props.player} current_scene={props.current_scene}
+              ptui={props.ptui} />
+          </CommonView.Tab>
+          <CommonView.Tab name="Combat">
+            <CommonView.Combat ptui={props.ptui} />
+          </CommonView.Tab>
+          <CommonView.Tab name="Notes">
+            <PlayerNote player_id={props.player.player_id} />
+          </CommonView.Tab>
+          {props.is_narrow ? <CommonView.Tab name="Map">{props.is_narrow}</CommonView.Tab> : null}
+        </CommonView.TabbedView>
+      </div>
+      <PlayerActionBar player={props.player} ptui={props.ptui} />
+    </div>;
+  });
 
 function PlayerCreatures(
   props: { current_scene: T.SceneID | undefined; player: T.Player; ptui: M.PTUI; })
