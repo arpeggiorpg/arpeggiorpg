@@ -136,7 +136,7 @@ fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
     .register_template_string("html-template", template)
     .expect("Couldn't register_template_string");
 
-  for &(js_fn, html_fn) in [("GM.js", "GM.html"), ("Player.js", "Player.html")].iter() {
+  for &(js_fn, html_fn) in [("GM.js", "GM.html"), ("Player.js", "OldPlayer.html")].iter() {
     let data = template_data(rpi.to_string(), js_fn.to_string());
     let populated = handlebars.render("html-template", &data).expect("Couldn't render template");
     let html_path = build_dir.join(html_fn);
@@ -154,7 +154,7 @@ fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
     .expect("Couldn't register_template_string");
   for &(js_fn, react_component, html_fn) in
     [// ("GM.js", "GM", "ReactGM.html"),
-     ("ReactPlayer.js", "Player", "ReactPlayer.html")]
+     ("ReactPlayer.js", "Player", "Player.html")]
         .iter() {
     let mut data = template_data(rpi.to_string(), js_fn.to_string());
     data.insert("react-component".to_string(), react_component.to_string());
