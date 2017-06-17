@@ -53,7 +53,7 @@ export function classIcon(creature: T.Creature): string {
     case "cleric": return "💉";
     case "rogue": return "🗡️";
     case "ranger": return "🏹";
-    case "creature": return "🏃";
+    case "creature": return "🙂";
     case "baddie": return "👹";
     default: return "";
   }

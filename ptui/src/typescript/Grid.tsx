@@ -71,7 +71,10 @@ export const Grid = M.connectRedux(
             fontSize: "24px",
           }}
         >
-          <div style={{ borderBottom: "1px solid grey" }}>{creature.creature.name}</div>
+          <div style={{ borderBottom: "1px solid grey" }}>
+            {CommonView.classIcon(creature.creature)}
+            {creature.creature.name}
+          </div>
           {
             LD.keys(creature.actions).map(
               actionName => {
@@ -80,7 +83,7 @@ export const Grid = M.connectRedux(
                   creature.actions[actionName](cid);
                 }
                 return <div key={actionName}
-                  style={{ borderBottom: "1px solid grey", cursor: "pointer" }}>
+                  style={{ padding: "0.5em", borderBottom: "1px solid grey", cursor: "pointer" }}>
                   <a onClick={() => onClick()}>{actionName}</a>
                 </div>;
               })
