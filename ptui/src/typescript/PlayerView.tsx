@@ -255,7 +255,7 @@ export const PlayerSideBar = M.connectRedux(
     player: T.Player; current_scene: string | undefined;
     is_narrow?: JSX.Element;
   } & M.ReduxProps): JSX.Element => {
-    return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    return <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}>
       <div style={{ flex: "1 0 auto" }}>
         <CommonView.TabbedView>
           <CommonView.Tab name="Creatures">
