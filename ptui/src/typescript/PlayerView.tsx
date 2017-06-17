@@ -11,6 +11,9 @@ import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
+const SIDE_BAR_WIDTH = 450;
+
+
 interface PlayerMainProps {
   app?: object;
   rpi_url: string;
@@ -120,7 +123,9 @@ class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxPr
 
     console.log("[PlayerGameView.render]");
 
-    const contents = this.state.width >= 880 ? wideView() : narrowView(this.state.width);
+    const contents = this.state.width >= (2 * SIDE_BAR_WIDTH)
+      ? wideView()
+      : narrowView(this.state.width);
 
     return <div style={{ height: "100%", width: "100%" }} >
       <WindowResizeListener
@@ -134,23 +139,23 @@ class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxPr
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
         <div style={{ flex: "1" }}>{grid}</div>
-        <div style={{ width: 450, height: "100%", border: "1px solid black" }}>
+        <div style={{ width: SIDE_BAR_WIDTH, height: "100%", border: "1px solid black" }}>
           <PlayerSideBar player={player} current_scene={player.scene} />
         </div>
       </div>;
     }
 
     function narrowView(width: number) {
-      const scale = width / 450;
+      const scale = width / SIDE_BAR_WIDTH;
       return <div style={{
         height: "100%",
-        width: "450px",
+        width: SIDE_BAR_WIDTH,
         // transformOrigin: "top left",
         // transform: `scale(${scale})`,
         // overflow: "hidden",
         zoom: `${scale * 100}%`,
       }}>
-        <div style={{ width: 450}}>
+        <div style={{ width: SIDE_BAR_WIDTH }}>
           <PlayerSideBar player={player} current_scene={player.scene} is_narrow={grid} />
         </div>
       </div>;
