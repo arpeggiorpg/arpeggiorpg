@@ -185,15 +185,11 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
   componentDidMount() {
     const pz = svgPanZoom("#pt-grid", {
       dblClickZoomEnabled: false,
-      center: true,
-      fit: true,
       customEventsHandler: this.panzoomEvents(),
       zoomScaleSensitivity: 0.5,
     });
-    pz.zoomOut();
-    pz.zoomOut();
-    pz.zoomOut();
     this.setState({ spz_element: pz });
+    this.refreshPanZoom(pz);
   }
 
   componentWillUnmount() {
@@ -202,10 +198,9 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
     }
   }
 
-  componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
-    if (!M.isEqual(prevProps.map, this.props.map) && this.state.spz_element) {
-      const panzoom = this.state.spz_element;
-      console.log("[GridSvg.componentWillReceiveProps] Refreshing PanZoom");
+  refreshPanZoom(panzoom: SvgPanZoom.Instance | undefined) {
+    if (panzoom) {
+      console.log("[GridSvg.refreshPanZoom]");
       panzoom.updateBBox();
       panzoom.resize();
       panzoom.center();
@@ -213,6 +208,12 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
       panzoom.zoomOut();
       panzoom.zoomOut();
       panzoom.zoomOut();
+    }
+  }
+
+  componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
+    if (!M.isEqual(prevProps.map, this.props.map)) {
+      this.refreshPanZoom(this.state.spz_element);
     }
   }
 
