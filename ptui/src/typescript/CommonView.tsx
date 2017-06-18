@@ -220,20 +220,29 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   }
 
   render(): JSX.Element {
-    const children_names = React.Children.map(
+    const children_ = React.Children.map(
       this.props.children,
-      (c: any): string | undefined => { if (c && c.type === Tab) { return c.props.name; } });
-    const selectedView = M.idx<JSX.Element | null>(this.props.children, this.state.selected);
-    if (!selectedView) { return <div>woops</div>; }
+      c => c);
+    const children: Array<Tab> = M.filterMap(
+      children_, (c: any) => { if (c && c.type === Tab) { return c; } });
+    if (!M.idx<JSX.Element | null>(this.props.children, this.state.selected)) {
+      return <div>woops</div>;
+    }
     return <div>
       <div style={{ display: "flex" }}>
-        {children_names.map((name, index) =>
-          <button key={name} style={{ display: "block", height: "40px", flex: "1" }}
+        {children.map((child, index) =>
+          <button key={child.props.name} style={{ display: "block", height: "40px", flex: "1" }}
             onClick={() => this.setState({ selected: index })}>
-            {name}</button>)
+            {child.props.name}</button>)
         }
       </div>
-      {selectedView}
+      {children.map((child, index) => {
+        if (index === this.state.selected) {
+          return <div key={child.props.name} style={{ display: "block" }}>{child}</div>;
+        } else {
+          return <div key={child.props.name} style={{ display: "none" }}>{child}</div>;
+        }
+      })}
     </div>;
   }
 }
