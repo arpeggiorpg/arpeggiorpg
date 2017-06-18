@@ -10,6 +10,7 @@ import * as CommonView from "./CommonView";
 import { PTUI } from "./Model";
 import * as M from "./Model";
 import * as T from "./PTTypes";
+import * as SPZ from './SVGPanZoom';
 
 interface Obj<T> { [index: string]: T; }
 
@@ -105,117 +106,8 @@ interface GridSvgProps {
   map: T.Map;
   creatures: Array<MapCreature>;
 }
-interface GridSvgState {
-  spz_element: SvgPanZoom.Instance | undefined;
-  hammer?: HammerManager;
-}
-class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgState> {
-
-  constructor(props: GridSvgProps & M.ReduxProps) {
-    super(props);
-    this.state = { spz_element: undefined };
-  }
-
-  panzoomEvents() {
-    const self = this;
-    return {
-      haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
-      init: (options: SvgPanZoom.CustomEventOptions) => {
-        let initialScale = 1;
-        let pannedX = 0;
-        let pannedY = 0;
-        // Init Hammer
-        // Listen only for pointer and touch events
-        const hammer = new Hammer(options.svgElement, {
-          inputClass: (Hammer as any).SUPPORT_POINTER_EVENTS
-            ? Hammer.PointerEventInput : Hammer.TouchInput,
-        });
-        self.setState({ hammer });
-        // Enable pinch
-        hammer.get('pinch').set({ enable: true });
-        // Handle pan
-        hammer.on('panstart panmove', ev => {
-          // On pan start reset panned variables
-          if (ev.type === 'panstart') {
-            pannedX = 0;
-            pannedY = 0;
-          }
-          // Pan only the difference
-          options.instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY });
-          pannedX = ev.deltaX;
-          pannedY = ev.deltaY;
-        });
-        // Handle pinch
-        hammer.on('pinchstart pinchmove', ev => {
-          // On pinch start remember initial zoom
-          if (ev.type === 'pinchstart') {
-            initialScale = options.instance.getZoom();
-            options.instance.zoom(initialScale * ev.scale);
-          }
-          options.instance.zoom(initialScale * ev.scale);
-        });
-        // Prevent moving the page on some devices when panning over SVG
-        options.svgElement.addEventListener('touchmove', e => e.preventDefault());
-
-        // // See [Note: Panning/Clicking State Management]
-        // options.svgElement.addEventListener('mousedown', function () {
-        //   state.isMouseDown = true;
-        // });
-        // options.svgElement.addEventListener('mousemove', function () {
-        //   if (state.isMouseDown) {
-        //     app.ports.panning.send(true);
-        //   }
-        // });
-        // options.svgElement.addEventListener('touchend', function (e) {
-        //   app.ports.panning.send(false);
-        // });
-        // options.svgElement.addEventListener('mouseup', function () {
-        //   state.isMouseDown = false;
-        // })
-        // options.svgElement.addEventListener('click', function () {
-        //   app.ports.panning.send(false);
-        //   state.isMouseDown = false;
-        // });
-      },
-      destroy: () => { if (self.state.hammer) { self.state.hammer.destroy(); } },
-    };
-  }
-
-
-  componentDidMount() {
-    const pz = svgPanZoom("#pt-grid", {
-      dblClickZoomEnabled: false,
-      customEventsHandler: this.panzoomEvents(),
-      zoomScaleSensitivity: 0.5,
-    });
-    this.setState({ spz_element: pz });
-    this.refreshPanZoom(pz);
-  }
-
-  componentWillUnmount() {
-    if (this.state.spz_element) {
-      this.state.spz_element.destroy();
-    }
-  }
-
-  refreshPanZoom(panzoom: SvgPanZoom.Instance | undefined) {
-    if (panzoom) {
-      console.log("[GridSvg.refreshPanZoom]");
-      panzoom.updateBBox();
-      panzoom.resize();
-      panzoom.center();
-      panzoom.fit();
-      panzoom.zoomOut();
-      panzoom.zoomOut();
-      panzoom.zoomOut();
-    }
-  }
-
-  componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
-    if (!M.isEqual(prevProps.map, this.props.map)) {
-      this.refreshPanZoom(this.state.spz_element);
-    }
-  }
+class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, undefined> {
+  spz: SPZ.SVGPanZoom;
 
   shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
     const mvmt_diff = !M.isEqual(
@@ -223,6 +115,12 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
       nextProps.ptui.state.grid.movement_options);
     const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
     return app_diff || mvmt_diff;
+  }
+
+  componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
+    if (!M.isEqual(prevProps.map, this.props.map) && this.spz) {
+      this.spz.refresh();
+    }
   }
 
   render(): JSX.Element {
@@ -245,22 +143,19 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, GridSvgSt
         }
       });
 
-    return <svg id="pt-grid" preserveAspectRatio="xMinYMid slice"
+    return <SPZ.SVGPanZoom
+      id="pt-grid"
+      {/* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
+        * hence the `any` type in this `ref` */}
+      ref={(el: any) => { this.spz = el; }}
+      preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
-      <g>
-        {/* this <g> needs to be here for svg-pan-zoom. Otherwise svg-pan-zoom will reparent all
-          nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
-          virtualdom rendering */}
-        <rect fillOpacity="0" x="0" y="0" width="5" height="5" />
-        {/* This <rect> needs to be here for svg-pan-zoom, and it needs to have a non-0 width and
-            height. Otherwise various internal bugs crop up in the panzoom code. */}
-        {terrain_els}
-        {special_els}
-        {annotation_els}
-        {creature_els}
-        {movement_target_els}
-      </g>
-    </svg>;
+      {terrain_els}
+      {special_els}
+      {annotation_els}
+      {creature_els}
+      {movement_target_els}
+    </SPZ.SVGPanZoom>;
   }
 }
 export const GridSvg = M.connectRedux(GridSvgComp);
