@@ -328,7 +328,7 @@ class PlayerNoteComp
     const path = ["Players", player_id];
     const player_folder = ptui.getFolderNode(path);
     if (!player_folder) {
-      return <div>Please ask your GM to creature the folder "{M.folderPathToString(path)}"</div>;
+      return <div>Please ask your GM to create the folder "{M.folderPathToString(path)}"</div>;
     }
     const note = M.get(player_folder.notes, "Scratch");
     const origContent = note ? note.content : "Enter notes here!";

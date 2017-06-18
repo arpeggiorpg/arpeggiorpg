@@ -173,7 +173,7 @@ folderSubEntries fstate app cfg path (T.Folder folder) =
                 then div [s [S.marginLeft (S.em 1)]] [folderView fstate app cfg childPath childFolder]
                 else text ""
               ]
-  in vbox (List.map viewChild (Dict.toList folder.children))
+  in vbox (List.map viewChild (List.sortBy Tuple.first (Dict.toList folder.children)))
 
 folderView : M.FolderState -> T.App -> FolderViewConfig -> T.FolderPath -> T.Folder -> Html M.Msg
 folderView fstate app cfg path (T.Folder folder) =
@@ -197,15 +197,11 @@ folderView fstate app cfg path (T.Folder folder) =
       in case map of
            Just map -> folderLine cfg path (Just (T.FolderMap mapID)) msg "map" map.name
            Nothing -> text ("Invalid map in folder: " ++ mapID)
-    viewItem itemID =
+    viewItem item =
       let
-        msg = M.SetSecondaryFocus (M.Focus2Item path itemID)
-        itemName =
-          case Dict.get itemID app.current_game.items of
-            Just item -> item.name
-            Nothing -> "Item definition not found"
+        msg = M.SetSecondaryFocus (M.Focus2Item path item.id)
       in
-        folderLine cfg path (Just (T.FolderItem itemID)) msg "attachment" itemName
+        folderLine cfg path (Just (T.FolderItem item.id)) msg "attachment" item.name
     scenes =
       if cfg.showScenes then vbox (List.map viewScene (Set.toList folder.data.scenes))
       else text ""
@@ -220,7 +216,7 @@ folderView fstate app cfg path (T.Folder folder) =
       if cfg.showMaps then vbox (List.map viewMap (Set.toList folder.data.maps))
       else text ""
     items =
-      if cfg.showItems then vbox (List.map viewItem (Set.toList folder.data.items))
+      if cfg.showItems then vbox (List.map viewItem (List.sortBy .name (T.getItems app (Set.toList folder.data.items))))
       else text ""
     subfolders = folderSubEntries fstate app cfg path (T.Folder folder)
   in vbox [ scenes, maps, creatures, notes, items, subfolders]

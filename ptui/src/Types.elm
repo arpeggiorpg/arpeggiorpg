@@ -1101,3 +1101,7 @@ addToInventory item_id count inventory =
           Just already_there -> already_there
           Nothing -> 0
   in Dict.insert item_id (existing_count + count) inventory
+
+
+getItems : App -> List ItemID -> List Item
+getItems app item_ids = List.filterMap (flip getItem app) item_ids
