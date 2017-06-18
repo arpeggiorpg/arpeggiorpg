@@ -4,18 +4,20 @@ import * as React from 'react';
 import * as M from './Model';
 
 interface SVGPanZoomProps {
-  children: JSX.Element;
+  onPanZoom?: (x: boolean) => void;
 }
 interface SVGPanZoomState {
   spz_element: SvgPanZoom.Instance | undefined;
   hammer?: HammerManager;
+  isMouseDown: boolean;
 }
 
-export class SVGPanZoom extends React.Component<React.SVGProps<SVGSVGElement>, SVGPanZoomState> {
+export class SVGPanZoom
+  extends React.Component<SVGPanZoomProps & React.SVGProps<SVGSVGElement>, SVGPanZoomState> {
 
-  constructor(props: SVGPanZoomProps) {
+  constructor(props: SVGPanZoomProps & React.SVGProps<SVGSVGElement>) {
     super(props);
-    this.state = { spz_element: undefined };
+    this.state = { spz_element: undefined, isMouseDown: false };
   }
 
   panzoomEvents() {
@@ -60,25 +62,22 @@ export class SVGPanZoom extends React.Component<React.SVGProps<SVGSVGElement>, S
         // Prevent moving the page on some devices when panning over SVG
         options.svgElement.addEventListener('touchmove', e => e.preventDefault());
 
-        // // See [Note: Panning/Clicking State Management]
-        // options.svgElement.addEventListener('mousedown', function () {
-        //   state.isMouseDown = true;
-        // });
-        // options.svgElement.addEventListener('mousemove', function () {
-        //   if (state.isMouseDown) {
-        //     app.ports.panning.send(true);
-        //   }
-        // });
-        // options.svgElement.addEventListener('touchend', function (e) {
-        //   app.ports.panning.send(false);
-        // });
-        // options.svgElement.addEventListener('mouseup', function () {
-        //   state.isMouseDown = false;
-        // })
-        // options.svgElement.addEventListener('click', function () {
-        //   app.ports.panning.send(false);
-        //   state.isMouseDown = false;
-        // });
+        // See [Note: Panning/Clicking State Management]
+        options.svgElement.addEventListener('mousedown', () => self.setState({ isMouseDown: true }));
+
+        options.svgElement.addEventListener('mousemove', () => {
+          if (self.state.isMouseDown) {
+            if (self.props.onPanZoom) { self.props.onPanZoom(true); }
+          }
+        });
+        options.svgElement.addEventListener('touchend', () => {
+          if (self.props.onPanZoom) { self.props.onPanZoom(false); }
+        });
+        options.svgElement.addEventListener('mouseup', () => self.setState({ isMouseDown: false }));
+        options.svgElement.addEventListener('click', () => {
+          if (self.props.onPanZoom) { self.props.onPanZoom(false); }
+          self.setState({ isMouseDown: false });
+        });
       },
       destroy: () => { if (self.state.hammer) { self.state.hammer.destroy(); } },
     };
