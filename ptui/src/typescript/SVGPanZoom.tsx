@@ -29,6 +29,7 @@ export class SVGPanZoom extends React.Component<React.SVGProps<SVGSVGElement>, S
         // Init Hammer
         // Listen only for pointer and touch events
         const hammer = new Hammer(options.svgElement, {
+          // `Hammer as any` is here because @types/hammerjs doesn't declare SUPPORT_POINTER_EVENTS
           inputClass: (Hammer as any).SUPPORT_POINTER_EVENTS
             ? Hammer.PointerEventInput : Hammer.TouchInput,
         });
@@ -122,7 +123,7 @@ export class SVGPanZoom extends React.Component<React.SVGProps<SVGSVGElement>, S
   render(): JSX.Element {
     return <svg {...this.props}>
       <g>
-        {/* this <g> needs to be here for svg-pan-zoom. Otherwise svg-pan-zoom will reparent all
+        {/* this <g> needs to be here for svg-pan-zoom. Otherwise it will reparent all
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
           virtualdom rendering */}
         <rect fillOpacity="0" x="0" y="0" width="5" height="5" />

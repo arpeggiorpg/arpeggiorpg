@@ -145,9 +145,10 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, undefined
 
     return <SPZ.SVGPanZoom
       id="pt-grid"
-      {/* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
-        * hence the `any` type in this `ref` */}
-      ref={(el: any) => { this.spz = el; }}
+      ref={
+        (el: any /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
+                  * hence the `any` type in this `ref` */
+        ) => { this.spz = el; }}
       preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
       {terrain_els}
