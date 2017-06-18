@@ -312,36 +312,46 @@ function PlayerCreatures(
   </div>;
 }
 
-function playerNote({ player_id, ptui, dispatch }: { player_id: T.PlayerID; } & M.ReduxProps)
-  : JSX.Element {
-  let content: string | undefined;
-
-  const path = ["Players", player_id];
-  const player_folder = ptui.getFolderNode(path);
-  if (!player_folder) {
-    return <div>Please ask your GM to creature the folder "{M.folderPathToString(path)}"</div>;
+class PlayerNoteComp
+  extends React.Component<
+  { player_id: T.PlayerID; } & M.ReduxProps,
+  { content: string | undefined }> {
+  constructor(props: { player_id: T.PlayerID; } & M.ReduxProps) {
+    super(props);
+    this.state = { content: undefined };
   }
-  const note = M.get(player_folder.notes, "Scratch");
-  const origContent = note ? note.content : "Enter notes here!";
-  return <div>
-    <div><button
-      disabled={content === undefined || content === origContent}
-      onClick={() => submit(note)}>Save</button></div>
-    <div><textarea style={{ width: "100%", height: "100%" }}
-      defaultValue={origContent} value={content}
-      onChange={e => content = e.currentTarget.value} /></div>
-  </div>;
+  render(): JSX.Element {
+    const self = this;
 
-  function submit(origNote: T.Note | undefined) {
-    if (!content) { return; }
-    const newNote = { name: "Scratch", content };
-    const cmd: T.GameCommand = origNote
-      ? { t: "EditNote", path, name: "Scratch", note: newNote }
-      : { t: "CreateNote", path, note: newNote };
-    ptui.sendCommand(dispatch, cmd);
+    const { player_id, ptui, dispatch } = this.props;
+
+    const path = ["Players", player_id];
+    const player_folder = ptui.getFolderNode(path);
+    if (!player_folder) {
+      return <div>Please ask your GM to creature the folder "{M.folderPathToString(path)}"</div>;
+    }
+    const note = M.get(player_folder.notes, "Scratch");
+    const origContent = note ? note.content : "Enter notes here!";
+    return <div>
+      <div><button style={{height: 40, width: 80}}
+        disabled={this.state.content === undefined || this.state.content === origContent}
+        onClick={() => submit(note)}>Save</button></div>
+      <div><textarea style={{ width: "100%", height: "100%" }}
+        defaultValue={origContent} value={this.state.content}
+        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
+    </div>;
+
+    function submit(origNote: T.Note | undefined) {
+      if (!self.state.content) { return; }
+      const newNote = { name: "Scratch", content: self.state.content };
+      const cmd: T.GameCommand = origNote
+        ? { t: "EditNote", path, name: "Scratch", note: newNote }
+        : { t: "CreateNote", path, note: newNote };
+      ptui.sendCommand(dispatch, cmd);
+    }
   }
 }
-const PlayerNote = M.connectRedux(playerNote);
+export const PlayerNote = M.connectRedux(PlayerNoteComp);
 
 function PlayerActionBar(props: { player: T.Player; ptui: M.PTUI }): JSX.Element {
   if (props.ptui.app.current_game.current_combat) {
