@@ -2,7 +2,7 @@ import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Provider } from 'react-redux';
-import { WindowResizeListener } from 'react-window-resize-listener';
+import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 import * as CommonView from "./CommonView";
@@ -128,7 +128,7 @@ class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxPr
       : narrowView(this.state.width);
 
     return <div style={{ height: "100%", width: "100%" }} >
-      <WindowResizeListener
+      <WindowSizeListener
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
       {contents}
