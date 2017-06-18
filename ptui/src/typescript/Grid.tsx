@@ -106,8 +106,13 @@ interface GridSvgProps {
   map: T.Map;
   creatures: Array<MapCreature>;
 }
-class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, undefined> {
+class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_clicks: boolean }> {
   spz: SPZ.SVGPanZoom;
+
+  constructor(props: GridSvgProps & M.ReduxProps) {
+    super(props);
+    this.state = { allow_clicks: true };
+  }
 
   shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
     const mvmt_diff = !M.isEqual(
@@ -128,7 +133,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, undefined
     console.log("[EXPENSIVE:GridSvg.render]");
     const terrain_els = map.terrain.map(pt => tile("white", "base-terrain", pt));
     const creature_els = creatures.map(
-      c => <GridCreature key={c.creature.id} creature={c} />);
+      c => <GridCreature key={c.creature.id} creature={c} allow_clicks={this.state.allow_clicks} />);
     const grid = ptui.state.grid;
     const move = grid.movement_options;
     const movement_target_els = move
@@ -149,6 +154,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, undefined
         (el: any /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
                   * hence the `any` type in this `ref` */
         ) => { this.spz = el; }}
+      onPanZoom={(isPanningOrZooming: boolean) =>
+        this.setState({ allow_clicks: !isPanningOrZooming })}
       preserveAspectRatio="xMinYMid slice"
       style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
       {terrain_els}
@@ -213,9 +220,11 @@ const Annotation = M.connectRedux(
 
 
 const GridCreature = M.connectRedux(
-  ({ ptui, dispatch, creature }: { creature: MapCreature; } & M.ReduxProps): JSX.Element => {
+  ({ ptui, dispatch, creature, allow_clicks }:
+    { creature: MapCreature; allow_clicks: boolean } & M.ReduxProps): JSX.Element => {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
+      if (!allow_clicks) { return; }
       const act: M.Action = {
         type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
       };
