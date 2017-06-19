@@ -96,7 +96,10 @@ export type GameCommand =
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
   | { t: "PathCurrentCombatCreature"; dest: Point3 }
-  | { t: "Done" };
+  | { t: "Done" }
+  | { t: "SetPlayerScene"; player_id: PlayerID, scene_id: SceneID | undefined }
+  ;
+
 
 // AttributeCheck(CreatureID, AttributeCheck),
 // CreateFolder(FolderPath),
@@ -750,6 +753,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "PathCurrentCombatCreature":
       return { PathCurrentCombatCreature: encodePoint3(cmd.dest) };
     case "Done": return "Done";
+    case "SetPlayerScene":
+      return { SetPlayerScene: [cmd.player_id, cmd.scene_id] };
   }
 }
 
