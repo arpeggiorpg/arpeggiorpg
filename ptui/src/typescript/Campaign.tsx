@@ -25,7 +25,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
     const map_list = ptui.getMaps(folder.data.maps).map(
       m => <MapItem key={m.name} map={m} />);
     const creature_list = ptui.getCreatures(folder.data.creatures).map(
-      c => <div style={{ display: "flex" }}><CV.Icon>contacts</CV.Icon>{c.name}</div>);
+      c => <CreatureItem key={c.name} creature={c} />);
     const note_list = LD.keys(folder.data.notes).map(
       name => <div style={{ display: "flex" }}><CV.Icon>note</CV.Icon>{name}</div>);
     const item_list = ptui.getItems(folder.data.items).map(
@@ -69,3 +69,35 @@ const MapItem = M.connectRedux(
     </div >;
   }
 );
+
+
+class CreatureItemComp
+  extends React.Component<{ creature: T.Creature } & M.ReduxProps, { expanded: boolean }> {
+  constructor(props: { creature: T.Creature } & M.ReduxProps) {
+    super(props);
+    this.state = { expanded: false };
+  }
+  render(): JSX.Element {
+    const creature = this.props.creature;
+
+    const display = this.state.expanded ? "block" : "none";
+
+    return <div>
+      <div style={{ display: "flex" }}>
+        <div style={{ display: "flex", cursor: "pointer" }}
+          onClick={() => this.setState({ expanded: !this.state.expanded })}>
+          <CV.Icon>contacts</CV.Icon>{creature.name}
+        </div>
+      </div>
+      <div style={{ display, marginLeft: "1em" }}>
+        <CV.CreatureCard creature={creature} />
+        <CV.Collapsible name="Inventory">
+          <CV.CreatureInventory creature={creature} />
+        </CV.Collapsible>
+      </div>
+    </div>;
+
+  }
+}
+
+const CreatureItem = M.connectRedux(CreatureItemComp);

@@ -501,6 +501,6 @@ export const TheLayout = M.connectRedux(TheLayoutComp);
 export function Icon(props: { children: Array<any> | any }): JSX.Element {
   return <i
     className="material-icons"
-    style={{MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none"}}
+    style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
