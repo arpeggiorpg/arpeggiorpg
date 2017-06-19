@@ -14,6 +14,17 @@ import * as SPZ from './SVGPanZoom';
 
 interface Obj<T> { [index: string]: T; }
 
+
+export interface MapGridProps {
+  map: T.Map;
+}
+
+export const MapGrid = M.connectRedux(
+  function MapGrid({ map }: MapGridProps & M.ReduxProps): JSX.Element {
+    return <GridSvg map={map} creatures={[]} />;
+  }
+);
+
 export interface SceneGridProps {
   scene: T.Scene;
   creatures: Obj<MapCreature>;
@@ -119,7 +130,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
       this.props.ptui.state.grid.movement_options,
       nextProps.ptui.state.grid.movement_options);
     const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
-    return app_diff || mvmt_diff;
+    const focus_diff = !M.isEqual(this.props.ptui.state.main_focus, nextProps.ptui.state.main_focus);
+    return app_diff || mvmt_diff || focus_diff;
   }
 
   componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {

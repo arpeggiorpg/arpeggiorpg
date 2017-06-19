@@ -11,10 +11,7 @@ import * as Players from './Players';
 import * as T from './PTTypes';
 
 export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
-  const scene = ptui.focused_scene();
-  const map = scene
-    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
-    : <div>No scene yet!</div>;
+  const focus = gridFocus(ptui, dispatch);
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
     <CV.Tab key="Combat" name="Combat"><CV.Combat /></CV.Tab>,
@@ -22,7 +19,7 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
     <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><div>Saved Games!</div></CV.Tab>,
   ];
-  return <CV.TheLayout map={map} tabs={tabs} under={<div>Hello!</div>} />;
+  return <CV.TheLayout map={focus} tabs={tabs} under={<div>Hello!</div>} />;
 });
 
 function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
@@ -33,4 +30,19 @@ function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 
 function creatureMenuActions(ptui: M.PTUI, dispatch: M.Dispatch, creature: T.Creature) {
   return { "Move this creature": ((cid: T.CreatureID) => ptui.requestMove(dispatch, cid)) };
+}
+
+function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
+  if (!ptui.state.main_focus) { return <div>No focus!</div>; }
+  switch (ptui.state.main_focus.t) {
+    case "Scene":
+      const scene = ptui.focused_scene();
+      return scene
+        ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
+        : <div>No scene yet!</div>;
+    case "Map":
+      const map = ptui.getMap(ptui.state.main_focus.map_id);
+      if (!map) { return <div>Couldn't find map!</div>; }
+      return <Grid.MapGrid map={map} />;
+  }
 }

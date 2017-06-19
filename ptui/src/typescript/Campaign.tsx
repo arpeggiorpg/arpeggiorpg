@@ -23,7 +23,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
     const scene_list = ptui.getScenes(folder.data.scenes).map(
       s => <SceneItem key={s.name} scene={s} />);
     const map_list = ptui.getMaps(folder.data.maps).map(
-      m => <div style={{ display: "flex" }}><CV.Icon>map</CV.Icon>{m.name}</div>);
+      m => <MapItem key={m.name} map={m} />);
     const creature_list = ptui.getCreatures(folder.data.creatures).map(
       c => <div style={{ display: "flex" }}><CV.Icon>contacts</CV.Icon>{c.name}</div>);
     const note_list = LD.keys(folder.data.notes).map(
