@@ -24,12 +24,12 @@ interface PlayersProps {
   data: any;
   onSetScene: (pid: T.PlayerID, scene: T.SceneID | null) => void;
   onGrantCreatures: (pid: T.PlayerID) => void;
-};
+}
 
 class Players extends React.Component<PlayersProps, undefined> {
 
   setSceneButton(pid: T.PlayerID, text: string, scene: T.SceneID | null): JSX.Element {
-    return <button onClick={() => this.props.onSetScene(pid, scene)}>{text}</button >
+    return <button onClick={() => this.props.onSetScene(pid, scene)}>{text}</button>;
   }
 
   playerCreatures(app: T.App, player: T.Player): JSX.Element {
@@ -39,7 +39,7 @@ class Players extends React.Component<PlayersProps, undefined> {
           return <li>{app.current_game.creatures[cid].name}</li>;
         })}
       </ul>
-    </Flexbox>
+    </Flexbox>;
   }
 
   render(): JSX.Element {
