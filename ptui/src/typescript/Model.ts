@@ -238,7 +238,7 @@ export class PTUI {
   }
 
   getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
-    return filterMap(cids, this.getCreature.bind(this)) as Array<T.Creature>;
+    return LD.sortBy(filterMap(cids, cid => this.getCreature(cid)), c => c.name);
   }
 
   getItem(iid: T.ItemID): T.Item | undefined {
@@ -247,7 +247,7 @@ export class PTUI {
 
   getItems(iids: Array<T.ItemID>): Array<T.Item> {
     return LD.sortBy(
-      filterMap(iids, this.getItem.bind(this)) as Array<T.Item>,
+      filterMap(iids, iid => this.getItem(iid)),
       i => i.name);
   }
 
@@ -256,8 +256,16 @@ export class PTUI {
   }
   getScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
     return LD.sortBy(
-      filterMap(scene_ids, this.getScene.bind(this)) as Array<T.Scene>,
+      filterMap(scene_ids, sid => this.getScene(sid)),
       s => s.name);
+  }
+  getMap(mid: T.MapID): T.Map | undefined {
+    return get(this.app.current_game.maps, mid);
+  }
+  getMaps(map_ids: Array<T.SceneID>): Array<T.Scene> {
+    return LD.sortBy(
+      filterMap(map_ids, mid => this.getScene(mid)),
+      m => m.name);
   }
 
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
@@ -286,7 +294,7 @@ export class PTUI {
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   // I can't "naturally" convince TypeScript that this filter makes an
   // Array<R> instead of Array<R|undefined>, hence the assertion
-  return coll.map(f).filter(el => (el)) as Array<R>;
+  return coll.map(f).filter(el => el) as Array<R>;
 }
 
 type Inventory = I.Map<T.ItemID, number>;
