@@ -9,19 +9,21 @@ import * as T from './PTTypes';
 
 export type Action =
   | { type: "RefreshApp"; app: T.App }
+  | { type: "DisplayError"; error: string }
+  | { type: "ClearError" }
+
+  | { type: "SetPlayerID"; pid: T.PlayerID; }
+
+  | { type: "FocusScene"; scene_id: T.SceneID; }
+
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
   | { type: "ClearMovementOptions" }
-  | { type: "SetPlayerID"; pid: T.PlayerID }
-  | { type: "DisplayError"; error: string }
-  | { type: "ClearError" }
   | { type: "ToggleAnnotation"; pt: T.Point3; rect?: Rect }
   | {
     type: "DisplayPotentialTargets";
     cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
   }
-  | { type: "ClearPotentialTargets" }
-  // | { type: "SelectTarget"; target: T.DecidedTarget }
   | { type: "ClearPotentialTargets" }
   | { type: "@@redux/INIT" };
 
@@ -39,6 +41,9 @@ export function update(ptui: PTUI, action: Action): PTUI {
         state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
+
+    case "FocusScene":
+      return ptui.updateState(state => ({ ...state, focused_scene: action.scene_id }));
 
     // Grid-related
     case "ToggleAnnotation":
@@ -90,6 +95,7 @@ export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
   error?: string;
+  focused_scene?: T.SceneID;
 }
 
 function ptfetch<T>(
@@ -177,8 +183,10 @@ export class PTUI {
     if (pid) {
       const player = this.app.players[pid];
       if (player && player.scene) {
-        return this.app.current_game.scenes[player.scene];
+        return get(this.app.current_game.scenes, player.scene);
       }
+    } else if (this.state.focused_scene) {
+      return get(this.app.current_game.scenes, this.state.focused_scene);
     }
   }
 
