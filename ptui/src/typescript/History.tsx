@@ -10,6 +10,7 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
 }
 
 export const History = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
+  console.log("[EXPENSIVE:History.render]");
   const app = ptui.app;
   return <div>{
     app.snapshots.map(

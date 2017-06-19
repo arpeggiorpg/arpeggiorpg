@@ -1,7 +1,8 @@
 <html>
+
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"></link> 
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"></link>
   <script type="text/javascript" src="{{js-source}}"></script>
   <script type="text/javascript">
     var rpi = "{{rpi-url}}";
@@ -14,10 +15,14 @@
   <script type="text/javascript" src="bundle.js"></script>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0px;
     }
+
     #react-main {
       height: 100%;
       width: 100%;
@@ -25,13 +30,17 @@
   </style>
 
 </head>
+
 <body>
   <div id="react-main"></div>
   <script type="text/javascript">
-    var app = Elm.Main.worker({'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight], 
-                               'mainReactComponent': '{{react-component}}',
-                               'mainReactElement': 'react-main'});
+    var app = Elm.Main.worker({      
+'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight],
+      'mainReactComponent': '{{react-component}}',
+      'mainReactElement': 'react-main'    
+});
     PT_initializeComponents(app);
   </script>
 </body>
+
 </html>

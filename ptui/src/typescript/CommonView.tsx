@@ -460,7 +460,10 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
 
     function bar(tabs_: Array<JSX.Element>) {
-      return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      return <div style={{
+        display: "flex", flexDirection: "column", height: "100%",
+        overflowY: "auto",
+      }}>
         <div style={{ flex: "1" }}>
           <TabbedView>
             {tabs_}
