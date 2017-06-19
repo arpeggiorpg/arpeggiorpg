@@ -13,7 +13,7 @@ import * as T from './PTTypes';
 export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   const scene = ptui.focused_scene();
   const map = scene
-    ? <Grid.Grid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
+    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
     : <div>No scene yet!</div>;
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,

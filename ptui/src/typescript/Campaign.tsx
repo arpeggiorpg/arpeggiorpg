@@ -55,7 +55,17 @@ const SceneItem = M.connectRedux(
   function SceneItem({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <div style={{ display: "flex" }}>
       <div style={{ display: "flex", cursor: "pointer" }}
-        onClick={() => dispatch({ type: "FocusScene", scene_id: scene.id })}>
+        onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
         <CV.Icon>casino</CV.Icon>{scene.name}</div>
-    </div>;
+    </div >;
   });
+
+const MapItem = M.connectRedux(
+  function MapItem({ map, dispatch }: { map: T.Map } & M.ReduxProps): JSX.Element {
+    return <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", cursor: "pointer" }}
+        onClick={() => dispatch({ type: "Focus", focus: { t: "Map", map_id: map.id } })}>
+        <CV.Icon>map</CV.Icon>{map.name}</div>
+    </div >;
+  }
+);

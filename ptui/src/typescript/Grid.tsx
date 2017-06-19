@@ -14,13 +14,13 @@ import * as SPZ from './SVGPanZoom';
 
 interface Obj<T> { [index: string]: T; }
 
-export interface GridProps {
+export interface SceneGridProps {
   scene: T.Scene;
   creatures: Obj<MapCreature>;
 }
 
-export const Grid = M.connectRedux(
-  (props: GridProps & M.ReduxProps): JSX.Element => {
+export const SceneGrid = M.connectRedux(
+  (props: SceneGridProps & M.ReduxProps): JSX.Element => {
     const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
     if (!map_) { return <div>Couldn't find map</div>; }
     const map = map_; // WHY TYPESCRIPT, WHY???

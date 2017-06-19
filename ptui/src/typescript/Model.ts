@@ -14,7 +14,7 @@ export type Action =
 
   | { type: "SetPlayerID"; pid: T.PlayerID; }
 
-  | { type: "FocusScene"; scene_id: T.SceneID; }
+  | { type: "Focus"; focus: Focus }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
@@ -42,8 +42,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
-    case "FocusScene":
-      return ptui.updateState(state => ({ ...state, focused_scene: action.scene_id }));
+    case "Focus":
+      return ptui.updateState(state => ({ ...state, main_focus: action.focus }));
 
     // Grid-related
     case "ToggleAnnotation":
@@ -95,8 +95,13 @@ export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
   error?: string;
-  focused_scene?: T.SceneID;
+  main_focus?: Focus;
 }
+
+export type Focus =
+  | { t: "Scene"; scene_id: T.SceneID; }
+  | { t: "Map"; map_id: T.MapID; }
+  ;
 
 function ptfetch<T>(
   dispatch: Dispatch, url: string, init: RequestInit | undefined,
@@ -185,8 +190,8 @@ export class PTUI {
       if (player && player.scene) {
         return get(this.app.current_game.scenes, player.scene);
       }
-    } else if (this.state.focused_scene) {
-      return get(this.app.current_game.scenes, this.state.focused_scene);
+    } else if (this.state.main_focus && this.state.main_focus.t === "Scene") {
+      return get(this.app.current_game.scenes, this.state.main_focus.scene_id);
     }
   }
 
@@ -262,9 +267,9 @@ export class PTUI {
   getMap(mid: T.MapID): T.Map | undefined {
     return get(this.app.current_game.maps, mid);
   }
-  getMaps(map_ids: Array<T.SceneID>): Array<T.Scene> {
+  getMaps(map_ids: Array<T.MapID>): Array<T.Map> {
     return LD.sortBy(
-      filterMap(map_ids, mid => this.getScene(mid)),
+      filterMap(map_ids, mid => this.getMap(mid)),
       m => m.name);
   }
 
