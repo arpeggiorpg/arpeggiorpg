@@ -1,11 +1,15 @@
 import * as LD from "lodash";
 import * as React from "react";
 import { Provider } from 'react-redux';
+import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
+
+const SIDE_BAR_WIDTH = 450;
+
 
 interface MainProps {
   app?: object;
@@ -78,22 +82,22 @@ export class Collapsible extends React.Component<{ name: string }, { collapsed: 
   }
 }
 
-export class CreatureCard extends React.Component<{ creature: T.Creature; app: T.App }, undefined> {
-  render(): JSX.Element {
-    const creature = this.props.creature;
-    return <div
-      style={{
-        width: "300px",
-        borderRadius: "10px", border: "1px solid black",
-        padding: "3px",
-      }}>
-      <div>{classIcon(creature)} <strong>{creature.name}</strong>
-        {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
-      </div>
-      <CreatureIcon app={this.props.app} creature={creature} />
-    </div>;
-  }
-}
+export const CreatureCard = M.connectRedux((
+  props: { creature: T.Creature; } & M.ReduxProps): JSX.Element => {
+  const creature = props.creature;
+  return <div
+    style={{
+      width: "300px",
+      borderRadius: "10px", border: "1px solid black",
+      padding: "3px",
+    }}>
+    <div>{classIcon(creature)} <strong>{creature.name}</strong>
+      {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
+    </div>
+    <CreatureIcon app={props.ptui.app} creature={creature} />
+  </div>;
+
+});
 
 export function classIcon(creature: T.Creature): string {
   switch (creature.class_) {
@@ -122,13 +126,11 @@ export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.E
 }
 
 interface CreatureInventoryProps {
-  ptui: PTUI;
-  current_scene: T.SceneID | undefined;
   creature: T.Creature;
 }
-export class CreatureInventory extends React.Component<CreatureInventoryProps,
+class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.ReduxProps,
   { giving: T.ItemID | undefined }> {
-  constructor(props: CreatureInventoryProps) {
+  constructor(props: CreatureInventoryProps & M.ReduxProps) {
     super(props);
     this.state = { giving: undefined };
   }
@@ -152,6 +154,8 @@ export class CreatureInventory extends React.Component<CreatureInventoryProps,
     </div>;
   }
 }
+
+export const CreatureInventory = M.connectRedux(CreatureInventoryComp);
 
 interface GiveItemProps {
   item_id: T.ItemID;
@@ -301,7 +305,7 @@ export class Tab extends React.Component<TabProps, undefined> {
   }
 }
 
-export function Combat(props: { ptui: PTUI }): JSX.Element {
+export const Combat = M.connectRedux((props: M.ReduxProps): JSX.Element => {
   if (!props.ptui.app.current_game.current_combat) {
     return <div>There is no combat!</div>;
   }
@@ -316,15 +320,15 @@ export function Combat(props: { ptui: PTUI }): JSX.Element {
     {creatures_with_init.map(([creature, init], index) => {
       return <div key={creature.id} style={{ display: "flex" }}>
         <div style={{ width: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
-        <CreatureCard app={props.ptui.app} creature={creature} />
+        <CreatureCard creature={creature} />
       </div>;
     })
     }
   </div>;
-}
+});
 
-export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.Combat })
-  : JSX.Element {
+export const ActionBar = M.connectRedux((
+  props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element => {
   const abilities = M.filterMap(LD.values(props.creature.abilities),
     abstatus => {
       const ability = M.get(props.ptui.app.current_game.abilities, abstatus.ability_id);
@@ -349,7 +353,7 @@ export function ActionBar(props: { creature: T.Creature; ptui: PTUI; combat?: T.
     <MoveButton creature={props.creature} combat={props.combat} />
     {abilityButtons}
   </div>;
-}
+});
 
 export const DoneButton = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   const command: T.GameCommand = { t: "Done" };
@@ -401,3 +405,95 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
     <div style={{ position: "fixed", zIndex: 2 }}>{children}</div>
   </div>;
 }
+
+function modal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+  if (ptui.state.error) {
+    return <div style={{
+      position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+      backgroundColor: "white",
+      border: "1px solid black",
+      minHeight: "30%",
+      minWidth: "30%",
+      borderRadius: "5px",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <h1>Error</h1>
+      <div style={{ flex: "1 0 auto" }}>{ptui.state.error}</div>
+      <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div>
+          <button style={{ minHeight: "40px", minWidth: "80px" }}
+            onClick={() => dispatch({ type: "ClearError" })}>Ok</button>
+        </div>
+      </div>
+    </div>;
+  } else {
+    return <noscript />;
+  }
+}
+export const Modal = M.connectRedux(modal);
+
+interface TheLayoutProps { map: JSX.Element; tabs: Array<JSX.Element>; under: JSX.Element; }
+class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
+  { width: number; height: number }> {
+
+  constructor(props: TheLayoutProps & M.ReduxProps) {
+    super(props);
+    this.state = { width: window.innerWidth, height: window.innerHeight };
+  }
+
+  render(): JSX.Element {
+    const { map, tabs, under, ptui, dispatch } = this.props;
+
+    const contents = this.state.width >= (2 * SIDE_BAR_WIDTH)
+      ? wideView()
+      : narrowView(this.state.width);
+
+
+    return <div style={{ height: "100%", width: "100%" }} >
+      <WindowSizeListener
+        onResize={({ windowWidth, windowHeight }) =>
+          this.setState({ width: windowWidth, height: windowHeight })} />
+      {contents}
+      <Modal />
+    </div >;
+
+
+    function bar(tabs_: Array<JSX.Element>) {
+      return <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ flex: "1" }}>
+          <TabbedView>
+            {tabs_}
+          </TabbedView>
+        </div>
+        {under}
+      </div>;
+    }
+
+    function wideView() {
+      return <div style={{ width: "100%", height: "100%", display: "flex" }}>
+        <div style={{ flex: "1" }}>{map}</div>
+        <div style={{ width: SIDE_BAR_WIDTH, height: "100%", border: "1px solid black" }}>
+          {bar(tabs)}
+        </div>
+      </div>;
+    }
+
+    function narrowView(width: number) {
+      const amended_tabs = LD.concat(tabs,
+        <Tab key="Map" name="Map">{map}</Tab>);
+      const scale = width / SIDE_BAR_WIDTH;
+      return <div style={{
+        height: "100%",
+        width: SIDE_BAR_WIDTH,
+        zoom: `${scale * 100}%`,
+      }}>
+        <div style={{ width: SIDE_BAR_WIDTH }}>
+          {bar(amended_tabs)}
+        </div>
+      </div>;
+    }
+  }
+}
+
+export const TheLayout = M.connectRedux(TheLayoutComp);
