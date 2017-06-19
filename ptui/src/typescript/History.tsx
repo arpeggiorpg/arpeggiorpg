@@ -6,11 +6,7 @@ import * as M from './Model';
 import * as T from './PTTypes';
 
 export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
-  // const onRollback = (si: number, li: number) => app.ports.historyRollback.send([si, li]);
-  // ReactDOM.render(
-  //   <History data={data} onRollback={onRollback} />,
-  //   document.getElementById(id)
-  // );
+  console.log("sorry elm");
 }
 
 export const History = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {

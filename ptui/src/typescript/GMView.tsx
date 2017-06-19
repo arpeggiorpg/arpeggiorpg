@@ -2,6 +2,7 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import * as Redux from 'redux';
 
+import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as History from './History';
 import * as M from './Model';
@@ -12,7 +13,7 @@ export class GMMain extends React.Component<{}, undefined> {
   render(): JSX.Element {
     const map = <div>No scene yet!</div>;
     const tabs = [
-      <CV.Tab key="Campaign" name="Campaign"><div>Campaign!</div></CV.Tab>,
+      <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
       <CV.Tab key="Combat" name="Combat"><CV.Combat /></CV.Tab>,
       <CV.Tab key="Players" name="Players"><div>Players!</div></CV.Tab>,
       <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
