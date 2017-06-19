@@ -16,7 +16,7 @@ export const GMMain = M.connectRedux(({ ptui }: M.ReduxProps): JSX.Element => {
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
     <CV.Tab key="Combat" name="Combat"><CV.Combat /></CV.Tab>,
-    <CV.Tab key="Players" name="Players"><div>Players!</div></CV.Tab>,
+    <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
     <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><div>Saved Games!</div></CV.Tab>,
   ];

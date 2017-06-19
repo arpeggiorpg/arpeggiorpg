@@ -1,67 +1,50 @@
-import Flexbox from 'flexbox-react';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
+import * as M from './Model';
 import * as T from './PTTypes';
 
 export function renderPlayers(app: any, [id, currentScene, data]: [string, string, any]) {
-  const onSetScene = (pid: T.PlayerID, scene: T.SceneID | null) =>
-    app.ports.playersSetScene.send([pid, scene]);
-  const onGrantCreatures = (pid: T.PlayerID) =>
-    app.ports.playersGrantCreatures.send(pid);
-  const element = document.getElementById(id);
-  console.log("[renderPlayers] loading Players component", id, element, currentScene, data);
-  ReactDOM.render(
-    <Players data={data} currentScene={currentScene}
-      onSetScene={onSetScene}
-      onGrantCreatures={onGrantCreatures} />,
-    element
-  );
+  console.log("sorry elm");
 }
 
-interface PlayersProps {
-  currentScene: string | undefined;
-  data: any;
-  onSetScene: (pid: T.PlayerID, scene: T.SceneID | null) => void;
-  onGrantCreatures: (pid: T.PlayerID) => void;
-}
+export const Players = M.connectRedux(
+  function Players({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+    const scene = ptui.focused_scene();
+    const app = ptui.app;
 
-class Players extends React.Component<PlayersProps, undefined> {
-
-  setSceneButton(pid: T.PlayerID, text: string, scene: T.SceneID | null): JSX.Element {
-    return <button onClick={() => this.props.onSetScene(pid, scene)}>{text}</button>;
-  }
-
-  playerCreatures(app: T.App, player: T.Player): JSX.Element {
-    return <Flexbox flexDirection="column">
-      <ul>
-        {player.creatures.map(cid => {
-          return <li>{app.current_game.creatures[cid].name}</li>;
-        })}
-      </ul>
-    </Flexbox>;
-  }
-
-  render(): JSX.Element {
-    const app = T.decodeApp.decodeAny(this.props.data);
-    return <Flexbox flexDirection="column">{
+    return <div>{
       Object.keys(app.players).map(pid => {
         const player = app.players[pid];
         const sceneButtons = [];
         if (player.scene) {
-          sceneButtons.push(this.setSceneButton(pid, "Remove from Scene", null));
+          sceneButtons.push(setSceneButton(pid, "Remove from Scene", undefined));
         }
-        if (this.props.currentScene && player.scene !== this.props.currentScene) {
-          sceneButtons.push(this.setSceneButton(pid, "Move to this scene", this.props.currentScene));
+        if (scene && player.scene !== scene.id) {
+          sceneButtons.push(setSceneButton(pid, "Move to this scene", scene.id));
         }
 
-        return <Flexbox alignItems="center" justifyContent="space-between" key={pid}>
+        return <div key={pid}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }} >
           <div>{pid}</div>
-          {this.playerCreatures(app, player)}
+          <div>
+            <ul>
+              {player.creatures.map(cid => {
+                return <li key={pid + "-" + cid}>{app.current_game.creatures[cid].name}</li>;
+              })}
+            </ul>
+          </div>
           {sceneButtons}
-          <button onClick={() => this.props.onGrantCreatures(pid)}>Grant creatures</button>
-        </Flexbox>;
+          <button onClick={() => console.log("Grant creatures plz")}>Grant creatures</button>
+        </div>;
       })
-    }</Flexbox>;
-  }
-}
+    }</div>;
+
+    function setSceneButton(player_id: T.PlayerID, text: string, scene_id: T.SceneID | undefined)
+      : JSX.Element {
+      return <button key={"set-" + player_id + scene_id}
+        onClick={() => ptui.sendCommand(dispatch, { t: "SetPlayerScene", player_id, scene_id })} >
+        {text}
+      </button >;
+    }
+  });
