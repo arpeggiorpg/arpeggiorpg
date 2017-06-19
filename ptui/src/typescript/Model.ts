@@ -246,7 +246,18 @@ export class PTUI {
   }
 
   getItems(iids: Array<T.ItemID>): Array<T.Item> {
-    return filterMap(iids, this.getItem.bind(this)) as Array<T.Item>;
+    return LD.sortBy(
+      filterMap(iids, this.getItem.bind(this)) as Array<T.Item>,
+      i => i.name);
+  }
+
+  getScene(scene_id: T.SceneID): T.Scene | undefined {
+    return get(this.app.current_game.scenes, scene_id);
+  }
+  getScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
+    return LD.sortBy(
+      filterMap(scene_ids, this.getScene.bind(this)) as Array<T.Scene>,
+      s => s.name);
   }
 
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
