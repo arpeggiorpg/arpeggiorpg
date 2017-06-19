@@ -10,10 +10,10 @@ import * as M from './Model';
 import * as Players from './Players';
 import * as T from './PTTypes';
 
-export const GMMain = M.connectRedux(({ ptui }: M.ReduxProps): JSX.Element => {
+export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   const scene = ptui.focused_scene();
   const map = scene
-    ? <Grid.Grid scene={scene} creatures={Grid.mapCreatures(ptui, scene)} />
+    ? <Grid.Grid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
     : <div>No scene yet!</div>;
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
@@ -24,3 +24,13 @@ export const GMMain = M.connectRedux(({ ptui }: M.ReduxProps): JSX.Element => {
   ];
   return <CV.TheLayout map={map} tabs={tabs} under={<div>Hello!</div>} />;
 });
+
+function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
+  : { [index: string]: Grid.MapCreature } {
+  return LD.mapValues(Grid.mapCreatures(ptui, scene),
+    mapc => ({ ...mapc, actions: creatureMenuActions(ptui, dispatch, mapc.creature) }));
+}
+
+function creatureMenuActions(ptui: M.PTUI, dispatch: M.Dispatch, creature: T.Creature) {
+  return { "Move this creature": ((cid: T.CreatureID) => ptui.requestMove(dispatch, cid)) };
+}
