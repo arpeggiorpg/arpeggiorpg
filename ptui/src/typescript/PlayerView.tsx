@@ -91,21 +91,14 @@ export const PlayerGameView = M.connectRedux((
 function selectMapCreatures(
   ptui: M.PTUI, player: T.Player, scene: T.Scene, dispatch: M.Dispatch)
   : { [index: string]: Grid.MapCreature } {
-  const creatures = M.filterMap(
-    ptui.getCreatures(LD.keys(scene.creatures)),
-    creature => {
-      const [pos, vis] = scene.creatures[creature.id]; // map over keys -> [] is okay
-      const class_ = M.get(ptui.app.current_game.classes, creature.class_);
-      if (class_ && vis.t === "AllPlayers") {
-        const actions = creatureMenuActions(ptui, dispatch, player, creature);
-        return { creature, pos, class_, actions };
+  return M.filterMapValues(Grid.mapCreatures(ptui, scene),
+    mapc => {
+      if (scene.creatures[mapc.creature.id][1].t === "AllPlayers") {
+        const actions = creatureMenuActions(ptui, dispatch, player, mapc.creature);
+        return { ...mapc, actions };
       }
-    });
-  const result: { [index: string]: Grid.MapCreature } = {};
-  for (const creature of creatures) {
-    result[creature.creature.id] = creature;
-  }
-  return result;
+    }
+  );
 }
 
 function creatureMenuActions(

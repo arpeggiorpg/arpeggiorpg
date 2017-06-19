@@ -297,6 +297,16 @@ export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Arr
   return coll.map(f).filter(el => el) as Array<R>;
 }
 
+export function filterMapValues<T, R>
+  (obj: { [index: string]: T }, f: (val: T) => R | undefined): { [index: string]: R } {
+  const result: { [index: string]: R } = {};
+  for (const key of LD.keys(obj)) {
+    const new_val = f(obj[key]);
+    if (new_val !== undefined) { result[key] = new_val; }
+  }
+  return result;
+}
+
 type Inventory = I.Map<T.ItemID, number>;
 
 // TODO: these functions should be replaced by GameCommands so the backend handles this stuff
