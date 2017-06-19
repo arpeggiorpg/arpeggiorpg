@@ -472,19 +472,22 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
             {tabs_}
           </TabbedView>
         </div>
-        <div>{secondary}</div>
+        <div>{extra}</div>
       </div>;
     }
 
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
-        <div
-          style={{
-            position: "fixed", top: "50%", left: 0, height: "50%",
-            border: "1px solid black",
-          }}>
-          {secondary}
-        </div>
+        {secondary
+          ? <div
+            style={{
+              position: "fixed", top: "50%", left: 0, height: "50%",
+              border: "1px solid black",
+              width: "20%", minWidth: "20em",
+            }}>
+            {secondary}
+          </div>
+          : null}
         <div style={{ flex: "1" }}>{map}</div>
         <div style={{ width: SIDE_BAR_WIDTH, height: "100%" }}>
           {bar(tabs)}
@@ -517,3 +520,46 @@ export function Icon(props: { children: Array<any> | any }): JSX.Element {
     style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
+
+
+interface NoteEditorProps {
+  path: T.FolderPath;
+  name: string;
+}
+class NoteEditorComp
+  extends React.Component<NoteEditorProps & M.ReduxProps, { content: string | undefined }> {
+  constructor(props: NoteEditorProps & M.ReduxProps) {
+    super(props);
+    this.state = { content: undefined };
+  }
+  render(): JSX.Element {
+    const self = this;
+
+    const { path, name, ptui, dispatch } = this.props;
+
+    const player_folder = ptui.getFolderNode(path);
+    if (!player_folder) {
+      return <div>Please ask your GM to create the folder "{M.folderPathToString(path)}"</div>;
+    }
+    const note = ptui.getNote(path, name);
+    const origContent = note ? note.content : "Enter notes here!";
+    return <div>
+      <div><button style={{ height: 40, width: 80 }}
+        disabled={this.state.content === undefined || this.state.content === origContent}
+        onClick={() => submit(note)}>Save</button></div>
+      <div><textarea style={{ width: "100%", height: "100%" }}
+        defaultValue={origContent} value={this.state.content}
+        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
+    </div>;
+
+    function submit(origNote: T.Note | undefined) {
+      if (!self.state.content) { return; }
+      const newNote = { name, content: self.state.content };
+      const cmd: T.GameCommand = origNote
+        ? { t: "EditNote", path, name: "Scratch", note: newNote }
+        : { t: "CreateNote", path, note: newNote };
+      ptui.sendCommand(dispatch, cmd);
+    }
+  }
+}
+export const NoteEditor = M.connectRedux(NoteEditorComp);

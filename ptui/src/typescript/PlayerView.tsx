@@ -167,46 +167,10 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
   </div>;
 });
 
-class PlayerNoteComp
-  extends React.Component<
-  { player_id: T.PlayerID; } & M.ReduxProps,
-  { content: string | undefined }> {
-  constructor(props: { player_id: T.PlayerID; } & M.ReduxProps) {
-    super(props);
-    this.state = { content: undefined };
-  }
-  render(): JSX.Element {
-    const self = this;
-
-    const { player_id, ptui, dispatch } = this.props;
-
-    const path = ["Players", player_id];
-    const player_folder = ptui.getFolderNode(path);
-    if (!player_folder) {
-      return <div>Please ask your GM to create the folder "{M.folderPathToString(path)}"</div>;
-    }
-    const note = M.get(player_folder.notes, "Scratch");
-    const origContent = note ? note.content : "Enter notes here!";
-    return <div>
-      <div><button style={{ height: 40, width: 80 }}
-        disabled={this.state.content === undefined || this.state.content === origContent}
-        onClick={() => submit(note)}>Save</button></div>
-      <div><textarea style={{ width: "100%", height: "100%" }}
-        defaultValue={origContent} value={this.state.content}
-        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
-    </div>;
-
-    function submit(origNote: T.Note | undefined) {
-      if (!self.state.content) { return; }
-      const newNote = { name: "Scratch", content: self.state.content };
-      const cmd: T.GameCommand = origNote
-        ? { t: "EditNote", path, name: "Scratch", note: newNote }
-        : { t: "CreateNote", path, note: newNote };
-      ptui.sendCommand(dispatch, cmd);
-    }
-  }
+function PlayerNote({ player_id }: { player_id: T.PlayerID; }): JSX.Element {
+  const path = ["Players", player_id];
+  return <CommonView.NoteEditor path={path} name="Scratch" />;
 }
-export const PlayerNote = M.connectRedux(PlayerNoteComp);
 
 export const PlayerActionBar = M.connectRedux((
   props: { player: T.Player; } & M.ReduxProps): JSX.Element => {

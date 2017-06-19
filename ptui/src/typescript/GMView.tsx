@@ -27,7 +27,7 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
 
 function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch) {
   if (ptui.state.focused_note) {
-    return <div>A note!</div>;
+    return <CV.NoteEditor path={ptui.state.focused_note.path} name={ptui.state.focused_note.name} />;
   }
 }
 

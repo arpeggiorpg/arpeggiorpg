@@ -278,6 +278,13 @@ export class PTUI {
       m => m.name);
   }
 
+  getNote(path: T.FolderPath, name: string): T.Note | undefined {
+    const fnode = this.getFolderNode(path);
+    if (fnode && fnode.notes.hasOwnProperty(name)) {
+      return fnode.notes[name];
+    }
+  }
+
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
     let cur: T.Folder | undefined = this.app.current_game.campaign;
     for (const seg of path) {
