@@ -21,7 +21,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
   render(): JSX.Element {
     const { folder, ptui } = this.props;
     const scene_list = ptui.getScenes(folder.data.scenes).map(
-      s => <div style={{ display: "flex" }}><CV.Icon>casino</CV.Icon>{s.name}</div>);
+      s => <SceneItem scene={s} />);
     const map_list = ptui.getMaps(folder.data.maps).map(
       m => <div style={{ display: "flex" }}><CV.Icon>map</CV.Icon>{m.name}</div>);
     const creature_list = ptui.getCreatures(folder.data.creatures).map(
@@ -49,3 +49,13 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
   }
 }
 const FolderTree = M.connectRedux(FolderTreeComp);
+
+
+const SceneItem = M.connectRedux(({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps)
+  : JSX.Element => {
+  return <div style={{ display: "flex" }}>
+    <div style={{ display: "flex", cursor: "pointer" }}
+      onClick={() => dispatch({ type: "FocusScene", scene_id: scene.id })}>
+      <CV.Icon>casino</CV.Icon>{scene.name}</div>
+  </div>;
+});
