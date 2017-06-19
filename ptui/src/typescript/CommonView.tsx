@@ -1,9 +1,56 @@
 import * as LD from "lodash";
 import * as React from "react";
+import { Provider } from 'react-redux';
+import * as Redux from 'redux';
 
 import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
+
+interface MainProps {
+  app?: object;
+  rpi_url: string;
+}
+export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI> | undefined; }> {
+  app?: object;
+  rpi_url: string;
+
+  constructor(props: MainProps) {
+    super(props);
+    const ptui = props.app
+      ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
+      : undefined;
+    const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
+    this.state = { store };
+  }
+
+  componentWillReceiveProps(nextProps: MainProps) {
+    if (!M.isEqual(this.props, nextProps)) {
+      if (this.state.store) {
+        if (nextProps.app) {
+          this.state.store.dispatch(
+            { type: "RefreshApp", app: T.decodeApp.decodeAny(nextProps.app) });
+        }
+      } else {
+        if (nextProps.app) {
+          const ptui = new M.PTUI(
+            nextProps.rpi_url, T.decodeApp.decodeAny(nextProps.app));
+          const store = Redux.createStore(M.update, ptui);
+          this.setState({ store });
+        }
+      }
+    }
+  }
+
+  render(): JSX.Element {
+    if (!this.state.store) {
+      return <div>Waiting for initial data from server.</div>;
+    }
+    const ptui = this.state.store.getState();
+    return <Provider store={this.state.store}>{this.props.children}</Provider>;
+  }
+
+}
 
 export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
   constructor(props: { name: string }) {

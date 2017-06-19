@@ -1,7 +1,9 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
+import * as CommonView from './CommonView';
 import * as PTDice from "./Dice";
+import * as GMView from './GMView';
 import * as Hello from "./Hello";
 import * as History from "./History";
 import * as Players from "./Players";
@@ -46,18 +48,22 @@ function afterView(f: any) {
 }
 
 
-function PT_renderMain(
-  rpi_url: string, component_name: string, id: string, pt_app: any) {
-  const el = document.getElementById(id);
-  let component;
+function getInnerComponent(component_name: string): JSX.Element {
   switch (component_name) {
-    // case "GM": component = <GMMain />;
-    case "Player":
-      component = <PlayerView.PlayerMain rpi_url={rpi_url} app={pt_app} />;
-      break;
-    default: throw new Error(`Unknown component ${component}`);
+    case "GM": return <GMView.GMMain />;
+    case "Player": return <PlayerView.PlayerMain />;
+    default: throw new Error(`Unknown component ${component_name}`);
+
   }
-  ReactDOM.render(component, el);
+}
+
+function PT_renderMain(rpi_url: string, component_name: string, id: string, pt_app: any) {
+  const el = document.getElementById(id);
+  ReactDOM.render(
+    <CommonView.Main rpi_url={rpi_url} app={pt_app}>
+      {getInnerComponent(component_name)}
+    </CommonView.Main>,
+    el);
 }
 
 // I can't figure out any other way to export these functions such that they can be called from plain

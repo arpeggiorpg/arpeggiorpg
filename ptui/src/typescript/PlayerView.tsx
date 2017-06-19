@@ -13,52 +13,14 @@ import * as T from './PTTypes';
 
 const SIDE_BAR_WIDTH = 450;
 
-
-interface PlayerMainProps {
-  app?: object;
-  rpi_url: string;
-}
-export class PlayerMain extends React.Component<PlayerMainProps,
-  {
-    typing_player_id: string;
-    store: Redux.Store<M.PTUI> | undefined;
-  }> {
-  constructor(props: PlayerMainProps) {
+export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_player_id: string; }> {
+  constructor(props: M.ReduxProps) {
     super(props);
-    const ptui = props.app
-      ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
-      : undefined;
-    const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
-    this.state = { typing_player_id: "", store };
-  }
-
-  componentWillReceiveProps(nextProps: PlayerMainProps) {
-    if (!M.isEqual(this.props, nextProps)) {
-      if (this.state.store) {
-        if (nextProps.app) {
-          this.state.store.dispatch(
-            { type: "RefreshApp", app: T.decodeApp.decodeAny(nextProps.app) });
-        }
-      } else {
-        if (nextProps.app) {
-          const ptui = new M.PTUI(
-            nextProps.rpi_url, T.decodeApp.decodeAny(nextProps.app));
-          const store = Redux.createStore(M.update, ptui);
-          this.setState({ store });
-        }
-      }
-    }
+    this.state = { typing_player_id: "" };
   }
 
   render(): JSX.Element {
-    if (!this.state.store) {
-      return <div>Waiting for initial data from server.</div>;
-    }
-    const ptui = this.state.store.getState();
-    return <Provider store={this.state.store}>{this.renderGame(this.state.store, ptui)}</Provider>;
-  }
-
-  renderGame(store: Redux.Store<M.PTUI>, ptui: M.PTUI): JSX.Element {
+    const {ptui, dispatch} = this.props;
     if (ptui.state.player_id) {
       const player = M.get(ptui.app.players, ptui.state.player_id);
       if (player) {
@@ -78,7 +40,7 @@ export class PlayerMain extends React.Component<PlayerMainProps,
                 <button key={pid}
                   style={{ height: "40px", width: "80px" }}
                   onClick={() => {
-                    store.dispatch({ type: "SetPlayerID", pid });
+                    dispatch({ type: "SetPlayerID", pid });
                     // TODO FIXME: This whole component's lifecycle/props/state is GARBAGE
                     this.forceUpdate();
                   }}>
@@ -90,19 +52,20 @@ export class PlayerMain extends React.Component<PlayerMainProps,
           <input style={{ fontSize: "20px" }} type="text" value={this.state.typing_player_id}
             onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
           <button style={{ height: "40px", width: "80px" }}
-            onClick={() => this.registerPlayer(store)}>
+            onClick={() => this.registerPlayer(ptui, dispatch)}>
             Register</button>
         </div>
       </div>;
     }
   }
-  registerPlayer(store: Redux.Store<M.PTUI>) {
-    const ptui = store.getState();
-    ptui.sendCommand(store.dispatch,
+  registerPlayer(ptui: M.PTUI, dispatch: M.Dispatch) {
+    ptui.sendCommand(dispatch,
       { t: "RegisterPlayer", player_id: this.state.typing_player_id });
-    store.dispatch({ type: "SetPlayerID", pid: this.state.typing_player_id });
+    dispatch({ type: "SetPlayerID", pid: this.state.typing_player_id });
   }
 }
+
+export const PlayerMain = M.connectRedux(PlayerMainComp);
 
 interface PlayerGameViewProps { player: T.Player; }
 class PlayerGameViewComp extends React.Component<PlayerGameViewProps & M.ReduxProps,
@@ -333,7 +296,7 @@ class PlayerNoteComp
     const note = M.get(player_folder.notes, "Scratch");
     const origContent = note ? note.content : "Enter notes here!";
     return <div>
-      <div><button style={{height: 40, width: 80}}
+      <div><button style={{ height: 40, width: 80 }}
         disabled={this.state.content === undefined || this.state.content === origContent}
         onClick={() => submit(note)}>Save</button></div>
       <div><textarea style={{ width: "100%", height: "100%" }}
