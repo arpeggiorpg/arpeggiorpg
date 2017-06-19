@@ -19,8 +19,17 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
     <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><div>Saved Games!</div></CV.Tab>,
   ];
-  return <CV.TheLayout map={focus} tabs={tabs} under={<div>Hello!</div>} />;
+
+  const secondary = renderSecondary(ptui, dispatch);
+
+  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} />;
 });
+
+function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch) {
+  if (ptui.state.focused_note) {
+    return <div>A note!</div>;
+  }
+}
 
 function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   : { [index: string]: Grid.MapCreature } {

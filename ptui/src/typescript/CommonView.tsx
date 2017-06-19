@@ -433,7 +433,11 @@ function modal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
 }
 export const Modal = M.connectRedux(modal);
 
-interface TheLayoutProps { map: JSX.Element; tabs: Array<JSX.Element>; under: JSX.Element; }
+interface TheLayoutProps {
+  map: JSX.Element;
+  tabs: Array<JSX.Element>;
+  secondary?: JSX.Element;
+}
 class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   { width: number; height: number }> {
 
@@ -443,7 +447,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    const { map, tabs, under, ptui, dispatch } = this.props;
+    const { map, tabs, secondary, ptui, dispatch } = this.props;
 
     const contents = this.state.width >= (2 * SIDE_BAR_WIDTH)
       ? wideView()
@@ -458,25 +462,31 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       <Modal />
     </div >;
 
-
-    function bar(tabs_: Array<JSX.Element>) {
+    function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
       return <div style={{
         display: "flex", flexDirection: "column", height: "100%",
         overflowY: "auto",
       }}>
-        <div style={{ flex: "1" }}>
+        <div style={{ flex: "1", border: "1px solid black" }}>
           <TabbedView>
             {tabs_}
           </TabbedView>
         </div>
-        {under}
+        <div>{secondary}</div>
       </div>;
     }
 
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
+        <div
+          style={{
+            position: "fixed", top: "50%", left: 0, height: "50%",
+            border: "1px solid black",
+          }}>
+          {secondary}
+        </div>
         <div style={{ flex: "1" }}>{map}</div>
-        <div style={{ width: SIDE_BAR_WIDTH, height: "100%", border: "1px solid black" }}>
+        <div style={{ width: SIDE_BAR_WIDTH, height: "100%" }}>
           {bar(tabs)}
         </div>
       </div>;
@@ -492,7 +502,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         zoom: `${scale * 100}%`,
       }}>
         <div style={{ width: SIDE_BAR_WIDTH }}>
-          {bar(amended_tabs)}
+          {bar(amended_tabs, secondary)}
         </div>
       </div>;
     }

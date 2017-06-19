@@ -15,6 +15,7 @@ export type Action =
   | { type: "SetPlayerID"; pid: T.PlayerID; }
 
   | { type: "Focus"; focus: Focus }
+  | { type: "FocusNote"; path: T.FolderPath; name: string }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
@@ -44,6 +45,9 @@ export function update(ptui: PTUI, action: Action): PTUI {
 
     case "Focus":
       return ptui.updateState(state => ({ ...state, main_focus: action.focus }));
+    case "FocusNote":
+      return ptui.updateState(
+        state => ({ ...state, focused_note: { path: action.path, name: action.name } }));
 
     // Grid-related
     case "ToggleAnnotation":
@@ -96,6 +100,7 @@ export interface PTUIState {
   player_id?: T.PlayerID;
   error?: string;
   main_focus?: Focus;
+  focused_note?: { path: T.FolderPath; name: string };
 }
 
 export type Focus =

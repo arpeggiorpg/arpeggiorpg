@@ -8,11 +8,17 @@ import * as T from './PTTypes';
 
 export const Campaign = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   return <div>
-    <FolderTree name="Campaign" folder={ptui.app.current_game.campaign} start_open={true} />
+    <FolderTree
+      name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />
   </div>;
 });
 
-interface FTProps { name: string; folder: T.Folder; start_open?: boolean; }
+interface FTProps {
+  path: T.FolderPath;
+  name: string;
+  folder: T.Folder;
+  start_open?: boolean;
+}
 class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded: boolean }> {
   constructor(props: FTProps & M.ReduxProps) {
     super(props);
@@ -27,12 +33,12 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
     const creature_list = ptui.getCreatures(folder.data.creatures).map(
       c => <CreatureItem key={c.name} creature={c} />);
     const note_list = LD.keys(folder.data.notes).map(
-      name => <div style={{ display: "flex" }}><CV.Icon>note</CV.Icon>{name}</div>);
+      name => <NoteItem key={name} path={this.props.path} name={name} />);
     const item_list = ptui.getItems(folder.data.items).map(
       item => <div style={{ display: "flex" }}><CV.Icon>attachment</CV.Icon>{item.name}</div>);
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
       ([name, subfolder]) => <div>
-        <FolderTree name={name} folder={subfolder} />
+        <FolderTree name={name} folder={subfolder} path={LD.concat(this.props.path, name)} />
       </div>);
     const display = this.state.expanded ? "block" : "none";
     return <div>
@@ -101,3 +107,14 @@ class CreatureItemComp
 }
 
 const CreatureItem = M.connectRedux(CreatureItemComp);
+
+
+const NoteItem = M.connectRedux(
+  function NoteItem({ path, name, ptui, dispatch }:
+    { path: T.FolderPath; name: string } & M.ReduxProps): JSX.Element {
+    return <div style={{ display: "flex", cursor: "pointer" }}
+      onClick={() => dispatch({ type: "FocusNote", path, name })}>
+      <CV.Icon>note</CV.Icon>{name}
+    </div>;
+  }
+);
