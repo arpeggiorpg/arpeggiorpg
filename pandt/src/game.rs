@@ -296,7 +296,10 @@ impl Game {
       }
       EditNote(ref path, ref name, ref new_note) => {
         let node = self.campaign.get_mut(path)?;
-        node.notes.mutate(name, move |_| new_note.clone());
+        node
+          .notes
+          .mutate(name, move |_| new_note.clone())
+          .ok_or_else(|| GameErrorEnum::NoteNotFound(path.clone(), name.to_string()))?;
       }
       DeleteNote(ref path, ref note_name) => {
         self.campaign.get_mut(path)?.notes.remove(note_name);
