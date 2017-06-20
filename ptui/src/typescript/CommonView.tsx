@@ -532,6 +532,15 @@ class NoteEditorComp
     super(props);
     this.state = { content: undefined };
   }
+
+  componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
+    console.log("[NoteEditor] componentWillReceiveProps");
+    if (!M.isEqual([this.props.path, this.props.name], [nextProps.path, nextProps.name])) {
+      console.log("[NoteEditor] resetting state!");
+      this.setState({ content: undefined });
+    }
+  }
+
   render(): JSX.Element {
     const self = this;
 
@@ -543,12 +552,16 @@ class NoteEditorComp
     }
     const note = ptui.getNote(path, name);
     const origContent = note ? note.content : "Enter notes here!";
+    const content = this.state.content !== undefined ? this.state.content : origContent;
     return <div>
-      <div><button style={{ height: 40, width: 80 }}
-        disabled={this.state.content === undefined || this.state.content === origContent}
-        onClick={() => submit(note)}>Save</button></div>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>{M.folderPathToString(LD.concat(path, name))}</div>
+        <button style={{ height: 40, width: 80 }}
+          disabled={this.state.content === undefined || this.state.content === origContent}
+          onClick={() => submit(note)}>Save</button>
+      </div>
       <div><textarea style={{ width: "100%", height: "100%" }}
-        defaultValue={origContent} value={this.state.content}
+        value={content}
         onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
     </div>;
 
