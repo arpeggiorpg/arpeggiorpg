@@ -573,7 +573,7 @@ class NoteEditorComp
       if (!self.state.content) { return; }
       const newNote = { name, content: self.state.content };
       const cmd: T.GameCommand = origNote
-        ? { t: "EditNote", path, name: "Scratch", note: newNote }
+        ? { t: "EditNote", path, name, note: newNote }
         : { t: "CreateNote", path, note: newNote };
       ptui.sendCommand(dispatch, cmd);
     }
