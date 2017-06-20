@@ -6,10 +6,10 @@ interface TextInputProps {
   styles: object;
   onSubmit: (input: string) => void;
   onCancel: (input: string) => void;
-  numbersOnly: boolean;
+  numbersOnly?: boolean;
 }
 
-class TextInput extends React.Component<TextInputProps, { value: string }> {
+export class TextInput extends React.Component<TextInputProps, { value: string }> {
 
   private input: HTMLInputElement;
 
