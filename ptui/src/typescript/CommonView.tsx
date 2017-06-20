@@ -1,5 +1,6 @@
 import * as LD from "lodash";
 import * as React from "react";
+import PanelGroup from 'react-panelgroup';
 import { Provider } from 'react-redux';
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
@@ -463,17 +464,20 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     </div >;
 
     function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
-      return <div style={{
-        display: "flex", flexDirection: "column", height: "100%",
-        overflowY: "auto",
-      }}>
-        <div style={{ flex: "1", border: "1px solid black" }}>
-          <TabbedView>
-            {tabs_}
-          </TabbedView>
-        </div>
-        <div>{extra}</div>
+      const top = <div style={{ flex: "1", border: "1px solid black" }}>
+        <TabbedView>
+          {tabs_}
+        </TabbedView>
       </div>;
+      return extra !== undefined
+        ? <PanelGroup direction="column" borderColor="grey" spacing="5px">
+          {top}
+          <div style={{ width: "100%" }}>{extra}</div>
+        </PanelGroup>
+        : <div style={{
+          display: "flex", flexDirection: "column", height: "100%",
+          overflowY: "auto",
+        }}>{top}</div>;
     }
 
     function wideView() {
