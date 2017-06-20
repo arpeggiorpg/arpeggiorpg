@@ -102,7 +102,6 @@ class CreatureItemComp
         </CV.Collapsible>
       </div>
     </div>;
-
   }
 }
 

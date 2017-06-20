@@ -54,7 +54,6 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
     const ptui = this.state.store.getState();
     return <Provider store={this.state.store}>{this.props.children}</Provider>;
   }
-
 }
 
 export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
@@ -490,7 +489,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px">
               <div />
-              <div style={{width: "100%", height: "100%"}}>{secondary}</div>
+              <div style={{ width: "100%" }}>{secondary}</div>
             </PanelGroup>
           </div>
           : null}
@@ -558,16 +557,17 @@ class NoteEditorComp
     const note = ptui.getNote(path, name);
     const origContent = note ? note.content : "Enter notes here!";
     const content = this.state.content !== undefined ? this.state.content : origContent;
-    return <div>
+    return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div>{M.folderPathToString(LD.concat(path, name))}</div>
         <button style={{ height: 40, width: 80 }}
           disabled={this.state.content === undefined || this.state.content === origContent}
           onClick={() => submit(note)}>Save</button>
       </div>
-      <div><textarea style={{ width: "100%", height: "100%" }}
-        value={content}
-        onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
+      <div style={{ flex: "1" }}>
+        <textarea style={{ resize: "none", width: "100%", height: "100%" }}
+          value={content}
+          onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
     </div>;
 
     function submit(origNote: T.Note | undefined) {
