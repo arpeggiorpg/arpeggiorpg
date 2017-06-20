@@ -83,7 +83,8 @@ export class Collapsible extends React.Component<{ name: string }, { collapsed: 
 }
 
 export const CreatureCard = M.connectRedux((
-  props: { creature: T.Creature; } & M.ReduxProps): JSX.Element => {
+  props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element> }
+    & M.ReduxProps): JSX.Element => {
   const creature = props.creature;
   return <div
     style={{
@@ -94,7 +95,12 @@ export const CreatureCard = M.connectRedux((
     <div>{classIcon(creature)} <strong>{creature.name}</strong>
       {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
     </div>
-    <CreatureIcon app={props.ptui.app} creature={creature} />
+    <div style={{ display: "flex" }}>
+      <CreatureIcon app={props.ptui.app} creature={creature} />
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {props.children}
+      </div>
+    </div>
   </div>;
 
 });

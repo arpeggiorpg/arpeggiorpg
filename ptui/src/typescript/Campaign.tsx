@@ -96,7 +96,7 @@ class CreatureItemComp
         </div>
       </div>
       <div style={{ display, marginLeft: "1em" }}>
-        <CV.CreatureCard creature={creature} />
+        <GMCreatureCard creature={creature} />
         <CV.Collapsible name="Inventory">
           <CV.CreatureInventory creature={creature} />
         </CV.Collapsible>
@@ -106,6 +106,13 @@ class CreatureItemComp
 }
 
 const CreatureItem = M.connectRedux(CreatureItemComp);
+
+
+function GMCreatureCard(props: { creature: T.Creature }): JSX.Element {
+  return <CV.CreatureCard creature={props.creature}>
+    <textarea value={props.creature.note} />
+  </CV.CreatureCard>;
+}
 
 
 const NoteItem = M.connectRedux(
