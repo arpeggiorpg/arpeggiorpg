@@ -60,7 +60,7 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
 export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
   constructor(props: { name: string }) {
     super(props);
-    this.state = { collapsed: false };
+    this.state = { collapsed: true };
   }
   toggle() {
     this.setState({ collapsed: !this.state.collapsed });
@@ -470,7 +470,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         </TabbedView>
       </div>;
       return extra !== undefined
-        ? <PanelGroup direction="column" borderColor="grey" spacing="5px">
+        ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
           {top}
           <div style={{ width: "100%" }}>{extra}</div>
         </PanelGroup>
@@ -485,11 +485,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         {secondary
           ? <div
             style={{
-              position: "fixed", top: "50%", left: 0, height: "50%",
-              border: "1px solid black",
+              position: "fixed", top: 0, left: 0, height: "100%",
               width: "20%", minWidth: "20em",
             }}>
-            {secondary}
+            <PanelGroup direction="column" borderColor="grey" spacing="8px">
+              <div />
+              <div style={{width: "100%", height: "100%"}}>{secondary}</div>
+            </PanelGroup>
           </div>
           : null}
         <div style={{ flex: "1" }}>{map}</div>
@@ -524,7 +526,6 @@ export function Icon(props: { children: Array<any> | any }): JSX.Element {
     style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
-
 
 interface NoteEditorProps {
   path: T.FolderPath;
