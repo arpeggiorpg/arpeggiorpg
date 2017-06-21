@@ -82,28 +82,29 @@ export class Collapsible extends React.Component<{ name: string }, { collapsed: 
   }
 }
 
-export const CreatureCard = M.connectRedux((
-  props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element> }
-    & M.ReduxProps): JSX.Element => {
-  const creature = props.creature;
-  return <div
-    style={{
-      width: "300px",
-      borderRadius: "10px", border: "1px solid black",
-      padding: "3px",
-    }}>
-    <div>{classIcon(creature)} <strong>{creature.name}</strong>
-      {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
-    </div>
-    <div style={{ display: "flex" }}>
-      <CreatureIcon app={props.ptui.app} creature={creature} />
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {props.children}
+export const CreatureCard = M.connectRedux(
+  function CreatureCard(
+    props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element> }
+      & M.ReduxProps): JSX.Element {
+    const creature = props.creature;
+    return <div
+      style={{
+        width: "300px",
+        borderRadius: "10px", border: "1px solid black",
+        padding: "3px",
+      }}>
+      <div>{classIcon(creature)} <strong>{creature.name}</strong>
+        {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
       </div>
-    </div>
-  </div>;
+      <div style={{ display: "flex" }}>
+        <CreatureIcon app={props.ptui.app} creature={creature} />
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {props.children}
+        </div>
+      </div>
+    </div>;
 
-});
+  });
 
 export function classIcon(creature: T.Creature): string {
   switch (creature.class_) {
@@ -294,11 +295,8 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
         }
       </div>
       {children.map((child, index) => {
-        if (index === this.state.selected) {
-          return <div key={child.props.name} style={{ display: "block" }}>{child}</div>;
-        } else {
-          return <div key={child.props.name} style={{ display: "none" }}>{child}</div>;
-        }
+        const display = index === this.state.selected ? "block" : "none";
+        return <div key={child.props.name} style={{ display }}>{child}</div>;
       })}
     </div>;
   }
@@ -311,27 +309,32 @@ export class Tab extends React.Component<TabProps, undefined> {
   }
 }
 
-export const Combat = M.connectRedux((props: M.ReduxProps): JSX.Element => {
-  if (!props.ptui.app.current_game.current_combat) {
-    return <div>There is no combat!</div>;
-  }
-  const combat = props.ptui.app.current_game.current_combat;
-  const creatures_with_init = M.filterMap(combat.creatures.data,
-    ([cid, init]) => {
-      const creature = props.ptui.getCreature(cid);
-      if (creature) { return [creature, init]; }
-    }) as Array<[T.Creature, number]>;
-
-  return <div>
-    {creatures_with_init.map(([creature, init], index) => {
-      return <div key={creature.id} style={{ display: "flex" }}>
-        <div style={{ width: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
-        <CreatureCard creature={creature} />
-      </div>;
-    })
+interface CombatProps {
+  card?: React.ComponentType<{ creature: T.Creature }>;
+}
+export const Combat = M.connectRedux(
+  function Combat(props: CombatProps & M.ReduxProps): JSX.Element {
+    if (!props.ptui.app.current_game.current_combat) {
+      return <div>There is no combat!</div>;
     }
-  </div>;
-});
+    const combat = props.ptui.app.current_game.current_combat;
+    const creatures_with_init = M.filterMap(combat.creatures.data,
+      ([cid, init]) => {
+        const creature = props.ptui.getCreature(cid);
+        if (creature) { return [creature, init]; }
+      }) as Array<[T.Creature, number]>;
+
+    const Card = props.card ? props.card : CreatureCard;
+    return <div>
+      {creatures_with_init.map(([creature, init], index) => {
+        return <div key={creature.id} style={{ display: "flex" }}>
+          <div style={{ width: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
+          <Card creature={creature} />
+        </div>;
+      })
+      }
+    </div>;
+  });
 
 export const ActionBar = M.connectRedux((
   props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element => {

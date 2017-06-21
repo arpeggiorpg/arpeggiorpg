@@ -4,6 +4,7 @@ import * as Redux from 'redux';
 
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
+import * as GM from './GMComponents';
 import * as Grid from './Grid';
 import * as History from './History';
 import * as M from './Model';
@@ -14,7 +15,7 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
   const focus = gridFocus(ptui, dispatch);
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
-    <CV.Tab key="Combat" name="Combat"><CV.Combat /></CV.Tab>,
+    <CV.Tab key="Combat" name="Combat"><CV.Combat card={GM.GMCreatureCard}/></CV.Tab>,
     <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
     <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><div>Saved Games!</div></CV.Tab>,
