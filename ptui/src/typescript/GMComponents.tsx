@@ -1,7 +1,4 @@
 /// A grab-bag of GM-only components
-
-import * as MUI from 'material-ui';
-import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
 import * as React from 'react';
 
 import * as CV from './CommonView';
@@ -20,17 +17,6 @@ export function GMCreatureCard(props: { creature: T.Creature }): JSX.Element {
 export function GMCombatCreatureCard(props: { creature: T.Creature }): JSX.Element {
   return <div style={{ display: "flex" }}>
     <GMCreatureCard creature={props.creature} />
-    <MUI.IconMenu
-      iconButtonElement={<MUI.IconButton><MoreVertIcon /></MUI.IconButton>}
-      anchorOrigin={{ horizontal: 'right', vertical: 'top' }}
-      targetOrigin={{ horizontal: 'right', vertical: 'top' }}
-    >
-      <MUI.MenuItem primaryText="Refresh" />
-      <MUI.MenuItem primaryText="Send feedback" />
-      <MUI.MenuItem primaryText="Settings" />
-      <MUI.MenuItem primaryText="Help" />
-      <MUI.MenuItem primaryText="Sign out" />
-    </MUI.IconMenu>
   </div>;
 }
 
