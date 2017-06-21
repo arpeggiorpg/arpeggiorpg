@@ -590,3 +590,49 @@ class NoteEditorComp
   }
 }
 export const NoteEditor = M.connectRedux(NoteEditorComp);
+
+
+export class IconMenu
+  extends React.Component<{ children?: any }, { expanded: boolean }> {
+
+  constructor(props: { children?: any }) {
+    super(props);
+    this.state = { expanded: false };
+  }
+
+  render(): JSX.Element {
+    const self = this;
+    const open = this.state.expanded
+      ? <ClickAway onClick={() => this.setState({ expanded: false })}>
+        <div style={{
+          position: "absolute", right: "-1.8em", border: "1px solid black",
+          backgroundColor: "white",
+          boxShadow: "5px 5px 2px -2px rgb(128,128,128)",
+          whiteSpace: "nowrap",
+        }}>
+          {React.Children.map(this.props.children, child => {
+            if (typeof child !== "string" && typeof child !== "number" && child.props) {
+              if (child.props.children) {
+                const onClick = child.props.onClick
+                  ? () => { self.setState({ expanded: false }); child.props.onClick(); }
+                  : undefined;
+                const cursor = child.props.onClick ? "pointer" : "auto";
+                return <div onClick={onClick} style={{ cursor }}>{child.props.children}</div>;
+              }
+            }
+          })}
+        </div>
+      </ClickAway>
+      : null;
+
+
+    return <div style={{ position: "relative" }}>
+      <div onClick={() => this.setState({ expanded: !this.state.expanded })}><Icon>menu</Icon></div>
+      {open}
+    </div>;
+  }
+}
+
+
+export class MenuItem extends React.Component<{ onClick?: () => void }, undefined> {
+}

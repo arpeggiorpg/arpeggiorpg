@@ -14,11 +14,21 @@ export function GMCreatureCard(props: { creature: T.Creature }): JSX.Element {
   </CV.CreatureCard>;
 }
 
-export function GMCombatCreatureCard(props: { creature: T.Creature }): JSX.Element {
-  return <div style={{ display: "flex" }}>
-    <GMCreatureCard creature={props.creature} />
-  </div>;
-}
+export const GMCombatCreatureCard = M.connectRedux(
+  function GMCombatCreatureCard(props: { creature: T.Creature } & M.ReduxProps): JSX.Element {
+    const { creature, ptui, dispatch } = props;
+    return <div style={{ display: "flex" }}>
+      <GMCreatureCard creature={creature} />
+      <CV.IconMenu>
+        <CV.MenuItem>{creature.name}</CV.MenuItem>
+        <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
+      </CV.IconMenu>
+    </div>;
+
+    function removeFromCombat() {
+      ptui.sendCommand(dispatch, { t: "RemoveCreatureFromCombat", creature_id: creature.id });
+    }
+  });
 
 
 /// A single-line editable creature note
