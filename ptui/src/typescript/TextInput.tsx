@@ -41,7 +41,7 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
         console.log("Not a number!", value);
       }
     } else {
-      this.setState({ value })
+      this.setState({ value });
     }
   }
 
@@ -50,7 +50,7 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
   render() {
     return <input type="text"
       autoFocus={true}
-      ref={input => this.input = input}
+      ref={input => { if (input !== null) { this.input = input; } }}
       value={this.state.value}
       onChange={e => this.handleInput(e)}
       onKeyDown={e => this.handleKeyDown(e)}
@@ -60,7 +60,9 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
   }
 }
 
-export function renderTextInput(app: any, [id, defaultValue, styles, numbersOnly]: [string, string, object, boolean]) {
+export function renderTextInput(
+  app: any,
+  [id, defaultValue, styles, numbersOnly]: [string, string, object, boolean]) {
   const onSubmit = (content: string) => {
     app.ports.textInputSubmit.send([id, content]);
   };

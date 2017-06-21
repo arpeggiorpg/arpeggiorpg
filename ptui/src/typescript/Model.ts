@@ -248,7 +248,7 @@ export class PTUI {
   }
 
   getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
-    return LD.sortBy(filterMap(cids, cid => this.getCreature(cid)), c => c.name);
+    return LD.sortBy(filterMap(cids, cid => this.getCreature(cid)), (c: T.Creature) => c.name);
   }
 
   getItem(iid: T.ItemID): T.Item | undefined {
@@ -362,12 +362,15 @@ export function isEqual<T>(l: T, r: T): boolean {
 
 interface StoreProps { ptui: PTUI; }
 interface DispatchProps { dispatch: (a: Action) => Action; }
-export type Dispatch = (action: Action) => Action;
+export type Dispatch = (action: Action) => void;
 
 export type ReduxProps = StoreProps & DispatchProps;
 
 export function connectRedux<BaseProps>(
   x: React.ComponentType<BaseProps & StoreProps & DispatchProps>)
   : React.ComponentType<BaseProps> {
-  return ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }))(x);
+  const connector = ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }));
+  // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
+  // `as any`, when I didn't need it previously.
+  return (connector as any)(x);
 }

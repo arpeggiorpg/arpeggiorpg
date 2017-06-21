@@ -221,7 +221,7 @@ const Annotation = M.connectRedux(
 
     return <g>
       <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
-        ref={el => element = el} onClick={onClick}
+        ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
       />
       <text
         style={{ pointerEvents: "none" }}
@@ -260,14 +260,14 @@ const GridCreature = M.connectRedux(
       const props = tile_props("white", creature.pos, creature.creature.size);
       const bare_props = bare_tile_props(creature.pos, creature.creature.size);
       return <g>
-        <image ref={el => element = el} key={creature.creature.id}
+        <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
           xlinkHref={creature.creature.portrait_url} {...props} />
         <rect {...bare_props} {...highlightProps} fillOpacity="0" onClick={() => onClick()} />
       </g>;
     } else {
       const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
       return <g onClick={() => onClick()}>
-        {<rect ref={el => element = el} {...props} {...highlightProps} />}
+        {<rect ref={el => { if (el !== null) { element = el; } }} {...props} {...highlightProps} />}
         {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
       </g >;
     }

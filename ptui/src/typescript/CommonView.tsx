@@ -1,9 +1,17 @@
+
+
+// this is for material-ui to work
+import * as injectTapEventPlugin from 'react-tap-event-plugin';
+injectTapEventPlugin();
+
 import * as LD from "lodash";
 import * as React from "react";
 import PanelGroup from 'react-panelgroup';
 import { Provider } from 'react-redux';
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
+
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -463,13 +471,15 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       : narrowView(this.state.width);
 
 
-    return <div style={{ height: "100%", width: "100%" }} >
-      <WindowSizeListener
-        onResize={({ windowWidth, windowHeight }) =>
-          this.setState({ width: windowWidth, height: windowHeight })} />
-      {contents}
-      <Modal />
-    </div >;
+    return <MuiThemeProvider>
+      <div style={{ height: "100%", width: "100%" }} >
+        <WindowSizeListener
+          onResize={({ windowWidth, windowHeight }) =>
+            this.setState({ width: windowWidth, height: windowHeight })} />
+        {contents}
+        <Modal />
+      </div >
+    </MuiThemeProvider>;
 
     function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
       const top = <div style={{ flex: "1", border: "1px solid black" }}>
