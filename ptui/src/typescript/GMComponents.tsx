@@ -20,7 +20,7 @@ export const GMCombatCreatureCard = M.connectRedux(
     return <div style={{ display: "flex" }}>
       <GMCreatureCard creature={creature} />
       <CV.IconMenu>
-        <CV.MenuItem>{creature.name}</CV.MenuItem>
+        <CV.MenuHeader>{creature.name}</CV.MenuHeader>
         <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
       </CV.IconMenu>
     </div>;

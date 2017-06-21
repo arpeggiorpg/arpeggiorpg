@@ -617,7 +617,7 @@ export class IconMenu
                   ? () => { self.setState({ expanded: false }); child.props.onClick(); }
                   : undefined;
                 const cursor = child.props.onClick ? "pointer" : "auto";
-                return <div onClick={onClick} style={{ cursor }}>{child.props.children}</div>;
+                return <div onClick={onClick} style={{ cursor }}>{child}</div>;
               }
             }
           })}
@@ -635,4 +635,21 @@ export class IconMenu
 
 
 export class MenuItem extends React.Component<{ onClick?: () => void }, undefined> {
+  render(): JSX.Element {
+    return <div style={{
+      marginLeft: "1em", marginRight: "1em",
+      marginTop: "0.25em", marginBottom: "0.25em",
+    }}>{this.props.children}</div>;
+  }
+}
+
+export class MenuHeader extends React.Component<{}, undefined> {
+  render(): JSX.Element {
+    return <div style={{
+      marginLeft: "1em", marginRight: "1em", marginTop: "0.25em",
+      fontWeight: "bold", borderBottom: "1px solid gray",
+    }}>
+      {this.props.children}
+    </div>;
+  }
 }
