@@ -38,11 +38,12 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
     const note_list = LD.keys(folder.data.notes).map(
       name => <TreeNote key={name} path={this.props.path} name={name} />);
     const item_list = ptui.getItems(folder.data.items).map(
-      item => <div style={{ display: "flex" }}><CV.Icon>attachment</CV.Icon>{item.name}</div>);
+      item => <TreeItem key={item.name} path={this.props.path} item={item} />);
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
-      ([name, subfolder]) => <div>
-        <FolderTree name={name} folder={subfolder} path={LD.concat(this.props.path, name)} />
-      </div>);
+      ([name, subfolder]) =>
+        <FolderTree key={name} name={name} folder={subfolder} path={LD.concat(this.props.path, name)}
+        />
+    );
     const display = this.state.expanded ? "block" : "none";
     return <div>
       <div style={{ display: "flex" }}>
@@ -112,11 +113,20 @@ const TreeCreature = M.connectRedux(TreeCreatureComp);
 
 
 const TreeNote = M.connectRedux(
-  function TreeNote({ path, name, ptui, dispatch }:
-    { path: T.FolderPath; name: string } & M.ReduxProps): JSX.Element {
+  function TreeNote(
+    { path, name, ptui, dispatch }: { path: T.FolderPath; name: string } & M.ReduxProps
+  ): JSX.Element {
     return <div style={{ display: "flex", cursor: "pointer" }}
       onClick={() => dispatch({ type: "FocusNote", path, name })}>
       <CV.Icon>note</CV.Icon>{name}
     </div>;
   }
 );
+
+const TreeItem = M.connectRedux(
+  function TreeItem(
+    { path, item, ptui, dispatch }: { path: T.FolderPath; item: T.Item } & M.ReduxProps
+  ): JSX.Element {
+    return <div style={{ display: "flex" }}><CV.Icon>attachment</CV.Icon>{item.name}</div>;
+  }
+)
