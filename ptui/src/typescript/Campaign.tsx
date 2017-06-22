@@ -30,13 +30,13 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
   render(): JSX.Element {
     const { folder, ptui } = this.props;
     const scene_list = ptui.getScenes(folder.data.scenes).map(
-      s => <SceneItem key={s.name} scene={s} />);
+      s => <TreeScene key={s.name} scene={s} />);
     const map_list = ptui.getMaps(folder.data.maps).map(
-      m => <MapItem key={m.name} map={m} />);
+      m => <TreeMap key={m.name} map={m} />);
     const creature_list = ptui.getCreatures(folder.data.creatures).map(
-      c => <CreatureItem key={c.name} creature={c} />);
+      c => <TreeCreature key={c.name} creature={c} />);
     const note_list = LD.keys(folder.data.notes).map(
-      name => <NoteItem key={name} path={this.props.path} name={name} />);
+      name => <TreeNote key={name} path={this.props.path} name={name} />);
     const item_list = ptui.getItems(folder.data.items).map(
       item => <div style={{ display: "flex" }}><CV.Icon>attachment</CV.Icon>{item.name}</div>);
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
@@ -60,8 +60,8 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
 const FolderTree = M.connectRedux(FolderTreeComp);
 
 
-const SceneItem = M.connectRedux(
-  function SceneItem({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+const TreeScene = M.connectRedux(
+  function TreeScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <div style={{ display: "flex" }}>
       <div style={{ display: "flex", cursor: "pointer" }}
         onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
@@ -69,8 +69,8 @@ const SceneItem = M.connectRedux(
     </div >;
   });
 
-const MapItem = M.connectRedux(
-  function MapItem({ map, dispatch }: { map: T.Map } & M.ReduxProps): JSX.Element {
+const TreeMap = M.connectRedux(
+  function TreeMap({ map, dispatch }: { map: T.Map } & M.ReduxProps): JSX.Element {
     return <div style={{ display: "flex" }}>
       <div style={{ display: "flex", cursor: "pointer" }}
         onClick={() => dispatch({ type: "Focus", focus: { t: "Map", map_id: map.id } })}>
@@ -80,7 +80,7 @@ const MapItem = M.connectRedux(
 );
 
 
-class CreatureItemComp
+class TreeCreatureComp
   extends React.Component<{ creature: T.Creature } & M.ReduxProps, { expanded: boolean }> {
   constructor(props: { creature: T.Creature } & M.ReduxProps) {
     super(props);
@@ -108,11 +108,11 @@ class CreatureItemComp
   }
 }
 
-const CreatureItem = M.connectRedux(CreatureItemComp);
+const TreeCreature = M.connectRedux(TreeCreatureComp);
 
 
-const NoteItem = M.connectRedux(
-  function NoteItem({ path, name, ptui, dispatch }:
+const TreeNote = M.connectRedux(
+  function TreeNote({ path, name, ptui, dispatch }:
     { path: T.FolderPath; name: string } & M.ReduxProps): JSX.Element {
     return <div style={{ display: "flex", cursor: "pointer" }}
       onClick={() => dispatch({ type: "FocusNote", path, name })}>
