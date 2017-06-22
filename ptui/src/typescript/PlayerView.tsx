@@ -66,14 +66,15 @@ export const PlayerGameView = M.connectRedux((
   const map = scene
     ? <Grid.SceneGrid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
     : <div>No scene loaded</div>;
+  const combat = ptui.app.current_game.current_combat;
   const tabs = [
     <CommonView.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
     </CommonView.Tab>,
     <CommonView.Tab key="Combat" name="Combat">
       <div>
-        <CommonView.Combat />
-        <PlayerActionBar player={player} />
+        {combat ? <CommonView.Combat combat={combat} /> : <div>There is no combat.</div>}
+        <PlayerActionBar player={player} combat={combat} />
       </div>
     </CommonView.Tab>,
     <CommonView.Tab key="Notes" name="Notes">
@@ -173,16 +174,20 @@ function PlayerNote({ player_id }: { player_id: T.PlayerID; }): JSX.Element {
 }
 
 export const PlayerActionBar = M.connectRedux((
-  props: { player: T.Player; } & M.ReduxProps): JSX.Element => {
-  if (props.ptui.app.current_game.current_combat) {
-    const combat = props.ptui.app.current_game.current_combat;
-    const cid = props.ptui.getCurrentCombatCreatureID(combat);
-    if (LD.includes(props.player.creatures, cid)) {
-      const creature = props.ptui.getCreature(cid);
-      if (creature) {
-        return <CommonView.ActionBar combat={combat} creature={creature} />;
+  props: { player: T.Player; combat: T.Combat | undefined } & M.ReduxProps): JSX.Element => {
+  if (props.combat) {
+    const cid = props.ptui.getCurrentCombatCreatureID(props.combat);
+    const creature = props.ptui.getCreature(cid);
+    if (creature) {
+      if (LD.includes(props.player.creatures, cid)) {
+        return <CommonView.ActionBar combat={props.combat} creature={creature} />;
+      } else {
+        return <div>{creature.name} is acting</div>;
       }
+    } else {
+      return <div>Creature disappeared!</div>;
     }
+  } else {
+    return <div>TODO: out-of-combat actions</div>;
   }
-  return <noscript />;
 });

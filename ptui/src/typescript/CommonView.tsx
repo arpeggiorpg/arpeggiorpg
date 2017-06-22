@@ -312,21 +312,18 @@ export class Tab extends React.Component<TabProps, undefined> {
 }
 
 interface CombatProps {
+  combat: T.Combat;
   card?: React.ComponentType<{ creature: T.Creature }>;
 }
 export const Combat = M.connectRedux(
-  function Combat(props: CombatProps & M.ReduxProps): JSX.Element {
-    if (!props.ptui.app.current_game.current_combat) {
-      return <div>There is no combat!</div>;
-    }
-    const combat = props.ptui.app.current_game.current_combat;
+  function Combat({combat, card, ptui}: CombatProps & M.ReduxProps): JSX.Element {
     const creatures_with_init = M.filterMap(combat.creatures.data,
       ([cid, init]) => {
-        const creature = props.ptui.getCreature(cid);
+        const creature = ptui.getCreature(cid);
         if (creature) { return [creature, init]; }
       }) as Array<[T.Creature, number]>;
 
-    const Card = props.card ? props.card : CreatureCard;
+    const Card = card ? card : CreatureCard;
     return <div>
       {creatures_with_init.map(([creature, init], index) => {
         return <div key={creature.id} style={{ display: "flex" }}>

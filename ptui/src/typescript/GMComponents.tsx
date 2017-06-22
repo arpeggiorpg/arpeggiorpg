@@ -7,6 +7,17 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 
+export const GMCombat = M.connectRedux(
+  function GMCombat({ ptui }: M.ReduxProps): JSX.Element {
+    const combat = ptui.app.current_game.current_combat;
+    if (!combat) { return <div>There is no combat. <button>Start a combat</button></div>; }
+    const cur_creature = ptui.getCurrentCombatCreature(combat);
+    return <div>
+      <CV.Combat combat={combat} card={GMCombatCreatureCard} />
+      <CV.ActionBar creature={cur_creature} combat={combat} />
+    </div>;
+  });
+
 /// A customized CreatureCard that renders an editable note in the content area.
 export function GMCreatureCard(props: { creature: T.Creature, menu?: JSX.Element }): JSX.Element {
   return <CV.CreatureCard creature={props.creature} menu={props.menu}>
