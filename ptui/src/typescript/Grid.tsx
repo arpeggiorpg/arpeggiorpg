@@ -6,6 +6,8 @@ import * as ReactRedux from "react-redux";
 import * as Redux from "redux";
 import * as svgPanZoom from "svg-pan-zoom";
 
+import { Menu } from 'semantic-ui-react';
+
 import * as CommonView from "./CommonView";
 import { PTUI } from "./Model";
 import * as M from "./Model";
@@ -13,7 +15,6 @@ import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
 
 interface Obj<T> { [index: string]: T; }
-
 
 export interface MapGridProps {
   map: T.Map;
@@ -69,24 +70,12 @@ export const SceneGrid = M.connectRedux(
         return <noscript />;
       }
       const creature = creature_; // WHY TYPESCRIPT, WHY???
-      return <CommonView.ClickAway
-        onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
-        <div
-          style={{
-            position: "fixed",
-            paddingLeft: "0.5em",
-            paddingRight: "0.5em",
-            top: rect.sw.y, left: rect.sw.x,
-            backgroundColor: "white",
-            border: "1px solid black",
-            borderRadius: "5px",
-            fontSize: "24px",
-          }}
-        >
-          <div style={{ borderBottom: "1px solid grey" }}>
-            {CommonView.classIcon(creature.creature)}
-            {creature.creature.name}
-          </div>
+      return <div
+        style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
+        <Menu vertical={true}>
+          <Menu.Item header={true}>
+            {CommonView.classIcon(creature.creature)} {creature.creature.name}
+          </Menu.Item>
           {
             LD.keys(creature.actions).map(
               actionName => {
@@ -94,14 +83,13 @@ export const SceneGrid = M.connectRedux(
                   props.dispatch({ type: "ActivateGridCreature", cid, rect });
                   creature.actions[actionName](cid);
                 }
-                return <div key={actionName}
-                  style={{ padding: "0.5em", borderBottom: "1px solid grey", cursor: "pointer" }}>
-                  <a onClick={() => onClick()}>{actionName}</a>
-                </div>;
+                return <Menu.Item key={actionName} onClick={() => onClick()}>
+                  {actionName}
+                </Menu.Item>;
               })
           }
-        </div>
-      </CommonView.ClickAway>;
+        </Menu>
+      </div>;
     }
   });
 
