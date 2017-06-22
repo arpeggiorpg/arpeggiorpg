@@ -1,7 +1,9 @@
 /// A component which handles svg-pan-zoom and Hammer.js integration to pan and zoom.
 
+import * as Hammer from 'hammerjs';
 import * as LD from 'lodash';
 import * as React from 'react';
+import * as svgPanZoom from 'svg-pan-zoom';
 
 import * as M from './Model';
 
@@ -122,7 +124,7 @@ export class SVGPanZoom
   }
 
   render(): JSX.Element {
-    return <svg {...LD.omit(this.props, ['children', 'onPanZoom'])}>
+    return <svg {...LD.omit(this.props, ['children', 'onPanZoom']) }>
       <g>
         {/* this <g> needs to be here for svg-pan-zoom. Otherwise it will reparent all
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's

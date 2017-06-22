@@ -2,19 +2,38 @@
 
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"></link>
   <script type="text/javascript" src="{{js-source}}"></script>
   <script type="text/javascript">
     var rpi = "{{rpi-url}}";
   </script>
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.5.1/dist/svg-pan-zoom.js"></script>
-  <script src="https://unpkg.com/react@15/dist/react.js"></script>
-  <script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
-
   <script type="text/javascript" src="bundle.js"></script>
 
   <style>
+    /* fallback */
+
+    @font-face {
+      font-family: 'Material Icons';
+      font-style: normal;
+      font-weight: 400;
+      src: local('Material Icons'), local('MaterialIcons-Regular'), url(https://fonts.gstatic.com/s/materialicons/v22/2fcrYFNaTjcS6g4U3t-Y5ZjZjT5FdEJ140U2DJYC3mY.woff2) format('woff2');
+    }
+
+    .material-icons {
+      font-family: 'Material Icons';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -moz-font-feature-settings: 'liga';
+      -moz-osx-font-smoothing: grayscale;
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -38,11 +57,11 @@
 <body>
   <div id="react-main"></div>
   <script type="text/javascript">
-    var app = Elm.Main.worker({      
-'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight],
+    var app = Elm.Main.worker({
+      'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight],
       'mainReactComponent': '{{react-component}}',
-      'mainReactElement': 'react-main'    
-});
+      'mainReactElement': 'react-main'
+    });
     PT_initializeComponents(app);
   </script>
 </body>
