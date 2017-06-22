@@ -39,7 +39,15 @@ function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 }
 
 function creatureMenuActions(ptui: M.PTUI, dispatch: M.Dispatch, creature: T.Creature) {
-  return { "Move this creature": ((cid: T.CreatureID) => ptui.requestMove(dispatch, cid)) };
+  const actions = { "Move this creature": ((cid: T.CreatureID) => ptui.requestMove(dispatch, cid)) };
+  const combat = ptui.app.current_game.current_combat;
+  if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
+    LD.assign(actions, {
+      "Combat-move this creature": (cid: T.CreatureID) =>
+        ptui.requestCombatMovement(dispatch),
+    });
+  }
+  return actions;
 }
 
 function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
