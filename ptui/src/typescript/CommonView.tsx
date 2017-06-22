@@ -7,6 +7,8 @@ import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
 import { Accordion, Button, Form, Input, Menu, Segment } from 'semantic-ui-react';
+import * as SUI from 'semantic-ui-react';
+
 
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -123,7 +125,7 @@ interface CreatureInventoryProps {
   creature: T.Creature;
 }
 class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.ReduxProps,
-  { giving: T.ItemID | undefined }> {
+  { giving: T.CreatureID | undefined }> {
   constructor(props: CreatureInventoryProps & M.ReduxProps) {
     super(props);
     this.state = { giving: undefined };
@@ -132,17 +134,20 @@ class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.R
     const inv = this.props.creature.inventory;
     const items = this.props.ptui.getItems(inv.keySeq().toArray());
 
-    const give = this.state.giving
-      ? <GiveItem giver={this.props.creature.id} item_id={this.state.giving}
-        onClose={() => this.setState({ giving: undefined })} />
-      : <noscript />;
-
     return <div>
-      {give}
       {items.map(item =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
           {item.name} ({inv.get(item.id)})
-        <Button onClick={e => this.setState({ giving: item.id })}>Give</Button>
+          <Button onClick={() => this.setState({ giving: item.id })}>Give</Button>
+          <SUI.Modal dimmer="inverted"
+            open={this.state.giving === item.id}
+            onClose={() => this.setState({ giving: undefined })}>
+            <SUI.Modal.Header>Give {item.name}</SUI.Modal.Header>
+            <SUI.Modal.Content>
+              <GiveItem giver={this.props.creature.id} item_id={item.id}
+                onClose={() => this.setState({ giving: undefined })} />
+            </SUI.Modal.Content>
+          </SUI.Modal>
         </div>
       )}
     </div>;
@@ -180,26 +185,23 @@ export class GiveItemComp extends React.Component<
     if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
     const creature_options = other_creatures.map(
       creature => ({ key: creature.id, text: creature.name, value: creature.id }));
-    return <Segment>
-      <p>Giving <strong>{item.name}</strong></p>
-      <Form>
-        <Form.Group>
-          <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
-            onChange={num => this.setState({count: num})} />
-          <Form.Select label="Creature" options={creature_options}
-            placeholder="Select a Creature"
-            onChange={(_, ev) => this.setState({receiver: ev.value as T.CreatureID})}/>
-        </Form.Group>
-        <Form.Group>
-          <Form.Button
-            disabled={!(this.state.receiver && this.state.count)}
-            onClick={ev => this.give(giver)}>
-            Give
+    return <Form>
+      <Form.Group>
+        <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
+          onChange={num => this.setState({ count: num })} />
+        <Form.Select label="Creature" options={creature_options}
+          placeholder="Select a Creature"
+          onChange={(_, ev) => this.setState({ receiver: ev.value as T.CreatureID })} />
+      </Form.Group>
+      <Form.Group>
+        <Form.Button
+          disabled={!(this.state.receiver && this.state.count)}
+          onClick={ev => this.give(giver)}>
+          Give
             </Form.Button>
-          <Form.Button onClick={ev => this.props.onClose()}>Cancel</Form.Button>
-        </Form.Group>
-      </Form>
-    </Segment>;
+        <Form.Button onClick={ev => this.props.onClose()}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>;
   }
 
   give(giver: T.Creature) {
