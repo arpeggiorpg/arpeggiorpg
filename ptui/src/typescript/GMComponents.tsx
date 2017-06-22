@@ -18,14 +18,12 @@ export const GMCombat = M.connectRedux(
       return <CV.Toggler a={view} b={edit} />;
 
       function view(toggle: CV.ToggleFunc) {
-        return <div style={{
-          cursor: "pointer", textDecorationLine: "underline", textDecorationStyle: "dotted",
-        }}
+        return <div style={{ cursor: "pointer", textDecoration: "underline dotted" }}
           onClick={toggle}
         >{init}</div>;
       }
       function edit(toggle: CV.ToggleFunc) {
-        return <TextInput.TextInput defaultValue={init.toString()} style={{width: "25px"}}
+        return <TextInput.TextInput defaultValue={init.toString()} style={{ width: "25px" }}
           numbersOnly={true}
           onCancel={toggle}
           onSubmit={input => { toggle(); changeInit(creature, input); }} />;
@@ -85,7 +83,11 @@ export const GMCombatCreatureCard = M.connectRedux(
 const CreatureNote = M.connectRedux(
   function CreatureNote({ creature, ptui, dispatch }: { creature: T.Creature } & M.ReduxProps) {
     function view(toggle: CV.ToggleFunc) {
-      return <div onClick={toggle}>{creature.note}</div>;
+      return <div
+        style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+        onClick={toggle}>
+        {creature.note}
+      </div>;
     }
     function edit(toggle: CV.ToggleFunc) {
       return <TextInput.TextInput defaultValue={creature.note}
