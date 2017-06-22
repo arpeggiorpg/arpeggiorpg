@@ -8,11 +8,23 @@ import * as TextInput from './TextInput';
 
 
 export const GMCombat = M.connectRedux(
-  function GMCombat({ ptui }: M.ReduxProps): JSX.Element {
+  function GMCombat({ ptui, dispatch }: M.ReduxProps): JSX.Element {
     const combat = ptui.app.current_game.current_combat;
     if (!combat) { return <div>There is no combat. <button>Start a combat</button></div>; }
     const cur_creature = ptui.getCurrentCombatCreature(combat);
+    const scene = ptui.getScene(combat.scene);
     return <div>
+      {scene
+        ?
+        <div>Scene:&nbsp;
+          <a href="#"
+            onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
+            {scene.name}
+          </a>
+        </div>
+        :
+        <div>Lost scene!</div>
+      }
       <CV.Combat combat={combat} card={GMCombatCreatureCard} />
       <CV.ActionBar creature={cur_creature} combat={combat} />
     </div>;
