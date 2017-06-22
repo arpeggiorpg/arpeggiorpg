@@ -6,7 +6,7 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Accordion, Button, Menu, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Menu } from 'semantic-ui-react';
 
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -55,50 +55,6 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
     }
     const ptui = this.state.store.getState();
     return <Provider store={this.state.store}>{this.props.children}</Provider>;
-  }
-}
-
-export class Collapsible extends React.Component<{ name: string }, { collapsed: boolean }> {
-  constructor(props: { name: string }) {
-    super(props);
-    this.state = { collapsed: true };
-  }
-  toggle() {
-    this.setState({ collapsed: !this.state.collapsed });
-  }
-
-/*
-import _ from 'lodash'
-import faker from 'faker'
-import React from 'react'
-import { Accordion } from 'semantic-ui-react'
-
-const panels = _.times(3, () => ({
-  title: faker.lorem.sentence(),
-  content: faker.lorem.paragraphs(),
-}))
-
-const AccordionExampleStyled = () => (
-  <Accordion panels={panels} styled />
-)
-
-export default AccordionExampleStyled
-
-*/
-
-  render(): JSX.Element {
-    return <div>
-      <Accordion panels={[{title: "Inventory", content: this.props.children}]}/>
-      {/*<div style={{ display: "flex" }}>
-        <Button active={!this.state.collapsed}
-          onClick={() => this.toggle()}>
-          {this.props.name}
-        </Button>
-      </div>
-      <div style={{ display: this.state.collapsed ? "none" : "block" }}>
-        {this.props.children}
-      </div>*/}
-    </div>;
   }
 }
 
@@ -153,6 +109,15 @@ export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.E
     return <div style={{ backgroundColor: color, ...squareStyle }}>{props.creature.name}</div>;
   }
 }
+
+
+export const CollapsibleInventory = M.connectRedux(
+  function CollapsibleInventory({ creature }: { creature: T.Creature }): JSX.Element {
+    return <Accordion panels={[{
+      title: "Inventory",
+      content: <CreatureInventory creature={creature} />,
+    }]} />;
+  });
 
 interface CreatureInventoryProps {
   creature: T.Creature;

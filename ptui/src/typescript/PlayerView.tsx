@@ -10,6 +10,8 @@ import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
+import { Button, Input, Menu } from 'semantic-ui-react';
+
 
 export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_player_id: string; }> {
   constructor(props: M.ReduxProps) {
@@ -34,20 +36,25 @@ export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_playe
           {LD.keys(ptui.app.players).length > 0
             ? <div>
               <p>You can rejoin a session if you've already registered as a player.</p>
-              {LD.keys(ptui.app.players).map(pid =>
-                <button key={pid}
-                  style={{ height: "40px", width: "80px" }}
-                  onClick={() => dispatch({ type: "SetPlayerID", pid })}>
-                  {pid}
-                </button>)}
+              <Menu compact={true}>
+                {LD.keys(ptui.app.players).map(pid =>
+                  <Menu.Item key={pid}
+                    onClick={() => dispatch({ type: "SetPlayerID", pid })}
+                    name={pid} />)
+                }
+              </Menu>
             </div>
             : null}
-          <p>You can register a new player. Enter your name (not your character's name) here:</p>
-          <input style={{ fontSize: "20px" }} type="text" value={this.state.typing_player_id}
+          <p>Or you can register a new player.</p>
+          <Input type="text" value={this.state.typing_player_id}
+            onKeyDown={(e: KeyboardEvent) => {
+              if (e.keyCode === 13) { this.registerPlayer(ptui, dispatch); }
+            }}
+            action={<Button
+              type="submit"
+              onClick={() => this.registerPlayer(ptui, dispatch)}>
+              Register</Button>}
             onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
-          <button style={{ height: "40px", width: "80px" }}
-            onClick={() => this.registerPlayer(ptui, dispatch)}>
-            Register</button>
         </div>
       </div>;
     }
@@ -159,9 +166,7 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
       <div key={creature.id}>
         <CommonView.CreatureCard creature={creature} />
         <div style={{ marginLeft: "1em" }}>
-          <CommonView.Collapsible name="Inventory">
-            <CommonView.CreatureInventory creature={creature} />
-          </CommonView.Collapsible>
+          <CommonView.CollapsibleInventory creature={creature} />
         </div>
       </div>
     )}

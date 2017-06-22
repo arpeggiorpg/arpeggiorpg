@@ -101,9 +101,7 @@ class TreeCreatureComp
       </div>
       <div style={{ display, marginLeft: "1em" }}>
         <GM.GMCreatureCard creature={creature} />
-        <CV.Collapsible name="Inventory">
-          <CV.CreatureInventory creature={creature} />
-        </CV.Collapsible>
+        <CV.CollapsibleInventory creature={creature} />
       </div>
     </div>;
   }
