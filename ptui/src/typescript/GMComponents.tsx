@@ -12,7 +12,12 @@ export const GMCombat = M.connectRedux(
     const combat = ptui.app.current_game.current_combat;
     if (!combat) { return <div>There is no combat. <button>Start a combat</button></div>; }
     const cur_creature = ptui.getCurrentCombatCreature(combat);
-    const scene = ptui.getScene(combat.scene);
+
+    return <div>
+      <GMCombatHeader combat={combat} />
+      <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
+      <CV.ActionBar creature={cur_creature} combat={combat} />
+    </div>;
 
     function initiative(creature: T.Creature, init: number) {
       return <CV.Toggler a={view} b={edit} />;
@@ -37,22 +42,29 @@ export const GMCombat = M.connectRedux(
         init: new_init_num,
       });
     }
+  });
 
+const GMCombatHeader = M.connectRedux(
+  function GMCombatHeader({ combat, ptui, dispatch }: { combat: T.Combat } & M.ReduxProps) {
+    const scene = ptui.getScene(combat.scene);
 
-    return <div>
-      {scene
-        ?
-        <div>Scene:&nbsp;
+    return <div style={{ border: "1px solid black", borderRadius: "5px", padding: '3px' }}>
+      {
+        scene
+          ?
+          <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
           <a href="#"
-            onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
-            {scene.name}
-          </a>
-        </div>
-        :
-        <div>Lost scene!</div>
+              onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
+              {scene.name}
+            </a>
+          </div>
+          :
+          <div>Lost scene!</div>
       }
-      <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
-      <CV.ActionBar creature={cur_creature} combat={combat} />
+      <div>
+        <button>Add creature</button>
+        <button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>Stop combat</button>
+      </div>
     </div>;
   });
 
