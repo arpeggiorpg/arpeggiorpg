@@ -6,7 +6,7 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Button, Menu, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Menu, Segment } from 'semantic-ui-react';
 
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -66,20 +66,38 @@ export class Collapsible extends React.Component<{ name: string }, { collapsed: 
   toggle() {
     this.setState({ collapsed: !this.state.collapsed });
   }
+
+/*
+import _ from 'lodash'
+import faker from 'faker'
+import React from 'react'
+import { Accordion } from 'semantic-ui-react'
+
+const panels = _.times(3, () => ({
+  title: faker.lorem.sentence(),
+  content: faker.lorem.paragraphs(),
+}))
+
+const AccordionExampleStyled = () => (
+  <Accordion panels={panels} styled />
+)
+
+export default AccordionExampleStyled
+
+*/
+
   render(): JSX.Element {
-    let buttonText;
-    let noneOrBlock;
-    if (this.state.collapsed) {
-      buttonText = "▶"; noneOrBlock = "none";
-    } else {
-      buttonText = "▼"; noneOrBlock = "block";
-    }
     return <div>
-      <div style={{ display: "flex" }}>
-        <strong>{this.props.name}</strong>
-        <button onClick={() => this.toggle()}>{buttonText}</button>
+      <Accordion panels={[{title: "Inventory", content: this.props.children}]}/>
+      {/*<div style={{ display: "flex" }}>
+        <Button active={!this.state.collapsed}
+          onClick={() => this.toggle()}>
+          {this.props.name}
+        </Button>
       </div>
-      <div style={{ display: noneOrBlock }}>{this.props.children}</div>
+      <div style={{ display: this.state.collapsed ? "none" : "block" }}>
+        {this.props.children}
+      </div>*/}
     </div>;
   }
 }
