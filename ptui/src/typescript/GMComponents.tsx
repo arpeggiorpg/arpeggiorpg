@@ -8,8 +8,8 @@ import * as TextInput from './TextInput';
 
 
 /// A customized CreatureCard that renders an editable note in the content area.
-export function GMCreatureCard(props: { creature: T.Creature }): JSX.Element {
-  return <CV.CreatureCard creature={props.creature}>
+export function GMCreatureCard(props: { creature: T.Creature, menu?: JSX.Element }): JSX.Element {
+  return <CV.CreatureCard creature={props.creature} menu={props.menu}>
     <CreatureNote creature={props.creature} />
   </CV.CreatureCard>;
 }
@@ -17,12 +17,13 @@ export function GMCreatureCard(props: { creature: T.Creature }): JSX.Element {
 export const GMCombatCreatureCard = M.connectRedux(
   function GMCombatCreatureCard(props: { creature: T.Creature } & M.ReduxProps): JSX.Element {
     const { creature, ptui, dispatch } = props;
+    const menu = <CV.IconMenu>
+      <CV.MenuHeader>{creature.name}</CV.MenuHeader>
+      <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
+    </CV.IconMenu>;
+
     return <div style={{ display: "flex" }}>
-      <GMCreatureCard creature={creature} />
-      <CV.IconMenu>
-        <CV.MenuHeader>{creature.name}</CV.MenuHeader>
-        <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
-      </CV.IconMenu>
+      <GMCreatureCard creature={creature} menu={menu} />
     </div>;
 
     function removeFromCombat() {

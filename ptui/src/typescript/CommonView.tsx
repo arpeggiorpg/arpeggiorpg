@@ -84,7 +84,7 @@ export class Collapsible extends React.Component<{ name: string }, { collapsed: 
 
 export const CreatureCard = M.connectRedux(
   function CreatureCard(
-    props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element> }
+    props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element>; menu?: JSX.Element }
       & M.ReduxProps): JSX.Element {
     const creature = props.creature;
     return <div
@@ -93,8 +93,10 @@ export const CreatureCard = M.connectRedux(
         borderRadius: "10px", border: "1px solid black",
         padding: "3px",
       }}>
-      <div>{classIcon(creature)} <strong>{creature.name}</strong>
-        {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>{classIcon(creature)} <strong>{creature.name}</strong>
+          {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
+        {props.menu}
       </div>
       <div style={{ display: "flex" }}>
         <CreatureIcon app={props.ptui.app} creature={creature} />
@@ -627,7 +629,9 @@ export class IconMenu
 
 
     return <div style={{ position: "relative" }}>
-      <div onClick={() => this.setState({ expanded: !this.state.expanded })}><Icon>menu</Icon></div>
+      <div style={{ cursor: "pointer" }}
+        onClick={() => this.setState({ expanded: !this.state.expanded })}>
+        <Icon>menu</Icon></div>
       {open}
     </div>;
   }
