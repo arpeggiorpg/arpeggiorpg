@@ -22,9 +22,7 @@ export const GMCombatCreatureCard = M.connectRedux(
       <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
     </CV.IconMenu>;
 
-    return <div style={{ display: "flex" }}>
-      <GMCreatureCard creature={creature} menu={menu} />
-    </div>;
+    return <GMCreatureCard creature={creature} menu={menu} />;
 
     function removeFromCombat() {
       ptui.sendCommand(dispatch, { t: "RemoveCreatureFromCombat", creature_id: creature.id });
