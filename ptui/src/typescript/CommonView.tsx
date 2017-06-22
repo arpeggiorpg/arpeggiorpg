@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
-import 'semantic-ui-css/semantic.min.css';
+// import 'semantic-ui-css/semantic.min.css';
 import { Button, Menu, Segment } from 'semantic-ui-react';
 
 import { PTUI } from './Model';
