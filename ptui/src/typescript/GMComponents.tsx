@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Dropdown } from 'semantic-ui-react';
+import { Button, Dropdown } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
@@ -66,10 +66,10 @@ class StartCombatComp
     const creatures = ptui.getCreatures(LD.keys(scene.creatures));
     const self = this;
     return <div>
-      <button
+      <Button
         onClick={() => ptui.sendCommand(dispatch,
           { t: "StartCombat", scene_id: scene.id, creature_ids: this.state.selected.toArray() })}
-      >Start combat</button>
+      >Start combat</Button>
       {creatures.map(creature =>
         <div key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
           <input type="checkbox" checked={this.state.selected.includes(creature.id)}
@@ -107,8 +107,8 @@ const GMCombatHeader = M.connectRedux(
           <div>Lost scene!</div>
       }
       <div>
-        <button>Add creature</button>
-        <button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>Stop combat</button>
+        <Button>Add creature</Button>
+        <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>Stop combat</Button>
       </div>
     </div>;
   });

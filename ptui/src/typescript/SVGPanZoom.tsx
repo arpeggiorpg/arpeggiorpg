@@ -92,7 +92,7 @@ export class SVGPanZoom
     const pz = svgPanZoom("#pt-grid", {
       dblClickZoomEnabled: false,
       customEventsHandler: this.panzoomEvents(),
-      zoomScaleSensitivity: 0.5,
+      zoomScaleSensitivity: 0.3,
     });
     this.setState({ spz_element: pz });
     this.refreshPanZoom(pz);
@@ -111,8 +111,6 @@ export class SVGPanZoom
       panzoom.resize();
       panzoom.center();
       panzoom.fit();
-      panzoom.zoomOut();
-      panzoom.zoomOut();
       panzoom.zoomOut();
     }
   }
