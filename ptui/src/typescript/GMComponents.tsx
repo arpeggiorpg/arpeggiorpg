@@ -13,6 +13,34 @@ export const GMCombat = M.connectRedux(
     if (!combat) { return <div>There is no combat. <button>Start a combat</button></div>; }
     const cur_creature = ptui.getCurrentCombatCreature(combat);
     const scene = ptui.getScene(combat.scene);
+
+    function initiative(creature: T.Creature, init: number) {
+      return <CV.Toggler a={view} b={edit} />;
+
+      function view(toggle: CV.ToggleFunc) {
+        return <div style={{
+          cursor: "pointer", textDecorationLine: "underline", textDecorationStyle: "dotted",
+        }}
+          onClick={toggle}
+        >{init}</div>;
+      }
+      function edit(toggle: CV.ToggleFunc) {
+        return <TextInput.TextInput defaultValue={init.toString()} style={{width: "25px"}}
+          numbersOnly={true}
+          onCancel={toggle}
+          onSubmit={input => { toggle(); changeInit(creature, input); }} />;
+      }
+    }
+
+    function changeInit(creature: T.Creature, new_init: string) {
+      const new_init_num = Number(new_init);
+      ptui.sendCommand(dispatch, {
+        t: "ChangeCreatureInitiative", creature_id: creature.id,
+        init: new_init_num,
+      });
+    }
+
+
     return <div>
       {scene
         ?
@@ -25,7 +53,7 @@ export const GMCombat = M.connectRedux(
         :
         <div>Lost scene!</div>
       }
-      <CV.Combat combat={combat} card={GMCombatCreatureCard} />
+      <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
       <CV.ActionBar creature={cur_creature} combat={combat} />
     </div>;
   });
@@ -57,11 +85,11 @@ export const GMCombatCreatureCard = M.connectRedux(
 const CreatureNote = M.connectRedux(
   function CreatureNote({ creature, ptui, dispatch }: { creature: T.Creature } & M.ReduxProps) {
     function view(toggle: CV.ToggleFunc) {
-      return <div onClick={() => toggle()}>{creature.note}</div>;
+      return <div onClick={toggle}>{creature.note}</div>;
     }
     function edit(toggle: CV.ToggleFunc) {
-      return <TextInput.TextInput defaultValue={creature.note} styles={{}}
-        onCancel={() => toggle()}
+      return <TextInput.TextInput defaultValue={creature.note}
+        onCancel={toggle}
         onSubmit={input => { toggle(); submitNote(input); }} />;
     }
 

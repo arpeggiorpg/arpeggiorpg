@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 
 interface TextInputProps {
   defaultValue: string;
-  styles: object;
+  style?: object;
   onSubmit: (input: string) => void;
   onCancel: (input: string) => void;
   numbersOnly?: boolean;
@@ -55,14 +55,14 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
       onChange={e => this.handleInput(e)}
       onKeyDown={e => this.handleKeyDown(e)}
       onBlur={e => this.cancel()}
-      style={this.props.styles}
+      style={this.props.style}
     />;
   }
 }
 
 export function renderTextInput(
   app: any,
-  [id, defaultValue, styles, numbersOnly]: [string, string, object, boolean]) {
+  [id, defaultValue, style, numbersOnly]: [string, string, object, boolean]) {
   const onSubmit = (content: string) => {
     app.ports.textInputSubmit.send([id, content]);
   };
@@ -70,7 +70,7 @@ export function renderTextInput(
     app.ports.textInputCancel.send([id, content]);
   };
   ReactDOM.render(
-    <TextInput defaultValue={defaultValue} styles={styles} onSubmit={onSubmit} onCancel={onCancel}
+    <TextInput defaultValue={defaultValue} style={style} onSubmit={onSubmit} onCancel={onCancel}
       numbersOnly={numbersOnly} />,
     document.getElementById(id)
   );

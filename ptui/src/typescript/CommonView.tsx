@@ -314,9 +314,10 @@ export class Tab extends React.Component<TabProps, undefined> {
 interface CombatProps {
   combat: T.Combat;
   card?: React.ComponentType<{ creature: T.Creature }>;
+  initiative?: (creature: T.Creature, init: number) => JSX.Element;
 }
 export const Combat = M.connectRedux(
-  function Combat({ combat, card, ptui }: CombatProps & M.ReduxProps): JSX.Element {
+  function Combat({ combat, card, ptui, initiative }: CombatProps & M.ReduxProps): JSX.Element {
     const creatures_with_init = M.filterMap(combat.creatures.data,
       ([cid, init]) => {
         const creature = ptui.getCreature(cid);
@@ -326,10 +327,11 @@ export const Combat = M.connectRedux(
     const Card = card ? card : CreatureCard;
     return <div>
       {creatures_with_init.map(([creature, init], index) => {
+        const show_init = initiative ? initiative(creature, init) : null;
         return <div key={creature.id} style={{ display: "flex" }}>
           <div style={{ width: "25px", display: "flex", flexDirection: "column" }}>
             <div style={{ height: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
-            <div>{init}</div>
+            <div>{show_init}</div>
           </div>
           <Card creature={creature} />
         </div>;
