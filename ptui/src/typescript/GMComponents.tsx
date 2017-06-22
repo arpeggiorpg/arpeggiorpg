@@ -1,4 +1,6 @@
 /// A grab-bag of GM-only components
+import * as I from 'immutable';
+import * as LD from 'lodash';
 import * as React from 'react';
 
 import * as CV from './CommonView';
@@ -13,9 +15,9 @@ export const GMCombat = M.connectRedux(
     if (!combat) {
       const scene = ptui.focused_scene();
       const startCombat = scene
-        ? <button>Start a combat</button>
+        ? <StartCombat scene={scene} />
         : <div>Load a scene to start a combat.</div>;
-      return <div>There is no combat. {startCombat}</div>;
+      return startCombat;
     }
     const cur_creature = ptui.getCurrentCombatCreature(combat);
 
@@ -49,6 +51,40 @@ export const GMCombat = M.connectRedux(
       });
     }
   });
+
+class StartCombatComp
+  extends React.Component<{ scene: T.Scene } & M.ReduxProps, { selected: I.Set<T.CreatureID> }> {
+  constructor(props: { scene: T.Scene } & M.ReduxProps) {
+    super(props);
+    const selected = I.Set(props.ptui.getCreatures(LD.keys(props.scene.creatures)).map(c => c.id));
+    this.state = { selected };
+  }
+  render(): JSX.Element {
+    const { scene, ptui, dispatch } = this.props;
+    const creatures = ptui.getCreatures(LD.keys(scene.creatures));
+    const self = this;
+    return <div>
+      <button
+        onClick={() => ptui.sendCommand(dispatch,
+          { t: "StartCombat", scene_id: scene.id, creature_ids: this.state.selected.toArray() })}
+      >Start combat</button>
+      {creatures.map(creature =>
+        <div key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
+          <input type="checkbox" checked={this.state.selected.includes(creature.id)}
+            onChange={nv => handleChange(nv.currentTarget.checked, creature.id)} />
+          {creature.name}
+        </div>)}
+    </div>;
+
+    function handleChange(add: boolean, creature_id: T.CreatureID) {
+      const new_selected = add
+        ? self.state.selected.add(creature_id)
+        : self.state.selected.remove(creature_id);
+    }
+  }
+}
+
+const StartCombat = M.connectRedux(StartCombatComp);
 
 const GMCombatHeader = M.connectRedux(
   function GMCombatHeader({ combat, ptui, dispatch }: { combat: T.Combat } & M.ReduxProps) {

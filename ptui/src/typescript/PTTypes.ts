@@ -98,7 +98,8 @@ export type GameCommand =
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
   | { t: "PathCurrentCombatCreature"; dest: Point3 }
   | { t: "Done" }
-  | { t: "ChangeCreatureInitiative", creature_id: CreatureID; init: number }
+  | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
+  | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID>; }
   | { t: "StopCombat" }
   | { t: "SetPlayerScene"; player_id: PlayerID, scene_id: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number; }
@@ -761,6 +762,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Done": return "Done";
     case "ChangeCreatureInitiative":
       return { ChangeCreatureInitiative: [cmd.creature_id, cmd.init] };
+    case "StartCombat":
+      return { StartCombat: [cmd.scene_id, cmd.creature_ids] };
     case "StopCombat":
       return "StopCombat";
     case "SetPlayerScene":
