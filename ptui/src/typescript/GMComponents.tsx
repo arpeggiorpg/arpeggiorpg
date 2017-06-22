@@ -54,30 +54,21 @@ export const GMCombatCreatureCard = M.connectRedux(
 
 
 /// A single-line editable creature note
-class CreatureNoteComp
-  extends React.Component<{ creature: T.Creature } & M.ReduxProps, { editing: boolean }> {
-  constructor(props: { creature: T.Creature } & M.ReduxProps) {
-    super(props);
-    this.state = { editing: false };
-  }
-
-  render(): JSX.Element {
-    const { creature } = this.props;
-    if (this.state.editing) {
-      return <TextInput.TextInput defaultValue={creature.note} styles={{}}
-        onCancel={() => this.setState({ editing: false })}
-        onSubmit={input => this.submitNote(creature, input)} />;
-    } else {
-      return <div onClick={() => this.setState({ editing: true })}>{creature.note}</div>;
+const CreatureNote = M.connectRedux(
+  function CreatureNote({ creature, ptui, dispatch }: { creature: T.Creature } & M.ReduxProps) {
+    function view(toggle: CV.ToggleFunc) {
+      return <div onClick={() => toggle()}>{creature.note}</div>;
     }
-  }
+    function edit(toggle: CV.ToggleFunc) {
+      return <TextInput.TextInput defaultValue={creature.note} styles={{}}
+        onCancel={() => toggle()}
+        onSubmit={input => { toggle(); submitNote(input); }} />;
+    }
 
-  submitNote(creature: T.Creature, note: string) {
-    const { ptui, dispatch } = this.props;
-    const new_creature = { ...creature, note };
-    ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
-    this.setState({ editing: false });
-  }
-}
+    return <CV.Toggler a={view} b={edit} />;
 
-export const CreatureNote = M.connectRedux(CreatureNoteComp);
+    function submitNote(note: string) {
+      const new_creature = { ...creature, note };
+      ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
+    }
+  });

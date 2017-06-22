@@ -316,7 +316,7 @@ interface CombatProps {
   card?: React.ComponentType<{ creature: T.Creature }>;
 }
 export const Combat = M.connectRedux(
-  function Combat({combat, card, ptui}: CombatProps & M.ReduxProps): JSX.Element {
+  function Combat({ combat, card, ptui }: CombatProps & M.ReduxProps): JSX.Element {
     const creatures_with_init = M.filterMap(combat.creatures.data,
       ([cid, init]) => {
         const creature = ptui.getCreature(cid);
@@ -327,7 +327,10 @@ export const Combat = M.connectRedux(
     return <div>
       {creatures_with_init.map(([creature, init], index) => {
         return <div key={creature.id} style={{ display: "flex" }}>
-          <div style={{ width: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
+          <div style={{ width: "25px", display: "flex", flexDirection: "column" }}>
+            <div style={{ height: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
+            <div>{init}</div>
+          </div>
           <Card creature={creature} />
         </div>;
       })
@@ -652,5 +655,26 @@ export class MenuHeader extends React.Component<{}, undefined> {
     }}>
       {this.props.children}
     </div>;
+  }
+}
+
+export type ToggleFunc = () => void;
+interface TogglerProps { a: (t: ToggleFunc) => JSX.Element; b: (t: ToggleFunc) => JSX.Element; }
+export class Toggler extends React.Component<TogglerProps, { toggled: boolean }> {
+  constructor(props: TogglerProps) {
+    super(props);
+    this.state = { toggled: false };
+  }
+
+  render(): JSX.Element {
+    const self = this;
+    function toggle() {
+      self.setState({ toggled: !self.state.toggled });
+    }
+    if (this.state.toggled) {
+      return this.props.b(toggle);
+    } else {
+      return this.props.a(toggle);
+    }
   }
 }
