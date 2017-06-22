@@ -3,6 +3,8 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
+import { Dropdown } from 'semantic-ui-react';
+
 import * as CV from './CommonView';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -121,10 +123,12 @@ export function GMCreatureCard(props: { creature: T.Creature, menu?: JSX.Element
 export const GMCombatCreatureCard = M.connectRedux(
   function GMCombatCreatureCard(props: { creature: T.Creature } & M.ReduxProps): JSX.Element {
     const { creature, ptui, dispatch } = props;
-    const menu = <CV.IconMenu>
-      <CV.MenuHeader>{creature.name}</CV.MenuHeader>
-      <CV.MenuItem onClick={removeFromCombat}>Remove from Combat</CV.MenuItem>
-    </CV.IconMenu>;
+    const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+      <Dropdown.Menu>
+        <Dropdown.Header content={creature.name} />
+        <Dropdown.Item onClick={removeFromCombat} text="Remove from Combat" />
+      </Dropdown.Menu>
+    </Dropdown>;
 
     return <GMCreatureCard creature={creature} menu={menu} />;
 
