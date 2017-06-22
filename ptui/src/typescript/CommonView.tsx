@@ -499,6 +499,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
             style={{
               position: "fixed", top: 0, left: 0, height: "100%",
               width: "20%", minWidth: "20em",
+              backgroundColor: "white",
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px">
               <div />
