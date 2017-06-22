@@ -5,12 +5,14 @@ import { Provider } from 'react-redux';
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
+import 'semantic-ui-css/semantic.min.css';
+import { Button, Menu, Segment } from 'semantic-ui-react';
+
 import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
 const SIDE_BAR_WIDTH = 450;
-
 
 interface MainProps {
   app?: object;
@@ -289,13 +291,13 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
       return <div>woops</div>;
     }
     return <div>
-      <div style={{ display: "flex" }}>
+      <Menu pointing={true}>
         {children.map((child, index) =>
-          <button key={child.props.name} style={{ display: "block", height: "40px", flex: "1" }}
-            onClick={() => this.setState({ selected: index })}>
-            {child.props.name}</button>)
+          <Menu.Item key={child.props.name} name={child.props.name}
+            active={this.state.selected === index}
+            onClick={() => this.setState({ selected: index })} />)
         }
-      </div>
+      </Menu>
       {children.map((child, index) => {
         const display = index === this.state.selected ? "block" : "none";
         return <div key={child.props.name} style={{ display }}>{child}</div>;
@@ -370,10 +372,11 @@ export const ActionBar = M.connectRedux((
 
 export const DoneButton = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   const command: T.GameCommand = { t: "Done" };
-  return <button style={{ height: "50px", flex: "1" }}
+  return <Button
+    style={{ height: "50px", flex: "1" }}
     onClick={() => ptui.sendCommand(dispatch, command)}>
     Done
-  </button >;
+  </Button>;
 });
 
 interface AbilityButtonProps {
@@ -385,20 +388,20 @@ const AbilityButton = M.connectRedux((props: AbilityButtonProps & M.ReduxProps):
   const onClick = () =>
     props.ptui.requestCombatAbility(props.dispatch,
       props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
-  return <button style={{ height: "50px", flex: "1" }}
+  return <Button style={{ height: "50px", flex: "1" }}
     onClick={onClick}>
     {props.abinfo.ability.name}
-  </button>;
+  </Button>;
 });
 
 const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps)
   : JSX.Element => {
   const movement_left = props.combat ? props.creature.speed - props.combat.movement_used : 0;
   const suffix = props.combat ? " (" + Number(movement_left / 100).toFixed(0) + ")" : "";
-  return <button style={{ height: "50px", flex: "1" }}
+  return <Button style={{ height: "50px", flex: "1" }}
     onClick={() => props.ptui.requestCombatMovement(props.dispatch)}>
     Move {suffix}
-  </button>;
+  </Button>;
 });
 
 
@@ -502,7 +505,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px">
               <div />
-            <div style={{ width: "100%", backgroundColor: "white"}}>{secondary}</div>
+              <div style={{ width: "100%", backgroundColor: "white" }}>{secondary}</div>
             </PanelGroup>
           </div>
           : null}
