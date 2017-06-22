@@ -10,7 +10,13 @@ import * as TextInput from './TextInput';
 export const GMCombat = M.connectRedux(
   function GMCombat({ ptui, dispatch }: M.ReduxProps): JSX.Element {
     const combat = ptui.app.current_game.current_combat;
-    if (!combat) { return <div>There is no combat. <button>Start a combat</button></div>; }
+    if (!combat) {
+      const scene = ptui.focused_scene();
+      const startCombat = scene
+        ? <button>Start a combat</button>
+        : <div>Load a scene to start a combat.</div>;
+      return <div>There is no combat. {startCombat}</div>;
+    }
     const cur_creature = ptui.getCurrentCombatCreature(combat);
 
     return <div>
