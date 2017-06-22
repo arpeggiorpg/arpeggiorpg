@@ -409,32 +409,22 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
   </div>;
 }
 
-function modal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+function errorModal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
   if (ptui.state.error) {
-    return <div style={{
-      position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-      backgroundColor: "white",
-      border: "1px solid black",
-      minHeight: "30%",
-      minWidth: "30%",
-      borderRadius: "5px",
-      display: "flex",
-      flexDirection: "column",
-    }}>
-      <h1>Error</h1>
-      <div style={{ flex: "1 0 auto" }}>{ptui.state.error}</div>
-      <div style={{ display: "flex", justifyContent: "space-around" }}>
-        <div>
-          <button style={{ minHeight: "40px", minWidth: "80px" }}
-            onClick={() => dispatch({ type: "ClearError" })}>Ok</button>
-        </div>
-      </div>
-    </div>;
+    return <SUI.Modal dimmer="inverted"
+      open={true}
+      onClose={() => dispatch({ type: "ClearError" })}>
+      <SUI.Modal.Header>Error</SUI.Modal.Header>
+      <SUI.Modal.Content>
+        <div>{ptui.state.error}</div>
+        <Button onClick={() => dispatch({ type: "ClearError" })}>Ok</Button>
+      </SUI.Modal.Content>
+    </SUI.Modal>;
   } else {
     return <noscript />;
   }
 }
-export const Modal = M.connectRedux(modal);
+export const ErrorModal = M.connectRedux(errorModal);
 
 interface TheLayoutProps {
   map: JSX.Element;
@@ -462,7 +452,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
       {contents}
-      <Modal />
+      <ErrorModal />
     </div>;
 
     function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
