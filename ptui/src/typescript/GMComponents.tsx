@@ -80,6 +80,7 @@ class StartCombatComp
       const new_selected = add
         ? self.state.selected.add(creature_id)
         : self.state.selected.remove(creature_id);
+      self.setState({ selected: new_selected });
     }
   }
 }
