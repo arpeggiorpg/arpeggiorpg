@@ -6,7 +6,7 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Accordion, Button, Menu } from 'semantic-ui-react';
+import { Accordion, Button, Form, Input, Menu, Segment } from 'semantic-ui-react';
 
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -138,13 +138,13 @@ class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.R
       : <noscript />;
 
     return <div>
+      {give}
       {items.map(item =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
           {item.name} ({inv.get(item.id)})
-        <button onClick={e => this.setState({ giving: item.id })}>Give</button>
+        <Button onClick={e => this.setState({ giving: item.id })}>Give</Button>
         </div>
       )}
-      {give}
     </div>;
   }
 }
@@ -178,29 +178,28 @@ export class GiveItemComp extends React.Component<
     const giver = giver_;
     const giver_count = giver.inventory.get(this.props.item_id);
     if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
-    return <div>
-      Giving
-      <PositiveIntegerInput
-        max={giver_count}
-        onChange={num => this.setState({ count: num })}
-        value={this.state.count} />
-      {item.name}
-      from {giver.name} to
-      <select value={this.state.receiver} onChange={ev => this.onSelectCreature(ev)}>
-        <option key="undefined" value="">Choose a creature</option>
-        {other_creatures.map(
-          creature => <option key={creature.id} value={creature.id}>{creature.name}</option>
-        )}
-      </select>
-      <button disabled={!(this.state.receiver && this.state.count)} onClick={ev => this.give(giver)}>
-        Give
-      </button>
-      <button onClick={ev => this.props.onClose()}>Cancel</button>
-    </div>;
-  }
-
-  onSelectCreature(event: React.SyntheticEvent<HTMLSelectElement>) {
-    this.setState({ receiver: event.currentTarget.value });
+    const creature_options = other_creatures.map(
+      creature => ({ key: creature.id, text: creature.name, value: creature.id }));
+    return <Segment>
+      <p>Giving <strong>{item.name}</strong></p>
+      <Form>
+        <Form.Group>
+          <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
+            onChange={num => this.setState({count: num})} />
+          <Form.Select label="Creature" options={creature_options}
+            placeholder="Select a Creature"
+            onChange={(_, ev) => this.setState({receiver: ev.value as T.CreatureID})}/>
+        </Form.Group>
+        <Form.Group>
+          <Form.Button
+            disabled={!(this.state.receiver && this.state.count)}
+            onClick={ev => this.give(giver)}>
+            Give
+            </Form.Button>
+          <Form.Button onClick={ev => this.props.onClose()}>Cancel</Form.Button>
+        </Form.Group>
+      </Form>
+    </Segment>;
   }
 
   give(giver: T.Creature) {
@@ -230,9 +229,12 @@ interface PositiveIntegerInputProps {
   max?: number; value: number | undefined;
   onChange: (num: number | undefined) => void;
 }
-export class PositiveIntegerInput extends React.Component<PositiveIntegerInputProps, undefined> {
+export class PositiveIntegerInput
+  extends React.Component<PositiveIntegerInputProps & { [index: string]: any }, undefined> {
   render(): JSX.Element {
-    return <input type="text" value={this.props.value === undefined ? "" : this.props.value}
+    return <Form.Input
+      {...this.props}
+      value={this.props.value === undefined ? "" : this.props.value}
       onChange={event => {
         let num = Number(event.currentTarget.value);
         if (event.currentTarget.value === "") {
@@ -474,7 +476,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         </PanelGroup>
         : <div style={{
           display: "flex", flexDirection: "column", height: "100%",
-          overflowY: "auto",
+          overflowY: "auto", overflowX: "hidden", // :(
         }}>{top}</div>;
     }
 
@@ -559,9 +561,9 @@ class NoteEditorComp
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div>{M.folderPathToString(LD.concat(path, name))}</div>
-        <button style={{ height: 40, width: 80 }}
+        <Button
           disabled={this.state.content === undefined || this.state.content === origContent}
-          onClick={() => submit(note)}>Save</button>
+          onClick={() => submit(note)}>Save</Button>
       </div>
       <div style={{ flex: "1" }}>
         <textarea style={{ resize: "none", width: "100%", height: "100%" }}
