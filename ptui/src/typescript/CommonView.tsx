@@ -277,18 +277,20 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
     if (!M.idx<JSX.Element | null>(this.props.children, this.state.selected)) {
       return <div>woops</div>;
     }
-    return <div>
-      <Menu pointing={true}>
+    return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Menu pointing={true} compact={true} size="tiny" secondary={true}>
         {children.map((child, index) =>
           <Menu.Item key={child.props.name} name={child.props.name}
             active={this.state.selected === index}
             onClick={() => this.setState({ selected: index })} />)
         }
       </Menu>
-      {children.map((child, index) => {
-        const display = index === this.state.selected ? "block" : "none";
-        return <div key={child.props.name} style={{ display }}>{child}</div>;
-      })}
+      <div style={{ overflowY: "auto" }}>
+        {children.map((child, index) => {
+          const display = index === this.state.selected ? "block" : "none";
+          return <div key={child.props.name} style={{ display }}>{child}</div>;
+        })}
+      </div>
     </div>;
   }
 }
@@ -456,20 +458,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     </div>;
 
     function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
-      const top = <div style={{ flex: "1", border: "1px solid black" }}>
-        <TabbedView>
-          {tabs_}
-        </TabbedView>
-      </div>;
+      const tabbed_view = <TabbedView>{tabs_}</TabbedView>;
       return extra !== undefined
         ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
-          {top}
+          <div style={{ width: "100%" }}>{tabbed_view}</div>
           <div style={{ width: "100%" }}>{extra}</div>
         </PanelGroup>
-        : <div style={{
-          display: "flex", flexDirection: "column", height: "100%",
-          overflowY: "auto", overflowX: "hidden", // :(
-        }}>{top}</div>;
+        : tabbed_view;
     }
 
     function wideView() {
