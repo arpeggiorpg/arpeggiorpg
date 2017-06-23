@@ -9,6 +9,15 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
   console.log("sorry elm");
 }
 
+/** TODO FIXME PERFORMANCE:
+ * I need a general infrastructure for being able to rely on `ptui` and `dispatch`, WITHOUT using
+ * them to determine whether a component should re-render.
+ * I believe that this is what the purpose of "selectors" is -- each component should "select" the
+ * state out of the model that it really cares about, and ONLY gets access to that data.
+ * But we then need some way to dispatch actions from components without having access to `ptui` and
+ * `dispatch`.
+ */
+
 export const History = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
   console.log("[EXPENSIVE:History.render]");
   const app = ptui.app;
