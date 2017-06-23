@@ -1,3 +1,5 @@
+webpack = require('webpack');
+
 module.exports = {
     entry: "./src/typescript/index.tsx",
     output: {
@@ -14,6 +16,9 @@ module.exports = {
         extensions: [".ts", ".tsx", ".js", ".json"]
     },
 
+    plugins: [
+        new webpack.optimize.ModuleConcatenationPlugin()
+    ],
     module: {
         rules: [
             // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.

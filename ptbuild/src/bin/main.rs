@@ -110,6 +110,7 @@ fn webpack(ptui_dir: &path::Path) {
   let webpack = ptui_dir.join("node_modules\\.bin\\webpack.cmd");
   let mut child = Command::new(webpack)
     .arg("--hide-modules")
+    .arg("--display-optimization-bailout")
     .current_dir(ptui_dir)
     .spawn()
     .expect("Couldn't build command?");
