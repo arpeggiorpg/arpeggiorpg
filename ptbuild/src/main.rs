@@ -106,7 +106,10 @@ fn build_js(ptui_dir: &path::Path) {
 fn webpack(ptui_dir: &path::Path) {
   // This unfortunately doesn't work if I just use `webpack`, so for now this code is
   // windows-specific :(
-  let mut child = Command::new("webpack.cmd")
+  let ptui_dir = env::current_dir().unwrap().join(ptui_dir);
+  let webpack = ptui_dir.join("node_modules\\.bin\\webpack.cmd");
+  println!("[RADIX] WEBPACK: {:?}", webpack);
+  let mut child = Command::new(webpack)
     .arg("--hide-modules")
     .current_dir(ptui_dir)
     .spawn()
