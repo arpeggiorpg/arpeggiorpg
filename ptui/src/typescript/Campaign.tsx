@@ -58,7 +58,8 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
       <div style={{ display: "flex" }}>
         <div style={{ display: "flex", cursor: "pointer" }}
           onClick={() => this.setState({ expanded: !this.state.expanded })}>
-          <CV.Icon>folder_open</CV.Icon> {this.props.name}
+          {this.state.expanded ? <CV.Icon>folder_open</CV.Icon> : <CV.Icon>folder</CV.Icon>}
+          {this.props.name}
         </div>
       </div>
       <div style={{ marginLeft: "1em", display }}>
