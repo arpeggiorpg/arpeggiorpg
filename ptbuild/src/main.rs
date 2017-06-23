@@ -108,7 +108,6 @@ fn webpack(ptui_dir: &path::Path) {
   // windows-specific :(
   let ptui_dir = env::current_dir().unwrap().join(ptui_dir);
   let webpack = ptui_dir.join("node_modules\\.bin\\webpack.cmd");
-  println!("[RADIX] WEBPACK: {:?}", webpack);
   let mut child = Command::new(webpack)
     .arg("--hide-modules")
     .current_dir(ptui_dir)
