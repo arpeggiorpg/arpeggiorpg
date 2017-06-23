@@ -106,7 +106,7 @@ fn build_js(ptui_dir: &path::Path) {
 fn webpack(ptui_dir: &path::Path) {
   // This unfortunately doesn't work if I just use `webpack`, so for now this code is
   // windows-specific :(
-  let ptui_dir = env::current_dir().unwrap().join(ptui_dir);
+  let ptui_dir = ptui_dir.canonicalize().expect(&format!("Couldn't canonicalize {:?}", ptui_dir));
   let webpack = ptui_dir.join("node_modules\\.bin\\webpack.cmd");
   let mut child = Command::new(webpack)
     .arg("--hide-modules")
