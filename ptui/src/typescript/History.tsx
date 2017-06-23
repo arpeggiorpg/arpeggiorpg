@@ -18,24 +18,32 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
  * `dispatch`.
  */
 
-export const History = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
-  console.log("[EXPENSIVE:History.render]");
-  const app = ptui.app;
-  return <div>{
-    app.snapshots.map(
-      ({ snapshot, logs }, snapshot_index) =>
-        logs.map((log: T.GameLog, log_index) =>
-          <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
-            key={snapshot_index.toString() + "-" + log_index.toString()}>
-            {gameLog(log)}
-            <button className="material-icons"
-              onClick={() =>
-                ptui.sendCommand(dispatch, { t: "Rollback", snapshot_index, log_index })}
-            >history</button>
-          </div>)
-    )
-  }</div>;
-});
+class HistoryComp extends React.Component<M.ReduxProps, undefined> {
+  shouldComponentUpdate(newProps: M.ReduxProps) {
+    return (newProps.ptui.app.snapshots !== this.props.ptui.app.snapshots);
+  }
+  render(): JSX.Element {
+    const { ptui, dispatch } = this.props;
+    console.log("[EXPENSIVE:History.render]");
+    const app = ptui.app;
+    return <div>{
+      app.snapshots.map(
+        ({ snapshot, logs }, snapshot_index) =>
+          logs.map((log: T.GameLog, log_index) =>
+            <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+              key={snapshot_index.toString() + "-" + log_index.toString()}>
+              {gameLog(log)}
+              <button className="material-icons"
+                onClick={() =>
+                  ptui.sendCommand(dispatch, { t: "Rollback", snapshot_index, log_index })}
+              >history</button>
+            </div>)
+      )
+    }</div>;
+  }
+}
+
+export const History = M.connectRedux(HistoryComp);
 
 function gameLog(log: T.GameLog): JSX.Element | null {
   switch (log.t) {

@@ -84,7 +84,7 @@ export const PlayerGameView = M.connectRedux((
         <PlayerActionBar player={player} combat={combat} />
       </div>
     </CommonView.Tab>,
-    <CommonView.Tab key="Notes" name="Notes" stay_mounted={true}>
+    <CommonView.Tab key="Notes" name="Notes">
       <PlayerNote player_id={player.player_id} />
     </CommonView.Tab>
   ];

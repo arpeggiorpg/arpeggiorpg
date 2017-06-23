@@ -286,17 +286,14 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
         }
       </Menu>
       {children.map((child, index) => {
-        if (index === this.state.selected) {
-          return <div key={child.props.name}>{child}</div>;
-        } else if (child.props.stay_mounted) {
-          return <div key={child.props.name} style={{ display: "none" }}>{child}</div>;
-        }
+        const display = index === this.state.selected ? "block" : "none";
+        return <div key={child.props.name} style={{ display }}>{child}</div>;
       })}
     </div>;
   }
 }
 
-interface TabProps { name: string; stay_mounted?: boolean; }
+interface TabProps { name: string; }
 export class Tab extends React.Component<TabProps, undefined> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);
@@ -483,7 +480,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
               position: "fixed", top: 0, left: 0, height: "100%",
               width: "20%", minWidth: "20em",
             }}>
-            <PanelGroup direction="column" borderColor="grey" spacing="8px">
+            <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
               <div />
               <div style={{ width: "100%", backgroundColor: "white" }}>{secondary}</div>
             </PanelGroup>
@@ -560,10 +557,9 @@ class NoteEditorComp
           disabled={this.state.content === undefined || this.state.content === origContent}
           onClick={() => submit(note)}>Save</Button>
       </div>
-      <div style={{ flex: "1" }}>
-        <textarea style={{ resize: "none", width: "100%", height: "100%" }}
-          value={content}
-          onChange={e => this.setState({ content: e.currentTarget.value })} /></div>
+      <textarea style={{ flex: "1", resize: "none", width: "100%", height: "100%" }}
+        value={content}
+        onChange={e => this.setState({ content: e.currentTarget.value })} />
     </div>;
 
     function submit(origNote: T.Note | undefined) {

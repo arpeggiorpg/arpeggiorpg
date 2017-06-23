@@ -9,13 +9,21 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 
-export const Campaign = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
-  console.log("[EXPENSIVE:Campaign.render]");
-  return <div>
-    <FolderTree
-      name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />
-  </div>;
-});
+class CampaignComp extends React.Component<M.ReduxProps, undefined> {
+  shouldComponentUpdate(newProps: M.ReduxProps) {
+    return newProps.ptui.app.current_game.campaign !== this.props.ptui.app.current_game.campaign;
+  }
+  render(): JSX.Element {
+    const { ptui, dispatch } = this.props;
+    console.log("[EXPENSIVE:Campaign.render]");
+    return <div>
+      <FolderTree
+        name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />
+    </div>;
+  }
+}
+
+export const Campaign = M.connectRedux(CampaignComp);
 
 interface FTProps {
   path: T.FolderPath;
@@ -91,7 +99,6 @@ class TreeCreatureComp
   render(): JSX.Element {
     const creature = this.props.creature;
 
-    const display = this.state.expanded ? "block" : "none";
 
     return <div>
       <div style={{ display: "flex" }}>
@@ -100,10 +107,12 @@ class TreeCreatureComp
           <CV.Icon>contacts</CV.Icon>{creature.name}
         </div>
       </div>
-      <div style={{ display, marginLeft: "1em" }}>
-        <GM.GMCreatureCard creature={creature} />
-        <CV.CollapsibleInventory creature={creature} />
-      </div>
+      {this.state.expanded
+        ? <div style={{ marginLeft: "1em" }}>
+          <GM.GMCreatureCard creature={creature} />
+          <CV.CollapsibleInventory creature={creature} />
+        </div>
+        : null}
     </div>;
   }
 }
