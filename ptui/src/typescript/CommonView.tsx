@@ -286,14 +286,17 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
         }
       </Menu>
       {children.map((child, index) => {
-        const display = index === this.state.selected ? "block" : "none";
-        return <div key={child.props.name} style={{ display }}>{child}</div>;
+        if (index === this.state.selected) {
+          return <div key={child.props.name}>{child}</div>;
+        } else if (child.props.stay_mounted) {
+          return <div key={child.props.name} style={{ display: "none" }}>{child}</div>;
+        }
       })}
     </div>;
   }
 }
 
-interface TabProps { name: string; }
+interface TabProps { name: string; stay_mounted?: boolean; }
 export class Tab extends React.Component<TabProps, undefined> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);

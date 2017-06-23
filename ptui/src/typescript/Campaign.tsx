@@ -10,6 +10,7 @@ import * as TextInput from './TextInput';
 
 
 export const Campaign = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
+  console.log("[EXPENSIVE:Campaign.render]");
   return <div>
     <FolderTree
       name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />
