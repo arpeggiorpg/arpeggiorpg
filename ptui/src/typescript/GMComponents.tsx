@@ -19,7 +19,7 @@ export const GMScene = M.connectRedux(
         title: "Creatures",
         content: <List>
           {ptui.getCreatures(LD.keys(scene.creatures)).map(creature =>
-            <List.Item>{creature.name}</List.Item>
+            <List.Item key={creature.id}>{creature.name}</List.Item>
           )}
         </List>,
       }]} />
