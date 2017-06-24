@@ -18,20 +18,28 @@ export const GMScene = M.connectRedux(
       <Accordion panels={[{
         title: "Creatures",
         content: <List>
-          {ptui.getCreatures(scene.creatures.keySeq().toArray()).map(creature =>
-            <List.Item key={creature.id}>
+          {ptui.getCreatures(scene.creatures.keySeq().toArray()).map(creature => {
+            const [pos, vis] = scene.creatures.get(creature.id);
+            return <List.Item key={creature.id}>
               <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
               {creature.name}
               <List.Content floated='right'>
-                <Icon name='eye' disabled={scene.creatures.get(creature.id)[1] === { t: 'GMOnly' }}
-                /*onClick={() => {
-                  const new_scene = {...scene, creatures: }
-                  ptui.sendCommand(dispatch, )
-                }
-                }*/
-                />
+                <Icon name='eye'
+                  style={{ cursor: "pointer" }}
+                  disabled={vis.t === 'GMOnly'}
+                  onClick={() => {
+                    const new_vis: T.Visibility =
+                      vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
+
+                    const new_scene = {
+                      ...scene,
+                      creatures: scene.creatures.set(creature.id, [pos, new_vis]),
+                    };
+                    ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                  }} />
               </List.Content>
-            </List.Item>
+            </List.Item>;
+          }
           )}
         </List>,
       }]} />
