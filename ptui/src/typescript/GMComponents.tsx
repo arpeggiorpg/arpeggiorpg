@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Button, Dropdown, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Dropdown, List, Segment } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
@@ -12,8 +12,18 @@ import * as TextInput from './TextInput';
 
 
 export const GMScene = M.connectRedux(
-  function GMScene({ scene }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
-    return <div>Scene here! {scene.name}</div>;
+  function GMScene({ scene, ptui }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+    return <Segment>
+      <h3>{scene.name}</h3>
+      <Accordion panels={[{
+        title: "Creatures",
+        content: <List>
+          {ptui.getCreatures(LD.keys(scene.creatures)).map(creature =>
+            <List.Item>{creature.name}</List.Item>
+          )}
+        </List>,
+      }]} />
+    </Segment>;
   });
 
 export const GMCombat = M.connectRedux(
