@@ -487,11 +487,10 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
-        {secondary
+        {(secondary || tertiary)
           ? <div
             style={{
-              position: "fixed", top: 0, left: 0, height: "100%",
-              width: "20%", minWidth: "20em",
+              height: "100%", width: "20%", minWidth: "20em",
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
               <div style={{ width: "100%", backgroundColor: "white" }}>{tertiary}</div>

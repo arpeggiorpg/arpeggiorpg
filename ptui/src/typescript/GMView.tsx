@@ -22,14 +22,22 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
   ];
 
   const secondary = renderSecondary(ptui, dispatch);
+  const tertiary = renderTertiary(ptui, dispatch);
 
-  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} bar_width={450} menu_size='tiny'
-  />;
+  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} tertiary={tertiary}
+    bar_width={450} menu_size='tiny' />;
 });
 
 function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch) {
   if (ptui.state.focused_note) {
     return <CV.NoteEditor path={ptui.state.focused_note.path} name={ptui.state.focused_note.name} />;
+  }
+}
+
+function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
+  const scene = ptui.focused_scene();
+  if (scene) {
+    return <GM.GMScene scene={scene} />;
   }
 }
 

@@ -11,6 +11,11 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 
+export const GMScene = M.connectRedux(
+  function GMScene({ scene }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+    return <div>Scene here! {scene.name}</div>;
+  });
+
 export const GMCombat = M.connectRedux(
   function GMCombat({ ptui, dispatch }: M.ReduxProps): JSX.Element {
     const combat = ptui.app.current_game.current_combat;
