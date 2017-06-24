@@ -17,6 +17,10 @@ module.exports = {
     },
 
     plugins: [
+        new webpack.DllReferencePlugin({
+            context: ".",
+            manifest: require("./build/vendor-manifest.json")
+        }),
         new webpack.optimize.ModuleConcatenationPlugin()
     ],
     module: {
