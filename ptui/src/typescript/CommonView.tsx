@@ -447,6 +447,7 @@ interface TheLayoutProps {
   map: JSX.Element;
   tabs: Array<JSX.Element>;
   secondary?: JSX.Element;
+  tertiary?: JSX.Element;
   bar_width: number;
   menu_size: MenuSize;
 }
@@ -459,7 +460,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    const { map, tabs, secondary, ptui, dispatch, bar_width, menu_size } = this.props;
+    const { map, tabs, secondary, tertiary, ptui, dispatch, bar_width, menu_size } = this.props;
 
     const contents = this.state.width >= NARROW_THRESHOLD
       ? wideView()
@@ -493,7 +494,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
               width: "20%", minWidth: "20em",
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
-              <div />
+              <div style={{ width: "100%", backgroundColor: "white" }}>{tertiary}</div>
               <div style={{ width: "100%", backgroundColor: "white" }}>{secondary}</div>
             </PanelGroup>
           </div>
