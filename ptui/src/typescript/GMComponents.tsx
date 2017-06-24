@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Accordion, Button, Dropdown, Header, Icon, List, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Dropdown, Header, Icon, List, Popup, Segment } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
@@ -20,23 +20,28 @@ export const GMScene = M.connectRedux(
         content: <List>
           {ptui.getCreatures(scene.creatures.keySeq().toArray()).map(creature => {
             const [pos, vis] = scene.creatures.get(creature.id);
+            const vis_desc = vis.t === 'GMOnly'
+              ? 'Only visible to the GM' : 'Visible to all players';
             return <List.Item key={creature.id}>
               <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
               {creature.name}
               <List.Content floated='right'>
-                <Icon name='eye'
-                  style={{ cursor: "pointer" }}
-                  disabled={vis.t === 'GMOnly'}
-                  onClick={() => {
-                    const new_vis: T.Visibility =
-                      vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
+                <Popup
+                  trigger={<Icon name='eye'
+                    style={{ cursor: "pointer" }}
+                    disabled={vis.t === 'GMOnly'}
+                    onClick={() => {
+                      const new_vis: T.Visibility =
+                        vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
 
-                    const new_scene = {
-                      ...scene,
-                      creatures: scene.creatures.set(creature.id, [pos, new_vis]),
-                    };
-                    ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                  }} />
+                      const new_scene = {
+                        ...scene,
+                        creatures: scene.creatures.set(creature.id, [pos, new_vis]),
+                      };
+                      ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                    }} />}
+                  content={vis_desc}
+                />
               </List.Content>
             </List.Item>;
           }
