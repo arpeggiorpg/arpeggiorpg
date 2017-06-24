@@ -3,9 +3,23 @@ const path = require('path');
 
 module.exports = {
     entry: {
-        vendor: ["react", "react-dom", 'react-panelgroup', 'lodash', 'svg-pan-zoom', 'hammerjs',
-            'type-safe-json-decoder', 'immutable', 'redux', 'react-redux', 'isomorphic-fetch',
-            'flexbox-react', 'Parsimmon', 'react-window-size-listener', 'semantic-ui-react']
+        vendor: [
+            'flexbox-react',
+            'hammerjs',
+            'immutable',
+            'isomorphic-fetch',
+            'lodash',
+            'Parsimmon',
+            'react-dom',
+            'react-panelgroup',
+            'react-redux',
+            'react-window-size-listener',
+            'react',
+            'redux',
+            'semantic-ui-react',
+            'svg-pan-zoom',
+            'type-safe-json-decoder'
+        ]
     },
     output: {
         filename: "[name].js",
