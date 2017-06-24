@@ -99,6 +99,7 @@ export interface MapCreature {
   pos: T.Point3;
   class_: T.Class;
   actions: { [index: string]: (cid: T.CreatureID) => void };
+  visibility: T.Visibility;
 }
 
 interface GridSvgProps {
@@ -249,17 +250,18 @@ const GridCreature = M.connectRedux(
       }
     }
 
+    const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
     if (creature.creature.portrait_url !== "") {
       const props = tile_props("white", creature.pos, creature.creature.size);
       const bare_props = bare_tile_props(creature.pos, creature.creature.size);
-      return <g>
+      return <g opacity={opacity}>
         <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
           xlinkHref={creature.creature.portrait_url} {...props} />
         <rect {...bare_props} {...highlightProps} fillOpacity="0" onClick={() => onClick()} />
       </g>;
     } else {
       const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-      return <g onClick={() => onClick()}>
+      return <g opacity={opacity} onClick={() => onClick()}>
         {<rect ref={el => { if (el !== null) { element = el; } }} {...props} {...highlightProps} />}
         {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
       </g >;
@@ -315,7 +317,7 @@ export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: M
       const [pos, vis] = scene.creatures.get(creature.id); // map over keys -> .get() is ok
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
-        return { creature, pos, class_, actions: {} };
+        return { creature, pos, class_, actions: {}, visibility: vis };
       }
     });
   const result: { [index: string]: MapCreature } = {};
