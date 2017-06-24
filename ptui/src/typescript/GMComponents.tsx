@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Button, Dropdown } from 'semantic-ui-react';
+import { Button, Dropdown, Segment } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
@@ -93,7 +93,7 @@ const GMCombatHeader = M.connectRedux(
   function GMCombatHeader({ combat, ptui, dispatch }: { combat: T.Combat } & M.ReduxProps) {
     const scene = ptui.getScene(combat.scene);
 
-    return <div style={{ border: "1px solid black", borderRadius: "5px", padding: '3px' }}>
+    return <Segment>
       {
         scene
           ?
@@ -110,7 +110,7 @@ const GMCombatHeader = M.connectRedux(
         <Button>Add creature</Button>
         <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>Stop combat</Button>
       </div>
-    </div>;
+    </Segment>;
   });
 
 /// A customized CreatureCard that renders an editable note in the content area.

@@ -70,12 +70,7 @@ export const CreatureCard = M.connectRedux(
     props: { creature: T.Creature; children?: JSX.Element | Array<JSX.Element>; menu?: JSX.Element }
       & M.ReduxProps): JSX.Element {
     const creature = props.creature;
-    return <div
-      style={{
-        width: "300px",
-        borderRadius: "10px", border: "1px solid black",
-        padding: "3px",
-      }}>
+    return <Segment style={{ width: "100%" }} raised={true}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div>{classIcon(creature)} <strong>{creature.name}</strong>
           {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
@@ -87,7 +82,7 @@ export const CreatureCard = M.connectRedux(
           {props.children}
         </div>
       </div>
-    </div>;
+    </Segment>;
 
   });
 
@@ -332,19 +327,23 @@ export const Combat = M.connectRedux(
       }) as Array<[T.Creature, number]>;
 
     const Card = card ? card : CreatureCard;
-    return <div>
+    return <Segment.Group>
       {creatures_with_init.map(([creature, init], index) => {
         const show_init = initiative ? initiative(creature, init) : null;
-        return <div key={creature.id} style={{ display: "flex" }}>
-          <div style={{ width: "25px", display: "flex", flexDirection: "column" }}>
+        return <Segment.Group key={creature.id} horizontal={true}>
+          <Segment compact={true}
+            style={{
+              width: "25px", paddingLeft: 0, paddingRight: 0,
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}>
             <div style={{ height: "25px" }}>{index === combat.creatures.cursor ? "▶️" : ""}</div>
             <div>{show_init}</div>
-          </div>
+          </Segment>
           <Card creature={creature} />
-        </div>;
+        </Segment.Group>;
       })
       }
-    </div>;
+    </Segment.Group>;
   });
 
 export const ActionBar = M.connectRedux((
