@@ -305,9 +305,9 @@ function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
 
 export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: MapCreature } {
   const creatures = M.filterMap(
-    ptui.getCreatures(LD.keys(scene.creatures)),
+    ptui.getCreatures(scene.creatures.keySeq().toArray()),
     creature => {
-      const [pos, vis] = scene.creatures[creature.id]; // map over keys -> [] is okay
+      const [pos, vis] = scene.creatures.get(creature.id); // map over keys -> .get() is ok
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
         return { creature, pos, class_, actions: {} };

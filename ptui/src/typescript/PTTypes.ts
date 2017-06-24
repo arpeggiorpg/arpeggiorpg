@@ -304,8 +304,8 @@ export interface Scene {
   id: SceneID;
   name: string;
   map: MapID;
-  creatures: { [index: string]: [Point3, Visibility] };
-  attribute_checks: { [index: string]: AttributeCheck };
+  creatures: I.Map<CreatureID, [Point3, Visibility]>;
+  attribute_checks: I.Map<Attr, AttributeCheck>;
 }
 
 export type Point3 = [number, number, number];
@@ -474,8 +474,8 @@ export const decodeScene: Decoder<Scene> =
     ["id", JD.string()],
     ["name", JD.string()],
     ["map", JD.string()],
-    ["creatures", JD.dict(JD.tuple(decodePoint3, decodeVisibility))],
-    ["attribute_checks", JD.dict(decodeAttributeCheck)],
+    ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
+    ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     (id, name, map, creatures, attribute_checks): Scene =>
       ({ id, name, map, creatures, attribute_checks }));
 

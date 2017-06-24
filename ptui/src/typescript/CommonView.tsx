@@ -1,3 +1,4 @@
+import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 import PanelGroup from 'react-panelgroup';
@@ -172,8 +173,8 @@ export class GiveItemComp extends React.Component<
     const ptui = this.props.ptui;
     const scene = this.props.ptui.focused_scene();
     if (!scene) { return <div>You can only transfer items in a scene.</div>; }
-    const other_cids_in_scene = LD.keys(scene.creatures);
-    LD.pull(other_cids_in_scene, this.props.giver);
+    const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray())
+      .delete(this.props.giver).toArray();
     const other_creatures = ptui.getCreatures(other_cids_in_scene);
     if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div>; }
     const item = ptui.getItem(this.props.item_id);
