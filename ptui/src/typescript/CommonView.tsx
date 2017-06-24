@@ -207,7 +207,7 @@ export class GiveItemComp extends React.Component<
   give(giver: T.Creature) {
     const count = this.state.count as number; // Protected by button `disabled`
     const receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
-    const receiver = M.get(this.props.ptui.app.current_game.creatures, receiver_id);
+    const receiver = this.props.ptui.app.current_game.creatures.get(receiver_id);
     if (!receiver) {
       console.log("[give] Receiver has disappeared", receiver_id);
       this.props.onClose();

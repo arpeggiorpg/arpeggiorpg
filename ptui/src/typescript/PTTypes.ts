@@ -32,7 +32,7 @@ export interface App {
 
 export interface Game {
   current_combat: Combat | undefined;
-  creatures: { [index: string]: Creature };
+  creatures: I.Map<CreatureID, Creature>;
   classes: { [index: string]: Class };
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
@@ -727,7 +727,7 @@ const decodeAbility: Decoder<Ability> = JD.object(
 
 export const decodeGame: Decoder<Game> = JD.object(
   ["current_combat", JD.oneOf(decodeCombat, JD.map(_ => undefined, JD.equal(null)))],
-  ["creatures", JD.dict(decodeCreature)],
+  ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
   ["classes", JD.dict(decodeClass)],
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],

@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Accordion, Button, Dropdown, List, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Dropdown, Header, Icon, List, Segment } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
@@ -12,14 +12,26 @@ import * as TextInput from './TextInput';
 
 
 export const GMScene = M.connectRedux(
-  function GMScene({ scene, ptui }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+  function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
-      <h3>{scene.name}</h3>
+      <Header>{scene.name}</Header>
       <Accordion panels={[{
         title: "Creatures",
         content: <List>
           {ptui.getCreatures(LD.keys(scene.creatures)).map(creature =>
-            <List.Item key={creature.id}>{creature.name}</List.Item>
+            <List.Item key={creature.id}>
+              <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
+              {creature.name}
+              <List.Content floated='right'>
+                <Icon name='eye' disabled={scene.creatures[creature.id][1] === { t: 'GMOnly' }}
+                  /*onClick={() => {
+                    const new_scene = {...scene, creatures: }
+                    ptui.sendCommand(dispatch, )
+                  }
+                  }*/
+                   />
+              </List.Content>
+            </List.Item>
           )}
         </List>,
       }]} />
@@ -117,14 +129,13 @@ const GMCombatHeader = M.connectRedux(
               onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
               {scene.name}
             </a>
+            <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>
+              Stop combat
+            </Button>
           </div>
           :
           <div>Lost scene!</div>
       }
-      <div>
-        <Button>Add creature</Button>
-        <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>Stop combat</Button>
-      </div>
     </Segment>;
   });
 

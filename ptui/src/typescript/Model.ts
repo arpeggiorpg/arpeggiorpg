@@ -244,7 +244,7 @@ export class PTUI {
   // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
   // then it would be a good way forward, but I'm not sure it will be necessary.
   getCreature(cid: T.CreatureID): T.Creature | undefined {
-    return get(this.app.current_game.creatures, cid);
+    return this.app.current_game.creatures.get(cid);
   }
 
   getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
