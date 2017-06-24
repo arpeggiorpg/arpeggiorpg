@@ -84,10 +84,7 @@ fn watch(ptui_dir: &path::Path, rpi: &str) {
 }
 
 fn build_js(ptui_dir: &path::Path) {
-  for &(elm, js) in [// ("Player.elm", "Player.js"),
-                     ("ReactMain.elm", "ElmMain.js"),
-                     ("GM.elm", "GM.js")]
-          .iter() {
+  for &(elm, js) in [("ReactMain.elm", "ElmMain.js"), ("GM.elm", "GM.js")].iter() {
     let mut child = Command::new("elm")
       .arg("make")
       .arg(path::Path::new("src").join(elm))
@@ -139,11 +136,7 @@ fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
     .register_template_string("html-template", template)
     .expect("Couldn't register_template_string");
 
-  for &(js_fn, html_fn) in
-    [("GM.js", "GM.html")
-  // , ("Player.js", "OldPlayer.html")
-  ]
-        .iter() {
+  for &(js_fn, html_fn) in [("GM.js", "GM.html")].iter() {
     let data = template_data(rpi.to_string(), js_fn.to_string());
     let populated = handlebars.render("html-template", &data).expect("Couldn't render template");
     let html_path = build_dir.join(html_fn);
