@@ -285,17 +285,23 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
             onClick={() => this.setState({ selected: index })} />)
         }
       </Menu>
-      <div style={{ overflowY: "auto" }}>
+      <div style={{ overflowY: "auto", position: "relative", height: "100%" }}>
         {children.map((child, index) => {
-          const display = index === this.state.selected ? "block" : "none";
-          return <div key={child.props.name} style={{ display }}>{child}</div>;
+          const style = index === this.state.selected
+            ? {}
+            : (child.props.always_render ?
+              { zIndex: -100, visibility: "hidden" } : { display: "none" });
+          return <div key={child.props.name}
+            style={{ position: "absolute", height: "100%", width: "100%", ...style }}>
+            {child}
+          </div>;
         })}
       </div>
     </div>;
   }
 }
 
-interface TabProps { name: string; }
+interface TabProps { name: string; always_render?: boolean; }
 export class Tab extends React.Component<TabProps, undefined> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);
@@ -490,7 +496,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
     function narrowView(width: number) {
       const amended_tabs = LD.concat(tabs,
-        <Tab key="Map" name="Map">{map}</Tab>);
+        <Tab key="Map" name="Map" always_render={true}>{map}</Tab>);
       const scale = width / SIDE_BAR_WIDTH;
       return <div style={{
         height: "100%",
