@@ -88,7 +88,7 @@ export const PlayerGameView = M.connectRedux((
       <PlayerNote player_id={player.player_id} />
     </CommonView.Tab>
   ];
-  return <CommonView.TheLayout map={map} tabs={tabs} />;
+  return <CommonView.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large" />;
 });
 
 

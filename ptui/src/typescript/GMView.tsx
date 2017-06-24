@@ -23,7 +23,8 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
 
   const secondary = renderSecondary(ptui, dispatch);
 
-  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} />;
+  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} bar_width={450} menu_size='tiny'
+  />;
 });
 
 function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch) {

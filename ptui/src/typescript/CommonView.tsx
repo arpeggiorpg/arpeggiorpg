@@ -14,7 +14,12 @@ import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-const SIDE_BAR_WIDTH = 450;
+/** The threshold at which we switch from narrow to wide view.
+ * I chose 500 because it's between portait and landscape mode on pretty much all phones, so
+ * any phone user that switches to landscape mode should switch to wide view.
+ */
+const NARROW_THRESHOLD = 500;
+
 
 interface MainProps {
   app?: object;
@@ -260,7 +265,12 @@ export function conditionIcon(cond: T.Condition): string {
   }
 }
 
-interface TabbedViewProps { children: Array<JSX.Element | null>; }
+type MenuSize = 'mini' | 'tiny' | 'small' | 'large' | 'huge' | 'massive';
+
+interface TabbedViewProps {
+  children: Array<JSX.Element | null>;
+  menu_size: MenuSize;
+}
 export class TabbedView extends React.Component<TabbedViewProps, { selected: number }> {
 
   constructor(props: TabbedViewProps) {
@@ -278,7 +288,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
       return <div>woops</div>;
     }
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Menu pointing={true} compact={true} size="tiny" secondary={true}>
+      <Menu pointing={true} compact={true} size={this.props.menu_size} secondary={true}>
         {children.map((child, index) =>
           <Menu.Item key={child.props.name} name={child.props.name}
             active={this.state.selected === index}
@@ -438,6 +448,8 @@ interface TheLayoutProps {
   map: JSX.Element;
   tabs: Array<JSX.Element>;
   secondary?: JSX.Element;
+  bar_width: number;
+  menu_size: MenuSize;
 }
 class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   { width: number; height: number }> {
@@ -448,9 +460,9 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    const { map, tabs, secondary, ptui, dispatch } = this.props;
+    const { map, tabs, secondary, ptui, dispatch, bar_width, menu_size } = this.props;
 
-    const contents = this.state.width >= (2 * SIDE_BAR_WIDTH)
+    const contents = this.state.width >= NARROW_THRESHOLD
       ? wideView()
       : narrowView(this.state.width);
 
@@ -464,7 +476,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     </div>;
 
     function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
-      const tabbed_view = <TabbedView>{tabs_}</TabbedView>;
+      const tabbed_view = <TabbedView menu_size={menu_size}>{tabs_}</TabbedView>;
       return extra !== undefined
         ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
           <div style={{ width: "100%" }}>{tabbed_view}</div>
@@ -488,7 +500,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
           </div>
           : null}
         <div style={{ flex: "1" }}>{map}</div>
-        <div style={{ width: SIDE_BAR_WIDTH, height: "100%" }}>
+        <div style={{ width: bar_width, height: "100%" }}>
           {bar(tabs)}
         </div>
       </div>;
@@ -497,13 +509,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     function narrowView(width: number) {
       const amended_tabs = LD.concat(tabs,
         <Tab key="Map" name="Map" always_render={true}>{map}</Tab>);
-      const scale = width / SIDE_BAR_WIDTH;
+      const scale = width / bar_width;
       return <div style={{
         height: "100%",
-        width: SIDE_BAR_WIDTH,
+        width: bar_width,
         zoom: `${scale * 100}%`,
       }}>
-        <div style={{ width: SIDE_BAR_WIDTH }}>
+        <div style={{ width: bar_width }}>
           {bar(amended_tabs, secondary)}
         </div>
       </div>;
