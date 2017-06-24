@@ -185,11 +185,16 @@ const MovementTarget = M.connectRedux(
 const SpecialTile = M.connectRedux(
   ({ color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
     : JSX.Element => {
-    if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
+    const gmonly = vis.t === "GMOnly";
+    if (gmonly && ptui.state.player_id) {
       return <noscript />;
     }
     const tprops = tile_props(color, pt);
-    return <rect {...tprops} />;
+    return <g>
+      <rect {...tprops} />
+      {gmonly ? <text x={pt[0] * 100 + 65} y={pt[1] * 100 + 35} fontSize="25px">👁️</text>
+        : <noscript />}
+    </g>;
   });
 
 
