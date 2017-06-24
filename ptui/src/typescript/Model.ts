@@ -306,6 +306,10 @@ export class PTUI {
     if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`); }
     return creature;
   }
+
+  getSceneCreatures(scene: T.Scene): Array<T.Creature> {
+    return this.getCreatures(scene.creatures.keySeq().toArray());
+  }
 }
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {

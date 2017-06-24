@@ -18,7 +18,11 @@ export const GMScene = M.connectRedux(
       <Accordion panels={[{
         title: "Creatures",
         content: <List>
-          {ptui.getCreatures(scene.creatures.keySeq().toArray()).map(creature => {
+          <List.Item key="add">
+            <List.Content><Button content="Add Creature" icon="add user" size="small" />
+            </List.Content>
+          </List.Item>
+          {ptui.getSceneCreatures(scene).map(creature => {
             const [pos, vis] = scene.creatures.get(creature.id);
             const vis_desc = vis.t === 'GMOnly'
               ? 'Only visible to the GM' : 'Visible to all players';
@@ -98,12 +102,12 @@ class StartCombatComp
   extends React.Component<{ scene: T.Scene } & M.ReduxProps, { selected: I.Set<T.CreatureID> }> {
   constructor(props: { scene: T.Scene } & M.ReduxProps) {
     super(props);
-    const selected = I.Set(props.ptui.getCreatures(LD.keys(props.scene.creatures)).map(c => c.id));
+    const selected = I.Set(props.ptui.getSceneCreatures(props.scene).map(c => c.id));
     this.state = { selected };
   }
   render(): JSX.Element {
     const { scene, ptui, dispatch } = this.props;
-    const creatures = ptui.getCreatures(LD.keys(scene.creatures));
+    const creatures = ptui.getSceneCreatures(scene);
     const self = this;
     return <div>
       <Button
