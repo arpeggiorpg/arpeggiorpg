@@ -6,6 +6,7 @@ import {
   Accordion, Button, Dropdown, Header, Icon, List, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
+import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -15,7 +16,7 @@ import * as TextInput from './TextInput';
 export const SelectMultipleCreatures = M.connectRedux(
   function SelectMultipleCreatures(
     props: { onSelected: (cs: Array<T.CreatureID>) => void } & M.ReduxProps): JSX.Element {
-    return <div>Selecting multiple creatures!</div>;
+    return <Campaign.CampaignSelector item_type="creature" allow_multiple={true} />;
   });
 
 export const GMScene = M.connectRedux(
