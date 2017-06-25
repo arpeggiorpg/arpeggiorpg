@@ -1,15 +1,22 @@
 /// A grab-bag of GM-only components
 import * as I from 'immutable';
-import * as LD from 'lodash';
 import * as React from 'react';
 
-import { Accordion, Button, Dropdown, Header, Icon, List, Popup, Segment } from 'semantic-ui-react';
+import {
+  Accordion, Button, Dropdown, Header, Icon, List, Modal, Popup, Segment
+} from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
+
+export const SelectMultipleCreatures = M.connectRedux(
+  function SelectMultipleCreatures(
+    props: { onSelected: (cs: Array<T.CreatureID>) => void } & M.ReduxProps): JSX.Element {
+    return <div>Selecting multiple creatures!</div>;
+  });
 
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
@@ -19,11 +26,22 @@ export const GMScene = M.connectRedux(
         title: "Creatures",
         content: <List>
           <List.Item key="add">
-            <List.Content><Button content="Add Creature" icon="add user" size="small" />
+            <List.Content>
+              <Modal dimmer='inverted'
+                trigger={<Button content="Add Creature" icon="add user" size="small" />}>
+                <SelectMultipleCreatures onSelected={creatures => {
+                  const new_creatures = scene.creatures.merge(I.Map(
+                    creatures.map((cid: T.CreatureID): [T.CreatureID, [T.Point3, T.Visibility]] =>
+                      [cid, [[0, 0, 0], { t: "AllPlayers" }]])));
+                  const new_scene = { ...scene, creatures: new_creatures };
+                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                }
+                } />
+              </Modal>
             </List.Content>
           </List.Item>
           {ptui.getSceneCreatures(scene).map(creature => {
-            const [pos, vis] = scene.creatures.get(creature.id);
+            const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
             const vis_desc = vis.t === 'GMOnly'
               ? 'Only visible to the GM' : 'Visible to all players';
             return <List.Item key={creature.id}>

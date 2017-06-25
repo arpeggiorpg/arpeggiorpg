@@ -3,6 +3,7 @@
         "outDir": ".",
         "sourceMap": true,
         "target": "es5",
+        "lib": ["es2015", "dom"],
         "module": "commonjs",
         "jsx": "react",
         "strict": true,

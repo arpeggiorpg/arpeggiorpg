@@ -30,7 +30,10 @@ export const Players = M.connectRedux(
           <div>
             <ul>
               {player.creatures.map(cid => {
-                return <li key={pid + "-" + cid}>{app.current_game.creatures.get(cid).name}</li>;
+                const creature = ptui.getCreature(cid);
+                if (creature) {
+                  return <li key={pid + "-" + cid}>{creature.name}</li>;
+                }
               })}
             </ul>
           </div>

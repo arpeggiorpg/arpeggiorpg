@@ -103,7 +103,8 @@ function selectMapCreatures(
   : { [index: string]: Grid.MapCreature } {
   return M.filterMapValues(Grid.mapCreatures(ptui, scene),
     mapc => {
-      if (scene.creatures.get(mapc.creature.id)[1].t === "AllPlayers") {
+      // !: must exist in filterMapValues()
+      if (scene.creatures.get(mapc.creature.id)![1].t === "AllPlayers") {
         const actions = creatureMenuActions(ptui, dispatch, player, mapc.creature);
         return { ...mapc, actions };
       }

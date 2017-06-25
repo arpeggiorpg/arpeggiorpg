@@ -314,7 +314,7 @@ export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: M
   const creatures = M.filterMap(
     ptui.getSceneCreatures(scene),
     creature => {
-      const [pos, vis] = scene.creatures.get(creature.id); // map over keys -> .get() is ok
+      const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
       const class_ = M.get(ptui.app.current_game.classes, creature.class_);
       if (class_) {
         return { creature, pos, class_, actions: {}, visibility: vis };
