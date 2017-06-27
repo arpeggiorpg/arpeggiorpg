@@ -140,9 +140,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     const display = this.state.expanded ? "block" : "none";
     const toggle = () => this.setState({ expanded: !this.state.expanded });
     const list_item = <List.Item>
-      {this.state.expanded
-        ? <List.Icon name='folder open' />
-        : <List.Icon name='folder' />}
+      <List.Icon name={this.state.expanded ? 'folder open' : 'folder'} />
       <List.Content>
         <List.Header style={{ cursor: "pointer" }} content={this.props.name}
           onClick={() => this.setState({ expanded: !this.state.expanded })} />
@@ -228,9 +226,9 @@ const TreeObject = M.connectRedux(
         return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
       }
     }
-    return <List.Item style={{ cursor: 'pointer' }} onClick={handler}>
+    return <List.Item>
       <List.Icon name={object_icon(object)} />
-      <List.Content>
+      <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
         {
           selecting
             ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
