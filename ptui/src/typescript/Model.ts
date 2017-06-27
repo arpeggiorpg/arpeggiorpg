@@ -187,8 +187,16 @@ export class PTUI {
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
       },
-      JD.succeed(undefined),
-      x => x);
+      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
+      (x: T.RustResult<Array<T.GameLog>, string> | undefined) => {
+        if (!x) { return; }
+        switch (x.t) {
+          case "Ok":
+            // turns out that post is *not* returning the App, just the logs!
+            return; // dispatch({ type: "RefreshApp", app: x.result });
+          case "Err": return dispatch({ type: "DisplayError", error: x.error });
+        }
+      });
   }
 
   focused_scene(): T.Scene | undefined {

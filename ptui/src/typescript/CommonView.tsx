@@ -117,7 +117,6 @@ export function SquareImageIcon(props: { url: string }): JSX.Element {
   return <img src={props.url} style={SQUARE_STYLE} />;
 }
 
-
 export const CollapsibleInventory = M.connectRedux(
   function CollapsibleInventory({ creature }: { creature: T.Creature }): JSX.Element {
     return <Accordion panels={[{

@@ -327,6 +327,11 @@ export type PotentialTargets =
   | { t: "Points"; points: Array<Point3> }
   ;
 
+export type RustResult<T, E> =
+  | { t: "Ok", result: T }
+  | { t: "Err", error: E }
+  ;
+
 // ** Decoders **
 
 export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -747,6 +752,15 @@ export const decodeApp: Decoder<App> = JD.object(
   ["current_game", decodeGame],
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
+
+export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>
+): Decoder<RustResult<T, E>> {
+  return sum<RustResult<T, E>>("Result", {},
+    {
+      Ok: JD.map((result): RustResult<T, E> => ({ t: "Ok", result }), decode_ok),
+      Err: JD.map((error): RustResult<T, E> => ({ t: "Err", error }), decode_err),
+    });
+}
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
