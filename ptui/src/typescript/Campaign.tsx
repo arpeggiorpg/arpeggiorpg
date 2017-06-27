@@ -144,12 +144,12 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     const folder_menu = <Dropdown icon='ellipsis horizontal'>
       <Dropdown.Menu>
         <Dropdown.Header content={M.folderPathToString(path)} />
-        <Dropdown.Item icon={object_icon("Scene")}>Create Scene</Dropdown.Item>
-        <Dropdown.Item icon={object_icon("Map")}>Create Map</Dropdown.Item>
-        <Dropdown.Item icon={object_icon("Creature")}>Create Creature</Dropdown.Item>
-        <Dropdown.Item>Create Note</Dropdown.Item>
-        <Dropdown.Item>Create Item</Dropdown.Item>
-        <Dropdown.Item>Create Folder</Dropdown.Item>
+        <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' />
+        <Dropdown.Item icon={object_icon("Map")} text='Create Map' />
+        <Dropdown.Item icon={object_icon("Creature")} text='Create Creature' />
+        <Dropdown.Item icon={object_icon("Note")} text='Create Note' />
+        <Dropdown.Item icon={object_icon("Item")} text='Create Item' />
+        <Dropdown.Item icon={object_icon("Folder")} text='Create Folder' />
       </Dropdown.Menu>
     </Dropdown>;
     const list_item = <List.Item>
