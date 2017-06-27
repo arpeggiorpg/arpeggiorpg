@@ -35,7 +35,12 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
     case "Note": return <CV.NoteEditor path={focus2.path} name={focus2.name} />;
     case "Creature":
       const creature = ptui.getCreature(focus2.creature_id);
-      return creature ? <GM.GMCreatureCard creature={creature} /> : undefined;
+      return creature
+        ? <div>
+            <GM.GMCreatureCard creature={creature} />
+            <CV.CreatureInventory creature={creature} />
+          </div>
+        : undefined;
     case "Item":
       const item = ptui.getItem(focus2.item_id);
       return item ? <GM.GMViewItem item={item} /> : undefined;

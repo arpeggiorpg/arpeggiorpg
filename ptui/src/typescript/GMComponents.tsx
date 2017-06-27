@@ -19,12 +19,13 @@ export const GMScene = M.connectRedux(
     return <Segment>
       <Header>{scene.name}</Header>
       <Accordion panels={[{
-        title: "Creatures",
+        title: 'Creatures',
         content: <List>
           <List.Item key="add">
             <List.Content>
               <CV.ModalMaker
-                button={toggler => <Button icon="edit" onClick={toggler} size="small" />}
+                button={toggler =>
+                  <Icon name="edit" onClick={toggler} style={{cursor: "pointer"}} />}
                 modal={toggler =>
                   <Campaign.MultiCreatureSelector
                     already_selected={scene.creatures.keySeq().toSet()}
@@ -47,7 +48,6 @@ export const GMScene = M.connectRedux(
                     }
                     } />
                 } />
-              />
             </List.Content>
           </List.Item>
           {ptui.getSceneCreatures(scene).map(creature => {

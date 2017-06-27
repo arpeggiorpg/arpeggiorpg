@@ -504,7 +504,9 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
               <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
                 {tertiary}
               </div>
-              <div style={{ width: "100%", backgroundColor: "white" }}>{secondary}</div>
+              <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
+                {secondary}
+              </div>
             </PanelGroup>
           </div>
           : null}
