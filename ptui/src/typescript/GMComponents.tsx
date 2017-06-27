@@ -32,6 +32,7 @@ export const GMScene = M.connectRedux(
                       onClose={toggler}>
                       <Campaign.MultiCreatureSelector
                         already_selected={scene.creatures.keySeq().toSet()}
+                        on_cancel={toggler}
                         on_selected={cids => {
                           let new_creatures = cids.reduce(
                             (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID

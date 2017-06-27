@@ -32,6 +32,7 @@ export const Campaign = M.connectRedux(CampaignComp);
 interface MultiCreatureSelectorProps {
   already_selected: I.Set<T.CreatureID>;
   on_selected: (cs: I.Set<T.CreatureID>) => void;
+  on_cancel: () => void;
 }
 class MultiCreatureSelectorComp
   extends React.Component<
@@ -67,6 +68,7 @@ class MultiCreatureSelectorComp
       <FolderTree name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
         selecting={selecting} />
       <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Creatures</Button>
+      <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
 }
