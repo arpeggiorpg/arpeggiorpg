@@ -346,10 +346,21 @@ export const GMCreateItem = M.connectRedux(GMCreateItemComp);
 
 
 export const GMViewItem = M.connectRedux(
-  function GMViewItem({ item }: { item: T.Item } & M.ReduxProps): JSX.Element {
+  function GMViewItem({ item, ptui, dispatch }: { item: T.Item } & M.ReduxProps): JSX.Element {
+    const viewName = (edit: CV.ToggleFunc) =>
+      <Card.Header>
+        {item.name} <Icon onClick={edit} style={{ cursor: 'pointer', float: 'right' }} name='edit' />
+      </Card.Header>;
+    const editName = (view: CV.ToggleFunc) =>
+      <Card.Header><TextInput.TextInput defaultValue={item.name} onCancel={view}
+        onSubmit={input => {
+          ptui.sendCommand(dispatch, { t: "EditItem", item: { ...item, name: input } });
+          view();
+        }} />
+      </Card.Header>;
     return <Card>
       <Card.Content>
-        <Card.Header>{item.name}</Card.Header>
+        <CV.Toggler a={viewName} b={editName} />
       </Card.Content>
       <Card.Content extra={true}>
         <div className="ui buttons">

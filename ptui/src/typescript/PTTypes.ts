@@ -92,6 +92,7 @@ export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
+  | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
   | { t: "EditScene"; scene: Scene }
@@ -768,6 +769,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };
+    case "EditItem": return { EditItem: encodeItem(cmd.item) };
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote":
       return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
@@ -792,6 +794,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
   }
+}
+
+function encodeItem(item: Item): object {
+  return { id: item.id, name: item.name };
 }
 
 function encodeScene(scene: Scene): object {
