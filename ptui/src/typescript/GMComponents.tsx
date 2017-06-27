@@ -191,15 +191,9 @@ export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array
   const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
     <Dropdown.Menu>
       <Dropdown.Header content={props.creature.name} />
-      <CV.Toggler
-        a={(toggler: CV.ToggleFunc) => <Dropdown.Item onClick={toggler} content="Edit" />}
-        b={(toggler: CV.ToggleFunc) => <div>
-          <Button icon="edit" size="small" />
-          <Modal dimmer='inverted' open={true} onClose={toggler}>
-            <GMEditCreature creature={props.creature} onClose={toggler} />
-          </Modal>
-        </div>
-        }
+      <CV.ModalMaker
+        button={toggler => <Dropdown.Item onClick={toggler} content="Edit" />}
+        modal={toggler => <GMEditCreature creature={props.creature} onClose={toggler} />}
       />
       {props.menu_items}
     </Dropdown.Menu>
