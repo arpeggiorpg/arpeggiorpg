@@ -7,7 +7,9 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Accordion, Button, Form, Header, Input, Menu, Modal, Segment } from 'semantic-ui-react';
+import {
+  Accordion, Button, Dropdown, Form, Header, Input, List, Menu, Message, Modal, Segment
+} from 'semantic-ui-react';
 
 
 import { PTUI } from './Model';
@@ -72,10 +74,10 @@ export const CreatureCard = M.connectRedux(
     const creature = props.creature;
     return <Segment style={{ width: "100%" }} raised={true}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div style={{display: "flex"}}>
-          <CreatureIcon app={props.ptui.app} creature={creature} size={80}/>
+        <div style={{ display: "flex" }}>
+          <CreatureIcon app={props.ptui.app} creature={creature} size={80} />
           <div>
-            <div style={{display: "flex"}}>
+            <div style={{ display: "flex" }}>
               <Header>{creature.name}</Header> {classIcon(creature)}
             </div>
             <div>{LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
@@ -103,11 +105,11 @@ function square_style(size: number = 50) {
   return {
     width: `${size}px`, height: `${size}px`,
     borderRadius: "10px", border: "solid 1px black",
-  }
+  };
 }
 
 export function CreatureIcon(
-  {size = 50, app, creature}: { size?: number, app: T.App, creature: T.Creature }
+  { size = 50, app, creature }: { size?: number, app: T.App, creature: T.Creature }
 ): JSX.Element | null {
   if (creature.portrait_url !== "") {
     return <SquareImageIcon size={size} url={creature.portrait_url} />;
@@ -118,7 +120,7 @@ export function CreatureIcon(
   }
 }
 
-export function SquareImageIcon({url, size = 50}: { url: string, size?: number }): JSX.Element {
+export function SquareImageIcon({ url, size = 50 }: { url: string, size?: number }): JSX.Element {
   return <img src={url} style={square_style(size)} />;
 }
 
@@ -133,40 +135,89 @@ export const CollapsibleInventory = M.connectRedux(
 interface CreatureInventoryProps {
   creature: T.Creature;
 }
-class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.ReduxProps,
-  { giving: T.CreatureID | undefined }> {
-  constructor(props: CreatureInventoryProps & M.ReduxProps) {
-    super(props);
-    this.state = { giving: undefined };
-  }
-  render(): JSX.Element | null {
-    const inv = this.props.creature.inventory;
-    const items = this.props.ptui.getItems(inv.keySeq().toArray());
+export const CreatureInventory = M.connectRedux(
+  function CreatureInventory({ creature, ptui }: CreatureInventoryProps & M.ReduxProps)
+    : JSX.Element {
+    const inv = creature.inventory;
+    const items = ptui.getItems(inv.keySeq().toArray());
 
-    return <div>
+    return <List relaxed={true}>
       {items.map(item =>
-        <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
-          {item.name} ({inv.get(item.id)})
-          <ModalMaker
-            button={open => <Button onClick={open}>Give</Button>}
-            modal={close => [
-              <Modal.Header>Give {item.name}</Modal.Header>,
-              <Modal.Content>
-                <GiveItem giver={this.props.creature.id} item_id={item.id}
-                  onClose={close} />
-              </Modal.Content>
-            ]} />
-        </div>
+        <List.Item key={item.id}
+          style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ flex: "1" }}>{item.name} ({inv.get(item.id)})</div>
+          <Dropdown icon='caret down' className='right' pointing={true} floating={true}>
+            <Dropdown.Menu>
+              <Dropdown.Header content={item.name} />
+              <ModalMaker
+                button={open => <Dropdown.Item onClick={open} content='Give' />}
+                modal={close => [
+                  <Modal.Header>Give {item.name}</Modal.Header>,
+                  <Modal.Content>
+                    <GiveItem giver={creature} item={item} onClose={close} />
+                  </Modal.Content>
+                ]} />
+              <ModalMaker
+                button={open => <Dropdown.Item onClick={open} content='Delete' />}
+                modal={close => [
+                  <Modal.Header>Delete {item.name}</Modal.Header>,
+                  <Modal.Content>
+                    <DeleteItem creature={creature} item={item} onClose={close} />
+                  </Modal.Content>
+                ]} />
+            </Dropdown.Menu>
+          </Dropdown>
+        </List.Item>
       )}
-    </div>;
+    </List>;
+
+  }
+);
+
+interface DeleteItemProps { creature: T.Creature; item: T.Item; onClose: () => void; }
+class DeleteItemComp
+  extends React.Component<DeleteItemProps & M.ReduxProps, { count: number | undefined }> {
+  constructor(props: DeleteItemProps & M.ReduxProps) {
+    super(props);
+    this.state = { count: 1 };
+  }
+  render(): JSX.Element {
+    const { creature, item, onClose } = this.props;
+    const max_count = creature.inventory.get(item.id);
+    if (!max_count) {
+      return <div>No more!</div>;
+    }
+    return <Form>
+      <Message>
+        You have {creature.inventory.get(item.id)} of this item. How many would you like to delete?
+      </Message>
+      <PositiveIntegerInput label="count" max={max_count} value={this.state.count}
+        onChange={num => this.setState({ count: num })} />
+      <Form.Group>
+        <Form.Button disabled={!this.state.count} onClick={() => this.delete()}>Delete</Form.Button>
+        <Form.Button onClick={() => onClose()}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>;
+  }
+
+  delete() {
+    const { creature, item, onClose, ptui, dispatch } = this.props;
+    const count = this.state.count;
+    const has_count = creature.inventory.get(item.id);
+    if (!(count && has_count)) { return; }
+    const new_count = has_count - count;
+    const inventory = new_count <= 0
+      ? creature.inventory.delete(item.id)
+      : creature.inventory.set(item.id, new_count);
+    ptui.sendCommand(dispatch, { t: "EditCreature", creature: { ...creature, inventory } });
+    onClose();
   }
 }
-
-export const CreatureInventory = M.connectRedux(CreatureInventoryComp);
+export const DeleteItem = M.connectRedux(DeleteItemComp);
 
 interface GiveItemProps {
-  item_id: T.ItemID;
-  giver: T.CreatureID;
+  item: T.Item;
+  giver: T.Creature;
   onClose: () => void;
 }
 export class GiveItemComp extends React.Component<
@@ -177,23 +228,21 @@ export class GiveItemComp extends React.Component<
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
-    const ptui = this.props.ptui;
+    const { item, giver, ptui } = this.props;
     const scene = this.props.ptui.focused_scene();
     if (!scene) { return <div>You can only transfer items in a scene.</div>; }
     const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray())
-      .delete(this.props.giver).toArray();
+      .delete(this.props.giver.id).toArray();
     const other_creatures = ptui.getCreatures(other_cids_in_scene);
     if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div>; }
-    const item = ptui.getItem(this.props.item_id);
-    if (!item) { return <div>The Item definition cannot be found.</div>; }
-    const giver_ = ptui.getCreature(this.props.giver);
-    if (!giver_) { return <div>Giver not found!</div>; }
-    const giver = giver_;
-    const giver_count = giver.inventory.get(this.props.item_id);
+    const giver_count = giver.inventory.get(item.id);
     if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
     const creature_options = other_creatures.map(
       creature => ({ key: creature.id, text: creature.name, value: creature.id }));
     return <Form>
+      <Message>
+        You have {giver.inventory.get(item.id)} of this item. How many would you like to delete?
+      </Message>
       <Form.Group>
         <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
           onChange={num => this.setState({ count: num })} />
@@ -223,9 +272,9 @@ export class GiveItemComp extends React.Component<
     }
 
     const newGiver = LD.assign({}, giver,
-      { inventory: M.removeFromInventory(giver.inventory, this.props.item_id, count) });
+      { inventory: M.removeFromInventory(giver.inventory, this.props.item.id, count) });
     const newReceiver = LD.assign({}, receiver,
-      { inventory: M.addToInventory(receiver.inventory, this.props.item_id, count) });
+      { inventory: M.addToInventory(receiver.inventory, this.props.item.id, count) });
 
     this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newGiver });
     this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newReceiver });
@@ -237,6 +286,7 @@ export const GiveItem = M.connectRedux(GiveItemComp);
 
 interface PositiveIntegerInputProps {
   max?: number; value: number | undefined;
+  label?: string;
   onChange: (num: number | undefined) => void;
 }
 export class PositiveIntegerInput
@@ -244,6 +294,7 @@ export class PositiveIntegerInput
   render(): JSX.Element {
     return <Form.Input
       {...this.props}
+      label={this.props.label}
       value={this.props.value === undefined ? "" : this.props.value}
       onChange={event => {
         let num = Number(event.currentTarget.value);
