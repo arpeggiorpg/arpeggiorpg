@@ -2,8 +2,10 @@
 import * as I from 'immutable';
 import * as React from 'react';
 
+import * as Dice from './Dice';
+
 import {
-  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Modal, Popup, Segment
+  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Message, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -258,19 +260,21 @@ interface GMEditCreatureProps {
 }
 class GMEditCreatureComp
   extends React.Component<GMEditCreatureProps & M.ReduxProps,
-  { portrait_url: string; name: string, note: string }> {
+  { portrait_url: string; name: string, note: string, initiative_string: string }> {
   constructor(props: GMEditCreatureProps & M.ReduxProps) {
     super(props);
     this.state = {
       portrait_url: props.creature.portrait_url, name: props.creature.name,
       note: props.creature.note,
+      initiative_string: Dice.format(props.creature.initiative),
     };
   }
   render(): JSX.Element {
     const { creature, onClose } = this.props;
+    const parsed_initiative = Dice.maybeParse(this.state.initiative_string);
     return <div>
       <Header>{creature.name}</Header>
-      <Form>
+      <Form error={!parsed_initiative.status}>
         <Form.Input label="Name" value={this.state.name}
           onChange={(_, data) => this.setState({ name: data.value })} />
         <Form.Group style={{ width: "100%" }}>
@@ -285,8 +289,25 @@ class GMEditCreatureComp
         </Form.Group>
         <Form.Input label="Note" value={this.state.note}
           onChange={(_, data) => this.setState({ note: data.value })} />
+        <Form.Input label="Initiative" error={!parsed_initiative.status}
+          value={this.state.initiative_string}
+          onChange={(_, data) => this.setState({ initiative_string: data.value })} />
+        {
+          parsed_initiative.status
+            ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
+            :
+            <Message error={true}>
+              <Message.Header>Couldn't parse dice expression</Message.Header>
+              <Message.Content>
+                Expected {parsed_initiative.expected} at
+              line {parsed_initiative.index.line}, column {parsed_initiative.index.column}
+              </Message.Content>
+            </Message>
+        }
         <Form.Group>
-          <Form.Button onClick={() => this.save()}>Save</Form.Button>
+          <Form.Button disabled={!parsed_initiative.status} onClick={() => this.save()}>
+            Save
+          </Form.Button>
           <Form.Button onClick={onClose}>Cancel</Form.Button>
         </Form.Group>
       </Form>
@@ -297,6 +318,7 @@ class GMEditCreatureComp
     const creature = {
       ...this.props.creature,
       name: this.state.name, note: this.state.note, portrait_url: this.state.portrait_url,
+      initiative: Dice.parse(this.state.initiative_string),
     };
     this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature });
     this.props.onClose();

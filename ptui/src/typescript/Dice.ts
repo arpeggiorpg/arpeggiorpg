@@ -54,6 +54,10 @@ export function parse(input: string): T.Dice {
   return dicep.tryParse(input);
 }
 
+export function maybeParse(input: string): P.Result<T.Dice> {
+  return dicep.parse(input);
+}
+
 export function format(d: T.Dice): string {
   switch (d.t) {
     case "Flat": return d.val.toString();
