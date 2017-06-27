@@ -188,8 +188,15 @@ const GMCombatHeader = M.connectRedux(
   });
 
 /// A customized CreatureCard that renders an editable note in the content area.
-export function GMCreatureCard(props: { creature: T.Creature, menu?: JSX.Element }): JSX.Element {
-  return <CV.CreatureCard creature={props.creature} menu={props.menu}>
+export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array<JSX.Element> }
+): JSX.Element {
+  const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+    <Dropdown.Menu>
+      <Dropdown.Header content={props.creature.name} />
+      {props.menu_items}
+    </Dropdown.Menu>
+  </Dropdown>;
+  return <CV.CreatureCard creature={props.creature} menu={menu}>
     <CreatureNote creature={props.creature} />
   </CV.CreatureCard>;
 }
@@ -197,14 +204,12 @@ export function GMCreatureCard(props: { creature: T.Creature, menu?: JSX.Element
 export const GMCombatCreatureCard = M.connectRedux(
   function GMCombatCreatureCard(props: { creature: T.Creature } & M.ReduxProps): JSX.Element {
     const { creature, ptui, dispatch } = props;
-    const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
-      <Dropdown.Menu>
-        <Dropdown.Header content={creature.name} />
-        <Dropdown.Item onClick={removeFromCombat} text="Remove from Combat" />
-      </Dropdown.Menu>
-    </Dropdown>;
+    const menu_items = [
+      <Dropdown.Item key="Remove from Combat" onClick={removeFromCombat} text="Remove from Combat" />
+    ];
 
-    return <GMCreatureCard creature={creature} menu={menu} />;
+
+    return <GMCreatureCard creature={creature} menu_items={menu_items} />;
 
     function removeFromCombat() {
       ptui.sendCommand(dispatch, { t: "RemoveCreatureFromCombat", creature_id: creature.id });
