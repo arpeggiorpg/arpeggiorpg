@@ -1,6 +1,10 @@
+import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+
+import { Button, Checkbox } from 'semantic-ui-react';
+import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as GM from './GMComponents';
@@ -26,64 +30,115 @@ class CampaignComp extends React.Component<M.ReduxProps, undefined> {
 }
 export const Campaign = M.connectRedux(CampaignComp);
 
-interface CampaignSelectorProps {
-  item_type: FolderContentType;
-  allow_multiple?: boolean;
+
+interface MultiCreatureSelectorProps {
+  already_selected: I.Set<T.CreatureID>;
+  on_selected: (cs: I.Set<T.CreatureID>) => void;
 }
-class CampaignSelectorComp extends React.Component<CampaignSelectorProps & M.ReduxProps, undefined> {
-  shouldComponentUpdate(newProps: M.ReduxProps) {
-    return newProps.ptui.app.current_game.campaign !== this.props.ptui.app.current_game.campaign;
+class MultiCreatureSelectorComp
+  extends React.Component<
+  MultiCreatureSelectorProps & M.ReduxProps,
+  { selections: I.Set<T.CreatureID> }> {
+  constructor(props: MultiCreatureSelectorProps & M.ReduxProps) {
+    super(props);
+    this.state = { selections: this.props.already_selected };
   }
   render(): JSX.Element {
-    const { ptui, dispatch } = this.props;
-    console.log("[EXPENSIVE:CampaignSelector.render]");
+    const { ptui } = this.props;
+    const self = this;
+    function on_check(checked: boolean, path: T.FolderPath, folder_item: T.FolderItemID) {
+      switch (folder_item.t) {
+        case "CreatureID":
+          const new_selected = checked
+            ? self.state.selections.add(folder_item.id)
+            : self.state.selections.remove(folder_item.id);
+          self.setState({ selections: new_selected });
+          return;
+        default:
+          console.log("Got a non-creature selection in a creature-only campaign selector:",
+            folder_item);
+      }
+    }
+    const stype: FolderContentType = 'creature';
+    const selecting: SelectableProps = {
+      item_type: stype, allow_multiple: true, on_select_object: on_check,
+      is_selected: (path, item_id) =>
+        item_id.t === "CreatureID" && this.state.selections.includes(item_id.id),
+    };
     return <div>
-      <FolderTree
-        name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
-        selecting_item={this.props.item_type} allow_multiple={this.props.allow_multiple} />
+      <FolderTree name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
+        selecting={selecting} />
+      <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Creatures</Button>
     </div>;
   }
 }
-export const CampaignSelector = M.connectRedux(CampaignSelectorComp);
+export const MultiCreatureSelector = M.connectRedux(MultiCreatureSelectorComp);
 
+
+interface SelectableProps {
+  item_type: FolderContentType;
+  allow_multiple: boolean;
+  is_selected: (path: T.FolderPath, item_id: T.FolderItemID) => boolean;
+
+  on_select_object?: (select: boolean, path: T.FolderPath, item: T.FolderItemID) => void;
+  on_select_folder?: (select: boolean, path: T.FolderPath) => void;
+}
+
+type FolderObject =
+  | { t: "Scene"; path: T.FolderPath; scene: T.Scene }
+  | { t: "Map"; path: T.FolderPath; map: T.Map }
+  | { t: "Creature"; path: T.FolderPath; creature: T.Creature }
+  | { t: "Note"; path: T.FolderPath; name: string }
+  | { t: "Item"; path: T.FolderPath; item: T.Item }
+  // | { t: "Subfolder"; path: T.FolderPath }
+  ;
 
 interface FTProps {
   path: T.FolderPath;
   name: string;
   folder: T.Folder;
   start_open?: boolean;
-  selecting_item?: FolderContentType;
-  allow_multiple?: boolean;
-  item_controls?: (path: T.FolderPath, item: T.FolderItemID) => JSX.Element | undefined;
-  folder_controls?: (path: T.FolderPath) => JSX.Element | undefined;
-  disable_ops?: boolean; // disables selecting items, and Create, Delete, Move etc
+  selecting?: SelectableProps;
 }
-class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded: boolean }> {
+class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
+  { expanded: boolean }> {
   constructor(props: FTProps & M.ReduxProps) {
     super(props);
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
-    const { folder, ptui, selecting_item } = this.props;
+    const { folder, ptui, selecting, path } = this.props;
     function dont_show(t: FolderContentType) {
-      return selecting_item && selecting_item !== t;
+      return selecting && selecting.item_type !== t;
     }
-    const scene_list = dont_show("scene") ? [] :
-      ptui.getScenes(folder.data.scenes).map(s => <TreeScene key={s.name} scene={s} />);
-    const map_list = dont_show("map") ? [] :
-      ptui.getMaps(folder.data.maps).map(m => <TreeMap key={m.name} map={m} />);
-    const creature_list = dont_show("creature") ? [] :
-      ptui.getCreatures(folder.data.creatures).map(c => <TreeCreature key={c.name} creature={c} />);
-    const note_list = dont_show("note") ? [] :
-      LD.keys(folder.data.notes).map(
-        name => <TreeNote key={name} path={this.props.path} name={name} />);
-    const item_list = dont_show("item") ? [] :
-      ptui.getItems(folder.data.items).map(
-        item => <TreeItem key={item.name} path={this.props.path} item={item} />);
+
+    const scene_objects = dont_show("scene") ? [] :
+      ptui.getScenes(folder.data.scenes).map((scene): FolderObject =>
+        ({ t: "Scene", path, scene }));
+    const map_objects = dont_show("map") ? [] :
+      ptui.getMaps(folder.data.maps).map((map): FolderObject =>
+        ({ t: "Map", path, map }));
+    const creature_objects = dont_show("creature") ? [] :
+      ptui.getCreatures(folder.data.creatures).map((creature): FolderObject =>
+        ({ t: "Creature", path, creature }));
+    const note_objects = dont_show("note") ? [] :
+      LD.keys(folder.data.notes).map((name): FolderObject =>
+        ({ t: "Note", path, name }));
+    const item_objects = dont_show("item") ? [] :
+      ptui.getItems(folder.data.items).map((item): FolderObject =>
+        ({ t: "Item", path, item }));
+    const objects = LD.concat(
+      scene_objects, map_objects, creature_objects, note_objects, item_objects);
+    const children = objects.map(obj => {
+      const iid = object_to_item_id(obj);
+      return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting} />;
+    }
+    );
+
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
-      ([name, subfolder]) => <FolderTree key={name} name={name} folder={subfolder}
-        path={LD.concat(this.props.path, name)} selecting_item={selecting_item}
-        allow_multiple={this.props.allow_multiple} />
+      ([name, subfolder]) =>
+        <FolderTree key={name} name={name} folder={subfolder}
+          path={LD.concat(this.props.path, name)} selecting={selecting} />
     );
     const display = this.state.expanded ? "block" : "none";
     return <div>
@@ -95,7 +150,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
         </div>
       </div>
       <div style={{ marginLeft: "1em", display }}>
-        {scene_list} {map_list} {creature_list} {note_list} {item_list} {subfolders}
+        {children} {subfolders}
       </div>
     </div>;
   }
@@ -103,71 +158,80 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps, { expanded:
 const FolderTree = M.connectRedux(FolderTreeComp);
 
 
+function object_icon(obj: FolderObject): JSX.Element | null {
+  switch (obj.t) {
+    case "Scene": return <CV.Icon>casino</CV.Icon>;
+    case "Map": return <CV.Icon>map</CV.Icon>;
+    case "Creature": return <CV.Icon>contacts</CV.Icon>;
+    case "Note": return <CV.Icon>note</CV.Icon>;
+    case "Item": return <CV.Icon>attachment</CV.Icon>;
+  }
+}
+function object_name(obj: FolderObject): string {
+  switch (obj.t) {
+    case "Scene": return obj.scene.name;
+    case "Map": return obj.map.name;
+    case "Creature": return obj.creature.name;
+    case "Note": return obj.name;
+    case "Item": return obj.item.name;
+  }
+}
+
+function object_to_item_id(obj: FolderObject): T.FolderItemID {
+  switch (obj.t) {
+    case "Scene": return { t: "SceneID", id: obj.scene.id };
+    case "Map": return { t: "MapID", id: obj.map.id };
+    case "Creature": return { t: "CreatureID", id: obj.creature.id };
+    case "Note": return { t: "NoteID", id: obj.name };
+    case "Item": return { t: "ItemID", id: obj.item.id };
+  }
+}
+
+function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
+  switch (obj.t) {
+    case "Scene":
+      return dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.scene.id } });
+    case "Map":
+      return dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.map.id } });
+    case "Creature":
+      return dispatch({
+        type: "FocusSecondary",
+        focus: { t: "Creature", creature_id: obj.creature.id },
+      });
+    case "Note":
+      return dispatch({
+        type: "FocusSecondary",
+        focus: { t: "Note", path: obj.path, name: obj.name },
+      });
+    case "Item": return;
+  }
+}
+
+
 interface TreeObjectProps {
-  allow_ops?: boolean;
-  icon: string;
-  text: string;
-  onClick?: () => void;
+  object: FolderObject;
+  selecting: SelectableProps | undefined;
 }
-function TreeObject(props: TreeObjectProps) {
-  return <div style={{ display: "flex" }}>
-    <div style={{ cursor: "pointer", display: "flex" }} onClick={props.onClick}>
-      <CV.Icon>{props.icon}</CV.Icon> {props.text}
-    </div>
-  </div>;
-}
-
-const TreeScene = M.connectRedux(
-  function TreeScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
-    return <TreeObject icon="casino" text={scene.name}
-      onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}
-    />;
-  });
-
-const TreeMap = M.connectRedux(
-  function TreeMap({ map, dispatch }: { map: T.Map } & M.ReduxProps): JSX.Element {
-    return <TreeObject icon="map" text={map.name}
-      onClick={() => dispatch({ type: "Focus", focus: { t: "Map", map_id: map.id } })} />;
-  } );
-
-
-class TreeCreatureComp
-  extends React.Component<{ creature: T.Creature } & M.ReduxProps, { expanded: boolean }> {
-  constructor(props: { creature: T.Creature } & M.ReduxProps) {
-    super(props);
-    this.state = { expanded: false };
-  }
-  render(): JSX.Element {
-    const creature = this.props.creature;
-
-
-    return <div>
-      <TreeObject icon="contacts" text={creature.name}
-        onClick={() => this.setState({ expanded: !this.state.expanded })} />
-      {
-        this.state.expanded
-          ? <div style={{ marginLeft: "1em" }}>
-            <GM.GMCreatureCard creature={creature} />
-            <CV.CollapsibleInventory creature={creature} />
-          </div>
-          : null
+const TreeObject = M.connectRedux(
+  function TreeObject({ object, selecting, dispatch }: TreeObjectProps & M.ReduxProps) {
+    function handler() {
+      if (selecting) { return; }
+      return activate_object(object, dispatch);
+    }
+    const name = object_name(object);
+    function onCheck(evt: any, data: SUI.CheckboxProps) {
+      if (selecting && selecting.on_select_object && data.checked !== undefined) {
+        return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
       }
+    }
+    return <div style={{ display: "flex" }}>
+      <div style={{ cursor: "pointer", display: "flex" }} onClick={handler}>
+        {
+          selecting
+            ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
+              label={name} onChange={onCheck} />
+            : <div style={{ display: "flex" }}>{object_icon(object)} {name}</div>
+        }
+      </div>
     </div>;
-  }
-}
-
-const TreeCreature = M.connectRedux(TreeCreatureComp);
-
-
-const TreeNote = M.connectRedux(
-  function TreeNote(
-    { path, name, ptui, dispatch }: { path: T.FolderPath; name: string } & M.ReduxProps
-  ): JSX.Element {
-    return <TreeObject icon="note" text={name}
-      onClick={() => dispatch({ type: "FocusNote", path, name })} />;
   });
-
-const TreeItem = M.connectRedux(function TreeItem(
-  { path, item, ptui, dispatch }: { path: T.FolderPath; item: T.Item } & M.ReduxProps): JSX.Element {
-  return <TreeObject icon="attachment" text={item.name} />;
-});

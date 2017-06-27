@@ -28,9 +28,14 @@ export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Ele
     bar_width={450} menu_size='tiny' />;
 });
 
-function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch) {
-  if (ptui.state.focused_note) {
-    return <CV.NoteEditor path={ptui.state.focused_note.path} name={ptui.state.focused_note.name} />;
+function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
+  if (!ptui.state.secondary_focus) { return undefined; }
+  const focus2 = ptui.state.secondary_focus;
+  switch (focus2.t) {
+    case "Note": return <CV.NoteEditor path={focus2.path} name={focus2.name} />;
+    case "Creature":
+      const creature = ptui.getCreature(focus2.creature_id);
+      if (creature) { return <GM.GMCreatureCard creature={creature} />; }
   }
 }
 
@@ -60,15 +65,15 @@ function creatureMenuActions(ptui: M.PTUI, dispatch: M.Dispatch, creature: T.Cre
 }
 
 function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
-  if (!ptui.state.main_focus) { return <div>No focus!</div>; }
-  switch (ptui.state.main_focus.t) {
+  if (!ptui.state.grid_focus) { return <div>No focus!</div>; }
+  switch (ptui.state.grid_focus.t) {
     case "Scene":
       const scene = ptui.focused_scene();
       return scene
         ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
         : <div>No scene yet!</div>;
     case "Map":
-      const map = ptui.getMap(ptui.state.main_focus.map_id);
+      const map = ptui.getMap(ptui.state.grid_focus.map_id);
       if (!map) { return <div>Couldn't find map!</div>; }
       return <Grid.MapGrid map={map} />;
   }

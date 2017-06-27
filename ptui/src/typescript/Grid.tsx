@@ -119,7 +119,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
       this.props.ptui.state.grid.movement_options,
       nextProps.ptui.state.grid.movement_options);
     const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
-    const focus_diff = !M.isEqual(this.props.ptui.state.main_focus, nextProps.ptui.state.main_focus);
+    const focus_diff = !M.isEqual(this.props.ptui.state.grid_focus, nextProps.ptui.state.grid_focus);
     return app_diff || mvmt_diff || focus_diff;
   }
 

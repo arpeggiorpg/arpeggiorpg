@@ -14,8 +14,8 @@ export type Action =
 
   | { type: "SetPlayerID"; pid: T.PlayerID; }
 
-  | { type: "Focus"; focus: Focus }
-  | { type: "FocusNote"; path: T.FolderPath; name: string }
+  | { type: "FocusGrid"; focus: GridFocus }
+  | { type: "FocusSecondary"; focus: SecondaryFocus }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
@@ -29,7 +29,7 @@ export type Action =
   | { type: "@@redux/INIT" };
 
 export function update(ptui: PTUI, action: Action): PTUI {
-  console.log("[Model.update]", action.type);
+  console.log("[Model.update]", action.type, action);
   switch (action.type) {
     case "RefreshApp":
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
@@ -43,11 +43,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
-    case "Focus":
-      return ptui.updateState(state => ({ ...state, main_focus: action.focus }));
-    case "FocusNote":
-      return ptui.updateState(
-        state => ({ ...state, focused_note: { path: action.path, name: action.name } }));
+    case "FocusGrid":
+      return ptui.updateState(state => ({ ...state, grid_focus: action.focus }));
+    case "FocusSecondary":
+      return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
     // Grid-related
     case "ToggleAnnotation":
@@ -99,13 +98,18 @@ export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
   error?: string;
-  main_focus?: Focus;
-  focused_note?: { path: T.FolderPath; name: string };
+  grid_focus?: GridFocus;
+  secondary_focus?: SecondaryFocus;
 }
 
-export type Focus =
+export type GridFocus =
   | { t: "Scene"; scene_id: T.SceneID; }
   | { t: "Map"; map_id: T.MapID; }
+  ;
+
+export type SecondaryFocus =
+  | { t: "Note"; path: T.FolderPath; name: string; }
+  | { t: "Creature"; creature_id: T.CreatureID; }
   ;
 
 function ptfetch<T>(
@@ -195,8 +199,8 @@ export class PTUI {
       if (player && player.scene) {
         return get(this.app.current_game.scenes, player.scene);
       }
-    } else if (this.state.main_focus && this.state.main_focus.t === "Scene") {
-      return get(this.app.current_game.scenes, this.state.main_focus.scene_id);
+    } else if (this.state.grid_focus && this.state.grid_focus.t === "Scene") {
+      return get(this.app.current_game.scenes, this.state.grid_focus.scene_id);
     }
   }
 

@@ -12,13 +12,6 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-
-export const SelectMultipleCreatures = M.connectRedux(
-  function SelectMultipleCreatures(
-    props: { onSelected: (cs: Array<T.CreatureID>) => void } & M.ReduxProps): JSX.Element {
-    return <Campaign.CampaignSelector item_type="creature" allow_multiple={true} />;
-  });
-
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
@@ -28,17 +21,35 @@ export const GMScene = M.connectRedux(
         content: <List>
           <List.Item key="add">
             <List.Content>
-              <Modal dimmer='inverted'
-                trigger={<Button content="Add Creature" icon="add user" size="small" />}>
-                <SelectMultipleCreatures onSelected={creatures => {
-                  const new_creatures = scene.creatures.merge(I.Map(
-                    creatures.map((cid: T.CreatureID): [T.CreatureID, [T.Point3, T.Visibility]] =>
-                      [cid, [[0, 0, 0], { t: "AllPlayers" }]])));
-                  const new_scene = { ...scene, creatures: new_creatures };
-                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                }
-                } />
-              </Modal>
+              <CV.Toggler a={(toggler: CV.ToggleFunc) =>
+                <div><Button icon="edit" onClick={toggler} size="small" /></div>}
+                b={(toggler: CV.ToggleFunc) =>
+                  <div>
+                    <Button icon="edit" size="small" />
+                    <Modal dimmer='inverted' open={true}
+                      onClose={toggler}>
+                      <Campaign.MultiCreatureSelector
+                        already_selected={scene.creatures.keySeq().toSet()}
+                        on_selected={cids => {
+                          let new_creatures = cids.reduce(
+                            (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
+                            ) => {
+                              if (acc.has(cid)) {
+                                return acc;
+                              } else {
+                                return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
+                              }
+                            }, scene.creatures);
+                          const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
+                          new_creatures = new_creatures.deleteAll(removed_cids);
+                          const new_scene = { ...scene, creatures: new_creatures };
+                          ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                          toggler();
+                        }
+                        } />
+                    </Modal>
+                  </div>}
+              />
             </List.Content>
           </List.Item>
           {ptui.getSceneCreatures(scene).map(creature => {
@@ -162,7 +173,8 @@ const GMCombatHeader = M.connectRedux(
           ?
           <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
           <a href="#"
-              onClick={() => dispatch({ type: "Focus", focus: { t: "Scene", scene_id: scene.id } })}>
+              onClick={() =>
+                dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: scene.id } })}>
               {scene.name}
             </a>
             <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>
