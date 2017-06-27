@@ -494,7 +494,9 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
               height: "100%", width: "20%", minWidth: "20em",
             }}>
             <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
-              <div style={{ width: "100%", backgroundColor: "white" }}>{tertiary}</div>
+              <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
+                {tertiary}
+              </div>
               <div style={{ width: "100%", backgroundColor: "white" }}>{secondary}</div>
             </PanelGroup>
           </div>
@@ -544,9 +546,7 @@ class NoteEditorComp
   }
 
   componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
-    console.log("[NoteEditor] componentWillReceiveProps");
     if (!M.isEqual([this.props.path, this.props.name], [nextProps.path, nextProps.name])) {
-      console.log("[NoteEditor] resetting state!");
       this.setState({ content: undefined });
     }
   }
