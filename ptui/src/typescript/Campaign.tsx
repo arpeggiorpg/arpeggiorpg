@@ -3,7 +3,7 @@ import * as LD from 'lodash';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import { Button, Checkbox, List } from 'semantic-ui-react';
+import { Button, Checkbox, Dropdown, Icon, List } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -12,8 +12,6 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-
-type FolderContentType = "scene" | "map" | "creature" | "note" | "item" | "folder";
 
 class CampaignComp extends React.Component<M.ReduxProps, undefined> {
   shouldComponentUpdate(newProps: M.ReduxProps) {
@@ -58,7 +56,7 @@ class MultiCreatureSelectorComp
             folder_item);
       }
     }
-    const stype: FolderContentType = 'creature';
+    const stype: FolderContentType = 'Creature';
     const selecting: SelectableProps = {
       item_type: stype, allow_multiple: true, on_select_object: on_check,
       is_selected: (path, item_id) =>
@@ -83,6 +81,8 @@ interface SelectableProps {
   on_select_object?: (select: boolean, path: T.FolderPath, item: T.FolderItemID) => void;
   on_select_folder?: (select: boolean, path: T.FolderPath) => void;
 }
+
+type FolderContentType = "Scene" | "Map" | "Creature" | "Note" | "Item" | "Folder";
 
 type FolderObject =
   | { t: "Scene"; path: T.FolderPath; scene: T.Scene }
@@ -111,19 +111,19 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
       return selecting && selecting.item_type !== t;
     }
 
-    const scene_objects = dont_show("scene") ? [] :
+    const scene_objects = dont_show("Scene") ? [] :
       ptui.getScenes(folder.data.scenes).map((scene): FolderObject =>
         ({ t: "Scene", path, scene }));
-    const map_objects = dont_show("map") ? [] :
+    const map_objects = dont_show("Map") ? [] :
       ptui.getMaps(folder.data.maps).map((map): FolderObject =>
         ({ t: "Map", path, map }));
-    const creature_objects = dont_show("creature") ? [] :
+    const creature_objects = dont_show("Creature") ? [] :
       ptui.getCreatures(folder.data.creatures).map((creature): FolderObject =>
         ({ t: "Creature", path, creature }));
-    const note_objects = dont_show("note") ? [] :
+    const note_objects = dont_show("Note") ? [] :
       LD.keys(folder.data.notes).map((name): FolderObject =>
         ({ t: "Note", path, name }));
-    const item_objects = dont_show("item") ? [] :
+    const item_objects = dont_show("Item") ? [] :
       ptui.getItems(folder.data.items).map((item): FolderObject =>
         ({ t: "Item", path, item }));
     const objects = LD.concat(
@@ -141,13 +141,29 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     );
     const display = this.state.expanded ? "block" : "none";
     const toggle = () => this.setState({ expanded: !this.state.expanded });
+    const folder_menu = <Dropdown icon='ellipsis horizontal'>
+      <Dropdown.Menu>
+        <Dropdown.Header content={M.folderPathToString(path)} />
+        <Dropdown.Item icon={object_icon("Scene")}>Create Scene</Dropdown.Item>
+        <Dropdown.Item icon={object_icon("Map")}>Create Map</Dropdown.Item>
+        <Dropdown.Item icon={object_icon("Creature")}>Create Creature</Dropdown.Item>
+        <Dropdown.Item>Create Note</Dropdown.Item>
+        <Dropdown.Item>Create Item</Dropdown.Item>
+        <Dropdown.Item>Create Folder</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>;
     const list_item = <List.Item>
       <List.Icon name={this.state.expanded ? 'folder open' : 'folder'} />
       <List.Content>
-        <List.Header style={{ cursor: "pointer" }} content={this.props.name}
-          onClick={() => this.setState({ expanded: !this.state.expanded })} />
+        <List.Header style={{ cursor: "pointer" }}
+          onClick={() => this.setState({ expanded: !this.state.expanded })}>
+          {this.props.name}
+          {this.state.expanded ? folder_menu : null}
+        </List.Header>
         {this.state.expanded
-          ? <List.List> {children} {subfolders} </List.List>
+          ? <List.List>
+            {children} {subfolders}
+          </List.List>
           : null}
       </List.Content>
     </List.Item>;
@@ -162,13 +178,14 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
 const FolderTree = M.connectRedux(FolderTreeComp);
 
 
-function object_icon(obj: FolderObject): string {
-  switch (obj.t) {
-    case "Scene": return "game";
+function object_icon(name: FolderContentType): string {
+  switch (name) {
+    case "Scene": return "object group";
     case "Map": return "map";
     case "Creature": return "user";
-    case "Note": return "write";
-    case "Item": return "object group";
+    case "Note": return "comment";
+    case "Item": return "shopping bag";
+    case "Folder": return "folder";
   }
 }
 function object_name(obj: FolderObject): string {
@@ -229,7 +246,7 @@ const TreeObject = M.connectRedux(
       }
     }
     return <List.Item>
-      <List.Icon name={object_icon(object)} />
+      <List.Icon name={object_icon(object.t)} />
       <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
         {
           selecting

@@ -359,6 +359,9 @@ export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, cou
 }
 
 export function folderPathToString(path: T.FolderPath): string {
+  if (isEqual(path, [])) {
+    return "Campaign Root";
+  }
   return T.encodeFolderPath(path);
 }
 
