@@ -72,15 +72,17 @@ export const CreatureCard = M.connectRedux(
     const creature = props.creature;
     return <Segment style={{ width: "100%" }} raised={true}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div>{classIcon(creature)} <strong>{creature.name}</strong>
-          {LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
-        {props.menu}
-      </div>
-      <div style={{ display: "flex" }}>
-        <CreatureIcon app={props.ptui.app} creature={creature} />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {props.children}
+        <div style={{display: "flex"}}>
+          <CreatureIcon app={props.ptui.app} creature={creature} size={80}/>
+          <div>
+            <div style={{display: "flex"}}>
+              <Header>{creature.name}</Header> {classIcon(creature)}
+            </div>
+            <div>{LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
+            {props.children}
+          </div>
         </div>
+        {props.menu}
       </div>
     </Segment>;
 
@@ -97,23 +99,27 @@ export function classIcon(creature: T.Creature): string {
   }
 }
 
-const SQUARE_STYLE = {
-  width: "50px", height: "50px",
-  borderRadius: "10px", border: "solid 1px black",
-};
-
-export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
-  if (props.creature.portrait_url !== "") {
-    return <SquareImageIcon url={props.creature.portrait_url} />;
-  } else {
-    const class_ = M.get(props.app.current_game.classes, props.creature.class_);
-    const color = class_ ? class_.color : "red";
-    return <div style={{ backgroundColor: color, ...SQUARE_STYLE }}>{props.creature.name}</div>;
+function square_style(size: number = 50) {
+  return {
+    width: `${size}px`, height: `${size}px`,
+    borderRadius: "10px", border: "solid 1px black",
   }
 }
 
-export function SquareImageIcon(props: { url: string }): JSX.Element {
-  return <img src={props.url} style={SQUARE_STYLE} />;
+export function CreatureIcon(
+  {size = 50, app, creature}: { size?: number, app: T.App, creature: T.Creature }
+): JSX.Element | null {
+  if (creature.portrait_url !== "") {
+    return <SquareImageIcon size={size} url={creature.portrait_url} />;
+  } else {
+    const class_ = M.get(app.current_game.classes, creature.class_);
+    const color = class_ ? class_.color : "red";
+    return <div style={{ backgroundColor: color, ...square_style(size) }}>{creature.name}</div>;
+  }
+}
+
+export function SquareImageIcon({url, size = 50}: { url: string, size?: number }): JSX.Element {
+  return <img src={url} style={square_style(size)} />;
 }
 
 export const CollapsibleInventory = M.connectRedux(
