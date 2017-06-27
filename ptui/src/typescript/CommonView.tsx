@@ -98,19 +98,23 @@ export function classIcon(creature: T.Creature): string {
   }
 }
 
+const SQUARE_STYLE = {
+  width: "50px", height: "50px",
+  borderRadius: "10px", border: "solid 1px black",
+};
+
 export function CreatureIcon(props: { app: T.App, creature: T.Creature }): JSX.Element | null {
-  const squareStyle = {
-    width: "50px", height: "50px",
-    borderRadius: "10px", border: "solid 1px black",
-  };
   if (props.creature.portrait_url !== "") {
-    return <img src={props.creature.portrait_url}
-      style={squareStyle} />;
+    return <SquareImageIcon url={props.creature.portrait_url} />;
   } else {
     const class_ = M.get(props.app.current_game.classes, props.creature.class_);
     const color = class_ ? class_.color : "red";
-    return <div style={{ backgroundColor: color, ...squareStyle }}>{props.creature.name}</div>;
+    return <div style={{ backgroundColor: color, ...SQUARE_STYLE }}>{props.creature.name}</div>;
   }
+}
+
+export function SquareImageIcon(props: { url: string }): JSX.Element {
+  return <img src={props.url} style={SQUARE_STYLE} />;
 }
 
 

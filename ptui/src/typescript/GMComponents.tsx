@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as React from 'react';
 
 import {
-  Accordion, Button, Dropdown, Header, Icon, List, Modal, Popup, Segment
+  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -193,6 +193,16 @@ export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array
   const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
     <Dropdown.Menu>
       <Dropdown.Header content={props.creature.name} />
+      <CV.Toggler
+        a={(toggler: CV.ToggleFunc) => <Dropdown.Item onClick={toggler} content="Edit" />}
+        b={(toggler: CV.ToggleFunc) => <div>
+          <Button icon="edit" size="small" />
+          <Modal dimmer='inverted' open={true} onClose={toggler}>
+            <GMEditCreature creature={props.creature} onClose={toggler} />
+          </Modal>
+        </div>
+        }
+      />
       {props.menu_items}
     </Dropdown.Menu>
   </Dropdown>;
@@ -240,3 +250,57 @@ const CreatureNote = M.connectRedux(
       ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
     }
   });
+
+
+interface GMEditCreatureProps {
+  creature: T.Creature;
+  onClose: () => void;
+}
+class GMEditCreatureComp
+  extends React.Component<GMEditCreatureProps & M.ReduxProps,
+  { portrait_url: string; name: string, note: string }> {
+  constructor(props: GMEditCreatureProps & M.ReduxProps) {
+    super(props);
+    this.state = {
+      portrait_url: props.creature.portrait_url, name: props.creature.name,
+      note: props.creature.note,
+    };
+  }
+  render(): JSX.Element {
+    const { creature, onClose } = this.props;
+    return <div>
+      <Header>{creature.name}</Header>
+      <Form>
+        <Form.Input label="Name" value={this.state.name}
+          onChange={(_, data) => this.setState({ name: data.value })} />
+        <Form.Group style={{ width: "100%" }}>
+          <Form.Field style={{ flex: "1" }}>
+            <label>Portrait Image URL:</label>
+            <Input fluid={true}
+              value={this.state.portrait_url}
+              onChange={(_, data) => this.setState({ portrait_url: data.value })} />
+          </Form.Field>
+          {this.state.portrait_url ? <CV.SquareImageIcon url={this.state.portrait_url} />
+            : "Enter an URL for preview"}
+        </Form.Group>
+        <Form.Input label="Note" value={this.state.note}
+          onChange={(_, data) => this.setState({ note: data.value })} />
+        <Form.Group>
+          <Form.Button onClick={() => this.save()}>Save</Form.Button>
+          <Form.Button onClick={onClose}>Cancel</Form.Button>
+        </Form.Group>
+      </Form>
+    </div >;
+  }
+
+  save() {
+    const creature = {
+      ...this.props.creature,
+      name: this.state.name, note: this.state.note, portrait_url: this.state.portrait_url,
+    };
+    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature });
+    this.props.onClose();
+  }
+}
+
+const GMEditCreature = M.connectRedux(GMEditCreatureComp);
