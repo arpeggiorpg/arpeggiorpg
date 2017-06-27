@@ -23,35 +23,30 @@ export const GMScene = M.connectRedux(
         content: <List>
           <List.Item key="add">
             <List.Content>
-              <CV.Toggler a={(toggler: CV.ToggleFunc) =>
-                <div><Button icon="edit" onClick={toggler} size="small" /></div>}
-                b={(toggler: CV.ToggleFunc) =>
-                  <div>
-                    <Button icon="edit" size="small" />
-                    <Modal dimmer='inverted' open={true}
-                      onClose={toggler}>
-                      <Campaign.MultiCreatureSelector
-                        already_selected={scene.creatures.keySeq().toSet()}
-                        on_cancel={toggler}
-                        on_selected={cids => {
-                          let new_creatures = cids.reduce(
-                            (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
-                            ) => {
-                              if (acc.has(cid)) {
-                                return acc;
-                              } else {
-                                return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
-                              }
-                            }, scene.creatures);
-                          const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
-                          new_creatures = new_creatures.deleteAll(removed_cids);
-                          const new_scene = { ...scene, creatures: new_creatures };
-                          ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                          toggler();
-                        }
-                        } />
-                    </Modal>
-                  </div>}
+              <CV.ModalMaker
+                button={toggler => <Button icon="edit" onClick={toggler} size="small" />}
+                modal={toggler =>
+                  <Campaign.MultiCreatureSelector
+                    already_selected={scene.creatures.keySeq().toSet()}
+                    on_cancel={toggler}
+                    on_selected={cids => {
+                      let new_creatures = cids.reduce(
+                        (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
+                        ) => {
+                          if (acc.has(cid)) {
+                            return acc;
+                          } else {
+                            return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
+                          }
+                        }, scene.creatures);
+                      const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
+                      new_creatures = new_creatures.deleteAll(removed_cids);
+                      const new_scene = { ...scene, creatures: new_creatures };
+                      ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                      toggler();
+                    }
+                    } />
+                } />
               />
             </List.Content>
           </List.Item>
@@ -327,3 +322,31 @@ class GMEditCreatureComp
 }
 
 const GMEditCreature = M.connectRedux(GMEditCreatureComp);
+
+
+interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
+class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, { name: string }> {
+  constructor(props: GMCreateItemProps & M.ReduxProps) {
+    super(props);
+    this.state = { name: "" };
+  }
+
+  render(): JSX.Element {
+    return <Form>
+      <Form.Input label="Name" value={this.state.name}
+        onChange={(_, data) => this.setState({ name: data.value })} />
+      <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
+        Create
+      </Form.Button>
+      <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
+    </Form>;
+  }
+
+  save() {
+    this.props.ptui.sendCommand(this.props.dispatch,
+      { t: "CreateItem", path: this.props.path, name: this.state.name });
+    this.props.onClose();
+  }
+}
+
+export const GMCreateItem = M.connectRedux(GMCreateItemComp);

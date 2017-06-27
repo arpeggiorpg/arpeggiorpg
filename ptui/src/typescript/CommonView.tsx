@@ -7,7 +7,7 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Accordion, Button, Form, Input, Menu, Segment } from 'semantic-ui-react';
+import { Accordion, Button, Form, Input, Menu, Modal, Segment } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 
@@ -610,4 +610,16 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
       return this.props.a(toggle);
     }
   }
+}
+
+
+export function ModalMaker({ button, modal }: {
+  button: (clicker: () => void) => JSX.Element,
+  modal: (closer: () => void) => JSX.Element,
+}) {
+  return <Toggler
+    a={button}
+    b={tf =>
+      <div>{button}<Modal dimmer='inverted' open={true} onClose={tf}>{modal(tf)}</Modal></div>}
+  />;
 }

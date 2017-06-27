@@ -12,7 +12,6 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-
 class CampaignComp extends React.Component<M.ReduxProps, undefined> {
   shouldComponentUpdate(newProps: M.ReduxProps) {
     return newProps.ptui.app.current_game.campaign !== this.props.ptui.app.current_game.campaign;
@@ -148,7 +147,10 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
         <Dropdown.Item icon={object_icon("Map")} text='Create Map' />
         <Dropdown.Item icon={object_icon("Creature")} text='Create Creature' />
         <Dropdown.Item icon={object_icon("Note")} text='Create Note' />
-        <Dropdown.Item icon={object_icon("Item")} text='Create Item' />
+        <CV.ModalMaker
+          button={toggler =>
+            <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
+          modal={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
         <Dropdown.Item icon={object_icon("Folder")} text='Create Folder' />
       </Dropdown.Menu>
     </Dropdown>;

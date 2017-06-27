@@ -91,6 +91,7 @@ export interface FolderNode {
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "EditCreature"; creature: Creature }
+  | { t: "CreateItem"; path: FolderPath; name: string }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
   | { t: "EditScene"; scene: Scene }
@@ -766,6 +767,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
+    case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote":
       return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
