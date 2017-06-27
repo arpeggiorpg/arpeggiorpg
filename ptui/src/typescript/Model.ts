@@ -110,6 +110,7 @@ export type GridFocus =
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string; }
   | { t: "Creature"; creature_id: T.CreatureID; }
+  | { t: "Item"; item_id: T.ItemID; }
   ;
 
 function ptfetch<T>(

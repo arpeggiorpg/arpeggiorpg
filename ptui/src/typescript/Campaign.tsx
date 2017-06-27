@@ -226,7 +226,9 @@ function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
         type: "FocusSecondary",
         focus: { t: "Note", path: obj.path, name: obj.name },
       });
-    case "Item": return;
+    case "Item":
+      return dispatch(
+        { type: "FocusSecondary", focus: { t: "Item", path: obj.path, item_id: obj.item.id } });
   }
 }
 

@@ -5,7 +5,7 @@ import * as React from 'react';
 import * as Dice from './Dice';
 
 import {
-  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Message, Modal, Popup, Segment
+  Accordion, Button, Card, Dropdown, Form, Header, Icon, Input, List, Message, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -342,5 +342,19 @@ class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps,
     this.props.onClose();
   }
 }
-
 export const GMCreateItem = M.connectRedux(GMCreateItemComp);
+
+
+export const GMViewItem = M.connectRedux(
+  function GMViewItem({ item }: { item: T.Item } & M.ReduxProps): JSX.Element {
+    return <Card>
+      <Card.Content>
+        <Card.Header>{item.name}</Card.Header>
+      </Card.Content>
+      <Card.Content extra={true}>
+        <div className="ui buttons">
+          <Button>Give to Creature</Button>
+        </div>
+      </Card.Content>
+    </Card>;
+  });
