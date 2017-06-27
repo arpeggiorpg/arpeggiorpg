@@ -3,7 +3,7 @@ import * as LD from 'lodash';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import { Button, Checkbox } from 'semantic-ui-react';
+import { Button, Checkbox, List } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -22,10 +22,8 @@ class CampaignComp extends React.Component<M.ReduxProps, undefined> {
   render(): JSX.Element {
     const { ptui, dispatch } = this.props;
     console.log("[EXPENSIVE:Campaign.render]");
-    return <div>
-      <FolderTree
-        name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />
-    </div>;
+    return <FolderTree
+      name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />;
   }
 }
 export const Campaign = M.connectRedux(CampaignComp);
@@ -90,7 +88,6 @@ type FolderObject =
   | { t: "Creature"; path: T.FolderPath; creature: T.Creature }
   | { t: "Note"; path: T.FolderPath; name: string }
   | { t: "Item"; path: T.FolderPath; item: T.Item }
-  // | { t: "Subfolder"; path: T.FolderPath }
   ;
 
 interface FTProps {
@@ -141,30 +138,37 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
           path={LD.concat(this.props.path, name)} selecting={selecting} />
     );
     const display = this.state.expanded ? "block" : "none";
-    return <div>
-      <div style={{ display: "flex" }}>
-        <div style={{ display: "flex", cursor: "pointer" }}
-          onClick={() => this.setState({ expanded: !this.state.expanded })}>
-          {this.state.expanded ? <CV.Icon>folder_open</CV.Icon> : <CV.Icon>folder</CV.Icon>}
-          {this.props.name}
-        </div>
-      </div>
-      <div style={{ marginLeft: "1em", display }}>
-        {children} {subfolders}
-      </div>
-    </div>;
+    const toggle = () => this.setState({ expanded: !this.state.expanded });
+    const list_item = <List.Item>
+      {this.state.expanded
+        ? <List.Icon name='folder open' />
+        : <List.Icon name='folder' />}
+      <List.Content>
+        <List.Header style={{ cursor: "pointer" }} content={this.props.name}
+          onClick={() => this.setState({ expanded: !this.state.expanded })} />
+        {this.state.expanded
+          ? <List.List> {children} {subfolders} </List.List>
+          : null}
+      </List.Content>
+    </List.Item>;
+
+    if (M.isEqual(path, [])) {
+      return <List size="large">{list_item}</List>;
+    } else {
+      return list_item;
+    }
   }
 }
 const FolderTree = M.connectRedux(FolderTreeComp);
 
 
-function object_icon(obj: FolderObject): JSX.Element | null {
+function object_icon(obj: FolderObject): string {
   switch (obj.t) {
-    case "Scene": return <CV.Icon>casino</CV.Icon>;
-    case "Map": return <CV.Icon>map</CV.Icon>;
-    case "Creature": return <CV.Icon>contacts</CV.Icon>;
-    case "Note": return <CV.Icon>note</CV.Icon>;
-    case "Item": return <CV.Icon>attachment</CV.Icon>;
+    case "Scene": return "game";
+    case "Map": return "map";
+    case "Creature": return "user";
+    case "Note": return "write";
+    case "Item": return "object group";
   }
 }
 function object_name(obj: FolderObject): string {
@@ -224,14 +228,15 @@ const TreeObject = M.connectRedux(
         return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
       }
     }
-    return <div style={{ display: "flex" }}>
-      <div style={{ cursor: "pointer", display: "flex" }} onClick={handler}>
+    return <List.Item style={{ cursor: 'pointer' }} onClick={handler}>
+      <List.Icon name={object_icon(object)} />
+      <List.Content>
         {
           selecting
             ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
               label={name} onChange={onCheck} />
-            : <div style={{ display: "flex" }}>{object_icon(object)} {name}</div>
+            : name
         }
-      </div>
-    </div>;
+      </List.Content>
+    </List.Item>;
   });
