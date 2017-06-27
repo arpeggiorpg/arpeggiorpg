@@ -7,8 +7,7 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
-import { Accordion, Button, Form, Input, Menu, Modal, Segment } from 'semantic-ui-react';
-import * as SUI from 'semantic-ui-react';
+import { Accordion, Button, Form, Header, Input, Menu, Modal, Segment } from 'semantic-ui-react';
 
 
 import { PTUI } from './Model';
@@ -142,16 +141,15 @@ class CreatureInventoryComp extends React.Component<CreatureInventoryProps & M.R
       {items.map(item =>
         <div key={item.id} style={{ display: "flex", justifyContent: "space-between" }}>
           {item.name} ({inv.get(item.id)})
-          <Button onClick={() => this.setState({ giving: item.id })}>Give</Button>
-          <SUI.Modal dimmer="inverted"
-            open={this.state.giving === item.id}
-            onClose={() => this.setState({ giving: undefined })}>
-            <SUI.Modal.Header>Give {item.name}</SUI.Modal.Header>
-            <SUI.Modal.Content>
-              <GiveItem giver={this.props.creature.id} item_id={item.id}
-                onClose={() => this.setState({ giving: undefined })} />
-            </SUI.Modal.Content>
-          </SUI.Modal>
+          <ModalMaker
+            button={open => <Button onClick={open}>Give</Button>}
+            modal={close => [
+              <Modal.Header>Give {item.name}</Modal.Header>,
+              <Modal.Content>
+                <GiveItem giver={this.props.creature.id} item_id={item.id}
+                  onClose={close} />
+              </Modal.Content>
+            ]} />
         </div>
       )}
     </div>;
@@ -432,15 +430,15 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
 
 function errorModal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
   if (ptui.state.error) {
-    return <SUI.Modal dimmer="inverted"
+    return <Modal dimmer="inverted"
       open={true}
       onClose={() => dispatch({ type: "ClearError" })}>
-      <SUI.Modal.Header>Error</SUI.Modal.Header>
-      <SUI.Modal.Content>
+      <Modal.Header>Error</Modal.Header>
+      <Modal.Content>
         <div>{ptui.state.error}</div>
         <Button onClick={() => dispatch({ type: "ClearError" })}>Ok</Button>
-      </SUI.Modal.Content>
-    </SUI.Modal>;
+      </Modal.Content>
+    </Modal>;
   } else {
     return <noscript />;
   }
@@ -615,7 +613,7 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
 
 export function ModalMaker({ button, modal }: {
   button: (clicker: () => void) => JSX.Element,
-  modal: (closer: () => void) => JSX.Element,
+  modal: (closer: () => void) => JSX.Element | Array<JSX.Element>,
 }) {
   return <Toggler
     a={button}
