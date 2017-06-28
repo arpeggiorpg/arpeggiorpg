@@ -32,14 +32,18 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
   if (!ptui.state.secondary_focus) { return undefined; }
   const focus2 = ptui.state.secondary_focus;
   switch (focus2.t) {
-    case "Note": return <CV.NoteEditor path={focus2.path} name={focus2.name} />;
+    case "Note":
+      return <CV.NoteEditor path={focus2.path} name={focus2.name}
+        // We need to refocus with the new name after a note gets renamed:
+        afterSave={(path, note) =>
+          dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: note.name } })} />;
     case "Creature":
       const creature = ptui.getCreature(focus2.creature_id);
       return creature
         ? <div>
-            <GM.GMCreatureCard creature={creature} />
-            <CV.CreatureInventory creature={creature} />
-          </div>
+          <GM.GMCreatureCard creature={creature} />
+          <CV.CreatureInventory creature={creature} />
+        </div>
         : undefined;
     case "Item":
       const item = ptui.getItem(focus2.item_id);

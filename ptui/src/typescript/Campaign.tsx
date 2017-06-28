@@ -105,7 +105,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
-    const { folder, ptui, selecting, path } = this.props;
+    const { folder, selecting, path, ptui, dispatch } = this.props;
     function dont_show(t: FolderContentType) {
       return selecting && selecting.item_type !== t;
     }
@@ -146,7 +146,9 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
         <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' />
         <Dropdown.Item icon={object_icon("Map")} text='Create Map' />
         <Dropdown.Item icon={object_icon("Creature")} text='Create Creature' />
-        <Dropdown.Item icon={object_icon("Note")} text='Create Note' />
+        <Dropdown.Item icon={object_icon("Note")} text='Create Note'
+          onClick={() =>
+            dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: undefined } })} />
         <CV.ModalMaker
           button={toggler =>
             <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}

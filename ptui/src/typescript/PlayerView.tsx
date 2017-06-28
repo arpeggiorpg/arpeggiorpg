@@ -176,7 +176,7 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
 
 function PlayerNote({ player_id }: { player_id: T.PlayerID; }): JSX.Element {
   const path = ["Players", player_id];
-  return <CommonView.NoteEditor path={path} name="Scratch" />;
+  return <CommonView.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
 }
 
 export const PlayerActionBar = M.connectRedux((

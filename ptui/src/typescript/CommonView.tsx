@@ -8,13 +8,14 @@ import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
 import {
-  Accordion, Button, Dropdown, Form, Header, Input, List, Menu, Message, Modal, Segment
+  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Menu, Message, Modal, Segment
 } from 'semantic-ui-react';
 
 
 import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
+import * as TextInput from './TextInput';
 
 /** The threshold at which we switch from narrow to wide view.
  * I chose 500 because it's between portait and landscape mode on pretty much all phones, so
@@ -587,63 +588,112 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
 export const TheLayout = M.connectRedux(TheLayoutComp);
 
-export function Icon(props: { children: Array<any> | any }): JSX.Element {
+export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
     className="material-icons"
     style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
 
+
+/** The Note Editor
+ * Complexities:
+ * - The `name` prop may be undefined if we're creating a new note.
+ * - Focusing on notes is done by name, since there is no ID. So if we rename a note, we must
+ *   re-focus it as well. That's what afterSave is for.
+ * - Player notes can't be renamed, hence disallow_rename.
+ */
 interface NoteEditorProps {
   path: T.FolderPath;
-  name: string;
+  name: string | undefined;
+  disallow_rename?: boolean;
+  afterSave?: (path: T.FolderPath, note: T.Note) => void;
 }
 class NoteEditorComp
-  extends React.Component<NoteEditorProps & M.ReduxProps, { content: string | undefined }> {
+  extends React.Component<NoteEditorProps & M.ReduxProps,
+  { name: string | undefined; content: string | undefined }> {
   constructor(props: NoteEditorProps & M.ReduxProps) {
     super(props);
-    this.state = { content: undefined };
+    this.state = { name: this.props.name, content: undefined };
   }
 
   componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
+    // Reasons this is called:
+    // 1. clicking on a different note while a note is already loaded. We get new path and/or name
+    // 2. new data from the server. We need to make sure we're displaying the latest data as long as
+    //    user hasn't made any changes to the content.
     if (!M.isEqual([this.props.path, this.props.name], [nextProps.path, nextProps.name])) {
-      this.setState({ content: undefined });
+      console.log("I think you switched to a different note");
+      this.setState({ name: nextProps.name, content: undefined });
+    }
+    if (nextProps.name !== undefined) {
+      const existing = nextProps.ptui.getNote(nextProps.path, nextProps.name);
+      if (existing !== undefined && existing.content === this.state.content) {
+        console.log("Resetting content to undefined because content matches existing");
+        this.setState({ content: undefined });
+      }
     }
   }
 
   render(): JSX.Element {
     const self = this;
+    const { path, disallow_rename, ptui, dispatch } = this.props;
 
-    const { path, name, ptui, dispatch } = this.props;
-
-    const player_folder = ptui.getFolderNode(path);
-    if (!player_folder) {
-      return <div>Please ask your GM to create the folder "{M.folderPathToString(path)}"</div>;
+    if (!ptui.getFolderNode(path)) {
+      return <div>The path "{M.folderPathToString(path)}" does not exist.</div>;
     }
-    const note = ptui.getNote(path, name);
-    const origContent = note ? note.content : "Enter notes here!";
-    const content = this.state.content !== undefined ? this.state.content : origContent;
+    const originalNote = this.props.name ? ptui.getNote(path, this.props.name) : undefined;
+    const originalContent = originalNote ? originalNote.content : undefined;
+
+    function chain<T>(arr: Array<T | undefined>): T | undefined {
+      for (const el of arr) {
+        if (el !== undefined) {
+          return el;
+        }
+      }
+    }
+    const renderedContent = chain([this.state.content, originalContent, ""]);
+
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div>{M.folderPathToString(LD.concat(path, name))}</div>
+        {M.folderPathToString(path)} /
+        <Toggler a={edit =>
+          <div>
+            <strong>{this.state.name}</strong>
+            {disallow_rename ? null
+              : <Icon onClick={edit} name='edit' style={{ cursor: 'pointer' }} />}
+          </div>}
+          b={view =>
+            <TextInput.TextInput defaultValue={this.state.name || ""}
+              onSubmit={input => { this.setState({ name: input }); view() }}
+              onCancel={view} />}
+        />
         <Button
-          disabled={this.state.content === undefined || this.state.content === origContent}
-          onClick={() => submit(note)}>Save</Button>
+          disabled={this.state.name === undefined ||
+            (renderedContent === originalContent && this.state.name === this.props.name)}
+          onClick={() => this.submit()}>Save</Button>
       </div>
       <textarea style={{ flex: "1", resize: "none", width: "100%", height: "100%" }}
-        value={content}
+        value={renderedContent}
         onChange={e => this.setState({ content: e.currentTarget.value })} />
     </div>;
-
-    function submit(origNote: T.Note | undefined) {
-      if (!self.state.content) { return; }
-      const newNote = { name, content: self.state.content };
-      const cmd: T.GameCommand = origNote
-        ? { t: "EditNote", path, name, note: newNote }
-        : { t: "CreateNote", path, note: newNote };
-      ptui.sendCommand(dispatch, cmd);
-    }
   }
+  submit() {
+    const { path, ptui, dispatch, afterSave } = this.props;
+    if (!this.state.name) { console.log("I have no name"); return; }
+    const name = this.state.name;
+    const oldNote = this.props.name ? ptui.getNote(path, this.props.name) : undefined;
+    const content = this.state.content === undefined && oldNote !== undefined
+      ? oldNote.content : this.state.content;
+    if (!content) { console.log("There's no content for me to save"); return; }
+    const newNote = { name, content };
+    const cmd: T.GameCommand = oldNote
+      ? { t: "EditNote", path, name: oldNote.name, note: newNote }
+      : { t: "CreateNote", path, note: newNote };
+    ptui.sendCommand(dispatch, cmd);
+    if (afterSave) { afterSave(path, newNote); }
+  }
+
 }
 export const NoteEditor = M.connectRedux(NoteEditorComp);
 
