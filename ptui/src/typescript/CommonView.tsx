@@ -654,17 +654,20 @@ class NoteEditorComp
 
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <Toggler a={edit =>
-          <div>
-            <strong>{this.state.name}</strong>
-            {disallow_rename ? null
-              : <Icon onClick={edit} name='edit' style={{ cursor: 'pointer' }} />}
-          </div>}
-          b={view =>
-            <TextInput.TextInput defaultValue={this.state.name || ""}
-              onSubmit={input => { this.setState({ name: input }); view(); }}
-              onCancel={view} />}
-        />
+        <div>
+          <span style={{ fontSize: "xx-small" }}>{M.folderPathToString(path)}</span><br />
+          <Toggler a={edit =>
+            <div>
+              <strong>{this.state.name}</strong>
+              {disallow_rename ? null
+                : <Icon onClick={edit} name='edit' style={{ cursor: 'pointer' }} />}
+            </div>}
+            b={view =>
+              <TextInput.TextInput defaultValue={this.state.name || ""}
+                onSubmit={input => { this.setState({ name: input }); view(); }}
+                onCancel={view} />}
+          />
+        </div>
         <Button
           disabled={this.state.name === undefined ||
             (renderedContent === originalContent && this.state.name === this.props.name)}
