@@ -255,7 +255,7 @@ export const CreateCreature = M.connectRedux(
     const creature_data = {
       name: "", note: "", portrait_url: "", initiative: init, class_: "",
     };
-    return <EditCreatureDataComp original_name="New Creature" creature={creature_data}
+    return <EditCreatureData original_name="New Creature" creature={creature_data}
       onSave={cdata => save(cdata)} onClose={props.onClose} />;
 
     function save(cdata: T.CreatureCreation) {
@@ -272,13 +272,14 @@ interface GMEditCreatureProps {
 const GMEditCreature = M.connectRedux(
   function GMEditCreature(props: GMEditCreatureProps & M.ReduxProps) {
     const { creature, onClose, ptui, dispatch } = props;
-    return <EditCreatureDataComp
+    return <EditCreatureData
       original_name={creature.name} creature={creature} onSave={c => save(c)} onClose={onClose} />;
 
     function save(creature_data: T.CreatureCreation) {
       const new_creature = {
         ...creature,
-        name: creature_data.name, note: creature_data.note, portrait_url: creature_data.portrait_url,
+        name: creature_data.name, class_: creature_data.class_,
+        note: creature_data.note, portrait_url: creature_data.portrait_url,
         initiative: creature_data.initiative,
       };
       ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
@@ -294,9 +295,9 @@ interface EditCreatureDataProps {
   onSave: (cdata: T.CreatureCreation) => void;
 }
 class EditCreatureDataComp
-  extends React.Component<EditCreatureDataProps,
+  extends React.Component<EditCreatureDataProps & M.ReduxProps,
   { name: string; portrait_url: string; note: string, initiative_string: string, class_: string }> {
-  constructor(props: EditCreatureDataProps) {
+  constructor(props: EditCreatureDataProps & M.ReduxProps) {
     super(props);
     this.state = {
       portrait_url: props.creature.portrait_url, name: props.creature.name,
@@ -307,19 +308,23 @@ class EditCreatureDataComp
   }
 
   render(): JSX.Element {
-    const { creature, onClose } = this.props;
+    const { creature, onClose, ptui } = this.props;
     const parsed_initiative = Dice.maybeParse(this.state.initiative_string);
-    const classes = [
-      { key: "ClericTest", text: "ClericTest", value: "ClericTest" },
-      { key: "RogueTest", text: "RogueTest", value: "RogueTest" }
-    ];
+    const classes = ptui.app.current_game.classes.keySeq().toArray().map((className: string) =>
+      ({ key: className, text: className, value: className }));
+    const form_ok = (
+      parsed_initiative.status
+      && ptui.app.current_game.classes.has(this.state.class_)
+    );
     return <div>
       <Header>{this.props.original_name}</Header>
       <Form error={!parsed_initiative.status}>
         <Form.Group>
           <Form.Input label="Name" value={this.state.name}
             onChange={(_, data) => this.setState({ name: data.value })} />
-          <Form.Select label='Gender' options={classes} placeholder='Class' />
+          <Form.Select label='Class' value={this.state.class_}
+            options={classes} placeholder='Class'
+            onChange={(_, data) => this.setState({ class_: data.value as string })} />
         </Form.Group>
         <Form.Group style={{ width: "100%" }}>
           <Form.Field style={{ flex: "1" }}>
@@ -349,7 +354,7 @@ class EditCreatureDataComp
             </Message>
         }
         <Form.Group>
-          <Form.Button disabled={!parsed_initiative.status} onClick={() => this.save()}>
+          <Form.Button disabled={!form_ok} onClick={() => this.save()}>
             Save
           </Form.Button>
           <Form.Button onClick={onClose}>Cancel</Form.Button>
@@ -365,8 +370,11 @@ class EditCreatureDataComp
       initiative: Dice.parse(this.state.initiative_string),
     };
     this.props.onSave(creature);
+    this.props.onClose();
   }
 }
+
+const EditCreatureData = M.connectRedux(EditCreatureDataComp);
 
 interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
 class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, { name: string }> {

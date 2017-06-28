@@ -1045,7 +1045,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
 
     str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
-    str.serialize_field("creatures", &game.creatures().map_err(|e| S::Error::custom("Oh no!"))?)?;
+    str.serialize_field("creatures", &game.creatures().map_err(|e| S::Error::custom("Oh no! Couldn't serialize creatures!?"))?)?;
     str.serialize_field("maps", &game.maps)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;

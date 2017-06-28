@@ -115,7 +115,7 @@ export function CreatureIcon(
   if (creature.portrait_url !== "") {
     return <SquareImageIcon size={size} url={creature.portrait_url} />;
   } else {
-    const class_ = M.get(app.current_game.classes, creature.class_);
+    const class_ = app.current_game.classes.get(creature.class_);
     const color = class_ ? class_.color : "red";
     return <div style={{ backgroundColor: color, ...square_style(size) }}>{creature.name}</div>;
   }
@@ -662,7 +662,7 @@ class NoteEditorComp
           </div>}
           b={view =>
             <TextInput.TextInput defaultValue={this.state.name || ""}
-              onSubmit={input => { this.setState({ name: input }); view() }}
+              onSubmit={input => { this.setState({ name: input }); view(); }}
               onCancel={view} />}
         />
         <Button

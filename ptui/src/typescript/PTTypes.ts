@@ -33,7 +33,7 @@ export interface App {
 export interface Game {
   current_combat: Combat | undefined;
   creatures: I.Map<CreatureID, Creature>;
-  classes: { [index: string]: Class };
+  classes: I.Map<string, Class>;
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
   abilities: { [index: string]: Ability };
@@ -747,7 +747,7 @@ const decodeAbility: Decoder<Ability> = JD.object(
 export const decodeGame: Decoder<Game> = JD.object(
   ["current_combat", JD.oneOf(decodeCombat, JD.map(_ => undefined, JD.equal(null)))],
   ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
-  ["classes", JD.dict(decodeClass)],
+  ["classes", JD.map(I.Map, JD.dict(decodeClass))],
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
   ["abilities", JD.dict(decodeAbility)],
@@ -810,6 +810,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
 function encodeCreatureCreation(cc: CreatureCreation): object {
   return {
     name: cc.name,
+    class: cc.class_,
     portrait_url: cc.portrait_url,
     note: cc.note,
     initiative: encodeDice(cc.initiative),
