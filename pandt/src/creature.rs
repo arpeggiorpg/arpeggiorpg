@@ -186,10 +186,10 @@ impl Creature {
       max_health: HP(10),
       cur_health: HP(10),
       conditions: HashMap::new(),
-      note: "".to_string(),
+      note: spec.note.clone(),
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
-      initiative: Dice::expr(1, 20),
+      initiative: spec.initiative.clone(),
       size: AABB {x: 1, y: 1, z: 1},
       inventory: HashMap::new(),
     }

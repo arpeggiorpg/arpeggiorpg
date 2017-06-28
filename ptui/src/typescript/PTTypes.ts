@@ -90,6 +90,7 @@ export interface FolderNode {
 
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
+  | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
   | { t: "EditItem"; item: Item }
@@ -150,6 +151,14 @@ export type GameCommand =
 // SetPlayerScene(PlayerID, Option<SceneID>),
 // Rollback(usize, usize),
 
+
+export interface CreatureCreation {
+  name: string;
+  class_: string;
+  portrait_url: string;
+  note: string;
+  initiative: Dice;
+}
 
 export interface Class {
   // abilities, conditions
@@ -768,6 +777,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
+    case "CreateCreature":
+      return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
     case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };
     case "EditItem": return { EditItem: encodeItem(cmd.item) };
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
@@ -794,6 +805,15 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
   }
+}
+
+function encodeCreatureCreation(cc: CreatureCreation): object {
+  return {
+    name: cc.name,
+    portrait_url: cc.portrait_url,
+    note: cc.note,
+    initiative: encodeDice(cc.initiative),
+  };
 }
 
 function encodeItem(item: Item): object {

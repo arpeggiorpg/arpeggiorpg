@@ -244,39 +244,83 @@ const CreatureNote = M.connectRedux(
   });
 
 
-interface CreatureData {
-  name: string;
-  portrait_url: string;
-  note: string;
-  initiative: T.Dice;
+interface GMCreateCreatureProps {
+  path: T.FolderPath;
+  onClose: () => void;
 }
+export const CreateCreature = M.connectRedux(
+  function CreateCreature(props: GMCreateCreatureProps & M.ReduxProps) {
+    const { path, ptui, dispatch } = props;
+    const init: T.Dice = { t: "Expr", num: 1, size: 20 };
+    const creature_data = {
+      name: "", note: "", portrait_url: "", initiative: init, class_: "",
+    };
+    return <EditCreatureDataComp original_name="New Creature" creature={creature_data}
+      onSave={cdata => save(cdata)} onClose={props.onClose} />;
+
+    function save(cdata: T.CreatureCreation) {
+      ptui.sendCommand(dispatch, { t: "CreateCreature", path, spec: cdata });
+    }
+  }
+);
+
+
+interface GMEditCreatureProps {
+  creature: T.Creature;
+  onClose: () => void;
+}
+const GMEditCreature = M.connectRedux(
+  function GMEditCreature(props: GMEditCreatureProps & M.ReduxProps) {
+    const { creature, onClose, ptui, dispatch } = props;
+    return <EditCreatureDataComp
+      original_name={creature.name} creature={creature} onSave={c => save(c)} onClose={onClose} />;
+
+    function save(creature_data: T.CreatureCreation) {
+      const new_creature = {
+        ...creature,
+        name: creature_data.name, note: creature_data.note, portrait_url: creature_data.portrait_url,
+        initiative: creature_data.initiative,
+      };
+      ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
+      onClose();
+    }
+  }
+);
 
 interface EditCreatureDataProps {
   original_name: string;
-  creature: CreatureData;
+  creature: T.CreatureCreation;
   onClose: () => void;
-  onSave: (cdata: CreatureData) => void;
+  onSave: (cdata: T.CreatureCreation) => void;
 }
 class EditCreatureDataComp
   extends React.Component<EditCreatureDataProps,
-  { name: string; portrait_url: string; note: string, initiative_string: string }> {
+  { name: string; portrait_url: string; note: string, initiative_string: string, class_: string }> {
   constructor(props: EditCreatureDataProps) {
     super(props);
     this.state = {
       portrait_url: props.creature.portrait_url, name: props.creature.name,
       note: props.creature.note,
       initiative_string: Dice.format(props.creature.initiative),
+      class_: props.creature.class_,
     };
   }
 
   render(): JSX.Element {
     const { creature, onClose } = this.props;
     const parsed_initiative = Dice.maybeParse(this.state.initiative_string);
+    const classes = [
+      { key: "ClericTest", text: "ClericTest", value: "ClericTest" },
+      { key: "RogueTest", text: "RogueTest", value: "RogueTest" }
+    ];
     return <div>
-      <Header>{creature.name}</Header>
+      <Header>{this.props.original_name}</Header>
       <Form error={!parsed_initiative.status}>
-        <Form.Input label="Name" value={this.state.name}
-          onChange={(_, data) => this.setState({ name: data.value })} />
+        <Form.Group>
+          <Form.Input label="Name" value={this.state.name}
+            onChange={(_, data) => this.setState({ name: data.value })} />
+          <Form.Select label='Gender' options={classes} placeholder='Class' />
+        </Form.Group>
         <Form.Group style={{ width: "100%" }}>
           <Form.Field style={{ flex: "1" }}>
             <label>Portrait Image URL:</label>
@@ -300,7 +344,7 @@ class EditCreatureDataComp
               <Message.Header>Couldn't parse dice expression</Message.Header>
               <Message.Content>
                 Expected {parsed_initiative.expected} at
-              line {parsed_initiative.index.line}, column {parsed_initiative.index.column}
+                line {parsed_initiative.index.line}, column {parsed_initiative.index.column}
               </Message.Content>
             </Message>
         }
@@ -316,42 +360,13 @@ class EditCreatureDataComp
 
   save() {
     const creature = {
-      name: this.state.name, portrait_url: this.state.portrait_url, note: this.state.note,
+      name: this.state.name, class_: this.state.class_,
+      portrait_url: this.state.portrait_url, note: this.state.note,
       initiative: Dice.parse(this.state.initiative_string),
     };
     this.props.onSave(creature);
   }
-
 }
-
-interface GMEditCreatureProps {
-  creature: T.Creature;
-  onClose: () => void;
-}
-class GMEditCreatureComp
-  extends React.Component<GMEditCreatureProps & M.ReduxProps, undefined> {
-  constructor(props: GMEditCreatureProps & M.ReduxProps) {
-    super(props);
-  }
-
-  render() {
-    return <EditCreatureDataComp original_name={this.props.creature.name}
-      creature={this.props.creature} onSave={c => this.save(c)} onClose={this.props.onClose} />;
-  }
-
-  save(creature_data: CreatureData) {
-    const creature = {
-      ...this.props.creature,
-      name: creature_data.name, note: creature_data.note, portrait_url: creature_data.portrait_url,
-      initiative: creature_data.initiative,
-    };
-    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature });
-    this.props.onClose();
-  }
-}
-
-const GMEditCreature = M.connectRedux(GMEditCreatureComp);
-
 
 interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
 class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, { name: string }> {

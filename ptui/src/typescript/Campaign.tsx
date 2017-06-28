@@ -145,7 +145,11 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
         <Dropdown.Header content={M.folderPathToString(path)} />
         <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' />
         <Dropdown.Item icon={object_icon("Map")} text='Create Map' />
-        <Dropdown.Item icon={object_icon("Creature")} text='Create Creature' />
+        <CV.ModalMaker
+          button={open =>
+            <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
+          modal={close => <GM.CreateCreature path={path} onClose={close} />}
+        />
         <Dropdown.Item icon={object_icon("Note")} text='Create Note'
           onClick={() =>
             dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: undefined } })} />

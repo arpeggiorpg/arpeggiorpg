@@ -785,6 +785,8 @@ pub struct CreatureCreation {
   pub name: String,
   pub class: String,
   pub portrait_url: String,
+  pub note: String,
+  pub initiative: Dice,
 }
 
 /// A Creature.
