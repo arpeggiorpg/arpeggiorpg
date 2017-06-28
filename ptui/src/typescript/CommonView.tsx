@@ -623,13 +623,11 @@ class NoteEditorComp
     // 2. new data from the server. We need to make sure we're displaying the latest data as long as
     //    user hasn't made any changes to the content.
     if (!M.isEqual([this.props.path, this.props.name], [nextProps.path, nextProps.name])) {
-      console.log("I think you switched to a different note");
       this.setState({ name: nextProps.name, content: undefined });
     }
     if (nextProps.name !== undefined) {
       const existing = nextProps.ptui.getNote(nextProps.path, nextProps.name);
       if (existing !== undefined && existing.content === this.state.content) {
-        console.log("Resetting content to undefined because content matches existing");
         this.setState({ content: undefined });
       }
     }
@@ -656,7 +654,6 @@ class NoteEditorComp
 
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {M.folderPathToString(path)} /
         <Toggler a={edit =>
           <div>
             <strong>{this.state.name}</strong>
