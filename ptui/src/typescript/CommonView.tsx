@@ -658,7 +658,7 @@ class NoteEditorComp
           <span style={{ fontSize: "xx-small" }}>{M.folderPathToString(path)}</span><br />
           <Toggler a={edit =>
             <div>
-              <strong>{this.state.name}</strong>
+              <strong>{this.state.name === undefined ? "Enter a name" : this.state.name}</strong>
               {disallow_rename ? null
                 : <Icon onClick={edit} name='edit' style={{ cursor: 'pointer' }} />}
             </div>}
