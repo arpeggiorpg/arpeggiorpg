@@ -255,8 +255,11 @@ export const CreateCreature = M.connectRedux(
     const creature_data = {
       name: "", note: "", portrait_url: "", initiative: init, class_: "",
     };
-    return <EditCreatureData original_name="New Creature" creature={creature_data}
-      onSave={cdata => save(cdata)} onClose={props.onClose} />;
+    return <div>
+      <Header>Create new creature in {M.folderPathToString(path)}</Header>
+      <EditCreatureData creature={creature_data}
+        onSave={cdata => save(cdata)} onClose={props.onClose} />
+    </div>;
 
     function save(cdata: T.CreatureCreation) {
       ptui.sendCommand(dispatch, { t: "CreateCreature", path, spec: cdata });
@@ -272,8 +275,10 @@ interface GMEditCreatureProps {
 const GMEditCreature = M.connectRedux(
   function GMEditCreature(props: GMEditCreatureProps & M.ReduxProps) {
     const { creature, onClose, ptui, dispatch } = props;
-    return <EditCreatureData
-      original_name={creature.name} creature={creature} onSave={c => save(c)} onClose={onClose} />;
+    return <div>
+      <Header>Edit {creature.name}</Header>
+      <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />
+    </div>;
 
     function save(creature_data: T.CreatureCreation) {
       const new_creature = {
@@ -289,7 +294,6 @@ const GMEditCreature = M.connectRedux(
 );
 
 interface EditCreatureDataProps {
-  original_name: string;
   creature: T.CreatureCreation;
   onClose: () => void;
   onSave: (cdata: T.CreatureCreation) => void;
@@ -316,51 +320,48 @@ class EditCreatureDataComp
       parsed_initiative.status
       && ptui.app.current_game.classes.has(this.state.class_)
     );
-    return <div>
-      <Header>{this.props.original_name}</Header>
-      <Form error={!parsed_initiative.status}>
-        <Form.Group>
-          <Form.Input label="Name" value={this.state.name}
-            onChange={(_, data) => this.setState({ name: data.value })} />
-          <Form.Select label='Class' value={this.state.class_}
-            options={classes} placeholder='Class'
-            onChange={(_, data) => this.setState({ class_: data.value as string })} />
-        </Form.Group>
-        <Form.Group style={{ width: "100%" }}>
-          <Form.Field style={{ flex: "1" }}>
-            <label>Portrait Image URL:</label>
-            <Input fluid={true}
-              value={this.state.portrait_url}
-              onChange={(_, data) => this.setState({ portrait_url: data.value })} />
-          </Form.Field>
-          {this.state.portrait_url ? <CV.SquareImageIcon url={this.state.portrait_url} />
-            : "Enter an URL for preview"}
-        </Form.Group>
-        <Form.Input label="Note" value={this.state.note}
-          onChange={(_, data) => this.setState({ note: data.value })} />
-        <Form.Input label="Initiative" error={!parsed_initiative.status}
-          value={this.state.initiative_string}
-          onChange={(_, data) => this.setState({ initiative_string: data.value })} />
-        {
-          parsed_initiative.status
-            ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
-            :
-            <Message error={true}>
-              <Message.Header>Couldn't parse dice expression</Message.Header>
-              <Message.Content>
-                Expected {parsed_initiative.expected} at
+    return <Form error={!parsed_initiative.status}>
+      <Form.Group>
+        <Form.Input label="Name" value={this.state.name}
+          onChange={(_, data) => this.setState({ name: data.value })} />
+        <Form.Select label='Class' value={this.state.class_}
+          options={classes} placeholder='Class'
+          onChange={(_, data) => this.setState({ class_: data.value as string })} />
+      </Form.Group>
+      <Form.Group style={{ width: "100%" }}>
+        <Form.Field style={{ flex: "1" }}>
+          <label>Portrait Image URL:</label>
+          <Input fluid={true}
+            value={this.state.portrait_url}
+            onChange={(_, data) => this.setState({ portrait_url: data.value })} />
+        </Form.Field>
+        {this.state.portrait_url ? <CV.SquareImageIcon url={this.state.portrait_url} />
+          : "Enter an URL for preview"}
+      </Form.Group>
+      <Form.Input label="Note" value={this.state.note}
+        onChange={(_, data) => this.setState({ note: data.value })} />
+      <Form.Input label="Initiative" error={!parsed_initiative.status}
+        value={this.state.initiative_string}
+        onChange={(_, data) => this.setState({ initiative_string: data.value })} />
+      {
+        parsed_initiative.status
+          ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
+          :
+          <Message error={true}>
+            <Message.Header>Couldn't parse dice expression</Message.Header>
+            <Message.Content>
+              Expected {parsed_initiative.expected} at
                 line {parsed_initiative.index.line}, column {parsed_initiative.index.column}
-              </Message.Content>
-            </Message>
-        }
-        <Form.Group>
-          <Form.Button disabled={!form_ok} onClick={() => this.save()}>
-            Save
+            </Message.Content>
+          </Message>
+      }
+      <Form.Group>
+        <Form.Button disabled={!form_ok} onClick={() => this.save()}>
+          Save
           </Form.Button>
-          <Form.Button onClick={onClose}>Cancel</Form.Button>
-        </Form.Group>
-      </Form>
-    </div >;
+        <Form.Button onClick={onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>;
   }
 
   save() {
@@ -384,14 +385,19 @@ class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    return <Form>
-      <Form.Input label="Name" value={this.state.name}
-        onChange={(_, data) => this.setState({ name: data.value })} />
-      <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
-        Create
+    return <div>
+      <Header>Create item in {M.folderPathToString(this.props.path)}</Header>
+      <Form>
+        <Form.Input label="Name" value={this.state.name}
+          onChange={(_, data) => this.setState({ name: data.value })} />
+        <Form.Group>
+          <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
+            Create
       </Form.Button>
-      <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
-    </Form>;
+          <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
+        </Form.Group>
+      </Form>
+    </div>;
   }
 
   save() {
