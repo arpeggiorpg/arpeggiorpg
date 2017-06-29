@@ -34,7 +34,9 @@ export const GMSceneInventory = M.connectRedux(
           <List.Content>
             <CV.ModalMaker
               button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
-              modal={close => <AddItemsToScene scene={scene} />} />
+              modal={close => [
+                <Modal.Header>Add items to {scene.name}</Modal.Header>,
+                <Modal.Content><AddItemsToScene scene={scene} /></Modal.Content>]} />
           </List.Content>
         </List.Item>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
@@ -47,11 +49,17 @@ export const GMSceneInventory = M.connectRedux(
                   <Dropdown.Header content={item.name} />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
-                    modal={toggler => <div>Giving!</div>}
+                    modal={toggler => [
+                      <Modal.Header>Give {item.name} from {scene.name}</Modal.Header>,
+                      <Modal.Content>TBI</Modal.Content>
+                    ]}
                   />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Remove" />}
-                    modal={toggler => <div>Removing!</div>}
+                    modal={toggler => [
+                      <Modal.Header>Remove {item.name} from {scene.name}</Modal.Header>,
+                      <Modal.Content>TBI</Modal.Content>
+                    ]}
                   />
                 </Dropdown.Menu>
               </Dropdown>
@@ -75,28 +83,31 @@ export const GMSceneCreatures = M.connectRedux(
           <CV.ModalMaker
             button={toggler =>
               <Icon name="edit" onClick={toggler} style={{ cursor: "pointer" }} />}
-            modal={toggler =>
-              <Campaign.MultiCreatureSelector
-                already_selected={scene.creatures.keySeq().toSet()}
-                on_cancel={toggler}
-                on_selected={cids => {
-                  let new_creatures = cids.reduce(
-                    (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
-                    ) => {
-                      if (acc.has(cid)) {
-                        return acc;
-                      } else {
-                        return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
-                      }
-                    }, scene.creatures);
-                  const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
-                  new_creatures = new_creatures.deleteAll(removed_cids);
-                  const new_scene = { ...scene, creatures: new_creatures };
-                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                  toggler();
-                }
-                } />
-            } />
+            modal={toggler => [
+              <Modal.Header>Change creatures in {scene.name}</Modal.Header>,
+              <Modal.Content>
+                <Campaign.MultiCreatureSelector
+                  already_selected={scene.creatures.keySeq().toSet()}
+                  on_cancel={toggler}
+                  on_selected={cids => {
+                    let new_creatures = cids.reduce(
+                      (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
+                      ) => {
+                        if (acc.has(cid)) {
+                          return acc;
+                        } else {
+                          return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
+                        }
+                      }, scene.creatures);
+                    const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
+                    new_creatures = new_creatures.deleteAll(removed_cids);
+                    const new_scene = { ...scene, creatures: new_creatures };
+                    ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                    toggler();
+                  }
+                  } />
+              </Modal.Content>
+            ]} />
         </List.Content>
       </List.Item>
       {ptui.getSceneCreatures(scene).map(creature => {
@@ -240,8 +251,11 @@ export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array
       <Dropdown.Header content={props.creature.name} />
       <CV.ModalMaker
         button={toggler => <Dropdown.Item onClick={toggler} content="Edit" />}
-        modal={toggler => <GMEditCreature creature={props.creature} onClose={toggler} />}
-      />
+        modal={toggler => [
+          <Modal.Header>Edit {props.creature.name}</Modal.Header>,
+          <Modal.Content>
+            <GMEditCreature creature={props.creature} onClose={toggler} />
+          </Modal.Content>]} />
       {props.menu_items}
     </Dropdown.Menu>
   </Dropdown>;
@@ -302,11 +316,8 @@ export const CreateCreature = M.connectRedux(
     const creature_data = {
       name: "", note: "", portrait_url: "", initiative: init, class_: "",
     };
-    return <div>
-      <Header>Create new creature in {M.folderPathToString(path)}</Header>
-      <EditCreatureData creature={creature_data}
-        onSave={cdata => save(cdata)} onClose={props.onClose} />
-    </div>;
+    return <EditCreatureData creature={creature_data}
+      onSave={cdata => save(cdata)} onClose={props.onClose} />;
 
     function save(cdata: T.CreatureCreation) {
       ptui.sendCommand(dispatch, { t: "CreateCreature", path, spec: cdata });
@@ -322,10 +333,7 @@ interface GMEditCreatureProps {
 const GMEditCreature = M.connectRedux(
   function GMEditCreature(props: GMEditCreatureProps & M.ReduxProps) {
     const { creature, onClose, ptui, dispatch } = props;
-    return <div>
-      <Header>Edit {creature.name}</Header>
-      <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />
-    </div>;
+    return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
 
     function save(creature_data: T.CreatureCreation) {
       const new_creature = {
@@ -432,19 +440,16 @@ class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    return <div>
-      <Header>Create item in {M.folderPathToString(this.props.path)}</Header>
-      <Form>
-        <Form.Input label="Name" value={this.state.name}
-          onChange={(_, data) => this.setState({ name: data.value })} />
-        <Form.Group>
-          <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
-            Create
+    return <Form>
+      <Form.Input label="Name" value={this.state.name}
+        onChange={(_, data) => this.setState({ name: data.value })} />
+      <Form.Group>
+        <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
+          Create
       </Form.Button>
-          <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
-        </Form.Group>
-      </Form>
-    </div>;
+        <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>;
   }
 
   save() {
