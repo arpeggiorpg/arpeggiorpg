@@ -30,6 +30,13 @@ export const GMSceneInventory = M.connectRedux(
   function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
     return <div>
       <List>
+        <List.Item>
+          <List.Content>
+            <CV.ModalMaker
+              button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
+              modal={close => <AddItemsToScene scene={scene} />} />
+          </List.Content>
+        </List.Item>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
           <List.Item>
             {item.name}
@@ -53,6 +60,11 @@ export const GMSceneInventory = M.connectRedux(
         )}
       </List>
     </div>;
+  });
+
+export const AddItemsToScene = M.connectRedux(
+  function AddItemsToScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+    return <div>adding items to a scene!</div>;
   });
 
 export const GMSceneCreatures = M.connectRedux(

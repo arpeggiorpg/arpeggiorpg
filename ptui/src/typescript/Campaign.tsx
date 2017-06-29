@@ -55,9 +55,8 @@ class MultiCreatureSelectorComp
             folder_item);
       }
     }
-    const stype: FolderContentType = 'Creature';
     const selecting: SelectableProps = {
-      item_type: stype, allow_multiple: true, on_select_object: on_check,
+      item_type: 'Creature', allow_multiple: true, on_select_object: on_check,
       is_selected: (path, item_id) =>
         item_id.t === "CreatureID" && this.state.selections.includes(item_id.id),
     };
