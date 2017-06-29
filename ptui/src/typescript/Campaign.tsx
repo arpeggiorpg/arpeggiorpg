@@ -191,9 +191,8 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
-          modal={close => [
-            <Modal.Header>Create new creature in {M.folderPathToString(path)}</Modal.Header>,
-            <Modal.Content><GM.CreateCreature path={path} onClose={close} /></Modal.Content>]}
+          header={<span>Create new creature in {M.folderPathToString(path)}</span>}
+          content={close => <GM.CreateCreature path={path} onClose={close} />}
         />
         <Dropdown.Item icon={object_icon("Note")} text='Create Note'
           onClick={() =>
@@ -201,10 +200,8 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
         <CV.ModalMaker
           button={toggler =>
             <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
-          modal={toggler => [
-            <Modal.Header>Create item in {M.folderPathToString(path)}</Modal.Header>,
-            <Modal.Content><GM.GMCreateItem path={path} onClose={toggler} /></Modal.Content>,
-          ]} />
+          header={<span>Create item in {M.folderPathToString(path)}</span>}
+          content={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
         <Dropdown.Item icon={object_icon("Folder")} text='Create Folder' />
       </Dropdown.Menu>
     </Dropdown>;

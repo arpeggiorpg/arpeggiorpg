@@ -156,20 +156,13 @@ export const CreatureInventory = M.connectRedux(
                 <Dropdown.Header content={item.name} />
                 <ModalMaker
                   button={open => <Dropdown.Item onClick={open} content='Give' />}
-                  modal={close => [
-                    <Modal.Header>Give {item.name}</Modal.Header>,
-                    <Modal.Content>
-                      <GiveItem giver={creature} item={item} onClose={close} />
-                    </Modal.Content>
-                  ]} />
+                  header={<span>Give {item.name}</span>}
+                  content={close => <GiveItem giver={creature} item={item} onClose={close} />} />
                 <ModalMaker
                   button={open => <Dropdown.Item onClick={open} content='Delete' />}
-                  modal={close => [
-                    <Modal.Header>Delete {item.name}</Modal.Header>,
-                    <Modal.Content>
-                      <DeleteItem creature={creature} item={item} onClose={close} />
-                    </Modal.Content>
-                  ]} />
+                  header={<span>Delete {item.name}</span>}
+                  content={close => <DeleteItem creature={creature} item={item} onClose={close} />}
+                />
               </Dropdown.Menu>
             </Dropdown>
           </Label>
@@ -726,9 +719,10 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
 }
 
 
-export function ModalMaker({ button, modal }: {
+export function ModalMaker({ button, header, content }: {
   button: (clicker: () => void) => JSX.Element,
-  modal: (closer: () => void) => JSX.Element | Array<JSX.Element>,
+  header: JSX.Element,
+  content: (closer: () => void) => JSX.Element,
 }) {
   return <Toggler
     a={button}
@@ -736,7 +730,8 @@ export function ModalMaker({ button, modal }: {
       <div>
         {button}
         <Modal dimmer='inverted' open={true} onClose={tf}>
-          {modal(tf)}
+          <Modal.Header>{header}</Modal.Header>
+          <Modal.Content>{content(tf)}</Modal.Content>
         </Modal>
       </div>}
   />;

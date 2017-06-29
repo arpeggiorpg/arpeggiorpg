@@ -34,9 +34,8 @@ export const GMSceneInventory = M.connectRedux(
           <List.Content>
             <CV.ModalMaker
               button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
-              modal={close => [
-                <Modal.Header>Add items to {scene.name}</Modal.Header>,
-                <Modal.Content><AddItemsToScene scene={scene} onClose={close} /></Modal.Content>]} />
+              header={<span>Add items to {scene.name}</span>}
+              content={close => <AddItemsToScene scene={scene} onClose={close} />} />
           </List.Content>
         </List.Item>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
@@ -49,18 +48,12 @@ export const GMSceneInventory = M.connectRedux(
                   <Dropdown.Header content={item.name} />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
-                    modal={toggler => [
-                      <Modal.Header>Give {item.name} from {scene.name}</Modal.Header>,
-                      <Modal.Content>TBI</Modal.Content>
-                    ]}
-                  />
+                    header={<span>Give {item.name} from {scene.name}</span>}
+                    content={close => <div>TBI</div>} />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Remove" />}
-                    modal={toggler => [
-                      <Modal.Header>Remove {item.name} from {scene.name}</Modal.Header>,
-                      <Modal.Content>TBI</Modal.Content>
-                    ]}
-                  />
+                    header={<span>Remove {item.name} from {scene.name}</span>}
+                    content={close => <div>TBI</div>} />
                 </Dropdown.Menu>
               </Dropdown>
             </Label>
@@ -92,31 +85,27 @@ export const GMSceneCreatures = M.connectRedux(
           <CV.ModalMaker
             button={toggler =>
               <Icon name="edit" onClick={toggler} style={{ cursor: "pointer" }} />}
-            modal={toggler => [
-              <Modal.Header>Change creatures in {scene.name}</Modal.Header>,
-              <Modal.Content>
-                <Campaign.MultiCreatureSelector
-                  already_selected={scene.creatures.keySeq().toSet()}
-                  on_cancel={toggler}
-                  on_selected={cids => {
-                    let new_creatures = cids.reduce(
-                      (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
-                      ) => {
-                        if (acc.has(cid)) {
-                          return acc;
-                        } else {
-                          return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
-                        }
-                      }, scene.creatures);
-                    const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
-                    new_creatures = new_creatures.deleteAll(removed_cids);
-                    const new_scene = { ...scene, creatures: new_creatures };
-                    ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                    toggler();
-                  }
-                  } />
-              </Modal.Content>
-            ]} />
+            header={<span>Change creatures in {scene.name}</span>}
+            content={toggler => <Campaign.MultiCreatureSelector
+              already_selected={scene.creatures.keySeq().toSet()}
+              on_cancel={toggler}
+              on_selected={cids => {
+                let new_creatures = cids.reduce(
+                  (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
+                  ) => {
+                    if (acc.has(cid)) {
+                      return acc;
+                    } else {
+                      return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
+                    }
+                  }, scene.creatures);
+                const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
+                new_creatures = new_creatures.deleteAll(removed_cids);
+                const new_scene = { ...scene, creatures: new_creatures };
+                ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                toggler();
+              }
+              } />} />
         </List.Content>
       </List.Item>
       {ptui.getSceneCreatures(scene).map(creature => {
@@ -260,11 +249,8 @@ export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array
       <Dropdown.Header content={props.creature.name} />
       <CV.ModalMaker
         button={toggler => <Dropdown.Item onClick={toggler} content="Edit" />}
-        modal={toggler => [
-          <Modal.Header>Edit {props.creature.name}</Modal.Header>,
-          <Modal.Content>
-            <GMEditCreature creature={props.creature} onClose={toggler} />
-          </Modal.Content>]} />
+        header={<span>Edit {props.creature.name}</span>}
+        content={toggler => <GMEditCreature creature={props.creature} onClose={toggler} />} />
       {props.menu_items}
     </Dropdown.Menu>
   </Dropdown>;
