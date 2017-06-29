@@ -159,9 +159,9 @@ export const CreatureInventory = M.connectRedux(
                   header={<span>Give {item.name}</span>}
                   content={close => <GiveItem giver={creature} item={item} onClose={close} />} />
                 <ModalMaker
-                  button={open => <Dropdown.Item onClick={open} content='Delete' />}
-                  header={<span>Delete {item.name}</span>}
-                  content={close => <DeleteItem creature={creature} item={item} onClose={close} />}
+                  button={open => <Dropdown.Item onClick={open} content='Remove' />}
+                  header={<span>Remove {item.name}</span>}
+                  content={close => <RemoveItem creature={creature} item={item} onClose={close} />}
                 />
               </Dropdown.Menu>
             </Dropdown>
@@ -174,10 +174,10 @@ export const CreatureInventory = M.connectRedux(
   }
 );
 
-interface DeleteItemProps { creature: T.Creature; item: T.Item; onClose: () => void; }
-class DeleteItemComp
-  extends React.Component<DeleteItemProps & M.ReduxProps, { count: number | undefined }> {
-  constructor(props: DeleteItemProps & M.ReduxProps) {
+interface RemoveItemProps { creature: T.Creature; item: T.Item; onClose: () => void; }
+class RemoveItemComp
+  extends React.Component<RemoveItemProps & M.ReduxProps, { count: number | undefined }> {
+  constructor(props: RemoveItemProps & M.ReduxProps) {
     super(props);
     this.state = { count: 1 };
   }
@@ -189,18 +189,18 @@ class DeleteItemComp
     }
     return <Form>
       <Message>
-        You have {creature.inventory.get(item.id)} of this item. How many would you like to delete?
+        You have {creature.inventory.get(item.id)} of this item. How many would you like to remove?
       </Message>
       <PositiveIntegerInput label="count" max={max_count} value={this.state.count}
         onChange={num => this.setState({ count: num })} />
       <Form.Group>
-        <Form.Button disabled={!this.state.count} onClick={() => this.delete()}>Delete</Form.Button>
+        <Form.Button disabled={!this.state.count} onClick={() => this.remove()}>Remove</Form.Button>
         <Form.Button onClick={() => onClose()}>Cancel</Form.Button>
       </Form.Group>
     </Form>;
   }
 
-  delete() {
+  remove() {
     const { creature, item, onClose, ptui, dispatch } = this.props;
     const count = this.state.count;
     const has_count = creature.inventory.get(item.id);
@@ -213,7 +213,7 @@ class DeleteItemComp
     onClose();
   }
 }
-export const DeleteItem = M.connectRedux(DeleteItemComp);
+export const RemoveItem = M.connectRedux(RemoveItemComp);
 
 interface GiveItemProps {
   item: T.Item;
