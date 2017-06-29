@@ -324,10 +324,11 @@ export class PTUI {
     return this.getCreatures(scene.creatures.keySeq().toArray());
   }
 
-  getSceneInventory(scene: T.Scene): Array<[T.Item, number]> {
-    return filterMap(scene.inventory.entrySeq().toArray(),
-      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count])).sort();
-
+  getSceneInventory(scene: T.Scene): I.List<[T.Item, number]> {
+    const arr = filterMap(scene.inventory.entrySeq().toArray(),
+      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
+    const list = I.List(arr);
+    return list.sortBy(([i, c]) => i.name);
   }
 }
 
