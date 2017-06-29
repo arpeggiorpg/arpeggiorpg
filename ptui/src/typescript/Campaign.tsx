@@ -26,7 +26,7 @@ class CampaignComp extends React.Component<M.ReduxProps, undefined> {
 export const Campaign = M.connectRedux(CampaignComp);
 
 interface MultiItemSelectorProps {
-  already_selected: I.Set<T.ItemID>;
+  require_selected: I.Set<T.ItemID>;
   on_selected: (cs: I.Set<T.ItemID>) => void;
   on_cancel: () => void;
 }
@@ -36,7 +36,7 @@ class MultiItemSelectorComp
   { selections: I.Set<T.ItemID> }> {
   constructor(props: MultiItemSelectorProps & M.ReduxProps) {
     super(props);
-    this.state = { selections: this.props.already_selected };
+    this.state = { selections: this.props.require_selected };
   }
   render(): JSX.Element {
     const { ptui } = this.props;
@@ -44,6 +44,9 @@ class MultiItemSelectorComp
     function on_check(checked: boolean, path: T.FolderPath, folder_item: T.FolderItemID) {
       switch (folder_item.t) {
         case "ItemID":
+          if (self.props.require_selected.includes(folder_item.id)) {
+            return;
+          }
           const new_selected = checked
             ? self.state.selections.add(folder_item.id)
             : self.state.selections.remove(folder_item.id);
@@ -81,7 +84,7 @@ class MultiCreatureSelectorComp
   { selections: I.Set<T.CreatureID> }> {
   constructor(props: MultiCreatureSelectorProps & M.ReduxProps) {
     super(props);
-    this.state = { selections: this.props.already_selected };
+    this.state = { selections: I.Set() };
   }
   render(): JSX.Element {
     const { ptui } = this.props;

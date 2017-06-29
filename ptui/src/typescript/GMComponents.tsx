@@ -66,7 +66,7 @@ export const GMSceneInventory = M.connectRedux(
 export const AddItemsToScene = M.connectRedux(
   function AddItemsToScene(props: { scene: T.Scene, onClose: () => void } & M.ReduxProps) {
     const { scene, onClose, ptui, dispatch } = props;
-    return <Campaign.MultiItemSelector already_selected={scene.inventory.keySeq().toSet()}
+    return <Campaign.MultiItemSelector require_selected={scene.inventory.keySeq().toSet()}
       on_selected={item_ids => {
         const inventory = scene.inventory.mergeWith((o, n) => o,
           I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
