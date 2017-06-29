@@ -36,7 +36,7 @@ export const GMSceneInventory = M.connectRedux(
               button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
               modal={close => [
                 <Modal.Header>Add items to {scene.name}</Modal.Header>,
-                <Modal.Content><AddItemsToScene scene={scene} /></Modal.Content>]} />
+                <Modal.Content><AddItemsToScene scene={scene} onClose={close} /></Modal.Content>]} />
           </List.Content>
         </List.Item>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
@@ -71,8 +71,17 @@ export const GMSceneInventory = M.connectRedux(
   });
 
 export const AddItemsToScene = M.connectRedux(
-  function AddItemsToScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
-    return <div>adding items to a scene!</div>;
+  function AddItemsToScene(props: { scene: T.Scene, onClose: () => void } & M.ReduxProps) {
+    const { scene, onClose, ptui, dispatch } = props;
+    return <Campaign.MultiItemSelector already_selected={scene.inventory.keySeq().toSet()}
+      on_selected={item_ids => {
+        const inventory = scene.inventory.mergeWith((o, n) => o,
+          I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
+        ptui.sendCommand(dispatch, { t: "EditScene", scene: { ...scene, inventory } });
+        onClose();
+      }}
+      on_cancel={onClose}
+    />;
   });
 
 export const GMSceneCreatures = M.connectRedux(

@@ -25,6 +25,50 @@ class CampaignComp extends React.Component<M.ReduxProps, undefined> {
 }
 export const Campaign = M.connectRedux(CampaignComp);
 
+interface MultiItemSelectorProps {
+  already_selected: I.Set<T.ItemID>;
+  on_selected: (cs: I.Set<T.ItemID>) => void;
+  on_cancel: () => void;
+}
+class MultiItemSelectorComp
+  extends React.Component<
+  MultiItemSelectorProps & M.ReduxProps,
+  { selections: I.Set<T.ItemID> }> {
+  constructor(props: MultiItemSelectorProps & M.ReduxProps) {
+    super(props);
+    this.state = { selections: this.props.already_selected };
+  }
+  render(): JSX.Element {
+    const { ptui } = this.props;
+    const self = this;
+    function on_check(checked: boolean, path: T.FolderPath, folder_item: T.FolderItemID) {
+      switch (folder_item.t) {
+        case "ItemID":
+          const new_selected = checked
+            ? self.state.selections.add(folder_item.id)
+            : self.state.selections.remove(folder_item.id);
+          self.setState({ selections: new_selected });
+          return;
+        default:
+          console.log("Got a non-item selection in a item-only campaign selector:",
+            folder_item);
+      }
+    }
+    const selecting: SelectableProps = {
+      item_type: 'Item', allow_multiple: true, on_select_object: on_check,
+      is_selected: (path, item_id) =>
+        item_id.t === "ItemID" && this.state.selections.includes(item_id.id),
+    };
+    return <div>
+      <FolderTree name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
+        selecting={selecting} />
+      <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
+      <Button onClick={this.props.on_cancel}>Cancel</Button>
+    </div>;
+  }
+}
+export const MultiItemSelector = M.connectRedux(MultiItemSelectorComp);
+
 
 interface MultiCreatureSelectorProps {
   already_selected: I.Set<T.CreatureID>;
