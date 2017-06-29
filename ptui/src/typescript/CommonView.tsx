@@ -8,7 +8,7 @@ import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
 import {
-  Accordion, Button, Dropdown, Form, Header, Icon, Input, List, Menu, Message, Modal, Segment
+  Accordion, Button, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal, Segment
 } from 'semantic-ui-react';
 
 
@@ -143,32 +143,38 @@ export const CreatureInventory = M.connectRedux(
     const items = ptui.getItems(inv.keySeq().toArray());
 
     return <List relaxed={true}>
-      {items.map(item =>
-        <List.Item key={item.id}
+      {items.map(item => {
+        const count = inv.get(item.id);
+        if (!count) { return; }
+        return <List.Item key={item.id}
           style={{ display: "flex", justifyContent: "space-between" }}>
           <div style={{ flex: "1" }}>{item.name} ({inv.get(item.id)})</div>
-          <Dropdown icon='caret down' className='right' pointing={true} floating={true}>
-            <Dropdown.Menu>
-              <Dropdown.Header content={item.name} />
-              <ModalMaker
-                button={open => <Dropdown.Item onClick={open} content='Give' />}
-                modal={close => [
-                  <Modal.Header>Give {item.name}</Modal.Header>,
-                  <Modal.Content>
-                    <GiveItem giver={creature} item={item} onClose={close} />
-                  </Modal.Content>
-                ]} />
-              <ModalMaker
-                button={open => <Dropdown.Item onClick={open} content='Delete' />}
-                modal={close => [
-                  <Modal.Header>Delete {item.name}</Modal.Header>,
-                  <Modal.Content>
-                    <DeleteItem creature={creature} item={item} onClose={close} />
-                  </Modal.Content>
-                ]} />
-            </Dropdown.Menu>
-          </Dropdown>
-        </List.Item>
+          <Label circular={true}>
+            <Dropdown text={count.toString()} icon='caret down'
+              className='right' pointing={true} floating={true}>
+              <Dropdown.Menu>
+                <Dropdown.Header content={item.name} />
+                <ModalMaker
+                  button={open => <Dropdown.Item onClick={open} content='Give' />}
+                  modal={close => [
+                    <Modal.Header>Give {item.name}</Modal.Header>,
+                    <Modal.Content>
+                      <GiveItem giver={creature} item={item} onClose={close} />
+                    </Modal.Content>
+                  ]} />
+                <ModalMaker
+                  button={open => <Dropdown.Item onClick={open} content='Delete' />}
+                  modal={close => [
+                    <Modal.Header>Delete {item.name}</Modal.Header>,
+                    <Modal.Content>
+                      <DeleteItem creature={creature} item={item} onClose={close} />
+                    </Modal.Content>
+                  ]} />
+              </Dropdown.Menu>
+            </Dropdown>
+          </Label>
+        </List.Item>;
+      }
       )}
     </List>;
 

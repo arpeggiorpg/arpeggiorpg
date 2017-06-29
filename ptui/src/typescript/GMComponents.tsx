@@ -5,7 +5,8 @@ import * as React from 'react';
 import * as Dice from './Dice';
 
 import {
-  Accordion, Button, Card, Dropdown, Form, Header, Icon, Input, List, Message, Modal, Popup, Segment
+  Accordion, Button, Card, Dropdown, Form, Header, Icon, Input, Label, List, Message, Modal, Popup,
+  Segment
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -18,13 +19,9 @@ export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
       <Header>{scene.name}</Header>
-      <Accordion exclusive={false} panels={[{
-        title: 'Creatures',
-        content: <GMSceneCreatures scene={scene} />,
-      }, {
-        title: 'Items',
-        content: <GMSceneInventory scene={scene} />
-      }
+      <Accordion exclusive={false} panels={[
+        { title: 'Creatures', content: <GMSceneCreatures scene={scene} /> },
+        { title: 'Items', content: <GMSceneInventory scene={scene} /> }
       ]} />
     </Segment>;
   });
@@ -34,7 +31,25 @@ export const GMSceneInventory = M.connectRedux(
     return <div>
       <List>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
-          <List.Item>{item.name}</List.Item>
+          <List.Item>
+            {item.name}
+            <Label circular={true} style={{ float: 'right' }}>
+              <Dropdown text={count.toString()}
+                icon="caret down" className="right" floating={true} pointing={true}>
+                <Dropdown.Menu>
+                  <Dropdown.Header content={item.name} />
+                  <CV.ModalMaker
+                    button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
+                    modal={toggler => <div>Giving!</div>}
+                  />
+                  <CV.ModalMaker
+                    button={toggler => <Dropdown.Item onClick={toggler} content="Remove" />}
+                    modal={toggler => <div>Removing!</div>}
+                  />
+                </Dropdown.Menu>
+              </Dropdown>
+            </Label>
+          </List.Item>
         )}
       </List>
     </div>;
