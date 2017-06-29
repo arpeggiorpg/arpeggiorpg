@@ -215,45 +215,42 @@ class RemoveItemComp
 }
 export const RemoveItem = M.connectRedux(RemoveItemComp);
 
-interface GiveItemProps {
+
+interface TransferItemsToRecipientFormProps {
   item: T.Item;
-  giver: T.Creature;
+  available_count: number;
+  available_recipients: Array<T.Creature>;
+  onGive: (recipient: T.Creature, count: number) => void;
   onClose: () => void;
 }
-export class GiveItemComp extends React.Component<
-  GiveItemProps & M.ReduxProps,
+export class TransferItemsToRecipientFormComp extends React.Component<
+  TransferItemsToRecipientFormProps & M.ReduxProps,
   { receiver: T.CreatureID | undefined; count: number | undefined }> {
-  constructor(props: GiveItemProps & M.ReduxProps) {
+  constructor(props: TransferItemsToRecipientFormProps & M.ReduxProps) {
     super(props);
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
-    const { item, giver, ptui } = this.props;
-    const scene = this.props.ptui.focused_scene();
-    if (!scene) { return <div>You can only transfer items in a scene.</div>; }
-    const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray())
-      .delete(this.props.giver.id).toArray();
-    const other_creatures = ptui.getCreatures(other_cids_in_scene);
-    if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div>; }
-    const giver_count = giver.inventory.get(item.id);
-    if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
-    const creature_options = other_creatures.map(
+    const { item, available_count, available_recipients } = this.props;
+    if (!available_recipients) { return <div>There is nobody to give items to.</div>; }
+    const creature_options = available_recipients.map(
       creature => ({ key: creature.id, text: creature.name, value: creature.id }));
     return <Form>
       <Message>
-        You have {giver.inventory.get(item.id)} of this item. How many would you like to give?
+        There {available_count === 1 ? "is" : "are"} {available_count} of this item.
+        How many would you like to give?
       </Message>
       <Form.Group>
-        <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
+        <PositiveIntegerInput max={available_count} label="Count" value={this.state.count}
           onChange={num => this.setState({ count: num })} />
-        <Form.Select label="Creature" options={creature_options}
-          placeholder="Select a Creature"
+        <Form.Select label="Recipient" options={creature_options}
+          placeholder="Select a Recipient"
           onChange={(_, ev) => this.setState({ receiver: ev.value as T.CreatureID })} />
       </Form.Group>
       <Form.Group>
         <Form.Button
           disabled={!(this.state.receiver && this.state.count)}
-          onClick={ev => this.give(giver)}>
+          onClick={ev => this.give()}>
           Give
             </Form.Button>
         <Form.Button onClick={ev => this.props.onClose()}>Cancel</Form.Button>
@@ -261,7 +258,7 @@ export class GiveItemComp extends React.Component<
     </Form>;
   }
 
-  give(giver: T.Creature) {
+  give() {
     const count = this.state.count as number; // Protected by button `disabled`
     const receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
     const receiver = this.props.ptui.app.current_game.creatures.get(receiver_id);
@@ -270,18 +267,46 @@ export class GiveItemComp extends React.Component<
       this.props.onClose();
       return;
     }
-
-    const newGiver = LD.assign({}, giver,
-      { inventory: M.removeFromInventory(giver.inventory, this.props.item.id, count) });
-    const newReceiver = LD.assign({}, receiver,
-      { inventory: M.addToInventory(receiver.inventory, this.props.item.id, count) });
-
-    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newGiver });
-    this.props.ptui.sendCommand(this.props.dispatch, { t: "EditCreature", creature: newReceiver });
-    this.props.onClose();
+    this.props.onGive(receiver, count);
   }
 }
-export const GiveItem = M.connectRedux(GiveItemComp);
+
+export const TransferItemsToRecipientForm = M.connectRedux(TransferItemsToRecipientFormComp);
+
+interface GiveItemProps {
+  item: T.Item;
+  giver: T.Creature;
+  onClose: () => void;
+}
+export const GiveItem = M.connectRedux(function GiveItem(props: GiveItemProps & M.ReduxProps) {
+  const { item, giver, onClose, ptui, dispatch } = props;
+  const scene = ptui.focused_scene();
+  if (!scene) { return <div>You can only transfer items in a scene.</div>; }
+  const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray()).delete(giver.id).toArray();
+  const other_creatures = ptui.getCreatures(other_cids_in_scene);
+  if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div>; }
+  const giver_count = giver.inventory.get(item.id);
+  if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
+  return <TransferItemsToRecipientForm item={item} available_count={giver_count}
+    available_recipients={other_creatures}
+    onGive={(recip, count) => give(recip, count)}
+    onClose={onClose} />;
+
+  function give(recip: T.Creature, count: number) {
+    const newGiver = {
+      ...giver,
+      inventory: M.removeFromInventory(giver.inventory, item.id, count),
+    };
+    const newReceiver = {
+      ...recip,
+      inventory: M.addToInventory(recip.inventory, item.id, count),
+    };
+
+    ptui.sendCommand(dispatch, { t: "EditCreature", creature: newGiver });
+    ptui.sendCommand(dispatch, { t: "EditCreature", creature: newReceiver });
+    onClose();
+  }
+});
 
 
 interface PositiveIntegerInputProps {

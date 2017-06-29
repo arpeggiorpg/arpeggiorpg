@@ -49,7 +49,8 @@ export const GMSceneInventory = M.connectRedux(
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
                     header={<span>Give {item.name} from {scene.name}</span>}
-                    content={close => <div>TBI</div>} />
+                    content={close =>
+                      <GiveItemFromScene scene={scene} item={item} onClose={close} />} />
                   <CV.ModalMaker
                     button={toggler => <Dropdown.Item onClick={toggler} content="Remove" />}
                     header={<span>Remove {item.name} from {scene.name}</span>}
@@ -61,6 +62,32 @@ export const GMSceneInventory = M.connectRedux(
         )}
       </List>
     </div>;
+  });
+
+export const GiveItemFromScene = M.connectRedux(
+  function GiveItemFromScene(
+    props: { scene: T.Scene; item: T.Item; onClose: () => void; } & M.ReduxProps) {
+    const { scene, item, onClose, ptui, dispatch } = props;
+    const available_count = scene.inventory.get(item.id);
+    if (!available_count) { return <div>Lost item {item.name}!</div>; }
+    return <CV.TransferItemsToRecipientForm item={item}
+      available_count={available_count}
+      available_recipients={ptui.getSceneCreatures(scene)}
+      onGive={give}
+      onClose={onClose} />;
+    function give(recip: T.Creature, count: number) {
+      const newScene = {
+        ...scene,
+        inventory: M.removeFromInventory(scene.inventory, item.id, count),
+      };
+      const newCreature = {
+        ...recip,
+        inventory: M.addToInventory(recip.inventory, item.id, count),
+      };
+      ptui.sendCommand(dispatch, { t: "EditScene", scene: newScene });
+      ptui.sendCommand(dispatch, { t: "EditCreature", creature: newCreature });
+    }
+
   });
 
 export const AddItemsToScene = M.connectRedux(
