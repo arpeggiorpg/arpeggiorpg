@@ -20,67 +20,72 @@ export const GMScene = M.connectRedux(
       <Header>{scene.name}</Header>
       <Accordion panels={[{
         title: 'Creatures',
-        content: <List>
-          <List.Item key="add">
-            <List.Content>
-              <CV.ModalMaker
-                button={toggler =>
-                  <Icon name="edit" onClick={toggler} style={{ cursor: "pointer" }} />}
-                modal={toggler =>
-                  <Campaign.MultiCreatureSelector
-                    already_selected={scene.creatures.keySeq().toSet()}
-                    on_cancel={toggler}
-                    on_selected={cids => {
-                      let new_creatures = cids.reduce(
-                        (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
-                        ) => {
-                          if (acc.has(cid)) {
-                            return acc;
-                          } else {
-                            return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
-                          }
-                        }, scene.creatures);
-                      const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
-                      new_creatures = new_creatures.deleteAll(removed_cids);
-                      const new_scene = { ...scene, creatures: new_creatures };
-                      ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                      toggler();
-                    }
-                    } />
-                } />
-            </List.Content>
-          </List.Item>
-          {ptui.getSceneCreatures(scene).map(creature => {
-            const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
-            const vis_desc = vis.t === 'GMOnly'
-              ? 'Only visible to the GM' : 'Visible to all players';
-            return <List.Item key={creature.id}>
-              <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
-              {creature.name}
-              <List.Content floated='right'>
-                <Popup
-                  trigger={<Icon name='eye'
-                    style={{ cursor: "pointer" }}
-                    disabled={vis.t === 'GMOnly'}
-                    onClick={() => {
-                      const new_vis: T.Visibility =
-                        vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
-
-                      const new_scene = {
-                        ...scene,
-                        creatures: scene.creatures.set(creature.id, [pos, new_vis]),
-                      };
-                      ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
-                    }} />}
-                  content={vis_desc}
-                />
-              </List.Content>
-            </List.Item>;
-          }
-          )}
-        </List>,
+        content: <GMSceneCreatures scene={scene} />,
       }]} />
     </Segment>;
+  });
+
+export const GMSceneCreatures = M.connectRedux(
+  function GMSceneCreatures({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+    return <List>
+      <List.Item key="add">
+        <List.Content>
+          <CV.ModalMaker
+            button={toggler =>
+              <Icon name="edit" onClick={toggler} style={{ cursor: "pointer" }} />}
+            modal={toggler =>
+              <Campaign.MultiCreatureSelector
+                already_selected={scene.creatures.keySeq().toSet()}
+                on_cancel={toggler}
+                on_selected={cids => {
+                  let new_creatures = cids.reduce(
+                    (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
+                    ) => {
+                      if (acc.has(cid)) {
+                        return acc;
+                      } else {
+                        return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
+                      }
+                    }, scene.creatures);
+                  const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
+                  new_creatures = new_creatures.deleteAll(removed_cids);
+                  const new_scene = { ...scene, creatures: new_creatures };
+                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                  toggler();
+                }
+                } />
+            } />
+        </List.Content>
+      </List.Item>
+      {ptui.getSceneCreatures(scene).map(creature => {
+        const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
+        const vis_desc = vis.t === 'GMOnly'
+          ? 'Only visible to the GM' : 'Visible to all players';
+        return <List.Item key={creature.id}>
+          <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
+          {creature.name}
+          <List.Content floated='right'>
+            <Popup
+              trigger={<Icon name='eye'
+                style={{ cursor: "pointer" }}
+                disabled={vis.t === 'GMOnly'}
+                onClick={() => {
+                  const new_vis: T.Visibility =
+                    vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
+
+                  const new_scene = {
+                    ...scene,
+                    creatures: scene.creatures.set(creature.id, [pos, new_vis]),
+                  };
+                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                }} />}
+              content={vis_desc}
+            />
+          </List.Content>
+        </List.Item>;
+      }
+      )}
+    </List>;
   });
 
 export const GMCombat = M.connectRedux(
