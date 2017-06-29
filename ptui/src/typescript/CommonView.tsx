@@ -248,7 +248,7 @@ export class GiveItemComp extends React.Component<
       creature => ({ key: creature.id, text: creature.name, value: creature.id }));
     return <Form>
       <Message>
-        You have {giver.inventory.get(item.id)} of this item. How many would you like to delete?
+        You have {giver.inventory.get(item.id)} of this item. How many would you like to give?
       </Message>
       <Form.Group>
         <PositiveIntegerInput max={giver_count} label="Count" value={this.state.count}
