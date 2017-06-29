@@ -18,11 +18,26 @@ export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
       <Header>{scene.name}</Header>
-      <Accordion panels={[{
+      <Accordion exclusive={false} panels={[{
         title: 'Creatures',
         content: <GMSceneCreatures scene={scene} />,
-      }]} />
+      }, {
+        title: 'Items',
+        content: <GMSceneInventory scene={scene} />
+      }
+      ]} />
     </Segment>;
+  });
+
+export const GMSceneInventory = M.connectRedux(
+  function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+    return <div>
+      <List>
+        {ptui.getSceneInventory(scene).map(([item, count]) =>
+          <List.Item>{item.name}</List.Item>
+        )}
+      </List>
+    </div>;
   });
 
 export const GMSceneCreatures = M.connectRedux(

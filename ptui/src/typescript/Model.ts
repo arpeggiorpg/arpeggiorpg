@@ -323,6 +323,12 @@ export class PTUI {
   getSceneCreatures(scene: T.Scene): Array<T.Creature> {
     return this.getCreatures(scene.creatures.keySeq().toArray());
   }
+
+  getSceneInventory(scene: T.Scene): Array<[T.Item, number]> {
+    return filterMap(scene.inventory.entrySeq().toArray(),
+      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
+
+  }
 }
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
@@ -393,4 +399,11 @@ export function connectRedux<BaseProps>(
   // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
   // `as any`, when I didn't need it previously.
   return (connector as any)(x);
+}
+
+
+export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined {
+  if (x !== undefined) {
+    return f(x);
+  }
 }
