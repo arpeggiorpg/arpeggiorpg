@@ -30,7 +30,7 @@ export const GMSceneInventory = M.connectRedux(
   function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
     return <div>
       <List>
-        <List.Item>
+        <List.Item key="add">
           <List.Content>
             <CV.ModalMaker
               button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
@@ -40,7 +40,7 @@ export const GMSceneInventory = M.connectRedux(
           </List.Content>
         </List.Item>
         {ptui.getSceneInventory(scene).map(([item, count]) =>
-          <List.Item>
+          <List.Item key={`item:${item.id}`}>
             {item.name}
             <Label circular={true} style={{ float: 'right' }}>
               <Dropdown text={count.toString()}
@@ -123,7 +123,7 @@ export const GMSceneCreatures = M.connectRedux(
         const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
         const vis_desc = vis.t === 'GMOnly'
           ? 'Only visible to the GM' : 'Visible to all players';
-        return <List.Item key={creature.id}>
+        return <List.Item key={`cid:${creature.id}`}>
           <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
           {creature.name}
           <List.Content floated='right'>

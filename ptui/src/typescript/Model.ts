@@ -326,7 +326,7 @@ export class PTUI {
 
   getSceneInventory(scene: T.Scene): Array<[T.Item, number]> {
     return filterMap(scene.inventory.entrySeq().toArray(),
-      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
+      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count])).sort();
 
   }
 }
