@@ -113,22 +113,28 @@ export type SecondaryFocus =
   | { t: "Item"; item_id: T.ItemID; }
   ;
 
-function ptfetch<T>(
+function ptfetch<J, R>(
   dispatch: Dispatch, url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<T>, then: (result: T) => void)
-  : Promise<void> {
-  return fetch(url, init)
-    .then(response => response.json())
-    .then(json => {
-      try {
-        return decoder.decodeAny(json);
-      } catch (e) {
-        dispatch({ type: "DisplayError", error: "Failed to decode JSON: " + e.toString() });
-      }
-    })
-    .then(then)
-    .catch(e => dispatch({ type: "DisplayError", error: e.toString() }));
-
+  decoder: JD.Decoder<J>, then: (result: J) => R)
+  : Promise<R> {
+  const p: Promise<Response> = fetch(url, init);
+  const p2: Promise<any> = p.then(response => response.json());
+  const p3: Promise<J> = p2.then(json => {
+    try {
+      return decoder.decodeAny(json);
+    } catch (e) {
+      throw { _pt_error: "JSON", original: e };
+    }
+  });
+  const p4: Promise<R> = p3.then(then);
+  const p5: Promise<R> = p4.catch(
+    e => {
+      const msg = (e._pt_error && e._pt_error === 'JSON') ? "Failed to decode JSON"
+        : "Unhandled error";
+      dispatch({ type: "DisplayError", error: `${msg}: ${e}` });
+      throw e;
+    });
+  return p5;
 }
 
 export class PTUI {
@@ -198,6 +204,16 @@ export class PTUI {
           case "Err": return dispatch({ type: "DisplayError", error: x.error });
         }
       });
+  }
+
+  fetchSavedGames(dispatch: Dispatch): Promise<Array<string>> {
+    return ptfetch(dispatch, this.rpi_url + 'saved_games', undefined, JD.array(JD.string()),
+      x => x);
+  }
+
+  loadGame(dispatch: Dispatch, game: string): Promise<undefined> {
+    return ptfetch(dispatch, `${this.rpi_url}saved_games/${game}/load`, {method: 'POST'},
+      JD.succeed(undefined), x => x);
   }
 
   focused_scene(): T.Scene | undefined {

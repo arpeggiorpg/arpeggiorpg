@@ -5,8 +5,8 @@ import * as React from 'react';
 import * as Dice from './Dice';
 
 import {
-  Accordion, Button, Card, Dropdown, Form, Header, Icon, Input, Label, List, Message, Modal, Popup,
-  Segment
+  Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Loader,
+  Menu, Message, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -602,3 +602,54 @@ export const GMViewItem = M.connectRedux(
       </Card.Content>
     </Card>;
   });
+
+
+export const SavedGames = M.connectRedux(
+  function SavedGames(props: M.ReduxProps): JSX.Element {
+    return <Button.Group>
+      <CV.ModalMaker
+        button={open => <Button onClick={open}>Load Game</Button>}
+        header={<span>Load a Game</span>}
+        content={close => <LoadGameForm onClose={close} />} />
+      {/*<CV.ModalMaker
+        button={open => <Button onClick={open}>Save Game</Button>}
+        header={<span>Save Game</span>}
+        content={close => <SaveGameForm onClose={close} />} />*/}
+    </Button.Group>;
+  });
+
+export const LoadGameForm = M.connectRedux(
+  function LoadGameForm(props: { onClose: () => void } & M.ReduxProps) {
+    const { onClose, ptui, dispatch } = props;
+    return <GameList onSelect={game => { ptui.loadGame(dispatch, game); onClose(); }} />;
+  });
+
+class GameListComp
+  extends React.Component<{ onSelect: (game: string) => void } & M.ReduxProps,
+  { games: Array<string> | undefined }> {
+
+  constructor(props: { onSelect: (game: string) => void } & M.ReduxProps) {
+    super(props);
+    this.state = { games: undefined };
+  }
+
+  componentDidMount() {
+    this.props.ptui.fetchSavedGames(this.props.dispatch).then(games => this.setState({ games }));
+  }
+
+  render(): JSX.Element {
+    const { onSelect } = this.props;
+    if (this.state.games === undefined) {
+      return <Dimmer active={true} inverted={true}>
+        <Loader inverted={true}>Loading games...</Loader>
+      </Dimmer>;
+    } else {
+      return <Menu>
+        {this.state.games.map(name => <Menu.Item key={name} onClick={() => onSelect(name)}>
+          {name}
+        </Menu.Item>)}
+      </Menu>;
+    }
+  }
+}
+const GameList = M.connectRedux(GameListComp);
