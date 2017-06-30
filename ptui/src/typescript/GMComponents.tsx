@@ -40,7 +40,13 @@ export const GMSceneChallenges = M.connectRedux(
         />
       </List.Item>
       {challenges.map(([description, challenge]) =>
-        <List.Item key={`challenge:${description}`}>{description}</List.Item>)}
+        <List.Item key={`challenge:${description}`}
+          header={description}
+          description={
+            `${challenge.target} ${LD.capitalize(challenge.attr)} `
+            + (challenge.reliable ? "(reliable)" : "")}
+        />
+      )}
     </List>;
   });
 
