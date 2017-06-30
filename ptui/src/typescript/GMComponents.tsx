@@ -6,7 +6,7 @@ import * as React from 'react';
 import * as Dice from './Dice';
 
 import {
-  Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Loader,
+  Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
   Menu, Message, Modal, Popup, Segment
 } from 'semantic-ui-react';
 
@@ -39,13 +39,19 @@ export const GMSceneChallenges = M.connectRedux(
           content={close => <AddChallengeToScene scene={scene} onClose={close} />}
         />
       </List.Item>
-      {challenges.map(([description, challenge]) =>
-        <List.Item key={`challenge:${description}`}
-          header={description}
-          description={
-            `${challenge.target} ${LD.capitalize(challenge.attr)} `
-            + (challenge.reliable ? "(reliable)" : "")}
-        />
+      {challenges.map(([description, challenge]) => {
+        return <List.Item key={`challenge:${description}`}>
+          <CV.ModalMaker
+            button={open => <Item.Header onClick={open}>{description}</Item.Header>}
+            header={<span>Execute Challenge: {description}</span>}
+            content={close => <div>Challenge it up!</div>}
+          />
+          <Item.Description>
+            {challenge.target} {" "} {LD.capitalize(challenge.attr)} {" "}
+            {challenge.reliable ? "(reliable)" : ""}
+          </Item.Description>
+        </List.Item>;
+      }
       )}
     </List>;
   });
