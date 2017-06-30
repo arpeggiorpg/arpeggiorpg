@@ -305,7 +305,8 @@ export interface AttributeCheck {
 }
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
-const SKILL_LEVELS: Array<SkillLevel> = ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
+export const SKILL_LEVELS: Array<SkillLevel> =
+  ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
 export interface Note {
   name: string;
@@ -317,7 +318,7 @@ export interface Scene {
   name: string;
   map: MapID;
   creatures: I.Map<CreatureID, [Point3, Visibility]>;
-  attribute_checks: I.Map<Attr, AttributeCheck>;
+  attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
 }
 

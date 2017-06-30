@@ -1,5 +1,6 @@
 /// A grab-bag of GM-only components
 import * as I from 'immutable';
+import * as LD from 'lodash';
 import * as React from 'react';
 
 import * as Dice from './Dice';
@@ -21,10 +22,74 @@ export const GMScene = M.connectRedux(
       <Header>{scene.name}</Header>
       <Accordion exclusive={false} panels={[
         { title: 'Creatures', content: <GMSceneCreatures scene={scene} /> },
-        { title: 'Items', content: <GMSceneInventory scene={scene} /> }
+        { title: 'Items', content: <GMSceneInventory scene={scene} /> },
+        { title: 'Challenges', content: <GMSceneChallenges scene={scene} /> }
       ]} />
     </Segment>;
   });
+
+export const GMSceneChallenges = M.connectRedux(
+  function GMSCeneChallenges({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+    const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
+    return <List relaxed={true}>
+      <List.Item key="add">
+        <CV.ModalMaker
+          button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
+          header={<span>Add challenge to {scene.name}</span>}
+          content={close => <AddChallengeToScene scene={scene} onClose={close} />}
+        />
+      </List.Item>
+      {challenges.map(([description, challenge]) =>
+        <List.Item key={`challenge:${description}`}>{description}</List.Item>)}
+    </List>;
+  });
+
+class AddChallengeToSceneComp extends React.Component<
+  { scene: T.Scene; onClose: () => void } & M.ReduxProps,
+  { description: string; attr: T.AttrID; reliable: boolean; target: T.SkillLevel }> {
+  constructor(props: { scene: T.Scene; onClose: () => void } & M.ReduxProps) {
+    super(props);
+    this.state = { description: '', attr: 'strength', reliable: false, target: 'Inept' };
+  }
+  render() {
+    const { onClose } = this.props;
+    // TODO: Store attributes on the Game and stop hardcoding them here
+    const attr_options = ['strength', 'finesse', 'magic', 'perception'].map(attr =>
+      ({ key: attr, text: LD.capitalize(attr), value: attr }));
+    const skill_level_options = T.SKILL_LEVELS.map(level =>
+      ({ key: level, text: level, value: level }));
+    return <Form>
+      <Form.Input label="Description" onChange={(_, d) => this.setState({ description: d.value })} />
+      <Form.Group>
+        <Form.Select label="Attribute" options={attr_options}
+          onChange={(_, d) => this.setState({ attr: d.value as string })} />
+        <Form.Select label="Difficulty" options={skill_level_options}
+          value={this.state.target}
+          onChange={(_, d) => this.setState({ target: d.value as T.SkillLevel })} />
+      </Form.Group>
+      <Form.Checkbox label='Reliable?' checked={this.state.reliable}
+        onChange={(_, d) => this.setState({ reliable: d.checked as boolean })} />
+      <Form.Group>
+        <Form.Button onClick={() => this.save()}>Save</Form.Button>
+        <Form.Button onClick={onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form >;
+  }
+
+  save() {
+    const { scene, onClose, ptui, dispatch } = this.props;
+    const check = {
+      attr: this.state.attr, target: this.state.target, reliable: this.state.reliable,
+    };
+    const new_scene = {
+      ...scene, attribute_checks: scene.attribute_checks.set(this.state.description, check),
+    };
+    ptui.sendCommand(dispatch, { t: 'EditScene', scene: new_scene });
+    onClose();
+  }
+}
+
+const AddChallengeToScene = M.connectRedux(AddChallengeToSceneComp);
 
 export const GMSceneInventory = M.connectRedux(
   function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
