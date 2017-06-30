@@ -68,10 +68,17 @@ export const GMCreatureInventory = M.connectRedux(
     const items = ptui.getItems(inv.keySeq().toArray());
 
     return <List relaxed={true}>
+      <List.Item key="add">
+        <CV.ModalMaker
+          button={pop => <Button onClick={pop}>Add</Button>}
+          header={<span>Add items to {creature.name}</span>}
+          content={close => <AddItemsToCreature creature={creature} onClose={close} />}
+        />
+      </List.Item>
       {items.map(item => {
         const count = inv.get(item.id);
         if (!count) { return; }
-        return <List.Item key={item.id}>
+        return <List.Item key={`item:${item.id}`}>
           {item.name}
           <div style={{ float: 'right', display: 'flex' }}>
             <CreatureItemCountEditor creature={creature} item={item} count={count} />
@@ -172,6 +179,20 @@ export const AddItemsToScene = M.connectRedux(
         const inventory = scene.inventory.mergeWith((o, n) => o,
           I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
         ptui.sendCommand(dispatch, { t: "EditScene", scene: { ...scene, inventory } });
+        onClose();
+      }}
+      on_cancel={onClose}
+    />;
+  });
+
+export const AddItemsToCreature = M.connectRedux(
+  function AddItemsToCreature(props: { creature: T.Creature, onClose: () => void } & M.ReduxProps) {
+    const { creature, onClose, ptui, dispatch } = props;
+    return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
+      on_selected={item_ids => {
+        const inventory = creature.inventory.mergeWith((o, n) => o,
+          I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
+        ptui.sendCommand(dispatch, { t: "EditCreature", creature: { ...creature, inventory } });
         onClose();
       }}
       on_cancel={onClose}
