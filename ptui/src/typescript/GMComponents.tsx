@@ -61,24 +61,79 @@ export const GMSceneInventory = M.connectRedux(
     </div>;
   });
 
+export const GMCreatureInventory = M.connectRedux(
+  function CreatureInventory({ creature, ptui }: { creature: T.Creature } & M.ReduxProps)
+    : JSX.Element {
+    const inv = creature.inventory;
+    const items = ptui.getItems(inv.keySeq().toArray());
+
+    return <List relaxed={true}>
+      {items.map(item => {
+        const count = inv.get(item.id);
+        if (!count) { return; }
+        return <List.Item key={item.id}>
+          {item.name}
+          <div style={{ float: 'right', display: 'flex' }}>
+            <CreatureItemCountEditor creature={creature} item={item} count={count} />
+            <Dropdown icon='caret down'
+              className='right' pointing={true} floating={true}>
+              <Dropdown.Menu>
+                <Dropdown.Header content={item.name} />
+                <CV.ModalMaker
+                  button={open => <Dropdown.Item onClick={open} content='Give' />}
+                  header={<span>Give {item.name}</span>}
+                  content={close => <CV.GiveItem giver={creature} item={item} onClose={close} />} />
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+        </List.Item>;
+      }
+      )}
+    </List>;
+
+  }
+);
+
+
+export const EditableNumericLabel = M.connectRedux(
+  function EditableNumericLabel(props: { value: number, save: (num: number) => void; }) {
+    const { value, save } = props;
+    const edit = (to_view: CV.ToggleFunc) =>
+      <TextInput.TextInput defaultValue={value.toString()} numbersOnly={true}
+        onSubmit={input => { save(Number(input)); to_view(); }} onCancel={to_view}
+      />;
+    const view = (to_edit: CV.ToggleFunc) =>
+      <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{value}</Label>;
+    return <CV.Toggler a={view} b={edit} />;
+  }
+);
 
 export const SceneItemCountEditor = M.connectRedux(
   function SceneItemCountEditor(
     props: { scene: T.Scene, item: T.Item, count: number } & M.ReduxProps) {
     const { scene, item, count, ptui, dispatch } = props;
-    const edit = (to_view: CV.ToggleFunc) =>
-      <TextInput.TextInput defaultValue={count.toString()} numbersOnly={true}
-        onSubmit={input => { save(input); to_view(); }} onCancel={to_view}
-      />;
-    const view = (to_edit: CV.ToggleFunc) =>
-      <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{count}</Label>;
-    return <CV.Toggler a={view} b={edit} />;
+    return <EditableNumericLabel value={count} save={save} />;
 
-    function save(input: string) {
-      const num = Number(input); // should be safe because we used numbersOnly
+    function save(num: number) {
       const new_inv = num <= 0 ? scene.inventory.delete(item.id) : scene.inventory.set(item.id, num);
       const newScene = { ...scene, inventory: scene.inventory.set(item.id, num) };
       ptui.sendCommand(dispatch, { t: 'EditScene', scene: { ...scene, inventory: new_inv } });
+    }
+  });
+
+export const CreatureItemCountEditor = M.connectRedux(
+  function CreatureItemCountEditor(
+    props: { creature: T.Creature, item: T.Item, count: number } & M.ReduxProps) {
+    const { creature, item, count, ptui, dispatch } = props;
+    return <EditableNumericLabel value={count} save={save} />;
+
+    function save(num: number) {
+      const new_inv = num <= 0 ? creature.inventory.delete(item.id)
+        : creature.inventory.set(item.id, num);
+      const newCreature = { ...creature, inventory: creature.inventory.set(item.id, num) };
+      ptui.sendCommand(dispatch, {
+        t: 'EditCreature', creature: { ...creature, inventory: new_inv },
+      });
     }
   });
 

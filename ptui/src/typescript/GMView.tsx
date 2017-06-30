@@ -42,7 +42,7 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
       return creature
         ? <div>
           <GM.GMCreatureCard creature={creature} />
-          <CV.CreatureInventory creature={creature} />
+          <GM.GMCreatureInventory creature={creature} />
         </div>
         : undefined;
     case "Item":
