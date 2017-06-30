@@ -29,7 +29,7 @@ export const GMScene = M.connectRedux(
 export const GMSceneInventory = M.connectRedux(
   function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
     return <div>
-      <List>
+      <List relaxed={true}>
         <List.Item key="add">
           <List.Content>
             <CV.ModalMaker
@@ -125,7 +125,7 @@ export const AddItemsToScene = M.connectRedux(
 
 export const GMSceneCreatures = M.connectRedux(
   function GMSceneCreatures({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
-    return <List>
+    return <List relaxed={true}>
       <List.Item key="add">
         <List.Content>
           <CV.ModalMaker
