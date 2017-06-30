@@ -41,8 +41,9 @@ export const GMSceneInventory = M.connectRedux(
         {ptui.getSceneInventory(scene).map(([item, count]) =>
           <List.Item key={`item:${item.id}`}>
             {item.name}
-            <Label circular={true} style={{ float: 'right' }}>
-              <Dropdown text={count.toString()}
+            <div style={{ float: 'right', display: 'flex' }}>
+              <SceneItemCountEditor scene={scene} item={item} count={count} />
+              <Dropdown
                 icon="caret down" className="right" floating={true} pointing={true}>
                 <Dropdown.Menu>
                   <Dropdown.Header content={item.name} />
@@ -51,17 +52,34 @@ export const GMSceneInventory = M.connectRedux(
                     header={<span>Give {item.name} from {scene.name}</span>}
                     content={close =>
                       <GiveItemFromScene scene={scene} item={item} onClose={close} />} />
-                  <CV.ModalMaker
-                    button={toggler => <Dropdown.Item onClick={toggler} content="Remove" />}
-                    header={<span>Remove {item.name} from {scene.name}</span>}
-                    content={close => <div>TBI</div>} />
                 </Dropdown.Menu>
               </Dropdown>
-            </Label>
+            </div>
           </List.Item>
         )}
       </List>
     </div>;
+  });
+
+
+export const SceneItemCountEditor = M.connectRedux(
+  function SceneItemCountEditor(
+    props: { scene: T.Scene, item: T.Item, count: number } & M.ReduxProps) {
+    const { scene, item, count, ptui, dispatch } = props;
+    const edit = (to_view: CV.ToggleFunc) =>
+      <TextInput.TextInput defaultValue={count.toString()} numbersOnly={true}
+        onSubmit={input => { save(input); to_view(); }} onCancel={to_view}
+      />;
+    const view = (to_edit: CV.ToggleFunc) =>
+      <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{count}</Label>;
+    return <CV.Toggler a={view} b={edit} />;
+
+    function save(input: string) {
+      const num = Number(input); // should be safe because we used numbersOnly
+      const new_inv = num <= 0 ? scene.inventory.delete(item.id) : scene.inventory.set(item.id, num);
+      const newScene = { ...scene, inventory: scene.inventory.set(item.id, num) };
+      ptui.sendCommand(dispatch, { t: 'EditScene', scene: { ...scene, inventory: new_inv } });
+    }
   });
 
 export const GiveItemFromScene = M.connectRedux(
@@ -86,6 +104,7 @@ export const GiveItemFromScene = M.connectRedux(
       };
       ptui.sendCommand(dispatch, { t: "EditScene", scene: newScene });
       ptui.sendCommand(dispatch, { t: "EditCreature", creature: newCreature });
+      onClose();
     }
 
   });
