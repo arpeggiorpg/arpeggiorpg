@@ -752,12 +752,10 @@ export function ModalMaker({ button, header, content }: {
   return <Toggler
     a={button}
     b={tf =>
-      <div>
-        {button}
+      <div>{button(tf)}
         <Modal dimmer='inverted' open={true} onClose={tf}>
           <Modal.Header>{header}</Modal.Header>
           <Modal.Content>{content(tf)}</Modal.Content>
         </Modal>
-      </div>}
-  />;
+      </div>} />;
 }
