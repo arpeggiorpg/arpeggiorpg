@@ -611,18 +611,44 @@ export const SavedGames = M.connectRedux(
         button={open => <Button onClick={open}>Load Game</Button>}
         header={<span>Load a Game</span>}
         content={close => <LoadGameForm onClose={close} />} />
-      {/*<CV.ModalMaker
+      <CV.ModalMaker
         button={open => <Button onClick={open}>Save Game</Button>}
         header={<span>Save Game</span>}
-        content={close => <SaveGameForm onClose={close} />} />*/}
+        content={close => <SaveGameForm onClose={close} />} />
     </Button.Group>;
   });
 
 export const LoadGameForm = M.connectRedux(
   function LoadGameForm(props: { onClose: () => void } & M.ReduxProps) {
     const { onClose, ptui, dispatch } = props;
-    return <GameList onSelect={game => { ptui.loadGame(dispatch, game); onClose(); }} />;
+    return <Form>
+      <GameList onSelect={game => { ptui.loadGame(dispatch, game); onClose(); }} />
+      <Form.Button onClick={onClose}>Cancel</Form.Button>
+    </Form>;
   });
+
+
+class SaveGameFormComp
+  extends React.Component<{ onClose: () => void } & M.ReduxProps, { name: string }> {
+  constructor(props: { onClose: () => void } & M.ReduxProps) {
+    super(props);
+    this.state = { name: "" };
+  }
+  render(): JSX.Element {
+    const { onClose, ptui, dispatch } = this.props;
+    return <Form>
+      <Form.Input label="Name" value={this.state.name}
+        onChange={(_, d) => this.setState({ name: d.value })} />
+      <GameList onSelect={game => this.setState({ name: game })} />
+      <Form.Group>
+        <Form.Button disabled={this.state.name === ""}
+          onClick={() => { ptui.saveGame(dispatch, this.state.name); onClose(); }}>Save</Form.Button>
+        <Form.Button onClick={onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>;
+  }
+}
+export const SaveGameForm = M.connectRedux(SaveGameFormComp);
 
 class GameListComp
   extends React.Component<{ onSelect: (game: string) => void } & M.ReduxProps,
@@ -644,7 +670,7 @@ class GameListComp
         <Loader inverted={true}>Loading games...</Loader>
       </Dimmer>;
     } else {
-      return <Menu>
+      return <Menu vertical={true}>
         {this.state.games.map(name => <Menu.Item key={name} onClick={() => onSelect(name)}>
           {name}
         </Menu.Item>)}

@@ -212,7 +212,12 @@ export class PTUI {
   }
 
   loadGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${this.rpi_url}saved_games/${game}/load`, {method: 'POST'},
+    return ptfetch(dispatch, `${this.rpi_url}saved_games/${game}/load`, { method: 'POST' },
+      JD.succeed(undefined), x => x);
+  }
+
+  saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
+    return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
 
