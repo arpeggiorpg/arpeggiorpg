@@ -90,6 +90,7 @@ export interface FolderNode {
 
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
+  | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
@@ -775,6 +776,8 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
+    case "GiveCreaturesToPlayer":
+      return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };

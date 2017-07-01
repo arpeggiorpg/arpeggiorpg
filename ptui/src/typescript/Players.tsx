@@ -1,8 +1,11 @@
+import * as I from 'immutable';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
 import { Button, List, Table } from 'semantic-ui-react';
 
+import * as Campaign from './Campaign';
+import * as CV from './CommonView';
 import * as M from './Model';
 import * as T from './PTTypes';
 
@@ -49,7 +52,11 @@ export const Players = M.connectRedux(
               <Table.Cell>
                 <Button.Group vertical={true}>
                   {sceneButtons}
-                  <Button onClick={() => console.log("Grant creatures plz")}>Grant creatures</Button>
+                  <CV.ModalMaker
+                    button={open => <Button onClick={open}>Grant creatures</Button>}
+                    header={<span>Grant creatures to {player.player_id}</span>}
+                    content={close => <GrantCreaturesToPlayer player={player} onDone={close} />}
+                  />
                 </Button.Group>
               </Table.Cell>
             </Table.Row>;
@@ -65,4 +72,20 @@ export const Players = M.connectRedux(
         {text}
       </Button >;
     }
+  });
+
+
+export const GrantCreaturesToPlayer = M.connectRedux(
+  function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void; } & M.ReduxProps)
+    : JSX.Element {
+    const { player, onDone, ptui, dispatch } = props;
+    return <Campaign.MultiCreatureSelector
+      already_selected={I.Set(player.creatures)}
+      on_cancel={onDone}
+      on_selected={cids => {
+        ptui.sendCommand(dispatch,
+          { t: 'GiveCreaturesToPlayer', player_id: player.player_id, creature_ids: cids.toArray() });
+        onDone();
+      }}
+    />;
   });
