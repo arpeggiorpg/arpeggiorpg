@@ -250,7 +250,7 @@ export class PTUI {
     // oh for Rust's "?" operator
     const pid = this.state.player_id;
     if (pid) {
-      const player = this.app.players[pid];
+      const player = this.app.players.get(pid);
       if (player && player.scene) {
         return get(this.app.current_game.scenes, player.scene);
       }

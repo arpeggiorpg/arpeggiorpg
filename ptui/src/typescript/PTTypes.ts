@@ -26,7 +26,7 @@ export type FolderPath = Array<string>;
 
 export interface App {
   snapshots: AppSnapshots;
-  players: AppPlayers;
+  players: I.Map<PlayerID, Player>;
   current_game: Game;
 }
 
@@ -173,7 +173,6 @@ export interface Player {
 }
 
 export type AppSnapshots = Array<{ snapshot: {}, logs: Array<GameLog> }>;
-export interface AppPlayers { [index: string]: Player; }
 
 export type GameLog =
   | {
@@ -664,8 +663,6 @@ export const decodePlayer: Decoder<Player> = JD.object(
   (player_id, scene, creatures) => ({ player_id, scene, creatures })
 );
 
-export const decodeAppPlayers: Decoder<AppPlayers> = JD.dict(decodePlayer);
-
 const decodeClass: Decoder<Class> = JD.object(
   ["color", JD.string()],
   color => ({ color })
@@ -761,7 +758,7 @@ export const decodeGame: Decoder<Game> = JD.object(
 
 export const decodeApp: Decoder<App> = JD.object(
   ["snapshots", decodeAppSnapshots],
-  ["players", decodeAppPlayers],
+  ["players", JD.map(I.Map, JD.dict(decodePlayer))],
   ["current_game", decodeGame],
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );

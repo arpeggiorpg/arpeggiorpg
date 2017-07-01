@@ -14,8 +14,7 @@ export const Players = M.connectRedux(
     const app = ptui.app;
 
     return <div>{
-      Object.keys(app.players).map(pid => {
-        const player = app.players[pid];
+      app.players.entrySeq().toArray().map(([pid, player]) => {
         const sceneButtons = [];
         if (player.scene) {
           sceneButtons.push(setSceneButton(pid, "Remove from Scene", undefined));

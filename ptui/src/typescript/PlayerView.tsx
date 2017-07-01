@@ -22,7 +22,7 @@ export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_playe
   render(): JSX.Element {
     const { ptui, dispatch } = this.props;
     if (ptui.state.player_id) {
-      const player = M.get(ptui.app.players, ptui.state.player_id);
+      const player = ptui.app.players.get(ptui.state.player_id);
       if (player) {
         return <PlayerGameView player={player} />;
       } else {
@@ -33,11 +33,11 @@ export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_playe
         <div style={{ width: "600px" }}>
           <h1>P&T</h1>
           <p>Welcome to P&T!</p>
-          {LD.keys(ptui.app.players).length > 0
+          {ptui.app.players.count() > 0
             ? <div>
               <p>You can rejoin a session if you've already registered as a player.</p>
               <Menu compact={true}>
-                {LD.keys(ptui.app.players).map(pid =>
+                {ptui.app.players.keySeq().toArray().map(pid =>
                   <Menu.Item key={pid}
                     onClick={() => dispatch({ type: "SetPlayerID", pid })}
                     name={pid} />)
