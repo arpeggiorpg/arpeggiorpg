@@ -113,20 +113,28 @@ export type SecondaryFocus =
   | { t: "Item"; item_id: T.ItemID; }
   ;
 
-function ptfetch<J, R>(
+
+function decodeFetch<J>(
   dispatch: Dispatch, url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>, then: (result: J) => R)
-  : Promise<R> {
+  decoder: JD.Decoder<J>): Promise<J> {
   const p: Promise<Response> = fetch(url, init);
   const p2: Promise<any> = p.then(response => response.json());
-  const p3: Promise<J> = p2.then(json => {
+  return p2.then(json => {
     try {
       return decoder.decodeAny(json);
     } catch (e) {
       throw { _pt_error: "JSON", original: e };
     }
   });
-  const p4: Promise<R> = p3.then(then);
+}
+
+
+function ptfetch<J, R>(
+  dispatch: Dispatch, url: string, init: RequestInit | undefined,
+  decoder: JD.Decoder<J>, then: (result: J) => R)
+  : Promise<R> {
+  const json_promise = decodeFetch(dispatch, url, init, decoder);
+  const p4: Promise<R> = json_promise.then(then);
   const p5: Promise<R> = p4.catch(
     e => {
       const msg = (e._pt_error && e._pt_error === 'JSON') ? "Failed to decode JSON"
@@ -184,7 +192,7 @@ export class PTUI {
     this.sendCommand(dispatch, { t: "PathCurrentCombatCreature", dest });
   }
 
-  sendCommand(dispatch: Dispatch, cmd: T.GameCommand) {
+  sendCommand(dispatch: Dispatch, cmd: T.GameCommand): void {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     ptfetch(
@@ -195,15 +203,32 @@ export class PTUI {
         headers: { "content-type": "application/json" },
       },
       T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
-      (x: T.RustResult<Array<T.GameLog>, string> | undefined) => {
-        if (!x) { return; }
+      (x: T.RustResult<Array<T.GameLog>, string>) => {
         switch (x.t) {
           case "Ok":
             // turns out that post is *not* returning the App, just the logs!
-            return; // dispatch({ type: "RefreshApp", app: x.result });
-          case "Err": return dispatch({ type: "DisplayError", error: x.error });
+            return x.result; // dispatch({ type: "RefreshApp", app: x.result });
+          case "Err":
+            dispatch({ type: "DisplayError", error: x.error });
+            throw new Error(`ptfetch error dispatched`);
         }
       });
+  }
+
+  /// Send a Command and *don't* automatically handle errors.
+  sendCommandWithResult(dispatch: Dispatch, cmd: T.GameCommand)
+    : Promise<T.RustResult<Array<T.GameLog>, string>> {
+    const json = T.encodeGameCommand(cmd);
+    console.log("[sendCommand:JSON]", json);
+    const rpi_result = decodeFetch(
+      dispatch, this.rpi_url,
+      {
+        method: "POST",
+        body: JSON.stringify(json),
+        headers: { "content-type": "application/json" },
+      },
+      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()));
+    return rpi_result;
   }
 
   fetchSavedGames(dispatch: Dispatch): Promise<Array<string>> {

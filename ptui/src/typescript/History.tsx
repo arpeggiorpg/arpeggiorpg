@@ -32,7 +32,7 @@ class HistoryComp extends React.Component<M.ReduxProps, undefined> {
           logs.map((log: T.GameLog, log_index) =>
             <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
               key={snapshot_index.toString() + "-" + log_index.toString()}>
-              {gameLog(log)}
+              <GameLog log={log} />
               <button className="material-icons"
                 onClick={() =>
                   ptui.sendCommand(dispatch, { t: "Rollback", snapshot_index, log_index })}
@@ -45,7 +45,8 @@ class HistoryComp extends React.Component<M.ReduxProps, undefined> {
 
 export const History = M.connectRedux(HistoryComp);
 
-function gameLog(log: T.GameLog): JSX.Element | null {
+export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
+  const { log } = props;
   switch (log.t) {
     case "AttributeCheckResult":
       return <Flexbox>

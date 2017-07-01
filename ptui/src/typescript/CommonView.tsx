@@ -759,3 +759,9 @@ export function ModalMaker({ button, header, content }: {
         </Modal>
       </div>} />;
 }
+
+export function describeChallenge(challenge: T.AttributeCheck) {
+  return `${challenge.target} ${LD.capitalize(challenge.attr)}
+   ${challenge.reliable ? "(reliable)" : ""}`;
+
+}

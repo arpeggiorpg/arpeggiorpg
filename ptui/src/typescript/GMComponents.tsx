@@ -7,7 +7,7 @@ import * as Dice from './Dice';
 
 import {
   Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
-  Menu, Message, Modal, Popup, Segment
+  Menu, Message, Modal, Popup, Segment, Table
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -45,37 +45,44 @@ export const GMSceneChallenges = M.connectRedux(
             button={open => <Item.Header style={{ cursor: 'pointer' }} onClick={open}>
               {description}
             </Item.Header>}
-            header={<span>Challenge: {description}</span>}
+            header={<span>Challenge</span>}
             content={close => <GMChallenge scene={scene} description={description}
-              challenge={challenge} />}
+              challenge={challenge} onClose={close} />}
           />
-          <Item.Description>
-            {challenge.target} {" "} {LD.capitalize(challenge.attr)} {" "}
-            {challenge.reliable ? "(reliable)" : ""}
-          </Item.Description>
+          <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
         </List.Item>;
       }
       )}
     </List>;
   });
 
-interface GMChallengeCompProps {
+interface GMChallengeProps {
   scene: T.Scene;
   description: string;
   challenge: T.AttributeCheck;
+  onClose: () => void;
 }
-interface GMChallengeCompState {
+interface GMChallengeState {
   creatures: I.Set<T.CreatureID>;
+  results: I.Map<T.CreatureID, T.GameLog | string> | undefined;
 }
 class GMChallengeComp
-  extends React.Component<GMChallengeCompProps & M.ReduxProps, GMChallengeCompState> {
-  constructor(props: GMChallengeCompProps & M.ReduxProps) {
+  extends React.Component<GMChallengeProps & M.ReduxProps, GMChallengeState> {
+  constructor(props: GMChallengeProps & M.ReduxProps) {
     super(props);
-    this.state = { creatures: I.Set() };
+    this.state = { creatures: I.Set(), results: undefined };
   }
   render(): JSX.Element {
-    const { scene, description, challenge } = this.props;
-    return <Segment>
+    const { scene, description, challenge, onClose, ptui } = this.props;
+    return <div>
+      <List>
+        <List.Item>
+          <Item.Header>{description}</Item.Header>
+          <Item.Content>
+            <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
+          </Item.Content>
+        </List.Item>
+      </List>
       <Header>Select creatures to challenge</Header>
       <SelectSceneCreatures
         scene={scene}
@@ -83,10 +90,70 @@ class GMChallengeComp
         add={cid => this.setState({ creatures: this.state.creatures.add(cid) })}
         remove={cid => this.setState({ creatures: this.state.creatures.delete(cid) })} />
       <Button.Group>
-        <Button>Challenge</Button>
-        <Button>Cancel</Button>
+        <Button onClick={() => this.challenge()}>Challenge</Button>
+        <Button onClick={onClose}>Cancel</Button>
       </Button.Group>
-    </Segment>;
+      {this.state.results === undefined ? null :
+
+        this.state.results.count() !== this.state.creatures.count()
+          ? <Loader />
+          : <Table celled={true}>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>Creature</Table.HeaderCell>
+                <Table.HeaderCell>Creature's Skill</Table.HeaderCell>
+                <Table.HeaderCell>Roll</Table.HeaderCell>
+                <Table.HeaderCell>Success?</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {this.state.results.entrySeq().toArray().map(([creature_id, result]) => {
+                const creature = ptui.getCreature(creature_id);
+                const creature_name = creature ? creature.name : "Creature disappeared!";
+                const creature_skill_level = creature
+                  ? creature.attributes.get(challenge.attr)
+                  : 'Creature does not have attribute';
+                return <Table.Row key={creature_id}>
+                  <Table.Cell>{creature_name}</Table.Cell>
+                  <Table.Cell>{creature_skill_level}</Table.Cell>
+                  {typeof result === 'string'
+                    ? <Table.Cell colSpan={2}>{result.toString()}</Table.Cell>
+                    : result.t !== 'AttributeCheckResult'
+                      ? <Table.Cell colSpan={2}>BUG: Unexpected GameLog result</Table.Cell>
+                      : [
+                        <Table.Cell>{result.actual}</Table.Cell>,
+                        <Table.Cell>{result.success ? '😃' : '😡'}</Table.Cell>]
+                  }
+                </Table.Row>;
+              }
+              )}
+            </Table.Body>
+          </Table>
+      }
+    </div>;
+  }
+  challenge() {
+    const { ptui, dispatch } = this.props;
+    const promises: Array<Promise<[T.CreatureID, T.GameLog | string]>> =
+      this.state.creatures.toArray().map(
+        creature_id => ptui.sendCommandWithResult(
+          dispatch, { t: 'AttributeCheck', creature_id, check: this.props.challenge })
+          .then(
+          (result): [T.CreatureID, T.GameLog | string] => {
+            if (result.t !== 'Ok') {
+              return [creature_id, result.error];
+            } else {
+              if (result.result.length !== 1) {
+                return [creature_id, "Got unexpected results"];
+              } else {
+                return [creature_id, result.result[0]];
+              }
+            }
+          }
+          ));
+    const gathered: Promise<Array<[T.CreatureID, T.GameLog | string]>> = Promise.all(promises);
+    this.setState({ results: I.Map() as I.Map<T.CreatureID, T.GameLog> });
+    gathered.then(rpi_results => this.setState({ results: I.Map(rpi_results) }));
   }
 }
 

@@ -105,6 +105,7 @@ export type GameCommand =
   | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
   | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID>; }
   | { t: "StopCombat" }
+  | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck; }
   | { t: "SetPlayerScene"; player_id: PlayerID, scene_id: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number; }
   ;
@@ -275,7 +276,7 @@ export interface Creature {
   conditions: { [index: string]: AppliedCondition }; // key: ConditionID
   note: string;
   portrait_url: string;
-  attributes: { [index: string]: SkillLevel }; // key: AttrID
+  attributes: I.Map<AttrID, SkillLevel>;
   initiative: Dice;
   inventory: I.Map<ItemID, number>;
   size: AABB;
@@ -454,7 +455,7 @@ export const decodeCreature: Decoder<Creature> = object16(
   ["cur_health", JD.number()],
   ["note", JD.string()],
   ["portrait_url", JD.string()],
-  ["attributes", JD.dict(decodeSkillLevel)],
+  ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
   ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
   ["conditions", JD.dict(decodeAppliedCondition)],
   ["initiative", decodeDice],
@@ -801,6 +802,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return { StartCombat: [cmd.scene_id, cmd.creature_ids] };
     case "StopCombat":
       return "StopCombat";
+    case "AttributeCheck":
+      return { AttributeCheck: [cmd.creature_id, encodeAttributeCheck(cmd.check)] };
     case "SetPlayerScene":
       return { SetPlayerScene: [cmd.player_id, cmd.scene_id] };
     case "Rollback":
@@ -830,7 +833,6 @@ function encodeScene(scene: Scene): object {
     creatures: scene.creatures.map(([pos, vis]: [Point3, Visibility]) =>
       [encodePoint3(pos), encodeVisibility(vis)])
       .toObject(),
-    // HashMap < CreatureID, (Point3, Visibility) >,
     attribute_checks: scene.attribute_checks.map(encodeAttributeCheck).toObject(),
     inventory: scene.inventory.toObject(),
   };
@@ -945,7 +947,7 @@ export function encodeCreature(c: Creature): object {
     conditions: LD.mapValues(c.conditions, encodeAppliedCondition),
     note: c.note,
     portrait_url: c.portrait_url,
-    attributes: c.attributes,
+    attributes: c.attributes.toJS(),
     initiative: encodeDice(c.initiative),
     inventory: c.inventory.toJS(),
     size: c.size,
