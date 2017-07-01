@@ -743,7 +743,6 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
   }
 }
 
-
 export function ModalMaker({ button, header, content }: {
   button: (clicker: () => void) => JSX.Element,
   header: JSX.Element,

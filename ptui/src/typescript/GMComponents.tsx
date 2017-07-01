@@ -44,6 +44,21 @@ export const GMSceneChallenges = M.connectRedux(
           <CV.ModalMaker
             button={open => <Item.Header style={{ cursor: 'pointer' }} onClick={open}>
               {description}
+              <Dropdown style={{ float: 'right' }}
+                icon="caret down" className="right" floating={true} pointing={true}>
+                <Dropdown.Menu>
+                  <Dropdown.Header content={description} />
+                  <Dropdown.Item content="Delete"
+                    onClick={() => ptui.sendCommand(dispatch,
+                      {
+                        t: 'EditScene',
+                        scene: {
+                          ...scene, attribute_checks: scene.attribute_checks.delete(description),
+                        },
+                      })}
+                  />
+                </Dropdown.Menu>
+              </Dropdown>
             </Item.Header>}
             header={<span>Challenge</span>}
             content={close => <GMChallenge scene={scene} description={description}
