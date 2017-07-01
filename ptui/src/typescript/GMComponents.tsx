@@ -42,9 +42,12 @@ export const GMSceneChallenges = M.connectRedux(
       {challenges.map(([description, challenge]) => {
         return <List.Item key={`challenge:${description}`}>
           <CV.ModalMaker
-            button={open => <Item.Header onClick={open}>{description}</Item.Header>}
-            header={<span>Execute Challenge: {description}</span>}
-            content={close => <div>Challenge it up!</div>}
+            button={open => <Item.Header style={{ cursor: 'pointer' }} onClick={open}>
+              {description}
+            </Item.Header>}
+            header={<span>Challenge: {description}</span>}
+            content={close => <GMChallenge scene={scene} description={description}
+              challenge={challenge} />}
           />
           <Item.Description>
             {challenge.target} {" "} {LD.capitalize(challenge.attr)} {" "}
@@ -55,6 +58,39 @@ export const GMSceneChallenges = M.connectRedux(
       )}
     </List>;
   });
+
+interface GMChallengeCompProps {
+  scene: T.Scene;
+  description: string;
+  challenge: T.AttributeCheck;
+}
+interface GMChallengeCompState {
+  creatures: I.Set<T.CreatureID>;
+}
+class GMChallengeComp
+  extends React.Component<GMChallengeCompProps & M.ReduxProps, GMChallengeCompState> {
+  constructor(props: GMChallengeCompProps & M.ReduxProps) {
+    super(props);
+    this.state = { creatures: I.Set() };
+  }
+  render(): JSX.Element {
+    const { scene, description, challenge } = this.props;
+    return <Segment>
+      <Header>Select creatures to challenge</Header>
+      <SelectSceneCreatures
+        scene={scene}
+        selections={this.state.creatures}
+        add={cid => this.setState({ creatures: this.state.creatures.add(cid) })}
+        remove={cid => this.setState({ creatures: this.state.creatures.delete(cid) })} />
+      <Button.Group>
+        <Button>Challenge</Button>
+        <Button>Cancel</Button>
+      </Button.Group>
+    </Segment>;
+  }
+}
+
+const GMChallenge = M.connectRedux(GMChallengeComp);
 
 class AddChallengeToSceneComp extends React.Component<
   { scene: T.Scene; onClose: () => void } & M.ReduxProps,
@@ -397,24 +433,38 @@ class StartCombatComp
         onClick={() => ptui.sendCommand(dispatch,
           { t: "StartCombat", scene_id: scene.id, creature_ids: this.state.selected.toArray() })}
       >Start combat</Button>
-      {creatures.map(creature =>
-        <div key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
-          <input type="checkbox" checked={this.state.selected.includes(creature.id)}
-            onChange={nv => handleChange(nv.currentTarget.checked, creature.id)} />
-          {creature.name}
-        </div>)}
+      <SelectSceneCreatures scene={scene}
+        selections={this.state.selected}
+        add={cid => this.setState({ selected: this.state.selected.add(cid) })}
+        remove={cid => this.setState({ selected: this.state.selected.delete(cid) })} />
     </div>;
 
-    function handleChange(add: boolean, creature_id: T.CreatureID) {
-      const new_selected = add
-        ? self.state.selected.add(creature_id)
-        : self.state.selected.remove(creature_id);
-      self.setState({ selected: new_selected });
-    }
   }
 }
 
 const StartCombat = M.connectRedux(StartCombatComp);
+
+interface SelectSceneCreaturesProps {
+  scene: T.Scene;
+  add: (cid: T.CreatureID) => void;
+  remove: (cid: T.CreatureID) => void;
+  selections: I.Set<T.CreatureID>;
+}
+const SelectSceneCreatures = M.connectRedux(
+  function SelectSceneCreatures(props: SelectSceneCreaturesProps & M.ReduxProps): JSX.Element {
+    const { scene, add, remove, selections, ptui } = props;
+    const creatures = ptui.getSceneCreatures(scene);
+    return <List relaxed={true}>
+      {
+        creatures.map(creature =>
+          <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
+            <input type="checkbox" checked={selections.includes(creature.id)}
+              onChange={nv => nv.currentTarget.checked ? add(creature.id) : remove(creature.id)} />
+            {creature.name}
+          </List.Item>)
+      }</List>;
+  });
+
 
 const GMCombatHeader = M.connectRedux(
   function GMCombatHeader({ combat, ptui, dispatch }: { combat: T.Combat } & M.ReduxProps) {
