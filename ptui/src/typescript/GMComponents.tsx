@@ -460,6 +460,7 @@ const SelectSceneCreatures = M.connectRedux(
           <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
             <input type="checkbox" checked={selections.includes(creature.id)}
               onChange={nv => nv.currentTarget.checked ? add(creature.id) : remove(creature.id)} />
+            {CV.classIcon(creature)}
             {creature.name}
           </List.Item>)
       }</List>;
