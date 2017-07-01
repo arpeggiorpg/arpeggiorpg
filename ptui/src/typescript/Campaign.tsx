@@ -84,7 +84,7 @@ class MultiCreatureSelectorComp
   { selections: I.Set<T.CreatureID> }> {
   constructor(props: MultiCreatureSelectorProps & M.ReduxProps) {
     super(props);
-    this.state = { selections: I.Set() };
+    this.state = { selections: this.props.already_selected };
   }
   render(): JSX.Element {
     const { ptui } = this.props;
