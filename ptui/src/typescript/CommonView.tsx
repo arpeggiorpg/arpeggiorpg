@@ -287,8 +287,17 @@ export const GiveItem = M.connectRedux(function GiveItem(props: GiveItemProps & 
   if (!other_creatures) { return <div>There is nobody in this scene to give items to.</div>; }
   const giver_count = giver.inventory.get(item.id);
   if (!giver_count) { return <div>{giver.name} does not have any {item.name} to give.</div>; }
+
+  // If this is the Player UI, we don't want to show invisible creatures:
+  const available_recipients = ptui.state.player_id
+    ? I.List(other_creatures).filter(c => {
+      const entry = scene.creatures.get(c.id);
+      return entry && entry[1].t === 'AllPlayers';
+    }).toArray()
+    : other_creatures;
+
   return <TransferItemsToRecipientForm item={item} available_count={giver_count}
-    available_recipients={other_creatures}
+    available_recipients={available_recipients}
     onGive={(recip, count) => give(recip, count)}
     onClose={onClose} />;
 
