@@ -34,10 +34,20 @@ export const GMScenePlayers = M.connectRedux(
     const { scene, ptui, dispatch } = props;
     const players_here = ptui.app.players.toArray().filter(player => player.scene === scene.id);
     return <List relaxed={true}>
+      <List.Item>
+        <Button onClick={() => moveAll()}>Move all here</Button>
+      </List.Item>
       {players_here.map(player =>
-        <List.Item>{player.player_id}</List.Item>)
+        <List.Item key={player.player_id}>{player.player_id}</List.Item>)
       }
     </List>;
+
+    function moveAll() {
+      for (const player_id of ptui.app.players.keySeq().toArray()) {
+        ptui.sendCommand(dispatch,
+          { t: 'SetPlayerScene', player_id, scene_id: scene.id });
+      }
+    }
   });
 
 export const GMSceneChallenges = M.connectRedux(
