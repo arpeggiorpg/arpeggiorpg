@@ -158,8 +158,8 @@ class GMChallengeComp
                     : result.t !== 'AttributeCheckResult'
                       ? <Table.Cell colSpan={2}>BUG: Unexpected GameLog result</Table.Cell>
                       : [
-                        <Table.Cell>{result.actual}</Table.Cell>,
-                        <Table.Cell>{result.success ? '😃' : '😡'}</Table.Cell>]
+                        <Table.Cell key='roll'>{result.actual}</Table.Cell>,
+                        <Table.Cell key='success'>{result.success ? '😃' : '😡'}</Table.Cell>]
                   }
                 </Table.Row>;
               }
