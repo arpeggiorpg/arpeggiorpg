@@ -471,11 +471,26 @@ export const GMSceneCreatures = M.connectRedux(
                 }} />}
               content={vis_desc}
             />
+            <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+              <Dropdown.Menu>
+                <Dropdown.Header content={creature.name} />
+                {ptui.app.current_game.current_combat
+                  && ptui.app.current_game.current_combat.scene === scene.id
+                  && !ptui.creatureIsInCombat(ptui.app.current_game.current_combat, creature.id)
+                  ? <Dropdown.Item content="Add to Combat" onClick={() => addToCombat(creature)} />
+                  : null
+                }
+              </Dropdown.Menu>
+            </Dropdown>
           </List.Content>
         </List.Item>;
       }
       )}
     </List>;
+
+    function addToCombat(creature: T.Creature) {
+      ptui.sendCommand(dispatch, { t: 'AddCreatureToCombat', creature_id: creature.id });
+    }
   });
 
 export const GMCombat = M.connectRedux(

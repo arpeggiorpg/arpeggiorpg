@@ -381,6 +381,12 @@ export class PTUI {
     return creature;
   }
 
+  creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
+    return LD.find(
+      combat.creatures.data,
+      ([cid, _]) => cid === creature_id) !== undefined;
+  }
+
   getSceneCreatures(scene: T.Scene): Array<T.Creature> {
     return this.getCreatures(scene.creatures.keySeq().toArray());
   }

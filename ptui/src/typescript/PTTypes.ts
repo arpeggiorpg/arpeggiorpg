@@ -107,6 +107,7 @@ export type GameCommand =
   | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
   | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID>; }
   | { t: "StopCombat" }
+  | { t: "AddCreatureToCombat"; creature_id: CreatureID }
   | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck; }
   | { t: "SetPlayerScene"; player_id: PlayerID, scene_id: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number; }
@@ -805,6 +806,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return { StartCombat: [cmd.scene_id, cmd.creature_ids] };
     case "StopCombat":
       return "StopCombat";
+    case "AddCreatureToCombat":
+      return { AddCreatureToCombat: cmd.creature_id };
     case "AttributeCheck":
       return { AttributeCheck: [cmd.creature_id, encodeAttributeCheck(cmd.check)] };
     case "SetPlayerScene":
