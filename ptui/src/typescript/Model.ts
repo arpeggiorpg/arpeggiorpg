@@ -18,7 +18,10 @@ export type Action =
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
-  | { type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3> }
+  | {
+    type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
+    teleport?: boolean;
+  }
   | { type: "ClearMovementOptions" }
   | { type: "ToggleAnnotation"; pt: T.Point3; rect?: Rect }
   | {
@@ -60,7 +63,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateGridState(
         grid => ({
           ...ptui.state.grid,
-          movement_options: { cid: action.cid, options: action.options },
+          movement_options: {
+            cid: action.cid, options: action.options,
+            teleport: action.teleport ? true : false,
+          },
         }));
     case "DisplayPotentialTargets":
       const { cid, ability_id, options } = action;
@@ -88,7 +94,8 @@ export interface GridModel {
   active_menu?: { cid: T.CreatureID; rect: Rect };
   movement_options?: {
     cid?: T.CreatureID; // undefined when we're moving in combat
-    options: Array<T.Point3>
+    options: Array<T.Point3>;
+    teleport: boolean;
   };
   display_annotation?: { pt: T.Point3, rect: Rect };
   target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets; };
@@ -184,6 +191,14 @@ export class PTUI {
       this.sendCommand(dispatch, { t: "PathCreature", scene_id: scene.id, creature_id, dest });
     } else {
       throw new Error(`Tried moving when there is no scene`);
+    }
+  }
+
+  setCreaturePos(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
+    dispatch({ type: 'ClearMovementOptions' });
+    const scene = this.focused_scene();
+    if (scene) {
+      this.sendCommand(dispatch, { t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
     }
   }
 

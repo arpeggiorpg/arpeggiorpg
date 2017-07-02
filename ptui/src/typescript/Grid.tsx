@@ -138,7 +138,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
     const grid = ptui.state.grid;
     const move = grid.movement_options;
     const movement_target_els = move
-      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} />)
+      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
+        teleport={move.teleport} />)
       : [];
     const special_els = this.props.map.specials.map(
       ([pt, color, _, vis]) => <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis} />);
@@ -170,12 +171,16 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
 export const GridSvg = M.connectRedux(GridSvgComp);
 
 const MovementTarget = M.connectRedux(
-  ({ cid, pt, ptui, dispatch }: { cid?: T.CreatureID; pt: T.Point3 } & M.ReduxProps)
-    : JSX.Element => {
+  (props: { cid?: T.CreatureID; pt: T.Point3, teleport: boolean } & M.ReduxProps): JSX.Element => {
+    const { cid, pt, ptui, dispatch, teleport } = props;
     const tprops = tile_props("cyan", pt);
     function moveCreature() {
       if (cid) {
-        ptui.moveCreature(dispatch, cid, pt);
+        if (teleport) {
+          ptui.setCreaturePos(dispatch, cid, pt);
+        } else {
+          ptui.moveCreature(dispatch, cid, pt);
+        }
       } else {
         ptui.moveCombatCreature(dispatch, pt);
       }
@@ -326,3 +331,24 @@ export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: M
   }
   return result;
 }
+
+export function calculate_teleport_options(pos: T.Point3): Array<T.Point3> {
+  const result = [];
+  for (const x of LD.range(pos[0] - 20, pos[0] + 20)) {
+    for (const y of LD.range(pos[1] - 20, pos[1] + 20)) {
+      result.push([x, y, pos[2]] as T.Point3);
+    }
+  }
+  return result;
+}
+
+export function requestTeleport(dispatch: M.Dispatch, scene: T.Scene, cid: T.CreatureID) {
+  const scene_creature = scene.creatures.get(cid);
+  if (scene_creature) {
+    dispatch({
+      type: 'DisplayMovementOptions',
+      cid, teleport: true, options: calculate_teleport_options(scene_creature[0]),
+    });
+  }
+}
+

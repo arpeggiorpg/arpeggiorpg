@@ -61,17 +61,22 @@ function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undef
 function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   : { [index: string]: Grid.MapCreature } {
   return LD.mapValues(Grid.mapCreatures(ptui, scene),
-    mapc => ({ ...mapc, actions: creatureMenuActions(ptui, dispatch, mapc.creature) }));
+    mapc => ({ ...mapc, actions: creatureMenuActions(ptui, dispatch, scene, mapc.creature) }));
 }
 
-function creatureMenuActions(ptui: M.PTUI, dispatch: M.Dispatch, creature: T.Creature) {
-  const actions = { "Move this creature": ((cid: T.CreatureID) => ptui.requestMove(dispatch, cid)) };
+function creatureMenuActions(
+  ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene, creature: T.Creature):
+  { [index: string]: (cid: T.CreatureID) => void } {
+  let actions: { [index: string]: (cid: T.CreatureID) => void } = {
+    "Move this creature": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid),
+    "Set creature position": (cid: T.CreatureID) => Grid.requestTeleport(dispatch, scene, cid),
+  };
   const combat = ptui.app.current_game.current_combat;
   if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-    LD.assign(actions, {
-      "Combat-move this creature": (cid: T.CreatureID) =>
-        ptui.requestCombatMovement(dispatch),
-    });
+    actions = {
+      ...actions,
+      "Combat-move this creature": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch),
+    };
   }
   return actions;
 }
