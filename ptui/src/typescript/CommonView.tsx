@@ -511,7 +511,7 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
   : JSX.Element {
   return <div><div style={{
     position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-    backgroundColor: "rgba(0,0,0, 0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     zIndex: 1,
   }}
     onClick={() => onClick()} />

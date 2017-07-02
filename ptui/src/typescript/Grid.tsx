@@ -6,7 +6,7 @@ import * as ReactRedux from "react-redux";
 import * as Redux from "redux";
 import * as svgPanZoom from "svg-pan-zoom";
 
-import { Menu } from 'semantic-ui-react';
+import { Menu, Segment } from 'semantic-ui-react';
 
 import * as CommonView from "./CommonView";
 import { PTUI } from "./Model";
@@ -39,9 +39,9 @@ export const SceneGrid = M.connectRedux(
 
     const grid = props.ptui.state.grid;
 
-    const menu = grid.active_menu ? renderMenu(grid.active_menu) : <noscript />;
+    const menu = grid.active_menu ? renderMenu(grid.active_menu) : null;
     const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
-      : <noscript />;
+      : null;
 
     return <div style={{ width: "100%", height: "100%" }}>
       {menu}
@@ -60,7 +60,7 @@ export const SceneGrid = M.connectRedux(
           top: rect.sw.y, left: rect.sw.x,
           border: "1px solid black", borderRadius: "5px",
           backgroundColor: "white",
-        }}>{special[2]}</div>
+        }}><Segment>{special[2]}</Segment></div>
       </CommonView.ClickAway>;
     }
 
@@ -70,26 +70,29 @@ export const SceneGrid = M.connectRedux(
         return <noscript />;
       }
       const creature = creature_; // WHY TYPESCRIPT, WHY???
-      return <div
-        style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
-        <Menu vertical={true}>
-          <Menu.Item header={true}>
-            {CommonView.classIcon(creature.creature)} {creature.creature.name}
-          </Menu.Item>
-          {
-            LD.keys(creature.actions).map(
-              actionName => {
-                function onClick() {
-                  props.dispatch({ type: "ActivateGridCreature", cid, rect });
-                  creature.actions[actionName](cid);
-                }
-                return <Menu.Item key={actionName} onClick={() => onClick()}>
-                  {actionName}
-                </Menu.Item>;
-              })
-          }
-        </Menu>
-      </div>;
+      return <CommonView.ClickAway
+        onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+        <div
+          style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
+          <Menu vertical={true}>
+            <Menu.Item header={true}>
+              {CommonView.classIcon(creature.creature)} {creature.creature.name}
+            </Menu.Item>
+            {
+              LD.keys(creature.actions).map(
+                actionName => {
+                  function onClick() {
+                    props.dispatch({ type: "ActivateGridCreature", cid, rect });
+                    creature.actions[actionName](cid);
+                  }
+                  return <Menu.Item key={actionName} onClick={() => onClick()}>
+                    {actionName}
+                  </Menu.Item>;
+                })
+            }
+          </Menu>
+        </div>
+      </CommonView.ClickAway>;
     }
   });
 
