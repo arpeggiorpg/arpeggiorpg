@@ -543,6 +543,13 @@ class StartCombatComp
     const selected = I.Set(props.ptui.getSceneCreatures(props.scene).map(c => c.id));
     this.state = { selected };
   }
+
+  componentWillReceiveProps(nextProps: { scene: T.Scene } & M.ReduxProps) {
+    const scene_creatures = nextProps.scene.creatures.keySeq().toSet();
+    // Clear out old creatures that aren't in this scene
+    this.setState({ selected: this.state.selected.intersect(scene_creatures) });
+  }
+
   render(): JSX.Element {
     const { scene, ptui, dispatch } = this.props;
     const creatures = ptui.getSceneCreatures(scene);
