@@ -784,7 +784,7 @@ class EditCreatureDataComp
       <Form.Group>
         <Form.Button disabled={!form_ok} onClick={() => this.save()}>
           Save
-          </Form.Button>
+        </Form.Button>
         <Form.Button onClick={onClose}>Cancel</Form.Button>
       </Form.Group>
     </Form>;
@@ -817,7 +817,7 @@ class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps,
       <Form.Group>
         <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
           Create
-      </Form.Button>
+        </Form.Button>
         <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
       </Form.Group>
     </Form>;
