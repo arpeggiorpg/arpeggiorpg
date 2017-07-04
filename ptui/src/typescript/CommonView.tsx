@@ -357,6 +357,8 @@ type MenuSize = 'mini' | 'tiny' | 'small' | 'large' | 'huge' | 'massive';
 
 interface TabbedViewProps {
   children: Array<JSX.Element | null>;
+  // selected_tab allows forcing a specific tab to be focused.
+  selected_tab?: string;
   menu_size: MenuSize;
 }
 export class TabbedView extends React.Component<TabbedViewProps, { selected: number }> {
@@ -367,25 +369,31 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   }
 
   render(): JSX.Element {
+    let selected = this.state.selected;
     const children_ = React.Children.map(
       this.props.children,
       c => c);
     const children: Array<Tab> = M.filterMap(
       children_, (c: any) => { if (c && c.type === Tab) { return c; } });
-    if (!M.idx<JSX.Element | null>(this.props.children, this.state.selected)) {
+    children.forEach((item, index) => {
+      if (item.props.name === this.props.selected_tab) {
+        selected = index;
+      }
+    });
+    if (!M.idx<JSX.Element | null>(this.props.children, selected)) {
       return <div>woops</div>;
     }
     return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Menu pointing={true} compact={true} size={this.props.menu_size} secondary={true}>
         {children.map((child, index) =>
           <Menu.Item key={child.props.name} name={child.props.name}
-            active={this.state.selected === index}
+            active={selected === index}
             onClick={() => this.setState({ selected: index })} />)
         }
       </Menu>
       <div style={{ overflowY: "auto", position: "relative", height: "100%" }}>
         {children.map((child, index) => {
-          const style = index === this.state.selected
+          const style = index === selected
             ? {}
             : (child.props.always_render ?
               { zIndex: -100, visibility: "hidden" } : { display: "none" });
@@ -399,7 +407,15 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   }
 }
 
-interface TabProps { name: string; always_render?: boolean; }
+interface TabProps {
+  name: string;
+  // always_render indicates that the tab contents must be rendered to the DOM *in a realized box*
+  // at all times. Meaning that even when the tab is not focused, the contents will be rendered with
+  // `visibility: hidden` (*not* `display: none`).
+  //  This basically needs to be here for svgPanZoom, which freaks out if the SVG
+  // that it's controlling has no physical size in the DOM.
+  always_render?: boolean;
+}
 export class Tab extends React.Component<TabProps, undefined> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);
@@ -555,6 +571,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const { map, tabs, secondary, tertiary, bar_width, menu_size, ptui, dispatch } = this.props;
+    // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
+    // all other UI interactions until they're done because otherwise we get into weird inconsistent
+    // states. For example: user clicks to move, never chooses destination, and then ends their turn.
+    // The movement options would remain on screen and clicking them might do something wrong
+    // or just return an error. So we work around this by just disabling all sidebar actions.
+    // There are still some other places this needs to be worked around, i.e. when generating actions
+    // for the grid creature popup menu.
     const disable_bars = !!(ptui.state.grid.movement_options || ptui.state.grid.target_options);
 
     const disable_div = disable_bars
@@ -576,8 +599,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     </div>;
 
 
-    function right_bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
-      const tabbed_view = <TabbedView menu_size={menu_size}>{tabs_}</TabbedView>;
+    function right_bar(tabs_: Array<JSX.Element>, extra?: JSX.Element, force_map: boolean = false) {
+      const selected_tab = force_map ? "Map" : undefined;
+      const tabbed_view = <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
+        {tabs_}
+      </TabbedView>;
       return extra !== undefined
         ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
           <div style={{ width: "100%" }}>{tabbed_view}</div>
@@ -626,7 +652,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         zoom: `${scale * 100}%`,
       }}>
         <div style={{ width: bar_width }}>
-          {right_bar(amended_tabs, secondary)}
+          {right_bar(amended_tabs, secondary, disable_bars)}
         </div>
       </div>;
     }
