@@ -82,14 +82,14 @@ export const PlayerGameView = M.connectRedux((
     <CommonView.Tab key="Combat" name="Combat">
       <div>
         {combat ? <CommonView.Combat combat={combat} /> : <div>There is no combat.</div>}
-        <PlayerActionBar player={player} combat={combat} />
       </div>
     </CommonView.Tab>,
     <CommonView.Tab key="Notes" name="Notes">
       <PlayerNote player_id={player.player_id} />
     </CommonView.Tab>
   ];
-  return <CommonView.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large" />;
+  return <CommonView.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large"
+    bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
 });
 
 

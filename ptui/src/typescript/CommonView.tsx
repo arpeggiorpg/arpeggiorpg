@@ -560,6 +560,7 @@ interface TheLayoutProps {
   tertiary?: JSX.Element;
   bar_width: number;
   menu_size: MenuSize;
+  bottom_bar?: JSX.Element;
 }
 class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   { width: number; height: number }> {
@@ -570,7 +571,21 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    const { map, tabs, secondary, tertiary, bar_width, menu_size, ptui, dispatch } = this.props;
+    const {
+      map, tabs, secondary, tertiary, bar_width, menu_size, bottom_bar, ptui, dispatch,
+    } = this.props;
+
+    const middle =
+      // all this relative/absolute crap is because chrome has a stupid flexbox model
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
+        </div>
+        <div style={{ position: 'relative', height: '50px'}}>
+          <div style={{ position: 'absolute', width: '100%', height: '50px' }}>{bottom_bar}</div>
+        </div>
+      </div>;
+
     // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
     // all other UI interactions until they're done because otherwise we get into weird inconsistent
     // states. For example: user clicks to move, never chooses destination, and then ends their turn.
@@ -634,7 +649,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         {(secondary || tertiary)
           ? left_bar()
           : null}
-        <div style={{ flex: "1" }}>{map}</div>
+        <div style={{ flex: "1" }}>{middle}</div>
         <div style={{ position: 'relative', width: bar_width, height: "100%" }}>
           {right_bar(tabs)}
           {disable_div}
@@ -644,7 +659,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
     function narrowView(width: number) {
       const amended_tabs = LD.concat(tabs,
-        <Tab key="Map" name="Map" always_render={true}>{map}</Tab>);
+        <Tab key="Map" name="Map" always_render={true}>{middle}</Tab>);
       const scale = width / bar_width;
       return <div style={{
         height: "100%",
