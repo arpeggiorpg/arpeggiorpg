@@ -118,7 +118,7 @@ function creatureMenuActions(
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
   const move = moveAction();
   if (move) {
-    actions = actions.set("Move this creature", move);
+    actions = actions.set("Walk", move);
   }
   return actions;
 

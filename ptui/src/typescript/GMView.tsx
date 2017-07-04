@@ -78,13 +78,13 @@ function creatureMenuActions(
   ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene, creature: T.Creature):
   I.Map<string, (cid: T.CreatureID) => void> {
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
-    "Move this creature": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid),
-    "Set creature position": (cid: T.CreatureID) => Grid.requestTeleport(dispatch, scene, cid),
+    "Walk": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid),
+    "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(dispatch, scene, cid),
   });
   const combat = ptui.app.current_game.current_combat;
   if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
     actions = actions.merge({
-      "Combat-move this creature": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch),
+      "Combat-move": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch),
     });
   }
   return actions;

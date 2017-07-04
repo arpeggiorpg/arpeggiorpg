@@ -30,6 +30,7 @@
 		],
 		"no-object-literal-type-assertion": false,
 		"object-literal-sort-keys": false,
+		"object-literal-key-quotes": [false],
 		"arrow-parens": [
 			true,
 			"ban-single-arg-parens"
