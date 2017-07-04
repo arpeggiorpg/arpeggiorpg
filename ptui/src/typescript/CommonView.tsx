@@ -509,12 +509,13 @@ const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Com
  */
 export function ClickAway({ onClick, children }: { onClick: () => void, children: React.ReactNode })
   : JSX.Element {
-  return <div><div style={{
-    position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    zIndex: 1,
-  }}
-    onClick={() => onClick()} />
+  return <div>
+    <div style={{
+      position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+      backgroundColor: "rgba(255, 255, 255, 0.5)",
+      zIndex: 1,
+    }}
+      onClick={() => onClick()} />
     <div style={{ position: "fixed", zIndex: 2 }}>{children}</div>
   </div>;
 }
@@ -553,22 +554,29 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
   }
 
   render(): JSX.Element {
-    const { map, tabs, secondary, tertiary, ptui, dispatch, bar_width, menu_size } = this.props;
+    const { map, tabs, secondary, tertiary, bar_width, menu_size, ptui, dispatch } = this.props;
+    const disable_bars = !!ptui.state.grid.movement_options;
 
-    const contents = this.state.width >= NARROW_THRESHOLD
-      ? wideView()
-      : narrowView(this.state.width);
-
+    const disable_div = disable_bars
+      ? <div
+        style={{
+          position: 'absolute', height: '100%', width: '100%', top: 0, left: 0, zIndex: 10,
+          backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        }} />
+      : null;
 
     return <div style={{ height: "100%", width: "100%" }} >
       <WindowSizeListener
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
-      {contents}
+      {this.state.width >= NARROW_THRESHOLD
+        ? wideView()
+        : narrowView(this.state.width)}
       <ErrorModal />
     </div>;
 
-    function bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
+
+    function right_bar(tabs_: Array<JSX.Element>, extra?: JSX.Element) {
       const tabbed_view = <TabbedView menu_size={menu_size}>{tabs_}</TabbedView>;
       return extra !== undefined
         ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
@@ -578,26 +586,32 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         : tabbed_view;
     }
 
+    function left_bar() {
+      return <div
+        style={{
+          position: 'relative', height: "100%", width: "20%", minWidth: "20em",
+        }}>
+        <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
+          <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
+            {tertiary}
+          </div>
+          <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
+            {secondary}
+          </div>
+        </PanelGroup>
+        {disable_div}
+      </div>;
+    }
+
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
         {(secondary || tertiary)
-          ? <div
-            style={{
-              height: "100%", width: "20%", minWidth: "20em",
-            }}>
-            <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
-              <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-                {tertiary}
-              </div>
-              <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-                {secondary}
-              </div>
-            </PanelGroup>
-          </div>
+          ? left_bar()
           : null}
         <div style={{ flex: "1" }}>{map}</div>
-        <div style={{ width: bar_width, height: "100%" }}>
-          {bar(tabs)}
+        <div style={{ position: 'relative', width: bar_width, height: "100%" }}>
+          {right_bar(tabs)}
+          {disable_div}
         </div>
       </div>;
     }
@@ -612,7 +626,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         zoom: `${scale * 100}%`,
       }}>
         <div style={{ width: bar_width }}>
-          {bar(amended_tabs, secondary)}
+          {right_bar(amended_tabs, secondary)}
         </div>
       </div>;
     }
