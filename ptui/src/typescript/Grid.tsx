@@ -1,4 +1,5 @@
 import * as Hammer from 'hammerjs';
+import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -79,11 +80,11 @@ export const SceneGrid = M.connectRedux(
               {CommonView.classIcon(creature.creature)} {creature.creature.name}
             </Menu.Item>
             {
-              LD.keys(creature.actions).map(
-                actionName => {
+              creature.actions.entrySeq().toArray().map(
+                ([actionName, action]) => {
                   function onClick() {
                     props.dispatch({ type: "ActivateGridCreature", cid, rect });
-                    creature.actions[actionName](cid);
+                    action(cid);
                   }
                   return <Menu.Item key={actionName} onClick={() => onClick()}>
                     {actionName}
@@ -101,7 +102,7 @@ export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
   class_: T.Class;
-  actions: { [index: string]: (cid: T.CreatureID) => void };
+  actions: I.Map<string, (cid: T.CreatureID) => void>;
   visibility: T.Visibility;
 }
 
@@ -318,14 +319,20 @@ function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
   return { nw, ne, se, sw };
 }
 
-export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: MapCreature } {
+export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
+  : { [index: string]: MapCreature } {
   const creatures = M.filterMap(
     ptui.getSceneCreatures(scene),
     creature => {
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
       const class_ = ptui.app.current_game.classes.get(creature.class_);
       if (class_) {
-        return { creature, pos, class_, actions: {}, visibility: vis };
+        let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
+        const target = targetAction(creature);
+        if (target) {
+          actions = actions.set(target.name, target.action);
+        }
+        return { creature, pos, class_, actions, visibility: vis };
       }
     });
   const result: { [index: string]: MapCreature } = {};
@@ -333,6 +340,27 @@ export function mapCreatures(ptui: M.PTUI, scene: T.Scene): { [index: string]: M
     result[creature.creature.id] = creature;
   }
   return result;
+
+  function targetAction(
+    creature: T.Creature): { name: string, action: ((cid: T.CreatureID) => void) } | undefined {
+    if (ptui.state.grid.target_options) {
+      const { ability_id, options } = ptui.state.grid.target_options;
+      if (options.t !== "CreatureIDs") { return undefined; }
+      // this is quadratic (TODO: switch options.cids to a hashmap)
+      if (LD.includes(options.cids, creature.id)) {
+        console.log("[targetAction]", creature.name, "is targetable");
+
+        const ability = M.get(ptui.app.current_game.abilities, ability_id);
+        if (ability) {
+          return {
+            name: `${ability.name} this creature`,
+            action: cid => { ptui.executeCombatAbility(dispatch, cid); },
+          };
+        }
+      }
+    }
+  }
+
 }
 
 export function calculate_teleport_options(pos: T.Point3): Array<T.Point3> {

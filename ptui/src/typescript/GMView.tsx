@@ -1,3 +1,4 @@
+import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as Redux from 'redux';
@@ -60,23 +61,25 @@ function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undef
 
 function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   : { [index: string]: Grid.MapCreature } {
-  return LD.mapValues(Grid.mapCreatures(ptui, scene),
-    mapc => ({ ...mapc, actions: creatureMenuActions(ptui, dispatch, scene, mapc.creature) }));
+  return LD.mapValues(Grid.mapCreatures(ptui, dispatch, scene),
+    mapc => ({
+      ...mapc,
+      actions: mapc.actions.merge(creatureMenuActions(ptui, dispatch, scene, mapc.creature)),
+    }));
 }
 
 function creatureMenuActions(
   ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene, creature: T.Creature):
-  { [index: string]: (cid: T.CreatureID) => void } {
-  let actions: { [index: string]: (cid: T.CreatureID) => void } = {
+  I.Map<string, (cid: T.CreatureID) => void> {
+  let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
     "Move this creature": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid),
     "Set creature position": (cid: T.CreatureID) => Grid.requestTeleport(dispatch, scene, cid),
-  };
+  });
   const combat = ptui.app.current_game.current_combat;
   if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-    actions = {
-      ...actions,
+    actions = actions.merge({
       "Combat-move this creature": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch),
-    };
+    });
   }
   return actions;
 }

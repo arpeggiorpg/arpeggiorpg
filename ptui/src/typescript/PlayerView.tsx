@@ -1,3 +1,4 @@
+import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -101,12 +102,12 @@ export const PlayerGameView = M.connectRedux((
 function selectMapCreatures(
   ptui: M.PTUI, player: T.Player, scene: T.Scene, dispatch: M.Dispatch)
   : { [index: string]: Grid.MapCreature } {
-  return M.filterMapValues(Grid.mapCreatures(ptui, scene),
+  return M.filterMapValues(Grid.mapCreatures(ptui, dispatch, scene),
     mapc => {
       // !: must exist in filterMapValues()
       if (scene.creatures.get(mapc.creature.id)![1].t === "AllPlayers") {
         const actions = creatureMenuActions(ptui, dispatch, player, mapc.creature);
-        return { ...mapc, actions };
+        return { ...mapc, actions: mapc.actions.merge(actions) };
       }
     }
   );
@@ -114,14 +115,10 @@ function selectMapCreatures(
 
 function creatureMenuActions(
   ptui: M.PTUI, dispatch: M.Dispatch, player: T.Player, creature: T.Creature) {
-  const actions: { [index: string]: (cid: T.CreatureID) => void } = {};
+  let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
   const move = moveAction();
   if (move) {
-    actions["Move this creature"] = move;
-  }
-  const target = targetAction();
-  if (target) {
-    actions[target.name] = target.action;
+    actions = actions.set("Move this creature", move);
   }
   return actions;
 
@@ -136,22 +133,6 @@ function creatureMenuActions(
       }
     } else {
       return cid => ptui.requestMove(dispatch, cid);
-    }
-  }
-
-  function targetAction(): { name: string, action: ((cid: T.CreatureID) => void) } | undefined {
-    if (ptui.state.grid.target_options) {
-      const { ability_id, options } = ptui.state.grid.target_options;
-      if (options.t !== "CreatureIDs") { return undefined; }
-      if (LD.includes(options.cids, creature.id)) {
-        const ability = M.get(ptui.app.current_game.abilities, ability_id);
-        if (ability) {
-          return {
-            name: `${ability.name} this creature`,
-            action: cid => { ptui.executeCombatAbility(dispatch, cid); },
-          };
-        }
-      }
     }
   }
 }
