@@ -555,7 +555,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const { map, tabs, secondary, tertiary, bar_width, menu_size, ptui, dispatch } = this.props;
-    const disable_bars = !!ptui.state.grid.movement_options;
+    const disable_bars = !!(ptui.state.grid.movement_options || ptui.state.grid.target_options);
 
     const disable_div = disable_bars
       ? <div
