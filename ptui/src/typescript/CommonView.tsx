@@ -8,7 +8,8 @@ import * as Redux from 'redux';
 
 // import 'semantic-ui-css/semantic.min.css';
 import {
-  Accordion, Button, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal, Segment
+  Accordion, Button, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal,
+  Segment,
 } from 'semantic-ui-react';
 
 
@@ -586,11 +587,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     const disable_bars = !!(ptui.state.grid.movement_options || ptui.state.grid.target_options);
 
     const disable_div = disable_bars
-      ? <div
-        style={{
-          position: 'absolute', height: '100%', width: '100%', top: 0, left: 0, zIndex: 10,
-          backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        }} />
+      ? <Dimmer active={true} inverted={true} />
       : null;
 
     const middle =
