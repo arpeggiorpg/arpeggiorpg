@@ -527,13 +527,9 @@ const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Com
 export function ClickAway({ onClick, children }: { onClick: () => void, children: React.ReactNode })
   : JSX.Element {
   return <div>
-    <div style={{
-      position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-      backgroundColor: "rgba(255, 255, 255, 0.5)",
-      zIndex: 1,
-    }}
-      onClick={() => onClick()} />
-    <div style={{ position: "fixed", zIndex: 2 }}>{children}</div>
+    <Dimmer page={true} inverted={true} active={true} onClick={() => onClick()} />
+    {/* Dimmer uses a z-index of 1000, so we use a 1001 for the content.*/}
+    <div style={{ position: "fixed", zIndex: 1001 }}>{children}</div>
   </div>;
 }
 
