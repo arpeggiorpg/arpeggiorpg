@@ -589,7 +589,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     const middle =
       // all this relative/absolute crap is because chrome has a stupid flexbox model
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ height: '45px' }}>{top_bar}</div>
+        <div style={{
+          height: '45px', display: 'flex',
+          justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <Header>P&T</Header>
+          {top_bar}
+        </div>
         <div style={{ flex: 1, position: "relative" }}>
           <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
         </div>
