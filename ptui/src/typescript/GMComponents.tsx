@@ -503,12 +503,10 @@ export const GMCombat = M.connectRedux(
         : <div>Load a scene to start a combat.</div>;
       return startCombat;
     }
-    const cur_creature = ptui.getCurrentCombatCreature(combat);
 
     return <div>
       <GMCombatHeader combat={combat} />
       <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
-      <CV.ActionBar creature={cur_creature} combat={combat} />
     </div>;
 
     function initiative(creature: T.Creature, init: number) {
