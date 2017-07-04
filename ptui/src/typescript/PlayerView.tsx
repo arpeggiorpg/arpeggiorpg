@@ -5,7 +5,7 @@ import * as ReactDOM from "react-dom";
 import { Provider } from 'react-redux';
 import * as Redux from 'redux';
 
-import * as CommonView from "./CommonView";
+import * as CV from "./CommonView";
 import * as Grid from './Grid';
 import { PTUI } from './Model';
 import * as M from './Model';
@@ -76,20 +76,20 @@ export const PlayerGameView = M.connectRedux((
     : <div>No scene loaded</div>;
   const combat = ptui.app.current_game.current_combat;
   const tabs = [
-    <CommonView.Tab key="Creatures" name="Creatures">
+    <CV.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
-    </CommonView.Tab>,
-    <CommonView.Tab key="Combat" name="Combat">
+    </CV.Tab>,
+    <CV.Tab key="Combat" name="Combat">
       <div>
-        {combat ? <CommonView.Combat combat={combat} /> : <div>There is no combat.</div>}
+        {combat ? <CV.Combat combat={combat} /> : <div>There is no combat.</div>}
       </div>
-    </CommonView.Tab>,
-    <CommonView.Tab key="Notes" name="Notes">
+    </CV.Tab>,
+    <CV.Tab key="Notes" name="Notes">
       <PlayerNote player_id={player.player_id} />
-    </CommonView.Tab>
+    </CV.Tab>
   ];
-  return <CommonView.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large"
-    bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
+  return <CV.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large"
+    top_bar={<CV.TopBar />} bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
 });
 
 
@@ -146,9 +146,9 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
   return <div>
     {creatures.map(creature =>
       <div key={creature.id}>
-        <CommonView.CreatureCard creature={creature} />
+        <CV.CreatureCard creature={creature} />
         <div style={{ marginLeft: "1em" }}>
-          <CommonView.CollapsibleInventory creature={creature} />
+          <CV.CollapsibleInventory creature={creature} />
         </div>
       </div>
     )}
@@ -157,7 +157,7 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
 
 function PlayerNote({ player_id }: { player_id: T.PlayerID; }): JSX.Element {
   const path = ["Players", player_id];
-  return <CommonView.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
+  return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
 }
 
 export const PlayerActionBar = M.connectRedux((
@@ -167,7 +167,7 @@ export const PlayerActionBar = M.connectRedux((
     const creature = props.ptui.getCreature(cid);
     if (creature) {
       if (LD.includes(props.player.creatures, cid)) {
-        return <CommonView.ActionBar combat={props.combat} creature={creature} />;
+        return <CV.ActionBar combat={props.combat} creature={creature} />;
       } else {
         return <div>{creature.name} is acting</div>;
       }

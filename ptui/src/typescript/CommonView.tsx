@@ -560,6 +560,7 @@ interface TheLayoutProps {
   tertiary?: JSX.Element;
   bar_width: number;
   menu_size: MenuSize;
+  top_bar?: JSX.Element;
   bottom_bar?: JSX.Element;
 }
 class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
@@ -572,19 +573,8 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const {
-      map, tabs, secondary, tertiary, bar_width, menu_size, bottom_bar, ptui, dispatch,
+      map, tabs, secondary, tertiary, bar_width, menu_size, top_bar, bottom_bar, ptui, dispatch,
     } = this.props;
-
-    const middle =
-      // all this relative/absolute crap is because chrome has a stupid flexbox model
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
-        </div>
-        <div style={{ position: 'relative', height: '50px', width: '100%', overflowX: 'auto'}}>
-          <div style={{ position: 'absolute', width: '100%', height: '50px' }}>{bottom_bar}</div>
-        </div>
-      </div>;
 
     // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
     // all other UI interactions until they're done because otherwise we get into weird inconsistent
@@ -602,6 +592,21 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
           backgroundColor: 'rgba(255, 255, 255, 0.5)',
         }} />
       : null;
+
+    const middle =
+      // all this relative/absolute crap is because chrome has a stupid flexbox model
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: '45px' }}>{top_bar}</div>
+        <div style={{ flex: 1, position: "relative" }}>
+          <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
+        </div>
+        <div style={{ position: 'relative', height: '50px', width: '100%', overflowX: 'auto' }}>
+          <div style={{ position: 'absolute', width: '100%', height: '50px' }}>
+            {bottom_bar}
+            {disable_div}
+          </div>
+        </div>
+      </div>;
 
     return <div style={{ height: "100%", width: "100%" }} >
       <WindowSizeListener
@@ -675,6 +680,22 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 }
 
 export const TheLayout = M.connectRedux(TheLayoutComp);
+
+export const TopBar = M.connectRedux(function TopBar(props: M.ReduxProps): JSX.Element {
+  const { ptui, dispatch } = props;
+  if (ptui.state.grid.movement_options) {
+    return <div>Select a destination or
+       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
+    </div>;
+  }
+  if (ptui.state.grid.target_options) {
+    return <div>Select a target or
+      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
+    </div>;
+  }
+  return <div>Ready to serve.</div>;
+});
+
 
 export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
