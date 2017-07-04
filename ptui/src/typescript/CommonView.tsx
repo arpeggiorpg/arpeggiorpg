@@ -581,7 +581,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         <div style={{ flex: 1, position: "relative" }}>
           <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
         </div>
-        <div style={{ position: 'relative', height: '50px'}}>
+        <div style={{ position: 'relative', height: '50px', width: '100%', overflowX: 'auto'}}>
           <div style={{ position: 'absolute', width: '100%', height: '50px' }}>{bottom_bar}</div>
         </div>
       </div>;
