@@ -673,6 +673,18 @@ const CreatureNote = M.connectRedux(
     }
   });
 
+export const CreateFolder = M.connectRedux(
+  function CreateFolder(props: { path: T.FolderPath; onDone: () => void; } & M.ReduxProps) {
+    const { path, onDone, ptui, dispatch } = props;
+    return <TextInput.TextInput defaultValue="" onCancel={onDone} onSubmit={create} />;
+
+    function create(input: string) {
+      const new_path = path.slice();
+      new_path.push(input);
+      onDone();
+      return ptui.sendCommand(dispatch, { t: 'CreateFolder', path: new_path });
+    }
+  });
 
 interface GMCreateCreatureProps {
   path: T.FolderPath;
@@ -683,7 +695,7 @@ export const CreateCreature = M.connectRedux(
     const { path, ptui, dispatch } = props;
     const init: T.Dice = { t: "Expr", num: 1, size: 20 };
     const creature_data = {
-      name: "", note: "", portrait_url: "", initiative: init, class_: "",
+      name: "", note: "", portrait_url: "", initiative: init, class_: "", size: { x: 1, y: 1, z: 1 },
     };
     return <EditCreatureData creature={creature_data}
       onSave={cdata => save(cdata)} onClose={props.onClose} />;
@@ -710,6 +722,7 @@ const GMEditCreature = M.connectRedux(
         name: creature_data.name, class_: creature_data.class_,
         note: creature_data.note, portrait_url: creature_data.portrait_url,
         initiative: creature_data.initiative,
+        size: creature_data.size,
       };
       ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
       onClose();
@@ -724,7 +737,10 @@ interface EditCreatureDataProps {
 }
 class EditCreatureDataComp
   extends React.Component<EditCreatureDataProps & M.ReduxProps,
-  { name: string; portrait_url: string; note: string, initiative_string: string, class_: string }> {
+  {
+    name: string; portrait_url: string; note: string; initiative_string: string; class_: string;
+    size: number;
+  }> {
   constructor(props: EditCreatureDataProps & M.ReduxProps) {
     super(props);
     this.state = {
@@ -732,6 +748,7 @@ class EditCreatureDataComp
       note: props.creature.note,
       initiative_string: Dice.format(props.creature.initiative),
       class_: props.creature.class_,
+      size: props.creature.size.x,
     };
   }
 
@@ -746,11 +763,15 @@ class EditCreatureDataComp
     );
     return <Form error={!parsed_initiative.status}>
       <Form.Group>
-        <Form.Input label="Name" value={this.state.name}
-          onChange={(_, data) => this.setState({ name: data.value })} />
-        <Form.Select label='Class' value={this.state.class_}
-          options={classes} placeholder='Class'
-          onChange={(_, data) => this.setState({ class_: data.value as string })} />
+        <Form.Field style={{ flex: "3" }}>
+          <Form.Input label="Name" value={this.state.name}
+            onChange={(_, data) => this.setState({ name: data.value })} />
+        </Form.Field>
+        <Form.Field style={{ flex: 2 }}>
+          <Form.Select label='Class' value={this.state.class_}
+            options={classes} placeholder='Class'
+            onChange={(_, data) => this.setState({ class_: data.value as string })} />
+        </Form.Field>
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
@@ -764,9 +785,22 @@ class EditCreatureDataComp
       </Form.Group>
       <Form.Input label="Note" value={this.state.note}
         onChange={(_, data) => this.setState({ note: data.value })} />
-      <Form.Input label="Initiative" error={!parsed_initiative.status}
-        value={this.state.initiative_string}
-        onChange={(_, data) => this.setState({ initiative_string: data.value })} />
+      <Form.Group>
+        <Form.Field style={{ flex: 3 }}>
+          <Form.Input label="Initiative" error={!parsed_initiative.status}
+            value={this.state.initiative_string}
+            onChange={(_, data) => this.setState({ initiative_string: data.value })} />
+        </Form.Field>
+        <Form.Field style={{ flex: 2 }}>
+          <Form.Select label="Size"
+            value={this.state.size}
+            onChange={(_, data) => this.setState({ size: Number(data.value) })}
+            options={[{ key: 'medium', text: 'Medium', value: 1 },
+            { key: 'large', text: 'Large', value: 2 },
+            { key: 'huge', text: 'Huge', value: 3 },
+            ]} />
+        </Form.Field>
+      </Form.Group>
       {
         parsed_initiative.status
           ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
@@ -793,6 +827,7 @@ class EditCreatureDataComp
       name: this.state.name, class_: this.state.class_,
       portrait_url: this.state.portrait_url, note: this.state.note,
       initiative: Dice.parse(this.state.initiative_string),
+      size: { x: this.state.size, y: this.state.size, z: this.state.size },
     };
     this.props.onSave(creature);
     this.props.onClose();

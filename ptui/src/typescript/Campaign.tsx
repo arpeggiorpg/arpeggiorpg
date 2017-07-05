@@ -205,7 +205,12 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
             <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
           header={<span>Create item in {M.folderPathToString(path)}</span>}
           content={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
-        <Dropdown.Item icon={object_icon("Folder")} text='Create Folder' />
+        <CV.ModalMaker
+          button={open => <Dropdown.Item icon={object_icon("Folder")} text='Create Folder'
+            onClick={open} />}
+          header={<span>Create a folder in {M.folderPathToString(path)}</span>}
+          content={close => <GM.CreateFolder path={path} onDone={close} />}
+        />
       </Dropdown.Menu>
     </Dropdown>;
     const list_item = <List.Item>

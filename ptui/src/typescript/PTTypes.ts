@@ -91,6 +91,7 @@ export interface FolderNode {
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
+  | { t: "CreateFolder"; path: FolderPath }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
@@ -162,6 +163,7 @@ export interface CreatureCreation {
   portrait_url: string;
   note: string;
   initiative: Dice;
+  size: AABB;
 }
 
 export interface Class {
@@ -780,6 +782,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "GiveCreaturesToPlayer":
       return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
+    case "CreateFolder": return { CreateFolder: encodeFolderPath(cmd.path) };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
@@ -824,7 +827,12 @@ function encodeCreatureCreation(cc: CreatureCreation): object {
     portrait_url: cc.portrait_url,
     note: cc.note,
     initiative: encodeDice(cc.initiative),
+    size: encodeAABB(cc.size),
   };
+}
+
+function encodeAABB(box: AABB): object {
+  return box;
 }
 
 function encodeItem(item: Item): object {
