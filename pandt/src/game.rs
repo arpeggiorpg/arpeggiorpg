@@ -735,6 +735,7 @@ pub mod test {
   use combat::test::*;
   use types::test::*;
   use grid::test::*;
+  use creature::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
     t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))
@@ -747,18 +748,12 @@ pub mod test {
   pub fn t_game() -> Game {
     let mut game = Game::new(t_classes(), t_abilities());
     game.maps.insert(huge_box());
-    let rogue_creation = t_rogue_creation("rogue");
-    let ranger_creation = t_ranger_creation("ranger");
-    let cleric_creation = t_cleric_creation("cleric");
-    let mut rogue = Creature::create(&rogue_creation);
+    let mut rogue = t_rogue("rogue");
     rogue.id = cid_rogue();
-    rogue.initiative = Dice::flat(20);
-    let mut ranger = Creature::create(&ranger_creation);
+    let mut ranger = t_ranger("ranger");
     ranger.id = cid_ranger();
-    ranger.initiative = Dice::flat(10);
-    let mut cleric = Creature::create(&cleric_creation);
+    let mut cleric = t_cleric("cleric");
     cleric.id = cid_cleric();
-    cleric.initiative = Dice::flat(0);
     game.creatures.insert(rogue);
     game.creatures.insert(ranger);
     game.creatures.insert(cleric);
@@ -775,6 +770,7 @@ pub mod test {
                                                     ((0, 0, 0), Visibility::AllPlayers)),
                                                    (cid_ranger(),
                                                     ((0, 0, 0), Visibility::AllPlayers))]),
+                inventory: HashMap::new(),
               });
     game
   }

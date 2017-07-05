@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::cmp;
 use std::sync::atomic;
 use std::sync::atomic::Ordering;
@@ -23,11 +23,7 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(creature: &'creature Creature, game: &'game Game)
              -> Result<DynamicCreature<'creature, 'game>, GameError> {
-    Ok(DynamicCreature {
-         creature: creature,
-         game: game,
-         class: game.get_class(&creature.class)?,
-       })
+    Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(&creature.class)? })
   }
 
   pub fn id(&self) -> CreatureID {
@@ -66,10 +62,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn tick(&self) -> Result<ChangedCreature, GameError> {
     let mut changes = self.creature.change();
     for condition in self.conditions() {
-      if let AppliedCondition {
-               condition: Condition::RecurringEffect(ref eff),
-               ref remaining,
-             } = condition {
+      if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
+        condition {
         if match *remaining {
              ConditionDuration::Duration(0) => false,
              ConditionDuration::Interminate |
@@ -150,17 +144,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let mut abs = IndexedHashMap::new();
     for acondition in self.conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
-        abs.insert(AbilityStatus {
-                   ability_id: abid,
-                   cooldown: 0,
-                 });
+        abs.insert(AbilityStatus { ability_id: abid, cooldown: 0 });
       }
     }
     for abid in &self.class.abilities {
-      abs.insert(AbilityStatus {
-                 ability_id: *abid,
-                 cooldown: 0,
-               });
+      abs.insert(AbilityStatus { ability_id: *abid, cooldown: 0 });
     }
     for ab in &self.creature.abilities {
       abs.insert(*ab);
@@ -190,7 +178,7 @@ impl Creature {
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
       initiative: spec.initiative.clone(),
-      size: AABB {x: 1, y: 1, z: 1},
+      size: spec.size,
       inventory: HashMap::new(),
     }
   }
@@ -251,18 +239,12 @@ impl Creature {
   }
 
   pub fn change(&self) -> ChangedCreature {
-    ChangedCreature {
-      creature: self.clone(),
-      logs: vec![],
-    }
+    ChangedCreature { creature: self.clone(), logs: vec![] }
   }
 
   pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
     let creature = self.apply_log(&log)?;
-    Ok(ChangedCreature {
-         creature: creature,
-         logs: vec![log],
-       })
+    Ok(ChangedCreature { creature: creature, logs: vec![log] })
   }
 
   pub fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
@@ -336,28 +318,31 @@ pub mod test {
 
   use std::iter::FromIterator;
 
-  pub fn t_creature(name: &str, class: &str) -> Creature {
+  pub fn t_creature(name: &str, class: &str, init: i8) -> Creature {
     Creature::create(&CreatureCreation {
                         name: name.to_string(),
+                        note: "".to_string(),
                         class: class.to_string(),
                         portrait_url: "".to_string(),
+                        initiative: Dice::flat(init),
+                        size: AABB { x: 1, y: 1, z: 1 },
                       })
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    let mut c = t_creature(name, "rogue");
+    let mut c = t_creature(name, "rogue", 20);
     c.id = cid_rogue();
     c
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    let mut c = t_creature(name, "ranger");
+    let mut c = t_creature(name, "ranger", 10);
     c.id = cid_ranger();
     c
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    let mut c = t_creature(name, "cleric");
+    let mut c = t_creature(name, "cleric", 0);
     c.id = cid_rogue();
     c
   }

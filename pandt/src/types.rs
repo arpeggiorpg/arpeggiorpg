@@ -787,6 +787,7 @@ pub struct CreatureCreation {
   pub portrait_url: String,
   pub note: String,
   pub initiative: Dice,
+  pub size: AABB,
 }
 
 /// A Creature.
@@ -1132,30 +1133,6 @@ pub mod test {
 
   use serde_yaml;
   use serde_json;
-
-  pub fn t_rogue_creation(name: &str) -> CreatureCreation {
-    CreatureCreation {
-      name: name.to_string(),
-      class: "rogue".to_string(),
-      portrait_url: "".to_string(),
-    }
-  }
-
-  pub fn t_cleric_creation(name: &str) -> CreatureCreation {
-    CreatureCreation {
-      name: name.to_string(),
-      class: "cleric".to_string(),
-      portrait_url: "".to_string(),
-    }
-  }
-
-  pub fn t_ranger_creation(name: &str) -> CreatureCreation {
-    CreatureCreation {
-      name: name.to_string(),
-      class: "ranger".to_string(),
-      portrait_url: "".to_string(),
-    }
-  }
 
   pub fn cid_cleric() -> CreatureID {
     "00000000-0000-0000-0000-000000000000".parse().unwrap()
