@@ -676,7 +676,7 @@ const CreatureNote = M.connectRedux(
 export const CreateFolder = M.connectRedux(
   function CreateFolder(props: { path: T.FolderPath; onDone: () => void; } & M.ReduxProps) {
     const { path, onDone, ptui, dispatch } = props;
-    return <TextInput.TextInput defaultValue="" onCancel={onDone} onSubmit={create} />;
+    return <CV.SingleInputForm buttonText="Create Folder" onSubmit={create} />;
 
     function create(input: string) {
       const new_path = path.slice();
@@ -837,28 +837,14 @@ class EditCreatureDataComp
 const EditCreatureData = M.connectRedux(EditCreatureDataComp);
 
 interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
-class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, { name: string }> {
-  constructor(props: GMCreateItemProps & M.ReduxProps) {
-    super(props);
-    this.state = { name: "" };
-  }
-
+class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, undefined> {
   render(): JSX.Element {
-    return <Form>
-      <Form.Input label="Name" value={this.state.name}
-        onChange={(_, data) => this.setState({ name: data.value })} />
-      <Form.Group>
-        <Form.Button disabled={this.state.name === ""} onClick={() => this.save()}>
-          Create
-        </Form.Button>
-        <Form.Button onClick={this.props.onClose}>Cancel</Form.Button>
-      </Form.Group>
-    </Form>;
+    return <CV.SingleInputForm buttonText="Create" onSubmit={input => this.save(input)} />;
   }
 
-  save() {
+  save(name: string) {
     this.props.ptui.sendCommand(this.props.dispatch,
-      { t: "CreateItem", path: this.props.path, name: this.state.name });
+      { t: "CreateItem", path: this.props.path, name });
     this.props.onClose();
   }
 }

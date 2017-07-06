@@ -14,12 +14,7 @@ import * as T from './PTTypes';
 import { Button, Input, Menu } from 'semantic-ui-react';
 
 
-export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_player_id: string; }> {
-  constructor(props: M.ReduxProps) {
-    super(props);
-    this.state = { typing_player_id: "" };
-  }
-
+export class PlayerMainComp extends React.Component<M.ReduxProps, undefined> {
   render(): JSX.Element {
     const { ptui, dispatch } = this.props;
     if (ptui.state.player_id) {
@@ -47,23 +42,15 @@ export class PlayerMainComp extends React.Component<M.ReduxProps, { typing_playe
             </div>
             : null}
           <p>Or you can register a new player.</p>
-          <Input type="text" value={this.state.typing_player_id}
-            onKeyDown={(e: KeyboardEvent) => {
-              if (e.keyCode === 13) { this.registerPlayer(ptui, dispatch); }
-            }}
-            action={<Button
-              type="submit"
-              onClick={() => this.registerPlayer(ptui, dispatch)}>
-              Register</Button>}
-            onChange={e => this.setState({ typing_player_id: e.currentTarget.value })} />
+          <CV.SingleInputForm buttonText="Register"
+            onSubmit={input => this.registerPlayer(ptui, dispatch, input)} />
         </div>
       </div>;
     }
   }
-  registerPlayer(ptui: M.PTUI, dispatch: M.Dispatch) {
-    ptui.sendCommand(dispatch,
-      { t: "RegisterPlayer", player_id: this.state.typing_player_id });
-    dispatch({ type: "SetPlayerID", pid: this.state.typing_player_id });
+  registerPlayer(ptui: M.PTUI, dispatch: M.Dispatch, name: string) {
+    ptui.sendCommand(dispatch, { t: "RegisterPlayer", player_id: name });
+    dispatch({ type: "SetPlayerID", pid: name });
   }
 }
 export const PlayerMain = M.connectRedux(PlayerMainComp);

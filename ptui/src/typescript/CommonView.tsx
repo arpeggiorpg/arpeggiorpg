@@ -848,3 +848,24 @@ export function describeChallenge(challenge: T.AttributeCheck) {
    ${challenge.reliable ? "(reliable)" : ""}`;
 
 }
+
+interface SingleInputFormProps { onSubmit: (input: string) => void; buttonText: string; }
+export class SingleInputForm
+  extends React.Component<SingleInputFormProps, { text: string }> {
+  constructor(props: SingleInputFormProps) {
+    super(props);
+    this.state = { text: "" };
+  }
+  render() {
+    return <Input type="text" value={this.state.text}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.keyCode === 13) { this.props.onSubmit(this.state.text); }
+      }}
+      action={<Button
+        type="submit"
+        onClick={() => this.props.onSubmit(this.state.text)}>
+        {this.props.buttonText}
+      </Button>}
+      onChange={e => this.setState({ text: e.currentTarget.value })} />;
+  }
+}
