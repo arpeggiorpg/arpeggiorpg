@@ -214,8 +214,9 @@ impl Game {
       DeleteFolder(ref path) => {
         {
           let node = self.campaign.get(path)?;
-          if node.scenes.is_empty() || node.maps.is_empty() || node.creatures.is_empty() ||
-             node.notes.is_empty() {
+          if !(node.scenes.is_empty() && node.creatures.is_empty() && node.notes.is_empty() &&
+               node.items.is_empty() &&
+               node.maps.is_empty()) {
             bail!(GameErrorEnum::FolderNotEmpty(path.clone()));
           }
         }
