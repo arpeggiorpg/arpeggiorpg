@@ -211,6 +211,12 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
           header={<span>Create a folder in {M.folderPathToString(path)}</span>}
           content={close => <GM.CreateFolder path={path} onDone={close} />}
         />
+        {!M.isEqual(path, [])
+          ? [
+            <Dropdown.Divider key="ble" />,
+            <Dropdown.Item key="blo" text="Delete this folder" icon="delete"
+              onClick={() => ptui.sendCommand(dispatch, { t: "DeleteFolder", path })} />]
+          : null}
       </Dropdown.Menu>
     </Dropdown>;
     const list_item = <List.Item>
