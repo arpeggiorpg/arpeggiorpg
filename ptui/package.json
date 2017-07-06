@@ -37,7 +37,7 @@
     "react-window-size-listener": "^1.0.8",
     "redux": "^3.7.0",
     "semantic-ui-css": "^2.2.10",
-    "semantic-ui-react": "^0.69.0",
+    "semantic-ui-react": "^0.70.0",
     "svg-pan-zoom": "^3.5.1",
     "type-safe-json-decoder": "^0.2.0"
   },
