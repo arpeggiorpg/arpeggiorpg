@@ -144,9 +144,20 @@ function ptfetch<J, R>(
   const p4: Promise<R> = json_promise.then(then);
   const p5: Promise<R> = p4.catch(
     e => {
-      const msg = (e._pt_error && e._pt_error === 'JSON') ? "Failed to decode JSON"
-        : "Unhandled error";
-      dispatch({ type: "DisplayError", error: `${msg}: ${e}` });
+      function extract_error_details(error: any): [string, string] {
+        if (error._pt_error) {
+          switch (error._pt_error) {
+            case "JSON": return ["Failed to decode JSON", error.original];
+            case "RPI": return ["Error received from server", error.message];
+            default: return ["Unknown error", error.toString()];
+          }
+        } else {
+          return ["Unknown error", error.toString()];
+        }
+      }
+
+      const [prefix, suffix] = extract_error_details(e);
+      dispatch({ type: "DisplayError", error: `${prefix}: ${suffix}` });
       throw e;
     });
   return p5;
@@ -224,8 +235,7 @@ export class PTUI {
             // turns out that post is *not* returning the App, just the logs!
             return x.result; // dispatch({ type: "RefreshApp", app: x.result });
           case "Err":
-            dispatch({ type: "DisplayError", error: x.error });
-            throw new Error(`ptfetch error dispatched`);
+            throw { _pt_error: 'RPI', message: x.error };
         }
       });
   }
