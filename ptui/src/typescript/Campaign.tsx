@@ -128,11 +128,11 @@ interface SelectableProps {
 type FolderContentType = "Scene" | "Map" | "Creature" | "Note" | "Item" | "Folder";
 
 type FolderObject =
-  | { t: "Scene"; path: T.FolderPath; scene: T.Scene }
-  | { t: "Map"; path: T.FolderPath; map: T.Map }
-  | { t: "Creature"; path: T.FolderPath; creature: T.Creature }
+  | { t: "Scene"; path: T.FolderPath; id: T.SceneID; name: string }
+  | { t: "Map"; path: T.FolderPath; id: T.MapID; name: string }
+  | { t: "Creature"; path: T.FolderPath; id: T.CreatureID; name: string }
   | { t: "Note"; path: T.FolderPath; name: string }
-  | { t: "Item"; path: T.FolderPath; item: T.Item }
+  | { t: "Item"; path: T.FolderPath; id: T.ItemID; name: string }
   ;
 
 interface FTProps {
@@ -156,18 +156,22 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     }
 
     const scene_objects = dont_show("Scene") ? [] :
-      ptui.getScenes(folder.data.scenes).map((scene): FolderObject => ({ t: "Scene", path, scene }));
+      ptui.getScenes(folder.data.scenes).map(
+        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
     const map_objects = dont_show("Map") ? [] :
-      ptui.getMaps(folder.data.maps).map((map): FolderObject => ({ t: "Map", path, map }));
+      ptui.getMaps(folder.data.maps).map(
+        (map): FolderObject => ({ t: "Map", path, id: map.id, name: map.name }));
     const creature_objects = dont_show("Creature") ? [] :
       ptui.getCreatures(folder.data.creatures).map(
-        (creature): FolderObject => ({ t: "Creature", path, creature }));
+        (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
     const note_objects = dont_show("Note") ? [] :
       LD.keys(folder.data.notes).map((name): FolderObject => ({ t: "Note", path, name }));
     const item_objects = dont_show("Item") ? [] :
-      ptui.getItems(folder.data.items).map((item): FolderObject => ({ t: "Item", path, item }));
+      ptui.getItems(folder.data.items).map(
+        (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
     const objects = LD.concat(
       scene_objects, map_objects, creature_objects, note_objects, item_objects);
+
     const children = objects.map(obj => {
       const iid = object_to_item_id(obj);
       return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting} />;
@@ -249,36 +253,27 @@ function object_icon(name: FolderContentType): string {
     case "Folder": return "folder";
   }
 }
-function object_name(obj: FolderObject): string {
-  switch (obj.t) {
-    case "Scene": return obj.scene.name;
-    case "Map": return obj.map.name;
-    case "Creature": return obj.creature.name;
-    case "Note": return obj.name;
-    case "Item": return obj.item.name;
-  }
-}
 
 function object_to_item_id(obj: FolderObject): T.FolderItemID {
   switch (obj.t) {
-    case "Scene": return { t: "SceneID", id: obj.scene.id };
-    case "Map": return { t: "MapID", id: obj.map.id };
-    case "Creature": return { t: "CreatureID", id: obj.creature.id };
     case "Note": return { t: "NoteID", id: obj.name };
-    case "Item": return { t: "ItemID", id: obj.item.id };
+    case "Scene": return { t: "SceneID", id: obj.id };
+    case "Map": return { t: "MapID", id: obj.id };
+    case "Creature": return { t: "CreatureID", id: obj.id };
+    case "Item": return { t: "ItemID", id: obj.id };
   }
 }
 
 function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
   switch (obj.t) {
     case "Scene":
-      return dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.scene.id } });
+      return dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.id } });
     case "Map":
-      return dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.map.id } });
+      return dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.id } });
     case "Creature":
       return dispatch({
         type: "FocusSecondary",
-        focus: { t: "Creature", creature_id: obj.creature.id },
+        focus: { t: "Creature", creature_id: obj.id },
       });
     case "Note":
       return dispatch({
@@ -287,7 +282,7 @@ function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
       });
     case "Item":
       return dispatch(
-        { type: "FocusSecondary", focus: { t: "Item", path: obj.path, item_id: obj.item.id } });
+        { type: "FocusSecondary", focus: { t: "Item", path: obj.path, item_id: obj.id } });
   }
 }
 
@@ -302,7 +297,7 @@ const TreeObject = M.connectRedux(
       if (selecting) { return; }
       return activate_object(object, dispatch);
     }
-    const name = object_name(object);
+    const name = object.name;
     function onCheck(evt: any, data: SUI.CheckboxProps) {
       if (selecting && selecting.on_select_object && data.checked !== undefined) {
         return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
