@@ -30,15 +30,21 @@ interface MainProps {
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI> | undefined; }> {
-  app?: object;
-  rpi_url: string;
 
-  constructor(props: MainProps) {
-    super(props);
+  static createStore(props: MainProps): Redux.Store<M.PTUI> | undefined {
     const ptui = props.app
       ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
       : undefined;
-    const store = ptui ? Redux.createStore(M.update, ptui) : undefined;
+    return ptui ? Redux.createStore(M.update, ptui) : undefined;
+  }
+
+  app?: object;
+  rpi_url: string;
+
+
+  constructor(props: MainProps) {
+    super(props);
+    const store = (this.constructor as typeof Main).createStore(props);
     this.state = { store };
   }
 
@@ -51,9 +57,7 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
         }
       } else {
         if (nextProps.app) {
-          const ptui = new M.PTUI(
-            nextProps.rpi_url, T.decodeApp.decodeAny(nextProps.app));
-          const store = Redux.createStore(M.update, ptui);
+          const store = (this.constructor as typeof Main).createStore(nextProps);
           this.setState({ store });
         }
       }
