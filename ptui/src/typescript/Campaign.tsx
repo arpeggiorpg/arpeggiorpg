@@ -156,27 +156,22 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     }
 
     const scene_objects = dont_show("Scene") ? [] :
-      ptui.getScenes(folder.data.scenes).map((scene): FolderObject =>
-        ({ t: "Scene", path, scene }));
+      ptui.getScenes(folder.data.scenes).map((scene): FolderObject => ({ t: "Scene", path, scene }));
     const map_objects = dont_show("Map") ? [] :
-      ptui.getMaps(folder.data.maps).map((map): FolderObject =>
-        ({ t: "Map", path, map }));
+      ptui.getMaps(folder.data.maps).map((map): FolderObject => ({ t: "Map", path, map }));
     const creature_objects = dont_show("Creature") ? [] :
-      ptui.getCreatures(folder.data.creatures).map((creature): FolderObject =>
-        ({ t: "Creature", path, creature }));
+      ptui.getCreatures(folder.data.creatures).map(
+        (creature): FolderObject => ({ t: "Creature", path, creature }));
     const note_objects = dont_show("Note") ? [] :
-      LD.keys(folder.data.notes).map((name): FolderObject =>
-        ({ t: "Note", path, name }));
+      LD.keys(folder.data.notes).map((name): FolderObject => ({ t: "Note", path, name }));
     const item_objects = dont_show("Item") ? [] :
-      ptui.getItems(folder.data.items).map((item): FolderObject =>
-        ({ t: "Item", path, item }));
+      ptui.getItems(folder.data.items).map((item): FolderObject => ({ t: "Item", path, item }));
     const objects = LD.concat(
       scene_objects, map_objects, creature_objects, note_objects, item_objects);
     const children = objects.map(obj => {
       const iid = object_to_item_id(obj);
       return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting} />;
-    }
-    );
+    });
 
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
       ([name, subfolder]) =>
