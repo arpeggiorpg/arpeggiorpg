@@ -1,6 +1,7 @@
 import * as I from 'immutable';
 import "isomorphic-fetch";
 import * as LD from 'lodash';
+import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
 import * as JD from "type-safe-json-decoder";
@@ -465,18 +466,25 @@ export function isEqual<T>(l: T, r: T): boolean {
 
 
 interface StoreProps { ptui: PTUI; }
-interface DispatchProps { dispatch: (a: Action) => Action; }
+export interface DispatchProps { dispatch: (a: Action) => Action; }
 export type Dispatch = (action: Action) => void;
 
 export type ReduxProps = StoreProps & DispatchProps;
 
 export function connectRedux<BaseProps>(
-  x: React.ComponentType<BaseProps & StoreProps & DispatchProps>)
+  x: React.ComponentType<BaseProps & ReduxProps>)
   : React.ComponentType<BaseProps> {
   const connector = ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }));
   // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
   // `as any`, when I didn't need it previously.
   return (connector as any)(x);
+}
+
+export function connect<BP, NP>(
+  mapState: (ptui: PTUI) => NP,
+  comp: React.ComponentType<BP & NP & DispatchProps>
+): React.ComponentType<BP> {
+  return ReactRedux.connect(mapState, dispatch => ({ dispatch }))(comp) as any;
 }
 
 

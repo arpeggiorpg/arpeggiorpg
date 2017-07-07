@@ -2,6 +2,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import * as ReactRedux from "react-redux";
 
 import { Button, Checkbox, Dropdown, Icon, List, Modal } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
@@ -12,18 +13,15 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-class CampaignComp extends React.Component<M.ReduxProps, undefined> {
-  shouldComponentUpdate(newProps: M.ReduxProps) {
-    return newProps.ptui.app.current_game.campaign !== this.props.ptui.app.current_game.campaign;
-  }
-  render(): JSX.Element {
-    const { ptui, dispatch } = this.props;
+interface CampaignDerivedProps { campaign: T.Folder; }
+export const Campaign = M.connect(
+  ptui => ({ campaign: ptui.app.current_game.campaign }),
+  function campaignComp(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
+    const { campaign } = props;
     console.log("[EXPENSIVE:Campaign.render]");
-    return <FolderTree
-      name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true} />;
+    return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
   }
-}
-export const Campaign = M.connectRedux(CampaignComp);
+);
 
 interface MultiItemSelectorProps {
   require_selected: I.Set<T.ItemID>;
@@ -151,6 +149,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
+    console.log("[EXPENSIVE:FolderTree]", this.props.path);
     const { folder, selecting, path, ptui, dispatch } = this.props;
     function dont_show(t: FolderContentType) {
       return selecting && selecting.item_type !== t;
