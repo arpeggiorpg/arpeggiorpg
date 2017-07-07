@@ -282,22 +282,25 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
 function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
   switch (obj.t) {
     case "Scene":
-      return dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.id } });
+      dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.id } }); return;
     case "Map":
-      return dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.id } });
+      dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.id } }); return;
     case "Creature":
-      return dispatch({
+      dispatch({
         type: "FocusSecondary",
         focus: { t: "Creature", creature_id: obj.id },
       });
+      return;
     case "Note":
-      return dispatch({
+      dispatch({
         type: "FocusSecondary",
         focus: { t: "Note", path: obj.path, name: obj.name },
       });
+      return;
     case "Item":
-      return dispatch(
+      dispatch(
         { type: "FocusSecondary", focus: { t: "Item", path: obj.path, item_id: obj.id } });
+      return;
   }
 }
 

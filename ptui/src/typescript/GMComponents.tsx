@@ -2,8 +2,8 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
-
-import * as Dice from './Dice';
+import * as ReactRedux from 'react-redux';
+import { createSelectorCreator, defaultMemoize } from 'reselect';
 
 import {
   Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
@@ -12,6 +12,7 @@ import {
 
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
+import * as Dice from './Dice';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
@@ -421,14 +422,25 @@ interface GMSceneCreaturesDerivedProps {
   creatures: Array<T.Creature>;
   combat: T.Combat | undefined;
 }
-export const GMSceneCreatures = M.connect(
-  (ptui, props: { scene: T.Scene }) => ({
-    creatures: ptui.getSceneCreatures(props.scene),
-    combat: ptui.app.current_game.current_combat,
-  })
+
+const appSelector = (ptui: M.PTUI): T.App => ptui.app;
+
+const createDeepEqualSelector = createSelectorCreator(defaultMemoize, M.isEqual);
+
+export const GMSceneCreatures = ReactRedux.connect(
+  createDeepEqualSelector(
+    [appSelector, (_: any, props: { scene: T.Scene }) => props.scene],
+    (app: T.App, scene: T.Scene) => ({
+      creatures: M.getSceneCreatures(app, scene),
+      combat: app.current_game.current_combat,
+    })
+  ),
+  (dispatch: M.Dispatch) => ({ dispatch }),
 )(
-  function GMSceneCreatures(props: { scene: T.Scene; } & GMSceneCreaturesDerivedProps & M.PTProps) {
-    const { scene, creatures, combat, sendCommand, dispatch } = props;
+  function GMSceneCreatures(
+    props: { scene: T.Scene; } & GMSceneCreaturesDerivedProps & M.DispatchProps) {
+    const { scene, creatures, combat, dispatch } = props;
+    console.log('[EXPENSIVE:GMSceneCreatures]');
     return <List relaxed={true}>
       <List.Item key="add">
         <List.Content>
@@ -452,7 +464,7 @@ export const GMSceneCreatures = M.connect(
                 const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
                 new_creatures = new_creatures.deleteAll(removed_cids);
                 const new_scene = { ...scene, creatures: new_creatures };
-                sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                dispatch(M.sendCommand({ t: "EditScene", scene: new_scene }));
                 toggler();
               }
               } />} />
@@ -478,7 +490,7 @@ export const GMSceneCreatures = M.connect(
                     ...scene,
                     creatures: scene.creatures.set(creature.id, [pos, new_vis]),
                   };
-                  sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                  dispatch(M.sendCommand({ t: "EditScene", scene: new_scene }));
                 }} />}
               content={vis_desc}
             />
@@ -500,7 +512,7 @@ export const GMSceneCreatures = M.connect(
     </List>;
 
     function addToCombat(creature: T.Creature) {
-      sendCommand(dispatch, { t: 'AddCreatureToCombat', creature_id: creature.id });
+      dispatch(M.sendCommand({ t: 'AddCreatureToCombat', creature_id: creature.id }));
     }
   });
 

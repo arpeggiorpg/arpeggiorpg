@@ -16,6 +16,8 @@ module.exports = {
             'react-window-size-listener',
             'react',
             'redux',
+            'redux-thunk',
+            'reselect',
             'semantic-ui-react',
             'svg-pan-zoom',
             'type-safe-json-decoder'

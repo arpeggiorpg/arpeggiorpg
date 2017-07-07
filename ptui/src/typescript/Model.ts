@@ -466,8 +466,8 @@ export function isEqual<T>(l: T, r: T): boolean {
 
 
 interface StoreProps { ptui: PTUI; }
-export interface DispatchProps { dispatch: (a: Action) => Action; }
-export type Dispatch = (action: Action) => void;
+export interface DispatchProps { dispatch: Dispatch; }
+export interface Dispatch extends ReactRedux.Dispatch<any> { }
 
 export type ReduxProps = StoreProps & DispatchProps;
 
@@ -525,3 +525,40 @@ export function creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID):
     combat.creatures.data,
     ([cid, _]) => cid === creature_id) !== undefined;
 }
+
+export function getSceneCreatures(app: T.App, scene: T.Scene) {
+  return getCreatures(app, scene.creatures.keySeq().toArray());
+}
+
+export function getCreatures(app: T.App, cids: Array<T.CreatureID>): Array<T.Creature> {
+  return LD.sortBy(filterMap(cids, cid => getCreature(app, cid)), (c: T.Creature) => c.name);
+}
+
+export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefined {
+  return app.current_game.creatures.get(cid);
+}
+
+
+export const sendCommand = (cmd: T.GameCommand) => (dispatch: Dispatch, getState: any) => {
+  const ptui = getState();
+  const json = T.encodeGameCommand(cmd);
+  console.log("[sendCommand:JSON]", json);
+  ptfetch(
+    dispatch,
+    ptui.rpi_url,
+    {
+      method: "POST",
+      body: JSON.stringify(json),
+      headers: { "content-type": "application/json" },
+    },
+    T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
+    (x: T.RustResult<Array<T.GameLog>, string>) => {
+      switch (x.t) {
+        case "Ok":
+          // turns out that post is *not* returning the App, just the logs!
+          return x.result; // dispatch({ type: "RefreshApp", app: x.result });
+        case "Err":
+          throw { _pt_error: 'RPI', message: x.error };
+      }
+    });
+};

@@ -5,6 +5,7 @@ import PanelGroup from 'react-panelgroup';
 import { Provider } from 'react-redux';
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
+import thunk from 'redux-thunk';
 
 // import 'semantic-ui-css/semantic.min.css';
 import {
@@ -36,7 +37,7 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
       ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
       : undefined;
     return ptui
-      ? Redux.createStore(M.update, ptui)
+      ? Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk))
       : undefined;
   }
 
