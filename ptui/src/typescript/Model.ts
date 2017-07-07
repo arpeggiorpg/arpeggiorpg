@@ -519,3 +519,9 @@ export class Component<P, S> extends React.Component<P, S> {
       && isEqual(this.state, nextState));
   }
 }
+
+export function creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
+  return LD.find(
+    combat.creatures.data,
+    ([cid, _]) => cid === creature_id) !== undefined;
+}

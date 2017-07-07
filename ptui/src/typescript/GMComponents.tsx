@@ -416,8 +416,19 @@ export const AddItemsToCreature = M.connectRedux(
     />;
   });
 
-export const GMSceneCreatures = M.connectRedux(
-  function GMSceneCreatures({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+
+interface GMSceneCreaturesDerivedProps {
+  creatures: Array<T.Creature>;
+  combat: T.Combat | undefined;
+}
+export const GMSceneCreatures = M.connect(
+  (ptui, props: { scene: T.Scene }) => ({
+    creatures: ptui.getSceneCreatures(props.scene),
+    combat: ptui.app.current_game.current_combat,
+  })
+)(
+  function GMSceneCreatures(props: { scene: T.Scene; } & GMSceneCreaturesDerivedProps & M.PTProps) {
+    const { scene, creatures, combat, sendCommand, dispatch } = props;
     return <List relaxed={true}>
       <List.Item key="add">
         <List.Content>
@@ -441,13 +452,13 @@ export const GMSceneCreatures = M.connectRedux(
                 const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
                 new_creatures = new_creatures.deleteAll(removed_cids);
                 const new_scene = { ...scene, creatures: new_creatures };
-                ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                sendCommand(dispatch, { t: "EditScene", scene: new_scene });
                 toggler();
               }
               } />} />
         </List.Content>
       </List.Item>
-      {ptui.getSceneCreatures(scene).map(creature => {
+      {creatures.map(creature => {
         const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
         const vis_desc = vis.t === 'GMOnly'
           ? 'Only visible to the GM' : 'Visible to all players';
@@ -467,16 +478,16 @@ export const GMSceneCreatures = M.connectRedux(
                     ...scene,
                     creatures: scene.creatures.set(creature.id, [pos, new_vis]),
                   };
-                  ptui.sendCommand(dispatch, { t: "EditScene", scene: new_scene });
+                  sendCommand(dispatch, { t: "EditScene", scene: new_scene });
                 }} />}
               content={vis_desc}
             />
             <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
               <Dropdown.Menu>
                 <Dropdown.Header content={creature.name} />
-                {ptui.app.current_game.current_combat
-                  && ptui.app.current_game.current_combat.scene === scene.id
-                  && !ptui.creatureIsInCombat(ptui.app.current_game.current_combat, creature.id)
+                {combat
+                  && combat.scene === scene.id
+                  && !M.creatureIsInCombat(combat, creature.id)
                   ? <Dropdown.Item content="Add to Combat" onClick={() => addToCombat(creature)} />
                   : null
                 }
@@ -489,7 +500,7 @@ export const GMSceneCreatures = M.connectRedux(
     </List>;
 
     function addToCombat(creature: T.Creature) {
-      ptui.sendCommand(dispatch, { t: 'AddCreatureToCombat', creature_id: creature.id });
+      sendCommand(dispatch, { t: 'AddCreatureToCombat', creature_id: creature.id });
     }
   });
 
