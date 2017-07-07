@@ -18,7 +18,7 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
  * `dispatch`.
  */
 
-class HistoryComp extends React.Component<M.ReduxProps, undefined> {
+class HistoryComp extends React.Component<M.ReduxProps> {
   shouldComponentUpdate(newProps: M.ReduxProps) {
     return (newProps.ptui.app.snapshots !== this.props.ptui.app.snapshots);
   }

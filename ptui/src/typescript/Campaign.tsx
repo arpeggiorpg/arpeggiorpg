@@ -15,13 +15,12 @@ import * as TextInput from './TextInput';
 
 interface CampaignDerivedProps { campaign: T.Folder; }
 export const Campaign = M.connect(
-  ptui => ({ campaign: ptui.app.current_game.campaign }),
+  ptui => ({ campaign: ptui.app.current_game.campaign })
+)(
   function campaignComp(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
     const { campaign } = props;
-    console.log("[EXPENSIVE:Campaign.render]");
     return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
-  }
-);
+  });
 
 interface MultiItemSelectorProps {
   require_selected: I.Set<T.ItemID>;
@@ -142,35 +141,23 @@ interface FTProps {
   start_open?: boolean;
   selecting?: SelectableProps;
 }
-class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
-  { expanded: boolean }> {
-  constructor(props: FTProps & M.ReduxProps) {
+interface FTDerivedProps {
+  objects: Array<FolderObject>;
+}
+
+class FolderTreeComp
+  extends M.Component<
+  FTProps & FTDerivedProps & M.PTProps,
+  { expanded: boolean }
+  > {
+
+  constructor(props: FTProps & FTDerivedProps & M.PTProps) {
     super(props);
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
     console.log("[EXPENSIVE:FolderTree]", this.props.path);
-    const { folder, selecting, path, ptui, dispatch } = this.props;
-    function dont_show(t: FolderContentType) {
-      return selecting && selecting.item_type !== t;
-    }
-
-    const scene_objects = dont_show("Scene") ? [] :
-      ptui.getScenes(folder.data.scenes).map(
-        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
-    const map_objects = dont_show("Map") ? [] :
-      ptui.getMaps(folder.data.maps).map(
-        (map): FolderObject => ({ t: "Map", path, id: map.id, name: map.name }));
-    const creature_objects = dont_show("Creature") ? [] :
-      ptui.getCreatures(folder.data.creatures).map(
-        (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
-    const note_objects = dont_show("Note") ? [] :
-      LD.keys(folder.data.notes).map((name): FolderObject => ({ t: "Note", path, name }));
-    const item_objects = dont_show("Item") ? [] :
-      ptui.getItems(folder.data.items).map(
-        (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
-    const objects = LD.concat(
-      scene_objects, map_objects, creature_objects, note_objects, item_objects);
+    const { folder, selecting, path, objects, dispatch, sendCommand } = this.props;
 
     const children = objects.map(obj => {
       const iid = object_to_item_id(obj);
@@ -213,7 +200,7 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
           ? [
             <Dropdown.Divider key="ble" />,
             <Dropdown.Item key="blo" text="Delete this folder" icon="delete"
-              onClick={() => ptui.sendCommand(dispatch, { t: "DeleteFolder", path })} />]
+              onClick={() => sendCommand(dispatch, { t: "DeleteFolder", path })} />]
           : null}
       </Dropdown.Menu>
     </Dropdown>;
@@ -240,7 +227,35 @@ class FolderTreeComp extends React.Component<FTProps & M.ReduxProps,
     }
   }
 }
-const FolderTree = M.connectRedux(FolderTreeComp);
+
+const FolderTree = M.connect<FTProps, FTDerivedProps>(
+  (ptui: M.PTUI, props: FTProps) => {
+
+    const { selecting, folder, path } = props;
+
+    function dont_show(t: FolderContentType) {
+      return selecting && selecting.item_type !== t;
+    }
+
+    const scene_objects = dont_show("Scene") ? [] :
+      ptui.getScenes(folder.data.scenes).map(
+        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
+    const map_objects = dont_show("Map") ? [] :
+      ptui.getMaps(folder.data.maps).map(
+        (map): FolderObject => ({ t: "Map", path, id: map.id, name: map.name }));
+    const creature_objects = dont_show("Creature") ? [] :
+      ptui.getCreatures(folder.data.creatures).map(
+        (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
+    const note_objects = dont_show("Note") ? [] :
+      LD.keys(folder.data.notes).map((name): FolderObject => ({ t: "Note", path, name }));
+    const item_objects = dont_show("Item") ? [] :
+      ptui.getItems(folder.data.items).map(
+        (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
+    return {
+      objects: LD.concat(
+        scene_objects, map_objects, creature_objects, note_objects, item_objects),
+    };
+  })(FolderTreeComp);
 
 
 function object_icon(name: FolderContentType): string {

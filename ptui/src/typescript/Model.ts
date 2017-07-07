@@ -480,16 +480,42 @@ export function connectRedux<BaseProps>(
   return (connector as any)(x);
 }
 
-export function connect<BP, NP>(
-  mapState: (ptui: PTUI) => NP,
-  comp: React.ComponentType<BP & NP & DispatchProps>
-): React.ComponentType<BP> {
-  return ReactRedux.connect(mapState, dispatch => ({ dispatch }))(comp) as any;
-}
+interface SCProps { sendCommand: (dispatch: Dispatch, cmd: T.GameCommand) => void; }
 
+export type PTProps = SCProps & DispatchProps;
+
+export function connect<BaseProps extends object, DerivedProps extends object>(
+  mapState: (ptui: PTUI, props: BaseProps) => DerivedProps
+): ReactRedux.ComponentDecorator<DerivedProps & SCProps & DispatchProps, BaseProps> {
+  // TODO: get better at typescript and get rid of all the `as any` in this function
+  return ReactRedux.connect<DerivedProps & SCProps, DispatchProps, BaseProps>(
+    (ptui, props): DerivedProps & SCProps => {
+      const mapped: DerivedProps = mapState(ptui, props as any);
+      return {
+        ...mapped as any,
+        sendCommand: (dispatch: Dispatch, cmd: T.GameCommand) => ptui.sendCommand(dispatch, cmd),
+      };
+    }
+    ,
+    (dispatch: Dispatch) => ({ dispatch })
+  );
+}
 
 export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined {
   if (x !== undefined) {
     return f(x);
+  }
+}
+
+
+/** A component which deep-compares props to determine whether it should update. */
+export class Component<P, S> extends React.Component<P, S> {
+  shouldComponentUpdate(nextProps: P, nextState: S, nextContext: any) {
+    const sCU = super.shouldComponentUpdate;
+    return !(
+      isEqual(
+        LD.omit(this.props, 'dispatch', 'sendCommand'),
+        LD.omit(nextProps, 'dispatch', 'sendCommand'))
+      && isEqual(this.state, nextState));
   }
 }

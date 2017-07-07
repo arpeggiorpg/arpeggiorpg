@@ -837,7 +837,7 @@ class EditCreatureDataComp
 const EditCreatureData = M.connectRedux(EditCreatureDataComp);
 
 interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
-class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps, undefined> {
+class GMCreateItemComp extends React.Component<GMCreateItemProps & M.ReduxProps> {
   render(): JSX.Element {
     return <CV.SingleInputForm buttonText="Create" onSubmit={input => this.save(input)} />;
   }

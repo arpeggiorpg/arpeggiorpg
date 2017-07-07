@@ -14,7 +14,7 @@ import * as T from './PTTypes';
 import { Button, Input, Menu } from 'semantic-ui-react';
 
 
-export class PlayerMainComp extends React.Component<M.ReduxProps, undefined> {
+export class PlayerMainComp extends React.Component<M.ReduxProps> {
   render(): JSX.Element {
     const { ptui, dispatch } = this.props;
     if (ptui.state.player_id) {

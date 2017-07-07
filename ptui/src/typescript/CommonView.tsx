@@ -35,12 +35,13 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
     const ptui = props.app
       ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
       : undefined;
-    return ptui ? Redux.createStore(M.update, ptui) : undefined;
+    return ptui
+      ? Redux.createStore(M.update, ptui)
+      : undefined;
   }
 
   app?: object;
   rpi_url: string;
-
 
   constructor(props: MainProps) {
     super(props);
@@ -329,7 +330,7 @@ interface PositiveIntegerInputProps {
   onChange: (num: number | undefined) => void;
 }
 export class PositiveIntegerInput
-  extends React.Component<PositiveIntegerInputProps & { [index: string]: any }, undefined> {
+  extends React.Component<PositiveIntegerInputProps & { [index: string]: any }> {
   render(): JSX.Element {
     return <Form.Input
       {...this.props}
@@ -421,7 +422,7 @@ interface TabProps {
   // that it's controlling has no physical size in the DOM.
   always_render?: boolean;
 }
-export class Tab extends React.Component<TabProps, undefined> {
+export class Tab extends React.Component<TabProps> {
   render(): JSX.Element {
     return React.Children.only(this.props.children);
   }
