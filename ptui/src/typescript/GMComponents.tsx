@@ -3,7 +3,6 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
-import { createSelectorCreator, defaultMemoize } from 'reselect';
 
 import {
   Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
@@ -424,13 +423,10 @@ interface GMSceneCreaturesDerivedProps {
   combat: T.Combat | undefined;
 }
 
-const appSelector = (ptui: M.PTUI): T.App => ptui.app;
-
-const createDeepEqualSelector = createSelectorCreator(defaultMemoize, M.isEqual);
-
 export const GMSceneCreatures = ReactRedux.connect(
-  createDeepEqualSelector(
-    [appSelector, (_: any, props: { scene: T.Scene }) => props.scene],
+  Comp.createDeepEqualSelector(
+    [(ptui: M.PTUI): T.App => ptui.app,
+    (_: any, props: { scene: T.Scene }) => props.scene],
     (app: T.App, scene: T.Scene) => ({
       creatures: M.getSceneCreatures(app, scene),
       combat: app.current_game.current_combat,

@@ -1,10 +1,13 @@
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
+import { createSelectorCreator, defaultMemoize } from 'reselect';
 import * as JD from 'type-safe-json-decoder';
 
 import * as M from './Model';
 import * as T from './PTTypes';
+
+export const createDeepEqualSelector = createSelectorCreator(defaultMemoize, M.isEqual);
 
 interface SCProps { sendCommand: (dispatch: M.Dispatch, cmd: T.GameCommand) => void; }
 
