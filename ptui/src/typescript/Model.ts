@@ -497,7 +497,13 @@ export const sendCommand = (cmd: T.GameCommand): ThunkAction<void, PTUI, undefin
   };
 
 
-export type Dispatch = Redux.Dispatch<PTUI>;
+// We define our own Dispatch type instead of using Redux.Dispatch because Redux.Dispatch does not
+// have a type-parameter for the *type of Action*, only the *type of Store*. We don't want to allow
+// call-sites to be able to dispatch action objects that don't actually fit the format of the
+// `Action` interface (above), so we define our own more specific one.
+export type Dispatch = (action: Action | ThunkAction<void, PTUI, undefined>) => void;
+
+
 export interface DispatchProps { dispatch: Dispatch; }
 export interface ReduxProps extends DispatchProps { ptui: PTUI; }
 
