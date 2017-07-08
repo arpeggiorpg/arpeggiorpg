@@ -149,17 +149,17 @@ interface FTDerivedProps {
 
 class FolderTreeComp
   extends Comp.Component<
-  FTProps & FTDerivedProps & Comp.PTProps,
+  FTProps & FTDerivedProps & M.DispatchProps,
   { expanded: boolean }
   > {
 
-  constructor(props: FTProps & FTDerivedProps & Comp.PTProps) {
+  constructor(props: FTProps & FTDerivedProps & M.DispatchProps) {
     super(props);
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
     console.log("[EXPENSIVE:FolderTree]", this.props.path);
-    const { folder, selecting, path, objects, dispatch, sendCommand } = this.props;
+    const { folder, selecting, path, objects, dispatch } = this.props;
 
     const children = objects.map(obj => {
       const iid = object_to_item_id(obj);
@@ -202,7 +202,7 @@ class FolderTreeComp
           ? [
             <Dropdown.Divider key="ble" />,
             <Dropdown.Item key="blo" text="Delete this folder" icon="delete"
-              onClick={() => sendCommand(dispatch, { t: "DeleteFolder", path })} />]
+              onClick={() => dispatch(M.sendCommand({ t: "DeleteFolder", path }))} />]
           : null}
       </Dropdown.Menu>
     </Dropdown>;

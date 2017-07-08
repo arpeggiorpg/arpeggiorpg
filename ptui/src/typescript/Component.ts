@@ -9,23 +9,21 @@ import * as T from './PTTypes';
 
 export const createDeepEqualSelector = createSelectorCreator(defaultMemoize, M.isEqual);
 
-interface SCProps { sendCommand: (dispatch: M.Dispatch, cmd: T.GameCommand) => void; }
-
-export type PTProps = SCProps & M.DispatchProps;
+function debugIsEqual<T>(a: T, b: T): boolean {
+  const result = M.isEqual(a, b);
+  console.log("[debugIsEqual]", result ? "EQUAL" : "UNEQUAL", a, b);
+  return result;
+}
+export const createDebugDeepEqualSelector = createSelectorCreator(defaultMemoize, debugIsEqual);
 
 export function connect<BaseProps extends object, DerivedProps extends object>(
   mapState: (ptui: M.PTUI, props: BaseProps) => DerivedProps
-): ReactRedux.ComponentDecorator<DerivedProps & SCProps & M.DispatchProps, BaseProps> {
+): ReactRedux.ComponentDecorator<DerivedProps & M.DispatchProps, BaseProps> {
   // TODO: get better at typescript and get rid of all the `as any` in this function
-  return ReactRedux.connect<DerivedProps & SCProps, M.DispatchProps, BaseProps>(
-    (ptui, props): DerivedProps & SCProps => {
-      const mapped: DerivedProps = mapState(ptui, props as any);
-      return {
-        ...mapped as any,
-        sendCommand: (dispatch: M.Dispatch, cmd: T.GameCommand) => ptui.sendCommand(dispatch, cmd),
-      };
-    }
-    ,
+  return ReactRedux.connect<DerivedProps, M.DispatchProps, BaseProps>(
+    (ptui, props): DerivedProps => {
+      return mapState(ptui, props as any);
+    },
     (dispatch: M.Dispatch) => ({ dispatch })
   );
 }

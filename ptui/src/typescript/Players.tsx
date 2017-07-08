@@ -6,6 +6,7 @@ import { Button, List, Table } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
+import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
@@ -13,11 +14,24 @@ export function renderPlayers(app: any, [id, currentScene, data]: [string, strin
   console.log("sorry elm");
 }
 
-export const Players = M.connectRedux(
-  function Players({ ptui, dispatch }): JSX.Element {
-    const scene = ptui.focused_scene();
-    const app = ptui.app;
-
+export const Players = Comp.connect(
+  Comp.createDeepEqualSelector(
+    [ptui => ptui.app,
+    ptui => ptui.app.players,
+    ptui => ptui.focused_scene(),
+    ],
+    (app, players, scene) => ({
+      scene,
+      player_creatures: players.entrySeq().toArray().map(
+        ([pid, player]) =>
+          ({
+            player, id: player.player_id,
+            creatures: M.filterMap(player.creatures, cid => M.getCreature(app, cid)),
+          })),
+    })
+  )
+)(
+  function Players({ scene, player_creatures, dispatch }): JSX.Element {
     return <Table celled={true}>
       <Table.Header>
         <Table.Row>
@@ -28,24 +42,23 @@ export const Players = M.connectRedux(
       </Table.Header>
       <Table.Body>
         {
-          app.players.entrySeq().toArray().map(([pid, player]) => {
+          player_creatures.map(playa => {
             const sceneButtons = [];
-            if (player.scene) {
-              sceneButtons.push(setSceneButton(pid, "Remove from Scene", undefined));
+            if (playa.player.scene) {
+              sceneButtons.push(setSceneButton(playa.id, "Remove from Scene", undefined));
             }
-            if (scene && player.scene !== scene.id) {
-              sceneButtons.push(setSceneButton(pid, "Move to this scene", scene.id));
+            if (scene && playa.player.scene !== scene.id) {
+              sceneButtons.push(setSceneButton(playa.id, "Move to this scene", scene.id));
             }
 
-            return <Table.Row key={pid}>
-              <Table.Cell>{pid}</Table.Cell>
+            return <Table.Row key={playa.id}>
+              <Table.Cell>{playa.id}</Table.Cell>
               <Table.Cell>
                 <List>
-                  {player.creatures.map(cid => {
-                    const creature = ptui.getCreature(cid);
-                    if (creature) {
-                      return <List.Item key={pid + "-" + cid}>{creature.name}</List.Item>;
-                    }
+                  {playa.creatures.map(creature => {
+                    return <List.Item key={playa.id + "-" + creature.id}>
+                      {creature.name}
+                    </List.Item>;
                   })}
                 </List>
               </Table.Cell>
@@ -54,8 +67,9 @@ export const Players = M.connectRedux(
                   {sceneButtons}
                   <CV.ModalMaker
                     button={open => <Button onClick={open}>Grant creatures</Button>}
-                    header={<span>Grant creatures to {player.player_id}</span>}
-                    content={close => <GrantCreaturesToPlayer player={player} onDone={close} />}
+                    header={<span>Grant creatures to {playa.id}</span>}
+                    content={close =>
+                      <GrantCreaturesToPlayer player={playa.player} onDone={close} />}
                   />
                 </Button.Group>
               </Table.Cell>
@@ -68,7 +82,7 @@ export const Players = M.connectRedux(
     function setSceneButton(player_id: T.PlayerID, text: string, scene_id: T.SceneID | undefined)
       : JSX.Element {
       return <Button key={"set-" + player_id + scene_id}
-        onClick={() => ptui.sendCommand(dispatch, { t: "SetPlayerScene", player_id, scene_id })} >
+        onClick={() => dispatch(M.sendCommand({ t: "SetPlayerScene", player_id, scene_id }))} >
         {text}
       </Button >;
     }
