@@ -163,7 +163,8 @@ class FolderTreeComp
 
     const children = objects.map(obj => {
       const iid = object_to_item_id(obj);
-      return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting} />;
+      return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
+        dispatch={dispatch} />;
     });
 
     const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
@@ -307,31 +308,32 @@ function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
 }
 
 
-interface TreeObjectProps {
+interface TreeObjectProps extends M.DispatchProps {
   object: FolderObject;
   selecting: SelectableProps | undefined;
 }
-const TreeObject = M.connectRedux(
-  function TreeObject({ object, selecting, dispatch }: TreeObjectProps & M.ReduxProps) {
-    function handler() {
-      if (selecting) { return; }
-      return activate_object(object, dispatch);
+
+function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
+  console.log('[EXPENSIVE:TreeObject]', object);
+  function handler() {
+    if (selecting) { return; }
+    return activate_object(object, dispatch);
+  }
+  const name = object.name;
+  function onCheck(evt: any, data: SUI.CheckboxProps) {
+    if (selecting && selecting.on_select_object && data.checked !== undefined) {
+      return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
     }
-    const name = object.name;
-    function onCheck(evt: any, data: SUI.CheckboxProps) {
-      if (selecting && selecting.on_select_object && data.checked !== undefined) {
-        return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
+  }
+  return <List.Item>
+    <List.Icon name={object_icon(object.t)} />
+    <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
+      {
+        selecting
+          ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
+            label={name} onChange={onCheck} />
+          : name
       }
-    }
-    return <List.Item>
-      <List.Icon name={object_icon(object.t)} />
-      <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
-        {
-          selecting
-            ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
-              label={name} onChange={onCheck} />
-            : name
-        }
-      </List.Content>
-    </List.Item>;
-  });
+    </List.Content>
+  </List.Item>;
+}
