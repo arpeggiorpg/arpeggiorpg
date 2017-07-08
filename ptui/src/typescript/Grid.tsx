@@ -33,7 +33,7 @@ export interface SceneGridProps {
 }
 
 export const SceneGrid = M.connectRedux(
-  (props: SceneGridProps & M.ReduxProps): JSX.Element => {
+  function SceneGrid(props: SceneGridProps & M.ReduxProps): JSX.Element {
     const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
     if (!map_) { return <div>Couldn't find map</div>; }
     const map = map_; // WHY TYPESCRIPT, WHY???
@@ -175,7 +175,9 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
 export const GridSvg = M.connectRedux(GridSvgComp);
 
 const MovementTarget = M.connectRedux(
-  (props: { cid?: T.CreatureID; pt: T.Point3, teleport: boolean } & M.ReduxProps): JSX.Element => {
+  function MovementTarget(
+    props: { cid?: T.CreatureID; pt: T.Point3, teleport: boolean } & M.ReduxProps
+  ): JSX.Element {
     const { cid, pt, ptui, dispatch, teleport } = props;
     const tprops = tile_props("cyan", pt);
     function moveCreature() {
@@ -193,8 +195,9 @@ const MovementTarget = M.connectRedux(
   });
 
 const SpecialTile = M.connectRedux(
-  ({ color, vis, pt, ptui }: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
-    : JSX.Element => {
+  function SpecialTile(props: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
+    : JSX.Element {
+    const { color, vis, pt, ptui } = props;
     const gmonly = vis.t === "GMOnly";
     if (gmonly && ptui.state.player_id) {
       return <noscript />;
@@ -209,9 +212,9 @@ const SpecialTile = M.connectRedux(
 
 
 const Annotation = M.connectRedux(
-  ({ ptui, dispatch, pt, note, vis }:
+  function Annotation({ ptui, dispatch, pt, note, vis }:
     { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
-    : JSX.Element => {
+    : JSX.Element {
     if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
       return <noscript />;
     }
@@ -235,8 +238,8 @@ const Annotation = M.connectRedux(
 
 
 const GridCreature = M.connectRedux(
-  ({ ptui, dispatch, creature, allow_clicks }:
-    { creature: MapCreature; allow_clicks: boolean } & M.ReduxProps): JSX.Element => {
+  function GridCreature({ ptui, dispatch, creature, allow_clicks }:
+    { creature: MapCreature; allow_clicks: boolean } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
       if (!allow_clicks) { return; }
