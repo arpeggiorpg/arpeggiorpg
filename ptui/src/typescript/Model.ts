@@ -4,6 +4,7 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
+import { ThunkAction } from 'redux-thunk';
 import * as JD from "type-safe-json-decoder";
 
 import * as T from './PTTypes';
@@ -136,8 +137,7 @@ function decodeFetch<J>(
   });
 }
 
-
-function ptfetch<J, R>(
+export function ptfetch<J, R>(
   dispatch: Dispatch, url: string, init: RequestInit | undefined,
   decoder: JD.Decoder<J>, then: (result: J) => R)
   : Promise<R> {
@@ -220,25 +220,7 @@ export class PTUI {
   }
 
   sendCommand(dispatch: Dispatch, cmd: T.GameCommand): void {
-    const json = T.encodeGameCommand(cmd);
-    console.log("[sendCommand:JSON]", json);
-    ptfetch(
-      dispatch, this.rpi_url,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
-      (x: T.RustResult<Array<T.GameLog>, string>) => {
-        switch (x.t) {
-          case "Ok":
-            // turns out that post is *not* returning the App, just the logs!
-            return x.result; // dispatch({ type: "RefreshApp", app: x.result });
-          case "Err":
-            throw { _pt_error: 'RPI', message: x.error };
-        }
-      });
+    return sendCommand(cmd)(dispatch, () => this, undefined);
   }
 
   /// Send a Command and *don't* automatically handle errors.
@@ -329,11 +311,11 @@ export class PTUI {
   // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
   // then it would be a good way forward, but I'm not sure it will be necessary.
   getCreature(cid: T.CreatureID): T.Creature | undefined {
-    return this.app.current_game.creatures.get(cid);
+    return getCreature(this.app, cid);
   }
 
   getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
-    return LD.sortBy(filterMap(cids, cid => this.getCreature(cid)), (c: T.Creature) => c.name);
+    return getCreatures(this.app, cids);
   }
 
   getItem(iid: T.ItemID): T.Item | undefined {
@@ -464,59 +446,9 @@ export function isEqual<T>(l: T, r: T): boolean {
   return LD.isEqual(l, r);
 }
 
-
-interface StoreProps { ptui: PTUI; }
-export interface DispatchProps { dispatch: Dispatch; }
-export interface Dispatch extends ReactRedux.Dispatch<any> { }
-
-export type ReduxProps = StoreProps & DispatchProps;
-
-export function connectRedux<BaseProps>(
-  x: React.ComponentType<BaseProps & ReduxProps>)
-  : React.ComponentType<BaseProps> {
-  const connector = ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }));
-  // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
-  // `as any`, when I didn't need it previously.
-  return (connector as any)(x);
-}
-
-interface SCProps { sendCommand: (dispatch: Dispatch, cmd: T.GameCommand) => void; }
-
-export type PTProps = SCProps & DispatchProps;
-
-export function connect<BaseProps extends object, DerivedProps extends object>(
-  mapState: (ptui: PTUI, props: BaseProps) => DerivedProps
-): ReactRedux.ComponentDecorator<DerivedProps & SCProps & DispatchProps, BaseProps> {
-  // TODO: get better at typescript and get rid of all the `as any` in this function
-  return ReactRedux.connect<DerivedProps & SCProps, DispatchProps, BaseProps>(
-    (ptui, props): DerivedProps & SCProps => {
-      const mapped: DerivedProps = mapState(ptui, props as any);
-      return {
-        ...mapped as any,
-        sendCommand: (dispatch: Dispatch, cmd: T.GameCommand) => ptui.sendCommand(dispatch, cmd),
-      };
-    }
-    ,
-    (dispatch: Dispatch) => ({ dispatch })
-  );
-}
-
 export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined {
   if (x !== undefined) {
     return f(x);
-  }
-}
-
-
-/** A component which deep-compares props to determine whether it should update. */
-export class Component<P, S> extends React.Component<P, S> {
-  shouldComponentUpdate(nextProps: P, nextState: S, nextContext: any) {
-    const sCU = super.shouldComponentUpdate;
-    return !(
-      isEqual(
-        LD.omit(this.props, 'dispatch', 'sendCommand'),
-        LD.omit(nextProps, 'dispatch', 'sendCommand'))
-      && isEqual(this.state, nextState));
   }
 }
 
@@ -539,26 +471,42 @@ export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefin
 }
 
 
-export const sendCommand = (cmd: T.GameCommand) => (dispatch: Dispatch, getState: any) => {
-  const ptui = getState();
-  const json = T.encodeGameCommand(cmd);
-  console.log("[sendCommand:JSON]", json);
-  ptfetch(
-    dispatch,
-    ptui.rpi_url,
-    {
-      method: "POST",
-      body: JSON.stringify(json),
-      headers: { "content-type": "application/json" },
-    },
-    T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
-    (x: T.RustResult<Array<T.GameLog>, string>) => {
-      switch (x.t) {
-        case "Ok":
-          // turns out that post is *not* returning the App, just the logs!
-          return x.result; // dispatch({ type: "RefreshApp", app: x.result });
-        case "Err":
-          throw { _pt_error: 'RPI', message: x.error };
-      }
-    });
-};
+export const sendCommand = (cmd: T.GameCommand): ThunkAction<void, PTUI, undefined> =>
+  (dispatch, getState) => {
+    const ptui = getState();
+    const json = T.encodeGameCommand(cmd);
+    console.log("[sendCommand:JSON]", json);
+    ptfetch(
+      dispatch,
+      ptui.rpi_url,
+      {
+        method: "POST",
+        body: JSON.stringify(json),
+        headers: { "content-type": "application/json" },
+      },
+      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
+      (x: T.RustResult<Array<T.GameLog>, string>) => {
+        switch (x.t) {
+          case "Ok":
+            // turns out that post is *not* returning the App, just the logs!
+            return x.result; // dispatch({ type: "RefreshApp", app: x.result });
+          case "Err":
+            throw { _pt_error: 'RPI', message: x.error };
+        }
+      });
+  };
+
+
+export type Dispatch = Redux.Dispatch<PTUI>;
+export interface DispatchProps { dispatch: Dispatch; }
+export interface ReduxProps extends DispatchProps { ptui: PTUI; }
+
+export function connectRedux<BaseProps extends {} & object>(
+  x: React.ComponentType<BaseProps & ReduxProps>)
+  : React.ComponentType<BaseProps> {
+  const connector = ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }));
+  // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
+  // `as any`, when I didn't need it previously.
+  return (connector as any)(x);
+}
+

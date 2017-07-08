@@ -8,13 +8,15 @@ import { Button, Checkbox, Dropdown, Icon, List, Modal } from 'semantic-ui-react
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
+import * as Comp from './Component';
 import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 interface CampaignDerivedProps { campaign: T.Folder; }
-export const Campaign = M.connect(
+
+export const Campaign = Comp.connect(
   ptui => ({ campaign: ptui.app.current_game.campaign })
 )(
   function campaignComp(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
@@ -146,12 +148,12 @@ interface FTDerivedProps {
 }
 
 class FolderTreeComp
-  extends M.Component<
-  FTProps & FTDerivedProps & M.PTProps,
+  extends Comp.Component<
+  FTProps & FTDerivedProps & Comp.PTProps,
   { expanded: boolean }
   > {
 
-  constructor(props: FTProps & FTDerivedProps & M.PTProps) {
+  constructor(props: FTProps & FTDerivedProps & Comp.PTProps) {
     super(props);
     this.state = { expanded: props.start_open || false };
   }
@@ -228,7 +230,7 @@ class FolderTreeComp
   }
 }
 
-const FolderTree = M.connect<FTProps, FTDerivedProps>(
+const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
   (ptui: M.PTUI, props: FTProps) => {
 
     const { selecting, folder, path } = props;

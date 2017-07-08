@@ -490,7 +490,7 @@ export const ActionBar = M.connectRedux((
   </div>;
 });
 
-export const DoneButton = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
+export const DoneButton = M.connectRedux(({ ptui, dispatch }): JSX.Element => {
   const command: T.GameCommand = { t: "Done" };
   return <Button
     style={{ height: "50px", flex: "1" }}
@@ -539,22 +539,22 @@ export function ClickAway({ onClick, children }: { onClick: () => void, children
   </div>;
 }
 
-function errorModal({ ptui, dispatch }: M.ReduxProps): JSX.Element {
-  if (ptui.state.error) {
-    return <Modal dimmer="inverted"
-      open={true}
-      onClose={() => dispatch({ type: "ClearError" })}>
-      <Modal.Header>Error</Modal.Header>
-      <Modal.Content>
-        <div>{ptui.state.error}</div>
-        <Button onClick={() => dispatch({ type: "ClearError" })}>Ok</Button>
-      </Modal.Content>
-    </Modal>;
-  } else {
-    return <noscript />;
-  }
-}
-export const ErrorModal = M.connectRedux(errorModal);
+export const ErrorModal = M.connectRedux(
+  function errorModal({ ptui, dispatch }): JSX.Element {
+    if (ptui.state.error) {
+      return <Modal dimmer="inverted"
+        open={true}
+        onClose={() => dispatch({ type: "ClearError" })}>
+        <Modal.Header>Error</Modal.Header>
+        <Modal.Content>
+          <div>{ptui.state.error}</div>
+          <Button onClick={() => dispatch({ type: "ClearError" })}>Ok</Button>
+        </Modal.Content>
+      </Modal>;
+    } else {
+      return <noscript />;
+    }
+  });
 
 interface TheLayoutProps {
   map: JSX.Element;
@@ -686,7 +686,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
 export const TheLayout = M.connectRedux(TheLayoutComp);
 
-export const TopBar = M.connectRedux(function TopBar(props: M.ReduxProps): JSX.Element {
+export const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
   const { ptui, dispatch } = props;
   if (ptui.state.grid.movement_options) {
     return <div>Select a destination or

@@ -14,7 +14,7 @@ export function renderPlayers(app: any, [id, currentScene, data]: [string, strin
 }
 
 export const Players = M.connectRedux(
-  function Players({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+  function Players({ ptui, dispatch }): JSX.Element {
     const scene = ptui.focused_scene();
     const app = ptui.app;
 

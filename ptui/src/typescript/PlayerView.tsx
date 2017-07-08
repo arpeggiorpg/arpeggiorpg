@@ -14,9 +14,9 @@ import * as T from './PTTypes';
 import { Button, Input, Menu } from 'semantic-ui-react';
 
 
-export class PlayerMainComp extends React.Component<M.ReduxProps> {
-  render(): JSX.Element {
-    const { ptui, dispatch } = this.props;
+export const PlayerMain = M.connectRedux(
+  function PlayerMain(props) {
+    const { ptui, dispatch } = props;
     if (ptui.state.player_id) {
       const player = ptui.app.players.get(ptui.state.player_id);
       if (player) {
@@ -43,17 +43,16 @@ export class PlayerMainComp extends React.Component<M.ReduxProps> {
             : null}
           <p>Or you can register a new player.</p>
           <CV.SingleInputForm buttonText="Register"
-            onSubmit={input => this.registerPlayer(ptui, dispatch, input)} />
+            onSubmit={input => registerPlayer(input)} />
         </div>
       </div>;
     }
-  }
-  registerPlayer(ptui: M.PTUI, dispatch: M.Dispatch, name: string) {
-    ptui.sendCommand(dispatch, { t: "RegisterPlayer", player_id: name });
-    dispatch({ type: "SetPlayerID", pid: name });
-  }
-}
-export const PlayerMain = M.connectRedux(PlayerMainComp);
+
+    function registerPlayer(name: string) {
+      ptui.sendCommand(dispatch, { t: "RegisterPlayer", player_id: name });
+      dispatch({ type: "SetPlayerID", pid: name });
+    }
+  });
 
 export const PlayerGameView = M.connectRedux((
   { player, ptui, dispatch }: { player: T.Player; } & M.ReduxProps): JSX.Element => {

@@ -43,7 +43,7 @@ class HistoryComp extends React.Component<M.ReduxProps> {
   }
 }
 
-export const History = M.connectRedux(HistoryComp);
+export const History = M.connectRedux<{}>(HistoryComp);
 
 export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
   const { log } = props;

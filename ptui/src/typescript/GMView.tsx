@@ -12,7 +12,7 @@ import * as M from './Model';
 import * as Players from './Players';
 import * as T from './PTTypes';
 
-export const GMMain = M.connectRedux(({ ptui, dispatch }: M.ReduxProps): JSX.Element => {
+export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
   const focus = gridFocus(ptui, dispatch);
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,

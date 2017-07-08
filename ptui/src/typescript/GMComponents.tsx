@@ -12,6 +12,7 @@ import {
 
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
+import * as Comp from './Component';
 import * as Dice from './Dice';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -517,7 +518,7 @@ export const GMSceneCreatures = ReactRedux.connect(
   });
 
 export const GMCombat = M.connectRedux(
-  function GMCombat({ ptui, dispatch }: M.ReduxProps): JSX.Element {
+  function GMCombat({ ptui, dispatch }): JSX.Element {
     const combat = ptui.app.current_game.current_combat;
     if (!combat) {
       const scene = ptui.focused_scene();
@@ -900,19 +901,18 @@ export const GMViewItem = M.connectRedux(
   });
 
 
-export const SavedGames = M.connectRedux(
-  function SavedGames(props: M.ReduxProps): JSX.Element {
-    return <Button.Group>
-      <CV.ModalMaker
-        button={open => <Button onClick={open}>Load Game</Button>}
-        header={<span>Load a Game</span>}
-        content={close => <LoadGameForm onClose={close} />} />
-      <CV.ModalMaker
-        button={open => <Button onClick={open}>Save Game</Button>}
-        header={<span>Save Game</span>}
-        content={close => <SaveGameForm onClose={close} />} />
-    </Button.Group>;
-  });
+export function SavedGames(): JSX.Element {
+  return <Button.Group>
+    <CV.ModalMaker
+      button={open => <Button onClick={open}>Load Game</Button>}
+      header={<span>Load a Game</span>}
+      content={close => <LoadGameForm onClose={close} />} />
+    <CV.ModalMaker
+      button={open => <Button onClick={open}>Save Game</Button>}
+      header={<span>Save Game</span>}
+      content={close => <SaveGameForm onClose={close} />} />
+  </Button.Group>;
+}
 
 export const LoadGameForm = M.connectRedux(
   function LoadGameForm(props: { onClose: () => void } & M.ReduxProps) {
