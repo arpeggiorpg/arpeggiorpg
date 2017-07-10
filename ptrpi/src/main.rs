@@ -113,7 +113,7 @@ fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, R
   let json = {
     let mut app = pt.app()?;
     let result =
-      app.perform_unchecked(command.0).map(|(_, l)| l).map_err(|e| format!("Error: {}", e));
+      app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
     serde_json::to_string(&result)
   };
   pt.pollers()?.broadcast(());

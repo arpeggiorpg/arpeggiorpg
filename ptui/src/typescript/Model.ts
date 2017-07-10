@@ -4,13 +4,13 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 import * as Redux from 'redux';
-import { ThunkAction } from 'redux-thunk';
 import * as JD from "type-safe-json-decoder";
 
 import * as T from './PTTypes';
 
 export type Action =
   | { type: "RefreshApp"; app: T.App }
+  | { type: "RefreshGame"; game: T.Game; logs: Array<T.GameLog> }
   | { type: "DisplayError"; error: string }
   | { type: "ClearError" }
 
@@ -38,6 +38,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
   switch (action.type) {
     case "RefreshApp":
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
+    case "RefreshGame":
+      return update(ptui, {type: "RefreshApp", app: {...ptui.app, current_game: action.game}});
     case "ActivateGridCreature":
       const new_active =
         (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
@@ -235,7 +237,12 @@ export class PTUI {
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
       },
-      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()));
+      T.decodeRustResult(
+        JD.map(
+          ([_, logs]) => logs,
+          T.decodeSendCommandResult),
+        JD.string())
+    );
     return rpi_result;
   }
 
@@ -471,7 +478,7 @@ export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefin
 }
 
 
-export const sendCommand = (cmd: T.GameCommand): ThunkAction<void, PTUI, undefined> =>
+export const sendCommand = (cmd: T.GameCommand): ThunkAction<void> =>
   (dispatch, getState) => {
     const ptui = getState();
     const json = T.encodeGameCommand(cmd);
@@ -484,12 +491,12 @@ export const sendCommand = (cmd: T.GameCommand): ThunkAction<void, PTUI, undefin
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
       },
-      T.decodeRustResult(JD.array(T.decodeGameLog), JD.string()),
-      (x: T.RustResult<Array<T.GameLog>, string>) => {
+      T.decodeRustResult(T.decodeSendCommandResult, JD.string()),
+      (x: T.RustResult<[T.Game, Array<T.GameLog>], string>) => {
         switch (x.t) {
           case "Ok":
-            // turns out that post is *not* returning the App, just the logs!
-            return x.result; // dispatch({ type: "RefreshApp", app: x.result });
+            dispatch({ type: "RefreshGame", game: x.result[0], logs: x.result[1] });
+            return;
           case "Err":
             throw { _pt_error: 'RPI', message: x.error };
         }
@@ -501,7 +508,9 @@ export const sendCommand = (cmd: T.GameCommand): ThunkAction<void, PTUI, undefin
 // have a type-parameter for the *type of Action*, only the *type of Store*. We don't want to allow
 // call-sites to be able to dispatch action objects that don't actually fit the format of the
 // `Action` interface (above), so we define our own more specific one.
-export type Dispatch = (action: Action | ThunkAction<void, PTUI, undefined>) => void;
+export type Dispatch = (action: Action | ThunkAction<void>) => void;
+
+type ThunkAction<R> = (dispatch: Dispatch, getState: () => PTUI, extraArgument: undefined) => R;
 
 
 export interface DispatchProps { dispatch: Dispatch; }

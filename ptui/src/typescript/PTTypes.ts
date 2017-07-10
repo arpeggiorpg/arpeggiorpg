@@ -769,6 +769,11 @@ export const decodeApp: Decoder<App> = JD.object(
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
 );
 
+export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = JD.tuple(
+  decodeGame,
+  JD.array(decodeGameLog));
+
+
 export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>
 ): Decoder<RustResult<T, E>> {
   return sum<RustResult<T, E>>("Result", {},
