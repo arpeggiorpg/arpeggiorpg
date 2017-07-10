@@ -155,7 +155,7 @@ export const CreatureInventory = M.connectRedux(
         if (!count) { return; }
         return <List.Item key={item.id}
           style={{ display: "flex", justifyContent: "space-between" }}>
-          <div style={{ flex: "1" }}>{item.name} ({inv.get(item.id)})</div>
+          <div style={{ flex: "1" }}>{item.name}</div>
           <Label circular={true}>
             <Dropdown text={count.toString()} icon='caret down'
               className='right' pointing={true} floating={true}>
