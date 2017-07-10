@@ -56,6 +56,19 @@ impl Game {
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
       DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
+
+      // ** Inventory Management **
+      TransferItem { from, to, item_id, count } => {
+        self.change_with(GameLog::TransferItem { from, to, item_id, count })
+      }
+      RemoveItem { owner, item_id, count } => {
+        self.change_with(GameLog::RemoveItem { owner, item_id, count })
+      }
+
+      SetItemCount { owner, item_id, count } => {
+        self.change_with(GameLog::SetItemCount { owner, item_id, count })
+      }
+
       CreateScene(path, sc) => {
         let scene = Scene::create(sc);
         self.change_with(GameLog::CreateScene(path, scene))
@@ -305,6 +318,12 @@ impl Game {
       DeleteNote(ref path, ref note_name) => {
         self.campaign.get_mut(path)?.notes.remove(note_name);
       }
+
+      // ** Inventory Management **
+      TransferItem { from, to, item_id, count } => {}
+      RemoveItem { owner, item_id, count } => {}
+      SetItemCount { owner, item_id, count } => {}
+
       CreateScene(ref path, ref rscene) => {
         let scene = rscene.clone();
         self.scenes.try_insert(scene).ok_or_else(|| GameErrorEnum::SceneAlreadyExists(rscene.id))?;

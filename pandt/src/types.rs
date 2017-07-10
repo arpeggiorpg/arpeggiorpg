@@ -287,6 +287,12 @@ impl SkillLevel {
   }
 }
 
+// maybe make this a trait in the future
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+pub enum InventoryHolder {
+  Scene(SceneID),
+  Creature(CreatureID),
+}
 
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -315,6 +321,24 @@ pub enum GameCommand {
   EditNote(FolderPath, String, Note),
   /// Delete a Note from a Folder.
   DeleteNote(FolderPath, String),
+
+  // ** Inventory management **
+  TransferItem {
+    from: InventoryHolder,
+    to: InventoryHolder,
+    item_id: ItemID,
+    count: u64,
+  },
+  RemoveItem {
+    owner: InventoryHolder,
+    item_id: ItemID,
+    count: u64,
+  },
+  SetItemCount {
+    owner: SceneID,
+    item_id: ItemID,
+    count: u64,
+  },
 
   // ** Scene management **
   /// Create a Scene.
@@ -440,6 +464,24 @@ pub enum GameLog {
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
   DeleteNote(FolderPath, String),
+
+  // ** Inventory management **
+  TransferItem {
+    from: InventoryHolder,
+    to: InventoryHolder,
+    item_id: ItemID,
+    count: u64,
+  },
+  RemoveItem {
+    owner: InventoryHolder,
+    item_id: ItemID,
+    count: u64,
+  },
+  SetItemCount {
+    owner: SceneID,
+    item_id: ItemID,
+    count: u64,
+  },
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
@@ -734,10 +776,7 @@ pub enum Condition {
 
 impl Condition {
   pub fn apply(&self, duration: ConditionDuration) -> AppliedCondition {
-    AppliedCondition {
-      remaining: duration,
-      condition: self.clone(),
-    }
+    AppliedCondition { remaining: duration, condition: self.clone() }
   }
 }
 
@@ -887,11 +926,7 @@ impl DeriveKey for Player {
 
 impl Player {
   pub fn new(name: PlayerID) -> Player {
-    Player {
-      player_id: name,
-      scene: None,
-      creatures: HashSet::new(),
-    }
+    Player { player_id: name, scene: None, creatures: HashSet::new() }
   }
 }
 
@@ -909,7 +944,7 @@ pub struct Scene {
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
-  pub inventory: HashMap<ItemID, u64>
+  pub inventory: HashMap<ItemID, u64>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -985,12 +1020,7 @@ impl Map {
   }
 
   pub fn new(name: String, terrain: Vec<Point3>) -> Map {
-    Map {
-      id: MapID::new(),
-      name: name,
-      terrain: terrain,
-      specials: vec![],
-    }
+    Map { id: MapID::new(), name: name, terrain: terrain, specials: vec![] }
   }
 
   pub fn is_open(&self, pt: &Point3) -> bool {
@@ -1153,10 +1183,7 @@ pub mod test {
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
-    AppliedCondition {
-      condition: c,
-      remaining: r,
-    }
+    AppliedCondition { condition: c, remaining: r }
   }
 
   pub fn t_punch() -> Ability {
