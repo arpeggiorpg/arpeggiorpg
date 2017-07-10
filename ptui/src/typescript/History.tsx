@@ -2,6 +2,7 @@ import Flexbox from 'flexbox-react';
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
+import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
@@ -9,41 +10,28 @@ export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, A
   console.log("sorry elm");
 }
 
-/** TODO FIXME PERFORMANCE:
- * I need a general infrastructure for being able to rely on `ptui` and `dispatch`, WITHOUT using
- * them to determine whether a component should re-render.
- * I believe that this is what the purpose of "selectors" is -- each component should "select" the
- * state out of the model that it really cares about, and ONLY gets access to that data.
- * But we then need some way to dispatch actions from components without having access to `ptui` and
- * `dispatch`.
- */
-
-class HistoryComp extends React.Component<M.ReduxProps> {
-  shouldComponentUpdate(newProps: M.ReduxProps) {
-    return (newProps.ptui.app.snapshots !== this.props.ptui.app.snapshots);
-  }
-  render(): JSX.Element {
-    const { ptui, dispatch } = this.props;
+export const History = Comp.connect(
+  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots],
+    snapshots => ({ snapshots }))
+)(
+  function History(props): JSX.Element {
+    const { snapshots, dispatch } = props;
     console.log("[EXPENSIVE:History.render]");
-    const app = ptui.app;
     return <div>{
-      app.snapshots.map(
+      snapshots.map(
         ({ snapshot, logs }, snapshot_index) =>
           logs.map((log: T.GameLog, log_index) =>
             <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
               key={snapshot_index.toString() + "-" + log_index.toString()}>
               <GameLog log={log} />
               <button className="material-icons"
-                onClick={() =>
-                  ptui.sendCommand(dispatch, { t: "Rollback", snapshot_index, log_index })}
+                onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
               >history</button>
             </div>)
       )
     }</div>;
-  }
-}
+  });
 
-export const History = M.connectRedux<{}>(HistoryComp);
 
 export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
   const { log } = props;
