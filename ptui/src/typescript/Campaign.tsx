@@ -250,7 +250,8 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
       ptui.getCreatures(folder.data.creatures).map(
         (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
     const note_objects = dont_show("Note") ? [] :
-      LD.keys(folder.data.notes).map((name): FolderObject => ({ t: "Note", path, name }));
+      LD.sortBy(LD.keys(folder.data.notes), n => n).map(
+        (name): FolderObject => ({ t: "Note", path, name }));
     const item_objects = dont_show("Item") ? [] :
       ptui.getItems(folder.data.items).map(
         (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
