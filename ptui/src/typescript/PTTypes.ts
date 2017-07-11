@@ -104,6 +104,7 @@ export type GameCommand =
   | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
+  | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
@@ -204,6 +205,7 @@ export type GameLog =
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; newNote: Note }
   | { t: "DeleteNote"; path: FolderPath; name: string }
+  | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
@@ -627,6 +629,12 @@ export const decodeGameLog: Decoder<GameLog> =
     DeleteNote: JD.map(
       ([path, name]): GameLog => ({ t: "DeleteNote", path, name }),
       JD.tuple(decodeFolderPath, JD.string())),
+    TransferItem: JD.object(
+      ["from", decodeInventoryOwner],
+      ["to", decodeInventoryOwner],
+      ["item_id", JD.string()],
+      ["count", JD.number()],
+      (from, to, item_id, count): GameLog => ({ t: "TransferItem", from, to, item_id, count })),
     RemoveItem: JD.object(
       ["owner", decodeInventoryOwner],
       ["item_id", JD.string()],
@@ -817,6 +825,14 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote":
       return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "TransferItem":
+      return {
+        TransferItem: {
+          from: encodeInventoryOwner(cmd.from),
+          to: encodeInventoryOwner(cmd.to),
+          item_id: cmd.item_id, count: cmd.count,
+        },
+      };
     case "RemoveItem":
       return {
         RemoveItem: {

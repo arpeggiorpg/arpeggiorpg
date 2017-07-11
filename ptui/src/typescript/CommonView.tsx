@@ -306,17 +306,11 @@ export const GiveItem = M.connectRedux(function GiveItem(props: GiveItemProps & 
     onClose={onClose} />;
 
   function give(recip: T.Creature, count: number) {
-    const newGiver = {
-      ...giver,
-      inventory: M.removeFromInventory(giver.inventory, item.id, count),
-    };
-    const newReceiver = {
-      ...recip,
-      inventory: M.addToInventory(recip.inventory, item.id, count),
-    };
-
-    ptui.sendCommand(dispatch, { t: "EditCreature", creature: newGiver });
-    ptui.sendCommand(dispatch, { t: "EditCreature", creature: newReceiver });
+    ptui.sendCommand(dispatch,
+      {
+        t: "TransferItem", from: { Creature: giver.id }, to: { Creature: recip.id },
+        item_id: item.id, count,
+      });
     onClose();
   }
 });
