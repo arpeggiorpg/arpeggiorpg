@@ -47,7 +47,8 @@ export const SceneGrid = M.connectRedux(
     return <div style={{ width: "100%", height: "100%" }}>
       {menu}
       {annotation}
-      <GridSvg map={map} creatures={LD.values(props.creatures)} />
+      <GridSvg map={map} creatures={LD.values(props.creatures)}
+        background_image={props.scene.background_image_url} />
     </div>;
 
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
@@ -109,6 +110,7 @@ export interface MapCreature {
 interface GridSvgProps {
   map: T.Map;
   creatures: Array<MapCreature>;
+  background_image?: string;
 }
 class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_clicks: boolean }> {
   spz: SPZ.SVGPanZoom;
@@ -163,7 +165,12 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
       onPanZoom={(isPanningOrZooming: boolean) =>
         this.setState({ allow_clicks: !isPanningOrZooming })}
       preserveAspectRatio="xMinYMid slice"
-      style={{ width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)" }}>
+      style={{
+        width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
+        backgroundImage: `url(${this.props.background_image})`,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "contain",
+      }}>
       {terrain_els}
       {special_els}
       {annotation_els}
