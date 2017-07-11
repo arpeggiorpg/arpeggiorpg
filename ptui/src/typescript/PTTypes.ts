@@ -337,6 +337,7 @@ export interface Scene {
   creatures: I.Map<CreatureID, [Point3, Visibility]>;
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
+  background_image_url: string;
 }
 
 export type Point3 = [number, number, number];
@@ -513,8 +514,9 @@ export const decodeScene: Decoder<Scene> =
     ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
     ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
-    (id, name, map, creatures, attribute_checks, inventory): Scene =>
-      ({ id, name, map, creatures, attribute_checks, inventory }));
+    ["background_image_url", JD.string()],
+    (id, name, map, creatures, attribute_checks, inventory, background_image_url): Scene =>
+      ({ id, name, map, creatures, attribute_checks, inventory, background_image_url }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
   return JD.map(id => ({ t, id } as FolderItemID), JD.string());
@@ -912,6 +914,7 @@ function encodeScene(scene: Scene): object {
       .toObject(),
     attribute_checks: scene.attribute_checks.map(encodeAttributeCheck).toObject(),
     inventory: scene.inventory.toObject(),
+    background_image_url: scene.background_image_url,
   };
 }
 

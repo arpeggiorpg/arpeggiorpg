@@ -20,7 +20,15 @@ import * as TextInput from './TextInput';
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
-      <Header>{scene.name}</Header>
+      <Header>
+        {scene.name}
+        <CV.ModalMaker
+          button={open =>
+            <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />}
+          header={<span>Edit {scene.name}</span>}
+          content={close => <EditScene scene={scene} onDone={close} dispatch={dispatch} />}
+        />
+      </Header>
       <Accordion exclusive={false} panels={[
         { title: 'Creatures', content: <GMSceneCreatures scene={scene} /> },
         { title: 'Items', content: <GMSceneInventory scene={scene} /> },
@@ -29,6 +37,30 @@ export const GMScene = M.connectRedux(
       ]} />
     </Segment>;
   });
+
+class EditScene
+  extends React.Component<{ scene: T.Scene, onDone: () => void } & M.DispatchProps,
+  { name: string, background_image_url: string }> {
+  constructor(props: { scene: T.Scene; onDone: () => void } & M.DispatchProps) {
+    super(props);
+    this.state = { name: props.scene.name, background_image_url: props.scene.background_image_url };
+  }
+  render(): JSX.Element {
+    const { scene } = this.props;
+    return <Form>
+      <Form.Input label="Name" value={this.state.name}
+        onChange={(_, d) => this.setState({ name: d.value })} />
+      <Form.Input label="Background Image URL" value={this.state.background_image_url}
+        onChange={(_, d) => this.setState({ background_image_url: d.value })} />
+      <Form.Button onClick={() => this.save()}>Save</Form.Button>
+    </Form>;
+  }
+  save() {
+    this.props.dispatch(
+      M.sendCommand({ t: "EditScene", scene: { ...this.props.scene, ...this.state } }));
+    this.props.onDone();
+  }
+}
 
 export const GMScenePlayers = M.connectRedux(
   function GMScenePlayers(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
@@ -376,7 +408,6 @@ export const GiveItemFromScene = M.connectRedux(
       });
       onClose();
     }
-
   });
 
 export const AddItemsToScene = M.connectRedux(
