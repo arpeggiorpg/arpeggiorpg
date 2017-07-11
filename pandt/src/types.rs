@@ -944,6 +944,7 @@ impl Player {
 pub struct SceneCreation {
   pub name: String,
   pub map: MapID,
+  pub background_image_url: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -955,6 +956,8 @@ pub struct Scene {
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
   pub inventory: Inventory,
+  #[serde(default)]
+  pub background_image_url: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -976,6 +979,7 @@ impl Scene {
     Scene {
       id: SceneID::new(),
       name: creation.name,
+      background_image_url: "".to_string(),
       map: creation.map,
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),

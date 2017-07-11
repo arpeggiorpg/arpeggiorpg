@@ -846,6 +846,7 @@ pub mod test {
       .insert(Scene {
                 id: t_scene_id(),
                 name: "Test Scene".to_string(),
+                background_image_url: "".to_string(),
                 map: t_map_id(),
                 attribute_checks: HashMap::new(),
                 creatures: HashMap::from_iter(vec![(cid_rogue(),
