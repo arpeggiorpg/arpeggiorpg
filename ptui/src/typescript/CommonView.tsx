@@ -209,14 +209,11 @@ class RemoveItemComp
 
   remove() {
     const { creature, item, onClose, ptui, dispatch } = this.props;
-    const count = this.state.count;
-    const has_count = creature.inventory.get(item.id);
-    if (!(count && has_count)) { return; }
-    const new_count = has_count - count;
-    const inventory = new_count <= 0
-      ? creature.inventory.delete(item.id)
-      : creature.inventory.set(item.id, new_count);
-    ptui.sendCommand(dispatch, { t: "EditCreature", creature: { ...creature, inventory } });
+    if (!this.state.count) { return; }
+    ptui.sendCommand(dispatch,
+      {
+        t: "RemoveItem", owner: { Creature: creature.id }, item_id: item.id, count: this.state.count,
+      });
     onClose();
   }
 }
