@@ -384,9 +384,11 @@ export const AddItemsToScene = M.connectRedux(
     const { scene, onClose, ptui, dispatch } = props;
     return <Campaign.MultiItemSelector require_selected={scene.inventory.keySeq().toSet()}
       on_selected={item_ids => {
-        const inventory = scene.inventory.mergeWith((o, n) => o,
-          I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
-        ptui.sendCommand(dispatch, { t: "EditScene", scene: { ...scene, inventory } });
+        const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
+        for (const item_id of new_items.toArray()) {
+          ptui.sendCommand(dispatch,
+            { t: "SetItemCount", owner: { Scene: scene.id }, item_id, count: 1 });
+        }
         onClose();
       }}
       on_cancel={onClose}
@@ -398,13 +400,11 @@ export const AddItemsToCreature = M.connectRedux(
     const { creature, onClose, ptui, dispatch } = props;
     return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
       on_selected={item_ids => {
-        // TODO FIXME RADIX XXX: what the heck should this do? we need to stop using EditCreature
-        // because it's too prone to race conditions, but it's unclear what to do given this UI.
-        // Do we need an EnsureAtLeastOneOfEach(Owner, Vec<ItemID>)?
-        // The UI needs rethought probably.
-        const inventory = creature.inventory.mergeWith((o, n) => o,
-          I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
-        ptui.sendCommand(dispatch, { t: "EditCreature", creature: { ...creature, inventory } });
+        const new_items = item_ids.subtract(creature.inventory.keySeq().toSet());
+        for (const item_id of new_items.toArray()) {
+          ptui.sendCommand(dispatch,
+            { t: "SetItemCount", owner: { Creature: creature.id }, item_id, count: 1 });
+        }
         onClose();
       }}
       on_cancel={onClose}
