@@ -341,8 +341,8 @@ export const SceneItemCountEditor = M.connectRedux(
 
     function save(num: number) {
       const new_inv = num <= 0 ? scene.inventory.delete(item.id) : scene.inventory.set(item.id, num);
-      const newScene = { ...scene, inventory: scene.inventory.set(item.id, num) };
-      ptui.sendCommand(dispatch, { t: 'EditScene', scene: { ...scene, inventory: new_inv } });
+      ptui.sendCommand(dispatch,
+        { t: 'SetItemCount', owner: { Scene: scene.id }, item_id: item.id, count: num });
     }
   });
 
@@ -370,16 +370,10 @@ export const GiveItemFromScene = M.connectRedux(
       onGive={give}
       onClose={onClose} />;
     function give(recip: T.Creature, count: number) {
-      const newScene = {
-        ...scene,
-        inventory: M.removeFromInventory(scene.inventory, item.id, count),
-      };
-      const newCreature = {
-        ...recip,
-        inventory: M.addToInventory(recip.inventory, item.id, count),
-      };
-      ptui.sendCommand(dispatch, { t: "EditScene", scene: newScene });
-      ptui.sendCommand(dispatch, { t: "EditCreature", creature: newCreature });
+      ptui.sendCommand(dispatch, {
+        t: "TransferItem", from: { Scene: scene.id },
+        to: { Creature: recip.id }, item_id: item.id, count,
+      });
       onClose();
     }
 
@@ -404,6 +398,10 @@ export const AddItemsToCreature = M.connectRedux(
     const { creature, onClose, ptui, dispatch } = props;
     return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
       on_selected={item_ids => {
+        // TODO FIXME RADIX XXX: what the heck should this do? we need to stop using EditCreature
+        // because it's too prone to race conditions, but it's unclear what to do given this UI.
+        // Do we need an EnsureAtLeastOneOfEach(Owner, Vec<ItemID>)?
+        // The UI needs rethought probably.
         const inventory = creature.inventory.mergeWith((o, n) => o,
           I.Map(item_ids.map((iid): [T.ItemID, number] => [iid, 1])));
         ptui.sendCommand(dispatch, { t: "EditCreature", creature: { ...creature, inventory } });
