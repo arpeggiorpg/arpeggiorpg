@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::cmp;
 
 use indexed::IndexedHashMap;
 use types::*;
@@ -215,6 +216,55 @@ impl Game {
     Ok(newgame)
   }
 
+  fn mutate_owner_inventory<F>(&mut self, owner_id: InventoryOwner, f: F) -> Result<(), GameError>
+    where F: FnOnce(&mut Inventory) -> ()
+  {
+    let opt = match owner_id {
+      InventoryOwner::Scene(sid) => {
+        self
+          .scenes
+          .mutate(&sid, |mut s| {
+            f(&mut s.inventory);
+            return s;
+          })
+      }
+      InventoryOwner::Creature(cid) => {
+        self
+          .creatures
+          .mutate(&cid, |mut c| {
+            f(&mut c.inventory);
+            return c;
+          })
+      }
+    };
+    opt.ok_or_else(|| owner_id.not_found_error())
+  }
+
+  fn get_owner_inventory(&self, owner_id: InventoryOwner) -> Result<&Inventory, GameError> {
+    match owner_id {
+      InventoryOwner::Scene(sid) => self.get_scene(sid).map(|s| &s.inventory),
+      InventoryOwner::Creature(cid) => self.get_creature(cid).map(|c| &c.creature.inventory),
+    }
+  }
+
+  /// Remove some number of items from an inventory, returning the actual number removed.
+  fn remove_inventory(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
+                      -> Result<u64, GameError> {
+    let actually_has = *self.get_owner_inventory(owner)?.get(&item_id).unwrap_or(&0);
+    self.set_item_count(owner, item_id, actually_has - count)?;
+    return Ok(cmp::min(actually_has, count));
+  }
+
+  fn set_item_count(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
+                    -> Result<(), GameError> {
+    self.mutate_owner_inventory(owner, move |mut inventory: &mut Inventory| if count <= 0 {
+      inventory.remove(&item_id).unwrap_or(0);
+    } else {
+      inventory.insert(item_id, count);
+    })
+  }
+
+
   /// Apply a log to a *mutable* Game.
   // This is done so that we don't have to worry about `self` vs `newgame` -- all
   // manipulations here work on &mut self.
@@ -320,9 +370,23 @@ impl Game {
       }
 
       // ** Inventory Management **
-      TransferItem { from, to, item_id, count } => {}
-      RemoveItem { owner, item_id, count } => {}
-      SetItemCount { owner, item_id, count } => {}
+      TransferItem { from, to, item_id, count } => {
+        // I love rust! This code is guaranteed to run atomically because we have a &mut,
+        // aka "exclusive borrow". Also we can return errors even if we've already mutated,
+        // because apply_log creates a copy of the Game before mutating it.
+        let to_give = self.remove_inventory(from, item_id, count)?;
+        self
+          .mutate_owner_inventory(to, |to_inv| {
+            let recip_has = *to_inv.get(&item_id).unwrap_or(&0);
+            to_inv.insert(item_id, to_give + recip_has);
+          })?;
+      }
+      RemoveItem { owner, item_id, count } => {
+        self.remove_inventory(owner, item_id, count)?;
+      }
+      SetItemCount { owner, item_id, count } => {
+        self.set_item_count(owner, item_id, count)?;
+      }
 
       CreateScene(ref path, ref rscene) => {
         let scene = rscene.clone();

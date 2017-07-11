@@ -20,6 +20,7 @@ use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
 pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
 pub type Color = String;
+pub type Inventory = HashMap<ItemID, u64>;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
@@ -289,10 +290,19 @@ impl SkillLevel {
 
 // maybe make this a trait in the future
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub enum InventoryHolder {
+pub enum InventoryOwner {
   Scene(SceneID),
   Creature(CreatureID),
 }
+impl InventoryOwner {
+  pub fn not_found_error(&self) -> GameError {
+    match *self {
+      InventoryOwner::Scene(sid) => GameErrorEnum::SceneNotFound(sid).into(),
+      InventoryOwner::Creature(cid) => GameErrorEnum::CreatureNotFound(cid.to_string()).into(),
+    }
+  }
+}
+
 
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -324,18 +334,18 @@ pub enum GameCommand {
 
   // ** Inventory management **
   TransferItem {
-    from: InventoryHolder,
-    to: InventoryHolder,
+    from: InventoryOwner,
+    to: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
   RemoveItem {
-    owner: InventoryHolder,
+    owner: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
   SetItemCount {
-    owner: SceneID,
+    owner: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
@@ -467,18 +477,18 @@ pub enum GameLog {
 
   // ** Inventory management **
   TransferItem {
-    from: InventoryHolder,
-    to: InventoryHolder,
+    from: InventoryOwner,
+    to: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
   RemoveItem {
-    owner: InventoryHolder,
+    owner: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
   SetItemCount {
-    owner: SceneID,
+    owner: InventoryOwner,
     item_id: ItemID,
     count: u64,
   },
@@ -853,7 +863,7 @@ pub struct Creature {
   pub initiative: Dice,
   pub size: AABB,
   #[serde(default)]
-  pub inventory: HashMap<ItemID, u64>,
+  pub inventory: Inventory,
 }
 
 /// A definition of an Item, which can be referenced by creatures' inventories.
@@ -944,7 +954,7 @@ pub struct Scene {
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
-  pub inventory: HashMap<ItemID, u64>,
+  pub inventory: Inventory,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
