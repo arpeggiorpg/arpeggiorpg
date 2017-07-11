@@ -353,12 +353,8 @@ export const CreatureItemCountEditor = M.connectRedux(
     return <EditableNumericLabel value={count} save={save} />;
 
     function save(num: number) {
-      const new_inv = num <= 0 ? creature.inventory.delete(item.id)
-        : creature.inventory.set(item.id, num);
-      const newCreature = { ...creature, inventory: creature.inventory.set(item.id, num) };
-      ptui.sendCommand(dispatch, {
-        t: 'EditCreature', creature: { ...creature, inventory: new_inv },
-      });
+      ptui.sendCommand(dispatch,
+        { t: 'SetItemCount', owner: { Creature: creature.id }, item_id: item.id, count: num });
     }
   });
 

@@ -66,6 +66,8 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Transferred an item</Flexbox>;
     case "RemoveItem":
       return <Flexbox>Removed item from a creature's inventory</Flexbox>;
+    case "SetItemCount":
+      return <Flexbox>Set count on a creature's inventory</Flexbox>;
     case "CreateScene":
       return <Flexbox>Created scene {log.scene.name}</Flexbox>;
     case "EditScene":

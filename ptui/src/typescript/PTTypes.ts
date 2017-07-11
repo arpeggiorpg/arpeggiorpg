@@ -106,6 +106,7 @@ export type GameCommand =
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
   | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
+  | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
@@ -207,6 +208,7 @@ export type GameLog =
   | { t: "DeleteNote"; path: FolderPath; name: string }
   | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
+  | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
   | { t: "DeleteScene"; scene_id: SceneID }
@@ -640,6 +642,11 @@ export const decodeGameLog: Decoder<GameLog> =
       ["item_id", JD.string()],
       ["count", JD.number()],
       (owner, item_id, count): GameLog => ({ t: "RemoveItem", owner, item_id, count })),
+    SetItemCount: JD.object(
+      ["owner", decodeInventoryOwner],
+      ["item_id", JD.string()],
+      ["count", JD.number()],
+      (owner, item_id, count): GameLog => ({ t: "SetItemCount", owner, item_id, count })),
     CreateScene: JD.map(
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
@@ -835,9 +842,13 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "RemoveItem":
       return {
-        RemoveItem: {
-          owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count,
-        },
+        RemoveItem:
+        { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
+      };
+    case "SetItemCount":
+      return {
+        SetItemCount:
+        { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
     case "EditScene":
       return { EditScene: encodeScene(cmd.scene) };
