@@ -88,6 +88,11 @@ export interface FolderNode {
   items: Array<ItemID>;
 }
 
+export type InventoryOwner =
+  | { Creature: CreatureID }
+  | { Scene: SceneID }
+  ;
+
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
@@ -99,6 +104,7 @@ export type GameCommand =
   | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; note: Note }
+  | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
@@ -198,6 +204,7 @@ export type GameLog =
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; newNote: Note }
   | { t: "DeleteNote"; path: FolderPath; name: string }
+  | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
   | { t: "DeleteScene"; scene_id: SceneID }
@@ -543,6 +550,13 @@ export const decodeNote: Decoder<Note> =
     (name, content) => ({ name, content })
   );
 
+export const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
+  {},
+  {
+    Scene: JD.map(Scene => ({ Scene }), JD.string()),
+    Creature: JD.map(Creature => ({ Creature }), JD.string()),
+  });
+
 export const decodeCreatureLog: Decoder<CreatureLog> =
   sum<CreatureLog>("CreatureLog", {}, {
     Damage: JD.map(
@@ -613,6 +627,11 @@ export const decodeGameLog: Decoder<GameLog> =
     DeleteNote: JD.map(
       ([path, name]): GameLog => ({ t: "DeleteNote", path, name }),
       JD.tuple(decodeFolderPath, JD.string())),
+    RemoveItem: JD.object(
+      ["owner", decodeInventoryOwner],
+      ["item_id", JD.string()],
+      ["count", JD.number()],
+      (owner, item_id, count): GameLog => ({ t: "RemoveItem", owner, item_id, count })),
     CreateScene: JD.map(
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
@@ -798,6 +817,12 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
     case "EditNote":
       return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+    case "RemoveItem":
+      return {
+        RemoveItem: {
+          owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count,
+        },
+      };
     case "EditScene":
       return { EditScene: encodeScene(cmd.scene) };
     case "RemoveCreatureFromCombat":
@@ -825,6 +850,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
   }
+}
+
+function encodeInventoryOwner(owner: InventoryOwner): object {
+  return owner;
 }
 
 function encodeCreatureCreation(cc: CreatureCreation): object {

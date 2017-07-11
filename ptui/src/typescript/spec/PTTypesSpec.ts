@@ -1,34 +1,38 @@
-import * as Lodash from 'lodash';
-import * as T from '../PTTypes';
-import * as M from '../Model';
+import * as I from 'immutable';
+import * as LD from 'lodash';
 import J = require("jasmine");
 
+
+import * as M from '../Model';
+import * as T from '../PTTypes';
+
 function assertEq<T>(a: T, b: T, msg?: string) {
-  if (!Lodash.isEqual(a, b)) {
+  console.log();
+  if (!LD.isEqual(a, b)) {
     console.log("Not equal", JSON.stringify(a, null, 2), "!==", JSON.stringify(b, null, 2), msg);
-    throw new Error(`Not equal (${msg}) ${a} !== ${b}`)
+    throw new Error(`Not equal (${msg}) ${a} !== ${b}`);
   }
 }
 
 function assertRaises(f: () => void, msg?: string) {
   try {
-    f()
+    f();
   } catch (e) {
     return;
   }
-  throw new Error(`function did not raise (${msg}): ${f}.`)
+  throw new Error(`function did not raise (${msg}): ${f}.`);
 }
 
 export function test(): boolean {
   assertRaises(() => T.decodeSkillLevel.decodeAny("Foo"));
   assertEq(T.decodeSkillLevel.decodeAny("Skilled"), "Skilled");
 
-  let exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
+  const exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
   assertEq(
     T.decodeAttributeCheck.decodeAny(exAttrCheck as any),
     exAttrCheck);
 
-  let gameLogTests: [[any, any]] = [
+  const gameLogTests: [[any, any]] = [
     ["StopCombat", { t: "StopCombat" }],
     [
       { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
@@ -36,16 +40,19 @@ export function test(): boolean {
     [{ "CreateFolder": "/foo/bar" }, { t: "CreateFolder", path: ["foo", "bar"] }],
     [
       { "AttributeCheckResult": ["coolCreature", exAttrCheck, 50, true] },
-      { t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50, success: true }]
+      {
+        t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50,
+        success: true,
+      }]
   ];
-  for (let [x, y] of gameLogTests) {
+  for (const [x, y] of gameLogTests) {
     assertEq<T.GameLog>(T.decodeGameLog.decodeAny(x), y);
   }
 
   assertEq<T.Visibility>(T.decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
   assertEq<T.Visibility>(T.decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
 
-  let sceneJSON = {
+  const sceneJSON = {
     id: "Scene ID",
     name: "Scene Name",
     map: "Map ID",
@@ -53,30 +60,41 @@ export function test(): boolean {
     attribute_checks: {
       "Do a backflip": exAttrCheck,
     },
+    inventory: {},
   };
-  let exScene: T.Scene = {
+  const exScene: T.Scene = {
     id: "Scene ID",
     name: "Scene Name",
     map: "Map ID",
-    creatures: { "Creature ID": [[0, 0, 0], { t: "GMOnly" }] },
-    attribute_checks: {
-      "Do a backflip": exAttrCheck,
-    },
+    creatures: I.Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
+      "Creature ID" as T.CreatureID, [[0, 0, 0], { t: "GMOnly" }]),
+    attribute_checks: I.Map({ "Do a backflip": exAttrCheck }),
+    inventory: I.Map(),
   };
-  assertEq<T.Scene>(T.decodeScene.decodeAny(sceneJSON), exScene);
+  assertEq<T.Scene>(
+    I.fromJS(T.decodeScene.decodeAny(sceneJSON)).toJS(),
+    I.fromJS(exScene).toJS());
   console.log("OK");
   return true;
 }
 
 // test()
 
-describe("PTTypes decoding", function () {
-  it("original test function works", function () {
+describe("PTTypes decoding", () => {
+  it("original test function works", () => {
     expect(test()).toBe(true);
   });
 
-  it("Decoding a super-basic creature", function () {
-    let sample = {
+  it("decodeInventoryOwner", () => {
+    assertEq(
+      T.decodeInventoryOwner.decodeAny({ Creature: "FOO" }),
+      { Creature: "FOO" }
+    );
+
+  });
+
+  it("Decoding a super-basic creature", () => {
+    const sample = {
       id: "0x00",
       name: "Elron",
       speed: 600,
@@ -86,7 +104,7 @@ describe("PTTypes decoding", function () {
         dash: {
           ability_id: "dash",
           cooldown: 0,
-        }
+        },
       },
       "class": "creature",
       max_health: 10,
@@ -99,7 +117,7 @@ describe("PTTypes decoding", function () {
       size: { x: 1, y: 1, z: 1 },
       inventory: {},
     };
-    let creature = T.decodeCreature.decodeAny(sample);
+    const creature = T.decodeCreature.decodeAny(sample);
     expect(creature.initiative).toEqual({
       t: "BestOf",
       num: 2,
@@ -107,14 +125,14 @@ describe("PTTypes decoding", function () {
         t: "Plus",
         left: { t: "Expr", num: 1, size: 20 },
         right: { t: "Flat", val: 4 },
-      }
+      },
     });
     expect(T.encodeCreature(creature)).toEqual(sample);
   });
 });
 
-describe("filterMap", function () {
-  it("filters and maps", function () {
+describe("filterMap", () => {
+  it("filters and maps", () => {
     expect(
       M.filterMap(
         ["0", "one", "2", "3"],
@@ -123,11 +141,11 @@ describe("filterMap", function () {
   });
 });
 
-describe("getCreatures", function () {
-  it("Gets creatures", function () {
-    let creature = { id: "0x00", name: "Bob" } as T.Creature;
-    let app = { current_game: { creatures: { "0x00": creature } } } as any as T.App; // lol
-    let ptui = new M.PTUI(undefined, app);
+describe("getCreatures", () => {
+  it("Gets creatures", () => {
+    const creature = { id: "0x00", name: "Bob" } as T.Creature;
+    const app = { current_game: { creatures: I.Map({ "0x00": creature }) } } as any as T.App; // lol
+    const ptui = new M.PTUI("http://example.com/", app);
     expect(ptui.getCreatures(["0x00", "0x01"])).toEqual([creature]);
   });
 });
