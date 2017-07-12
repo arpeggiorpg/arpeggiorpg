@@ -1026,6 +1026,8 @@ pub struct Map {
   pub name: String,
   pub terrain: Vec<Point3>,
   pub specials: Vec<(Point3, Color, String, Visibility)>,
+  #[serde(default)]
+  pub background_image_url: String,
 }
 
 impl Map {
@@ -1034,7 +1036,13 @@ impl Map {
   }
 
   pub fn new(name: String, terrain: Vec<Point3>) -> Map {
-    Map { id: MapID::new(), name: name, terrain: terrain, specials: vec![] }
+    Map {
+      id: MapID::new(),
+      name: name,
+      terrain: terrain,
+      specials: vec![],
+      background_image_url: "".to_string(),
+    }
   }
 
   pub fn is_open(&self, pt: &Point3) -> bool {

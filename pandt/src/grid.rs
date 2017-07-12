@@ -444,6 +444,7 @@ pub mod test {
       name: "huge box".to_string(),
       terrain: map,
       specials: vec![],
+      background_image_url: "".to_string(),
     }
   }
 

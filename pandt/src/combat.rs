@@ -399,6 +399,7 @@ pub mod test {
                 // up, right, right, down
                 terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
                 specials: vec![],
+                background_image_url: "".to_string(),
               });
     let next_game =
       game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().game;
