@@ -68,7 +68,8 @@ impl App {
           self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
         }
 
-        for _ in 0..(self.snapshots.len() - SNAPSHOTS) {
+        for _ in 0..(self.snapshots.len().saturating_sub(SNAPSHOTS)) {
+          println!("There are {} too many snapshots", self.snapshots.len() - SNAPSHOTS);
           self.snapshots.pop_front();
         }
 
