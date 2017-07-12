@@ -29,9 +29,9 @@ function PT_initializeComponents(app: any) {
     (x: [string, string, object, boolean]) => TextInput.renderTextInput(app, x)
   ));
 
-  app.ports.renderHistory.subscribe(afterView((x: [string, any]) => History.renderHistory(app, x)));
+  app.ports.renderHistory.subscribe(afterView((_: [string, any]) => History.renderHistory()));
 
-  app.ports.renderPlayers.subscribe(afterView((x: any) => Players.renderPlayers(app, x)));
+  app.ports.renderPlayers.subscribe(afterView((_: any) => Players.renderPlayers()));
 
   app.ports.unloadComponent.subscribe(unloadComponent);
   app.ports.renderReactMain.subscribe(([elemID, rpi_url, componentName, pt_app]:
