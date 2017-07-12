@@ -1,16 +1,10 @@
-import * as Hammer from 'hammerjs';
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactRedux from "react-redux";
-import * as Redux from "redux";
-import * as svgPanZoom from "svg-pan-zoom";
 
 import { Menu, Segment } from 'semantic-ui-react';
 
 import * as CommonView from "./CommonView";
-import { PTUI } from "./Model";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
@@ -52,7 +46,7 @@ export const SceneGrid = M.connectRedux(
     </div>;
 
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
-      const special = LD.find(map.specials, ([pt_, _, note, _2]) => M.isEqual(pt, pt_));
+      const special = LD.find(map.specials, ([pt_, _, _1, _2]) => M.isEqual(pt, pt_));
       if (!special) { return <noscript />; }
       return <CommonView.ClickAway
         onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
@@ -147,14 +141,15 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
       ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
         teleport={move.teleport} />)
       : [];
-    const special_els = this.props.map.specials.map(
+    const special_els = map.specials.map(
       ([pt, color, _, vis]) => <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis} />);
-    const annotation_els = M.filterMap(this.props.map.specials,
+    const annotation_els = M.filterMap(map.specials,
       ([pt, _, note, vis]) => {
         if (note !== "") {
-          return <Annotation key={pt.toString()} pt={pt} note={note} vis={vis} />;
+          return <Annotation key={pt.toString()} pt={pt} vis={vis} />;
         }
       });
+    const background_image = map.background_image_url ? <image /> : null;
 
     return <SPZ.SVGPanZoom
       id="pt-grid"
@@ -171,6 +166,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
         backgroundRepeat: "no-repeat",
         backgroundSize: "contain",
       }}>
+      {background_image}
       {terrain_els}
       {special_els}
       {annotation_els}
@@ -219,8 +215,8 @@ const SpecialTile = M.connectRedux(
 
 
 const Annotation = M.connectRedux(
-  function Annotation({ ptui, dispatch, pt, note, vis }:
-    { pt: T.Point3, note: string, vis: T.Visibility } & M.ReduxProps)
+  function Annotation({ ptui, dispatch, pt, vis }:
+    { pt: T.Point3, vis: T.Visibility } & M.ReduxProps)
     : JSX.Element {
     if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
       return <noscript />;

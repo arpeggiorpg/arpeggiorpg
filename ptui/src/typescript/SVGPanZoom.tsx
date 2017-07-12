@@ -5,8 +5,6 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import * as svgPanZoom from 'svg-pan-zoom';
 
-import * as M from './Model';
-
 interface SVGPanZoomProps {
   onPanZoom?: (x: boolean) => void;
 }

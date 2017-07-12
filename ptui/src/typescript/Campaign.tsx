@@ -1,10 +1,8 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactRedux from "react-redux";
 
-import { Button, Checkbox, Dropdown, Icon, List, Modal } from 'semantic-ui-react';
+import { Button, Checkbox, Dropdown, List } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -12,9 +10,6 @@ import * as Comp from './Component';
 import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
-import * as TextInput from './TextInput';
-
-interface CampaignDerivedProps { campaign: T.Folder; }
 
 export const Campaign = Comp.connect(
   ptui => ({ campaign: ptui.app.current_game.campaign })
@@ -40,7 +35,7 @@ class MultiItemSelectorComp
   render(): JSX.Element {
     const { ptui } = this.props;
     const self = this;
-    function on_check(checked: boolean, path: T.FolderPath, folder_item: T.FolderItemID) {
+    function on_check(checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) {
       switch (folder_item.t) {
         case "ItemID":
           if (self.props.require_selected.includes(folder_item.id)) {
@@ -58,7 +53,7 @@ class MultiItemSelectorComp
     }
     const selecting: SelectableProps = {
       item_type: 'Item', allow_multiple: true, on_select_object: on_check,
-      is_selected: (path, item_id) =>
+      is_selected: (_, item_id) =>
         item_id.t === "ItemID" && this.state.selections.includes(item_id.id),
     };
     return <div>
@@ -88,7 +83,7 @@ class MultiCreatureSelectorComp
   render(): JSX.Element {
     const { ptui } = this.props;
     const self = this;
-    function on_check(checked: boolean, path: T.FolderPath, folder_item: T.FolderItemID) {
+    function on_check(checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) {
       switch (folder_item.t) {
         case "CreatureID":
           const new_selected = checked
@@ -103,7 +98,7 @@ class MultiCreatureSelectorComp
     }
     const selecting: SelectableProps = {
       item_type: 'Creature', allow_multiple: true, on_select_object: on_check,
-      is_selected: (path, item_id) =>
+      is_selected: (_, item_id) =>
         item_id.t === "CreatureID" && this.state.selections.includes(item_id.id),
     };
     return <div>
@@ -172,8 +167,6 @@ class FolderTreeComp
         <FolderTree key={name} name={name} folder={subfolder}
           path={LD.concat(this.props.path, name)} selecting={selecting} />
     );
-    const display = this.state.expanded ? "block" : "none";
-    const toggle = () => this.setState({ expanded: !this.state.expanded });
     const folder_menu = <Dropdown icon='ellipsis horizontal'>
       <Dropdown.Menu>
         <Dropdown.Header content={M.folderPathToString(path)} />
@@ -321,7 +314,7 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
     return activate_object(object, dispatch);
   }
   const name = object.name;
-  function onCheck(evt: any, data: SUI.CheckboxProps) {
+  function onCheck(_: any, data: SUI.CheckboxProps) {
     if (selecting && selecting.on_select_object && data.checked !== undefined) {
       return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
     }

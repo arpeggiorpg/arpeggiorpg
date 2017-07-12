@@ -1,6 +1,5 @@
 import * as I from 'immutable';
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 
 import { Button, List, Table } from 'semantic-ui-react';
 
@@ -10,7 +9,7 @@ import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export function renderPlayers(app: any, [id, currentScene, data]: [string, string, any]) {
+export function renderPlayers() {
   console.log("sorry elm");
 }
 
@@ -22,8 +21,8 @@ export const Players = Comp.connect(
     ],
     (app, players, scene) => ({
       scene,
-      player_creatures: players.entrySeq().toArray().map(
-        ([pid, player]) =>
+      player_creatures: players.valueSeq().toArray().map(
+        player =>
           ({
             player, id: player.player_id,
             creatures: M.filterMap(player.creatures, cid => M.getCreature(app, cid)),

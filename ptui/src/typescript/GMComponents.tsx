@@ -433,7 +433,7 @@ export const GiveItemFromScene = M.connectRedux(
     const { scene, item, onClose, ptui, dispatch } = props;
     const available_count = scene.inventory.get(item.id);
     if (!available_count) { return <div>Lost item {item.name}!</div>; }
-    return <CV.TransferItemsToRecipientForm item={item}
+    return <CV.TransferItemsToRecipientForm
       available_count={available_count}
       available_recipients={ptui.getSceneCreatures(scene)}
       onGive={give}

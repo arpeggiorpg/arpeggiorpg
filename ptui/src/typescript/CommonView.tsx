@@ -14,7 +14,6 @@ import {
 } from 'semantic-ui-react';
 
 
-import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
@@ -70,7 +69,6 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
     if (!this.state.store) {
       return <div>Waiting for initial data from server.</div>;
     }
-    const ptui = this.state.store.getState();
     return <Provider store={this.state.store}>{this.props.children}</Provider>;
   }
 }
@@ -221,7 +219,6 @@ export const RemoveItem = M.connectRedux(RemoveItemComp);
 
 
 interface TransferItemsToRecipientFormProps {
-  item: T.Item;
   available_count: number;
   available_recipients: Array<T.Creature>;
   onGive: (recipient: T.Creature, count: number) => void;
@@ -235,7 +232,7 @@ export class TransferItemsToRecipientFormComp extends React.Component<
     this.state = { receiver: undefined, count: 1 };
   }
   render(): JSX.Element {
-    const { item, available_count, available_recipients } = this.props;
+    const { available_count, available_recipients } = this.props;
     if (!available_recipients) { return <div>There is nobody to give items to.</div>; }
     const creature_options = available_recipients.map(
       creature => ({ key: creature.id, text: creature.name, value: creature.id }));
@@ -254,10 +251,10 @@ export class TransferItemsToRecipientFormComp extends React.Component<
       <Form.Group>
         <Form.Button
           disabled={!(this.state.receiver && this.state.count)}
-          onClick={ev => this.give()}>
+          onClick={() => this.give()}>
           Give
             </Form.Button>
-        <Form.Button onClick={ev => this.props.onClose()}>Cancel</Form.Button>
+        <Form.Button onClick={() => this.props.onClose()}>Cancel</Form.Button>
       </Form.Group>
     </Form>;
   }
@@ -300,7 +297,7 @@ export const GiveItem = M.connectRedux(function GiveItem(props: GiveItemProps & 
     }).toArray()
     : other_creatures;
 
-  return <TransferItemsToRecipientForm item={item} available_count={giver_count}
+  return <TransferItemsToRecipientForm available_count={giver_count}
     available_recipients={available_recipients}
     onGive={(recip, count) => give(recip, count)}
     onClose={onClose} />;
@@ -567,7 +564,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const {
-      map, tabs, secondary, tertiary, bar_width, menu_size, top_bar, bottom_bar, ptui, dispatch,
+      map, tabs, secondary, tertiary, bar_width, menu_size, top_bar, bottom_bar, ptui,
     } = this.props;
 
     // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
@@ -739,8 +736,7 @@ class NoteEditorComp
   }
 
   render(): JSX.Element {
-    const self = this;
-    const { path, disallow_rename, ptui, dispatch } = this.props;
+    const { path, disallow_rename, ptui } = this.props;
 
     if (!ptui.getFolderNode(path)) {
       return <div>The path "{M.folderPathToString(path)}" does not exist.</div>;

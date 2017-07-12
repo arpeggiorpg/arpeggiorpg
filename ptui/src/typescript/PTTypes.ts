@@ -452,11 +452,11 @@ const decodeAABB: Decoder<AABB> = JD.object(
 );
 
 export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
-  ad: JD.EntryDecoder<A>, bd: JD.EntryDecoder<B>, cd: JD.EntryDecoder<C>, dd: JD.EntryDecoder<D>,
-  ed: JD.EntryDecoder<E>, fd: JD.EntryDecoder<F>, gd: JD.EntryDecoder<G>, hd: JD.EntryDecoder<H>,
-  id: JD.EntryDecoder<I>, jd: JD.EntryDecoder<J>, kd: JD.EntryDecoder<K>, ld: JD.EntryDecoder<L>,
-  md: JD.EntryDecoder<M>, nd: JD.EntryDecoder<N>, od: JD.EntryDecoder<O>, pd: JD.EntryDecoder<P>,
-  cons: (
+  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
+  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
+  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
+  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
+  _cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
     p: P) => T): Decoder<T> {
   return JD.object.apply(undefined, arguments);

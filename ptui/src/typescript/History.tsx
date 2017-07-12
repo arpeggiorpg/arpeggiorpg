@@ -1,12 +1,11 @@
 import Flexbox from 'flexbox-react';
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 
 import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export function renderHistory(app: any, [id, data]: [string, Array<Array<[any, Array<any>]>>]) {
+export function renderHistory() {
   console.log("sorry elm");
 }
 
@@ -19,7 +18,7 @@ export const History = Comp.connect(
     console.log("[EXPENSIVE:History.render]");
     return <div>{
       snapshots.map(
-        ({ snapshot, logs }, snapshot_index) =>
+        ({ logs }, snapshot_index) =>
           logs.map((log: T.GameLog, log_index) =>
             <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
               key={snapshot_index.toString() + "-" + log_index.toString()}>

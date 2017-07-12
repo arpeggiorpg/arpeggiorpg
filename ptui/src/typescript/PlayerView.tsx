@@ -1,17 +1,13 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import * as ReactDOM from "react-dom";
-import { Provider } from 'react-redux';
-import * as Redux from 'redux';
 
 import * as CV from "./CommonView";
 import * as Grid from './Grid';
-import { PTUI } from './Model';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-import { Button, Input, Menu } from 'semantic-ui-react';
+import { Menu } from 'semantic-ui-react';
 
 
 export const PlayerMain = M.connectRedux(
@@ -113,7 +109,7 @@ function creatureMenuActions(
     const combat = ptui.app.current_game.current_combat;
     if (combat) {
       if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-        return cid => ptui.requestCombatMovement(dispatch);
+        return _ => ptui.requestCombatMovement(dispatch);
       } else {
         return undefined;
       }

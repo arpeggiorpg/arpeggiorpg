@@ -2,10 +2,8 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 import { createSelectorCreator, defaultMemoize } from 'reselect';
-import * as JD from 'type-safe-json-decoder';
 
 import * as M from './Model';
-import * as T from './PTTypes';
 
 export const createDeepEqualSelector = createSelectorCreator(defaultMemoize, M.isEqual);
 
@@ -31,8 +29,7 @@ export function connect<BaseProps extends object, DerivedProps extends object>(
 
 /** A component which deep-compares props to determine whether it should update. */
 export class Component<P, S> extends React.Component<P, S> {
-  shouldComponentUpdate(nextProps: P, nextState: S, nextContext: any) {
-    const sCU = super.shouldComponentUpdate;
+  shouldComponentUpdate(nextProps: P, nextState: S) {
     return !(
       M.isEqual(
         LD.omit(this.props, 'dispatch', 'sendCommand'),
