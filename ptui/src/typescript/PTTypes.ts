@@ -108,6 +108,7 @@ export type GameCommand =
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
+  | { t: "EditMap"; map: Map }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -313,6 +314,7 @@ export interface Map {
   name: string;
   terrain: Array<Point3>;
   specials: Array<[Point3, Color, string, Visibility]>;
+  background_image_url: string;
 }
 
 export interface AttributeCheck {
@@ -499,7 +501,9 @@ export const decodeMap: Decoder<Map> = JD.object(
   ["name", JD.string()],
   ["terrain", JD.array(decodePoint3)],
   ["specials", JD.array(JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility))],
-  (id, name, terrain, specials) => ({ id, name, terrain, specials })
+  ["background_image_url", JD.string()],
+  (id, name, terrain, specials, background_image_url) =>
+    ({ id, name, terrain, specials, background_image_url })
 );
 
 export const decodeAttributeCheck: Decoder<AttributeCheck> =
@@ -854,6 +858,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "EditScene":
       return { EditScene: encodeScene(cmd.scene) };
+    case "EditMap":
+      return { EditMap: encodeMap(cmd.map) };
     case "RemoveCreatureFromCombat":
       return { RemoveCreatureFromCombat: cmd.creature_id };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
@@ -915,6 +921,17 @@ function encodeScene(scene: Scene): object {
     attribute_checks: scene.attribute_checks.map(encodeAttributeCheck).toObject(),
     inventory: scene.inventory.toObject(),
     background_image_url: scene.background_image_url,
+  };
+}
+
+function encodeMap(map: Map): object {
+  return {
+    id: map.id,
+    name: map.name,
+    terrain: map.terrain.map(encodePoint3),
+    specials: map.specials.map(
+      ([pt, color, note, vis]) => [encodePoint3(pt), color, note, encodeVisibility(vis)]),
+    background_image_url: map.background_image_url,
   };
 }
 
