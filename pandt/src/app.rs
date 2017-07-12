@@ -32,16 +32,14 @@ use indexed::IndexedHashMap;
 // probably don't want to just accept a modify Game back from the client...
 // But maybe that's okay actually, we would only be sending it to the GM.
 
+const LOGS_PER_SNAP: usize = 300;
+const SNAPSHOTS: usize = 2;
 
 impl App {
   pub fn new(g: Game) -> Self {
-    let mut snapshots = VecDeque::with_capacity(1000);
-    snapshots.push_back((g.clone(), Vec::with_capacity(100)));
-    App {
-      current_game: g,
-      snapshots: snapshots,
-      players: IndexedHashMap::new(),
-    }
+    let mut snapshots = VecDeque::with_capacity(SNAPSHOTS);
+    snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
+    App { current_game: g, snapshots: snapshots, players: IndexedHashMap::new() }
   }
   pub fn perform_unchecked(&mut self, cmd: GameCommand)
                            -> Result<(&Game, Vec<GameLog>), GameError> {
@@ -65,8 +63,13 @@ impl App {
       _ => {
         let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
 
-        if self.snapshots.is_empty() || self.snapshots.back().unwrap().1.len() + logs.len() > 100 {
-          self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(100)));
+        if self.snapshots.is_empty() ||
+           self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP {
+          self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
+        }
+
+        for _ in 0..(self.snapshots.len() - SNAPSHOTS) {
+          self.snapshots.pop_front();
         }
 
         self.snapshots.back_mut().unwrap().1.extend(logs.clone());
@@ -79,9 +82,11 @@ impl App {
   /// Rollback to a particular point by replaying logs after a snapshot
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
-    let &(ref baseline, ref logs_to_apply) = self.snapshots
-      .get(snapshot_idx)
-      .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
+    let &(ref baseline, ref logs_to_apply) =
+      self
+        .snapshots
+        .get(snapshot_idx)
+        .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
       bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
     }
@@ -180,8 +185,9 @@ impl App {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
-  pub fn get_creatures_and_terrain_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
-                                             -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+  pub fn get_creatures_and_terrain_in_volume
+    (&self, sid: SceneID, pt: Point3, volume: Volume)
+     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
     self.current_game.creatures_and_terrain_in_volume(scene, pt, volume)
   }
