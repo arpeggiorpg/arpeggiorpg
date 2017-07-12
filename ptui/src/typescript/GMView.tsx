@@ -59,9 +59,19 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
 }
 
 function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
+
   const scene = ptui.focused_scene();
   if (scene) {
     return <GM.GMScene scene={scene} />;
+  } else if (ptui.state.grid_focus) {
+    switch (ptui.state.grid_focus.t) {
+      case "Map":
+        const map = ptui.getMap(ptui.state.grid_focus.map_id);
+        if (map) {
+          return <GM.GMMap map={map} />;
+        }
+      default: return undefined;
+    }
   }
 }
 

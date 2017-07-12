@@ -17,6 +17,22 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
+export const GMMap = Comp.connect<{map: T.Map}, {}>(ptui => ({}))(
+  function GMMap(props: { map: T.Map } & M.DispatchProps) {
+    const { map, dispatch } = props;
+    return <Segment>
+      <Header>
+        {map.name}
+        <CV.ModalMaker
+          button={open =>
+            <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />}
+          header={<span>Edit {map.name}</span>}
+          content={close => <EditMap map={map} onDone={close} dispatch={dispatch} />}
+        />
+      </Header>
+    </Segment>;
+  });
+
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
@@ -58,6 +74,30 @@ class EditScene
   save() {
     this.props.dispatch(
       M.sendCommand({ t: "EditScene", scene: { ...this.props.scene, ...this.state } }));
+    this.props.onDone();
+  }
+}
+
+class EditMap
+  extends React.Component<{ map: T.Map, onDone: () => void } & M.DispatchProps,
+  { name: string, background_image_url: string }> {
+  constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
+    super(props);
+    this.state = { name: props.map.name, background_image_url: props.map.background_image_url };
+  }
+  render(): JSX.Element {
+    const { map } = this.props;
+    return <Form>
+      <Form.Input label="Name" value={this.state.name}
+        onChange={(_, d) => this.setState({ name: d.value })} />
+      <Form.Input label="Background Image URL" value={this.state.background_image_url}
+        onChange={(_, d) => this.setState({ background_image_url: d.value })} />
+      <Form.Button onClick={() => this.save()}>Save</Form.Button>
+    </Form>;
+  }
+  save() {
+    this.props.dispatch(
+      M.sendCommand({ t: "EditMap", map: { ...this.props.map, ...this.state } }));
     this.props.onDone();
   }
 }
