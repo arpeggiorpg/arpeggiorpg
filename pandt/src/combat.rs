@@ -210,12 +210,7 @@ pub struct ChangedCombat<'game> {
 
 impl<'game> ChangedCombat<'game> {
   pub fn dyn(&self) -> DynamicCombat {
-    DynamicCombat {
-      map: self.map,
-      scene: self.scene,
-      game: self.game,
-      combat: &self.combat,
-    }
+    DynamicCombat { map: self.map, scene: self.scene, game: self.game, combat: &self.combat }
   }
 
   pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
@@ -400,6 +395,8 @@ pub mod test {
                 terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
                 specials: vec![],
                 background_image_url: "".to_string(),
+                background_image_scale: (0, 0),
+                background_image_offset: (0, 0),
               });
     let next_game =
       game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().game;

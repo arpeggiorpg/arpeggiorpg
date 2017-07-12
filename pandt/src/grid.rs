@@ -246,10 +246,7 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
         FH: Fn(&N) -> C
 {
   let mut to_see = BinaryHeap::new();
-  to_see.push(InvCmpHolder {
-                key: heuristic(start),
-                payload: (Zero::zero(), start.clone()),
-              });
+  to_see.push(InvCmpHolder { key: heuristic(start), payload: (Zero::zero(), start.clone()) });
   let mut parents: HashMap<N, (N, C)> = HashMap::new();
   let mut found_nodes = vec![];
   while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
@@ -277,10 +274,7 @@ pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, m
       if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) && new_cost <= max_cost {
         parents.insert(neighbour.clone(), (node.clone(), new_cost));
         let new_predicted_cost = new_cost + heuristic(&neighbour);
-        to_see.push(InvCmpHolder {
-                      key: new_predicted_cost,
-                      payload: (new_cost, neighbour),
-                    });
+        to_see.push(InvCmpHolder { key: new_predicted_cost, payload: (new_cost, neighbour) });
       }
     }
   }
@@ -338,7 +332,7 @@ pub mod test {
   #[test]
   fn test_neighbors() {
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let mut pts = TileSystem::Realistic.point3_neighbors(&terrain, size, (0, 0, 0));
     pts.sort();
     let mut expected = vec![((-1, 0, 0), 100),
@@ -357,7 +351,7 @@ pub mod test {
   #[test]
   fn test_neighbors_around_corners() {
     let terrain = Map::new("single".to_string(), vec![(1, 0, 0)]);
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let pts: Vec<Point3> = TileSystem::Realistic
       .point3_neighbors(&terrain, size, (0, 0, 0))
       .iter()
@@ -371,7 +365,7 @@ pub mod test {
   fn pathfinding_astar_multi() {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (2, 2, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let paths_and_costs =
       astar_multi(&start,
                   |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -386,7 +380,7 @@ pub mod test {
   fn astar_multi_max_cost() {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (5, 0, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let result = astar_multi(&start,
                              |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
                              |n| TileSystem::Realistic.point3_distance(start, *n).0,
@@ -399,7 +393,7 @@ pub mod test {
   fn astar_multi_eq_max_cost() {
     let start = (0, 0, 0);
     let success = Box::new(|n: &Point3| *n == (5, 0, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let result = astar_multi(&start,
                              |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
                              |n| TileSystem::Realistic.point3_distance(start, *n).0,
@@ -415,7 +409,7 @@ pub mod test {
     let start = (0, 0, 0);
     let successes: Vec<Box<Fn(&Point3) -> bool>> = vec![Box::new(|n: &Point3| *n == (1, 1, 0)),
                                                         Box::new(|n: &Point3| *n == (-1, -1, 0))];
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let paths_and_costs =
       astar_multi(&start,
                   |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -445,6 +439,8 @@ pub mod test {
       terrain: map,
       specials: vec![],
       background_image_url: "".to_string(),
+      background_image_offset: (0, 0),
+      background_image_scale: (0, 0),
     }
   }
 
@@ -463,7 +459,7 @@ pub mod test {
   #[test]
   fn test_accessible_nowhere_to_go() {
     let terrain = box_map();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     assert_eq!(TileSystem::Realistic.get_all_accessible((0, 0, 0), &terrain, size, Distance(1000)),
                vec![]);
   }
@@ -472,7 +468,7 @@ pub mod test {
   fn test_accessible_small_limit() {
     // a speed of 100 means you can only move on the axes
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let mut pts =
       TileSystem::Realistic.get_all_accessible((0, 0, 0), &terrain, size, Distance(100));
     pts.sort();
@@ -485,7 +481,7 @@ pub mod test {
   fn test_accessible_less_small_limit() {
     // a speed of 141 means you can also move diagonally, but only once
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let mut pts =
       TileSystem::Realistic.get_all_accessible((0, 0, 0), &terrain, size, Distance(141));
     pts.sort();
@@ -504,7 +500,7 @@ pub mod test {
   #[test]
   fn test_accessible_average_speed() {
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1});
+    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let pts = TileSystem::Realistic.get_all_accessible((0, 0, 0), &terrain, size, Distance(1000));
     // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
     // 8 degrees of movement, which leaves certain positions within a circle impossible to

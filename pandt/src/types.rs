@@ -1028,6 +1028,10 @@ pub struct Map {
   pub specials: Vec<(Point3, Color, String, Visibility)>,
   #[serde(default)]
   pub background_image_url: String,
+  #[serde(default)]
+  pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
+  #[serde(default)]
+  pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
 }
 
 impl Map {
@@ -1042,6 +1046,8 @@ impl Map {
       terrain: terrain,
       specials: vec![],
       background_image_url: "".to_string(),
+      background_image_offset: (0, 0),
+      background_image_scale: (0, 0),
     }
   }
 
