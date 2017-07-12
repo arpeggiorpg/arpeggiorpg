@@ -21,15 +21,8 @@ export const GMMap = Comp.connect<{ map: T.Map }, {}>(_ => ({}))(
   function GMMap(props: { map: T.Map } & M.DispatchProps) {
     const { map, dispatch } = props;
     return <Segment>
-      <Header>
-        {map.name}
-        <CV.ModalMaker
-          button={open =>
-            <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />}
-          header={<span>Edit {map.name}</span>}
-          content={close => <EditMap map={map} onDone={close} dispatch={dispatch} />}
-        />
-      </Header>
+      <Header> {map.name} </Header>
+      <EditMap map={map} onDone={() => undefined} dispatch={dispatch} />
     </Segment>;
   });
 
@@ -81,15 +74,17 @@ class EditMap
   extends React.Component<{ map: T.Map, onDone: () => void } & M.DispatchProps,
   {
     name: string, background_image_url: string,
-    scale_x: number, scale_y: number,
-    offset_x: number, offset_y: number
+    scale_x: string, scale_y: string,
+    offset_x: string, offset_y: string
   }> {
   constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
     super(props);
+    const { map: { name, background_image_scale, background_image_offset } } = props;
     this.state = {
-      name: props.map.name, background_image_url: props.map.background_image_url,
-      scale_x: props.map.background_image_scale[0], scale_y: props.map.background_image_scale[1],
-      offset_x: props.map.background_image_offset[0], offset_y: props.map.background_image_offset[1],
+      name, background_image_url: props.map.background_image_url,
+      scale_x: background_image_scale[0].toString(), scale_y: background_image_scale[1].toString(),
+      offset_x: background_image_offset[0].toString(),
+      offset_y: background_image_offset[1].toString(),
     };
   }
   render(): JSX.Element {
@@ -99,26 +94,42 @@ class EditMap
       <Form.Input label="Background Image URL" value={this.state.background_image_url}
         onChange={(_, d) => this.setState({ background_image_url: d.value })} />
       <Form.Group>
-        <Form.Input label="Scale X (cm)" value={this.state.scale_x}
-          onChange={(_, d) => this.setState({ scale_x: Number(d.value) })} />
-        <Form.Input label="Scale Y (cm)" value={this.state.scale_y}
-          onChange={(_, d) => this.setState({ scale_y: Number(d.value) })} />
+        <Form.Input label="Scale X (cm)"
+          style={{ width: "100px" }}
+          value={this.state.scale_x}
+          onChange={(_, data) => this.setState({ scale_x: data.value })} />
+        <Form.Input label="Scale Y (cm)"
+          style={{ width: "100px" }}
+          value={this.state.scale_y}
+          onChange={(_, data) => this.setState({ scale_y: data.value })} />
       </Form.Group>
       <Form.Group>
-        <Form.Input label="Offset X (cm)" value={this.state.offset_x}
-          onChange={(_, d) => this.setState({ offset_x: Number(d.value) })} />
-        <Form.Input label="Offset Y (cm)" value={this.state.offset_y}
-          onChange={(_, d) => this.setState({ offset_y: Number(d.value) })} />
+        <Form.Input label="Offset X (cm)"
+          style={{ width: "100px" }}
+          value={this.state.offset_x}
+          onChange={(_, data) => this.setState({ offset_x: data.value })} />
+        <Form.Input label="Offset Y (cm)"
+          style={{ width: "100px" }}
+          value={this.state.offset_y}
+          onChange={(_, data) => this.setState({ offset_y: data.value })} />
       </Form.Group>
-      <Form.Button onClick={() => this.save()}>Save</Form.Button>
+      <Form.Button onClick={() => this.save()}
+        disabled={
+          isNaN(Number(this.state.scale_x)) || isNaN(Number(this.state.scale_y))
+          || isNaN(Number(this.state.offset_x)) || isNaN(Number(this.state.offset_x))}>
+        Save</Form.Button>
     </Form>;
   }
   save() {
+    const background_image_scale: [number, number] =
+      [Number(this.state.scale_x), Number(this.state.scale_y)];
+    const background_image_offset: [number, number] =
+      [Number(this.state.offset_x), Number(this.state.offset_y)];
     const new_map = {
       ...this.props.map,
       name: this.state.name, background_image_url: this.state.background_image_url,
-      background_image_scale: [this.state.scale_x, this.state.scale_y] as [number, number],
-      background_image_offset: [this.state.offset_x, this.state.offset_y] as [number, number],
+      background_image_scale,
+      background_image_offset,
     };
     this.props.dispatch(M.sendCommand({ t: "EditMap", map: new_map }));
     this.props.onDone();

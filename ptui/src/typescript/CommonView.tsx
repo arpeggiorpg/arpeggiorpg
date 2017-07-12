@@ -312,7 +312,6 @@ export const GiveItem = M.connectRedux(function GiveItem(props: GiveItemProps & 
   }
 });
 
-
 interface PositiveIntegerInputProps {
   max?: number; value: number | undefined;
   label?: string;
