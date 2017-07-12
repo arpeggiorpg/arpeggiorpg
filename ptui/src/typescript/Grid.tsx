@@ -149,7 +149,9 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
           return <Annotation key={pt.toString()} pt={pt} vis={vis} />;
         }
       });
-    const background_image = map.background_image_url ? <image /> : null;
+    const background_image = map.background_image_url
+      ? <image xlinkHref={map.background_image_url} width={1000} height={1000} />
+      : null;
 
     return <SPZ.SVGPanZoom
       id="pt-grid"
