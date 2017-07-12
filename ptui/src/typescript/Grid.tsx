@@ -150,7 +150,9 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
         }
       });
     const background_image = map.background_image_url
-      ? <image xlinkHref={map.background_image_url} width={1000} height={1000} />
+      ? <image xlinkHref={map.background_image_url} width={map.background_image_scale[0]}
+        height={map.background_image_scale[1]}
+        x={map.background_image_offset[0]} y={map.background_image_offset[1]} />
       : null;
 
     return <SPZ.SVGPanZoom

@@ -315,6 +315,8 @@ export interface Map {
   terrain: Array<Point3>;
   specials: Array<[Point3, Color, string, Visibility]>;
   background_image_url: string;
+  background_image_scale: [number, number];
+  background_image_offset: [number, number];
 }
 
 export interface AttributeCheck {
@@ -502,8 +504,15 @@ export const decodeMap: Decoder<Map> = JD.object(
   ["terrain", JD.array(decodePoint3)],
   ["specials", JD.array(JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility))],
   ["background_image_url", JD.string()],
-  (id, name, terrain, specials, background_image_url) =>
-    ({ id, name, terrain, specials, background_image_url })
+  ["background_image_offset", JD.tuple(JD.number(), JD.number())],
+  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
+  (
+    id, name, terrain, specials,
+    background_image_url, background_image_offset, background_image_scale) =>
+    ({
+      id, name, terrain, specials,
+      background_image_url, background_image_offset, background_image_scale,
+    })
 );
 
 export const decodeAttributeCheck: Decoder<AttributeCheck> =
@@ -932,6 +941,8 @@ function encodeMap(map: Map): object {
     specials: map.specials.map(
       ([pt, color, note, vis]) => [encodePoint3(pt), color, note, encodeVisibility(vis)]),
     background_image_url: map.background_image_url,
+    background_image_scale: map.background_image_scale,
+    background_image_offset: map.background_image_offset,
   };
 }
 

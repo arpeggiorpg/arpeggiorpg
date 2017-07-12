@@ -17,7 +17,7 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-export const GMMap = Comp.connect<{map: T.Map}, {}>(_ => ({}))(
+export const GMMap = Comp.connect<{ map: T.Map }, {}>(_ => ({}))(
   function GMMap(props: { map: T.Map } & M.DispatchProps) {
     const { map, dispatch } = props;
     return <Segment>
@@ -79,10 +79,18 @@ class EditScene
 
 class EditMap
   extends React.Component<{ map: T.Map, onDone: () => void } & M.DispatchProps,
-  { name: string, background_image_url: string }> {
+  {
+    name: string, background_image_url: string,
+    scale_x: number, scale_y: number,
+    offset_x: number, offset_y: number
+  }> {
   constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
     super(props);
-    this.state = { name: props.map.name, background_image_url: props.map.background_image_url };
+    this.state = {
+      name: props.map.name, background_image_url: props.map.background_image_url,
+      scale_x: props.map.background_image_scale[0], scale_y: props.map.background_image_scale[1],
+      offset_x: props.map.background_image_offset[0], offset_y: props.map.background_image_offset[1],
+    };
   }
   render(): JSX.Element {
     return <Form>
@@ -90,12 +98,29 @@ class EditMap
         onChange={(_, d) => this.setState({ name: d.value })} />
       <Form.Input label="Background Image URL" value={this.state.background_image_url}
         onChange={(_, d) => this.setState({ background_image_url: d.value })} />
+      <Form.Group>
+        <Form.Input label="Scale X (cm)" value={this.state.scale_x}
+          onChange={(_, d) => this.setState({ scale_x: Number(d.value) })} />
+        <Form.Input label="Scale Y (cm)" value={this.state.scale_y}
+          onChange={(_, d) => this.setState({ scale_y: Number(d.value) })} />
+      </Form.Group>
+      <Form.Group>
+        <Form.Input label="Offset X (cm)" value={this.state.offset_x}
+          onChange={(_, d) => this.setState({ offset_x: Number(d.value) })} />
+        <Form.Input label="Offset Y (cm)" value={this.state.offset_y}
+          onChange={(_, d) => this.setState({ offset_y: Number(d.value) })} />
+      </Form.Group>
       <Form.Button onClick={() => this.save()}>Save</Form.Button>
     </Form>;
   }
   save() {
-    this.props.dispatch(
-      M.sendCommand({ t: "EditMap", map: { ...this.props.map, ...this.state } }));
+    const new_map = {
+      ...this.props.map,
+      name: this.state.name, background_image_url: this.state.background_image_url,
+      background_image_scale: [this.state.scale_x, this.state.scale_y] as [number, number],
+      background_image_offset: [this.state.offset_x, this.state.offset_y] as [number, number],
+    };
+    this.props.dispatch(M.sendCommand({ t: "EditMap", map: new_map }));
     this.props.onDone();
   }
 }
