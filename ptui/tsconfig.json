@@ -9,7 +9,8 @@
         "strict": true,
         "noImplicitThis": true,
         "noFallthroughCasesInSwitch": true,
-        "noUnusedLocals": true
+        "noUnusedLocals": true,
+        "noUnusedParameters": true
     },
     "include": [
         "src/typescript/*.tsx",

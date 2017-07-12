@@ -3,7 +3,6 @@ import "isomorphic-fetch";
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
-import * as Redux from 'redux';
 import * as JD from "type-safe-json-decoder";
 
 import * as T from './PTTypes';
@@ -66,7 +65,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "DisplayMovementOptions":
       return ptui.updateGridState(
         grid => ({
-          ...ptui.state.grid,
+          ...grid,
           movement_options: {
             cid: action.cid, options: action.options,
             teleport: action.teleport ? true : false,
@@ -126,7 +125,7 @@ export type SecondaryFocus =
 
 
 function decodeFetch<J>(
-  dispatch: Dispatch, url: string, init: RequestInit | undefined,
+  url: string, init: RequestInit | undefined,
   decoder: JD.Decoder<J>): Promise<J> {
   const p: Promise<Response> = fetch(url, init);
   const p2: Promise<any> = p.then(response => response.json());
@@ -143,7 +142,7 @@ export function ptfetch<J, R>(
   dispatch: Dispatch, url: string, init: RequestInit | undefined,
   decoder: JD.Decoder<J>, then: (result: J) => R)
   : Promise<R> {
-  const json_promise = decodeFetch(dispatch, url, init, decoder);
+  const json_promise = decodeFetch(url, init, decoder);
   const p4: Promise<R> = json_promise.then(then);
   const p5: Promise<R> = p4.catch(
     e => {
@@ -226,12 +225,12 @@ export class PTUI {
   }
 
   /// Send a Command and *don't* automatically handle errors.
-  sendCommandWithResult(dispatch: Dispatch, cmd: T.GameCommand)
+  sendCommandWithResult(cmd: T.GameCommand)
     : Promise<T.RustResult<Array<T.GameLog>, string>> {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     const rpi_result = decodeFetch(
-      dispatch, this.rpi_url,
+      this.rpi_url,
       {
         method: "POST",
         body: JSON.stringify(json),
@@ -306,7 +305,7 @@ export class PTUI {
   executeCombatAbility(dispatch: Dispatch, target_id: T.CreatureID) {
     const opts = this.state.grid.target_options;
     if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
-    const { cid: actor_id, ability_id, options } = opts;
+    const { ability_id, options } = opts;
     if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
     const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
     this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
@@ -395,7 +394,7 @@ export class PTUI {
     const arr = filterMap(scene.inventory.entrySeq().toArray(),
       ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
     const list = I.List(arr);
-    return list.sortBy(([i, c]) => i.name);
+    return list.sortBy(([i, _]) => i.name);
   }
 }
 
@@ -519,7 +518,7 @@ export interface ReduxProps extends DispatchProps { ptui: PTUI; }
 export function connectRedux<BaseProps extends {} & object>(
   x: React.ComponentType<BaseProps & ReduxProps>)
   : React.ComponentType<BaseProps> {
-  const connector = ReactRedux.connect((ptui, op) => ({ ptui }), dispatch => ({ dispatch }));
+  const connector = ReactRedux.connect((ptui, _) => ({ ptui }), dispatch => ({ dispatch }));
   // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
   // `as any`, when I didn't need it previously.
   return (connector as any)(x);

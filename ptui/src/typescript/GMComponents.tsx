@@ -17,7 +17,7 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-export const GMMap = Comp.connect<{map: T.Map}, {}>(ptui => ({}))(
+export const GMMap = Comp.connect<{map: T.Map}, {}>(_ => ({}))(
   function GMMap(props: { map: T.Map } & M.DispatchProps) {
     const { map, dispatch } = props;
     return <Segment>
@@ -34,7 +34,7 @@ export const GMMap = Comp.connect<{map: T.Map}, {}>(ptui => ({}))(
   });
 
 export const GMScene = M.connectRedux(
-  function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+  function GMScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     return <Segment>
       <Header>
         {scene.name}
@@ -241,11 +241,11 @@ class GMChallengeComp
     </div>;
   }
   challenge() {
-    const { ptui, dispatch } = this.props;
+    const { ptui } = this.props;
     const promises: Array<Promise<[T.CreatureID, T.GameLog | string]>> =
       this.state.creatures.toArray().map(
         creature_id => ptui.sendCommandWithResult(
-          dispatch, { t: 'AttributeCheck', creature_id, check: this.props.challenge })
+          { t: 'AttributeCheck', creature_id, check: this.props.challenge })
           .then(
           (result): [T.CreatureID, T.GameLog | string] => {
             if (result.t !== 'Ok') {
@@ -315,7 +315,7 @@ class AddChallengeToSceneComp extends React.Component<
 const AddChallengeToScene = M.connectRedux(AddChallengeToSceneComp);
 
 export const GMSceneInventory = M.connectRedux(
-  function GMSceneInventory({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
+  function GMSceneInventory({ scene, ptui }: { scene: T.Scene } & M.ReduxProps) {
     return <div>
       <List relaxed={true}>
         <List.Item key="add">

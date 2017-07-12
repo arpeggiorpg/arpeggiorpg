@@ -22,7 +22,7 @@ export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
   ];
 
   const secondary = renderSecondary(ptui, dispatch);
-  const tertiary = renderTertiary(ptui, dispatch);
+  const tertiary = renderTertiary(ptui);
   const combat = ptui.app.current_game.current_combat;
   const bottom_bar = combat ?
     <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
@@ -57,7 +57,7 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
   }
 }
 
-function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
+function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
 
   const scene = ptui.focused_scene();
   if (scene) {
@@ -95,7 +95,7 @@ function creatureMenuActions(
   const combat = ptui.app.current_game.current_combat;
   if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
     actions = actions.merge({
-      "Combat-move": (cid: T.CreatureID) => ptui.requestCombatMovement(dispatch),
+      "Combat-move": (_: T.CreatureID) => ptui.requestCombatMovement(dispatch),
     });
   }
   return actions;
