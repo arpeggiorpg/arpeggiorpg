@@ -132,7 +132,8 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
   render(): JSX.Element {
     const { map, creatures, ptui } = this.props;
     console.log("[EXPENSIVE:GridSvg.render]");
-    const terrain_els = map.terrain.map(pt => tile("white", "base-terrain", pt));
+    const open_terrain_color = map.background_image_url ? "transparent" : "white";
+    const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
     const creature_els = creatures.map(
       c => <GridCreature key={c.creature.id} creature={c} allow_clicks={this.state.allow_clicks} />);
     const grid = ptui.state.grid;
