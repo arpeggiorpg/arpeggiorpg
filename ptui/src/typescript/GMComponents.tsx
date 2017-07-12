@@ -95,10 +95,10 @@ class EditMap
       <PlaintextInput label="Background Image URL" name="background_image_url"
         default={map.background_image_url} />
       <Form.Group>
-        <NumericInput label="Scale X (cm)" name="scale_x" min={0}
+        <NumericInput label="Scale X (cm)" name="scale_x" min={100}
           style={{ width: "100px" }}
           default={map.background_image_scale[0]} />
-        <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
+        <NumericInput label="Scale Y (cm)" name="scale_y" min={100}
           style={{ width: "100px" }}
           default={map.background_image_scale[1]} />
       </Form.Group>

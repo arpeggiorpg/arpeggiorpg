@@ -4,8 +4,9 @@
  * typesafe API.
  */
 
+import * as LD from 'lodash';
 import * as React from 'react';
-import { Button, Form } from 'semantic-ui-react';
+import { Button, Form, Input, Message } from 'semantic-ui-react';
 
 interface BaseInputProps { label: string; name: string; style?: any; }
 
@@ -80,22 +81,31 @@ export class CoolForm extends React.Component<{},
   }
 
   render(): JSX.Element {
-    return <Form>{this.walkChildren(this.props.children,
-      el => <Form.Input label={el.props.label} value={this.state.data[el.props.name].value}
-        style={el.props.style}
-        onChange={(_, d) =>
-          this.setState({
-            data: {
-              ...this.state.data, [el.props.name]: {
-                ...this.state.data[el.props.name],
-                value: d.value,
+    const errors = this.getErrors();
+    return <Form error={true}>{this.walkChildren(this.props.children,
+      el => {
+        const error = errors[el.props.name];
+        return <Form.Field style={el.props.style} error={error !== undefined}>
+          <label>{el.props.label}</label>
+          <Input value={this.state.data[el.props.name].value}
+            style={el.props.style}
+            onChange={(_, d) => this.setState({
+              data: {
+                ...this.state.data, [el.props.name]: {
+                  ...this.state.data[el.props.name],
+                  value: d.value,
+                },
               },
-            },
-          })} />,
+            })
+            } />
+          {error ? <Message error={true}>{error}</Message> : null}
+        </Form.Field>;
+      },
       submit => <Button disabled={!this.validate()}
         onClick={() => this.submit(submit.props.onClick)}>
         {submit.props.children}
-      </Button>)}</Form>;
+      </Button>)}
+    </Form>;
   }
 
   submit(onClick: (data: { [index: string]: any }) => void) {
@@ -109,24 +119,34 @@ export class CoolForm extends React.Component<{},
     onClick(data);
   }
 
-  validate(): boolean {
+  getErrors(): { [index: string]: string } {
+    const errors: { [index: string]: string } = {};
     for (const key in this.state.data) {
       if (this.state.data.hasOwnProperty(key)) {
         const { type, value, extra } = this.state.data[key];
         switch (type) {
           case "text":
-            if (extra.nonEmpty && value === "") { return false; }
+            if (extra.nonEmpty && value === "") {
+              errors[key] = "Must not be empty";
+            }
             break;
           case "numeric":
             const num = Number(value);
             const min = extra.min;
-            if (isNaN(num) || (min !== undefined && num < min)) {
-              return false;
+            if (isNaN(num)) {
+              errors[key] = "Not a number";
+            }
+            if (min !== undefined && num < min) {
+              errors[key] = `Must not be less than ${min}`;
             }
             break;
         }
       }
     }
-    return true;
+    return errors;
+  }
+
+  validate(): boolean {
+    return LD.isEmpty(this.getErrors());
   }
 }
