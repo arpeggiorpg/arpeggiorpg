@@ -95,10 +95,10 @@ class EditMap
       <PlaintextInput label="Background Image URL" name="background_image_url"
         default={map.background_image_url} />
       <Form.Group>
-        <NumericInput label="Scale X (cm)" name="scale_x" min={100}
+        <NumericInput label="Scale X (cm)" name="scale_x" min={0}
           style={{ width: "100px" }}
           default={map.background_image_scale[0]} />
-        <NumericInput label="Scale Y (cm)" name="scale_y" min={100}
+        <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
           style={{ width: "100px" }}
           default={map.background_image_scale[1]} />
       </Form.Group>
@@ -790,6 +790,17 @@ export const CreateFolder = M.connectRedux(
       return ptui.sendCommand(dispatch, { t: 'CreateFolder', path: new_path });
     }
   });
+
+export function CreateMap(props: { path: T.FolderPath; onDone: () => void; } & M.DispatchProps) {
+  const { path, onDone, dispatch } = props;
+  return <CV.SingleInputForm buttonText="Create Map" onSubmit={create} />;
+  function create(input: string) {
+    const map = { name: input, terrain: [] };
+    dispatch(M.sendCommand({ t: "CreateMap", path, map }));
+    onDone();
+  }
+}
+
 
 interface GMCreateCreatureProps {
   path: T.FolderPath;

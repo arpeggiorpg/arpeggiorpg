@@ -171,7 +171,11 @@ class FolderTreeComp
       <Dropdown.Menu>
         <Dropdown.Header content={M.folderPathToString(path)} />
         <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' />
-        <Dropdown.Item icon={object_icon("Map")} text='Create Map' />
+        <CV.ModalMaker
+          button={open =>
+            <Dropdown.Item icon={object_icon("Map")} text='Create Map' onClick={open} />}
+          header={<span>Create new map in {M.folderPathToString(path)}</span>}
+          content={close => <GM.CreateMap path={path} onDone={close} dispatch={dispatch} />} />
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}

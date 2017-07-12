@@ -93,6 +93,11 @@ export type InventoryOwner =
   | { Scene: SceneID }
   ;
 
+interface MapCreation {
+  name: string;
+  terrain: Array<Point3>;
+}
+
 export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
@@ -108,6 +113,7 @@ export type GameCommand =
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
+  | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
@@ -867,6 +873,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "EditScene":
       return { EditScene: encodeScene(cmd.scene) };
+    case "CreateMap":
+      return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
     case "EditMap":
       return { EditMap: encodeMap(cmd.map) };
     case "RemoveCreatureFromCombat":
@@ -894,6 +902,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
   }
+}
+
+function encodeMapCreation(mc: MapCreation): object {
+  return { name: mc.name, terrain: mc.terrain.map(encodePoint3) };
 }
 
 function encodeInventoryOwner(owner: InventoryOwner): object {
