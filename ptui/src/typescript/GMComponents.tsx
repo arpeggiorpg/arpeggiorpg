@@ -6,7 +6,7 @@ import * as ReactRedux from 'react-redux';
 
 import {
   Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
-  Menu, Message, Modal, Popup, Segment, Table
+  Menu, Message, Popup, Segment, Table
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -62,7 +62,6 @@ class EditScene
     this.state = { name: props.scene.name, background_image_url: props.scene.background_image_url };
   }
   render(): JSX.Element {
-    const { scene } = this.props;
     return <Form>
       <Form.Input label="Name" value={this.state.name}
         onChange={(_, d) => this.setState({ name: d.value })} />
@@ -86,7 +85,6 @@ class EditMap
     this.state = { name: props.map.name, background_image_url: props.map.background_image_url };
   }
   render(): JSX.Element {
-    const { map } = this.props;
     return <Form>
       <Form.Input label="Name" value={this.state.name}
         onChange={(_, d) => this.setState({ name: d.value })} />
@@ -412,7 +410,6 @@ export const SceneItemCountEditor = M.connectRedux(
     return <EditableNumericLabel value={count} save={save} />;
 
     function save(num: number) {
-      const new_inv = num <= 0 ? scene.inventory.delete(item.id) : scene.inventory.set(item.id, num);
       ptui.sendCommand(dispatch,
         { t: 'SetItemCount', owner: { Scene: scene.id }, item_id: item.id, count: num });
     }
@@ -635,8 +632,6 @@ class StartCombatComp
 
   render(): JSX.Element {
     const { scene, ptui, dispatch } = this.props;
-    const creatures = ptui.getSceneCreatures(scene);
-    const self = this;
     return <div>
       <Button
         onClick={() => ptui.sendCommand(dispatch,
@@ -838,7 +833,7 @@ class EditCreatureDataComp
   }
 
   render(): JSX.Element {
-    const { creature, onClose, ptui } = this.props;
+    const { onClose, ptui } = this.props;
     const parsed_initiative = Dice.maybeParse(this.state.initiative_string);
     const classes = ptui.app.current_game.classes.keySeq().toArray().map((className: string) =>
       ({ key: className, text: className, value: className }));

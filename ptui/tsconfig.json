@@ -7,7 +7,9 @@
         "module": "commonjs",
         "jsx": "react",
         "strict": true,
-        "noImplicitThis": true
+        "noImplicitThis": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUnusedLocals": true
     },
     "include": [
         "src/typescript/*.tsx",

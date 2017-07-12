@@ -1,7 +1,6 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
-import * as Redux from 'redux';
 
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
@@ -69,6 +68,8 @@ function renderTertiary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undef
         const map = ptui.getMap(ptui.state.grid_focus.map_id);
         if (map) {
           return <GM.GMMap map={map} />;
+        } else {
+          return;
         }
       default: return undefined;
     }
