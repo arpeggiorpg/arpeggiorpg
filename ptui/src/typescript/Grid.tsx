@@ -210,7 +210,7 @@ const SpecialTile = M.connectRedux(
     if (gmonly && ptui.state.player_id) {
       return <noscript />;
     }
-    const tprops = tile_props(color, pt);
+    const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
     return <g>
       <rect {...tprops} />
       {gmonly ? <text x={pt[0] * 100 + 65} y={pt[1] * 100 + 35} fontSize="25px">👁️</text>
@@ -310,8 +310,12 @@ function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SV
   };
 }
 
-function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
-  return { ...bare_tile_props(pt, size), stroke: "black", strokeWidth: 1, fill: color };
+function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity: number = 1):
+  React.SVGProps<SVGElement> {
+  return {
+    ...bare_tile_props(pt, size), stroke: "black", strokeWidth: 1, fill: color,
+    fillOpacity: opacity,
+  };
 }
 
 function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
