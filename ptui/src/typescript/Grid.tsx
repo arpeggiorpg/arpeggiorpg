@@ -42,7 +42,7 @@ export const SceneGrid = M.connectRedux(
       {menu}
       {annotation}
       <GridSvg map={map} creatures={LD.values(props.creatures)}
-        background_image={props.scene.background_image_url} />
+        scene_background={props.scene.background_image_url} />
     </div>;
 
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
@@ -104,7 +104,7 @@ export interface MapCreature {
 interface GridSvgProps {
   map: T.Map;
   creatures: Array<MapCreature>;
-  background_image?: string;
+  scene_background?: string;
 }
 class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_clicks: boolean }> {
   spz: SPZ.SVGPanZoom;
@@ -130,7 +130,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
   }
 
   render(): JSX.Element {
-    const { map, creatures, ptui } = this.props;
+    const { map, creatures, scene_background, ptui } = this.props;
     console.log("[EXPENSIVE:GridSvg.render]");
     const open_terrain_color = map.background_image_url ? "transparent" : "white";
     const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
@@ -168,7 +168,7 @@ class GridSvgComp extends React.Component<GridSvgProps & M.ReduxProps, { allow_c
       preserveAspectRatio="xMinYMid slice"
       style={{
         width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
-        backgroundImage: `url(${this.props.background_image})`,
+        backgroundImage: scene_background ? `url(${scene_background})` : undefined,
         backgroundRepeat: "no-repeat",
         backgroundSize: "contain",
       }}>
