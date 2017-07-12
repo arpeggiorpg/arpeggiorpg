@@ -10,6 +10,7 @@
 		"no-unused-expression": true,
 		"no-duplicate-variable": true,
 		"no-unused-variable": true,
+		"no-shadowed-variable": false,
 		"curly": true,
 		"class-name": true,
 		"semicolon": [

@@ -12,6 +12,7 @@ import {
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as Comp from './Component';
+import { CoolForm, NumericInput, PlaintextInput, Submit } from './CoolForm';
 import * as Dice from './Dice';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -88,48 +89,36 @@ class EditMap
     };
   }
   render(): JSX.Element {
-    return <Form>
-      <Form.Input label="Name" value={this.state.name}
-        onChange={(_, d) => this.setState({ name: d.value })} />
-      <Form.Input label="Background Image URL" value={this.state.background_image_url}
-        onChange={(_, d) => this.setState({ background_image_url: d.value })} />
+    const { map } = this.props;
+    return <CoolForm>
+      <PlaintextInput label="Name" name="name" default={map.name} nonEmpty={true} />
+      <PlaintextInput label="Background Image URL" name="background_image_url"
+        default={map.background_image_url} />
       <Form.Group>
-        <Form.Input label="Scale X (cm)"
+        <NumericInput label="Scale X (cm)" name="scale_x" min={0}
           style={{ width: "100px" }}
-          value={this.state.scale_x}
-          onChange={(_, data) => this.setState({ scale_x: data.value })} />
-        <Form.Input label="Scale Y (cm)"
+          default={map.background_image_scale[0]} />
+        <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
           style={{ width: "100px" }}
-          value={this.state.scale_y}
-          onChange={(_, data) => this.setState({ scale_y: data.value })} />
+          default={map.background_image_scale[1]} />
       </Form.Group>
       <Form.Group>
-        <Form.Input label="Offset X (cm)"
+        <NumericInput label="Offset X (cm)" name="offset_x"
           style={{ width: "100px" }}
-          value={this.state.offset_x}
-          onChange={(_, data) => this.setState({ offset_x: data.value })} />
-        <Form.Input label="Offset Y (cm)"
+          default={map.background_image_offset[0]} />
+        <NumericInput label="Offset Y (cm)" name="offset_y"
           style={{ width: "100px" }}
-          value={this.state.offset_y}
-          onChange={(_, data) => this.setState({ offset_y: data.value })} />
+          default={map.background_image_offset[1]} />
       </Form.Group>
-      <Form.Button onClick={() => this.save()}
-        disabled={
-          isNaN(Number(this.state.scale_x)) || isNaN(Number(this.state.scale_y))
-          || isNaN(Number(this.state.offset_x)) || isNaN(Number(this.state.offset_x))}>
-        Save</Form.Button>
-    </Form>;
+      <Submit onClick={data => this.save(data)}>Save</Submit>
+    </CoolForm>;
   }
-  save() {
-    const background_image_scale: [number, number] =
-      [Number(this.state.scale_x), Number(this.state.scale_y)];
-    const background_image_offset: [number, number] =
-      [Number(this.state.offset_x), Number(this.state.offset_y)];
+  save(data: any) {
+    const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
+    const background_image_scale: [number, number] = [scale_x, scale_y];
+    const background_image_offset: [number, number] = [offset_x, offset_y];
     const new_map = {
-      ...this.props.map,
-      name: this.state.name, background_image_url: this.state.background_image_url,
-      background_image_scale,
-      background_image_offset,
+      ...this.props.map, name, background_image_url, background_image_scale, background_image_offset,
     };
     this.props.dispatch(M.sendCommand({ t: "EditMap", map: new_map }));
     this.props.onDone();
