@@ -21,6 +21,7 @@ pub type Point3 = (i16, i16, i16);
 pub type ConditionID = usize;
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
+pub type SpecialTile = (Point3, Color, String, Visibility);
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
@@ -333,22 +334,9 @@ pub enum GameCommand {
   DeleteNote(FolderPath, String),
 
   // ** Inventory management **
-  TransferItem {
-    from: InventoryOwner,
-    to: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
-  RemoveItem {
-    owner: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
-  SetItemCount {
-    owner: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
+  TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
+  RemoveItem { owner: InventoryOwner, item_id: ItemID, count: u64 },
+  SetItemCount { owner: InventoryOwner, item_id: ItemID, count: u64 },
 
   // ** Scene management **
   /// Create a Scene.
@@ -368,6 +356,7 @@ pub enum GameCommand {
   /// Change a map. The ID of the given map bust match an existing map.
   EditMap(Map),
   EditMapDetails { id: MapID, details: MapCreation },
+  EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
 
   /// Delete a map.
   DeleteMap(MapID),
@@ -483,22 +472,9 @@ pub enum GameLog {
   DeleteNote(FolderPath, String),
 
   // ** Inventory management **
-  TransferItem {
-    from: InventoryOwner,
-    to: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
-  RemoveItem {
-    owner: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
-  SetItemCount {
-    owner: InventoryOwner,
-    item_id: ItemID,
-    count: u64,
-  },
+  TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
+  RemoveItem { owner: InventoryOwner, item_id: ItemID, count: u64 },
+  SetItemCount { owner: InventoryOwner, item_id: ItemID, count: u64 },
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
@@ -507,6 +483,7 @@ pub enum GameLog {
 
   EditMap(Map),
   EditMapDetails { id: MapID, details: MapCreation },
+  EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
 
   DeleteMap(MapID),
   CombatLog(CombatLog),
@@ -1040,7 +1017,7 @@ pub struct Map {
   pub id: MapID,
   pub name: String,
   pub terrain: Vec<Point3>,
-  pub specials: Vec<(Point3, Color, String, Visibility)>,
+  pub specials: Vec<SpecialTile>,
   #[serde(default)]
   pub background_image_url: String,
   #[serde(default)]

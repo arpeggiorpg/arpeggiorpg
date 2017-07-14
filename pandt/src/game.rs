@@ -94,6 +94,13 @@ impl Game {
       EditMapDetails { id, ref details } => {
         self.change_with(GameLog::EditMapDetails { id, details: details.clone() })
       }
+      EditMapTerrain { id, ref terrain, ref specials } => {
+        self.change_with(GameLog::EditMapTerrain {
+                           id,
+                           terrain: terrain.clone(),
+                           specials: specials.clone(),
+                         })
+      }
       DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
       DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
@@ -437,6 +444,16 @@ impl Game {
             m.background_image_url = details.background_image_url.clone();
             m.background_image_scale = details.background_image_scale;
             m.background_image_offset = details.background_image_offset;
+            m
+          })
+          .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
+      }
+      EditMapTerrain { id, ref terrain, ref specials } => {
+        self
+          .maps
+          .mutate(&id, move |mut m| {
+            m.terrain = terrain.clone();
+            m.specials = specials.clone();
             m
           })
           .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
