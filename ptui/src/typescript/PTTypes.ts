@@ -95,7 +95,9 @@ export type InventoryOwner =
 
 interface MapCreation {
   name: string;
-  terrain: Array<Point3>;
+  background_image_url: string;
+  background_image_offset: [number, number];
+  background_image_scale: [number, number];
 }
 
 export type GameCommand =
@@ -115,6 +117,7 @@ export type GameCommand =
   | { t: "EditScene"; scene: Scene }
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
+  | { t: "EditMapDetails"; id: MapID; details: MapCreation }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -221,6 +224,7 @@ export type GameLog =
   | { t: "DeleteScene"; scene_id: SceneID }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
+  | { t: "EditMapDetails"; id: MapID; details: MapCreation }
   | { t: "DeleteMap"; map_id: MapID }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
@@ -504,6 +508,15 @@ export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   }
 }, JD.string());
 
+export const decodeMapCreation: Decoder<MapCreation> = JD.object(
+  ["name", JD.string()],
+  ["background_image_url", JD.string()],
+  ["background_image_offset", JD.tuple(JD.number(), JD.number())],
+  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
+  (name, background_image_url, background_image_offset, background_image_scale) =>
+    ({ name, background_image_url, background_image_offset, background_image_scale }),
+);
+
 export const decodeMap: Decoder<Map> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
@@ -677,6 +690,8 @@ export const decodeGameLog: Decoder<GameLog> =
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),
     EditMap: JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
+    EditMapDetails: JD.object(["id", JD.string()], ["details", decodeMapCreation],
+      (id, details): GameLog => ({ t: "EditMapDetails", id, details })),
     DeleteMap: JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
@@ -877,6 +892,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
     case "EditMap":
       return { EditMap: encodeMap(cmd.map) };
+    case "EditMapDetails":
+      return { EditMapDetails: { id: cmd.id, details: cmd.details } };
     case "RemoveCreatureFromCombat":
       return { RemoveCreatureFromCombat: cmd.creature_id };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
@@ -905,7 +922,12 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
 }
 
 function encodeMapCreation(mc: MapCreation): object {
-  return { name: mc.name, terrain: mc.terrain.map(encodePoint3) };
+  return {
+    name: mc.name,
+    background_image_url: mc.background_image_url,
+    background_image_offset: mc.background_image_offset,
+    background_image_scale: mc.background_image_scale,
+  };
 }
 
 function encodeInventoryOwner(owner: InventoryOwner): object {

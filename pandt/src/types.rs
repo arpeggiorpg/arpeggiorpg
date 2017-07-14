@@ -355,6 +355,11 @@ pub enum GameCommand {
   CreateScene(FolderPath, SceneCreation),
   /// Edit a scene. The ID in the given Scene must match an existing Scene.
   EditScene(Scene),
+
+  // TODO:
+  // EditSceneDetails(SceneID, SceneCreation)
+  // AddSceneChallenge(SceneID, String, AttributeCheck)
+  // RemoveSceneChallenge(SceneID, String)
   /// Delete a scene.
   DeleteScene(SceneID),
 
@@ -362,6 +367,8 @@ pub enum GameCommand {
   CreateMap(FolderPath, MapCreation),
   /// Change a map. The ID of the given map bust match an existing map.
   EditMap(Map),
+  EditMapDetails { id: MapID, details: MapCreation },
+
   /// Delete a map.
   DeleteMap(MapID),
 
@@ -497,7 +504,10 @@ pub enum GameLog {
   EditScene(Scene),
   DeleteScene(SceneID),
   CreateMap(FolderPath, Map),
+
   EditMap(Map),
+  EditMapDetails { id: MapID, details: MapCreation },
+
   DeleteMap(MapID),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
@@ -1017,7 +1027,12 @@ pub enum Visibility {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MapCreation {
   pub name: String,
-  pub terrain: Vec<Point3>,
+  #[serde(default)]
+  pub background_image_url: String,
+  #[serde(default)]
+  pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
+  #[serde(default)]
+  pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1036,7 +1051,7 @@ pub struct Map {
 
 impl Map {
   pub fn create(c: MapCreation) -> Map {
-    Map::new(c.name, c.terrain)
+    Map::new(c.name, vec![])
   }
 
   pub fn new(name: String, terrain: Vec<Point3>) -> Map {

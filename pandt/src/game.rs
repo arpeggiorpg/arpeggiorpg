@@ -91,6 +91,9 @@ impl Game {
         self.change_with(GameLog::CreateMap(path.clone(), map))
       }
       EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
+      EditMapDetails { id, ref details } => {
+        self.change_with(GameLog::EditMapDetails { id, details: details.clone() })
+      }
       DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
       DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
@@ -425,6 +428,18 @@ impl Game {
           .maps
           .mutate(&map.id, move |_| map.clone())
           .ok_or_else(|| GameErrorEnum::MapNotFound(map.id))?;
+      }
+      EditMapDetails { id, ref details } => {
+        self
+          .maps
+          .mutate(&id, move |mut m| {
+            m.name = details.name.clone();
+            m.background_image_url = details.background_image_url.clone();
+            m.background_image_scale = details.background_image_scale;
+            m.background_image_offset = details.background_image_offset;
+            m
+          })
+          .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
       }
       DeleteMap(ref mid) => {
         let scenes_using_this_map: Vec<SceneID> = self

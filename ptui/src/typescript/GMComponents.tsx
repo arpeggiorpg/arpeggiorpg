@@ -114,13 +114,12 @@ class EditMap
     </CoolForm>;
   }
   save(data: any) {
+    const { map } = this.props;
     const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
     const background_image_scale: [number, number] = [scale_x, scale_y];
     const background_image_offset: [number, number] = [offset_x, offset_y];
-    const new_map = {
-      ...this.props.map, name, background_image_url, background_image_scale, background_image_offset,
-    };
-    this.props.dispatch(M.sendCommand({ t: "EditMap", map: new_map }));
+    const details = { name, background_image_url, background_image_scale, background_image_offset };
+    this.props.dispatch(M.sendCommand({ t: "EditMapDetails", id: map.id, details }));
     this.props.onDone();
   }
 }
@@ -795,7 +794,14 @@ export function CreateMap(props: { path: T.FolderPath; onDone: () => void; } & M
   const { path, onDone, dispatch } = props;
   return <CV.SingleInputForm buttonText="Create Map" onSubmit={create} />;
   function create(input: string) {
-    const map = { name: input, terrain: [] };
+    // since we don't have a visual response to setting image url/offset/scale, I'll just leave
+    // default values here and the user can edit the map after creation
+    const map = {
+      name: input,
+      background_image_url: "",
+      background_image_offset: [0, 0] as [number, number],
+      background_image_scale: [0, 0] as [number, number],
+    };
     dispatch(M.sendCommand({ t: "CreateMap", path, map }));
     onDone();
   }
