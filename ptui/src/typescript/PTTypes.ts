@@ -17,6 +17,7 @@ export type Energy = number;
 export type ConditionID = number;
 export type FolderPath = Array<string>;
 export type SpecialTile = [Point3, Color, string, Visibility];
+export type SpecialTileData = [Color, string, Visibility];
 
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
 //     const target = T.MkDecidedTarget.Creature({creature_id});

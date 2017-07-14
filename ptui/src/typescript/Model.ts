@@ -18,6 +18,8 @@ export type Action =
   | { type: "FocusGrid"; focus: GridFocus }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
+  | { type: "SetMapTerrain"; terrain: I.Set<I.List<number>>; }
+
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
@@ -38,7 +40,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "RefreshApp":
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
     case "RefreshGame":
-      return update(ptui, {type: "RefreshApp", app: {...ptui.app, current_game: action.game}});
+      return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
     case "ActivateGridCreature":
       const new_active =
         (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
@@ -50,7 +52,23 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
     case "FocusGrid":
-      return ptui.updateState(state => ({ ...state, grid_focus: action.focus }));
+      switch (action.focus.t) {
+        case "Scene":
+          const scene_id = action.focus.scene_id;
+          return ptui.updateState(state => ({ ...state, grid_focus: { t: "Scene", scene_id } }));
+        case "Map":
+          const map = ptui.getMap(action.focus.map_id);
+          const terrain = map ? I.Set(map.terrain.map(pt => I.List(pt)))
+            : I.Set();
+          const specials: I.Map<I.List<number>, T.SpecialTileData> = map
+            ? I.Map(map.specials.map(
+              ([pt, color, note, vis]): [I.List<number>, T.SpecialTileData] =>
+                [I.List(pt), [color, note, vis]]))
+            : I.Map();
+          return ptui.updateState(
+            state => ({ ...state, grid_focus: { ...action.focus, terrain, specials } }));
+      }
+      return ptui; // this should not be necessary, exhaustiveness checks *should* realize it's not
     case "FocusSecondary":
       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
@@ -82,6 +100,11 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
 
+    case "SetMapTerrain":
+      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map") { return ptui; }
+      const grid_focus = { ...ptui.state.grid_focus, terrain: action.terrain };
+      return ptui.updateState(state => ({ ...state, grid_focus }));
+
     case "DisplayError":
       return ptui.updateState(state => ({ ...state, error: action.error }));
     case "ClearError":
@@ -108,13 +131,23 @@ export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
   error?: string;
-  grid_focus?: GridFocus;
+  grid_focus?: GridFocusData;
   secondary_focus?: SecondaryFocus;
 }
+
 
 export type GridFocus =
   | { t: "Scene"; scene_id: T.SceneID; }
   | { t: "Map"; map_id: T.MapID; }
+  ;
+
+export type GridFocusData =
+  | { t: "Scene"; scene_id: T.SceneID; }
+  | {
+    // TODO: don't use I.List<number>, we need to guarantee 3 elements!
+    t: "Map"; map_id: T.MapID; terrain: I.Set<I.List<number>>;
+    specials: I.Map<I.List<number>, T.SpecialTileData>;
+  }
   ;
 
 export type SecondaryFocus =

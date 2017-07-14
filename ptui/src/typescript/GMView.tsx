@@ -112,6 +112,6 @@ function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
     case "Map":
       const map = ptui.getMap(ptui.state.grid_focus.map_id);
       if (!map) { return <div>Couldn't find map!</div>; }
-      return <Grid.MapGrid map={map} />;
+      return <Grid.MapGrid map={map} terrain={ptui.state.grid_focus.terrain} />;
   }
 }
