@@ -4,4 +4,5 @@ tab_spaces = 2
 fn_args_density = "Compressed"
 chain_one_line_max = 99
 fn_call_width = 99
-struct_lit_width = 80
+struct_lit_width = 99
+struct_variant_width = 99
