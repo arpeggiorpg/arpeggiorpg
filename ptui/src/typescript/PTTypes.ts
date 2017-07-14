@@ -16,7 +16,7 @@ export type HP = number;
 export type Energy = number;
 export type ConditionID = number;
 export type FolderPath = Array<string>;
-
+export type SpecialTile = [Point3, Color, string, Visibility];
 
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
 //     const target = T.MkDecidedTarget.Creature({creature_id});
@@ -118,6 +118,7 @@ export type GameCommand =
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
+  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile> }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -225,6 +226,7 @@ export type GameLog =
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
+  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile>; }
   | { t: "DeleteMap"; map_id: MapID }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
@@ -323,7 +325,7 @@ export interface Map {
   id: MapID;
   name: string;
   terrain: Array<Point3>;
-  specials: Array<[Point3, Color, string, Visibility]>;
+  specials: Array<SpecialTile>;
   background_image_url: string;
   background_image_scale: [number, number];
   background_image_offset: [number, number];
@@ -517,11 +519,14 @@ export const decodeMapCreation: Decoder<MapCreation> = JD.object(
     ({ name, background_image_url, background_image_offset, background_image_scale }),
 );
 
+export const decodeSpecialTile: Decoder<SpecialTile> =
+  JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility);
+
 export const decodeMap: Decoder<Map> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
   ["terrain", JD.array(decodePoint3)],
-  ["specials", JD.array(JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility))],
+  ["specials", JD.array(decodeSpecialTile)],
   ["background_image_url", JD.string()],
   ["background_image_offset", JD.tuple(JD.number(), JD.number())],
   ["background_image_scale", JD.tuple(JD.number(), JD.number())],
@@ -692,6 +697,11 @@ export const decodeGameLog: Decoder<GameLog> =
     EditMap: JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
     EditMapDetails: JD.object(["id", JD.string()], ["details", decodeMapCreation],
       (id, details): GameLog => ({ t: "EditMapDetails", id, details })),
+    EditMapTerrain: JD.object(
+      ["id", JD.string()],
+      ["terrain", JD.array(decodePoint3)],
+      ["specials", JD.array(decodeSpecialTile)],
+      (id, terrain, specials): GameLog => ({ t: "EditMapTerrain", id, terrain, specials })),
     DeleteMap: JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
@@ -893,7 +903,14 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "EditMap":
       return { EditMap: encodeMap(cmd.map) };
     case "EditMapDetails":
-      return { EditMapDetails: { id: cmd.id, details: cmd.details } };
+      return { EditMapDetails: { id: cmd.id, details: encodeMapCreation(cmd.details) } };
+    case "EditMapTerrain":
+      return {
+        EditMapTerrain: {
+          id: cmd.id, terrain: cmd.terrain.map(encodePoint3),
+          specials: cmd.specials.map(encodeSpecialTile),
+        },
+      };
     case "RemoveCreatureFromCombat":
       return { RemoveCreatureFromCombat: cmd.creature_id };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
@@ -1073,6 +1090,10 @@ function encodeDecidedTarget(dt: DecidedTarget): object | string {
 
 function encodePoint3(pt: Point3): Point3 {
   return pt;
+}
+
+function encodeSpecialTile(t: SpecialTile): Array<object | string> {
+  return [encodePoint3(t[0]), t[1], t[2], encodeVisibility(t[3])];
 }
 
 export function encodeCreature(c: Creature): object {
