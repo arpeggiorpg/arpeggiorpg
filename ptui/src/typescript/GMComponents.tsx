@@ -817,7 +817,8 @@ export const CreateCreature = M.connectRedux(
     const { path, ptui, dispatch } = props;
     const init: T.Dice = { t: "Expr", num: 1, size: 20 };
     const creature_data = {
-      name: "", note: "", portrait_url: "", initiative: init, class_: "", size: { x: 1, y: 1, z: 1 },
+      name: "", note: "", bio: "", portrait_url: "", initiative: init, class_: "",
+      size: { x: 1, y: 1, z: 1 },
     };
     return <EditCreatureData creature={creature_data}
       onSave={cdata => save(cdata)} onClose={props.onClose} />;
@@ -842,7 +843,8 @@ const GMEditCreature = M.connectRedux(
       const new_creature = {
         ...creature,
         name: creature_data.name, class_: creature_data.class_,
-        note: creature_data.note, portrait_url: creature_data.portrait_url,
+        note: creature_data.note, bio: creature_data.bio,
+        portrait_url: creature_data.portrait_url,
         initiative: creature_data.initiative,
         size: creature_data.size,
       };
@@ -860,7 +862,8 @@ interface EditCreatureDataProps {
 class EditCreatureDataComp
   extends React.Component<EditCreatureDataProps & M.ReduxProps,
   {
-    name: string; portrait_url: string; note: string; initiative_string: string; class_: string;
+    name: string; portrait_url: string; note: string; bio: string;
+    initiative_string: string; class_: string;
     size: number;
   }> {
   constructor(props: EditCreatureDataProps & M.ReduxProps) {
@@ -868,6 +871,7 @@ class EditCreatureDataComp
     this.state = {
       portrait_url: props.creature.portrait_url, name: props.creature.name,
       note: props.creature.note,
+      bio: props.creature.bio,
       initiative_string: Dice.format(props.creature.initiative),
       class_: props.creature.class_,
       size: props.creature.size.x,
@@ -935,6 +939,9 @@ class EditCreatureDataComp
             </Message.Content>
           </Message>
       }
+      <Form.TextArea label="Bio" value={this.state.bio}
+        onChange={(_, data) => data.value && this.setState({ bio: data.value })} />
+
       <Form.Group>
         <Form.Button disabled={!form_ok} onClick={() => this.save()}>
           Save
@@ -947,7 +954,8 @@ class EditCreatureDataComp
   save() {
     const creature = {
       name: this.state.name, class_: this.state.class_,
-      portrait_url: this.state.portrait_url, note: this.state.note,
+      portrait_url: this.state.portrait_url,
+      note: this.state.note, bio: this.state.bio,
       initiative: Dice.parse(this.state.initiative_string),
       size: { x: this.state.size, y: this.state.size, z: this.state.size },
     };
@@ -1073,3 +1081,11 @@ class GameListComp
   }
 }
 const GameList = M.connectRedux(GameListComp);
+
+export function CreatureFocus({ creature }: { creature: T.Creature }) {
+  return <div>
+    <GMCreatureCard creature={creature} />
+    <GMCreatureInventory creature={creature} />
+    <Segment>{creature.bio}</Segment>
+  </div>;
+}

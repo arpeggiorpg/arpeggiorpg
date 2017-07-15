@@ -183,6 +183,7 @@ export interface CreatureCreation {
   class_: string;
   portrait_url: string;
   note: string;
+  bio: string;
   initiative: Dice;
   size: AABB;
 }
@@ -305,6 +306,7 @@ export interface Creature {
   cur_health: HP;
   conditions: { [index: string]: AppliedCondition }; // key: ConditionID
   note: string;
+  bio: string;
   portrait_url: string;
   attributes: I.Map<AttrID, SkillLevel>;
   initiative: Dice;
@@ -466,18 +468,19 @@ const decodeAABB: Decoder<AABB> = JD.object(
   (x, y, z) => ({ x, y, z })
 );
 
-export function object16<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+export function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
   _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
   _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
   _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
+  _qd: JD.EntryDecoder<Q>,
   _cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P) => T): Decoder<T> {
+    p: P, q: Q) => T): Decoder<T> {
   return JD.object.apply(undefined, arguments);
 }
 
-export const decodeCreature: Decoder<Creature> = object16(
+export const decodeCreature: Decoder<Creature> = object17(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -488,6 +491,7 @@ export const decodeCreature: Decoder<Creature> = object16(
   ["max_health", JD.number()],
   ["cur_health", JD.number()],
   ["note", JD.string()],
+  ["bio", JD.string()],
   ["portrait_url", JD.string()],
   ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
   ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
@@ -495,10 +499,10 @@ export const decodeCreature: Decoder<Creature> = object16(
   ["initiative", decodeDice],
   ["size", decodeAABB],
   (
-    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note,
+    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
     portrait_url, attributes, inventory, conditions, initiative, size) =>
     ({
-      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note,
+      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
       portrait_url, attributes, inventory, conditions, initiative, size,
     })
 );
@@ -958,6 +962,7 @@ function encodeCreatureCreation(cc: CreatureCreation): object {
     class: cc.class_,
     portrait_url: cc.portrait_url,
     note: cc.note,
+    bio: cc.bio,
     initiative: encodeDice(cc.initiative),
     size: encodeAABB(cc.size),
   };
@@ -1110,6 +1115,7 @@ export function encodeCreature(c: Creature): object {
     cur_health: c.cur_health,
     conditions: LD.mapValues(c.conditions, encodeAppliedCondition),
     note: c.note,
+    bio: c.bio,
     portrait_url: c.portrait_url,
     attributes: c.attributes.toJS(),
     initiative: encodeDice(c.initiative),
