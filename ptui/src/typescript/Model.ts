@@ -18,6 +18,7 @@ export type Action =
   | { type: "FocusGrid"; focus: GridFocus }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
+  | { type: "SetPaintTool"; tool: PaintMode }
   | { type: "SetMapTerrain"; terrain: I.Set<I.List<number>>; }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
@@ -66,7 +67,12 @@ export function update(ptui: PTUI, action: Action): PTUI {
                 [I.List(pt), [color, note, vis]]))
             : I.Map();
           return ptui.updateState(
-            state => ({ ...state, grid_focus: { ...action.focus, terrain, specials } }));
+            state => ({
+              ...state, grid_focus: {
+                ...action.focus, terrain, specials,
+                painting: { t: "Terrain" },
+              },
+            }));
       }
       return ptui; // this should not be necessary, exhaustiveness checks *should* realize it's not
     case "FocusSecondary":
@@ -100,11 +106,16 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
 
-    case "SetMapTerrain":
+    case "SetPaintTool": {
+      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map") { return ptui; }
+      const grid_focus = { ...ptui.state.grid_focus, painting: action.tool };
+      return ptui.updateState(state => ({ ...state, grid_focus }));
+    }
+    case "SetMapTerrain": {
       if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map") { return ptui; }
       const grid_focus = { ...ptui.state.grid_focus, terrain: action.terrain };
       return ptui.updateState(state => ({ ...state, grid_focus }));
-
+    }
     case "DisplayError":
       return ptui.updateState(state => ({ ...state, error: action.error }));
     case "ClearError":
@@ -141,12 +152,18 @@ export type GridFocus =
   | { t: "Map"; map_id: T.MapID; }
   ;
 
+export type PaintMode =
+  | { t: "Terrain" }
+  | { t: "Special"; special: T.SpecialTileData }
+  ;
+
 export type GridFocusData =
   | { t: "Scene"; scene_id: T.SceneID; }
   | {
     // TODO: don't use I.List<number>, we need to guarantee 3 elements!
     t: "Map"; map_id: T.MapID; terrain: I.Set<I.List<number>>;
     specials: I.Map<I.List<number>, T.SpecialTileData>;
+    painting: PaintMode;
   }
   ;
 

@@ -687,18 +687,20 @@ export const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
   }
   if (ptui.state.grid_focus && ptui.state.grid_focus.t === "Map") {
     const grid_focus = ptui.state.grid_focus;
-    return <div><Button onClick={() =>
-      dispatch(
-        M.sendCommand({
-          t: "EditMapTerrain",
-          id: grid_focus.map_id,
-          terrain: grid_focus.terrain.toArray().map(
-            (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
-          specials: grid_focus.specials.entrySeq().toArray().map(
-            ([pt, [color, note, vis]]): [T.Point3, T.Color, string, T.Visibility] =>
-              [[pt.get(0)!, pt.get(1)!, pt.get(2)!], color, note, vis]),
-        }))}>
-      Save
+    return <div>
+      <div>Hello, world!</div>
+      <Button onClick={() =>
+        dispatch(
+          M.sendCommand({
+            t: "EditMapTerrain",
+            id: grid_focus.map_id,
+            terrain: grid_focus.terrain.toArray().map(
+              (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
+            specials: grid_focus.specials.entrySeq().toArray().map(
+              ([pt, [color, note, vis]]): [T.Point3, T.Color, string, T.Visibility] =>
+                [[pt.get(0)!, pt.get(1)!, pt.get(2)!], color, note, vis]),
+          }))}>
+        Save
       </Button>
     </div >;
   }
