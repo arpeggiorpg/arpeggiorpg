@@ -26,7 +26,6 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
   render(): JSX.Element | null {
     const { terrain } = this.props;
     const map = { ...this.props.map, terrain: [] };
-    const closed_tiles = null;
     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
       const tprops = tile_props("cyan", pt, { x: 1, y: 1 }, 0.2);
@@ -35,6 +34,13 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
         onClick={() => this.deleteTile(pt)}
         key={`open-${pt[0]}/${pt[1]}/${pt[2]}`} />;
     });
+    const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
+      pt => {
+        if (terrain.has(I.List(pt))) { return; }
+        const tprops = tile_props("brown", pt, { x: 1, y: 1 }, 0.2);
+        return <rect {...tprops} style={{ cursor: 'pointer' }}
+          key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
+      });
 
     return <GridSvg map={map} creatures={[]}>
       {open_tiles}
