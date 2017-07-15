@@ -24,7 +24,7 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
   & M.DispatchProps> {
 
   render(): JSX.Element | null {
-    const { terrain } = this.props;
+    const { terrain, dispatch } = this.props;
     const map = { ...this.props.map, terrain: [] };
     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
@@ -37,8 +37,10 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
     const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
       pt => {
         if (terrain.has(I.List(pt))) { return; }
-        const tprops = tile_props("brown", pt, { x: 1, y: 1 }, 0.2);
+        const tprops = tile_props("brown", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
+          onClick={() =>
+            dispatch({ type: "SetMapTerrain", terrain: terrain.add(I.List(pt)) })}
           key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
       });
 
@@ -48,7 +50,6 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
     </GridSvg>;
   }
   deleteTile(pt: T.Point3) {
-    if (!this.props.terrain) { return; }
     const terrain = this.props.terrain.delete(I.List([pt[0], pt[1], pt[2]]));
     this.props.dispatch({ type: "SetMapTerrain", terrain });
   }
