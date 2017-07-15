@@ -319,6 +319,7 @@ visibilityDecoder = sumDecoder "Visibility"
 type alias SceneCreation =
   { name: String
   , map: String
+  , background_image_url: String
   }
 
 sceneCreationEncoder : SceneCreation -> JE.Value
@@ -326,6 +327,7 @@ sceneCreationEncoder scene =
   JE.object
     [ ("name", JE.string scene.name)
     , ("map", JE.string scene.map)
+    , ("background_image_url", JE.string scene.background_image_url)
     ]
 
 

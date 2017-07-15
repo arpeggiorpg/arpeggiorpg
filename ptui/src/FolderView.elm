@@ -141,7 +141,7 @@ folderMenu fstate path =
       else []
     menuItems =
       [ ( hbox [icon [] "casino", dtext "Create Scene"]
-        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" ""}))
+        , M.SetModal (M.CreateScene {path = path, scene = T.SceneCreation "" "" ""}))
       , ( hbox [icon [] "map", dtext "Create Map"]
         , M.SetModal (M.CreateMap {path = path, name = "New Map"}))
       , ( hbox [icon [] "contacts", dtext "Create Creature"]
