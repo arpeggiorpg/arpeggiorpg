@@ -2,10 +2,10 @@ import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 
-import { Menu, Segment } from 'semantic-ui-react';
+import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
+import { Button, Dimmer, Input, Menu, Segment } from 'semantic-ui-react';
 
-import * as CommonView from "./CommonView";
-import * as Comp from './Component';
+import * as CV from "./CommonView";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
@@ -14,24 +14,28 @@ interface Obj<T> { [index: string]: T; }
 
 export interface MapGridProps {
   map: T.Map;
-  terrain: I.Set<I.List<number>>;
+  data: M.GridFocusMap;
 }
 
-export const MapGrid = Comp.connect<MapGridProps, {}>(
-  _ => ({})
-)(class MapGridComp extends React.Component<
-  MapGridProps & { terrain?: I.Set<I.List<number>> }
-  & M.DispatchProps> {
+export class MapGrid extends React.Component<MapGridProps & M.DispatchProps> {
 
   render(): JSX.Element | null {
-    const { terrain, dispatch } = this.props;
-    const map = { ...this.props.map, terrain: [] };
+    const { terrain } = this.props.data;
+    const map = {
+      ...this.props.map, terrain: [],
+      specials: M.specialsMapToRPI(this.props.data.specials),
+    };
+
+    const paintOpen = this.props.data.painting.t === "Terrain" ? this.closeTerrain.bind(this)
+      : this.toggleSpecial.bind(this);
+    const paintClosed = this.props.data.painting.t === "Terrain" ? this.openTerrain.bind(this)
+      : this.toggleSpecial.bind(this);
     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
       const tprops = tile_props("cyan", pt, { x: 1, y: 1 }, 0.2);
       return <rect {...tprops}
         style={{ cursor: 'pointer' }}
-        onClick={() => this.deleteTile(pt)}
+        onClick={() => paintOpen(pt)}
         key={`open-${pt[0]}/${pt[1]}/${pt[2]}`} />;
     });
     const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
@@ -39,21 +43,97 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
         if (terrain.has(I.List(pt))) { return; }
         const tprops = tile_props("brown", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
-          onClick={() =>
-            dispatch({ type: "SetMapTerrain", terrain: terrain.add(I.List(pt)) })}
+          onClick={() => paintClosed(pt)}
           key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
       });
 
-    return <GridSvg map={map} creatures={[]}>
-      {open_tiles}
-      {closed_tiles}
-    </GridSvg>;
+    const tools = this.mapEditingTools();
+    return <div>
+      {tools}
+      <GridSvg map={map} creatures={[]}>
+        {open_tiles}
+        {closed_tiles}
+      </GridSvg>
+    </div>;
   }
-  deleteTile(pt: T.Point3) {
-    const terrain = this.props.terrain.delete(I.List([pt[0], pt[1], pt[2]]));
-    this.props.dispatch({ type: "SetMapTerrain", terrain });
+  closeTerrain(pt: T.Point3) {
+    const terrain = this.props.data.terrain.delete(I.List(pt));
+    this.props.dispatch({ type: "SetMapTerrain", terrain, specials: this.props.data.specials });
   }
-});
+  openTerrain(pt: T.Point3) {
+    const { data, dispatch } = this.props;
+    dispatch({
+      type: "SetMapTerrain", terrain: data.terrain.add(I.List(pt)),
+      specials: this.props.data.specials,
+    });
+  }
+
+  toggleSpecial(pt: T.Point3) {
+    const { painting, specials } = this.props.data;
+    if (painting.t !== "Special") { return; }
+    const spt = I.List(pt);
+    const new_specials = specials.has(spt)
+      ? specials.delete(spt) : specials.set(spt, painting.special);
+    this.props.dispatch({
+      type: "SetMapTerrain", terrain: this.props.data.terrain, specials: new_specials,
+    });
+  }
+
+  mapEditingTools() {
+    const { painting } = this.props.data;
+    const { dispatch } = this.props;
+    return <div style={{ width: '100%', height: '50px', display: 'flex' }}>
+      <Menu>
+        <Menu.Item active={painting.t === "Terrain"}
+          onClick={() => dispatch({ type: 'SetPaintTool', tool: { t: 'Terrain' } })}>
+          Terrain
+        </Menu.Item>
+        <Menu.Item active={painting.t === "Special"}
+          onClick={() =>
+            dispatch({
+              type: 'SetPaintTool',
+              tool: { t: 'Special', special: ['white', '', { t: 'AllPlayers' }] },
+            })
+          }>
+          Special
+        </Menu.Item>
+      </Menu>
+      <div style={{ display: 'flex', width: '250px', position: 'relative' }}>
+        <Dimmer page={false} inverted={true} active={painting.t !== "Special"} />
+        <CV.ModalMaker
+          button={open =>
+            <div onClick={open}
+              style={{
+                cursor: 'pointer',
+                flex: '0 0 25px',
+                ...CV.square_style(25,
+                  painting.t === "Special" ? painting.special[0] : "white"),
+              }} />}
+          header={<span>Choose Special Color</span>}
+          content={close => <TwitterPicker
+            onChangeComplete={
+              color => { dispatch({ type: 'SetPaintSpecialColor', color: color.hex }); close(); }}
+          />}
+        />
+        <div>
+          <Input size="small" label="Annotation"
+            onChange={(_, data) => dispatch({ type: 'SetPaintSpecialNote', note: data.value })} />
+        </div>
+      </div>
+      <Button style={{ marginLeft: 'auto' }} onClick={() =>
+        dispatch(
+          M.sendCommand({
+            t: "EditMapTerrain",
+            id: this.props.map.id,
+            terrain: this.props.data.terrain.toArray().map(
+              (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
+            specials: M.specialsMapToRPI(this.props.data.specials),
+          }))}>
+        Save
+      </Button>
+    </div >;
+  }
+}
 
 export interface SceneGridProps {
   scene: T.Scene;
@@ -82,7 +162,7 @@ export const SceneGrid = M.connectRedux(
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
       const special = LD.find(map.specials, ([pt_, _, _1, _2]) => M.isEqual(pt, pt_));
       if (!special) { return <noscript />; }
-      return <CommonView.ClickAway
+      return <CV.ClickAway
         onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
         <div style={{
           position: "fixed",
@@ -91,7 +171,7 @@ export const SceneGrid = M.connectRedux(
           border: "1px solid black", borderRadius: "5px",
           backgroundColor: "white",
         }}><Segment>{special[2]}</Segment></div>
-      </CommonView.ClickAway>;
+      </CV.ClickAway>;
     }
 
     function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
@@ -100,13 +180,13 @@ export const SceneGrid = M.connectRedux(
         return <noscript />;
       }
       const creature = creature_; // WHY TYPESCRIPT, WHY???
-      return <CommonView.ClickAway
+      return <CV.ClickAway
         onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
         <div
           style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
           <Menu vertical={true}>
             <Menu.Item header={true}>
-              {CommonView.classIcon(creature.creature)} {creature.creature.name}
+              {CV.classIcon(creature.creature)} {creature.creature.name}
             </Menu.Item>
             {
               creature.actions.entrySeq().toArray().map(
@@ -122,7 +202,7 @@ export const SceneGrid = M.connectRedux(
             }
           </Menu>
         </div>
-      </CommonView.ClickAway>;
+      </CV.ClickAway>;
     }
   });
 

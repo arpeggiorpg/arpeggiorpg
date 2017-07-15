@@ -10,6 +10,7 @@ module.exports = {
             'isomorphic-fetch',
             'lodash',
             'Parsimmon',
+            'react-color',
             'react-dom',
             'react-panelgroup',
             'react-redux',

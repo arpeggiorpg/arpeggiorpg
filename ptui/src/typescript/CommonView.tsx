@@ -107,10 +107,11 @@ export function classIcon(creature: T.Creature): string {
   }
 }
 
-function square_style(size: number = 50) {
+export function square_style(size: number, color?: string) {
   return {
     width: `${size}px`, height: `${size}px`,
     borderRadius: "10px", border: "solid 1px black",
+    backgroundColor: color,
   };
 }
 
@@ -122,7 +123,7 @@ export function CreatureIcon(
   } else {
     const class_ = app.current_game.classes.get(creature.class_);
     const color = class_ ? class_.color : "red";
-    return <div style={{ backgroundColor: color, ...square_style(size) }}>{creature.name}</div>;
+    return <div style={{ ...square_style(size, color) }}>{creature.name}</div>;
   }
 }
 
@@ -684,25 +685,6 @@ export const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
     return <div>Select a target or
       <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
     </div>;
-  }
-  if (ptui.state.grid_focus && ptui.state.grid_focus.t === "Map") {
-    const grid_focus = ptui.state.grid_focus;
-    return <div>
-      <div>Hello, world!</div>
-      <Button onClick={() =>
-        dispatch(
-          M.sendCommand({
-            t: "EditMapTerrain",
-            id: grid_focus.map_id,
-            terrain: grid_focus.terrain.toArray().map(
-              (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
-            specials: grid_focus.specials.entrySeq().toArray().map(
-              ([pt, [color, note, vis]]): [T.Point3, T.Color, string, T.Visibility] =>
-                [[pt.get(0)!, pt.get(1)!, pt.get(2)!], color, note, vis]),
-          }))}>
-        Save
-      </Button>
-    </div >;
   }
   return <div>Ready to serve.</div>;
 });
