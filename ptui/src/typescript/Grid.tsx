@@ -3,7 +3,7 @@ import * as LD from "lodash";
 import * as React from "react";
 
 import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
-import { Button, Dimmer, Input, Menu, Segment } from 'semantic-ui-react';
+import { Button, Checkbox, Dimmer, Input, Menu, Segment } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
 import * as M from "./Model";
@@ -147,11 +147,14 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
               }}
           />}
         />
-        <div>
-          <Input size="small" label="Annotation"
-            onChange={(_, data) => this.setState({ painting_note: data.value })}
-          />
-        </div>
+        <Input size="small" label="Annotation"
+          onChange={(_, data) => this.setState({ painting_note: data.value })}
+        />
+        <Checkbox checked={this.state.painting_vis.t === "GMOnly"} label="GM Only"
+          onChange={(_, d) =>
+            this.setState({
+              painting_vis: d.checked as boolean ? { t: "GMOnly" } : { t: "AllPlayers" },
+            })} />
       </div>
       <Button style={{ marginLeft: 'auto' }} onClick={() =>
         dispatch(
