@@ -3,14 +3,18 @@
         "outDir": ".",
         "sourceMap": true,
         "target": "es5",
-        "lib": ["es2015", "dom"],
+        "lib": [
+            "es2015",
+            "dom"
+        ],
         "module": "commonjs",
         "jsx": "react",
         "strict": true,
         "noImplicitThis": true,
         "noFallthroughCasesInSwitch": true,
         "noUnusedLocals": true,
-        "noUnusedParameters": true
+        "noUnusedParameters": true,
+        "noErrorTruncation": true
     },
     "include": [
         "src/typescript/*.tsx",

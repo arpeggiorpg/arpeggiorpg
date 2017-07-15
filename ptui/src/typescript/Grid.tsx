@@ -25,16 +25,19 @@ export const MapGrid = Comp.connect<MapGridProps, {}>(
 
   render(): JSX.Element | null {
     const { terrain } = this.props;
-    const map = { ...this.props.map, terrain: terrain.toJS() };
+    const map = { ...this.props.map, terrain: [] };
     const closed_tiles = null;
-    const open_terrain_cons = (_color: string, keyPrefix: string, pt: T.Point3) => {
+    const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
+      const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
       const tprops = tile_props("cyan", pt, { x: 1, y: 1 }, 0.2);
       return <rect {...tprops}
         style={{ cursor: 'pointer' }}
         onClick={() => this.deleteTile(pt)}
-        key={`${keyPrefix}/${pt[0]}/${pt[1]}/${pt[2]}`} />;
-    };
-    return <GridSvg map={map} creatures={[]} open_terrain_cons={open_terrain_cons}>
+        key={`open-${pt[0]}/${pt[1]}/${pt[2]}`} />;
+    });
+
+    return <GridSvg map={map} creatures={[]}>
+      {open_tiles}
       {closed_tiles}
     </GridSvg>;
   }
@@ -130,7 +133,6 @@ interface GridSvgProps {
   creatures: Array<MapCreature>;
   scene_background?: string;
   children?: React.ReactNode;
-  open_terrain_cons?: (color: string, keyPrefix: string, pt: T.Point3) => React.ReactNode;
 }
 export const GridSvg = M.connectRedux(
   class GridSvg extends React.Component<GridSvgProps & M.ReduxProps, { allow_clicks: boolean }> {
@@ -159,11 +161,10 @@ export const GridSvg = M.connectRedux(
     }
 
     render(): JSX.Element {
-      const { map, creatures, scene_background, ptui, open_terrain_cons } = this.props;
+      const { map, creatures, scene_background, ptui } = this.props;
       console.log("[EXPENSIVE:GridSvg.render]");
       const open_terrain_color = map.background_image_url ? "transparent" : "white";
-      const open_tile = open_terrain_cons ? open_terrain_cons : tile;
-      const terrain_els = map.terrain.map(pt => open_tile(open_terrain_color, "base-terrain", pt));
+      const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
       const creature_els = creatures.map(c =>
         <GridCreature key={c.creature.id} creature={c} allow_clicks={this.state.allow_clicks} />);
       const grid = ptui.state.grid;
@@ -409,7 +410,7 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 
 }
 
-export function calculate_teleport_options(pos: T.Point3): Array<T.Point3> {
+export function nearby_points(pos: T.Point3): Array<T.Point3> {
   const result = [];
   for (const x of LD.range(pos[0] - 20, pos[0] + 20)) {
     for (const y of LD.range(pos[1] - 20, pos[1] + 20)) {
@@ -424,7 +425,7 @@ export function requestTeleport(dispatch: M.Dispatch, scene: T.Scene, cid: T.Cre
   if (scene_creature) {
     dispatch({
       type: 'DisplayMovementOptions',
-      cid, teleport: true, options: calculate_teleport_options(scene_creature[0]),
+      cid, teleport: true, options: nearby_points(scene_creature[0]),
     });
   }
 }
