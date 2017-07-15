@@ -14,21 +14,54 @@ interface Obj<T> { [index: string]: T; }
 
 export interface MapGridProps {
   map: T.Map;
-  data: M.GridFocusMap;
 }
 
-export class MapGrid extends React.Component<MapGridProps & M.DispatchProps> {
+interface MapGridState {
+  terrain: I.Set<I.List<number>>;
+  specials: I.Map<I.List<number>, T.SpecialTileData>;
+  painting: "Terrain" | "Special";
+  painting_color: string;
+  painting_note: string;
+  painting_vis: T.Visibility;
+}
+
+export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, MapGridState> {
+  constructor(props: MapGridProps & M.DispatchProps) {
+    super(props);
+    this.state = {
+      terrain: I.Set(props.map.terrain.map(I.List)),
+      specials: M.specialsRPIToMap(props.map.specials),
+      painting: "Terrain",
+      painting_color: "white",
+      painting_note: "",
+      painting_vis: { t: "AllPlayers" },
+    };
+  }
+
+  componentWillReceiveProps(props: MapGridProps & M.DispatchProps) {
+    this.setState({
+      terrain: I.Set(props.map.terrain.map(I.List)),
+      specials: M.specialsRPIToMap(props.map.specials),
+      painting: "Terrain",
+    });
+  }
+
+  shouldComponentUpdate(nextProps: MapGridProps & M.DispatchProps, nextState: MapGridState) {
+    return this.props !== nextProps
+      || !LD.isEqual(LD.omit(this.state, "painting_note"), LD.omit(nextState, "painting_note"));
+  }
 
   render(): JSX.Element | null {
-    const { terrain } = this.props.data;
+    const { terrain, specials, painting } = this.state;
     const map = {
       ...this.props.map, terrain: [],
-      specials: M.specialsMapToRPI(this.props.data.specials),
+      specials: M.specialsMapToRPI(specials),
     };
+    console.log("[EXPENSIVE:MapGrid.render]", terrain.toJS());
 
-    const paintOpen = this.props.data.painting.t === "Terrain" ? this.closeTerrain.bind(this)
+    const paintOpen = painting === "Terrain" ? this.closeTerrain.bind(this)
       : this.toggleSpecial.bind(this);
-    const paintClosed = this.props.data.painting.t === "Terrain" ? this.openTerrain.bind(this)
+    const paintClosed = painting === "Terrain" ? this.openTerrain.bind(this)
       : this.toggleSpecial.bind(this);
     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
@@ -56,68 +89,62 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps> {
       </GridSvg>
     </div>;
   }
+
   closeTerrain(pt: T.Point3) {
-    const terrain = this.props.data.terrain.delete(I.List(pt));
-    this.props.dispatch({ type: "SetMapTerrain", terrain, specials: this.props.data.specials });
+    this.setState({ terrain: this.state.terrain.delete(I.List(pt)) });
   }
   openTerrain(pt: T.Point3) {
-    const { data, dispatch } = this.props;
-    dispatch({
-      type: "SetMapTerrain", terrain: data.terrain.add(I.List(pt)),
-      specials: this.props.data.specials,
-    });
+    this.setState({ terrain: this.state.terrain.add(I.List(pt)) });
   }
 
   toggleSpecial(pt: T.Point3) {
-    const { painting, specials } = this.props.data;
-    if (painting.t !== "Special") { return; }
+    const { painting, painting_color, painting_note, painting_vis, specials } = this.state;
+    if (painting !== "Special") { return; }
     const spt = I.List(pt);
-    const new_specials = specials.has(spt)
-      ? specials.delete(spt) : specials.set(spt, painting.special);
-    this.props.dispatch({
-      type: "SetMapTerrain", terrain: this.props.data.terrain, specials: new_specials,
-    });
+    this.setState(
+      {
+        specials: specials.has(spt) ? specials.delete(spt)
+          : specials.set(spt, [painting_color, painting_note, painting_vis]),
+      });
   }
 
   mapEditingTools() {
-    const { painting } = this.props.data;
+    const { painting, painting_color } = this.state;
     const { dispatch } = this.props;
     return <div style={{ width: '100%', height: '50px', display: 'flex' }}>
       <Menu>
-        <Menu.Item active={painting.t === "Terrain"}
-          onClick={() => dispatch({ type: 'SetPaintTool', tool: { t: 'Terrain' } })}>
+        <Menu.Item active={painting === "Terrain"}
+          onClick={() => this.setState({ painting: "Terrain" })}>
           Terrain
         </Menu.Item>
-        <Menu.Item active={painting.t === "Special"}
-          onClick={() =>
-            dispatch({
-              type: 'SetPaintTool',
-              tool: { t: 'Special', special: ['white', '', { t: 'AllPlayers' }] },
-            })
-          }>
+        <Menu.Item active={painting === "Special"}
+          onClick={() => this.setState({ painting: 'Special' })}>
           Special
         </Menu.Item>
       </Menu>
       <div style={{ display: 'flex', width: '250px', position: 'relative' }}>
-        <Dimmer page={false} inverted={true} active={painting.t !== "Special"} />
+        <Dimmer page={false} inverted={true} active={painting !== "Special"} />
         <CV.ModalMaker
           button={open =>
             <div onClick={open}
               style={{
                 cursor: 'pointer',
                 flex: '0 0 25px',
-                ...CV.square_style(25,
-                  painting.t === "Special" ? painting.special[0] : "white"),
+                ...CV.square_style(25, painting_color),
               }} />}
           header={<span>Choose Special Color</span>}
           content={close => <TwitterPicker
             onChangeComplete={
-              color => { dispatch({ type: 'SetPaintSpecialColor', color: color.hex }); close(); }}
+              color => {
+                this.setState({ painting_color: color.hex });
+                close();
+              }}
           />}
         />
         <div>
           <Input size="small" label="Annotation"
-            onChange={(_, data) => dispatch({ type: 'SetPaintSpecialNote', note: data.value })} />
+            onChange={(_, data) => this.setState({ painting_note: data.value })}
+          />
         </div>
       </div>
       <Button style={{ marginLeft: 'auto' }} onClick={() =>
@@ -125,9 +152,9 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps> {
           M.sendCommand({
             t: "EditMapTerrain",
             id: this.props.map.id,
-            terrain: this.props.data.terrain.toArray().map(
+            terrain: this.state.terrain.toArray().map(
               (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
-            specials: M.specialsMapToRPI(this.props.data.specials),
+            specials: M.specialsMapToRPI(this.state.specials),
           }))}>
         Save
       </Button>
@@ -238,7 +265,8 @@ export const GridSvg = M.connectRedux(
       const focus_diff = !M.isEqual(this.props.ptui.state.grid_focus,
         nextProps.ptui.state.grid_focus);
       const map_diff = !M.isEqual(this.props.map, nextProps.map);
-      return app_diff || mvmt_diff || focus_diff || map_diff;
+      const children_diff = !M.isEqual(this.props.children, nextProps.children);
+      return app_diff || mvmt_diff || focus_diff || map_diff || children_diff;
     }
 
     componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {

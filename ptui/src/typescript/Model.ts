@@ -18,14 +18,6 @@ export type Action =
   | { type: "FocusGrid"; focus: GridFocus }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
-  | { type: "SetPaintTool"; tool: PaintMode }
-  | { type: "SetPaintSpecialColor"; color: string }
-  | { type: "SetPaintSpecialNote"; note: string }
-  | {
-    type: "SetMapTerrain"; terrain: I.Set<I.List<number>>;
-    specials: I.Map<I.List<number>, T.SpecialTileData>;
-  }
-
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
@@ -111,40 +103,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
 
-    case "SetPaintTool": {
-      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map") { return ptui; }
-      const grid_focus = { ...ptui.state.grid_focus, painting: action.tool };
-      return ptui.updateState(state => ({ ...state, grid_focus }));
-    }
-    case "SetPaintSpecialColor": {
-      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map"
-        || ptui.state.grid_focus.painting.t !== "Special") { return ptui; }
-      // See [Note: ImmutableSetIn]
-      const painting = ptui.state.grid_focus.painting;
-      const special: T.SpecialTileData = [action.color, painting.special[1], painting.special[2]];
-      const grid_focus = { ...ptui.state.grid_focus, painting: { ...painting, special } };
-      return ptui.updateState(state => ({ ...state, grid_focus }));
-    }
-    case "SetPaintSpecialNote": {
-      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map"
-        || ptui.state.grid_focus.painting.t !== "Special") { return ptui; }
-      // [Note: ImmutableSetIn]
-      // TODO: using Immutable.JS would be massively simpler:
-      // ptui.updateState(state => state.setIn(["grid_focus", "painting", 1], action.note))
-      // though I'm very skeptical that setIn is well-typed
-      const painting = ptui.state.grid_focus.painting;
-      const special: T.SpecialTileData = [painting.special[0], action.note, painting.special[2]];
-      const grid_focus = { ...ptui.state.grid_focus, painting: { ...painting, special } };
-      return ptui.updateState(state => ({ ...state, grid_focus }));
-    }
-    case "SetMapTerrain": {
-      if (!ptui.state.grid_focus || ptui.state.grid_focus.t !== "Map") { return ptui; }
-      const grid_focus = {
-        ...ptui.state.grid_focus,
-        terrain: action.terrain, specials: action.specials,
-      };
-      return ptui.updateState(state => ({ ...state, grid_focus }));
-    }
     case "DisplayError":
       return ptui.updateState(state => ({ ...state, error: action.error }));
     case "ClearError":
@@ -171,32 +129,14 @@ export interface PTUIState {
   grid: GridModel;
   player_id?: T.PlayerID;
   error?: string;
-  grid_focus?: GridFocusData;
+  grid_focus?: GridFocus;
   secondary_focus?: SecondaryFocus;
 }
-
 
 export type GridFocus =
   | { t: "Scene"; scene_id: T.SceneID; }
   | { t: "Map"; map_id: T.MapID; }
   ;
-
-export type PaintMode =
-  | { t: "Terrain" }
-  | { t: "Special"; special: T.SpecialTileData }
-  ;
-
-export type GridFocusData =
-  | { t: "Scene"; scene_id: T.SceneID; }
-  | GridFocusMap
-  ;
-
-export interface GridFocusMap {
-  // TODO: don't use I.List<number>, we need to guarantee 3 elements!
-  t: "Map"; map_id: T.MapID; terrain: I.Set<I.List<number>>;
-  specials: I.Map<I.List<number>, T.SpecialTileData>;
-  painting: PaintMode;
-}
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined; }
@@ -611,4 +551,11 @@ export function specialsMapToRPI(specials: I.Map<I.List<number>, T.SpecialTileDa
   return specials.entrySeq().toArray().map(
     ([pt, [color, note, vis]]): [T.Point3, T.Color, string, T.Visibility] =>
       [[pt.get(0)!, pt.get(1)!, pt.get(2)!], color, note, vis]);
+}
+
+export function specialsRPIToMap(specials: Array<[T.Point3, T.Color, string, T.Visibility]>)
+  : I.Map<I.List<number>, T.SpecialTileData> {
+  return I.Map(specials.map(
+    ([pt, color, note, vis]): [I.List<number>, T.SpecialTileData] =>
+      [I.List(pt), [color, note, vis]]));
 }
