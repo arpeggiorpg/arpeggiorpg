@@ -80,18 +80,14 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
           key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
       });
 
-    const special_tiles = M.specialsMapToRPI(specials).map(
-      ([pt, color, _, vis]) => <SpecialTile key={`special-${JSON.stringify(pt)}`}
-        pt={pt} color={color} vis={vis} />
-    );
-
     const tools = this.mapEditingTools();
     return <div>
       {tools}
       <GridSvg map={map} creatures={[]}>
-        {special_tiles}
+        {getSpecials(M.specialsMapToRPI(specials))}
         {open_tiles}
         {closed_tiles}
+        {getAnnotations(() => undefined, M.specialsMapToRPI(specials))}
       </GridSvg>
     </div>;
   }
@@ -285,7 +281,7 @@ export const GridSvg = M.connectRedux(
     }
 
     render(): JSX.Element {
-      const { map, creatures, scene_background, ptui } = this.props;
+      const { map, creatures, scene_background, ptui, dispatch } = this.props;
       console.log("[EXPENSIVE:GridSvg.render]");
       const open_terrain_color = map.background_image_url ? "transparent" : "white";
       const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
@@ -297,15 +293,6 @@ export const GridSvg = M.connectRedux(
         ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
           teleport={move.teleport} />)
         : [];
-      const special_els = map.specials.map(([pt, color, _, vis]) =>
-        <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis}
-          player_id={ptui.state.player_id} />);
-      const annotation_els = M.filterMap(map.specials,
-        ([pt, _, note, vis]) => {
-          if (note !== "") {
-            return <Annotation key={pt.toString()} pt={pt} vis={vis} />;
-          }
-        });
       const background_image = map.background_image_url
         ? <image xlinkHref={map.background_image_url} width={map.background_image_scale[0]}
           height={map.background_image_scale[1]}
@@ -331,14 +318,33 @@ export const GridSvg = M.connectRedux(
         }}>
         {background_image}
         {terrain_els}
-        {special_els}
-        {annotation_els}
+        {getSpecials(map.specials, ptui.state.player_id)}
+        {getAnnotations(dispatch, map.specials, ptui.state.player_id)}
         {creature_els}
         {movement_target_els}
         {this.props.children}
       </SPZ.SVGPanZoom>;
     }
   });
+
+function getSpecials(
+  specials: Array<[T.Point3, T.Color, string, T.Visibility]>, player_id?: T.PlayerID) {
+  return specials.map(([pt, color, _, vis]) =>
+    <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis}
+      player_id={player_id} />);
+}
+
+function getAnnotations(
+  dispatch: M.Dispatch,
+  specials: Array<[T.Point3, T.Color, string, T.Visibility]>, player_id?: T.PlayerID) {
+  return M.filterMap(specials,
+    ([pt, _, note, vis]) => {
+      if (note !== "") {
+        return <Annotation key={pt.toString()} pt={pt} vis={vis} dispatch={dispatch}
+          player_id={player_id} />;
+      }
+    });
+}
 
 
 const MovementTarget = M.connectRedux(
@@ -377,30 +383,29 @@ function SpecialTile(
 }
 
 
-const Annotation = M.connectRedux(
-  function Annotation({ ptui, dispatch, pt, vis }:
-    { pt: T.Point3, vis: T.Visibility } & M.ReduxProps)
-    : JSX.Element {
-    if (M.isEqual(vis, { t: "GMOnly" }) && ptui.state.player_id) {
-      return <noscript />;
-    }
+function Annotation({ dispatch, pt, vis, player_id }:
+  { pt: T.Point3, vis: T.Visibility, player_id?: T.PlayerID } & M.DispatchProps)
+  : JSX.Element {
+  if (M.isEqual(vis, { t: "GMOnly" }) && player_id) {
+    return <noscript />;
+  }
 
-    let element: SVGRectElement;
+  let element: SVGRectElement;
 
-    function onClick() {
-      dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
-    }
+  function onClick() {
+    dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+  }
 
-    return <g>
-      <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
-        ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
-      />
-      <text
-        style={{ pointerEvents: "none" }}
-        x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
-        fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
-    </g>;
-  });
+  return <g>
+    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
+      ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
+    />
+    <text
+      style={{ pointerEvents: "none" }}
+      x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
+      fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
+  </g>;
+}
 
 
 const GridCreature = M.connectRedux(
