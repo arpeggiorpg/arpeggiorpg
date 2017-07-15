@@ -55,7 +55,7 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
     const { terrain, specials, painting } = this.state;
     const map = {
       ...this.props.map, terrain: [],
-      specials: M.specialsMapToRPI(specials),
+      specials: [],
     };
     console.log("[EXPENSIVE:MapGrid.render]", terrain.toJS());
 
@@ -65,7 +65,7 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
       : this.toggleSpecial.bind(this);
     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
-      const tprops = tile_props("cyan", pt, { x: 1, y: 1 }, 0.2);
+      const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
       return <rect {...tprops}
         style={{ cursor: 'pointer' }}
         onClick={() => paintOpen(pt)}
@@ -74,16 +74,22 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
     const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
       pt => {
         if (terrain.has(I.List(pt))) { return; }
-        const tprops = tile_props("brown", pt, { x: 1, y: 1 }, 0.5);
+        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
           onClick={() => paintClosed(pt)}
           key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
       });
 
+    const special_tiles = M.specialsMapToRPI(specials).map(
+      ([pt, color, _, vis]) => <SpecialTile key={`special-${JSON.stringify(pt)}`}
+        pt={pt} color={color} vis={vis} />
+    );
+
     const tools = this.mapEditingTools();
     return <div>
       {tools}
       <GridSvg map={map} creatures={[]}>
+        {special_tiles}
         {open_tiles}
         {closed_tiles}
       </GridSvg>
@@ -289,7 +295,8 @@ export const GridSvg = M.connectRedux(
           teleport={move.teleport} />)
         : [];
       const special_els = map.specials.map(([pt, color, _, vis]) =>
-        <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis} />);
+        <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis}
+          player_id={ptui.state.player_id} />);
       const annotation_els = M.filterMap(map.specials,
         ([pt, _, note, vis]) => {
           if (note !== "") {
@@ -351,21 +358,20 @@ const MovementTarget = M.connectRedux(
     return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
   });
 
-const SpecialTile = M.connectRedux(
-  function SpecialTile(props: { color: string, vis: T.Visibility, pt: T.Point3 } & M.ReduxProps)
-    : JSX.Element {
-    const { color, vis, pt, ptui } = props;
-    const gmonly = vis.t === "GMOnly";
-    if (gmonly && ptui.state.player_id) {
-      return <noscript />;
-    }
-    const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
-    return <g>
-      <rect {...tprops} />
-      {gmonly ? <text x={pt[0] * 100 + 65} y={pt[1] * 100 + 35} fontSize="25px">👁️</text>
-        : <noscript />}
-    </g>;
-  });
+function SpecialTile(
+  props: { color: string, vis: T.Visibility, pt: T.Point3, player_id?: T.PlayerID }): JSX.Element {
+  const { color, vis, pt, player_id } = props;
+  const gmonly = vis.t === "GMOnly";
+  if (gmonly && player_id) {
+    return <noscript />;
+  }
+  const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
+  return <g>
+    <rect {...tprops} />
+    {gmonly ? <text x={pt[0] * 100 + 65} y={pt[1] * 100 + 35} fontSize="25px">👁️</text>
+      : <noscript />}
+  </g>;
+}
 
 
 const Annotation = M.connectRedux(
