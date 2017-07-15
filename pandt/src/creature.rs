@@ -175,6 +175,7 @@ impl Creature {
       cur_health: HP(10),
       conditions: HashMap::new(),
       note: spec.note.clone(),
+      bio: spec.bio.clone(),
       portrait_url: spec.portrait_url.clone(),
       attributes: HashMap::new(),
       initiative: spec.initiative.clone(),
@@ -322,6 +323,7 @@ pub mod test {
     Creature::create(&CreatureCreation {
                         name: name.to_string(),
                         note: "".to_string(),
+                        bio: "".to_string(),
                         class: class.to_string(),
                         portrait_url: "".to_string(),
                         initiative: Dice::flat(init),

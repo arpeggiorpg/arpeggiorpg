@@ -822,6 +822,8 @@ pub struct CreatureCreation {
   pub class: String,
   pub portrait_url: String,
   pub note: String,
+  #[serde(default)]
+  pub bio: String,
   pub initiative: Dice,
   pub size: AABB,
 }
@@ -845,6 +847,8 @@ pub struct Creature {
   pub cur_health: HP,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
+  #[serde(default)]
+  pub bio: String,
   pub portrait_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
@@ -1109,11 +1113,12 @@ impl<'a> ser::Serialize for RPIGame<'a> {
 
 impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Creature", 20)?;
+    let mut str = serializer.serialize_struct("Creature", 21)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
     str.serialize_field("name", &creat.name)?;
     str.serialize_field("note", &creat.note)?;
+    str.serialize_field("bio", &creat.bio)?;
     str.serialize_field("portrait_url", &creat.portrait_url)?;
     str.serialize_field("speed", &self.speed())?;
     str.serialize_field("max_energy", &creat.max_energy)?;
