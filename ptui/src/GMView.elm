@@ -6,7 +6,6 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.Lazy as Lazy
 import Maybe.Extra as MaybeEx
-import Json.Decode as JD
 
 import Model as M
 import Types as T
@@ -14,7 +13,6 @@ import Grid
 import Elements exposing (..)
 import FolderView
 import CommonView exposing (popUpMenu)
-import Native.NativePT
 
 import Css as S
 
@@ -500,13 +498,10 @@ loadGameDialog model app names =
 
 
 formatDice : T.Dice -> String
-formatDice dice = Native.NativePT.formatDice (T.diceTSEncoder dice)
+formatDice dice = ""
 
 parseDice : String -> Maybe T.Dice
-parseDice s =
-  case JD.decodeValue T.diceTSDecoder (Native.NativePT.parseDice s) of
-    Ok dice -> Just dice
-    _ -> Nothing
+parseDice s = Nothing
 
 editCreatureDialog : M.Model -> T.App -> M.EditingCreature -> Html M.Msg
 editCreatureDialog model app editing =
