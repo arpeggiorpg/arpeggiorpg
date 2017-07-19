@@ -106,6 +106,7 @@ export type GameCommand =
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
   | { t: "CreateFolder"; path: FolderPath }
   | { t: "DeleteFolder"; path: FolderPath }
+  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
@@ -214,6 +215,7 @@ export type GameLog =
   | { t: "DeleteFolder"; path: FolderPath }
   | { t: "DeleteFolderItem"; path: FolderPath; item: FolderItemID }
   | { t: "MoveFolderItem"; path: FolderPath; item: FolderItemID; newPath: FolderPath }
+  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
   | { t: "CreateItem"; path: FolderPath; item: Item }
   | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
@@ -662,6 +664,12 @@ export const decodeGameLog: Decoder<GameLog> =
     MoveFolderItem: JD.map(
       ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
       JD.tuple(decodeFolderPath, decodeFolderItemID, decodeFolderPath)),
+    CopyFolderItem: JD.object(
+      ["source", decodeFolderPath],
+      ["item_id", decodeFolderItemID],
+      ["dest", decodeFolderPath],
+      (source, item_id, dest): GameLog => ({ t: "CopyFolderItem", source, item_id, dest }),
+    ),
     CreateItem: JD.map(
       ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
       JD.tuple(decodeFolderPath, decodeItem)),
@@ -875,6 +883,14 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
     case "CreateFolder": return { CreateFolder: encodeFolderPath(cmd.path) };
     case "DeleteFolder": return { DeleteFolder: encodeFolderPath(cmd.path) };
+    case "CopyFolderItem":
+      return {
+        CopyFolderItem: {
+          source: encodeFolderPath(cmd.source),
+          item_id: encodeFolderItemID(cmd.item_id),
+          dest: encodeFolderPath(cmd.dest),
+        },
+      };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
@@ -941,6 +957,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
   }
+}
+
+function encodeFolderItemID(fid: FolderItemID): object {
+  return { [fid.t]: fid.id };
 }
 
 function encodeMapCreation(mc: MapCreation): object {

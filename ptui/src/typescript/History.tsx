@@ -51,6 +51,9 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
     case "MoveFolderItem":
       return <Flexbox>Moved folder item from {M.folderPathToString(log.path)}
         to {M.folderPathToString(log.newPath)}</Flexbox>;
+    case "CopyFolderItem":
+      return <Flexbox>Copied folder item from {M.folderPathToString(log.source)}
+        to {M.folderPathToString(log.dest)}</Flexbox>;
     case "CreateItem":
       return <Flexbox>Created item {log.item.name} in {M.folderPathToString(log.path)}</Flexbox>;
     case "EditItem":
