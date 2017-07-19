@@ -155,7 +155,6 @@ class FolderTreeComp
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
-    console.log("[EXPENSIVE:FolderTree]", this.props.path);
     const { folder, selecting, path, objects, dispatch } = this.props;
 
     const children = objects.map(obj => {
@@ -319,7 +318,6 @@ interface TreeObjectProps extends M.DispatchProps {
 }
 
 function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
-  console.log('[EXPENSIVE:TreeObject]', object);
   const name = object.name;
 
   return <List.Item>
@@ -430,10 +428,16 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
   extends
   React.Component<SelectFolderProps & { campaign: T.Folder } & M.DispatchProps, SelectFolderState> {
 
+  input: any;
   constructor(props: SelectFolderProps & { campaign: T.Folder } & M.DispatchProps) {
     super(props);
     this.state = { results: [] };
   }
+
+  componentDidMount() {
+    this.input.focus();
+  }
+
   render(): JSX.Element | null {
     const { campaign } = this.props;
     const all_folders = getAllFolders([], campaign);
@@ -444,7 +448,9 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
         minMatchCharLength: 2,
       });
     return <div>
-      <Input onChange={(_, d) => this.setState({ results: fuse.search<FuseResult>(d.value) })} />
+      <Input label="Folder"
+        onChange={(_, d) => this.setState({ results: fuse.search<FuseResult>(d.value) })}
+        ref={(e: any) => this.input = e} />
       <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
         {this.state.results.map(result => {
           const path = all_folders[result.item];
