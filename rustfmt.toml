@@ -5,4 +5,6 @@ fn_args_density = "Compressed"
 chain_one_line_max = 99
 fn_call_width = 99
 struct_lit_width = 99
-struct_variant_width = 99
+# There's a bug in struct_variant_width, it's counting JUST the width of the fields, not the entire
+# line.
+struct_variant_width = 80
