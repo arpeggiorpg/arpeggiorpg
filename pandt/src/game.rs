@@ -357,13 +357,15 @@ impl Game {
         }
       }
       DeleteFolderItem(ref path, ref item_id) => {
-        // this is pretty silly, not even using path...
-        // (though we will definitely need it for deleting notes)
-        // because we're being paranoid, we're walking ALL folder paths and checking if the item ID
-        // is found in ANY of them and cleaning it up.
+        // because we're being paranoid, we're walking ALL folder paths and checking if the given
+        // item ID is found in ANY of them and cleaning it up.
         let all_folders: Vec<FolderPath> =
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         match *item_id {
+          FolderItemID::NoteID(ref name) => {
+            let mut node = self.campaign.get_mut(path)?;
+            node.notes.remove(name);
+          }
           FolderItemID::ItemID(iid) => {
             for folder in all_folders {
               let node = self.campaign.get_mut(&folder)?;
