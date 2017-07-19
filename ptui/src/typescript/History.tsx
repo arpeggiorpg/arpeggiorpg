@@ -82,8 +82,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Edited map details {log.details.name}</Flexbox>;
     case "EditMapTerrain":
       return <Flexbox>Edited a map's terrain</Flexbox>;
-    case "DeleteMap":
-      return <Flexbox>Deleted a map</Flexbox>;
     case "SetCreaturePos":
       return <Flexbox>Set a creature position to {log.pos.toString()}</Flexbox>;
     case "PathCreature":

@@ -153,7 +153,6 @@ export type GameCommand =
 // DeleteScene(SceneID),
 // CreateMap(FolderPath, MapCreation),
 // EditMap(Map),
-// DeleteMap(MapID),
 // StartCombat(SceneID, Vec<CreatureID>),
 // StopCombat,
 // AddCreatureToCombat(CreatureID),
@@ -229,7 +228,6 @@ export type GameLog =
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
   | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile>; }
-  | { t: "DeleteMap"; map_id: MapID }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: Creature }
@@ -709,7 +707,6 @@ export const decodeGameLog: Decoder<GameLog> =
       ["terrain", JD.array(decodePoint3)],
       ["specials", JD.array(decodeSpecialTile)],
       (id, terrain, specials): GameLog => ({ t: "EditMapTerrain", id, terrain, specials })),
-    DeleteMap: JD.map((map_id): GameLog => ({ t: "DeleteMap", map_id }), JD.string()),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
