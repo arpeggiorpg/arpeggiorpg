@@ -343,6 +343,14 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
             dispatch={dispatch} />}
         />
         <Dropdown.Item>Move</Dropdown.Item>
+        <CV.ModalMaker
+          button={open => <Dropdown.Item onClick={open}>Delete</Dropdown.Item>}
+          header={<span>Delete {name}</span>}
+          content={close => <DeleteFolderItem location={object.path} onDone={close}
+            item_id={folder_object_to_item_id(object)}
+            dispatch={dispatch} />}
+        />
+
       </Dropdown.Menu>
     </Dropdown>;
   }
@@ -384,6 +392,19 @@ function CopyFolderItem(props: CopyFolderItemProps) {
     for (const _ of LD.range(copies)) {
       dispatch(M.sendCommand({ t: "CopyFolderItem", source, item_id, dest: source }));
     }
+    onDone();
+  }
+}
+
+interface DeleteFolderItemProps {
+  location: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; dispatch: M.Dispatch;
+}
+function DeleteFolderItem(props: DeleteFolderItemProps) {
+  const { location, item_id, onDone, dispatch } = props;
+  return <Button onClick={deleteIt}>Yes, really!</Button>;
+
+  function deleteIt() {
+    dispatch(M.sendCommand({ t: "DeleteFolderItem", location, item_id }));
     onDone();
   }
 }

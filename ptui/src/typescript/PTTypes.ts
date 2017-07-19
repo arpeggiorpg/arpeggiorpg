@@ -107,6 +107,7 @@ export type GameCommand =
   | { t: "CreateFolder"; path: FolderPath }
   | { t: "DeleteFolder"; path: FolderPath }
   | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
+  | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreature"; creature: Creature }
   | { t: "CreateItem"; path: FolderPath; name: string }
@@ -891,6 +892,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
           dest: encodeFolderPath(cmd.dest),
         },
       };
+    case "DeleteFolderItem":
+      return { DeleteFolderItem: [encodeFolderPath(cmd.location), encodeFolderItemID(cmd.item_id)] };
     case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
