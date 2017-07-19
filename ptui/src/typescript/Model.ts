@@ -382,7 +382,7 @@ export class PTUI {
   getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
     let cur: T.Folder | undefined = this.app.current_game.campaign;
     for (const seg of path) {
-      cur = get(cur.children, seg);
+      cur = cur.children.get(seg);
       if (!cur) { return undefined; }
     }
     return cur.data;

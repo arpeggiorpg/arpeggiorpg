@@ -78,7 +78,7 @@ export type Volume =
 
 export interface Folder {
   data: FolderNode;
-  children: { [index: string]: Folder };
+  children: I.Map<string, Folder>;
 }
 
 export interface FolderNode {
@@ -105,6 +105,7 @@ export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
   | { t: "CreateFolder"; path: FolderPath }
+  | { t: "MoveFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
   | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
   | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
@@ -776,7 +777,7 @@ const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);
 
 const decodeFolder: Decoder<Folder> = JD.object(
   ["data", decodeFolderNode],
-  ["children", JD.dict(decodeFolderLazy)],
+  ["children", JD.map(I.Map, JD.dict(decodeFolderLazy))],
   (data, children) => ({ data, children })
 );
 
@@ -863,6 +864,11 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "GiveCreaturesToPlayer":
       return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
     case "CreateFolder": return { CreateFolder: encodeFolderPath(cmd.path) };
+    case "MoveFolderItem":
+      return {
+        MoveFolderItem:
+        [encodeFolderPath(cmd.source), encodeFolderItemID(cmd.item_id), encodeFolderPath(cmd.dest)],
+      };
     case "CopyFolderItem":
       return {
         CopyFolderItem: {

@@ -5,6 +5,7 @@ module.exports = {
     entry: {
         vendor: [
             'flexbox-react',
+            'fuse.js',
             'hammerjs',
             'immutable',
             'isomorphic-fetch',

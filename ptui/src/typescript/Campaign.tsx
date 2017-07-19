@@ -1,8 +1,9 @@
+import * as Fuse from 'fuse.js';
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
 
-import { Button, Checkbox, Dropdown, List } from 'semantic-ui-react';
+import { Button, Checkbox, Dropdown, Input, List, Menu } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -163,7 +164,7 @@ class FolderTreeComp
         dispatch={dispatch} />;
     });
 
-    const subfolders = LD.sortBy(LD.toPairs(folder.children), ([name, _]) => name).map(
+    const subfolders = LD.sortBy(folder.children.entrySeq().toArray(), ([name, _]) => name).map(
       ([name, subfolder]) =>
         <FolderTree key={name} name={name} folder={subfolder}
           path={LD.concat(this.props.path, name)} selecting={selecting} />
@@ -347,7 +348,12 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
             item_id={folder_object_to_item_id(object)}
             dispatch={dispatch} />}
         />
-        <Dropdown.Item>Move</Dropdown.Item>
+        <CV.ModalMaker
+          button={open => <Dropdown.Item onClick={open}>Move</Dropdown.Item>}
+          header={<span>Move {name}</span>}
+          content={close => <MoveFolderItem source={object.path} onDone={close}
+            item_id={folder_object_to_item_id(object)} dispatch={dispatch} />}
+        />
         <CV.ModalMaker
           button={open => <Dropdown.Item onClick={open}>Delete</Dropdown.Item>}
           header={<span>Delete {name}</span>}
@@ -410,6 +416,86 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
 
   function deleteIt() {
     dispatch(M.sendCommand({ t: "DeleteFolderItem", location, item_id }));
+    onDone();
+  }
+}
+
+interface FuseResult { item: number; matches: Array<{ indices: Array<[number, number]> }>; }
+
+interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
+interface SelectFolderState { results: Array<FuseResult>; }
+const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
+  ptui => ({ campaign: ptui.app.current_game.campaign }),
+)(class SelectFolderComp
+  extends
+  React.Component<SelectFolderProps & { campaign: T.Folder } & M.DispatchProps, SelectFolderState> {
+
+  constructor(props: SelectFolderProps & { campaign: T.Folder } & M.DispatchProps) {
+    super(props);
+    this.state = { results: [] };
+  }
+  render(): JSX.Element | null {
+    const { campaign } = this.props;
+    const all_folders = getAllFolders([], campaign);
+    const fuse = new Fuse(all_folders.map(M.folderPathToString),
+      {
+        shouldSort: true,
+        includeMatches: true,
+        minMatchCharLength: 2,
+      });
+    return <div>
+      <Input onChange={(_, d) => this.setState({ results: fuse.search<FuseResult>(d.value) })} />
+      <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
+        {this.state.results.map(result => {
+          const path = all_folders[result.item];
+          return <Menu.Item key={M.folderPathToString(path)}>
+            <span dangerouslySetInnerHTML={{
+              __html: this.highlight(M.folderPathToString(path), result.matches),
+            }} />
+          </Menu.Item>;
+        })}
+
+      </Menu>
+    </div>;
+
+    function getAllFolders(path: T.FolderPath, campaign: T.Folder): Array<T.FolderPath> {
+      return LD.flatMap(campaign.children.keySeq().toArray(),
+        name => {
+          const subfolder = path.concat(name);
+          return [subfolder].concat(getAllFolders(path.concat(name), campaign.children.get(name)!));
+        });
+    }
+  }
+
+  highlight(s: string, matches: Array<{ indices: Array<[number, number]> }>): string {
+    const result = ['<span style="color: gray;">'];
+    const pairs = LD.flatMap(matches, m => m.indices);
+    let pair = pairs.shift();
+    for (let i = 0; i < s.length; i++) {
+      const char = s.charAt(i);
+      if (pair && i === pair[0]) {
+        result.push('<span style="color: black; font-weight: bold;">');
+      }
+      result.push(char);
+      if (pair && i === pair[1]) {
+        result.push('</span>');
+        pair = pairs.shift();
+      }
+    }
+    result.push('</span>');
+    return result.join('');
+  }
+});
+
+interface MoveFolderItemProps { source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; }
+function MoveFolderItem(props: MoveFolderItemProps & M.DispatchProps) {
+  const { source, item_id, onDone, dispatch } = props;
+  return <div>
+    <SelectFolder onSelect={move} />
+  </div>;
+
+  function move(dest: T.FolderPath) {
+    dispatch(M.sendCommand({ t: "MoveFolderItem", source, item_id, dest }));
     onDone();
   }
 }
