@@ -7,6 +7,7 @@ import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as Comp from './Component';
+import * as CF from './CoolForm';
 import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -313,16 +314,8 @@ interface TreeObjectProps extends M.DispatchProps {
 
 function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
   console.log('[EXPENSIVE:TreeObject]', object);
-  function handler() {
-    if (selecting) { return; }
-    return activate_object(object, dispatch);
-  }
   const name = object.name;
-  function onCheck(_: any, data: SUI.CheckboxProps) {
-    if (selecting && selecting.on_select_object && data.checked !== undefined) {
-      return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
-    }
-  }
+
   return <List.Item>
     <List.Icon name={object_icon(object.t)} />
     <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
@@ -332,6 +325,65 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
             label={name} onChange={onCheck} />
           : name
       }
+      {selecting ? null : <FolderItemDropdown />}
     </List.Content>
   </List.Item>;
+
+  function FolderItemDropdown(_: {}) {
+    return <Dropdown icon='caret down'
+      className='right' pointing={true} floating={true}>
+      <Dropdown.Menu>
+        <Dropdown.Header content={name} />
+        <Dropdown.Divider />
+        <CV.ModalMaker
+          button={open => <Dropdown.Item onClick={open}>Copy</Dropdown.Item>}
+          header={<span>Copy {name}</span>}
+          content={close => <CopyFolderItem source={object.path} onDone={close}
+            item_id={folder_object_to_item_id(object)}
+            dispatch={dispatch} />}
+        />
+        <Dropdown.Item>Move</Dropdown.Item>
+      </Dropdown.Menu>
+    </Dropdown>;
+  }
+
+  function handler() {
+    if (selecting) { return; }
+    return activate_object(object, dispatch);
+  }
+
+  function onCheck(_: any, data: SUI.CheckboxProps) {
+    if (selecting && selecting.on_select_object && data.checked !== undefined) {
+      return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
+    }
+  }
+}
+
+
+function folder_object_to_item_id(o: FolderObject): T.FolderItemID {
+  switch (o.t) {
+    case "Scene": return { t: "SceneID", id: o.id };
+    case "Map": return { t: "MapID", id: o.id };
+    case "Creature": return { t: "CreatureID", id: o.id };
+    case "Item": return { t: "ItemID", id: o.id };
+    case "Note": return { t: "NoteID", id: o.name };
+  }
+}
+
+interface CopyFolderItemProps {
+  source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; dispatch: M.Dispatch;
+}
+function CopyFolderItem(props: CopyFolderItemProps) {
+  const { source, item_id, onDone, dispatch } = props;
+  return <CF.CoolForm>
+    <CF.NumericInput label="Copies" name="copies" min={1} default={1} />
+    <CF.Submit onClick={copy}>Copy!</CF.Submit>
+  </CF.CoolForm>;
+
+  function copy({ copies }: { copies: number }) {
+    for (const _ of LD.range(copies)) {
+      dispatch(M.sendCommand({ t: "CopyFolderItem", source, item_id, dest: source }));
+    }
+    onDone();
+  }
 }
