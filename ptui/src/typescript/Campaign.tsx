@@ -476,7 +476,7 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
       if (pair && i === pair[0]) {
         result.push('<span style="color: black; font-weight: bold;">');
       }
-      result.push(char);
+      result.push(LD.escape(char));
       if (pair && i === pair[1]) {
         result.push('</span>');
         pair = pairs.shift();
