@@ -150,7 +150,6 @@ export type GameCommand =
 // EditNote(FolderPath, String, Note),
 // CreateScene(FolderPath, SceneCreation),
 // EditScene(Scene),
-// DeleteScene(SceneID),
 // CreateMap(FolderPath, MapCreation),
 // EditMap(Map),
 // StartCombat(SceneID, Vec<CreatureID>),
@@ -223,7 +222,6 @@ export type GameLog =
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
-  | { t: "DeleteScene"; scene_id: SceneID }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -695,7 +693,6 @@ export const decodeGameLog: Decoder<GameLog> =
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
     EditScene: JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
-    DeleteScene: JD.map((scene_id): GameLog => ({ t: "DeleteScene", scene_id }), JD.string()),
     CreateMap: JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),

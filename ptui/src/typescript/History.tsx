@@ -72,8 +72,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Created scene {log.scene.name}</Flexbox>;
     case "EditScene":
       return <Flexbox>Edited scene {log.scene.name}</Flexbox>;
-    case "DeleteScene":
-      return <Flexbox>Deleted a scene</Flexbox>;
     case "CreateMap":
       return <Flexbox>Created a map {log.map.name}</Flexbox>;
     case "EditMap":
