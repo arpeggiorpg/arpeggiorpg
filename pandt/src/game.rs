@@ -44,7 +44,6 @@ impl Game {
       // ** Folder Management **
       CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
-      DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
       CopyFolderItem { source, item_id, dest } => {
         let new_item_id = match &item_id {
@@ -291,17 +290,6 @@ impl Game {
       AttributeCheckResult(..) => {} // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
-      DeleteFolder(ref path) => {
-        {
-          let node = self.campaign.get(path)?;
-          if !(node.scenes.is_empty() && node.creatures.is_empty() && node.notes.is_empty() &&
-               node.items.is_empty() &&
-               node.maps.is_empty()) {
-            bail!(GameErrorEnum::FolderNotEmpty(path.clone()));
-          }
-        }
-        self.campaign.remove(path)?;
-      }
       MoveFolderItem(ref src, ref item_id, ref dst) => {
         match *item_id {
           FolderItemID::NoteID(ref name) => {
@@ -450,7 +438,36 @@ impl Game {
             }
             self.maps.remove(&id).ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
           }
-          _ => unimplemented!(),
+          FolderItemID::SubfolderID(ref name) => {
+            // basically we delete everything by simulating GameLog::DeleteFolderItem for each child.
+            // This must be done in a particular order to ensure scenes are deleted before maps
+            // (since maps can't be deleted if there are scenes referring to them).
+            let path = path.child(name.to_string());
+            for child_folder in self.campaign.get_children(&path)?.clone() {
+              self
+                .apply_log_mut(&DeleteFolderItem(path.clone(),
+                                                 FolderItemID::SubfolderID(child_folder.clone())))?;
+            }
+            let node = self.campaign.get(&path)?.clone();
+            for scene_id in node.scenes {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::SceneID(scene_id)))?;
+            }
+            for map_id in node.maps {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::MapID(map_id)))?;
+            }
+            for cid in node.creatures {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::CreatureID(cid)))?;
+            }
+            for iid in node.items {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ItemID(iid)))?;
+            }
+            for nname in node.notes.keys() {
+              self
+                .apply_log_mut(&DeleteFolderItem(path.clone(),
+                                                 FolderItemID::NoteID(nname.clone())))?;
+            }
+            self.campaign.remove(&path)?;
+          }
         }
       }
 

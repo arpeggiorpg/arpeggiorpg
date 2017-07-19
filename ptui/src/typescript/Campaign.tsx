@@ -201,7 +201,12 @@ class FolderTreeComp
           ? [
             <Dropdown.Divider key="ble" />,
             <Dropdown.Item key="blo" text="Delete this folder" icon="delete"
-              onClick={() => dispatch(M.sendCommand({ t: "DeleteFolder", path }))} />]
+              onClick={() => dispatch(M.sendCommand(
+                {
+                  t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
+                  // ! because we KNOW this isn't [] (see conditional above)
+                  item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
+                }))} />]
           : null}
       </Dropdown.Menu>
     </Dropdown>;

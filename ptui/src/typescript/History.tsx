@@ -44,8 +44,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox><div>Created Folder</div><div>{M.folderPathToString(log.path)}</div></Flexbox>;
     case "RenameFolder":
       return <Flexbox>Renamed Folder</Flexbox>;
-    case "DeleteFolder":
-      return <Flexbox>Deleted folder {M.folderPathToString(log.path)}</Flexbox>;
     case "DeleteFolderItem":
       return <Flexbox>Deleted folder item in {M.folderPathToString(log.path)}</Flexbox>;
     case "MoveFolderItem":

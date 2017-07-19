@@ -105,7 +105,6 @@ export type GameCommand =
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
   | { t: "CreateFolder"; path: FolderPath }
-  | { t: "DeleteFolder"; path: FolderPath }
   | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
   | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
@@ -141,7 +140,6 @@ export type GameCommand =
 // AttributeCheck(CreatureID, AttributeCheck),
 // CreateFolder(FolderPath),
 // RenameFolder(FolderPath, String),
-// DeleteFolder(FolderPath),
 // MoveFolderItem(FolderPath, FolderItemID, FolderPath),
 // DeleteFolderItem(FolderPath, FolderItemID),
 // CreateItem(FolderPath, String),
@@ -209,7 +207,6 @@ export type GameLog =
   }
   | { t: "CreateFolder"; path: FolderPath }
   | { t: "RenameFolder"; path: FolderPath; newName: string }
-  | { t: "DeleteFolder"; path: FolderPath }
   | { t: "DeleteFolderItem"; path: FolderPath; item: FolderItemID }
   | { t: "MoveFolderItem"; path: FolderPath; item: FolderItemID; newPath: FolderPath }
   | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
@@ -651,7 +648,6 @@ export const decodeGameLog: Decoder<GameLog> =
     RenameFolder: JD.map(
       ([path, newName]): GameLog => ({ t: "RenameFolder", path, newName }),
       JD.tuple(decodeFolderPath, JD.string())),
-    DeleteFolder: JD.map((path): GameLog => ({ t: "DeleteFolder", path }), decodeFolderPath),
     DeleteFolderItem: JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
       JD.tuple(decodeFolderPath, decodeFolderItemID)),
     MoveFolderItem: JD.map(
@@ -867,7 +863,6 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "GiveCreaturesToPlayer":
       return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
     case "CreateFolder": return { CreateFolder: encodeFolderPath(cmd.path) };
-    case "DeleteFolder": return { DeleteFolder: encodeFolderPath(cmd.path) };
     case "CopyFolderItem":
       return {
         CopyFolderItem: {

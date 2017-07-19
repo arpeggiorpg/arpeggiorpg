@@ -314,8 +314,6 @@ pub enum GameCommand {
   CreateFolder(FolderPath),
   /// Rename a folder.
   RenameFolder(FolderPath, String),
-  /// Delete a folder.
-  DeleteFolder(FolderPath),
 
   /// Move some object from one folder to another.
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
@@ -453,7 +451,6 @@ pub enum GameLog {
   /// Create a folder, given segments leading to it.
   CreateFolder(FolderPath),
   RenameFolder(FolderPath, String),
-  DeleteFolder(FolderPath),
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
   CopyFolderItem {
     source: FolderPath,
