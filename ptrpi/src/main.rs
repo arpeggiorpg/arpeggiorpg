@@ -30,7 +30,7 @@ use rocket::http::Method;
 mod cors;
 use cors::{CORS, PreflightCORS};
 
-use pandt::types::{App, RPIApp, AbilityID, CreatureID, GameCommand, GameError, GameErrorEnum,
+use pandt::types::{App, RPIApp, CreatureID, GameCommand, GameError, GameErrorEnum,
                    Point3, PotentialTargets, Volume};
 
 
@@ -68,8 +68,11 @@ struct PT {
 }
 
 impl PT {
-  fn app(&self) -> Result<MutexGuard<App>, RPIError> {
-    self.app.lock().map_err(|_| RPIErrorKind::LockError("app".to_string()).into())
+  fn app(&self) -> MutexGuard<App> {
+    match self.app.lock() {
+      Ok(g) => g,
+      Err(poison) => poison.into_inner(),
+    }
   }
 
   fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
@@ -84,7 +87,7 @@ fn options_handler() -> PreflightCORS {
 
 #[get("/")]
 fn get_app(pt: State<PT>) -> Result<CORS<String>, RPIError> {
-  let app = pt.app()?;
+  let app = pt.app();
   let result = serde_json::to_string(&RPIApp(&*app))?;
   Ok(CORS::any(result))
 }
@@ -94,7 +97,7 @@ fn get_app(pt: State<PT>) -> Result<CORS<String>, RPIError> {
 #[get("/poll/<snapshot_len>/<log_len>")]
 fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<String>, RPIError> {
   {
-    let app = pt.app()?;
+    let app = pt.app();
     if app.snapshots.len() != snapshot_len ||
        app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
       let result = serde_json::to_string(&RPIApp(&*app))?;
@@ -111,9 +114,8 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 #[post("/", format="application/json", data="<command>")]
 fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
-    let mut app = pt.app()?;
-    let result =
-      app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
+    let mut app = pt.app();
+    let result = app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
     serde_json::to_string(&result)
   };
   pt.pollers()?.broadcast(());
@@ -122,13 +124,13 @@ fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, R
 
 #[get("/combat_movement_options")]
 fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
-  let app = pt.app()?;
+  let app = pt.app();
   Ok(CORS::any(JSON(app.get_combat_movement_options()?)))
 }
 
 #[get("/movement_options/<scene_id>/<cid>")]
 fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Vec<Point3>> {
-  let app = pt.app()?;
+  let app = pt.app();
   let cid = cid.parse()?;
   let scene = scene_id.parse()?;
   Ok(CORS::any(JSON(app.get_movement_options(scene, cid)?)))
@@ -137,7 +139,7 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
 fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
                   -> PTResult<PotentialTargets> {
-  let app = pt.app()?;
+  let app = pt.app();
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
   let abid = abid.parse()?;
@@ -153,7 +155,7 @@ fn options_creatures_in_volume(scene: String, x: String, y: String, z: String) -
 fn creatures_in_volume(pt: State<PT>, scene_id: String, x: i16, y: i16, z: i16,
                        volume: JSON<Volume>)
                        -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
-  let app = pt.app()?;
+  let app = pt.app();
   let sid = scene_id.parse()?;
   let point = (x, y, z);
   Ok(CORS::any(JSON(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
@@ -180,14 +182,14 @@ fn load_saved_game(pt: State<PT>, name: String) -> Result<CORS<String>, RPIError
   let mut buffer = String::new();
   File::open(path)?.read_to_string(&mut buffer)?;
   let app = serde_yaml::from_str(&buffer)?;
-  *(pt.app()?) = app;
+  *(pt.app()) = app;
   get_app(pt)
 }
 
 #[post("/saved_games/<name>")]
 fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   let new_path = child_path(&pt.saved_game_path, name)?;
-  let yaml = serde_yaml::to_string(&*pt.app()?)?;
+  let yaml = serde_yaml::to_string(&*pt.app())?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(CORS::any(JSON(())))
 }
