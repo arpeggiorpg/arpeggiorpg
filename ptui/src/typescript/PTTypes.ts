@@ -219,7 +219,6 @@ export type GameLog =
   | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
   | { t: "EditNote"; path: FolderPath; name: string; newNote: Note }
-  | { t: "DeleteNote"; path: FolderPath; name: string }
   | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
