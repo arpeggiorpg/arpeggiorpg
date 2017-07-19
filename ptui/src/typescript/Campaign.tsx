@@ -466,6 +466,7 @@ const SelectFolder = Comp.connect<SelectFolderProps, { all_folders: Array<T.Fold
         {this.state.results.map((result, i) => {
           const path = all_folders[result.item];
           return <Menu.Item active={i === this.state.current_selection}
+            onClick={() => this.props.onSelect(path)}
             key={M.folderPathToString(path)}>
             <span dangerouslySetInnerHTML={{
               __html: this.highlight(M.folderPathToString(path), result.matches),
