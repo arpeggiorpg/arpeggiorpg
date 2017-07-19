@@ -403,8 +403,6 @@ pub enum GameCommand {
   /// There must be a clear path according to the current loaded map. It doesn't matter whether
   /// the creature is in combat.
   PathCreature(SceneID, CreatureID, Point3),
-  /// Remove a creature from the game entirely. Creature must not be in combat.
-  DeleteCreature(CreatureID),
 
   // ** Player Manipulation **
   /// Register a player as available for controlling a creature.
@@ -503,7 +501,6 @@ pub enum GameLog {
   StopCombat,
   CreateCreature(FolderPath, Creature),
   EditCreature(Creature),
-  DeleteCreature(CreatureID),
   AddCreatureToCombat(CreatureID, i16),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.

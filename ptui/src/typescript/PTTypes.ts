@@ -171,7 +171,6 @@ export type GameCommand =
 // EditCreature(Creature),
 // SetCreaturePos(SceneID, CreatureID, Point3),
 // PathCreature(SceneID, CreatureID, Point3),
-// DeleteCreature(CreatureID),
 // RegisterPlayer(PlayerID),
 // GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
 // UnregisterPlayer(PlayerID),
@@ -237,7 +236,6 @@ export type GameLog =
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: Creature }
   | { t: "EditCreature"; creature: Creature }
-  | { t: "DeleteCreature"; creature_id: CreatureID }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
@@ -729,9 +727,6 @@ export const decodeGameLog: Decoder<GameLog> =
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
       JD.tuple(decodeFolderPath, decodeCreature)),
     EditCreature: JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
-    DeleteCreature: JD.map(
-      (creature_id): GameLog => ({ t: "DeleteCreature", creature_id }),
-      JD.string()),
     AddCreatureToCombat: JD.map(
       ([creature_id, init]): GameLog => ({ t: "AddCreatureToCombat", creature_id, init }),
       JD.tuple(JD.string(), JD.number())),

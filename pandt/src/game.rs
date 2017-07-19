@@ -113,7 +113,6 @@ impl Game {
                          })
       }
       DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
-      DeleteCreature(cid) => self.change_with(GameLog::DeleteCreature(cid)),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -395,6 +394,37 @@ impl Game {
             // Also delete the item from the core item DB!
             self.items.remove(&iid);
           }
+          FolderItemID::CreatureID(cid) => {
+            for path in all_folders {
+              let node = self.campaign.get_mut(&path)?;
+              node.creatures.remove(&cid);
+            }
+            let scenes_with_this_creature: Vec<SceneID> = self
+              .scenes
+              .values()
+              .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
+              .collect();
+            for sid in scenes_with_this_creature {
+              self
+                .scenes
+                .mutate(&sid, |mut sc| {
+                  sc.creatures.remove(&cid);
+                  sc
+                });
+            }
+            self.current_combat = {
+              if let Ok(combat) = self.get_combat() {
+                combat.remove_from_combat(cid)?
+              } else {
+                None
+              }
+            };
+
+            self
+              .creatures
+              .remove(&cid)
+              .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
+          }
           _ => unimplemented!(),
         }
       }
@@ -529,34 +559,6 @@ impl Game {
       EditCreature(ref creature) => {
         let mutated = self.creatures.mutate(&creature.id, |_| creature.clone());
         mutated.ok_or_else(|| GameErrorEnum::CreatureNotFound(creature.id.to_string()))?;
-      }
-      DeleteCreature(cid) => {
-        let scenes_with_this_creature: Vec<SceneID> = self
-          .scenes
-          .values()
-          .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
-          .collect();
-        for sid in scenes_with_this_creature {
-          self
-            .scenes
-            .mutate(&sid, |mut sc| {
-              sc.creatures.remove(&cid);
-              sc
-            });
-        }
-        let all_folders: Vec<FolderPath> =
-          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
-        for path in all_folders {
-          let node = self.campaign.get_mut(&path)?;
-          node.creatures.remove(&cid);
-        }
-        self.current_combat = {
-          if let Ok(combat) = self.get_combat() { combat.remove_from_combat(cid)? } else { None }
-        };
-
-        self.creatures
-          .remove(&cid)
-          .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
       }
       AddCreatureToCombat(cid, init) => {
         let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;

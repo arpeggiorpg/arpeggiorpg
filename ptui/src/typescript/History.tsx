@@ -97,8 +97,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Created a creature {log.creature.name}</Flexbox>;
     case "EditCreature":
       return <Flexbox>Edited a creature {log.creature.name}</Flexbox>;
-    case "DeleteCreature":
-      return <Flexbox>Deleted a creature</Flexbox>;
     case "StartCombat":
       return <Flexbox>Started combat</Flexbox>;
     case "AddCreatureToCombat":
