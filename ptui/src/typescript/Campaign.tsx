@@ -418,20 +418,30 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   }
 }
 
+
+function getAllFolders(path: T.FolderPath, campaign: T.Folder): Array<T.FolderPath> {
+  return LD.flatMap(campaign.children.keySeq().toArray(),
+    name => {
+      const subfolder = path.concat(name);
+      return [subfolder].concat(getAllFolders(path.concat(name), campaign.children.get(name)!));
+    });
+}
+
 interface FuseResult { item: number; matches: Array<{ indices: Array<[number, number]> }>; }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
-interface SelectFolderState { results: Array<FuseResult>; }
-const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
-  ptui => ({ campaign: ptui.app.current_game.campaign }),
+interface SelectFolderState { results: Array<FuseResult>; current_selection: number; }
+const SelectFolder = Comp.connect<SelectFolderProps, { all_folders: Array<T.FolderPath> }>(
+  ptui => ({ all_folders: getAllFolders([], ptui.app.current_game.campaign) }),
 )(class SelectFolderComp
   extends
-  React.Component<SelectFolderProps & { campaign: T.Folder } & M.DispatchProps, SelectFolderState> {
+  React.Component<SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps,
+  SelectFolderState> {
 
   input: any;
-  constructor(props: SelectFolderProps & { campaign: T.Folder } & M.DispatchProps) {
+  constructor(props: SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps) {
     super(props);
-    this.state = { results: [] };
+    this.state = { results: [], current_selection: 0 };
   }
 
   componentDidMount() {
@@ -439,8 +449,7 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
   }
 
   render(): JSX.Element | null {
-    const { campaign } = this.props;
-    const all_folders = getAllFolders([], campaign);
+    const { all_folders } = this.props;
     const fuse = new Fuse(all_folders.map(M.folderPathToString),
       {
         shouldSort: true,
@@ -449,12 +458,15 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
       });
     return <div>
       <Input label="Folder"
-        onChange={(_, d) => this.setState({ results: fuse.search<FuseResult>(d.value) })}
-        ref={(e: any) => this.input = e} />
+        onChange={(_, d) => this.search(fuse, d.value)}
+        ref={(e: any) => this.input = e}
+        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => this.handleKey(e)}
+      />
       <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
-        {this.state.results.map(result => {
+        {this.state.results.map((result, i) => {
           const path = all_folders[result.item];
-          return <Menu.Item key={M.folderPathToString(path)}>
+          return <Menu.Item active={i === this.state.current_selection}
+            key={M.folderPathToString(path)}>
             <span dangerouslySetInnerHTML={{
               __html: this.highlight(M.folderPathToString(path), result.matches),
             }} />
@@ -463,13 +475,28 @@ const SelectFolder = Comp.connect<SelectFolderProps, { campaign: T.Folder }>(
 
       </Menu>
     </div>;
+  }
 
-    function getAllFolders(path: T.FolderPath, campaign: T.Folder): Array<T.FolderPath> {
-      return LD.flatMap(campaign.children.keySeq().toArray(),
-        name => {
-          const subfolder = path.concat(name);
-          return [subfolder].concat(getAllFolders(path.concat(name), campaign.children.get(name)!));
-        });
+  search(fuse: Fuse, term: string) {
+    const results = fuse.search<FuseResult>(term);
+    this.setState({ results });
+    if (this.state.current_selection >= results.length) {
+      this.setState({ current_selection: Math.max(results.length - 1, 0) });
+    }
+  }
+
+  handleKey(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.keyCode === 38) {
+      this.setState({ current_selection: Math.max(this.state.current_selection - 1, 0) });
+    } else if (event.keyCode === 40) {
+      this.setState({
+        current_selection: Math.min(this.state.current_selection + 1, this.state.results.length - 1),
+      });
+    } else if (event.keyCode === 13) {
+      if (this.state.results.length > this.state.current_selection) {
+        this.props.onSelect(
+          this.props.all_folders[this.state.results[this.state.current_selection].item]);
+      }
     }
   }
 
