@@ -319,6 +319,8 @@ pub enum GameCommand {
 
   /// Move some object from one folder to another.
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  /// Copy an object to a folder. It's okay to copy it to the same folder.
+  CopyFolderItem { source: FolderPath, item_id: FolderItemID, dest: FolderPath },
   DeleteFolderItem(FolderPath, FolderItemID),
 
   /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
@@ -462,6 +464,12 @@ pub enum GameLog {
   RenameFolder(FolderPath, String),
   DeleteFolder(FolderPath),
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  CopyFolderItem {
+    source: FolderPath,
+    item_id: FolderItemID,
+    dest: FolderPath,
+    new_item_id: FolderItemID,
+  },
   DeleteFolderItem(FolderPath, FolderItemID),
 
   CreateItem(FolderPath, Item),

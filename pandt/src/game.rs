@@ -46,6 +46,17 @@ impl Game {
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
       DeleteFolder(path) => self.change_with(GameLog::DeleteFolder(path)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
+      CopyFolderItem { source, item_id, dest } => {
+        let new_item_id = match &item_id {
+          &FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::new()),
+          &FolderItemID::NoteID(_) => item_id.clone(),
+          &FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::new()),
+          &FolderItemID::MapID(_) => FolderItemID::MapID(MapID::new()),
+          &FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::new()),
+          &FolderItemID::SubfolderID(_) => item_id.clone(),
+        };
+        self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
+      }
       DeleteFolderItem(path, item_id) => self.change_with(GameLog::DeleteFolderItem(path, item_id)),
 
       CreateItem(path, name) => {
@@ -315,9 +326,42 @@ impl Game {
           }
         }
       }
+      CopyFolderItem { ref source, ref item_id, ref dest, ref new_item_id } => {
+        match (item_id, new_item_id) {
+          (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
+            let mut new_creature = self.get_creature(id)?.creature.clone();
+            new_creature.id = new_id;
+            self.apply_log_mut(&CreateCreature(dest.clone(), new_creature))?;
+          }
+          (&FolderItemID::CreatureID(id), _) => panic!("Mismatched folder item ID!"),
+          (&FolderItemID::SceneID(id), &FolderItemID::SceneID(new_id)) => {
+            let mut new_scene = self.get_scene(id)?.clone();
+            new_scene.id = new_id;
+            self.apply_log_mut(&CreateScene(dest.clone(), new_scene))?;
+          }
+          (&FolderItemID::SceneID(id), _) => panic!("Mismatched folder item ID!"),
+          (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
+            let mut new_item =
+              self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id.clone()))?.clone();
+            new_item.id = new_id;
+            self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
+          }
+          (&FolderItemID::ItemID(id), _) => panic!("Mismatched folder item ID!"),
+          (&FolderItemID::MapID(id), &FolderItemID::MapID(new_id)) => {
+            let mut new_map = self.get_map(id)?.clone();
+            new_map.id = new_id;
+            self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
+          }
+          (&FolderItemID::MapID(id), _) => panic!("Mismatched folder item ID!"),
+          (&FolderItemID::SubfolderID(ref name), _) => unimplemented!(),
+          (&FolderItemID::NoteID(ref name), _) => panic!("Can't clone notes... yet?"),
+        }
+      }
       DeleteFolderItem(ref path, ref item_id) => {
         // this is pretty silly, not even using path...
         // (though we will definitely need it for deleting notes)
+        // because we're being paranoid, we're walking ALL folder paths and checking if the item ID
+        // is found in ANY of them and cleaning it up.
         let all_folders: Vec<FolderPath> =
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         match *item_id {
@@ -337,6 +381,7 @@ impl Game {
                 })
                 .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
             }
+            // Also delete the item from all scene inventory slots
             let sids: Vec<SceneID> = self.scenes.keys().cloned().collect();
             for sid in sids {
               self
@@ -347,6 +392,7 @@ impl Game {
                 })
                 .ok_or_else(|| GameErrorEnum::SceneNotFound(sid))?;
             }
+            // Also delete the item from the core item DB!
             self.items.remove(&iid);
           }
           _ => unimplemented!(),
