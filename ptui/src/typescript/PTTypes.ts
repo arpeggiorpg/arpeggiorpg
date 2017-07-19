@@ -148,7 +148,6 @@ export type GameCommand =
 // EditItem(Item),
 // CreateNote(FolderPath, Note),
 // EditNote(FolderPath, String, Note),
-// DeleteNote(FolderPath, String),
 // CreateScene(FolderPath, SceneCreation),
 // EditScene(Scene),
 // DeleteScene(SceneID),
@@ -679,9 +678,6 @@ export const decodeGameLog: Decoder<GameLog> =
     EditNote: JD.map(
       ([path, name, newNote]): GameLog => ({ t: "EditNote", path, name, newNote }),
       JD.tuple(decodeFolderPath, JD.string(), decodeNote)),
-    DeleteNote: JD.map(
-      ([path, name]): GameLog => ({ t: "DeleteNote", path, name }),
-      JD.tuple(decodeFolderPath, JD.string())),
     TransferItem: JD.object(
       ["from", decodeInventoryOwner],
       ["to", decodeInventoryOwner],

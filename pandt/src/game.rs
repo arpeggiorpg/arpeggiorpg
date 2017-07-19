@@ -67,7 +67,6 @@ impl Game {
 
       CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
       EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
-      DeleteNote(path, note_name) => self.change_with(GameLog::DeleteNote(path, note_name)),
 
       // ** Inventory Management **
       TransferItem { from, to, item_id, count } => {
@@ -352,8 +351,8 @@ impl Game {
             self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
           }
           (&FolderItemID::MapID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::SubfolderID(ref name), _) => unimplemented!(),
-          (&FolderItemID::NoteID(ref name), _) => panic!("Can't clone notes... yet?"),
+          (&FolderItemID::SubfolderID(_), _) => unimplemented!(),
+          (&FolderItemID::NoteID(_), _) => panic!("Can't clone notes... yet?"),
         }
       }
       DeleteFolderItem(ref path, ref item_id) => {
@@ -363,8 +362,7 @@ impl Game {
           self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
         match *item_id {
           FolderItemID::NoteID(ref name) => {
-            let mut node = self.campaign.get_mut(path)?;
-            node.notes.remove(name);
+            self.campaign.get_mut(path)?.notes.remove(name);
           }
           FolderItemID::ItemID(iid) => {
             for folder in all_folders {
@@ -452,9 +450,6 @@ impl Game {
           .notes
           .mutate(name, move |_| new_note.clone())
           .ok_or_else(|| GameErrorEnum::NoteNotFound(path.clone(), name.to_string()))?;
-      }
-      DeleteNote(ref path, ref note_name) => {
-        self.campaign.get_mut(path)?.notes.remove(note_name);
       }
 
       // ** Inventory Management **

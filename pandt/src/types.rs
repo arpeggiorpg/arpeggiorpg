@@ -332,8 +332,6 @@ pub enum GameCommand {
   CreateNote(FolderPath, Note),
   /// Rename a Note inside of a Folder.
   EditNote(FolderPath, String, Note),
-  /// Delete a Note from a Folder.
-  DeleteNote(FolderPath, String),
 
   // ** Inventory management **
   TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
@@ -475,7 +473,6 @@ pub enum GameLog {
 
   CreateNote(FolderPath, Note),
   EditNote(FolderPath, String, Note),
-  DeleteNote(FolderPath, String),
 
   // ** Inventory management **
   TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },

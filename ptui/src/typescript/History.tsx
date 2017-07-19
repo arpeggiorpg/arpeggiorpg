@@ -62,8 +62,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Created note {log.note.name}</Flexbox>;
     case "EditNote":
       return <Flexbox>Edited note {log.name}</Flexbox>;
-    case "DeleteNote":
-      return <Flexbox>Deleted note {log.name}</Flexbox>;
     case "TransferItem":
       return <Flexbox>Transferred an item</Flexbox>;
     case "RemoveItem":
