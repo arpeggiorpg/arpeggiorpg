@@ -348,8 +348,6 @@ pub enum GameCommand {
   // EditSceneDetails(SceneID, SceneCreation)
   // AddSceneChallenge(SceneID, String, AttributeCheck)
   // RemoveSceneChallenge(SceneID, String)
-  /// Delete a scene.
-  DeleteScene(SceneID),
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -478,7 +476,6 @@ pub enum GameLog {
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
-  DeleteScene(SceneID),
   CreateMap(FolderPath, Map),
 
   EditMap(Map),

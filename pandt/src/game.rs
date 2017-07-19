@@ -85,7 +85,6 @@ impl Game {
         self.change_with(GameLog::CreateScene(path, scene))
       }
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
-      DeleteScene(name) => self.change_with(GameLog::DeleteScene(name)),
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
@@ -424,6 +423,22 @@ impl Game {
               .remove(&cid)
               .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
           }
+          FolderItemID::SceneID(sid) => {
+            // TODO: Figure out how to deal with players referencing this scene.
+            // - disallow deleting if in combat
+            if let Ok(combat) = self.get_combat() {
+              if combat.scene.id == sid {
+                bail!(GameErrorEnum::SceneInUse(sid));
+              }
+            }
+            let all_folders: Vec<FolderPath> =
+              self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+            for path in all_folders {
+              let node = self.campaign.get_mut(&path)?;
+              node.scenes.remove(&sid);
+            }
+            self.scenes.remove(&sid);
+          }
           FolderItemID::MapID(id) => {
             for path in all_folders {
               self.campaign.get_mut(&path)?.maps.remove(&id);
@@ -492,22 +507,6 @@ impl Game {
           .scenes
           .mutate(&scene.id, move |_| scene.clone())
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene.id))?;
-      }
-      DeleteScene(ref sid) => {
-        // TODO: Figure out how to deal with players referencing this scene.
-        // - disallow deleting if in combat
-        if let Ok(combat) = self.get_combat() {
-          if combat.scene.id == *sid {
-            bail!(GameErrorEnum::SceneInUse(*sid));
-          }
-        }
-        let all_folders: Vec<FolderPath> =
-          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
-        for path in all_folders {
-          let node = self.campaign.get_mut(&path)?;
-          node.scenes.remove(sid);
-        }
-        self.scenes.remove(sid);
       }
       CreateMap(ref path, ref map) => {
         self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;
