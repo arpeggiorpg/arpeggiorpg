@@ -358,9 +358,6 @@ pub enum GameCommand {
   EditMapDetails { id: MapID, details: MapCreation },
   EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
 
-  /// Delete a map.
-  DeleteMap(MapID),
-
   // ** Combat management **
   /// Start a combat with the specified creatures.
   StartCombat(SceneID, Vec<CreatureID>),
@@ -488,7 +485,6 @@ pub enum GameLog {
   EditMapDetails { id: MapID, details: MapCreation },
   EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
 
-  DeleteMap(MapID),
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
   CreatureLog(CreatureID, CreatureLog),

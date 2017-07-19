@@ -111,7 +111,6 @@ impl Game {
                            specials: specials.clone(),
                          })
       }
-      DeleteMap(mid) => self.change_with(GameLog::DeleteMap(mid)),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -425,6 +424,17 @@ impl Game {
               .remove(&cid)
               .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
           }
+          FolderItemID::MapID(id) => {
+            for path in all_folders {
+              self.campaign.get_mut(&path)?.maps.remove(&id);
+            }
+            let scenes_using_this_map: Vec<SceneID> =
+              self.scenes.values().filter(|s| s.map == id).map(|s| s.id).collect();
+            if !scenes_using_this_map.is_empty() {
+              bail!(GameErrorEnum::MapInUse(id, scenes_using_this_map));
+            }
+            self.maps.remove(&id).ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
+          }
           _ => unimplemented!(),
         }
       }
@@ -530,23 +540,6 @@ impl Game {
             m
           })
           .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
-      }
-      DeleteMap(ref mid) => {
-        let scenes_using_this_map: Vec<SceneID> = self
-          .scenes
-          .values()
-          .filter_map(|s| if s.map == *mid { Some(s.id) } else { None })
-          .collect();
-        if scenes_using_this_map.is_empty() {
-          bail!(GameErrorEnum::MapInUse(*mid, scenes_using_this_map));
-        }
-        let all_folders: Vec<FolderPath> =
-          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
-        for path in all_folders {
-          let node = self.campaign.get_mut(&path)?;
-          node.maps.remove(mid);
-        }
-        self.maps.remove(mid).ok_or_else(|| GameErrorEnum::MapNotFound(*mid))?;
       }
       CreateCreature(ref path, ref rc) => {
         let c = rc.clone();
