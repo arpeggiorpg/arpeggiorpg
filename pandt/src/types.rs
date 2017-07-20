@@ -412,7 +412,6 @@ pub enum GameCommand {
   /// The scene name can be None (null) to not show any scene to the player.
   SetPlayerScene(PlayerID, Option<SceneID>),
 
-
   /// Roll back to a specific snapshot + log index
   Rollback(usize, u8),
 }
