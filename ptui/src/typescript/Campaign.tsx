@@ -36,31 +36,17 @@ class MultiItemSelectorComp
   }
   render(): JSX.Element {
     const { ptui } = this.props;
-    const self = this;
-    function on_check(checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) {
-      switch (folder_item.t) {
-        case "ItemID":
-          if (self.props.require_selected.includes(folder_item.id)) {
-            return;
-          }
-          const new_selected = checked
-            ? self.state.selections.add(folder_item.id)
-            : self.state.selections.remove(folder_item.id);
-          self.setState({ selections: new_selected });
-          return;
-        default:
-          console.log("Got a non-item selection in a item-only campaign selector:",
-            folder_item);
-      }
-    }
-    const selecting: SelectableProps = {
-      item_type: 'Item', allow_multiple: true, on_select_object: on_check,
-      is_selected: (_, item_id) =>
-        item_id.t === "ItemID" && this.state.selections.includes(item_id.id),
-    };
+    const items = collectAllItems(ptui, [], ptui.app.current_game.campaign);
+    const display = ([path, item]: [T.FolderPath, T.Item]) =>
+      `${M.folderPathToString(path)}/${item.name}`;
     return <div>
-      <FolderTree name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
-        selecting={selecting} />
+      {ptui.getItems(this.state.selections.toArray()).map(
+        item => <Label key={item.id}>{item.name}</Label>)}
+      <SearchSelect values={items}
+        onSelect={([_, item]: [T.FolderPath, T.Item]) =>
+          this.setState({ selections: this.state.selections.add(item.id) })}
+        display={display}
+      />
       <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
@@ -399,7 +385,7 @@ class CopyFolderItem extends React.Component<CopyFolderItemProps, { dest: T.Fold
     return <div>
       <CV.Toggler
         a={toggle => <span onClick={toggle} style={{ cursor: 'pointer' }}>
-          <Label><Icon name='edit' />Folder</Label>{M.folderPathToString(this.state.dest!)}
+          <Label><Icon name='edit' />Destination</Label>{M.folderPathToString(this.state.dest!)}
         </span>}
         b={toggle => <SelectFolder onSelect={dest => { this.setState({ dest }); toggle(); }} />}
       />
@@ -430,34 +416,30 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   }
 }
 
-function getAllFolders(path: T.FolderPath, campaign: T.Folder): Array<T.FolderPath> {
-  return LD.flatMap(campaign.children.keySeq().toArray(),
-    name => {
-      const subfolder = path.concat(name);
-      return [subfolder].concat(getAllFolders(path.concat(name), campaign.children.get(name)!));
-    });
-}
-
 interface FuseResult { item: number; matches: Array<{ indices: Array<[number, number]> }>; }
 
-interface SearchSelectProps { values: Array<string>; onSelect: (value: string) => void; }
+interface SearchSelectProps<T> {
+  values: Array<T>;
+  onSelect: (value: T) => void;
+  display: (t: T) => string;
+}
 interface SearchSelectState { results: Array<FuseResult>; current_selection: number; }
 
-class SearchSelect extends React.Component<SearchSelectProps, SearchSelectState> {
-  constructor(props: SearchSelectProps) {
+class SearchSelect<T> extends React.Component<SearchSelectProps<T>, SearchSelectState> {
+  constructor(props: SearchSelectProps<T>) {
     super(props);
     this.state = { results: [], current_selection: 0 };
   }
   render(): JSX.Element | null {
     const { values } = this.props;
-    const fuse = new Fuse(values,
+    const fuse = new Fuse(values.map(this.props.display),
       {
         shouldSort: true,
         includeMatches: true,
         minMatchCharLength: 2,
       });
     return <div>
-      <Input label="Folder"
+      <Input label="Search"
         onChange={(_, d) => this.search(fuse, d.value)}
         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => this.handleKey(e)}
       />
@@ -466,9 +448,11 @@ class SearchSelect extends React.Component<SearchSelectProps, SearchSelectState>
           const matched_value = values[result.item];
           return <Menu.Item active={i === this.state.current_selection}
             onClick={() => this.props.onSelect(matched_value)}
-            key={matched_value}>
+            key={this.props.display(matched_value)}>
             <span
-              dangerouslySetInnerHTML={{ __html: this.highlight(matched_value, result.matches) }} />
+              dangerouslySetInnerHTML={{
+                __html: this.highlight(this.props.display(matched_value), result.matches),
+              }} />
           </Menu.Item>;
         })}
 
@@ -519,9 +503,28 @@ class SearchSelect extends React.Component<SearchSelectProps, SearchSelectState>
   }
 }
 
+function collectAllFolders(path: T.FolderPath, folder: T.Folder): Array<T.FolderPath> {
+  return LD.flatMap(folder.children.keySeq().toArray(),
+    name => {
+      const subfolder = path.concat(name);
+      return [subfolder].concat(collectAllFolders(path.concat(name), folder.children.get(name)!));
+    });
+}
+
+function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+  Array<[T.FolderPath, T.Item]> {
+  const items = ptui.getItems(folder.data.items);
+  const this_folder_results = items.map((it): [T.FolderPath, T.Item] => [path, it]);
+  return LD.concat(
+    this_folder_results,
+    LD.flatMap(
+      folder.children.entrySeq().toArray(),
+      ([subname, subfolder]) => collectAllItems(ptui, path.concat(subname), subfolder)));
+}
+
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
 const SelectFolder = Comp.connect<SelectFolderProps, { all_folders: Array<T.FolderPath> }>(
-  ptui => ({ all_folders: getAllFolders([], ptui.app.current_game.campaign) }),
+  ptui => ({ all_folders: collectAllFolders([], ptui.app.current_game.campaign) }),
 )(class SelectFolderComp
   extends
   React.Component<SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps,
@@ -533,8 +536,9 @@ const SelectFolder = Comp.connect<SelectFolderProps, { all_folders: Array<T.Fold
   }
 
   render() {
-    return <SearchSelect values={this.props.all_folders.map(M.folderPathToString)}
-      onSelect={entry => this.props.onSelect(T.decodeFolderPath.decodeAny(entry))} />;
+    return <SearchSelect values={this.props.all_folders}
+      onSelect={(entry: T.FolderPath) => this.props.onSelect(entry)}
+      display={M.folderPathToString} />;
   }
 
 });
