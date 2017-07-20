@@ -51,7 +51,8 @@ impl Dice {
     Dice::Plus(Box::new(self.clone()), Box::new(d))
   }
 
-  /// Roll the dice, returning a vector containing all of the individual die rolls, and then the final result.
+  /// Roll the dice, returning a vector containing all of the individual die rolls, and then the
+  /// final result.
   pub fn roll(&self) -> (Vec<i16>, i32) {
     match *self {
       Dice::Expr { num, size } => {
@@ -196,8 +197,8 @@ impl ::std::str::FromStr for MapID {
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
   pub fn new(s: &str) -> Result<Self, GameError> {
-    let sw = StringWrapper::from_str_safe(s)
-      .ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
+    let sw =
+      StringWrapper::from_str_safe(s).ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
     Ok(AbilityID(sw))
   }
   pub fn to_string(&self) -> String {
@@ -219,8 +220,8 @@ pub fn abid(s: &str) -> AbilityID {
 
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
-         Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
+         Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
@@ -274,18 +275,18 @@ impl SkillLevel {
 
   pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
     100 -
-    match difficulty_level.to_ord() - self.to_ord() {
-      -4 => 100,
-      -3 => 99,
-      -2 => 95,
-      -1 => 85,
-      0 => 75,
-      1 => 50,
-      2 => 10,
-      3 => 1,
-      4 => 0,
-      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
-    }
+      match difficulty_level.to_ord() - self.to_ord() {
+        -4 => 100,
+        -3 => 99,
+        -2 => 95,
+        -1 => 85,
+        0 => 75,
+        1 => 50,
+        2 => 10,
+        3 => 1,
+        4 => 0,
+        diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
+      }
   }
 }
 
@@ -367,9 +368,11 @@ pub enum GameCommand {
   ChangeCreatureInitiative(CreatureID, i16),
   /// Reroll initiative for all creatures in combat, and sort the combat list
   RerollCombatInitiative,
-  /// Move to the next creature in the initiative list. This does *not* run any end-of-turn or start-turn events.
+  /// Move to the next creature in the initiative list. This does *not* run any end-of-turn or
+  /// start-turn events.
   ForceNextTurn,
-  /// Move to the previous creature in the initiative list. This does *not* run any end-of-turn or start-turn events.
+  /// Move to the previous creature in the initiative list. This does *not* run any end-of-turn or
+  /// start-turn events.
   ForcePrevTurn,
 
   // ** Combat **
@@ -409,8 +412,9 @@ pub enum GameCommand {
   /// The scene name can be None (null) to not show any scene to the player.
   SetPlayerScene(PlayerID, Option<SceneID>),
 
+
   /// Roll back to a specific snapshot + log index
-  Rollback(usize, usize),
+  Rollback(usize, u8),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
@@ -568,7 +572,8 @@ error_chain! {
     }
     CreatureLacksAbility(cid: CreatureID, abid: AbilityID) {
       description("A creature cannot use the supplied ability.")
-      display("The creature with ID {} does not have the ability {}", cid.to_string(), abid.to_string())
+      display("The creature with ID {} does not have the ability {}",
+              cid.to_string(), abid.to_string())
     }
     CreatureNotFound(id: String) {
       description("A creature with the supplied ID could not be found.")
@@ -591,7 +596,8 @@ error_chain! {
       display("Point {:?} is out of range.", pt)
     }
     BuggyProgram(msg: String) {
-      description("There was an internal error that is caused by a broken assumption, indicating that this software is garbage.")
+      description("There was an internal error that is caused by a broken assumption, \
+                  indicating that this software is garbage.")
       display("There's a bug in the program: {}", msg)
     }
     NotInCombat {
@@ -739,8 +745,8 @@ pub enum Volume {
 // - twin attack: attack two targets (with a bow or something)
 // - sneak attack: deal extra damage when there is an ally adjacent to the target
 // - Fireball: deal damage to all enemies in an area around a point
-// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area. (this is opportunity attacks).
-
+// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area.
+//   (this is opportunity attacks).
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Effect {
@@ -1092,7 +1098,10 @@ impl<'a> ser::Serialize for RPIGame<'a> {
 
     str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
-    str.serialize_field("creatures", &game.creatures().map_err(|e| S::Error::custom("Oh no! Couldn't serialize creatures!?"))?)?;
+    str.serialize_field(
+      "creatures",
+      &game.creatures().map_err(|e| S::Error::custom("Oh no! Couldn't serialize creatures!?"))?,
+    )?;
     str.serialize_field("maps", &game.maps)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
@@ -1251,10 +1260,12 @@ pub mod test {
     let shoot = t_shoot();
     let heal = t_heal();
     let fireball = t_fireball();
-    HashMap::from_iter(vec![(abid("punch"), punch),
-                            (abid("shoot"), shoot),
-                            (abid("heal"), heal),
-                            (abid("fireball"), fireball)])
+    HashMap::from_iter(vec![
+      (abid("punch"), punch),
+      (abid("shoot"), shoot),
+      (abid("heal"), heal),
+      (abid("fireball"), fireball),
+    ])
   }
 
   #[test]
