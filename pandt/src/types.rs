@@ -413,7 +413,7 @@ pub enum GameCommand {
   SetPlayerScene(PlayerID, Option<SceneID>),
 
   /// Roll back to a specific snapshot + log index
-  Rollback(usize, u8),
+  Rollback(usize, usize),
 }
 
 /// A representation of state change in a Creature. All change to a Creature happens via these
