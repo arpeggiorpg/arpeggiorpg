@@ -22,12 +22,13 @@ export class NumericInput extends React.Component<CoolNumericProps> { }
 interface CoolSubmitProps {
   onClick: (data: { [index: string]: any }) => void;
   children: React.ReactNode;
+  disabled?: boolean;
 }
 export class Submit extends React.Component<CoolSubmitProps> { }
 
-export class CoolForm extends React.Component<{},
-  { data: { [index: string]: { type: string, value: any, extra: any } } }
-  > {
+interface CoolFormState { data: { [index: string]: { type: string, value: any, extra: any } }; }
+
+export class CoolForm extends React.Component<{}, CoolFormState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
     const data: { [index: string]: { type: string, value: any, extra: any } } = {};
@@ -101,7 +102,7 @@ export class CoolForm extends React.Component<{},
           {error ? <Message error={true}>{error}</Message> : null}
         </Form.Field>;
       },
-      submit => <Button disabled={!this.validate()}
+      submit => <Button disabled={submit.props.disabled || !this.validate()}
         onClick={() => this.submit(submit.props.onClick)}>
         {submit.props.children}
       </Button>)}

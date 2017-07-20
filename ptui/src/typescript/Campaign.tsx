@@ -3,7 +3,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
 
-import { Button, Checkbox, Dropdown, Input, List, Menu } from 'semantic-ui-react';
+import { Button, Checkbox, Dropdown, Icon, Input, Label, List, Menu } from 'semantic-ui-react';
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -390,16 +390,28 @@ function folder_object_to_item_id(o: FolderObject): T.FolderItemID {
 interface CopyFolderItemProps {
   source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; dispatch: M.Dispatch;
 }
-function CopyFolderItem(props: CopyFolderItemProps) {
-  const { source, item_id, onDone, dispatch } = props;
-  return <CF.CoolForm>
-    <CF.NumericInput label="Copies" name="copies" min={1} default={1} />
-    <CF.Submit onClick={copy}>Copy!</CF.Submit>
-  </CF.CoolForm>;
-
-  function copy({ copies }: { copies: number }) {
+class CopyFolderItem extends React.Component<CopyFolderItemProps, { dest: T.FolderPath }> {
+  constructor(props: CopyFolderItemProps) {
+    super(props);
+    this.state = { dest: props.source };
+  }
+  render() {
+    return <div>
+      <CV.Toggler
+        a={toggle => <span onClick={toggle} style={{ cursor: 'pointer' }}>
+          <Label><Icon name='edit' />Folder</Label>{M.folderPathToString(this.state.dest!)}
+        </span>}
+        b={toggle => <SelectFolder onSelect={dest => { this.setState({ dest }); toggle(); }} />}
+      />
+      <CF.CoolForm>
+        <CF.NumericInput label="Copies" name="copies" min={1} default={1} />
+        <CF.Submit onClick={d => this.copy(d as { copies: number })}>Copy!</CF.Submit>
+      </CF.CoolForm></div>;
+  }
+  copy({ copies }: { copies: number }) {
+    const { source, item_id, onDone, dispatch } = this.props;
     for (const _ of LD.range(copies)) {
-      dispatch(M.sendCommand({ t: "CopyFolderItem", source, item_id, dest: source }));
+      dispatch(M.sendCommand({ t: "CopyFolderItem", source, item_id, dest: this.state.dest }));
     }
     onDone();
   }
