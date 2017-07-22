@@ -117,7 +117,7 @@ export type GameCommand =
   | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "CreateScene"; spec: SceneCreation }
+  | { t: "CreateScene"; path: FolderPath; spec: SceneCreation }
   | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
   | {
     t: "SetSceneCreatureVisibility";
@@ -963,7 +963,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
         { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
     case "CreateScene":
-      return { CreateScene: encodeSceneCreation(cmd.spec) };
+      return { CreateScene: [encodeFolderPath(cmd.path),encodeSceneCreation(cmd.spec)] };
     case "EditSceneDetails":
       return {
         EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },
