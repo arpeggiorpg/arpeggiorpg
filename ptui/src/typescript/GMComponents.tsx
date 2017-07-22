@@ -66,7 +66,10 @@ class EditScene
   }
   save() {
     this.props.dispatch(
-      M.sendCommand({ t: "EditScene", scene: { ...this.props.scene, ...this.state } }));
+      M.sendCommand({
+        t: "EditSceneDetails", scene_id: this.props.scene.id,
+        details: { ...this.state, map: this.props.scene.map },
+      }));
     this.props.onDone();
   }
 }

@@ -118,6 +118,7 @@ export type GameCommand =
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
+  | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -175,6 +176,12 @@ export type GameCommand =
 // Rollback(usize, usize),
 
 
+export interface SceneCreation {
+  name: string;
+  map: MapID;
+  background_image_url: string;
+}
+
 export interface CreatureCreation {
   name: string;
   class_: string;
@@ -220,6 +227,7 @@ export type GameLog =
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
+  | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -541,6 +549,13 @@ export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
     (reliable, attr, target) => ({ reliable, attr, target }));
 
+export const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
+  ["name", JD.string()],
+  ["map", JD.string()],
+  ["background_image_url", JD.string()],
+  (name, map, background_image_url) => ({ name, map, background_image_url })
+);
+
 export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
@@ -690,6 +705,9 @@ export const decodeGameLog: Decoder<GameLog> =
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
     EditScene: JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
+    EditSceneDetails: JD.object(
+      ["scene_id", JD.string()], ["details", decodeSceneCreation],
+      (scene_id, details): GameLog => ({ t: "EditSceneDetails", scene_id, details })),
     CreateMap: JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),
@@ -907,6 +925,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "EditScene":
       return { EditScene: encodeScene(cmd.scene) };
+    case "EditSceneDetails":
+      return {
+        EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },
+      };
     case "CreateMap":
       return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
     case "EditMap":
@@ -982,6 +1004,14 @@ function encodeAABB(box: AABB): object {
 
 function encodeItem(item: Item): object {
   return { id: item.id, name: item.name };
+}
+
+function encodeSceneCreation(sc: SceneCreation): object {
+  return {
+    name: sc.name,
+    map: sc.map,
+    background_image_url: sc.background_image_url,
+  };
 }
 
 function encodeScene(scene: Scene): object {
