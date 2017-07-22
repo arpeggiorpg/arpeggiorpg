@@ -84,6 +84,9 @@ impl Game {
         self.change_with(GameLog::CreateScene(path, scene))
       }
       EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
+      EditSceneDetails { scene_id, details } => {
+        self.change_with(GameLog::EditSceneDetails { scene_id, details })
+      }
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
@@ -103,11 +106,9 @@ impl Game {
         self.change_with(GameLog::EditMapDetails { id, details: details.clone() })
       }
       EditMapTerrain { id, ref terrain, ref specials } => {
-        self.change_with(GameLog::EditMapTerrain {
-                           id,
-                           terrain: terrain.clone(),
-                           specials: specials.clone(),
-                         })
+        self.change_with(
+          GameLog::EditMapTerrain { id, terrain: terrain.clone(), specials: specials.clone() },
+        )
       }
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
@@ -133,7 +134,7 @@ impl Game {
   }
 
   fn start_combat(&self, scene_id: SceneID, cids: Vec<CreatureID>)
-                  -> Result<ChangedGame, GameError> {
+    -> Result<ChangedGame, GameError> {
     let cids_with_inits = Combat::roll_initiative(self, cids)?;
     self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
   }
@@ -145,31 +146,32 @@ impl Game {
   }
 
   fn attribute_check(&self, cid: CreatureID, check: &AttributeCheck)
-                     -> Result<ChangedGame, GameError> {
+    -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(cid)?;
     let (rolled, success) = creature.creature.attribute_check(check)?;
     self.change_with(GameLog::AttributeCheckResult(cid, check.clone(), rolled, success))
   }
 
   pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
-                       -> Result<(ChangedGame, Distance), GameError> {
+    -> Result<(ChangedGame, Distance), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-  pub fn path_creature_distance(&self, scene_id: SceneID, cid: CreatureID, pt: Point3,
-                                max_distance: Distance)
-                                -> Result<(ChangedGame, Distance), GameError> {
+  pub fn path_creature_distance(&self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: Distance)
+    -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_id)?;
     let terrain = self.get_map(scene.map)?;
     let creature = self.get_creature(cid)?;
     let (pts, distance) = self
       .tile_system
-      .find_path(scene.get_pos(cid)?,
-                 max_distance,
-                 terrain,
-                 Volume::AABB(creature.creature.size),
-                 pt)
+      .find_path(
+        scene.get_pos(cid)?,
+        max_distance,
+        terrain,
+        Volume::AABB(creature.creature.size),
+        pt,
+      )
       .ok_or(GameErrorEnum::NoPathFound)?;
     debug_assert!(distance <= max_distance);
 
@@ -187,7 +189,7 @@ impl Game {
   }
 
   fn link_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
-                      -> Result<(), GameError> {
+    -> Result<(), GameError> {
     let node = self.campaign.get_mut(path)?;
     match *item_id {
       FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
@@ -203,10 +205,9 @@ impl Game {
   }
 
   fn unlink_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
-                        -> Result<(), GameError> {
-    fn remove_set<T: ::std::hash::Hash + Eq>(path: &FolderPath, item: &FolderItemID,
-                                             s: &mut ::std::collections::HashSet<T>, key: &T)
-                                             -> Result<(), GameError> {
+    -> Result<(), GameError> {
+    fn remove_set<T: ::std::hash::Hash + Eq>(path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T)
+      -> Result<(), GameError> {
       if !s.remove(key) {
         bail!(GameErrorEnum::FolderItemNotFound(path.clone(), item.clone()))
       }
@@ -233,24 +234,21 @@ impl Game {
   }
 
   fn mutate_owner_inventory<F>(&mut self, owner_id: InventoryOwner, f: F) -> Result<(), GameError>
-    where F: FnOnce(&mut Inventory) -> ()
+  where
+    F: FnOnce(&mut Inventory) -> (),
   {
     let opt = match owner_id {
       InventoryOwner::Scene(sid) => {
-        self
-          .scenes
-          .mutate(&sid, |mut s| {
-            f(&mut s.inventory);
-            return s;
-          })
+        self.scenes.mutate(&sid, |mut s| {
+          f(&mut s.inventory);
+          return s;
+        })
       }
       InventoryOwner::Creature(cid) => {
-        self
-          .creatures
-          .mutate(&cid, |mut c| {
-            f(&mut c.inventory);
-            return c;
-          })
+        self.creatures.mutate(&cid, |mut c| {
+          f(&mut c.inventory);
+          return c;
+        })
       }
     };
     opt.ok_or_else(|| owner_id.not_found_error())
@@ -265,14 +263,14 @@ impl Game {
 
   /// Remove some number of items from an inventory, returning the actual number removed.
   fn remove_inventory(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
-                      -> Result<u64, GameError> {
+    -> Result<u64, GameError> {
     let actually_has = *self.get_owner_inventory(owner)?.get(&item_id).unwrap_or(&0);
     self.set_item_count(owner, item_id, actually_has - count)?;
     return Ok(cmp::min(actually_has, count));
   }
 
   fn set_item_count(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
-                    -> Result<(), GameError> {
+    -> Result<(), GameError> {
     self.mutate_owner_inventory(owner, move |mut inventory: &mut Inventory| if count <= 0 {
       inventory.remove(&item_id).unwrap_or(0);
     } else {
@@ -391,12 +389,10 @@ impl Game {
               .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
               .collect();
             for sid in scenes_with_this_creature {
-              self
-                .scenes
-                .mutate(&sid, |mut sc| {
-                  sc.creatures.remove(&cid);
-                  sc
-                });
+              self.scenes.mutate(&sid, |mut sc| {
+                sc.creatures.remove(&cid);
+                sc
+              });
             }
             self.current_combat = {
               if let Ok(combat) = self.get_combat() {
@@ -445,8 +441,9 @@ impl Game {
             let path = path.child(name.to_string());
             for child_folder in self.campaign.get_children(&path)?.clone() {
               self
-                .apply_log_mut(&DeleteFolderItem(path.clone(),
-                                                 FolderItemID::SubfolderID(child_folder.clone())))?;
+                .apply_log_mut(
+                  &DeleteFolderItem(path.clone(), FolderItemID::SubfolderID(child_folder.clone())),
+                )?;
             }
             let node = self.campaign.get(&path)?.clone();
             for scene_id in node.scenes {
@@ -500,11 +497,10 @@ impl Game {
         // aka "exclusive borrow". Also we can return errors even if we've already mutated,
         // because apply_log creates a copy of the Game before mutating it.
         let to_give = self.remove_inventory(from, item_id, count)?;
-        self
-          .mutate_owner_inventory(to, |to_inv| {
-            let recip_has = *to_inv.get(&item_id).unwrap_or(&0);
-            to_inv.insert(item_id, to_give + recip_has);
-          })?;
+        self.mutate_owner_inventory(to, |to_inv| {
+          let recip_has = *to_inv.get(&item_id).unwrap_or(&0);
+          to_inv.insert(item_id, to_give + recip_has);
+        })?;
       }
       RemoveItem { owner, item_id, count } => {
         self.remove_inventory(owner, item_id, count)?;
@@ -524,6 +520,15 @@ impl Game {
           .scenes
           .mutate(&scene.id, move |_| scene.clone())
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene.id))?;
+      }
+      EditSceneDetails{scene_id, ref details} => {
+        self.check_map(details.map)?;
+        self.scenes.mutate(&scene_id, move |mut scene| {
+          scene.name = details.name.clone();
+          scene.map = details.map;
+          scene.background_image_url = details.background_image_url.clone();
+          scene
+        }).ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
       CreateMap(ref path, ref map) => {
         self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;
@@ -652,16 +657,14 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(self
-                        .creatures
-                        .get(&cid)
-                        .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?)
+    self.dyn_creature(
+      self.creatures.get(&cid).ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?,
+    )
   }
 
   /// Only pub for tests.
-  pub fn dyn_creature<'creature, 'game: 'creature>
-    (&'game self, creature: &'creature Creature)
-     -> Result<DynamicCreature<'creature, 'game>, GameError> {
+  pub fn dyn_creature<'creature, 'game: 'creature>(&'game self, creature: &'creature Creature)
+    -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)
   }
 
@@ -686,26 +689,27 @@ impl Game {
   }
 
   fn ooc_act(&self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
-             -> Result<ChangedGame, GameError> {
+    -> Result<ChangedGame, GameError> {
     let scene = self.get_scene(scene)?;
     self._act(scene, cid, abid, target, false)
   }
 
-  fn _act(&self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget,
-          in_combat: bool)
-          -> Result<ChangedGame, GameError> {
+  fn _act(&self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool)
+    -> Result<ChangedGame, GameError> {
     if !scene.creatures.contains_key(&cid) {
       bail!(GameErrorEnum::CreatureNotFound(cid.to_string()));
     }
     let creature = self.get_creature(cid)?;
     if creature.can_act() {
       if creature.has_ability(abid) {
-        self.creature_act(&creature,
-                          scene,
-                          self.get_ability(&abid)?,
-                          target,
-                          self.change(),
-                          in_combat)
+        self.creature_act(
+          &creature,
+          scene,
+          self.get_ability(&abid)?,
+          target,
+          self.change(),
+          in_combat,
+        )
       } else {
         Err(GameErrorEnum::CreatureLacksAbility(creature.id(), abid).into())
       }
@@ -714,9 +718,10 @@ impl Game {
     }
   }
 
-  pub fn creature_act(&self, creature: &DynamicCreature, scene: &Scene, ability: &Ability,
-                      target: DecidedTarget, mut change: ChangedGame, in_combat: bool)
-                      -> Result<ChangedGame, GameError> {
+  pub fn creature_act(
+    &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
+    mut change: ChangedGame, in_combat: bool
+  ) -> Result<ChangedGame, GameError> {
     let targets = self.resolve_targets(creature, scene, ability.target, target)?;
     for creature_id in &targets {
       for effect in &ability.effects {
@@ -729,25 +734,24 @@ impl Game {
     Ok(change)
   }
 
-  pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec,
-                         decision: DecidedTarget)
-                         -> Result<Vec<CreatureID>, GameError> {
+  pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec, decision: DecidedTarget)
+    -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
       (TargetSpec::Melee, DecidedTarget::Creature(cid)) => {
         if self
-             .tile_system
-             .points_within_distance(scene.get_pos(creature.id())?,
-                                     scene.get_pos(cid)?,
-                                     MELEE_RANGE) {
+          .tile_system
+          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE)
+        {
           Ok(vec![cid])
         } else {
           Err(GameErrorEnum::CreatureOutOfRange(cid).into())
         }
       }
       (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => {
-        if self.tile_system.points_within_distance(scene.get_pos(creature.id())?,
-                                                   scene.get_pos(cid)?,
-                                                   max) {
+        if self
+          .tile_system
+          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max)
+        {
           Ok(vec![cid])
         } else {
           Err(GameErrorEnum::CreatureOutOfRange(cid).into())
@@ -770,7 +774,7 @@ impl Game {
   }
 
   pub fn creatures_and_terrain_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume)
-                                         -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+    -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let cids = self.creatures_in_volume(scene, pt, volume);
     let terrain = self.get_map(scene.map)?.terrain.iter();
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
@@ -779,16 +783,16 @@ impl Game {
   }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
-                              -> Result<Vec<Point3>, GameError> {
+    -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
     if creature.can_move() {
-      Ok(self
-           .tile_system
-           .get_all_accessible(scene.get_pos(creature_id)?,
-                               self.get_map(scene.map)?,
-                               Volume::AABB(creature.creature.size),
-                               creature.speed()))
+      Ok(self.tile_system.get_all_accessible(
+        scene.get_pos(creature_id)?,
+        self.get_map(scene.map)?,
+        Volume::AABB(creature.creature.size),
+        creature.speed(),
+      ))
     } else {
       Err(GameErrorEnum::CannotAct(creature.id()).into())
     }
@@ -796,23 +800,23 @@ impl Game {
 
   /// Get a list of possible targets for an ability being used by a creature.
   pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
-                            -> Result<PotentialTargets, GameError> {
+    -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
     Ok(match ability.target {
-         TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
-         TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
-         TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
-         TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-         TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
-           self.open_terrain_in_range(scene, creature_id, range)?
-         }
-         TargetSpec::Volume { volume, range } => panic!(),
-       })
+      TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
+      TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
+      TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
+      TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
+      TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
+        self.open_terrain_in_range(scene, creature_id, range)?
+      }
+      TargetSpec::Volume { volume, range } => panic!(),
+    })
   }
 
   fn open_terrain_in_range(&self, scene: SceneID, creature_id: CreatureID, range: Distance)
-                           -> Result<PotentialTargets, GameError> {
+    -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
     let map = self.get_map(scene.map)?;
@@ -821,7 +825,7 @@ impl Game {
   }
 
   fn creatures_in_range(&self, scene: SceneID, creature_id: CreatureID, distance: Distance)
-                        -> Result<PotentialTargets, GameError> {
+    -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];
@@ -864,7 +868,9 @@ impl ChangedGame {
   }
 
   pub fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
-    where F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>
+  where
+    F: FnOnce(DynamicCombat<'game>)
+      -> Result<ChangedCombat<'game>, GameError>,
   {
     let dyn_combat = self.game.get_combat()?;
     let change = f(dyn_combat)?;
@@ -876,7 +882,9 @@ impl ChangedGame {
   }
 
   pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
-    where F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>
+  where
+    F: FnOnce(DynamicCreature)
+      -> Result<ChangedCreature, GameError>,
   {
     let creature = self.game.get_creature(cid)?;
     let change = f(creature)?;
@@ -927,22 +935,19 @@ pub mod test {
     game.creatures.insert(rogue);
     game.creatures.insert(ranger);
     game.creatures.insert(cleric);
-    game
-      .scenes
-      .insert(Scene {
-                id: t_scene_id(),
-                name: "Test Scene".to_string(),
-                background_image_url: "".to_string(),
-                map: t_map_id(),
-                attribute_checks: HashMap::new(),
-                creatures: HashMap::from_iter(vec![(cid_rogue(),
-                                                    ((0, 0, 0), Visibility::AllPlayers)),
-                                                   (cid_cleric(),
-                                                    ((0, 0, 0), Visibility::AllPlayers)),
-                                                   (cid_ranger(),
-                                                    ((0, 0, 0), Visibility::AllPlayers))]),
-                inventory: HashMap::new(),
-              });
+    game.scenes.insert(Scene {
+      id: t_scene_id(),
+      name: "Test Scene".to_string(),
+      background_image_url: "".to_string(),
+      map: t_map_id(),
+      attribute_checks: HashMap::new(),
+      creatures: HashMap::from_iter(vec![
+        (cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
+        (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
+        (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers)),
+      ]),
+      inventory: HashMap::new(),
+    });
     game
   }
 
@@ -950,24 +955,20 @@ pub mod test {
     let rogue_abs = vec![abid("punch")];
     let ranger_abs = vec![abid("shoot")];
     let cleric_abs = vec![abid("heal"), abid("fireball")];
-    HashMap::from_iter(vec![("rogue".to_string(),
-                             Class {
-                               abilities: rogue_abs,
-                               conditions: vec![],
-                               color: "purple".to_string(),
-                             }),
-                            ("ranger".to_string(),
-                             Class {
-                               abilities: ranger_abs,
-                               conditions: vec![],
-                               color: "darkgreen".to_string(),
-                             }),
-                            ("cleric".to_string(),
-                             Class {
-                               abilities: cleric_abs,
-                               conditions: vec![],
-                               color: "lightgreen".to_string(),
-                             })])
+    HashMap::from_iter(vec![
+      (
+        "rogue".to_string(),
+        Class { abilities: rogue_abs, conditions: vec![], color: "purple".to_string() },
+      ),
+      (
+        "ranger".to_string(),
+        Class { abilities: ranger_abs, conditions: vec![], color: "darkgreen".to_string() },
+      ),
+      (
+        "cleric".to_string(),
+        Class { abilities: cleric_abs, conditions: vec![], color: "lightgreen".to_string() },
+      ),
+    ])
   }
 
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
@@ -999,9 +1000,10 @@ pub mod test {
   fn stop_combat() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    let game = t_perform(&game,
-                         GameCommand::CombatAct(abid("punch"),
-                                                DecidedTarget::Creature(cid_ranger())));
+    let game = t_perform(
+      &game,
+      GameCommand::CombatAct(abid("punch"), DecidedTarget::Creature(cid_ranger())),
+    );
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
     let game = t_perform(&game, GameCommand::StopCombat);
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
@@ -1017,20 +1019,25 @@ pub mod test {
   #[test]
   fn change_creature_initiative() {
     let game = t_combat();
-    assert_eq!(game.get_combat().unwrap().combat.creature_ids(),
-               vec![cid_rogue(), cid_ranger(), cid_cleric()]);
+    assert_eq!(
+      game.get_combat().unwrap().combat.creature_ids(),
+      vec![cid_rogue(), cid_ranger(), cid_cleric()]
+    );
     // move ranger to have an initiative higher than the rogue
     let game = t_perform(&game, GameCommand::ChangeCreatureInitiative(cid_ranger(), 30));
-    assert_eq!(game.get_combat().unwrap().combat.creature_ids(),
-               vec![cid_ranger(), cid_rogue(), cid_cleric()]);
+    assert_eq!(
+      game.get_combat().unwrap().combat.creature_ids(),
+      vec![cid_ranger(), cid_rogue(), cid_cleric()]
+    );
   }
 
   #[test]
   fn three_char_infinite_combat() {
     let game = t_game();
-    let game = t_perform(&game,
-                         GameCommand::StartCombat(t_scene_id(),
-                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]));
+    let game = t_perform(
+      &game,
+      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+    );
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid("punch"), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_unchecked(GameCommand::Done)?.game;
@@ -1046,13 +1053,17 @@ pub mod test {
   fn ability_creatures_within_area() {
     // the cleric moves away, then casts a fireball at the ranger and rogue.
     let game = t_game();
-    let game = t_perform(&game,
-                         GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)));
-    let game = t_perform(&game,
-                         GameCommand::ActCreature(t_scene_id(),
-                                                  cid_cleric(),
-                                                  abid("fireball"),
-                                                  DecidedTarget::Point((0, 0, 0))));
+    let game =
+      t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)));
+    let game = t_perform(
+      &game,
+      GameCommand::ActCreature(
+        t_scene_id(),
+        cid_cleric(),
+        abid("fireball"),
+        DecidedTarget::Point((0, 0, 0)),
+      ),
+    );
     assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(10));

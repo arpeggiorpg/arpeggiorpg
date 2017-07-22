@@ -344,9 +344,13 @@ pub enum GameCommand {
   EditScene(Scene),
 
   // TODO:
-  // EditSceneDetails(SceneID, SceneCreation)
-  // AddSceneChallenge(SceneID, String, AttributeCheck)
-  // RemoveSceneChallenge(SceneID, String)
+  EditSceneDetails { scene_id: SceneID, details: SceneCreation },
+  // AddSceneChallenge{scene_id, description: String, challenge: AttributeCheck}
+  // RemoveSceneChallenge{scene_id, description: String}
+  // HideSceneCreature{scene_id, creature_id}
+  // ShowSceneCreature{scene_id, creature_id}
+  // AddCreatureToScene{scene_id, creature_id, visible}
+  // RemoveCreatureFromScene{scene_id, creature_id}
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -476,6 +480,7 @@ pub enum GameLog {
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
+  EditSceneDetails{scene_id: SceneID, details: SceneCreation},
   CreateMap(FolderPath, Map),
 
   EditMap(Map),
@@ -940,12 +945,13 @@ pub struct Scene {
   pub id: SceneID,
   pub name: String,
   pub map: MapID,
+  #[serde(default)]
+  pub background_image_url: String,
+
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
   pub inventory: Inventory,
-  #[serde(default)]
-  pub background_image_url: String,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1000,7 +1006,6 @@ pub enum Visibility {
   GMOnly,
   AllPlayers,
 }
-
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MapCreation {
