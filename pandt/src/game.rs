@@ -87,6 +87,22 @@ impl Game {
       EditSceneDetails { scene_id, details } => {
         self.change_with(GameLog::EditSceneDetails { scene_id, details })
       }
+      SetSceneCreatureVisibility { scene_id, creature_id, visibility } => {
+        self.change_with(GameLog::SetSceneCreatureVisibility {
+          scene_id,
+          creature_id,
+          visibility: visibility.clone(),
+        })
+      }
+
+      AddCreatureToScene { scene_id, creature_id, ref visibility } => {
+        self.change_with(
+          GameLog::AddCreatureToScene { scene_id, creature_id, visibility: visibility.clone() },
+        )
+      }
+      RemoveCreatureFromScene { scene_id, creature_id } => {
+        self.change_with(GameLog::RemoveCreatureFromScene { scene_id, creature_id })
+      }
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
@@ -533,6 +549,41 @@ impl Game {
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
+      SetSceneCreatureVisibility { scene_id, creature_id, ref visibility } => {
+        if !self.get_scene(scene_id)?.creatures.contains_key(&creature_id) {
+          bail!(GameErrorEnum::CreatureNotFound(creature_id.to_string()));
+        }
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            {
+              let entry = scene.creatures.get_mut(&creature_id);
+              let entry = entry.expect("Already checked that creature exists?!");
+              entry.1 = visibility.clone();
+            }
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+      AddCreatureToScene { scene_id, creature_id, ref visibility } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.creatures.insert(creature_id, ((0, 0, 0), visibility.clone()));
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+      RemoveCreatureFromScene { scene_id, creature_id } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.creatures.remove(&creature_id);
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+
       CreateMap(ref path, ref map) => {
         self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;
         self.link_folder_item(path, &FolderItemID::MapID(map.id))?;

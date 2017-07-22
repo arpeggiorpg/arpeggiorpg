@@ -343,14 +343,13 @@ pub enum GameCommand {
   /// Edit a scene. The ID in the given Scene must match an existing Scene.
   EditScene(Scene),
 
-  // TODO:
   EditSceneDetails { scene_id: SceneID, details: SceneCreation },
+  SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
+  AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
+  RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
+  // TODO:
   // AddSceneChallenge{scene_id, description: String, challenge: AttributeCheck}
   // RemoveSceneChallenge{scene_id, description: String}
-  // HideSceneCreature{scene_id, creature_id}
-  // ShowSceneCreature{scene_id, creature_id}
-  // AddCreatureToScene{scene_id, creature_id, visible}
-  // RemoveCreatureFromScene{scene_id, creature_id}
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -480,7 +479,11 @@ pub enum GameLog {
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
-  EditSceneDetails{scene_id: SceneID, details: SceneCreation},
+  EditSceneDetails { scene_id: SceneID, details: SceneCreation },
+  SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
+  AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
+  RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
+
   CreateMap(FolderPath, Map),
 
   EditMap(Map),
