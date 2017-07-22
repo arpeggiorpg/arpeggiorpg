@@ -119,6 +119,14 @@ export type GameCommand =
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "EditScene"; scene: Scene }
   | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
+  | {
+    t: "SetSceneCreatureVisibility";
+    scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
+  }
+  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility; }
+  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
+  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
+  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -960,6 +968,31 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return {
         EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },
       };
+    case "SetSceneCreatureVisibility":
+      return {
+        SetSceneCreatureVisibility: {
+          scene_id: cmd.scene_id, creature_id: cmd.creature_id,
+          visibility: encodeVisibility(cmd.visibility),
+        },
+      };
+    case "AddCreatureToScene":
+      return {
+        AddCreatureToScene: {
+          scene_id: cmd.scene_id, creature_id: cmd.creature_id,
+          visibility: encodeVisibility(cmd.visibility),
+        },
+      };
+    case "RemoveCreatureFromScene":
+      return { RemoveCreatureFromScene: { scene_id: cmd.scene_id, creature_id: cmd.creature_id } };
+    case "AddSceneChallenge":
+      return {
+        AddSceneChallenge: {
+          scene_id: cmd.scene_id, description: cmd.description,
+          challenge: encodeAttributeCheck(cmd.challenge),
+        },
+      };
+    case "RemoveSceneChallenge":
+      return { RemoveSceneChallenge: { scene_id: cmd.scene_id, description: cmd.description } };
     case "CreateMap":
       return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
     case "EditMap":
