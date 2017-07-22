@@ -170,12 +170,7 @@ export const GMSceneChallenges = M.connectRedux(
                   <Dropdown.Header content={description} />
                   <Dropdown.Item content="Delete"
                     onClick={() => ptui.sendCommand(dispatch,
-                      {
-                        t: 'EditScene',
-                        scene: {
-                          ...scene, attribute_checks: scene.attribute_checks.delete(description),
-                        },
-                      })}
+                      { t: 'RemoveSceneChallenge', scene_id: scene.id, description })}
                   />
                 </Dropdown.Menu>
               </Dropdown>
