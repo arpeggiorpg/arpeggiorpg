@@ -94,16 +94,16 @@ export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
   }
 });
 
-interface MapSelectorProps { onSelect: (mid: T.MapID) => void; }
+interface MapSelectorProps { onSelect: (path: T.FolderPath, mid: T.MapID) => void; }
 export const MapSelector = M.connectRedux(class MapSelector
   extends React.Component<MapSelectorProps & M.ReduxProps> {
   render(): JSX.Element {
     const display = ([path, map]: [T.FolderPath, T.Map]) =>
-      `${M.folderPathToString(path)}/${map.name}`
+      `${M.folderPathToString(path)}/${map.name}`;
     const { ptui } = this.props;
     const maps = collectAllMaps(ptui, [], ptui.app.current_game.campaign);
-    return <SearchSelect values={maps}
-      onSelect={([_, map]: [T.FolderPath, T.Map]) => this.props.onSelect(map.id)}
+    return <SearchSelect label="Map name" values={maps}
+      onSelect={([path, map]: [T.FolderPath, T.Map]) => this.props.onSelect(path, map.id)}
       display={display}
     />;
   }
@@ -171,7 +171,7 @@ class FolderTreeComp
           button={open =>
             <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
           header={<span>Create new scene in {M.folderPathToString(path)}</span>}
-          content={close => <GM.CreateScene path={path} onDone={close} dispatch={dispatch} />} />
+          content={close => <GM.CreateScene path={path} onDone={close} />} />
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item icon={object_icon("Map")} text='Create Map' onClick={open} />}
@@ -441,6 +441,7 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
 interface FuseResult { item: number; matches: Array<{ indices: Array<[number, number]> }>; }
 
 interface SearchSelectProps<T> {
+  label?: string;
   values: Array<T>;
   onSelect: (value: T) => void;
   display: (t: T) => string;
@@ -453,7 +454,7 @@ class SearchSelect<T> extends React.Component<SearchSelectProps<T>, SearchSelect
     this.state = { results: [], current_selection: 0 };
   }
   render(): JSX.Element | null {
-    const { values } = this.props;
+    const { values, label } = this.props;
     const fuse = new Fuse(values.map(this.props.display),
       {
         shouldSort: true,
@@ -461,7 +462,7 @@ class SearchSelect<T> extends React.Component<SearchSelectProps<T>, SearchSelect
         minMatchCharLength: 2,
       });
     return <div>
-      <Input label="Search"
+      <Input label={label ? label : "Search"}
         onChange={(_, d) => this.search(fuse, d.value)}
         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => this.handleKey(e)}
       />

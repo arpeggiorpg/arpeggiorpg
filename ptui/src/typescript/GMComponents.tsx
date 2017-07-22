@@ -48,6 +48,44 @@ export const GMScene = M.connectRedux(
     </Segment>;
   });
 
+interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
+export const CreateScene = M.connectRedux(class CreateScene
+  extends React.Component<CreateSceneProps & M.ReduxProps, { map?: [T.FolderPath, T.MapID] }> {
+  constructor(props: CreateSceneProps & M.ReduxProps) {
+    super(props);
+    this.state = {};
+  }
+  render() {
+    const { ptui } = this.props;
+    const map = this.state.map ? ptui.getMap(this.state.map[1]) : undefined;
+    return <div>
+      <CoolForm>
+        <PlaintextInput label="Name" name="name" default="" nonEmpty={true} />
+        <PlaintextInput label="Background image URL" name="background_image_url" default="" />
+        <CV.Toggler
+          a={ok => <Campaign.MapSelector
+            onSelect={(path, map_id) => { this.setState({ map: [path, map_id] }); ok(); }} />}
+
+          b={ok => <Form.Input label="Map" onClick={ok} readOnly={true} icon='edit'
+            value={`${M.folderPathToString(this.state.map![0])}/${map!.name}`} />}
+        />
+        <Submit disabled={!this.state.map} onClick={d => this.create(d as any)}>Create</Submit>
+      </CoolForm>
+    </div >;
+  }
+  create(data: { name: string; background_image_url: string }) {
+    if (!this.state.map) { return; }
+    const { path, onDone, dispatch } = this.props;
+    const { name, background_image_url } = data;
+    // since we don't have a visual response to setting image url/offset/scale, I'll just leave
+    // default values here and the user can edit the map after creation
+    dispatch(M.sendCommand({
+      t: "CreateScene", path, spec: { name, background_image_url, map: this.state.map[1] },
+    }));
+    onDone();
+  }
+});
+
 class EditScene
   extends React.Component<{ scene: T.Scene, onDone: () => void } & M.DispatchProps,
   { name: string, background_image_url: string }> {
