@@ -347,9 +347,8 @@ pub enum GameCommand {
   SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
   AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
   RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
-  // TODO:
-  // AddSceneChallenge{scene_id, description: String, challenge: AttributeCheck}
-  // RemoveSceneChallenge{scene_id, description: String}
+  AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
+  RemoveSceneChallenge { scene_id: SceneID, description: String },
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -483,6 +482,8 @@ pub enum GameLog {
   SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
   AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
   RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
+  AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
+  RemoveSceneChallenge { scene_id: SceneID, description: String },
 
   CreateMap(FolderPath, Map),
 

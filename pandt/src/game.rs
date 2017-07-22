@@ -94,7 +94,6 @@ impl Game {
           visibility: visibility.clone(),
         })
       }
-
       AddCreatureToScene { scene_id, creature_id, ref visibility } => {
         self.change_with(
           GameLog::AddCreatureToScene { scene_id, creature_id, visibility: visibility.clone() },
@@ -103,6 +102,18 @@ impl Game {
       RemoveCreatureFromScene { scene_id, creature_id } => {
         self.change_with(GameLog::RemoveCreatureFromScene { scene_id, creature_id })
       }
+      AddSceneChallenge { scene_id, ref description, ref challenge } => {
+        self.change_with(GameLog::AddSceneChallenge {
+          scene_id,
+          description: description.clone(),
+          challenge: challenge.clone(),
+        })
+      }
+      RemoveSceneChallenge { scene_id, ref description } => {
+        self
+          .change_with(GameLog::RemoveSceneChallenge { scene_id, description: description.clone() })
+      }
+
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
@@ -293,7 +304,6 @@ impl Game {
       inventory.insert(item_id, count);
     })
   }
-
 
   /// Apply a log to a *mutable* Game.
   // This is done so that we don't have to worry about `self` vs `newgame` -- all
@@ -579,6 +589,24 @@ impl Game {
           .scenes
           .mutate(&scene_id, move |mut scene| {
             scene.creatures.remove(&creature_id);
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+      AddSceneChallenge { scene_id, ref description, ref challenge } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.attribute_checks.insert(description.clone(), challenge.clone());
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+      RemoveSceneChallenge { scene_id, ref description } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.attribute_checks.remove(description);
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
