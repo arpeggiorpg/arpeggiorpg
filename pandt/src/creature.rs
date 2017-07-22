@@ -22,7 +22,7 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(creature: &'creature Creature, game: &'game Game)
-             -> Result<DynamicCreature<'creature, 'game>, GameError> {
+    -> Result<DynamicCreature<'creature, 'game>, GameError> {
     Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(&creature.class)? })
   }
 
@@ -63,12 +63,12 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let mut changes = self.creature.change();
     for condition in self.conditions() {
       if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
-        condition {
+        condition
+      {
         if match *remaining {
-             ConditionDuration::Duration(0) => false,
-             ConditionDuration::Interminate |
-             ConditionDuration::Duration(_) => true,
-           } {
+          ConditionDuration::Duration(0) => false,
+          ConditionDuration::Interminate | ConditionDuration::Duration(_) => true,
+        } {
           changes = changes.merge(changes.creature(self.game)?.apply_effect(eff)?);
         }
       }
@@ -91,15 +91,21 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
     let delta = self.creature.max_energy - self.creature.cur_energy;
-    if delta > Energy(0) { vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))] } else { vec![] }
+    if delta > Energy(0) {
+      vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))]
+    } else {
+      vec![]
+    }
   }
 
   fn damage(&self, expr: &Dice) -> Vec<CreatureLog> {
     let (rolls, amt) = expr.roll();
     let amt = HP(amt as u8);
     if amt >= self.creature.cur_health {
-      vec![CreatureLog::Damage(self.creature.cur_health, rolls),
-           Self::apply_condition_log(ConditionDuration::Interminate, Condition::Dead)]
+      vec![
+        CreatureLog::Damage(self.creature.cur_health, rolls),
+        Self::apply_condition_log(ConditionDuration::Interminate, Condition::Dead),
+      ]
     } else {
       vec![CreatureLog::Damage(amt, rolls)]
     }
@@ -135,9 +141,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
     static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
-    CreatureLog::ApplyCondition(CONDITION_ID.fetch_add(1, Ordering::SeqCst),
-                                duration,
-                                condition.clone())
+    CreatureLog::ApplyCondition(
+      CONDITION_ID.fetch_add(1, Ordering::SeqCst),
+      duration,
+      condition.clone(),
+    )
   }
 
   pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {
@@ -209,9 +217,11 @@ impl Creature {
           new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
           ConditionDuration::Interminate => {
-            bail!(GameErrorEnum::BuggyProgram("Tried to decrease condition duration of an \
-                                                interminate condition"
-                                                  .to_string()))
+            bail!(GameErrorEnum::BuggyProgram(
+              "Tried to decrease condition duration of an \
+               interminate condition"
+                .to_string()
+            ))
           }
           ConditionDuration::Duration(ref mut dur) => *dur -= 1,
         }
@@ -278,7 +288,7 @@ pub struct ChangedCreature {
 
 impl ChangedCreature {
   pub fn creature<'creature, 'game>(&'creature self, game: &'game Game)
-                                    -> Result<DynamicCreature<'creature, 'game>, GameError> {
+    -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(&self.creature, game)
   }
 
@@ -302,11 +312,9 @@ impl ChangedCreature {
 }
 
 fn conditions_able(conditions: &[AppliedCondition]) -> bool {
-  !conditions
-     .iter()
-     .any(|&AppliedCondition { ref condition, .. }| {
-            condition == &Condition::Incapacitated || condition == &Condition::Dead
-          })
+  !conditions.iter().any(|&AppliedCondition { ref condition, .. }| {
+    condition == &Condition::Incapacitated || condition == &Condition::Dead
+  })
 }
 
 
@@ -321,14 +329,14 @@ pub mod test {
 
   pub fn t_creature(name: &str, class: &str, init: i8) -> Creature {
     Creature::create(&CreatureCreation {
-                        name: name.to_string(),
-                        note: "".to_string(),
-                        bio: "".to_string(),
-                        class: class.to_string(),
-                        portrait_url: "".to_string(),
-                        initiative: Dice::flat(init),
-                        size: AABB { x: 1, y: 1, z: 1 },
-                      })
+      name: name.to_string(),
+      note: "".to_string(),
+      bio: "".to_string(),
+      class: class.to_string(),
+      portrait_url: "".to_string(),
+      initiative: Dice::flat(init),
+      size: AABB { x: 1, y: 1, z: 1 },
+    })
   }
 
   pub fn t_rogue(name: &str) -> Creature {
@@ -352,26 +360,21 @@ pub mod test {
   #[test]
   fn test_tick_and_expire_condition_remaining() {
     let mut game = t_game();
-    game
-      .creatures
-      .mutate(&cid_rogue(), |mut c| {
-        c.conditions =
-          HashMap::from_iter(vec![(0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
-                                  (1,
-                                   app_cond(Condition::Incapacitated,
-                                            ConditionDuration::Duration(5))),
-                                  (2,
-                                   app_cond(Condition::Incapacitated,
-                                            ConditionDuration::Interminate))]);
-        c
-      });
-    assert_eq!(game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
-               HashMap::from_iter(vec![(1,
-                                        app_cond(Condition::Incapacitated,
-                                                 ConditionDuration::Duration(4))),
-                                       (2,
-                                        app_cond(Condition::Incapacitated,
-                                                 ConditionDuration::Interminate))]));
+    game.creatures.mutate(&cid_rogue(), |mut c| {
+      c.conditions = HashMap::from_iter(vec![
+        (0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
+        (1, app_cond(Condition::Incapacitated, ConditionDuration::Duration(5))),
+        (2, app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
+      ]);
+      c
+    });
+    assert_eq!(
+      game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
+      HashMap::from_iter(vec![
+        (1, app_cond(Condition::Incapacitated, ConditionDuration::Duration(4))),
+        (2, app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
+      ])
+    );
   }
 
   /// A RecurringEffect with duration of "2" will tick exactly twice at the beginning of the
@@ -379,14 +382,18 @@ pub mod test {
   #[test]
   fn test_recurring_effect_ticks_duration_times() {
     let mut game = t_game();
-    game
-      .creatures
-      .mutate(&cid_rogue(), |mut c| {
-        c.conditions = HashMap::from_iter(
-            vec![(0, app_cond(Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
-                              ConditionDuration::Duration(2)))]);
-        c
-      });
+    game.creatures.mutate(&cid_rogue(), |mut c| {
+      c.conditions = HashMap::from_iter(vec![
+        (
+          0,
+          app_cond(
+            Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
+            ConditionDuration::Duration(2),
+          ),
+        ),
+      ]);
+      c
+    });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
@@ -400,19 +407,19 @@ pub mod test {
   #[test]
   fn test_condition_duration() {
     let mut game = t_game();
-    game
-      .creatures
-      .mutate(&cid_rogue(), |mut c| {
-        c.conditions = HashMap::from_iter(vec![(0,
-                                                app_cond(Condition::Incapacitated,
-                                                         ConditionDuration::Duration(1)))]);
-        c
-      });
+    game.creatures.mutate(&cid_rogue(), |mut c| {
+      c.conditions = HashMap::from_iter(vec![
+        (0, app_cond(Condition::Incapacitated, ConditionDuration::Duration(1))),
+      ]);
+      c
+    });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
-    assert_eq!(c.conditions,
-               HashMap::from_iter(vec![(0,
-                                        app_cond(Condition::Incapacitated,
-                                                 ConditionDuration::Duration(0)))]));
+    assert_eq!(
+      c.conditions,
+      HashMap::from_iter(vec![
+        (0, app_cond(Condition::Incapacitated, ConditionDuration::Duration(0))),
+      ])
+    );
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions, HashMap::new());
   }

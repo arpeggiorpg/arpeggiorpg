@@ -521,14 +521,17 @@ impl Game {
           .mutate(&scene.id, move |_| scene.clone())
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene.id))?;
       }
-      EditSceneDetails{scene_id, ref details} => {
+      EditSceneDetails { scene_id, ref details } => {
         self.check_map(details.map)?;
-        self.scenes.mutate(&scene_id, move |mut scene| {
-          scene.name = details.name.clone();
-          scene.map = details.map;
-          scene.background_image_url = details.background_image_url.clone();
-          scene
-        }).ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.name = details.name.clone();
+            scene.map = details.map;
+            scene.background_image_url = details.background_image_url.clone();
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
       CreateMap(ref path, ref map) => {
         self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;

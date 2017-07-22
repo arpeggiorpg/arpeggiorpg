@@ -42,7 +42,7 @@ impl App {
     App { current_game: g, snapshots: snapshots, players: IndexedHashMap::new() }
   }
   pub fn perform_unchecked(&mut self, cmd: GameCommand)
-                           -> Result<(&Game, Vec<GameLog>), GameError> {
+    -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
       GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
@@ -64,7 +64,8 @@ impl App {
         let (game, logs) = self.current_game.perform_unchecked(cmd.clone())?.done();
 
         if self.snapshots.is_empty() ||
-           self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP {
+          self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
+        {
           self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
         }
 
@@ -83,11 +84,10 @@ impl App {
   /// Rollback to a particular point by replaying logs after a snapshot
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
-    let &(ref baseline, ref logs_to_apply) =
-      self
-        .snapshots
-        .get(snapshot_idx)
-        .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
+    let &(ref baseline, ref logs_to_apply) = self
+      .snapshots
+      .get(snapshot_idx)
+      .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
       bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
     }
@@ -128,7 +128,7 @@ impl App {
   }
 
   fn give_creatures_to_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
-                              -> Result<(&Game, Vec<GameLog>), GameError> {
+    -> Result<(&Game, Vec<GameLog>), GameError> {
     for cid in cids {
       self.current_game.check_creature_id(*cid)?;
     }
@@ -143,7 +143,7 @@ impl App {
   }
 
   fn remove_creatures_from_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
-                                  -> Result<(&Game, Vec<GameLog>), GameError> {
+    -> Result<(&Game, Vec<GameLog>), GameError> {
     self
       .players
       .mutate(pid, |mut p| {
@@ -157,7 +157,7 @@ impl App {
   }
 
   fn set_player_scene(&mut self, pid: &PlayerID, scene: Option<SceneID>)
-                      -> Result<(&Game, Vec<GameLog>), GameError> {
+    -> Result<(&Game, Vec<GameLog>), GameError> {
     self
       .players
       .mutate(pid, move |mut p| {
@@ -173,7 +173,7 @@ impl App {
   }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
-                              -> Result<Vec<Point3>, GameError> {
+    -> Result<Vec<Point3>, GameError> {
     self.current_game.get_movement_options(scene, creature_id)
   }
 
@@ -182,13 +182,12 @@ impl App {
   }
 
   pub fn get_target_options(&self, scene: SceneID, cid: CreatureID, abid: AbilityID)
-                            -> Result<PotentialTargets, GameError> {
+    -> Result<PotentialTargets, GameError> {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
-  pub fn get_creatures_and_terrain_in_volume
-    (&self, sid: SceneID, pt: Point3, volume: Volume)
-     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+  pub fn get_creatures_and_terrain_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
+    -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
     self.current_game.creatures_and_terrain_in_volume(scene, pt, volume)
   }
@@ -214,8 +213,9 @@ mod test {
   fn three_char_infinite_combat(bencher: &mut Bencher) {
     let mut app = t_app();
     app
-      .perform_unchecked(GameCommand::StartCombat(t_scene_id(),
-                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]))
+      .perform_unchecked(
+        GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+      )
       .unwrap();
     let iter = |app: &mut App| -> Result<(), GameError> {
       t_app_act(app, "punch", DecidedTarget::Creature(cid_ranger()))?;
@@ -226,9 +226,9 @@ mod test {
       Ok(())
     };
     bencher.iter(|| {
-                   iter(&mut app).unwrap();
-                   app.clone()
-                 });
+      iter(&mut app).unwrap();
+      app.clone()
+    });
   }
 
   #[test]
@@ -255,8 +255,9 @@ mod test {
     let mut app = t_app();
     // 1
     app
-      .perform_unchecked(GameCommand::StartCombat(t_scene_id(),
-                                                  vec![cid_ranger(), cid_rogue(), cid_cleric()]))
+      .perform_unchecked(
+        GameCommand::StartCombat(t_scene_id(), vec![cid_ranger(), cid_rogue(), cid_cleric()]),
+      )
       .unwrap();
     // 2
     app.perform_unchecked(GameCommand::StopCombat).unwrap();

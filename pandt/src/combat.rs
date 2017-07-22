@@ -58,22 +58,21 @@ impl<'game> DynamicCombat<'game> {
   pub fn current_movement_options(&self) -> Result<Vec<Point3>, GameError> {
     let current = self.current_creature()?;
     let current_speed = current.speed().saturating_sub(self.combat.movement_used);
-    Ok(self
-         .game
-         .tile_system
-         .get_all_accessible(self.current_pos()?,
-                             self.map,
-                             Volume::AABB(current.creature.size),
-                             current_speed))
+    Ok(self.game.tile_system.get_all_accessible(
+      self.current_pos()?,
+      self.map,
+      Volume::AABB(current.creature.size),
+      current_speed,
+    ))
   }
 
   pub fn get_movement(&'game self) -> Result<CombatMove<'game>, GameError> {
     let current = self.current_creature()?;
     if current.can_move() {
       Ok(CombatMove {
-           combat: self,
-           movement_left: self.current_creature()?.speed() - self.combat.movement_used,
-         })
+        combat: self,
+        movement_left: self.current_creature()?.speed() - self.combat.movement_used,
+      })
     } else {
       Err(GameErrorEnum::CannotAct(current.id()).into())
     }
@@ -98,12 +97,12 @@ impl<'game> DynamicCombat<'game> {
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
     Ok(ChangedCombat {
-         map: self.map,
-         scene: self.scene,
-         combat: combat,
-         game: self.game,
-         logs: vec![log],
-       })
+      map: self.map,
+      scene: self.scene,
+      combat: combat,
+      game: self.game,
+      logs: vec![log],
+    })
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
@@ -116,7 +115,7 @@ impl<'game> DynamicCombat<'game> {
 }
 
 fn sort_combatants(mut combatants: Vec<(CreatureID, i16)>)
-                   -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
+  -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
   combatants.sort_by_key(|&(_, i)| -i);
   nonempty::NonEmptyWithCursor::from_vec(combatants)
     .ok_or_else(|| GameErrorEnum::CombatMustHaveCreatures.into())
@@ -124,11 +123,7 @@ fn sort_combatants(mut combatants: Vec<(CreatureID, i16)>)
 
 impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
-    Ok(Combat {
-         scene: scene,
-         movement_used: Distance(0),
-         creatures: sort_combatants(combatants)?,
-       })
+    Ok(Combat { scene: scene, movement_used: Distance(0), creatures: sort_combatants(combatants)? })
   }
 
   pub fn creature_ids(&self) -> Vec<CreatureID> {
@@ -136,13 +131,13 @@ impl Combat {
   }
 
   pub fn roll_initiative(game: &Game, cids: Vec<CreatureID>)
-                         -> Result<Vec<(CreatureID, i16)>, GameError> {
+    -> Result<Vec<(CreatureID, i16)>, GameError> {
     cids
       .iter()
       .map(|cid| {
-             let creature = game.get_creature(*cid)?;
-             Ok((*cid, creature.creature.initiative.roll().1 as i16))
-           })
+        let creature = game.get_creature(*cid)?;
+        Ok((*cid, creature.creature.initiative.roll().1 as i16))
+      })
       .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()
   }
 
@@ -164,9 +159,11 @@ impl Combat {
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => {
-        Err(GameErrorEnum::BuggyProgram("can't remove index THAT WE FOUND in remove_from_combat"
-                                          .to_string())
-                .into())
+        Err(
+          GameErrorEnum::BuggyProgram(
+            "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
+          ).into(),
+        )
       }
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
       Ok(_) => Ok(Some(combat)),
@@ -188,13 +185,12 @@ impl<'game> CombatMove<'game> {
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
   pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
-    let (change, distance) = self
-      .combat
-      .game
-      .path_creature_distance(self.combat.scene.id,
-                              self.combat.combat.current_creature_id(),
-                              pt,
-                              self.movement_left)?;
+    let (change, distance) = self.combat.game.path_creature_distance(
+      self.combat.scene.id,
+      self.combat.combat.current_creature_id(),
+      pt,
+      self.movement_left,
+    )?;
     change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
   }
 }
@@ -269,14 +265,15 @@ pub mod test {
   pub fn t_combat() -> Game {
     let game = t_game();
     game
-      .perform_unchecked(GameCommand::StartCombat(t_scene_id(),
-                                                  vec![cid_rogue(), cid_ranger(), cid_cleric()]))
+      .perform_unchecked(
+        GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+      )
       .unwrap()
       .game
   }
 
   pub fn t_act<'game>(game: &'game Game, abid: AbilityID, target: DecidedTarget)
-                      -> Result<ChangedGame, GameError> {
+    -> Result<ChangedGame, GameError> {
     game.perform_unchecked(GameCommand::CombatAct(abid, target))
   }
 
@@ -318,18 +315,21 @@ pub mod test {
       target: TargetSpec::Melee,
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![Effect::Damage(Dice::flat(3)),
-                    Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead)],
+      effects: vec![
+        Effect::Damage(Dice::flat(3)),
+        Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead),
+      ],
     };
     game.abilities.insert(abid("multi"), ab);
     game.classes.get_mut("rogue").unwrap().abilities.push(abid("multi"));
     let change = t_act(&game, abid("multi"), DecidedTarget::Creature(cid_ranger())).unwrap();
     let next = change.game;
-    assert_eq!(next.get_creature(cid_ranger()).unwrap().conditions(),
-               vec![AppliedCondition {
-                      remaining: ConditionDuration::Interminate,
-                      condition: Condition::Dead,
-                    }])
+    assert_eq!(
+      next.get_creature(cid_ranger()).unwrap().conditions(),
+      vec![
+        AppliedCondition { remaining: ConditionDuration::Interminate, condition: Condition::Dead },
+      ]
+    )
   }
 
   /// Ranged attacks against targets outside of range return `TargetOutOfRange`
@@ -386,18 +386,16 @@ pub mod test {
   #[test]
   fn move_honors_path() {
     let mut game = t_combat();
-    game
-      .maps
-      .insert(Map {
-                id: t_map_id(),
-                name: "circuitous".to_string(),
-                // up, right, right, down
-                terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
-                specials: vec![],
-                background_image_url: "".to_string(),
-                background_image_scale: (0, 0),
-                background_image_offset: (0, 0),
-              });
+    game.maps.insert(Map {
+      id: t_map_id(),
+      name: "circuitous".to_string(),
+      // up, right, right, down
+      terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
+      specials: vec![],
+      background_image_url: "".to_string(),
+      background_image_scale: (0, 0),
+      background_image_offset: (0, 0),
+    });
     let next_game =
       game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().game;
     assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));

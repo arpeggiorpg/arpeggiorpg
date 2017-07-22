@@ -22,8 +22,9 @@ pub struct IndexedHashMap<V: DeriveKey> {
 }
 
 impl<V> Clone for IndexedHashMap<V>
-  where V: DeriveKey + Clone,
-        <V as DeriveKey>::KeyType: Clone
+where
+  V: DeriveKey + Clone,
+  <V as DeriveKey>::KeyType: Clone,
 {
   fn clone(&self) -> Self {
     IndexedHashMap { data: self.data.clone() }
@@ -31,7 +32,8 @@ impl<V> Clone for IndexedHashMap<V>
 }
 
 impl<V> Default for IndexedHashMap<V>
-  where V: DeriveKey
+where
+  V: DeriveKey,
 {
   fn default() -> IndexedHashMap<V> {
     IndexedHashMap::new()
@@ -39,8 +41,9 @@ impl<V> Default for IndexedHashMap<V>
 }
 
 impl<V> fmt::Debug for IndexedHashMap<V>
-  where V: DeriveKey + fmt::Debug,
-        <V as DeriveKey>::KeyType: fmt::Debug
+where
+  V: DeriveKey + fmt::Debug,
+  <V as DeriveKey>::KeyType: fmt::Debug,
 {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     self.data.fmt(f)
@@ -48,22 +51,26 @@ impl<V> fmt::Debug for IndexedHashMap<V>
 }
 
 impl<V> ser::Serialize for IndexedHashMap<V>
-  where V: DeriveKey + ser::Serialize,
-        <V as DeriveKey>::KeyType: ser::Serialize
+where
+  V: DeriveKey + ser::Serialize,
+  <V as DeriveKey>::KeyType: ser::Serialize,
 {
   fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: ser::Serializer
+  where
+    S: ser::Serializer,
   {
     self.data.serialize(s)
   }
 }
 
 impl<'de, V> de::Deserialize<'de> for IndexedHashMap<V>
-  where V: DeriveKey + de::Deserialize<'de>,
-        <V as DeriveKey>::KeyType: de::Deserialize<'de>
+where
+  V: DeriveKey + de::Deserialize<'de>,
+  <V as DeriveKey>::KeyType: de::Deserialize<'de>,
 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: de::Deserializer<'de>
+  where
+    D: de::Deserializer<'de>,
   {
     let hm: HashMap<<V as DeriveKey>::KeyType, V> = de::Deserialize::deserialize(deserializer)?;
     Ok(IndexedHashMap { data: hm })
@@ -71,10 +78,12 @@ impl<'de, V> de::Deserialize<'de> for IndexedHashMap<V>
 }
 
 impl<V> FromIterator<V> for IndexedHashMap<V>
-  where V: DeriveKey
+where
+  V: DeriveKey,
 {
   fn from_iter<T>(iter: T) -> Self
-    where T: IntoIterator<Item = V>
+  where
+    T: IntoIterator<Item = V>,
   {
     IndexedHashMap { data: iter.into_iter().map(|v| (v.derive_key(), v)).collect() }
   }
@@ -96,11 +105,12 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   }
 
   pub fn iter<'a>(&'a self)
-                  -> ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V> {
+    -> ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V> {
     self.into_iter()
   }
 
-  pub fn keys<'a>(&'a self) -> ::std::collections::hash_map::Keys<'a, <V as DeriveKey>::KeyType, V> {
+  pub fn keys<'a>(&'a self)
+    -> ::std::collections::hash_map::Keys<'a, <V as DeriveKey>::KeyType, V> {
     self.data.keys()
   }
 
@@ -109,8 +119,9 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   }
 
   pub fn get<'a, Q: ?Sized>(&'a self, k: &Q) -> Option<&'a V>
-    where <V as DeriveKey>::KeyType: ::std::borrow::Borrow<Q>,
-          Q: hash::Hash + Eq
+  where
+    <V as DeriveKey>::KeyType: ::std::borrow::Borrow<Q>,
+    Q: hash::Hash + Eq,
   {
     self.data.get(k)
   }
@@ -142,7 +153,8 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   // - If we want to handle panics without leaving the collection in an inconsistent state, we'll
   //   need to explicitly catch them.
   pub fn mutate<F>(&mut self, k: &<V as DeriveKey>::KeyType, f: F) -> Option<()>
-    where F: FnOnce(V) -> V
+  where
+    F: FnOnce(V) -> V,
   {
     match self.data.remove(k) {
       Some(thing) => {
