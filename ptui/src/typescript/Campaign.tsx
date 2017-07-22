@@ -185,14 +185,22 @@ class FolderTreeComp
         />
         {!M.isEqual(path, [])
           ? [
-            <Dropdown.Divider key="ble" />,
-            <Dropdown.Item key="blo" text="Delete this folder" icon="delete"
+            <Dropdown.Divider key="bla" />,
+            <Dropdown.Item key="ble" text="Delete this folder" icon="delete"
               onClick={() => dispatch(M.sendCommand(
                 {
                   t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
                   // ! because we KNOW this isn't [] (see conditional above)
                   item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
-                }))} />]
+                }))} />,
+            <CV.ModalMaker key="bli"
+              button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
+              header={<span>Rename {M.folderPathToString(path)}</span>}
+              content={close => <MoveFolderItem
+                source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
+                onDone={close} dispatch={dispatch} />}
+            />
+          ]
           : null}
       </Dropdown.Menu>
     </Dropdown>;
