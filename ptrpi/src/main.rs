@@ -24,7 +24,7 @@ use std::time;
 use bus::Bus;
 
 use rocket::State;
-use rocket_contrib::JSON;
+use rocket_contrib::Json;
 use rocket::http::Method;
 
 mod cors;
@@ -58,7 +58,7 @@ error_chain! {
   }
 }
 
-type PTResult<X> = Result<CORS<JSON<X>>, RPIError>;
+type PTResult<X> = Result<CORS<Json<X>>, RPIError>;
 
 #[derive(Clone)]
 struct PT {
@@ -112,7 +112,7 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 }
 
 #[post("/", format="application/json", data="<command>")]
-fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
+fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app();
     let result = app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
@@ -125,7 +125,7 @@ fn post_app(command: JSON<GameCommand>, pt: State<PT>) -> Result<CORS<String>, R
 #[get("/combat_movement_options")]
 fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
   let app = pt.app();
-  Ok(CORS::any(JSON(app.get_combat_movement_options()?)))
+  Ok(CORS::any(Json(app.get_combat_movement_options()?)))
 }
 
 #[get("/movement_options/<scene_id>/<cid>")]
@@ -133,7 +133,7 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
   let app = pt.app();
   let cid = cid.parse()?;
   let scene = scene_id.parse()?;
-  Ok(CORS::any(JSON(app.get_movement_options(scene, cid)?)))
+  Ok(CORS::any(Json(app.get_movement_options(scene, cid)?)))
 }
 
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
@@ -143,7 +143,7 @@ fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
   let abid = abid.parse()?;
-  Ok(CORS::any(JSON(app.get_target_options(scene, cid, abid)?)))
+  Ok(CORS::any(Json(app.get_target_options(scene, cid, abid)?)))
 }
 
 #[route(OPTIONS, "/affected_by_volume/<scene>/<x>/<y>/<z>")]
@@ -153,12 +153,12 @@ fn options_creatures_in_volume(scene: String, x: String, y: String, z: String) -
 
 #[post("/affected_by_volume/<scene_id>/<x>/<y>/<z>", format="application/json", data="<volume>")]
 fn creatures_in_volume(pt: State<PT>, scene_id: String, x: i16, y: i16, z: i16,
-                       volume: JSON<Volume>)
+                       volume: Json<Volume>)
                        -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app();
   let sid = scene_id.parse()?;
   let point = (x, y, z);
-  Ok(CORS::any(JSON(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
+  Ok(CORS::any(Json(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
 }
 
 #[get("/saved_games")]
@@ -173,7 +173,7 @@ fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
       }
     }
   }
-  Ok(CORS::any(JSON(result)))
+  Ok(CORS::any(Json(result)))
 }
 
 #[post("/saved_games/<name>/load")]
@@ -191,7 +191,7 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   let new_path = child_path(&pt.saved_game_path, name)?;
   let yaml = serde_yaml::to_string(&*pt.app())?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
-  Ok(CORS::any(JSON(())))
+  Ok(CORS::any(Json(())))
 }
 
 fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
