@@ -26,10 +26,8 @@ interface MultiItemSelectorProps {
   on_selected: (cs: I.Set<T.ItemID>) => void;
   on_cancel: () => void;
 }
-class MultiItemSelectorComp
-  extends React.Component<
-  MultiItemSelectorProps & M.ReduxProps,
-  { selections: I.Set<T.ItemID> }> {
+export const MultiItemSelector = M.connectRedux(class MultiItemSelector
+  extends React.Component<MultiItemSelectorProps & M.ReduxProps, { selections: I.Set<T.ItemID> }> {
   constructor(props: MultiItemSelectorProps & M.ReduxProps) {
     super(props);
     this.state = { selections: this.props.require_selected };
@@ -51,16 +49,14 @@ class MultiItemSelectorComp
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
-}
-export const MultiItemSelector = M.connectRedux(MultiItemSelectorComp);
-
+});
 
 interface MultiCreatureSelectorProps {
   already_selected: I.Set<T.CreatureID>;
   on_selected: (cs: I.Set<T.CreatureID>) => void;
   on_cancel: () => void;
 }
-class MultiCreatureSelectorComp
+export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
   extends React.Component<
   MultiCreatureSelectorProps & M.ReduxProps,
   { selections: I.Set<T.CreatureID> }> {
@@ -96,9 +92,23 @@ class MultiCreatureSelectorComp
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
-}
-export const MultiCreatureSelector = M.connectRedux(MultiCreatureSelectorComp);
+});
 
+interface MapSelectorProps { onSelect: (mid: T.MapID) => void; }
+export const MapSelector = M.connectRedux(class MapSelector
+  extends React.Component<MapSelectorProps & M.ReduxProps> {
+  render(): JSX.Element {
+    const display = ([path, map]: [T.FolderPath, T.Map]) =>
+      `${M.folderPathToString(path)}/${map.name}`
+    const { ptui } = this.props;
+    const maps = collectAllMaps(ptui, [], ptui.app.current_game.campaign);
+    return <SearchSelect values={maps}
+      onSelect={([_, map]: [T.FolderPath, T.Map]) => this.props.onSelect(map.id)}
+      display={display}
+    />;
+  }
+}
+);
 
 interface SelectableProps {
   item_type: FolderContentType;
@@ -157,7 +167,11 @@ class FolderTreeComp
     const folder_menu = <Dropdown icon='ellipsis horizontal'>
       <Dropdown.Menu>
         <Dropdown.Header content={M.folderPathToString(path)} />
-        <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' />
+        <CV.ModalMaker
+          button={open =>
+            <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
+          header={<span>Create new scene in {M.folderPathToString(path)}</span>}
+          content={close => <GM.CreateScene path={path} onDone={close} dispatch={dispatch} />} />
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item icon={object_icon("Map")} text='Create Map' onClick={open} />}
@@ -519,15 +533,28 @@ function collectAllFolders(path: T.FolderPath, folder: T.Folder): Array<T.Folder
     });
 }
 
-function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
-  Array<[T.FolderPath, T.Item]> {
-  const items = ptui.getItems(folder.data.items);
-  const this_folder_results = items.map((it): [T.FolderPath, T.Item] => [path, it]);
+function collectFolderObjects<T>(
+  ptui: M.PTUI, path: T.FolderPath, folder: T.Folder,
+  getObjects: (ptui: M.PTUI, node: T.FolderNode) => Array<T>):
+  Array<[T.FolderPath, T]> {
+  const objs = getObjects(ptui, folder.data);
+  const this_folder_results = objs.map((obj): [T.FolderPath, T] => [path, obj]);
   return LD.concat(
     this_folder_results,
     LD.flatMap(
       folder.children.entrySeq().toArray(),
-      ([subname, subfolder]) => collectAllItems(ptui, path.concat(subname), subfolder)));
+      ([subname, subfolder]) =>
+        collectFolderObjects(ptui, path.concat(subname), subfolder, getObjects)));
+}
+
+function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+  Array<[T.FolderPath, T.Item]> {
+  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getItems(node.items));
+}
+
+function collectAllMaps(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+  Array<[T.FolderPath, T.Map]> {
+  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getMaps(node.maps));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
