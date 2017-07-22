@@ -323,13 +323,13 @@ class AddChallengeToSceneComp extends React.Component<
 
   save() {
     const { scene, onClose, ptui, dispatch } = this.props;
-    const check = {
+    const challenge = {
       attr: this.state.attr, target: this.state.target, reliable: this.state.reliable,
     };
-    const new_scene = {
-      ...scene, attribute_checks: scene.attribute_checks.set(this.state.description, check),
-    };
-    ptui.sendCommand(dispatch, { t: 'EditScene', scene: new_scene });
+    ptui.sendCommand(dispatch,
+      {
+        t: 'AddSceneChallenge', scene_id: scene.id, description: this.state.description, challenge,
+      });
     onClose();
   }
 }
