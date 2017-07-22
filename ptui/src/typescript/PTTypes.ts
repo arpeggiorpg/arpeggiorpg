@@ -117,7 +117,6 @@ export type GameCommand =
   | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "EditScene"; scene: Scene }
   | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
   | {
     t: "SetSceneCreatureVisibility";
@@ -962,8 +961,6 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
         SetItemCount:
         { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
-    case "EditScene":
-      return { EditScene: encodeScene(cmd.scene) };
     case "EditSceneDetails":
       return {
         EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },
@@ -1075,20 +1072,6 @@ function encodeSceneCreation(sc: SceneCreation): object {
     name: sc.name,
     map: sc.map,
     background_image_url: sc.background_image_url,
-  };
-}
-
-function encodeScene(scene: Scene): object {
-  return {
-    id: scene.id,
-    name: scene.name,
-    map: scene.map,
-    creatures: scene.creatures.map(([pos, vis]: [Point3, Visibility]) =>
-      [encodePoint3(pos), encodeVisibility(vis)])
-      .toObject(),
-    attribute_checks: scene.attribute_checks.map(encodeAttributeCheck).toObject(),
-    inventory: scene.inventory.toObject(),
-    background_image_url: scene.background_image_url,
   };
 }
 
