@@ -533,19 +533,18 @@ export const GMSceneCreatures = ReactRedux.connect(
               already_selected={scene.creatures.keySeq().toSet()}
               on_cancel={toggler}
               on_selected={cids => {
-                let new_creatures = cids.reduce(
-                  (acc: I.Map<T.CreatureID, [T.Point3, T.Visibility]>, cid: T.CreatureID
-                  ) => {
-                    if (acc.has(cid)) {
-                      return acc;
-                    } else {
-                      return acc.set(cid, [[0, 0, 0], { t: "AllPlayers" }]);
-                    }
-                  }, scene.creatures);
-                const removed_cids = I.Set(scene.creatures.keySeq()).subtract(cids);
-                new_creatures = new_creatures.deleteAll(removed_cids);
-                const new_scene = { ...scene, creatures: new_creatures };
-                dispatch(M.sendCommand({ t: "EditScene", scene: new_scene }));
+                const existing_cids = I.Set(scene.creatures.keySeq());
+                const new_cids = cids.subtract(existing_cids).toArray();
+                const removed_cids = existing_cids.subtract(cids).toArray();
+                const add_commands = new_cids.map(
+                  (creature_id): T.GameCommand => ({
+                    t: "AddCreatureToScene", scene_id: scene.id, creature_id,
+                    visibility: { t: "AllPlayers" },
+                  }));
+                const rem_commands = removed_cids.map(
+                  (creature_id): T.GameCommand =>
+                    ({ t: "RemoveCreatureFromScene", scene_id: scene.id, creature_id }));
+                dispatch(M.sendCommands(LD.concat(add_commands, rem_commands)));
                 toggler();
               }
               } />} />

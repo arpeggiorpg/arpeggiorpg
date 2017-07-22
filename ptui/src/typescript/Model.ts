@@ -523,6 +523,12 @@ export const sendCommand = (cmd: T.GameCommand): ThunkAction<void> =>
       });
   };
 
+export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
+  (dispatch, getState) => {
+    for (const cmd of cmds) {
+      sendCommand(cmd)(dispatch, getState, undefined);
+    }
+  };
 
 // We define our own Dispatch type instead of using Redux.Dispatch because Redux.Dispatch does not
 // have a type-parameter for the *type of Action*, only the *type of Store*. We don't want to allow
