@@ -228,6 +228,14 @@ export type GameLog =
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
   | { t: "EditScene"; scene: Scene }
   | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
+  | {
+    t: "SetSceneCreatureVisibility";
+    scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
+  }
+  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility; }
+  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
+  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
+  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -708,6 +716,29 @@ export const decodeGameLog: Decoder<GameLog> =
     EditSceneDetails: JD.object(
       ["scene_id", JD.string()], ["details", decodeSceneCreation],
       (scene_id, details): GameLog => ({ t: "EditSceneDetails", scene_id, details })),
+    SetSceneCreatureVisibility: JD.object(
+      ["scene_id", JD.string()], ["creature_id", JD.string()], ["visibility", decodeVisibility],
+      (scene_id, creature_id, visibility): GameLog =>
+        ({ t: "SetSceneCreatureVisibility", scene_id, creature_id, visibility })
+    ),
+    AddCreatureToScene: JD.object(
+      ["scene_id", JD.string()], ["creature_id", JD.string()], ["visibility", decodeVisibility],
+      (scene_id, creature_id, visibility): GameLog =>
+        ({ t: "AddCreatureToScene", scene_id, creature_id, visibility })
+    ),
+    RemoveCreatureFromScene: JD.object(
+      ["scene_id", JD.string()], ["creature_id", JD.string()],
+      (scene_id, creature_id): GameLog => ({ t: "RemoveCreatureFromScene", scene_id, creature_id })
+    ),
+    AddSceneChallenge: JD.object(
+      ["scene_id", JD.string()], ["description", JD.string()], ["challenge", decodeAttributeCheck],
+      (scene_id, description, challenge): GameLog =>
+        ({ t: "AddSceneChallenge", scene_id, description, challenge })
+    ),
+    RemoveSceneChallenge: JD.object(
+      ["scene_id", JD.string()], ["description", JD.string()],
+      (scene_id, description): GameLog => ({ t: "RemoveSceneChallenge", scene_id, description })
+    ),
     CreateMap: JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),

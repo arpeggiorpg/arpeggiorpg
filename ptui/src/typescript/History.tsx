@@ -72,6 +72,16 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Edited scene {log.scene.name}</Flexbox>;
     case "EditSceneDetails":
       return <Flexbox>Edited details of scene {log.details.name}</Flexbox>;
+    case "SetSceneCreatureVisibility":
+      return <Flexbox>Changed visibility of a creature in a scene</Flexbox>;
+    case "AddCreatureToScene":
+      return <Flexbox>Added a creature to a scene</Flexbox>;
+    case "RemoveCreatureFromScene":
+      return <Flexbox>Removed a creature from a scene</Flexbox>;
+    case "AddSceneChallenge":
+      return <Flexbox>Added a challenge to a scene: {log.description}</Flexbox>;
+    case "RemoveSceneChallenge":
+      return <Flexbox>Removed challenge from a scene: {log.description}</Flexbox>;
     case "CreateMap":
       return <Flexbox>Created a map {log.map.name}</Flexbox>;
     case "EditMap":
