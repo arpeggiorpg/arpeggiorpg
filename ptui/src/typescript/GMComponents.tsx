@@ -551,7 +551,7 @@ export const GMSceneCreatures = ReactRedux.connect(
         </List.Content>
       </List.Item>
       {creatures.map(creature => {
-        const [pos, vis] = scene.creatures.get(creature.id)!; // !: must exist in map()
+        const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
         const vis_desc = vis.t === 'GMOnly'
           ? 'Only visible to the GM' : 'Visible to all players';
         return <List.Item key={`cid:${creature.id}`}>
@@ -565,12 +565,11 @@ export const GMSceneCreatures = ReactRedux.connect(
                 onClick={() => {
                   const new_vis: T.Visibility =
                     vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
-
-                  const new_scene = {
-                    ...scene,
-                    creatures: scene.creatures.set(creature.id, [pos, new_vis]),
-                  };
-                  dispatch(M.sendCommand({ t: "EditScene", scene: new_scene }));
+                  dispatch(M.sendCommand(
+                    {
+                      t: "SetSceneCreatureVisibility", scene_id: scene.id, creature_id: creature.id,
+                      visibility: new_vis,
+                    }));
                 }} />}
               content={vis_desc}
             />
