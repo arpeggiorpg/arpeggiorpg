@@ -10,7 +10,6 @@ import Process
 import Task
 import Time
 
-import DomUtils -- Even though we don't use this import, it must be imported for a port to be declared
 import PanZoom
 import Components
 import Model as M exposing (Msg(..))
