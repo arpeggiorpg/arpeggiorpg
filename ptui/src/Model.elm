@@ -8,36 +8,11 @@ import Json.Encode as JE
 import Window
 
 import Types as T
-import PanZoom
-import Components
 
 type alias GotCreatures = List T.CreatureID -> Msg
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  let ticks =
-        case model.showingMovement of
-          ShowingMovement _ _ -> Time.every (Time.second / 4) Tick
-          _ -> Sub.none
-
-          -- TODO: put ticks back in here once it works better
-  in Sub.batch [ PanZoom.panning GridPanning, Window.resizes WindowResized
-               , Components.textInputSubmit TextInputSubmit
-               , Components.textInputCancel TextInputCancel
-               , Components.historyRollback
-                   (\(snapIdx, logIdx) -> (SendCommand (T.Rollback snapIdx logIdx)))
-               , Components.playersGrantCreatures grantCreatures
-               , Components.playersSetScene (\(pid, scene) -> SendCommand (T.SetPlayerScene pid scene))
-               , Components.sendCommand SendCommandRaw
-               , Components.requestCombatMovement (\() -> GetCombatMovementOptions)
-               , Components.selectAbility (\(sid, cid, abid) -> SelectAbility { scene=sid, creature=cid, ability=abid, potentialTargets=Nothing, chosenPoint=Nothing } )
-               ]
-
-grantCreatures pid =
-  let gotCreatures cids = SendCommand (T.GiveCreaturesToPlayer pid cids)
-  in SetModal (SelectCreaturesFromCampaign {selectedCreatures=[]
-                                           , cb=gotCreatures
-                                           , reason="Grant Creatures to " ++ pid})
+subscriptions model = Sub.none
 
 type Msg
     = Start
