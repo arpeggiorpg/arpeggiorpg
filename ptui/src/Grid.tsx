@@ -174,19 +174,21 @@ export interface SceneGridProps {
   creatures: Obj<MapCreature>;
 }
 
-export const SceneGrid = M.connectRedux(
-  function SceneGrid(props: SceneGridProps & M.ReduxProps): JSX.Element {
-    const map_ = M.get(props.ptui.app.current_game.maps, props.scene.map);
+export const SceneGrid = M.connectRedux(class SceneGrid
+  extends React.Component<SceneGridProps & M.ReduxProps> {
+  render(): JSX.Element {
+    const { scene, creatures, ptui, dispatch } = this.props;
+    const map_ = M.get(ptui.app.current_game.maps, scene.map);
     if (!map_) { return <div>Couldn't find map</div>; }
     const map = map_; // WHY TYPESCRIPT, WHY???
 
-    const grid = props.ptui.state.grid;
+    const grid = ptui.state.grid;
 
     const menu = grid.active_menu ? renderMenu(grid.active_menu) : null;
     const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
       : null;
 
-    const creature_els = LD.values(props.creatures).map(c =>
+    const creature_els = LD.values(creatures).map(c =>
       <GridCreature key={c.creature.id} creature={c} />);
     const move = grid.movement_options;
     const movement_target_els = move
@@ -194,8 +196,8 @@ export const SceneGrid = M.connectRedux(
         teleport={move.teleport} />)
       : [];
 
-    const target_els = props.ptui.state.grid.target_options
-      ? getTileTargets(props.ptui.state.grid.target_options.options)
+    const target_els = ptui.state.grid.target_options
+      ? getTargetTiles(ptui.state.grid.target_options.options)
       : [];
 
     return <div style={{ width: "100%", height: "100%" }}>
@@ -208,7 +210,7 @@ export const SceneGrid = M.connectRedux(
       {menu}
       {annotation}
       <GridSvg map={map}
-        scene_background={props.scene.background_image_url}>
+        scene_background={scene.background_image_url}>
         {creature_els}
         {movement_target_els}
         {target_els}
@@ -219,19 +221,19 @@ export const SceneGrid = M.connectRedux(
       const special = LD.find(map.specials, ([pt_, _, _1, _2]) => M.isEqual(pt, pt_));
       if (!special) { return <noscript />; }
       return <RectPositioned rect={rect}
-        onClose={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
+        onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
         <Segment>{special[2]}</Segment>
       </RectPositioned >;
     }
 
     function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
-      const creature_ = M.get(props.creatures, cid);
+      const creature_ = M.get(creatures, cid);
       if (!creature_) {
         return <noscript />;
       }
       const creature = creature_; // WHY TYPESCRIPT, WHY???
       return <RectPositioned rect={rect}
-        onClose={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+        onClose={() => dispatch({ type: "ActivateGridCreature", cid, rect })}>
         <Menu vertical={true}>
           <Menu.Item header={true}>
             {CV.classIcon(creature.creature)} {creature.creature.name}
@@ -240,7 +242,7 @@ export const SceneGrid = M.connectRedux(
             creature.actions.entrySeq().toArray().map(
               ([actionName, action]) => {
                 function onClick() {
-                  props.dispatch({ type: "ActivateGridCreature", cid, rect });
+                  dispatch({ type: "ActivateGridCreature", cid, rect });
                   action(cid);
                 }
                 return <Menu.Item key={actionName} onClick={() => onClick()}>
@@ -251,7 +253,8 @@ export const SceneGrid = M.connectRedux(
         </Menu>
       </RectPositioned>;
     }
-  });
+  }
+});
 
 interface RectPositionedProps { rect: M.Rect; onClose: () => void; children: React.ReactChild; }
 function RectPositioned(props: RectPositionedProps): JSX.Element {
@@ -264,15 +267,14 @@ function RectPositioned(props: RectPositionedProps): JSX.Element {
   </CV.ClickAway>;
 }
 
-function getTileTargets(options: T.PotentialTargets) {
+function getTargetTiles(options: T.PotentialTargets) {
   switch (options.t) {
     case "CreatureIDs": return [];
     case "Points":
       return options.points.map(pt => {
         const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
         return <rect {...rprops} fillOpacity="0.4" />;
-      }
-      );
+      });
   }
 }
 
