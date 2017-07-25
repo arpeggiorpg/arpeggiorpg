@@ -23,41 +23,10 @@ delay time msg =
 message : msg -> Cmd msg
 message msg = Task.perform (always msg) (Task.succeed ())
 
--- Merge a new app into an existing model.
--- This is where we handle various "transitionary" effects that rely on knowledge of both the old
--- and new state of the game.
--- e.g., when a player is becoming registered, or when we receive a new PathCreature GameLog.
 updateModelFromApp : M.Model -> T.App -> JD.Value -> (M.Model, M.Msg)
 updateModelFromApp model newApp rawApp =
   let model2 = { model | app = Just newApp, raw_app = rawApp}
-      showingMovement =
-        case getLatestPath model newApp of
-          Just (T.GLPathCreature _ _ (first::rest)) ->
-            -- Only start animating it if we haven't already started animating it.
-            case model.showingMovement of
-              M.ShowingMovement alreadyShown toShow ->
-                if (alreadyShown ++ toShow) /= (first::rest)
-                then M.ShowingMovement [first] (first::rest)
-                else M.ShowingMovement alreadyShown toShow
-              M.DoneShowingMovement shown ->
-                if shown /= (first::rest)
-                then M.ShowingMovement [first] rest
-                else M.DoneShowingMovement shown
-              M.NotShowingMovement -> M.ShowingMovement [first] rest
-          _ -> M.NotShowingMovement
-      focus =
-        model.playerID
-        |> Maybe.andThen (flip Dict.get newApp.players)
-        |> Maybe.andThen (\p -> p.scene)
-        |> Maybe.map M.FocusScene
-        |> Maybe.withDefault model.focus
-  -- TODO: fix animation
-  in ( {model2 | -- showingMovement = showingMovement
-                focus = focus}
-     , mapChangeShenanigans model focus)
-
-mapChangeShenanigans : M.Model -> M.Focus -> M.Msg
-mapChangeShenanigans model newFocus = M.NoMsg
+  in ( model2 , M.NoMsg)
 
 {-| Return the most recent PathCreature log item  -}
 getLatestPath : M.Model -> T.App -> Maybe T.GameLog
@@ -93,47 +62,21 @@ arrayRFind limit fn data =
 start : Cmd Msg
 start = message Start
 
-renderComponent : M.Model -> M.Model -> String -> M.ReactComponent -> Cmd Msg
-renderComponent oldModel newModel id componentType =
-  case componentType of
-    M.ReactHistory -> Components.renderHistory (id, newModel.raw_app)
-    M.ReactPlayers ->
-      let scene = case newModel.focus of
-                    M.FocusScene scene -> Just scene
-                    _ -> Nothing
-      in Components.renderPlayers (id, scene, newModel.raw_app)
-    M.ReactTextInput -> Cmd.none
-    M.ReactSideBar ->
-      let
-        _ = Debug.log "A ReactSideBar appears!" id
-        scene =
-          case newModel.focus of
-            M.FocusScene sid -> Just sid
-            _ -> Nothing
-      in
-        case newModel.playerID of
-          Just pid ->
-            let _ = Debug.log "[RENDERPLAYERUI]" pid
-            in Components.renderPlayerUI (id, newModel.rpiURL, pid, scene, newModel.raw_app)
-          Nothing -> Cmd.none
-
 update : Msg -> M.Model -> (M.Model, Cmd Msg)
 update msg model =
   let (newModel, cmd) = update_ msg model
-      refreshReactComponent (id, componentType) = renderComponent model newModel id componentType
-      refreshReactComponents =
-        if model.app /= newModel.app || model.reactComponents /= newModel.reactComponents || model.playerID /= newModel.playerID then
-          (if newModel.mainReactComponent /= "" then Components.renderReactMain (newModel.mainReactElement, newModel.rpiURL, newModel.mainReactComponent, newModel.raw_app) else Cmd.none)
-          :: (List.map refreshReactComponent (Dict.toList newModel.reactComponents))
-        else []
-  in (newModel, Cmd.batch <| [cmd] ++ refreshReactComponents)
+      refreshReactComponent =
+        if model.app /= newModel.app then
+          (if newModel.mainReactComponent /= ""
+           then Components.renderReactMain (newModel.mainReactElement, newModel.rpiURL, newModel.mainReactComponent, newModel.raw_app)
+           else Cmd.none)
+        else Cmd.none
+  in (newModel, Cmd.batch <| [cmd] ++ [refreshReactComponent])
 
 update_ : Msg -> M.Model -> (M.Model, Cmd Msg)
 update_ msg model = case msg of
 
   NoMsg -> (model, Cmd.none)
-
-  WindowResized s -> (model, Cmd.none)
 
   Start ->
     let _ = Debug.log "[Update:Start] Starting up Elm app!" ()
@@ -161,19 +104,10 @@ update_ msg model = case msg of
 
   AppUpdate (Ok (newApp, rawApp)) ->
     let (model2, msg) = updateModelFromApp model newApp rawApp
-    in ( { model2 | moving = Nothing , selectingAbility = Nothing }, message msg )
+    in ( model2 , message msg )
   AppUpdate (Err x) ->
     let _ = Debug.log "[APP-ERROR] " x
     in ({model | error = toString x}, Cmd.none)
-
-
-  LoadComponent id componentType ->
-    let newModel = {model | reactComponents = Dict.insert id componentType model.reactComponents}
-    in ( newModel, Cmd.none ) --renderComponent newModel id componentType )
-
-  UnloadComponent id ->
-    ( {model | reactComponents = Dict.remove id model.reactComponents}
-    , Components.unloadComponent id)
 
   Lazy f -> (model, message <| f model)
 
