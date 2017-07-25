@@ -112,40 +112,5 @@ update_ msg model = case msg of
   Lazy f -> (model, message <| f model)
 
   -- Basic GameCommands
-  SendCommand cmd -> (model, sendCommand model.rpiURL cmd)
-  SendCommandRaw cmd -> (model, sendCommandRaw model.rpiURL cmd)
-
-  CommandComplete (Ok (Ok x)) ->
-    let _ = Debug.log ("[COMMAND-COMPLETE] "++ (toString x)) ()
-    in (model, Cmd.none)
-  CommandComplete (Ok (Err x)) -> ({model | error = toString x}, Cmd.none)
-  CommandComplete (Err x) -> ({ model | error = toString x}, Cmd.none)
-
-  SendCommandCB cmd cb -> (model, sendCommandCB model.rpiURL cmd cb)
-
-  CommandCompleteCB cb (Ok (Ok x)) ->
-    let _ = Debug.log ("[COMMAND-COMPLETE-CB] "++ (toString x)) ()
-    in (model, message (cb model x))
-  CommandCompleteCB _ (Ok (Err x)) -> ({model | error = toString x}, Cmd.none)
-  CommandCompleteCB _ (Err x) -> ({ model | error = toString x}, Cmd.none)
-
   _ -> (model, Cmd.none)
 
-toggleSet : comparable -> Set.Set comparable -> Set.Set comparable
-toggleSet el set = if Set.member el set then Set.remove el set else Set.insert el set
-
-sendCommand : String -> T.GameCommand -> Cmd Msg
-sendCommand url cmd =
-  sendCommandRaw url (T.gameCommandEncoder cmd)
-
-sendCommandRaw : String -> JE.Value -> Cmd Msg
-sendCommandRaw url cmd =
-  let _ = Debug.log "[sendCommandRaw]" cmd in
-  Http.send CommandComplete (Http.post url (Http.jsonBody cmd) (T.resultDecoder JD.value JD.value))
-
-sendCommandCB : String -> T.GameCommand -> (M.Model -> List T.GameLog -> Msg) -> Cmd Msg
-sendCommandCB url cmd cb =
-  let decoder = T.resultDecoder JD.value (JD.list T.gameLogDecoder)
-  in Http.send
-    (CommandCompleteCB cb)
-    (Http.post url (Http.jsonBody (T.gameCommandEncoder cmd)) decoder)

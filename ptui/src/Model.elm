@@ -23,12 +23,6 @@ type Msg
     | ShowError String
     | ClearError
 
-    | SendCommandRaw JE.Value
-    | SendCommand T.GameCommand
-    | CommandComplete (Result Http.Error (Result JD.Value JD.Value))
-    | SendCommandCB T.GameCommand (Model -> List T.GameLog -> Msg)
-    | CommandCompleteCB (Model -> List T.GameLog -> Msg) (Result Http.Error (Result JD.Value (List T.GameLog)))
-
     | Lazy (Model -> Msg)
 
     | NoMsg
