@@ -83,7 +83,7 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
     const tools = this.mapEditingTools();
     return <div>
       {tools}
-      <GridSvg map={map} creatures={[]}>
+      <GridSvg map={map}>
         {getSpecials(M.specialsMapToRPI(specials))}
         {open_tiles}
         {closed_tiles}
@@ -184,11 +184,23 @@ export const SceneGrid = M.connectRedux(
     const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
       : null;
 
+    const creature_els = LD.values(props.creatures).map(c =>
+      <GridCreature key={c.creature.id} creature={c} />);
+    const move = grid.movement_options;
+    const movement_target_els = move
+      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
+        teleport={move.teleport} />)
+      : [];
+
+
     return <div style={{ width: "100%", height: "100%" }}>
       {menu}
       {annotation}
-      <GridSvg map={map} creatures={LD.values(props.creatures)}
-        scene_background={props.scene.background_image_url} />
+      <GridSvg map={map}
+        scene_background={props.scene.background_image_url}>
+        {creature_els}
+        {movement_target_els}
+      </GridSvg>
     </div>;
 
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
@@ -249,18 +261,12 @@ export interface MapCreature {
 
 interface GridSvgProps {
   map: T.Map;
-  creatures: Array<MapCreature>;
   scene_background?: string;
   children?: React.ReactNode;
 }
 export const GridSvg = M.connectRedux(
-  class GridSvg extends React.Component<GridSvgProps & M.ReduxProps, { allow_clicks: boolean }> {
+  class GridSvg extends React.Component<GridSvgProps & M.ReduxProps> {
     spz: SPZ.SVGPanZoom;
-
-    constructor(props: GridSvgProps & M.ReduxProps) {
-      super(props);
-      this.state = { allow_clicks: true };
-    }
 
     shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
       const mvmt_diff = !M.isEqual(
@@ -281,18 +287,10 @@ export const GridSvg = M.connectRedux(
     }
 
     render(): JSX.Element {
-      const { map, creatures, scene_background, ptui, dispatch } = this.props;
+      const { map, scene_background, ptui, dispatch } = this.props;
       console.log("[EXPENSIVE:GridSvg.render]");
       const open_terrain_color = map.background_image_url ? "transparent" : "white";
       const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
-      const creature_els = creatures.map(c =>
-        <GridCreature key={c.creature.id} creature={c} allow_clicks={this.state.allow_clicks} />);
-      const grid = ptui.state.grid;
-      const move = grid.movement_options;
-      const movement_target_els = move
-        ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
-          teleport={move.teleport} />)
-        : [];
       const background_image = map.background_image_url
         ? <image xlinkHref={map.background_image_url} width={map.background_image_scale[0]}
           height={map.background_image_scale[1]}
@@ -307,8 +305,6 @@ export const GridSvg = M.connectRedux(
             /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
              * hence the `any` type in this `ref` */
           ) => { this.spz = el; }}
-        onPanZoom={(isPanningOrZooming: boolean) =>
-          this.setState({ allow_clicks: !isPanningOrZooming })}
         preserveAspectRatio="xMinYMid slice"
         style={{
           width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
@@ -320,8 +316,6 @@ export const GridSvg = M.connectRedux(
         {terrain_els}
         {getSpecials(map.specials, ptui.state.player_id)}
         {getAnnotations(dispatch, map.specials, ptui.state.player_id)}
-        {creature_els}
-        {movement_target_els}
         {this.props.children}
       </SPZ.SVGPanZoom>;
     }
@@ -409,11 +403,10 @@ function Annotation({ dispatch, pt, vis, player_id }:
 
 
 const GridCreature = M.connectRedux(
-  function GridCreature({ ptui, dispatch, creature, allow_clicks }:
-    { creature: MapCreature; allow_clicks: boolean } & M.ReduxProps): JSX.Element {
+  function GridCreature({ ptui, dispatch, creature }:
+    { creature: MapCreature } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
-      if (!allow_clicks) { return; }
       const act: M.Action = {
         type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
       };
