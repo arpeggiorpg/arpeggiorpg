@@ -1,10 +1,12 @@
 webpack = require('webpack');
 
+const build_dir = __dirname + "/build";
+
 module.exports = {
     entry: "./src/index.tsx",
     output: {
         filename: "bundle.js",
-        path: __dirname + "/build"
+        path: build_dir
     },
     stats: "errors-only",
 
@@ -32,6 +34,10 @@ module.exports = {
             { enforce: "pre", test: /\.js$/, loader: "source-map-loader" }
         ]
     },
+
+    devServer: {
+        contentBase: build_dir,
+    }
 
     // When importing a module whose path matches one of the following, just
     // assume a corresponding global variable exists and use that instead.
