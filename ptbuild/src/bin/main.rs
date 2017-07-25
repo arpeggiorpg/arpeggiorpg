@@ -43,10 +43,6 @@ fn main() {
     watch(&ptui_dir, &rpi);
   } else {
     println!("[ptbuild] Starting build...");
-    let thread1 = {
-      let ptui_dir = ptui_dir.clone();
-      thread::spawn(move || build_js(&ptui_dir))
-    };
     let thread2 = {
       let ptui_dir = ptui_dir.clone();
       let build_dir = build_dir.clone();
@@ -56,7 +52,6 @@ fn main() {
       let ptui_dir = ptui_dir.clone();
       thread::spawn(move || webpack(&ptui_dir))
     };
-    thread1.join().expect("build_js thread failed");
     thread2.join().expect("build_html thread failed");
     thread3.join().expect("webpack thread failed");
 
@@ -81,23 +76,6 @@ fn watch(ptui_dir: &path::Path, rpi: &str) {
     .spawn()
     .expect(&format!("Couldn't run watchexec :("));
   child.wait().expect("watchexec exited");
-}
-
-fn build_js(ptui_dir: &path::Path) {
-  for &(elm, js) in [("ReactMain.elm", "ElmMain.js")].iter() {
-    let mut child = Command::new("elm")
-      .arg("make")
-      .arg(path::Path::new("src").join(elm))
-      .arg("--output")
-      .arg(path::Path::new("build").join(js))
-      .current_dir(ptui_dir)
-      .spawn()
-      .expect(&format!("Couldn't build {}", elm));
-    let code = child.wait().expect(&format!("Failed to wait on elm make for {}", elm));
-    if !code.success() {
-      panic!("elm make {} was unsuccessful: {:?}", elm, code);
-    }
-  }
 }
 
 fn webpack(ptui_dir: &path::Path) {
