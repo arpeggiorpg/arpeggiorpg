@@ -38,12 +38,14 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
     };
   }
 
-  componentWillReceiveProps(props: MapGridProps & M.DispatchProps) {
-    this.setState({
-      terrain: I.Set(props.map.terrain.map(I.List)),
-      specials: M.specialsRPIToMap(props.map.specials),
-      painting: "Terrain",
-    });
+  componentWillReceiveProps(nextProps: MapGridProps & M.DispatchProps) {
+    if (nextProps.map.id !== this.props.map.id) {
+      this.setState({
+        terrain: I.Set(nextProps.map.terrain.map(I.List)),
+        specials: M.specialsRPIToMap(nextProps.map.specials),
+        painting: "Terrain",
+      });
+    }
   }
 
   shouldComponentUpdate(nextProps: MapGridProps & M.DispatchProps, nextState: MapGridState) {
