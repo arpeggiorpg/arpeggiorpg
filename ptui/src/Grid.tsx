@@ -203,7 +203,7 @@ export const SceneGrid = M.connectRedux(
         height: '45px', display: 'flex',
         justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <CV.TopBar />
+        <TopBar />
       </div>
       {menu}
       {annotation}
@@ -275,6 +275,21 @@ function getTileTargets(options: T.PotentialTargets) {
       );
   }
 }
+
+const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
+  const { ptui, dispatch } = props;
+  if (ptui.state.grid.movement_options) {
+    return <div>Select a destination or
+       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
+    </div>;
+  }
+  if (ptui.state.grid.target_options) {
+    return <div>Select a target or
+      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
+    </div>;
+  }
+  return <div>Ready to serve.</div>;
+});
 
 export interface MapCreature {
   creature: T.Creature;

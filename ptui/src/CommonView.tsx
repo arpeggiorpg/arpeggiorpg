@@ -656,24 +656,6 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
 export const TheLayout = M.connectRedux(TheLayoutComp);
 
-// TODO: I want to get rid of TopBar, or at least get rid of it as a connected component.
-// It should just be a part of the Grid component probably.
-export const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
-  const { ptui, dispatch } = props;
-  if (ptui.state.grid.movement_options) {
-    return <div>Select a destination or
-       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
-    </div>;
-  }
-  if (ptui.state.grid.target_options) {
-    return <div>Select a target or
-      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
-    </div>;
-  }
-  return <div>Ready to serve.</div>;
-});
-
-
 export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
     className="material-icons"
