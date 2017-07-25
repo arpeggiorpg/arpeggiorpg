@@ -7,7 +7,6 @@ import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 import thunk from 'redux-thunk';
 
-// import 'semantic-ui-css/semantic.min.css';
 import {
   Accordion, Button, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal,
   Segment,

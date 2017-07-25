@@ -13,14 +13,21 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 # Building/running (for dev/test)
 
-To start the backend:
+To start the backend (this defaults to serving on all network interfaces on port 1337):
 
-```cd ptrpi; cargo run```
-
-To load the UI:
-
-```
-cd ptui; elm reactor; open http://localhost:8000/src/GMTest.elm
+```shell
+cd ptrpi; cargo run -- saved_games
 ```
 
-Load PlayerTest.elm to load the Player UI.
+To build the UI, you must have npm installed (ideally npm 5).
+
+```
+cd ptui;
+  npm install;
+  ./node_modules/.bin/webpack --config ./webpack.vendor.js
+cd ../; # back in the toplevel directory
+  cargo run --package ptbuild  -- --ptui-dir ptui --rpi-url http://localhost:1337/
+```
+
+That will generate the UI in the `ptui/build` directory -- now host that on a static web server and
+hit the "GM.html" or "Player.html" files in it.
