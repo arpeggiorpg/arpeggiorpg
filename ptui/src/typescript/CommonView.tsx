@@ -26,18 +26,10 @@ const NARROW_THRESHOLD = 500;
 
 
 interface MainProps {
-  app?: T.App;
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps,
   { store: "Unfetched" | "Error" | Redux.Store<M.PTUI>; }> {
-
-  static createStore(props: MainProps, app: T.App): Redux.Store<M.PTUI> {
-    return Redux.createStore(
-      M.update,
-      new M.PTUI(props.rpi_url, app),
-      Redux.applyMiddleware(thunk));
-  }
 
   constructor(props: MainProps) {
     super(props);
@@ -48,10 +40,13 @@ export class Main extends React.Component<MainProps,
     // kick off a fetch of the app
     M.decodeFetch(this.props.rpi_url, undefined, T.decodeApp).then(
       app => {
-        const store = (this.constructor as typeof Main).createStore(this.props, app);
+        const ptui = new M.PTUI(this.props.rpi_url, app);
+        const store = Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk));
+        ptui.startPoll(store.dispatch);
         this.setState({ store });
       }
-    ).catch(_ => {
+    ).catch(err => {
+      console.log("[Main.networkError]", err);
       this.setState({ store: "Error" });
       this.componentDidMount();
     });

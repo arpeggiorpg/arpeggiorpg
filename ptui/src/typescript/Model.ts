@@ -197,6 +197,22 @@ export class PTUI {
     this.rpi_url = rpi_url;
   }
 
+  startPoll(dispatch: Dispatch) {
+    function poll(rpi_url: string, app: T.App) {
+      const num_snaps = app.snapshots.length;
+      const snaps = app.snapshots[num_snaps - 1];
+      const num_logs = snaps ? snaps.logs.length : 0;
+      const url = `${rpi_url}poll/${num_snaps}/${num_logs}`;
+      return ptfetch(dispatch, url, undefined, T.decodeApp,
+        app => {
+          dispatch({ type: "RefreshApp", app });
+          poll(rpi_url, app);
+        }
+      );
+    }
+    poll(this.rpi_url, this.app);
+  }
+
   updateState(updater: (state: PTUIState) => PTUIState): PTUI {
     return new PTUI(this.rpi_url, this.app, updater(this.state));
   }
