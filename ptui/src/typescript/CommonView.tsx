@@ -26,21 +26,21 @@ const NARROW_THRESHOLD = 500;
 
 
 interface MainProps {
-  app?: object;
+  app?: T.App;
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI> | undefined; }> {
 
   static createStore(props: MainProps): Redux.Store<M.PTUI> | undefined {
     const ptui = props.app
-      ? new M.PTUI(props.rpi_url, T.decodeApp.decodeAny(props.app))
+      ? new M.PTUI(props.rpi_url, props.app)
       : undefined;
     return ptui
       ? Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk))
       : undefined;
   }
 
-  app?: object;
+  app?: T.App;
   rpi_url: string;
 
   constructor(props: MainProps) {
@@ -54,7 +54,7 @@ export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI
       if (this.state.store) {
         if (nextProps.app) {
           this.state.store.dispatch(
-            { type: "RefreshApp", app: T.decodeApp.decodeAny(nextProps.app) });
+            { type: "RefreshApp", app: nextProps.app });
         }
       } else {
         if (nextProps.app) {

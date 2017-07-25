@@ -65,12 +65,7 @@
 <body>
   <div id="react-main"></div>
   <script type="text/javascript">
-    var app = Elm.Main.worker({
-      'rpi': rpi, 'windowSize': [window.innerWidth, window.innerHeight],
-      'mainReactComponent': '{{react-component}}',
-      'mainReactElement': 'react-main'
-    });
-    PT_initializeComponents(app);
+    PT_renderMain(rpi, '{{react-component}}', 'react-main');
   </script>
 </body>
 

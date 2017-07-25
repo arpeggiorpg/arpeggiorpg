@@ -26,7 +26,7 @@ export type SpecialTileData = [Color, string, Visibility];
 
 
 export interface App {
-  snapshots: AppSnapshots;
+  snapshots: Array<{ snapshot: {}, logs: Array<GameLog> }>;
   players: I.Map<PlayerID, Player>;
   current_game: Game;
 }
@@ -210,8 +210,6 @@ export interface Player {
   scene?: SceneID;
   creatures: Array<CreatureID>;
 }
-
-export type AppSnapshots = Array<{ snapshot: {}, logs: Array<GameLog> }>;
 
 export type GameLog =
   | {
@@ -789,11 +787,6 @@ export const decodeGameLog: Decoder<GameLog> =
       JD.tuple(JD.number(), JD.number())),
   });
 
-export const decodeAppSnapshots: Decoder<AppSnapshots> =
-  JD.array(JD.map(
-    ls => ({ snapshot: {}, logs: ls }),
-    JD.at([1], JD.array(decodeGameLog))));
-
 export const decodePlayer: Decoder<Player> = JD.object(
   ["player_id", JD.string()],
   ["scene", maybe(JD.string())],
@@ -895,7 +888,9 @@ export const decodeGame: Decoder<Game> = JD.object(
 );
 
 export const decodeApp: Decoder<App> = JD.object(
-  ["snapshots", decodeAppSnapshots],
+  ["snapshots", JD.array(JD.map(
+    ls => ({ snapshot: {}, logs: ls }),
+    JD.at([1], JD.array(decodeGameLog))))],
   ["players", JD.map(I.Map, JD.dict(decodePlayer))],
   ["current_game", decodeGame],
   (snapshots, players, current_game) => ({ snapshots, players, current_game })
@@ -963,7 +958,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
         { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
     case "CreateScene":
-      return { CreateScene: [encodeFolderPath(cmd.path),encodeSceneCreation(cmd.spec)] };
+      return { CreateScene: [encodeFolderPath(cmd.path), encodeSceneCreation(cmd.spec)] };
     case "EditSceneDetails":
       return {
         EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },

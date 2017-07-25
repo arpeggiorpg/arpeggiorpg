@@ -145,7 +145,7 @@ export type SecondaryFocus =
   ;
 
 
-function decodeFetch<J>(
+export function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
   decoder: JD.Decoder<J>): Promise<J> {
   const p: Promise<Response> = fetch(url, init);

@@ -6,7 +6,7 @@ import Update as U
 
 main : Platform.Program M.ProgramFlags M.Model M.Msg
 main = Platform.programWithFlags
-  { init = \flags -> (M.defaultModel flags, U.start)
+  { init = \flags -> (M.defaultModel flags, Cmd.none)
   , update = U.update
   , subscriptions = M.subscriptions
   }

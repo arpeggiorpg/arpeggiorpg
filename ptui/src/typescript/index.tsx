@@ -5,17 +5,11 @@ import * as ReactDOM from "react-dom";
 
 // (window as any).Perf = Perf;
 
-import * as CommonView from './CommonView';
-import * as PTDice from "./Dice";
+import * as CV from './CommonView';
 import * as GMView from './GMView';
+import * as M from './Model';
 import * as PlayerView from "./PlayerView";
-import * as PTTypes from "./PTTypes";
-
-function PT_initializeComponents(app: any) {
-  app.ports.renderReactMain.subscribe(([elemID, rpi_url, componentName, pt_app]:
-    [string, string, string, any]) =>
-    PT_renderMain(rpi_url, componentName, elemID, pt_app));
-}
+import * as T from "./PTTypes";
 
 function getInnerComponent(component_name: string): JSX.Element {
   switch (component_name) {
@@ -26,20 +20,21 @@ function getInnerComponent(component_name: string): JSX.Element {
   }
 }
 
-function PT_renderMain(rpi_url: string, component_name: string, id: string, pt_app: any) {
-  const el = document.getElementById(id);
-  ReactDOM.render(
-    <CommonView.Main rpi_url={rpi_url} app={pt_app}>
-      {getInnerComponent(component_name)}
-    </CommonView.Main>,
-    el);
+function PT_renderMain(rpi_url: string, component_name: string, id: string) {
+  // kick off a fetch of the app
+  M.decodeFetch(rpi_url, undefined, T.decodeApp).then(
+    app => {
+      const el = document.getElementById(id);
+      ReactDOM.render(
+        <CV.Main rpi_url={rpi_url} app={app}>
+          {getInnerComponent(component_name)}
+        </CV.Main>,
+        el);
+    }
+  );
 }
 
 // I can't figure out any other way to export these functions such that they can be called from plain
 // old javascript callers
 
-(window as any).PT_initializeComponents = PT_initializeComponents;
-
-(window as any).PTT = PTTypes;
-(window as any).PTDice = PTDice;
 (window as any).PT_renderMain = PT_renderMain;
