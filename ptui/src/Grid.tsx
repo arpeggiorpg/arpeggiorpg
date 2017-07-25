@@ -212,16 +212,10 @@ export const SceneGrid = M.connectRedux(
     function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
       const special = LD.find(map.specials, ([pt_, _, _1, _2]) => M.isEqual(pt, pt_));
       if (!special) { return <noscript />; }
-      return <CV.ClickAway
-        onClick={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
-        <div style={{
-          position: "fixed",
-          fontSize: "24px",
-          top: rect.sw.y, left: rect.sw.x,
-          border: "1px solid black", borderRadius: "5px",
-          backgroundColor: "white",
-        }}><Segment>{special[2]}</Segment></div>
-      </CV.ClickAway>;
+      return <RectPositioned rect={rect}
+        onClose={() => props.dispatch({ type: "ToggleAnnotation", pt })}>
+        <Segment>{special[2]}</Segment>
+      </RectPositioned >;
     }
 
     function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
@@ -230,32 +224,39 @@ export const SceneGrid = M.connectRedux(
         return <noscript />;
       }
       const creature = creature_; // WHY TYPESCRIPT, WHY???
-      return <CV.ClickAway
-        onClick={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
-        <div
-          style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
-          <Menu vertical={true}>
-            <Menu.Item header={true}>
-              {CV.classIcon(creature.creature)} {creature.creature.name}
-            </Menu.Item>
-            {
-              creature.actions.entrySeq().toArray().map(
-                ([actionName, action]) => {
-                  function onClick() {
-                    props.dispatch({ type: "ActivateGridCreature", cid, rect });
-                    action(cid);
-                  }
-                  return <Menu.Item key={actionName} onClick={() => onClick()}>
-                    {actionName}
-                  </Menu.Item>;
-                })
-            }
-          </Menu>
-        </div>
-      </CV.ClickAway>;
+      return <RectPositioned rect={rect}
+        onClose={() => props.dispatch({ type: "ActivateGridCreature", cid, rect })}>
+        <Menu vertical={true}>
+          <Menu.Item header={true}>
+            {CV.classIcon(creature.creature)} {creature.creature.name}
+          </Menu.Item>
+          {
+            creature.actions.entrySeq().toArray().map(
+              ([actionName, action]) => {
+                function onClick() {
+                  props.dispatch({ type: "ActivateGridCreature", cid, rect });
+                  action(cid);
+                }
+                return <Menu.Item key={actionName} onClick={() => onClick()}>
+                  {actionName}
+                </Menu.Item>;
+              })
+          }
+        </Menu>
+      </RectPositioned>;
     }
   });
 
+interface RectPositionedProps { rect: M.Rect; onClose: () => void; children: React.ReactChild; }
+function RectPositioned(props: RectPositionedProps): JSX.Element {
+  const { rect, onClose, children } = props;
+  return <CV.ClickAway onClick={onClose}>
+    <div
+      style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
+      {children}
+    </div>
+  </CV.ClickAway>;
+}
 
 function getTileTargets(options: T.PotentialTargets) {
   switch (options.t) {
