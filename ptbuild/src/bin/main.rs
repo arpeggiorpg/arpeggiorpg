@@ -12,20 +12,24 @@ use std::thread;
 
 fn main() {
   let matches = clap::App::new("PT Builder Tool")
-    .arg(clap::Arg::with_name("rpi-url")
-           .long("rpi-url")
-           .value_name("URL")
-           .required(true)
-           .help("URL pointing at the P&T RPI"))
-    .arg(clap::Arg::with_name("ptui-dir")
-           .long("ptui-dir")
-           .value_name("DIR")
-           .required(true)
-           .help("Directory of PTUI root"))
-    .arg(clap::Arg::with_name("watch")
-           .long("watch")
-           .help("If specified, continuously watch for changes to Elm code and rebuild. Requires \
-             watchexec."))
+    .arg(
+      clap::Arg::with_name("rpi-url")
+        .long("rpi-url")
+        .value_name("URL")
+        .required(true)
+        .help("URL pointing at the P&T RPI"),
+    )
+    .arg(
+      clap::Arg::with_name("ptui-dir")
+        .long("ptui-dir")
+        .value_name("DIR")
+        .required(true)
+        .help("Directory of PTUI root"),
+    )
+    .arg(clap::Arg::with_name("watch").long("watch").help(
+      "If specified, continuously watch for changes to Elm code and rebuild. Requires \
+       watchexec.",
+    ))
     .get_matches()
     .clone();
 
@@ -35,8 +39,8 @@ fn main() {
   let build_dir: path::PathBuf = ptui_dir.join("build");
 
   if !build_dir.exists() {
-    fs::create_dir(&build_dir).expect(&format!("Couldn't create directory {:?}",
-                                               build_dir.to_str()));
+    fs::create_dir(&build_dir)
+      .expect(&format!("Couldn't create directory {:?}", build_dir.to_str()));
   }
 
   if matches.is_present("watch") {
@@ -96,7 +100,6 @@ fn webpack(ptui_dir: &path::Path) {
 }
 
 fn copy_others(ptui_dir: &path::Path, build_dir: &path::Path) -> Result<(), io::Error> {
-  /// Copy all javascript (.js) files in ptui_dir/src to the build dir.
   for direntry in fs::read_dir(ptui_dir.join("src"))? {
     let direntry = direntry?;
     if direntry.file_name().to_str().expect("Couldn't parse file as utf-8").ends_with(".js") {
@@ -113,11 +116,8 @@ fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
   handlebars
     .register_template_string("react-html-template", template)
     .expect("Couldn't register_template_string");
-  for &(js_fn, react_component, html_fn) in
-    [("ElmMain.js", "GM", "GM.html"),
-     ("ElmMain.js", "Player", "Player.html")]
-        .iter() {
-    let mut data = template_data(rpi.to_string(), js_fn.to_string());
+  for &(react_component, html_fn) in [("GM", "GM.html"), ("Player", "Player.html")].iter() {
+    let mut data = template_data(rpi.to_string());
     data.insert("react-component".to_string(), react_component.to_string());
     let populated =
       handlebars.render("react-html-template", &data).expect("Couldn't render template");
@@ -130,10 +130,9 @@ fn build_html(ptui_dir: &path::Path, build_dir: &path::Path, rpi: &str) {
   }
 }
 
-fn template_data(rpi: String, js_source: String) -> HashMap<String, String> {
+fn template_data(rpi: String) -> HashMap<String, String> {
   let mut data = HashMap::new();
   data.insert("rpi-url".to_string(), rpi);
-  data.insert("js-source".to_string(), js_source);
   data
 }
 
