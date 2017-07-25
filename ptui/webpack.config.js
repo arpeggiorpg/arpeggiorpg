@@ -1,7 +1,7 @@
 webpack = require('webpack');
 
 module.exports = {
-    entry: "./src/typescript/index.tsx",
+    entry: "./src/index.tsx",
     output: {
         filename: "bundle.js",
         path: __dirname + "/build"

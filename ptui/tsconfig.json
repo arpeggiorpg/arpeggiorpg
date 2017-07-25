@@ -17,8 +17,8 @@
         "noErrorTruncation": true
     },
     "include": [
-        "src/typescript/*.tsx",
-        "src/typescript/*.ts"
+        "src/*.tsx",
+        "src/*.ts"
     ],
     "exclude": []
 }
