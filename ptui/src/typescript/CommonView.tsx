@@ -29,40 +29,28 @@ interface MainProps {
   app?: T.App;
   rpi_url: string;
 }
-export class Main extends React.Component<MainProps, { store: Redux.Store<M.PTUI> | undefined; }> {
+export class Main extends React.Component<MainProps, { store?: Redux.Store<M.PTUI>; }> {
 
-  static createStore(props: MainProps): Redux.Store<M.PTUI> | undefined {
-    const ptui = props.app
-      ? new M.PTUI(props.rpi_url, props.app)
-      : undefined;
-    return ptui
-      ? Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk))
-      : undefined;
+  static createStore(props: MainProps, app: T.App): Redux.Store<M.PTUI> | undefined {
+    return Redux.createStore(
+      M.update,
+      new M.PTUI(props.rpi_url, app),
+      Redux.applyMiddleware(thunk));
   }
-
-  app?: T.App;
-  rpi_url: string;
 
   constructor(props: MainProps) {
     super(props);
-    const store = (this.constructor as typeof Main).createStore(props);
-    this.state = { store };
+    this.state = {};
   }
 
-  componentWillReceiveProps(nextProps: MainProps) {
-    if (!M.isEqual(this.props, nextProps)) {
-      if (this.state.store) {
-        if (nextProps.app) {
-          this.state.store.dispatch(
-            { type: "RefreshApp", app: nextProps.app });
-        }
-      } else {
-        if (nextProps.app) {
-          const store = (this.constructor as typeof Main).createStore(nextProps);
-          this.setState({ store });
-        }
+  componentDidMount() {
+    // kick off a fetch of the app
+    M.decodeFetch(this.props.rpi_url, undefined, T.decodeApp).then(
+      app => {
+        const store = (this.constructor as typeof Main).createStore(this.props, app);
+        this.setState({ store });
       }
-    }
+    );
   }
 
   render(): JSX.Element {
