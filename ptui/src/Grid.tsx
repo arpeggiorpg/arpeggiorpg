@@ -194,6 +194,9 @@ export const SceneGrid = M.connectRedux(
         teleport={move.teleport} />)
       : [];
 
+    const target_els = props.ptui.state.grid.target_options
+      ? getTileTargets(props.ptui.state.grid.target_options.options)
+      : [];
 
     return <div style={{ width: "100%", height: "100%" }}>
       {menu}
@@ -202,6 +205,7 @@ export const SceneGrid = M.connectRedux(
         scene_background={props.scene.background_image_url}>
         {creature_els}
         {movement_target_els}
+        {target_els}
       </GridSvg>
     </div>;
 
@@ -252,6 +256,18 @@ export const SceneGrid = M.connectRedux(
     }
   });
 
+
+function getTileTargets(options: T.PotentialTargets) {
+  switch (options.t) {
+    case "CreatureIDs": return [];
+    case "Points":
+      return options.points.map(pt => {
+        const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
+        return <rect {...rprops} fillOpacity="0.4" />;
+      }
+      );
+  }
+}
 
 export interface MapCreature {
   creature: T.Creature;
