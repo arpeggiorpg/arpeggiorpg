@@ -29,9 +29,10 @@ interface MainProps {
   app?: T.App;
   rpi_url: string;
 }
-export class Main extends React.Component<MainProps, { store?: Redux.Store<M.PTUI>; }> {
+export class Main extends React.Component<MainProps,
+  { store: "Unfetched" | "Error" | Redux.Store<M.PTUI>; }> {
 
-  static createStore(props: MainProps, app: T.App): Redux.Store<M.PTUI> | undefined {
+  static createStore(props: MainProps, app: T.App): Redux.Store<M.PTUI> {
     return Redux.createStore(
       M.update,
       new M.PTUI(props.rpi_url, app),
@@ -40,7 +41,7 @@ export class Main extends React.Component<MainProps, { store?: Redux.Store<M.PTU
 
   constructor(props: MainProps) {
     super(props);
-    this.state = {};
+    this.state = { store: "Unfetched" };
   }
 
   componentDidMount() {
@@ -50,14 +51,21 @@ export class Main extends React.Component<MainProps, { store?: Redux.Store<M.PTU
         const store = (this.constructor as typeof Main).createStore(this.props, app);
         this.setState({ store });
       }
-    );
+    ).catch(_ => {
+      this.setState({ store: "Error" });
+      this.componentDidMount();
+    });
   }
 
   render(): JSX.Element {
-    if (!this.state.store) {
+    if (this.state.store === "Unfetched") {
       return <div>Waiting for initial data from server.</div>;
+    } else if (this.state.store === "Error") {
+      return <div>There was an error fetching the application state from {this.props.rpi_url}.
+         Trying again...</div>;
+    } else {
+      return <Provider store={this.state.store}>{this.props.children}</Provider>;
     }
-    return <Provider store={this.state.store}>{this.props.children}</Provider>;
   }
 }
 
