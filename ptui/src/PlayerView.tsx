@@ -71,7 +71,7 @@ export const PlayerGameView = M.connectRedux((
     </CV.Tab>
   ];
   return <CV.TheLayout map={map} tabs={tabs} bar_width={325} menu_size="large"
-    top_bar={<CV.TopBar />} bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
+    bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
 });
 
 

@@ -28,10 +28,8 @@ export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
     <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
     : undefined;
 
-  const top_bar = <CV.TopBar />;
-
   return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} tertiary={tertiary}
-    bar_width={450} menu_size='tiny' top_bar={top_bar} bottom_bar={bottom_bar} />;
+    bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 });
 
 function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {

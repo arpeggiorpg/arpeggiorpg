@@ -541,7 +541,6 @@ interface TheLayoutProps {
   tertiary?: JSX.Element;
   bar_width: number;
   menu_size: MenuSize;
-  top_bar?: JSX.Element;
   bottom_bar?: JSX.Element;
 }
 class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
@@ -554,7 +553,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const {
-      map, tabs, secondary, tertiary, bar_width, menu_size, top_bar, bottom_bar, ptui,
+      map, tabs, secondary, tertiary, bar_width, menu_size, bottom_bar, ptui,
     } = this.props;
 
     // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
@@ -573,13 +572,6 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
     const middle =
       // all this relative/absolute crap is because chrome has a stupid flexbox model
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          height: '45px', display: 'flex',
-          justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <Header>P&T</Header>
-          {top_bar}
-        </div>
         <div style={{ flex: 1, position: "relative" }}>
           <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
         </div>
@@ -664,6 +656,8 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
 export const TheLayout = M.connectRedux(TheLayoutComp);
 
+// TODO: I want to get rid of TopBar, or at least get rid of it as a connected component.
+// It should just be a part of the Grid component probably.
 export const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
   const { ptui, dispatch } = props;
   if (ptui.state.grid.movement_options) {
