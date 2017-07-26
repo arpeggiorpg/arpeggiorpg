@@ -71,7 +71,7 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
       return <rect {...tprops}
         style={{ cursor: 'pointer' }}
         onClick={() => paintOpen(pt)}
-        key={`open-${pt[0]}/${pt[1]}/${pt[2]}`} />;
+        key={pointKey("open", pt)} />;
     });
     const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
       pt => {
@@ -79,7 +79,7 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
         const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
           onClick={() => paintClosed(pt)}
-          key={`closed-${pt[0]}-${pt[1]}-${pt[2]}}`} />;
+          key={pointKey("closed", pt)} />;
       });
 
     const tools = this.mapEditingTools();
@@ -169,23 +169,31 @@ export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, Map
   }
 }
 
-export interface SceneGridProps {
+interface SceneGridProps {
   scene: T.Scene;
   creatures: Obj<MapCreature>;
 }
-
+interface SceneGridState {
+  targeting_point?: { point: T.Point3, rect: M.Rect };
+  affected_points?: Array<T.Point3>;
+}
 export const SceneGrid = M.connectRedux(class SceneGrid
-  extends React.Component<SceneGridProps & M.ReduxProps> {
+  extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
+  constructor(props: SceneGridProps & M.ReduxProps) {
+    super(props);
+    this.state = {};
+  }
+
   render(): JSX.Element {
-    const { scene, creatures, ptui, dispatch } = this.props;
+    const { scene, creatures, ptui } = this.props;
     const map_ = M.get(ptui.app.current_game.maps, scene.map);
     if (!map_) { return <div>Couldn't find map</div>; }
     const map = map_; // WHY TYPESCRIPT, WHY???
 
     const grid = ptui.state.grid;
 
-    const menu = grid.active_menu ? renderMenu(grid.active_menu) : null;
-    const annotation = grid.display_annotation ? renderAnnotation(grid.display_annotation)
+    const creature_menu = grid.active_menu ? this.renderMenu(grid.active_menu) : null;
+    const annotation = grid.display_annotation ? this.renderAnnotation(map, grid.display_annotation)
       : null;
 
     const creature_els = LD.values(creatures).map(c =>
@@ -197,8 +205,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       : [];
 
     const target_els = ptui.state.grid.target_options
-      ? getTargetTiles(ptui.state.grid.target_options.options)
+      ? this.getTargetTiles(ptui.state.grid.target_options.options,
+        (point, rect) => this.targetClicked(point, rect))
       : [];
+
+    const affected_els = this.getAffectedTiles();
 
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
@@ -207,52 +218,97 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       }}>
         <TopBar />
       </div>
-      {menu}
+      {creature_menu}
       {annotation}
       <GridSvg map={map}
         scene_background={scene.background_image_url}>
         {creature_els}
         {movement_target_els}
         {target_els}
+        {affected_els}
       </GridSvg>
     </div>;
+  }
 
-    function renderAnnotation({ pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
-      const special = LD.find(map.specials, ([pt_, _, _1, _2]) => M.isEqual(pt, pt_));
-      if (!special) { return <noscript />; }
-      return <RectPositioned rect={rect}
-        onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
-        <Segment>{special[2]}</Segment>
-      </RectPositioned >;
+  targetClicked(point: T.Point3, rect: M.Rect) {
+    const { ptui, dispatch } = this.props;
+    const options = ptui.state.grid.target_options!;
+    const ability = ptui.app.current_game.abilities[options.ability_id];
+    if (!ability) { return; }
+    if (!ability.target.hasOwnProperty('volume')) { return; }
+    const volume = (ability.target as any).volume;
+    this.setState({ targeting_point: { point, rect } });
+    M.fetchAffectedByVolume(dispatch, ptui.rpi_url, this.props.scene.id, point, volume).then(
+      ({ points }) => this.setState({ affected_points: points }));
+  }
+
+  renderAnnotation(map: T.Map, { pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
+    const { dispatch } = this.props;
+    const special = LD.find(map.specials, ([pt_, ..._]) => M.isEqual(pt, pt_));
+    if (!special) { return <noscript />; }
+    return <RectPositioned rect={rect}
+      onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
+      <Segment>{special[2]}</Segment>
+    </RectPositioned >;
+  }
+
+  renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
+    const { creatures, dispatch } = this.props;
+    const creature_ = M.get(creatures, cid);
+    if (!creature_) {
+      return <noscript />;
     }
+    const creature = creature_; // WHY TYPESCRIPT, WHY???
+    return <RectPositioned rect={rect}
+      onClose={() => dispatch({ type: "ActivateGridCreature", cid, rect })}>
+      <Menu vertical={true}>
+        <Menu.Item header={true}>
+          {CV.classIcon(creature.creature)} {creature.creature.name}
+        </Menu.Item>
+        {
+          creature.actions.entrySeq().toArray().map(
+            ([actionName, action]) => {
+              function onClick() {
+                dispatch({ type: "ActivateGridCreature", cid, rect });
+                action(cid);
+              }
+              return <Menu.Item key={actionName} onClick={() => onClick()}>
+                {actionName}
+              </Menu.Item>;
+            })
+        }
+      </Menu>
+    </RectPositioned>;
+  }
 
-    function renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
-      const creature_ = M.get(creatures, cid);
-      if (!creature_) {
-        return <noscript />;
-      }
-      const creature = creature_; // WHY TYPESCRIPT, WHY???
-      return <RectPositioned rect={rect}
-        onClose={() => dispatch({ type: "ActivateGridCreature", cid, rect })}>
-        <Menu vertical={true}>
-          <Menu.Item header={true}>
-            {CV.classIcon(creature.creature)} {creature.creature.name}
-          </Menu.Item>
-          {
-            creature.actions.entrySeq().toArray().map(
-              ([actionName, action]) => {
-                function onClick() {
-                  dispatch({ type: "ActivateGridCreature", cid, rect });
-                  action(cid);
-                }
-                return <Menu.Item key={actionName} onClick={() => onClick()}>
-                  {actionName}
-                </Menu.Item>;
-              })
+  getTargetTiles(
+    options: T.PotentialTargets,
+    onClick: (pt: T.Point3, rect: M.Rect) => void): JSX.Element[] | undefined {
+    switch (options.t) {
+      case "CreatureIDs": return undefined;
+      case "Points":
+        return options.points.map(pt => {
+          let element: SVGRectElement;
+          const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
+          function clickTile() {
+            screenCoordsForRect(element);
+            onClick(pt, screenCoordsForRect(element));
           }
-        </Menu>
-      </RectPositioned>;
+          return <rect key={pointKey("target", pt)}
+            ref={el => { if (el !== null) { element = el; } }}
+            {...rprops} onClick={clickTile} />;
+        });
     }
+  }
+
+  getAffectedTiles(): JSX.Element[] | undefined {
+    if (!this.state.affected_points) { return; }
+    return this.state.affected_points.map(
+      pt => {
+        const rprops = tile_props("red", pt, { x: 1, y: 1 }, 0.5);
+        return <rect key={pointKey("affected", pt)}{...rprops} />;
+      }
+    );
   }
 });
 
@@ -265,17 +321,6 @@ function RectPositioned(props: RectPositionedProps): JSX.Element {
       {children}
     </div>
   </CV.ClickAway>;
-}
-
-function getTargetTiles(options: T.PotentialTargets) {
-  switch (options.t) {
-    case "CreatureIDs": return [];
-    case "Points":
-      return options.points.map(pt => {
-        const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
-        return <rect {...rprops} fillOpacity="0.4" />;
-      });
-  }
 }
 
 const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
@@ -366,7 +411,7 @@ export const GridSvg = M.connectRedux(
 function getSpecials(
   specials: Array<[T.Point3, T.Color, string, T.Visibility]>, player_id?: T.PlayerID) {
   return specials.map(([pt, color, _, vis]) =>
-    <SpecialTile key={pt.toString()} pt={pt} color={color} vis={vis}
+    <SpecialTile key={pointKey("special", pt)} pt={pt} color={color} vis={vis}
       player_id={player_id} />);
 }
 
@@ -376,7 +421,7 @@ function getAnnotations(
   return M.filterMap(specials,
     ([pt, _, note, vis]) => {
       if (note !== "") {
-        return <Annotation key={pt.toString()} pt={pt} vis={vis} dispatch={dispatch}
+        return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
           player_id={player_id} />;
       }
     });
@@ -495,9 +540,8 @@ function text_tile(text: string, pos: T.Point3): JSX.Element {
 
 function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number, y: number })
   : JSX.Element {
-  const key = `${keyPrefix}-${pos[0]}-${pos[1]}`;
   const props = tile_props(color, pos, size);
-  return <rect key={key} {...props} />;
+  return <rect key={pointKey(keyPrefix, pos)} {...props} />;
 }
 
 function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
@@ -594,3 +638,6 @@ export function requestTeleport(dispatch: M.Dispatch, scene: T.Scene, cid: T.Cre
   }
 }
 
+function pointKey(prefix: string, pt: T.Point3) {
+  return `${prefix}-(${pt[0]}/${pt[1]}/${pt[2]})`;
+}
