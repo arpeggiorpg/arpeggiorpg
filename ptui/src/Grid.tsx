@@ -306,7 +306,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return this.state.affected_points.map(
       pt => {
         const rprops = tile_props("red", pt, { x: 1, y: 1 }, 0.5);
-        return <rect key={pointKey("affected", pt)}{...rprops} />;
+        return <rect key={pointKey("affected", pt)}
+          style={{ pointerEvents: "none" }}
+          {...rprops} />;
       }
     );
   }
