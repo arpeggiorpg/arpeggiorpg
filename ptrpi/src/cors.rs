@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use rocket::response::{self, Response, Responder};
+use rocket::response::{self, Responder, Response};
 use rocket::http::Method;
 use rocket::request::Request;
 
@@ -9,7 +9,7 @@ pub struct CORS<R> {
   // expose_headers: HashSet<&'static str>,
   allow_credentials: bool,
   allow_headers: HashSet<&'static str>,
-  allow_methods: HashSet<Method>,
+  allow_methods: HashSet<Method>, 
   // max_age: Option<usize>,
 }
 
@@ -29,7 +29,7 @@ impl<'r, R: Responder<'r>> CORS<R> {
       // expose_headers: HashSet::new(),
       allow_credentials: false,
       allow_headers: HashSet::new(),
-      allow_methods: HashSet::new(),
+      allow_methods: HashSet::new(), 
       // max_age: None,
     }
   }
