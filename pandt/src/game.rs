@@ -5,7 +5,7 @@ use indexed::IndexedHashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use foldertree::{FolderTree, FolderPath};
+use foldertree::{FolderPath, FolderTree};
 
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
@@ -94,11 +94,9 @@ impl Game {
           visibility: visibility.clone(),
         })
       }
-      AddCreatureToScene { scene_id, creature_id, ref visibility } => {
-        self.change_with(
-          GameLog::AddCreatureToScene { scene_id, creature_id, visibility: visibility.clone() },
-        )
-      }
+      AddCreatureToScene { scene_id, creature_id, ref visibility } => self.change_with(
+        GameLog::AddCreatureToScene { scene_id, creature_id, visibility: visibility.clone() },
+      ),
       RemoveCreatureFromScene { scene_id, creature_id } => {
         self.change_with(GameLog::RemoveCreatureFromScene { scene_id, creature_id })
       }
@@ -109,10 +107,8 @@ impl Game {
           challenge: challenge.clone(),
         })
       }
-      RemoveSceneChallenge { scene_id, ref description } => {
-        self
-          .change_with(GameLog::RemoveSceneChallenge { scene_id, description: description.clone() })
-      }
+      RemoveSceneChallenge { scene_id, ref description } => self
+        .change_with(GameLog::RemoveSceneChallenge { scene_id, description: description.clone() }),
 
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
@@ -132,11 +128,9 @@ impl Game {
       EditMapDetails { id, ref details } => {
         self.change_with(GameLog::EditMapDetails { id, details: details.clone() })
       }
-      EditMapTerrain { id, ref terrain, ref specials } => {
-        self.change_with(
-          GameLog::EditMapTerrain { id, terrain: terrain.clone(), specials: specials.clone() },
-        )
-      }
+      EditMapTerrain { id, ref terrain, ref specials } => self.change_with(
+        GameLog::EditMapTerrain { id, terrain: terrain.clone(), specials: specials.clone() },
+      ),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -265,18 +259,14 @@ impl Game {
     F: FnOnce(&mut Inventory) -> (),
   {
     let opt = match owner_id {
-      InventoryOwner::Scene(sid) => {
-        self.scenes.mutate(&sid, |mut s| {
-          f(&mut s.inventory);
-          return s;
-        })
-      }
-      InventoryOwner::Creature(cid) => {
-        self.creatures.mutate(&cid, |mut c| {
-          f(&mut c.inventory);
-          return c;
-        })
-      }
+      InventoryOwner::Scene(sid) => self.scenes.mutate(&sid, |mut s| {
+        f(&mut s.inventory);
+        return s;
+      }),
+      InventoryOwner::Creature(cid) => self.creatures.mutate(&cid, |mut c| {
+        f(&mut c.inventory);
+        return c;
+      }),
     };
     opt.ok_or_else(|| owner_id.not_found_error())
   }
@@ -314,26 +304,24 @@ impl Game {
       AttributeCheckResult(..) => {} // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
-      MoveFolderItem(ref src, ref item_id, ref dst) => {
-        match *item_id {
-          FolderItemID::NoteID(ref name) => {
-            let note = self
-              .campaign
-              .get_mut(src)?
-              .notes
-              .remove(name)
-              .ok_or_else(|| GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
-            self.campaign.get_mut(dst)?.notes.insert(note.clone());
-          }
-          FolderItemID::SubfolderID(ref name) => {
-            self.campaign.move_folder(&src.child(name.clone()), dst)?;
-          }
-          _ => {
-            self.unlink_folder_item(src, item_id)?;
-            self.link_folder_item(dst, item_id)?;
-          }
+      MoveFolderItem(ref src, ref item_id, ref dst) => match *item_id {
+        FolderItemID::NoteID(ref name) => {
+          let note = self
+            .campaign
+            .get_mut(src)?
+            .notes
+            .remove(name)
+            .ok_or_else(|| GameErrorEnum::NoteNotFound(src.clone(), name.clone()))?;
+          self.campaign.get_mut(dst)?.notes.insert(note.clone());
         }
-      }
+        FolderItemID::SubfolderID(ref name) => {
+          self.campaign.move_folder(&src.child(name.clone()), dst)?;
+        }
+        _ => {
+          self.unlink_folder_item(src, item_id)?;
+          self.link_folder_item(dst, item_id)?;
+        }
+      },
       CopyFolderItem { ref source, ref item_id, ref dest, ref new_item_id } => {
         match (item_id, new_item_id) {
           (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
@@ -802,7 +790,7 @@ impl Game {
 
   pub fn creature_act(
     &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
-    mut change: ChangedGame, in_combat: bool
+    mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
     let targets = self.resolve_targets(creature, scene, ability.target, target)?;
     for creature_id in &targets {
@@ -819,26 +807,22 @@ impl Game {
   pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec, decision: DecidedTarget)
     -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
-      (TargetSpec::Melee, DecidedTarget::Creature(cid)) => {
-        if self
-          .tile_system
-          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE)
-        {
-          Ok(vec![cid])
-        } else {
-          Err(GameErrorEnum::CreatureOutOfRange(cid).into())
-        }
-      }
-      (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => {
-        if self
-          .tile_system
-          .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max)
-        {
-          Ok(vec![cid])
-        } else {
-          Err(GameErrorEnum::CreatureOutOfRange(cid).into())
-        }
-      }
+      (TargetSpec::Melee, DecidedTarget::Creature(cid)) => if self
+        .tile_system
+        .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE)
+      {
+        Ok(vec![cid])
+      } else {
+        Err(GameErrorEnum::CreatureOutOfRange(cid).into())
+      },
+      (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => if self
+        .tile_system
+        .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max)
+      {
+        Ok(vec![cid])
+      } else {
+        Err(GameErrorEnum::CreatureOutOfRange(cid).into())
+      },
       (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
       (TargetSpec::AllCreaturesInVolumeInRange { volume, range }, DecidedTarget::Point(pt)) => {
         if !self.tile_system.points_within_distance(scene.get_pos(creature.id())?, pt, range) {
@@ -894,6 +878,9 @@ impl Game {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
       TargetSpec::Volume { volume, range } => panic!(),
+      TargetSpec::LineFromActor { distance } => {
+        self.open_terrain_in_range(scene, creature_id, distance)?
+      }
     })
   }
 

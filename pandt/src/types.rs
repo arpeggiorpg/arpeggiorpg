@@ -696,6 +696,7 @@ pub enum TargetSpec {
   Melee,
   Range(Distance),
   Actor,
+  LineFromActor { distance: Distance },
   SomeCreaturesInVolumeInRange {
     volume: Volume,
     /// maximum number of creatures that can be hit

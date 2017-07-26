@@ -5,7 +5,19 @@ current_game:
     "00000000-0000-0000-0000-000000000006":
       id: "00000000-0000-0000-0000-000000000006"
       name: "Gold Coin"
-  abilities: 
+  abilities:
+    piercing_shot:
+      name: Piercing Shot
+      target:
+        LineFromActor:
+          distance: 1000
+      cost: 8
+      effects:
+        - Damage:
+            Expr:
+              num: 1
+              size: 3
+      usable_ooc: false 
     shoot: 
       name: Shoot
       target: 
@@ -351,6 +363,7 @@ current_game:
       abilities: 
         - shoot
         - dash
+        - piercing_shot
       conditions: 
         - 
           RecurringEffect: 

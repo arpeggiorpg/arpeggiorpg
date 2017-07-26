@@ -1,12 +1,10 @@
 single_line_if_else_max_width = 100
 max_width = 100
-struct_variant_width = 85
 tab_spaces = 2
 fn_args_density = "Compressed"
 chain_one_line_max = 100
 fn_call_width = 100
-struct_lit_width = 99
-# There's a bug in struct_variant_width, it's counting JUST the width of the fields, not the entire
-# line.
+struct_lit_width = 100
+struct_variant_width = 100
 
 write_mode = "Overwrite"

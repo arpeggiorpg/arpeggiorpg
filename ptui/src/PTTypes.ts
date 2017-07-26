@@ -62,7 +62,9 @@ export type TargetSpec =
   | { t: "Actor" }
   | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
   | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
-  | { t: "Volume"; volume: Volume; range: Distance };
+  | { t: "Volume"; volume: Volume; range: Distance }
+  | { t: "LineFromActor"; distance: Distance }
+  ;
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID; }
@@ -863,8 +865,10 @@ const decodeTargetSpec: Decoder<TargetSpec> = sum<TargetSpec>("TargetSpec",
     Volume: JD.object(
       ["volume", decodeVolume],
       ["range", JD.number()],
-      (volume, range): TargetSpec => ({ t: "Volume", volume, range })
-    ),
+      (volume, range): TargetSpec => ({ t: "Volume", volume, range })),
+    LineFromActor: JD.object(
+      ["distance", JD.number()],
+      (distance): TargetSpec => ({ t: "LineFromActor", distance })),
   });
 
 const decodeAbility: Decoder<Ability> = JD.object(
