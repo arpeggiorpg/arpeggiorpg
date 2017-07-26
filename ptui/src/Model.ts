@@ -594,15 +594,14 @@ export function specialsRPIToMap(specials: Array<[T.Point3, T.Color, string, T.V
       [I.List(pt), [color, note, vis]]));
 }
 
-export function fetchAffectedByVolume
-  (dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, point: T.Point3, volume: T.Volume)
+export function fetchAbilityTargets(
+  dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, actor_id: T.CreatureID,
+  ability_id: T.AbilityID, point: T.Point3)
   : Promise<{ points: Array<T.Point3>, creatures: Array<T.CreatureID> }> {
-  const uri = `${rpi_url}affected_by_volume/${scene_id}/${point[0]}/${point[1]}/${point[2]}`;
-  const vol = T.encodeVolume(volume);
-  return ptfetch(dispatch, uri, {
-    method: 'POST', body: JSON.stringify(vol),
-    headers: { "content-type": "application/json" },
-  },
+  const uri =
+    `${rpi_url}ability_targets/${scene_id}/${actor_id}/`
+    + `${ability_id}/${point[0]}/${point[1]}/${point[2]}`;
+  return ptfetch(dispatch, uri, { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),
       JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
     x => x

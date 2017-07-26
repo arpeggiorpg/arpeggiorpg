@@ -235,10 +235,17 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const options = ptui.state.grid.target_options!;
     const ability = ptui.app.current_game.abilities[options.ability_id];
     if (!ability) { return; }
-    if (!ability.target.hasOwnProperty('volume')) { return; }
-    const volume = (ability.target as any).volume;
+    switch (ability.target.t) {
+      case "SomeCreaturesInVolumeInRange":
+      case "AllCreaturesInVolumeInRange":
+      case "Volume":
+      case "LineFromActor":
+        break;
+      default: return;
+    }
     this.setState({ targeting_point: { point, rect } });
-    M.fetchAffectedByVolume(dispatch, ptui.rpi_url, this.props.scene.id, point, volume).then(
+    M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
+      options.ability_id, point).then(
       ({ points }) => this.setState({ affected_points: points }));
   }
 

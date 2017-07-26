@@ -186,10 +186,10 @@ impl App {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
-  pub fn get_creatures_and_terrain_in_volume(&self, sid: SceneID, pt: Point3, volume: Volume)
+  pub fn get_ability_targets(&self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
-    self.current_game.creatures_and_terrain_in_volume(scene, pt, volume)
+    self.current_game.ability_targets(scene, actor_id, ability_id, pt)
   }
 }
 

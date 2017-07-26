@@ -839,13 +839,20 @@ impl Game {
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
-  pub fn creatures_and_terrain_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume)
+  pub fn ability_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
-    let cids = self.creatures_in_volume(scene, pt, volume);
-    let terrain = self.get_map(scene.map)?.terrain.iter();
-    let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
-    let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
-    Ok((cids, result_tiles))
+    let ability = self.get_ability(&ability_id)?;
+    match ability.target {
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+        let cids = self.creatures_in_volume(scene, pt, volume);
+        let terrain = self.get_map(scene.map)?.terrain.iter();
+        let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
+        let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
+        Ok((cids, result_tiles))
+
+      }
+      _ => Ok((vec![], vec![])),
+    }
   }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)

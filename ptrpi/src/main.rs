@@ -14,7 +14,7 @@ extern crate serde_yaml;
 extern crate pandt;
 
 use std::env;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
@@ -28,10 +28,10 @@ use rocket_contrib::Json;
 use rocket::http::Method;
 
 mod cors;
-use cors::{CORS, PreflightCORS};
+use cors::{PreflightCORS, CORS};
 
-use pandt::types::{App, RPIApp, CreatureID, GameCommand, GameError, GameErrorEnum,
-                   Point3, PotentialTargets, Volume};
+use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
+                   PotentialTargets, RPIApp, Volume};
 
 
 error_chain! {
@@ -99,7 +99,8 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
   {
     let app = pt.app();
     if app.snapshots.len() != snapshot_len ||
-       app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len {
+      app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
+    {
       let result = serde_json::to_string(&RPIApp(&*app))?;
       return Ok(CORS::any(result));
     }
@@ -111,7 +112,7 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
   get_app(pt)
 }
 
-#[post("/", format="application/json", data="<command>")]
+#[post("/", format = "application/json", data = "<command>")]
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app();
@@ -138,7 +139,7 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
 
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
 fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
-                  -> PTResult<PotentialTargets> {
+  -> PTResult<PotentialTargets> {
   let app = pt.app();
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
@@ -146,19 +147,21 @@ fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
   Ok(CORS::any(Json(app.get_target_options(scene, cid, abid)?)))
 }
 
-#[route(OPTIONS, "/affected_by_volume/<scene>/<x>/<y>/<z>")]
-fn options_creatures_in_volume(scene: String, x: String, y: String, z: String) -> PreflightCORS {
+#[route(OPTIONS, "/ability_targets/<scene>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
+fn options_creatures_in_volume(scene: String, actor_id: String, ability_id: String, x: String, y: String, z: String)
+  -> PreflightCORS {
   options_handler()
 }
 
-#[post("/affected_by_volume/<scene_id>/<x>/<y>/<z>", format="application/json", data="<volume>")]
-fn creatures_in_volume(pt: State<PT>, scene_id: String, x: i16, y: i16, z: i16,
-                       volume: Json<Volume>)
-                       -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
+#[post("/ability_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
+fn ability_targets(pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16)
+  -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app();
   let sid = scene_id.parse()?;
+  let actor_id = actor_id.parse()?;
+  let ability_id = ability_id.parse()?;
   let point = (x, y, z);
-  Ok(CORS::any(Json(app.get_creatures_and_terrain_in_volume(sid, point, volume.0)?)))
+  Ok(CORS::any(Json(app.get_ability_targets(sid, actor_id, ability_id, point)?)))
 }
 
 #[get("/saved_games")]
@@ -215,15 +218,13 @@ fn load_app_from_path(filename: &Path) -> App {
 }
 
 fn main() {
-  let game_dir = env::args()
-    .nth(1)
-    .unwrap_or_else(|| {
-                      env::current_dir()
-                        .expect("couldn't get curdir")
-                        .into_os_string()
-                        .into_string()
-                        .expect("Couldn't parse curdir as string")
-                    });
+  let game_dir = env::args().nth(1).unwrap_or_else(|| {
+    env::current_dir()
+      .expect("couldn't get curdir")
+      .into_os_string()
+      .into_string()
+      .expect("Couldn't parse curdir as string")
+  });
   let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
@@ -236,20 +237,23 @@ fn main() {
   };
 
   rocket::ignite()
-    .mount("/",
-           routes![get_app,
-                   poll_app,
-                   options_handler,
-                   post_app,
-                   combat_movement_options,
-                   movement_options,
-                   target_options,
-                   options_creatures_in_volume,
-                   creatures_in_volume,
-                   list_saved_games,
-                   load_saved_game,
-                   save_game,
-                   ])
+    .mount(
+      "/",
+      routes![
+        get_app,
+        poll_app,
+        options_handler,
+        post_app,
+        combat_movement_options,
+        movement_options,
+        target_options,
+        options_creatures_in_volume,
+        ability_targets,
+        list_saved_games,
+        load_saved_game,
+        save_game,
+      ],
+    )
     .manage(pt)
     .launch();
 }

@@ -1,20 +1,20 @@
 //! Simple types, with pure operations.
 
-use std::collections::{HashMap, VecDeque, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use string_wrapper::StringWrapper;
 
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
-use uuid::{Uuid, ParseError as UuidParseError};
+use uuid::{ParseError as UuidParseError, Uuid};
 
 use serde::ser;
-use serde::ser::{SerializeStruct, Error as SerError};
+use serde::ser::{Error as SerError, SerializeStruct};
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
-use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
+use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
@@ -274,19 +274,18 @@ impl SkillLevel {
   }
 
   pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
-    100 -
-      match difficulty_level.to_ord() - self.to_ord() {
-        -4 => 100,
-        -3 => 99,
-        -2 => 95,
-        -1 => 85,
-        0 => 75,
-        1 => 50,
-        2 => 10,
-        3 => 1,
-        4 => 0,
-        diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
-      }
+    100 - match difficulty_level.to_ord() - self.to_ord() {
+      -4 => 100,
+      -3 => 99,
+      -2 => 95,
+      -1 => 85,
+      0 => 75,
+      1 => 50,
+      2 => 10,
+      3 => 1,
+      4 => 0,
+      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
+    }
   }
 }
 
