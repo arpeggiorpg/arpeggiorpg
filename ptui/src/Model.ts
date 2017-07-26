@@ -349,6 +349,18 @@ export class PTUI {
     dispatch({ type: "ClearPotentialTargets" });
   }
 
+  executeCombatPointTargetedAbility(dispatch: Dispatch, point: T.Point3) {
+    const opts = this.state.grid.target_options;
+    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+    const { ability_id, options } = opts;
+    if (options.t !== "Points") {
+      throw new Error(`This function only works for abilities that use Points`);
+    }
+    const target: T.DecidedTarget = { t: "Point", point };
+    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
+    dispatch({ type: "ClearPotentialTargets" });
+  }
+
   // Utility functions for interacting with the model
   // TODO: Consider making Game, Combat, Folder classes and moving these methods to those classes.
   // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation

@@ -340,7 +340,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   executePointTargetedAbility() {
-    console.log("Ok!");
+    if (!this.state.targeting_point) { return; }
+    this.props.ptui.executeCombatPointTargetedAbility(
+      this.props.dispatch, this.state.targeting_point.point);
+    this.clearTargets();
   }
 });
 
