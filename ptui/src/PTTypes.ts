@@ -1207,6 +1207,15 @@ export function encodeCreature(c: Creature): object {
   };
 }
 
+export function encodeVolume(v: Volume): object {
+  switch (v.t) {
+    case "Sphere": return { Sphere: v.radius };
+    case "Line": return { Line: v.length };
+    case "VerticalCylinder": return { VerticalCylinder: { radius: v.radius, height: v.height } };
+    case "AABB": return { AABB: encodeAABB(v.aabb) };
+  }
+}
+
 // Utility Functions for Decoding
 
 export function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
