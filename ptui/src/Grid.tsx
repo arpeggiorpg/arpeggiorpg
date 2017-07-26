@@ -216,7 +216,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         height: '45px', display: 'flex',
         justifyContent: 'space-between', alignItems: 'center',
       }}>
-        <TopBar />
+        {this.topBar()}
       </div>
       {creature_menu}
       {annotation}
@@ -312,6 +312,36 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       }
     );
   }
+
+  topBar(): JSX.Element {
+    const { ptui, dispatch } = this.props;
+    if (this.state.targeting_point) {
+      return <div>Proceed with action?
+        <Button onClick={() => this.executePointTargetedAbility()}>Act</Button>
+        <Button onClick={() => this.clearTargets()}>Cancel</Button>
+      </div>;
+    }
+
+    if (ptui.state.grid.movement_options) {
+      return <div>Select a destination or
+       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
+      </div>;
+    }
+    if (ptui.state.grid.target_options) {
+      return <div>Select a target or
+      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
+      </div>;
+    }
+    return <div>Ready to serve.</div>;
+  }
+
+  clearTargets() {
+    this.setState({ affected_points: undefined, targeting_point: undefined });
+  }
+
+  executePointTargetedAbility() {
+    console.log("Ok!");
+  }
 });
 
 interface RectPositionedProps { rect: M.Rect; onClose: () => void; children: React.ReactChild; }
@@ -324,21 +354,6 @@ function RectPositioned(props: RectPositionedProps): JSX.Element {
     </div>
   </CV.ClickAway>;
 }
-
-const TopBar = M.connectRedux(function TopBar(props): JSX.Element {
-  const { ptui, dispatch } = props;
-  if (ptui.state.grid.movement_options) {
-    return <div>Select a destination or
-       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
-    </div>;
-  }
-  if (ptui.state.grid.target_options) {
-    return <div>Select a target or
-      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
-    </div>;
-  }
-  return <div>Ready to serve.</div>;
-});
 
 export interface MapCreature {
   creature: T.Creature;
@@ -617,7 +632,6 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
       }
     }
   }
-
 }
 
 export function nearby_points(pos: T.Point3): Array<T.Point3> {
