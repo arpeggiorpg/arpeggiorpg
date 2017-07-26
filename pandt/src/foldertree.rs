@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use serde::ser::{Serialize, Serializer, SerializeMap, Error};
+use serde::ser::{Error, Serialize, SerializeMap, Serializer};
 use serde::de;
 
 
@@ -276,12 +276,10 @@ impl<'de> de::Deserialize<'de> for FolderPath {
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         Err(de::Error::invalid_value(de::Unexpected::Str(&p), &"must begin with /"))
       }
-      Err(x) => {
-        Err(de::Error::invalid_value(
-          de::Unexpected::Str(&st),
-          &format!("Unknown error: {:?}", x).as_ref(),
-        ))
-      }
+      Err(x) => Err(de::Error::invalid_value(
+        de::Unexpected::Str(&st),
+        &format!("Unknown error: {:?}", x).as_ref(),
+      )),
     }
   }
 }
@@ -393,7 +391,7 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
 mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
-  use foldertree::{FolderTree, FolderPath, FolderTreeError, FolderTreeErrorKind};
+  use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
   use serde_json;
 
   fn fpath(s: &str) -> FolderPath {

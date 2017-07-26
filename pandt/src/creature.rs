@@ -77,13 +77,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
       match changes.creature.conditions[&condition_id].remaining {
         ConditionDuration::Interminate => {}
-        ConditionDuration::Duration(remaining) => {
-          if remaining > 0 {
-            changes = changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
-          } else {
-            changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
-          }
-        }
+        ConditionDuration::Duration(remaining) => if remaining > 0 {
+          changes = changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
+        } else {
+          changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
+        },
       }
     }
     Ok(changes)
@@ -202,13 +200,11 @@ impl Creature {
       CreatureLog::GenerateEnergy(ref nrg) => {
         new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
       }
-      CreatureLog::ReduceEnergy(ref nrg) => {
-        if *nrg > new.cur_energy {
-          return Err(GameErrorEnum::NotEnoughEnergy(*nrg).into());
-        } else {
-          new.cur_energy = new.cur_energy - *nrg;
-        }
-      }
+      CreatureLog::ReduceEnergy(ref nrg) => if *nrg > new.cur_energy {
+        return Err(GameErrorEnum::NotEnoughEnergy(*nrg).into());
+      } else {
+        new.cur_energy = new.cur_energy - *nrg;
+      },
       CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
         new.conditions.insert(*id, con.apply(*dur));
       }
@@ -216,13 +212,11 @@ impl Creature {
         let mut cond =
           new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
-          ConditionDuration::Interminate => {
-            bail!(GameErrorEnum::BuggyProgram(
-              "Tried to decrease condition duration of an \
-               interminate condition"
-                .to_string()
-            ))
-          }
+          ConditionDuration::Interminate => bail!(GameErrorEnum::BuggyProgram(
+            "Tried to decrease condition duration of an \
+             interminate condition"
+              .to_string()
+          )),
           ConditionDuration::Duration(ref mut dur) => *dur -= 1,
         }
       }

@@ -1,4 +1,4 @@
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 #![feature(conservative_impl_trait)]
 #![feature(test)]
 //! Phone and Tablet.

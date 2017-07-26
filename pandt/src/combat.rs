@@ -158,13 +158,11 @@ impl Combat {
       .position(|&(c, _)| c == cid)
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
-      Err(nonempty::Error::OutOfBounds { .. }) => {
-        Err(
-          GameErrorEnum::BuggyProgram(
-            "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
-          ).into(),
-        )
-      }
+      Err(nonempty::Error::OutOfBounds { .. }) => Err(
+        GameErrorEnum::BuggyProgram(
+          "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
+        ).into(),
+      ),
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
       Ok(_) => Ok(Some(combat)),
     }

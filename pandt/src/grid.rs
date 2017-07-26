@@ -6,7 +6,7 @@ use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
-use types::{Point3, Distance, TileSystem, Map, Volume};
+use types::{Distance, Map, Point3, TileSystem, Volume};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -52,13 +52,11 @@ impl TileSystem {
     // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
     let mut results = vec![];
     match volume {
-      Volume::Sphere(radius) => {
-        for (item, item_pos) in items {
-          if self.point3_distance(pt, *item_pos) <= radius {
-            results.push(item.clone());
-          }
+      Volume::Sphere(radius) => for (item, item_pos) in items {
+        if self.point3_distance(pt, *item_pos) <= radius {
+          results.push(item.clone());
         }
-      }
+      },
       Volume::AABB(aabb) => unimplemented!(),
       Volume::Line(length) => unimplemented!(),
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
@@ -130,14 +128,12 @@ impl TileSystem {
       Volume::Sphere(radius) => {
         unimplemented!();
       }
-      Volume::AABB(aabb) => {
-        (pt.0..(pt.0 + aabb.x as i16))
-          .flat_map(|x| {
-            (pt.1..(pt.1 + aabb.y as i16))
-              .flat_map(move |y| (pt.2..(pt.2 + aabb.z as i16)).map(move |z| (x, y, z)))
-          })
-          .collect()
-      }
+      Volume::AABB(aabb) => (pt.0..(pt.0 + aabb.x as i16))
+        .flat_map(|x| {
+          (pt.1..(pt.1 + aabb.y as i16))
+            .flat_map(move |y| (pt.2..(pt.2 + aabb.z as i16)).map(move |z| (x, y, z)))
+        })
+        .collect(),
       Volume::Line(length) => unimplemented!(),
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
@@ -306,7 +302,7 @@ pub mod test {
     let pos1p = (pos1.0 as f64, pos1.1 as f64, pos1.2 as f64);
     let pos2p = (pos2.0 as f64, pos2.1 as f64, pos2.2 as f64);
     let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2) +
-                           (pos1p.2 - pos2p.2).powi(2))
+      (pos1p.2 - pos2p.2).powi(2))
       .sqrt();
     println!("My calculated distance: {:?};", test_distance);
     assert_eq!(
