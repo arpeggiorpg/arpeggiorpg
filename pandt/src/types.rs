@@ -235,7 +235,7 @@ impl Distance {
     Distance(self.0.saturating_sub(other.0))
   }
   pub fn to_meters(&self) -> f32 {
-    self.0 as f32
+    self.0 as f32 / 100.0
   }
 }
 

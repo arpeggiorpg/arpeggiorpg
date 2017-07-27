@@ -34,11 +34,10 @@ fn na_vector_to_point3(v: Vector3<f32>) -> Point3 {
 }
 
 pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
-  let offset = point3_difference(origin, clicked);
-  let volume = Volume::Line { to_offset: offset };
+  let offset = point3_difference(clicked, origin);
   let mut navec = na_vector(offset);
   navec.normalize_mut();
-  let new_vec = navec * (length.0 as f32);
+  let new_vec = navec * length.to_meters();
   Volume::Line { to_offset: na_vector_to_point3(new_vec) }
 }
 
@@ -618,4 +617,14 @@ pub mod test {
     let results = ts.points_in_volume(vol, vol_pt);
     assert_eq!(results, vec![(1, 1, 0), (1, 2, 0), (2, 1, 0), (2, 2, 0)]);
   }
+
+  #[test]
+  fn line_through_point_simple() {
+    let line = line_through_point((0,0,0), (1,0,0), Distance(200));
+  match line {
+    Volume::Line{to_offset} => assert_eq!(to_offset, (2, 0, 0)),
+    _ => panic!("Expected Line"),
+  }
+  }
+
 }
