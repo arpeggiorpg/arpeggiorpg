@@ -855,7 +855,7 @@ impl Game {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         let cids = self.creatures_in_volume(scene, pt, volume);
-        let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
+        let result_tiles = self.tile_system.items_within_volume(volume, actor_pos, &all_tiles);
         Ok((cids, result_tiles))
       }
       _ => Ok((vec![], vec![])),
