@@ -2,36 +2,39 @@
 #![feature(conservative_impl_trait)]
 #![feature(test)]
 //! Phone and Tablet.
+
+extern crate bresenham;
 #[macro_use]
 extern crate derive_more;
-extern crate serde_yaml;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate odds;
-extern crate string_wrapper;
-extern crate pathfinding;
-extern crate num_traits;
-extern crate uuid;
 #[macro_use]
 extern crate error_chain;
+extern crate nonempty;
+extern crate num_traits;
+extern crate odds;
+extern crate pathfinding;
 
+extern crate rand;
+
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
+extern crate serde_yaml;
+
+extern crate string_wrapper;
 
 #[cfg(test)]
 extern crate test;
 
-extern crate rand;
+extern crate uuid;
 
-extern crate nonempty;
-
-pub mod game;
 pub mod app;
 pub mod combat;
 pub mod creature;
-pub mod grid;
-pub mod types;
-pub mod indexed;
 pub mod foldertree;
+pub mod game;
+pub mod grid;
+pub mod indexed;
+pub mod types;

@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+use std::iter::FromIterator;
 extern crate nalgebra as na;
 extern crate ncollide as nc;
+use bresenham;
 use odds::vec::VecExt;
 
 use self::na::{Isometry3, Vector3};
@@ -19,9 +22,35 @@ use types::{Distance, Map, Point3, TileSystem, Volume};
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
 fn na_point(pt: Point3) -> Isometry3<f32> {
-  Isometry3::new(Vector3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32), na::zero())
+  Isometry3::new(na_vector(pt), na::zero())
 }
 
+fn na_vector(pt: Point3) -> Vector3<f32> {
+  Vector3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32)
+}
+
+fn na_vector_to_point3(v: Vector3<f32>) -> Point3 {
+  (v[0] as i16, v[1] as i16, v[2] as i16)
+}
+
+pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
+  let offset = point3_difference(origin, clicked);
+  let volume = Volume::Line { to_offset: offset };
+  let mut navec = na_vector(offset);
+  navec.normalize_mut();
+  let new_vec = navec * (length.0 as f32);
+  Volume::Line { to_offset: na_vector_to_point3(new_vec) }
+}
+
+/// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
+/// This returns a plain old Point3, but it'd be nicer if it were a Point3Difference...
+pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
+  return (pt1.0 - pt2.0, pt1.1 - pt2.1, pt1.2 - pt2.2);
+}
+
+pub fn point3_add(pt: Point3, diff: Point3) -> Point3 {
+  return (pt.0 + diff.0, pt.1 + diff.1, pt.2 + diff.2);
+}
 
 impl TileSystem {
   pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> Distance {
@@ -48,6 +77,7 @@ impl TileSystem {
 
   pub fn items_within_volume<I: Clone + Eq + Hash>(&self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>)
     -> Vec<I> {
+    // TODO: this doesn't support non-1x1 items
     // TODO: this function is really dumb, and instead should probably work on a HashSet of Point3s,
     // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
     let mut results = vec![];
@@ -58,7 +88,20 @@ impl TileSystem {
         }
       },
       Volume::AABB(aabb) => unimplemented!(),
-      Volume::Line(length) => unimplemented!(),
+      Volume::Line { to_offset } => {
+        let dest = point3_add(pt, to_offset);
+        let line_pts: HashSet<Point3> = HashSet::from_iter(
+          bresenham::Bresenham::new(
+            (pt.0 as isize, pt.1 as isize),
+            (dest.0 as isize, dest.1 as isize),
+          ).map(|(x, y)| (x as i16, y as i16, 0)),
+        );
+        for (item, item_pos) in items {
+          if line_pts.contains(item_pos) {
+            results.push(item.clone());
+          }
+        }
+      }
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
     results
@@ -134,7 +177,7 @@ impl TileSystem {
             .flat_map(move |y| (pt.2..(pt.2 + aabb.z as i16)).map(move |z| (x, y, z)))
         })
         .collect(),
-      Volume::Line(length) => unimplemented!(),
+      Volume::Line { .. } => unimplemented!(),
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
   }

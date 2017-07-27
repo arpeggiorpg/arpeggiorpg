@@ -736,10 +736,11 @@ pub struct Ability {
   pub usable_ooc: bool,
 }
 
+/// Volume describes a volume in 3d space at an implied origin point.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Volume {
   Sphere(Distance),
-  Line(Distance),
+  Line { to_offset: (i16, i16, i16) },
   VerticalCylinder { radius: Distance, height: Distance },
   // An Axis-Aligned Bounding Box, origin at top-left,
   // with x going east, y going south, and z going up.

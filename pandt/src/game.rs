@@ -6,6 +6,7 @@ use types::*;
 use combat::*;
 use creature::ChangedCreature;
 use foldertree::{FolderPath, FolderTree};
+use grid::line_through_point;
 
 impl Game {
   pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
@@ -842,14 +843,20 @@ impl Game {
   pub fn ability_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let ability = self.get_ability(&ability_id)?;
+    let terrain = self.get_map(scene.map)?.terrain.iter();
+    let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     match ability.target {
       TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
         let cids = self.creatures_in_volume(scene, pt, volume);
-        let terrain = self.get_map(scene.map)?.terrain.iter();
-        let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
         let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
         Ok((cids, result_tiles))
-
+      }
+      TargetSpec::LineFromActor { distance } => {
+        let actor_pos = scene.get_pos(actor_id)?;
+        let volume = line_through_point(actor_pos, pt, distance);
+        let cids = self.creatures_in_volume(scene, pt, volume);
+        let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
+        Ok((cids, result_tiles))
       }
       _ => Ok((vec![], vec![])),
     }
