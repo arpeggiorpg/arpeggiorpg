@@ -383,6 +383,10 @@ export class PTUI {
       i => i.name);
   }
 
+  getAbility(abid: T.AbilityID): T.Ability | undefined {
+    return get(this.app.current_game.abilities, abid);
+  }
+
   getScene(scene_id: T.SceneID): T.Scene | undefined {
     return get(this.app.current_game.scenes, scene_id);
   }
@@ -606,4 +610,8 @@ export function fetchAbilityTargets(
       JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
     x => x
   );
+}
+
+export function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
+  return optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
 }

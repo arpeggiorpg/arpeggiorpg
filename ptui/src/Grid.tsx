@@ -215,6 +215,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const affected_els = this.getAffectedTiles();
 
+    const targeted_volume = this.drawTargetedVolume();
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -230,14 +232,45 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {movement_target_els}
         {target_els}
         {affected_els}
+        {targeted_volume}
       </GridSvg>
     </div>;
+  }
+
+  drawTargetedVolume(): JSX.Element | undefined {
+    const { scene, ptui } = this.props;
+    const options = ptui.state.grid.target_options;
+    if (!options) { return; }
+    if (!this.state.targeting_point) { return; }
+    const target = this.state.targeting_point.point;
+    const ability_id = options.ability_id;
+    const ability = ptui.getAbility(ability_id);
+    if (!ability) { return; }
+    const target_spec = ability.target;
+    switch (target_spec.t) {
+      case "AllCreaturesInVolumeInRange":
+        const volume = target_spec.volume;
+        switch (volume.t) {
+          case "Sphere":
+            return <circle cx={target[0] * 100} cy={target[1] * 100} r={volume.radius}
+              style={{ pointerEvents: "none" }}
+              strokeWidth={3} stroke="black" fill="none" />;
+        }
+        return;
+      case "LineFromActor":
+        const caster_pos = M.getCreaturePos(scene, options.cid);
+        if (!caster_pos) { return; }
+        return <line x1={caster_pos[0] * 100 + 50} y1={caster_pos[1] * 100}
+          x2={target[0] * 100 + 50} y2={target[1] * 100}
+          style={{ pointerEvents: "none" }}
+          strokeWidth="3" stroke="black" />;
+    }
   }
 
   targetClicked(point: T.Point3, rect: M.Rect) {
     const { ptui, dispatch } = this.props;
     const options = ptui.state.grid.target_options!;
-    const ability = ptui.app.current_game.abilities[options.ability_id];
+    const ability = ptui.getAbility(options.ability_id);
     if (!ability) { return; }
     switch (ability.target.t) {
       case "SomeCreaturesInVolumeInRange":
