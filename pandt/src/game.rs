@@ -833,12 +833,21 @@ impl Game {
 
   pub fn creatures_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume) -> Vec<CreatureID> {
     let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
+    println!(
+      "Checking creatures in volume\nPOINT: {:?}\nCREATURES: {:?}\nVOLUME: {:?}\n",
+      pt,
+      creature_locations,
+      volume
+    );
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
+  // TODO: Honor terrain!
+  // 1. `pt` must be visible to the caster
+  // 2. volumes must not go through blocked terrain
+  // 3. volumes must (generally) not go around corners
   fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, target: TargetSpec, pt: Point3)
     -> Result<Vec<CreatureID>, GameError> {
-    let terrain = self.get_map(scene.map)?.terrain.iter();
     match target {
       TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
         let cids = self.creatures_in_volume(scene, pt, volume);
@@ -858,7 +867,6 @@ impl Game {
   /// point.
   pub fn preview_volume_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
-    let ability = self.get_ability(&ability_id)?;
     let terrain = self.get_map(scene.map)?.terrain.iter();
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
@@ -1006,6 +1014,7 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
 
 #[cfg(test)]
 pub mod test {
+  use std::collections::HashSet;
   use std::iter::FromIterator;
 
   use game::*;
@@ -1052,7 +1061,7 @@ pub mod test {
 
   pub fn t_classes() -> HashMap<String, Class> {
     let rogue_abs = vec![abid("punch")];
-    let ranger_abs = vec![abid("shoot")];
+    let ranger_abs = vec![abid("shoot"), abid("piercing_shot")];
     let cleric_abs = vec![abid("heal"), abid("fireball")];
     HashMap::from_iter(vec![
       (
@@ -1166,5 +1175,54 @@ pub mod test {
     assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_cleric()).unwrap().creature.cur_health, HP(10));
+  }
+
+  #[test]
+  fn test_creatures_in_sphere() {
+    let game = t_game();
+    let volume = Volume::Sphere(Distance::from_meters(2.0));
+    let pt = (5, 0, 0);
+
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (6, 0, 0)));
+    let scene = game.get_scene(t_scene_id()).unwrap();
+
+    let cids = game.creatures_in_volume(scene, pt, volume);
+    let cids = HashSet::<CreatureID>::from_iter(cids);
+    assert_eq!(cids, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
+  }
+
+  #[test]
+  fn test_sphere_targets() {
+    let game = t_game();
+    let target_spec = TargetSpec::AllCreaturesInVolumeInRange {
+      range: Distance::from_meters(10.0),
+      volume: Volume::Sphere(Distance::from_meters(2.0)),
+    };
+    let pt = (5, 0, 0);
+
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (6, 0, 0)));
+
+    let scene = game.get_scene(t_scene_id()).unwrap();
+
+    let targets = game.volume_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = HashSet::<CreatureID>::from_iter(targets);
+    assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
+  }
+
+  #[test]
+  fn test_line_targets() {
+    let game = t_game();
+    let target_spec = TargetSpec::LineFromActor { distance: Distance::from_meters(10.0) };
+    let pt = (1, 0, 0);
+
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (2, 0, 0)));
+    let scene = game.get_scene(t_scene_id()).unwrap();
+
+    let targets = game.volume_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = HashSet::<CreatureID>::from_iter(targets);
+    assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
 }

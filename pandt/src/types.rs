@@ -1264,16 +1264,28 @@ pub mod test {
     }
   }
 
+  pub fn t_piercing_shot() -> Ability {
+    Ability {
+      name: "Piercing Shot".to_string(),
+      target: TargetSpec::LineFromActor { distance: Distance::from_meters(10.0) },
+      cost: Energy(8),
+      usable_ooc: true,
+      effects: vec![Effect::Damage(Dice::flat(3))],
+    }
+  }
+
   pub fn t_abilities() -> HashMap<AbilityID, Ability> {
     let punch = t_punch();
     let shoot = t_shoot();
     let heal = t_heal();
     let fireball = t_fireball();
+    let piercing_shot = t_piercing_shot();
     HashMap::from_iter(vec![
       (abid("punch"), punch),
       (abid("shoot"), shoot),
       (abid("heal"), heal),
       (abid("fireball"), fireball),
+      (abid("piercing_shot"), piercing_shot),
     ])
   }
 
