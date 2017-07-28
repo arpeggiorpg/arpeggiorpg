@@ -147,21 +147,21 @@ fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
   Ok(CORS::any(Json(app.get_target_options(scene, cid, abid)?)))
 }
 
-#[route(OPTIONS, "/ability_targets/<scene>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
+#[route(OPTIONS, "/preview_volume_targets/<scene>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
 fn options_creatures_in_volume(scene: String, actor_id: String, ability_id: String, x: String, y: String, z: String)
   -> PreflightCORS {
   options_handler()
 }
 
-#[post("/ability_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-fn ability_targets(pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16)
+#[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
+fn preview_volume_targets(pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16)
   -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app();
   let sid = scene_id.parse()?;
   let actor_id = actor_id.parse()?;
   let ability_id = ability_id.parse()?;
   let point = (x, y, z);
-  Ok(CORS::any(Json(app.get_ability_targets(sid, actor_id, ability_id, point)?)))
+  Ok(CORS::any(Json(app.preview_volume_targets(sid, actor_id, ability_id, point)?)))
 }
 
 #[get("/saved_games")]
@@ -248,7 +248,7 @@ fn main() {
         movement_options,
         target_options,
         options_creatures_in_volume,
-        ability_targets,
+        preview_volume_targets,
         list_saved_games,
         load_saved_game,
         save_game,
