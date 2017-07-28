@@ -620,11 +620,11 @@ pub mod test {
 
   #[test]
   fn line_through_point_simple() {
-    let line = line_through_point((0,0,0), (1,0,0), Distance(200));
-  match line {
-    Volume::Line{to_offset} => assert_eq!(to_offset, (2, 0, 0)),
-    _ => panic!("Expected Line"),
-  }
+    let line = line_through_point((0, 0, 0), (1, 0, 0), Distance(200));
+    match line {
+      Volume::Line { to_offset } => assert_eq!(to_offset, (2, 0, 0)),
+      _ => panic!("Expected Line"),
+    }
   }
 
 }
