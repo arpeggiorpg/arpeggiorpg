@@ -826,17 +826,7 @@ impl Game {
         Err(GameErrorEnum::CreatureOutOfRange(cid).into())
       },
       (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
-      (TargetSpec::AllCreaturesInVolumeInRange { volume, range }, DecidedTarget::Point(pt)) => {
-        if !self.tile_system.points_within_distance(scene.get_pos(creature.id())?, pt, range) {
-          bail!(GameErrorEnum::PointOutOfRange(pt));
-        }
-        Ok(self.creatures_in_volume(scene, pt, volume))
-      }
-      (TargetSpec::LineFromActor { distance }, DecidedTarget::Point(pt)) => {
-        let actor_pos = scene.get_pos(creature.creature.id)?;
-        let volume = line_through_point(actor_pos, pt, distance);
-        Ok(self.creatures_in_volume(scene, pt, volume))
-      }
+      (_, DecidedTarget::Point(pt)) => self.volume_targets(scene, creature.creature.id, target, pt),
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
@@ -846,21 +836,41 @@ impl Game {
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
+  fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, target: TargetSpec, pt: Point3)
+    -> Result<Vec<CreatureID>, GameError> {
+    let terrain = self.get_map(scene.map)?.terrain.iter();
+    match target {
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+        let cids = self.creatures_in_volume(scene, pt, volume);
+        Ok(cids)
+      }
+      TargetSpec::LineFromActor { distance } => {
+        let actor_pos = scene.get_pos(actor_id)?;
+        let volume = line_through_point(actor_pos, pt, distance);
+        let cids = self.creatures_in_volume(scene, pt, volume);
+        Ok(cids)
+      }
+      _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
+    }
+  }
+
+  /// Calculate which *points* and which *creatures* will be affected by an ability targeted at a
+  /// point.
   pub fn preview_volume_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let ability = self.get_ability(&ability_id)?;
     let terrain = self.get_map(scene.map)?.terrain.iter();
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
+    let ability = self.get_ability(&ability_id)?;
+    let cids = self.volume_targets(scene, actor_id, ability.target, pt)?;
     match ability.target {
       TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
-        let cids = self.creatures_in_volume(scene, pt, volume);
         let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
         Ok((cids, result_tiles))
       }
       TargetSpec::LineFromActor { distance } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
-        let cids = self.creatures_in_volume(scene, pt, volume);
         let result_tiles = self.tile_system.items_within_volume(volume, actor_pos, &all_tiles);
         Ok((cids, result_tiles))
       }
