@@ -831,6 +831,11 @@ impl Game {
         }
         Ok(self.creatures_in_volume(scene, pt, volume))
       }
+      (TargetSpec::LineFromActor{distance}, DecidedTarget::Point(pt)) => {
+        let actor_pos = scene.get_pos(creature.creature.id)?;
+        let volume = line_through_point(actor_pos, pt, distance);
+        Ok(self.creatures_in_volume(scene, pt, volume))
+      }
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
