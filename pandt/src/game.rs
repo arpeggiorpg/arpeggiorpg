@@ -833,12 +833,6 @@ impl Game {
 
   pub fn creatures_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume) -> Vec<CreatureID> {
     let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
-    println!(
-      "Checking creatures in volume\nPOINT: {:?}\nCREATURES: {:?}\nVOLUME: {:?}\n",
-      pt,
-      creature_locations,
-      volume
-    );
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
@@ -856,7 +850,7 @@ impl Game {
       TargetSpec::LineFromActor { distance } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
-        let cids = self.creatures_in_volume(scene, pt, volume);
+        let cids = self.creatures_in_volume(scene, actor_pos, volume);
         Ok(cids)
       }
       _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
