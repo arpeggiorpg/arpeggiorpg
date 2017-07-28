@@ -851,6 +851,9 @@ impl Game {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         let cids = self.creatures_in_volume(scene, actor_pos, volume);
+        // TODO: *ideally* we should start the line adjacent to the caster, but filtering out
+        // also works. 
+        let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
         Ok(cids)
       }
       _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
