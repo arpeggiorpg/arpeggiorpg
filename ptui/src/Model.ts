@@ -599,7 +599,7 @@ export function fetchAbilityTargets(
   ability_id: T.AbilityID, point: T.Point3)
   : Promise<{ points: Array<T.Point3>, creatures: Array<T.CreatureID> }> {
   const uri =
-    `${rpi_url}ability_targets/${scene_id}/${actor_id}/`
+    `${rpi_url}preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point[0]}/${point[1]}/${point[2]}`;
   return ptfetch(dispatch, uri, { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),
