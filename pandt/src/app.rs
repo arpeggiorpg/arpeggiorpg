@@ -189,7 +189,7 @@ impl App {
   pub fn get_ability_targets(&self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
-    self.current_game.ability_targets(scene, actor_id, ability_id, pt)
+    self.current_game.preview_volume_targets(scene, actor_id, ability_id, pt)
   }
 }
 

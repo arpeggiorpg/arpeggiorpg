@@ -450,7 +450,8 @@ impl Game {
             self.maps.remove(&id).ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
           }
           FolderItemID::SubfolderID(ref name) => {
-            // basically we delete everything by simulating GameLog::DeleteFolderItem for each child.
+            // basically we delete everything by simulating GameLog::DeleteFolderItem for each
+            // child.
             // This must be done in a particular order to ensure scenes are deleted before maps
             // (since maps can't be deleted if there are scenes referring to them).
             let path = path.child(name.to_string());
@@ -831,7 +832,7 @@ impl Game {
         }
         Ok(self.creatures_in_volume(scene, pt, volume))
       }
-      (TargetSpec::LineFromActor{distance}, DecidedTarget::Point(pt)) => {
+      (TargetSpec::LineFromActor { distance }, DecidedTarget::Point(pt)) => {
         let actor_pos = scene.get_pos(creature.creature.id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         Ok(self.creatures_in_volume(scene, pt, volume))
@@ -845,7 +846,7 @@ impl Game {
     self.tile_system.items_within_volume(volume, pt, &creature_locations)
   }
 
-  pub fn ability_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
+  pub fn preview_volume_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
     -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let ability = self.get_ability(&ability_id)?;
     let terrain = self.get_map(scene.map)?.terrain.iter();
