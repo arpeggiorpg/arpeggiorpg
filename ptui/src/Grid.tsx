@@ -176,6 +176,7 @@ interface SceneGridProps {
 interface SceneGridState {
   targeting_point?: { point: T.Point3, rect: M.Rect };
   affected_points?: Array<T.Point3>;
+  affected_creatures?: Array<T.CreatureID>;
 }
 export const SceneGrid = M.connectRedux(class SceneGrid
   extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
@@ -196,8 +197,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const annotation = grid.display_annotation ? this.renderAnnotation(map, grid.display_annotation)
       : null;
 
-    const creature_els = LD.values(creatures).map(c =>
-      <GridCreature key={c.creature.id} creature={c} />);
+    const creature_els = LD.values(creatures).map(c => {
+      const highlight = LD.includes(this.state.affected_creatures, c.creature.id)
+        ? "red" : undefined;
+      return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
+    });
     const move = grid.movement_options;
     const movement_target_els = move
       ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
@@ -246,7 +250,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     this.setState({ targeting_point: { point, rect } });
     M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
       options.ability_id, point).then(
-      ({ points }) => this.setState({ affected_points: points }));
+      ({ points, creatures }) =>
+        this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
   renderAnnotation(map: T.Map, { pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
@@ -343,7 +348,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   clearTargets() {
-    this.setState({ affected_points: undefined, targeting_point: undefined });
+    this.setState({
+      affected_points: undefined, affected_creatures: undefined, targeting_point: undefined,
+    });
   }
 
   executePointTargetedAbility() {
@@ -517,8 +524,8 @@ function Annotation({ dispatch, pt, vis, player_id }:
 
 
 const GridCreature = M.connectRedux(
-  function GridCreature({ ptui, dispatch, creature }:
-    { creature: MapCreature } & M.ReduxProps): JSX.Element {
+  function GridCreature({ ptui, dispatch, creature, highlight }:
+    { creature: MapCreature, highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
       const act: M.Action = {
@@ -538,6 +545,10 @@ const GridCreature = M.connectRedux(
         highlightProps.stroke = "red";
         highlightProps.strokeWidth = 3;
       }
+    }
+    if (highlight) {
+      highlightProps.stroke = highlight;
+      highlightProps.strokeWidth = 15;
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
