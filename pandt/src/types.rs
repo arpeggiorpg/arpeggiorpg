@@ -18,6 +18,7 @@ use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
 
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
+pub type VectorCM = (i32, i32, i32);
 pub type ConditionID = usize;
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
@@ -695,7 +696,14 @@ pub enum TargetSpec {
   Melee,
   Range(Distance),
   Actor,
+  /// A *piercing* line, from an actor, which is always a fixed length.
+  /// When targeted at a point, it will continue through any creatures up to *and past* that point,
+  /// up to the maximum distance.
   LineFromActor { distance: Distance },
+  /// A non-piercing line from an actor to a creature.
+  /// This is different from `Range` in that it cannot go "through" another creature to hit another
+  /// creature.
+  // LineFromActorToCreature{ distance: Distance },
   SomeCreaturesInVolumeInRange {
     volume: Volume,
     /// maximum number of creatures that can be hit
@@ -740,7 +748,7 @@ pub struct Ability {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Volume {
   Sphere(Distance),
-  Line { to_offset: (i16, i16, i16) },
+  Line { vector: VectorCM },
   VerticalCylinder { radius: Distance, height: Distance },
   // An Axis-Aligned Bounding Box, origin at top-left,
   // with x going east, y going south, and z going up.

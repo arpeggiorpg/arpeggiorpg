@@ -9,7 +9,7 @@ use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
-use types::{Distance, Map, Point3, TileSystem, Volume};
+use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -29,8 +29,8 @@ fn na_vector(pt: Point3) -> Vector3<f32> {
   Vector3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32)
 }
 
-fn na_vector_to_point3(v: Vector3<f32>) -> Point3 {
-  (v[0] as i16, v[1] as i16, v[2] as i16)
+fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
+  ((v[0] * 100.0) as i32, (v[1] * 100.0) as i32, (v[2]  * 100.0) as i32)
 }
 
 pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
@@ -38,7 +38,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> 
   let mut navec = na_vector(offset);
   navec.normalize_mut();
   let new_vec = navec * length.to_meters();
-  Volume::Line { to_offset: na_vector_to_point3(new_vec) }
+  Volume::Line { vector: na_vector_to_vector_cm(new_vec) }
 }
 
 /// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
@@ -47,8 +47,12 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
   return (pt1.0 - pt2.0, pt1.1 - pt2.1, pt1.2 - pt2.2);
 }
 
-pub fn point3_add(pt: Point3, diff: Point3) -> Point3 {
-  return (pt.0 + diff.0, pt.1 + diff.1, pt.2 + diff.2);
+pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
+  return (
+    ((pt.0 as i32  * 100 + diff.0) / 100) as i16,
+   ((pt.1 as i32 * 100 + diff.1) / 100) as i16,
+    ((pt.2 as i32 * 100 + diff.2) / 100) as i16
+    );
 }
 
 impl TileSystem {
@@ -87,8 +91,8 @@ impl TileSystem {
         }
       },
       Volume::AABB(aabb) => unimplemented!(),
-      Volume::Line { to_offset } => {
-        let dest = point3_add(pt, to_offset);
+      Volume::Line { vector } => {
+        let dest = point3_add_vec(pt, vector);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
           bresenham::Bresenham::new(
             (pt.0 as isize, pt.1 as isize),
@@ -622,7 +626,16 @@ pub mod test {
   fn line_through_point_simple() {
     let line = line_through_point((0, 0, 0), (1, 0, 0), Distance(200));
     match line {
-      Volume::Line { to_offset } => assert_eq!(to_offset, (2, 0, 0)),
+      Volume::Line { vector } => assert_eq!(vector, (200, 0, 0)),
+      _ => panic!("Expected Line"),
+    }
+  }
+
+  #[test]
+  fn line_through_point_accuracy() {
+    let line = line_through_point((0,0,0), (2,1,0), Distance(1000));
+    match line {
+      Volume::Line{vector} => assert_eq!(vector, (894, 447, 0)),
       _ => panic!("Expected Line"),
     }
   }

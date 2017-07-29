@@ -18,6 +18,8 @@ export type ConditionID = number;
 export type FolderPath = Array<string>;
 export type SpecialTile = [Point3, Color, string, Visibility];
 export type SpecialTileData = [Color, string, Visibility];
+export type Point3 = [number, number, number];
+export type VectorCM = [number, number, number];
 
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
 //     const target = T.MkDecidedTarget.Creature({creature_id});
@@ -74,7 +76,7 @@ export type DecidedTarget =
 
 export type Volume =
   | { t: "Sphere"; radius: Distance }
-  | { t: "Line"; length: Distance }
+  | { t: "Line"; vector: VectorCM }
   | { t: "VerticalCylinder"; radius: Distance; height: Distance }
   | { t: "AABB"; aabb: AABB };
 
@@ -375,8 +377,6 @@ export interface Scene {
   inventory: I.Map<ItemID, number>;
   background_image_url: string;
 }
-
-export type Point3 = [number, number, number];
 
 export type Visibility =
   | { t: "GMOnly" }
@@ -833,10 +833,12 @@ const decodeFolder: Decoder<Folder> = JD.object(
   (data, children) => ({ data, children })
 );
 
+const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
+
 const decodeVolume: Decoder<Volume> = sum("Volume", {},
   {
     Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
-    Line: JD.map((length): Volume => ({ t: "Line", length }), JD.number()),
+    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodeVectorCM),
     VerticalCylinder: JD.object(
       ["radius", JD.number()],
       ["height", JD.number()],
@@ -1214,10 +1216,13 @@ export function encodeCreature(c: Creature): object {
 export function encodeVolume(v: Volume): object {
   switch (v.t) {
     case "Sphere": return { Sphere: v.radius };
-    case "Line": return { Line: v.length };
+    case "Line": return { Line: encodeVectorCM(v.vector) };
     case "VerticalCylinder": return { VerticalCylinder: { radius: v.radius, height: v.height } };
     case "AABB": return { AABB: encodeAABB(v.aabb) };
   }
+}
+function encodeVectorCM(v: VectorCM): Array<number> {
+  return v;
 }
 
 // Utility Functions for Decoding
