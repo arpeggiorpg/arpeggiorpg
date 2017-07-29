@@ -14,7 +14,7 @@ export type Color = string;
 export type Distance = number;
 export type HP = number;
 export type Energy = number;
-export type ConditionID = number;
+export type ConditionID = string;
 export type FolderPath = Array<string>;
 export type SpecialTile = [Point3, Color, string, Visibility];
 export type SpecialTileData = [Color, string, Visibility];
@@ -323,7 +323,7 @@ export interface Creature {
   class_: string;
   max_health: HP;
   cur_health: HP;
-  conditions: { [index: string]: AppliedCondition }; // key: ConditionID
+  conditions: I.Map<ConditionID, AppliedCondition>;
   note: string;
   bio: string;
   portrait_url: string;
@@ -512,7 +512,7 @@ export const decodeCreature: Decoder<Creature> = object17(
   ["portrait_url", JD.string()],
   ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
   ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
-  ["conditions", JD.dict(decodeAppliedCondition)],
+  ["conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
   ["initiative", decodeDice],
   ["size", decodeAABB],
   (
@@ -642,12 +642,12 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
       JD.number()),
     ApplyCondition: JD.map(
       ([condition_id, duration]): CreatureLog => ({ t: "ApplyCondition", condition_id, duration }),
-      JD.tuple(JD.number(), decodeConditionDuration)),
+      JD.tuple(JD.string(), decodeConditionDuration)),
     DecrementConditionRemaining: JD.map(
       (condition_id): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id }),
-      JD.number()),
+      JD.string()),
     RemoveCondition: JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
-      JD.number()),
+      JD.string()),
   });
 
 export const decodeCombatLog: Decoder<CombatLog> =
@@ -1202,7 +1202,7 @@ export function encodeCreature(c: Creature): object {
     class: c.class_,
     max_health: c.max_health,
     cur_health: c.cur_health,
-    conditions: LD.mapValues(c.conditions, encodeAppliedCondition),
+    conditions: c.conditions.map(encodeAppliedCondition).toJS(),
     note: c.note,
     bio: c.bio,
     portrait_url: c.portrait_url,

@@ -689,6 +689,12 @@ impl Game {
         };
         self.scenes.insert(scene);
       }
+
+      AddVolumeCondition{ref scene_id, point, volume, condition_id, ref condition} => {
+        let scene = self.get_scene(*scene_id)?.add_volume_condition(condition_id, point, volume, condition.clone());
+        self.scenes.insert(scene);
+      }
+
       // Things that are handled at the App level
       Rollback(..) => {
         return bug("GameLog Rollback");
@@ -794,16 +800,51 @@ impl Game {
     &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
     mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
-    let targets = self.resolve_targets(creature, scene, ability.target, target)?;
-    for creature_id in &targets {
-      for effect in &ability.effects {
-        change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
+    use types::TargetSpec::*;
+    let mut change = match ability.target {
+      Melee |
+      Range(..) |
+      Actor |
+      LineFromActor { .. } |
+      SomeCreaturesInVolumeInRange { .. } |
+      AllCreaturesInVolumeInRange { .. } => {
+        let targets = self.resolve_targets(creature, scene, ability.target, target)?;
+        for creature_id in &targets {
+          for effect in &ability.effects {
+            change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
+          }
+        }
+        change
       }
-    }
+      Volume { volume, range } => match target {
+        DecidedTarget::Point(point) => {
+          for effect in &ability.effects {
+            match *effect {
+              Effect::ApplyCondition(dur, ref con) => {
+                let ac = con.apply(dur);
+                let log = GameLog::AddVolumeCondition {
+                  condition_id: ConditionID::gen(),
+                  scene_id: scene.id,
+                  point,
+                  volume: volume,
+                  condition: ac,
+                };
+                change = change.apply(&log)?;
+              }
+              _ => bail!(GameErrorEnum::BuggyProgram("Ugh".to_string())),
+            }
+          }
+          change
+        }
+        _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(ability.target, target)),
+      },
+    };
+
     if in_combat {
       change = change.apply_creature(creature.id(), |c| c.creature.reduce_energy(ability.cost))?;
     }
     Ok(change)
+
   }
 
   pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec, decision: DecidedTarget)
@@ -852,7 +893,7 @@ impl Game {
         let volume = line_through_point(actor_pos, pt, distance);
         let cids = self.creatures_in_volume(scene, actor_pos, volume);
         // TODO: *ideally* we should start the line adjacent to the caster, but filtering out
-        // also works. 
+        // also works.
         let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
         Ok(cids)
       }
@@ -1052,6 +1093,7 @@ pub mod test {
         (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers)),
       ]),
       inventory: HashMap::new(),
+      volume_conditions: HashMap::new(),
     });
     game
   }

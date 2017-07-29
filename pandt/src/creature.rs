@@ -138,9 +138,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
-    static CONDITION_ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
     CreatureLog::ApplyCondition(
-      CONDITION_ID.fetch_add(1, Ordering::SeqCst),
+      ConditionID::gen(),
       duration,
       condition.clone(),
     )
@@ -356,17 +355,17 @@ pub mod test {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |mut c| {
       c.conditions = HashMap::from_iter(vec![
-        (0, app_cond(Condition::Dead, ConditionDuration::Duration(0))),
-        (1, app_cond(Condition::Incapacitated, ConditionDuration::Duration(5))),
-        (2, app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
+        (ConditionID(uuid_0()), app_cond(Condition::Dead, ConditionDuration::Duration(0))),
+        (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, ConditionDuration::Duration(5))),
+        (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
       ]);
       c
     });
     assert_eq!(
       game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
       HashMap::from_iter(vec![
-        (1, app_cond(Condition::Incapacitated, ConditionDuration::Duration(4))),
-        (2, app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
+        (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, ConditionDuration::Duration(4))),
+        (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, ConditionDuration::Interminate)),
       ])
     );
   }
@@ -379,7 +378,7 @@ pub mod test {
     game.creatures.mutate(&cid_rogue(), |mut c| {
       c.conditions = HashMap::from_iter(vec![
         (
-          0,
+          ConditionID(uuid_0()),
           app_cond(
             Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
             ConditionDuration::Duration(2),
@@ -403,7 +402,7 @@ pub mod test {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |mut c| {
       c.conditions = HashMap::from_iter(vec![
-        (0, app_cond(Condition::Incapacitated, ConditionDuration::Duration(1))),
+        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, ConditionDuration::Duration(1))),
       ]);
       c
     });
@@ -411,7 +410,7 @@ pub mod test {
     assert_eq!(
       c.conditions,
       HashMap::from_iter(vec![
-        (0, app_cond(Condition::Incapacitated, ConditionDuration::Duration(0))),
+        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, ConditionDuration::Duration(0))),
       ])
     );
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;

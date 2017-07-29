@@ -76,7 +76,7 @@ export const CreatureCard = M.connectRedux(
             <div style={{ display: "flex" }}>
               <Header>{creature.name}</Header> {classIcon(creature)}
             </div>
-            <div>{LD.values(creature.conditions).map(ac => conditionIcon(ac.condition))}</div>
+            <div>{creature.conditions.valueSeq().map(ac => conditionIcon(ac.condition))}</div>
             {props.children}
           </div>
         </div>
@@ -440,8 +440,8 @@ export const Combat = M.connectRedux(
     </Segment.Group>;
   });
 
-export const ActionBar = M.connectRedux((
-  props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element => {
+export const ActionBar = M.connectRedux(function ActionBar(
+  props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
   const abilities = M.filterMap(LD.values(props.creature.abilities),
     abstatus => {
       const ability = M.get(props.ptui.app.current_game.abilities, abstatus.ability_id);

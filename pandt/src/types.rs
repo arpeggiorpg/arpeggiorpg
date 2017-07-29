@@ -19,7 +19,6 @@ use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
 /// Point3 defines a 3d position in meters.
 pub type Point3 = (i16, i16, i16);
 pub type VectorCM = (i32, i32, i32);
-pub type ConditionID = usize;
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type SpecialTile = (Point3, Color, String, Visibility);
@@ -121,6 +120,24 @@ impl Energy {
 pub struct PlayerID(pub String);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct ConditionID(pub Uuid);
+impl ConditionID {
+  pub fn gen() -> ConditionID {
+    ConditionID(Uuid::new_v4())
+  }
+  pub fn to_string(&self) -> String {
+    self.0.hyphenated().to_string()
+  }
+}
+
+impl ::std::str::FromStr for ConditionID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<ConditionID, GameError> {
+    Ok(ConditionID(Uuid::parse_str(s)?))
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(Uuid);
 impl CreatureID {
   pub fn new() -> CreatureID {
@@ -134,7 +151,7 @@ impl CreatureID {
 impl ::std::str::FromStr for CreatureID {
   type Err = GameError;
   fn from_str(s: &str) -> Result<CreatureID, GameError> {
-    Ok(CreatureID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
+    Ok(CreatureID(Uuid::parse_str(s)?))
   }
 }
 
@@ -152,7 +169,7 @@ impl ItemID {
 impl ::std::str::FromStr for ItemID {
   type Err = GameError;
   fn from_str(s: &str) -> Result<ItemID, GameError> {
-    Ok(ItemID(Uuid::parse_str(s).map_err(|_| GameErrorEnum::CreatureNotFound(s.to_string()))?))
+    Ok(ItemID(Uuid::parse_str(s)?))
   }
 }
 
@@ -496,6 +513,15 @@ pub enum GameLog {
   CreatureLog(CreatureID, CreatureLog),
   SetCreaturePos(SceneID, CreatureID, Point3),
   PathCreature(SceneID, CreatureID, Vec<Point3>),
+
+  AddVolumeCondition {
+    scene_id: SceneID,
+    point: Point3,
+    volume: Volume,
+    condition_id: ConditionID,
+    condition: AppliedCondition,
+  },
+
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
@@ -556,7 +582,7 @@ error_chain! {
     }
     ConditionNotFound(id: ConditionID) {
       description("A condition wasn't found.")
-      display("The condition with ID {} wasn't found.", id)
+      display("The condition with ID {:?} wasn't found.", id)
     }
     InvalidCommand(cmd: GameCommand) {
       description("The supplied GameCommand is not valid in the current state.")
@@ -687,6 +713,10 @@ error_chain! {
   }
 }
 
+// [CodeNote: Making Illegal States (Un)representable]
+// The combination of TargetSpec, DecidedTarget, and PotentialTargets leaves lots of opportunity
+// for representing "illegal" data as a valid member of a type.
+
 /// A specification for what kind of targeting an ability uses. i.e., this describes the rules of
 /// targeting for an ability definition, not the choice of a specific target during gameplay. See
 /// `DecidedTarget` for that. The parameters of these variants indicate things like how far an
@@ -718,7 +748,7 @@ pub enum TargetSpec {
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
 /// "specific creature" targeting (`Melee` and `Ranged`) and "aoe" targeting (the others). The
-/// paremeters of these variants indicate the specific target creature or point that is being
+/// parameters of these variants indicate the specific target creature or point that is being
 /// targeted by the player.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DecidedTarget {
@@ -965,6 +995,8 @@ pub struct Scene {
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
   pub inventory: Inventory,
+  #[serde(default)]
+  pub volume_conditions: HashMap<ConditionID, (Point3, Volume, AppliedCondition)>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -991,6 +1023,7 @@ impl Scene {
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),
       inventory: HashMap::new(),
+      volume_conditions: HashMap::new(),
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
@@ -1011,6 +1044,11 @@ impl Scene {
       data.0 = pt;
     }
     Ok(new)
+  }
+  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, ac: AppliedCondition) -> Scene {
+    let mut new = self.clone();
+    new.volume_conditions.insert(condition_id, (point, volume, ac));
+    new
   }
 }
 
@@ -1206,23 +1244,27 @@ pub mod test {
 
   use serde_yaml;
   use serde_json;
-
+  pub fn uuid_0() -> Uuid { "00000000-0000-0000-0000-000000000000".parse().unwrap() }
+  pub fn uuid_1() -> Uuid { "00000000-0000-0000-0000-000000000001".parse().unwrap() }
+  pub fn uuid_2() -> Uuid { "00000000-0000-0000-0000-000000000002".parse().unwrap() }
+  pub fn uuid_3() -> Uuid { "00000000-0000-0000-0000-000000000003".parse().unwrap() }
+  pub fn uuid_4() -> Uuid { "00000000-0000-0000-0000-000000000004".parse().unwrap() }
   pub fn cid_cleric() -> CreatureID {
-    "00000000-0000-0000-0000-000000000000".parse().unwrap()
+    CreatureID(uuid_0())
   }
   pub fn cid_ranger() -> CreatureID {
-    "00000000-0000-0000-0000-000000000001".parse().unwrap()
+    CreatureID(uuid_1())
   }
   pub fn cid_rogue() -> CreatureID {
-    "00000000-0000-0000-0000-000000000002".parse().unwrap()
+    CreatureID(uuid_2())
   }
 
   pub fn t_scene_id() -> SceneID {
-    "00000000-0000-0000-0000-000000000003".parse().unwrap()
+    SceneID(uuid_3())
   }
 
   pub fn t_map_id() -> MapID {
-    "00000000-0000-0000-0000-000000000004".parse().unwrap()
+    MapID(uuid_4())
   }
 
   pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
