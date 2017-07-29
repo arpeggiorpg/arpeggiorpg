@@ -6,6 +6,23 @@ current_game:
       id: "00000000-0000-0000-0000-000000000006"
       name: "Gold Coin"
   abilities:
+    thorn_patch:
+      name: Thorn Patch
+      target:
+        RangedVolume:
+          range: 1000
+          volume:
+            Sphere: 200
+      cost: 8
+      effects:
+        - ApplyCondition:
+          - Interminate
+          - RecurringEffect:
+              Damage:
+                Expr:
+                  num: 1
+                  size: 3
+      usable_ooc: false
     piercing_shot:
       name: Piercing Shot
       target:
@@ -364,6 +381,7 @@ current_game:
         - shoot
         - dash
         - piercing_shot
+        - thorn_patch
       conditions: 
         - 
           RecurringEffect: 
