@@ -275,7 +275,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     switch (ability.target.t) {
       case "SomeCreaturesInVolumeInRange":
       case "AllCreaturesInVolumeInRange":
-      case "Volume":
+      case "RangedVolume":
       case "LineFromActor":
         break;
       default: return;
