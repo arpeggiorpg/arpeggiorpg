@@ -741,9 +741,9 @@ pub enum TargetSpec {
     range: Distance,
   },
   AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
-  /// Volume is for applying an effect to the terrain, instead of to a creature. e.g., setting it
-  /// on fire, or putting down a patch of oil, or filling a space with fog.
-  Volume { volume: Volume, range: Distance },
+  /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
+  /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
+  RangedVolume { volume: Volume, range: Distance },
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into

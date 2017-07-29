@@ -816,7 +816,7 @@ impl Game {
         }
         change
       }
-      Volume { volume, range } => match target {
+      RangedVolume { volume, range } => match target {
         DecidedTarget::Point(point) => {
           for effect in &ability.effects {
             match *effect {
@@ -950,10 +950,10 @@ impl Game {
       TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
       TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
       TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { range, .. } => {
+      TargetSpec::AllCreaturesInVolumeInRange { range, .. } | 
+      TargetSpec::RangedVolume { range, .. } => {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
-      TargetSpec::Volume { volume, range } => panic!(),
       TargetSpec::LineFromActor { distance } => {
         self.open_terrain_in_range(scene, creature_id, distance)?
       }
