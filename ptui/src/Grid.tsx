@@ -248,15 +248,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     if (!ability) { return; }
     const target_spec = ability.target;
     switch (target_spec.t) {
+      case "RangedVolume":
+        return this.drawVolume(target_spec.volume, target);
       case "AllCreaturesInVolumeInRange":
-        const volume = target_spec.volume;
-        switch (volume.t) {
-          case "Sphere":
-            return <circle cx={target[0] * 100} cy={target[1] * 100} r={volume.radius}
-              style={{ pointerEvents: "none" }}
-              strokeWidth={3} stroke="black" fill="none" />;
-        }
-        return;
+        return this.drawVolume(target_spec.volume, target);
       case "LineFromActor":
         const caster_pos = M.getCreaturePos(scene, options.cid);
         if (!caster_pos) { return; }
@@ -264,6 +259,15 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           x2={target[0] * 100 + 50} y2={target[1] * 100}
           style={{ pointerEvents: "none" }}
           strokeWidth="3" stroke="black" />;
+    }
+  }
+
+  drawVolume(volume: T.Volume, pt: T.Point3) {
+    switch (volume.t) {
+      case "Sphere":
+        return <circle cx={pt[0] * 100 + 50} cy={pt[1] * 100} r={volume.radius}
+          style={{ pointerEvents: "none" }}
+          strokeWidth={3} stroke="black" fill="none" />;
     }
   }
 
