@@ -219,15 +219,6 @@ impl<'game> ChangedCombat<'game> {
   }
 }
 
-fn slide_vec<T>(mut vec: &mut Vec<T>, move_me: usize, to: usize) -> bool {
-  if to >= vec.len() {
-    return false;
-  }
-  let el = vec.remove(move_me);
-  vec.insert(to, el);
-  true
-}
-
 #[cfg(test)]
 pub mod test {
   extern crate test;
