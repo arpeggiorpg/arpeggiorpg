@@ -114,7 +114,9 @@ impl Game {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
       }
-      EditCreatureDetails { creature_id, details} => self.change_with(GameLog::EditCreatureDetails {creature_id, details}),
+      EditCreatureDetails { creature_id, details } => {
+        self.change_with(GameLog::EditCreatureDetails { creature_id, details })
+      }
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
@@ -638,7 +640,7 @@ impl Game {
         self.creatures.try_insert(c).ok_or_else(|| GameErrorEnum::CreatureAlreadyExists(rc.id()))?;
         self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
       }
-      EditCreatureDetails{creature_id, ref details} => {
+      EditCreatureDetails { creature_id, ref details } => {
         let mutated = self.creatures.mutate(&creature_id, move |mut c| {
           c.name = details.name.clone();
           c.class = details.class.clone();

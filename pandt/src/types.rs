@@ -407,7 +407,7 @@ pub enum GameCommand {
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
   /// Edit an existing creature.
-  EditCreatureDetails{creature_id: CreatureID, details: CreatureCreation},
+  EditCreatureDetails { creature_id: CreatureID, details: CreatureCreation },
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -523,7 +523,7 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
-  EditCreatureDetails{creature_id: CreatureID, details: CreatureCreation},
+  EditCreatureDetails { creature_id: CreatureID, details: CreatureCreation },
   AddCreatureToCombat(CreatureID, i16),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.
@@ -1038,7 +1038,6 @@ impl Scene {
       .map(|x| x.0)
       .ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()).into())
   }
-
   pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Result<Scene, GameError> {
     let mut new = self.clone();
     {
@@ -1055,6 +1054,26 @@ impl Scene {
     let mut new = self.clone();
     new.volume_conditions.insert(condition_id, VolumeCondition { point, volume, condition: ac });
     new
+  }
+
+  pub fn creature_volume_conditions(&self, ts: TileSystem, creature: &Creature)
+    -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
+    let creature_pos = self.get_pos(creature.id)?;
+    let volumes_with_data: Vec<(Point3, Volume, ConditionID)> = self
+      .volume_conditions
+      .iter()
+      .map(|(cond_id, vol_cond)| (vol_cond.point, vol_cond.volume, *cond_id))
+      .collect();
+    let condition_ids = ts.intersecting_volumes(creature_pos, creature.size, &volumes_with_data);
+    let mut results = vec![];
+    for cond_id in condition_ids {
+      let val = self
+        .volume_conditions
+        .get(&cond_id)
+        .expect("Mapping over IDs that should only appear in this collection");
+      results.push((cond_id, val));
+    }
+    Ok(results)
   }
 }
 

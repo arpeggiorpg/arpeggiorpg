@@ -9,7 +9,7 @@ use self::na::{Isometry3, Vector3};
 use self::nc::shape::Cuboid;
 use self::nc::query::PointQuery;
 
-use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume};
+use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -183,6 +183,11 @@ impl TileSystem {
       Volume::Line { .. } => unimplemented!(),
       Volume::VerticalCylinder { radius, height } => unimplemented!(),
     }
+  }
+
+  pub fn intersecting_volumes<T: Clone>(&self, pt: Point3, size: AABB, volumes: &[(Point3, Volume, T)])
+    -> Vec<T> {
+    vec![]
   }
 
   fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
