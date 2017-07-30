@@ -113,7 +113,7 @@ export type GameCommand =
   | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
   | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID; }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
-  | { t: "EditCreature"; creature: Creature }
+  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation }
   | { t: "CreateItem"; path: FolderPath; name: string }
   | { t: "EditItem"; item: Item }
   | { t: "CreateNote"; path: FolderPath; note: Note }
@@ -161,7 +161,6 @@ export type GameCommand =
 // CreateNote(FolderPath, Note),
 // EditNote(FolderPath, String, Note),
 // CreateScene(FolderPath, SceneCreation),
-// EditScene(Scene),
 // CreateMap(FolderPath, MapCreation),
 // EditMap(Map),
 // StartCombat(SceneID, Vec<CreatureID>),
@@ -177,7 +176,6 @@ export type GameCommand =
 // PathCurrentCombatCreature(Point3),
 // Done,
 // CreateCreature(FolderPath, CreatureCreation),
-// EditCreature(Creature),
 // SetCreaturePos(SceneID, CreatureID, Point3),
 // PathCreature(SceneID, CreatureID, Point3),
 // RegisterPlayer(PlayerID),
@@ -236,7 +234,6 @@ export type GameLog =
   | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
   | { t: "CreateScene"; path: FolderPath; scene: Scene }
-  | { t: "EditScene"; scene: Scene }
   | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
   | {
     t: "SetSceneCreatureVisibility";
@@ -253,7 +250,7 @@ export type GameLog =
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: Creature }
-  | { t: "EditCreature"; creature: Creature }
+  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation; }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
@@ -524,6 +521,18 @@ export const decodeCreature: Decoder<Creature> = object17(
     })
 );
 
+const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(
+  ["name", JD.string()],
+  ["class", JD.string()],
+  ["portrait_url", JD.string()],
+  ["note", JD.string()],
+  ["bio", JD.string()],
+  ["initiative", decodeDice],
+  ["size", decodeAABB],
+  (name, class_, portrait_url, note, bio, initiative, size) =>
+    ({ name, class_, portrait_url, note, bio, initiative, size })
+);
+
 export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   switch (x) {
     case "GMOnly": return { t: "GMOnly" };
@@ -720,7 +729,6 @@ export const decodeGameLog: Decoder<GameLog> =
     CreateScene: JD.map(
       ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
       JD.tuple(decodeFolderPath, decodeScene)),
-    EditScene: JD.map((scene): GameLog => ({ t: "EditScene", scene }), decodeScene),
     EditSceneDetails: JD.object(
       ["scene_id", JD.string()], ["details", decodeSceneCreation],
       (scene_id, details): GameLog => ({ t: "EditSceneDetails", scene_id, details })),
@@ -769,7 +777,8 @@ export const decodeGameLog: Decoder<GameLog> =
     CreateCreature: JD.map(
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
       JD.tuple(decodeFolderPath, decodeCreature)),
-    EditCreature: JD.map((creature): GameLog => ({ t: "EditCreature", creature }), decodeCreature),
+    EditCreatureDetails: JD.object(["creature_id", JD.string()], ["details", decodeCreatureCreation],
+      (creature_id, details): GameLog => ({ t: "EditCreatureDetails", creature_id, details })),
     AddCreatureToCombat: JD.map(
       ([creature_id, init]): GameLog => ({ t: "AddCreatureToCombat", creature_id, init }),
       JD.tuple(JD.string(), JD.number())),
@@ -937,7 +946,11 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "DeleteFolderItem":
       return { DeleteFolderItem: [encodeFolderPath(cmd.location), encodeFolderItemID(cmd.item_id)] };
-    case "EditCreature": return { EditCreature: encodeCreature(cmd.creature) };
+    case "EditCreatureDetails":
+      return {
+        EditCreatureDetails:
+        { creature_id: cmd.creature_id, details: encodeCreatureCreation(cmd.details) },
+      };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
     case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };

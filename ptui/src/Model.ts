@@ -615,3 +615,8 @@ export function fetchAbilityTargets(
 export function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
   return optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
 }
+
+export function getCreatureDetails(creature: T.Creature): T.CreatureCreation {
+  const { name, class_, portrait_url, note, bio, initiative, size } = creature;
+  return { name, class_, portrait_url, note, bio, initiative, size };
+}

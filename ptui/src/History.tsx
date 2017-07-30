@@ -68,8 +68,6 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Set count on a creature's inventory</Flexbox>;
     case "CreateScene":
       return <Flexbox>Created scene {log.scene.name}</Flexbox>;
-    case "EditScene":
-      return <Flexbox>Edited scene {log.scene.name}</Flexbox>;
     case "EditSceneDetails":
       return <Flexbox>Edited details of scene {log.details.name}</Flexbox>;
     case "SetSceneCreatureVisibility":
@@ -99,8 +97,8 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
       return <Flexbox>Creature followed a path to {last}</Flexbox>;
     case "CreateCreature":
       return <Flexbox>Created a creature {log.creature.name}</Flexbox>;
-    case "EditCreature":
-      return <Flexbox>Edited a creature {log.creature.name}</Flexbox>;
+    case "EditCreatureDetails":
+      return <Flexbox>Edited a creature {log.details.name}</Flexbox>;
     case "StartCombat":
       return <Flexbox>Started combat</Flexbox>;
     case "AddCreatureToCombat":

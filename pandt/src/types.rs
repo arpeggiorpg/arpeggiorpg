@@ -350,6 +350,7 @@ pub enum GameCommand {
   EditNote(FolderPath, String, Note),
 
   // ** Inventory management **
+  // These work for creatures or scenes
   TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
   RemoveItem { owner: InventoryOwner, item_id: ItemID, count: u64 },
   SetItemCount { owner: InventoryOwner, item_id: ItemID, count: u64 },
@@ -357,9 +358,6 @@ pub enum GameCommand {
   // ** Scene management **
   /// Create a Scene.
   CreateScene(FolderPath, SceneCreation),
-  /// Edit a scene. The ID in the given Scene must match an existing Scene.
-  EditScene(Scene),
-
   EditSceneDetails { scene_id: SceneID, details: SceneCreation },
   SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
   AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
@@ -409,7 +407,7 @@ pub enum GameCommand {
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
   /// Edit an existing creature.
-  EditCreature(Creature),
+  EditCreatureDetails{creature_id: CreatureID, details: CreatureCreation},
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -525,7 +523,7 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
-  EditCreature(Creature),
+  EditCreatureDetails{creature_id: CreatureID, details: CreatureCreation},
   AddCreatureToCombat(CreatureID, i16),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.

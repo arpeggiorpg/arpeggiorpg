@@ -84,7 +84,6 @@ impl Game {
         let scene = Scene::create(sc);
         self.change_with(GameLog::CreateScene(path, scene))
       }
-      EditScene(scene) => self.change_with(GameLog::EditScene(scene)),
       EditSceneDetails { scene_id, details } => {
         self.change_with(GameLog::EditSceneDetails { scene_id, details })
       }
@@ -115,7 +114,7 @@ impl Game {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
       }
-      EditCreature(creature) => self.change_with(GameLog::EditCreature(creature)),
+      EditCreatureDetails { creature_id, details} => self.change_with(GameLog::EditCreatureDetails {creature_id, details}),
       PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
@@ -639,9 +638,18 @@ impl Game {
         self.creatures.try_insert(c).ok_or_else(|| GameErrorEnum::CreatureAlreadyExists(rc.id()))?;
         self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
       }
-      EditCreature(ref creature) => {
-        let mutated = self.creatures.mutate(&creature.id, |_| creature.clone());
-        mutated.ok_or_else(|| GameErrorEnum::CreatureNotFound(creature.id.to_string()))?;
+      EditCreatureDetails{creature_id, ref details} => {
+        let mutated = self.creatures.mutate(&creature_id, move |mut c| {
+          c.name = details.name.clone();
+          c.class = details.class.clone();
+          c.portrait_url = details.portrait_url.clone();
+          c.note = details.note.clone();
+          c.bio = details.bio.clone();
+          c.initiative = details.initiative.clone();
+          c.size = details.size;
+          c
+        });
+        mutated.ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()))?;
       }
       AddCreatureToCombat(cid, init) => {
         let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;

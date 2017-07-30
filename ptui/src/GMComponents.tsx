@@ -806,8 +806,8 @@ const CreatureNote = M.connectRedux(
     return <CV.Toggler a={view} b={edit} />;
 
     function submitNote(note: string) {
-      const new_creature = { ...creature, note };
-      ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
+      const details = { ...M.getCreatureDetails(creature), note };
+      ptui.sendCommand(dispatch, { t: "EditCreatureDetails", creature_id: creature.id, details });
     }
   });
 
@@ -874,15 +874,14 @@ const GMEditCreature = M.connectRedux(
     return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
 
     function save(creature_data: T.CreatureCreation) {
-      const new_creature = {
-        ...creature,
+      const details = {
         name: creature_data.name, class_: creature_data.class_,
         note: creature_data.note, bio: creature_data.bio,
         portrait_url: creature_data.portrait_url,
         initiative: creature_data.initiative,
         size: creature_data.size,
       };
-      ptui.sendCommand(dispatch, { t: "EditCreature", creature: new_creature });
+      ptui.sendCommand(dispatch, { t: "EditCreatureDetails", creature_id: creature.id, details });
       onClose();
     }
   }
