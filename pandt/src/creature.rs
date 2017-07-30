@@ -138,11 +138,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
-    CreatureLog::ApplyCondition(
-      ConditionID::gen(),
-      duration,
-      condition.clone(),
-    )
+    CreatureLog::ApplyCondition(ConditionID::gen(), duration, condition.clone())
   }
 
   pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {

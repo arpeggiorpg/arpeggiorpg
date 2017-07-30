@@ -30,7 +30,7 @@ fn na_vector(pt: Point3) -> Vector3<f32> {
 }
 
 fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
-  ((v[0] * 100.0) as i32, (v[1] * 100.0) as i32, (v[2]  * 100.0) as i32)
+  ((v[0] * 100.0) as i32, (v[1] * 100.0) as i32, (v[2] * 100.0) as i32)
 }
 
 pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
@@ -49,10 +49,10 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 
 pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
   return (
-    ((pt.0 as i32  * 100 + diff.0) / 100) as i16,
-   ((pt.1 as i32 * 100 + diff.1) / 100) as i16,
-    ((pt.2 as i32 * 100 + diff.2) / 100) as i16
-    );
+    ((pt.0 as i32 * 100 + diff.0) / 100) as i16,
+    ((pt.1 as i32 * 100 + diff.1) / 100) as i16,
+    ((pt.2 as i32 * 100 + diff.2) / 100) as i16,
+  );
 }
 
 impl TileSystem {
@@ -633,9 +633,9 @@ pub mod test {
 
   #[test]
   fn line_through_point_accuracy() {
-    let line = line_through_point((0,0,0), (2,1,0), Distance(1000));
+    let line = line_through_point((0, 0, 0), (2, 1, 0), Distance(1000));
     match line {
-      Volume::Line{vector} => assert_eq!(vector, (894, 447, 0)),
+      Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
       _ => panic!("Expected Line"),
     }
   }

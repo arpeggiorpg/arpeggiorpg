@@ -996,7 +996,14 @@ pub struct Scene {
   #[serde(default)]
   pub inventory: Inventory,
   #[serde(default)]
-  pub volume_conditions: HashMap<ConditionID, (Point3, Volume, AppliedCondition)>,
+  pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct VolumeCondition {
+  pub point: Point3,
+  pub volume: Volume,
+  pub condition: AppliedCondition,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1045,9 +1052,10 @@ impl Scene {
     }
     Ok(new)
   }
-  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, ac: AppliedCondition) -> Scene {
+  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, ac: AppliedCondition)
+    -> Scene {
     let mut new = self.clone();
-    new.volume_conditions.insert(condition_id, (point, volume, ac));
+    new.volume_conditions.insert(condition_id, VolumeCondition { point, volume, condition: ac });
     new
   }
 }
@@ -1244,11 +1252,21 @@ pub mod test {
 
   use serde_yaml;
   use serde_json;
-  pub fn uuid_0() -> Uuid { "00000000-0000-0000-0000-000000000000".parse().unwrap() }
-  pub fn uuid_1() -> Uuid { "00000000-0000-0000-0000-000000000001".parse().unwrap() }
-  pub fn uuid_2() -> Uuid { "00000000-0000-0000-0000-000000000002".parse().unwrap() }
-  pub fn uuid_3() -> Uuid { "00000000-0000-0000-0000-000000000003".parse().unwrap() }
-  pub fn uuid_4() -> Uuid { "00000000-0000-0000-0000-000000000004".parse().unwrap() }
+  pub fn uuid_0() -> Uuid {
+    "00000000-0000-0000-0000-000000000000".parse().unwrap()
+  }
+  pub fn uuid_1() -> Uuid {
+    "00000000-0000-0000-0000-000000000001".parse().unwrap()
+  }
+  pub fn uuid_2() -> Uuid {
+    "00000000-0000-0000-0000-000000000002".parse().unwrap()
+  }
+  pub fn uuid_3() -> Uuid {
+    "00000000-0000-0000-0000-000000000003".parse().unwrap()
+  }
+  pub fn uuid_4() -> Uuid {
+    "00000000-0000-0000-0000-000000000004".parse().unwrap()
+  }
   pub fn cid_cleric() -> CreatureID {
     CreatureID(uuid_0())
   }

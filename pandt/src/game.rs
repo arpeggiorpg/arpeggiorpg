@@ -690,8 +690,10 @@ impl Game {
         self.scenes.insert(scene);
       }
 
-      AddVolumeCondition{ref scene_id, point, volume, condition_id, ref condition} => {
-        let scene = self.get_scene(*scene_id)?.add_volume_condition(condition_id, point, volume, condition.clone());
+      AddVolumeCondition { ref scene_id, point, volume, condition_id, ref condition } => {
+        let scene = self
+          .get_scene(*scene_id)?
+          .add_volume_condition(condition_id, point, volume, condition.clone());
         self.scenes.insert(scene);
       }
 
@@ -884,7 +886,8 @@ impl Game {
   fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, target: TargetSpec, pt: Point3)
     -> Result<Vec<CreatureID>, GameError> {
     match target {
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } |
+      TargetSpec::RangedVolume { volume, range } => {
         let cids = self.creatures_in_volume(scene, pt, volume);
         Ok(cids)
       }
@@ -910,7 +913,8 @@ impl Game {
     let ability = self.get_ability(&ability_id)?;
     let cids = self.volume_targets(scene, actor_id, ability.target, pt)?;
     match ability.target {
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } => {
+      TargetSpec::AllCreaturesInVolumeInRange { volume, range } |
+      TargetSpec::RangedVolume { volume, range } => {
         let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
         Ok((cids, result_tiles))
       }
@@ -950,7 +954,7 @@ impl Game {
       TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
       TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
       TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { range, .. } | 
+      TargetSpec::AllCreaturesInVolumeInRange { range, .. } |
       TargetSpec::RangedVolume { range, .. } => {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
