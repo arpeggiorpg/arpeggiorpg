@@ -7,7 +7,7 @@ use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
 use ncollide::shape::{Ball, Cuboid, Shape};
 use ncollide::query::PointQuery;
-use ncollide::broad_phase::{DBVTBroadPhase, BroadPhase};
+use ncollide::broad_phase::{BroadPhase, DBVTBroadPhase};
 use ncollide::bounding_volume::HasBoundingVolume;
 use ncollide::bounding_volume as bv;
 
@@ -207,7 +207,7 @@ impl TileSystem {
       if let Some(x) = t_two.as_ref() {
         results.push((*x).clone());
       }
-      });
+    });
     results
   }
 
@@ -265,7 +265,7 @@ impl TileSystem {
 fn volume_to_na_aabb(volume: Volume, pt: Point3) -> bv::AABB<na::Point3<f32>> {
   match volume {
     Volume::Sphere(r) => Ball::new(r.0 as f32 / 100.0).bounding_volume(&na_point(pt)),
-    _ => unimplemented!()
+    _ => unimplemented!(),
   }
 }
 

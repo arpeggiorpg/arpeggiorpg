@@ -1064,7 +1064,8 @@ impl Scene {
       .iter()
       .map(|(cond_id, vol_cond)| (vol_cond.point, vol_cond.volume, *cond_id))
       .collect();
-    let condition_ids = ts.intersecting_volumes(creature_pos, Volume::AABB(creature.size), &volumes_with_data);
+    let condition_ids =
+      ts.intersecting_volumes(creature_pos, Volume::AABB(creature.size), &volumes_with_data);
     let mut results = vec![];
     for cond_id in condition_ids {
       let val = self
