@@ -228,28 +228,6 @@ pub mod test {
   use game::test::t_game;
   use game::ChangedGame;
 
-  #[test]
-  fn slide_later() {
-    let mut v = vec![1, 2, 3];
-    slide_vec(&mut v, 0, 2);
-    assert_eq!(v, [2, 3, 1]);
-
-    let mut v = vec![1, 2, 3];
-    slide_vec(&mut v, 0, 1);
-    assert_eq!(v, [2, 1, 3]);
-
-    let mut v = vec![1, 2, 3, 4, 5];
-    slide_vec(&mut v, 2, 3);
-    assert_eq!(v, vec![1, 2, 4, 3, 5]);
-  }
-
-  #[test]
-  fn slide_earlier() {
-    let mut v = vec![1, 2, 3];
-    slide_vec(&mut v, 2, 0);
-    assert_eq!(v, vec![3, 1, 2]);
-  }
-
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
     let game = t_game();
