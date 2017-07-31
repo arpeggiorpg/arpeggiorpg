@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 use std::iter::FromIterator;
-extern crate nalgebra as na;
-extern crate ncollide as nc;
 use bresenham;
 use odds::vec::VecExt;
 
-use self::na::{Isometry3, Vector3};
-use self::nc::shape::Cuboid;
-use self::nc::query::PointQuery;
+use nalgebra as na;
+use nalgebra::{Isometry3, Vector3};
+use ncollide::shape::{Ball, Cuboid, Shape};
+use ncollide::query::PointQuery;
+use ncollide::broad_phase::{DBVTBroadPhase, BroadPhase};
+use ncollide::bounding_volume::HasBoundingVolume;
+use ncollide::bounding_volume as bv;
 
 use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
 
@@ -185,9 +187,28 @@ impl TileSystem {
     }
   }
 
-  pub fn intersecting_volumes<T: Clone>(&self, pt: Point3, size: AABB, volumes: &[(Point3, Volume, T)])
+  pub fn intersecting_volumes<T: PartialEq + Clone>(&self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)])
     -> Vec<T> {
-    vec![]
+    // TODO: unit tests
+    let mut collisions = DBVTBroadPhase::new(0.0, true);
+
+    let aabb = volume_to_na_aabb(volume, pt);
+    collisions.deferred_add(0, aabb, None);
+
+    for (idx, &(position, volume, ref data)) in volumes.iter().enumerate() {
+      let aabb = volume_to_na_aabb(volume, position);
+      collisions.deferred_add(idx + 1, aabb, Some(data));
+    }
+    let mut results: Vec<T> = vec![];
+    collisions.update(&mut |a, b| *a != *b, &mut |t_one, t_two, _| {
+      if let Some(x) = t_one.as_ref() {
+        results.push((*x).clone());
+      }
+      if let Some(x) = t_two.as_ref() {
+        results.push((*x).clone());
+      }
+      });
+    results
   }
 
   fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
@@ -237,6 +258,14 @@ impl TileSystem {
       }
     }
     results
+  }
+}
+
+
+fn volume_to_na_aabb(volume: Volume, pt: Point3) -> bv::AABB<na::Point3<f32>> {
+  match volume {
+    Volume::Sphere(r) => Ball::new(r.0 as f32 / 100.0).bounding_volume(&na_point(pt)),
+    _ => unimplemented!()
   }
 }
 

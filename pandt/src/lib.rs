@@ -8,13 +8,13 @@ extern crate bresenham;
 extern crate derive_more;
 #[macro_use]
 extern crate error_chain;
+extern crate nalgebra;
+extern crate ncollide;
 extern crate nonempty;
 extern crate num_traits;
 extern crate odds;
 extern crate pathfinding;
-
 extern crate rand;
-
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -22,12 +22,9 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 extern crate serde_yaml;
-
 extern crate string_wrapper;
-
 #[cfg(test)]
 extern crate test;
-
 extern crate uuid;
 
 pub mod app;
