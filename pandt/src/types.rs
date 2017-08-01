@@ -30,6 +30,12 @@ pub struct AABB {
   pub z: u8,
 }
 
+impl AABB {
+  pub fn get_max(&self, pt: Point3) -> Point3 {
+    (pt.0 + self.x as i16, pt.1 + self.y as i16, pt.2 + self.z as i16)
+  }
+}
+
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub enum Dice {
   Expr { num: u8, size: u8 },

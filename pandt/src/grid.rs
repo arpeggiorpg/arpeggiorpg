@@ -23,8 +23,12 @@ use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn na_point(pt: Point3) -> Isometry3<f32> {
+fn na_iso(pt: Point3) -> Isometry3<f32> {
   Isometry3::new(na_vector(pt), na::zero())
+}
+
+fn na_point(pt: Point3) -> na::Point3<f32> {
+  na::Point3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32)
 }
 
 fn na_vector(pt: Point3) -> Vector3<f32> {
@@ -62,8 +66,8 @@ impl TileSystem {
     match *self {
       TileSystem::Realistic => {
         let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
-        let ncpos1 = na_point(pos1);
-        let ncpos2 = na::Point3::new(pos2.0 as f32, pos2.1 as f32, pos2.2 as f32);
+        let ncpos1 = na_iso(pos1);
+        let ncpos2 = na_point(pos2);
         let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
         Distance::from_meters(distance)
       }
@@ -92,7 +96,7 @@ impl TileSystem {
           results.push(item.clone());
         }
       },
-      Volume::AABB(aabb) => unimplemented!(),
+      Volume::AABB(aabb) => panic!("unimplemented: items_within_volume for AABB"),
       Volume::Line { vector } => {
         let dest = point3_add_vec(pt, vector);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
@@ -107,7 +111,7 @@ impl TileSystem {
           }
         }
       }
-      Volume::VerticalCylinder { radius, height } => unimplemented!(),
+      Volume::VerticalCylinder { radius, height } => panic!("unimplemented: items_within_volume for VerticalCylinder"),
     }
     results
   }
@@ -174,7 +178,7 @@ impl TileSystem {
   fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
     match volume {
       Volume::Sphere(radius) => {
-        unimplemented!();
+        panic!("unimplemented: points_in_volume for Sphere");
       }
       Volume::AABB(aabb) => (pt.0..(pt.0 + aabb.x as i16))
         .flat_map(|x| {
@@ -182,14 +186,13 @@ impl TileSystem {
             .flat_map(move |y| (pt.2..(pt.2 + aabb.z as i16)).map(move |z| (x, y, z)))
         })
         .collect(),
-      Volume::Line { .. } => unimplemented!(),
-      Volume::VerticalCylinder { radius, height } => unimplemented!(),
+      Volume::Line { .. } => panic!("unimplemented: points_in_volume for Line"),
+      Volume::VerticalCylinder { radius, height } => panic!("unimplemented: points_in_volume for VerticalCylinder"),
     }
   }
 
   pub fn intersecting_volumes<T: PartialEq + Clone>(&self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)])
     -> Vec<T> {
-    // TODO: unit tests
     let mut collisions = DBVTBroadPhase::new(0.0, true);
 
     let aabb = volume_to_na_aabb(volume, pt);
@@ -261,11 +264,12 @@ impl TileSystem {
   }
 }
 
-
 fn volume_to_na_aabb(volume: Volume, pt: Point3) -> bv::AABB<na::Point3<f32>> {
   match volume {
-    Volume::Sphere(r) => Ball::new(r.0 as f32 / 100.0).bounding_volume(&na_point(pt)),
-    _ => unimplemented!(),
+    Volume::Sphere(r) => Ball::new(r.0 as f32 / 100.0).bounding_volume(&na_iso(pt)),
+    Volume::AABB(aabb) => bv::AABB::new(na_point(pt), na_point(aabb.get_max(pt))),
+    Volume::Line {..} => panic!("unimplemented: volume_to_na_aabb for Line"),
+    Volume::VerticalCylinder{..} => panic!("unimplemented: volume_to_na_aabb for VerticalCylinder"),
   }
 }
 
@@ -674,4 +678,14 @@ pub mod test {
     }
   }
 
+  #[test]
+  fn simple_intersecting_volume() {
+    let ts = TileSystem::Realistic;
+    let small_cube = Volume::AABB(AABB{x:1,y:1,z:1});
+    let results = ts.intersecting_volumes((0,0,0), small_cube, &[((0,0,0), small_cube, "find this".to_string())]);
+    assert_eq!(results, vec!["find this".to_string()]);
+
+    let results = ts.intersecting_volumes((0,0,0), small_cube, &[((1,0,0), small_cube, "find this".to_string())]);
+    assert_eq!(results, vec![] as Vec<String>);
+  }
 }
