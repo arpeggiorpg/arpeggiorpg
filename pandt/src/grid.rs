@@ -5,11 +5,15 @@ use odds::vec::VecExt;
 
 use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
+use ncollide::shape;
 use ncollide::shape::{Ball, Cuboid, Shape};
+use ncollide::query;
 use ncollide::query::PointQuery;
 use ncollide::broad_phase::{BroadPhase, DBVTBroadPhase};
 use ncollide::bounding_volume::HasBoundingVolume;
 use ncollide::bounding_volume as bv;
+use ncollide::world;
+use ncollide::narrow_phase;
 
 use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
 
@@ -18,7 +22,7 @@ use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
 // √((x₂ - x₁)² + (y₂ - y₁)² + (z₂ - z₁)²)
 // √((32767 - −32768)² + (32767 - −32768)² + (32767 - −32768)²)
 // √(65535² + 65535² + 65535²)
-// √(4,294,836,225 + 4,294,836,225 + 4,294,836,225) (each close to the limit of 32-bit integers)
+// √(4,294,836,225 + 4,294,836,225 + 4,294,836,225) (each close to the limit of 32-bit integers).
 // √(12,884,901,888) // NOTE! This number requires a (signed-ok) 64-bit integer to store!
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
@@ -111,7 +115,9 @@ impl TileSystem {
           }
         }
       }
-      Volume::VerticalCylinder { radius, height } => panic!("unimplemented: items_within_volume for VerticalCylinder"),
+      Volume::VerticalCylinder { radius, height } => {
+        panic!("unimplemented: items_within_volume for VerticalCylinder")
+      }
     }
     results
   }
@@ -187,30 +193,58 @@ impl TileSystem {
         })
         .collect(),
       Volume::Line { .. } => panic!("unimplemented: points_in_volume for Line"),
-      Volume::VerticalCylinder { radius, height } => panic!("unimplemented: points_in_volume for VerticalCylinder"),
+      Volume::VerticalCylinder { radius, height } => {
+        panic!("unimplemented: points_in_volume for VerticalCylinder")
+      }
     }
   }
 
   pub fn intersecting_volumes<T: PartialEq + Clone>(&self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)])
     -> Vec<T> {
-    let mut collisions = DBVTBroadPhase::new(0.0, true);
 
-    let aabb = volume_to_na_aabb(volume, pt);
-    collisions.deferred_add(0, aabb, None);
+    let mut world = world::CollisionWorld3::new(0.0, true);
+
+    let mut creature_group = world::CollisionGroups::new();
+    creature_group.set_membership(&[1]);
+    creature_group.set_whitelist(&[2]);
+    creature_group.set_blacklist(&[1]);
+
+    let mut condition_group = world::CollisionGroups::new();
+    condition_group.set_membership(&[2]);
+    condition_group.set_whitelist(&[1]);
+    condition_group.set_blacklist(&[2]);
+
+    let query = world::GeometricQueryType::Contacts(0.0);
+
+    world.deferred_add(
+      0,
+      na_iso(pt),
+      volume_to_na_shape(volume),
+      creature_group,
+      query,
+      CollData::Creature,
+    );
 
     for (idx, &(position, volume, ref data)) in volumes.iter().enumerate() {
-      let aabb = volume_to_na_aabb(volume, position);
-      collisions.deferred_add(idx + 1, aabb, Some(data));
+      world.deferred_add(
+        idx + 1,
+        na_iso(position),
+        volume_to_na_shape(volume),
+        condition_group,
+        query,
+        CollData::ConditionVolume(idx),
+      );
     }
-    let mut results: Vec<T> = vec![];
-    collisions.update(&mut |a, b| *a != *b, &mut |t_one, t_two, _| {
-      if let Some(x) = t_one.as_ref() {
-        results.push((*x).clone());
+
+    world.update();
+    let mut results = vec![];
+    for (obj1, obj2, _) in world.contact_pairs() {
+      match (&obj1.data, &obj2.data) {
+        (&CollData::Creature, &CollData::ConditionVolume(idx)) |
+        (&CollData::ConditionVolume(idx), &CollData::Creature) => results.push(volumes[idx].2.clone()),
+        _ => {}
       }
-      if let Some(x) = t_two.as_ref() {
-        results.push((*x).clone());
-      }
-    });
+    }
     results
   }
 
@@ -264,12 +298,24 @@ impl TileSystem {
   }
 }
 
-fn volume_to_na_aabb(volume: Volume, pt: Point3) -> bv::AABB<na::Point3<f32>> {
+#[derive(Debug)]
+enum CollData {
+  Creature,
+  ConditionVolume(usize),
+}
+
+fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
-    Volume::Sphere(r) => Ball::new(r.0 as f32 / 100.0).bounding_volume(&na_iso(pt)),
-    Volume::AABB(aabb) => bv::AABB::new(na_point(pt), na_point(aabb.get_max(pt))),
-    Volume::Line {..} => panic!("unimplemented: volume_to_na_aabb for Line"),
-    Volume::VerticalCylinder{..} => panic!("unimplemented: volume_to_na_aabb for VerticalCylinder"),
+    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.0 as f32 / 100.0)),
+    Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
+      (aabb.x as f32 / 100.0) / 2.0,
+      (aabb.y as f32 / 100.0) / 2.0,
+      (aabb.z as f32 / 100.0) / 2.0,
+    ))),
+    Volume::Line { .. } => panic!("unimplemented: volume_to_na_shape for Line"),
+    Volume::VerticalCylinder { .. } => {
+      panic!("unimplemented: volume_to_na_shape for VerticalCylinder")
+    }
   }
 }
 
@@ -681,11 +727,21 @@ pub mod test {
   #[test]
   fn simple_intersecting_volume() {
     let ts = TileSystem::Realistic;
-    let small_cube = Volume::AABB(AABB{x:1,y:1,z:1});
-    let results = ts.intersecting_volumes((0,0,0), small_cube, &[((0,0,0), small_cube, "find this".to_string())]);
+    let small_cube = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+
+    let results = ts.intersecting_volumes(
+      (0, 0, 0),
+      small_cube,
+      &[((1, 0, 0), small_cube, "find this".to_string())],
+    );
+    assert_eq!(results, vec![] as Vec<String>);
+
+    let results = ts.intersecting_volumes(
+      (0, 0, 0),
+      small_cube,
+      &[((0, 0, 0), small_cube, "find this".to_string())],
+    );
     assert_eq!(results, vec!["find this".to_string()]);
 
-    let results = ts.intersecting_volumes((0,0,0), small_cube, &[((1,0,0), small_cube, "find this".to_string())]);
-    assert_eq!(results, vec![] as Vec<String>);
   }
 }
