@@ -448,7 +448,7 @@ pub enum CreatureLog {
   Heal(HP, Vec<i16>),
   GenerateEnergy(Energy),
   ReduceEnergy(Energy),
-  ApplyCondition(ConditionID, ConditionDuration, Condition),
+  ApplyCondition(ConditionID, Duration, Condition),
   DecrementConditionRemaining(ConditionID),
   RemoveCondition(ConditionID),
 }
@@ -621,7 +621,7 @@ error_chain! {
       description("The specified creature is not a valid target.")
       display("Creature with ID {} is not a valid target.", cid.to_string())
     }
-    InvalidTargetForTargetSpec(tspec: TargetSpec, dtarget: DecidedTarget) {
+    InvalidTargetForTargetSpec(tspec: CreatureTarget, dtarget: DecidedTarget) {
       description("The supplied DecidedTarget is not valid for the TargetSpec in use.")
       display("DecidedTarget {:?} is not valid for TargetSpec {:?}.", dtarget, tspec)
     }
@@ -717,16 +717,36 @@ error_chain! {
   }
 }
 
-// [CodeNote: Making Illegal States (Un)representable]
-// The combination of TargetSpec, DecidedTarget, and PotentialTargets leaves lots of opportunity
-// for representing "illegal" data as a valid member of a type.
+/// Potential targets for an ability.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum PotentialTargets {
+  CreatureIDs(Vec<CreatureID>),
+  Points(Vec<Point3>),
+}
 
-/// A specification for what kind of targeting an ability uses. i.e., this describes the rules of
-/// targeting for an ability definition, not the choice of a specific target during gameplay. See
-/// `DecidedTarget` for that. The parameters of these variants indicate things like how far an
-/// arrow can travel or what the radius of an area-effect is.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Ability {
+  pub name: String,
+  pub cost: Energy,
+  pub action: Action,
+  pub usable_ooc: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Action {
+  Creature { effect: CreatureEffect, target: CreatureTarget },
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
+  Multi(Vec<(String, Action)>),
+}
+
+
+/// A target specifier for actions that ultimately affect creatures.
+/// This doesn't mean that the target *specifier* is always a CreatureID, but rather that
+/// ultimately the target is resolved into one or more creatures which CreatureEffects will be
+/// applied to. For example, LineFromActor is specified as the client as a Point, but will
+/// affect the creatures in that line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum TargetSpec {
+pub enum CreatureTarget {
   Melee,
   Range(Distance),
   Actor,
@@ -734,9 +754,6 @@ pub enum TargetSpec {
   /// When targeted at a point, it will continue through any creatures up to *and past* that point,
   /// up to the maximum distance.
   LineFromActor { distance: Distance },
-  /// A non-piercing line from an actor to a creature.
-  /// This is different from `Range` in that it cannot go "through" another creature to hit another
-  /// creature.
   // LineFromActorToCreature{ distance: Distance },
   SomeCreaturesInVolumeInRange {
     volume: Volume,
@@ -745,9 +762,19 @@ pub enum TargetSpec {
     range: Distance,
   },
   AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
+}
+
+/// A target specifier for actions that ultimately affect the scene by way of SceneEffect.
+pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
   RangedVolume { volume: Volume, range: Distance },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SceneEffect {
+  CreateVolumeCondition { duration: Duration, condition: Condition },
+  // Another example of a SceneEffect would be DestroyTerrain
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
@@ -762,20 +789,44 @@ pub enum DecidedTarget {
   Point(Point3),
 }
 
-/// Potential targets for an ability.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum PotentialTargets {
-  CreatureIDs(Vec<CreatureID>),
-  Points(Vec<Point3>),
+pub enum CreatureEffect {
+  // Interrupt,
+  // Resurrect,
+  ApplyCondition(Duration, Condition),
+  Heal(Dice),
+  Damage(Dice),
+  MultiEffect(Vec<CreatureEffect>),
+  GenerateEnergy(Energy),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct Ability {
-  pub name: String,
-  pub target: TargetSpec,
-  pub cost: Energy,
-  pub effects: Vec<Effect>,
-  pub usable_ooc: bool,
+pub enum Condition {
+  RecurringEffect(Box<CreatureEffect>),
+  Dead,
+  Incapacitated,
+  AddDamageBuff(HP),
+  DoubleMaxMovement,
+  ActivateAbility(AbilityID),
+}
+
+impl Condition {
+  pub fn apply(&self, duration: Duration) -> AppliedCondition {
+    AppliedCondition { remaining: duration, condition: self.clone() }
+  }
+}
+
+/// Serializes as either "Interminate" or {"Duration": 0}
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum Duration {
+  Interminate,
+  Rounds(u8),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AppliedCondition {
+  pub remaining: Duration,
+  pub condition: Condition,
 }
 
 /// Volume describes a volume in 3d space at an implied origin point.
@@ -788,57 +839,6 @@ pub enum Volume {
   // with x going east, y going south, and z going up.
   AABB(AABB),
 }
-
-// TODO for Effects and Conditions and Targets and Abilities:
-
-// Abilities I want to have:
-
-// - twin attack: attack two targets (with a bow or something)
-// - sneak attack: deal extra damage when there is an ally adjacent to the target
-// - Fireball: deal damage to all enemies in an area around a point
-// - Lock Down: deal damage and slow any enemies(!) who LEAVE an area.
-//   (this is opportunity attacks).
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Effect {
-  // Interrupt,
-  // Resurrect,
-  ApplyCondition(ConditionDuration, Condition),
-  Heal(Dice),
-  Damage(Dice),
-  MultiEffect(Vec<Effect>),
-  GenerateEnergy(Energy),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Condition {
-  RecurringEffect(Box<Effect>),
-  Dead,
-  Incapacitated,
-  AddDamageBuff(HP),
-  DoubleMaxMovement,
-  ActivateAbility(AbilityID),
-}
-
-impl Condition {
-  pub fn apply(&self, duration: ConditionDuration) -> AppliedCondition {
-    AppliedCondition { remaining: duration, condition: self.clone() }
-  }
-}
-
-/// Serializes as either "Interminate" or {"Duration": 0}
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ConditionDuration {
-  Interminate,
-  Duration(u8),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AppliedCondition {
-  pub remaining: ConditionDuration,
-  pub condition: Condition,
-}
-
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AbilityStatus {
@@ -1007,7 +1007,8 @@ pub struct Scene {
 pub struct VolumeCondition {
   pub point: Point3,
   pub volume: Volume,
-  pub condition: AppliedCondition,
+  pub remaining: Duration,
+  pub condition: Condition,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1309,7 +1310,7 @@ pub mod test {
     MapID(uuid_4())
   }
 
-  pub fn app_cond(c: Condition, r: ConditionDuration) -> AppliedCondition {
+  pub fn app_cond(c: Condition, r: Duration) -> AppliedCondition {
     AppliedCondition { condition: c, remaining: r }
   }
 
@@ -1319,7 +1320,7 @@ pub mod test {
       target: TargetSpec::Melee,
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![Effect::Damage(Dice::flat(3))],
+      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
     }
   }
 
@@ -1329,7 +1330,7 @@ pub mod test {
       target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![Effect::Damage(Dice::flat(3))],
+      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
     }
   }
 
@@ -1339,7 +1340,7 @@ pub mod test {
       target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![Effect::Heal(Dice::flat(3))],
+      effects: vec![CreatureEffect::Heal(Dice::flat(3))],
     }
   }
 
@@ -1352,7 +1353,7 @@ pub mod test {
       },
       cost: Energy(8),
       usable_ooc: true,
-      effects: vec![Effect::Damage(Dice::flat(3))],
+      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
     }
   }
 
@@ -1362,7 +1363,7 @@ pub mod test {
       target: TargetSpec::LineFromActor { distance: Distance::from_meters(10.0) },
       cost: Energy(8),
       usable_ooc: true,
-      effects: vec![Effect::Damage(Dice::flat(3))],
+      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
     }
   }
 
@@ -1389,10 +1390,10 @@ pub mod test {
 
   #[test]
   fn serde_condition_duration() {
-    let cd = ConditionDuration::Interminate;
+    let cd = Duration::Interminate;
     assert_eq!(serde_json::to_string(&cd).unwrap(), "\"Interminate\"");
-    let cd = ConditionDuration::Duration(3);
-    assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Duration\":3}");
+    let cd = Duration::Rounds(3);
+    assert_eq!(serde_json::to_string(&cd).unwrap(), "{\"Rounds\":3}");
   }
 
   #[test]

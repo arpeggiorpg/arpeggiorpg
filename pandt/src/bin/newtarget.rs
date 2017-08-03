@@ -1,6 +1,10 @@
 extern crate pandt;
 use pandt::types::*;
 
+
+/// Creatures have abilities that they can perform (in-combat or out).
+/// Abilities trigger *Action*s. Actions cause effects on things (usually creatures, with
+/// CreatureEffect, sometimes other things).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ability {
   pub name: String,
