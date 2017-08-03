@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-#[macro_use] extern crate maplit;
 extern crate pandt;
 use pandt::types::*;
 
@@ -14,14 +11,24 @@ pub struct Ability {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Action {
-  Melee(CreatureEffect),
-  Range(Distance, CreatureEffect),
-  Actor(CreatureEffect),
-  LineFromActor { distance: Distance, effect: CreatureEffect },
-  LineFromActorToCreature{ distance: Distance, effect: CreatureEffect },
-  RangedSceneVolume { volume: Volume, range: Distance, effect: SceneEffect },
-  CasterCenteredSceneVolume{volume: Volume, effect: SceneEffect},
-  Multi(HashMap<String, Action>)
+  Creature { effect: CreatureEffect, target: CreatureTarget },
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
+  Multi(Vec<(String, Action)>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CreatureTarget {
+  Melee,
+  Range(Distance),
+  Actor,
+  LineFromActor(Distance),
+  LineFromActorToCreature(Distance),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SceneTarget {
+  RangedSceneVolume { volume: Volume, range: Distance },
+  CasterCenteredSceneVolume(Volume),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,42 +36,35 @@ pub enum CreatureEffect {
   Damage(usize),
   Heal(usize),
 }
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SceneEffect {
-  CreateVolumeCondition(ConditionDuration, Condition),
+  CreateVolumeCondition { duration: ConditionDuration, condition: Condition },
+  DestroyTerrain,
 }
-
-
-// super shallow version
-
-pub struct ShallowAction {
-  targets: Vec<(String, PointOrCreature)>,
-  effects: HashMap<String, Box<EffectHandler>>
-}
-
-pub enum PointOrCreature {
-  Point, Creature,
-}
-
-
-pub trait EffectHandler {
-  fn handle(&self, targets: Vec<(String, PointOrCreature)>, scene: &Scene) -> Scene;
-}
-
 
 fn main() {
-  let action = Action::Melee(CreatureEffect::Damage(3));
-  let drain_life = Action::Multi(hashmap!{
-    "foe".to_string() => Action::Melee(CreatureEffect::Damage(3)),
-    "friend".to_string() => Action::Actor(CreatureEffect::Heal(3))});
-  let thorn_patch = Action::RangedSceneVolume{
-    range: Distance(100),
-    volume: Volume::Sphere(Distance(3)),
-    effect: SceneEffect::CreateVolumeCondition(
-      ConditionDuration::Duration(3),
-      Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(3)))))
-      };
+  let action =
+    Action::Creature { effect: CreatureEffect::Damage(3), target: CreatureTarget::Melee };
+  let drain_life = Action::Multi(vec![
+    (
+      "foe".to_string(),
+      Action::Creature { effect: CreatureEffect::Damage(3), target: CreatureTarget::Melee },
+    ),
+    (
+      "friend".to_string(),
+      Action::Creature { effect: CreatureEffect::Heal(3), target: CreatureTarget::Actor },
+    ),
+  ]);
+  let thorn_patch = Action::SceneVolume {
+    effect: SceneEffect::CreateVolumeCondition {
+      duration: ConditionDuration::Duration(3),
+      condition: Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(3)))),
+    },
+    target: SceneTarget::RangedSceneVolume {
+      range: Distance(100),
+      volume: Volume::Sphere(Distance(3)),
+    },
+  };
   println!("oh");
 }
-
-
