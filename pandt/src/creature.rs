@@ -132,19 +132,19 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     vec![CreatureLog::Heal(cmp::min(missing, amt), dice)]
   }
 
-  fn eff2log(&self, effect: &Effect) -> Vec<CreatureLog> {
+  fn eff2log(&self, effect: &CreatureEffect) -> Vec<CreatureLog> {
     match *effect {
-      Effect::Damage(ref expr) => self.damage(expr),
-      Effect::Heal(ref expr) => self.heal(expr),
-      Effect::GenerateEnergy(amt) => self.generate_energy(amt),
-      Effect::MultiEffect(ref effects) => effects.iter().flat_map(|x| self.eff2log(x)).collect(),
-      Effect::ApplyCondition(ref duration, ref condition) => {
+      CreatureEffect::Damage(ref expr) => self.damage(expr),
+      CreatureEffect::Heal(ref expr) => self.heal(expr),
+      CreatureEffect::GenerateEnergy(amt) => self.generate_energy(amt),
+      CreatureEffect::MultiEffect(ref effects) => effects.iter().flat_map(|x| self.eff2log(x)).collect(),
+      CreatureEffect::ApplyCondition(ref duration, ref condition) => {
         vec![Self::apply_condition_log(*duration, condition.clone())]
       }
     }
   }
 
-  pub fn apply_effect(&self, effect: &Effect) -> Result<ChangedCreature, GameError> {
+  pub fn apply_effect(&self, effect: &CreatureEffect) -> Result<ChangedCreature, GameError> {
     let ops = Self::eff2log(self, effect);
     let mut changes = self.creature.change();
     for op in &ops {
@@ -153,7 +153,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     Ok(changes)
   }
 
-  fn apply_condition_log(duration: ConditionDuration, condition: Condition) -> CreatureLog {
+  fn apply_condition_log(duration: Duration, condition: Condition) -> CreatureLog {
     CreatureLog::ApplyCondition(ConditionID::gen(), duration, condition.clone())
   }
 
@@ -392,7 +392,7 @@ pub mod test {
         (
           ConditionID(uuid_0()),
           app_cond(
-            Condition::RecurringEffect(Box::new(Effect::Damage(Dice::flat(1)))),
+            Condition::RecurringEffect(Box::new(CreatureEffect::Damage(Dice::flat(1)))),
             Duration::Rounds(2),
           ),
         ),
