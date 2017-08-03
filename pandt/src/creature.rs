@@ -68,7 +68,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
           .creature_volume_conditions(self.game.tile_system, self.creature)
           .expect("Error getting volume conditions")
         {
-          conditions.push(volume_condition.condition.clone());
+          conditions.push(volume_condition.condition.clone().apply(Duration::Interminate));
         }
       }
     }

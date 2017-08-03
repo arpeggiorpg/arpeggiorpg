@@ -523,7 +523,8 @@ pub enum GameLog {
     point: Point3,
     volume: Volume,
     condition_id: ConditionID,
-    condition: AppliedCondition,
+    condition: Condition,
+    duration: Duration,
   },
 
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
@@ -732,11 +733,13 @@ pub struct Ability {
   pub usable_ooc: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
   SceneVolume { effect: SceneEffect, target: SceneTarget },
-  Multi(Vec<(String, Action)>),
+  // Multi will require DecidedTarget::Multi
+  // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
+  // Multi(Vec<(String, Action)>),
 }
 
 
@@ -765,13 +768,14 @@ pub enum CreatureTarget {
 }
 
 /// A target specifier for actions that ultimately affect the scene by way of SceneEffect.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
   RangedVolume { volume: Volume, range: Distance },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
   CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain
@@ -1056,10 +1060,10 @@ impl Scene {
     }
     Ok(new)
   }
-  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, ac: AppliedCondition)
+  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, condition: Condition, duration: Duration)
     -> Scene {
     let mut new = self.clone();
-    new.volume_conditions.insert(condition_id, VolumeCondition { point, volume, condition: ac });
+    new.volume_conditions.insert(condition_id, VolumeCondition { point, volume, condition, remaining: duration});
     new
   }
 

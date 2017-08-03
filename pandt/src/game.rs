@@ -700,10 +700,10 @@ impl Game {
         self.scenes.insert(scene);
       }
 
-      AddVolumeCondition { ref scene_id, point, volume, condition_id, ref condition } => {
+      AddVolumeCondition { ref scene_id, point, volume, condition_id, ref condition, duration } => {
         let scene = self
           .get_scene(*scene_id)?
-          .add_volume_condition(condition_id, point, volume, condition.clone());
+          .add_volume_condition(condition_id, point, volume, condition.clone(), duration);
         self.scenes.insert(scene);
       }
 
@@ -812,14 +812,8 @@ impl Game {
     &self, creature: &DynamicCreature, scene: &Scene, ability: &Ability, target: DecidedTarget,
     mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
-    use types::TargetSpec::*;
-    let mut change = match ability.target {
-      Melee |
-      Range(..) |
-      Actor |
-      LineFromActor { .. } |
-      SomeCreaturesInVolumeInRange { .. } |
-      AllCreaturesInVolumeInRange { .. } => {
+    let mut change = match ability.action {
+      Action::Creature {effect, target} => {
         let targets = self.resolve_targets(creature, scene, ability.target, target)?;
         for creature_id in &targets {
           for effect in &ability.effects {
@@ -828,28 +822,26 @@ impl Game {
         }
         change
       }
-      RangedVolume { volume, range } => match target {
-        DecidedTarget::Point(point) => {
-          for effect in &ability.effects {
-            match *effect {
-              Effect::ApplyCondition(dur, ref con) => {
-                let ac = con.apply(dur);
+      Action::SceneVolume {effect, target: tspec} => {
+        match (effect, tspec, target) {
+          (SceneEffect::CreateVolumeCondition{duration, condition},
+           SceneTarget::RangedVolume{range, volume},
+           DecidedTarget::Point(point)) => {
                 let log = GameLog::AddVolumeCondition {
                   condition_id: ConditionID::gen(),
                   scene_id: scene.id,
                   point,
                   volume: volume,
-                  condition: ac,
+                  condition,
+                  duration,
                 };
                 change = change.apply(&log)?;
               }
               _ => bail!(GameErrorEnum::BuggyProgram("Ugh".to_string())),
             }
-          }
           change
         }
-        _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(ability.target, target)),
-      },
+      _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(ability.target, target)),
     };
 
     if in_combat {
