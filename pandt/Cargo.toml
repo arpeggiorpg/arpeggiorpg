@@ -22,3 +22,4 @@ rand = "0.3"
 uuid = {version = "0.5", features = ["v4", "serde"]}
 error-chain = "0.10.0"
 bresenham = "0.1.1"
+maplit = "0.1.4"
