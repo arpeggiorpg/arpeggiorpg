@@ -241,7 +241,9 @@ impl TileSystem {
     for (obj1, obj2, _) in world.contact_pairs() {
       match (&obj1.data, &obj2.data) {
         (&CollData::Creature, &CollData::ConditionVolume(idx)) |
-        (&CollData::ConditionVolume(idx), &CollData::Creature) => results.push(volumes[idx].2.clone()),
+        (&CollData::ConditionVolume(idx), &CollData::Creature) => {
+          results.push(volumes[idx].2.clone())
+        }
         _ => {}
       }
     }
