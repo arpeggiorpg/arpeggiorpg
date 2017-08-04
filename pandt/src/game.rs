@@ -813,17 +813,17 @@ impl Game {
     mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
     let mut change = match ability.action {
-      Action::Creature { effect, target: tspec } => {
+      Action::Creature { ref effect, target: tspec } => {
         let targets = self.resolve_creature_targets(creature, scene, tspec, target)?;
         for creature_id in &targets {
-          change = change.apply_creature(*creature_id, |c| c.apply_effect(&effect))?;
+          change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
         }
         change
       }
-      Action::SceneVolume { effect, target: tspec } => {
+      Action::SceneVolume { ref effect, target: tspec } => {
         match (effect, tspec, target) {
           (
-            SceneEffect::CreateVolumeCondition { duration, condition },
+            &SceneEffect::CreateVolumeCondition { duration, ref condition },
             SceneTarget::RangedVolume { range, volume },
             DecidedTarget::Point(point),
           ) => {
@@ -832,7 +832,7 @@ impl Game {
               scene_id: scene.id,
               point,
               volume: volume,
-              condition,
+              condition: condition.clone(),
               duration,
             };
             change = change.apply(&log)?;
@@ -841,7 +841,7 @@ impl Game {
         }
         change
       }
-      _ => bail!(GameErrorEnum::InvalidTargetForAction(ability.action, target)),
+      _ => bail!(GameErrorEnum::InvalidTargetForAction(ability.action.clone(), target)),
     };
 
     if in_combat {
