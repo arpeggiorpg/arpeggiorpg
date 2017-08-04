@@ -472,7 +472,7 @@ const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
   (remaining, condition) => ({ remaining, condition })
 );
 
-const decodeSkillLevel: Decoder<SkillLevel> =
+export const decodeSkillLevel: Decoder<SkillLevel> =
   JD.oneOf.apply(null, SKILL_LEVELS.map(JD.equal));
 
 const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
@@ -500,7 +500,7 @@ function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   return JD.object.apply(undefined, arguments);
 }
 
-const decodeCreature: Decoder<Creature> = object17(
+export const decodeCreature: Decoder<Creature> = object17(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -539,7 +539,7 @@ const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(
     ({ name, class_, portrait_url, note, bio, initiative, size })
 );
 
-const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
+export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   switch (x) {
     case "GMOnly": return { t: "GMOnly" };
     case "AllPlayers": return { t: "AllPlayers" };
@@ -576,7 +576,7 @@ const decodeMap: Decoder<Map> = JD.object(
     })
 );
 
-const decodeAttributeCheck: Decoder<AttributeCheck> =
+export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
     (reliable, attr, target) => ({ reliable, attr, target }));
 
@@ -587,7 +587,7 @@ const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
   (name, map, background_image_url) => ({ name, map, background_image_url })
 );
 
-const decodeScene: Decoder<Scene> =
+export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
@@ -637,7 +637,7 @@ const decodeNote: Decoder<Note> =
     (name, content) => ({ name, content })
   );
 
-const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
+export const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
   {},
   {
     Scene: JD.map(Scene => ({ Scene }), JD.string()),
@@ -683,7 +683,7 @@ const decodeCombatLog: Decoder<CombatLog> =
         JD.array(JD.tuple(JD.string(), JD.number()))),
     });
 
-const decodeGameLog: Decoder<GameLog> =
+export const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
     StartCombat: JD.map(
       ([scene, creatures]): GameLog => ({ t: "StartCombat", scene, creatures }),
@@ -884,7 +884,7 @@ const decodeCreatureTarget: Decoder<CreatureTarget> = sum<CreatureTarget>("Targe
       (distance): CreatureTarget => ({ t: "LineFromActor", distance })),
   });
 
-const decodeSceneTarget: Decoder<SceneTarget> = JD.object(
+export const decodeSceneTarget: Decoder<SceneTarget> = JD.object(
   ["volume", decodeVolume],
   ["range", JD.number()],
   (volume, range): SceneTarget => ({ t: "RangedVolume", volume, range }));
