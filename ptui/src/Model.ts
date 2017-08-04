@@ -329,10 +329,11 @@ export class PTUI {
   requestCombatAbility(
     dispatch: Dispatch, cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability,
     scene_id: T.SceneID) {
-    switch (ability.target.t) {
-      case "Actor": return this.sendCommand(
+    if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
+      return this.sendCommand(
         dispatch, { t: "CombatAct", ability_id, target: { t: "Actor" } });
-      default: this.selectAbility(dispatch, scene_id, cid, ability_id);
+    } else {
+      this.selectAbility(dispatch, scene_id, cid, ability_id);
     }
   }
 
