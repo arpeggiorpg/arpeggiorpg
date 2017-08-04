@@ -8,104 +8,115 @@ current_game:
   abilities:
     thorn_patch:
       name: Thorn Patch
-      target:
-        RangedVolume:
-          range: 1000
-          volume:
-            Sphere: 200
+      action:
+        SceneVolume:
+          target:
+            RangedVolume:
+              range: 1000
+              volume:
+                Sphere: 200
+          effect:
+            CreateVolumeCondition:
+              duration: Interminate
+              condition:
+                RecurringEffect:
+                  Damage:
+                    Expr:
+                      num: 1
+                      size: 3
       cost: 8
-      effects:
-        - ApplyCondition:
-          - Interminate
-          - RecurringEffect:
-              Damage:
-                Expr:
-                  num: 1
-                  size: 3
       usable_ooc: false
     piercing_shot:
       name: Piercing Shot
-      target:
-        LineFromActor:
-          distance: 1000
+      action:
+        Creature:
+          target:
+            LineFromActor:
+              distance: 1000
+          effect:
+            Damage:
+              Expr:
+                num: 1
+                size: 3
       cost: 8
-      effects:
-        - Damage:
-            Expr:
-              num: 1
-              size: 3
       usable_ooc: false 
     shoot: 
       name: Shoot
-      target: 
-        Range: 1000
+      action:
+        Creature:
+          target: 
+            Range: 1000
+          effect:
+            Damage: 
+              Expr: 
+                num: 2
+                size: 2
       cost: 8
-      effects: 
-        - 
-          Damage: 
-            Expr: 
-              num: 2
-              size: 2
       usable_ooc: false
     fireball: 
       name: Fireball
-      target: 
-        AllCreaturesInVolumeInRange: 
-          volume: 
-            Sphere: 500
-          range: 1000
+      action:
+        Creature:
+          target: 
+            AllCreaturesInVolumeInRange: 
+              volume: 
+                Sphere: 500
+              range: 1000
+          effect:
+            Damage: 
+              Expr: 
+                num: 2
+                size: 5
       cost: 10
-      effects: 
-        - 
-          Damage: 
-            Expr: 
-              num: 2
-              size: 5
       usable_ooc: false
     bonk: 
       name: Bonk
-      target: Melee
       cost: 8
-      effects: 
-        - 
-          ApplyCondition: 
-            - 
-              Duration: 1
-            - Incapacitated
+      action:
+        Creature:
+          target: Melee
+          effect: 
+            ApplyCondition: 
+              - 
+                Rounds: 1
+              - Incapacitated
       usable_ooc: false
     dash: 
       name: Dash
-      target: Actor
       cost: 8
-      effects: 
-        - 
-          ApplyCondition: 
-            - 
-              Duration: 0
-            - DoubleMaxMovement
+      action:
+        Creature:
+          target: Actor
+          effect:
+            ApplyCondition: 
+              - 
+                Rounds: 0
+              - DoubleMaxMovement
       usable_ooc: true
     stab: 
       name: Stab
-      target: Melee
       cost: 8
-      effects: 
-        - 
-          Damage: 
-            Expr: 
-              num: 3
-              size: 1
+      action:
+        Creature:
+          target: Melee
+          effect: 
+            Damage: 
+              Expr: 
+                num: 3
+                size: 1
       usable_ooc: false
     heal: 
       name: Heal
-      target: 
-        Range: 500
       cost: 8
-      effects: 
-        - 
-          Heal: 
-            Expr: 
-              num: 2
-              size: 2
+      action:
+        Creature:
+          target: 
+            Range: 500
+          effect: 
+            Heal: 
+              Expr: 
+                num: 2
+                size: 2
       usable_ooc: true
   creatures: 
     "0420f7db-c7ec-48af-add3-045ad859f47e": 
