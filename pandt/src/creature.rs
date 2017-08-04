@@ -62,13 +62,15 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     // This is insufficient, since we want volume conditions to matter even in non-combat scenarios
     // (for example: an oil slick in front of a pit trap that makes it harder to jump over the pit).
     if let &Some(ref combat) = &self.game.current_combat {
-      let scene = self.game.get_scene(combat.scene).expect("Couldn't get a scene");
-      if scene.creatures.contains_key(&self.creature.id) {
-        for (_, volume_condition) in scene
-          .creature_volume_conditions(self.game.tile_system, self.creature)
-          .expect("Error getting volume conditions")
-        {
-          conditions.push(volume_condition.condition.clone().apply(Duration::Interminate));
+      if let Ok(scene) = self.game.get_scene(combat.scene) {
+        if scene.creatures.contains_key(&self.creature.id) {
+          if let Ok(conds) =
+            scene.creature_volume_conditions(self.game.tile_system, self.creature)
+          {
+            for (_, volume_condition) in conds {
+              conditions.push(volume_condition.condition.clone().apply(Duration::Interminate));
+            }
+          }
         }
       }
     }

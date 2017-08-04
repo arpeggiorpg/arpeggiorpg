@@ -873,7 +873,9 @@ impl Game {
         Err(GameErrorEnum::CreatureOutOfRange(cid).into())
       },
       (CreatureTarget::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
-      (_, DecidedTarget::Point(pt)) => self.volume_creature_targets(scene, creature.creature.id, target, pt),
+      (_, DecidedTarget::Point(pt)) => {
+        self.volume_creature_targets(scene, creature.creature.id, target, pt)
+      }
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
   }
@@ -890,8 +892,9 @@ impl Game {
   fn volume_creature_targets(&self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3)
     -> Result<Vec<CreatureID>, GameError> {
     match target {
-      CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => 
-        Ok(self.creatures_in_volume(scene, pt, volume)),
+      CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => {
+        Ok(self.creatures_in_volume(scene, pt, volume))
+      }
       CreatureTarget::LineFromActor { distance } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
@@ -913,10 +916,12 @@ impl Game {
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
 
-      // Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. } 
+    // Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. }
     let cids = match ability.action {
-      Action::Creature {target, ..} => self.volume_creature_targets(scene, actor_id, target, pt)?,
-      Action::SceneVolume { target: SceneTarget::RangedVolume{volume, ..}, ..} => self.creatures_in_volume(scene, pt, volume),
+      Action::Creature { target, .. } => self.volume_creature_targets(scene, actor_id, target, pt)?,
+      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
+        self.creatures_in_volume(scene, pt, volume)
+      }
       _ => vec![],
     };
     let tiles = match ability.action {
@@ -931,7 +936,7 @@ impl Game {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         self.tile_system.items_within_volume(volume, actor_pos, &all_tiles)
-      },
+      }
       _ => vec![],
     };
     Ok((cids, tiles))
