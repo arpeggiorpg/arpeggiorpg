@@ -246,19 +246,27 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const ability_id = options.ability_id;
     const ability = ptui.getAbility(ability_id);
     if (!ability) { return; }
-    const target_spec = ability.target;
-    switch (target_spec.t) {
-      case "RangedVolume":
-        return this.drawVolume(target_spec.volume, target);
-      case "AllCreaturesInVolumeInRange":
-        return this.drawVolume(target_spec.volume, target);
-      case "LineFromActor":
-        const caster_pos = M.getCreaturePos(scene, options.cid);
-        if (!caster_pos) { return; }
-        return <line x1={caster_pos[0] * 100 + 50} y1={caster_pos[1] * 100}
-          x2={target[0] * 100 + 50} y2={target[1] * 100}
-          style={{ pointerEvents: "none" }}
-          strokeWidth="3" stroke="black" />;
+    const action = ability.action;
+
+    switch (action.t) {
+      case "Creature":
+        switch (action.target.t) {
+          case "AllCreaturesInVolumeInRange":
+            return this.drawVolume(action.target.volume, target);
+          case "LineFromActor":
+            const caster_pos = M.getCreaturePos(scene, options.cid);
+            if (!caster_pos) { return; }
+            return <line x1={caster_pos[0] * 100 + 50} y1={caster_pos[1] * 100}
+              x2={target[0] * 100 + 50} y2={target[1] * 100}
+              style={{ pointerEvents: "none" }}
+              strokeWidth="3" stroke="black" />;
+        }
+        return;
+      case "SceneVolume":
+        switch (action.target.t) {
+          case "RangedVolume":
+            return this.drawVolume(action.target.volume, target);
+        }
     }
   }
 
@@ -276,13 +284,21 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const options = ptui.state.grid.target_options!;
     const ability = ptui.getAbility(options.ability_id);
     if (!ability) { return; }
-    switch (ability.target.t) {
-      case "SomeCreaturesInVolumeInRange":
-      case "AllCreaturesInVolumeInRange":
-      case "RangedVolume":
-      case "LineFromActor":
+    switch (ability.action.t) {
+      case "Creature":
+        switch (ability.action.target.t) {
+          case "SomeCreaturesInVolumeInRange":
+          case "AllCreaturesInVolumeInRange":
+          case "LineFromActor":
+            break;
+          default: return;
+        }
         break;
-      default: return;
+      case "SceneVolume":
+        switch (ability.action.target.t) {
+          case "RangedVolume": break;
+          default: return;
+        }
     }
     this.setState({ targeting_point: { point, rect } });
     M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
