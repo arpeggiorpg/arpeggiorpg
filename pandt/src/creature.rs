@@ -137,7 +137,9 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
       CreatureEffect::Damage(ref expr) => self.damage(expr),
       CreatureEffect::Heal(ref expr) => self.heal(expr),
       CreatureEffect::GenerateEnergy(amt) => self.generate_energy(amt),
-      CreatureEffect::MultiEffect(ref effects) => effects.iter().flat_map(|x| self.eff2log(x)).collect(),
+      CreatureEffect::MultiEffect(ref effects) => {
+        effects.iter().flat_map(|x| self.eff2log(x)).collect()
+      }
       CreatureEffect::ApplyCondition(ref duration, ref condition) => {
         vec![Self::apply_condition_log(*duration, condition.clone())]
       }

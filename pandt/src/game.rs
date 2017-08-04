@@ -813,7 +813,7 @@ impl Game {
     mut change: ChangedGame, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
     let mut change = match ability.action {
-      Action::Creature {effect, target} => {
+      Action::Creature { effect, target } => {
         let targets = self.resolve_creature_targets(creature, scene, ability.target, target)?;
         for creature_id in &targets {
           for effect in &ability.effects {
@@ -822,25 +822,27 @@ impl Game {
         }
         change
       }
-      Action::SceneVolume {effect, target: tspec} => {
+      Action::SceneVolume { effect, target: tspec } => {
         match (effect, tspec, target) {
-          (SceneEffect::CreateVolumeCondition{duration, condition},
-           SceneTarget::RangedVolume{range, volume},
-           DecidedTarget::Point(point)) => {
-                let log = GameLog::AddVolumeCondition {
-                  condition_id: ConditionID::gen(),
-                  scene_id: scene.id,
-                  point,
-                  volume: volume,
-                  condition,
-                  duration,
-                };
-                change = change.apply(&log)?;
-              }
-              _ => bail!(GameErrorEnum::BuggyProgram("Ugh".to_string())),
-            }
-          change
+          (
+            SceneEffect::CreateVolumeCondition { duration, condition },
+            SceneTarget::RangedVolume { range, volume },
+            DecidedTarget::Point(point),
+          ) => {
+            let log = GameLog::AddVolumeCondition {
+              condition_id: ConditionID::gen(),
+              scene_id: scene.id,
+              point,
+              volume: volume,
+              condition,
+              duration,
+            };
+            change = change.apply(&log)?;
+          }
+          _ => bail!(GameErrorEnum::BuggyProgram("Ugh".to_string())),
         }
+        change
+      }
       _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(ability.target, target)),
     };
 
@@ -851,8 +853,10 @@ impl Game {
 
   }
 
-  pub fn resolve_creature_targets(&self, creature: &DynamicCreature, scene: &Scene, target: CreatureTarget, decision: DecidedTarget)
-    -> Result<Vec<CreatureID>, GameError> {
+  pub fn resolve_creature_targets(
+    &self, creature: &DynamicCreature, scene: &Scene, target: CreatureTarget,
+    decision: DecidedTarget,
+  ) -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
       (CreatureTarget::Melee, DecidedTarget::Creature(cid)) => if self
         .tile_system
@@ -888,12 +892,15 @@ impl Game {
   fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, action: Action, pt: Point3)
     -> Result<Vec<CreatureID>, GameError> {
     match action {
-      Action::Creature {target: CreatureTarget::AllCreaturesInVolumeInRange {volume, range}, ..} |
-      Action::SceneVolume {target: SceneTarget::RangedVolume { volume, range }, ..} => {
+      Action::Creature {
+        target: CreatureTarget::AllCreaturesInVolumeInRange { volume, range },
+        ..
+      } |
+      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. } => {
         let cids = self.creatures_in_volume(scene, pt, volume);
         Ok(cids)
       }
-      Action::Creature { target: CreatureTarget::LineFromActor { distance }, ..} => {
+      Action::Creature { target: CreatureTarget::LineFromActor { distance }, .. } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         let cids = self.creatures_in_volume(scene, actor_pos, volume);
@@ -914,20 +921,21 @@ impl Game {
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
     let cids = self.volume_targets(scene, actor_id, ability.action, pt)?;
-    match ability.target {
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } |
-      TargetSpec::RangedVolume { volume, range } => {
-        let result_tiles = self.tile_system.items_within_volume(volume, pt, &all_tiles);
-        Ok((cids, result_tiles))
+    let tiles = match ability.action {
+      Action::Creature {
+        target: CreatureTarget::AllCreaturesInVolumeInRange { volume, range },
+        ..
+      } |
+      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. } => {
+        self.tile_system.items_within_volume(volume, pt, &all_tiles)
       }
-      TargetSpec::LineFromActor { distance } => {
+      Action::Creature { target: CreatureTarget::LineFromActor { distance }, .. } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
-        let result_tiles = self.tile_system.items_within_volume(volume, actor_pos, &all_tiles);
-        Ok((cids, result_tiles))
+        self.tile_system.items_within_volume(volume, actor_pos, &all_tiles)
       }
-      _ => Ok((vec![], vec![])),
-    }
+    };
+    Ok((cids, tiles))
   }
 
   pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)

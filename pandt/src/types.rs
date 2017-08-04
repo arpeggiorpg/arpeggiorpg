@@ -740,7 +740,7 @@ pub struct Ability {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget },
+  SceneVolume { effect: SceneEffect, target: SceneTarget }, 
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -781,7 +781,7 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition },
+  CreateVolumeCondition { duration: Duration, condition: Condition }, 
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -1064,10 +1064,14 @@ impl Scene {
     }
     Ok(new)
   }
-  pub fn add_volume_condition(&self, condition_id: ConditionID, point: Point3, volume: Volume, condition: Condition, duration: Duration)
-    -> Scene {
+  pub fn add_volume_condition(
+    &self, condition_id: ConditionID, point: Point3, volume: Volume, condition: Condition,
+    duration: Duration,
+  ) -> Scene {
     let mut new = self.clone();
-    new.volume_conditions.insert(condition_id, VolumeCondition { point, volume, condition, remaining: duration});
+    new
+      .volume_conditions
+      .insert(condition_id, VolumeCondition { point, volume, condition, remaining: duration });
     new
   }
 
