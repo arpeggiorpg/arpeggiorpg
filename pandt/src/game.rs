@@ -959,18 +959,26 @@ impl Game {
     -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
-    Ok(match ability.target {
-      TargetSpec::Melee => self.creatures_in_range(scene, creature_id, MELEE_RANGE)?,
-      TargetSpec::Range(distance) => self.creatures_in_range(scene, creature_id, distance)?,
-      TargetSpec::Actor => PotentialTargets::CreatureIDs(vec![creature_id]),
-      TargetSpec::SomeCreaturesInVolumeInRange { volume, maximum, range } => panic!(),
-      TargetSpec::AllCreaturesInVolumeInRange { range, .. } |
-      TargetSpec::RangedVolume { range, .. } => {
+    use types::Action as A;
+    use types::CreatureTarget as CT;
+    Ok(match ability.action {
+      A::Creature { target: CT::Melee, .. } => {
+        self.creatures_in_range(scene, creature_id, MELEE_RANGE)?
+      }
+      A::Creature { target: CT::Range(distance), .. } => {
+        self.creatures_in_range(scene, creature_id, distance)?
+      }
+      A::Creature { target: CT::Actor, .. } => PotentialTargets::CreatureIDs(vec![creature_id]),
+      A::Creature { target: CT::AllCreaturesInVolumeInRange { range, .. }, .. } |
+      A::SceneVolume { target: SceneTarget::RangedVolume { range, .. }, .. } => {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
-      TargetSpec::LineFromActor { distance } => {
+      A::Creature { target: CT::LineFromActor { distance }, .. } => {
         self.open_terrain_in_range(scene, creature_id, distance)?
       }
+      A::Creature {
+        target: CT::SomeCreaturesInVolumeInRange { volume, maximum, range }, ..
+      } => panic!(),
     })
   }
 
