@@ -82,9 +82,16 @@ export function test(): boolean {
 
 // test()
 
-describe("PTTypes decoding", () => {
-  it("original test function works", () => {
-    expect(test()).toBe(true);
+describe("PTTypes", () => {
+  const ranged_volume_target = { "RangedVolume": { "volume": { "Sphere": 200 }, "range": 1000 } };
+
+  it("decodeSceneTarget", () => {
+    T.decodeSceneTarget.decodeAny(ranged_volume_target);
+  });
+
+  it("decodeAction", () => {
+    const action = { "SceneVolume": { "target": ranged_volume_target } };
+    T.decodeAction.decodeAny(action);
   });
 
   it("decodeInventoryOwner", () => {
@@ -151,3 +158,4 @@ describe("getCreatures", () => {
     expect(ptui.getCreatures(["0x00", "0x01"])).toEqual([creature]);
   });
 });
+

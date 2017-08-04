@@ -884,13 +884,14 @@ const decodeCreatureTarget: Decoder<CreatureTarget> = sum<CreatureTarget>("Targe
       (distance): CreatureTarget => ({ t: "LineFromActor", distance })),
   });
 
-export const decodeSceneTarget: Decoder<SceneTarget> = JD.object(
-  ["volume", decodeVolume],
-  ["range", JD.number()],
-  (volume, range): SceneTarget => ({ t: "RangedVolume", volume, range }));
+export const decodeSceneTarget: Decoder<SceneTarget> = sum<SceneTarget>("SceneTarget", {}, {
+  RangedVolume: JD.object(["volume", decodeVolume],
+    ["range", JD.number()],
+    (volume, range): SceneTarget => ({ t: "RangedVolume", volume, range })),
+});
 
 
-const decodeAction: Decoder<Action> = sum<Action>("Action", {},
+export const decodeAction: Decoder<Action> = sum<Action>("Action", {},
   {
     Creature: JD.object(["target", decodeCreatureTarget],
       (target): Action => ({ t: "Creature", target })),
