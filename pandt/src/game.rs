@@ -814,7 +814,7 @@ impl Game {
   ) -> Result<ChangedGame, GameError> {
     let mut change = match ability.action {
       Action::Creature {effect, target} => {
-        let targets = self.resolve_targets(creature, scene, ability.target, target)?;
+        let targets = self.resolve_creature_targets(creature, scene, ability.target, target)?;
         for creature_id in &targets {
           for effect in &ability.effects {
             change = change.apply_creature(*creature_id, |c| c.apply_effect(effect))?;
@@ -851,10 +851,10 @@ impl Game {
 
   }
 
-  pub fn resolve_targets(&self, creature: &DynamicCreature, scene: &Scene, target: TargetSpec, decision: DecidedTarget)
+  pub fn resolve_creature_targets(&self, creature: &DynamicCreature, scene: &Scene, target: CreatureTarget, decision: DecidedTarget)
     -> Result<Vec<CreatureID>, GameError> {
     match (target, decision) {
-      (TargetSpec::Melee, DecidedTarget::Creature(cid)) => if self
+      (CreatureTarget::Melee, DecidedTarget::Creature(cid)) => if self
         .tile_system
         .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, MELEE_RANGE)
       {
@@ -862,7 +862,7 @@ impl Game {
       } else {
         Err(GameErrorEnum::CreatureOutOfRange(cid).into())
       },
-      (TargetSpec::Range(max), DecidedTarget::Creature(cid)) => if self
+      (CreatureTarget::Range(max), DecidedTarget::Creature(cid)) => if self
         .tile_system
         .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max)
       {
@@ -870,7 +870,7 @@ impl Game {
       } else {
         Err(GameErrorEnum::CreatureOutOfRange(cid).into())
       },
-      (TargetSpec::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
+      (CreatureTarget::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
       (_, DecidedTarget::Point(pt)) => self.volume_targets(scene, creature.creature.id, target, pt),
       (spec, decided) => Err(GameErrorEnum::InvalidTargetForTargetSpec(spec, decided).into()),
     }
@@ -885,15 +885,15 @@ impl Game {
   // 1. `pt` must be visible to the caster
   // 2. volumes must not go through blocked terrain
   // 3. volumes must (generally) not go around corners
-  fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, target: TargetSpec, pt: Point3)
+  fn volume_targets(&self, scene: &Scene, actor_id: CreatureID, action: Action, pt: Point3)
     -> Result<Vec<CreatureID>, GameError> {
-    match target {
-      TargetSpec::AllCreaturesInVolumeInRange { volume, range } |
-      TargetSpec::RangedVolume { volume, range } => {
+    match action {
+      Action::Creature {target: CreatureTarget::AllCreaturesInVolumeInRange {volume, range}, ..} |
+      Action::SceneVolume {target: SceneTarget::RangedVolume { volume, range }, ..} => {
         let cids = self.creatures_in_volume(scene, pt, volume);
         Ok(cids)
       }
-      TargetSpec::LineFromActor { distance } => {
+      Action::Creature { target: CreatureTarget::LineFromActor { distance }, ..} => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
         let cids = self.creatures_in_volume(scene, actor_pos, volume);
@@ -902,7 +902,7 @@ impl Game {
         let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
         Ok(cids)
       }
-      _ => bail!(GameErrorEnum::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
+      _ => bail!(GameErrorEnum::InvalidActionForTargetSpec(action, DecidedTarget::Point(pt))),
     }
   }
 
@@ -913,7 +913,7 @@ impl Game {
     let terrain = self.get_map(scene.map)?.terrain.iter();
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
-    let cids = self.volume_targets(scene, actor_id, ability.target, pt)?;
+    let cids = self.volume_targets(scene, actor_id, ability.action, pt)?;
     match ability.target {
       TargetSpec::AllCreaturesInVolumeInRange { volume, range } |
       TargetSpec::RangedVolume { volume, range } => {

@@ -626,6 +626,10 @@ error_chain! {
       description("The supplied DecidedTarget is not valid for the TargetSpec in use.")
       display("DecidedTarget {:?} is not valid for TargetSpec {:?}.", dtarget, tspec)
     }
+    InvalidActionForTargetSpec(action: Action, dtarget: DecidedTarget) {
+      description("The supplied DecidedTarget is not valid for the Action in use.")
+      display("DecidedTarget {:?} is not valid for Action {:?}.", dtarget, action)
+    }
     CreatureOutOfRange(cid: CreatureID) {
       description("The specified creature is out of range.")
       display("Creature {} is out of range.", cid.to_string())
