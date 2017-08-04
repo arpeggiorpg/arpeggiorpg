@@ -52,21 +52,27 @@ export interface Combat {
 
 export interface Ability {
   name: string;
-  target: TargetSpec;
+  action: Action;
   // cost: Energy;
-  // effects: Array<Effect>;
   usable_ooc: boolean;
 }
 
-export type TargetSpec =
+export type Action =
+  // these variants also have an `effect` field but we don't use it in the client
+  | { t: "Creature", target: CreatureTarget }
+  | { t: "SceneVolume", target: SceneTarget }
+  ;
+
+export type CreatureTarget =
   | { t: "Melee" }
   | { t: "Range"; distance: Distance }
   | { t: "Actor" }
   | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
   | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
-  | { t: "RangedVolume"; volume: Volume; range: Distance }
   | { t: "LineFromActor"; distance: Distance }
   ;
+
+export interface SceneTarget { t: "RangedVolume"; volume: Volume; range: Distance; }
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID; }
@@ -272,7 +278,7 @@ export type CreatureLog =
   | { t: "Heal"; hp: HP; rolls: Array<number> }
   | { t: "GenerateEnergy"; energy: Energy }
   | { t: "ReduceEnergy"; energy: Energy }
-  | { t: "ApplyCondition"; condition_id: ConditionID, duration: ConditionDuration } // TODO Condition
+  | { t: "ApplyCondition"; condition_id: ConditionID, duration: Duration } // TODO Condition
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID };
 
@@ -281,19 +287,19 @@ export interface Item {
   name: string;
 }
 
-export type Effect =
-  | { t: "ApplyCondition"; duration: ConditionDuration; condition: Condition }
+export type CreatureEffect =
+  | { t: "ApplyCondition"; duration: Duration; condition: Condition }
   | { t: "Heal"; dice: Dice }
   | { t: "Damage"; dice: Dice }
-  | { t: "MultiEffect"; effects: Array<Effect> }
+  | { t: "MultiEffect"; effects: Array<CreatureEffect> }
   | { t: "GenerateEnergy"; energy: Energy };
 
-export type ConditionDuration =
+export type Duration =
   | { t: "Interminate" }
-  | { t: "Duration"; duration: number };
+  | { t: "Rounds"; duration: number };
 
 export type Condition =
-  | { t: "RecurringEffect"; effect: Effect }
+  | { t: "RecurringEffect"; effect: CreatureEffect }
   | { t: "Dead" }
   | { t: "Incapacitated" }
   | { t: "AddDamageBuff", hp: HP }
@@ -301,7 +307,7 @@ export type Condition =
   | { t: "ActivateAbility"; ability_id: AbilityID };
 
 export interface AppliedCondition {
-  remaining: ConditionDuration;
+  remaining: Duration;
   condition: Condition;
 }
 
@@ -405,11 +411,11 @@ export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", 
   Points: JD.map((points): PotentialTargets => ({ t: "Points", points }), JD.array(decodePoint3)),
 });
 
-export const decodeDiceLazy = JD.lazy(() => decodeDice);
-export const decodeConditionLazy = JD.lazy(() => decodeCondition);
-export const decodeEffectLazy = JD.lazy(() => decodeEffect);
+const decodeDiceLazy = JD.lazy(() => decodeDice);
+const decodeConditionLazy = JD.lazy(() => decodeCondition);
+const decodeEffectLazy = JD.lazy(() => decodeEffect);
 
-export const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
+const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
   BestOf: JD.map(
     ([num, dice]): Dice => ({ t: "BestOf", num, dice }),
     JD.tuple(JD.number(), decodeDiceLazy)),
@@ -422,30 +428,30 @@ export const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
     JD.tuple(decodeDiceLazy, decodeDiceLazy)),
 });
 
-export const decodeConditionDuration: Decoder<ConditionDuration> =
-  sum<ConditionDuration>("ConditionDuration", { Interminate: { t: "Interminate" } },
+const decodeDuration: Decoder<Duration> =
+  sum<Duration>("Duration", { Interminate: { t: "Interminate" } },
     {
-      Duration: JD.map(
-        (duration): ConditionDuration => ({ t: "Duration", duration }),
+      Rounds: JD.map(
+        (duration): Duration => ({ t: "Rounds", duration }),
         JD.number()),
     });
 
-export const decodeEffect: Decoder<Effect> = sum<Effect>("Effect", {},
+const decodeEffect: Decoder<CreatureEffect> = sum<CreatureEffect>("CreatureEffect", {},
   {
     ApplyCondition: JD.map(
-      ([duration, condition]): Effect => ({ t: "ApplyCondition", duration, condition }),
-      JD.tuple(decodeConditionDuration, decodeConditionLazy)),
-    Damage: JD.map((dice): Effect => ({ t: "Damage", dice }), decodeDice),
+      ([duration, condition]): CreatureEffect => ({ t: "ApplyCondition", duration, condition }),
+      JD.tuple(decodeDuration, decodeConditionLazy)),
+    Damage: JD.map((dice): CreatureEffect => ({ t: "Damage", dice }), decodeDice),
     GenerateEffect: JD.map(
-      (energy): Effect => ({ t: "GenerateEnergy", energy }),
+      (energy): CreatureEffect => ({ t: "GenerateEnergy", energy }),
       JD.number()),
-    Heal: JD.map((dice): Effect => ({ t: "Heal", dice }), decodeDice),
+    Heal: JD.map((dice): CreatureEffect => ({ t: "Heal", dice }), decodeDice),
     MultiEffect: JD.map(
-      (effects): Effect => ({ t: "MultiEffect", effects }),
+      (effects): CreatureEffect => ({ t: "MultiEffect", effects }),
       JD.array(decodeEffectLazy)),
   });
 
-export const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
+const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
   {
     Dead: { t: "Dead" },
     DoubleMaxMovement: { t: "DoubleMaxMovement" },
@@ -460,16 +466,16 @@ export const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
   }
 );
 
-export const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
-  ["remaining", decodeConditionDuration],
+const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
+  ["remaining", decodeDuration],
   ["condition", decodeCondition],
   (remaining, condition) => ({ remaining, condition })
 );
 
-export const decodeSkillLevel: Decoder<SkillLevel> =
+const decodeSkillLevel: Decoder<SkillLevel> =
   JD.oneOf.apply(null, SKILL_LEVELS.map(JD.equal));
 
-export const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
+const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
   ["ability_id", JD.string()],
   ["cooldown", JD.number()],
   (ability_id, cooldown) => ({ ability_id, cooldown })
@@ -482,7 +488,7 @@ const decodeAABB: Decoder<AABB> = JD.object(
   (x, y, z) => ({ x, y, z })
 );
 
-export function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
   _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
   _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
@@ -494,7 +500,7 @@ export function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
   return JD.object.apply(undefined, arguments);
 }
 
-export const decodeCreature: Decoder<Creature> = object17(
+const decodeCreature: Decoder<Creature> = object17(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -533,7 +539,7 @@ const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(
     ({ name, class_, portrait_url, note, bio, initiative, size })
 );
 
-export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
+const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   switch (x) {
     case "GMOnly": return { t: "GMOnly" };
     case "AllPlayers": return { t: "AllPlayers" };
@@ -541,7 +547,7 @@ export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   }
 }, JD.string());
 
-export const decodeMapCreation: Decoder<MapCreation> = JD.object(
+const decodeMapCreation: Decoder<MapCreation> = JD.object(
   ["name", JD.string()],
   ["background_image_url", JD.string()],
   ["background_image_offset", JD.tuple(JD.number(), JD.number())],
@@ -550,10 +556,10 @@ export const decodeMapCreation: Decoder<MapCreation> = JD.object(
     ({ name, background_image_url, background_image_offset, background_image_scale }),
 );
 
-export const decodeSpecialTile: Decoder<SpecialTile> =
+const decodeSpecialTile: Decoder<SpecialTile> =
   JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility);
 
-export const decodeMap: Decoder<Map> = JD.object(
+const decodeMap: Decoder<Map> = JD.object(
   ["id", JD.string()],
   ["name", JD.string()],
   ["terrain", JD.array(decodePoint3)],
@@ -570,18 +576,18 @@ export const decodeMap: Decoder<Map> = JD.object(
     })
 );
 
-export const decodeAttributeCheck: Decoder<AttributeCheck> =
+const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
     (reliable, attr, target) => ({ reliable, attr, target }));
 
-export const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
+const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
   ["name", JD.string()],
   ["map", JD.string()],
   ["background_image_url", JD.string()],
   (name, map, background_image_url) => ({ name, map, background_image_url })
 );
 
-export const decodeScene: Decoder<Scene> =
+const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
@@ -596,7 +602,7 @@ export const decodeScene: Decoder<Scene> =
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
   return JD.map(id => ({ t, id } as FolderItemID), JD.string());
 }
-export const decodeFolderItemID: Decoder<FolderItemID> =
+const decodeFolderItemID: Decoder<FolderItemID> =
   sum<FolderItemID>("FolderItemID", {}, {
     SceneID: _mkFolderItem("SceneID"),
     MapID: _mkFolderItem("MapID"),
@@ -606,7 +612,7 @@ export const decodeFolderItemID: Decoder<FolderItemID> =
     SubfolderID: _mkFolderItem("SubfolderID"),
   });
 
-export const decodeFolderPath: Decoder<FolderPath> =
+const decodeFolderPath: Decoder<FolderPath> =
   JD.map(strpath => {
     if (strpath === "") {
       return [];
@@ -617,28 +623,28 @@ export const decodeFolderPath: Decoder<FolderPath> =
     }
   }, JD.string());
 
-export const decodeItem: Decoder<Item> =
+const decodeItem: Decoder<Item> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
     (id, name) => ({ id, name })
   );
 
-export const decodeNote: Decoder<Note> =
+const decodeNote: Decoder<Note> =
   JD.object(
     ["name", JD.string()],
     ["content", JD.string()],
     (name, content) => ({ name, content })
   );
 
-export const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
+const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
   {},
   {
     Scene: JD.map(Scene => ({ Scene }), JD.string()),
     Creature: JD.map(Creature => ({ Creature }), JD.string()),
   });
 
-export const decodeCreatureLog: Decoder<CreatureLog> =
+const decodeCreatureLog: Decoder<CreatureLog> =
   sum<CreatureLog>("CreatureLog", {}, {
     Damage: JD.map(
       ([hp, rolls]): CreatureLog => ({ t: "Damage", hp, rolls }),
@@ -651,7 +657,7 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
       JD.number()),
     ApplyCondition: JD.map(
       ([condition_id, duration]): CreatureLog => ({ t: "ApplyCondition", condition_id, duration }),
-      JD.tuple(JD.string(), decodeConditionDuration)),
+      JD.tuple(JD.string(), decodeDuration)),
     DecrementConditionRemaining: JD.map(
       (condition_id): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id }),
       JD.string()),
@@ -659,7 +665,7 @@ export const decodeCreatureLog: Decoder<CreatureLog> =
       JD.string()),
   });
 
-export const decodeCombatLog: Decoder<CombatLog> =
+const decodeCombatLog: Decoder<CombatLog> =
   sum<CombatLog>("CombatLog",
     {
       ForceNextTurn: { t: "ForceNextTurn" },
@@ -677,7 +683,7 @@ export const decodeCombatLog: Decoder<CombatLog> =
         JD.array(JD.tuple(JD.string(), JD.number()))),
     });
 
-export const decodeGameLog: Decoder<GameLog> =
+const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
     StartCombat: JD.map(
       ([scene, creatures]): GameLog => ({ t: "StartCombat", scene, creatures }),
@@ -798,7 +804,7 @@ export const decodeGameLog: Decoder<GameLog> =
       JD.tuple(JD.number(), JD.number())),
   });
 
-export const decodePlayer: Decoder<Player> = JD.object(
+const decodePlayer: Decoder<Player> = JD.object(
   ["player_id", JD.string()],
   ["scene", maybe(JD.string())],
   ["creatures", JD.array(JD.string())],
@@ -817,7 +823,7 @@ function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number, 
     (cursor, data) => ({ cursor, data }));
 }
 
-export const decodeCombat: Decoder<Combat> = JD.object(
+const decodeCombat: Decoder<Combat> = JD.object(
   ["scene", JD.string()],
   ["creatures", decodeNonEmpty(JD.tuple(JD.string(), JD.number()))],
   ["movement_used", JD.number()],
@@ -856,7 +862,7 @@ const decodeVolume: Decoder<Volume> = sum("Volume", {},
     AABB: JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
   });
 
-const decodeTargetSpec: Decoder<TargetSpec> = sum<TargetSpec>("TargetSpec",
+const decodeCreatureTarget: Decoder<CreatureTarget> = sum<CreatureTarget>("TargetSpec",
   {
     Actor: { t: "Actor" },
     Melee: { t: "Melee" },
@@ -864,32 +870,43 @@ const decodeTargetSpec: Decoder<TargetSpec> = sum<TargetSpec>("TargetSpec",
   // | { t: "Volume"; volume: Volume; range: Distance }
 
   {
-    Range: JD.map((distance): TargetSpec => ({ t: "Range", distance }), JD.number()),
+    Range: JD.map((distance): CreatureTarget => ({ t: "Range", distance }), JD.number()),
     SomeCreaturesInVolumeInRange: JD.object(
       ["volume", decodeVolume], ["maximum", JD.number()], ["range", JD.number()],
-      (volume, maximum, range): TargetSpec =>
+      (volume, maximum, range): CreatureTarget =>
         ({ t: "SomeCreaturesInVolumeInRange", volume, maximum, range })),
     AllCreaturesInVolumeInRange: JD.object(
       ["volume", decodeVolume],
       ["range", JD.number()],
-      (volume, range): TargetSpec => ({ t: "AllCreaturesInVolumeInRange", volume, range })),
-    RangedVolume: JD.object(
-      ["volume", decodeVolume],
-      ["range", JD.number()],
-      (volume, range): TargetSpec => ({ t: "RangedVolume", volume, range })),
+      (volume, range): CreatureTarget => ({ t: "AllCreaturesInVolumeInRange", volume, range })),
     LineFromActor: JD.object(
       ["distance", JD.number()],
-      (distance): TargetSpec => ({ t: "LineFromActor", distance })),
+      (distance): CreatureTarget => ({ t: "LineFromActor", distance })),
   });
+
+const decodeSceneTarget: Decoder<SceneTarget> = JD.object(
+  ["volume", decodeVolume],
+  ["range", JD.number()],
+  (volume, range): SceneTarget => ({ t: "RangedVolume", volume, range }));
+
+
+const decodeAction: Decoder<Action> = sum<Action>("Action", {},
+  {
+    Creature: JD.object(["target", decodeCreatureTarget],
+      (target): Action => ({ t: "Creature", target })),
+    SceneVolume: JD.object(["target", decodeSceneTarget],
+      (target): Action => ({ t: "SceneVolume", target })),
+  }
+);
 
 const decodeAbility: Decoder<Ability> = JD.object(
   ["name", JD.string()],
-  ["target", decodeTargetSpec],
+  ["action", decodeAction],
   ["usable_ooc", JD.boolean()],
-  (name, target, usable_ooc) => ({ name, target, usable_ooc })
+  (name, action, usable_ooc) => ({ name, action, usable_ooc })
 );
 
-export const decodeGame: Decoder<Game> = JD.object(
+const decodeGame: Decoder<Game> = JD.object(
   ["current_combat", JD.oneOf(decodeCombat, JD.map(_ => undefined, JD.equal(null)))],
   ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
   ["classes", JD.map(I.Map, JD.dict(decodeClass))],
@@ -1134,13 +1151,6 @@ function encodeNote(note: Note): object {
   return note;
 }
 
-function encodeConditionDuration(cd: ConditionDuration): string | object {
-  switch (cd.t) {
-    case "Interminate": return "Interminate";
-    case "Duration": return { Duration: cd.duration };
-  }
-}
-
 function encodeDice(d: Dice): object {
   switch (d.t) {
     case "Flat": return { Flat: d.val };
@@ -1148,43 +1158,6 @@ function encodeDice(d: Dice): object {
     case "Plus": return { Plus: [encodeDice(d.left), encodeDice(d.right)] };
     case "BestOf": return { BestOf: [d.num, encodeDice(d.dice)] };
   }
-}
-
-function encodeEffect(eff: Effect): object {
-  switch (eff.t) {
-    case "ApplyCondition":
-      return {
-        ApplyCondition: [
-          encodeConditionDuration(eff.duration),
-          encodeCondition(eff.condition)],
-      };
-    case "Heal": return { Heal: encodeDice(eff.dice) };
-    case "Damage": return { Damage: encodeDice(eff.dice) };
-    case "MultiEffect": return { MultiEffect: eff.effects.map(encodeEffect) };
-    case "GenerateEnergy": return { GenerateEnergy: eff.energy };
-  }
-}
-
-function encodeCondition(c: Condition): string | object {
-  switch (c.t) {
-    case "RecurringEffect": return { RecurringEffect: encodeEffect(c.effect) };
-    case "Dead": return "Dead";
-    case "Incapacitated": return "Incapacitated";
-    case "AddDamageBuff": return { AddDamageBuff: c.hp };
-    case "DoubleMaxMovement": return "DoubleMaxMovement";
-    case "ActivateAbility": return { ActivateAbility: c.ability_id };
-  }
-}
-
-function encodeAppliedCondition(ac: AppliedCondition): object {
-  return {
-    remaining: encodeConditionDuration(ac.remaining),
-    condition: encodeCondition(ac.condition),
-  };
-}
-
-function encodeAbilityStatus(as: AbilityStatus): object {
-  return as;
 }
 
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
@@ -1202,40 +1175,6 @@ function encodePoint3(pt: Point3): Point3 {
 
 function encodeSpecialTile(t: SpecialTile): Array<object | string> {
   return [encodePoint3(t[0]), t[1], t[2], encodeVisibility(t[3])];
-}
-
-export function encodeCreature(c: Creature): object {
-  return {
-    id: c.id,
-    name: c.name,
-    speed: c.speed,
-    max_energy: c.max_energy,
-    cur_energy: c.cur_energy,
-    abilities: LD.mapValues(c.abilities, encodeAbilityStatus),
-    class: c.class_,
-    max_health: c.max_health,
-    cur_health: c.cur_health,
-    conditions: c.conditions.map(encodeAppliedCondition).toJS(),
-    note: c.note,
-    bio: c.bio,
-    portrait_url: c.portrait_url,
-    attributes: c.attributes.toJS(),
-    initiative: encodeDice(c.initiative),
-    inventory: c.inventory.toJS(),
-    size: c.size,
-  };
-}
-
-export function encodeVolume(v: Volume): object {
-  switch (v.t) {
-    case "Sphere": return { Sphere: v.radius };
-    case "Line": return { Line: encodeVectorCM(v.vector) };
-    case "VerticalCylinder": return { VerticalCylinder: { radius: v.radius, height: v.height } };
-    case "AABB": return { AABB: encodeAABB(v.aabb) };
-  }
-}
-function encodeVectorCM(v: VectorCM): Array<number> {
-  return v;
 }
 
 // Utility Functions for Decoding
