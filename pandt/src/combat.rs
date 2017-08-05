@@ -282,13 +282,13 @@ pub mod test {
       cost: Energy(0),
       usable_ooc: true,
       action: Action::Creature {
-      target: CreatureTarget::Melee,
+        target: CreatureTarget::Melee,
 
-      effect: CreatureEffect::MultiEffect(vec![
-        CreatureEffect::Damage(Dice::flat(3)),
-        CreatureEffect::ApplyCondition(Duration::Interminate, Condition::Dead),
-      ]),
-      }
+        effect: CreatureEffect::MultiEffect(vec![
+          CreatureEffect::Damage(Dice::flat(3)),
+          CreatureEffect::ApplyCondition(Duration::Interminate, Condition::Dead),
+        ]),
+      },
     };
     game.abilities.insert(abid("multi"), ab);
     game.classes.get_mut("rogue").unwrap().abilities.push(abid("multi"));

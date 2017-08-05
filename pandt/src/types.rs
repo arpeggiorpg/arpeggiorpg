@@ -740,7 +740,7 @@ pub struct Ability {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget }, 
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -781,7 +781,7 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition }, 
+  CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -1331,10 +1331,10 @@ pub mod test {
       name: "Punch".to_string(),
       cost: Energy(0),
       usable_ooc: true,
-      action: Action::Creature{
+      action: Action::Creature {
         target: CreatureTarget::Melee,
         effect: CreatureEffect::Damage(Dice::flat(3)),
-      }
+      },
     }
   }
 
@@ -1343,10 +1343,10 @@ pub mod test {
       name: "Shoot".to_string(),
       cost: Energy(0),
       usable_ooc: true,
-      action: Action::Creature{
+      action: Action::Creature {
         target: CreatureTarget::Range(Distance::from_meters(5.0)),
         effect: CreatureEffect::Damage(Dice::flat(3)),
-      }
+      },
     }
   }
 
@@ -1358,7 +1358,7 @@ pub mod test {
       action: Action::Creature {
         target: CreatureTarget::Range(Distance::from_meters(5.0)),
         effect: CreatureEffect::Heal(Dice::flat(3)),
-      }
+      },
     }
   }
 
@@ -1373,7 +1373,7 @@ pub mod test {
           range: Distance::from_meters(20.0),
         },
         effect: CreatureEffect::Damage(Dice::flat(3)),
-      }
+      },
     }
   }
 
@@ -1385,7 +1385,7 @@ pub mod test {
       action: Action::Creature {
         target: CreatureTarget::LineFromActor { distance: Distance::from_meters(10.0) },
         effect: CreatureEffect::Damage(Dice::flat(3)),
-      }
+      },
     }
   }
 
