@@ -6,16 +6,11 @@ use odds::vec::VecExt;
 use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
 use ncollide::shape;
-use ncollide::shape::{Ball, Cuboid, Shape};
-use ncollide::query;
+use ncollide::shape::{Cuboid};
 use ncollide::query::PointQuery;
-use ncollide::broad_phase::{BroadPhase, DBVTBroadPhase};
-use ncollide::bounding_volume::HasBoundingVolume;
-use ncollide::bounding_volume as bv;
 use ncollide::world;
-use ncollide::narrow_phase;
 
-use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume, AABB};
+use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -225,7 +220,7 @@ impl TileSystem {
       CollData::Creature,
     );
 
-    for (idx, &(position, volume, ref data)) in volumes.iter().enumerate() {
+    for (idx, &(position, volume, _)) in volumes.iter().enumerate() {
       world.deferred_add(
         idx + 1,
         na_iso(position),
