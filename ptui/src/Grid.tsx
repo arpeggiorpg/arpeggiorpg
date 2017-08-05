@@ -217,6 +217,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const targeted_volume = this.drawTargetedVolume();
 
+    const volume_condition_els = this.drawVolumeConditions();
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -228,6 +230,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       {annotation}
       <GridSvg map={map}
         scene_background={scene.background_image_url}>
+        {volume_condition_els}
         {creature_els}
         {movement_target_els}
         {target_els}
@@ -235,6 +238,15 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {targeted_volume}
       </GridSvg>
     </div>;
+  }
+
+  drawVolumeConditions(): Array<JSX.Element> | undefined {
+    return this.props.scene.volume_conditions.toArray().map(vol_cond => {
+      console.log(vol_cond);
+      return svgVolume(vol_cond.volume, vol_cond.point,
+        { fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5" });
+    }
+    );
   }
 
   drawTargetedVolume(): JSX.Element | undefined {
@@ -252,7 +264,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "Creature":
         switch (action.target.t) {
           case "AllCreaturesInVolumeInRange":
-            return this.drawVolume(action.target.volume, target);
+            return svgVolume(action.target.volume, target);
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
@@ -265,17 +277,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "SceneVolume":
         switch (action.target.t) {
           case "RangedVolume":
-            return this.drawVolume(action.target.volume, target);
+            return svgVolume(action.target.volume, target);
         }
-    }
-  }
-
-  drawVolume(volume: T.Volume, pt: T.Point3) {
-    switch (volume.t) {
-      case "Sphere":
-        return <circle cx={pt[0] * 100 + 50} cy={pt[1] * 100} r={volume.radius}
-          style={{ pointerEvents: "none" }}
-          strokeWidth={3} stroke="black" fill="none" />;
     }
   }
 
@@ -413,6 +416,20 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     this.clearTargets();
   }
 });
+
+function svgVolume(
+  volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>): JSX.Element {
+  switch (volume.t) {
+    case "Sphere":
+      return <circle cx={pt[0] * 100 + 50} cy={pt[1] * 100} r={volume.radius}
+        style={{ pointerEvents: "none" }}
+        strokeWidth={3} stroke="black" fill="none" {...props} />;
+    default:
+      console.log("NYI: svgvolume for", volume);
+      return <g />;
+  }
+}
+
 
 interface RectPositionedProps { rect: M.Rect; onClose: () => void; children: React.ReactChild; }
 function RectPositioned(props: RectPositionedProps): JSX.Element {
