@@ -1260,7 +1260,7 @@ pub mod test {
   #[test]
   fn test_sphere_targets() {
     let game = t_game();
-    let target_spec = TargetSpec::AllCreaturesInVolumeInRange {
+    let target_spec = CreatureTarget::AllCreaturesInVolumeInRange {
       range: Distance::from_meters(10.0),
       volume: Volume::Sphere(Distance::from_meters(2.0)),
     };
@@ -1271,7 +1271,7 @@ pub mod test {
 
     let scene = game.get_scene(t_scene_id()).unwrap();
 
-    let targets = game.volume_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = game.volume_creature_targets(scene, cid_ranger(), target_spec, pt).unwrap();
     let targets = HashSet::<CreatureID>::from_iter(targets);
     assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
@@ -1279,14 +1279,14 @@ pub mod test {
   #[test]
   fn test_line_targets() {
     let game = t_game();
-    let target_spec = TargetSpec::LineFromActor { distance: Distance::from_meters(10.0) };
+    let target_spec = CreatureTarget::LineFromActor { distance: Distance::from_meters(10.0) };
     let pt = (1, 0, 0);
 
     let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 0, 0)));
     let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (2, 0, 0)));
     let scene = game.get_scene(t_scene_id()).unwrap();
 
-    let targets = game.volume_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = game.volume_creature_targets(scene, cid_ranger(), target_spec, pt).unwrap();
     let targets = HashSet::<CreatureID>::from_iter(targets);
     assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }

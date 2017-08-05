@@ -279,13 +279,16 @@ pub mod test {
     let mut game = t_combat();
     let ab = Ability {
       name: "MultiEffect".to_string(),
-      target: TargetSpec::Melee,
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![
-        Effect::Damage(Dice::flat(3)),
-        Effect::ApplyCondition(ConditionDuration::Interminate, Condition::Dead),
-      ],
+      action: Action::Creature {
+      target: CreatureTarget::Melee,
+
+      effect: CreatureEffect::MultiEffect(vec![
+        CreatureEffect::Damage(Dice::flat(3)),
+        CreatureEffect::ApplyCondition(Duration::Interminate, Condition::Dead),
+      ]),
+      }
     };
     game.abilities.insert(abid("multi"), ab);
     game.classes.get_mut("rogue").unwrap().abilities.push(abid("multi"));
@@ -294,7 +297,7 @@ pub mod test {
     assert_eq!(
       next.get_creature(cid_ranger()).unwrap().conditions(),
       vec![
-        AppliedCondition { remaining: ConditionDuration::Interminate, condition: Condition::Dead },
+        AppliedCondition { remaining: Duration::Interminate, condition: Condition::Dead },
       ]
     )
   }

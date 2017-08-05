@@ -1329,53 +1329,63 @@ pub mod test {
   pub fn t_punch() -> Ability {
     Ability {
       name: "Punch".to_string(),
-      target: TargetSpec::Melee,
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
+      action: Action::Creature{
+        target: CreatureTarget::Melee,
+        effect: CreatureEffect::Damage(Dice::flat(3)),
+      }
     }
   }
 
   pub fn t_shoot() -> Ability {
     Ability {
       name: "Shoot".to_string(),
-      target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
+      action: Action::Creature{
+        target: CreatureTarget::Range(Distance::from_meters(5.0)),
+        effect: CreatureEffect::Damage(Dice::flat(3)),
+      }
     }
   }
 
   pub fn t_heal() -> Ability {
     Ability {
       name: "Heal".to_string(),
-      target: TargetSpec::Range(Distance::from_meters(5.0)),
       cost: Energy(0),
       usable_ooc: true,
-      effects: vec![CreatureEffect::Heal(Dice::flat(3))],
+      action: Action::Creature {
+        target: CreatureTarget::Range(Distance::from_meters(5.0)),
+        effect: CreatureEffect::Heal(Dice::flat(3)),
+      }
     }
   }
 
   pub fn t_fireball() -> Ability {
     Ability {
       name: "Fireball".to_string(),
-      target: TargetSpec::AllCreaturesInVolumeInRange {
-        volume: Volume::Sphere(Distance::from_meters(10.0)),
-        range: Distance::from_meters(20.0),
-      },
       cost: Energy(8),
       usable_ooc: true,
-      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
+      action: Action::Creature {
+        target: CreatureTarget::AllCreaturesInVolumeInRange {
+          volume: Volume::Sphere(Distance::from_meters(10.0)),
+          range: Distance::from_meters(20.0),
+        },
+        effect: CreatureEffect::Damage(Dice::flat(3)),
+      }
     }
   }
 
   pub fn t_piercing_shot() -> Ability {
     Ability {
       name: "Piercing Shot".to_string(),
-      target: TargetSpec::LineFromActor { distance: Distance::from_meters(10.0) },
       cost: Energy(8),
       usable_ooc: true,
-      effects: vec![CreatureEffect::Damage(Dice::flat(3))],
+      action: Action::Creature {
+        target: CreatureTarget::LineFromActor { distance: Distance::from_meters(10.0) },
+        effect: CreatureEffect::Damage(Dice::flat(3)),
+      }
     }
   }
 
