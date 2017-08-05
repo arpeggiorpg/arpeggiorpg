@@ -1318,6 +1318,23 @@ pub mod test {
     SceneID(uuid_3())
   }
 
+  pub fn t_scene() -> Scene {
+    Scene {
+      id: t_scene_id(),
+      name: "Test Scene".to_string(),
+      background_image_url: "".to_string(),
+      map: t_map_id(),
+      attribute_checks: HashMap::new(),
+      creatures: HashMap::from_iter(vec![
+        (cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
+        (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
+        (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers)),
+      ]),
+      inventory: HashMap::new(),
+      volume_conditions: HashMap::new(),
+    }
+  }
+
   pub fn t_map_id() -> MapID {
     MapID(uuid_4())
   }
@@ -1428,5 +1445,10 @@ pub mod test {
   fn dice_negative() {
     let d = Dice::flat(1).plus(Dice::flat(-5));
     assert_eq!(d.roll(), (vec![1, -5], -4));
+  }
+
+  #[test]
+  fn creature_volume_conditions() {
+    let scene = t_scene();
   }
 }

@@ -1107,20 +1107,7 @@ pub mod test {
     game.creatures.insert(rogue);
     game.creatures.insert(ranger);
     game.creatures.insert(cleric);
-    game.scenes.insert(Scene {
-      id: t_scene_id(),
-      name: "Test Scene".to_string(),
-      background_image_url: "".to_string(),
-      map: t_map_id(),
-      attribute_checks: HashMap::new(),
-      creatures: HashMap::from_iter(vec![
-        (cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
-        (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
-        (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers)),
-      ]),
-      inventory: HashMap::new(),
-      volume_conditions: HashMap::new(),
-    });
+    game.scenes.insert(t_scene());
     game
   }
 
