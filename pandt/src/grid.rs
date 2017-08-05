@@ -6,7 +6,7 @@ use odds::vec::VecExt;
 use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
 use ncollide::shape;
-use ncollide::shape::{Cuboid};
+use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 

@@ -336,36 +336,6 @@ pub mod test {
 
   use std::iter::FromIterator;
 
-  pub fn t_creature(name: &str, class: &str, init: i8) -> Creature {
-    Creature::create(&CreatureCreation {
-      name: name.to_string(),
-      note: "".to_string(),
-      bio: "".to_string(),
-      class: class.to_string(),
-      portrait_url: "".to_string(),
-      initiative: Dice::flat(init),
-      size: AABB { x: 1, y: 1, z: 1 },
-    })
-  }
-
-  pub fn t_rogue(name: &str) -> Creature {
-    let mut c = t_creature(name, "rogue", 20);
-    c.id = cid_rogue();
-    c
-  }
-
-  pub fn t_ranger(name: &str) -> Creature {
-    let mut c = t_creature(name, "ranger", 10);
-    c.id = cid_ranger();
-    c
-  }
-
-  pub fn t_cleric(name: &str) -> Creature {
-    let mut c = t_creature(name, "cleric", 0);
-    c.id = cid_rogue();
-    c
-  }
-
   #[test]
   fn test_tick_and_expire_condition_remaining() {
     let mut game = t_game();

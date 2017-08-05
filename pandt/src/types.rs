@@ -1314,6 +1314,37 @@ pub mod test {
     CreatureID(uuid_2())
   }
 
+  pub fn t_creature(name: &str, class: &str, init: i8) -> Creature {
+    Creature::create(&CreatureCreation {
+      name: name.to_string(),
+      note: "".to_string(),
+      bio: "".to_string(),
+      class: class.to_string(),
+      portrait_url: "".to_string(),
+      initiative: Dice::flat(init),
+      size: AABB { x: 1, y: 1, z: 1 },
+    })
+  }
+
+  pub fn t_rogue(name: &str) -> Creature {
+    let mut c = t_creature(name, "rogue", 20);
+    c.id = cid_rogue();
+    c
+  }
+
+  pub fn t_ranger(name: &str) -> Creature {
+    let mut c = t_creature(name, "ranger", 10);
+    c.id = cid_ranger();
+    c
+  }
+
+  pub fn t_cleric(name: &str) -> Creature {
+    let mut c = t_creature(name, "cleric", 0);
+    c.id = cid_rogue();
+    c
+  }
+
+
   pub fn t_scene_id() -> SceneID {
     SceneID(uuid_3())
   }
@@ -1449,6 +1480,22 @@ pub mod test {
 
   #[test]
   fn creature_volume_conditions() {
-    let scene = t_scene();
+    let mut scene = t_scene();
+    let cond_id = ConditionID::gen();
+    let volume_cond = VolumeCondition {
+        point: (0, 0, 0),
+        volume: Volume::Sphere(Distance(300)),
+        remaining: Duration::Interminate,
+        condition: Condition::Dead,
+      };
+    scene.volume_conditions.insert(
+      cond_id,
+      volume_cond.clone(),
+    );
+    let rogue = t_rogue("rogue");
+    let conds = scene.creature_volume_conditions(TileSystem::Realistic, &rogue).expect("Couldn't get conds");
+    assert_eq!(conds, vec![
+      (cond_id, &volume_cond)
+    ]);
   }
 }
