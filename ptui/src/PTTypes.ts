@@ -379,6 +379,14 @@ export interface Scene {
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
   background_image_url: string;
+  volume_conditions: I.Map<ConditionID, VolumeCondition>;
+}
+
+export interface VolumeCondition {
+  point: Point3;
+  volume: Volume;
+  remaining: Duration;
+  condition: Condition;
 }
 
 export type Visibility =
@@ -587,6 +595,28 @@ const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
   (name, map, background_image_url) => ({ name, map, background_image_url })
 );
 
+const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
+
+const decodeVolume: Decoder<Volume> = sum("Volume", {},
+  {
+    Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
+    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodeVectorCM),
+    VerticalCylinder: JD.object(
+      ["radius", JD.number()],
+      ["height", JD.number()],
+      (radius, height): Volume => ({ t: "VerticalCylinder", radius, height })
+    ),
+    AABB: JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
+  });
+
+export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
+  ["point", decodePoint3],
+  ["volume", decodeVolume],
+  ["remaining", decodeDuration],
+  ["condition", decodeCondition],
+  (point, volume, remaining, condition): VolumeCondition => ({ point, volume, remaining, condition })
+);
+
 export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
@@ -596,8 +626,13 @@ export const decodeScene: Decoder<Scene> =
     ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
     ["background_image_url", JD.string()],
-    (id, name, map, creatures, attribute_checks, inventory, background_image_url): Scene =>
-      ({ id, name, map, creatures, attribute_checks, inventory, background_image_url }));
+    ["volume_conditions", JD.map(I.Map, JD.dict(decodeVolumeCondition))],
+    (
+      id, name, map, creatures, attribute_checks, inventory, background_image_url,
+      volume_conditions): Scene => ({
+        id, name, map, creatures, attribute_checks, inventory, background_image_url,
+        volume_conditions,
+      }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
   return JD.map(id => ({ t, id } as FolderItemID), JD.string());
@@ -847,20 +882,6 @@ const decodeFolder: Decoder<Folder> = JD.object(
   ["children", JD.map(I.Map, JD.dict(decodeFolderLazy))],
   (data, children) => ({ data, children })
 );
-
-const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
-
-const decodeVolume: Decoder<Volume> = sum("Volume", {},
-  {
-    Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
-    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodeVectorCM),
-    VerticalCylinder: JD.object(
-      ["radius", JD.number()],
-      ["height", JD.number()],
-      (radius, height): Volume => ({ t: "VerticalCylinder", radius, height })
-    ),
-    AABB: JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
-  });
 
 const decodeCreatureTarget: Decoder<CreatureTarget> = sum<CreatureTarget>("TargetSpec",
   {
