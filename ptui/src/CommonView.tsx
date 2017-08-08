@@ -649,7 +649,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         zoom: `${scale * 100}%`,
       }}>
         <div style={{ width: bar_width }}>
-          {right_bar(amended_tabs, bottom_left, disable_bars)}
+          {right_bar(amended_tabs, bottom_right, disable_bars)}
         </div>
       </div>;
     }
@@ -842,22 +842,24 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
     snapshots => ({ snapshots }))
 )(function Chat(props: ChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }): JSX.Element {
   const { snapshots, dispatch, player_id } = props;
-  return <div>{
-    snapshots.map(
-      ({ logs }, snapshot_index) =>
-        logs.map((log: T.GameLog, log_index) => {
-          switch (log.t) {
-            case "ChatFromPlayer":
-            case "ChatFromGM":
-              return <div
-                style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
-                key={snapshot_index.toString() + "-" + log_index.toString()}>
-                &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
-              </div>;
-          }
-        })
-    )
-  }
+  return <div
+    style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: "1", overflowY: "auto" }}>{
+      snapshots.map(
+        ({ logs }, snapshot_index) =>
+          logs.map((log: T.GameLog, log_index) => {
+            switch (log.t) {
+              case "ChatFromPlayer":
+              case "ChatFromGM":
+                return <div
+                  style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+                  key={snapshot_index.toString() + "-" + log_index.toString()}>
+                  &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
+                </div>;
+            }
+          })
+      )
+    }</div>
     <SingleInputForm onSubmit={send} buttonText="Send" />
   </div>;
   function send(input: string) {
