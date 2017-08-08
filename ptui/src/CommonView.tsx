@@ -839,7 +839,7 @@ export class SingleInputForm
 interface ChatDerivedProps {
   snapshots: Array<T.Snapshot>;
 }
-interface CreaturesProps { creatures: I.Map<T.CreatureID, T.Creature> }
+interface CreaturesProps { creatures: I.Map<T.CreatureID, T.Creature>; }
 interface GenericChatProps {
   renderLog: (input: T.GameLog) => JSX.Element | undefined;
   sendCommand: (input: string) => T.GameCommand;

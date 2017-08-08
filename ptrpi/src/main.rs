@@ -31,7 +31,7 @@ mod cors;
 use cors::{PreflightCORS, CORS};
 
 use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
-                   PotentialTargets, RPIApp, Volume};
+                   PotentialTargets, RPIApp, RPIGame};
 
 
 error_chain! {
@@ -116,8 +116,8 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app();
-    let result = app.perform_unchecked(command.0).map_err(|e| format!("Error: {}", e));
-    serde_json::to_string(&result)
+    let game = app.perform_unchecked(command.0).map(|(g, l)| (RPIGame(g), l)).map_err(|e| format!("Error: {}", e));
+    serde_json::to_string(&game)
   };
   pt.pollers()?.broadcast(());
   Ok(CORS::any(json?))
