@@ -14,6 +14,7 @@ import {
 
 
 import * as Comp from './Component';
+import * as History from './History';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
@@ -836,12 +837,15 @@ export class SingleInputForm
 }
 
 interface ChatProps { player_id?: T.PlayerID; }
-interface ChatDerivedProps { snapshots: Array<T.Snapshot>; }
+interface ChatDerivedProps {
+  snapshots: Array<T.Snapshot>;
+  creatures: I.Map<T.CreatureID, T.Creature>;
+}
 export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
-  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots],
-    snapshots => ({ snapshots }))
+  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
+    (snapshots, creatures) => ({ snapshots, creatures }))
 )(function Chat(props: ChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }): JSX.Element {
-  const { snapshots, dispatch, player_id } = props;
+  const { snapshots, creatures, dispatch, player_id } = props;
   return <div
     style={{ height: "100%", display: "flex", flexDirection: "column" }}>
     <div ref={el => { if (el) { el.scrollTop = el.scrollHeight; } }}
@@ -849,18 +853,15 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
         snapshots.map(
           ({ logs }, snapshot_index) =>
             logs.map((log: T.GameLog, log_index): JSX.Element | undefined => {
-              switch (log.t) {
-                case "ChatFromPlayer":
-                case "ChatFromGM":
-                  return <div
-                    style={{
-                      display: "flex", flexDirection: "row",
-                      justifyContent: "space-between",
-                    }}
-                    key={snapshot_index.toString() + "-" + log_index.toString()}>
-                    &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
-                  </div>;
-              }
+              const chat_line = get_chat_line(log);
+              return <div
+                style={{
+                  display: "flex", flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+                key={snapshot_index.toString() + "-" + log_index.toString()}>
+                {chat_line}
+              </div>;
             })
         )
       }</div>
@@ -871,6 +872,17 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
       ? { t: "ChatFromPlayer", player_id, message: input }
       : { t: "ChatFromGM", message: input };
     dispatch(M.sendCommand(cmd));
+  }
+  function get_chat_line(log: T.GameLog) {
+    switch (log.t) {
+      case "CreatureLog":
+        return History.creature_log(creatures, log.creature_id, log.log);
+      case "ChatFromPlayer":
+      case "ChatFromGM":
+        return <span>
+          &lt;<strong>{log.t === "ChatFromPlayer" ? log.player_id : "GM"}</strong>&gt; {log.message}
+        </span>;
+    }
   }
 });
 

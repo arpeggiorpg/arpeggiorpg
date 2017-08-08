@@ -139,12 +139,12 @@ function combat_log(log: T.CombatLog): JSX.Element | null {
   }
 }
 
-function creature_log(
+export function creature_log(
   creatures: I.Map<T.CreatureID, T.Creature>,
   creature_id: T.CreatureID,
-  log: T.CreatureLog): JSX.Element | null {
+  log: T.CreatureLog): JSX.Element {
   const creature = creatures.get(creature_id);
-  const creature_name = creature ? creature.name : "a creature";
+  const creature_name = <strong>{creature ? creature.name : "a creature"}</strong>;
   switch (log.t) {
     case "Damage":
       return <div>{creature_name} took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</div>;
