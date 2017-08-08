@@ -844,22 +844,26 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
   const { snapshots, dispatch, player_id } = props;
   return <div
     style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-    <div style={{ flex: "1", overflowY: "auto" }}>{
-      snapshots.map(
-        ({ logs }, snapshot_index) =>
-          logs.map((log: T.GameLog, log_index) => {
-            switch (log.t) {
-              case "ChatFromPlayer":
-              case "ChatFromGM":
-                return <div
-                  style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
-                  key={snapshot_index.toString() + "-" + log_index.toString()}>
-                  &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
-                </div>;
-            }
-          })
-      )
-    }</div>
+    <div ref={el => { if (el) { el.scrollTop = el.scrollHeight; } }}
+      style={{ flex: "1", overflowY: "auto" }}>{
+        snapshots.map(
+          ({ logs }, snapshot_index) =>
+            logs.map((log: T.GameLog, log_index) => {
+              switch (log.t) {
+                case "ChatFromPlayer":
+                case "ChatFromGM":
+                  return <div
+                    style={{
+                      display: "flex", flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                    key={snapshot_index.toString() + "-" + log_index.toString()}>
+                    &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
+                  </div>;
+              }
+            })
+        )
+      }</div>
     <SingleInputForm onSubmit={send} buttonText="Send" />
   </div>;
   function send(input: string) {
