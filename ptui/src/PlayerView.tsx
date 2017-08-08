@@ -61,11 +61,6 @@ export const PlayerGameView = M.connectRedux((
     <CV.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
     </CV.Tab>,
-    <CV.Tab key="Combat" name="Combat">
-      <div>
-        {combat ? <CV.Combat combat={combat} /> : <div>There is no combat.</div>}
-      </div>
-    </CV.Tab>,
     <CV.Tab key="Notes" name="Notes">
       <PlayerNote player_id={player.player_id} />
     </CV.Tab>
