@@ -112,6 +112,8 @@ interface MapCreation {
 }
 
 export type GameCommand =
+  | { t: "ChatFromGM"; message: string }
+  | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
   | { t: "RegisterPlayer"; player_id: PlayerID }
   | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
   | { t: "CreateFolder"; path: FolderPath }
@@ -220,6 +222,8 @@ export interface Player {
 }
 
 export type GameLog =
+  | { t: "ChatFromGM"; message: string }
+  | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
   | {
     t: "AttributeCheckResult";
     cid: CreatureID;
@@ -720,6 +724,10 @@ const decodeCombatLog: Decoder<CombatLog> =
 
 export const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
+    ChatFromGM: JD.map((message): GameLog => ({ t: "ChatFromGM", message }), JD.string()),
+    ChatFromPlayer: JD.map(
+      ([player_id, message]): GameLog => ({ t: "ChatFromPlayer", player_id, message }),
+      JD.tuple(JD.string(), JD.string())),
     StartCombat: JD.map(
       ([scene, creatures]): GameLog => ({ t: "StartCombat", scene, creatures }),
       JD.tuple(
@@ -966,6 +974,8 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
   switch (cmd.t) {
+    case "ChatFromGM": return { ChatFromGM: cmd.message };
+    case "ChatFromPlayer": return { ChatFromPlayer: [cmd.player_id, cmd.message] };
     case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
     case "GiveCreaturesToPlayer":
       return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
