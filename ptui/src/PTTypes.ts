@@ -28,10 +28,12 @@ export type VectorCM = [number, number, number];
 
 
 export interface App {
-  snapshots: Array<{ snapshot: {}, logs: Array<GameLog> }>;
+  snapshots: Array<Snapshot>;
   players: I.Map<PlayerID, Player>;
   current_game: Game;
 }
+
+export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 
 export interface Game {
   current_combat: Combat | undefined;

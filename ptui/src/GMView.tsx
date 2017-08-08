@@ -28,7 +28,10 @@ export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
     <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
     : undefined;
 
-  return <CV.TheLayout map={focus} tabs={tabs} secondary={secondary} tertiary={tertiary}
+  return <CV.TheLayout map={focus} tabs={tabs}
+    bottom_left={secondary}
+    top_left={tertiary}
+    bottom_right={<CV.Chat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 });
 

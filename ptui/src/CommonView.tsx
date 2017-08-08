@@ -13,6 +13,7 @@ import {
 } from 'semantic-ui-react';
 
 
+import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
@@ -537,8 +538,9 @@ export const ErrorModal = M.connectRedux(
 interface TheLayoutProps {
   map: JSX.Element;
   tabs: Array<JSX.Element>;
-  secondary?: JSX.Element;
-  tertiary?: JSX.Element;
+  bottom_left?: JSX.Element;
+  top_left?: JSX.Element;
+  bottom_right?: JSX.Element;
   bar_width: number;
   menu_size: MenuSize;
   bottom_bar?: JSX.Element;
@@ -553,7 +555,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
   render(): JSX.Element {
     const {
-      map, tabs, secondary, tertiary, bar_width, menu_size, bottom_bar, ptui,
+      map, tabs, bottom_left, top_left, bottom_right, bar_width, menu_size, bottom_bar, ptui,
     } = this.props;
 
     // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
@@ -614,10 +616,10 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         }}>
         <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-            {tertiary}
+            {top_left}
           </div>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-            {secondary}
+            {bottom_left}
           </div>
         </PanelGroup>
         {disable_div}
@@ -626,12 +628,12 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
 
     function wideView() {
       return <div style={{ width: "100%", height: "100%", display: "flex" }}>
-        {(secondary || tertiary)
+        {(bottom_left || top_left)
           ? left_bar()
           : null}
         <div style={{ flex: "1" }}>{middle}</div>
         <div style={{ position: 'relative', width: bar_width, height: "100%" }}>
-          {right_bar(tabs)}
+          {right_bar(tabs, bottom_right)}
           {disable_div}
         </div>
       </div>;
@@ -647,7 +649,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         zoom: `${scale * 100}%`,
       }}>
         <div style={{ width: bar_width }}>
-          {right_bar(amended_tabs, secondary, disable_bars)}
+          {right_bar(amended_tabs, bottom_left, disable_bars)}
         </div>
       </div>;
     }
@@ -819,7 +821,10 @@ export class SingleInputForm
   render() {
     return <Input type="text" value={this.state.text}
       onKeyDown={(e: KeyboardEvent) => {
-        if (e.keyCode === 13) { this.props.onSubmit(this.state.text); }
+        if (e.keyCode === 13) {
+          this.props.onSubmit(this.state.text);
+          this.setState({ text: "" });
+        }
       }}
       action={<Button
         type="submit"
@@ -829,3 +834,37 @@ export class SingleInputForm
       onChange={e => this.setState({ text: e.currentTarget.value })} />;
   }
 }
+
+interface ChatProps { player_id?: T.PlayerID; }
+interface ChatDerivedProps { snapshots: Array<T.Snapshot>; }
+export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
+  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots],
+    snapshots => ({ snapshots }))
+)(function Chat(props: ChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }): JSX.Element {
+  const { snapshots, dispatch, player_id } = props;
+  return <div>{
+    snapshots.map(
+      ({ logs }, snapshot_index) =>
+        logs.map((log: T.GameLog, log_index) => {
+          switch (log.t) {
+            case "ChatFromPlayer":
+            case "ChatFromGM":
+              return <div
+                style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+                key={snapshot_index.toString() + "-" + log_index.toString()}>
+                &lt;{log.t === "ChatFromPlayer" ? log.player_id : "GM"}&gt; {log.message}
+              </div>;
+          }
+        })
+    )
+  }
+    <SingleInputForm onSubmit={send} buttonText="Send" />
+  </div>;
+  function send(input: string) {
+    const cmd: T.GameCommand = player_id
+      ? { t: "ChatFromPlayer", player_id, message: input }
+      : { t: "ChatFromGM", message: input };
+    dispatch(M.sendCommand(cmd));
+  }
+});
+

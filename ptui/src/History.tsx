@@ -12,24 +12,23 @@ export function renderHistory() {
 export const History = Comp.connect(
   Comp.createDeepEqualSelector([ptui => ptui.app.snapshots],
     snapshots => ({ snapshots }))
-)(
-  function History(props): JSX.Element {
-    const { snapshots, dispatch } = props;
-    console.log("[EXPENSIVE:History.render]");
-    return <div>{
-      snapshots.map(
-        ({ logs }, snapshot_index) =>
-          logs.map((log: T.GameLog, log_index) =>
-            <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
-              key={snapshot_index.toString() + "-" + log_index.toString()}>
-              <GameLog log={log} />
-              <button className="material-icons"
-                onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
-              >history</button>
-            </div>)
-      )
-    }</div>;
-  });
+)(function History(props): JSX.Element {
+  const { snapshots, dispatch } = props;
+  console.log("[EXPENSIVE:History.render]");
+  return <div>{
+    snapshots.map(
+      ({ logs }, snapshot_index) =>
+        logs.map((log: T.GameLog, log_index) =>
+          <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+            key={snapshot_index.toString() + "-" + log_index.toString()}>
+            <GameLog log={log} />
+            <button className="material-icons"
+              onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
+            >history</button>
+          </div>)
+    )
+  }</div>;
+});
 
 
 export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
