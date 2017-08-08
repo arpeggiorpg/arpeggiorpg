@@ -836,16 +836,22 @@ export class SingleInputForm
   }
 }
 
-interface ChatProps { player_id?: T.PlayerID; }
 interface ChatDerivedProps {
   snapshots: Array<T.Snapshot>;
-  creatures: I.Map<T.CreatureID, T.Creature>;
 }
-export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
-  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
-    (snapshots, creatures) => ({ snapshots, creatures }))
-)(function Chat(props: ChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }): JSX.Element {
-  const { snapshots, creatures, dispatch, player_id } = props;
+interface CreaturesProps { creatures: I.Map<T.CreatureID, T.Creature> }
+interface GenericChatProps {
+  renderLog: (input: T.GameLog) => JSX.Element | undefined;
+  sendCommand: (input: string) => T.GameCommand;
+}
+export const GenericChat = Comp.connect<GenericChatProps, ChatDerivedProps>(
+  Comp.createDeepEqualSelector(
+    [ptui => ptui.app.snapshots],
+    snapshots => ({ snapshots }))
+)(function GenericChat(
+  props: GenericChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }
+): JSX.Element {
+  const { renderLog, sendCommand, snapshots, dispatch } = props;
   return <div
     style={{ height: "100%", display: "flex", flexDirection: "column" }}>
     <div ref={el => { if (el) { el.scrollTop = el.scrollHeight; } }}
@@ -853,7 +859,7 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
         snapshots.map(
           ({ logs }, snapshot_index) =>
             logs.map((log: T.GameLog, log_index): JSX.Element | undefined => {
-              const chat_line = get_chat_line(log);
+              const chat_line = renderLog(log);
               return <div
                 style={{
                   display: "flex", flexDirection: "row",
@@ -868,21 +874,49 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
     <SingleInputForm onSubmit={send} buttonText="Send" />
   </div>;
   function send(input: string) {
-    const cmd: T.GameCommand = player_id
-      ? { t: "ChatFromPlayer", player_id, message: input }
-      : { t: "ChatFromGM", message: input };
+    const cmd = sendCommand(input);
     dispatch(M.sendCommand(cmd));
   }
+});
+
+const creaturesSelector = Comp.createDeepEqualSelector(
+  [(ptui: M.PTUI) => ptui.app.current_game.creatures],
+  creatures => ({ creatures }));
+
+export const GMChat = Comp.connect(creaturesSelector)(function GMChat(props): JSX.Element {
+  const { creatures } = props;
+  const GMChatCmd = (message: string): T.GameCommand => ({ t: "ChatFromGM", message });
+  return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
+
   function get_chat_line(log: T.GameLog) {
+    const chatmsg = renderChat(log);
+    if (chatmsg) { return chatmsg; }
     switch (log.t) {
       case "CreatureLog":
         return History.creature_log(creatures, log.creature_id, log.log);
-      case "ChatFromPlayer":
-      case "ChatFromGM":
-        return <span>
-          &lt;<strong>{log.t === "ChatFromPlayer" ? log.player_id : "GM"}</strong>&gt; {log.message}
-        </span>;
     }
   }
 });
 
+interface PlayerChatProps { player_id: T.PlayerID; }
+export const PlayerChat = Comp.connect<PlayerChatProps, CreaturesProps>(creaturesSelector)(
+  function PlayerChat(props): JSX.Element {
+    const { player_id } = props;
+    const chatCmd = (message: string): T.GameCommand =>
+      ({ t: "ChatFromPlayer", player_id, message });
+    return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
+
+    function get_chat_line(log: T.GameLog) {
+      return renderChat(log);
+    }
+  });
+
+function renderChat(log: T.GameLog): JSX.Element | undefined {
+  switch (log.t) {
+    case "ChatFromPlayer":
+    case "ChatFromGM":
+      return <span>
+        &lt;<strong>{log.t === "ChatFromPlayer" ? log.player_id : "GM"}</strong>&gt; {log.message}
+      </span>;
+  }
+}

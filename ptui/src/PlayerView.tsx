@@ -65,7 +65,7 @@ export const PlayerGameView = M.connectRedux((
       <PlayerNote player_id={player.player_id} />
     </CV.Tab>
   ];
-  return <CV.TheLayout map={map} bottom_right={<CV.Chat player_id={player.player_id} />}
+  return <CV.TheLayout map={map} bottom_right={<CV.PlayerChat player_id={player.player_id} />}
     tabs={tabs} bar_width={325} menu_size="large"
     bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
 });

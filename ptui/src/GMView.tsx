@@ -31,7 +31,7 @@ export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
   return <CV.TheLayout map={focus} tabs={tabs}
     bottom_left={secondary}
     top_left={tertiary}
-    bottom_right={<CV.Chat />}
+    bottom_right={<CV.GMChat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 });
 
