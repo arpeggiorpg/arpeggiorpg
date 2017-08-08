@@ -35,6 +35,10 @@ export const History = Comp.connect(
 export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
   const { log } = props;
   switch (log.t) {
+    case "ChatFromGM":
+      return <Flexbox>&lt;GM&gt;&nbsp;{log.message}</Flexbox>;
+    case "ChatFromPlayer":
+      return <Flexbox>&lt;{log.player_id}&gt;&nbsp;{log.message}</Flexbox>;
     case "AttributeCheckResult":
       return <Flexbox>
         <div>Creature ID: {log.cid}</div>
