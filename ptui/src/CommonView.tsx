@@ -848,7 +848,7 @@ export const Chat = Comp.connect<ChatProps, ChatDerivedProps>(
       style={{ flex: "1", overflowY: "auto" }}>{
         snapshots.map(
           ({ logs }, snapshot_index) =>
-            logs.map((log: T.GameLog, log_index) => {
+            logs.map((log: T.GameLog, log_index): JSX.Element | undefined => {
               switch (log.t) {
                 case "ChatFromPlayer":
                 case "ChatFromGM":

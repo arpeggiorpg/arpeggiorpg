@@ -1,4 +1,5 @@
 import Flexbox from 'flexbox-react';
+import * as I from 'immutable';
 import * as React from "react";
 
 import * as Comp from './Component';
@@ -10,10 +11,10 @@ export function renderHistory() {
 }
 
 export const History = Comp.connect(
-  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots],
-    snapshots => ({ snapshots }))
+  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
+    (snapshots, creatures) => ({ snapshots, creatures }))
 )(function History(props): JSX.Element {
-  const { snapshots, dispatch } = props;
+  const { snapshots, creatures, dispatch } = props;
   console.log("[EXPENSIVE:History.render]");
   return <div>{
     snapshots.map(
@@ -21,7 +22,7 @@ export const History = Comp.connect(
         logs.map((log: T.GameLog, log_index) =>
           <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
             key={snapshot_index.toString() + "-" + log_index.toString()}>
-            <GameLog log={log} />
+            <GameLog log={log} creatures={creatures} />
             <button className="material-icons"
               onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
             >history</button>
@@ -31,8 +32,9 @@ export const History = Comp.connect(
 });
 
 
-export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
-  const { log } = props;
+export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, T.Creature> }):
+  JSX.Element | null {
+  const { log, creatures } = props;
   switch (log.t) {
     case "ChatFromGM":
       return <Flexbox>&lt;GM&gt;&nbsp;{log.message}</Flexbox>;
@@ -113,7 +115,7 @@ export function GameLog(props: { log: T.GameLog }): JSX.Element | null {
     case "StopCombat":
       return <Flexbox>Combat stopped.</Flexbox>;
     case "CreatureLog":
-      return creature_log(log.log);
+      return creature_log(creatures, log.creature_id, log.log);
     case "Rollback":
       return <Flexbox>Rolled back to {log.snapshot_index}/{log.log_index}</Flexbox>;
   }
@@ -127,7 +129,7 @@ function combat_log(log: T.CombatLog): JSX.Element | null {
     case "ChangeCreatureInitiative":
       return <Flexbox>Creature initiative changed</Flexbox>;
     case "EndTurn":
-      return <Flexbox>Creature's turn ended.</Flexbox>;
+      return <Flexbox>Turn ended.</Flexbox>;
     case "ForceNextTurn":
       return <Flexbox>Forced move to next creature in combat</Flexbox>;
     case "ForcePrevTurn":
@@ -137,23 +139,28 @@ function combat_log(log: T.CombatLog): JSX.Element | null {
   }
 }
 
-function creature_log(log: T.CreatureLog): JSX.Element | null {
+function creature_log(
+  creatures: I.Map<T.CreatureID, T.Creature>,
+  creature_id: T.CreatureID,
+  log: T.CreatureLog): JSX.Element | null {
+  const creature = creatures.get(creature_id);
+  const creature_name = creature ? creature.name : "a creature";
   switch (log.t) {
     case "Damage":
-      return <Flexbox>A creature took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</Flexbox>;
+      return <div>{creature_name} took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</div>;
     case "Heal":
-      return <Flexbox>
-        A creature was healed for {log.hp}. Rolls: {JSON.stringify(log.rolls)}
-      </Flexbox>;
+      return <div>
+        {creature_name} was healed for {log.hp}. Rolls: {JSON.stringify(log.rolls)}
+      </div>;
     case "GenerateEnergy":
-      return <Flexbox>A creature received {log.energy} energy.</Flexbox>;
+      return <div>{creature_name} received {log.energy} energy.</div>;
     case "ReduceEnergy":
-      return <Flexbox>A creature's energy was reduced by {log.energy}</Flexbox>;
+      return <div>{creature_name} lost {log.energy} energy.</div>;
     case "ApplyCondition":
-      return <Flexbox>A creature gained a condition</Flexbox>;
+      return <div>{creature_name} gained a condition</div>;
     case "DecrementConditionRemaining":
-      return <Flexbox>A condition was reduced in duration.</Flexbox>;
+      return <div>{creature_name} ticked a condition.</div>;
     case "RemoveCondition":
-      return <Flexbox>A condition was removed from a creature.</Flexbox>;
+      return <div>{creature_name} lost a condition.</div>;
   }
 }
