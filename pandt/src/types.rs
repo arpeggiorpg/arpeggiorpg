@@ -332,6 +332,10 @@ impl InventoryOwner {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+
+  ChatFromGM(String),
+  ChatFromPlayer(PlayerID, String),
+
   AttributeCheck(CreatureID, AttributeCheck),
 
   /// Create a folder, given segments leading to it.
@@ -471,6 +475,9 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  ChatFromGM(String),
+  ChatFromPlayer(PlayerID, String),
+
   AttributeCheckResult(CreatureID, AttributeCheck, u8, bool),
 
   // ** Folder Management **

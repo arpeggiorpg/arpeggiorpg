@@ -40,6 +40,11 @@ impl Game {
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      // ** Chat **
+
+      ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
+      ChatFromPlayer(ref pid, ref msg) => self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned())),
+
       // ** Attribute checks **
       AttributeCheck(cid, check) => self.attribute_check(cid, &check),
       // ** Folder Management **
@@ -303,6 +308,8 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
+      ChatFromGM(..) => {}
+      ChatFromPlayer(..) => {}
       AttributeCheckResult(..) => {} // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
