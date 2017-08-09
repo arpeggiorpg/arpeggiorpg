@@ -457,7 +457,7 @@ export const ActionBar = M.connectRedux(function ActionBar(
   if (props.combat) {
     const combat = props.combat;
     abilityButtons = abilities.map(abinfo =>
-      <AbilityButton key={abinfo.ability_id}
+      <AbilityButton key={abinfo.ability_id} dispatch={props.dispatch}
         creature={props.creature} abinfo={abinfo}
         scene_id={combat.scene} />);
   } else {
@@ -484,16 +484,19 @@ interface AbilityButtonProps {
   creature: T.Creature;
   abinfo: { ability_id: T.AbilityID; ability: T.Ability };
   scene_id: T.SceneID;
+  dispatch: M.Dispatch;
 }
-const AbilityButton = M.connectRedux((props: AbilityButtonProps & M.ReduxProps): JSX.Element => {
+
+function AbilityButton(props: AbilityButtonProps): JSX.Element {
+  const { dispatch } = props;
   const onClick = () =>
-    props.ptui.requestCombatAbility(props.dispatch,
-      props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id);
+    dispatch(M.requestCombatAbility(
+      props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id));
   return <Button style={{ height: "50px", flex: "1" }}
     onClick={onClick}>
     {props.abinfo.ability.name}
   </Button>;
-});
+}
 
 const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps)
   : JSX.Element => {

@@ -319,25 +319,6 @@ export class PTUI {
       options => dispatch({ type: "DisplayMovementOptions", options }));
   }
 
-  selectAbility(
-    dispatch: Dispatch, scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
-    ptfetch(dispatch,
-      `${this.rpi_url}/target_options/${scene_id}/${cid}/${ability_id}`,
-      undefined,
-      T.decodePotentialTargets,
-      options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
-  }
-
-  requestCombatAbility(
-    dispatch: Dispatch, cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability,
-    scene_id: T.SceneID) {
-    if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
-      return this.sendCommand(
-        dispatch, { t: "CombatAct", ability_id, target: { t: "Actor" } });
-    } else {
-      this.selectAbility(dispatch, scene_id, cid, ability_id);
-    }
-  }
 
   /** Execute an ability that has already been selected, with a target.
    * This relies on the state being set up ahead of time: we must have a target_options already.
@@ -546,6 +527,26 @@ export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
       sendCommand(cmd)(dispatch, getState, undefined);
     }
   };
+
+function selectAbility(
+  scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID): ThunkAction<void> {
+  return (dispatch, getState) => {
+    const rpi_url = getState().rpi_url;
+    const url = `${rpi_url}/target_options/${scene_id}/${cid}/${ability_id}`;
+    ptfetch(dispatch, url, undefined, T.decodePotentialTargets,
+      options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
+  };
+}
+
+export function requestCombatAbility(
+  cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
+): ThunkAction<void> {
+  if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
+    return sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
+  } else {
+    return selectAbility(scene_id, cid, ability_id);
+  }
+}
 
 // We define our own Dispatch type instead of using Redux.Dispatch because Redux.Dispatch does not
 // have a type-parameter for the *type of Action*, only the *type of Store*. We don't want to allow
