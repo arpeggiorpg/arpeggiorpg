@@ -473,8 +473,7 @@ export const ActionBar = M.connectRedux(function ActionBar(
 
 function DoneButton({ dispatch }: { dispatch: M.Dispatch }): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
-  return <Button
-    style={{ height: "50px", flex: "1" }}
+  return <Button style={{ height: "50px", flex: "1" }}
     onClick={() => dispatch(M.sendCommand(command))}>
     Done
   </Button>;
@@ -488,11 +487,12 @@ interface AbilityButtonProps {
 }
 
 function AbilityButton(props: AbilityButtonProps): JSX.Element {
-  const { dispatch } = props;
+  const { abinfo, creature, scene_id, dispatch } = props;
   const onClick = () =>
-    dispatch(M.requestCombatAbility(
-      props.creature.id, props.abinfo.ability_id, props.abinfo.ability, props.scene_id));
+    dispatch(M.requestCombatAbility(creature.id, abinfo.ability_id, abinfo.ability, scene_id));
+  const disabled = creature.cur_energy < abinfo.ability.cost;
   return <Button style={{ height: "50px", flex: "1" }}
+    disabled={disabled}
     onClick={onClick}>
     {props.abinfo.ability.name}
   </Button>;

@@ -55,7 +55,7 @@ export interface Combat {
 export interface Ability {
   name: string;
   action: Action;
-  // cost: Energy;
+  cost: Energy;
   usable_ooc: boolean;
 }
 
@@ -934,8 +934,9 @@ export const decodeAction: Decoder<Action> = sum<Action>("Action", {},
 const decodeAbility: Decoder<Ability> = JD.object(
   ["name", JD.string()],
   ["action", decodeAction],
+  ["cost", JD.number()],
   ["usable_ooc", JD.boolean()],
-  (name, action, usable_ooc) => ({ name, action, usable_ooc })
+  (name, action, cost, usable_ooc) => ({ name, action, cost, usable_ooc })
 );
 
 const decodeGame: Decoder<Game> = JD.object(
