@@ -444,13 +444,14 @@ export const Combat = M.connectRedux(
 
 export const ActionBar = M.connectRedux(function ActionBar(
   props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps): JSX.Element {
-  const abilities = M.filterMap(LD.values(props.creature.abilities),
+  let abilities = M.filterMap(LD.values(props.creature.abilities),
     abstatus => {
       const ability = M.get(props.ptui.app.current_game.abilities, abstatus.ability_id);
       if (ability) {
         return { ability_id: abstatus.ability_id, ability };
       }
     });
+  abilities = LD.sortBy(abilities, abo => abo.ability.name);
 
   let abilityButtons;
   if (props.combat) {
@@ -460,7 +461,7 @@ export const ActionBar = M.connectRedux(function ActionBar(
         creature={props.creature} abinfo={abinfo}
         scene_id={combat.scene} />);
   } else {
-    abilityButtons = <noscript />;
+    abilityButtons = undefined;
   }
   return <div style={{ display: "flex" }}>
     <CreatureIcon app={props.ptui.app} creature={props.creature} />
