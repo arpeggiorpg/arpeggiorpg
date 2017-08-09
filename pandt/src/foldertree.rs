@@ -649,7 +649,9 @@ mod test {
   #[test]
   fn folderpath_from_str() {
     assert_eq!(FolderPath::from_str("").unwrap(), FolderPath::from_vec(vec![]));
-    assert_eq!(FolderPath::from_str("/foo").unwrap(), FolderPath::from_vec(vec!["foo".to_string()]));
+    assert_eq!(
+      FolderPath::from_str("/foo").unwrap(),
+      FolderPath::from_vec(vec!["foo".to_string()]));
     match FolderPath::from_str("foo") {
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         assert_eq!(p, "foo".to_string())
