@@ -465,20 +465,20 @@ export const ActionBar = M.connectRedux(function ActionBar(
   }
   return <div style={{ display: "flex" }}>
     <CreatureIcon app={props.ptui.app} creature={props.creature} />
-    {props.combat ? <DoneButton /> : <noscript />}
+    {props.combat ? <DoneButton dispatch={props.dispatch} /> : <noscript />}
     <MoveButton creature={props.creature} combat={props.combat} />
     {abilityButtons}
   </div>;
 });
 
-export const DoneButton = M.connectRedux(({ ptui, dispatch }): JSX.Element => {
+function DoneButton({ dispatch }: { dispatch: M.Dispatch }): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
   return <Button
     style={{ height: "50px", flex: "1" }}
-    onClick={() => ptui.sendCommand(dispatch, command)}>
+    onClick={() => dispatch(M.sendCommand(command))}>
     Done
   </Button>;
-});
+}
 
 interface AbilityButtonProps {
   creature: T.Creature;
