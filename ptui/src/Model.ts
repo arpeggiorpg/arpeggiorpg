@@ -189,7 +189,7 @@ export function ptfetch<J, R>(
 export class PTUI {
   readonly app: T.App;
   readonly state: PTUIState;
-  rpi_url: string;
+  readonly rpi_url: string;
 
   constructor(rpi_url: string, app: T.App, state: PTUIState = { grid: {} }) {
     this.app = app;
@@ -261,7 +261,9 @@ export class PTUI {
     return sendCommand(cmd)(dispatch, () => this, undefined);
   }
 
-  /// Send a Command and *don't* automatically handle errors.
+  /// Send a Command and *don't* automatically handle errors, but instead return a future
+  /// representing the result. This is useful for code which wants to send a command and interpret
+  /// the resulting gamelogs.
   sendCommandWithResult(cmd: T.GameCommand)
     : Promise<T.RustResult<Array<T.GameLog>, string>> {
     const json = T.encodeGameCommand(cmd);
@@ -466,24 +468,6 @@ export function filterMapValues<T, R>
     if (new_val !== undefined) { result[key] = new_val; }
   }
   return result;
-}
-
-type Inventory = I.Map<T.ItemID, number>;
-
-// TODO: these functions should be replaced by GameCommands so the backend handles this stuff
-export function addToInventory(inventory: Inventory, item_id: T.ItemID, count: number): Inventory {
-  return inventory.set(item_id, inventory.get(item_id, 0) + count);
-}
-
-// TODO: this allows over-withdrawing from the inventory.
-export function removeFromInventory(inventory: Inventory, item_id: T.ItemID, count: number):
-  Inventory {
-  const new_count = inventory.get(item_id, 0) - count;
-  if (new_count <= 0) {
-    return inventory.delete(item_id);
-  } else {
-    return inventory.set(item_id, new_count);
-  }
 }
 
 export function folderPathToString(path: T.FolderPath): string {
