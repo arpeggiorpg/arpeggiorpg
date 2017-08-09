@@ -41,9 +41,10 @@ impl Game {
     use self::GameCommand::*;
     let change = match cmd {
       // ** Chat **
-
       ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
-      ChatFromPlayer(ref pid, ref msg) => self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned())),
+      ChatFromPlayer(ref pid, ref msg) => {
+        self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned()))
+      }
 
       // ** Attribute checks **
       AttributeCheck(cid, check) => self.attribute_check(cid, &check),
@@ -161,8 +162,9 @@ impl Game {
     Ok(change)
   }
 
-  fn start_combat(&self, scene_id: SceneID, cids: Vec<CreatureID>)
-    -> Result<ChangedGame, GameError> {
+  fn start_combat(
+    &self, scene_id: SceneID, cids: Vec<CreatureID>
+  ) -> Result<ChangedGame, GameError> {
     let cids_with_inits = Combat::roll_initiative(self, cids)?;
     self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
   }
@@ -173,21 +175,24 @@ impl Game {
     self.change_with(GameLog::AddCreatureToCombat(cid, init))
   }
 
-  fn attribute_check(&self, cid: CreatureID, check: &AttributeCheck)
-    -> Result<ChangedGame, GameError> {
+  fn attribute_check(
+    &self, cid: CreatureID, check: &AttributeCheck
+  ) -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(cid)?;
     let (rolled, success) = creature.creature.attribute_check(check)?;
     self.change_with(GameLog::AttributeCheckResult(cid, check.clone(), rolled, success))
   }
 
-  pub fn path_creature(&self, scene: SceneID, cid: CreatureID, pt: Point3)
-    -> Result<(ChangedGame, Distance), GameError> {
+  pub fn path_creature(
+    &self, scene: SceneID, cid: CreatureID, pt: Point3
+  ) -> Result<(ChangedGame, Distance), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
-  pub fn path_creature_distance(&self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: Distance)
-    -> Result<(ChangedGame, Distance), GameError> {
+  pub fn path_creature_distance(
+    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: Distance
+  ) -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_id)?;
     let terrain = self.get_map(scene.map)?;
     let creature = self.get_creature(cid)?;
@@ -216,8 +221,9 @@ impl Game {
     self.maps.get(&map_id).ok_or_else(|| GameErrorEnum::MapNotFound(map_id).into())
   }
 
-  fn link_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
-    -> Result<(), GameError> {
+  fn link_folder_item(
+    &mut self, path: &FolderPath, item_id: &FolderItemID
+  ) -> Result<(), GameError> {
     let node = self.campaign.get_mut(path)?;
     match *item_id {
       FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
@@ -232,10 +238,12 @@ impl Game {
     Ok(())
   }
 
-  fn unlink_folder_item(&mut self, path: &FolderPath, item_id: &FolderItemID)
-    -> Result<(), GameError> {
-    fn remove_set<T: ::std::hash::Hash + Eq>(path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T)
-      -> Result<(), GameError> {
+  fn unlink_folder_item(
+    &mut self, path: &FolderPath, item_id: &FolderItemID
+  ) -> Result<(), GameError> {
+    fn remove_set<T: ::std::hash::Hash + Eq>(
+      path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T
+    ) -> Result<(), GameError> {
       if !s.remove(key) {
         bail!(GameErrorEnum::FolderItemNotFound(path.clone(), item.clone()))
       }
@@ -286,15 +294,17 @@ impl Game {
   }
 
   /// Remove some number of items from an inventory, returning the actual number removed.
-  fn remove_inventory(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
-    -> Result<u64, GameError> {
+  fn remove_inventory(
+    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
+  ) -> Result<u64, GameError> {
     let actually_has = *self.get_owner_inventory(owner)?.get(&item_id).unwrap_or(&0);
     self.set_item_count(owner, item_id, actually_has - count)?;
     return Ok(cmp::min(actually_has, count));
   }
 
-  fn set_item_count(&mut self, owner: InventoryOwner, item_id: ItemID, count: u64)
-    -> Result<(), GameError> {
+  fn set_item_count(
+    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
+  ) -> Result<(), GameError> {
     self.mutate_owner_inventory(owner, move |mut inventory: &mut Inventory| if count <= 0 {
       inventory.remove(&item_id).unwrap_or(0);
     } else {
@@ -760,8 +770,9 @@ impl Game {
   }
 
   /// Only pub for tests.
-  pub fn dyn_creature<'creature, 'game: 'creature>(&'game self, creature: &'creature Creature)
-    -> Result<DynamicCreature<'creature, 'game>, GameError> {
+  pub fn dyn_creature<'creature, 'game: 'creature>(
+    &'game self, creature: &'creature Creature
+  ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)
   }
 
@@ -785,14 +796,16 @@ impl Game {
     self._act(scene, actor, abid, target, true)
   }
 
-  fn ooc_act(&self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget)
-    -> Result<ChangedGame, GameError> {
+  fn ooc_act(
+    &self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget
+  ) -> Result<ChangedGame, GameError> {
     let scene = self.get_scene(scene)?;
     self._act(scene, cid, abid, target, false)
   }
 
-  fn _act(&self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool)
-    -> Result<ChangedGame, GameError> {
+  fn _act(
+    &self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool
+  ) -> Result<ChangedGame, GameError> {
     if !scene.creatures.contains_key(&cid) {
       bail!(GameErrorEnum::CreatureNotFound(cid.to_string()));
     }
@@ -896,8 +909,9 @@ impl Game {
   // 1. `pt` must be visible to the caster
   // 2. volumes must not go through blocked terrain
   // 3. volumes must (generally) not go around corners
-  fn volume_creature_targets(&self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3)
-    -> Result<Vec<CreatureID>, GameError> {
+  fn volume_creature_targets(
+    &self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3
+  ) -> Result<Vec<CreatureID>, GameError> {
     match target {
       CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => {
         Ok(self.creatures_in_volume(scene, pt, volume))
@@ -917,8 +931,9 @@ impl Game {
 
   /// Calculate which *points* and which *creatures* will be affected by an ability targeted at a
   /// point.
-  pub fn preview_volume_targets(&self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
-    -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+  pub fn preview_volume_targets(
+    &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
+  ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let terrain = self.get_map(scene.map)?.terrain.iter();
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
@@ -949,8 +964,9 @@ impl Game {
     Ok((cids, tiles))
   }
 
-  pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
-    -> Result<Vec<Point3>, GameError> {
+  pub fn get_movement_options(
+    &self, scene: SceneID, creature_id: CreatureID
+  ) -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
     if creature.can_move() {
@@ -966,8 +982,9 @@ impl Game {
   }
 
   /// Get a list of possible targets for an ability being used by a creature.
-  pub fn get_target_options(&self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID)
-    -> Result<PotentialTargets, GameError> {
+  pub fn get_target_options(
+    &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID
+  ) -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(&ability_id)?;
 
     use types::Action as A;
@@ -993,8 +1010,9 @@ impl Game {
     })
   }
 
-  fn open_terrain_in_range(&self, scene: SceneID, creature_id: CreatureID, range: Distance)
-    -> Result<PotentialTargets, GameError> {
+  fn open_terrain_in_range(
+    &self, scene: SceneID, creature_id: CreatureID, range: Distance
+  ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
     let map = self.get_map(scene.map)?;
@@ -1002,8 +1020,9 @@ impl Game {
     Ok(PotentialTargets::Points(pts))
   }
 
-  fn creatures_in_range(&self, scene: SceneID, creature_id: CreatureID, distance: Distance)
-    -> Result<PotentialTargets, GameError> {
+  fn creatures_in_range(
+    &self, scene: SceneID, creature_id: CreatureID, distance: Distance
+  ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];

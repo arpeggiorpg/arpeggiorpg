@@ -332,7 +332,6 @@ impl InventoryOwner {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
 
@@ -1082,8 +1081,9 @@ impl Scene {
     new
   }
 
-  pub fn creature_volume_conditions(&self, ts: TileSystem, creature: &Creature)
-    -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
+  pub fn creature_volume_conditions(
+    &self, ts: TileSystem, creature: &Creature
+  ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
     let creature_pos = self.get_pos(creature.id)?;
     let volumes_with_data: Vec<(Point3, Volume, ConditionID)> = self
       .volume_conditions
@@ -1490,19 +1490,15 @@ pub mod test {
     let mut scene = t_scene();
     let cond_id = ConditionID::gen();
     let volume_cond = VolumeCondition {
-        point: (0, 0, 0),
-        volume: Volume::Sphere(Distance(300)),
-        remaining: Duration::Interminate,
-        condition: Condition::Dead,
-      };
-    scene.volume_conditions.insert(
-      cond_id,
-      volume_cond.clone(),
-    );
+      point: (0, 0, 0),
+      volume: Volume::Sphere(Distance(300)),
+      remaining: Duration::Interminate,
+      condition: Condition::Dead,
+    };
+    scene.volume_conditions.insert(cond_id, volume_cond.clone());
     let rogue = t_rogue("rogue");
-    let conds = scene.creature_volume_conditions(TileSystem::Realistic, &rogue).expect("Couldn't get conds");
-    assert_eq!(conds, vec![
-      (cond_id, &volume_cond)
-    ]);
+    let conds =
+      scene.creature_volume_conditions(TileSystem::Realistic, &rogue).expect("Couldn't get conds");
+    assert_eq!(conds, vec![(cond_id, &volume_cond)]);
   }
 }

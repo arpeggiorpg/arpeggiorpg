@@ -21,8 +21,9 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
-  pub fn new(creature: &'creature Creature, game: &'game Game)
-    -> Result<DynamicCreature<'creature, 'game>, GameError> {
+  pub fn new(
+    creature: &'creature Creature, game: &'game Game
+  ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(&creature.class)? })
   }
 
@@ -64,8 +65,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     if let &Some(ref combat) = &self.game.current_combat {
       if let Ok(scene) = self.game.get_scene(combat.scene) {
         if scene.creatures.contains_key(&self.creature.id) {
-          if let Ok(conds) =
-            scene.creature_volume_conditions(self.game.tile_system, self.creature)
+          if let Ok(conds) = scene.creature_volume_conditions(self.game.tile_system, self.creature)
           {
             for (_, volume_condition) in conds {
               conditions.push(volume_condition.condition.clone().apply(Duration::Interminate));
@@ -296,8 +296,9 @@ pub struct ChangedCreature {
 }
 
 impl ChangedCreature {
-  pub fn creature<'creature, 'game>(&'creature self, game: &'game Game)
-    -> Result<DynamicCreature<'creature, 'game>, GameError> {
+  pub fn creature<'creature, 'game>(
+    &'creature self, game: &'game Game
+  ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(&self.creature, game)
   }
 

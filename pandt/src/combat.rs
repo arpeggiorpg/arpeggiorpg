@@ -114,8 +114,9 @@ impl<'game> DynamicCombat<'game> {
   }
 }
 
-fn sort_combatants(mut combatants: Vec<(CreatureID, i16)>)
-  -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
+fn sort_combatants(
+  mut combatants: Vec<(CreatureID, i16)>
+) -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
   combatants.sort_by_key(|&(_, i)| -i);
   nonempty::NonEmptyWithCursor::from_vec(combatants)
     .ok_or_else(|| GameErrorEnum::CombatMustHaveCreatures.into())
@@ -130,8 +131,9 @@ impl Combat {
     self.creatures.iter().map(|&(c, _)| c).collect()
   }
 
-  pub fn roll_initiative(game: &Game, cids: Vec<CreatureID>)
-    -> Result<Vec<(CreatureID, i16)>, GameError> {
+  pub fn roll_initiative(
+    game: &Game, cids: Vec<CreatureID>
+  ) -> Result<Vec<(CreatureID, i16)>, GameError> {
     cids
       .iter()
       .map(|cid| {
@@ -239,8 +241,9 @@ pub mod test {
       .game
   }
 
-  pub fn t_act<'game>(game: &'game Game, abid: AbilityID, target: DecidedTarget)
-    -> Result<ChangedGame, GameError> {
+  pub fn t_act<'game>(
+    game: &'game Game, abid: AbilityID, target: DecidedTarget
+  ) -> Result<ChangedGame, GameError> {
     game.perform_unchecked(GameCommand::CombatAct(abid, target))
   }
 

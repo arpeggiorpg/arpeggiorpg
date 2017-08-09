@@ -65,8 +65,9 @@ impl<T> FolderTree<T> {
 
   /// Make a child folder.
   /// Returns an error if the child already exists.
-  pub fn make_folder(&mut self, parent: &FolderPath, new_child: String, node: T)
-    -> Result<FolderPath, FolderTreeError> {
+  pub fn make_folder(
+    &mut self, parent: &FolderPath, new_child: String, node: T
+  ) -> Result<FolderPath, FolderTreeError> {
     let new_full_path = parent.child(new_child.clone());
     {
       let mut pdata = self.get_data_mut(&parent)?;
@@ -123,8 +124,9 @@ impl<T> FolderTree<T> {
     }
   }
 
-  pub fn rename_folder(&mut self, path: &FolderPath, new_name: String)
-    -> Result<(), FolderTreeError> {
+  pub fn rename_folder(
+    &mut self, path: &FolderPath, new_name: String
+  ) -> Result<(), FolderTreeError> {
     match path.up() {
       Some((parent, basename)) => {
         let new_path = parent.child(new_name.clone());
@@ -144,8 +146,9 @@ impl<T> FolderTree<T> {
     }
   }
 
-  pub fn move_folder(&mut self, path: &FolderPath, new_parent: &FolderPath)
-    -> Result<(), FolderTreeError> {
+  pub fn move_folder(
+    &mut self, path: &FolderPath, new_parent: &FolderPath
+  ) -> Result<(), FolderTreeError> {
     if new_parent.is_child_of(path) {
       bail!(FolderTreeErrorKind::ImpossibleMove(path.clone(), new_parent.clone()));
     }
@@ -183,8 +186,9 @@ impl<T> FolderTree<T> {
     self.nodes.get(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 
-  fn get_data_mut(&mut self, path: &FolderPath)
-    -> Result<&mut (T, HashSet<String>), FolderTreeError> {
+  fn get_data_mut(
+    &mut self, path: &FolderPath
+  ) -> Result<&mut (T, HashSet<String>), FolderTreeError> {
     self.nodes.get_mut(path).ok_or_else(|| FolderTreeErrorKind::FolderNotFound(path.clone()).into())
   }
 

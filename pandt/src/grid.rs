@@ -83,8 +83,9 @@ impl TileSystem {
     self.point3_distance(c1, c2) <= d
   }
 
-  pub fn items_within_volume<I: Clone + Eq + Hash>(&self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>)
-    -> Vec<I> {
+  pub fn items_within_volume<I: Clone + Eq + Hash>(
+    &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>
+  ) -> Vec<I> {
     // TODO: this doesn't support non-1x1 items
     // TODO: this function is really dumb, and instead should probably work on a HashSet of Point3s,
     // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
@@ -132,8 +133,9 @@ impl TileSystem {
     open
   }
 
-  pub fn get_all_accessible(&self, start: Point3, terrain: &Map, volume: Volume, speed: Distance)
-    -> Vec<Point3> {
+  pub fn get_all_accessible(
+    &self, start: Point3, terrain: &Map, volume: Volume, speed: Distance
+  ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
@@ -159,8 +161,9 @@ impl TileSystem {
     final_points
   }
 
-  pub fn find_path(&self, start: Point3, speed: Distance, terrain: &Map, volume: Volume, destination: Point3)
-    -> Option<(Vec<Point3>, Distance)> {
+  pub fn find_path(
+    &self, start: Point3, speed: Distance, terrain: &Map, volume: Volume, destination: Point3
+  ) -> Option<(Vec<Point3>, Distance)> {
     let success = Box::new(move |n: &Point3| *n == destination);
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(
       &start,
@@ -194,8 +197,9 @@ impl TileSystem {
     }
   }
 
-  pub fn intersecting_volumes<T: PartialEq + Clone>(&self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)])
-    -> Vec<T> {
+  pub fn intersecting_volumes<T: PartialEq + Clone>(
+    &self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)]
+  ) -> Vec<T> {
 
     let mut world = world::CollisionWorld3::new(0.0, true);
 
@@ -359,8 +363,9 @@ fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
   path.into_iter().rev().collect()
 }
 
-pub fn astar_multi<N, C, FN, IN, FH>(start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<Fn(&N) -> bool>>)
-  -> Vec<(Vec<N>, C)>
+pub fn astar_multi<N, C, FN, IN, FH>(
+  start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<Fn(&N) -> bool>>
+) -> Vec<(Vec<N>, C)>
 where
   N: Eq + Hash + Clone,
   C: Zero + Ord + Copy + PartialEq + PartialOrd, // maybe relax these so floats can be used?

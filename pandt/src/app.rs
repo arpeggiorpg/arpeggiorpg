@@ -41,8 +41,9 @@ impl App {
     snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
     App { current_game: g, snapshots: snapshots, players: IndexedHashMap::new() }
   }
-  pub fn perform_unchecked(&mut self, cmd: GameCommand)
-    -> Result<(&Game, Vec<GameLog>), GameError> {
+  pub fn perform_unchecked(
+    &mut self, cmd: GameCommand
+  ) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
       GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
@@ -127,8 +128,9 @@ impl App {
     Ok((&self.current_game, vec![]))
   }
 
-  fn give_creatures_to_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
-    -> Result<(&Game, Vec<GameLog>), GameError> {
+  fn give_creatures_to_player(
+    &mut self, pid: &PlayerID, cids: &[CreatureID]
+  ) -> Result<(&Game, Vec<GameLog>), GameError> {
     for cid in cids {
       self.current_game.check_creature_id(*cid)?;
     }
@@ -142,8 +144,9 @@ impl App {
     Ok((&self.current_game, vec![]))
   }
 
-  fn remove_creatures_from_player(&mut self, pid: &PlayerID, cids: &[CreatureID])
-    -> Result<(&Game, Vec<GameLog>), GameError> {
+  fn remove_creatures_from_player(
+    &mut self, pid: &PlayerID, cids: &[CreatureID]
+  ) -> Result<(&Game, Vec<GameLog>), GameError> {
     self
       .players
       .mutate(pid, |mut p| {
@@ -156,8 +159,9 @@ impl App {
     Ok((&self.current_game, vec![]))
   }
 
-  fn set_player_scene(&mut self, pid: &PlayerID, scene: Option<SceneID>)
-    -> Result<(&Game, Vec<GameLog>), GameError> {
+  fn set_player_scene(
+    &mut self, pid: &PlayerID, scene: Option<SceneID>
+  ) -> Result<(&Game, Vec<GameLog>), GameError> {
     self
       .players
       .mutate(pid, move |mut p| {
@@ -172,8 +176,9 @@ impl App {
     &self.current_game
   }
 
-  pub fn get_movement_options(&self, scene: SceneID, creature_id: CreatureID)
-    -> Result<Vec<Point3>, GameError> {
+  pub fn get_movement_options(
+    &self, scene: SceneID, creature_id: CreatureID
+  ) -> Result<Vec<Point3>, GameError> {
     self.current_game.get_movement_options(scene, creature_id)
   }
 
@@ -181,13 +186,15 @@ impl App {
     Ok(self.current_game.get_combat()?.current_movement_options()?)
   }
 
-  pub fn get_target_options(&self, scene: SceneID, cid: CreatureID, abid: AbilityID)
-    -> Result<PotentialTargets, GameError> {
+  pub fn get_target_options(
+    &self, scene: SceneID, cid: CreatureID, abid: AbilityID
+  ) -> Result<PotentialTargets, GameError> {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
-  pub fn preview_volume_targets(&self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3)
-    -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
+  pub fn preview_volume_targets(
+    &self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
+  ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
     self.current_game.preview_volume_targets(scene, actor_id, ability_id, pt)
   }
