@@ -198,6 +198,7 @@ impl Creature {
       note: spec.note.clone(),
       bio: spec.bio.clone(),
       portrait_url: spec.portrait_url.clone(),
+      icon_url: spec.icon_url.clone(),
       attributes: HashMap::new(),
       initiative: spec.initiative.clone(),
       size: spec.size,

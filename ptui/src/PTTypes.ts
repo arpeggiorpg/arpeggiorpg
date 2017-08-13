@@ -206,6 +206,7 @@ export interface CreatureCreation {
   name: string;
   class_: string;
   portrait_url: string;
+  icon_url: string;
   note: string;
   bio: string;
   initiative: Dice;
@@ -336,6 +337,7 @@ export interface Creature {
   note: string;
   bio: string;
   portrait_url: string;
+  icon_url: string;
   attributes: I.Map<AttrID, SkillLevel>;
   initiative: Dice;
   inventory: I.Map<ItemID, number>;
@@ -502,19 +504,19 @@ const decodeAABB: Decoder<AABB> = JD.object(
   (x, y, z) => ({ x, y, z })
 );
 
-function object17<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+function object18<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
   _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
   _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
   _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
   _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
-  _qd: JD.EntryDecoder<Q>,
+  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>,
   _cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P, q: Q) => T): Decoder<T> {
+    p: P, q: Q, r: R) => T): Decoder<T> {
   return JD.object.apply(undefined, arguments);
 }
 
-export const decodeCreature: Decoder<Creature> = object17(
+export const decodeCreature: Decoder<Creature> = object18(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -527,6 +529,7 @@ export const decodeCreature: Decoder<Creature> = object17(
   ["note", JD.string()],
   ["bio", JD.string()],
   ["portrait_url", JD.string()],
+  ["icon_url", JD.string()],
   ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
   ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
   ["conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
@@ -534,10 +537,10 @@ export const decodeCreature: Decoder<Creature> = object17(
   ["size", decodeAABB],
   (
     id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
-    portrait_url, attributes, inventory, conditions, initiative, size) =>
+    portrait_url, icon_url, attributes, inventory, conditions, initiative, size) =>
     ({
       id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
-      portrait_url, attributes, inventory, conditions, initiative, size,
+      portrait_url, icon_url, attributes, inventory, conditions, initiative, size,
     })
 );
 
@@ -545,12 +548,13 @@ const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(
   ["name", JD.string()],
   ["class", JD.string()],
   ["portrait_url", JD.string()],
+  ["icon_url", JD.string()],
   ["note", JD.string()],
   ["bio", JD.string()],
   ["initiative", decodeDice],
   ["size", decodeAABB],
-  (name, class_, portrait_url, note, bio, initiative, size) =>
-    ({ name, class_, portrait_url, note, bio, initiative, size })
+  (name, class_, portrait_url, icon_url, note, bio, initiative, size) =>
+    ({ name, class_, portrait_url, icon_url, note, bio, initiative, size })
 );
 
 export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
@@ -1121,6 +1125,7 @@ function encodeCreatureCreation(cc: CreatureCreation): object {
     name: cc.name,
     class: cc.class_,
     portrait_url: cc.portrait_url,
+    icon_url: cc.icon_url,
     note: cc.note,
     bio: cc.bio,
     initiative: encodeDice(cc.initiative),

@@ -662,6 +662,7 @@ impl Game {
           c.name = details.name.clone();
           c.class = details.class.clone();
           c.portrait_url = details.portrait_url.clone();
+          c.icon_url = details.icon_url.clone();
           c.note = details.note.clone();
           c.bio = details.bio.clone();
           c.initiative = details.initiative.clone();

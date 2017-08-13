@@ -852,7 +852,7 @@ export const CreateCreature = M.connectRedux(
     const init: T.Dice = { t: "Expr", num: 1, size: 20 };
     const creature_data = {
       name: "", note: "", bio: "", portrait_url: "", initiative: init, class_: "",
-      size: { x: 1, y: 1, z: 1 },
+      size: { x: 1, y: 1, z: 1 }, icon_url: "",
     };
     return <EditCreatureData creature={creature_data}
       onSave={cdata => save(cdata)} onClose={props.onClose} />;
@@ -878,6 +878,7 @@ const GMEditCreature = M.connectRedux(
         name: creature_data.name, class_: creature_data.class_,
         note: creature_data.note, bio: creature_data.bio,
         portrait_url: creature_data.portrait_url,
+        icon_url: creature_data.icon_url,
         initiative: creature_data.initiative,
         size: creature_data.size,
       };
@@ -897,7 +898,7 @@ class EditCreatureDataComp
   {
     name: string; portrait_url: string; note: string; bio: string;
     initiative_string: string; class_: string;
-    size: number;
+    size: number; icon_url: string;
   }> {
   constructor(props: EditCreatureDataProps & M.ReduxProps) {
     super(props);
@@ -908,6 +909,7 @@ class EditCreatureDataComp
       initiative_string: Dice.format(props.creature.initiative),
       class_: props.creature.class_,
       size: props.creature.size.x,
+      icon_url: props.creature.icon_url,
     };
   }
 
@@ -991,6 +993,7 @@ class EditCreatureDataComp
       note: this.state.note, bio: this.state.bio,
       initiative: Dice.parse(this.state.initiative_string),
       size: { x: this.state.size, y: this.state.size, z: this.state.size },
+      icon_url: this.state.icon_url,
     };
     this.props.onSave(creature);
     this.props.onClose();

@@ -603,6 +603,6 @@ export function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Poi
 }
 
 export function getCreatureDetails(creature: T.Creature): T.CreatureCreation {
-  const { name, class_, portrait_url, note, bio, initiative, size } = creature;
-  return { name, class_, portrait_url, note, bio, initiative, size };
+  const { name, class_, portrait_url, note, bio, initiative, size, icon_url } = creature;
+  return { name, class_, portrait_url, note, bio, initiative, size, icon_url };
 }

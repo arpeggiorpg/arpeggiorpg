@@ -884,6 +884,7 @@ pub struct CreatureCreation {
   pub name: String,
   pub class: String,
   pub portrait_url: String,
+  pub icon_url: String,
   pub note: String,
   #[serde(default)]
   pub bio: String,
@@ -913,6 +914,8 @@ pub struct Creature {
   #[serde(default)]
   pub bio: String,
   pub portrait_url: String,
+  #[serde(default)]
+  pub icon_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
   pub size: AABB,
@@ -1228,6 +1231,7 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("note", &creat.note)?;
     str.serialize_field("bio", &creat.bio)?;
     str.serialize_field("portrait_url", &creat.portrait_url)?;
+    str.serialize_field("icon_url", &creat.icon_url)?;
     str.serialize_field("speed", &self.speed())?;
     str.serialize_field("max_energy", &creat.max_energy)?;
     str.serialize_field("cur_energy", &creat.cur_energy)?;
@@ -1328,6 +1332,7 @@ pub mod test {
       bio: "".to_string(),
       class: class.to_string(),
       portrait_url: "".to_string(),
+      icon_url: "".to_string(),
       initiative: Dice::flat(init),
       size: AABB { x: 1, y: 1, z: 1 },
     })
