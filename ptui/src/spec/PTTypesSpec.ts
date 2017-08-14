@@ -72,6 +72,7 @@ export function test(): boolean {
     attribute_checks: I.Map({ "Do a backflip": exAttrCheck }),
     inventory: I.Map(),
     background_image_url: "",
+    volume_conditions: I.Map(),
   };
   assertEq<T.Scene>(
     I.fromJS(T.decodeScene.decodeAny(sceneJSON)).toJS(),
@@ -121,6 +122,7 @@ describe("PTTypes", () => {
       conditions: {},
       note: "AC15",
       portrait_url: "",
+      icon_url: "",
       attributes: {},
       initiative: { "BestOf": [2, { "Plus": [{ "Expr": { num: 1, size: 20 } }, { "Flat": 4 }] }] },
       size: { x: 1, y: 1, z: 1 },
