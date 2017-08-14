@@ -1018,6 +1018,11 @@ pub struct Scene {
   pub inventory: Inventory,
   #[serde(default)]
   pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
+
+  /// "Focused" creatures are those which have their portraits rendered over the map or scene
+  /// background
+  #[serde(default)]
+  pub focused_creatures: Vec<CreatureID>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1053,6 +1058,7 @@ impl Scene {
       attribute_checks: HashMap::new(),
       inventory: HashMap::new(),
       volume_conditions: HashMap::new(),
+      focused_creatures: vec![],
     }
   }
   pub fn get_pos(&self, creature_id: CreatureID) -> Result<Point3, GameError> {
@@ -1375,6 +1381,7 @@ pub mod test {
       ]),
       inventory: HashMap::new(),
       volume_conditions: HashMap::new(),
+      focused_creatures: vec![],
     }
   }
 
