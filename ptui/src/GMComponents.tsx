@@ -936,12 +936,22 @@ class EditCreatureDataComp
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
+          <label>Icon Image URL:</label>
+          <Input fluid={true}
+            value={this.state.icon_url}
+            onChange={(_, data) => this.setState({ icon_url: data.value })} />
+        </Form.Field>
+        {this.state.icon_url ? <CV.SquareImageIcon url={this.state.icon_url} />
+          : "Enter an URL for preview"}
+      </Form.Group>
+      <Form.Group style={{ width: "100%" }}>
+        <Form.Field style={{ flex: "1" }}>
           <label>Portrait Image URL:</label>
           <Input fluid={true}
             value={this.state.portrait_url}
             onChange={(_, data) => this.setState({ portrait_url: data.value })} />
         </Form.Field>
-        {this.state.portrait_url ? <CV.SquareImageIcon url={this.state.portrait_url} />
+        {this.state.portrait_url ? <img src={this.state.portrait_url} />
           : "Enter an URL for preview"}
       </Form.Group>
       <Form.Input label="Note" value={this.state.note}

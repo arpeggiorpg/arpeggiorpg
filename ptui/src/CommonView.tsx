@@ -110,8 +110,8 @@ export function square_style(size: number, color?: string) {
 export function CreatureIcon(
   { size = 50, app, creature }: { size?: number, app: T.App, creature: T.Creature }
 ): JSX.Element | null {
-  if (creature.portrait_url !== "") {
-    return <SquareImageIcon size={size} url={creature.portrait_url} />;
+  if (creature.icon_url !== "") {
+    return <SquareImageIcon size={size} url={creature.icon_url} />;
   } else {
     const class_ = app.current_game.classes.get(creature.class_);
     const color = class_ ? class_.color : "red";

@@ -622,12 +622,12 @@ const GridCreature = M.connectRedux(
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    if (creature.creature.portrait_url !== "") {
+    if (creature.creature.icon_url !== "") {
       const props = tile_props("white", creature.pos, creature.creature.size);
       const bare_props = bare_tile_props(creature.pos, creature.creature.size);
       return <g opacity={opacity}>
         <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
-          xlinkHref={creature.creature.portrait_url} {...props} />
+          xlinkHref={creature.creature.icon_url} {...props} />
         <rect {...bare_props} {...highlightProps} fillOpacity="0" onClick={() => onClick()} />
       </g>;
     } else {
