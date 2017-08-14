@@ -9,10 +9,6 @@ import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export function renderPlayers() {
-  console.log("sorry elm");
-}
-
 export const Players = Comp.connect(
   Comp.createDeepEqualSelector(
     [ptui => ptui.app,

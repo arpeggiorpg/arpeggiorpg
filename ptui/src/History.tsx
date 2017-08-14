@@ -6,10 +6,6 @@ import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export function renderHistory() {
-  console.log("sorry elm");
-}
-
 export const History = Comp.connect(
   Comp.createDeepEqualSelector([ptui => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
     (snapshots, creatures) => ({ snapshots, creatures }))
