@@ -388,6 +388,7 @@ export interface Scene {
   inventory: I.Map<ItemID, number>;
   background_image_url: string;
   volume_conditions: I.Map<ConditionID, VolumeCondition>;
+  focused_creatures: I.List<CreatureID>;
 }
 
 export interface VolumeCondition {
@@ -637,11 +638,12 @@ export const decodeScene: Decoder<Scene> =
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
     ["background_image_url", JD.string()],
     ["volume_conditions", JD.map(I.Map, JD.dict(decodeVolumeCondition))],
+    ["focused_creatures", JD.map(I.List, JD.array(JD.string()))],
     (
       id, name, map, creatures, attribute_checks, inventory, background_image_url,
-      volume_conditions): Scene => ({
+      volume_conditions, focused_creatures): Scene => ({
         id, name, map, creatures, attribute_checks, inventory, background_image_url,
-        volume_conditions,
+        volume_conditions, focused_creatures,
       }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
