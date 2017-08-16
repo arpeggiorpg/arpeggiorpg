@@ -81,6 +81,8 @@ export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, 
       return <Flexbox>Added a challenge to a scene: {log.description}</Flexbox>;
     case "RemoveSceneChallenge":
       return <Flexbox>Removed challenge from a scene: {log.description}</Flexbox>;
+    case "SetFocusedSceneCreatures":
+      return <Flexbox>Changed focused creatures in a scene</Flexbox>;
     case "CreateMap":
       return <Flexbox>Created a map {log.map.name}</Flexbox>;
     case "EditMap":

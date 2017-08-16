@@ -141,6 +141,7 @@ export type GameCommand =
   | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID>; }
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -256,6 +257,7 @@ export type GameLog =
   | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID>; }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -812,6 +814,10 @@ export const decodeGameLog: Decoder<GameLog> =
       ["scene_id", JD.string()], ["description", JD.string()],
       (scene_id, description): GameLog => ({ t: "RemoveSceneChallenge", scene_id, description })
     ),
+    SetFocusedSceneCreatures: JD.object(
+      ["scene_id", JD.string()], ["creatures", JD.map(I.List, JD.array(JD.string()))],
+      (scene_id, creatures): GameLog => ({ t: "SetFocusedSceneCreatures", scene_id, creatures })
+    ),
     CreateMap: JD.map(
       ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
       JD.tuple(decodeFolderPath, decodeMap)),
@@ -1065,6 +1071,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       };
     case "RemoveSceneChallenge":
       return { RemoveSceneChallenge: { scene_id: cmd.scene_id, description: cmd.description } };
+    case "SetFocusedSceneCreatures":
+      return {
+        SetFocusedSceneCreatures: { scene_id: cmd.scene_id, creatures: cmd.creatures.toArray() },
+      };
     case "CreateMap":
       return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
     case "EditMap":
