@@ -188,7 +188,14 @@ impl TileSystem {
     }
   }
 
-  /// Garbage Function
+  /// Determine which points a volume occupies.
+  /// The way a volume fits at a point is specific to the volume type.
+  /// AABB: top-left
+  /// Sphere: center
+  /// Line: origin
+  /// VerticalCylinder: center of base
+  // TODO FIXME XXX: Implement for more volume types.
+  // TODO: Should this use ncollide?
   fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
     match volume {
       Volume::Sphere(radius) => {

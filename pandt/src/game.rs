@@ -1316,4 +1316,19 @@ pub mod test {
     let targets = HashSet::<CreatureID>::from_iter(targets);
     assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
+
+  #[test]
+  fn preview_volume_targets_shows_creatures_for_scene_volume_actions() {
+    // When previewing volume targets for an action that affects a Scene Volume, the creatures
+    // within the volume will be returned.
+
+    let game = t_game();
+    let scene = game.get_scene(t_scene_id()).unwrap();
+    let cleric = cid_cleric();
+    let ability_id = abid("thorn_patch");
+    let preview = game.preview_volume_targets(scene, cleric, ability_id, (0, 0, 0)).unwrap();
+    // I doubt the order of this should be considered determenistic.
+    assert_eq!(preview.0, vec![cid_cleric(), cid_ranger(), cid_rogue()]);
+
+  }
 }

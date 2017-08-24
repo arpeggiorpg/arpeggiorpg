@@ -1458,6 +1458,24 @@ pub mod test {
     }
   }
 
+  pub fn t_thorn_patch() -> Ability {
+    Ability {
+      name: "Thorn Patch".to_string(),
+      cost: Energy(8),
+      usable_ooc: true,
+      action: Action::SceneVolume {
+        target: SceneTarget::RangedVolume {
+          volume: Volume::Sphere(Distance(200)),
+          range: Distance(1000),
+        },
+        effect: SceneEffect::CreateVolumeCondition {
+          duration: Duration::Interminate,
+          condition: Condition::RecurringEffect(Box::new(CreatureEffect::Damage(Dice::flat(3)))),
+        },
+      },
+    }
+  }
+
   pub fn t_abilities() -> HashMap<AbilityID, Ability> {
     let punch = t_punch();
     let shoot = t_shoot();
@@ -1470,6 +1488,7 @@ pub mod test {
       (abid("heal"), heal),
       (abid("fireball"), fireball),
       (abid("piercing_shot"), piercing_shot),
+      (abid("thorn_patch"), t_thorn_patch()),
     ])
   }
 
