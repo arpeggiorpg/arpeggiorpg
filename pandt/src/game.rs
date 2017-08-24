@@ -115,7 +115,8 @@ impl Game {
       }
       RemoveSceneChallenge { scene_id, ref description } => self
         .change_with(GameLog::RemoveSceneChallenge { scene_id, description: description.clone() }),
-      SetFocusedSceneCreatures { scene_id, ref creatures } => self.change_with(GameLog::SetFocusedSceneCreatures{scene_id, creatures: creatures.clone()}),
+      SetFocusedSceneCreatures { scene_id, ref creatures } => self
+        .change_with(GameLog::SetFocusedSceneCreatures { scene_id, creatures: creatures.clone() }),
 
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
@@ -621,13 +622,15 @@ impl Game {
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
 
-      SetFocusedSceneCreatures { scene_id, ref creatures} => {
-        self.scenes.mutate(&scene_id, move | mut scene| {
-          scene.focused_creatures = creatures.clone();
-          scene
-        }).ok_or_else(||GameErrorEnum::SceneNotFound(scene_id))?;
-      },
-
+      SetFocusedSceneCreatures { scene_id, ref creatures } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.focused_creatures = creatures.clone();
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
 
       CreateMap(ref path, ref map) => {
         self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;

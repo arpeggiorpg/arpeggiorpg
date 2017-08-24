@@ -61,6 +61,9 @@ pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
 }
 
 impl TileSystem {
+  /// Get the distance between two points, considering the system being used.
+  /// In DnD, an angular distance is "equivalent" to a horizontal/vertical distance.
+  /// i.e., The distance from 0,0 to 1,1 is sqrt(2) in Realistic and 1.0 in DnD.
   pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> Distance {
     match *self {
       TileSystem::Realistic => {
@@ -79,10 +82,13 @@ impl TileSystem {
     }
   }
 
+  /// Check whether two points are within some distance of each other.
   pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: Distance) -> bool {
     self.point3_distance(c1, c2) <= d
   }
 
+
+  /// Garbage Function
   pub fn items_within_volume<I: Clone + Eq + Hash>(
     &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>
   ) -> Vec<I> {
@@ -133,6 +139,7 @@ impl TileSystem {
     open
   }
 
+  /// Get the set of points which can be pathed to from some point.
   pub fn get_all_accessible(
     &self, start: Point3, terrain: &Map, volume: Volume, speed: Distance
   ) -> Vec<Point3> {
@@ -161,6 +168,8 @@ impl TileSystem {
     final_points
   }
 
+  /// Find a path from some start point to some destination point. If one can be found, a Vec of
+  /// points on the way to the destination is returned, along with the total length of that path.
   pub fn find_path(
     &self, start: Point3, speed: Distance, terrain: &Map, volume: Volume, destination: Point3
   ) -> Option<(Vec<Point3>, Distance)> {
@@ -179,6 +188,7 @@ impl TileSystem {
     }
   }
 
+  /// Garbage Function
   fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
     match volume {
       Volume::Sphere(radius) => {
@@ -197,6 +207,9 @@ impl TileSystem {
     }
   }
 
+  /// Garbage Function
+  // This needs to be refactored so it doesn't create the world but rather accepts one as an
+  // argument.
   pub fn intersecting_volumes<T: PartialEq + Clone>(
     &self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)]
   ) -> Vec<T> {
@@ -214,6 +227,12 @@ impl TileSystem {
     condition_group.set_blacklist(&[2]);
 
     let query = world::GeometricQueryType::Contacts(0.0);
+
+    #[derive(Debug)]
+    enum CollData {
+      Creature,
+      ConditionVolume(usize),
+    }
 
     world.deferred_add(
       0,
@@ -249,6 +268,8 @@ impl TileSystem {
     results
   }
 
+  /// Determine whether a volume will not collide *with terrain* if it is placed at a point.
+  /// Note that this doesn't consider other creatures or other map objects.
   fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
     for pt in self.points_in_volume(volume, pt) {
       if !map.terrain.contains(&pt) {
@@ -297,12 +318,6 @@ impl TileSystem {
     }
     results
   }
-}
-
-#[derive(Debug)]
-enum CollData {
-  Creature,
-  ConditionVolume(usize),
 }
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {

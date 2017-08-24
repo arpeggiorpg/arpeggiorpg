@@ -373,7 +373,7 @@ pub enum GameCommand {
   RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
   AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
   RemoveSceneChallenge { scene_id: SceneID, description: String },
-  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID>},
+  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -512,7 +512,7 @@ pub enum GameLog {
   RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
   AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
   RemoveSceneChallenge { scene_id: SceneID, description: String },
-  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID>},
+  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
 
   CreateMap(FolderPath, Map),
 
