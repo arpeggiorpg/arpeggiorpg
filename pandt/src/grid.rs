@@ -440,6 +440,52 @@ pub mod test {
   use types::*;
   use std::iter::FromIterator;
 
+  /// A map containing a single open block of terrain at 0,0,0
+  fn box_map() -> Map {
+    Map::new("box".to_string(), vec![(0, 0, 0)])
+  }
+
+  /// A map shaped like a dumbbell, with two 2x3 rooms connected by a 1x1 passage
+  fn dumbbell_map() -> Map {
+    Map::new(
+      "dumbbell".to_string(),
+      vec![
+        (0, 0, 0),
+        (1, 0, 0),
+        (3, 0, 0),
+        (4, 0, 0),
+        (0, 1, 0),
+        (1, 1, 0),
+        (2, 1, 0),
+        (3, 1, 0),
+        (4, 1, 0),
+        (0, 2, 0),
+        (1, 2, 0),
+        (3, 2, 0),
+        (4, 2, 0),
+      ],
+    )
+  }
+
+  /// A map containing a large 40-meter square of open terrain.
+  pub fn huge_box() -> Map {
+    let mut map = vec![];
+    for x in -20..20 {
+      for y in -20..20 {
+        map.push((x, y, 0));
+      }
+    }
+    Map {
+      id: t_map_id(),
+      name: "huge box".to_string(),
+      terrain: map,
+      specials: vec![],
+      background_image_url: "".to_string(),
+      background_image_offset: (0, 0),
+      background_image_scale: (0, 0),
+    }
+  }
+
   #[test]
   fn test_biggest_distance() {
     let pos1 = (i16::min_value(), i16::min_value(), i16::min_value());
@@ -592,41 +638,6 @@ pub mod test {
     assert_eq!(paths_and_costs, [(ex_path_positive, 141), (ex_path_negative, 141)]);
   }
 
-  /// A map containing a "room" that only has one free space in the middle.
-  fn box_map() -> Map {
-    Map::new("box".to_string(), vec![(0, 0, 0)])
-  }
-
-  pub fn huge_box() -> Map {
-    let mut map = vec![];
-    for x in -20..20 {
-      for y in -20..20 {
-        map.push((x, y, 0));
-      }
-    }
-    Map {
-      id: t_map_id(),
-      name: "huge box".to_string(),
-      terrain: map,
-      specials: vec![],
-      background_image_url: "".to_string(),
-      background_image_offset: (0, 0),
-      background_image_scale: (0, 0),
-    }
-  }
-
-  // #[test]
-  // fn path_inaccessible() {
-  //     let terrain = box_map();
-  //     let mut gs = GridState {
-  //         start: (3, 3, 0),
-  //         end: (0, 0, 0),
-  //         max_distance: 1000,
-  //         terrain: &terrain,
-  //     };
-  //     assert_eq!(astar(&mut gs), None);
-  // }
-
   #[test]
   fn test_accessible_nowhere_to_go() {
     let terrain = box_map();
@@ -759,6 +770,27 @@ pub mod test {
       &[((0, 0, 0), small_cube, "find this".to_string())],
     );
     assert_eq!(results, vec!["find this".to_string()]);
+  }
 
+  #[test]
+  fn large_creature_cannot_fit_through_small_opening() {
+    let ts = TileSystem::Realistic;
+    let dumbbell = dumbbell_map();
+    let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let path = ts.find_path((0, 0, 0), Distance(1000), &dumbbell, big_guy, (3, 0, 0));
+    assert_eq!(path, None);
+  }
+
+  #[test]
+  fn large_creature_can_fit_through_large_opening() {
+    let ts = TileSystem::Realistic;
+    let mut dumbbell = dumbbell_map();
+    dumbbell.terrain.push((2, 2, 0));
+    let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let path = ts.find_path((0, 0, 0), Distance(1000), &dumbbell, big_guy, (3, 0, 0));
+    assert_eq!(
+      path,
+      Some((vec![(0, 0, 0), (1, 1, 0), (2, 1, 0), (3, 1, 0), (3, 0, 0)], Distance(441)))
+    );
   }
 }
