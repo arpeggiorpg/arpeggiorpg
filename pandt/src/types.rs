@@ -1027,6 +1027,13 @@ pub struct Scene {
   pub focused_creatures: Vec<CreatureID>,
 }
 
+#[derive(Debug)]
+pub enum CollisionData {
+  Creature,
+  ConditionVolume(usize),
+}
+
+
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct VolumeCondition {
   pub point: Point3,

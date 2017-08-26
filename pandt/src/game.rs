@@ -881,7 +881,6 @@ impl Game {
       change = change.apply_creature(creature.id(), |c| c.creature.reduce_energy(ability.cost))?;
     }
     Ok(change)
-
   }
 
   pub fn resolve_creature_targets(

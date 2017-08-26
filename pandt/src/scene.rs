@@ -67,8 +67,8 @@ impl Scene {
     Ok(results)
   }
 
-  /// Return a set of points which are intersect a volume. Largely used for previewing the area
-  /// that will be affected by a volume-affecting ability.
+  /// Return a set of points of open terrain which  intersect a volume.
+  /// Largely used for previewing the area that will be affected by a volume-affecting ability.
   pub fn open_terrain_in_volume(
     &self, game: &Game, pt: Point3, volume: Volume
   ) -> Result<Vec<Point3>, GameError> {

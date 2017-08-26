@@ -10,7 +10,7 @@ use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 
-use types::{Distance, Map, Point3, TileSystem, VectorCM, Volume};
+use types::{CollisionData, Distance, Map, Point3, TileSystem, VectorCM, Volume};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -220,7 +220,6 @@ impl TileSystem {
   pub fn intersecting_volumes<T: PartialEq + Clone>(
     &self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)]
   ) -> Vec<T> {
-
     let mut world = world::CollisionWorld3::new(0.0, true);
 
     let mut creature_group = world::CollisionGroups::new();
@@ -235,19 +234,13 @@ impl TileSystem {
 
     let query = world::GeometricQueryType::Contacts(0.0);
 
-    #[derive(Debug)]
-    enum CollData {
-      Creature,
-      ConditionVolume(usize),
-    }
-
     world.deferred_add(
       0,
       na_iso(pt),
       volume_to_na_shape(volume),
       creature_group,
       query,
-      CollData::Creature,
+      CollisionData::Creature,
     );
 
     for (idx, &(position, volume, _)) in volumes.iter().enumerate() {
@@ -257,7 +250,7 @@ impl TileSystem {
         volume_to_na_shape(volume),
         condition_group,
         query,
-        CollData::ConditionVolume(idx),
+        CollisionData::ConditionVolume(idx),
       );
     }
 
@@ -265,8 +258,8 @@ impl TileSystem {
     let mut results = vec![];
     for (obj1, obj2, _) in world.contact_pairs() {
       match (&obj1.data, &obj2.data) {
-        (&CollData::Creature, &CollData::ConditionVolume(idx)) |
-        (&CollData::ConditionVolume(idx), &CollData::Creature) => {
+        (&CollisionData::Creature, &CollisionData::ConditionVolume(idx)) |
+        (&CollisionData::ConditionVolume(idx), &CollisionData::Creature) => {
           results.push(volumes[idx].2.clone())
         }
         _ => {}
