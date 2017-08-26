@@ -7,7 +7,7 @@ impl Scene {
     Scene {
       id: SceneID::new(),
       name: creation.name,
-      background_image_url: "".to_string(),
+      background_image_url: creation.background_image_url.clone(),
       map: creation.map,
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),
