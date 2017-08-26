@@ -194,6 +194,8 @@ fn load_saved_game(pt: State<PT>, name: String) -> Result<CORS<String>, RPIError
 #[post("/saved_games/<name>")]
 fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   let new_path = child_path(&pt.saved_game_path, name)?;
+  // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
+  // without the extra magic that decorates the data with dynamic data for clients.
   let yaml = serde_yaml::to_string(&*pt.app())?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(CORS::any(Json(())))

@@ -20,6 +20,7 @@ impl Game {
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
       items: IndexedHashMap::new(),
+      players: IndexedHashMap::new(),
     }
   }
 
@@ -40,6 +41,13 @@ impl Game {
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      // ** Player Management **
+      RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
+      GiveCreaturesToPlayer(ref pid, ref cids) => self.change_with(GameLog::GiveCreaturesToPlayer(pid.clone(), cids.clone())),
+      UnregisterPlayer(ref pid) => self.change_with(GameLog::UnregisterPlayer(pid.clone())),
+      RemoveCreaturesFromPlayer(ref pid, ref cids) => self.change_with(GameLog::RemoveCreaturesFromPlayer(pid.clone(), cids.clone())),
+      SetPlayerScene(ref pid, opt_sid) => self.change_with(GameLog::SetPlayerScene(pid.clone(), opt_sid)),
+
       // ** Chat **
       ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
       ChatFromPlayer(ref pid, ref msg) => {
@@ -154,12 +162,7 @@ impl Game {
       Done => self.next_turn(),
 
       // These are handled by the app before being passed to the Game:
-      RegisterPlayer(..) => bug("Game RegisterPlayer"),
-      UnregisterPlayer(..) => bug("Game UnregisterPlayer"),
-      GiveCreaturesToPlayer(..) => bug("Game GiveCreaturesToPlayer"),
-      RemoveCreaturesFromPlayer(..) => bug("Game RemoveCreaturesFromPlayer"),
       Rollback(..) => bug("Game Rollback"),
-      SetPlayerScene(..) => bug("Game SetPlayerScene"),
     }?;
     Ok(change)
   }
@@ -320,9 +323,59 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
-      ChatFromGM(..) => {}
-      ChatFromPlayer(..) => {}
+      // Player stuff
+
+      RegisterPlayer(ref pid) => {
+        if self.players.contains_key(pid) {
+          bail!(GameErrorEnum::PlayerAlreadyExists(pid.clone()))
+        } else {
+          self.players.insert(Player::new(pid.clone()));
+        }
+      }
+
+      UnregisterPlayer(ref pid) => {
+        self.players.remove(pid).ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
+      }
+
+      GiveCreaturesToPlayer(ref pid, ref cids) => {
+        for cid in cids {
+          self.check_creature_id(*cid)?;
+        }
+        self
+          .players
+          .mutate(pid, |mut p| {
+            p.creatures.extend(cids);
+            p
+          })
+          .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
+      }
+
+      RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+        self
+          .players
+          .mutate(pid, |mut p| {
+            for cid in cids {
+              p.creatures.remove(cid);
+            }
+            p
+          })
+          .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
+      }
+
+      SetPlayerScene(ref pid, scene) => {
+        self
+          .players
+          .mutate(pid, move |mut p| {
+            p.scene = scene;
+            p
+          })
+          .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
+      }
+
+      ChatFromGM(..) => {} // purely informational
+      ChatFromPlayer(..) => {} // purely informational
       AttributeCheckResult(..) => {} // purely informational
+
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       MoveFolderItem(ref src, ref item_id, ref dst) => match *item_id {

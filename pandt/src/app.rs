@@ -39,21 +39,12 @@ impl App {
   pub fn new(g: Game) -> Self {
     let mut snapshots = VecDeque::with_capacity(SNAPSHOTS);
     snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
-    App { current_game: g, snapshots: snapshots, players: IndexedHashMap::new() }
+    App { current_game: g, snapshots: snapshots }
   }
   pub fn perform_unchecked(
     &mut self, cmd: GameCommand
   ) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
-      GameCommand::RegisterPlayer(ref pid) => self.register_player(pid),
-      GameCommand::UnregisterPlayer(ref pid) => self.unregister_player(pid),
-      GameCommand::GiveCreaturesToPlayer(ref pid, ref cids) => {
-        self.give_creatures_to_player(pid, cids)
-      }
-      GameCommand::RemoveCreaturesFromPlayer(ref pid, ref cids) => {
-        self.remove_creatures_from_player(pid, cids)
-      }
-      GameCommand::SetPlayerScene(ref pid, ref scene) => self.set_player_scene(pid, *scene),
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
         self.current_game = newgame;
@@ -112,64 +103,6 @@ impl App {
       }
     }
     Ok(game)
-  }
-
-  fn register_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
-    if self.players.contains_key(pid) {
-      Err(GameErrorEnum::PlayerAlreadyExists(pid.clone()).into())
-    } else {
-      self.players.insert(Player::new(pid.clone()));
-      Ok((&self.current_game, vec![]))
-    }
-  }
-
-  fn unregister_player(&mut self, pid: &PlayerID) -> Result<(&Game, Vec<GameLog>), GameError> {
-    self.players.remove(pid).ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
-    Ok((&self.current_game, vec![]))
-  }
-
-  fn give_creatures_to_player(
-    &mut self, pid: &PlayerID, cids: &[CreatureID]
-  ) -> Result<(&Game, Vec<GameLog>), GameError> {
-    for cid in cids {
-      self.current_game.check_creature_id(*cid)?;
-    }
-    self
-      .players
-      .mutate(pid, |mut p| {
-        p.creatures.extend(cids);
-        p
-      })
-      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
-    Ok((&self.current_game, vec![]))
-  }
-
-  fn remove_creatures_from_player(
-    &mut self, pid: &PlayerID, cids: &[CreatureID]
-  ) -> Result<(&Game, Vec<GameLog>), GameError> {
-    self
-      .players
-      .mutate(pid, |mut p| {
-        for cid in cids {
-          p.creatures.remove(cid);
-        }
-        p
-      })
-      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
-    Ok((&self.current_game, vec![]))
-  }
-
-  fn set_player_scene(
-    &mut self, pid: &PlayerID, scene: Option<SceneID>
-  ) -> Result<(&Game, Vec<GameLog>), GameError> {
-    self
-      .players
-      .mutate(pid, move |mut p| {
-        p.scene = scene;
-        p
-      })
-      .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
-    Ok((&self.current_game, vec![]))
   }
 
   pub fn game(&self) -> &Game {

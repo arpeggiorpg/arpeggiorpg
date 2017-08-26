@@ -475,6 +475,13 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  // ** Player Manipulation **
+  RegisterPlayer(PlayerID),
+  GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
+  UnregisterPlayer(PlayerID),
+  RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
+  SetPlayerScene(PlayerID, Option<SceneID>),
+
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
 
@@ -968,6 +975,8 @@ pub struct Game {
   #[serde(default)]
   pub items: IndexedHashMap<Item>,
   pub campaign: FolderTree<Folder>,
+  #[serde(default)]
+  pub players: IndexedHashMap<Player>,  
 }
 
 pub struct Runtime {
@@ -980,7 +989,6 @@ pub struct Runtime {
 pub struct App {
   pub current_game: Game,
   pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
-  pub players: IndexedHashMap<Player>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1145,18 +1153,17 @@ pub struct RPIGame<'a>(pub &'a Game);
 
 impl<'a> ser::Serialize for RPIApp<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("App", 3)?;
+    let mut str = serializer.serialize_struct("App", 2)?;
     let app = self.0;
     str.serialize_field("current_game", &RPIGame(&app.current_game))?;
     str.serialize_field("snapshots", &app.snapshots)?;
-    str.serialize_field("players", &app.players)?;
     str.end()
   }
 }
 
 impl<'a> ser::Serialize for RPIGame<'a> {
   fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 9)?;
+    let mut str = serializer.serialize_struct("Game", 10)?;
     let game = self.0;
 
     str.serialize_field("current_combat", &game.current_combat)?;
@@ -1171,6 +1178,7 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("scenes", &game.scenes)?;
     str.serialize_field("campaign", &game.campaign)?;
     str.serialize_field("items", &game.items)?;
+    str.serialize_field("players", &game.players)?;
     str.end()
   }
 }
