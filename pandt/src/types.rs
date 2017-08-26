@@ -976,7 +976,7 @@ pub struct Game {
   pub items: IndexedHashMap<Item>,
   pub campaign: FolderTree<Folder>,
   #[serde(default)]
-  pub players: IndexedHashMap<Player>,  
+  pub players: IndexedHashMap<Player>,
 }
 
 pub struct Runtime {

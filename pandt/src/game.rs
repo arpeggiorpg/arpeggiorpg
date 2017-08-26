@@ -43,10 +43,16 @@ impl Game {
     let change = match cmd {
       // ** Player Management **
       RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
-      GiveCreaturesToPlayer(ref pid, ref cids) => self.change_with(GameLog::GiveCreaturesToPlayer(pid.clone(), cids.clone())),
+      GiveCreaturesToPlayer(ref pid, ref cids) => {
+        self.change_with(GameLog::GiveCreaturesToPlayer(pid.clone(), cids.clone()))
+      }
       UnregisterPlayer(ref pid) => self.change_with(GameLog::UnregisterPlayer(pid.clone())),
-      RemoveCreaturesFromPlayer(ref pid, ref cids) => self.change_with(GameLog::RemoveCreaturesFromPlayer(pid.clone(), cids.clone())),
-      SetPlayerScene(ref pid, opt_sid) => self.change_with(GameLog::SetPlayerScene(pid.clone(), opt_sid)),
+      RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+        self.change_with(GameLog::RemoveCreaturesFromPlayer(pid.clone(), cids.clone()))
+      }
+      SetPlayerScene(ref pid, opt_sid) => {
+        self.change_with(GameLog::SetPlayerScene(pid.clone(), opt_sid))
+      }
 
       // ** Chat **
       ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
@@ -324,14 +330,11 @@ impl Game {
     use self::GameLog::*;
     match *log {
       // Player stuff
-
-      RegisterPlayer(ref pid) => {
-        if self.players.contains_key(pid) {
-          bail!(GameErrorEnum::PlayerAlreadyExists(pid.clone()))
-        } else {
-          self.players.insert(Player::new(pid.clone()));
-        }
-      }
+      RegisterPlayer(ref pid) => if self.players.contains_key(pid) {
+        bail!(GameErrorEnum::PlayerAlreadyExists(pid.clone()))
+      } else {
+        self.players.insert(Player::new(pid.clone()));
+      },
 
       UnregisterPlayer(ref pid) => {
         self.players.remove(pid).ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
