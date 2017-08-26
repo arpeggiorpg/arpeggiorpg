@@ -67,8 +67,10 @@ impl Scene {
     Ok(results)
   }
 
-  pub fn open_terrain_in_volume(&self, volume: Volume) -> Vec<Point3> {
-    vec![]
+  pub fn open_terrain_in_volume(&self, game: &Game, pt: Point3, volume: Volume) -> Result<Vec<Point3>, GameError> {
+    let terrain = game.get_map(self.map)?.terrain.iter();
+    let all_open = terrain.map(|pt| (*pt, *pt)).collect();
+    Ok(game.tile_system.items_within_volume(volume, pt, &all_open))
   }
 
   pub fn creatures_in_volume(&self, ts: TileSystem, pt: Point3, volume: Volume) -> Vec<CreatureID> {

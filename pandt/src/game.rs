@@ -942,8 +942,6 @@ impl Game {
   pub fn preview_volume_targets(
     &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
-    let terrain = self.get_map(scene.map)?.terrain.iter();
-    let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
 
     let cids = match ability.action {
@@ -959,12 +957,12 @@ impl Game {
         ..
       } |
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. } => {
-        self.tile_system.items_within_volume(volume, pt, &all_tiles)
+        scene.open_terrain_in_volume(self, pt, volume)?
       }
       Action::Creature { target: CreatureTarget::LineFromActor { distance }, .. } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
-        self.tile_system.items_within_volume(volume, actor_pos, &all_tiles)
+        scene.open_terrain_in_volume(self, actor_pos, volume)?
       }
       _ => vec![],
     };
