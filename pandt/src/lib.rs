@@ -34,4 +34,5 @@ pub mod foldertree;
 pub mod game;
 pub mod grid;
 pub mod indexed;
+pub mod scene;
 pub mod types;

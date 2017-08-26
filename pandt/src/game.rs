@@ -951,7 +951,6 @@ impl Game {
     let all_tiles = terrain.map(|pt| (*pt, *pt)).collect();
     let ability = self.get_ability(&ability_id)?;
 
-    // Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. }
     let cids = match ability.action {
       Action::Creature { target, .. } => self.volume_creature_targets(scene, actor_id, target, pt)?,
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
