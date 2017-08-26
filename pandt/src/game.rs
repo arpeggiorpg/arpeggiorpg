@@ -913,11 +913,6 @@ impl Game {
     }
   }
 
-  pub fn creatures_in_volume(&self, scene: &Scene, pt: Point3, volume: Volume) -> Vec<CreatureID> {
-    let creature_locations = scene.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
-    self.tile_system.items_within_volume(volume, pt, &creature_locations)
-  }
-
   // TODO: Honor terrain!
   // 1. `pt` must be visible to the caster
   // 2. volumes must not go through blocked terrain
@@ -927,12 +922,12 @@ impl Game {
   ) -> Result<Vec<CreatureID>, GameError> {
     match target {
       CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => {
-        Ok(self.creatures_in_volume(scene, pt, volume))
+        Ok(scene.creatures_in_volume(self.tile_system, pt, volume))
       }
       CreatureTarget::LineFromActor { distance } => {
         let actor_pos = scene.get_pos(actor_id)?;
         let volume = line_through_point(actor_pos, pt, distance);
-        let cids = self.creatures_in_volume(scene, actor_pos, volume);
+        let cids = scene.creatures_in_volume(self.tile_system, actor_pos, volume);
         // TODO: *ideally* we should start the line adjacent to the caster, but filtering out
         // also works.
         let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
@@ -954,7 +949,7 @@ impl Game {
     let cids = match ability.action {
       Action::Creature { target, .. } => self.volume_creature_targets(scene, actor_id, target, pt)?,
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
-        self.creatures_in_volume(scene, pt, volume)
+        scene.creatures_in_volume(self.tile_system, pt, volume)
       }
       _ => vec![],
     };
@@ -1277,7 +1272,7 @@ pub mod test {
     let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (6, 0, 0)));
     let scene = game.get_scene(t_scene_id()).unwrap();
 
-    let cids = game.creatures_in_volume(scene, pt, volume);
+    let cids = scene.creatures_in_volume(game.tile_system, pt, volume);
     let cids = HashSet::<CreatureID>::from_iter(cids);
     assert_eq!(cids, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
