@@ -8,7 +8,8 @@ extern crate bresenham;
 extern crate derive_more;
 #[macro_use]
 extern crate error_chain;
-#[macro_use] extern crate maplit;
+#[macro_use]
+extern crate maplit;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;

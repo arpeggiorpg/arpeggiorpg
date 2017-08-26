@@ -67,7 +67,11 @@ impl Scene {
     Ok(results)
   }
 
-  pub fn open_terrain_in_volume(&self, game: &Game, pt: Point3, volume: Volume) -> Result<Vec<Point3>, GameError> {
+  /// Return a set of points which are intersect a volume. Largely used for previewing the area
+  /// that will be affected by a volume-affecting ability.
+  pub fn open_terrain_in_volume(
+    &self, game: &Game, pt: Point3, volume: Volume
+  ) -> Result<Vec<Point3>, GameError> {
     let terrain = game.get_map(self.map)?.terrain.iter();
     let all_open = terrain.map(|pt| (*pt, *pt)).collect();
     Ok(game.tile_system.items_within_volume(volume, pt, &all_open))
@@ -77,5 +81,4 @@ impl Scene {
     let creature_locations = self.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
     ts.items_within_volume(volume, pt, &creature_locations)
   }
-
 }
