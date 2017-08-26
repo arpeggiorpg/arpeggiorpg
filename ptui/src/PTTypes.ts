@@ -29,7 +29,6 @@ export type VectorCM = [number, number, number];
 
 export interface App {
   snapshots: Array<Snapshot>;
-  players: I.Map<PlayerID, Player>;
   current_game: Game;
 }
 
@@ -44,6 +43,7 @@ export interface Game {
   abilities: { [index: string]: Ability };
   maps: { [index: string]: Map };
   campaign: Folder;
+  players: I.Map<PlayerID, Player>;
 }
 
 export interface Combat {
@@ -226,6 +226,12 @@ export interface Player {
 }
 
 export type GameLog =
+  | { t: "RegisterPlayer", player_id: string }
+  | { t: "UnregisterPlayer", player_id: string }
+  | { t: "GiveCreaturesToPlayer", player_id: string, creature_ids: Array<CreatureID> }
+  | { t: "RemoveCreaturesFromPlayer", player_id: string, creature_ids: Array<CreatureID> }
+  | { t: "SetPlayerScene", player_id: string, scene_id: SceneID | undefined }
+
   | { t: "ChatFromGM"; message: string }
   | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
   | {
@@ -734,6 +740,27 @@ const decodeCombatLog: Decoder<CombatLog> =
 
 export const decodeGameLog: Decoder<GameLog> =
   sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
+    RegisterPlayer: JD.map(
+      (player_id): GameLog => ({ t: "RegisterPlayer", player_id }),
+      JD.string()),
+    UnregisterPlayer: JD.map(
+      (player_id): GameLog => ({ t: "UnregisterPlayer", player_id }),
+      JD.string(),
+    ),
+    GiveCreaturesToPlayer: JD.map(
+      ([player_id, creature_ids]): GameLog =>
+        ({ t: "GiveCreaturesToPlayer", player_id, creature_ids }),
+      JD.tuple(JD.string(), JD.array(JD.string())),
+    ),
+    RemoveCreaturesFromPlayer: JD.map(
+      ([player_id, creature_ids]): GameLog =>
+        ({ t: "RemoveCreaturesFromPlayer", player_id, creature_ids }),
+      JD.tuple(JD.string(), JD.array(JD.string())),
+    ),
+    SetPlayerScene: JD.map(
+      ([player_id, scene_id]): GameLog => ({t: "SetPlayerScene", player_id, scene_id}),
+      JD.tuple(JD.string(), maybe(JD.string())),
+    ),
     ChatFromGM: JD.map((message): GameLog => ({ t: "ChatFromGM", message }), JD.string()),
     ChatFromPlayer: JD.map(
       ([player_id, message]): GameLog => ({ t: "ChatFromPlayer", player_id, message }),
@@ -960,17 +987,17 @@ const decodeGame: Decoder<Game> = JD.object(
   ["abilities", JD.dict(decodeAbility)],
   ["maps", JD.dict(decodeMap)],
   ["campaign", decodeFolder],
-  (current_combat, creatures, classes, items, scenes, abilities, maps, campaign) =>
-    ({ current_combat, creatures, classes, items, scenes, abilities, maps, campaign })
+  ["players", JD.map(I.Map, JD.dict(decodePlayer))],
+  (current_combat, creatures, classes, items, scenes, abilities, maps, campaign, players) =>
+    ({ current_combat, creatures, classes, items, scenes, abilities, maps, campaign, players })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
   ["snapshots", JD.array(JD.map(
     ls => ({ snapshot: {}, logs: ls }),
     JD.at([1], JD.array(decodeGameLog))))],
-  ["players", JD.map(I.Map, JD.dict(decodePlayer))],
   ["current_game", decodeGame],
-  (snapshots, players, current_game) => ({ snapshots, players, current_game })
+  (snapshots, current_game) => ({ snapshots, current_game })
 );
 
 export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = JD.tuple(

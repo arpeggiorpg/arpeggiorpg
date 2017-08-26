@@ -32,6 +32,16 @@ export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, 
   JSX.Element | null {
   const { log, creatures } = props;
   switch (log.t) {
+    case "RegisterPlayer":
+      return <div>Registered player {log.player_id}</div>;
+    case "UnregisterPlayer":
+      return <div>Unregistered player {log.player_id}</div>;
+    case "GiveCreaturesToPlayer":
+      return <div>Granted creatures to {log.player_id}</div>;
+    case "RemoveCreaturesFromPlayer":
+      return <div>Removed creatures from {log.player_id}</div>;
+    case "SetPlayerScene":
+      return <div>Moved {log.player_id} to a scene</div>;
     case "ChatFromGM":
       return <Flexbox>&lt;GM&gt;&nbsp;{log.message}</Flexbox>;
     case "ChatFromPlayer":

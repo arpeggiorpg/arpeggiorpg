@@ -14,7 +14,7 @@ export const PlayerMain = M.connectRedux(
   function PlayerMain(props) {
     const { ptui, dispatch } = props;
     if (ptui.state.player_id) {
-      const player = ptui.app.players.get(ptui.state.player_id);
+      const player = ptui.app.current_game.players.get(ptui.state.player_id);
       if (player) {
         return <PlayerGameView player={player} />;
       } else {
@@ -25,11 +25,11 @@ export const PlayerMain = M.connectRedux(
         <div style={{ width: "600px" }}>
           <h1>P&T</h1>
           <p>Welcome to P&T!</p>
-          {ptui.app.players.count() > 0
+          {ptui.app.current_game.players.count() > 0
             ? <div>
               <p>You can rejoin a session if you've already registered as a player.</p>
               <Menu compact={true}>
-                {ptui.app.players.keySeq().toArray().map(pid =>
+                {ptui.app.current_game.players.keySeq().toArray().map(pid =>
                   <Menu.Item key={pid}
                     onClick={() => dispatch({ type: "SetPlayerID", pid })}
                     name={pid} />)

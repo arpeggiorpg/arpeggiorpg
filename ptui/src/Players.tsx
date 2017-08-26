@@ -12,7 +12,7 @@ import * as T from './PTTypes';
 export const Players = Comp.connect(
   Comp.createDeepEqualSelector(
     [ptui => ptui.app,
-    ptui => ptui.app.players,
+    ptui => ptui.app.current_game.players,
     ptui => ptui.focused_scene(),
     ],
     (app, players, gm_scene) => ({
