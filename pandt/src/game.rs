@@ -1321,8 +1321,7 @@ pub mod test {
     let cleric = cid_cleric();
     let ability_id = abid("thorn_patch");
     let preview = game.preview_volume_targets(scene, cleric, ability_id, (0, 0, 0)).unwrap();
-    // I doubt the order of this should be considered determenistic.
-    assert_eq!(preview.0, vec![cid_cleric(), cid_ranger(), cid_rogue()]);
-
+    let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
+    assert_eq!(HashSet::from_iter(preview.0), expected);
   }
 }
