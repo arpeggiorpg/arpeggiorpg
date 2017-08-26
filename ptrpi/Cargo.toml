@@ -13,6 +13,7 @@ rocket_codegen = "0.3.0"
 rocket_contrib = "0.3.0"
 bus = "1.2.0"
 error-chain = "0.10.0"
+owning_ref = "0.3.3"
 
 [dependencies.pandt]
 path = "../pandt"

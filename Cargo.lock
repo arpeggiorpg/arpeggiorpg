@@ -4,6 +4,7 @@ version = "0.1.0"
 dependencies = [
  "bus 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pandt 0.1.0",
  "rocket 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -495,6 +496,14 @@ version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "owning_ref"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pandt"
 version = "0.1.0"
 dependencies = [
@@ -753,6 +762,11 @@ dependencies = [
 [[package]]
 name = "smallvec"
 version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "stable_deref_trait"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1031,6 +1045,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aec53c34f2d0247c5ca5d32cca1478762f301740468ee9ee6dcb7a0dd7a0c584"
 "checksum odds 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)" = "c3df9b730298cea3a1c3faa90b7e2f9df3a9c400d0936d6015e6165734eefcba"
 "checksum ordermap 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "c036a53e6bb62d7eee2edf7e087df56fd84c7bbae6a0bd93c2b9f54bddf62e03"
+"checksum owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
 "checksum parking_lot_core 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0ad2c4d148942b3560034785bf19df586ebba53351e8c78f84984147d5795eef"
 "checksum pathfinding 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "526688cea6ee6accc8acb4ad3269e736621a4c184bdcd0cab656cfb792682a11"
 "checksum pear 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)" = "87dd0e084e2c18b047658e40f89b856dfc23104011fd43f9369e873d03b7f15b"
@@ -1059,6 +1074,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "48b04779552e92037212c3615370f6bd57a40ebba7f20e554ff9f55e41a69a7b"
 "checksum serde_yaml 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "49d983aa39d2884a4b422bb11bb38f4f48fa05186e17469bc31e47d01e381111"
 "checksum smallvec 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "26aa2afb825226fa29f0315de04d5a4af5fd44adadf837296accc01a49929724"
+"checksum stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "15132e0e364248108c5e2c02e3ab539be8d6f5d52a01ca9bbf27ed657316f02b"
 "checksum state 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3205ddf193c68751abcb17262a430c4c32f0d4cdc6b7f7c8915db442b9579012"
 "checksum string-wrapper 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9f311a9c2ef37f78df273ebbe262b8b4df7d4c3afc7ec86095ff9b9e8563048c"
 "checksum strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b4d15c810519a91cf877e7e36e63fe068815c678181439f2f29e2562147c3694"

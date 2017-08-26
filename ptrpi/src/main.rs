@@ -5,6 +5,7 @@
 extern crate bus;
 #[macro_use]
 extern crate error_chain;
+extern crate owning_ref;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -22,6 +23,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time;
 
 use bus::Bus;
+use owning_ref::MutexGuardRefMut;
 
 use rocket::State;
 use rocket_contrib::Json;
@@ -31,7 +33,7 @@ mod cors;
 use cors::{PreflightCORS, CORS};
 
 use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
-                   PotentialTargets, RPIApp, RPIGame};
+                   PotentialTargets, RPIApp, RPIGame, Runtime};
 
 
 error_chain! {
@@ -62,16 +64,16 @@ type PTResult<X> = Result<CORS<Json<X>>, RPIError>;
 
 #[derive(Clone)]
 struct PT {
-  app: Arc<Mutex<App>>,
+  runtime: Arc<Mutex<Runtime>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
   saved_game_path: PathBuf,
 }
 
 impl PT {
-  fn app(&self) -> MutexGuard<App> {
-    match self.app.lock() {
-      Ok(g) => g,
-      Err(poison) => poison.into_inner(),
+  fn app(&self) -> MutexGuardRefMut<Runtime, App> {
+    match self.runtime.lock() {
+      Ok(g) => MutexGuardRefMut::new(g).map_mut(|rt| &mut rt.app),
+      Err(poison) => MutexGuardRefMut::new(poison.into_inner()).map_mut(|rt| &mut rt.app),
     }
   }
 
@@ -229,9 +231,10 @@ fn main() {
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
+  let runtime = Runtime {app};
 
   let pt = PT {
-    app: Arc::new(Mutex::new(app)),
+    runtime: Arc::new(Mutex::new(runtime)),
     pollers: Arc::new(Mutex::new(Bus::new(1000))),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
@@ -264,6 +267,6 @@ mod test {
 
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(Path::new("samplegame.yaml"));
+    ::load_app_from_path(Path::new("sample_games/samplegame.yaml"));
   }
 }

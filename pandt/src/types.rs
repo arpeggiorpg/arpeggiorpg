@@ -970,6 +970,10 @@ pub struct Game {
   pub campaign: FolderTree<Folder>,
 }
 
+pub struct Runtime {
+  pub app: App,
+}
+
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
 /// whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
