@@ -21,6 +21,7 @@ impl Game {
       scenes: IndexedHashMap::new(),
       items: IndexedHashMap::new(),
       players: IndexedHashMap::new(),
+      active_scene: None,
     }
   }
 
@@ -41,6 +42,7 @@ impl Game {
   pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
       // ** Player Management **
       RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
       GiveCreaturesToPlayer(ref pid, ref cids) => {
@@ -329,6 +331,8 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
+      SetActiveScene(m_sid) => self.active_scene = m_sid,
+
       // Player stuff
       RegisterPlayer(ref pid) => if self.players.contains_key(pid) {
         bail!(GameErrorEnum::PlayerAlreadyExists(pid.clone()))

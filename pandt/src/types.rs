@@ -439,6 +439,8 @@ pub enum GameCommand {
   /// The scene name can be None (null) to not show any scene to the player.
   SetPlayerScene(PlayerID, Option<SceneID>),
 
+  SetActiveScene(Option<SceneID>),
+
   /// Roll back to a specific snapshot + log index
   Rollback(usize, usize),
 }
@@ -475,6 +477,8 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  SetActiveScene(Option<SceneID>),
+
   // ** Player Manipulation **
   RegisterPlayer(PlayerID),
   GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
@@ -977,6 +981,10 @@ pub struct Game {
   pub campaign: FolderTree<Folder>,
   #[serde(default)]
   pub players: IndexedHashMap<Player>,
+  // The "active scene" determines which scene has mechanical effect as far as game simulation
+  // goes.
+  #[serde(default)]
+  pub active_scene: Option<SceneID>,
 }
 
 pub struct Runtime {
