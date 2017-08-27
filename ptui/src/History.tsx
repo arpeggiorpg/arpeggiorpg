@@ -32,6 +32,8 @@ export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, 
   JSX.Element | null {
   const { log, creatures } = props;
   switch (log.t) {
+    case "SetActiveScene":
+      return <div>Set the active scene</div>;
     case "RegisterPlayer":
       return <div>Registered player {log.player_id}</div>;
     case "UnregisterPlayer":

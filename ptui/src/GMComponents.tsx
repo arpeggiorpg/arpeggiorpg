@@ -172,7 +172,7 @@ export const GMScenePlayers = M.connectRedux(
       player => player.scene === scene.id);
     return <List relaxed={true}>
       <List.Item>
-        <Button onClick={() => moveAll()}>Move all here</Button>
+        <Button onClick={() => moveAll()}>Set as Active Scene and move all players</Button>
       </List.Item>
       {players_here.map(player =>
         <List.Item key={player.player_id}>{player.player_id}</List.Item>)
@@ -180,10 +180,11 @@ export const GMScenePlayers = M.connectRedux(
     </List>;
 
     function moveAll() {
-      for (const player_id of ptui.app.current_game.players.keySeq().toArray()) {
-        ptui.sendCommand(dispatch,
-          { t: 'SetPlayerScene', player_id, scene_id: scene.id });
-      }
+      const pids = ptui.app.current_game.players.keySeq().toArray();
+      const commands = pids.map(
+        (player_id): T.GameCommand => ({ t: "SetPlayerScene", player_id, scene_id: scene.id }));
+      commands.push({ t: "SetActiveScene", scene_id: scene.id });
+      dispatch(M.sendCommands(commands));
     }
   });
 
