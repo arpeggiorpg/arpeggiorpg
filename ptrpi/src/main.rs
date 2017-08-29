@@ -19,8 +19,10 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{mpsc, Arc, Mutex, MutexGuard};
+use std::thread;
 use std::time;
+
 
 use bus::Bus;
 use owning_ref::MutexGuardRefMut;
@@ -227,6 +229,62 @@ fn load_app_from_path(filename: &Path) -> App {
   serde_yaml::from_str(&apps).unwrap()
 }
 
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PTRequest {
+  PerformCommand(GameCommand),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PTResponse {
+  JSON(String),
+}
+
+struct Actor<Req, Resp> {
+  request_sender: mpsc::Sender<ActorMsg<Req>>,
+  // request_receiver: mpsc::Receiver<PTRequest>,
+  // response_sender: mpsc::Sender<PTResponse>,
+  response_receiver: mpsc::Receiver<Resp>,
+}
+
+enum ActorMsg<Req> {
+  Payload(Req),
+  Stop,
+}
+
+impl<Req, Resp> Actor<Req, Resp>
+where
+  Req: Send + 'static,
+  Resp: Send + 'static,
+{
+  fn spawn<F>(handler: F) -> Self
+  where
+    F: Fn(Req) -> Resp,
+    F: Send + 'static,
+  {
+    let (request_sender, request_receiver) = mpsc::channel();
+    let (response_sender, response_receiver) = mpsc::channel();
+    let actor = Actor { request_sender, response_receiver };
+    thread::spawn(move || loop {
+      let request = request_receiver.recv().unwrap();
+      match request {
+        ActorMsg::Payload(r) => response_sender.send(handler(r)).unwrap(),
+        ActorMsg::Stop => break,
+      }
+    });
+    actor
+  }
+
+  fn send(&self, message: Req) -> Resp {
+    self.request_sender.send(ActorMsg::Payload(message)).unwrap();
+    return self.response_receiver.recv().unwrap();
+  }
+
+  fn stop(&self) {
+    self.request_sender.send(ActorMsg::Stop).unwrap();
+  }
+}
+
 fn main() {
   let game_dir = env::args().nth(1).unwrap_or_else(|| {
     env::current_dir()
@@ -272,9 +330,21 @@ fn main() {
 #[cfg(test)]
 mod test {
   use std::path::Path;
+  use Actor;
 
   #[test]
   fn load_samplegame_yaml() {
     ::load_app_from_path(Path::new("sample_games/samplegame.yaml"));
+  }
+
+  #[test]
+  fn actors() {
+    fn handler(i: usize) -> usize {
+      i + 1
+    }
+    let actor = Actor::spawn(handler);
+    assert_eq!(actor.send(1), 2);
+    assert_eq!(actor.send(2), 3);
+    actor.stop()
   }
 }
