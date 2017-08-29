@@ -232,6 +232,7 @@ fn load_app_from_path(filename: &Path) -> App {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PTRequest {
+  GetApp,
   PerformCommand(GameCommand),
 }
 
@@ -241,14 +242,11 @@ enum PTResponse {
 }
 
 struct Actor<Req, Resp> {
-  request_sender: mpsc::Sender<ActorMsg<Req>>,
-  // request_receiver: mpsc::Receiver<PTRequest>,
-  // response_sender: mpsc::Sender<PTResponse>,
-  response_receiver: mpsc::Receiver<Resp>,
+  request_sender: mpsc::Sender<ActorMsg<Req, Resp>>,
 }
 
-enum ActorMsg<Req> {
-  Payload(Req),
+enum ActorMsg<Req, Resp> {
+  Payload(Req, mpsc::Sender<Resp>),
   Stop,
 }
 
@@ -263,12 +261,11 @@ where
     F: Send + 'static,
   {
     let (request_sender, request_receiver) = mpsc::channel();
-    let (response_sender, response_receiver) = mpsc::channel();
-    let actor = Actor { request_sender, response_receiver };
+    let actor = Actor { request_sender };
     thread::spawn(move || loop {
       let request = request_receiver.recv().unwrap();
       match request {
-        ActorMsg::Payload(r) => response_sender.send(handler(r)).unwrap(),
+        ActorMsg::Payload(r, sender) => sender.send(handler(r)).unwrap(),
         ActorMsg::Stop => break,
       }
     });
@@ -276,13 +273,18 @@ where
   }
 
   fn send(&self, message: Req) -> Resp {
-    self.request_sender.send(ActorMsg::Payload(message)).unwrap();
-    return self.response_receiver.recv().unwrap();
+    let (response_sender, response_receiver) = mpsc::channel();
+    self.request_sender.send(ActorMsg::Payload(message, response_sender)).unwrap();
+    return response_receiver.recv().unwrap();
   }
 
   fn stop(&self) {
     self.request_sender.send(ActorMsg::Stop).unwrap();
   }
+}
+
+fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
+  PTResponse::JSON("Foo".to_string())
 }
 
 fn main() {
@@ -298,6 +300,8 @@ fn main() {
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
   let runtime = Runtime { app };
+
+  // let actor = Actor::spawn(move |request| handle_request(&mut runtime, request));
 
   let pt = PT {
     runtime: Arc::new(Mutex::new(runtime)),
