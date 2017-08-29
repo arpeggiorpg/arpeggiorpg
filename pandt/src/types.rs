@@ -989,6 +989,7 @@ pub struct Game {
 
 pub struct Runtime {
   pub app: App,
+  // pub world: Option<CollisionWorld>,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
@@ -1046,6 +1047,8 @@ pub struct Scene {
   #[serde(default)]
   pub focused_creatures: Vec<CreatureID>,
 }
+
+pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>;
 
 #[derive(Debug)]
 pub enum CollisionData {

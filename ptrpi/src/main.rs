@@ -118,7 +118,10 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
   let json = {
     let mut app = pt.app();
-    let game = app.perform_unchecked(command.0).map(|(g, l)| (RPIGame(g), l)).map_err(|e| format!("Error: {}", e));
+    let game = app
+      .perform_unchecked(command.0)
+      .map(|(g, l)| (RPIGame(g), l))
+      .map_err(|e| format!("Error: {}", e));
     serde_json::to_string(&game)
   };
   pt.pollers()?.broadcast(());
@@ -140,8 +143,9 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
 }
 
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
-fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
-  -> PTResult<PotentialTargets> {
+fn target_options(
+  pt: State<PT>, scene_id: String, cid: String, abid: String
+) -> PTResult<PotentialTargets> {
   let app = pt.app();
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
@@ -150,14 +154,16 @@ fn target_options(pt: State<PT>, scene_id: String, cid: String, abid: String)
 }
 
 #[route(OPTIONS, "/preview_volume_targets/<scene>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-fn options_creatures_in_volume(scene: String, actor_id: String, ability_id: String, x: String, y: String, z: String)
-  -> PreflightCORS {
+fn options_creatures_in_volume(
+  scene: String, actor_id: String, ability_id: String, x: String, y: String, z: String
+) -> PreflightCORS {
   options_handler()
 }
 
 #[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-fn preview_volume_targets(pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16)
-  -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
+fn preview_volume_targets(
+  pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16
+) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
   let app = pt.app();
   let sid = scene_id.parse()?;
   let actor_id = actor_id.parse()?;
@@ -233,7 +239,7 @@ fn main() {
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
-  let runtime = Runtime {app};
+  let runtime = Runtime { app };
 
   let pt = PT {
     runtime: Arc::new(Mutex::new(runtime)),

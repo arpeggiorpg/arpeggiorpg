@@ -25,6 +25,10 @@ impl Game {
     }
   }
 
+  pub fn get_world(&self) -> Option<CollisionWorld> {
+    None
+  }
+
   pub fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
     let mut map = HashMap::new();
     for creature in self.creatures.values() {
@@ -934,7 +938,6 @@ impl Game {
         }
         change
       }
-      _ => bail!(GameErrorEnum::InvalidTargetForAction(ability.action.clone(), target)),
     };
 
     if in_combat {
