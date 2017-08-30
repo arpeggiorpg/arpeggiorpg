@@ -5,7 +5,6 @@
 extern crate bus;
 #[macro_use]
 extern crate error_chain;
-extern crate owning_ref;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -25,7 +24,6 @@ use std::time;
 
 
 use bus::Bus;
-use owning_ref::MutexGuardRefMut;
 
 use rocket::State;
 use rocket_contrib::Json;
