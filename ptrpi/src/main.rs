@@ -308,12 +308,15 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
       PTResponse::Success
     }
     PTRequest::Perform(command) => {
-      let game = runtime
-        .app
-        .perform_unchecked(command)
-        .map(|(g, l)| (RPIGame(g), l))
-        .map_err(|e| format!("Error: {}", e));
-      PTResponse::JSON(serde_json::to_string(&game).expect("Must be able to serialize Games"))
+      let game_and_logs =
+        runtime.app.perform_unchecked(command).map_err(|e| format!("Error: {}", e));
+      if let Ok((g, _)) = game_and_logs {
+        runtime.world = g.get_world();
+      }
+      let rpi_game_and_logs = game_and_logs.map(|(g, l)| (RPIGame(g), l));
+      PTResponse::JSON(
+        serde_json::to_string(&rpi_game_and_logs).expect("Must be able to serialize Games"),
+      )
     }
   }
 }
@@ -375,10 +378,10 @@ mod test {
 
   #[test]
   fn actors() {
-    fn handler(i: usize) -> usize {
+    fn handler(_: &mut (), i: usize) -> usize {
       i + 1
     }
-    let actor = Actor::spawn(handler);
+    let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.send(2), 3);
     actor.stop()
@@ -386,10 +389,10 @@ mod test {
 
   #[test]
   fn actor_clone() {
-    fn handler(i: usize) -> usize {
+    fn handler(_: &mut (), i: usize) -> usize {
       i + 1
     }
-    let actor = Actor::spawn(handler);
+    let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.clone().send(2), 3);
     actor.stop()
