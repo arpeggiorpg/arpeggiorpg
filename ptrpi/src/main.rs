@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
-use std::sync::{mpsc, Arc, Mutex, MutexGuard};
+use std::sync::{mpsc, Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 use std::time;
 
@@ -51,6 +51,10 @@ error_chain! {
   }
 
   errors {
+    UnexpectedResponse {
+      description("Unexpected response. This is a bug.")
+      display("Unexpected response. This is a bug.")
+    }
     LockError(resource: String) {
       description("Some locked resource is poisoned. The application probably needs restarted.")
       display("The lock on {} is poisoned. The application probably needs restarted.", resource)
@@ -66,21 +70,25 @@ type PTResult<X> = Result<CORS<Json<X>>, RPIError>;
 
 #[derive(Clone)]
 struct PT {
-  runtime: Arc<Mutex<Runtime>>,
+  actor: Arc<Mutex<Actor<PTRequest, PTResponse>>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
   saved_game_path: PathBuf,
 }
 
 impl PT {
-  fn app(&self) -> MutexGuardRefMut<Runtime, App> {
-    match self.runtime.lock() {
-      Ok(g) => MutexGuardRefMut::new(g).map_mut(|rt| &mut rt.app),
-      Err(poison) => MutexGuardRefMut::new(poison.into_inner()).map_mut(|rt| &mut rt.app),
-    }
-  }
-
   fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
     self.pollers.lock().map_err(|_| RPIErrorKind::LockError("pollers".to_string()).into())
+  }
+
+  fn clone_app(&self) -> Result<App, RPIError> {
+    if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
+      Ok(app)
+    } else {
+      bail!(RPIErrorKind::UnexpectedResponse)
+    }
+  }
+  fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
+    self.actor.lock().map_err(|_| RPIErrorKind::LockError("actor".to_string()).into()).map(|ac| ac.clone())
   }
 }
 
@@ -91,9 +99,9 @@ fn options_handler() -> PreflightCORS {
 
 #[get("/")]
 fn get_app(pt: State<PT>) -> Result<CORS<String>, RPIError> {
-  let app = pt.app();
-  let result = serde_json::to_string(&RPIApp(&*app))?;
-  Ok(CORS::any(result))
+  let app = pt.clone_app()?;
+  let json = serde_json::to_string(&RPIApp(&app))?;
+  Ok(CORS::any(json))
 }
 
 /// If the client is polling with a non-current app "version", then immediately return the current
@@ -101,11 +109,11 @@ fn get_app(pt: State<PT>) -> Result<CORS<String>, RPIError> {
 #[get("/poll/<snapshot_len>/<log_len>")]
 fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<String>, RPIError> {
   {
-    let app = pt.app();
+    let app = pt.clone_app()?;
     if app.snapshots.len() != snapshot_len ||
       app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
     {
-      let result = serde_json::to_string(&RPIApp(&*app))?;
+      let result = serde_json::to_string(&RPIApp(&app))?;
       return Ok(CORS::any(result));
     }
   }
@@ -118,27 +126,23 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 
 #[post("/", format = "application/json", data = "<command>")]
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
-  let json = {
-    let mut app = pt.app();
-    let game = app
-      .perform_unchecked(command.0)
-      .map(|(g, l)| (RPIGame(g), l))
-      .map_err(|e| format!("Error: {}", e));
-    serde_json::to_string(&game)
-  };
-  pt.pollers()?.broadcast(());
-  Ok(CORS::any(json?))
+  if let PTResponse::JSON(json) = pt.actor()?.send(PTRequest::Perform(command.0)) {
+    pt.pollers()?.broadcast(());
+    Ok(CORS::any(json))
+  } else {
+    bail!(RPIErrorKind::UnexpectedResponse);
+  }
 }
 
 #[get("/combat_movement_options")]
 fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
-  let app = pt.app();
+  let app = pt.clone_app()?;
   Ok(CORS::any(Json(app.get_combat_movement_options()?)))
 }
 
 #[get("/movement_options/<scene_id>/<cid>")]
 fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Vec<Point3>> {
-  let app = pt.app();
+  let app = pt.clone_app()?;
   let cid = cid.parse()?;
   let scene = scene_id.parse()?;
   Ok(CORS::any(Json(app.get_movement_options(scene, cid)?)))
@@ -148,7 +152,7 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
 fn target_options(
   pt: State<PT>, scene_id: String, cid: String, abid: String
 ) -> PTResult<PotentialTargets> {
-  let app = pt.app();
+  let app = pt.clone_app()?;
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
   let abid = abid.parse()?;
@@ -166,7 +170,7 @@ fn options_creatures_in_volume(
 fn preview_volume_targets(
   pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16
 ) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
-  let app = pt.app();
+  let app = pt.clone_app()?;
   let sid = scene_id.parse()?;
   let actor_id = actor_id.parse()?;
   let ability_id = ability_id.parse()?;
@@ -195,7 +199,7 @@ fn load_saved_game(pt: State<PT>, name: String) -> Result<CORS<String>, RPIError
   let mut buffer = String::new();
   File::open(path)?.read_to_string(&mut buffer)?;
   let app = serde_yaml::from_str(&buffer)?;
-  *(pt.app()) = app;
+  pt.actor()?.send(PTRequest::SetApp(app));
   get_app(pt)
 }
 
@@ -204,7 +208,7 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   let new_path = child_path(&pt.saved_game_path, name)?;
   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
   // without the extra magic that decorates the data with dynamic data for clients.
-  let yaml = serde_yaml::to_string(&*pt.app())?;
+  let yaml = serde_yaml::to_string(&pt.clone_app()?)?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(CORS::any(Json(())))
 }
@@ -232,15 +236,19 @@ fn load_app_from_path(filename: &Path) -> App {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PTRequest {
-  GetApp,
-  PerformCommand(GameCommand),
+  GetReadOnlyApp,
+  Perform(GameCommand),
+  SetApp(App),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PTResponse {
+  App(App),
   JSON(String),
+  Success,
 }
 
+#[derive(Clone)]
 struct Actor<Req, Resp> {
   request_sender: mpsc::Sender<ActorMsg<Req, Resp>>,
 }
@@ -255,9 +263,9 @@ where
   Req: Send + 'static,
   Resp: Send + 'static,
 {
-  fn spawn<F>(handler: F) -> Self
+  fn spawn<F>(mut handler: F) -> Self
   where
-    F: Fn(Req) -> Resp,
+    F: FnMut(Req) -> Resp,
     F: Send + 'static,
   {
     let (request_sender, request_receiver) = mpsc::channel();
@@ -284,7 +292,17 @@ where
 }
 
 fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
-  PTResponse::JSON("Foo".to_string())
+  match req {
+    PTRequest::GetReadOnlyApp => PTResponse::App(runtime.app.clone()),
+    PTRequest::SetApp(app) => {runtime.app = app; PTResponse::Success},
+    PTRequest::Perform(command) => {
+      let game = runtime.app
+        .perform_unchecked(command)
+        .map(|(g, l)| (RPIGame(g), l))
+        .map_err(|e| format!("Error: {}", e));
+      PTResponse::JSON(serde_json::to_string(&game).expect("Must be able to serialize Games"))
+    }
+  }
 }
 
 fn main() {
@@ -299,12 +317,11 @@ fn main() {
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
-  let runtime = Runtime { app };
-
-  // let actor = Actor::spawn(move |request| handle_request(&mut runtime, request));
+  let mut runtime = Runtime { app };
+  let actor = Actor::spawn(move |request| handle_request(&mut runtime, request));
 
   let pt = PT {
-    runtime: Arc::new(Mutex::new(runtime)),
+    actor: Arc::new(Mutex::new(actor)),
     pollers: Arc::new(Mutex::new(Bus::new(1000))),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
@@ -351,4 +368,16 @@ mod test {
     assert_eq!(actor.send(2), 3);
     actor.stop()
   }
+
+  #[test]
+  fn actor_clone() {
+    fn handler(i: usize) -> usize {
+      i + 1
+    }
+    let actor = Actor::spawn(handler);
+    assert_eq!(actor.send(1), 2);
+    assert_eq!(actor.clone().send(2), 3);
+    actor.stop()
+  }
+
 }
