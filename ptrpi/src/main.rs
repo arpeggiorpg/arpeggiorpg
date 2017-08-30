@@ -35,7 +35,7 @@ use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point
 
 
 error_chain! {
-  types { RPIError, RPIErrorKind, RPIResultExt; }
+  types { RPIError, RPIErrorEnum, RPIResultExt; }
 
   links {
     GameError(GameError, GameErrorEnum);
@@ -73,21 +73,21 @@ struct PT {
 
 impl PT {
   fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
-    self.pollers.lock().map_err(|_| RPIErrorKind::LockError("pollers".to_string()).into())
+    self.pollers.lock().map_err(|_| RPIErrorEnum::LockError("pollers".to_string()).into())
   }
 
   fn clone_app(&self) -> Result<App, RPIError> {
     if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
       Ok(app)
     } else {
-      bail!(RPIErrorKind::UnexpectedResponse)
+      bail!(RPIErrorEnum::UnexpectedResponse)
     }
   }
   fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
     self
       .actor
       .lock()
-      .map_err(|_| RPIErrorKind::LockError("actor".to_string()).into())
+      .map_err(|_| RPIErrorEnum::LockError("actor".to_string()).into())
       .map(|ac| ac.clone())
   }
 }
@@ -125,7 +125,7 @@ fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIErro
     pt.pollers()?.broadcast(());
     Ok(json)
   } else {
-    bail!(RPIErrorKind::UnexpectedResponse);
+    bail!(RPIErrorEnum::UnexpectedResponse);
   }
 }
 
@@ -203,12 +203,12 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
 
 fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
   if name.contains("/") || name.contains(":") || name.contains("\\") {
-    bail!(RPIErrorKind::InsecurePath(name));
+    bail!(RPIErrorEnum::InsecurePath(name));
   }
   let new_path = parent.join(name.clone());
   for p in &new_path {
     if p == "." || p == ".." {
-      bail!(RPIErrorKind::InsecurePath(name));
+      bail!(RPIErrorEnum::InsecurePath(name));
     }
   }
   Ok(new_path)
