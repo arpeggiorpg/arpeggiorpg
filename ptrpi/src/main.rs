@@ -88,7 +88,11 @@ impl PT {
     }
   }
   fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
-    self.actor.lock().map_err(|_| RPIErrorKind::LockError("actor".to_string()).into()).map(|ac| ac.clone())
+    self
+      .actor
+      .lock()
+      .map_err(|_| RPIErrorKind::LockError("actor".to_string()).into())
+      .map(|ac| ac.clone())
   }
 }
 
@@ -263,18 +267,23 @@ where
   Req: Send + 'static,
   Resp: Send + 'static,
 {
-  fn spawn<F>(mut handler: F) -> Self
+  fn spawn<Init, S, Handler>(init: Init, mut handler: Handler) -> Self
   where
-    F: FnMut(Req) -> Resp,
-    F: Send + 'static,
+    Init: FnOnce() -> S,
+    Init: Send + 'static,
+    Handler: FnMut(&mut S, Req) -> Resp,
+    Handler: Send + 'static,
   {
     let (request_sender, request_receiver) = mpsc::channel();
     let actor = Actor { request_sender };
-    thread::spawn(move || loop {
-      let request = request_receiver.recv().unwrap();
-      match request {
-        ActorMsg::Payload(r, sender) => sender.send(handler(r)).unwrap(),
-        ActorMsg::Stop => break,
+    thread::spawn(move || {
+      let mut state = init();
+      loop {
+        let request = request_receiver.recv().unwrap();
+        match request {
+          ActorMsg::Payload(r, sender) => sender.send(handler(&mut state, r)).unwrap(),
+          ActorMsg::Stop => break,
+        }
       }
     });
     actor
@@ -294,9 +303,13 @@ where
 fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
   match req {
     PTRequest::GetReadOnlyApp => PTResponse::App(runtime.app.clone()),
-    PTRequest::SetApp(app) => {runtime.app = app; PTResponse::Success},
+    PTRequest::SetApp(app) => {
+      runtime.app = app;
+      PTResponse::Success
+    }
     PTRequest::Perform(command) => {
-      let game = runtime.app
+      let game = runtime
+        .app
         .perform_unchecked(command)
         .map(|(g, l)| (RPIGame(g), l))
         .map_err(|e| format!("Error: {}", e));
@@ -317,8 +330,10 @@ fn main() {
   let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
-  let mut runtime = Runtime { app };
-  let actor = Actor::spawn(move |request| handle_request(&mut runtime, request));
+  let actor = Actor::spawn(
+    move || Runtime { app, world: None },
+    move |runtime, request| handle_request(runtime, request),
+  );
 
   let pt = PT {
     actor: Arc::new(Mutex::new(actor)),

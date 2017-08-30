@@ -989,7 +989,7 @@ pub struct Game {
 
 pub struct Runtime {
   pub app: App,
-  // pub world: Option<CollisionWorld>,
+  pub world: Option<CollisionWorld>,
 }
 
 /// A data structure maintaining state for the whole app. It keeps track of the history of the
