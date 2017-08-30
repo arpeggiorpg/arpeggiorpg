@@ -7,7 +7,7 @@ extern crate bus;
 extern crate error_chain;
 extern crate rocket;
 extern crate rocket_contrib;
-extern crate serde;
+extern crate rocket_cors;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
-use std::sync::{mpsc, Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{mpsc, Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time;
 
@@ -28,9 +28,7 @@ use bus::Bus;
 use rocket::State;
 use rocket_contrib::Json;
 use rocket::http::Method;
-
-mod cors;
-use cors::{PreflightCORS, CORS};
+use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
                    PotentialTargets, RPIApp, RPIGame, Runtime};
@@ -64,7 +62,7 @@ error_chain! {
   }
 }
 
-type PTResult<X> = Result<CORS<Json<X>>, RPIError>;
+type PTResult<X> = Result<Json<X>, RPIError>;
 
 #[derive(Clone)]
 struct PT {
@@ -94,29 +92,24 @@ impl PT {
   }
 }
 
-#[route(OPTIONS, "/")]
-fn options_handler() -> PreflightCORS {
-  CORS::preflight("*").methods(vec![Method::Options, Method::Post]).headers(vec!["Content-Type"])
-}
-
 #[get("/")]
-fn get_app(pt: State<PT>) -> Result<CORS<String>, RPIError> {
+fn get_app(pt: State<PT>) -> Result<String, RPIError> {
   let app = pt.clone_app()?;
   let json = serde_json::to_string(&RPIApp(&app))?;
-  Ok(CORS::any(json))
+  Ok(json)
 }
 
 /// If the client is polling with a non-current app "version", then immediately return the current
 /// App. Otherwise, wait 30 seconds for any new changes.
 #[get("/poll/<snapshot_len>/<log_len>")]
-fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<String>, RPIError> {
+fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String, RPIError> {
   {
     let app = pt.clone_app()?;
     if app.snapshots.len() != snapshot_len ||
       app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
     {
       let result = serde_json::to_string(&RPIApp(&app))?;
-      return Ok(CORS::any(result));
+      return Ok(result);
     }
   }
 
@@ -127,10 +120,10 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<CORS<S
 }
 
 #[post("/", format = "application/json", data = "<command>")]
-fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, RPIError> {
+fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
   if let PTResponse::JSON(json) = pt.actor()?.send(PTRequest::Perform(command.0)) {
     pt.pollers()?.broadcast(());
-    Ok(CORS::any(json))
+    Ok(json)
   } else {
     bail!(RPIErrorKind::UnexpectedResponse);
   }
@@ -139,7 +132,7 @@ fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<CORS<String>, R
 #[get("/combat_movement_options")]
 fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
   let app = pt.clone_app()?;
-  Ok(CORS::any(Json(app.get_combat_movement_options()?)))
+  Ok(Json(app.get_combat_movement_options()?))
 }
 
 #[get("/movement_options/<scene_id>/<cid>")]
@@ -147,7 +140,7 @@ fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Ve
   let app = pt.clone_app()?;
   let cid = cid.parse()?;
   let scene = scene_id.parse()?;
-  Ok(CORS::any(Json(app.get_movement_options(scene, cid)?)))
+  Ok(Json(app.get_movement_options(scene, cid)?))
 }
 
 #[get("/target_options/<scene_id>/<cid>/<abid>")]
@@ -158,14 +151,7 @@ fn target_options(
   let scene = scene_id.parse()?;
   let cid = cid.parse()?;
   let abid = abid.parse()?;
-  Ok(CORS::any(Json(app.get_target_options(scene, cid, abid)?)))
-}
-
-#[route(OPTIONS, "/preview_volume_targets/<scene>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-fn options_creatures_in_volume(
-  scene: String, actor_id: String, ability_id: String, x: String, y: String, z: String
-) -> PreflightCORS {
-  options_handler()
+  Ok(Json(app.get_target_options(scene, cid, abid)?))
 }
 
 #[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
@@ -177,7 +163,7 @@ fn preview_volume_targets(
   let actor_id = actor_id.parse()?;
   let ability_id = ability_id.parse()?;
   let point = (x, y, z);
-  Ok(CORS::any(Json(app.preview_volume_targets(sid, actor_id, ability_id, point)?)))
+  Ok(Json(app.preview_volume_targets(sid, actor_id, ability_id, point)?))
 }
 
 #[get("/saved_games")]
@@ -192,11 +178,11 @@ fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
       }
     }
   }
-  Ok(CORS::any(Json(result)))
+  Ok(Json(result))
 }
 
 #[post("/saved_games/<name>/load")]
-fn load_saved_game(pt: State<PT>, name: String) -> Result<CORS<String>, RPIError> {
+fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
   let path = child_path(&pt.saved_game_path, name)?;
   let mut buffer = String::new();
   File::open(path)?.read_to_string(&mut buffer)?;
@@ -212,7 +198,7 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   // without the extra magic that decorates the data with dynamic data for clients.
   let yaml = serde_yaml::to_string(&pt.clone_app()?)?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
-  Ok(CORS::any(Json(())))
+  Ok(Json(()))
 }
 
 fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
@@ -342,18 +328,24 @@ fn main() {
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
+  let cors_opts = rocket_cors::Cors {
+    allowed_origins: AllowedOrigins::all(),
+    allowed_methods: vec![Method::Get, Method::Post].into_iter().map(From::from).collect(),
+    allowed_headers: AllowedHeaders::all(),
+    allow_credentials: true,
+    ..Default::default()
+  };
+
   rocket::ignite()
     .mount(
       "/",
       routes![
         get_app,
         poll_app,
-        options_handler,
         post_app,
         combat_movement_options,
         movement_options,
         target_options,
-        options_creatures_in_volume,
         preview_volume_targets,
         list_saved_games,
         load_saved_game,
@@ -361,6 +353,7 @@ fn main() {
       ],
     )
     .manage(pt)
+    .attach(cors_opts)
     .launch();
 }
 

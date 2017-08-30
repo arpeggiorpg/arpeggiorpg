@@ -11,6 +11,7 @@ serde_yaml = "0.7.0"
 rocket = "0.3.0"
 rocket_codegen = "0.3.0"
 rocket_contrib = "0.3.0"
+rocket_cors = "0.2.0"
 bus = "1.2.0"
 error-chain = "0.10.0"
 
