@@ -5,7 +5,7 @@ use types::*;
 impl Scene {
   pub fn create(creation: SceneCreation) -> Scene {
     Scene {
-      id: SceneID::new(),
+      id: SceneID::gen(),
       name: creation.name,
       background_image_url: creation.background_image_url.clone(),
       map: creation.map,

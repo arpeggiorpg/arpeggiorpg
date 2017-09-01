@@ -144,7 +144,7 @@ impl ::std::str::FromStr for ConditionID {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(Uuid);
 impl CreatureID {
-  pub fn new() -> CreatureID {
+  pub fn gen() -> CreatureID {
     CreatureID(Uuid::new_v4())
   }
   pub fn to_string(&self) -> String {
@@ -162,7 +162,7 @@ impl ::std::str::FromStr for CreatureID {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct ItemID(Uuid);
 impl ItemID {
-  pub fn new() -> ItemID {
+  pub fn gen() -> ItemID {
     ItemID(Uuid::new_v4())
   }
   pub fn to_string(&self) -> String {
@@ -181,7 +181,7 @@ impl ::std::str::FromStr for ItemID {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct SceneID(Uuid);
 impl SceneID {
-  pub fn new() -> SceneID {
+  pub fn gen() -> SceneID {
     SceneID(Uuid::new_v4())
   }
   pub fn to_string(&self) -> String {
@@ -199,7 +199,7 @@ impl ::std::str::FromStr for SceneID {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct MapID(Uuid);
 impl MapID {
-  pub fn new() -> MapID {
+  pub fn gen() -> MapID {
     MapID(Uuid::new_v4())
   }
   pub fn to_string(&self) -> String {
@@ -1098,7 +1098,7 @@ impl Map {
 
   pub fn new(name: String, terrain: Vec<Point3>) -> Map {
     Map {
-      id: MapID::new(),
+      id: MapID::gen(),
       name: name,
       terrain: terrain,
       specials: vec![],

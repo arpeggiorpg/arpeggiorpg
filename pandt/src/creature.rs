@@ -187,7 +187,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 impl Creature {
   pub fn create(spec: &CreatureCreation) -> Creature {
     Creature {
-      id: CreatureID::new(),
+      id: CreatureID::gen(),
       name: spec.name.to_string(),
       class: spec.class.clone(),
       speed: Distance(STANDARD_CREATURE_SPEED),

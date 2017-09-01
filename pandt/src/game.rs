@@ -74,11 +74,11 @@ impl Game {
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
       CopyFolderItem { source, item_id, dest } => {
         let new_item_id = match &item_id {
-          &FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::new()),
+          &FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
           &FolderItemID::NoteID(_) => item_id.clone(),
-          &FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::new()),
-          &FolderItemID::MapID(_) => FolderItemID::MapID(MapID::new()),
-          &FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::new()),
+          &FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
+          &FolderItemID::MapID(_) => FolderItemID::MapID(MapID::gen()),
+          &FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
           &FolderItemID::SubfolderID(_) => item_id.clone(),
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
@@ -86,7 +86,7 @@ impl Game {
       DeleteFolderItem(path, item_id) => self.change_with(GameLog::DeleteFolderItem(path, item_id)),
 
       CreateItem(path, name) => {
-        let item = Item { id: ItemID::new(), name };
+        let item = Item { id: ItemID::gen(), name };
         self.change_with(GameLog::CreateItem(path, item))
       }
       EditItem(item) => self.change_with(GameLog::EditItem(item)),
@@ -1236,7 +1236,7 @@ pub mod test {
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
-    let non = CreatureID::new();
+    let non = CreatureID::gen();
     let result = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), vec![non]));
     match result {
       Err(GameError(GameErrorEnum::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
