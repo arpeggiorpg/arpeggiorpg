@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use types::*;
-use indexed::IndexedHashMap;
 
 // random misplaced notes
 //

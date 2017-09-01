@@ -1446,14 +1446,14 @@ pub mod test {
     let heal = t_heal();
     let fireball = t_fireball();
     let piercing_shot = t_piercing_shot();
-    HashMap::from_iter(vec![
-      (abid("punch"), punch),
-      (abid("shoot"), shoot),
-      (abid("heal"), heal),
-      (abid("fireball"), fireball),
-      (abid("piercing_shot"), piercing_shot),
-      (abid("thorn_patch"), t_thorn_patch()),
-    ])
+    hashmap!{
+      abid("punch") => punch,
+      abid("shoot") => shoot,
+      abid("heal") => heal,
+      abid("fireball") => fireball,
+      abid("piercing_shot") => piercing_shot,
+      abid("thorn_patch") => t_thorn_patch(),
+    }
   }
 
   #[test]

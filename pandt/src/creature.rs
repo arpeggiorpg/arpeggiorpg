@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::cmp;
-use std::sync::atomic;
-use std::sync::atomic::Ordering;
 
 use indexed::*;
 use types::*;

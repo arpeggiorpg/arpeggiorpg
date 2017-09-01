@@ -434,7 +434,7 @@ impl Game {
             self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
           }
           (&FolderItemID::MapID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::SubfolderID(_), _) => unimplemented!(),
+          (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
           (&FolderItemID::NoteID(_), _) => panic!("Can't clone notes... yet?"),
         }
       }
