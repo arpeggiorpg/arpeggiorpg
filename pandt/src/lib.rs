@@ -15,7 +15,6 @@ extern crate ncollide;
 extern crate nonempty;
 extern crate num_traits;
 extern crate odds;
-extern crate pathfinding;
 extern crate rand;
 extern crate serde;
 #[macro_use]
