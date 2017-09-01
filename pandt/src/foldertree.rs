@@ -70,7 +70,7 @@ impl<T> FolderTree<T> {
   ) -> Result<FolderPath, FolderTreeError> {
     let new_full_path = parent.child(new_child.clone());
     {
-      let mut pdata = self.get_data_mut(&parent)?;
+      let pdata = self.get_data_mut(&parent)?;
       if pdata.1.contains(&new_child) {
         return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
       }
@@ -454,7 +454,7 @@ mod test {
   fn get_mut_root() {
     let mut ftree = FolderTree::new("Root node!".to_string());
     {
-      let mut root_node = ftree.get_mut(&fpath("")).unwrap();
+      let root_node = ftree.get_mut(&fpath("")).unwrap();
       assert_eq!(root_node, &mut "Root node!".to_string());
       root_node.push_str(" Okay.");
     }

@@ -23,6 +23,7 @@ extern crate serde_derive;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
+#[cfg(test)]
 extern crate serde_yaml;
 extern crate string_wrapper;
 #[cfg(test)]

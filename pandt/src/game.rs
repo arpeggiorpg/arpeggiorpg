@@ -322,7 +322,7 @@ impl Game {
   fn set_item_count(
     &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
   ) -> Result<(), GameError> {
-    self.mutate_owner_inventory(owner, move |mut inventory: &mut Inventory| if count <= 0 {
+    self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| if count <= 0 {
       inventory.remove(&item_id).unwrap_or(0);
     } else {
       inventory.insert(item_id, count);
@@ -1011,7 +1011,6 @@ impl Game {
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
         scene.creatures_in_volume(self.tile_system, pt, volume)
       }
-      _ => vec![],
     };
     let tiles = match ability.action {
       Action::Creature {
@@ -1178,7 +1177,6 @@ pub mod test {
   use combat::test::*;
   use types::test::*;
   use grid::test::*;
-  use creature::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
     t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))

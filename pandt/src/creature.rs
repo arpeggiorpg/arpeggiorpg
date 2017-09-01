@@ -227,8 +227,7 @@ impl Creature {
         new.conditions.insert(*id, con.apply(*dur));
       }
       CreatureLog::DecrementConditionRemaining(ref id) => {
-        let mut cond =
-          new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
+        let cond = new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
           Duration::Interminate => bail!(GameErrorEnum::BuggyProgram(
             "Tried to decrease condition duration of an \
