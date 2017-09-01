@@ -31,6 +31,14 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     self.creature.id
   }
 
+  // TODO: DynamicCreature should have a `conditions` field, since calculating the conditions is
+  // becoming more expensive, and we look up the conditions several times even just to serialize a
+  // creature.
+  // But... would we have any race conditions where we would be looking at old condition data after
+  // an update?
+  // We could at least reduce the number of times we calculate it by passing conditions to
+  // can_act, can_move, and speed.
+
   pub fn can_act(&self) -> bool {
     conditions_able(&self.conditions())
   }

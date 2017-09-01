@@ -1481,21 +1481,4 @@ pub mod test {
     let d = Dice::flat(1).plus(Dice::flat(-5));
     assert_eq!(d.roll(), (vec![1, -5], -4));
   }
-
-  #[test]
-  fn creature_volume_conditions() {
-    let mut scene = t_scene();
-    let cond_id = ConditionID::gen();
-    let volume_cond = VolumeCondition {
-      point: (0, 0, 0),
-      volume: Volume::Sphere(Distance(300)),
-      remaining: Duration::Interminate,
-      condition: Condition::Dead,
-    };
-    scene.volume_conditions.insert(cond_id, volume_cond.clone());
-    let rogue = t_rogue("rogue");
-    let conds =
-      scene.creature_volume_conditions(TileSystem::Realistic, &rogue).expect("Couldn't get conds");
-    assert_eq!(conds, vec![(cond_id, &volume_cond)]);
-  }
 }
