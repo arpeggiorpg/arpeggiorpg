@@ -112,7 +112,7 @@ impl<T> FolderTree<T> {
   /// Remove a folder node. The folder must not have any children. The node data for the folder
   /// will be returned.
   pub fn remove(&mut self, path: &FolderPath) -> Result<T, FolderTreeError> {
-    if self.get_children(path)?.len() > 0 {
+    if self.get_children(path)?.is_empty() {
       bail!(FolderTreeErrorKind::FolderNotEmpty(path.clone()));
     }
     match path.up() {
@@ -170,7 +170,7 @@ impl<T> FolderTree<T> {
           let path_data = self
             .nodes
             .remove(&subpath)
-            .ok_or(FolderTreeErrorKind::FolderNotFound(subpath.clone()))?;
+            .ok_or_else(|| FolderTreeErrorKind::FolderNotFound(subpath.clone()))?;
           self.nodes.insert(new_path, path_data);
         }
 
