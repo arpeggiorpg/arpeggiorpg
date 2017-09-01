@@ -47,17 +47,17 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> 
 }
 
 /// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
-/// This returns a plain old Point3, but it'd be nicer if it were a Point3Difference...
+/// This returns a plain old Point3, but it'd be nicer if it were a `Point3Difference`...
 pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
-  return (pt1.0 - pt2.0, pt1.1 - pt2.1, pt1.2 - pt2.2);
+  (pt1.0 - pt2.0, pt1.1 - pt2.1, pt1.2 - pt2.2)
 }
 
 pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
-  return (
+  (
     ((pt.0 as i32 * 100 + diff.0) / 100) as i16,
     ((pt.1 as i32 * 100 + diff.1) / 100) as i16,
     ((pt.2 as i32 * 100 + diff.2) / 100) as i16,
-  );
+  )
 }
 
 impl TileSystem {
@@ -276,7 +276,7 @@ impl TileSystem {
         return false;
       }
     }
-    return true;
+    true
   }
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.

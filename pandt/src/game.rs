@@ -293,11 +293,11 @@ impl Game {
     let opt = match owner_id {
       InventoryOwner::Scene(sid) => self.scenes.mutate(&sid, |mut s| {
         f(&mut s.inventory);
-        return s;
+        s
       }),
       InventoryOwner::Creature(cid) => self.creatures.mutate(&cid, |mut c| {
         f(&mut c.inventory);
-        return c;
+        c
       }),
     };
     opt.ok_or_else(|| owner_id.not_found_error())
@@ -316,7 +316,7 @@ impl Game {
   ) -> Result<u64, GameError> {
     let actually_has = *self.get_owner_inventory(owner)?.get(&item_id).unwrap_or(&0);
     self.set_item_count(owner, item_id, actually_has - count)?;
-    return Ok(cmp::min(actually_has, count));
+    Ok(cmp::min(actually_has, count))
   }
 
   fn set_item_count(

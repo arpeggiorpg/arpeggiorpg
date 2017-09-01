@@ -148,7 +148,7 @@ impl Combat {
   }
 
   pub fn contains_creature(&self, cid: CreatureID) -> bool {
-    self.creatures.iter().position(|&(c, _)| c == cid).is_some()
+    self.creatures.iter().any(|&(c, _)| c == cid)
   }
 
   /// the Option<Combat> will be None if you're removing the last creature from a combat.

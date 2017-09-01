@@ -70,7 +70,7 @@ impl<T> FolderTree<T> {
   ) -> Result<FolderPath, FolderTreeError> {
     let new_full_path = parent.child(new_child.clone());
     {
-      let pdata = self.get_data_mut(&parent)?;
+      let pdata = self.get_data_mut(parent)?;
       if pdata.1.contains(&new_child) {
         return Err(FolderTreeErrorKind::FolderExists(new_full_path.clone()).into());
       }

@@ -764,9 +764,9 @@ pub enum Action {
 
 
 /// A target specifier for actions that ultimately affect creatures.
-/// This doesn't mean that the target *specifier* is always a CreatureID, but rather that
-/// ultimately the target is resolved into one or more creatures which CreatureEffects will be
-/// applied to. For example, LineFromActor is specified as the client as a Point, but will
+/// This doesn't mean that the target *specifier* is always a `CreatureID`, but rather that
+/// ultimately the target is resolved into one or more creatures which `CreatureEffect`s will be
+/// applied to. For example, `LineFromActor` is specified as the client as a Point, but will
 /// affect the creatures in that line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureTarget {
@@ -787,7 +787,7 @@ pub enum CreatureTarget {
   AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
 }
 
-/// A target specifier for actions that ultimately affect the scene by way of SceneEffect.
+/// A target specifier for actions that ultimately affect the scene by way of `SceneEffect`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
@@ -1226,7 +1226,7 @@ impl DeriveKey for Note {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
@@ -1237,13 +1237,7 @@ pub struct Folder {
 
 impl Folder {
   pub fn new() -> Folder {
-    Folder {
-      scenes: HashSet::new(),
-      creatures: HashSet::new(),
-      notes: IndexedHashMap::new(),
-      items: HashSet::new(),
-      maps: HashSet::new(),
-    }
+    Default::default()
   }
 }
 
