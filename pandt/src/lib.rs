@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 #![feature(conservative_impl_trait)]
 #![cfg_attr(test, feature(test))]
+
 //! Phone and Tablet.
 
 extern crate bresenham;
@@ -8,9 +9,6 @@ extern crate bresenham;
 extern crate derive_more;
 #[macro_use]
 extern crate error_chain;
-#[cfg(test)]
-#[macro_use]
-extern crate maplit;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;
@@ -20,15 +18,19 @@ extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate string_wrapper;
+extern crate uuid;
+
+#[cfg(test)]
+#[macro_use]
+extern crate maplit;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
 #[cfg(test)]
 extern crate serde_yaml;
-extern crate string_wrapper;
 #[cfg(test)]
 extern crate test;
-extern crate uuid;
 
 pub mod app;
 pub mod combat;
