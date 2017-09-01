@@ -102,7 +102,7 @@ impl TileSystem {
           results.push(item.clone());
         }
       },
-      Volume::AABB(aabb) => panic!("unimplemented: items_within_volume for AABB"),
+      Volume::AABB(_) => unimplemented!("unimplemented: items_within_volume for AABB"),
       Volume::Line { vector } => {
         let dest = point3_add_vec(pt, vector);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
@@ -117,8 +117,8 @@ impl TileSystem {
           }
         }
       }
-      Volume::VerticalCylinder { radius, height } => {
-        panic!("unimplemented: items_within_volume for VerticalCylinder")
+      Volume::VerticalCylinder { ..} => {
+        unimplemented!("items_within_volume for VerticalCylinder")
       }
     }
     results
@@ -198,8 +198,8 @@ impl TileSystem {
   // TODO: Should this use ncollide?
   fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
     match volume {
-      Volume::Sphere(radius) => {
-        panic!("unimplemented: points_in_volume for Sphere");
+      Volume::Sphere(..) => {
+        unimplemented!("unimplemented: points_in_volume for Sphere");
       }
       Volume::AABB(aabb) => (pt.0..(pt.0 + aabb.x as i16))
         .flat_map(|x| {
@@ -208,8 +208,8 @@ impl TileSystem {
         })
         .collect(),
       Volume::Line { .. } => panic!("unimplemented: points_in_volume for Line"),
-      Volume::VerticalCylinder { radius, height } => {
-        panic!("unimplemented: points_in_volume for VerticalCylinder")
+      Volume::VerticalCylinder { .. } => {
+        unimplemented!("unimplemented: points_in_volume for VerticalCylinder")
       }
     }
   }

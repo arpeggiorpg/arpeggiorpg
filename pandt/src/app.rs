@@ -89,8 +89,8 @@ impl App {
 
   fn apply_game_logs(baseline: Game, mut game: Game, logs: &[GameLog]) -> Result<Game, GameError> {
     for log in logs {
-      println!("Applying log {:?}", log);
-      if let GameLog::Rollback(sni, li) = *log {
+      if let GameLog::Rollback(_sni, li) = *log {
+        // TODO: Honor `sni`, the snapshot index
         // 1. assert li is within bounds?
         // 2. need to handle SnapshotIndex -- this assumes it's always based on the same snapshot
         // 3. this is super inefficient

@@ -223,7 +223,6 @@ impl<'game> ChangedCombat<'game> {
 
 #[cfg(test)]
 pub mod test {
-  extern crate test;
 
   use combat::*;
   use types::test::*;
@@ -337,7 +336,6 @@ pub mod test {
       Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
-
   }
 
   #[test]

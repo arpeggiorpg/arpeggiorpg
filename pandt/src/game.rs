@@ -383,10 +383,13 @@ impl Game {
           .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
       }
 
-      ChatFromGM(..) => {} // purely informational
-      ChatFromPlayer(..) => {} // purely informational
-      AttributeCheckResult(..) => {} // purely informational
+      ChatFromGM(..) => {}
+      // purely informational
+      ChatFromPlayer(..) => {}
+      // purely informational
+      AttributeCheckResult(..) => {}
 
+      // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       MoveFolderItem(ref src, ref item_id, ref dst) => match *item_id {
@@ -407,37 +410,36 @@ impl Game {
           self.link_folder_item(dst, item_id)?;
         }
       },
-      CopyFolderItem { ref source, ref item_id, ref dest, ref new_item_id } => {
-        match (item_id, new_item_id) {
-          (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
-            let mut new_creature = self.get_creature(id)?.creature.clone();
-            new_creature.id = new_id;
-            self.apply_log_mut(&CreateCreature(dest.clone(), new_creature))?;
-          }
-          (&FolderItemID::CreatureID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::SceneID(id), &FolderItemID::SceneID(new_id)) => {
-            let mut new_scene = self.get_scene(id)?.clone();
-            new_scene.id = new_id;
-            self.apply_log_mut(&CreateScene(dest.clone(), new_scene))?;
-          }
-          (&FolderItemID::SceneID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
-            let mut new_item =
-              self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id.clone()))?.clone();
-            new_item.id = new_id;
-            self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
-          }
-          (&FolderItemID::ItemID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::MapID(id), &FolderItemID::MapID(new_id)) => {
-            let mut new_map = self.get_map(id)?.clone();
-            new_map.id = new_id;
-            self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
-          }
-          (&FolderItemID::MapID(id), _) => panic!("Mismatched folder item ID!"),
-          (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
-          (&FolderItemID::NoteID(_), _) => panic!("Can't clone notes... yet?"),
+      CopyFolderItem { ref item_id, ref dest, ref new_item_id, .. } => match (item_id, new_item_id)
+      {
+        (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
+          let mut new_creature = self.get_creature(id)?.creature.clone();
+          new_creature.id = new_id;
+          self.apply_log_mut(&CreateCreature(dest.clone(), new_creature))?;
         }
-      }
+        (&FolderItemID::CreatureID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::SceneID(id), &FolderItemID::SceneID(new_id)) => {
+          let mut new_scene = self.get_scene(id)?.clone();
+          new_scene.id = new_id;
+          self.apply_log_mut(&CreateScene(dest.clone(), new_scene))?;
+        }
+        (&FolderItemID::SceneID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
+          let mut new_item =
+            self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id.clone()))?.clone();
+          new_item.id = new_id;
+          self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
+        }
+        (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::MapID(id), &FolderItemID::MapID(new_id)) => {
+          let mut new_map = self.get_map(id)?.clone();
+          new_map.id = new_id;
+          self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
+        }
+        (&FolderItemID::MapID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
+        (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
+      },
       DeleteFolderItem(ref path, ref item_id) => {
         // because we're being paranoid, we're walking ALL folder paths and checking if the given
         // item ID is found in ANY of them and cleaning it up.
@@ -540,10 +542,9 @@ impl Game {
             // (since maps can't be deleted if there are scenes referring to them).
             let path = path.child(name.to_string());
             for child_folder in self.campaign.get_children(&path)?.clone() {
-              self
-                .apply_log_mut(
-                  &DeleteFolderItem(path.clone(), FolderItemID::SubfolderID(child_folder.clone())),
-                )?;
+              self.apply_log_mut(
+                &DeleteFolderItem(path.clone(), FolderItemID::SubfolderID(child_folder.clone())),
+              )?;
             }
             let node = self.campaign.get(&path)?.clone();
             for scene_id in node.scenes {
@@ -795,9 +796,13 @@ impl Game {
       }
 
       AddVolumeCondition { ref scene_id, point, volume, condition_id, ref condition, duration } => {
-        let scene = self
-          .get_scene(*scene_id)?
-          .add_volume_condition(condition_id, point, volume, condition.clone(), duration);
+        let scene = self.get_scene(*scene_id)?.add_volume_condition(
+          condition_id,
+          point,
+          volume,
+          condition.clone(),
+          duration,
+        );
         self.scenes.insert(scene);
       }
 
@@ -921,7 +926,7 @@ impl Game {
         match (effect, tspec, target) {
           (
             &SceneEffect::CreateVolumeCondition { duration, ref condition },
-            SceneTarget::RangedVolume { range, volume },
+            SceneTarget::RangedVolume { volume, .. }, // TODO: honor and check `range`
             DecidedTarget::Point(point),
           ) => {
             let log = GameLog::AddVolumeCondition {
@@ -983,7 +988,8 @@ impl Game {
     &self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3
   ) -> Result<Vec<CreatureID>, GameError> {
     match target {
-      CreatureTarget::AllCreaturesInVolumeInRange { volume, range } => {
+      CreatureTarget::AllCreaturesInVolumeInRange { volume, .. } => {
+        // TODO: honor and check `range`
         Ok(scene.creatures_in_volume(self.tile_system, pt, volume))
       }
       CreatureTarget::LineFromActor { distance } => {
@@ -1014,10 +1020,11 @@ impl Game {
     };
     let tiles = match ability.action {
       Action::Creature {
-        target: CreatureTarget::AllCreaturesInVolumeInRange { volume, range },
+        target: CreatureTarget::AllCreaturesInVolumeInRange { volume, .. },
         ..
       } |
-      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, range }, .. } => {
+      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
+        // TODO: honor and check `range`
         scene.open_terrain_in_volume(self, pt, volume)?
       }
       Action::Creature { target: CreatureTarget::LineFromActor { distance }, .. } => {
@@ -1071,8 +1078,8 @@ impl Game {
         self.open_terrain_in_range(scene, creature_id, distance)?
       }
       A::Creature {
-        target: CT::SomeCreaturesInVolumeInRange { volume, maximum, range }, ..
-      } => panic!(),
+        target: CT::SomeCreaturesInVolumeInRange { .. }, ..
+      } => unimplemented!("SomeCreaturesInVolumeInRange not implemented"),
     })
   }
 

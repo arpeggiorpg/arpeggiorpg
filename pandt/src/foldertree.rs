@@ -305,12 +305,9 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
   where
     S: Serializer,
   {
-    let children = self
-      .tree
-      .get_children(self.path)
-      .map_err(
-        |e| S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e)),
-      )?;
+    let children = self.tree.get_children(self.path).map_err(
+      |e| S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e)),
+    )?;
     let mut map = serializer.serialize_map(Some(children.len()))?;
     for child in children {
       let full_path = self.path.child(child.to_string());
@@ -610,28 +607,28 @@ mod test {
     let json = serde_json::to_value(&ftree).unwrap();
 
     let expected = json!({
-        "data": "Root node!",
+    "data": "Root node!",
+    "children": {
+      "usr": {
+        "data": "Folder!",
         "children": {
-          "usr": {
+          "bin": {
             "data": "Folder!",
-            "children": {
-              "bin": {
-                "data": "Folder!",
-                "children": {}}}}}});
+            "children": {}}}}}});
     assert_eq!(json, expected);
   }
 
   #[test]
   fn deserialize_json() {
     let json = json!({
-        "data": "Root node!",
+    "data": "Root node!",
+    "children": {
+      "usr": {
+        "data": "Folder!",
         "children": {
-          "usr": {
+          "bin": {
             "data": "Folder!",
-            "children": {
-              "bin": {
-                "data": "Folder!",
-                "children": {}}}}}});
+            "children": {}}}}}});
     let json = serde_json::to_string(&json).unwrap();
     let ftree: FolderTree<String> = serde_json::from_str(&json).unwrap();
 
@@ -650,8 +647,8 @@ mod test {
   fn folderpath_from_str() {
     assert_eq!(FolderPath::from_str("").unwrap(), FolderPath::from_vec(vec![]));
     assert_eq!(
-      FolderPath::from_str("/foo").unwrap(),
-      FolderPath::from_vec(vec!["foo".to_string()]));
+    FolderPath::from_str("/foo").unwrap(),
+    FolderPath::from_vec(vec!["foo".to_string()]));
     match FolderPath::from_str("foo") {
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         assert_eq!(p, "foo".to_string())

@@ -1,6 +1,6 @@
 #![recursion_limit = "256"]
 #![feature(conservative_impl_trait)]
-#![feature(test)]
+#![cfg_attr(test, feature(test))]
 //! Phone and Tablet.
 
 extern crate bresenham;

@@ -98,8 +98,7 @@ impl Dice {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct HP(pub u8);
 impl HP {
   pub fn saturating_add(self, other: Self) -> Self {
@@ -110,8 +109,7 @@ impl HP {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
   pub fn saturating_add(self, other: Self) -> Self {
@@ -244,8 +242,7 @@ pub fn abid(s: &str) -> AbilityID {
 
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
-         Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
@@ -899,8 +896,7 @@ pub struct CreatureCreation {
   pub portrait_url: String,
   pub icon_url: String,
   pub note: String,
-  #[serde(default)]
-  pub bio: String,
+  #[serde(default)] pub bio: String,
   pub initiative: Dice,
   pub size: AABB,
 }
@@ -924,16 +920,13 @@ pub struct Creature {
   pub cur_health: HP,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
-  #[serde(default)]
-  pub bio: String,
+  #[serde(default)] pub bio: String,
   pub portrait_url: String,
-  #[serde(default)]
-  pub icon_url: String,
+  #[serde(default)] pub icon_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
   pub size: AABB,
-  #[serde(default)]
-  pub inventory: Inventory,
+  #[serde(default)] pub inventory: Inventory,
 }
 
 /// A definition of an Item, which can be referenced by creatures' inventories.
@@ -976,15 +969,12 @@ pub struct Game {
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
-  #[serde(default)]
-  pub items: IndexedHashMap<Item>,
+  #[serde(default)] pub items: IndexedHashMap<Item>,
   pub campaign: FolderTree<Folder>,
-  #[serde(default)]
-  pub players: IndexedHashMap<Player>,
+  #[serde(default)] pub players: IndexedHashMap<Player>,
   // The "active scene" determines which scene has mechanical effect as far as game simulation
   // goes.
-  #[serde(default)]
-  pub active_scene: Option<SceneID>,
+  #[serde(default)] pub active_scene: Option<SceneID>,
 }
 
 pub struct Runtime {
@@ -1032,15 +1022,12 @@ pub struct Scene {
   pub id: SceneID,
   pub name: String,
   pub map: MapID,
-  #[serde(default)]
-  pub background_image_url: String,
+  #[serde(default)] pub background_image_url: String,
 
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
-  #[serde(default)]
-  pub inventory: Inventory,
-  #[serde(default)]
-  pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
+  #[serde(default)] pub inventory: Inventory,
+  #[serde(default)] pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
 
   /// "Focused" creatures are those which have their portraits rendered over the map or scene
   /// background
@@ -1088,12 +1075,9 @@ pub enum Visibility {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct MapCreation {
   pub name: String,
-  #[serde(default)]
-  pub background_image_url: String,
-  #[serde(default)]
-  pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
-  #[serde(default)]
-  pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
+  #[serde(default)] pub background_image_url: String,
+  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
+  #[serde(default)] pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1102,12 +1086,9 @@ pub struct Map {
   pub name: String,
   pub terrain: Vec<Point3>,
   pub specials: Vec<SpecialTile>,
-  #[serde(default)]
-  pub background_image_url: String,
-  #[serde(default)]
-  pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
-  #[serde(default)]
-  pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
+  #[serde(default)] pub background_image_url: String,
+  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
+  #[serde(default)] pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
 }
 
 impl Map {
@@ -1181,7 +1162,9 @@ impl<'a> ser::Serialize for RPIGame<'a> {
     str.serialize_field("abilities", &game.abilities)?;
     str.serialize_field(
       "creatures",
-      &game.creatures().map_err(|e| S::Error::custom("Oh no! Couldn't serialize creatures!?"))?,
+      &game
+        .creatures()
+        .map_err(|e| S::Error::custom(&format!("Oh no! Couldn't serialize creatures!? {:?}", e)))?,
     )?;
     str.serialize_field("maps", &game.maps)?;
     str.serialize_field("classes", &game.classes)?;
@@ -1248,8 +1231,7 @@ pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
-  #[serde(default)]
-  pub items: HashSet<ItemID>,
+  #[serde(default)] pub items: HashSet<ItemID>,
   pub maps: HashSet<MapID>,
 }
 
