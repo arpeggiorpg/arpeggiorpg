@@ -203,17 +203,6 @@ impl<T> FolderTree<T> {
 pub struct FolderPath(Vec<String>);
 
 impl FolderPath {
-  pub fn from_str(path: &str) -> Result<FolderPath, FolderTreeError> {
-    let segments: Vec<&str> = path.split("/").collect();
-    if segments.len() == 0 {
-      Ok(FolderPath(vec![]))
-    } else if segments[0] != "" {
-      Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
-    } else {
-      Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
-    }
-  }
-
   pub fn to_string(&self) -> String {
     let mut s = String::new();
     for seg in self.0.iter() {
@@ -260,6 +249,20 @@ impl FolderPath {
   }
 }
 
+impl ::std::str::FromStr for FolderPath {
+  type Err = FolderTreeError;
+  fn from_str(path: &str) -> Result<FolderPath, FolderTreeError> {
+    let segments: Vec<&str> = path.split("/").collect();
+    if segments.len() == 0 {
+      Ok(FolderPath(vec![]))
+    } else if segments[0] != "" {
+      Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
+    } else {
+      Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
+    }
+  }
+}
+
 impl Serialize for FolderPath {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -275,7 +278,7 @@ impl<'de> de::Deserialize<'de> for FolderPath {
     D: de::Deserializer<'de>,
   {
     let st: String = de::Deserialize::deserialize(deserializer)?;
-    match FolderPath::from_str(&st) {
+    match st.parse() {
       Ok(x) => Ok(x),
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         Err(de::Error::invalid_value(de::Unexpected::Str(&p), &"must begin with /"))
@@ -396,7 +399,7 @@ mod test {
   use serde_json;
 
   fn fpath(s: &str) -> FolderPath {
-    FolderPath::from_str(s).unwrap()
+    s.parse().expect("Couldn't parse string as FolderPath")
   }
 
   #[test]
@@ -645,11 +648,9 @@ mod test {
 
   #[test]
   fn folderpath_from_str() {
-    assert_eq!(FolderPath::from_str("").unwrap(), FolderPath::from_vec(vec![]));
-    assert_eq!(
-    FolderPath::from_str("/foo").unwrap(),
-    FolderPath::from_vec(vec!["foo".to_string()]));
-    match FolderPath::from_str("foo") {
+    assert_eq!(fpath(""), FolderPath::from_vec(vec![]));
+    assert_eq!( fpath("/foo"), FolderPath::from_vec(vec!["foo".to_string()]));
+    match "foo".parse::<FolderPath>() {
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         assert_eq!(p, "foo".to_string())
       }
@@ -659,7 +660,7 @@ mod test {
 
   #[test]
   fn folderpath_to_str() {
-    assert_eq!(FolderPath::from_str("").unwrap().to_string(), "");
-    assert_eq!(FolderPath::from_str("/foo/bar").unwrap().to_string(), "/foo/bar");
+    assert_eq!(fpath("").to_string(), "");
+    assert_eq!(fpath("/foo/bar").to_string(), "/foo/bar");
   }
 }

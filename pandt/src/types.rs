@@ -32,7 +32,7 @@ pub struct AABB {
 
 impl AABB {
   pub fn get_max(&self, pt: Point3) -> Point3 {
-    (pt.0 + self.x as i16, pt.1 + self.y as i16, pt.2 + self.z as i16)
+    (pt.0 + i16::from(self.x), pt.1 + i16::from(self.y), pt.2 + i16::from(self.z))
   }
 }
 
@@ -64,7 +64,7 @@ impl Dice {
       Dice::Expr { num, size } => {
         let mut intermediate = vec![];
         let mut result = 0i32;
-        let range: dist::Range<i32> = dist::Range::new(1, size as i32 + 1);
+        let range: dist::Range<i32> = dist::Range::new(1, i32::from(size) + 1);
         let mut rng = rand::thread_rng();
         for _ in 0..num {
           let val = range.ind_sample(&mut rng);
@@ -73,7 +73,7 @@ impl Dice {
         }
         (intermediate, result)
       }
-      Dice::Flat(val) => (vec![val as i16], val as i32),
+      Dice::Flat(val) => (vec![i16::from(val)], i32::from(val)),
       Dice::Plus(ref l, ref r) => {
         let (mut intermediate, left_result) = l.roll();
         let (right_intermediate, right_result) = r.roll();
