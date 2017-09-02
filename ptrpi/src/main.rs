@@ -2,6 +2,10 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
+// Disable `needless_pass_by_value` because it is triggered by all the uses of Rocket's `State`.
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+#![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+
 extern crate bus;
 #[macro_use]
 extern crate error_chain;
@@ -203,7 +207,7 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
 }
 
 fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
-  if name.contains("/") || name.contains(":") || name.contains("\\") {
+  if name.contains('/') || name.contains(':') || name.contains('\\') {
     bail!(RPIErrorEnum::InsecurePath(name));
   }
   let new_path = parent.join(name.clone());
@@ -221,7 +225,6 @@ fn load_app_from_path(filename: &Path) -> App {
   appf.read_to_string(&mut apps).unwrap();
   serde_yaml::from_str(&apps).unwrap()
 }
-
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PTRequest {
@@ -267,7 +270,7 @@ fn main() {
       .expect("Couldn't parse curdir as string")
   });
   let game_dir = PathBuf::from(game_dir);
-  let initial_file = env::args().nth(2).unwrap_or("samplegame.yaml".to_string());
+  let initial_file = env::args().nth(2).unwrap_or_else(|| "samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
   let actor = Actor::spawn(

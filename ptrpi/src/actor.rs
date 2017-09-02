@@ -41,7 +41,7 @@ where
   pub fn send(&self, message: Req) -> Resp {
     let (response_sender, response_receiver) = mpsc::channel();
     self.request_sender.send(ActorMsg::Payload(message, response_sender)).unwrap();
-    return response_receiver.recv().unwrap();
+    response_receiver.recv().unwrap()
   }
 
   pub fn stop(&self) {
