@@ -1080,8 +1080,8 @@ pub enum Visibility {
 pub struct MapCreation {
   pub name: String,
   #[serde(default)] pub background_image_url: String,
-  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
-  #[serde(default)] pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
+  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters"
+  #[serde(default)] pub background_image_scale: (i32, i32),  // in "centimeters"
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1091,8 +1091,8 @@ pub struct Map {
   pub terrain: Vec<Point3>,
   pub specials: Vec<SpecialTile>,
   #[serde(default)] pub background_image_url: String,
-  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters", i.e., 10ths of a Point3 unit
-  #[serde(default)] pub background_image_scale: (i32, i32), // in "centimeters", i.e., 10ths of a point3 unit
+  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters"
+  #[serde(default)] pub background_image_scale: (i32, i32),  // in "centimeters"
 }
 
 impl Map {
