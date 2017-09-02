@@ -1,5 +1,9 @@
 //! Simple types, with pure operations.
 
+// Just disable large_enum_variant lints for now, since I'm not really that interested in fixing
+// that for a while
+#![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+
 use std::collections::{HashMap, HashSet, VecDeque};
 use string_wrapper::StringWrapper;
 
