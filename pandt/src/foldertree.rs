@@ -205,7 +205,7 @@ pub struct FolderPath(Vec<String>);
 impl FolderPath {
   pub fn to_string(&self) -> String {
     let mut s = String::new();
-    for seg in self.0.iter() {
+    for seg in &self.0 {
       s.push_str("/");
       s.push_str(seg);
     }
@@ -221,7 +221,7 @@ impl FolderPath {
   }
 
   pub fn is_root(&self) -> bool {
-    self.0.len() == 0
+    self.0.is_empty()
   }
 
   pub fn child(&self, seg: String) -> FolderPath {
@@ -252,8 +252,8 @@ impl FolderPath {
 impl ::std::str::FromStr for FolderPath {
   type Err = FolderTreeError;
   fn from_str(path: &str) -> Result<FolderPath, FolderTreeError> {
-    let segments: Vec<&str> = path.split("/").collect();
-    if segments.len() == 0 {
+    let segments: Vec<&str> = path.split('/').collect();
+    if segments.is_empty() {
       Ok(FolderPath(vec![]))
     } else if segments[0] != "" {
       Err(FolderTreeErrorKind::InvalidFolderPath(path.to_string()).into())
@@ -314,7 +314,7 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
     let mut map = serializer.serialize_map(Some(children.len()))?;
     for child in children {
       let full_path = self.path.child(child.to_string());
-      let children_serializer = ChildrenSerializer { tree: &self.tree, path: &full_path };
+      let children_serializer = ChildrenSerializer { tree: self.tree, path: &full_path };
       let helper = SerializerHelper {
         data: self
           .tree
@@ -338,7 +338,7 @@ impl<T: Serialize> Serialize for FolderTree<T> {
     let root = self.get(&root_path).expect("Root node must always exist.");
     let helper = SerializerHelper {
       data: root,
-      children: ChildrenSerializer { tree: &self, path: &root_path },
+      children: ChildrenSerializer { tree: self, path: &root_path },
     };
     helper.serialize(serializer)
   }
@@ -351,7 +351,7 @@ struct DeserializeHelper<T> {
 }
 
 impl<T> DeserializeHelper<T> {
-  fn to_folder_tree(self) -> FolderTree<T> {
+  fn into_folder_tree(self) -> FolderTree<T> {
     let mut paths: Vec<(FolderPath, T)> = vec![];
     self.serialize_tree(FolderPath::from_vec(vec![]), &mut paths);
     let mut iter = paths.into_iter();
@@ -374,7 +374,7 @@ impl<T> DeserializeHelper<T> {
     // TODO: this could be more efficient by making this an iterator instead of something that
     // appends to a vec.
     paths.push((path.clone(), self.data));
-    for (k, v) in self.children.into_iter() {
+    for (k, v) in self.children {
       v.serialize_tree(path.child(k), paths);
     }
   }
@@ -387,7 +387,7 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
     D: de::Deserializer<'de>,
   {
     let helper: DeserializeHelper<T> = de::Deserialize::deserialize(deserializer)?;
-    Ok(helper.to_folder_tree())
+    Ok(helper.into_folder_tree())
   }
 }
 

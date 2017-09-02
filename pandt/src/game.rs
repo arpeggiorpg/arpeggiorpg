@@ -73,13 +73,12 @@ impl Game {
       RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
       MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
       CopyFolderItem { source, item_id, dest } => {
-        let new_item_id = match &item_id {
-          &FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
-          &FolderItemID::NoteID(_) => item_id.clone(),
-          &FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
-          &FolderItemID::MapID(_) => FolderItemID::MapID(MapID::gen()),
-          &FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
-          &FolderItemID::SubfolderID(_) => item_id.clone(),
+        let new_item_id = match item_id {
+          FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
+          FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
+          FolderItemID::MapID(_) => FolderItemID::MapID(MapID::gen()),
+          FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
+          FolderItemID::NoteID(_) | FolderItemID::SubfolderID(_) => item_id.clone(),
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
       }
@@ -322,7 +321,7 @@ impl Game {
   fn set_item_count(
     &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
   ) -> Result<(), GameError> {
-    self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| if count <= 0 {
+    self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| if count == 0 {
       inventory.remove(&item_id).unwrap_or(0);
     } else {
       inventory.insert(item_id, count);
@@ -383,11 +382,8 @@ impl Game {
           .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
       }
 
-      ChatFromGM(..) => {}
       // purely informational
-      ChatFromPlayer(..) => {}
-      // purely informational
-      AttributeCheckResult(..) => {}
+      ChatFromGM(..) | ChatFromPlayer(..) | AttributeCheckResult(..) => {}
 
       // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
@@ -426,7 +422,7 @@ impl Game {
         (&FolderItemID::SceneID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
           let mut new_item =
-            self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id.clone()))?.clone();
+            self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id))?.clone();
           new_item.id = new_id;
           self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
         }
@@ -751,7 +747,7 @@ impl Game {
       AddCreatureToCombat(cid, init) => {
         let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
         self.check_creature_id(cid)?;
-        if combat.creatures.iter().position(|&(c, _)| c == cid).is_some() {
+        if combat.creatures.iter().any(|&(c, _)| c == cid) {
           bail!(GameErrorEnum::AlreadyInCombat(cid));
         }
         combat.creatures.push((cid, init));

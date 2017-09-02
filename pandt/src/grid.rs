@@ -27,11 +27,11 @@ fn na_iso(pt: Point3) -> Isometry3<f32> {
 }
 
 fn na_point(pt: Point3) -> na::Point3<f32> {
-  na::Point3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32)
+  na::Point3::new(f32::from(pt.0), f32::from(pt.1), f32::from(pt.2))
 }
 
 fn na_vector(pt: Point3) -> Vector3<f32> {
-  Vector3::new(pt.0 as f32, pt.1 as f32, pt.2 as f32)
+  Vector3::new(f32::from(pt.0), f32::from(pt.1), f32::from(pt.2))
 }
 
 fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
@@ -54,9 +54,9 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 
 pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
   (
-    ((pt.0 as i32 * 100 + diff.0) / 100) as i16,
-    ((pt.1 as i32 * 100 + diff.1) / 100) as i16,
-    ((pt.2 as i32 * 100 + diff.2) / 100) as i16,
+    ((i32::from(pt.0) * 100 + diff.0) / 100) as i16,
+    ((i32::from(pt.1) * 100 + diff.1) / 100) as i16,
+    ((i32::from(pt.2) * 100 + diff.2) / 100) as i16,
   )
 }
 
@@ -196,15 +196,15 @@ impl TileSystem {
   /// VerticalCylinder: center of base
   // TODO FIXME XXX: Implement for more volume types.
   // TODO: Should this use ncollide?
-  fn points_in_volume<'a>(&'a self, volume: Volume, pt: Point3) -> Vec<Point3> {
+  fn points_in_volume(&self, volume: Volume, pt: Point3) -> Vec<Point3> {
     match volume {
       Volume::Sphere(..) => {
         unimplemented!("unimplemented: points_in_volume for Sphere");
       }
-      Volume::AABB(aabb) => (pt.0..(pt.0 + aabb.x as i16))
+      Volume::AABB(aabb) => (pt.0..(pt.0 + i16::from(aabb.x)))
         .flat_map(|x| {
-          (pt.1..(pt.1 + aabb.y as i16))
-            .flat_map(move |y| (pt.2..(pt.2 + aabb.z as i16)).map(move |z| (x, y, z)))
+          (pt.1..(pt.1 + i16::from(aabb.y)))
+            .flat_map(move |y| (pt.2..(pt.2 + i16::from(aabb.z))).map(move |z| (x, y, z)))
         })
         .collect(),
       Volume::Line { .. } => panic!("unimplemented: points_in_volume for Line"),
@@ -324,9 +324,9 @@ fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
     Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.0 as f32 / 100.0)),
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
-      (aabb.x as f32 / 100.0) / 2.0,
-      (aabb.y as f32 / 100.0) / 2.0,
-      (aabb.z as f32 / 100.0) / 2.0,
+      (f32::from(aabb.x) / 100.0) / 2.0,
+      (f32::from(aabb.y) / 100.0) / 2.0,
+      (f32::from(aabb.z) / 100.0) / 2.0,
     ))),
     Volume::Line { .. } => panic!("unimplemented: volume_to_na_shape for Line"),
     Volume::VerticalCylinder { .. } => {
