@@ -922,7 +922,8 @@ impl Game {
         match (effect, tspec, target) {
           (
             &SceneEffect::CreateVolumeCondition { duration, ref condition },
-            SceneTarget::RangedVolume { volume, .. }, // TODO: honor and check `range`
+            SceneTarget::RangedVolume { volume, .. },
+            // TODO: unimplemented!: honor and check `range`
             DecidedTarget::Point(point),
           ) => {
             let log = GameLog::AddVolumeCondition {
@@ -976,7 +977,7 @@ impl Game {
     }
   }
 
-  // TODO: Honor terrain!
+  // TODO: unimplemented! Honor terrain!
   // 1. `pt` must be visible to the caster
   // 2. volumes must not go through blocked terrain
   // 3. volumes must (generally) not go around corners
@@ -985,7 +986,7 @@ impl Game {
   ) -> Result<Vec<CreatureID>, GameError> {
     match target {
       CreatureTarget::AllCreaturesInVolumeInRange { volume, .. } => {
-        // TODO: honor and check `range`
+        // TODO: unimplemented! honor and check `range`
         Ok(scene.creatures_in_volume(self.tile_system, pt, volume))
       }
       CreatureTarget::LineFromActor { distance } => {
@@ -1020,7 +1021,7 @@ impl Game {
         ..
       } |
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
-        // TODO: honor and check `range`
+        // TODO: unimplemented! honor and check `range`
         scene.open_terrain_in_volume(self, pt, volume)?
       }
       Action::Creature { target: CreatureTarget::LineFromActor { distance }, .. } => {

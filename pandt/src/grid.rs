@@ -92,7 +92,7 @@ impl TileSystem {
   pub fn items_within_volume<I: Clone + Eq + Hash>(
     &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>
   ) -> Vec<I> {
-    // TODO: this doesn't support non-1x1 items
+    // TODO: unimplemented! this doesn't support non-1x1 items
     // TODO: this function is really dumb, and instead should probably work on a HashSet of Point3s,
     // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
     let mut results = vec![];
@@ -207,7 +207,7 @@ impl TileSystem {
             .flat_map(move |y| (pt.2..(pt.2 + i16::from(aabb.z))).map(move |z| (x, y, z)))
         })
         .collect(),
-      Volume::Line { .. } => panic!("unimplemented: points_in_volume for Line"),
+      Volume::Line { .. } => unimplemented!("points_in_volume for Line"),
       Volume::VerticalCylinder { .. } => {
         unimplemented!("unimplemented: points_in_volume for VerticalCylinder")
       }
@@ -328,10 +328,8 @@ fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
       (f32::from(aabb.y) / 100.0) / 2.0,
       (f32::from(aabb.z) / 100.0) / 2.0,
     ))),
-    Volume::Line { .. } => panic!("unimplemented: volume_to_na_shape for Line"),
-    Volume::VerticalCylinder { .. } => {
-      panic!("unimplemented: volume_to_na_shape for VerticalCylinder")
-    }
+    Volume::Line { .. } => unimplemented!("volume_to_na_shape for Line"),
+    Volume::VerticalCylinder { .. } => unimplemented!("volume_to_na_shape for VerticalCylinder"),
   }
 }
 
