@@ -104,15 +104,11 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     IndexedHashMap { data: HashMap::new() }
   }
 
-  pub fn iter(
-    &self
-  ) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
+  pub fn iter(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
     self.into_iter()
   }
 
-  pub fn keys(
-    &self
-  ) -> ::std::collections::hash_map::Keys<<V as DeriveKey>::KeyType, V> {
+  pub fn keys(&self) -> ::std::collections::hash_map::Keys<<V as DeriveKey>::KeyType, V> {
     self.data.keys()
   }
 

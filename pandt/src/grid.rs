@@ -117,9 +117,7 @@ impl TileSystem {
           }
         }
       }
-      Volume::VerticalCylinder { ..} => {
-        unimplemented!("items_within_volume for VerticalCylinder")
-      }
+      Volume::VerticalCylinder { .. } => unimplemented!("items_within_volume for VerticalCylinder"),
     }
     results
   }

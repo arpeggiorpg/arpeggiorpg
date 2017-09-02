@@ -1074,9 +1074,9 @@ impl Game {
       A::Creature { target: CT::LineFromActor { distance }, .. } => {
         self.open_terrain_in_range(scene, creature_id, distance)?
       }
-      A::Creature {
-        target: CT::SomeCreaturesInVolumeInRange { .. }, ..
-      } => unimplemented!("SomeCreaturesInVolumeInRange not implemented"),
+      A::Creature { target: CT::SomeCreaturesInVolumeInRange { .. }, .. } => {
+        unimplemented!("SomeCreaturesInVolumeInRange not implemented")
+      }
     })
   }
 
