@@ -3,6 +3,7 @@ use std::fmt;
 use std::hash;
 use std::iter::FromIterator;
 
+use scopeguard::{self, guard, ScopeGuard};
 use serde::de;
 use serde::ser;
 
@@ -99,6 +100,15 @@ impl<'a, V: DeriveKey> IntoIterator for &'a IndexedHashMap<V> {
 
 // Deserialize
 
+#[derive(Debug)]
+pub struct Container(u8);
+fn guard_test<'a>(
+  container: &'a mut Container
+) -> ScopeGuard<&'a mut u8, impl for<'r> FnMut(&'r mut &'a mut u8) -> (), scopeguard::Always> {
+  guard(&mut container.0, |v| { **v = **v + 1; })
+}
+
+
 impl<V: DeriveKey> IndexedHashMap<V> {
   pub fn new() -> IndexedHashMap<V> {
     IndexedHashMap { data: HashMap::new() }
@@ -122,6 +132,25 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     Q: hash::Hash + Eq,
   {
     self.data.get(k)
+  }
+
+  pub fn get_mut<'a, Q: ?Sized>(
+    &'a mut self, k: &Q
+  ) -> Option<ScopeGuard<&'a mut V, impl for<'r> FnMut(&'r mut &'a mut V) -> (), scopeguard::Always>>
+  where
+    <V as DeriveKey>::KeyType: ::std::borrow::Borrow<Q>,
+    Q: hash::Hash + Eq,
+  {
+    let v = self.data.get_mut(k);
+    v.map(|v| guard(v, |v| ()))
+
+    // let old_key = self.data.get(k).derive_key();
+    // let new_key = v.derive_key();
+    // if new_key != old_key {
+    //   self.data.remove(old_key);
+    //   self.data.insert(new_key, v);
+    // }
+    // })
   }
 
   pub fn remove(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> {
@@ -170,5 +199,46 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     } else {
       None
     }
+  }
+}
+
+
+#[cfg(test)]
+mod test {
+  use indexed::*;
+
+  #[derive(Eq, PartialEq, Debug)]
+  struct TestObj {
+    name: String,
+    num: u8,
+  }
+  impl DeriveKey for TestObj {
+    type KeyType = String;
+    fn derive_key(&self) -> Self::KeyType {
+      self.name.clone()
+    }
+  }
+
+  #[test]
+  fn guards() {
+    let mut c = Container(3);
+    {
+      let mut value = guard_test(&mut c);
+      **value = **value + 1;
+    }
+    assert_eq!(c.0, 5);
+  }
+
+  #[test]
+  fn get_mut() {
+    let mut ihm = IndexedHashMap::new();
+    ihm.insert(TestObj { name: "Foo".to_string(), num: 0 });
+    {
+      match ihm.get_mut("Foo") {
+        Some(ref mut to) => to.num = 1,
+        None => panic!(),
+      }
+    }
+    assert_eq!(ihm.get("Foo"), Some(&TestObj { name: "Foo".to_string(), num: 1 }));
   }
 }

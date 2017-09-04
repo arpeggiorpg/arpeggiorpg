@@ -15,6 +15,7 @@ extern crate nonempty;
 extern crate num_traits;
 extern crate odds;
 extern crate rand;
+extern crate scopeguard;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

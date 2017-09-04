@@ -22,3 +22,4 @@ uuid = {version = "0.5", features = ["v4", "serde"]}
 error-chain = "0.11.0-rc.2"
 bresenham = "0.1.1"
 maplit = "0.1.4"
+scopeguard = "0.3.2"
