@@ -1043,8 +1043,9 @@ pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>
 
 #[derive(Debug)]
 pub enum CollisionData {
-  Creature,
-  ConditionVolume(usize),
+  Creature(CreatureID),
+  ConditionVolume(ConditionID),
+  // BlockedTerrain ????
 }
 
 

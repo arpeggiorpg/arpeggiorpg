@@ -251,7 +251,7 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
       let game_and_logs =
         runtime.app.perform_unchecked(command).map_err(|e| format!("Error: {}", e));
       if let Ok((g, _)) = game_and_logs {
-        runtime.world = g.get_world();
+        runtime.world = g.get_world().expect("Couldn't calculate world");
       }
       let rpi_game_and_logs = game_and_logs.map(|(g, l)| (RPIGame(g), l));
       PTResponse::JSON(

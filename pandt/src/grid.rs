@@ -10,7 +10,8 @@ use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 
-use types::{CollisionData, Distance, Map, Point3, TileSystem, VectorCM, Volume};
+use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Map, Point3,
+            TileSystem, VectorCM, Volume, VolumeCondition};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -218,52 +219,7 @@ impl TileSystem {
   pub fn intersecting_volumes<T: PartialEq + Clone>(
     &self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)]
   ) -> Vec<T> {
-    let mut world = world::CollisionWorld3::new(0.0, true);
-
-    let mut creature_group = world::CollisionGroups::new();
-    creature_group.set_membership(&[1]);
-    creature_group.set_whitelist(&[2]);
-    creature_group.set_blacklist(&[1]);
-
-    let mut condition_group = world::CollisionGroups::new();
-    condition_group.set_membership(&[2]);
-    condition_group.set_whitelist(&[1]);
-    condition_group.set_blacklist(&[2]);
-
-    let query = world::GeometricQueryType::Contacts(0.0);
-
-    world.deferred_add(
-      0,
-      na_iso(pt),
-      volume_to_na_shape(volume),
-      creature_group,
-      query,
-      CollisionData::Creature,
-    );
-
-    for (idx, &(position, volume, _)) in volumes.iter().enumerate() {
-      world.deferred_add(
-        idx + 1,
-        na_iso(position),
-        volume_to_na_shape(volume),
-        condition_group,
-        query,
-        CollisionData::ConditionVolume(idx),
-      );
-    }
-
-    world.update();
-    let mut results = vec![];
-    for (obj1, obj2, _) in world.contact_pairs() {
-      match (&obj1.data, &obj2.data) {
-        (&CollisionData::Creature, &CollisionData::ConditionVolume(idx)) |
-        (&CollisionData::ConditionVolume(idx), &CollisionData::Creature) => {
-          results.push(volumes[idx].2.clone())
-        }
-        _ => {}
-      }
-    }
-    results
+    vec![]
   }
 
   /// Determine whether a volume will not collide *with terrain* if it is placed at a point.
@@ -316,6 +272,55 @@ impl TileSystem {
     }
     results
   }
+}
+
+pub fn make_world<'c, 'vc, CI, VCI>(creatures: CI, volume_conditions: VCI) -> CollisionWorld
+where
+  CI: Iterator<Item = (&'c Creature, Point3)>,
+  VCI: Iterator<Item = (ConditionID, &'vc VolumeCondition)>,
+{
+  let mut world = world::CollisionWorld3::new(0.0, true);
+  let mut creature_group = world::CollisionGroups::new();
+  creature_group.set_membership(&[1]);
+  creature_group.set_whitelist(&[2]);
+  creature_group.set_blacklist(&[1]);
+
+  let mut condition_group = world::CollisionGroups::new();
+  condition_group.set_membership(&[2]);
+  condition_group.set_whitelist(&[1]);
+  condition_group.set_blacklist(&[2]);
+
+  let query = world::GeometricQueryType::Contacts(0.0);
+
+  let mut idx = 0;
+
+  for (creature, pos) in creatures {
+    let volume = Volume::AABB(creature.size);
+    world.deferred_add(
+      idx,
+      na_iso(pos),
+      volume_to_na_shape(volume),
+      creature_group,
+      query,
+      CollisionData::Creature(creature.id),
+    );
+    idx += 1;
+  }
+
+  for (condition_id, volume_condition) in volume_conditions {
+    world.deferred_add(
+      idx,
+      na_iso(volume_condition.point),
+      volume_to_na_shape(volume_condition.volume),
+      condition_group,
+      query,
+      CollisionData::ConditionVolume(condition_id),
+    );
+    idx += 1;
+  }
+
+  world.update();
+  world
 }
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {

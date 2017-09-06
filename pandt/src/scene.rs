@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use types::*;
+use grid::make_world;
 
 impl Scene {
   pub fn create(creation: SceneCreation) -> Scene {
@@ -80,6 +81,14 @@ impl Scene {
   pub fn creatures_in_volume(&self, ts: TileSystem, pt: Point3, volume: Volume) -> Vec<CreatureID> {
     let creature_locations = self.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
     ts.items_within_volume(volume, pt, &creature_locations)
+  }
+
+  pub fn get_world(&self, game: &Game) -> Result<CollisionWorld, GameError> {
+    let creatures = self.creatures.iter().filter_map(
+      |(creature_id, &(pos, _))| game.get_creature(*creature_id).map(|dc| (dc.creature, pos)).ok(),
+    );
+    let vcs = self.volume_conditions.iter().map(|(c, vc)| (*c, vc));
+    Ok(make_world(creatures, vcs))
   }
 }
 
