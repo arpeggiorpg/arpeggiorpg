@@ -1041,7 +1041,7 @@ pub struct Scene {
 
 pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum CollisionData {
   Creature(CreatureID),
   ConditionVolume(ConditionID),

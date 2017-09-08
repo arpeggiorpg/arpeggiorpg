@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use types::*;
-use grid::make_world;
+use grid::{make_world, query_world};
 
 impl Scene {
   pub fn create(creation: SceneCreation) -> Scene {
@@ -47,16 +47,13 @@ impl Scene {
   }
 
   pub fn creature_volume_conditions(
-    &self, ts: TileSystem, creature: &Creature
+    &self, game: &Game, creature: &Creature
   ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
-    let creature_pos = self.get_pos(creature.id)?;
-    let volumes_with_data: Vec<(Point3, Volume, ConditionID)> = self
-      .volume_conditions
-      .iter()
-      .map(|(cond_id, vol_cond)| (vol_cond.point, vol_cond.volume, *cond_id))
-      .collect();
-    let condition_ids =
-      ts.intersecting_volumes(creature_pos, Volume::AABB(creature.size), &volumes_with_data);
+    let condition_ids = query_world(&self.get_world(game)?, |cdata1,cdata2| {
+      if let (CollisionData::Creature(cid), CollisionData::ConditionVolume(cond_id)) = (cdata1, cdata2){
+        if cid == creature.id { Some(cond_id) } else { None }
+      } else { None}
+    });
     let mut results = vec![];
     for cond_id in condition_ids {
       let val = self
@@ -96,9 +93,11 @@ impl Scene {
 mod test {
   use types::*;
   use types::test::*;
+  use game::test::*;
 
   #[test]
   fn creature_volume_conditions() {
+    let game = t_game();
     let mut scene = t_scene();
     let cond_id = ConditionID::gen();
     let volume_cond = VolumeCondition {
@@ -109,8 +108,7 @@ mod test {
     };
     scene.volume_conditions.insert(cond_id, volume_cond.clone());
     let rogue = t_rogue("rogue");
-    let conds =
-      scene.creature_volume_conditions(TileSystem::Realistic, &rogue).expect("Couldn't get conds");
+    let conds = scene.creature_volume_conditions(&game, &rogue).expect("Couldn't get conds");
     assert_eq!(conds, vec![(cond_id, &volume_cond)]);
   }
 }

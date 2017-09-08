@@ -213,15 +213,6 @@ impl TileSystem {
     }
   }
 
-  /// Garbage Function
-  // This needs to be refactored so it doesn't create the world but rather accepts one as an
-  // argument.
-  pub fn intersecting_volumes<T: PartialEq + Clone>(
-    &self, pt: Point3, volume: Volume, volumes: &[(Point3, Volume, T)]
-  ) -> Vec<T> {
-    vec![]
-  }
-
   /// Determine whether a volume will not collide *with terrain* if it is placed at a point.
   /// Note that this doesn't consider other creatures or other map objects.
   fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
@@ -274,6 +265,9 @@ impl TileSystem {
   }
 }
 
+/// Make a CollisionWorld given some creatures and volume conditions.
+/// The factoring is a little sad; this is the only function in grid.rs that knows about these P&T
+/// types. Maybe I should just move this to collision.rs or something.
 pub fn make_world<'c, 'vc, CI, VCI>(creatures: CI, volume_conditions: VCI) -> CollisionWorld
 where
   CI: Iterator<Item = (&'c Creature, Point3)>,
@@ -321,6 +315,22 @@ where
 
   world.update();
   world
+}
+
+pub fn query_world<F, R>(world: &CollisionWorld, f: F) -> Vec<R>
+where
+  F: Fn(CollisionData, CollisionData) -> Option<R>,
+{
+  let mut results = vec![];
+  for (obj1, obj2, _) in world.contact_pairs() {
+    if let Some(r) = f(obj1.data, obj2.data) {
+      results.push(r);
+    }
+    if let Some(r) = f(obj2.data, obj1.data) {
+      results.push(r);
+    }
+  }
+  results
 }
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
@@ -751,26 +761,6 @@ pub mod test {
       Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
       _ => panic!("Expected Line"),
     }
-  }
-
-  #[test]
-  fn simple_intersecting_volume() {
-    let ts = TileSystem::Realistic;
-    let small_cube = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-
-    let results = ts.intersecting_volumes(
-      (0, 0, 0),
-      small_cube,
-      &[((1, 0, 0), small_cube, "find this".to_string())],
-    );
-    assert_eq!(results, vec![] as Vec<String>);
-
-    let results = ts.intersecting_volumes(
-      (0, 0, 0),
-      small_cube,
-      &[((0, 0, 0), small_cube, "find this".to_string())],
-    );
-    assert_eq!(results, vec!["find this".to_string()]);
   }
 
   #[test]
