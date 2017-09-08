@@ -46,6 +46,7 @@ impl Scene {
     new
   }
 
+  /// Figure out which volume conditions apply to the given creature.
   pub fn creature_volume_conditions(
     &self, game: &Game, creature: &Creature
   ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {

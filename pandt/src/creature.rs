@@ -94,6 +94,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
       }
     }
 
+    // We clone and collect the condition IDs so that the iterator doesn't keep a borrow on
+    // `changes`, which we need to mutate.
     for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
       match changes.creature.conditions[&condition_id].remaining {
         Duration::Interminate => {}
