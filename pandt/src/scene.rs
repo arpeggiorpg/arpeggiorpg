@@ -50,10 +50,18 @@ impl Scene {
   pub fn creature_volume_conditions(
     &self, game: &Game, creature: &Creature
   ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
-    let condition_ids = query_world(&self.get_world(game)?, |cdata1,cdata2| {
-      if let (CollisionData::Creature(cid), CollisionData::ConditionVolume(cond_id)) = (cdata1, cdata2){
-        if cid == creature.id { Some(cond_id) } else { None }
-      } else { None}
+    let condition_ids = query_world(&self.get_world(game)?, |cdata1, cdata2| {
+      if let (CollisionData::Creature(cid), CollisionData::ConditionVolume(cond_id)) =
+        (cdata1, cdata2)
+      {
+        if cid == creature.id {
+          Some(cond_id)
+        } else {
+          None
+        }
+      } else {
+        None
+      }
     });
     let mut results = vec![];
     for cond_id in condition_ids {
