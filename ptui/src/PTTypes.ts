@@ -333,25 +333,32 @@ export interface AbilityStatus {
   cooldown: number;
 }
 
-export interface Creature {
-  id: CreatureID;
-  name: string;
-  speed: Distance;
-  max_energy: Energy;
-  cur_energy: Energy;
-  abilities: { [index: string]: AbilityStatus };
-  class_: string;
-  max_health: HP;
-  cur_health: HP;
-  conditions: I.Map<ConditionID, AppliedCondition>;
-  note: string;
-  bio: string;
-  portrait_url: string;
-  icon_url: string;
-  attributes: I.Map<AttrID, SkillLevel>;
-  initiative: Dice;
-  inventory: I.Map<ItemID, number>;
-  size: AABB;
+export class Creature {
+  constructor(
+    public id: CreatureID,
+    public name: string,
+    public speed: Distance,
+    public max_energy: Energy,
+    public cur_energy: Energy,
+    public abilities: { [index: string]: AbilityStatus },
+    public class_: string,
+    public max_health: HP,
+    public cur_health: HP,
+    public own_conditions: I.Map<ConditionID, AppliedCondition>,
+    public volume_conditions: I.Map<ConditionID, AppliedCondition>,
+    public note: string,
+    public bio: string,
+    public portrait_url: string,
+    public icon_url: string,
+    public attributes: I.Map<AttrID, SkillLevel>,
+    public initiative: Dice,
+    public inventory: I.Map<ItemID, number>,
+    public size: AABB,
+  ) { }
+
+  dynamic_conditions(): I.Map<ConditionID, AppliedCondition> {
+    return this.own_conditions.merge(this.volume_conditions);
+  }
 }
 
 export interface AABB { x: number; y: number; z: number; }
@@ -515,19 +522,19 @@ const decodeAABB: Decoder<AABB> = JD.object(
   (x, y, z) => ({ x, y, z })
 );
 
-function object18<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
   _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
   _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
   _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
-  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>,
+  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>, _sd: JD.EntryDecoder<S>,
   _cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P, q: Q, r: R) => T): Decoder<T> {
+    p: P, q: Q, r: R, s: S) => T): Decoder<T> {
   return JD.object.apply(undefined, arguments);
 }
 
-export const decodeCreature: Decoder<Creature> = object18(
+export const decodeCreature: Decoder<Creature> = objectBig(
   ["id", JD.string()],
   ["name", JD.string()],
   ["speed", JD.number()],
@@ -537,22 +544,25 @@ export const decodeCreature: Decoder<Creature> = object18(
   ["class", JD.string()],
   ["max_health", JD.number()],
   ["cur_health", JD.number()],
+  ["own_conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
+  ["volume_conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
   ["note", JD.string()],
   ["bio", JD.string()],
   ["portrait_url", JD.string()],
   ["icon_url", JD.string()],
   ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
-  ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
-  ["conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
   ["initiative", decodeDice],
+  ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
   ["size", decodeAABB],
   (
-    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
-    portrait_url, icon_url, attributes, inventory, conditions, initiative, size) =>
-    ({
-      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health, note, bio,
-      portrait_url, icon_url, attributes, inventory, conditions, initiative, size,
-    })
+    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health,
+    own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
+    inventory, size) =>
+    new Creature(
+      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health,
+      own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
+      inventory, size
+    )
 );
 
 const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(

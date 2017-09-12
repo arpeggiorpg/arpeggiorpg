@@ -78,7 +78,9 @@ export const CreatureCard = M.connectRedux(
             <div style={{ display: "flex" }}>
               <Header>{creature.name}</Header> {classIcon(creature)}
             </div>
-            <div>{creature.conditions.valueSeq().map(ac => conditionIcon(ac.condition))}</div>
+            <div>
+              {creature.dynamic_conditions().valueSeq().map(ac => conditionIcon(ac.condition))}
+            </div>
             {props.children}
           </div>
         </div>
