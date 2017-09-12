@@ -297,7 +297,7 @@ pub mod test {
     let change = t_act(&game, abid("multi"), DecidedTarget::Creature(cid_ranger())).unwrap();
     let next = change.game;
     assert_eq!(
-      next.get_creature(cid_ranger()).unwrap().conditions(),
+      next.get_creature(cid_ranger()).unwrap().all_conditions(),
       vec![
         AppliedCondition { remaining: Duration::Interminate, condition: Condition::Dead },
       ]

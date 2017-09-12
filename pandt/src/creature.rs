@@ -38,16 +38,16 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   // can_act, can_move, and speed.
 
   pub fn can_act(&self) -> bool {
-    conditions_able(&self.conditions())
+    conditions_able(&self.all_conditions())
   }
 
   pub fn can_move(&self) -> bool {
-    conditions_able(&self.conditions())
+    conditions_able(&self.all_conditions())
   }
 
   pub fn speed(&self) -> Distance {
     let mut speed = self.creature.speed;
-    for acondition in self.conditions() {
+    for acondition in self.all_conditions() {
       if acondition.condition == Condition::DoubleMaxMovement {
         speed = speed + self.creature.speed;
       }
@@ -56,20 +56,29 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   /// Get all conditions applied to a creature, including permanent conditions associated with
-  /// the creature's class.
-  pub fn conditions(&self) -> Vec<AppliedCondition> {
+  /// the creature's class and any volume-conditions from the current active scene.
+  pub fn all_conditions(&self) -> Vec<AppliedCondition> {
     let mut conditions: Vec<AppliedCondition> =
       self.creature.conditions.values().cloned().collect();
     let applied_class_conditions =
       self.class.conditions.iter().map(|c| c.apply(Duration::Interminate));
     conditions.extend(applied_class_conditions);
-    // Calculate volume conditions
+    conditions.extend(self.volume_conditions().into_iter().map(|(_, v)| v));
+    conditions
+  }
+
+  pub fn own_conditions(&self) -> &HashMap<ConditionID, AppliedCondition> {
+    &self.creature.conditions
+  }
+
+  pub fn volume_conditions(&self) -> HashMap<ConditionID, AppliedCondition> {
+    let mut conditions = HashMap::new();
     if let Some(scene_id) = self.game.active_scene {
       if let Ok(scene) = self.game.get_scene(scene_id) {
         if scene.creatures.contains_key(&self.creature.id) {
           if let Ok(conds) = scene.creature_volume_conditions(self.game, self.creature) {
-            for (_, volume_condition) in conds {
-              conditions.push(volume_condition.condition.clone().apply(Duration::Interminate));
+            for (cond_id, volume_condition) in conds {
+              conditions.insert(cond_id, volume_condition.condition.clone().apply(Duration::Interminate));
             }
           }
         }
@@ -80,7 +89,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   pub fn tick(&self) -> Result<ChangedCreature, GameError> {
     let mut changes = self.creature.change();
-    for condition in self.conditions() {
+    for condition in self.all_conditions() {
       if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
         condition
       {
@@ -166,7 +175,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {
     let mut abs = IndexedHashMap::new();
-    for acondition in self.conditions() {
+    for acondition in self.all_conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
         abs.insert(AbilityStatus { ability_id: abid, cooldown: 0 });
       }

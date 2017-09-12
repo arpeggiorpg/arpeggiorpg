@@ -1199,7 +1199,8 @@ impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 
     str.serialize_field("class", &creat.class)?;
     str.serialize_field("max_health", &creat.max_health)?;
     str.serialize_field("cur_health", &creat.cur_health)?;
-    str.serialize_field("conditions", &creat.conditions)?;
+    str.serialize_field("own_conditions", self.own_conditions())?;
+    str.serialize_field("volume_conditions", &self.volume_conditions())?;
     str.serialize_field("attributes", &creat.attributes)?;
     str.serialize_field("can_act", &self.can_act())?;
     str.serialize_field("can_move", &self.can_move())?;
