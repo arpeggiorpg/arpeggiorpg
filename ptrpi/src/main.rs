@@ -249,7 +249,7 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
     }
     PTRequest::Perform(command) => {
       let game_and_logs =
-        runtime.app.perform_unchecked(command).map_err(|e| format!("Error: {}", e));
+        runtime.app.perform_command(command).map_err(|e| format!("Error: {}", e));
       if let Ok((g, _)) = game_and_logs {
         runtime.world = g.get_world().expect("Couldn't calculate world");
       }

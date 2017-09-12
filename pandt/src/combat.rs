@@ -233,7 +233,7 @@ pub mod test {
   pub fn t_combat() -> Game {
     let game = t_game();
     game
-      .perform_unchecked(
+      .perform_command(
         GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
       )
       .unwrap()
@@ -243,7 +243,7 @@ pub mod test {
   pub fn t_act<'game>(
     game: &'game Game, abid: AbilityID, target: DecidedTarget
   ) -> Result<ChangedGame, GameError> {
-    game.perform_unchecked(GameCommand::CombatAct(abid, target))
+    game.perform_command(GameCommand::CombatAct(abid, target))
   }
 
   /// Try to melee-atack the ranger when the ranger is out of melee range.
@@ -251,7 +251,7 @@ pub mod test {
   fn target_melee_out_of_range() {
     let game = t_combat();
     let game = game
-      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (2, 0, 0)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (2, 0, 0)))
       .unwrap()
       .game;
     match t_act(&game, abid("punch"), DecidedTarget::Creature(cid_ranger())) {
@@ -264,9 +264,9 @@ pub mod test {
   #[test]
   fn target_range() {
     let game = t_combat();
-    let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
+    let game = game.perform_command(GameCommand::Done).unwrap().game;
     let game = game
-      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (5, 0, 0)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (5, 0, 0)))
       .unwrap()
       .game;
     let _: DynamicCombat = t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_ranger()))
@@ -308,9 +308,9 @@ pub mod test {
   #[test]
   fn target_out_of_range() {
     let game = t_combat();
-    let game = game.perform_unchecked(GameCommand::Done).unwrap().game;
+    let game = game.perform_command(GameCommand::Done).unwrap().game;
     let game = game
-      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (6, 0, 0)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (6, 0, 0)))
       .unwrap()
       .game;
     match t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_rogue())) {
@@ -319,7 +319,7 @@ pub mod test {
     }
 
     let game = game
-      .perform_unchecked(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 3, 0)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 3, 0)))
       .unwrap()
       .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
@@ -342,12 +342,12 @@ pub mod test {
   fn move_some_at_a_time() {
     let game = t_combat();
     let game =
-      game.perform_unchecked(GameCommand::PathCurrentCombatCreature((5, 0, 0))).unwrap().game;
+      game.perform_command(GameCommand::PathCurrentCombatCreature((5, 0, 0))).unwrap().game;
     assert_eq!(game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(), (5, 0, 0));
     let game =
-      game.perform_unchecked(GameCommand::PathCurrentCombatCreature((10, 0, 0))).unwrap().game;
+      game.perform_command(GameCommand::PathCurrentCombatCreature((10, 0, 0))).unwrap().game;
     assert_eq!(game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(), (10, 0, 0));
-    match game.perform_unchecked(GameCommand::PathCurrentCombatCreature((11, 0, 0))) {
+    match game.perform_command(GameCommand::PathCurrentCombatCreature((11, 0, 0))) {
       Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }

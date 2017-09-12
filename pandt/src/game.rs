@@ -49,7 +49,7 @@ impl Game {
   }
 
   /// Perform a GameCommand on the current Game.
-  pub fn perform_unchecked(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
+  pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
       SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
@@ -1233,14 +1233,14 @@ pub mod test {
   }
 
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
-    game.perform_unchecked(cmd).unwrap().game
+    game.perform_command(cmd).unwrap().game
   }
 
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), vec![non]));
+    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]));
     match result {
       Err(GameError(GameErrorEnum::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1250,7 +1250,7 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result = game.perform_unchecked(GameCommand::StartCombat(t_scene_id(), vec![]));
+    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]));
     match result {
       Err(GameError(GameErrorEnum::CombatMustHaveCreatures, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -1301,10 +1301,10 @@ pub mod test {
     );
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid("punch"), DecidedTarget::Creature(cid_ranger()));
-      let game = game.perform_unchecked(GameCommand::Done)?.game;
-      let game = game.perform_unchecked(GameCommand::Done)?.game;
+      let game = game.perform_command(GameCommand::Done)?.game;
+      let game = game.perform_command(GameCommand::Done)?.game;
       let game = t_game_act(&game, abid("heal"), DecidedTarget::Creature(cid_ranger()));
-      let game = game.perform_unchecked(GameCommand::Done)?.game;
+      let game = game.perform_command(GameCommand::Done)?.game;
       Ok(game)
     };
     iter(&game).unwrap();
