@@ -333,7 +333,7 @@ export class PositiveIntegerInput
 
 export function conditionIcon(cond: T.Condition): string {
   switch (cond.t) {
-    case "RecurringEffect": return cond.effect.toString();
+    case "RecurringEffect": return "Recurring effect of some sort";
     case "Dead": return "💀";
     case "Incapacitated": return "😞";
     case "AddDamageBuff": return "😈";
