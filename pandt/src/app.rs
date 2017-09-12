@@ -40,9 +40,7 @@ impl App {
     snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
     App { current_game: g, snapshots: snapshots }
   }
-  pub fn perform_command(
-    &mut self, cmd: GameCommand
-  ) -> Result<(&Game, Vec<GameLog>), GameError> {
+  pub fn perform_command(&mut self, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
@@ -228,9 +226,7 @@ mod test {
     // 4
     app.perform_command(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
     // 5
-    app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 1, 1)))
-      .unwrap();
+    app.perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 1, 1))).unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(cid_cleric()).unwrap(), (0, 0, 0));
     assert_eq!(scene.get_pos(cid_rogue()).unwrap(), (1, 1, 1));

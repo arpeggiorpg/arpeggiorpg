@@ -78,7 +78,8 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
         if scene.creatures.contains_key(&self.creature.id) {
           if let Ok(conds) = scene.creature_volume_conditions(self.game, self.creature) {
             for (cond_id, volume_condition) in conds {
-              conditions.insert(cond_id, volume_condition.condition.clone().apply(Duration::Interminate));
+              conditions
+                .insert(cond_id, volume_condition.condition.clone().apply(Duration::Interminate));
             }
           }
         }
