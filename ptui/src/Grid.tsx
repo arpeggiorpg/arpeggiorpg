@@ -174,7 +174,7 @@ interface SceneGridProps {
   creatures: Obj<MapCreature>;
 }
 interface SceneGridState {
-  targeting_point?: { point: T.Point3, rect: M.Rect };
+  targeting_point?: { point: T.Point3; rect: M.Rect };
   affected_points?: Array<T.Point3>;
   affected_creatures?: Array<T.CreatureID>;
 }
@@ -310,7 +310,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
-  renderAnnotation(map: T.Map, { pt, rect }: { pt: T.Point3, rect: M.Rect }): JSX.Element {
+  renderAnnotation(map: T.Map, { pt, rect }: { pt: T.Point3; rect: M.Rect }): JSX.Element {
     const { dispatch } = this.props;
     const special = LD.find(map.specials, ([pt_, ..._]) => M.isEqual(pt, pt_));
     if (!special) { return <noscript />; }
@@ -320,7 +320,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </RectPositioned >;
   }
 
-  renderMenu({ cid, rect }: { cid: T.CreatureID, rect: M.Rect }): JSX.Element {
+  renderMenu({ cid, rect }: { cid: T.CreatureID; rect: M.Rect }): JSX.Element {
     const { creatures, dispatch } = this.props;
     const creature_ = M.get(creatures, cid);
     if (!creature_) {
@@ -534,7 +534,7 @@ function getAnnotations(
 
 const MovementTarget = M.connectRedux(
   function MovementTarget(
-    props: { cid?: T.CreatureID; pt: T.Point3, teleport: boolean } & M.ReduxProps
+    props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean } & M.ReduxProps
   ): JSX.Element {
     const { cid, pt, ptui, dispatch, teleport } = props;
     const tprops = tile_props("cyan", pt);
@@ -553,7 +553,7 @@ const MovementTarget = M.connectRedux(
   });
 
 function SpecialTile(
-  props: { color: string, vis: T.Visibility, pt: T.Point3, player_id?: T.PlayerID }): JSX.Element {
+  props: { color: string; vis: T.Visibility; pt: T.Point3; player_id?: T.PlayerID }): JSX.Element {
   const { color, vis, pt, player_id } = props;
   const gmonly = vis.t === "GMOnly";
   if (gmonly && player_id) {
@@ -569,7 +569,7 @@ function SpecialTile(
 
 
 function Annotation({ dispatch, pt, vis, player_id }:
-  { pt: T.Point3, vis: T.Visibility, player_id?: T.PlayerID } & M.DispatchProps)
+  { pt: T.Point3; vis: T.Visibility; player_id?: T.PlayerID } & M.DispatchProps)
   : JSX.Element {
   if (M.isEqual(vis, { t: "GMOnly" }) && player_id) {
     return <noscript />;
@@ -595,7 +595,7 @@ function Annotation({ dispatch, pt, vis, player_id }:
 
 const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
-    { creature: MapCreature, highlight?: string } & M.ReduxProps): JSX.Element {
+    { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     function onClick() {
       const act: M.Action = {
@@ -646,7 +646,7 @@ function text_tile(text: string, pos: T.Point3): JSX.Element {
   </text>;
 }
 
-function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number, y: number })
+function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number; y: number })
   : JSX.Element {
   const props = tile_props(color, pos, size);
   return <rect key={pointKey(keyPrefix, pos)} {...props} />;
@@ -707,7 +707,7 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   return result;
 
   function targetAction(
-    creature: T.Creature): { name: string, action: ((cid: T.CreatureID) => void) } | undefined {
+    creature: T.Creature): { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
     if (ptui.state.grid.target_options) {
       const { ability_id, options } = ptui.state.grid.target_options;
       if (options.t !== "CreatureIDs") { return undefined; }
