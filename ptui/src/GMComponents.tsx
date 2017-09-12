@@ -87,8 +87,8 @@ export const CreateScene = M.connectRedux(class CreateScene
 });
 
 class EditScene
-  extends React.Component<{ scene: T.Scene, onDone: () => void } & M.DispatchProps,
-  { name: string, background_image_url: string }> {
+  extends React.Component<{ scene: T.Scene; onDone: () => void } & M.DispatchProps,
+  { name: string; background_image_url: string }> {
   constructor(props: { scene: T.Scene; onDone: () => void } & M.DispatchProps) {
     super(props);
     this.state = { name: props.scene.name, background_image_url: props.scene.background_image_url };
@@ -113,11 +113,11 @@ class EditScene
 }
 
 class EditMap
-  extends React.Component<{ map: T.Map, onDone: () => void } & M.DispatchProps,
+  extends React.Component<{ map: T.Map; onDone: () => void } & M.DispatchProps,
   {
-    name: string, background_image_url: string,
-    scale_x: string, scale_y: string,
-    offset_x: string, offset_y: string
+    name: string; background_image_url: string;
+    scale_x: string; scale_y: string;
+    offset_x: string; offset_y: string;
   }> {
   constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
     super(props);
@@ -453,7 +453,7 @@ export const GMCreatureInventory = M.connectRedux(
 
 
 export const EditableNumericLabel = M.connectRedux(
-  function EditableNumericLabel(props: { value: number, save: (num: number) => void; }) {
+  function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
     const { value, save } = props;
     const edit = (to_view: CV.ToggleFunc) =>
       <TextInput.TextInput defaultValue={value.toString()} numbersOnly={true}
@@ -467,7 +467,7 @@ export const EditableNumericLabel = M.connectRedux(
 
 export const SceneItemCountEditor = M.connectRedux(
   function SceneItemCountEditor(
-    props: { scene: T.Scene, item: T.Item, count: number } & M.ReduxProps) {
+    props: { scene: T.Scene; item: T.Item; count: number } & M.ReduxProps) {
     const { scene, item, count, ptui, dispatch } = props;
     return <EditableNumericLabel value={count} save={save} />;
 
@@ -479,7 +479,7 @@ export const SceneItemCountEditor = M.connectRedux(
 
 export const CreatureItemCountEditor = M.connectRedux(
   function CreatureItemCountEditor(
-    props: { creature: T.Creature, item: T.Item, count: number } & M.ReduxProps) {
+    props: { creature: T.Creature; item: T.Item; count: number } & M.ReduxProps) {
     const { creature, item, count, ptui, dispatch } = props;
     return <EditableNumericLabel value={count} save={save} />;
 
@@ -491,7 +491,7 @@ export const CreatureItemCountEditor = M.connectRedux(
 
 export const GiveItemFromScene = M.connectRedux(
   function GiveItemFromScene(
-    props: { scene: T.Scene; item: T.Item; onClose: () => void; } & M.ReduxProps) {
+    props: { scene: T.Scene; item: T.Item; onClose: () => void } & M.ReduxProps) {
     const { scene, item, onClose, ptui, dispatch } = props;
     const available_count = scene.inventory.get(item.id);
     if (!available_count) { return <div>Lost item {item.name}!</div>; }
@@ -510,7 +510,7 @@ export const GiveItemFromScene = M.connectRedux(
   });
 
 export const AddItemsToScene = M.connectRedux(
-  function AddItemsToScene(props: { scene: T.Scene, onClose: () => void } & M.ReduxProps) {
+  function AddItemsToScene(props: { scene: T.Scene; onClose: () => void } & M.ReduxProps) {
     const { scene, onClose, ptui, dispatch } = props;
     return <Campaign.MultiItemSelector require_selected={scene.inventory.keySeq().toSet()}
       on_selected={item_ids => {
@@ -526,7 +526,7 @@ export const AddItemsToScene = M.connectRedux(
   });
 
 export const AddItemsToCreature = M.connectRedux(
-  function AddItemsToCreature(props: { creature: T.Creature, onClose: () => void } & M.ReduxProps) {
+  function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void } & M.ReduxProps) {
     const { creature, onClose, ptui, dispatch } = props;
     return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
       on_selected={item_ids => {
@@ -559,7 +559,7 @@ export const GMSceneCreatures = ReactRedux.connect(
   (dispatch: M.Dispatch) => ({ dispatch }),
 )(
   function GMSceneCreatures(
-    props: { scene: T.Scene; } & GMSceneCreaturesDerivedProps & M.DispatchProps) {
+    props: { scene: T.Scene } & GMSceneCreaturesDerivedProps & M.DispatchProps) {
     const { scene, creatures, combat, dispatch } = props;
     console.log('[EXPENSIVE:GMSceneCreatures]');
     return <List relaxed={true}>
@@ -756,7 +756,7 @@ const GMCombatHeader = M.connectRedux(
   });
 
 /// A customized CreatureCard that renders an editable note in the content area.
-export function GMCreatureCard(props: { creature: T.Creature, menu_items?: Array<JSX.Element> }
+export function GMCreatureCard(props: { creature: T.Creature; menu_items?: Array<JSX.Element> }
 ): JSX.Element {
   const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
     <Dropdown.Menu>
@@ -814,7 +814,7 @@ const CreatureNote = M.connectRedux(
   });
 
 export const CreateFolder = M.connectRedux(
-  function CreateFolder(props: { path: T.FolderPath; onDone: () => void; } & M.ReduxProps) {
+  function CreateFolder(props: { path: T.FolderPath; onDone: () => void } & M.ReduxProps) {
     const { path, onDone, ptui, dispatch } = props;
     return <CV.SingleInputForm buttonText="Create Folder" onSubmit={create} />;
 
@@ -826,7 +826,7 @@ export const CreateFolder = M.connectRedux(
     }
   });
 
-export function CreateMap(props: { path: T.FolderPath; onDone: () => void; } & M.DispatchProps) {
+export function CreateMap(props: { path: T.FolderPath; onDone: () => void } & M.DispatchProps) {
   const { path, onDone, dispatch } = props;
   return <CV.SingleInputForm buttonText="Create Map" onSubmit={create} />;
   function create(input: string) {
