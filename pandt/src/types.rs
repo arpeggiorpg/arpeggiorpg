@@ -375,6 +375,14 @@ pub enum GameCommand {
   AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
   RemoveSceneChallenge { scene_id: SceneID, description: String },
   SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
+  // AddSceneVolumeCondition {
+  //   scene_id: SceneID,
+  //   point: Point3,
+  //   volume: Volume,
+  //   condition: Condition,
+  //   duration: Duration,
+  // },
+  RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
 
   // ** Map management **
   CreateMap(FolderPath, MapCreation),
@@ -525,6 +533,7 @@ pub enum GameLog {
   AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
   RemoveSceneChallenge { scene_id: SceneID, description: String },
   SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
+  RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
 
   CreateMap(FolderPath, Map),
 
@@ -760,7 +769,7 @@ pub struct Ability {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget }, 
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -801,7 +810,7 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition }, 
+  CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -1044,7 +1053,7 @@ pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum CollisionData {
   Creature(CreatureID),
-  ConditionVolume(ConditionID), 
+  ConditionVolume(ConditionID),
   // BlockedTerrain ????
 }
 

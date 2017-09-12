@@ -142,6 +142,9 @@ impl Game {
         .change_with(GameLog::RemoveSceneChallenge { scene_id, description: description.clone() }),
       SetFocusedSceneCreatures { scene_id, ref creatures } => self
         .change_with(GameLog::SetFocusedSceneCreatures { scene_id, creatures: creatures.clone() }),
+      RemoveSceneVolumeCondition { scene_id, condition_id } => {
+        self.change_with(GameLog::RemoveSceneVolumeCondition { scene_id, condition_id })
+      }
 
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
@@ -694,6 +697,16 @@ impl Game {
           .scenes
           .mutate(&scene_id, move |mut scene| {
             scene.focused_creatures = creatures.clone();
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+
+      RemoveSceneVolumeCondition { scene_id, condition_id } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.volume_conditions.remove(&condition_id);
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
