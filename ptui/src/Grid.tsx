@@ -244,7 +244,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
       console.log(vol_cond);
       return svgVolume(vol_cond.volume, vol_cond.point,
-        { fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5" });
+        {
+          fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5",
+          style: { pointerEvents: "auto" },
+          onClick: () => console.log("Clicked a volume condition"),
+        });
     }
     );
   }
@@ -425,7 +429,7 @@ function svgVolume(
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
     default:
-      console.log("NYI: svgvolume for", volume);
+      console.log("unimplemented! svgvolume for", volume);
       return <g />;
   }
 }
@@ -684,6 +688,10 @@ function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
   return { nw, ne, se, sw };
 }
 
+/**
+ * Create the `MapCreature`s for all creatures in a scene. This is common code shared for player
+ * and GM views.
+ */
 export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   : { [index: string]: MapCreature } {
   const creatures = M.filterMap(

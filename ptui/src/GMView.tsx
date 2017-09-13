@@ -74,6 +74,8 @@ function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
   }
 }
 
+/** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
+ */
 function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   : { [index: string]: Grid.MapCreature } {
   return LD.mapValues(Grid.mapCreatures(ptui, dispatch, scene),

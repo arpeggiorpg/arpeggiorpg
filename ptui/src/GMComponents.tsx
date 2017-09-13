@@ -44,6 +44,7 @@ export const GMScene = M.connectRedux(
         { title: 'Items', content: <GMSceneInventory scene={scene} /> },
         { title: 'Challenges', content: <GMSceneChallenges scene={scene} /> },
         { title: 'Players', content: <GMScenePlayers scene={scene} /> },
+        { title: 'Volumes', content: <GMSceneVolumes scene={scene} /> },
       ]} />
     </Segment>;
   });
@@ -187,6 +188,13 @@ export const GMScenePlayers = M.connectRedux(
       dispatch(M.sendCommands(commands));
     }
   });
+
+export const GMSceneVolumes = M.connectRedux(
+  function GMSceneVolumes(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+    const { scene } = props;
+    return <div>{scene.volume_conditions.valueSeq().map((_: any) => <div>one</div>).toArray()}</div>;
+  });
+
 
 export const GMSceneChallenges = M.connectRedux(
   function GMSCeneChallenges({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
