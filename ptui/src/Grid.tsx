@@ -1,3 +1,42 @@
+/**
+ * UI design notes.
+ *
+ * Things we need to do with Grids:
+ * - Edit Maps (GM-only)
+ *   - Toggle collision tiles
+ *   - Toggle highlighted tiles
+ *   - (eventually) Toggle vision-occluding tiles
+ *   - Add/edit annotations on tiles
+ * - View scenes
+ *   - View background image for scene
+ *   - View map
+ *     - Collision tiles
+ *     - Special tiles (w/ permission)
+ *     - Annotations (w/ permission)
+ *   - Objects in scene:
+ *     - Creatures (w/ permission)
+ *     - Other "objects" w/ tile graphics
+ *     - Volume conditions
+ * - Interact with scenes:
+ *   - Creature actions (some GM-only, others player-only, assuming player control)
+ *   - Volume Condition actions (remove)
+ *   - Move creatures with long-press
+ *   - Pan and zoom
+ *   - Add creatures to them
+ *
+ * Objects we need to interact with:
+ * - arbitrary open tiles (add creature here, add volume condition here)
+ * - creatures
+ * - volume conditions
+ * - handle cases when these objects are stacked: volume condition covering area where there's a
+ *   large creature and a small creature in that large creature's space
+ *
+ * Ways in which we want to interact with objects:
+ * - click/touch: bring up menu
+ * - long-click / long-press: move object (and maybe enable deleting items a la iOS)
+ */
+
+
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
