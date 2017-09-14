@@ -15,7 +15,6 @@ impl Game {
       abilities: abilities,
       current_combat: None,
       creatures: IndexedHashMap::new(),
-      maps: IndexedHashMap::new(),
       classes: classes,
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
@@ -82,7 +81,6 @@ impl Game {
         let new_item_id = match item_id {
           FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
           FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
-          FolderItemID::MapID(_) => FolderItemID::MapID(MapID::gen()),
           FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
           FolderItemID::NoteID(_) | FolderItemID::SubfolderID(_) => item_id.clone(),
         };
@@ -158,17 +156,11 @@ impl Game {
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
       CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
       ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),
-      CreateMap(ref path, ref creation) => {
-        let map = Map::create(creation.clone());
-        self.change_with(GameLog::CreateMap(path.clone(), map))
-      }
-      EditMap(ref map) => self.change_with(GameLog::EditMap(map.clone())),
-      EditMapDetails { id, ref details } => {
-        self.change_with(GameLog::EditMapDetails { id, details: details.clone() })
-      }
-      EditMapTerrain { id, ref terrain, ref specials } => self.change_with(
-        GameLog::EditMapTerrain { id, terrain: terrain.clone(), specials: specials.clone() },
+      EditSceneTerrain { scene_id, ref terrain } => self.change_with(
+        GameLog::EditSceneTerrain { scene_id, terrain: terrain.clone() },
       ),
+      EditSceneHighlights{scene_id, ref highlights} => self.change_with(GameLog::EditSceneHighlights{scene_id, highlights: highlights.clone()}),
+      EditSceneAnnotations{scene_id, ref annotations} => self.change_with(GameLog::EditSceneAnnotations{scene_id, annotations: annotations.clone()}),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -219,14 +211,13 @@ impl Game {
     &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: Distance
   ) -> Result<(ChangedGame, Distance), GameError> {
     let scene = self.get_scene(scene_id)?;
-    let terrain = self.get_map(scene.map)?;
     let creature = self.get_creature(cid)?;
     let (pts, distance) = self
       .tile_system
       .find_path(
         scene.get_pos(cid)?,
         max_distance,
-        terrain,
+        &scene.terrain,
         Volume::AABB(creature.creature.size),
         pt,
       )
@@ -242,10 +233,6 @@ impl Game {
     change.apply_creature(self.current_combat.as_ref().unwrap().current_creature_id(), |c| c.tick())
   }
 
-  pub fn get_map(&self, map_id: MapID) -> Result<&Map, GameError> {
-    self.maps.get(&map_id).ok_or_else(|| GameErrorEnum::MapNotFound(map_id).into())
-  }
-
   fn link_folder_item(
     &mut self, path: &FolderPath, item_id: &FolderItemID
   ) -> Result<(), GameError> {
@@ -253,7 +240,6 @@ impl Game {
     match *item_id {
       FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
       FolderItemID::SceneID(sid) => node.scenes.insert(sid),
-      FolderItemID::MapID(mid) => node.maps.insert(mid),
       FolderItemID::ItemID(iid) => node.items.insert(iid),
       FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
       FolderItemID::NoteID(ref nid) => {
@@ -278,7 +264,6 @@ impl Game {
     match *item_id {
       FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
       FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
-      FolderItemID::MapID(mid) => remove_set(path, item_id, &mut node.maps, &mid)?,
       FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
       FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       FolderItemID::NoteID(ref nid) => {
@@ -436,12 +421,6 @@ impl Game {
           self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
         }
         (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
-        (&FolderItemID::MapID(id), &FolderItemID::MapID(new_id)) => {
-          let mut new_map = self.get_map(id)?.clone();
-          new_map.id = new_id;
-          self.apply_log_mut(&CreateMap(dest.clone(), new_map))?;
-        }
-        (&FolderItemID::MapID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
         (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
       },
@@ -529,22 +508,10 @@ impl Game {
             }
             self.scenes.remove(&sid);
           }
-          FolderItemID::MapID(id) => {
-            for path in all_folders {
-              self.campaign.get_mut(&path)?.maps.remove(&id);
-            }
-            let scenes_using_this_map: Vec<SceneID> =
-              self.scenes.values().filter(|s| s.map == id).map(|s| s.id).collect();
-            if !scenes_using_this_map.is_empty() {
-              bail!(GameErrorEnum::MapInUse(id, scenes_using_this_map));
-            }
-            self.maps.remove(&id).ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
-          }
           FolderItemID::SubfolderID(ref name) => {
             // basically we delete everything by simulating GameLog::DeleteFolderItem for each
-            // child.
-            // This must be done in a particular order to ensure scenes are deleted before maps
-            // (since maps can't be deleted if there are scenes referring to them).
+            // child. Order may matter here in case some objects can't be deleted before their
+            // referents are cleaned up.
             let path = path.child(name.to_string());
             for child_folder in self.campaign.get_children(&path)?.clone() {
               self.apply_log_mut(
@@ -554,9 +521,6 @@ impl Game {
             let node = self.campaign.get(&path)?.clone();
             for scene_id in node.scenes {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::SceneID(scene_id)))?;
-            }
-            for map_id in node.maps {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::MapID(map_id)))?;
             }
             for cid in node.creatures {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::CreatureID(cid)))?;
@@ -621,19 +585,16 @@ impl Game {
         self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
       }
       EditScene(ref scene) => {
-        self.check_map(scene.map)?;
         self
           .scenes
           .mutate(&scene.id, move |_| scene.clone())
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene.id))?;
       }
       EditSceneDetails { scene_id, ref details } => {
-        self.check_map(details.map)?;
         self
           .scenes
           .mutate(&scene_id, move |mut scene| {
             scene.name = details.name.clone();
-            scene.map = details.map;
             scene.background_image_url = details.background_image_url.clone();
             scene
           })
@@ -712,37 +673,32 @@ impl Game {
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
 
-      CreateMap(ref path, ref map) => {
-        self.maps.try_insert(map.clone()).ok_or_else(|| GameErrorEnum::MapAlreadyExists(map.id))?;
-        self.link_folder_item(path, &FolderItemID::MapID(map.id))?;
-      }
-      EditMap(ref map) => {
+      EditSceneTerrain { scene_id, ref terrain } => {
         self
-          .maps
-          .mutate(&map.id, move |_| map.clone())
-          .ok_or_else(|| GameErrorEnum::MapNotFound(map.id))?;
-      }
-      EditMapDetails { id, ref details } => {
-        self
-          .maps
-          .mutate(&id, move |mut m| {
-            m.name = details.name.clone();
-            m.background_image_url = details.background_image_url.clone();
-            m.background_image_scale = details.background_image_scale;
-            m.background_image_offset = details.background_image_offset;
-            m
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.terrain = terrain.clone();
+            scene
           })
-          .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
-      EditMapTerrain { id, ref terrain, ref specials } => {
+      EditSceneHighlights { scene_id, ref highlights } => {
         self
-          .maps
-          .mutate(&id, move |mut m| {
-            m.terrain = terrain.clone();
-            m.specials = specials.clone();
-            m
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.highlights = highlights.clone();
+            scene
           })
-          .ok_or_else(|| GameErrorEnum::MapNotFound(id))?;
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
+      }
+      EditSceneAnnotations { scene_id, ref annotations } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |mut scene| {
+            scene.annotations = annotations.clone();
+            scene
+          })
+          .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
       CreateCreature(ref path, ref rc) => {
         let c = rc.clone();
@@ -829,14 +785,6 @@ impl Game {
     Ok(())
   }
 
-  fn check_map(&self, map_id: MapID) -> Result<(), GameError> {
-    if self.maps.contains_key(&map_id) {
-      Ok(())
-    } else {
-      Err(GameErrorEnum::MapNotFound(map_id).into())
-    }
-  }
-
   pub fn check_creature_id(&self, cid: CreatureID) -> Result<(), GameError> {
     if self.creatures.contains_key(&cid) {
       Ok(())
@@ -880,8 +828,7 @@ impl Game {
   pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
     let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
     let scene = self.get_scene(combat.scene)?;
-    let map = self.get_map(scene.map)?;
-    Ok(DynamicCombat { scene: scene, map: map, combat: combat, game: self })
+    Ok(DynamicCombat { scene: scene, combat: combat, game: self })
   }
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
@@ -1061,7 +1008,7 @@ impl Game {
     if creature.can_move() {
       Ok(self.tile_system.get_all_accessible(
         scene.get_pos(creature_id)?,
-        self.get_map(scene.map)?,
+        &scene.terrain,
         Volume::AABB(creature.creature.size),
         creature.speed(),
       ))
@@ -1104,8 +1051,7 @@ impl Game {
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
-    let map = self.get_map(scene.map)?;
-    let pts = self.tile_system.open_points_in_range(creature_pos, map, range);
+    let pts = self.tile_system.open_points_in_range(creature_pos, &scene.terrain, range);
     Ok(PotentialTargets::Points(pts))
   }
 

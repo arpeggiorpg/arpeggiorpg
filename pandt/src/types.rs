@@ -511,6 +511,8 @@ pub enum GameLog {
   RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
 
   EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
+  EditSceneHighlights {scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)>},
+  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)>},
 
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
