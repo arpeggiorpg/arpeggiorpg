@@ -1172,6 +1172,7 @@ impl Folder {
 pub mod test {
   use types::*;
   use std::iter::FromIterator;
+  use grid::test::*;
 
   use serde_yaml;
   use serde_json;
@@ -1243,7 +1244,7 @@ pub mod test {
       background_image_url: "".to_string(),
       background_image_offset: None,
       background_image_scale: (1, 1),
-      terrain: vec![],
+      terrain: huge_box(),
       highlights: HashMap::new(),
       annotations: HashMap::new(),
       attribute_checks: HashMap::new(),
