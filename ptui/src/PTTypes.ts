@@ -9,17 +9,27 @@ export type PlayerID = string;
 export type SceneID = string;
 export type ItemID = string;
 export type AttrID = string;
-export type MapID = string;
 export type Color = string;
 export type Distance = number;
 export type HP = number;
 export type Energy = number;
 export type ConditionID = string;
 export type FolderPath = Array<string>;
-export type SpecialTile = [Point3, Color, string, Visibility];
-export type SpecialTileData = [Color, string, Visibility];
-export type Point3 = [number, number, number];
 export type VectorCM = [number, number, number];
+export type Terrain = I.List<Point3>;
+
+
+class Point3 implements I.ValueObject {
+  constructor(public x: number, public y: number, public z: number) { }
+
+  equals(other: Point3): boolean {
+    return this.x === other.x && this.y === other.y && this.z === other.z;
+  }
+
+  hashCode(): number {
+    return I.List([this.x, this.y, this.z]).hashCode();
+  }
+}
 
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
 //     const target = T.MkDecidedTarget.Creature({creature_id});
@@ -41,7 +51,6 @@ export interface Game {
   items: { [index: string]: Item };
   scenes: { [index: string]: Scene };
   abilities: { [index: string]: Ability };
-  maps: { [index: string]: Map };
   campaign: Folder;
   players: I.Map<PlayerID, Player>;
 }
@@ -97,7 +106,6 @@ export interface FolderNode {
   scenes: Array<SceneID>;
   creatures: Array<CreatureID>;
   notes: { [index: string]: Note };
-  maps: Array<MapID>;
   items: Array<ItemID>;
 }
 
@@ -105,13 +113,6 @@ export type InventoryOwner =
   | { Creature: CreatureID }
   | { Scene: SceneID }
   ;
-
-interface MapCreation {
-  name: string;
-  background_image_url: string;
-  background_image_offset: [number, number];
-  background_image_scale: [number, number];
-}
 
 export type GameCommand =
   | { t: "SetActiveScene"; scene_id: SceneID | undefined }
@@ -143,10 +144,12 @@ export type GameCommand =
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
-  | { t: "CreateMap"; path: FolderPath; map: MapCreation }
-  | { t: "EditMap"; map: Map }
-  | { t: "EditMapDetails"; id: MapID; details: MapCreation }
-  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile> }
+  | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
+  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: I.Map<Point3, [Color, Visibility]> }
+  | {
+    t: "EditSceneAnnotations"; scene_id: SceneID;
+    annotations: I.Map<Point3, [string, Visibility]>;
+  }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -200,7 +203,6 @@ export type GameCommand =
 
 export interface SceneCreation {
   name: string;
-  map: MapID;
   background_image_url: string;
 }
 
@@ -266,10 +268,12 @@ export type GameLog =
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
-  | { t: "CreateMap"; path: FolderPath; map: Map }
-  | { t: "EditMap"; map: Map }
-  | { t: "EditMapDetails"; id: MapID; details: MapCreation }
-  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile> }
+  | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
+  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: I.Map<Point3, [Color, Visibility]> }
+  | {
+    t: "EditSceneAnnotations"; scene_id: SceneID;
+    annotations: I.Map<Point3, [string, Visibility]>;
+  }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
@@ -369,21 +373,10 @@ export interface AABB { x: number; y: number; z: number; }
 
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
-  | { t: "MapID"; id: MapID }
   | { t: "CreatureID"; id: CreatureID }
   | { t: "NoteID"; id: string }
   | { t: "SubfolderID"; id: string }
   | { t: "ItemID"; id: ItemID };
-
-export interface Map {
-  id: MapID;
-  name: string;
-  terrain: Array<Point3>;
-  specials: Array<SpecialTile>;
-  background_image_url: string;
-  background_image_scale: [number, number];
-  background_image_offset: [number, number];
-}
 
 export interface AttributeCheck {
   reliable: boolean;
@@ -403,11 +396,15 @@ export interface Note {
 export interface Scene {
   id: SceneID;
   name: string;
-  map: MapID;
+  terrain: Terrain;
+  highlights: I.Map<Point3, [Color, Visibility]>;
+  annotations: I.Map<Point3, [string, Visibility]>;
   creatures: I.Map<CreatureID, [Point3, Visibility]>;
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
   background_image_url: string;
+  background_image_offset: [number, number] | undefined;
+  background_image_scale: [number, number];
   volume_conditions: I.Map<ConditionID, VolumeCondition>;
   focused_creatures: I.List<CreatureID>;
 }
@@ -441,7 +438,16 @@ export type RustResult<T, E> =
 
 // ** Decoders **
 
-export const decodePoint3: Decoder<Point3> = JD.tuple(JD.number(), JD.number(), JD.number());
+export const decodePoint3: Decoder<Point3> = JD.map(
+  str => {
+    const segments = str.split("/");
+    if (segments.length !== 3) {
+      throw new Error(`${str} did not have three segments separated by /`);
+    }
+    const [xs, ys, zs] = segments;
+    return new Point3(Number(xs), Number(ys), Number(zs));
+  },
+  JD.string());
 
 export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", {}, {
   CreatureIDs: JD.map((cids): PotentialTargets =>
@@ -595,35 +601,6 @@ export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
   }
 }, JD.string());
 
-const decodeMapCreation: Decoder<MapCreation> = JD.object(
-  ["name", JD.string()],
-  ["background_image_url", JD.string()],
-  ["background_image_offset", JD.tuple(JD.number(), JD.number())],
-  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
-  (name, background_image_url, background_image_offset, background_image_scale) =>
-    ({ name, background_image_url, background_image_offset, background_image_scale }),
-);
-
-const decodeSpecialTile: Decoder<SpecialTile> =
-  JD.tuple(decodePoint3, JD.string(), JD.string(), decodeVisibility);
-
-const decodeMap: Decoder<Map> = JD.object(
-  ["id", JD.string()],
-  ["name", JD.string()],
-  ["terrain", JD.array(decodePoint3)],
-  ["specials", JD.array(decodeSpecialTile)],
-  ["background_image_url", JD.string()],
-  ["background_image_offset", JD.tuple(JD.number(), JD.number())],
-  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
-  (
-    id, name, terrain, specials,
-    background_image_url, background_image_offset, background_image_scale) =>
-    ({
-      id, name, terrain, specials,
-      background_image_url, background_image_offset, background_image_scale,
-    })
-);
-
 export const decodeAttributeCheck: Decoder<AttributeCheck> =
   JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
     (reliable, attr, target) => ({ reliable, attr, target }));
@@ -661,18 +638,24 @@ export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
-    ["map", JD.string()],
+    ["terrain", JD.map(I.List, JD.array(decodePoint3))],
+    ["highlights", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
+    ["annotations", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
     ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
     ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
     ["background_image_url", JD.string()],
+    ["background_image_offset", maybe(JD.tuple(JD.number(), JD.number()))],
+    ["background_image_scale", JD.tuple(JD.number(), JD.number())],
     ["volume_conditions", JD.map(I.Map, JD.dict(decodeVolumeCondition))],
     ["focused_creatures", JD.map(I.List, JD.array(JD.string()))],
     (
-      id, name, map, creatures, attribute_checks, inventory, background_image_url,
-      volume_conditions, focused_creatures): Scene => ({
-        id, name, map, creatures, attribute_checks, inventory, background_image_url,
-        volume_conditions, focused_creatures,
+      id, name, terrain, highlights, annotations, creatures, attribute_checks, inventory,
+      background_image_url, background_image_offset, background_image_scale, volume_conditions,
+      focused_creatures): Scene => ({
+        id, name, terrain, highlights, annotations, creatures, attribute_checks, inventory,
+        background_image_url, background_image_offset, background_image_scale, volume_conditions,
+        focused_creatures,
       }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {
@@ -867,17 +850,10 @@ export const decodeGameLog: Decoder<GameLog> =
       ["scene_id", JD.string()], ["creatures", JD.map(I.List, JD.array(JD.string()))],
       (scene_id, creatures): GameLog => ({ t: "SetFocusedSceneCreatures", scene_id, creatures })
     ),
-    CreateMap: JD.map(
-      ([path, map]): GameLog => ({ t: "CreateMap", path, map }),
-      JD.tuple(decodeFolderPath, decodeMap)),
-    EditMap: JD.map((map): GameLog => ({ t: "EditMap", map }), decodeMap),
-    EditMapDetails: JD.object(["id", JD.string()], ["details", decodeMapCreation],
-      (id, details): GameLog => ({ t: "EditMapDetails", id, details })),
-    EditMapTerrain: JD.object(
-      ["id", JD.string()],
-      ["terrain", JD.array(decodePoint3)],
-      ["specials", JD.array(decodeSpecialTile)],
-      (id, terrain, specials): GameLog => ({ t: "EditMapTerrain", id, terrain, specials })),
+    EditSceneTerrain: JD.object(
+      ["scene_id", JD.string()],
+      ["terrain", JD.map(I.List, JD.array(decodePoint3))],
+      (scene_id, terrain): GameLog => ({ t: "EditSceneTerrain", scene_id, terrain })),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
@@ -1007,11 +983,10 @@ const decodeGame: Decoder<Game> = JD.object(
   ["items", JD.dict(decodeItem)],
   ["scenes", JD.dict(decodeScene)],
   ["abilities", JD.dict(decodeAbility)],
-  ["maps", JD.dict(decodeMap)],
   ["campaign", decodeFolder],
   ["players", JD.map(I.Map, JD.dict(decodePlayer))],
-  (current_combat, creatures, classes, items, scenes, abilities, maps, campaign, players) =>
-    ({ current_combat, creatures, classes, items, scenes, abilities, maps, campaign, players })
+  (current_combat, creatures, classes, items, scenes, abilities, campaign, players) =>
+    ({ current_combat, creatures, classes, items, scenes, abilities, campaign, players })
 );
 
 export const decodeApp: Decoder<App> = JD.object(
@@ -1125,19 +1100,29 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return {
         SetFocusedSceneCreatures: { scene_id: cmd.scene_id, creatures: cmd.creatures.toArray() },
       };
-    case "CreateMap":
-      return { CreateMap: [encodeFolderPath(cmd.path), encodeMapCreation(cmd.map)] };
-    case "EditMap":
-      return { EditMap: encodeMap(cmd.map) };
-    case "EditMapDetails":
-      return { EditMapDetails: { id: cmd.id, details: encodeMapCreation(cmd.details) } };
-    case "EditMapTerrain":
+    case "EditSceneTerrain":
       return {
-        EditMapTerrain: {
-          id: cmd.id, terrain: cmd.terrain.map(encodePoint3),
-          specials: cmd.specials.map(encodeSpecialTile),
+        EditSceneTerrain: { scene_id: cmd.scene_id, terrain: cmd.terrain.map(encodePoint3) },
+      };
+    case "EditSceneHighlights":
+      return {
+        EditSceneHighlights: {
+          scene_id: cmd.scene_id,
+          highlights: cmd.highlights.mapEntries(
+            ([point, [color, vis]]) => [encodePoint3(point), [color, encodeVisibility(vis)]]).toJS(),
         },
       };
+    case "EditSceneAnnotations":
+      return {
+        EditSceneAnnotations: {
+          scene_id: cmd.scene_id,
+          annotations: cmd.annotations.mapEntries(
+            ([point, [annotation, vis]]) =>
+              [encodePoint3(point), [annotation, encodeVisibility(vis)]]
+          ).toJS(),
+        },
+      };
+
     case "RemoveCreatureFromCombat":
       return { RemoveCreatureFromCombat: cmd.creature_id };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
@@ -1169,15 +1154,6 @@ function encodeFolderItemID(fid: FolderItemID): object {
   return { [fid.t]: fid.id };
 }
 
-function encodeMapCreation(mc: MapCreation): object {
-  return {
-    name: mc.name,
-    background_image_url: mc.background_image_url,
-    background_image_offset: mc.background_image_offset,
-    background_image_scale: mc.background_image_scale,
-  };
-}
-
 function encodeInventoryOwner(owner: InventoryOwner): object {
   return owner;
 }
@@ -1206,21 +1182,7 @@ function encodeItem(item: Item): object {
 function encodeSceneCreation(sc: SceneCreation): object {
   return {
     name: sc.name,
-    map: sc.map,
     background_image_url: sc.background_image_url,
-  };
-}
-
-function encodeMap(map: Map): object {
-  return {
-    id: map.id,
-    name: map.name,
-    terrain: map.terrain.map(encodePoint3),
-    specials: map.specials.map(
-      ([pt, color, note, vis]) => [encodePoint3(pt), color, note, encodeVisibility(vis)]),
-    background_image_url: map.background_image_url,
-    background_image_scale: map.background_image_scale,
-    background_image_offset: map.background_image_offset,
   };
 }
 
@@ -1271,12 +1233,8 @@ function encodeDecidedTarget(dt: DecidedTarget): object | string {
   }
 }
 
-function encodePoint3(pt: Point3): Point3 {
-  return pt;
-}
-
-function encodeSpecialTile(t: SpecialTile): Array<object | string> {
-  return [encodePoint3(t[0]), t[1], t[2], encodeVisibility(t[3])];
+function encodePoint3(pt: Point3): string {
+  return `${pt.x}/${pt.y}/${pt.z}`;
 }
 
 // Utility Functions for Decoding
@@ -1311,4 +1269,8 @@ export function sum<T>(
     JD.map(nullary, JD.string()),
     JD.oneOf.apply(null, mapped_decoders),
   );
+}
+
+function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<I.Map<K, V>> {
+  return JD.map(obj => (I.Map(obj).mapKeys(keyDecoder.decodeAny)), JD.dict(valueDecoder));
 }
