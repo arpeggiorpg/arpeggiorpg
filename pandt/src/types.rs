@@ -25,7 +25,6 @@ pub type Point3 = (i16, i16, i16);
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
-pub type SpecialTile = (Point3, Color, String, Visibility);
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
@@ -201,25 +200,6 @@ impl ::std::str::FromStr for SceneID {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct MapID(Uuid);
-impl MapID {
-  pub fn gen() -> MapID {
-    MapID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.hyphenated().to_string()
-  }
-}
-
-impl ::std::str::FromStr for MapID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<MapID, GameError> {
-    Ok(MapID(Uuid::parse_str(s)?))
-  }
-}
-
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct AbilityID(StringWrapper<[u8; 64]>);
 impl AbilityID {
   pub fn new(s: &str) -> Result<Self, GameError> {
@@ -267,7 +247,6 @@ impl Distance {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
   SceneID(SceneID),
-  MapID(MapID),
   CreatureID(CreatureID),
   NoteID(String),
   ItemID(ItemID),
@@ -383,13 +362,9 @@ pub enum GameCommand {
   //   duration: Duration,
   // },
   RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
-
-  // ** Map management **
-  CreateMap(FolderPath, MapCreation),
-  /// Change a map. The ID of the given map bust match an existing map.
-  EditMap(Map),
-  EditMapDetails { id: MapID, details: MapCreation },
-  EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
+  EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
+  EditSceneHighlights {scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)>},
+  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)>},
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -535,11 +510,7 @@ pub enum GameLog {
   SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
   RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
 
-  CreateMap(FolderPath, Map),
-
-  EditMap(Map),
-  EditMapDetails { id: MapID, details: MapCreation },
-  EditMapTerrain { id: MapID, terrain: Vec<Point3>, specials: Vec<SpecialTile> },
+  EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
 
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
@@ -695,18 +666,6 @@ error_chain! {
     StepTooBig(from: Point3, to: Point3) {
       description("A step from one point to another is too large.")
       display("Can't step from {:?} to {:?}", from, to)
-    }
-    MapNotFound(map: MapID) {
-      description("The specified map was not found.")
-      display("Couldn't find map {}", map.0)
-    }
-    MapAlreadyExists(map: MapID) {
-      description("The specified map already exists.")
-      display("Map {} already exists", map.0)
-    }
-    MapInUse(map: MapID, scenes: Vec<SceneID>) {
-      description("A map can't be deleted because it is being referenced by one or more scenes.")
-      display("Map {} is in use by scenes {:?}", map.0, scenes)
     }
     NotEnoughEnergy(nrg: Energy) {
       description("There is not enough energy to do something.")
@@ -898,7 +857,7 @@ pub struct Class {
   /// A list of conditions which will be *permanently* applied to any creature in this class.
   pub conditions: Vec<Condition>,
   /// An SVG-compatible color specifier
-  pub color: String,
+  pub color: Color,
 }
 
 /// A specification for creating a new creature.
@@ -978,7 +937,6 @@ pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: HashMap<AbilityID, Ability>,
   pub creatures: IndexedHashMap<Creature>,
-  pub maps: IndexedHashMap<Map>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
@@ -1026,7 +984,6 @@ impl Player {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct SceneCreation {
   pub name: String,
-  pub map: MapID,
   pub background_image_url: String,
 }
 
@@ -1034,15 +991,21 @@ pub struct SceneCreation {
 pub struct Scene {
   pub id: SceneID,
   pub name: String,
-  pub map: MapID,
+  pub terrain: Vec<Point3>,
+  pub highlights: HashMap<Point3, (Color, Visibility)>,
+  pub annotations: HashMap<Point3, (String, Visibility)>,
   #[serde(default)] pub background_image_url: String,
+  /// If this field is None, then the image will "float" fixed on the screen, instead of panning
+  /// with the scene.
+  pub background_image_offset: Option<(i32, i32)>,
+  pub background_image_scale: (i32, i32),
 
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)] pub inventory: Inventory,
   #[serde(default)] pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
 
-  /// "Focused" creatures are those which have their portraits rendered over the map or scene
+  /// "Focused" creatures are those which have their portraits rendered over the scene
   /// background
   #[serde(default)]
   pub focused_creatures: Vec<CreatureID>,
@@ -1086,60 +1049,9 @@ pub enum Visibility {
   AllPlayers,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct MapCreation {
-  pub name: String,
-  #[serde(default)] pub background_image_url: String,
-  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters"
-  #[serde(default)] pub background_image_scale: (i32, i32),  // in "centimeters"
-}
-
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-pub struct Map {
-  pub id: MapID,
-  pub name: String,
-  pub terrain: Vec<Point3>,
-  pub specials: Vec<SpecialTile>,
-  #[serde(default)] pub background_image_url: String,
-  #[serde(default)] pub background_image_offset: (i32, i32), // in "centimeters"
-  #[serde(default)] pub background_image_scale: (i32, i32),  // in "centimeters"
-}
-
-impl Map {
-  pub fn create(c: MapCreation) -> Map {
-    Map::new(c.name, vec![])
-  }
-
-  pub fn new(name: String, terrain: Vec<Point3>) -> Map {
-    Map {
-      id: MapID::gen(),
-      name: name,
-      terrain: terrain,
-      specials: vec![],
-      background_image_url: "".to_string(),
-      background_image_offset: (0, 0),
-      background_image_scale: (0, 0),
-    }
-  }
-
-  pub fn is_open(&self, pt: &Point3) -> bool {
-    self.terrain.contains(pt)
-  }
-}
-
-
-impl DeriveKey for Map {
-  type KeyType = MapID;
-  fn derive_key(&self) -> MapID {
-    self.id
-  }
-}
-
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DynamicCombat<'game> {
   pub scene: &'game Scene,
-  pub map: &'game Map,
   pub combat: &'game Combat,
   pub game: &'game Game,
 }
@@ -1180,7 +1092,6 @@ impl<'a> ser::Serialize for RPIGame<'a> {
         .creatures()
         .map_err(|e| S::Error::custom(&format!("Oh no! Couldn't serialize creatures!? {:?}", e)))?,
     )?;
-    str.serialize_field("maps", &game.maps)?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
     str.serialize_field("scenes", &game.scenes)?;
@@ -1247,7 +1158,6 @@ pub struct Folder {
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
   #[serde(default)] pub items: HashSet<ItemID>,
-  pub maps: HashSet<MapID>,
 }
 
 impl Folder {
@@ -1340,10 +1250,6 @@ pub mod test {
       volume_conditions: HashMap::new(),
       focused_creatures: vec![],
     }
-  }
-
-  pub fn t_map_id() -> MapID {
-    MapID(uuid_4())
   }
 
   pub fn app_cond(c: Condition, r: Duration) -> AppliedCondition {
