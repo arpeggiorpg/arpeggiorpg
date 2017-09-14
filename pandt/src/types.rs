@@ -15,17 +15,72 @@ use uuid::{ParseError as UuidParseError, Uuid};
 
 use serde::ser;
 use serde::ser::{Error as SerError, SerializeStruct};
+use serde::de;
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
 
 /// Point3 defines a 3d position in meters.
-pub type Point3 = (i16, i16, i16);
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
+
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Point3{
+  pub x: i16,
+  pub y: i16,
+  pub z: i16,
+}
+
+impl Point3 {
+  pub fn new(x: i16, y: i16, z: i16) -> Point3 {
+    Point3 { x, y, z}
+  }
+}
+
+impl ::std::fmt::Display for Point3 {
+  fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    write!(f, "{}/{}/{}", self.x, self.y, self.z)
+  }
+}
+
+impl ::std::str::FromStr for Point3 {
+  type Err = GameError;
+  fn from_str(path: &str) -> Result<Point3, GameError> {
+    let segments: Vec<&str> = path.split('/').collect();
+    if segments.len() != 3{
+      bail!("Bad Point3 syntax")
+    }
+    match (segments[0].parse::<i16>(), segments[1].parse::<i16>(), segments[2].parse::<i16>()) {
+      (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
+      _ => bail!("Bad Point3 syntax"),
+    }
+  }
+}
+
+impl ser::Serialize for Point3 {
+  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&self.to_string())
+  }
+}
+
+impl<'de> de::Deserialize<'de> for Point3 {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: de::Deserializer<'de>,
+  {
+    let st: String = de::Deserialize::deserialize(deserializer)?;
+    match st.parse() {
+      Ok(x) => Ok(x),
+      Err(x) => Err(de::Error::invalid_value(
+        de::Unexpected::Str(&st),
+        &format!("Unknown error: {:?}", x).as_ref(),
+      )),
+    }
+  }
+}
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
@@ -36,7 +91,7 @@ pub struct AABB {
 
 impl AABB {
   pub fn get_max(&self, pt: Point3) -> Point3 {
-    (pt.0 + i16::from(self.x), pt.1 + i16::from(self.y), pt.2 + i16::from(self.z))
+    Point3::new(pt.x + i16::from(self.x), pt.y + i16::from(self.y), pt.z + i16::from(self.z))
   }
 }
 
@@ -1171,7 +1226,6 @@ impl Folder {
 #[cfg(test)]
 pub mod test {
   use types::*;
-  use std::iter::FromIterator;
   use grid::test::*;
 
   use serde_yaml;
@@ -1248,11 +1302,11 @@ pub mod test {
       highlights: HashMap::new(),
       annotations: HashMap::new(),
       attribute_checks: HashMap::new(),
-      creatures: HashMap::from_iter(vec![
-        (cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
-        (cid_cleric(), ((0, 0, 0), Visibility::AllPlayers)),
-        (cid_ranger(), ((0, 0, 0), Visibility::AllPlayers)),
-      ]),
+      creatures: hashmap!{
+        cid_rogue() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
+        cid_cleric() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
+        cid_ranger() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
+      },
       inventory: HashMap::new(),
       volume_conditions: HashMap::new(),
       focused_creatures: vec![],
@@ -1384,5 +1438,12 @@ pub mod test {
   fn dice_negative() {
     let d = Dice::flat(1).plus(Dice::flat(-5));
     assert_eq!(d.roll(), (vec![1, -5], -4));
+  }
+
+  #[test]
+  fn serialize_hashmap_point3() {
+    let p = Point3::new(0, 0, 0);
+    let hm = hashmap!{p => 5};
+    assert_eq!(serde_json::to_string(&hm).unwrap(), "{\"0/0/0\":5}");
   }
 }

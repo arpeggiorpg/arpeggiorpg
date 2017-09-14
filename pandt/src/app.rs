@@ -174,12 +174,12 @@ mod test {
     let mut app = t_app();
     // 1
     app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
     app.perform_command(GameCommand::Rollback(0, 0)).unwrap();
     let ranger = app.current_game.get_creature(cid_ranger()).unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
-    assert_eq!(scene.get_pos(ranger.id()).unwrap(), (0, 0, 0));
+    assert_eq!(scene.get_pos(ranger.id()).unwrap(), Point3::new(0, 0, 0));
     let logs = &app.snapshots[0].1;
     println!("{:?}", logs);
     assert_eq!(logs.len(), 2);
@@ -200,12 +200,12 @@ mod test {
     app.perform_command(GameCommand::StopCombat).unwrap();
     // 3
     app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
     app.perform_command(GameCommand::Rollback(0, 2)).unwrap();
     assert_eq!(app.current_game.current_combat, None);
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
-    assert_eq!(scene.get_pos(cid_ranger()).unwrap(), (0, 0, 0));
+    assert_eq!(scene.get_pos(cid_ranger()).unwrap(), Point3::new(0, 0, 0));
   }
 
   ///
@@ -215,21 +215,21 @@ mod test {
     let mut app = t_app();
     // 1
     app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), (1, 1, 1)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
     // 2
     app.perform_command(GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
     // 3
     app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (1, 1, 1)))
+      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)))
       .unwrap();
     // 4
     app.perform_command(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
     // 5
-    app.perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 1, 1))).unwrap();
+    app.perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1))).unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
-    assert_eq!(scene.get_pos(cid_cleric()).unwrap(), (0, 0, 0));
-    assert_eq!(scene.get_pos(cid_rogue()).unwrap(), (1, 1, 1));
-    assert_eq!(scene.get_pos(cid_ranger()).unwrap(), (0, 0, 0));
+    assert_eq!(scene.get_pos(cid_cleric()).unwrap(), Point3::new(0, 0, 0));
+    assert_eq!(scene.get_pos(cid_rogue()).unwrap(), Point3::new(1, 1, 1));
+    assert_eq!(scene.get_pos(cid_ranger()).unwrap(), Point3::new(0, 0, 0));
   }
 }

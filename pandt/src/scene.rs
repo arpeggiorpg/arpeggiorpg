@@ -113,7 +113,7 @@ mod test {
     let mut scene = t_scene();
     let cond_id = ConditionID::gen();
     let volume_cond = VolumeCondition {
-      point: (0, 0, 0),
+      point: Point3::new(0, 0, 0),
       volume: Volume::Sphere(Distance(300)),
       remaining: Duration::Interminate,
       condition: Condition::Dead,

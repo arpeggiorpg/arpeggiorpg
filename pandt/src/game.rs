@@ -620,7 +620,7 @@ impl Game {
         self
           .scenes
           .mutate(&scene_id, move |mut scene| {
-            scene.creatures.insert(creature_id, ((0, 0, 0), visibility.clone()));
+            scene.creatures.insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
@@ -1145,7 +1145,6 @@ pub mod test {
   use game::*;
   use combat::test::*;
   use types::test::*;
-  use grid::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
     t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))
@@ -1232,7 +1231,7 @@ pub mod test {
   fn movement() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    t_perform(&game, GameCommand::PathCurrentCombatCreature((1, 0, 0)));
+    t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(1, 0, 0)));
   }
 
   #[test]
@@ -1273,14 +1272,14 @@ pub mod test {
     // the cleric moves away, then casts a fireball at the ranger and rogue.
     let game = t_game();
     let game =
-      t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (11, 0, 0)));
+      t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(11, 0, 0)));
     let game = t_perform(
       &game,
       GameCommand::ActCreature(
         t_scene_id(),
         cid_cleric(),
         abid("fireball"),
-        DecidedTarget::Point((0, 0, 0)),
+        DecidedTarget::Point(Point3::new(0, 0, 0)),
       ),
     );
     assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
@@ -1292,10 +1291,10 @@ pub mod test {
   fn test_creatures_in_sphere() {
     let game = t_game();
     let volume = Volume::Sphere(Distance::from_meters(2.0));
-    let pt = (5, 0, 0);
+    let pt = Point3::new(5, 0, 0);
 
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 0, 0)));
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (6, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(6, 0, 0)));
     let scene = game.get_scene(t_scene_id()).unwrap();
 
     let cids = scene.creatures_in_volume(game.tile_system, pt, volume);
@@ -1310,10 +1309,10 @@ pub mod test {
       range: Distance::from_meters(10.0),
       volume: Volume::Sphere(Distance::from_meters(2.0)),
     };
-    let pt = (5, 0, 0);
+    let pt = Point3::new(5, 0, 0);
 
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (5, 0, 0)));
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (6, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(6, 0, 0)));
 
     let scene = game.get_scene(t_scene_id()).unwrap();
 
@@ -1326,10 +1325,10 @@ pub mod test {
   fn test_line_targets() {
     let game = t_game();
     let target_spec = CreatureTarget::LineFromActor { distance: Distance::from_meters(10.0) };
-    let pt = (1, 0, 0);
+    let pt = Point3::new(1, 0, 0);
 
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), (1, 0, 0)));
-    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), (2, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 0, 0)));
+    let game = t_perform(&game, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(2, 0, 0)));
     let scene = game.get_scene(t_scene_id()).unwrap();
 
     let targets = game.volume_creature_targets(scene, cid_ranger(), target_spec, pt).unwrap();
@@ -1346,7 +1345,7 @@ pub mod test {
     let scene = game.get_scene(t_scene_id()).unwrap();
     let cleric = cid_cleric();
     let ability_id = abid("thorn_patch");
-    let preview = game.preview_volume_targets(scene, cleric, ability_id, (0, 0, 0)).unwrap();
+    let preview = game.preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0)).unwrap();
     let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
     assert_eq!(HashSet::from_iter(preview.0), expected);
   }
