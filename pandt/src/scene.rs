@@ -9,7 +9,11 @@ impl Scene {
       id: SceneID::gen(),
       name: creation.name,
       background_image_url: creation.background_image_url.clone(),
-      map: creation.map,
+      background_image_offset: None,
+      background_image_scale: (1, 1),
+      terrain: vec![],
+      highlights: HashMap::new(),
+      annotations: HashMap::new(),
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),
       inventory: HashMap::new(),
@@ -78,9 +82,8 @@ impl Scene {
   /// Largely used for previewing the area that will be affected by a volume-affecting ability.
   pub fn open_terrain_in_volume(
     &self, game: &Game, pt: Point3, volume: Volume
-  ) -> Result<Vec<Point3>, GameError> {
-    let terrain = game.get_map(self.map)?.terrain.iter();
-    let all_open = terrain.map(|pt| (*pt, *pt)).collect();
+  ) -> Result<Terrain, GameError> {
+    let all_open = self.terrain.iter().map(|pt| (*pt, *pt)).collect();
     Ok(game.tile_system.items_within_volume(volume, pt, &all_open))
   }
 
