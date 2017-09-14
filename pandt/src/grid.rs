@@ -10,8 +10,8 @@ use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 
-use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Map, Point3,
-            TileSystem, VectorCM, Volume, VolumeCondition};
+use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3,
+            Terrain, TileSystem, VectorCM, Volume, VolumeCondition};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -59,6 +59,10 @@ pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
     ((i32::from(pt.1) * 100 + diff.1) / 100) as i16,
     ((i32::from(pt.2) * 100 + diff.2) / 100) as i16,
   )
+}
+
+fn is_open(terrain: &Terrain, pt: Point3) -> bool {
+  terrain.contains(&pt)
 }
 
 impl TileSystem {
@@ -123,13 +127,13 @@ impl TileSystem {
     results
   }
 
-  pub fn open_points_in_range(&self, start: Point3, terrain: &Map, range: Distance) -> Vec<Point3> {
+  pub fn open_points_in_range(&self, start: Point3, terrain: &Terrain, range: Distance) -> Vec<Point3> {
     let meters = (range.0 / 100) as i16;
     let mut open = vec![];
     for x in start.0 - meters..start.0 + meters + 1 {
       for y in start.1 - meters..start.1 + meters + 1 {
         let end_point = (x, y, 0);
-        if !terrain.is_open(&end_point) {
+        if !is_open(terrain, end_point) {
           continue;
         }
         open.push(end_point);
@@ -140,7 +144,7 @@ impl TileSystem {
 
   /// Get the set of points which can be pathed to from some point.
   pub fn get_all_accessible(
-    &self, start: Point3, terrain: &Map, volume: Volume, speed: Distance
+    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: Distance
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
@@ -170,7 +174,7 @@ impl TileSystem {
   /// Find a path from some start point to some destination point. If one can be found, a Vec of
   /// points on the way to the destination is returned, along with the total length of that path.
   pub fn find_path(
-    &self, start: Point3, speed: Distance, terrain: &Map, volume: Volume, destination: Point3
+    &self, start: Point3, speed: Distance, terrain: &Terrain, volume: Volume, destination: Point3
   ) -> Option<(Vec<Point3>, Distance)> {
     let success = Box::new(move |n: &Point3| *n == destination);
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(
@@ -215,9 +219,9 @@ impl TileSystem {
 
   /// Determine whether a volume will not collide *with terrain* if it is placed at a point.
   /// Note that this doesn't consider other creatures or other map objects.
-  fn volume_fits_at_point(&self, volume: Volume, map: &Map, pt: Point3) -> bool {
+  fn volume_fits_at_point(&self, volume: Volume, terrain: &Terrain, pt: Point3) -> bool {
     for pt in self.points_in_volume(volume, pt) {
-      if !map.terrain.contains(&pt) {
+      if !terrain.contains(&pt) {
         return false;
       }
     }
@@ -225,7 +229,7 @@ impl TileSystem {
   }
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.
-  fn point3_neighbors(&self, terrain: &Map, volume: Volume, pt: Point3) -> Vec<(Point3, u32)> {
+  fn point3_neighbors(&self, terrain: &Terrain, volume: Volume, pt: Point3) -> Vec<(Point3, u32)> {
     let mut results = vec![];
     for x in -1..2 {
       for y in -1..2 {
@@ -233,7 +237,7 @@ impl TileSystem {
           continue;
         }
         let neighbor = (pt.0 + x, pt.1 + y, pt.2);
-        if terrain.is_open(&neighbor) && self.volume_fits_at_point(volume, terrain, neighbor) {
+        if is_open(terrain, neighbor) && self.volume_fits_at_point(volume, terrain, neighbor) {
           let is_angle = x.abs() == y.abs();
           let cost = if is_angle {
             match *self {
@@ -252,8 +256,8 @@ impl TileSystem {
             }
           };
           // don't allow diagonal movement around corners
-          if is_angle && !terrain.is_open(&(neighbor.0, pt.1, pt.2)) ||
-            !terrain.is_open(&(pt.0, neighbor.1, pt.2))
+          if is_angle && !is_open(terrain, (neighbor.0, pt.1, pt.2)) ||
+            !is_open(terrain, (pt.0, neighbor.1, pt.2))
           {
             continue;
           }

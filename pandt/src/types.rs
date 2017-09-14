@@ -25,6 +25,7 @@ pub type Point3 = (i16, i16, i16);
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
+pub type Terrain = Vec<Point3>;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
@@ -223,7 +224,6 @@ impl ::std::str::FromStr for AbilityID {
 pub fn abid(s: &str) -> AbilityID {
   AbilityID::new(s).unwrap()
 }
-
 
 /// Distance in centimeters.
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

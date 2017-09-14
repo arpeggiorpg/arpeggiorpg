@@ -60,7 +60,7 @@ impl<'game> DynamicCombat<'game> {
     let current_speed = current.speed().saturating_sub(self.combat.movement_used);
     Ok(self.game.tile_system.get_all_accessible(
       self.current_pos()?,
-      self.map,
+      self.scene.map,
       Volume::AABB(current.creature.size),
       current_speed,
     ))
