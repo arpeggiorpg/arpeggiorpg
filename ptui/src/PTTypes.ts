@@ -61,8 +61,8 @@ export interface Ability {
 
 export type Action =
   // these variants also have an `effect` field but we don't use it in the client
-  | { t: "Creature", target: CreatureTarget }
-  | { t: "SceneVolume", target: SceneTarget }
+  | { t: "Creature"; target: CreatureTarget }
+  | { t: "SceneVolume"; target: SceneTarget }
   ;
 
 export type CreatureTarget =
@@ -77,8 +77,8 @@ export type CreatureTarget =
 export interface SceneTarget { t: "RangedVolume"; volume: Volume; range: Distance; }
 
 export type DecidedTarget =
-  | { t: "Creature"; creature_id: CreatureID; }
-  | { t: "Creatures"; creature_ids: Array<CreatureID>; }
+  | { t: "Creature"; creature_id: CreatureID }
+  | { t: "Creatures"; creature_ids: Array<CreatureID> }
   | { t: "Actor" }
   | { t: "Point"; point: Point3 };
 
@@ -118,11 +118,11 @@ export type GameCommand =
   | { t: "ChatFromGM"; message: string }
   | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
   | { t: "RegisterPlayer"; player_id: PlayerID }
-  | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID>; }
+  | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID> }
   | { t: "CreateFolder"; path: FolderPath }
-  | { t: "MoveFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
-  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath; }
-  | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID; }
+  | { t: "MoveFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
+  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
+  | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID }
   | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
   | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation }
   | { t: "CreateItem"; path: FolderPath; name: string }
@@ -138,11 +138,11 @@ export type GameCommand =
     t: "SetSceneCreatureVisibility";
     scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
   }
-  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility; }
-  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
-  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
-  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID>; }
+  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility }
+  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
+  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
+  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
   | { t: "CreateMap"; path: FolderPath; map: MapCreation }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
@@ -154,12 +154,12 @@ export type GameCommand =
   | { t: "PathCurrentCombatCreature"; dest: Point3 }
   | { t: "Done" }
   | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
-  | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID>; }
+  | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID> }
   | { t: "StopCombat" }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID }
-  | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck; }
-  | { t: "SetPlayerScene"; player_id: PlayerID, scene_id: SceneID | undefined }
-  | { t: "Rollback"; snapshot_index: number; log_index: number; }
+  | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck }
+  | { t: "SetPlayerScene"; player_id: PlayerID; scene_id: SceneID | undefined }
+  | { t: "Rollback"; snapshot_index: number; log_index: number }
   ;
 
 
@@ -228,11 +228,11 @@ export interface Player {
 
 export type GameLog =
   | { t: "SetActiveScene"; scene_id: SceneID | undefined }
-  | { t: "RegisterPlayer", player_id: string }
-  | { t: "UnregisterPlayer", player_id: string }
-  | { t: "GiveCreaturesToPlayer", player_id: string, creature_ids: Array<CreatureID> }
-  | { t: "RemoveCreaturesFromPlayer", player_id: string, creature_ids: Array<CreatureID> }
-  | { t: "SetPlayerScene", player_id: string, scene_id: SceneID | undefined }
+  | { t: "RegisterPlayer"; player_id: string }
+  | { t: "UnregisterPlayer"; player_id: string }
+  | { t: "GiveCreaturesToPlayer"; player_id: string; creature_ids: Array<CreatureID> }
+  | { t: "RemoveCreaturesFromPlayer"; player_id: string; creature_ids: Array<CreatureID> }
+  | { t: "SetPlayerScene"; player_id: string; scene_id: SceneID | undefined }
 
   | { t: "ChatFromGM"; message: string }
   | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
@@ -261,19 +261,19 @@ export type GameLog =
     t: "SetSceneCreatureVisibility";
     scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
   }
-  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility; }
-  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID; }
-  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck; }
-  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string; }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID>; }
+  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility }
+  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
+  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
+  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
   | { t: "CreateMap"; path: FolderPath; map: Map }
   | { t: "EditMap"; map: Map }
   | { t: "EditMapDetails"; id: MapID; details: MapCreation }
-  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile>; }
+  | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile> }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
-  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation; }
+  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
@@ -285,17 +285,17 @@ export type GameLog =
 export type CombatLog =
   | { t: "ConsumeMovement"; distance: Distance }
   | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
-  | { t: "EndTurn", creature_id: CreatureID }
+  | { t: "EndTurn"; creature_id: CreatureID }
   | { t: "ForceNextTurn" }
   | { t: "ForcePrevTurn" }
-  | { t: "RerollInitiative", combatants: Array<[CreatureID, number]> };
+  | { t: "RerollInitiative"; combatants: Array<[CreatureID, number]> };
 
 export type CreatureLog =
   | { t: "Damage"; hp: HP; rolls: Array<number> }
   | { t: "Heal"; hp: HP; rolls: Array<number> }
   | { t: "GenerateEnergy"; energy: Energy }
   | { t: "ReduceEnergy"; energy: Energy }
-  | { t: "ApplyCondition"; condition_id: ConditionID, duration: Duration } // TODO Condition
+  | { t: "ApplyCondition"; condition_id: ConditionID; duration: Duration } // TODO Condition
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID };
 
@@ -319,7 +319,7 @@ export type Condition =
   | { t: "RecurringEffect"; effect: CreatureEffect }
   | { t: "Dead" }
   | { t: "Incapacitated" }
-  | { t: "AddDamageBuff", hp: HP }
+  | { t: "AddDamageBuff"; hp: HP }
   | { t: "DoubleMaxMovement" }
   | { t: "ActivateAbility"; ability_id: AbilityID };
 
@@ -424,10 +424,10 @@ export type Visibility =
   | { t: "AllPlayers" };
 
 export type Dice =
-  | { t: "Flat", val: number }
-  | { t: "Expr", num: number, size: number }
-  | { t: "Plus", left: Dice, right: Dice }
-  | { t: "BestOf", num: number, dice: Dice };
+  | { t: "Flat"; val: number }
+  | { t: "Expr"; num: number; size: number }
+  | { t: "Plus"; left: Dice; right: Dice }
+  | { t: "BestOf"; num: number; dice: Dice };
 
 export type PotentialTargets =
   | { t: "CreatureIDs"; cids: Array<CreatureID> }
@@ -435,8 +435,8 @@ export type PotentialTargets =
   ;
 
 export type RustResult<T, E> =
-  | { t: "Ok", result: T }
-  | { t: "Err", error: E }
+  | { t: "Ok"; result: T }
+  | { t: "Err"; error: E }
   ;
 
 // ** Decoders **
@@ -922,7 +922,7 @@ const decodeClass: Decoder<Class> = JD.object(
   color => ({ color })
 );
 
-function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number, data: Array<T> }> {
+function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
   return JD.object(
     ["cursor", JD.number()],
     ["data", JD.array(valueDecoder)],
