@@ -21,7 +21,6 @@
  *   - Creature actions (some GM-only, others player-only, assuming player control)
  *   - Volume Condition actions (remove)
  *   - Move creatures with long-press
- *   - Pan and zoom
  *   - Add creatures to them
  *
  * Objects we need to interact with:
@@ -31,9 +30,26 @@
  * - handle cases when these objects are stacked: volume condition covering area where there's a
  *   large creature and a small creature in that large creature's space
  *
- * Ways in which we want to interact with objects:
- * - click/touch: bring up menu
- * - long-click / long-press: move object (and maybe enable deleting items a la iOS)
+ * Ways in which we want to interact with the Grid:
+ * - click/touch: bring up menu for objects under point
+ * - long-click / long-press: move object (and maybe enable deleting items a la iOS).
+ *   - This can only affect one object, so it must be the topmost?
+ *   - Maybe restricted to creatures as well.
+ * - Pan (swipe), zoom (2-finger pinch)
+ *
+ * https://stackoverflow.com/a/38727977/4930992
+ *
+ * So here's the strategy: The handlers must be unified.
+ * - All *clickable* / *touchable* objects must have the same handler applied to them
+ * - When it's called, it should:
+ *   - Identify what kind of thing is being clicked based on its DOM node, and accumulate
+ *     appropriate actions for that thing into a list of actions (use `data-*` attribute for this?).
+ *   - set pointer-events: none on this element, and use document.elementFromPoint to find
+ *     anything else that's under the mouse pointer.
+ *   - repeat with the next element, until no more clickable elements are found.
+ *   - Render a menu with all the actions.
+ * - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
+ *   spurious-click problem when panning, and spurious panning when clicking.
  */
 
 
