@@ -60,7 +60,7 @@ impl<'game> DynamicCombat<'game> {
     let current_speed = current.speed().saturating_sub(self.combat.movement_used);
     Ok(self.game.tile_system.get_all_accessible(
       self.current_pos()?,
-      self.scene.map,
+      &self.scene.terrain,
       Volume::AABB(current.creature.size),
       current_speed,
     ))
@@ -86,7 +86,6 @@ impl<'game> DynamicCombat<'game> {
 
   pub fn change(&self) -> ChangedCombat<'game> {
     ChangedCombat {
-      map: self.map,
       scene: self.scene,
       combat: self.combat.clone(),
       logs: vec![],
@@ -97,7 +96,6 @@ impl<'game> DynamicCombat<'game> {
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
     Ok(ChangedCombat {
-      map: self.map,
       scene: self.scene,
       combat: combat,
       game: self.game,
@@ -198,7 +196,6 @@ impl<'game> CombatMove<'game> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ChangedCombat<'game> {
   pub combat: Combat,
-  map: &'game Map,
   scene: &'game Scene,
   game: &'game Game,
   logs: Vec<CombatLog>,
@@ -206,7 +203,7 @@ pub struct ChangedCombat<'game> {
 
 impl<'game> ChangedCombat<'game> {
   pub fn dyn(&self) -> DynamicCombat {
-    DynamicCombat { map: self.map, scene: self.scene, game: self.game, combat: &self.combat }
+    DynamicCombat { scene: self.scene, game: self.game, combat: &self.combat }
   }
 
   pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
