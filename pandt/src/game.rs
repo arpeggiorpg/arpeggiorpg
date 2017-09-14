@@ -1157,7 +1157,6 @@ pub mod test {
 
   pub fn t_game() -> Game {
     let mut game = Game::new(t_classes(), t_abilities());
-    game.maps.insert(huge_box());
     let mut rogue = t_rogue("rogue");
     rogue.id = cid_rogue();
     let mut ranger = t_ranger("ranger");

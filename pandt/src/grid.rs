@@ -456,14 +456,12 @@ pub mod test {
   use std::iter::FromIterator;
 
   /// A map containing a single open block of terrain at 0,0,0
-  fn box_map() -> Map {
-    Map::new("box".to_string(), vec![(0, 0, 0)])
+  fn box_map() -> Terrain {
+    vec![(0, 0, 0)]
   }
 
   /// A map shaped like a dumbbell, with two 2x3 rooms connected by a 1x1 passage
-  fn dumbbell_map() -> Map {
-    Map::new(
-      "dumbbell".to_string(),
+  fn dumbbell_map() -> Terrain {
       vec![
         (0, 0, 0),
         (1, 0, 0),
@@ -478,27 +476,18 @@ pub mod test {
         (1, 2, 0),
         (3, 2, 0),
         (4, 2, 0),
-      ],
-    )
+      ]
   }
 
   /// A map containing a large 40-meter square of open terrain.
-  pub fn huge_box() -> Map {
+  pub fn huge_box() -> Terrain {
     let mut map = vec![];
     for x in -20..20 {
       for y in -20..20 {
         map.push((x, y, 0));
       }
     }
-    Map {
-      id: t_map_id(),
-      name: "huge box".to_string(),
-      terrain: map,
-      specials: vec![],
-      background_image_url: "".to_string(),
-      background_image_offset: (0, 0),
-      background_image_scale: (0, 0),
-    }
+    map
   }
 
   #[test]
@@ -560,7 +549,7 @@ pub mod test {
   /// a diagonal neighbor is not considered accessible if it "goes around" a blocked corner
   #[test]
   fn test_neighbors_around_corners() {
-    let terrain = Map::new("single".to_string(), vec![(1, 0, 0)]);
+    let terrain = vec![(1, 0, 0)];
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     let pts: Vec<Point3> = TileSystem::Realistic
       .point3_neighbors(&terrain, size, (0, 0, 0))
@@ -780,7 +769,7 @@ pub mod test {
   fn large_creature_can_fit_through_large_opening() {
     let ts = TileSystem::Realistic;
     let mut dumbbell = dumbbell_map();
-    dumbbell.terrain.push((2, 2, 0));
+    dumbbell.push((2, 2, 0));
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
     let path = ts.find_path((0, 0, 0), Distance(1000), &dumbbell, big_guy, (3, 0, 0));
     assert_eq!(

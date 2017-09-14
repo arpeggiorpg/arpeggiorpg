@@ -354,16 +354,9 @@ pub mod test {
   #[test]
   fn move_honors_path() {
     let mut game = t_combat();
-    game.maps.insert(Map {
-      id: t_map_id(),
-      name: "circuitous".to_string(),
-      // up, right, right, down
-      terrain: vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)],
-      specials: vec![],
-      background_image_url: "".to_string(),
-      background_image_scale: (0, 0),
-      background_image_offset: (0, 0),
-    });
+    let terrain = vec![(0, 0, 0), (0, 1, 0), (1, 1, 0), (2, 1, 0), (2, 0, 0)];
+    game.scenes.mutate(&t_scene_id(), move |mut s| {s.terrain = terrain; s});
+
     let next_game =
       game.get_combat().unwrap().get_movement().unwrap().move_current((2, 0, 0)).unwrap().game;
     assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));

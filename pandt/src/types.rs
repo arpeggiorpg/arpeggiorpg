@@ -1241,7 +1241,11 @@ pub mod test {
       id: t_scene_id(),
       name: "Test Scene".to_string(),
       background_image_url: "".to_string(),
-      map: t_map_id(),
+      background_image_offset: None,
+      background_image_scale: (1, 1),
+      terrain: vec![],
+      highlights: HashMap::new(),
+      annotations: HashMap::new(),
       attribute_checks: HashMap::new(),
       creatures: HashMap::from_iter(vec![
         (cid_rogue(), ((0, 0, 0), Visibility::AllPlayers)),
