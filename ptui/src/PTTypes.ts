@@ -916,10 +916,9 @@ const decodeCombat: Decoder<Combat> = JD.object(
 const decodeFolderNode: Decoder<FolderNode> = JD.object(
   ["scenes", JD.array(JD.string())],
   ["creatures", JD.array(JD.string())],
-  ["maps", JD.array(JD.string())],
   ["items", JD.array(JD.string())],
   ["notes", JD.dict(decodeNote)],
-  (scenes, creatures, maps, items, notes) => ({ scenes, creatures, maps, items, notes })
+  (scenes, creatures, items, notes) => ({ scenes, creatures, items, notes })
 );
 
 const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);
