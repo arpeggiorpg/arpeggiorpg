@@ -103,7 +103,7 @@ interface SelectableProps {
   on_select_folder?: (select: boolean, path: T.FolderPath) => void;
 }
 
-type FolderContentType = "Scene" | "Map" | "Creature" | "Note" | "Item" | "Folder";
+type FolderContentType = "Scene" | "Creature" | "Note" | "Item" | "Folder";
 
 type FolderObject =
   | { t: "Scene"; path: T.FolderPath; id: T.SceneID; name: string }
@@ -155,11 +155,6 @@ class FolderTreeComp
             <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
           header={<span>Create new scene in {M.folderPathToString(path)}</span>}
           content={close => <GM.CreateScene path={path} onDone={close} />} />
-        <CV.ModalMaker
-          button={open =>
-            <Dropdown.Item icon={object_icon("Map")} text='Create Map' onClick={open} />}
-          header={<span>Create new map in {M.folderPathToString(path)}</span>}
-          content={close => <GM.CreateMap path={path} onDone={close} dispatch={dispatch} />} />
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
@@ -256,7 +251,6 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
 function object_icon(name: FolderContentType): string {
   switch (name) {
     case "Scene": return "object group";
-    case "Map": return "map";
     case "Creature": return "user";
     case "Note": return "comment";
     case "Item": return "shopping bag";
