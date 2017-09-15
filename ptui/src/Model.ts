@@ -54,22 +54,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
         case "Scene":
           const scene_id = action.focus.scene_id;
           return ptui.updateState(state => ({ ...state, grid_focus: { t: "Scene", scene_id } }));
-        case "Map":
-          const map = ptui.getMap(action.focus.map_id);
-          const terrain = map ? I.Set(map.terrain.map(pt => I.List(pt)))
-            : I.Set();
-          const specials: I.Map<I.List<number>, T.SpecialTileData> = map
-            ? I.Map(map.specials.map(
-              ([pt, color, note, vis]): [I.List<number>, T.SpecialTileData] =>
-                [I.List(pt), [color, note, vis]]))
-            : I.Map();
-          return ptui.updateState(
-            state => ({
-              ...state, grid_focus: {
-                ...action.focus, terrain, specials,
-                painting: { t: "Terrain" },
-              },
-            }));
       }
       return ptui; // this should not be necessary, exhaustiveness checks *should* realize it's not
     case "FocusSecondary":
@@ -133,10 +117,7 @@ export interface PTUIState {
   secondary_focus?: SecondaryFocus;
 }
 
-export type GridFocus =
-  | { t: "Scene"; scene_id: T.SceneID }
-  | { t: "Map"; map_id: T.MapID }
-  ;
+export interface GridFocus { t: "Scene"; scene_id: T.SceneID; }
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined }
@@ -561,28 +542,13 @@ export function connectRedux<BaseProps extends {} & object>(
   return (connector as any)(x);
 }
 
-
-export function specialsMapToRPI(specials: I.Map<I.List<number>, T.SpecialTileData>):
-  Array<[T.Point3, T.Color, string, T.Visibility]> {
-  return specials.entrySeq().toArray().map(
-    ([pt, [color, note, vis]]): [T.Point3, T.Color, string, T.Visibility] =>
-      [[pt.get(0)!, pt.get(1)!, pt.get(2)!], color, note, vis]);
-}
-
-export function specialsRPIToMap(specials: Array<[T.Point3, T.Color, string, T.Visibility]>)
-  : I.Map<I.List<number>, T.SpecialTileData> {
-  return I.Map(specials.map(
-    ([pt, color, note, vis]): [I.List<number>, T.SpecialTileData] =>
-      [I.List(pt), [color, note, vis]]));
-}
-
 export function fetchAbilityTargets(
   dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, actor_id: T.CreatureID,
   ability_id: T.AbilityID, point: T.Point3)
   : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const uri =
     `${rpi_url}preview_volume_targets/${scene_id}/${actor_id}/`
-    + `${ability_id}/${point[0]}/${point[1]}/${point[2]}`;
+    + `${ability_id}/${point.x}/${point.y}/${point.z}`;
   return ptfetch(dispatch, uri, { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),
       JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
