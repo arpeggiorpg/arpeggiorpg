@@ -266,22 +266,13 @@ current_game:
         "00000000-0000-0000-0000-000000000006": 50
       creatures: 
         "f5fd4b9a-c801-4840-a39b-b5653329dc54": 
-          - 
-            - 0
-            - 0
-            - 0
+          - "0/0/0"
           - AllPlayers
         "0420f7db-c7ec-48af-add3-045ad859f47e": 
-          - 
-            - -1
-            - 0
-            - 0
+          - "-1/0/0"
           - AllPlayers
         "34877b65-1eb6-44bb-b1a8-696c424e9d0f": 
-          - 
-            - 1
-            - 1
-            - 0
+          - "1/1/0"
           - AllPlayers
       attribute_checks: 
         Do a random backflip: 
