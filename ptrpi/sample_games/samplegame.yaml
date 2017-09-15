@@ -259,7 +259,20 @@ current_game:
       background_image:
       background_image_offset: null
       background_image_scale: [1, 1]
-      terrain: []
+      terrain:
+        - "0/0/0"
+        - "1/0/0"
+        - "2/0/0"
+        - "-1/0/0"
+        - "-2/0/0"
+        - "0/1/0"
+        - "0/2/0"
+        - "0/-1/0"
+        - "0/-2/0"
+        - "1/1/0"
+        - "-1/-1/0"
+        - "1/-1/0"
+        - "-1/1/0"
       highlights: {}
       annotations: {}
       inventory:
