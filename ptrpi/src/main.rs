@@ -167,7 +167,7 @@ fn preview_volume_targets(
   let sid = scene_id.parse()?;
   let actor_id = actor_id.parse()?;
   let ability_id = ability_id.parse()?;
-  let point = (x, y, z);
+  let point = Point3::new(x, y, z);
   Ok(Json(app.preview_volume_targets(sid, actor_id, ability_id, point)?))
 }
 
