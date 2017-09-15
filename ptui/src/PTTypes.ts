@@ -19,7 +19,7 @@ export type VectorCM = [number, number, number];
 export type Terrain = I.List<Point3>;
 
 
-class Point3 implements I.ValueObject {
+export class Point3 implements I.ValueObject {
   constructor(public x: number, public y: number, public z: number) { }
 
   equals(other: Point3): boolean {
