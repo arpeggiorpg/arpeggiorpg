@@ -28,7 +28,7 @@ export const History = Comp.connect(
 });
 
 
-export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, T.Creature> }):
+export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, T.Creature> }):
   JSX.Element | null {
   const { log, creatures } = props;
   switch (log.t) {
@@ -95,14 +95,12 @@ export function GameLog(props: { log: T.GameLog, creatures: I.Map<T.CreatureID, 
       return <Flexbox>Removed challenge from a scene: {log.description}</Flexbox>;
     case "SetFocusedSceneCreatures":
       return <Flexbox>Changed focused creatures in a scene</Flexbox>;
-    case "CreateMap":
-      return <Flexbox>Created a map {log.map.name}</Flexbox>;
-    case "EditMap":
-      return <Flexbox>Edited a map {log.map.name}</Flexbox>;
-    case "EditMapDetails":
-      return <Flexbox>Edited map details {log.details.name}</Flexbox>;
-    case "EditMapTerrain":
-      return <Flexbox>Edited a map's terrain</Flexbox>;
+    case "EditSceneTerrain":
+      return <Flexbox>Edited a scene's terrain</Flexbox>;
+    case "EditSceneHighlights":
+      return <Flexbox>Edited a scene's highlights</Flexbox>;
+    case "EditSceneAnnotations":
+      return <Flexbox>Edited a scene's annotations</Flexbox>;
     case "SetCreaturePos":
       return <Flexbox>Set a creature position to {log.pos.toString()}</Flexbox>;
     case "PathCreature":
