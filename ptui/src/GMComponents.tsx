@@ -36,12 +36,13 @@ export const GMScene = M.connectRedux(
           style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '0' }}
         >
           <Label size="medium" style={{ margin: '0.25em 0' }}>Terrain</Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Creatures <Label.Detail>15</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Background</Label>
           <Label size="medium" style={{ margin: '0.25em 0' }}>Objects</Label>
           <Label size="medium" style={{ margin: '0.25em 0' }}>Volumes <Label.Detail>2</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Creatures <Label.Detail>15</Label.Detail></Label>
           <Label size="medium" style={{ margin: '0.25em 0' }}>Players <Label.Detail>3/5</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Items <Label.Detail>7</Label.Detail></Label>
           <Label size="medium" style={{ margin: '0.25em 0' }}>Challenges</Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Background</Label>
         </Segment>
         <Header as='h5' style={{ margin: '0.5em 1em' }}>Terrain</Header>
         <Segment attached={true}>
