@@ -13,12 +13,12 @@ export type Action =
   | { type: "DisplayError"; error: string }
   | { type: "ClearError" }
 
-  | { type: "SetPlayerID"; pid: T.PlayerID; }
+  | { type: "SetPlayerID"; pid: T.PlayerID }
 
   | { type: "FocusGrid"; focus: GridFocus }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
-  | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect; }
+  | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
     teleport?: boolean;
@@ -121,8 +121,8 @@ export interface GridModel {
     options: Array<T.Point3>;
     teleport: boolean;
   };
-  display_annotation?: { pt: T.Point3, rect: Rect };
-  target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets; };
+  display_annotation?: { pt: T.Point3; rect: Rect };
+  target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets };
 }
 
 export interface PTUIState {
@@ -134,14 +134,14 @@ export interface PTUIState {
 }
 
 export type GridFocus =
-  | { t: "Scene"; scene_id: T.SceneID; }
-  | { t: "Map"; map_id: T.MapID; }
+  | { t: "Scene"; scene_id: T.SceneID }
+  | { t: "Map"; map_id: T.MapID }
   ;
 
 export type SecondaryFocus =
-  | { t: "Note"; path: T.FolderPath; name: string | undefined; }
-  | { t: "Creature"; creature_id: T.CreatureID; }
-  | { t: "Item"; item_id: T.ItemID; }
+  | { t: "Note"; path: T.FolderPath; name: string | undefined }
+  | { t: "Creature"; creature_id: T.CreatureID }
+  | { t: "Item"; item_id: T.ItemID }
   ;
 
 
@@ -379,14 +379,6 @@ export class PTUI {
       filterMap(scene_ids, sid => this.getScene(sid)),
       s => s.name);
   }
-  getMap(mid: T.MapID): T.Map | undefined {
-    return get(this.app.current_game.maps, mid);
-  }
-  getMaps(map_ids: Array<T.MapID>): Array<T.Map> {
-    return LD.sortBy(
-      filterMap(map_ids, mid => this.getMap(mid)),
-      m => m.name);
-  }
 
   getNote(path: T.FolderPath, name: string): T.Note | undefined {
     const fnode = this.getFolderNode(path);
@@ -587,7 +579,7 @@ export function specialsRPIToMap(specials: Array<[T.Point3, T.Color, string, T.V
 export function fetchAbilityTargets(
   dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, actor_id: T.CreatureID,
   ability_id: T.AbilityID, point: T.Point3)
-  : Promise<{ points: Array<T.Point3>, creatures: Array<T.CreatureID> }> {
+  : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const uri =
     `${rpi_url}preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point[0]}/${point[1]}/${point[2]}`;
