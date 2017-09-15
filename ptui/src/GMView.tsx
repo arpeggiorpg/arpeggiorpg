@@ -62,13 +62,6 @@ function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
     return <GM.GMScene scene={scene} />;
   } else if (ptui.state.grid_focus) {
     switch (ptui.state.grid_focus.t) {
-      case "Map":
-        const map = ptui.getMap(ptui.state.grid_focus.map_id);
-        if (map) {
-          return <GM.GMMap map={map} />;
-        } else {
-          return;
-        }
       default: return undefined;
     }
   }
@@ -109,9 +102,5 @@ function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
       return scene
         ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
         : <div>No scene yet!</div>;
-    case "Map":
-      const map = ptui.getMap(ptui.state.grid_focus.map_id);
-      if (!map) { return <div>Couldn't find map!</div>; }
-      return <Grid.MapGrid map={map} dispatch={dispatch} />;
   }
 }
