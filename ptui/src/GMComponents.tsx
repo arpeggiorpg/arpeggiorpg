@@ -12,20 +12,11 @@ import {
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as Comp from './Component';
-import { CoolForm, NumericInput, PlaintextInput, Submit } from './CoolForm';
+import { CoolForm, PlaintextInput, Submit } from './CoolForm';
 import * as Dice from './Dice';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
-
-export const GMMap = Comp.connect<{ map: T.Map }, {}>(_ => ({}))(
-  function GMMap(props: { map: T.Map } & M.DispatchProps) {
-    const { map, dispatch } = props;
-    return <Segment>
-      <Header> {map.name} </Header>
-      <EditMap map={map} onDone={() => undefined} dispatch={dispatch} />
-    </Segment>;
-  });
 
 export const GMScene = M.connectRedux(
   function GMScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
@@ -51,37 +42,27 @@ export const GMScene = M.connectRedux(
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
 export const CreateScene = M.connectRedux(class CreateScene
-  extends React.Component<CreateSceneProps & M.ReduxProps, { map?: [T.FolderPath, T.MapID] }> {
+  extends React.Component<CreateSceneProps & M.ReduxProps> {
   constructor(props: CreateSceneProps & M.ReduxProps) {
     super(props);
     this.state = {};
   }
   render() {
-    const { ptui } = this.props;
-    const map = this.state.map ? ptui.getMap(this.state.map[1]) : undefined;
     return <div>
       <CoolForm>
         <PlaintextInput label="Name" name="name" default="" nonEmpty={true} />
         <PlaintextInput label="Background image URL" name="background_image_url" default="" />
-        <CV.Toggler
-          a={ok => <Campaign.MapSelector
-            onSelect={(path, map_id) => { this.setState({ map: [path, map_id] }); ok(); }} />}
-
-          b={ok => <Form.Input label="Map" onClick={ok} readOnly={true} icon='edit'
-            value={`${M.folderPathToString(this.state.map![0])}/${map!.name}`} />}
-        />
-        <Submit disabled={!this.state.map} onClick={d => this.create(d as any)}>Create</Submit>
+        <Submit onClick={d => this.create(d as any)}>Create</Submit>
       </CoolForm>
     </div >;
   }
   create(data: { name: string; background_image_url: string }) {
-    if (!this.state.map) { return; }
     const { path, onDone, dispatch } = this.props;
     const { name, background_image_url } = data;
     // since we don't have a visual response to setting image url/offset/scale, I'll just leave
     // default values here and the user can edit the map after creation
     dispatch(M.sendCommand({
-      t: "CreateScene", path, spec: { name, background_image_url, map: this.state.map[1] },
+      t: "CreateScene", path, spec: { name, background_image_url },
     }));
     onDone();
   }
@@ -107,64 +88,66 @@ class EditScene
     this.props.dispatch(
       M.sendCommand({
         t: "EditSceneDetails", scene_id: this.props.scene.id,
-        details: { ...this.state, map: this.props.scene.map },
+        details: this.state,
       }));
     this.props.onDone();
   }
 }
 
-class EditMap
-  extends React.Component<{ map: T.Map; onDone: () => void } & M.DispatchProps,
-  {
-    name: string; background_image_url: string;
-    scale_x: string; scale_y: string;
-    offset_x: string; offset_y: string;
-  }> {
-  constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
-    super(props);
-    const { map: { name, background_image_scale, background_image_offset } } = props;
-    this.state = {
-      name, background_image_url: props.map.background_image_url,
-      scale_x: background_image_scale[0].toString(), scale_y: background_image_scale[1].toString(),
-      offset_x: background_image_offset[0].toString(),
-      offset_y: background_image_offset[1].toString(),
-    };
-  }
-  render(): JSX.Element {
-    const { map } = this.props;
-    return <CoolForm>
-      <PlaintextInput label="Name" name="name" default={map.name} nonEmpty={true} />
-      <PlaintextInput label="Background Image URL" name="background_image_url"
-        default={map.background_image_url} />
-      <Form.Group>
-        <NumericInput label="Scale X (cm)" name="scale_x" min={0}
-          style={{ width: "100px" }}
-          default={map.background_image_scale[0]} />
-        <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
-          style={{ width: "100px" }}
-          default={map.background_image_scale[1]} />
-      </Form.Group>
-      <Form.Group>
-        <NumericInput label="Offset X (cm)" name="offset_x"
-          style={{ width: "100px" }}
-          default={map.background_image_offset[0]} />
-        <NumericInput label="Offset Y (cm)" name="offset_y"
-          style={{ width: "100px" }}
-          default={map.background_image_offset[1]} />
-      </Form.Group>
-      <Submit onClick={data => this.save(data)}>Save</Submit>
-    </CoolForm>;
-  }
-  save(data: any) {
-    const { map } = this.props;
-    const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
-    const background_image_scale: [number, number] = [scale_x, scale_y];
-    const background_image_offset: [number, number] = [offset_x, offset_y];
-    const details = { name, background_image_url, background_image_scale, background_image_offset };
-    this.props.dispatch(M.sendCommand({ t: "EditMapDetails", id: map.id, details }));
-    this.props.onDone();
-  }
-}
+// class EditMap
+//   extends React.Component<{ map: T.Map; onDone: () => void } & M.DispatchProps,
+//   {
+//     name: string; background_image_url: string;
+//     scale_x: string; scale_y: string;
+//     offset_x: string; offset_y: string;
+//   }> {
+//   constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
+//     super(props);
+//     const { map: { name, background_image_scale, background_image_offset } } = props;
+//     this.state = {
+//       name, background_image_url: props.map.background_image_url,
+//       scale_x: background_image_scale[0].toString(),
+//       scale_y: background_image_scale[1].toString(),
+//       offset_x: background_image_offset[0].toString(),
+//       offset_y: background_image_offset[1].toString(),
+//     };
+//   }
+//   render(): JSX.Element {
+//     const { map } = this.props;
+//     return <CoolForm>
+//       <PlaintextInput label="Name" name="name" default={map.name} nonEmpty={true} />
+//       <PlaintextInput label="Background Image URL" name="background_image_url"
+//         default={map.background_image_url} />
+//       <Form.Group>
+//         <NumericInput label="Scale X (cm)" name="scale_x" min={0}
+//           style={{ width: "100px" }}
+//           default={map.background_image_scale[0]} />
+//         <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
+//           style={{ width: "100px" }}
+//           default={map.background_image_scale[1]} />
+//       </Form.Group>
+//       <Form.Group>
+//         <NumericInput label="Offset X (cm)" name="offset_x"
+//           style={{ width: "100px" }}
+//           default={map.background_image_offset[0]} />
+//         <NumericInput label="Offset Y (cm)" name="offset_y"
+//           style={{ width: "100px" }}
+//           default={map.background_image_offset[1]} />
+//       </Form.Group>
+//       <Submit onClick={data => this.save(data)}>Save</Submit>
+//     </CoolForm>;
+//   }
+//   save(data: any) {
+//     const { map } = this.props;
+//     const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
+//     const background_image_scale: [number, number] = [scale_x, scale_y];
+//     const background_image_offset: [number, number] = [offset_x, offset_y];
+//     const details = { name, background_image_url, background_image_scale,
+//       background_image_offset };
+//     this.props.dispatch(M.sendCommand({ t: "EditMapDetails", id: map.id, details }));
+//     this.props.onDone();
+//   }
+// }
 
 export const GMScenePlayers = M.connectRedux(
   function GMScenePlayers(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
@@ -833,24 +816,6 @@ export const CreateFolder = M.connectRedux(
       return ptui.sendCommand(dispatch, { t: 'CreateFolder', path: new_path });
     }
   });
-
-export function CreateMap(props: { path: T.FolderPath; onDone: () => void } & M.DispatchProps) {
-  const { path, onDone, dispatch } = props;
-  return <CV.SingleInputForm buttonText="Create Map" onSubmit={create} />;
-  function create(input: string) {
-    // since we don't have a visual response to setting image url/offset/scale, I'll just leave
-    // default values here and the user can edit the map after creation
-    const map = {
-      name: input,
-      background_image_url: "",
-      background_image_offset: [0, 0] as [number, number],
-      background_image_scale: [0, 0] as [number, number],
-    };
-    dispatch(M.sendCommand({ t: "CreateMap", path, map }));
-    onDone();
-  }
-}
-
 
 interface GMCreateCreatureProps {
   path: T.FolderPath;
