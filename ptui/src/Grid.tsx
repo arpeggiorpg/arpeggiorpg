@@ -67,162 +67,162 @@ import * as SPZ from './SVGPanZoom';
 
 interface Obj<T> { [index: string]: T; }
 
-export interface MapGridProps {
-  map: T.Map;
-}
+// export interface MapGridProps {
+//   map: T.Map;
+// }
 
-interface MapGridState {
-  terrain: I.Set<I.List<number>>;
-  specials: I.Map<I.List<number>, T.SpecialTileData>;
-  painting: "Terrain" | "Special";
-  painting_color: string;
-  painting_note: string;
-  painting_vis: T.Visibility;
-}
+// interface MapGridState {
+//   terrain: I.Set<I.List<number>>;
+//   specials: I.Map<I.List<number>, T.SpecialTileData>;
+//   painting: "Terrain" | "Special";
+//   painting_color: string;
+//   painting_note: string;
+//   painting_vis: T.Visibility;
+// }
 
-export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, MapGridState> {
-  constructor(props: MapGridProps & M.DispatchProps) {
-    super(props);
-    this.state = {
-      terrain: I.Set(props.map.terrain.map(I.List)),
-      specials: M.specialsRPIToMap(props.map.specials),
-      painting: "Terrain",
-      painting_color: "white",
-      painting_note: "",
-      painting_vis: { t: "AllPlayers" },
-    };
-  }
+// export class MapGrid extends React.Component<MapGridProps & M.DispatchProps, MapGridState> {
+//   constructor(props: MapGridProps & M.DispatchProps) {
+//     super(props);
+//     this.state = {
+//       terrain: I.Set(props.map.terrain.map(I.List)),
+//       specials: M.specialsRPIToMap(props.map.specials),
+//       painting: "Terrain",
+//       painting_color: "white",
+//       painting_note: "",
+//       painting_vis: { t: "AllPlayers" },
+//     };
+//   }
 
-  componentWillReceiveProps(nextProps: MapGridProps & M.DispatchProps) {
-    if (nextProps.map.id !== this.props.map.id) {
-      this.setState({
-        terrain: I.Set(nextProps.map.terrain.map(I.List)),
-        specials: M.specialsRPIToMap(nextProps.map.specials),
-        painting: "Terrain",
-      });
-    }
-  }
+//   componentWillReceiveProps(nextProps: MapGridProps & M.DispatchProps) {
+//     if (nextProps.map.id !== this.props.map.id) {
+//       this.setState({
+//         terrain: I.Set(nextProps.map.terrain.map(I.List)),
+//         specials: M.specialsRPIToMap(nextProps.map.specials),
+//         painting: "Terrain",
+//       });
+//     }
+//   }
 
-  shouldComponentUpdate(nextProps: MapGridProps & M.DispatchProps, nextState: MapGridState) {
-    return this.props !== nextProps
-      || !LD.isEqual(LD.omit(this.state, "painting_note"), LD.omit(nextState, "painting_note"));
-  }
+//   shouldComponentUpdate(nextProps: MapGridProps & M.DispatchProps, nextState: MapGridState) {
+//     return this.props !== nextProps
+//       || !LD.isEqual(LD.omit(this.state, "painting_note"), LD.omit(nextState, "painting_note"));
+//   }
 
-  render(): JSX.Element | null {
-    const { terrain, specials, painting } = this.state;
-    const map = {
-      ...this.props.map, terrain: [],
-      specials: [],
-    };
-    console.log("[EXPENSIVE:MapGrid.render]", terrain.toJS());
+//   render(): JSX.Element | null {
+//     const { terrain, specials, painting } = this.state;
+//     const map = {
+//       ...this.props.map, terrain: [],
+//       specials: [],
+//     };
+//     console.log("[EXPENSIVE:MapGrid.render]", terrain.toJS());
 
-    const paintOpen = painting === "Terrain" ? this.closeTerrain.bind(this)
-      : this.toggleSpecial.bind(this);
-    const paintClosed = painting === "Terrain" ? this.openTerrain.bind(this)
-      : this.toggleSpecial.bind(this);
-    const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
-      const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
-      const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
-      return <rect {...tprops}
-        style={{ cursor: 'pointer' }}
-        onClick={() => paintOpen(pt)}
-        key={pointKey("open", pt)} />;
-    });
-    const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
-      pt => {
-        if (terrain.has(I.List(pt))) { return; }
-        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
-        return <rect {...tprops} style={{ cursor: 'pointer' }}
-          onClick={() => paintClosed(pt)}
-          key={pointKey("closed", pt)} />;
-      });
+//     const paintOpen = painting === "Terrain" ? this.closeTerrain.bind(this)
+//       : this.toggleSpecial.bind(this);
+//     const paintClosed = painting === "Terrain" ? this.openTerrain.bind(this)
+//       : this.toggleSpecial.bind(this);
+//     const open_tiles = terrain.toArray().map((spt: I.List<number>) => {
+//       const pt: T.Point3 = [spt.get(0)!, spt.get(1)!, spt.get(2)!];
+//       const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
+//       return <rect {...tprops}
+//         style={{ cursor: 'pointer' }}
+//         onClick={() => paintOpen(pt)}
+//         key={pointKey("open", pt)} />;
+//     });
+//     const closed_tiles = M.filterMap(nearby_points([0, 0, 0]),
+//       pt => {
+//         if (terrain.has(I.List(pt))) { return; }
+//         const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
+//         return <rect {...tprops} style={{ cursor: 'pointer' }}
+//           onClick={() => paintClosed(pt)}
+//           key={pointKey("closed", pt)} />;
+//       });
 
-    const tools = this.mapEditingTools();
-    return <div>
-      {tools}
-      <GridSvg map={map}>
-        {getSpecials(M.specialsMapToRPI(specials))}
-        {open_tiles}
-        {closed_tiles}
-        {getAnnotations(() => undefined, M.specialsMapToRPI(specials))}
-      </GridSvg>
-    </div>;
-  }
+//     const tools = this.mapEditingTools();
+//     return <div>
+//       {tools}
+//       <GridSvg map={map}>
+//         {getSpecials(M.specialsMapToRPI(specials))}
+//         {open_tiles}
+//         {closed_tiles}
+//         {getAnnotations(() => undefined, M.specialsMapToRPI(specials))}
+//       </GridSvg>
+//     </div>;
+//   }
 
-  closeTerrain(pt: T.Point3) {
-    this.setState({ terrain: this.state.terrain.delete(I.List(pt)) });
-  }
-  openTerrain(pt: T.Point3) {
-    this.setState({ terrain: this.state.terrain.add(I.List(pt)) });
-  }
+//   closeTerrain(pt: T.Point3) {
+//     this.setState({ terrain: this.state.terrain.delete(I.List(pt)) });
+//   }
+//   openTerrain(pt: T.Point3) {
+//     this.setState({ terrain: this.state.terrain.add(I.List(pt)) });
+//   }
 
-  toggleSpecial(pt: T.Point3) {
-    const { painting, painting_color, painting_note, painting_vis, specials } = this.state;
-    if (painting !== "Special") { return; }
-    const spt = I.List(pt);
-    this.setState(
-      {
-        specials: specials.has(spt) ? specials.delete(spt)
-          : specials.set(spt, [painting_color, painting_note, painting_vis]),
-      });
-  }
+//   toggleSpecial(pt: T.Point3) {
+//     const { painting, painting_color, painting_note, painting_vis, specials } = this.state;
+//     if (painting !== "Special") { return; }
+//     const spt = I.List(pt);
+//     this.setState(
+//       {
+//         specials: specials.has(spt) ? specials.delete(spt)
+//           : specials.set(spt, [painting_color, painting_note, painting_vis]),
+//       });
+//   }
 
-  mapEditingTools() {
-    const { painting, painting_color } = this.state;
-    const { dispatch } = this.props;
-    return <div style={{ width: '100%', height: '50px', display: 'flex' }}>
-      <Menu>
-        <Menu.Item active={painting === "Terrain"}
-          onClick={() => this.setState({ painting: "Terrain" })}>
-          Terrain
-        </Menu.Item>
-        <Menu.Item active={painting === "Special"}
-          onClick={() => this.setState({ painting: 'Special' })}>
-          Special
-        </Menu.Item>
-      </Menu>
-      <div style={{ display: 'flex', width: '250px', position: 'relative' }}>
-        <Dimmer page={false} inverted={true} active={painting !== "Special"} />
-        <CV.ModalMaker
-          button={open =>
-            <div onClick={open}
-              style={{
-                cursor: 'pointer',
-                flex: '0 0 25px',
-                ...CV.square_style(25, painting_color),
-              }} />}
-          header={<span>Choose Special Color</span>}
-          content={close => <TwitterPicker
-            onChangeComplete={
-              color => {
-                this.setState({ painting_color: color.hex });
-                close();
-              }}
-          />}
-        />
-        <Input size="small" label="Annotation"
-          onChange={(_, data) => this.setState({ painting_note: data.value })}
-        />
-        <Checkbox checked={this.state.painting_vis.t === "GMOnly"} label="GM Only"
-          onChange={(_, d) =>
-            this.setState({
-              painting_vis: d.checked as boolean ? { t: "GMOnly" } : { t: "AllPlayers" },
-            })} />
-      </div>
-      <Button style={{ marginLeft: 'auto' }} onClick={() =>
-        dispatch(
-          M.sendCommand({
-            t: "EditMapTerrain",
-            id: this.props.map.id,
-            terrain: this.state.terrain.toArray().map(
-              (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
-            specials: M.specialsMapToRPI(this.state.specials),
-          }))}>
-        Save
-      </Button>
-    </div >;
-  }
-}
+//   mapEditingTools() {
+//     const { painting, painting_color } = this.state;
+//     const { dispatch } = this.props;
+//     return <div style={{ width: '100%', height: '50px', display: 'flex' }}>
+//       <Menu>
+//         <Menu.Item active={painting === "Terrain"}
+//           onClick={() => this.setState({ painting: "Terrain" })}>
+//           Terrain
+//         </Menu.Item>
+//         <Menu.Item active={painting === "Special"}
+//           onClick={() => this.setState({ painting: 'Special' })}>
+//           Special
+//         </Menu.Item>
+//       </Menu>
+//       <div style={{ display: 'flex', width: '250px', position: 'relative' }}>
+//         <Dimmer page={false} inverted={true} active={painting !== "Special"} />
+//         <CV.ModalMaker
+//           button={open =>
+//             <div onClick={open}
+//               style={{
+//                 cursor: 'pointer',
+//                 flex: '0 0 25px',
+//                 ...CV.square_style(25, painting_color),
+//               }} />}
+//           header={<span>Choose Special Color</span>}
+//           content={close => <TwitterPicker
+//             onChangeComplete={
+//               color => {
+//                 this.setState({ painting_color: color.hex });
+//                 close();
+//               }}
+//           />}
+//         />
+//         <Input size="small" label="Annotation"
+//           onChange={(_, data) => this.setState({ painting_note: data.value })}
+//         />
+//         <Checkbox checked={this.state.painting_vis.t === "GMOnly"} label="GM Only"
+//           onChange={(_, d) =>
+//             this.setState({
+//               painting_vis: d.checked as boolean ? { t: "GMOnly" } : { t: "AllPlayers" },
+//             })} />
+//       </div>
+//       <Button style={{ marginLeft: 'auto' }} onClick={() =>
+//         dispatch(
+//           M.sendCommand({
+//             t: "EditMapTerrain",
+//             id: this.props.map.id,
+//             terrain: this.state.terrain.toArray().map(
+//               (spt: I.List<number>): T.Point3 => [spt.get(0)!, spt.get(1)!, spt.get(2)!]),
+//             specials: M.specialsMapToRPI(this.state.specials),
+//           }))}>
+//         Save
+//       </Button>
+//     </div >;
+//   }
+// }
 
 interface SceneGridProps {
   scene: T.Scene;
@@ -242,14 +242,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   render(): JSX.Element {
     const { scene, creatures, ptui } = this.props;
-    const map_ = M.get(ptui.app.current_game.maps, scene.map);
-    if (!map_) { return <div>Couldn't find map</div>; }
-    const map = map_; // WHY TYPESCRIPT, WHY???
 
     const grid = ptui.state.grid;
 
     const creature_menu = grid.active_menu ? this.renderMenu(grid.active_menu) : null;
-    const annotation = grid.display_annotation ? this.renderAnnotation(map, grid.display_annotation)
+    const annotation = grid.display_annotation
+      ? this.renderAnnotation(scene, grid.display_annotation)
       : null;
 
     const creature_els = LD.values(creatures).map(c => {
@@ -369,13 +367,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
-  renderAnnotation(map: T.Map, { pt, rect }: { pt: T.Point3; rect: M.Rect }): JSX.Element {
+  renderAnnotation(scene: T.Scene, { pt, rect }: { pt: T.Point3; rect: M.Rect })
+    : JSX.Element | null {
     const { dispatch } = this.props;
-    const special = LD.find(map.specials, ([pt_, ..._]) => M.isEqual(pt, pt_));
-    if (!special) { return <noscript />; }
+    const ann = scene.annotations.get(pt);
+    if (!ann) { return null; }
     return <RectPositioned rect={rect}
       onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
-      <Segment>{special[2]}</Segment>
+      <Segment>{ann[0]}</Segment>
     </RectPositioned >;
   }
 
@@ -480,7 +479,7 @@ function svgVolume(
   volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>): JSX.Element {
   switch (volume.t) {
     case "Sphere":
-      return <circle cx={pt[0] * 100 + 50} cy={pt[1] * 100} r={volume.radius}
+      return <circle cx={pt.x * 100 + 50} cy={pt.y * 100} r={volume.radius}
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
     default:
