@@ -5,7 +5,8 @@ import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 
 import {
-  Accordion, Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
+  // Accordion,
+  Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
   Menu, Message, Popup, Segment, Table
 } from 'semantic-ui-react';
 
@@ -30,13 +31,30 @@ export const GMScene = M.connectRedux(
           content={close => <EditScene scene={scene} onDone={close} dispatch={dispatch} />}
         />
       </Header>
-      <Accordion exclusive={false} panels={[
+      <Segment.Group>
+        <Segment
+          style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '0' }}
+        >
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Terrain</Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Creatures <Label.Detail>15</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Objects</Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Volumes <Label.Detail>2</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Players <Label.Detail>3/5</Label.Detail></Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Challenges</Label>
+          <Label size="medium" style={{ margin: '0.25em 0' }}>Background</Label>
+        </Segment>
+        <Header as='h5' style={{ margin: '0.5em 1em' }}>Terrain</Header>
+        <Segment attached={true}>
+          Draw on the map and then <Button>Save</Button>
+        </Segment>
+      </Segment.Group>
+      {/* <Accordion exclusive={false} panels={[
         { title: 'Creatures', content: <GMSceneCreatures scene={scene} /> },
         { title: 'Items', content: <GMSceneInventory scene={scene} /> },
         { title: 'Challenges', content: <GMSceneChallenges scene={scene} /> },
         { title: 'Players', content: <GMScenePlayers scene={scene} /> },
         { title: 'Volumes', content: <GMSceneVolumes scene={scene} /> },
-      ]} />
+      ]} /> */}
     </Segment>;
   });
 
