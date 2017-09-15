@@ -94,22 +94,6 @@ export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
   }
 });
 
-interface MapSelectorProps { onSelect: (path: T.FolderPath, mid: T.MapID) => void; }
-export const MapSelector = M.connectRedux(class MapSelector
-  extends React.Component<MapSelectorProps & M.ReduxProps> {
-  render(): JSX.Element {
-    const display = ([path, map]: [T.FolderPath, T.Map]) =>
-      `${M.folderPathToString(path)}/${map.name}`;
-    const { ptui } = this.props;
-    const maps = collectAllMaps(ptui, [], ptui.app.current_game.campaign);
-    return <SearchSelect label="Map name" values={maps}
-      onSelect={([path, map]: [T.FolderPath, T.Map]) => this.props.onSelect(path, map.id)}
-      display={display}
-    />;
-  }
-}
-);
-
 interface SelectableProps {
   item_type: FolderContentType;
   allow_multiple: boolean;
@@ -123,7 +107,6 @@ type FolderContentType = "Scene" | "Map" | "Creature" | "Note" | "Item" | "Folde
 
 type FolderObject =
   | { t: "Scene"; path: T.FolderPath; id: T.SceneID; name: string }
-  | { t: "Map"; path: T.FolderPath; id: T.MapID; name: string }
   | { t: "Creature"; path: T.FolderPath; id: T.CreatureID; name: string }
   | { t: "Note"; path: T.FolderPath; name: string }
   | { t: "Item"; path: T.FolderPath; id: T.ItemID; name: string }
@@ -254,9 +237,6 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
     const scene_objects = dont_show("Scene") ? [] :
       ptui.getScenes(folder.data.scenes).map(
         (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
-    const map_objects = dont_show("Map") ? [] :
-      ptui.getMaps(folder.data.maps).map(
-        (map): FolderObject => ({ t: "Map", path, id: map.id, name: map.name }));
     const creature_objects = dont_show("Creature") ? [] :
       ptui.getCreatures(folder.data.creatures).map(
         (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
@@ -268,7 +248,7 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
         (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
     return {
       objects: LD.concat(
-        scene_objects, map_objects, creature_objects, note_objects, item_objects),
+        scene_objects, creature_objects, note_objects, item_objects),
     };
   })(FolderTreeComp);
 
@@ -288,7 +268,6 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
   switch (obj.t) {
     case "Note": return { t: "NoteID", id: obj.name };
     case "Scene": return { t: "SceneID", id: obj.id };
-    case "Map": return { t: "MapID", id: obj.id };
     case "Creature": return { t: "CreatureID", id: obj.id };
     case "Item": return { t: "ItemID", id: obj.id };
   }
@@ -298,8 +277,6 @@ function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
   switch (obj.t) {
     case "Scene":
       dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.id } }); return;
-    case "Map":
-      dispatch({ type: "FocusGrid", focus: { t: "Map", map_id: obj.id } }); return;
     case "Creature":
       dispatch({
         type: "FocusSecondary",
@@ -388,7 +365,6 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
 function folder_object_to_item_id(o: FolderObject): T.FolderItemID {
   switch (o.t) {
     case "Scene": return { t: "SceneID", id: o.id };
-    case "Map": return { t: "MapID", id: o.id };
     case "Creature": return { t: "CreatureID", id: o.id };
     case "Item": return { t: "ItemID", id: o.id };
     case "Note": return { t: "NoteID", id: o.name };
@@ -551,11 +527,6 @@ function collectFolderObjects<T>(
 function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
   Array<[T.FolderPath, T.Item]> {
   return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getItems(node.items));
-}
-
-function collectAllMaps(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
-  Array<[T.FolderPath, T.Map]> {
-  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getMaps(node.maps));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
