@@ -57,8 +57,12 @@ import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 
-import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
-import { Button, Checkbox, Dimmer, Input, Menu, Segment } from 'semantic-ui-react';
+// import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
+import {
+  Button,
+  // Checkbox, Dimmer, Input,
+  Menu, Segment
+} from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
 import * as M from "./Model";
@@ -281,8 +285,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       </div>
       {creature_menu}
       {annotation}
-      <GridSvg map={map}
-        scene_background={scene.background_image_url}>
+      <GridSvg scene={scene}>
         {volume_condition_els}
         {creature_els}
         {movement_target_els}
@@ -325,8 +328,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
-            return <line x1={caster_pos[0] * 100 + 50} y1={caster_pos[1] * 100}
-              x2={target[0] * 100 + 50} y2={target[1] * 100}
+            return <line x1={caster_pos.x * 100 + 50} y1={caster_pos.y * 100}
+              x2={target.x * 100 + 50} y2={target.y * 100}
               style={{ pointerEvents: "none" }}
               strokeWidth="3" stroke="black" />;
         }
@@ -509,8 +512,7 @@ export interface MapCreature {
 }
 
 interface GridSvgProps {
-  map: T.Map;
-  scene_background?: string;
+  scene: T.Scene;
   children?: React.ReactNode;
 }
 export const GridSvg = M.connectRedux(
@@ -524,28 +526,32 @@ export const GridSvg = M.connectRedux(
       const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
       const focus_diff = !M.isEqual(this.props.ptui.state.grid_focus,
         nextProps.ptui.state.grid_focus);
-      const map_diff = !M.isEqual(this.props.map, nextProps.map);
+      const map_diff = !M.isEqual(this.props.scene, nextProps.scene);
       const children_diff = !M.isEqual(this.props.children, nextProps.children);
       return app_diff || mvmt_diff || focus_diff || map_diff || children_diff;
     }
 
     componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
-      if (!M.isEqual(prevProps.map, this.props.map) && this.spz) {
+      if (!M.isEqual(prevProps.scene, this.props.scene) && this.spz) {
         this.spz.refresh();
       }
     }
 
     render(): JSX.Element {
-      const { map, scene_background, ptui, dispatch } = this.props;
+      const { scene, ptui, dispatch } = this.props;
       console.log("[EXPENSIVE:GridSvg.render]");
-      const open_terrain_color = map.background_image_url ? "transparent" : "white";
-      const terrain_els = map.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
-      const background_image = map.background_image_url
-        ? <image xlinkHref={map.background_image_url} width={map.background_image_scale[0]}
-          height={map.background_image_scale[1]}
-          x={map.background_image_offset[0]} y={map.background_image_offset[1]}
+      const open_terrain_color = scene.background_image_url ? "transparent" : "white";
+      const terrain_els = scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+      const background_image = scene.background_image_url && scene.background_image_offset
+        ? <image xlinkHref={scene.background_image_url} width={scene.background_image_scale[0]}
+          height={scene.background_image_scale[1]}
+          x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
           preserveAspectRatio="none" />
         : null;
+
+      const static_background = scene.background_image_url && !scene.background_image_offset
+        ? `url($scene.background_image_url)`
+        : undefined;
 
       return <SPZ.SVGPanZoom
         id="pt-grid"
@@ -557,31 +563,31 @@ export const GridSvg = M.connectRedux(
         preserveAspectRatio="xMinYMid slice"
         style={{
           width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
-          backgroundImage: scene_background ? `url(${scene_background})` : undefined,
+          backgroundImage: static_background,
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
         }}>
         {background_image}
         {terrain_els}
-        {getSpecials(map.specials, ptui.state.player_id)}
-        {getAnnotations(dispatch, map.specials, ptui.state.player_id)}
+        {getHighlights(scene.highlights, ptui.state.player_id)}
+        {getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}
         {this.props.children}
       </SPZ.SVGPanZoom>;
     }
   });
 
-function getSpecials(
-  specials: Array<[T.Point3, T.Color, string, T.Visibility]>, player_id?: T.PlayerID) {
-  return specials.map(([pt, color, _, vis]) =>
-    <SpecialTile key={pointKey("special", pt)} pt={pt} color={color} vis={vis}
+function getHighlights(
+  highlights: I.Map<T.Point3, [T.Color, T.Visibility]>, player_id?: T.PlayerID) {
+  return highlights.entrySeq().map(([pt, [color, vis]]) =>
+    <SpecialTile key={pointKey("highlight", pt)} pt={pt} color={color} vis={vis}
       player_id={player_id} />);
 }
 
 function getAnnotations(
   dispatch: M.Dispatch,
-  specials: Array<[T.Point3, T.Color, string, T.Visibility]>, player_id?: T.PlayerID) {
-  return M.filterMap(specials,
-    ([pt, _, note, vis]) => {
+  annotations: I.Map<T.Point3, [string, T.Visibility]>, player_id?: T.PlayerID) {
+  return M.filterMap(annotations.entrySeq().toArray(),
+    ([pt, [note, vis]]) => {
       if (note !== "") {
         return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
           player_id={player_id} />;
@@ -620,7 +626,7 @@ function SpecialTile(
   const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
   return <g>
     <rect {...tprops} />
-    {gmonly ? <text x={pt[0] * 100 + 65} y={pt[1] * 100 + 35} fontSize="25px">👁️</text>
+    {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text>
       : <noscript />}
   </g>;
 }
@@ -640,12 +646,12 @@ function Annotation({ dispatch, pt, vis, player_id }:
   }
 
   return <g>
-    <rect width="100" height="100" x={pt[0] * 100} y={pt[1] * 100 - 50} fillOpacity="0"
+    <rect width="100" height="100" x={pt.x * 100} y={pt.y * 100 - 50} fillOpacity="0"
       ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
     />
     <text
       style={{ pointerEvents: "none" }}
-      x={pt[0] * 100 + 25} y={pt[1] * 100 + 50}
+      x={pt.x * 100 + 25} y={pt.y * 100 + 50}
       fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
   </g>;
 }
@@ -699,7 +705,7 @@ const GridCreature = M.connectRedux(
 
 
 function text_tile(text: string, pos: T.Point3): JSX.Element {
-  return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos[0] * 100} y={pos[1] * 100}>
+  return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos.x * 100} y={pos.y * 100}>
     {text}
   </text>;
 }
@@ -714,7 +720,7 @@ function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SV
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
-    x: pt[0] * 100, y: (pt[1] * 100) - 50,
+    x: pt.x * 100, y: (pt.y * 100) - 50,
   };
 }
 
@@ -789,9 +795,9 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 
 export function nearby_points(pos: T.Point3): Array<T.Point3> {
   const result = [];
-  for (const x of LD.range(pos[0] - 20, pos[0] + 20)) {
-    for (const y of LD.range(pos[1] - 20, pos[1] + 20)) {
-      result.push([x, y, pos[2]] as T.Point3);
+  for (const x of LD.range(pos.x - 20, pos.x + 20)) {
+    for (const y of LD.range(pos.y - 20, pos.y + 20)) {
+      result.push(new T.Point3(x, y, pos.z));
     }
   }
   return result;
@@ -808,5 +814,5 @@ export function requestTeleport(dispatch: M.Dispatch, scene: T.Scene, cid: T.Cre
 }
 
 function pointKey(prefix: string, pt: T.Point3) {
-  return `${prefix}-(${pt[0]}/${pt[1]}/${pt[2]})`;
+  return `${prefix}-(${pt.x}/${pt.y}/${pt.z})`;
 }
