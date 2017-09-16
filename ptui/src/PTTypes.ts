@@ -272,7 +272,7 @@ export type GameLog =
   | { t: "EditMapTerrain"; id: MapID; terrain: Array<Point3>; specials: Array<SpecialTile>; }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
-  | { t: "CreateCreature"; path: FolderPath; creature: Creature }
+  | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
   | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation; }
   | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
@@ -359,6 +359,10 @@ export class Creature {
   dynamic_conditions(): I.Map<ConditionID, AppliedCondition> {
     return this.own_conditions.merge(this.volume_conditions);
   }
+}
+
+export interface CreatureData {
+  name: string;
 }
 
 export interface AABB { x: number; y: number; z: number; }
@@ -520,6 +524,11 @@ const decodeAABB: Decoder<AABB> = JD.object(
   ["y", JD.number()],
   ["z", JD.number()],
   (x, y, z) => ({ x, y, z })
+);
+
+export const decodeCreatureData: Decoder<CreatureData> = JD.object(
+  ["name", JD.string()],
+  name => ({ name })
 );
 
 function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
@@ -879,7 +888,7 @@ export const decodeGameLog: Decoder<GameLog> =
       JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
     CreateCreature: JD.map(
       ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
-      JD.tuple(decodeFolderPath, decodeCreature)),
+      JD.tuple(decodeFolderPath, decodeCreatureData)),
     EditCreatureDetails: JD.object(["creature_id", JD.string()], ["details", decodeCreatureCreation],
       (creature_id, details): GameLog => ({ t: "EditCreatureDetails", creature_id, details })),
     AddCreatureToCombat: JD.map(

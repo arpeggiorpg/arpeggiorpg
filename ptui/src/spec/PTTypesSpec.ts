@@ -73,6 +73,7 @@ export function test(): boolean {
     inventory: I.Map(),
     background_image_url: "",
     volume_conditions: I.Map(),
+    focused_creatures: I.List(),
   };
   assertEq<T.Scene>(
     I.fromJS(T.decodeScene.decodeAny(sceneJSON)).toJS(),
