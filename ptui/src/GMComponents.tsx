@@ -21,6 +21,8 @@ import * as TextInput from './TextInput';
 
 export const GMScene = M.connectRedux(
   function GMScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+    const MenuItem = (props: React.Props<never>) =>
+      <Label size="medium" style={{ margin: '0.25em 1px' }}>{props.children}</Label>;
     return <Segment>
       <Header>
         {scene.name}
@@ -35,14 +37,14 @@ export const GMScene = M.connectRedux(
         <Segment
           style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '0' }}
         >
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Terrain</Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Background</Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Objects</Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Volumes <Label.Detail>2</Label.Detail></Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Creatures <Label.Detail>15</Label.Detail></Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Players <Label.Detail>3/5</Label.Detail></Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Items <Label.Detail>7</Label.Detail></Label>
-          <Label size="medium" style={{ margin: '0.25em 0' }}>Challenges</Label>
+          <MenuItem>Terrain</MenuItem>
+          <MenuItem>Background</MenuItem>
+          <MenuItem>Objects</MenuItem>
+          <MenuItem>Volumes <Label.Detail>2</Label.Detail></MenuItem>
+          <MenuItem>Creatures <Label.Detail>15</Label.Detail></MenuItem>
+          <MenuItem>Players <Label.Detail>3/5</Label.Detail></MenuItem>
+          <MenuItem>Items <Label.Detail>7</Label.Detail></MenuItem>
+          <MenuItem>Challenges</MenuItem>
         </Segment>
         <Header as='h5' style={{ margin: '0.5em 1em' }}>Terrain</Header>
         <Segment attached={true}>
