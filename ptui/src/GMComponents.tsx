@@ -7,7 +7,7 @@ import * as ReactRedux from 'react-redux';
 import {
   // Accordion,
   Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
-  Menu, Message, Popup, Segment, Table
+  Menu, Message, Popup, Segment, Tab, Table
 } from 'semantic-ui-react';
 
 import * as Campaign from './Campaign';
@@ -20,9 +20,34 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 export const GMScene = M.connectRedux(
-  function GMScene({ scene, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
-    const MenuItem = (props: React.Props<never>) =>
-      <Label size="medium" style={{ margin: '0.25em 1px' }}>{props.children}</Label>;
+  function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
+    function menuItem(name: string, content: () => JSX.Element, detail?: string) {
+      const item = detail
+        ? <Menu.Item key={name}>
+          {name}
+          <Label basic={true} color='grey' circular={true} size='mini'>{detail}</Label>
+        </Menu.Item>
+        : name;
+      return { menuItem: item, render: content };
+    }
+
+    const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
+    const total_players = ptui.app.current_game.players.count();
+    const player_count = `${scene_players}/${total_players}`;
+    const panes = [
+      menuItem("Terrain", () => <div>Terrain</div>),
+      menuItem("Background", () => <Tab.Pane>Background</Tab.Pane>),
+      menuItem('Objects', () => <Tab.Pane>Objects</Tab.Pane>),
+      menuItem('Volumes', () => <GMSceneVolumes scene={scene} />),
+      menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
+        scene.creatures.count().toString()),
+      menuItem("Players", () => <GMScenePlayers scene={scene} />, player_count),
+      menuItem('Items', () => <GMSceneInventory scene={scene} />,
+        scene.inventory.count().toString()),
+      menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
+        scene.attribute_checks.count().toString()),
+    ];
+
     return <Segment>
       <Header>
         {scene.name}
@@ -33,31 +58,12 @@ export const GMScene = M.connectRedux(
           content={close => <EditScene scene={scene} onDone={close} dispatch={dispatch} />}
         />
       </Header>
-      <Segment.Group>
-        <Segment
-          style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', padding: '0' }}
-        >
-          <MenuItem>Terrain</MenuItem>
-          <MenuItem>Background</MenuItem>
-          <MenuItem>Objects</MenuItem>
-          <MenuItem>Volumes <Label.Detail>2</Label.Detail></MenuItem>
-          <MenuItem>Creatures <Label.Detail>15</Label.Detail></MenuItem>
-          <MenuItem>Players <Label.Detail>3/5</Label.Detail></MenuItem>
-          <MenuItem>Items <Label.Detail>7</Label.Detail></MenuItem>
-          <MenuItem>Challenges</MenuItem>
-        </Segment>
-        <Header as='h5' style={{ margin: '0.5em 1em' }}>Terrain</Header>
-        <Segment attached={true}>
-          Draw on the map and then <Button>Save</Button>
-        </Segment>
-      </Segment.Group>
-      {/* <Accordion exclusive={false} panels={[
-        { title: 'Creatures', content: <GMSceneCreatures scene={scene} /> },
-        { title: 'Items', content: <GMSceneInventory scene={scene} /> },
-        { title: 'Challenges', content: <GMSceneChallenges scene={scene} /> },
-        { title: 'Players', content: <GMScenePlayers scene={scene} /> },
-        { title: 'Volumes', content: <GMSceneVolumes scene={scene} /> },
-      ]} /> */}
+
+      <Tab panes={panes} menu={{
+        size: 'small',
+        secondary: true,
+        style: { justifyContent: "center", flexWrap: "wrap" },
+      }} />
     </Segment>;
   });
 
@@ -981,7 +987,7 @@ class EditCreatureDataComp
           </Message>
       }
       <Form.TextArea label="Bio" value={this.state.bio}
-        onChange={(_, data) => data.value && this.setState({ bio: data.value })} />
+        onChange={(_, data) => data.value && this.setState({ bio: data.value as string })} />
 
       <Form.Group>
         <Form.Button disabled={!form_ok} onClick={() => this.save()}>
