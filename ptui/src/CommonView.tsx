@@ -1,8 +1,8 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import PanelGroup from 'react-panelgroup';
 import { Provider } from 'react-redux';
+import * as SplitPane from "react-split-pane";
 import * as WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 import thunk from 'redux-thunk';
@@ -609,10 +609,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         {tabs_}
       </TabbedView>;
       return extra !== undefined
-        ? <PanelGroup direction="column" borderColor="grey" spacing="8px">
+        ? <SplitPane split="horizontal" minSize="70%"
+          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
           <div style={{ width: "100%" }}>{tabbed_view}</div>
           <div style={{ width: "100%" }}>{extra}</div>
-        </PanelGroup>
+        </SplitPane>
         : tabbed_view;
     }
 
@@ -621,14 +622,15 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         style={{
           position: 'relative', height: "100%", width: "20%", minWidth: "20em",
         }}>
-        <PanelGroup direction="column" borderColor="grey" spacing="8px" minHeight="10%">
+        <SplitPane split="horizontal" minSize="50%"
+          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {top_left}
           </div>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {bottom_left}
           </div>
-        </PanelGroup>
+        </SplitPane>
         {disable_div}
       </div>;
     }
