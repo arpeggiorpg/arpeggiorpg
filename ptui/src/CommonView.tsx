@@ -818,12 +818,16 @@ export function describeChallenge(challenge: T.AttributeCheck) {
 
 }
 
-interface SingleInputFormProps { onSubmit: (input: string) => void; buttonText: string; }
+interface SingleInputFormProps {
+  onSubmit: (input: string) => void; onCancel?: () => void;
+  buttonText: string;
+  default?: string;
+}
 export class SingleInputForm
   extends React.Component<SingleInputFormProps, { text: string }> {
   constructor(props: SingleInputFormProps) {
     super(props);
-    this.state = { text: "" };
+    this.state = { text: props.default ? props.default : "" };
   }
   render() {
     return <Input type="text" value={this.state.text}
@@ -831,6 +835,8 @@ export class SingleInputForm
         if (e.keyCode === 13) {
           this.props.onSubmit(this.state.text);
           this.setState({ text: "" });
+        } else if (e.keyCode === 27) {
+          if (this.props.onCancel) { this.props.onCancel(); }
         }
       }}
       action={<Button

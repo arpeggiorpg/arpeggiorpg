@@ -52,15 +52,13 @@ export const GMScene = M.connectRedux(
     ];
 
     return <Segment>
-      <Header>
-        {scene.name}
-        <CV.ModalMaker
-          button={open =>
-            <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />}
-          header={<span>Edit {scene.name}</span>}
-          content={close => <EditScene scene={scene} onDone={close} dispatch={dispatch} />}
-        />
-      </Header>
+      <CV.Toggler
+        a={open => <Header>
+          {scene.name}
+          <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />
+        </Header>}
+        b={close => <EditSceneName scene={scene} onDone={close} dispatch={dispatch} />}
+      />
 
       <Tab panes={panes} menu={{
         size: 'small',
@@ -100,30 +98,24 @@ export const CreateScene = M.connectRedux(class CreateScene
   }
 });
 
-class EditScene
-  extends React.Component<{ scene: T.Scene; onDone: () => void } & M.DispatchProps,
-  { name: string; background_image_url: string }> {
-  constructor(props: { scene: T.Scene; onDone: () => void } & M.DispatchProps) {
-    super(props);
-    this.state = { name: props.scene.name, background_image_url: props.scene.background_image_url };
-  }
+class EditSceneName
+  extends React.Component<{ scene: T.Scene; onDone: () => void } & M.DispatchProps> {
   render(): JSX.Element {
-    return <Form>
-      <Form.Input label="Name" value={this.state.name}
-        onChange={(_, d) => this.setState({ name: d.value })} />
-      <Form.Input label="Background Image URL" value={this.state.background_image_url}
-        onChange={(_, d) => this.setState({ background_image_url: d.value })} />
-      <Form.Button onClick={() => this.save()}>Save</Form.Button>
-    </Form>;
+    return <TextInput.TextInput
+      onSubmit={name => this.save(name)}
+      onCancel={this.props.onDone}
+      defaultValue={this.props.scene.name} />;
   }
-  save() {
+  save(name: string) {
     const scene = this.props.scene;
     this.props.dispatch(
       M.sendCommand({
         t: "EditSceneDetails",
         scene_id: scene.id,
         details: {
-          ...this.state, background_image_offset: scene.background_image_offset,
+          name,
+          background_image_url: scene.background_image_url,
+          background_image_offset: scene.background_image_offset,
           background_image_scale: scene.background_image_scale,
         },
       }));
