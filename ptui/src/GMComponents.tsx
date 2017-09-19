@@ -35,13 +35,13 @@ export const GMScene = M.connectRedux(
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
     const panes = [
-      menuItem("Terrain", () =>
+      menuItem("Terrain", () => // unimplemented!
         <div>Edit the terrain on the map and then
           <Button>Save</Button> or <Button>Cancel</Button></div>),
       menuItem("Background", () =>
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
-      menuItem('Objects', () => <div>Objects</div>),
-      menuItem('Volumes', () => <GMSceneVolumes scene={scene} />),
+      menuItem('Objects', () => <div>Objects</div>), // unimplemented!
+      menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         scene.creatures.count().toString()),
       menuItem("Players", () => <GMScenePlayers scene={scene} />, player_count),
