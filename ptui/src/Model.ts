@@ -117,7 +117,12 @@ export interface PTUIState {
   secondary_focus?: SecondaryFocus;
 }
 
-export interface GridFocus { t: "Scene"; scene_id: T.SceneID; }
+export type SceneLayer =
+  | "Terrain"
+  | "Objects"
+  ;
+
+export interface GridFocus { t: "Scene"; scene_id: T.SceneID; layer?: SceneLayer; }
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined }

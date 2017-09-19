@@ -21,14 +21,15 @@ import * as TextInput from './TextInput';
 
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
-    function menuItem(name: string, content: () => JSX.Element, detail?: string) {
+    function menuItem(
+      name: string, content: () => JSX.Element, layer?: M.SceneLayer, detail?: string) {
       const item = detail
         ? <Menu.Item key={name}>
           {name}
           <Label basic={true} color='grey' circular={true} size='mini'>{detail}</Label>
         </Menu.Item>
         : name;
-      return { menuItem: item, render: content };
+      return { menuItem: item, layer, render: content };
     }
 
     const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
@@ -37,18 +38,19 @@ export const GMScene = M.connectRedux(
     const panes = [
       menuItem("Terrain", () => // unimplemented!
         <div>Edit the terrain on the map and then
-          <Button>Save</Button> or <Button>Cancel</Button></div>),
+          <Button>Save</Button> or <Button>Cancel</Button></div>,
+        "Terrain"),
       menuItem("Background", () =>
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
       menuItem('Objects', () => <div>Objects</div>), // unimplemented!
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
-        scene.creatures.count().toString()),
-      menuItem("Players", () => <GMScenePlayers scene={scene} />, player_count),
+        undefined, scene.creatures.count().toString()),
+      menuItem("Players", () => <GMScenePlayers scene={scene} />, undefined, player_count),
       menuItem('Items', () => <GMSceneInventory scene={scene} />,
-        scene.inventory.count().toString()),
+        undefined, scene.inventory.count().toString()),
       menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
-        scene.attribute_checks.count().toString()),
+        undefined, scene.attribute_checks.count().toString()),
     ];
 
     return <Segment>
@@ -60,11 +62,19 @@ export const GMScene = M.connectRedux(
         b={close => <EditSceneName scene={scene} onDone={close} dispatch={dispatch} />}
       />
 
-      <Tab panes={panes} menu={{
-        size: 'small',
-        secondary: true,
-        style: { justifyContent: "center", flexWrap: "wrap" },
-      }} />
+      <Tab panes={panes}
+        onTabChange={(_, data) => {
+          const menuItem: { menuItem: string; layer?: M.SceneLayer } =
+            data.panes![data.activeIndex as number] as any;
+          // unimplemented!: disable tab-switching when Terrain is unsaved
+          dispatch(
+            { type: "FocusGrid", focus: { t: "Scene", scene_id: scene.id, layer: menuItem.layer } });
+        }}
+        menu={{
+          size: 'small',
+          secondary: true,
+          style: { justifyContent: "center", flexWrap: "wrap" },
+        }} />
     </Segment>;
   });
 
