@@ -276,6 +276,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const volume_condition_els = this.drawVolumeConditions();
 
+    const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
+    const disable_style = layer ? { pointerEvents: "none", opacity: "0.3" } : {};
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -286,12 +289,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       {creature_menu}
       {annotation}
       <GridSvg scene={scene}>
-        {volume_condition_els}
-        {creature_els}
-        {movement_target_els}
-        {target_els}
-        {affected_els}
-        {targeted_volume}
+        <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
+        <g id="creatures" style={disable_style}>{creature_els}</g>
+        <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
+        <g id="targets" style={disable_style}>{target_els}</g>
+        <g id="affected" style={disable_style}>{affected_els}</g>
+        <g id="targeted-volume" style={disable_style}>{targeted_volume}</g>
       </GridSvg>
     </div>;
   }
@@ -570,9 +573,9 @@ export const GridSvg = M.connectRedux(
           backgroundSize: "contain",
         }}>
         {background_image}
-        {terrain_els}
-        {getHighlights(scene.highlights, ptui.state.player_id)}
-        {getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}
+        <g id="terrain">{terrain_els}</g>
+        <g id="highlights">{getHighlights(scene.highlights, ptui.state.player_id)}</g>
+        <g id="annotations">{getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
         {this.props.children}
       </SPZ.SVGPanZoom>;
     }
