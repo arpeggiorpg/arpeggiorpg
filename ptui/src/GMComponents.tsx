@@ -13,7 +13,7 @@ import {
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as Comp from './Component';
-import { CoolForm, PlaintextInput, Submit } from './CoolForm';
+import { CoolForm, NumericInput, PlaintextInput, Submit } from './CoolForm';
 import * as Dice from './Dice';
 import * as M from './Model';
 import * as T from './PTTypes';
@@ -35,9 +35,12 @@ export const GMScene = M.connectRedux(
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
     const panes = [
-      menuItem("Terrain", () => <div>Terrain</div>),
-      menuItem("Background", () => <Tab.Pane>Background</Tab.Pane>),
-      menuItem('Objects', () => <Tab.Pane>Objects</Tab.Pane>),
+      menuItem("Terrain", () =>
+        <div>Edit the terrain on the map and then
+          <Button>Save</Button> or <Button>Cancel</Button></div>),
+      menuItem("Background", () =>
+        <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
+      menuItem('Objects', () => <div>Objects</div>),
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />),
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         scene.creatures.count().toString()),
@@ -121,60 +124,53 @@ class EditScene
   }
 }
 
-// class EditMap
-//   extends React.Component<{ map: T.Map; onDone: () => void } & M.DispatchProps,
-//   {
-//     name: string; background_image_url: string;
-//     scale_x: string; scale_y: string;
-//     offset_x: string; offset_y: string;
-//   }> {
-//   constructor(props: { map: T.Map; onDone: () => void } & M.DispatchProps) {
-//     super(props);
-//     const { map: { name, background_image_scale, background_image_offset } } = props;
-//     this.state = {
-//       name, background_image_url: props.map.background_image_url,
-//       scale_x: background_image_scale[0].toString(),
-//       scale_y: background_image_scale[1].toString(),
-//       offset_x: background_image_offset[0].toString(),
-//       offset_y: background_image_offset[1].toString(),
-//     };
-//   }
-//   render(): JSX.Element {
-//     const { map } = this.props;
-//     return <CoolForm>
-//       <PlaintextInput label="Name" name="name" default={map.name} nonEmpty={true} />
-//       <PlaintextInput label="Background Image URL" name="background_image_url"
-//         default={map.background_image_url} />
-//       <Form.Group>
-//         <NumericInput label="Scale X (cm)" name="scale_x" min={0}
-//           style={{ width: "100px" }}
-//           default={map.background_image_scale[0]} />
-//         <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
-//           style={{ width: "100px" }}
-//           default={map.background_image_scale[1]} />
-//       </Form.Group>
-//       <Form.Group>
-//         <NumericInput label="Offset X (cm)" name="offset_x"
-//           style={{ width: "100px" }}
-//           default={map.background_image_offset[0]} />
-//         <NumericInput label="Offset Y (cm)" name="offset_y"
-//           style={{ width: "100px" }}
-//           default={map.background_image_offset[1]} />
-//       </Form.Group>
-//       <Submit onClick={data => this.save(data)}>Save</Submit>
-//     </CoolForm>;
-//   }
-//   save(data: any) {
-//     const { map } = this.props;
-//     const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
-//     const background_image_scale: [number, number] = [scale_x, scale_y];
-//     const background_image_offset: [number, number] = [offset_x, offset_y];
-//     const details = { name, background_image_url, background_image_scale,
-//       background_image_offset };
-//     this.props.dispatch(M.sendCommand({ t: "EditMapDetails", id: map.id, details }));
-//     this.props.onDone();
-//   }
-// }
+class EditSceneBackground
+  extends React.Component<{ scene: T.Scene; onDone: () => void } & M.DispatchProps,
+  { pinned: boolean }> {
+  constructor(props: { scene: T.Scene; onDone: () => void } & M.DispatchProps) {
+    super(props);
+    this.state = { pinned: false };
+  }
+  render(): JSX.Element {
+    const { scene } = this.props;
+    return <CoolForm>
+      <PlaintextInput label="Name" name="name" default={scene.name} nonEmpty={true} />
+      <PlaintextInput label="Background Image URL" name="background_image_url"
+        default={scene.background_image_url} />
+      <Form.Group>
+        <NumericInput label="Scale X (cm)" name="scale_x" min={0}
+          style={{ width: "100px" }}
+          default={scene.background_image_scale[0]} />
+        <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
+          style={{ width: "100px" }}
+          default={scene.background_image_scale[1]} />
+      </Form.Group>
+      <Form.Group>
+        <Form.Checkbox label='Pin to map' checked={this.state.pinned}
+          onChange={(_, d) => this.setState({ pinned: d.checked as boolean })} />
+        <NumericInput label="Offset X (cm)" name="offset_x"
+          style={{ width: "100px" }}
+          default={scene.background_image_offset ? scene.background_image_offset[0] : 0} />
+        <NumericInput label="Offset Y (cm)" name="offset_y"
+          style={{ width: "100px" }}
+          default={scene.background_image_offset ? scene.background_image_offset[1] : 0} />
+      </Form.Group>
+      <Submit onClick={data => this.save(data)}>Save</Submit>
+    </CoolForm>;
+  }
+  save(data: any) {
+    const { scene } = this.props;
+    const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
+    const background_image_scale: [number, number] = [scale_x, scale_y];
+    const background_image_offset: [number, number] = [offset_x, offset_y];
+    // unimplemented! make `background_image_scale` be an Option
+    const details = {
+      name, background_image_url, background_image_scale, background_image_offset,
+    };
+    this.props.dispatch(M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details }));
+    this.props.onDone();
+  }
+}
 
 export const GMScenePlayers = M.connectRedux(
   function GMScenePlayers(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
