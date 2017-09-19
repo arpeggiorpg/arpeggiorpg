@@ -607,9 +607,8 @@ export const decodeAttributeCheck: Decoder<AttributeCheck> =
 
 const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
   ["name", JD.string()],
-  ["map", JD.string()],
   ["background_image_url", JD.string()],
-  (name, map, background_image_url) => ({ name, map, background_image_url })
+  (name, background_image_url) => ({ name, background_image_url })
 );
 
 const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
