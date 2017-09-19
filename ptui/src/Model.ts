@@ -50,12 +50,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
     case "FocusGrid":
-      switch (action.focus.t) {
-        case "Scene":
-          const scene_id = action.focus.scene_id;
-          return ptui.updateState(state => ({ ...state, grid_focus: { t: "Scene", scene_id } }));
-      }
-      return ptui; // this should not be necessary, exhaustiveness checks *should* realize it's not
+      return ptui.updateState(state => ({ ...state, grid_focus: action.focus }));
     case "FocusSecondary":
       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
