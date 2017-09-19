@@ -29,6 +29,10 @@ export class Point3 implements I.ValueObject {
   hashCode(): number {
     return I.List([this.x, this.y, this.z]).hashCode();
   }
+
+  toString(): string {
+    return `${this.x}/${this.y}/${this.z}`;
+  }
 }
 
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
