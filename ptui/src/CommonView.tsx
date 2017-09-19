@@ -611,8 +611,8 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       return extra !== undefined
         ? <SplitPane split="horizontal" minSize="70%"
           resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
-          <div style={{ width: "100%" }}>{tabbed_view}</div>
-          <div style={{ width: "100%" }}>{extra}</div>
+          {tabbed_view}
+          {extra}
         </SplitPane>
         : tabbed_view;
     }
