@@ -777,7 +777,10 @@ export const NoteEditor = M.connectRedux(NoteEditorComp);
 
 
 export type ToggleFunc = () => void;
-interface TogglerProps { a: (t: ToggleFunc) => JSX.Element; b: (t: ToggleFunc) => JSX.Element; }
+interface TogglerProps {
+  a: (t: ToggleFunc) => JSX.Element | Array<JSX.Element>;
+  b: (t: ToggleFunc) => JSX.Element | Array<JSX.Element>;
+}
 export class Toggler extends React.Component<TogglerProps, { toggled: boolean }> {
   constructor(props: TogglerProps) {
     super(props);
@@ -790,28 +793,30 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
       self.setState({ toggled: !self.state.toggled });
     }
     if (this.state.toggled) {
-      return this.props.b(toggle);
+      return this.props.b(toggle) as JSX.Element; // `as` because @types/react disallows arrays
     } else {
-      return this.props.a(toggle);
+      return this.props.a(toggle) as JSX.Element; // `as` because @types/react disallows arrays
     }
   }
 }
 
-export function ModalMaker({ button, header, content }: {
-  button: (clicker: () => void) => JSX.Element,
-  header: JSX.Element,
-  content: (closer: () => void) => JSX.Element,
-}) {
+interface ModalMakerProps {
+  button: (clicker: () => void) => JSX.Element;
+  header: JSX.Element;
+  content: (closer: () => void) => JSX.Element;
+}
+
+export function ModalMaker({ button, header, content }: ModalMakerProps) {
   return <Toggler
     a={button}
     b={tf =>
-      <div>{button(tf)}
-        <Modal dimmer='inverted' open={true} onClose={tf}
-          closeIcon='close' closeOnDimmerClick={false}>
-          <Modal.Header>{header}</Modal.Header>
-          <Modal.Content>{content(tf)}</Modal.Content>
-        </Modal>
-      </div>} />;
+      [button(tf),
+      <Modal dimmer='inverted' open={true} onClose={tf}
+        closeIcon='close' closeOnDimmerClick={false}>
+        <Modal.Header>{header}</Modal.Header>
+        <Modal.Content>{content(tf)}</Modal.Content>
+      </Modal>
+      ]} />;
 }
 
 export function describeChallenge(challenge: T.AttributeCheck) {
