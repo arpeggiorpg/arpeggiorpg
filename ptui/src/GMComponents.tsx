@@ -63,6 +63,7 @@ export const GMScene = M.connectRedux(
       />
 
       <Tab panes={panes}
+        defaultActiveIndex={4}
         onTabChange={(_, data) => {
           const menuItem: { menuItem: string; layer?: M.SceneLayer } =
             data.panes![data.activeIndex as number] as any;
