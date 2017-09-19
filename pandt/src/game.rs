@@ -596,6 +596,8 @@ impl Game {
           .mutate(&scene_id, move |mut scene| {
             scene.name = details.name.clone();
             scene.background_image_url = details.background_image_url.clone();
+            scene.background_image_offset = details.background_image_offset;
+            scene.background_image_scale = details.background_image_scale;
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;

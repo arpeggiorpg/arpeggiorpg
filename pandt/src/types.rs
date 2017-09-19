@@ -1042,6 +1042,8 @@ impl Player {
 pub struct SceneCreation {
   pub name: String,
   pub background_image_url: String,
+  pub background_image_offset: Option<(i32, i32)>,
+  pub background_image_scale: (i32, i32),
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
