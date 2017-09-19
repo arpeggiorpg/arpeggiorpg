@@ -1,4 +1,3 @@
-import Flexbox from 'flexbox-react';
 import * as I from 'immutable';
 import * as React from "react";
 
@@ -45,87 +44,87 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
     case "SetPlayerScene":
       return <div>Moved {log.player_id} to a scene</div>;
     case "ChatFromGM":
-      return <Flexbox>&lt;GM&gt;&nbsp;{log.message}</Flexbox>;
+      return <div>&lt;GM&gt;&nbsp;{log.message}</div>;
     case "ChatFromPlayer":
-      return <Flexbox>&lt;{log.player_id}&gt;&nbsp;{log.message}</Flexbox>;
+      return <div>&lt;{log.player_id}&gt;&nbsp;{log.message}</div>;
     case "AttributeCheckResult":
-      return <Flexbox>
+      return <div>
         <div>Creature ID: {log.cid}</div>
         <div>Success? {log.success.toString()}</div>
-      </Flexbox>;
+      </div>;
     case "CreateFolder":
-      return <Flexbox><div>Created Folder</div><div>{M.folderPathToString(log.path)}</div></Flexbox>;
+      return <div><div>Created Folder</div><div>{M.folderPathToString(log.path)}</div></div>;
     case "RenameFolder":
-      return <Flexbox>Renamed Folder</Flexbox>;
+      return <div>Renamed Folder</div>;
     case "DeleteFolderItem":
-      return <Flexbox>Deleted folder item in {M.folderPathToString(log.path)}</Flexbox>;
+      return <div>Deleted folder item in {M.folderPathToString(log.path)}</div>;
     case "MoveFolderItem":
-      return <Flexbox>Moved folder item from {M.folderPathToString(log.path)}
-        to {M.folderPathToString(log.newPath)}</Flexbox>;
+      return <div>Moved folder item from {M.folderPathToString(log.path)}
+        to {M.folderPathToString(log.newPath)}</div>;
     case "CopyFolderItem":
-      return <Flexbox>Copied folder item from {M.folderPathToString(log.source)}
-        to {M.folderPathToString(log.dest)}</Flexbox>;
+      return <div>Copied folder item from {M.folderPathToString(log.source)}
+        to {M.folderPathToString(log.dest)}</div>;
     case "CreateItem":
-      return <Flexbox>Created item {log.item.name} in {M.folderPathToString(log.path)}</Flexbox>;
+      return <div>Created item {log.item.name} in {M.folderPathToString(log.path)}</div>;
     case "EditItem":
-      return <Flexbox>Edited item {log.item.name}</Flexbox>;
+      return <div>Edited item {log.item.name}</div>;
     case "CreateNote":
-      return <Flexbox>Created note {log.note.name}</Flexbox>;
+      return <div>Created note {log.note.name}</div>;
     case "EditNote":
-      return <Flexbox>Edited note {log.name}</Flexbox>;
+      return <div>Edited note {log.name}</div>;
     case "TransferItem":
-      return <Flexbox>Transferred an item</Flexbox>;
+      return <div>Transferred an item</div>;
     case "RemoveItem":
-      return <Flexbox>Removed item from a creature's inventory</Flexbox>;
+      return <div>Removed item from a creature's inventory</div>;
     case "SetItemCount":
-      return <Flexbox>Set count on a creature's inventory</Flexbox>;
+      return <div>Set count on a creature's inventory</div>;
     case "CreateScene":
-      return <Flexbox>Created scene {log.scene.name}</Flexbox>;
+      return <div>Created scene {log.scene.name}</div>;
     case "EditSceneDetails":
-      return <Flexbox>Edited details of scene {log.details.name}</Flexbox>;
+      return <div>Edited details of scene {log.details.name}</div>;
     case "SetSceneCreatureVisibility":
-      return <Flexbox>Changed visibility of a creature in a scene</Flexbox>;
+      return <div>Changed visibility of a creature in a scene</div>;
     case "AddCreatureToScene":
-      return <Flexbox>Added a creature to a scene</Flexbox>;
+      return <div>Added a creature to a scene</div>;
     case "RemoveCreatureFromScene":
-      return <Flexbox>Removed a creature from a scene</Flexbox>;
+      return <div>Removed a creature from a scene</div>;
     case "AddSceneChallenge":
-      return <Flexbox>Added a challenge to a scene: {log.description}</Flexbox>;
+      return <div>Added a challenge to a scene: {log.description}</div>;
     case "RemoveSceneChallenge":
-      return <Flexbox>Removed challenge from a scene: {log.description}</Flexbox>;
+      return <div>Removed challenge from a scene: {log.description}</div>;
     case "SetFocusedSceneCreatures":
-      return <Flexbox>Changed focused creatures in a scene</Flexbox>;
+      return <div>Changed focused creatures in a scene</div>;
     case "EditSceneTerrain":
-      return <Flexbox>Edited a scene's terrain</Flexbox>;
+      return <div>Edited a scene's terrain</div>;
     case "EditSceneHighlights":
-      return <Flexbox>Edited a scene's highlights</Flexbox>;
+      return <div>Edited a scene's highlights</div>;
     case "EditSceneAnnotations":
-      return <Flexbox>Edited a scene's annotations</Flexbox>;
+      return <div>Edited a scene's annotations</div>;
     case "SetCreaturePos":
-      return <Flexbox>Set a creature position to {log.pos.toString()}</Flexbox>;
+      return <div>Set a creature position to {log.pos.toString()}</div>;
     case "PathCreature":
       const last = log.path.length > 0
         ? log.path[log.path.length - 1].toString()
         : "Nowhere";
-      return <Flexbox>Creature followed a path to {last}</Flexbox>;
+      return <div>Creature followed a path to {last}</div>;
     case "CreateCreature":
-      return <Flexbox>Created a creature {log.creature.name}</Flexbox>;
+      return <div>Created a creature {log.creature.name}</div>;
     case "EditCreatureDetails":
-      return <Flexbox>Edited a creature {log.details.name}</Flexbox>;
+      return <div>Edited a creature {log.details.name}</div>;
     case "StartCombat":
-      return <Flexbox>Started combat</Flexbox>;
+      return <div>Started combat</div>;
     case "AddCreatureToCombat":
-      return <Flexbox>Added a creature to combat</Flexbox>;
+      return <div>Added a creature to combat</div>;
     case "RemoveCreatureFromCombat":
-      return <Flexbox>Removed a creature from combat</Flexbox>;
+      return <div>Removed a creature from combat</div>;
     case "CombatLog":
       return combat_log(log.log);
     case "StopCombat":
-      return <Flexbox>Combat stopped.</Flexbox>;
+      return <div>Combat stopped.</div>;
     case "CreatureLog":
       return creature_log(creatures, log.creature_id, log.log);
     case "Rollback":
-      return <Flexbox>Rolled back to {log.snapshot_index}/{log.log_index}</Flexbox>;
+      return <div>Rolled back to {log.snapshot_index}/{log.log_index}</div>;
   }
 }
 
@@ -135,15 +134,15 @@ function combat_log(log: T.CombatLog): JSX.Element | null {
     case "ConsumeMovement":
       return null;
     case "ChangeCreatureInitiative":
-      return <Flexbox>Creature initiative changed</Flexbox>;
+      return <div>Creature initiative changed</div>;
     case "EndTurn":
-      return <Flexbox>Turn ended.</Flexbox>;
+      return <div>Turn ended.</div>;
     case "ForceNextTurn":
-      return <Flexbox>Forced move to next creature in combat</Flexbox>;
+      return <div>Forced move to next creature in combat</div>;
     case "ForcePrevTurn":
-      return <Flexbox>Forced move to previous creature in combat</Flexbox>;
+      return <div>Forced move to previous creature in combat</div>;
     case "RerollInitiative":
-      return <Flexbox>Rerolled initiative for all creatures</Flexbox>;
+      return <div>Rerolled initiative for all creatures</div>;
   }
 }
 

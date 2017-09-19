@@ -4,7 +4,6 @@ const path = require('path');
 module.exports = {
     entry: {
         vendor: [
-            'flexbox-react',
             'fuse.js',
             'hammerjs',
             'immutable',
