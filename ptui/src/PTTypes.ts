@@ -201,11 +201,6 @@ export type GameCommand =
 // Rollback(usize, usize),
 
 
-export interface SceneCreation {
-  name: string;
-  background_image_url: string;
-}
-
 export interface CreatureCreation {
   name: string;
   class_: string;
@@ -391,6 +386,13 @@ export const SKILL_LEVELS: Array<SkillLevel> =
 export interface Note {
   name: string;
   content: string;
+}
+
+export interface SceneCreation {
+  name: string;
+  background_image_url: string;
+  background_image_offset: [number, number] | undefined;
+  background_image_scale: [number, number];
 }
 
 export interface Scene {
@@ -608,7 +610,10 @@ export const decodeAttributeCheck: Decoder<AttributeCheck> =
 const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
   ["name", JD.string()],
   ["background_image_url", JD.string()],
-  (name, background_image_url) => ({ name, background_image_url })
+  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
+  ["background_image_offset", maybe(JD.tuple(JD.number(), JD.number()))],
+  (name, background_image_url, background_image_scale, background_image_offset) =>
+    ({ name, background_image_url, background_image_scale, background_image_offset })
 );
 
 const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
@@ -1181,6 +1186,8 @@ function encodeSceneCreation(sc: SceneCreation): object {
   return {
     name: sc.name,
     background_image_url: sc.background_image_url,
+    background_image_offset: sc.background_image_offset,
+    background_image_scale: sc.background_image_scale,
   };
 }
 

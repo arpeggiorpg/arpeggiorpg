@@ -91,9 +91,11 @@ export const CreateScene = M.connectRedux(class CreateScene
     const { name, background_image_url } = data;
     // since we don't have a visual response to setting image url/offset/scale, I'll just leave
     // default values here and the user can edit the map after creation
-    dispatch(M.sendCommand({
-      t: "CreateScene", path, spec: { name, background_image_url },
-    }));
+    const spec = {
+      name, background_image_url, background_image_offset: undefined,
+      background_image_scale: [0, 0] as [number, number],
+    };
+    dispatch(M.sendCommand({ t: "CreateScene", path, spec }));
     onDone();
   }
 });
@@ -115,10 +117,15 @@ class EditScene
     </Form>;
   }
   save() {
+    const scene = this.props.scene;
     this.props.dispatch(
       M.sendCommand({
-        t: "EditSceneDetails", scene_id: this.props.scene.id,
-        details: this.state,
+        t: "EditSceneDetails",
+        scene_id: scene.id,
+        details: {
+          ...this.state, background_image_offset: scene.background_image_offset,
+          background_image_scale: scene.background_image_scale,
+        },
       }));
     this.props.onDone();
   }
@@ -129,14 +136,15 @@ class EditSceneBackground
   { pinned: boolean }> {
   constructor(props: { scene: T.Scene; onDone: () => void } & M.DispatchProps) {
     super(props);
-    this.state = { pinned: false };
+    this.state = { pinned: props.scene.background_image_offset !== undefined };
   }
   render(): JSX.Element {
     const { scene } = this.props;
     return <CoolForm>
-      <PlaintextInput label="Name" name="name" default={scene.name} nonEmpty={true} />
       <PlaintextInput label="Background Image URL" name="background_image_url"
         default={scene.background_image_url} />
+      <Form.Checkbox label='Pin to map' checked={this.state.pinned}
+        onChange={(_, d) => this.setState({ pinned: d.checked as boolean })} />
       <Form.Group>
         <NumericInput label="Scale X (cm)" name="scale_x" min={0}
           style={{ width: "100px" }}
@@ -146,8 +154,6 @@ class EditSceneBackground
           default={scene.background_image_scale[1]} />
       </Form.Group>
       <Form.Group>
-        <Form.Checkbox label='Pin to map' checked={this.state.pinned}
-          onChange={(_, d) => this.setState({ pinned: d.checked as boolean })} />
         <NumericInput label="Offset X (cm)" name="offset_x"
           style={{ width: "100px" }}
           default={scene.background_image_offset ? scene.background_image_offset[0] : 0} />
@@ -160,12 +166,12 @@ class EditSceneBackground
   }
   save(data: any) {
     const { scene } = this.props;
-    const { name, background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
+    const { background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
     const background_image_scale: [number, number] = [scale_x, scale_y];
-    const background_image_offset: [number, number] = [offset_x, offset_y];
-    // unimplemented! make `background_image_scale` be an Option
+    const background_image_offset: [number, number] | undefined = this.state.pinned
+      ? [offset_x, offset_y] : undefined;
     const details = {
-      name, background_image_url, background_image_scale, background_image_offset,
+      name: scene.name, background_image_url, background_image_scale, background_image_offset,
     };
     this.props.dispatch(M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details }));
     this.props.onDone();

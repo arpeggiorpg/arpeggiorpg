@@ -542,15 +542,17 @@ export const GridSvg = M.connectRedux(
       console.log("[EXPENSIVE:GridSvg.render]");
       const open_terrain_color = scene.background_image_url ? "transparent" : "white";
       const terrain_els = scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+      const bg_width = scene.background_image_scale[0];
+      const bg_height = scene.background_image_scale[1];
       const background_image = scene.background_image_url && scene.background_image_offset
-        ? <image xlinkHref={scene.background_image_url} width={scene.background_image_scale[0]}
-          height={scene.background_image_scale[1]}
+        ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
+          height={bg_height ? bg_height : undefined}
           x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
           preserveAspectRatio="none" />
         : null;
 
       const static_background = scene.background_image_url && !scene.background_image_offset
-        ? `url($scene.background_image_url)`
+        ? `url(${scene.background_image_url})`
         : undefined;
 
       return <SPZ.SVGPanZoom
