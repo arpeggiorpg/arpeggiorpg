@@ -36,13 +36,13 @@ export const GMScene = M.connectRedux(
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
     const panes = [
+      menuItem("Background", () =>
+        <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
       menuItem("Terrain", () => // unimplemented!
         <div>Edit the terrain on the map and then
           <Button>Save</Button> or <Button>Cancel</Button></div>,
         "Terrain"),
-      menuItem("Background", () =>
-        <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
-      menuItem('Objects', () => <div>Objects</div>), // unimplemented!
+      menuItem('Objects', () => <div>Objects</div>, "Objects"), // unimplemented!
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         undefined, scene.creatures.count().toString()),
@@ -63,7 +63,7 @@ export const GMScene = M.connectRedux(
       />
 
       <Tab panes={panes}
-        defaultActiveIndex={4}
+        defaultActiveIndex={-1}
         onTabChange={(_, data) => {
           const menuItem: { menuItem: string; layer?: M.SceneLayer } =
             data.panes![data.activeIndex as number] as any;
