@@ -153,13 +153,6 @@ interface Obj<T> { [index: string]: T; }
 //     </div>;
 //   }
 
-//   closeTerrain(pt: T.Point3) {
-//     this.setState({ terrain: this.state.terrain.delete(I.List(pt)) });
-//   }
-//   openTerrain(pt: T.Point3) {
-//     this.setState({ terrain: this.state.terrain.add(I.List(pt)) });
-//   }
-
 //   toggleSpecial(pt: T.Point3) {
 //     const { painting, painting_color, painting_note, painting_vis, specials } = this.state;
 //     if (painting !== "Special") { return; }
@@ -296,10 +289,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? `url(${scene.background_image_url})`
       : undefined;
 
-    // const terrain_els = layer === "Terrain"
-    //   ? getEditableTerrain()
-    //   :
-    const terrain_els = scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+    const terrain_els = layer && layer.t === "Terrain"
+      ? this.getEditableTerrain(layer.terrain)
+      : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
@@ -340,28 +332,34 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   }
 
-  // getEditableTerrain() {
-  //   const { scene } = this.props;
-  //   const paintOpen = this.closeTerrain.bind(this);
-  //   const paintClosed = this.openTerrain.bind(this);
+  getEditableTerrain(terrain: T.Terrain) {
+    // const { dispatch } = this.props;
+    function closeTerrain(pt: T.Point3) {
+      console.log("Deleting point", pt);
+      // dispatch({ type: "SetTerrain", terrain: terrain.filter(el => el !== pt) });
+    }
+    function openTerrain(pt: T.Point3) {
+      console.log("Opening point", pt);
+      // dispatch({ type: "SetTerrain", terrain: terrain.filter(el => el === pt) });
+    }
 
-  //   const open_tiles = scene.terrain.toArray().map(pt => {
-  //     const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
-  //     return <rect {...tprops}
-  //       style={{ cursor: 'pointer' }}
-  //       onClick={() => paintOpen(pt)}
-  //       key={pointKey("open", pt)} />;
-  //   });
-  //   const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
-  //     pt => {
-  //       if (scene.terrain.contains(pt)) { return; }
-  //       const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
-  //       return <rect {...tprops} style={{ cursor: 'pointer' }}
-  //         onClick={() => paintClosed(pt)}
-  //         key={pointKey("closed", pt)} />;
-  //     });
-  //   return [open_tiles, closed_tiles];
-  // }
+    const open_tiles = terrain.toArray().map(pt => {
+      const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
+      return <rect {...tprops}
+        style={{ cursor: 'pointer' }}
+        onClick={() => closeTerrain(pt)}
+        key={pointKey("open", pt)} />;
+    });
+    const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
+      pt => {
+        if (terrain.contains(pt)) { return; }
+        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
+        return <rect {...tprops} style={{ cursor: 'pointer' }}
+          onClick={() => openTerrain(pt)}
+          key={pointKey("closed", pt)} />;
+      });
+    return [open_tiles, closed_tiles];
+  }
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
