@@ -40,7 +40,9 @@ export const GMScene = M.connectRedux(
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
       menuItem("Terrain", () => // unimplemented!
         <div>Edit the terrain on the map and then
-          <Button>Save</Button> or <Button>Cancel</Button></div>,
+          <Button onClick={saveTerrain}>Save</Button> or
+          <Button onClick={cancelTerrain}>Cancel</Button>
+        </div>,
         "Terrain"),
       menuItem('Objects', () => <div>Objects</div>, "Objects"), // unimplemented!
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
@@ -77,6 +79,18 @@ export const GMScene = M.connectRedux(
           style: { justifyContent: "center", flexWrap: "wrap" },
         }} />
     </Segment>;
+
+    function saveTerrain() {
+      if (!ptui.state.grid_focus) { return; }
+      const scene_id = ptui.state.grid_focus.scene_id;
+      if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Terrain") { return; }
+      const terrain = ptui.state.grid_focus.layer.terrain;
+      dispatch(M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain }));
+      dispatch({ type: "FocusGrid", scene_id: scene.id });
+    }
+    function cancelTerrain() {
+      dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
+    }
   });
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
