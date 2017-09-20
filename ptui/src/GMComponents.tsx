@@ -5,7 +5,7 @@ import * as React from 'react';
 import * as ReactRedux from 'react-redux';
 
 import {
-  // Accordion,
+  Accordion,
   Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
   Menu, Message, Popup, Segment, Tab, Table
 } from 'semantic-ui-react';
@@ -35,6 +35,11 @@ export const GMScene = M.connectRedux(
     const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
+    const object_panels = [
+      { key: "Highlight" as M.ObjectTool, title: "Highlights", content: <div>"Yah"</div> },
+      { key: "Annotation" as M.ObjectTool, title: "Annotations", content: <div>"Yeh"</div> }];
+    const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
+
     const panes = [
       menuItem("Background", () =>
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
@@ -45,7 +50,11 @@ export const GMScene = M.connectRedux(
         </div>,
         "Terrain"),
       menuItem('Objects', () =>
-        <div>Edit the objects on the map and then
+        <div>
+          Accordion:
+          <Accordion activeIndex={selectedObjectPanel} panels={object_panels}
+            onTitleClick={changeObjectTool} />
+          Edit the objects on the map and then
           <Button onClick={saveObjects}>Save</Button> or
           <Button onClick={cancelObjects}>Cancel</Button>
         </div>,
@@ -96,6 +105,10 @@ export const GMScene = M.connectRedux(
     function cancelTerrain() {
       dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
     }
+    function changeObjectTool(_: any, index: number) {
+      const selected = object_panels[index];
+      dispatch({ type: "SetObjectTool", tool: selected.key });
+    }
     function saveObjects() {
       if (!ptui.state.grid_focus) { return; }
       const scene_id = ptui.state.grid_focus.scene_id;
@@ -110,8 +123,6 @@ export const GMScene = M.connectRedux(
     function cancelObjects() {
       dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Objects" });
     }
-
-
   });
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }

@@ -128,6 +128,7 @@ export function SquareImageIcon({ url, size = 50 }: { url: string, size?: number
 export const CollapsibleInventory = M.connectRedux(
   function CollapsibleInventory({ creature }: { creature: T.Creature }): JSX.Element {
     return <Accordion panels={[{
+      key: "Inventory",
       title: "Inventory",
       content: <CreatureInventory creature={creature} />,
     }]} />;
