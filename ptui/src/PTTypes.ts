@@ -639,14 +639,18 @@ export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
 );
 
 const decodeTerrain: Decoder<Terrain> = JD.map(I.Set, JD.array(decodePoint3));
+const decodeHighlights: Decoder<Highlights> =
+  decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility));
+const decodeAnnotations: Decoder<Annotations> = decodeHighlights;
+
 
 export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
     ["terrain", decodeTerrain],
-    ["highlights", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
-    ["annotations", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
+    ["highlights", decodeHighlights],
+    ["annotations", decodeAnnotations],
     ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
     ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
@@ -860,6 +864,14 @@ export const decodeGameLog: Decoder<GameLog> =
       ["scene_id", JD.string()],
       ["terrain", decodeTerrain],
       (scene_id, terrain): GameLog => ({ t: "EditSceneTerrain", scene_id, terrain })),
+    EditSceneHighlights: JD.object(
+      ["scene_id", JD.string()],
+      ["highlights", decodeHighlights],
+      (scene_id, highlights): GameLog => ({ t: "EditSceneHighlights", scene_id, highlights })),
+    EditSceneAnnotations: JD.object(
+      ["scene_id", JD.string()],
+      ["annotations", decodeAnnotations],
+      (scene_id, annotations): GameLog => ({ t: "EditSceneAnnotations", scene_id, annotations })),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
