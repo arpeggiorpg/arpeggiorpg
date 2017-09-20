@@ -293,6 +293,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableTerrain(layer.terrain)
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
+    const objects_style = layer && layer.t === "Terrain" ? disable_style : {};
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -318,8 +320,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }}>
         {background_image}
         <g id="terrain">{terrain_els}</g>
-        <g id="highlights">{getHighlights(scene.highlights, ptui.state.player_id)}</g>
-        <g id="annotations">{getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
+        <g id="highlights" style={objects_style}>
+          {this.getHighlights(scene.highlights, ptui.state.player_id)}</g>
+        <g id="annotations" style={objects_style}>
+          {this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
 
         <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
         <g id="creatures" style={disable_style}>{creature_els}</g>
@@ -358,6 +362,26 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       });
     return [open_tiles, closed_tiles];
   }
+
+  getHighlights(
+    highlights: I.Map<T.Point3, [T.Color, T.Visibility]>, player_id?: T.PlayerID) {
+    return highlights.entrySeq().map(([pt, [color, vis]]) =>
+      <SpecialTile key={pointKey("highlight", pt)} pt={pt} color={color} vis={vis}
+        player_id={player_id} />);
+  }
+
+  getAnnotations(
+    dispatch: M.Dispatch,
+    annotations: I.Map<T.Point3, [string, T.Visibility]>, player_id?: T.PlayerID) {
+    return M.filterMap(annotations.entrySeq().toArray(),
+      ([pt, [note, vis]]) => {
+        if (note !== "") {
+          return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
+            player_id={player_id} />;
+        }
+      });
+  }
+
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
@@ -605,25 +629,6 @@ export interface MapCreature {
 //       console.log("[EXPENSIVE:GridSvg.render]");
 //     }
 //   });
-
-function getHighlights(
-  highlights: I.Map<T.Point3, [T.Color, T.Visibility]>, player_id?: T.PlayerID) {
-  return highlights.entrySeq().map(([pt, [color, vis]]) =>
-    <SpecialTile key={pointKey("highlight", pt)} pt={pt} color={color} vis={vis}
-      player_id={player_id} />);
-}
-
-function getAnnotations(
-  dispatch: M.Dispatch,
-  annotations: I.Map<T.Point3, [string, T.Visibility]>, player_id?: T.PlayerID) {
-  return M.filterMap(annotations.entrySeq().toArray(),
-    ([pt, [note, vis]]) => {
-      if (note !== "") {
-        return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
-          player_id={player_id} />;
-      }
-    });
-}
 
 
 const MovementTarget = M.connectRedux(
