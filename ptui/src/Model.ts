@@ -18,6 +18,8 @@ export type Action =
   | { type: "FocusGrid"; scene_id: T.SceneID; layer?: SceneLayerType }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
+  | { type: "SetTerrain"; terrain: T.Terrain }
+
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
@@ -68,6 +70,21 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
     // Grid-related
+
+    case "SetTerrain":
+      return ptui.updateState(state => {
+        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Terrain") {
+          return {
+            ...state,
+            grid_focus: {
+              ...state.grid_focus,
+              layer: { ...state.grid_focus.layer, terrain: action.terrain },
+            },
+          };
+        } else { return state; }
+
+      });
+
     case "ToggleAnnotation":
       const curDisplay = ptui.state.grid.display_annotation;
       const nv =

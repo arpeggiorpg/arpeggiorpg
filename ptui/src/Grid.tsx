@@ -333,14 +333,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   getEditableTerrain(terrain: T.Terrain) {
-    // const { dispatch } = this.props;
+    const { dispatch } = this.props;
     function closeTerrain(pt: T.Point3) {
-      console.log("Deleting point", pt);
-      // dispatch({ type: "SetTerrain", terrain: terrain.filter(el => el !== pt) });
+      dispatch({ type: "SetTerrain", terrain: terrain.remove(pt) });
     }
     function openTerrain(pt: T.Point3) {
-      console.log("Opening point", pt);
-      // dispatch({ type: "SetTerrain", terrain: terrain.filter(el => el === pt) });
+      dispatch({ type: "SetTerrain", terrain: terrain.add(pt) });
     }
 
     const open_tiles = terrain.toArray().map(pt => {
