@@ -60,7 +60,11 @@ export function update(ptui: PTUI, action: Action): PTUI {
           layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
           break;
         case "Objects":
-          layer = { t: "Objects" };
+          layer = {
+            t: "Objects",
+            highlights: scene ? scene.highlights : I.Map(),
+            annotations: scene ? scene.annotations : I.Map(),
+          };
           break;
         case undefined:
       }
@@ -144,7 +148,7 @@ export interface PTUIState {
 
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
-  | { t: "Objects" }
+  | { t: "Objects"; highlights: T.Highlights; annotations: T.Annotations }
   ;
 
 export type SceneLayerType =

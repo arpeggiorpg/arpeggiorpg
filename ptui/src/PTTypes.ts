@@ -17,6 +17,8 @@ export type ConditionID = string;
 export type FolderPath = Array<string>;
 export type VectorCM = [number, number, number];
 export type Terrain = I.Set<Point3>;
+export type Highlights = I.Map<Point3, [Color, Visibility]>;
+export type Annotations = I.Map<Point3, [string, Visibility]>;
 
 
 export class Point3 implements I.ValueObject {
@@ -149,11 +151,8 @@ export type GameCommand =
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
-  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: I.Map<Point3, [Color, Visibility]> }
-  | {
-    t: "EditSceneAnnotations"; scene_id: SceneID;
-    annotations: I.Map<Point3, [string, Visibility]>;
-  }
+  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
+  | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -268,11 +267,8 @@ export type GameLog =
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
-  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: I.Map<Point3, [Color, Visibility]> }
-  | {
-    t: "EditSceneAnnotations"; scene_id: SceneID;
-    annotations: I.Map<Point3, [string, Visibility]>;
-  }
+  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
+  | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
@@ -403,8 +399,8 @@ export interface Scene {
   id: SceneID;
   name: string;
   terrain: Terrain;
-  highlights: I.Map<Point3, [Color, Visibility]>;
-  annotations: I.Map<Point3, [string, Visibility]>;
+  highlights: Highlights;
+  annotations: Annotations;
   creatures: I.Map<CreatureID, [Point3, Visibility]>;
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
