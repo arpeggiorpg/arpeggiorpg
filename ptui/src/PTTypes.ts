@@ -53,7 +53,7 @@ export interface Game {
   creatures: I.Map<CreatureID, Creature>;
   classes: I.Map<string, Class>;
   items: { [index: string]: Item };
-  scenes: { [index: string]: Scene };
+  scenes: I.Map<SceneID, Scene>;
   abilities: { [index: string]: Ability };
   campaign: Folder;
   players: I.Map<PlayerID, Player>;
@@ -988,7 +988,7 @@ const decodeGame: Decoder<Game> = JD.object(
   ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
   ["classes", JD.map(I.Map, JD.dict(decodeClass))],
   ["items", JD.dict(decodeItem)],
-  ["scenes", JD.dict(decodeScene)],
+  ["scenes", JD.map(I.Map, JD.dict(decodeScene))],
   ["abilities", JD.dict(decodeAbility)],
   ["campaign", decodeFolder],
   ["players", JD.map(I.Map, JD.dict(decodePlayer))],

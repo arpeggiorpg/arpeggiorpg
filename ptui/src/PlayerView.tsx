@@ -52,7 +52,7 @@ export const PlayerMain = M.connectRedux(
 
 export const PlayerGameView = M.connectRedux((
   { player, ptui, dispatch }: { player: T.Player } & M.ReduxProps): JSX.Element => {
-  const scene = player.scene ? M.get(ptui.app.current_game.scenes, player.scene) : undefined;
+  const scene = player.scene ? ptui.app.current_game.scenes.get(player.scene) : undefined;
   const map = scene
     ? <Grid.SceneGrid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
     : <div>No scene loaded</div>;

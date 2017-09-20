@@ -15,7 +15,7 @@ export type Action =
 
   | { type: "SetPlayerID"; pid: T.PlayerID }
 
-  | { type: "FocusGrid"; focus: GridFocus }
+  | { type: "FocusGrid"; scene_id: T.SceneID; layer?: SceneLayerType }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect }
@@ -50,7 +50,19 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
     case "FocusGrid":
-      return ptui.updateState(state => ({ ...state, grid_focus: action.focus }));
+      let layer: SceneLayer;
+      switch (action.layer) {
+        case "Terrain":
+          const scene = ptui.app.current_game.scenes.get(action.scene_id);
+          layer = { t: "Terrain", terrain: scene ? scene.terrain : I.List() };
+          break;
+        case "Objects":
+          layer = { t: "Objects" };
+          break;
+        case undefined:
+      }
+      return ptui.updateState(state =>
+        ({ ...state, grid_focus: { scene_id: action.scene_id, layer } }));
     case "FocusSecondary":
       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
@@ -113,18 +125,22 @@ export interface PTUIState {
 }
 
 export type SceneLayer =
+  | { t: "Terrain"; terrain: T.Terrain }
+  | { t: "Objects" }
+  ;
+
+export type SceneLayerType =
   | "Terrain"
   | "Objects"
   ;
 
-export interface GridFocus { t: "Scene"; scene_id: T.SceneID; layer?: SceneLayer; }
+export interface GridFocus { scene_id: T.SceneID; layer?: SceneLayer; }
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined }
   | { t: "Creature"; creature_id: T.CreatureID }
   | { t: "Item"; item_id: T.ItemID }
   ;
-
 
 export function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
@@ -286,10 +302,10 @@ export class PTUI {
     if (pid) {
       const player = this.app.current_game.players.get(pid);
       if (player && player.scene) {
-        return get(this.app.current_game.scenes, player.scene);
+        return this.app.current_game.scenes.get(player.scene);
       }
-    } else if (this.state.grid_focus && this.state.grid_focus.t === "Scene") {
-      return get(this.app.current_game.scenes, this.state.grid_focus.scene_id);
+    } else if (this.state.grid_focus) {
+      return this.app.current_game.scenes.get(this.state.grid_focus.scene_id);
     }
   }
 
@@ -353,7 +369,7 @@ export class PTUI {
   }
 
   getScene(scene_id: T.SceneID): T.Scene | undefined {
-    return get(this.app.current_game.scenes, scene_id);
+    return this.app.current_game.scenes.get(scene_id);
   }
   getScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
     return LD.sortBy(

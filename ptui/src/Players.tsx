@@ -19,7 +19,7 @@ export const Players = Comp.connect(
       gm_scene,
       player_creatures: players.valueSeq().toArray().map(
         player => {
-          const scene = player.scene ? app.current_game.scenes[player.scene] : undefined;
+          const scene = player.scene ? app.current_game.scenes.get(player.scene) : undefined;
           return {
             player, id: player.player_id,
             creatures: M.filterMap(player.creatures, cid => M.getCreature(app, cid)),
@@ -92,7 +92,7 @@ export const Players = Comp.connect(
 
 
 export const GrantCreaturesToPlayer = M.connectRedux(
-  function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void; } & M.ReduxProps)
+  function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void } & M.ReduxProps)
     : JSX.Element {
     const { player, onDone, ptui, dispatch } = props;
     return <Campaign.MultiCreatureSelector

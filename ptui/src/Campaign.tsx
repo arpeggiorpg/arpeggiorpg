@@ -270,7 +270,8 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
 function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
   switch (obj.t) {
     case "Scene":
-      dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: obj.id } }); return;
+      dispatch({ type: "FocusGrid", scene_id: obj.id });
+      return;
     case "Creature":
       dispatch({
         type: "FocusSecondary",

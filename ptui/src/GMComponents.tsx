@@ -22,7 +22,7 @@ import * as TextInput from './TextInput';
 export const GMScene = M.connectRedux(
   function GMScene({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     function menuItem(
-      name: string, content: () => JSX.Element, layer?: M.SceneLayer, detail?: string) {
+      name: string, content: () => JSX.Element, layer?: M.SceneLayerType, detail?: string) {
       const item = detail
         ? <Menu.Item key={name}>
           {name}
@@ -65,11 +65,11 @@ export const GMScene = M.connectRedux(
       <Tab panes={panes}
         defaultActiveIndex={-1}
         onTabChange={(_, data) => {
-          const menuItem: { menuItem: string; layer?: M.SceneLayer } =
+          const menuItem: { menuItem: string; layer?: M.SceneLayerType } =
             data.panes![data.activeIndex as number] as any;
           // unimplemented!: disable tab-switching when Terrain is unsaved
           dispatch(
-            { type: "FocusGrid", focus: { t: "Scene", scene_id: scene.id, layer: menuItem.layer } });
+            { type: "FocusGrid", scene_id: scene.id, layer: menuItem.layer });
         }}
         menu={{
           size: 'small',
@@ -765,7 +765,7 @@ const GMCombatHeader = M.connectRedux(
           <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
           <a href="#"
               onClick={() =>
-                dispatch({ type: "FocusGrid", focus: { t: "Scene", scene_id: scene.id } })}>
+                dispatch({ type: "FocusGrid", scene_id: scene.id })}>
               {scene.name}
             </a>
             <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>

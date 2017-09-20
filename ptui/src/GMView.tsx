@@ -56,14 +56,9 @@ function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | unde
 }
 
 function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
-
   const scene = ptui.focused_scene();
   if (scene) {
     return <GM.GMScene scene={scene} />;
-  } else if (ptui.state.grid_focus) {
-    switch (ptui.state.grid_focus.t) {
-      default: return undefined;
-    }
   }
 }
 
@@ -96,11 +91,8 @@ function creatureMenuActions(
 
 function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
   if (!ptui.state.grid_focus) { return <div>No focus!</div>; }
-  switch (ptui.state.grid_focus.t) {
-    case "Scene":
-      const scene = ptui.focused_scene();
-      return scene
-        ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
-        : <div>No scene yet!</div>;
-  }
+  const scene = ptui.focused_scene();
+  return scene
+    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
+    : <div>No scene yet!</div>;
 }
