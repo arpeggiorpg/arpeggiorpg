@@ -16,7 +16,7 @@ export type Energy = number;
 export type ConditionID = string;
 export type FolderPath = Array<string>;
 export type VectorCM = [number, number, number];
-export type Terrain = I.List<Point3>;
+export type Terrain = I.Set<Point3>;
 
 
 export class Point3 implements I.ValueObject {
@@ -642,11 +642,13 @@ export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
   (point, volume, remaining, condition): VolumeCondition => ({ point, volume, remaining, condition })
 );
 
+const decodeTerrain: Decoder<Terrain> = JD.map(I.Set, JD.array(decodePoint3));
+
 export const decodeScene: Decoder<Scene> =
   JD.object(
     ["id", JD.string()],
     ["name", JD.string()],
-    ["terrain", JD.map(I.List, JD.array(decodePoint3))],
+    ["terrain", decodeTerrain],
     ["highlights", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
     ["annotations", decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility))],
     ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
@@ -860,7 +862,7 @@ export const decodeGameLog: Decoder<GameLog> =
     ),
     EditSceneTerrain: JD.object(
       ["scene_id", JD.string()],
-      ["terrain", JD.map(I.List, JD.array(decodePoint3))],
+      ["terrain", decodeTerrain],
       (scene_id, terrain): GameLog => ({ t: "EditSceneTerrain", scene_id, terrain })),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>

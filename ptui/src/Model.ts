@@ -55,7 +55,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
         case "Terrain":
           const scene = ptui.app.current_game.scenes.get(action.scene_id);
           // When switching to the Terrain layer, create a copy of the terrain data for editing.
-          layer = { t: "Terrain", terrain: scene ? scene.terrain : I.List() };
+          layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
           break;
         case "Objects":
           layer = { t: "Objects" };
