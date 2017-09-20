@@ -44,7 +44,12 @@ export const GMScene = M.connectRedux(
           <Button onClick={cancelTerrain}>Cancel</Button>
         </div>,
         "Terrain"),
-      menuItem('Objects', () => <div>Objects</div>, "Objects"), // unimplemented!
+      menuItem('Objects', () =>
+        <div>Edit the objects on the map and then
+          <Button onClick={saveObjects}>Save</Button> or
+          <Button onClick={cancelObjects}>Cancel</Button>
+        </div>,
+        "Objects"),
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         undefined, scene.creatures.count().toString()),
@@ -91,6 +96,22 @@ export const GMScene = M.connectRedux(
     function cancelTerrain() {
       dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
     }
+    function saveObjects() {
+      if (!ptui.state.grid_focus) { return; }
+      const scene_id = ptui.state.grid_focus.scene_id;
+      if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Objects") { return; }
+      const highlights = ptui.state.grid_focus.layer.highlights;
+      const annotations = ptui.state.grid_focus.layer.annotations;
+      dispatch(M.sendCommands([
+        { t: "EditSceneHighlights", scene_id, highlights },
+        { t: "EditSceneAnnotations", scene_id, annotations }]));
+      dispatch({ type: "FocusGrid", scene_id: scene.id });
+    }
+    function cancelObjects() {
+      dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Objects" });
+    }
+
+
   });
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
