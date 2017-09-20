@@ -294,6 +294,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
     const objects_style = layer && layer.t === "Terrain" ? disable_style : {};
+    const highlights = layer && layer.t === "Objects"
+      ? []
+      : this.getHighlights(scene.highlights, ptui.state.player_id);
+    const annotations = layer && layer.t === "Objects"
+      ? []
+      : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
 
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
@@ -321,9 +327,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {background_image}
         <g id="terrain">{terrain_els}</g>
         <g id="highlights" style={objects_style}>
-          {this.getHighlights(scene.highlights, ptui.state.player_id)}</g>
+          {highlights}</g>
         <g id="annotations" style={objects_style}>
-          {this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
+          {annotations}</g>
 
         <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
         <g id="creatures" style={disable_style}>{creature_els}</g>
@@ -333,7 +339,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         <g id="targeted-volume" style={disable_style}>{targeted_volume}</g>
       </SPZ.SVGPanZoom>
     </div>;
-
   }
 
   getEditableTerrain(terrain: T.Terrain) {
@@ -363,16 +368,13 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return [open_tiles, closed_tiles];
   }
 
-  getHighlights(
-    highlights: I.Map<T.Point3, [T.Color, T.Visibility]>, player_id?: T.PlayerID) {
+  getHighlights(highlights: T.Highlights, player_id?: T.PlayerID) {
     return highlights.entrySeq().map(([pt, [color, vis]]) =>
       <SpecialTile key={pointKey("highlight", pt)} pt={pt} color={color} vis={vis}
         player_id={player_id} />);
   }
 
-  getAnnotations(
-    dispatch: M.Dispatch,
-    annotations: I.Map<T.Point3, [string, T.Visibility]>, player_id?: T.PlayerID) {
+  getAnnotations(dispatch: M.Dispatch, annotations: T.Annotations, player_id?: T.PlayerID) {
     return M.filterMap(annotations.entrySeq().toArray(),
       ([pt, [note, vis]]) => {
         if (note !== "") {

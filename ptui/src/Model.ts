@@ -20,6 +20,12 @@ export type Action =
 
   | { type: "SetTerrain"; terrain: T.Terrain }
 
+  | { type: "SetObjectTool"; tool: ObjectTool }
+  | { type: "SetHighlightColor"; color: T.Color }
+  | { type: "SetAnnotation"; text: "" }
+  | { type: "SetObjectVisibility"; visibility: T.Visibility }
+
+
   | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
@@ -74,6 +80,15 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
 
     // Grid-related
+
+    case "SetObjectTool": // ; tool: ObjectTool }
+      return ptui.updateGridState(grid => ({ ...grid, object_tool: action.tool }));
+    case "SetHighlightColor":
+      return ptui.updateGridState(grid => ({ ...grid, color: action.color }));
+    case "SetAnnotation":
+      return ptui.updateGridState(grid => ({ ...grid, annotation_text: action.text }));
+    case "SetObjectVisibility":
+      return ptui.updateGridState(grid => ({ ...grid, object_visibility: action.visibility }));
 
     case "SetTerrain":
       return ptui.updateState(state => {
@@ -136,7 +151,13 @@ export interface GridModel {
   };
   display_annotation?: { pt: T.Point3; rect: Rect };
   target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets };
+  object_tool: ObjectTool;
+  highlight_color: T.Color;
+  annotation_text: string;
+  object_visibility: T.Visibility;
 }
+
+export type ObjectTool = "Highlight" | "Annotations";
 
 export interface PTUIState {
   grid: GridModel;
@@ -205,12 +226,21 @@ export function ptfetch<J, R>(
   return p5;
 }
 
+const default_state = {
+  grid: {
+    object_tool: "Highlight" as ObjectTool,
+    highlight_color: "#FF0000",
+    annotation_text: "",
+    object_visibility: { t: "AllPlayers" } as T.Visibility,
+  },
+};
+
 export class PTUI {
   readonly app: T.App;
   readonly state: PTUIState;
   readonly rpi_url: string;
 
-  constructor(rpi_url: string, app: T.App, state: PTUIState = { grid: {} }) {
+  constructor(rpi_url: string, app: T.App, state: PTUIState = default_state) {
     this.app = app;
     this.state = state;
     this.rpi_url = rpi_url;
