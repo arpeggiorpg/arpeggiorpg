@@ -38,7 +38,7 @@ export const GMScene = M.connectRedux(
     const panes = [
       menuItem("Background", () =>
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
-      menuItem("Terrain", () => // unimplemented!
+      menuItem("Terrain", () =>
         <div>Edit the terrain on the map and then
           <Button onClick={saveTerrain}>Save</Button> or
           <Button onClick={cancelTerrain}>Cancel</Button>
