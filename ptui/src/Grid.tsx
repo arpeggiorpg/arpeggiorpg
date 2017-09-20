@@ -239,13 +239,16 @@ interface SceneGridState {
 }
 export const SceneGrid = M.connectRedux(class SceneGrid
   extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
+
+  spz: SPZ.SVGPanZoom;
+
   constructor(props: SceneGridProps & M.ReduxProps) {
     super(props);
     this.state = {};
   }
 
   render(): JSX.Element {
-    const { scene, creatures, ptui } = this.props;
+    const { scene, creatures, ptui, dispatch } = this.props;
 
     const grid = ptui.state.grid;
 
@@ -279,6 +282,25 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
     const disable_style = layer ? { pointerEvents: "none", opacity: "0.3" } : {};
 
+    const open_terrain_color = scene.background_image_url ? "transparent" : "white";
+    const bg_width = scene.background_image_scale[0];
+    const bg_height = scene.background_image_scale[1];
+    const background_image = scene.background_image_url && scene.background_image_offset
+      ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
+        height={bg_height ? bg_height : undefined}
+        x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
+        preserveAspectRatio="none" />
+      : null;
+
+    const static_background = scene.background_image_url && !scene.background_image_offset
+      ? `url(${scene.background_image_url})`
+      : undefined;
+
+    // const terrain_els = layer === "Terrain"
+    //   ? getEditableTerrain()
+    //   :
+    const terrain_els = scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -288,16 +310,58 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       </div>
       {creature_menu}
       {annotation}
-      <GridSvg scene={scene}>
+      <SPZ.SVGPanZoom
+        id="pt-grid"
+        ref={
+          (el: any
+            /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
+             * hence the `any` type in this `ref` */
+          ) => { this.spz = el; }}
+        preserveAspectRatio="xMinYMid slice"
+        style={{
+          width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
+          backgroundImage: static_background,
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "contain",
+        }}>
+        {background_image}
+        <g id="terrain">{terrain_els}</g>
+        <g id="highlights">{getHighlights(scene.highlights, ptui.state.player_id)}</g>
+        <g id="annotations">{getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
+
         <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
         <g id="creatures" style={disable_style}>{creature_els}</g>
         <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
         <g id="affected" style={disable_style}>{affected_els}</g>
         <g id="targeted-volume" style={disable_style}>{targeted_volume}</g>
-      </GridSvg>
+      </SPZ.SVGPanZoom>
     </div>;
+
   }
+
+  // getEditableTerrain() {
+  //   const { scene } = this.props;
+  //   const paintOpen = this.closeTerrain.bind(this);
+  //   const paintClosed = this.openTerrain.bind(this);
+
+  //   const open_tiles = scene.terrain.toArray().map(pt => {
+  //     const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
+  //     return <rect {...tprops}
+  //       style={{ cursor: 'pointer' }}
+  //       onClick={() => paintOpen(pt)}
+  //       key={pointKey("open", pt)} />;
+  //   });
+  //   const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
+  //     pt => {
+  //       if (scene.terrain.contains(pt)) { return; }
+  //       const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
+  //       return <rect {...tprops} style={{ cursor: 'pointer' }}
+  //         onClick={() => paintClosed(pt)}
+  //         key={pointKey("closed", pt)} />;
+  //     });
+  //   return [open_tiles, closed_tiles];
+  // }
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
@@ -514,72 +578,37 @@ export interface MapCreature {
   visibility: T.Visibility;
 }
 
-interface GridSvgProps {
-  scene: T.Scene;
-  children?: React.ReactNode;
-}
-export const GridSvg = M.connectRedux(
-  class GridSvg extends React.Component<GridSvgProps & M.ReduxProps> {
-    spz: SPZ.SVGPanZoom;
+// interface GridSvgProps {
+//   scene: T.Scene;
+//   children?: React.ReactNode;
+// }
+// export const GridSvg = M.connectRedux(
+//   class GridSvg extends React.Component<GridSvgProps & M.ReduxProps> {
+//     spz: SPZ.SVGPanZoom;
 
-    shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
-      const mvmt_diff = !M.isEqual(
-        this.props.ptui.state.grid.movement_options,
-        nextProps.ptui.state.grid.movement_options);
-      const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
-      const focus_diff = !M.isEqual(this.props.ptui.state.grid_focus,
-        nextProps.ptui.state.grid_focus);
-      const map_diff = !M.isEqual(this.props.scene, nextProps.scene);
-      const children_diff = !M.isEqual(this.props.children, nextProps.children);
-      return app_diff || mvmt_diff || focus_diff || map_diff || children_diff;
-    }
+//     shouldComponentUpdate(nextProps: GridSvgProps & M.ReduxProps): boolean {
+//       const mvmt_diff = !M.isEqual(
+//         this.props.ptui.state.grid.movement_options,
+//         nextProps.ptui.state.grid.movement_options);
+//       const app_diff = !M.isEqual(this.props.ptui.app, nextProps.ptui.app);
+//       const focus_diff = !M.isEqual(this.props.ptui.state.grid_focus,
+//         nextProps.ptui.state.grid_focus);
+//       const map_diff = !M.isEqual(this.props.scene, nextProps.scene);
+//       const children_diff = !M.isEqual(this.props.children, nextProps.children);
+//       return app_diff || mvmt_diff || focus_diff || map_diff || children_diff;
+//     }
 
-    componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
-      if (!M.isEqual(prevProps.scene, this.props.scene) && this.spz) {
-        this.spz.refresh();
-      }
-    }
+//     componentDidUpdate(prevProps: GridSvgProps & M.ReduxProps) {
+//       if (!M.isEqual(prevProps.scene, this.props.scene) && this.spz) {
+//         this.spz.refresh();
+//       }
+//     }
 
-    render(): JSX.Element {
-      const { scene, ptui, dispatch } = this.props;
-      console.log("[EXPENSIVE:GridSvg.render]");
-      const open_terrain_color = scene.background_image_url ? "transparent" : "white";
-      const terrain_els = scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
-      const bg_width = scene.background_image_scale[0];
-      const bg_height = scene.background_image_scale[1];
-      const background_image = scene.background_image_url && scene.background_image_offset
-        ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
-          height={bg_height ? bg_height : undefined}
-          x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
-          preserveAspectRatio="none" />
-        : null;
-
-      const static_background = scene.background_image_url && !scene.background_image_offset
-        ? `url(${scene.background_image_url})`
-        : undefined;
-
-      return <SPZ.SVGPanZoom
-        id="pt-grid"
-        ref={
-          (el: any
-            /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
-             * hence the `any` type in this `ref` */
-          ) => { this.spz = el; }}
-        preserveAspectRatio="xMinYMid slice"
-        style={{
-          width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
-          backgroundImage: static_background,
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "contain",
-        }}>
-        {background_image}
-        <g id="terrain">{terrain_els}</g>
-        <g id="highlights">{getHighlights(scene.highlights, ptui.state.player_id)}</g>
-        <g id="annotations">{getAnnotations(dispatch, scene.annotations, ptui.state.player_id)}</g>
-        {this.props.children}
-      </SPZ.SVGPanZoom>;
-    }
-  });
+//     render(): JSX.Element {
+//       const { scene, ptui, dispatch } = this.props;
+//       console.log("[EXPENSIVE:GridSvg.render]");
+//     }
+//   });
 
 function getHighlights(
   highlights: I.Map<T.Point3, [T.Color, T.Visibility]>, player_id?: T.PlayerID) {
