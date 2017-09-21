@@ -1291,5 +1291,6 @@ export function sum<T>(
 }
 
 function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<I.Map<K, V>> {
-  return JD.map(obj => (I.Map(obj).mapKeys(keyDecoder.decodeAny)), JD.dict(valueDecoder));
+  return JD.map(obj => I.Map(obj).mapKeys(k => keyDecoder.decodeAny(k)),
+    JD.dict(valueDecoder));
 }
