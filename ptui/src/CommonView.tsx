@@ -623,7 +623,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         style={{
           position: 'relative', height: "100%", width: "20%", minWidth: "20em",
         }}>
-        <SplitPane split="horizontal" minSize="50%"
+        <SplitPane split="horizontal" minSize="70%"
           resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {top_left}
