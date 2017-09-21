@@ -386,12 +386,13 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   getEditableHighlights(highlights: T.Highlights) {
     const { dispatch } = this.props;
     const color = this.props.ptui.state.grid.highlight_color;
+    const vis = this.props.ptui.state.grid.object_visibility;
     function removeHighlight(pt: T.Point3) {
       dispatch({ type: "SetHighlights", highlights: highlights.remove(pt) });
     }
     function addHighlight(pt: T.Point3) {
       dispatch({
-        type: "SetHighlights", highlights: highlights.set(pt, [color, { t: "AllPlayers" }]),
+        type: "SetHighlights", highlights: highlights.set(pt, [color, vis]),
       });
     }
     const highlighted_tiles = highlights.entrySeq().map(([pt, [color, _vis]]) => {
