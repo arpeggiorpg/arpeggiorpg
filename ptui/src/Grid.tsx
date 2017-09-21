@@ -375,7 +375,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         return <noscript />;
       }
       const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
-      return <g style={{ pointerEvents: "none" }}>
+      return <g key={pointKey("highlight", pt)} style={{ pointerEvents: "none" }}>
         <rect {...tprops} />
         {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text>
           : <noscript />}
@@ -397,13 +397,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     }
     const highlighted_tiles = highlights.entrySeq().map(([pt, [color, _vis]]) => {
       const tprops = tile_props(color, pt, { x: 1, y: 1 });
-      return <rect {...tprops} style={{ cursor: 'pointer' }} onClick={() => removeHighlight(pt)} />;
+      return <rect key={pointKey("ed-high", pt)} {...tprops} style={{ cursor: 'pointer' }}
+        onClick={() => removeHighlight(pt)} />;
     });
     const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (highlights.has(pt)) { return; }
         const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.0);
-        return <rect {...tprops} onClick={() => addHighlight(pt)} />;
+        return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
       });
 
     return [highlighted_tiles, empty_tiles];

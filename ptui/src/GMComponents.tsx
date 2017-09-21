@@ -7,7 +7,7 @@ import * as ReactRedux from 'react-redux';
 
 import {
   Accordion,
-  Button, Card, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
+  Button, Card, Checkbox, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
   Menu, Message, Popup, Segment, Tab, Table
 } from 'semantic-ui-react';
 
@@ -201,16 +201,27 @@ class EditSceneBackground
 
 function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
   const { scene, ptui, dispatch } = props;
+  const all_players = ptui.state.grid.object_visibility.t === "AllPlayers";
   const object_panels = [
     {
       key: "Highlight" as M.ObjectTool, title: "Highlights",
-      content: <div><TwitterPicker
-        color={ptui.state.grid.highlight_color}
-        onChange={
-          color => {
-            dispatch({ type: "SetHighlightColor", color: color.hex });
-          }}
-      /></div>,
+      content: <div>
+        <Checkbox label="Visible to all players?" checked={all_players}
+          onChange={(_, d) =>
+            dispatch(
+              {
+                type: "SetObjectVisibility",
+                visibility: { t: d.checked ? "AllPlayers" : "GMOnly" } as T.Visibility,
+              })
+          } />
+        <TwitterPicker
+          triangle="hide"
+          color={ptui.state.grid.highlight_color}
+          onChange={
+            color => {
+              dispatch({ type: "SetHighlightColor", color: color.hex });
+            }}
+        /></div>,
     },
     {
       key: "Annotation" as M.ObjectTool, title: "Annotations",
