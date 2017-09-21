@@ -217,10 +217,7 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
         <TwitterPicker
           triangle="hide"
           color={ptui.state.grid.highlight_color}
-          onChange={
-            color => {
-              dispatch({ type: "SetHighlightColor", color: color.hex });
-            }}
+          onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })}
         /></div>,
     },
     {
