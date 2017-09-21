@@ -207,18 +207,19 @@ function SceneTerrain(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
 function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
   const { scene, ptui, dispatch } = props;
   const all_players = ptui.state.grid.object_visibility.t === "AllPlayers";
+  const vis_checkbox = <Checkbox label="Visible to all players?" checked={all_players}
+    onChange={(_, d) =>
+      dispatch(
+        {
+          type: "SetObjectVisibility",
+          visibility: { t: d.checked ? "AllPlayers" : "GMOnly" } as T.Visibility,
+        })
+    } />;
   const object_panels = [
     {
       key: "Highlight" as M.ObjectTool, title: "Highlights",
       content: <div>
-        <Checkbox label="Visible to all players?" checked={all_players}
-          onChange={(_, d) =>
-            dispatch(
-              {
-                type: "SetObjectVisibility",
-                visibility: { t: d.checked ? "AllPlayers" : "GMOnly" } as T.Visibility,
-              })
-          } />
+        {vis_checkbox}
         <TwitterPicker
           triangle="hide"
           color={ptui.state.grid.highlight_color}
@@ -227,7 +228,12 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
     },
     {
       key: "Annotation" as M.ObjectTool, title: "Annotations",
-      content: <div>Yeh</div>,
+      content: <div>
+        {vis_checkbox}
+        <Input label="Annotation" onChange={LD.debounce(
+          (_: any, d: any) => dispatch({ type: "SetAnnotation", text: d.value } as M.Action),
+          300)} />
+      </div>,
     }];
   const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
 
