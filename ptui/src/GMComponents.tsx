@@ -36,22 +36,6 @@ export const GMScene = M.connectRedux(
     const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
-    const object_panels = [
-      {
-        key: "Highlight" as M.ObjectTool, title: "Highlights",
-        content: <div><TwitterPicker
-          color={ptui.state.grid.highlight_color}
-          onChange={
-            color => {
-              dispatch({ type: "SetHighlightColor", color: color.hex });
-            }}
-        /></div>,
-      },
-      {
-        key: "Annotation" as M.ObjectTool, title: "Annotations",
-        content: <div>Yeh</div>,
-      }];
-    const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
 
     const panes = [
       menuItem("Background", () =>
@@ -62,15 +46,7 @@ export const GMScene = M.connectRedux(
           <Button onClick={cancelTerrain}>Cancel</Button>
         </div>,
         "Terrain"),
-      menuItem('Objects', () =>
-        <div>
-          Accordion:
-          <Accordion activeIndex={selectedObjectPanel} panels={object_panels}
-            onTitleClick={changeObjectTool} />
-          Edit the objects on the map and then
-          <Button onClick={saveObjects}>Save</Button> or
-          <Button onClick={cancelObjects}>Cancel</Button>
-        </div>,
+      menuItem('Objects', () => <SceneObjects scene={scene} ptui={ptui} dispatch={dispatch} />,
         "Objects"),
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
@@ -118,25 +94,8 @@ export const GMScene = M.connectRedux(
     function cancelTerrain() {
       dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
     }
-    function changeObjectTool(_: any, index: number) {
-      const selected = object_panels[index];
-      dispatch({ type: "SetObjectTool", tool: selected.key });
-    }
-    function saveObjects() {
-      if (!ptui.state.grid_focus) { return; }
-      const scene_id = ptui.state.grid_focus.scene_id;
-      if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Objects") { return; }
-      const highlights = ptui.state.grid_focus.layer.highlights;
-      const annotations = ptui.state.grid_focus.layer.annotations;
-      dispatch(M.sendCommands([
-        { t: "EditSceneHighlights", scene_id, highlights },
-        { t: "EditSceneAnnotations", scene_id, annotations }]));
-      dispatch({ type: "FocusGrid", scene_id: scene.id });
-    }
-    function cancelObjects() {
-      dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Objects" });
-    }
   });
+
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
 export const CreateScene = M.connectRedux(class CreateScene
@@ -237,6 +196,54 @@ class EditSceneBackground
     };
     this.props.dispatch(M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details }));
     this.props.onDone();
+  }
+}
+
+function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
+  const { scene, ptui, dispatch } = props;
+  const object_panels = [
+    {
+      key: "Highlight" as M.ObjectTool, title: "Highlights",
+      content: <div><TwitterPicker
+        color={ptui.state.grid.highlight_color}
+        onChange={
+          color => {
+            dispatch({ type: "SetHighlightColor", color: color.hex });
+          }}
+      /></div>,
+    },
+    {
+      key: "Annotation" as M.ObjectTool, title: "Annotations",
+      content: <div>Yeh</div>,
+    }];
+  const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
+
+  return <div>
+    Accordion:
+  <Accordion activeIndex={selectedObjectPanel} panels={object_panels}
+      onTitleClick={changeObjectTool} />
+    Edit the objects on the map and then
+  <Button onClick={saveObjects}>Save</Button> or
+  <Button onClick={cancelObjects}>Cancel</Button>
+  </div>;
+
+  function changeObjectTool(_: any, index: number) {
+    const selected = object_panels[index];
+    dispatch({ type: "SetObjectTool", tool: selected.key });
+  }
+  function saveObjects() {
+    if (!ptui.state.grid_focus) { return; }
+    const scene_id = ptui.state.grid_focus.scene_id;
+    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Objects") { return; }
+    const highlights = ptui.state.grid_focus.layer.highlights;
+    const annotations = ptui.state.grid_focus.layer.annotations;
+    dispatch(M.sendCommands([
+      { t: "EditSceneHighlights", scene_id, highlights },
+      { t: "EditSceneAnnotations", scene_id, annotations }]));
+    dispatch({ type: "FocusGrid", scene_id: scene.id });
+  }
+  function cancelObjects() {
+    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Objects" });
   }
 }
 
