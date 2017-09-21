@@ -294,8 +294,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const objects_style = layer && layer.t === "Terrain" ? disable_style : {};
     const highlights = layer && layer.t === "Objects"
-      ? []
-      : this.getHighlights(scene.highlights, ptui.state.player_id);
+      ? this.getEditableHighlights(layer.highlights)
+      : this.getHighlights(ptui.state.player_id);
     const annotations = layer && layer.t === "Objects"
       ? []
       : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
@@ -350,7 +350,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     }
 
     const open_tiles = terrain.toArray().map(pt => {
-      const tprops = tile_props("while", pt, { x: 1, y: 1 }, 0.0);
+      const tprops = tile_props("white", pt, { x: 1, y: 1 }, 0.0);
       return <rect {...tprops}
         style={{ cursor: 'pointer' }}
         onClick={() => closeTerrain(pt)}
@@ -367,10 +367,45 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return [open_tiles, closed_tiles];
   }
 
-  getHighlights(highlights: T.Highlights, player_id?: T.PlayerID) {
-    return highlights.entrySeq().map(([pt, [color, vis]]) =>
-      <SpecialTile key={pointKey("highlight", pt)} pt={pt} color={color} vis={vis}
-        player_id={player_id} />);
+  getHighlights(player_id?: T.PlayerID) {
+    const highlights = this.props.scene.highlights;
+    return highlights.entrySeq().map(([pt, [color, vis]]) => {
+      const gmonly = vis.t === "GMOnly";
+      if (gmonly && player_id) {
+        return <noscript />;
+      }
+      const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
+      return <g>
+        <rect {...tprops} />
+        {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text>
+          : <noscript />}
+      </g>;
+    });
+  }
+
+  getEditableHighlights(highlights: T.Highlights) {
+    const { dispatch } = this.props;
+    const color = this.props.ptui.state.grid.highlight_color;
+    function removeHighlight(pt: T.Point3) {
+      dispatch({ type: "SetHighlights", highlights: highlights.remove(pt) });
+    }
+    function addHighlight(pt: T.Point3) {
+      dispatch({
+        type: "SetHighlights", highlights: highlights.set(pt, [color, { t: "AllPlayers" }]),
+      });
+    }
+    const highlighted_tiles = highlights.entrySeq().map(([pt, [color, _vis]]) => {
+      const tprops = tile_props(color, pt, { x: 1, y: 1 });
+      return <rect {...tprops} style={{ cursor: 'pointer' }} onClick={() => removeHighlight(pt)} />;
+    });
+    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
+      pt => {
+        if (highlights.has(pt)) { return; }
+        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.0);
+        return <rect {...tprops} onClick={() => addHighlight(pt)} />;
+      });
+
+    return [highlighted_tiles, empty_tiles];
   }
 
   getAnnotations(dispatch: M.Dispatch, annotations: T.Annotations, player_id?: T.PlayerID) {
@@ -651,22 +686,6 @@ const MovementTarget = M.connectRedux(
     }
     return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
   });
-
-function SpecialTile(
-  props: { color: string; vis: T.Visibility; pt: T.Point3; player_id?: T.PlayerID }): JSX.Element {
-  const { color, vis, pt, player_id } = props;
-  const gmonly = vis.t === "GMOnly";
-  if (gmonly && player_id) {
-    return <noscript />;
-  }
-  const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
-  return <g>
-    <rect {...tprops} />
-    {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text>
-      : <noscript />}
-  </g>;
-}
-
 
 function Annotation({ dispatch, pt, vis, player_id }:
   { pt: T.Point3; vis: T.Visibility; player_id?: T.PlayerID } & M.DispatchProps)

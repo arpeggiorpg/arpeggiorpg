@@ -19,6 +19,8 @@ export type Action =
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
   | { type: "SetTerrain"; terrain: T.Terrain }
+  | { type: "SetHighlights"; highlights: T.Highlights }
+  | { type: "SetAnnotations"; annotations: T.Annotations }
 
   | { type: "SetObjectTool"; tool: ObjectTool }
   | { type: "SetHighlightColor"; color: T.Color }
@@ -58,10 +60,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
     case "FocusGrid":
+      const scene = ptui.app.current_game.scenes.get(action.scene_id);
       let layer: SceneLayer;
       switch (action.layer) {
         case "Terrain":
-          const scene = ptui.app.current_game.scenes.get(action.scene_id);
           // When switching to the Terrain layer, create a copy of the terrain data for editing.
           layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
           break;
@@ -101,7 +103,32 @@ export function update(ptui: PTUI, action: Action): PTUI {
             },
           };
         } else { return state; }
+      });
 
+    case "SetHighlights":
+      return ptui.updateState(state => {
+        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Objects") {
+          return {
+            ...state,
+            grid_focus: {
+              ...state.grid_focus,
+              layer: { ...state.grid_focus.layer, highlights: action.highlights },
+            },
+          };
+        } else { return state; }
+      });
+
+    case "SetAnnotations":
+      return ptui.updateState(state => {
+        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Objects") {
+          return {
+            ...state,
+            grid_focus: {
+              ...state.grid_focus,
+              layer: { ...state.grid_focus.layer, annotations: action.annotations },
+            },
+          };
+        } else { return state; }
       });
 
     case "ToggleAnnotation":
