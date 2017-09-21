@@ -325,13 +325,13 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }}>
         {background_image}
         <g id="terrain">{terrain_els}</g>
+
+        <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
+        <g id="creatures" style={disable_style}>{creature_els}</g>
         <g id="highlights" style={objects_style}>
           {highlights}</g>
         <g id="annotations" style={objects_style}>
           {annotations}</g>
-
-        <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
-        <g id="creatures" style={disable_style}>{creature_els}</g>
         <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
         <g id="affected" style={disable_style}>{affected_els}</g>
@@ -375,7 +375,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         return <noscript />;
       }
       const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
-      return <g>
+      return <g style={{ pointerEvents: "none" }}>
         <rect {...tprops} />
         {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text>
           : <noscript />}
