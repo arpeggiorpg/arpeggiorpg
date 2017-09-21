@@ -41,10 +41,7 @@ export const GMScene = M.connectRedux(
       menuItem("Background", () =>
         <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
       menuItem("Terrain", () =>
-        <div>Edit the terrain on the map and then
-          <Button onClick={saveTerrain}>Save</Button> or
-          <Button onClick={cancelTerrain}>Cancel</Button>
-        </div>,
+        <SceneTerrain scene={scene} ptui={ptui} dispatch={dispatch} />,
         "Terrain"),
       menuItem('Objects', () => <SceneObjects scene={scene} ptui={ptui} dispatch={dispatch} />,
         "Objects"),
@@ -82,18 +79,6 @@ export const GMScene = M.connectRedux(
           style: { justifyContent: "center", flexWrap: "wrap" },
         }} />
     </Segment>;
-
-    function saveTerrain() {
-      if (!ptui.state.grid_focus) { return; }
-      const scene_id = ptui.state.grid_focus.scene_id;
-      if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Terrain") { return; }
-      const terrain = ptui.state.grid_focus.layer.terrain;
-      dispatch(M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain }));
-      dispatch({ type: "FocusGrid", scene_id: scene.id });
-    }
-    function cancelTerrain() {
-      dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
-    }
   });
 
 
@@ -196,6 +181,26 @@ class EditSceneBackground
     };
     this.props.dispatch(M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details }));
     this.props.onDone();
+  }
+}
+
+function SceneTerrain(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
+  const { scene, ptui, dispatch } = props;
+  return <div>Edit the terrain on the map and then
+    <Button onClick={saveTerrain}>Save</Button> or
+    <Button onClick={cancelTerrain}>Cancel</Button>
+  </div>;
+
+  function saveTerrain() {
+    if (!ptui.state.grid_focus) { return; }
+    const scene_id = ptui.state.grid_focus.scene_id;
+    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Terrain") { return; }
+    const terrain = ptui.state.grid_focus.layer.terrain;
+    dispatch(M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain }));
+    dispatch({ type: "FocusGrid", scene_id: scene.id });
+  }
+  function cancelTerrain() {
+    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
   }
 }
 
@@ -480,7 +485,8 @@ export const GMSceneInventory = M.connectRedux(
         <List.Item key="add">
           <List.Content>
             <CV.ModalMaker
-              button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
+              button={open =>
+                <Button onClick={open}>Add</Button>}
               header={<span>Add items to {scene.name}</span>}
               content={close => <AddItemsToScene scene={scene} onClose={close} />} />
           </List.Content>
@@ -663,8 +669,7 @@ export const GMSceneCreatures = ReactRedux.connect(
       <List.Item key="add">
         <List.Content>
           <CV.ModalMaker
-            button={toggler =>
-              <Icon name="edit" onClick={toggler} style={{ cursor: "pointer" }} />}
+            button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
             header={<span>Change creatures in {scene.name}</span>}
             content={toggler => <Campaign.MultiCreatureSelector
               already_selected={scene.creatures.keySeq().toSet()}
