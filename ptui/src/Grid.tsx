@@ -57,7 +57,6 @@ import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 
-// import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 import {
   Button,
   // Checkbox, Dimmer, Input,

@@ -84,7 +84,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "SetObjectTool": // ; tool: ObjectTool }
       return ptui.updateGridState(grid => ({ ...grid, object_tool: action.tool }));
     case "SetHighlightColor":
-      return ptui.updateGridState(grid => ({ ...grid, color: action.color }));
+      return ptui.updateGridState(grid => ({ ...grid, highlight_color: action.color }));
     case "SetAnnotation":
       return ptui.updateGridState(grid => ({ ...grid, annotation_text: action.text }));
     case "SetObjectVisibility":

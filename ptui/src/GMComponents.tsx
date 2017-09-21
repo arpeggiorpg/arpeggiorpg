@@ -2,6 +2,7 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
+import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 import * as ReactRedux from 'react-redux';
 
 import {
@@ -36,8 +37,20 @@ export const GMScene = M.connectRedux(
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
     const object_panels = [
-      { key: "Highlight" as M.ObjectTool, title: "Highlights", content: <div>"Yah"</div> },
-      { key: "Annotation" as M.ObjectTool, title: "Annotations", content: <div>"Yeh"</div> }];
+      {
+        key: "Highlight" as M.ObjectTool, title: "Highlights",
+        content: <div><TwitterPicker
+          color={ptui.state.grid.highlight_color}
+          onChange={
+            color => {
+              dispatch({ type: "SetHighlightColor", color: color.hex });
+            }}
+        /></div>,
+      },
+      {
+        key: "Annotation" as M.ObjectTool, title: "Annotations",
+        content: <div>Yeh</div>,
+      }];
     const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
 
     const panes = [
