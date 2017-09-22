@@ -292,14 +292,24 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableTerrain(layer.terrain)
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
-    const objects_style = layer && layer.t === "Terrain" ? disable_style : {};
-    const highlights = layer && layer.t === "Objects"
+    const highlights = layer && layer.t === "Objects" && ptui.state.grid.object_tool === "Highlight"
       ? this.getEditableHighlights(layer.highlights)
       : this.getHighlights(scene.highlights, ptui.state.player_id);
     const annotations = layer && layer.t === "Objects"
-      ? []
+      && ptui.state.grid.object_tool === "Annotation"
+      ? this.getEditableAnnotations(layer.annotations)
       : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
 
+    const annotations_style = layer
+      && ((layer.t === "Terrain")
+        || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Annotation"))
+      ? disable_style
+      : {};
+    const highlights_style = layer
+      && ((layer.t === "Terrain")
+        || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Highlight"))
+      ? disable_style
+      : {};
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -328,9 +338,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
         <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
         <g id="creatures" style={disable_style}>{creature_els}</g>
-        <g id="highlights" style={objects_style}>
+        <g id="highlights" style={highlights_style}>
           {highlights}</g>
-        <g id="annotations" style={objects_style}>
+        <g id="annotations" style={annotations_style}>
           {annotations}</g>
         <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
@@ -396,11 +406,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       });
     }
     const highlighted_tiles = this.getHighlights(highlights, undefined, pt => removeHighlight(pt));
-    // const highlighted_tiles = highlights.entrySeq().map(([pt, [color, _vis]]) => {
-    //   const tprops = tile_props(color, pt, { x: 1, y: 1 });
-    //   return <rect key={pointKey("ed-high", pt)} {...tprops} style={{ cursor: 'pointer' }}
-    //     onClick={() => removeHighlight(pt)} />;
-    // });
     const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (highlights.has(pt)) { return; }
@@ -413,16 +418,45 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <g id="empty-highlights">{empty_tiles}</g>];
   }
 
-  getAnnotations(dispatch: M.Dispatch, annotations: T.Annotations, player_id?: T.PlayerID) {
+  getAnnotations(
+    dispatch: M.Dispatch, annotations: T.Annotations, player_id?: T.PlayerID,
+    specialClick?: (pt: T.Point3) => void) {
     return M.filterMap(annotations.entrySeq().toArray(),
       ([pt, [note, vis]]) => {
         if (note !== "") {
           return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
+            specialClick={specialClick}
             player_id={player_id} />;
         }
       });
   }
 
+  getEditableAnnotations(annotations: T.Annotations) {
+    const { dispatch } = this.props;
+    const ann_text = this.props.ptui.state.grid.annotation_text;
+    const vis = this.props.ptui.state.grid.object_visibility;
+    function removeAnnotation(pt: T.Point3) {
+      dispatch({ type: "SetAnnotations", annotations: annotations.remove(pt) });
+    }
+    function addAnnotation(pt: T.Point3) {
+      if (!ann_text) { return; }
+      dispatch({
+        type: "SetAnnotations", annotations: annotations.set(pt, [ann_text, vis]),
+      });
+    }
+    const annotated_tiles = this.getAnnotations(dispatch, annotations, undefined,
+      pt => removeAnnotation(pt));
+    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
+      pt => {
+        if (annotations.has(pt)) { return; }
+        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.0);
+        return <rect key={pointKey("non-ann", pt)} {...tprops} onClick={() => addAnnotation(pt)} />;
+      });
+
+    return [
+      <g id="existing-annotations">{annotated_tiles}</g>,
+      <g id="empty-annotations">{empty_tiles}</g>];
+  }
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
@@ -509,11 +543,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </RectPositioned >;
   }
 
-  renderMenu({ cid, rect }: { cid: T.CreatureID; rect: M.Rect }): JSX.Element {
+  renderMenu({ cid, rect }: { cid: T.CreatureID; rect: M.Rect }): JSX.Element | null {
     const { creatures, dispatch } = this.props;
     const creature_ = M.get(creatures, cid);
     if (!creature_) {
-      return <noscript />;
+      return null;
     }
     const creature = creature_; // WHY TYPESCRIPT, WHY???
     return <RectPositioned rect={rect}
@@ -692,17 +726,26 @@ const MovementTarget = M.connectRedux(
     return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
   });
 
-function Annotation({ dispatch, pt, vis, player_id }:
-  { pt: T.Point3; vis: T.Visibility; player_id?: T.PlayerID } & M.DispatchProps)
-  : JSX.Element {
+interface AnnotationProps {
+  pt: T.Point3;
+  vis: T.Visibility;
+  player_id?: T.PlayerID;
+  specialClick?: (pt: T.Point3) => void;
+}
+function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | null {
+  const { dispatch, pt, vis, player_id, specialClick } = props;
   if (M.isEqual(vis, { t: "GMOnly" }) && player_id) {
-    return <noscript />;
+    return null;
   }
 
   let element: SVGRectElement;
 
   function onClick() {
-    dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+    if (specialClick) {
+      specialClick(pt);
+    } else {
+      dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+    }
   }
 
   return <g>

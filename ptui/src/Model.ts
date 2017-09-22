@@ -184,7 +184,7 @@ export interface GridModel {
   object_visibility: T.Visibility;
 }
 
-export type ObjectTool = "Highlight" | "Annotations";
+export type ObjectTool = "Highlight" | "Annotation";
 
 export interface PTUIState {
   grid: GridModel;
