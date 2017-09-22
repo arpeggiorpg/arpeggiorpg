@@ -90,7 +90,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   render(): JSX.Element {
-    const { scene, creatures, ptui, dispatch } = this.props;
+    const { scene, ptui, dispatch } = this.props;
 
     const grid = ptui.state.grid;
 
@@ -98,17 +98,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const annotation = grid.display_annotation
       ? this.renderAnnotation(scene, grid.display_annotation)
       : null;
-
-    const creature_els = LD.values(creatures).map(c => {
-      const highlight = LD.includes(this.state.affected_creatures, c.creature.id)
-        ? "red" : undefined;
-      return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
-    });
-    const move = grid.movement_options;
-    const movement_target_els = move
-      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
-        teleport={move.teleport} />)
-      : [];
 
     const target_els = ptui.state.grid.target_options
       ? this.getTargetTiles(ptui.state.grid.target_options.options,
@@ -118,20 +107,18 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
     const disable_style = layer ? { pointerEvents: "none", opacity: "0.3" } : {};
 
-    const open_terrain_color = scene.background_image_url ? "transparent" : "white";
-    const bg_width = scene.background_image_scale[0];
-    const bg_height = scene.background_image_scale[1];
+    const [bg_width, bg_height] = scene.background_image_scale;
     const background_image = scene.background_image_url && scene.background_image_offset
       ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
         height={bg_height ? bg_height : undefined}
         x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
         preserveAspectRatio="none" />
       : null;
-
     const static_background = scene.background_image_url && !scene.background_image_offset
       ? `url(${scene.background_image_url})`
       : undefined;
 
+    const open_terrain_color = scene.background_image_url ? "transparent" : "white";
     const terrain_els = layer && layer.t === "Terrain"
       ? this.getEditableTerrain(layer.terrain)
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
@@ -180,15 +167,31 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {background_image}
         <g id="terrain">{terrain_els}</g>
         <g id="volume-conditions" style={disable_style}>{this.drawVolumeConditions()}</g>
-        <g id="creatures" style={disable_style}>{creature_els}</g>
+        <g id="creatures" style={disable_style}>{this.getCreatures()}</g>
         <g id="highlights" style={highlights_style}>{highlights}</g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
-        <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
+        <g id="movement-targets" style={disable_style}>{this.getMovementTargets()}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
         <g id="affected" style={disable_style}>{this.getAffectedTiles()}</g>
         <g id="targeted-volume" style={disable_style}>{this.drawTargetedVolume()}</g>
       </SPZ.SVGPanZoom>
     </div>;
+  }
+
+  getMovementTargets() {
+    const move = this.props.ptui.state.grid.movement_options;
+    return move
+      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
+        teleport={move.teleport} />)
+      : null;
+  }
+
+  getCreatures() {
+    return LD.values(this.props.creatures).map(c => {
+      const highlight = LD.includes(this.state.affected_creatures, c.creature.id)
+        ? "red" : undefined;
+      return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
+    });
   }
 
   getEditableTerrain(terrain: T.Terrain) {
