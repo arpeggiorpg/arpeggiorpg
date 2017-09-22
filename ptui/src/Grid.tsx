@@ -600,20 +600,25 @@ const GridCreature = M.connectRedux(
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    if (creature.creature.icon_url !== "") {
-      const props = tile_props("white", creature.pos, creature.creature.size);
-      const bare_props = bare_tile_props(creature.pos, creature.creature.size);
-      return <g opacity={opacity}>
-        <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
-          xlinkHref={creature.creature.icon_url} {...props} />
-        <rect {...bare_props} {...highlightProps} fillOpacity="0" onClick={() => onClick()} />
-      </g>;
-    } else {
-      const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-      return <g opacity={opacity} onClick={() => onClick()}>
-        {<rect ref={el => { if (el !== null) { element = el; } }} {...props} {...highlightProps} />}
-        {text_tile(creature.creature.name.slice(0, 4), creature.pos)}
-      </g >;
+    return <g opacity={opacity} onClick={() => onClick()}>
+      {contents()}
+    </g>;
+    function contents() {
+      if (creature.creature.icon_url !== "") {
+        const props = tile_props("white", creature.pos, creature.creature.size);
+        const bare_props = bare_tile_props(creature.pos, creature.creature.size);
+        return [
+          <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
+            xlinkHref={creature.creature.icon_url} {...props} />,
+          <rect {...bare_props} {...highlightProps} fillOpacity="0" />
+        ];
+      } else {
+        const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
+        return [
+          <rect ref={el => { if (el !== null) { element = el; } }} {...props} {...highlightProps} />,
+          text_tile(creature.creature.name.slice(0, 4), creature.pos)
+        ];
+      }
     }
   });
 
