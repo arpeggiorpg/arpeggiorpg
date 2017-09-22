@@ -115,12 +115,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         (point, rect) => this.targetClicked(point, rect))
       : [];
 
-    const affected_els = this.getAffectedTiles();
-
-    const targeted_volume = this.drawTargetedVolume();
-
-    const volume_condition_els = this.drawVolumeConditions();
-
     const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
     const disable_style = layer ? { pointerEvents: "none", opacity: "0.3" } : {};
 
@@ -185,17 +179,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }}>
         {background_image}
         <g id="terrain">{terrain_els}</g>
-
-        <g id="volume-conditions" style={disable_style}>{volume_condition_els}</g>
+        <g id="volume-conditions" style={disable_style}>{this.drawVolumeConditions()}</g>
         <g id="creatures" style={disable_style}>{creature_els}</g>
-        <g id="highlights" style={highlights_style}>
-          {highlights}</g>
-        <g id="annotations" style={annotations_style}>
-          {annotations}</g>
+        <g id="highlights" style={highlights_style}>{highlights}</g>
+        <g id="annotations" style={annotations_style}>{annotations}</g>
         <g id="movement-targets" style={disable_style}>{movement_target_els}</g>
         <g id="targets" style={disable_style}>{target_els}</g>
-        <g id="affected" style={disable_style}>{affected_els}</g>
-        <g id="targeted-volume" style={disable_style}>{targeted_volume}</g>
+        <g id="affected" style={disable_style}>{this.getAffectedTiles()}</g>
+        <g id="targeted-volume" style={disable_style}>{this.drawTargetedVolume()}</g>
       </SPZ.SVGPanZoom>
     </div>;
   }

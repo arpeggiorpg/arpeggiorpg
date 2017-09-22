@@ -120,7 +120,8 @@ export class SVGPanZoom
   }
 
   render(): JSX.Element {
-    return <svg {...LD.omit(this.props, ['children', 'onPanZoom']) }>
+    const props = LD.omit(this.props, ['children', 'onPanZoom']);
+    return <svg {...props}>
       <g>
         {/* this <g> needs to be here for svg-pan-zoom. Otherwise it will reparent all
           nodes inside the <svg> tag to a <g> that it controls, which will mess up react's
