@@ -39,17 +39,6 @@
  *
  * https://stackoverflow.com/a/38727977/4930992
  *
- * So here's the strategy: The handlers must be unified.
- * - All *clickable* / *touchable* objects must have the same handler applied to them
- * - When it's called, it should:
- *   - Identify what kind of thing is being clicked based on its DOM node, and accumulate
- *     appropriate actions for that thing into a list of actions (use `data-*` attribute for this?).
- *   - set pointer-events: none on this element, and use document.elementFromPoint to find
- *     anything else that's under the mouse pointer.
- *   - repeat with the next element, until no more clickable elements are found.
- *   - Render a menu with all the actions.
- * - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
- *   spurious-click problem when panning, and spurious panning when clicking.
  */
 
 
@@ -575,7 +564,16 @@ const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
-    function onClick() {
+    function onClick(_event: React.MouseEvent<never>) {
+      // use _event.pageX and pageY to get coordinates
+      //   - Identify what kind of thing is being clicked based on its DOM node, and accumulate
+      //     appropriate actions for that thing into a list of actions (data-pt-element).
+      //   - set pointer-events: none on this element, and use document.elementFromPoint to find
+      //     anything else that's under the mouse pointer.
+      //   - repeat with the next element, until no more clickable elements are found.
+      //   - Render a menu with all the actions.
+      // - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
+      //   spurious-click problem when panning, and spurious panning when clicking.
       const act: M.Action = {
         type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
       };
@@ -600,7 +598,8 @@ const GridCreature = M.connectRedux(
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    return <g opacity={opacity} onClick={() => onClick()}>
+    return <g data-pt-element={`cid:${creature.creature.id}`} key={creature.creature.id}
+      opacity={opacity} onClick={e => onClick(e)}>
       {contents()}
     </g>;
     function contents() {
@@ -608,7 +607,7 @@ const GridCreature = M.connectRedux(
         const props = tile_props("white", creature.pos, creature.creature.size);
         const bare_props = bare_tile_props(creature.pos, creature.creature.size);
         return [
-          <image ref={el => { if (el !== null) { element = el; } }} key={creature.creature.id}
+          <image ref={el => { if (el !== null) { element = el; } }}
             xlinkHref={creature.creature.icon_url} {...props} />,
           <rect {...bare_props} {...highlightProps} fillOpacity="0" />
         ];
