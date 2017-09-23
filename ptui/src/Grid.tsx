@@ -176,7 +176,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   getCreatures() {
-    return LD.values(this.props.creatures).map(c => {
+    const creatures = LD.sortBy(this.props.creatures, c => -c.creature.size.x);
+    return LD.values(creatures).map(c => {
       const highlight = LD.includes(this.state.affected_creatures, c.creature.id)
         ? "red" : undefined;
       return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
