@@ -575,6 +575,33 @@ const GridCreature = M.connectRedux(
       // - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
       //   spurious-click problem when panning, and spurious panning when clicking.
       console.log("Activating a grid creature at", event.pageX, event.pageY);
+      const creatures = [];
+      const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
+      let el: HTMLElement | null;
+      while (true) {
+        if (dirtied.length > 100) {
+          console.log("[GridCreature] giving up on determining creatures under click");
+          return;
+        }
+        el = document.elementFromPoint(event.pageX, event.pageY) as HTMLElement | null;
+        if (!el) { break; }
+        if (el.tagName === 'svg') { break; }
+        const pt_type = el.getAttribute('data-pt-type');
+        if (pt_type) {
+          const cid = el.getAttribute('data-pt-id');
+          if (cid) {
+            creatures.push(cid);
+          }
+        }
+        if (el.style.pointerEvents !== 'none') {
+          dirtied.push({ el, oldPE: el.style.pointerEvents });
+          el.style.pointerEvents = 'none';
+        }
+
+      }
+      for (const { el, oldPE } of dirtied) {
+        el.style.pointerEvents = oldPE;
+      }
       const act: M.Action = {
         type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
       };
@@ -599,9 +626,8 @@ const GridCreature = M.connectRedux(
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    return <g data-pt-type="creature" data-pt-id={creature.creature.id}
-      key={creature.creature.id}
-      opacity={opacity} onClick={e => onClick(e)}>
+    const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
+    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}>
       {contents()}
     </g>;
     function contents() {
@@ -611,12 +637,14 @@ const GridCreature = M.connectRedux(
         return [
           <image key="image" ref={el => { if (el !== null) { element = el; } }}
             xlinkHref={creature.creature.icon_url} {...props} />,
-          <rect key="rect" {...bare_props} {...highlightProps} fillOpacity="0" />
+          <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps}
+            fillOpacity="0" />
         ];
       } else {
         const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
         return [
           <rect key="rect" ref={el => { if (el !== null) { element = el; } }} {...props}
+            {...reflection_props}
             {...highlightProps} />,
           text_tile(creature.creature.name.slice(0, 4), creature.pos, "text")
         ];
