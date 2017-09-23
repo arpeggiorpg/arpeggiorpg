@@ -294,7 +294,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond => {
-      console.log(vol_cond);
       return svgVolume(vol_cond.volume, vol_cond.point,
         {
           fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5",
