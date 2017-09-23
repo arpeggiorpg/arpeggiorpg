@@ -1,2 +1,2 @@
 [workspace]
-members = ["pandt", "ptrpi", "ptbuild", "nonempty"]
+members = ["pandt", "ptrpi", "nonempty"]
