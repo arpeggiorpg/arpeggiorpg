@@ -1,8 +1,0 @@
-[package]
-name = "ptbuild"
-version = "0.1.0"
-authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
-
-[dependencies]
-handlebars = "0.25"
-clap = "2.20"

@@ -4,7 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.13/semantic.min.css"></link>
   <script type="text/javascript">
-    var rpi = "{{rpi-url}}";
+    var rpi = "<%= htmlWebpackPlugin.options.rpi_url %>";
   </script>
   <script type="text/javascript" src="vendor.js"></script>
   <script type="text/javascript" src="bundle.js"></script>
@@ -64,7 +64,7 @@
 <body>
   <div id="react-main"></div>
   <script type="text/javascript">
-    PT_renderMain(rpi, '{{react-component}}', 'react-main');
+    PT_renderMain(rpi, '<%= htmlWebpackPlugin.options.pt_app %>', 'react-main');
   </script>
 </body>
 
