@@ -377,31 +377,32 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </RectPositioned >;
   }
 
-  renderMenu({ cid, rect }: { cid: T.CreatureID; rect: M.Rect }): JSX.Element | null {
+  renderMenu({ cids, rect }: { cids: Array<T.CreatureID>; rect: M.Rect }): JSX.Element | null {
     const { creatures, dispatch } = this.props;
-    const creature_ = M.get(creatures, cid);
-    if (!creature_) {
-      return null;
-    }
-    const creature = creature_; // WHY TYPESCRIPT, WHY???
+    const close = () => dispatch({ type: 'ActivateGridCreatures', cids: [], rect });
     return <RectPositioned rect={rect}
-      onClose={() => dispatch({ type: "ActivateGridCreature", cid, rect })}>
+      onClose={close}>
       <Menu vertical={true}>
-        <Menu.Item header={true}>
-          {CV.classIcon(creature.creature)} {creature.creature.name}
-        </Menu.Item>
-        {
-          creature.actions.entrySeq().toArray().map(
-            ([actionName, action]) => {
-              function onClick() {
-                dispatch({ type: "ActivateGridCreature", cid, rect });
-                action(cid);
-              }
-              return <Menu.Item key={actionName} onClick={() => onClick()}>
-                {actionName}
-              </Menu.Item>;
-            })
+        {cids.map(cid => {
+          const creature = M.get(creatures, cid);
+          if (creature) {
+            return [
+              <Menu.Item header={true}>
+                {CV.classIcon(creature.creature)} {creature.creature.name}
+              </Menu.Item>,
+            ].concat(creature.actions.entrySeq().toArray().map(
+              ([actionName, action]) => {
+                function onClick() {
+                  close();
+                  action(cid);
+                }
+                return <Menu.Item key={actionName} onClick={() => onClick()}>
+                  {actionName}
+                </Menu.Item>;
+              }));
+          }
         }
+        )}
       </Menu>
     </RectPositioned>;
   }
@@ -575,7 +576,6 @@ const GridCreature = M.connectRedux(
       //   - Render a menu with all the actions.
       // - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
       //   spurious-click problem when panning, and spurious panning when clicking.
-      console.log("Activating a grid creature at", event.pageX, event.pageY);
       const creatures = [];
       const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
       let el: HTMLElement | null;
@@ -604,7 +604,7 @@ const GridCreature = M.connectRedux(
         el.style.pointerEvents = oldPE;
       }
       const act: M.Action = {
-        type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
+        type: "ActivateGridCreatures", cids: creatures, rect: screenCoordsForRect(element),
       };
       dispatch(act);
     }

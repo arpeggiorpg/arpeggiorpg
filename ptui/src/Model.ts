@@ -28,7 +28,7 @@ export type Action =
   | { type: "SetObjectVisibility"; visibility: T.Visibility }
 
 
-  | { type: "ActivateGridCreature"; cid: T.CreatureID; rect: Rect }
+  | { type: "ActivateGridCreatures"; cids: Array<T.CreatureID>; rect: Rect }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
     teleport?: boolean;
@@ -49,11 +49,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
     case "RefreshGame":
       return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
-    case "ActivateGridCreature":
-      const new_active =
-        (ptui.state.grid.active_menu && ptui.state.grid.active_menu.cid === action.cid)
-          ? undefined
-          : { cid: action.cid, rect: action.rect };
+    case "ActivateGridCreatures":
+      const new_active = (action.cids.length === 0)
+        ? undefined
+        : { cids: action.cids, rect: action.rect };
       return ptui.updateState(
         state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
     case "SetPlayerID":
@@ -170,7 +169,7 @@ export function update(ptui: PTUI, action: Action): PTUI {
 export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; }
 
 export interface GridModel {
-  active_menu?: { cid: T.CreatureID; rect: Rect };
+  active_menu?: { cids: Array<T.CreatureID>; rect: Rect };
   movement_options?: {
     cid?: T.CreatureID; // undefined when we're moving in combat
     options: Array<T.Point3>;
