@@ -564,7 +564,7 @@ const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
-    function onClick(_event: React.MouseEvent<never>) {
+    function onClick(event: React.MouseEvent<never>) {
       // use _event.pageX and pageY to get coordinates
       //   - Identify what kind of thing is being clicked based on its DOM node, and accumulate
       //     appropriate actions for that thing into a list of actions (data-pt-element).
@@ -574,6 +574,7 @@ const GridCreature = M.connectRedux(
       //   - Render a menu with all the actions.
       // - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
       //   spurious-click problem when panning, and spurious panning when clicking.
+      console.log("Activating a grid creature at", event.pageX, event.pageY);
       const act: M.Action = {
         type: "ActivateGridCreature", cid: creature.creature.id, rect: screenCoordsForRect(element),
       };
@@ -598,7 +599,8 @@ const GridCreature = M.connectRedux(
     }
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    return <g data-pt-element={`cid:${creature.creature.id}`} key={creature.creature.id}
+    return <g data-pt-type="creature" data-pt-id={creature.creature.id}
+      key={creature.creature.id}
       opacity={opacity} onClick={e => onClick(e)}>
       {contents()}
     </g>;
@@ -607,23 +609,25 @@ const GridCreature = M.connectRedux(
         const props = tile_props("white", creature.pos, creature.creature.size);
         const bare_props = bare_tile_props(creature.pos, creature.creature.size);
         return [
-          <image ref={el => { if (el !== null) { element = el; } }}
+          <image key="image" ref={el => { if (el !== null) { element = el; } }}
             xlinkHref={creature.creature.icon_url} {...props} />,
-          <rect {...bare_props} {...highlightProps} fillOpacity="0" />
+          <rect key="rect" {...bare_props} {...highlightProps} fillOpacity="0" />
         ];
       } else {
         const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
         return [
-          <rect ref={el => { if (el !== null) { element = el; } }} {...props} {...highlightProps} />,
-          text_tile(creature.creature.name.slice(0, 4), creature.pos)
+          <rect key="rect" ref={el => { if (el !== null) { element = el; } }} {...props}
+            {...highlightProps} />,
+          text_tile(creature.creature.name.slice(0, 4), creature.pos, "text")
         ];
       }
     }
   });
 
 
-function text_tile(text: string, pos: T.Point3): JSX.Element {
-  return <text style={{ pointerEvents: "none" }} fontSize="50" x={pos.x * 100} y={pos.y * 100}>
+function text_tile(text: string, pos: T.Point3, key?: string): JSX.Element {
+  return <text key={key} style={{ pointerEvents: "none" }} fontSize="50"
+    x={pos.x * 100} y={pos.y * 100}>
     {text}
   </text>;
 }
