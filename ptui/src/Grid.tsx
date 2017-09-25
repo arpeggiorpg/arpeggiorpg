@@ -597,7 +597,9 @@ const GridCreature = M.connectRedux(
     let element: SVGRectElement | SVGImageElement;
     function onClick(event: React.MouseEvent<never>) {
       const creatures = findElementsAtPoint(event.pageX, event.pageY,
-        el => el.getAttribute('data-pt-type') && el.getAttribute('data-pt-id') || undefined,
+        el => el.getAttribute('data-pt-type') === 'creature'
+          && (el.getAttribute('data-pt-id') || undefined)
+          || undefined,
         'svg');
       const act: M.Action = {
         type: "ActivateGridCreatures", cids: creatures, rect: screenCoordsForRect(element),
