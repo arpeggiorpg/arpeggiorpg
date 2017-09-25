@@ -293,15 +293,13 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   drawVolumeConditions(): Array<JSX.Element> | undefined {
-    return this.props.scene.volume_conditions.toArray().map(vol_cond => {
-      return svgVolume(vol_cond.volume, vol_cond.point,
+    return this.props.scene.volume_conditions.toArray().map(vol_cond =>
+      svgVolume(vol_cond.volume, vol_cond.point,
         {
           fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5",
           style: { pointerEvents: "auto" },
           onClick: () => console.log("Clicked a volume condition"),
-        });
-    }
-    );
+        }));
   }
 
   drawTargetedVolume(): JSX.Element | undefined {
@@ -560,48 +558,47 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
   </g>;
 }
 
+/**
+ * Find all elements under a specific coordinate.
+ */
+function findElementsAtPoint<R>(
+  x: number, y: number, filterNode: (el: HTMLElement) => (R | undefined), stopAt: string = 'html'
+): Array<R> {
+  const results: Array<R> = [];
+  const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
+  let el: HTMLElement | null;
+  while (true) {
+    if (dirtied.length > 100) {
+      console.log("[GridCreature] giving up on determining creatures under click");
+      return results;
+    }
+    el = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (!el) { break; }
+    if (el.tagName === stopAt) { break; }
+    const result = filterNode(el);
+    if (result) {
+      results.push(result);
+    }
+    if (el.style.pointerEvents !== 'none') {
+      dirtied.push({ el, oldPE: el.style.pointerEvents });
+      el.style.pointerEvents = 'none';
+    }
+  }
+  for (const { el, oldPE } of dirtied) {
+    el.style.pointerEvents = oldPE;
+  }
+  return results;
+}
+
 
 const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
     function onClick(event: React.MouseEvent<never>) {
-      // use _event.pageX and pageY to get coordinates
-      //   - Identify what kind of thing is being clicked based on its DOM node, and accumulate
-      //     appropriate actions for that thing into a list of actions (data-pt-element).
-      //   - set pointer-events: none on this element, and use document.elementFromPoint to find
-      //     anything else that's under the mouse pointer.
-      //   - repeat with the next element, until no more clickable elements are found.
-      //   - Render a menu with all the actions.
-      // - Handle swipe/long-press events in a similarly unified fashion so we can finally fix the
-      //   spurious-click problem when panning, and spurious panning when clicking.
-      const creatures = [];
-      const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
-      let el: HTMLElement | null;
-      while (true) {
-        if (dirtied.length > 100) {
-          console.log("[GridCreature] giving up on determining creatures under click");
-          return;
-        }
-        el = document.elementFromPoint(event.pageX, event.pageY) as HTMLElement | null;
-        if (!el) { break; }
-        if (el.tagName === 'svg') { break; }
-        const pt_type = el.getAttribute('data-pt-type');
-        if (pt_type) {
-          const cid = el.getAttribute('data-pt-id');
-          if (cid) {
-            creatures.push(cid);
-          }
-        }
-        if (el.style.pointerEvents !== 'none') {
-          dirtied.push({ el, oldPE: el.style.pointerEvents });
-          el.style.pointerEvents = 'none';
-        }
-
-      }
-      for (const { el, oldPE } of dirtied) {
-        el.style.pointerEvents = oldPE;
-      }
+      const creatures = findElementsAtPoint(event.pageX, event.pageY,
+        el => el.getAttribute('data-pt-type') && el.getAttribute('data-pt-id') || undefined,
+        'svg');
       const act: M.Action = {
         type: "ActivateGridCreatures", cids: creatures, rect: screenCoordsForRect(element),
       };
