@@ -73,6 +73,9 @@ export function update(ptui: PTUI, action: Action): PTUI {
             annotations: scene ? scene.annotations : I.Map(),
           };
           break;
+        case "Volumes":
+          layer = { t: "Volumes" };
+          break;
         case undefined:
       }
       return ptui.updateState(state =>
@@ -196,11 +199,13 @@ export interface PTUIState {
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
   | { t: "Objects"; highlights: T.Highlights; annotations: T.Annotations }
+  | { t: "Volumes" }
   ;
 
 export type SceneLayerType =
   | "Terrain"
   | "Objects"
+  | "Volumes"
   ;
 
 export interface GridFocus { scene_id: T.SceneID; layer?: SceneLayer; }

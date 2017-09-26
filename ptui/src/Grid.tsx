@@ -120,6 +120,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableAnnotations(layer.annotations)
       : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
 
+    const volumes = layer && layer.t === "Volumes"
+      ? this.getEditableVolumes()
+      : this.getVolumeConditions();
+
     const annotations_style = layer
       && ((layer.t === "Terrain")
         || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Annotation"))
@@ -130,6 +134,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Highlight"))
       ? disable_style
       : {};
+    const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -155,7 +160,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }}>
         {background_image}
         <g id="terrain">{terrain_els}</g>
-        <g id="volume-conditions" style={disable_style}>{this.drawVolumeConditions()}</g>
+        <g id="volume-conditions" style={volumes_style}>{volumes}</g>
         <g id="creatures" style={disable_style}>{this.getCreatures()}</g>
         <g id="highlights" style={highlights_style}>{highlights}</g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
@@ -292,11 +297,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <g id="empty-annotations">{empty_tiles}</g>];
   }
 
-  drawVolumeConditions(): Array<JSX.Element> | undefined {
+  getEditableVolumes(): Array<JSX.Element> | undefined {
+    return this.getVolumeConditions(0.5);
+  }
+  getVolumeConditions(fillOpacity: number = 0.1): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.toArray().map(vol_cond =>
       svgVolume(vol_cond.volume, vol_cond.point,
         {
-          fill: "green", fillOpacity: "0.1", strokeOpacity: "0.5",
+          fill: "green", fillOpacity: `${fillOpacity}`, strokeOpacity: "0.5",
           style: { pointerEvents: "auto" },
           onClick: () => console.log("Clicked a volume condition"),
         }));

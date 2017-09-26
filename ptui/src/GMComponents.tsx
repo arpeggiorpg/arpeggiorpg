@@ -45,7 +45,7 @@ export const GMScene = M.connectRedux(
         "Terrain"),
       menuItem('Objects', () => <SceneObjects scene={scene} ptui={ptui} dispatch={dispatch} />,
         "Objects"),
-      menuItem('Volumes', () => <GMSceneVolumes scene={scene} />), // unimplemented!
+      menuItem('Volumes', () => <GMSceneVolumes scene={scene} />, "Volumes"),
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         undefined, scene.creatures.count().toString()),
       menuItem("Players", () => <GMScenePlayers scene={scene} />, undefined, player_count),
