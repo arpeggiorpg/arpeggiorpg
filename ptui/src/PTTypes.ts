@@ -150,6 +150,7 @@ export type GameCommand =
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
+  | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
@@ -266,6 +267,7 @@ export type GameLog =
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
   | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
+  | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
@@ -860,6 +862,12 @@ export const decodeGameLog: Decoder<GameLog> =
       ["scene_id", JD.string()], ["creatures", JD.map(I.List, JD.array(JD.string()))],
       (scene_id, creatures): GameLog => ({ t: "SetFocusedSceneCreatures", scene_id, creatures })
     ),
+    RemoveSceneVolumeCondition: JD.object(
+      ["scene_id", JD.string()],
+      ["condition_id", JD.string()],
+      (scene_id, condition_id): GameLog =>
+        ({ t: "RemoveSceneVolumeCondition", scene_id, condition_id })
+    ),
     EditSceneTerrain: JD.object(
       ["scene_id", JD.string()],
       ["terrain", decodeTerrain],
@@ -1116,6 +1124,10 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "SetFocusedSceneCreatures":
       return {
         SetFocusedSceneCreatures: { scene_id: cmd.scene_id, creatures: cmd.creatures.toArray() },
+      };
+    case "RemoveSceneVolumeCondition":
+      return {
+        RemoveSceneVolumeCondition: { scene_id: cmd.scene_id, condition_id: cmd.condition_id },
       };
     case "EditSceneTerrain":
       return {

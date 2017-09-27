@@ -94,6 +94,8 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
       return <div>Removed challenge from a scene: {log.description}</div>;
     case "SetFocusedSceneCreatures":
       return <div>Changed focused creatures in a scene</div>;
+    case "RemoveSceneVolumeCondition":
+      return <div>Removed a volume condition from a scene</div>;
     case "EditSceneTerrain":
       return <div>Edited a scene's terrain</div>;
     case "EditSceneHighlights":
