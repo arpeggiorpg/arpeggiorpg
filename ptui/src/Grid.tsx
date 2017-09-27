@@ -397,7 +397,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   renderMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }): JSX.Element | null {
     const { objects, coords } = arg;
-    const { creatures, dispatch } = this.props;
+    const { scene, creatures, dispatch } = this.props;
     const close = () => dispatch({ type: 'ClearActiveGridObjects' });
     return <RectPositioned coords={coords}
       onClose={close}>
@@ -424,12 +424,16 @@ export const SceneGrid = M.connectRedux(class SceneGrid
               }
               return;
             case "VolumeCondition":
+              const onClick = () => {
+                dispatch(M.sendCommand(
+                  { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id: obj.id }));
+                close();
+              };
               return [
                 // unimplemented!: put a name here
                 <Menu.Item key="Header" header={true}>Condition</Menu.Item>,
-                <Menu.Item key="Remove VC">Remove</Menu.Item>];
+                <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>];
           }
-
         }
         )}
       </Menu>
