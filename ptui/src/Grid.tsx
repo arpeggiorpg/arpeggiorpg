@@ -424,7 +424,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
               }
               return;
             case "VolumeCondition":
-              return <Menu.Item>A VOLUME CONDITION!</Menu.Item>;
+              return [
+                // unimplemented!: put a name here
+                <Menu.Item key="Header" header={true}>Condition</Menu.Item>,
+                <Menu.Item key="Remove VC">Remove</Menu.Item>];
           }
 
         }
