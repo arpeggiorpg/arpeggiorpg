@@ -40,7 +40,7 @@ export class Point3 implements I.ValueObject {
 // Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
 //     const target = T.MkDecidedTarget.Creature({creature_id});
 // as equivalent to
-//     const target: T.DecidedTarget = {t: "DecidedTarget", creature_id};
+//     const target = {t: "DecidedTarget", creature_id};
 
 
 export interface App {

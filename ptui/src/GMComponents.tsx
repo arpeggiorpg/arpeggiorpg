@@ -292,7 +292,9 @@ export const GMScenePlayers = M.connectRedux(
 export const GMSceneVolumes = M.connectRedux(
   function GMSceneVolumes(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     const { scene } = props;
-    return <div>{scene.volume_conditions.valueSeq().map((_: any) => <div>one</div>).toArray()}</div>;
+    return <div>{scene.volume_conditions.valueSeq().map((_: any) =>
+      <div>Interact with volumes on the grid.</div>
+    ).toArray()}</div>;
   });
 
 

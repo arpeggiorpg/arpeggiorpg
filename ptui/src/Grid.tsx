@@ -83,7 +83,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const grid = ptui.state.grid;
 
-    const creature_menu = grid.active_menu ? this.renderMenu(grid.active_menu) : null;
+    const creature_menu = grid.active_objects.objects.length !== 0
+      ? this.renderMenu(grid.active_objects) : null;
     const annotation = grid.display_annotation
       ? this.renderAnnotation(scene, grid.display_annotation)
       : null;
@@ -298,16 +299,28 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   getEditableVolumes(): Array<JSX.Element> | undefined {
-    return this.getVolumeConditions(0.5);
+    const { dispatch } = this.props;
+    return this.getVolumeConditions(0.5, (vcid, _, me) => {
+      const coords: [number, number] = [me.pageX, me.pageY];
+      dispatch({
+        type: "ActivateGridObjects", objects: [{ t: "VolumeCondition", id: vcid }],
+        coords,
+      });
+    }
+    );
   }
-  getVolumeConditions(fillOpacity: number = 0.1): Array<JSX.Element> | undefined {
-    return this.props.scene.volume_conditions.toArray().map(vol_cond =>
+  getVolumeConditions(
+    fillOpacity: number = 0.1,
+    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<never>) => void
+      = () => undefined
+  ): Array<JSX.Element> | undefined {
+    return this.props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
       svgVolume(vol_cond.volume, vol_cond.point,
         {
           fill: "green", fillOpacity: `${fillOpacity}`, strokeOpacity: "0.5",
           style: { pointerEvents: "auto" },
-          onClick: () => console.log("Clicked a volume condition"),
-        }));
+          onClick: me => onClick(id, vol_cond, me),
+        })).toArray();
   }
 
   drawTargetedVolume(): JSX.Element | undefined {
@@ -376,36 +389,44 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const { dispatch } = this.props;
     const ann = scene.annotations.get(pt);
     if (!ann) { return null; }
-    return <RectPositioned rect={rect}
+    return <RectPositioned coords={[rect.sw.x, rect.sw.y]}
       onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
       <Segment>{ann[0]}</Segment>
-    </RectPositioned >;
+    </RectPositioned>;
   }
 
-  renderMenu({ cids, rect }: { cids: Array<T.CreatureID>; rect: M.Rect }): JSX.Element | null {
+  renderMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }): JSX.Element | null {
+    const { objects, coords } = arg;
     const { creatures, dispatch } = this.props;
-    const close = () => dispatch({ type: 'ActivateGridCreatures', cids: [], rect });
-    return <RectPositioned rect={rect}
+    const close = () => dispatch({ type: 'ClearActiveGridObjects' });
+    return <RectPositioned coords={coords}
       onClose={close}>
       <Menu vertical={true}>
-        {cids.map(cid => {
-          const creature = M.get(creatures, cid);
-          if (creature) {
-            return [
-              <Menu.Item header={true}>
-                {CV.classIcon(creature.creature)} {creature.creature.name}
-              </Menu.Item>,
-            ].concat(creature.actions.entrySeq().toArray().map(
-              ([actionName, action]) => {
-                function onClick() {
-                  close();
-                  action(cid);
-                }
-                return <Menu.Item key={actionName} onClick={() => onClick()}>
-                  {actionName}
-                </Menu.Item>;
-              }));
+        {objects.map(obj => {
+          switch (obj.t) {
+            case "Creature":
+              const creature = M.get(creatures, obj.id);
+              if (creature) {
+                return [
+                  <Menu.Item header={true}>
+                    {CV.classIcon(creature.creature)} {creature.creature.name}
+                  </Menu.Item>,
+                ].concat(creature.actions.entrySeq().toArray().map(
+                  ([actionName, action]) => {
+                    function onClick() {
+                      close();
+                      action(obj.id);
+                    }
+                    return <Menu.Item key={actionName} onClick={() => onClick()}>
+                      {actionName}
+                    </Menu.Item>;
+                  }));
+              }
+              return;
+            case "VolumeCondition":
+              return <Menu.Item>A VOLUME CONDITION!</Menu.Item>;
           }
+
         }
         )}
       </Menu>
@@ -422,7 +443,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           let element: SVGRectElement;
           const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
           function clickTile() {
-            screenCoordsForRect(element);
             onClick(pt, screenCoordsForRect(element));
           }
           return <rect key={pointKey("target", pt)}
@@ -494,12 +514,16 @@ function svgVolume(
 }
 
 
-interface RectPositionedProps { rect: M.Rect; onClose: () => void; children: React.ReactChild; }
+interface RectPositionedProps {
+  coords: [number, number];
+  onClose: () => void;
+  children: React.ReactChild;
+}
 function RectPositioned(props: RectPositionedProps): JSX.Element {
-  const { rect, onClose, children } = props;
+  const { coords, onClose, children } = props;
   return <CV.ClickAway onClick={onClose}>
     <div
-      style={{ position: "fixed", top: rect.sw.y, left: rect.sw.x }}>
+      style={{ position: "fixed", left: coords[0], top: coords[1] }}>
       {children}
     </div>
   </CV.ClickAway>;
@@ -577,7 +601,7 @@ function findElementsAtPoint<R>(
   let el: HTMLElement | null;
   while (true) {
     if (dirtied.length > 100) {
-      console.log("[GridCreature] giving up on determining creatures under click");
+      console.log("[findElementsAtPoint] giving up on determining creatures under click");
       return results;
     }
     el = document.elementFromPoint(x, y) as HTMLElement | null;
@@ -609,8 +633,11 @@ const GridCreature = M.connectRedux(
           && (el.getAttribute('data-pt-id') || undefined)
           || undefined,
         'svg');
+      const rect = screenCoordsForRect(element);
       const act: M.Action = {
-        type: "ActivateGridCreatures", cids: creatures, rect: screenCoordsForRect(element),
+        type: "ActivateGridObjects",
+        objects: creatures.map((id): M.GridObject => ({ t: "Creature", id })),
+        coords: [rect.sw.x, rect.sw.y],
       };
       dispatch(act);
     }

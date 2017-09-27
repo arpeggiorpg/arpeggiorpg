@@ -27,8 +27,8 @@ export type Action =
   | { type: "SetAnnotation"; text: "" }
   | { type: "SetObjectVisibility"; visibility: T.Visibility }
 
-
-  | { type: "ActivateGridCreatures"; cids: Array<T.CreatureID>; rect: Rect }
+  | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
+  | { type: "ClearActiveGridObjects" }
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
     teleport?: boolean;
@@ -49,12 +49,14 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
     case "RefreshGame":
       return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
-    case "ActivateGridCreatures":
-      const new_active = (action.cids.length === 0)
-        ? undefined
-        : { cids: action.cids, rect: action.rect };
-      return ptui.updateState(
-        state => ({ ...state, grid: { ...ptui.state.grid, active_menu: new_active } }));
+    case "ActivateGridObjects":
+      return ptui.updateGridState(grid => ({
+        ...grid,
+        active_objects: { objects: action.objects, coords: action.coords },
+      }));
+    case "ClearActiveGridObjects":
+      return ptui.updateGridState(
+        grid => ({ ...grid, active_objects: { ...grid.active_objects, objects: [] } }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
@@ -172,7 +174,10 @@ export function update(ptui: PTUI, action: Action): PTUI {
 export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; }
 
 export interface GridModel {
-  active_menu?: { cids: Array<T.CreatureID>; rect: Rect };
+  active_objects: {
+    objects: Array<GridObject>;
+    coords: [number, number];
+  };
   movement_options?: {
     cid?: T.CreatureID; // undefined when we're moving in combat
     options: Array<T.Point3>;
@@ -185,6 +190,11 @@ export interface GridModel {
   annotation_text: string;
   object_visibility: T.Visibility;
 }
+
+export type GridObject =
+  | { t: "VolumeCondition"; id: T.ConditionID }
+  | { t: "Creature"; id: T.CreatureID }
+  ;
 
 export type ObjectTool = "Highlight" | "Annotation";
 
@@ -263,6 +273,7 @@ const default_state = {
     highlight_color: "#FF0000",
     annotation_text: "",
     object_visibility: { t: "AllPlayers" } as T.Visibility,
+    active_objects: { objects: [], coords: [0, 0] as [number, number] },
   },
 };
 
