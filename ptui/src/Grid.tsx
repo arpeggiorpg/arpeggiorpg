@@ -254,8 +254,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       });
 
     return [
-      <g id="existing-highlights">{highlighted_tiles}</g>,
-      <g id="empty-highlights">{empty_tiles}</g>];
+      <g key="existing-highlights" id="existing-highlights">{highlighted_tiles}</g>,
+      <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>];
   }
 
   getAnnotations(
@@ -672,7 +672,7 @@ const GridCreature = M.connectRedux(
     return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
       onMouseUp={() => clearTimeout(timer)}
       onMouseDown={() => {
-        timer = window.setTimeout(() => console.log("LONG PRESS!", creature.creature.name), 1000);
+        timer = window.setTimeout(() => console.log("LONG PRESS!", creature.creature.name), 500);
       }}>
       {contents()}
     </g>;
