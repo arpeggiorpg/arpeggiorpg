@@ -10,8 +10,8 @@ use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 
-use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3,
-            Terrain, TileSystem, VectorCM, Volume, VolumeCondition};
+use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
+            TileSystem, VectorCM, Volume, VolumeCondition};
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
@@ -127,7 +127,9 @@ impl TileSystem {
     results
   }
 
-  pub fn open_points_in_range(&self, start: Point3, terrain: &Terrain, range: Distance) -> Vec<Point3> {
+  pub fn open_points_in_range(
+    &self, start: Point3, terrain: &Terrain, range: Distance
+  ) -> Vec<Point3> {
     let meters = (range.0 / 100) as i16;
     let mut open = vec![];
     for x in start.x - meters..start.x + meters + 1 {
@@ -206,8 +208,9 @@ impl TileSystem {
       }
       Volume::AABB(aabb) => (pt.x..(pt.x + i16::from(aabb.x)))
         .flat_map(|x| {
-          (pt.y..(pt.y + i16::from(aabb.y)))
-            .flat_map(move |y| (pt.z..(pt.z + i16::from(aabb.z))).map(move |z| Point3::new(x, y, z)))
+          (pt.y..(pt.y + i16::from(aabb.y))).flat_map(
+            move |y| (pt.z..(pt.z + i16::from(aabb.z))).map(move |z| Point3::new(x, y, z)),
+          )
         })
         .collect(),
       Volume::Line { .. } => unimplemented!("points_in_volume for Line"),
@@ -460,21 +463,21 @@ pub mod test {
 
   /// A map shaped like a dumbbell, with two 2x3 rooms connected by a 1x1 passage
   fn dumbbell_map() -> Terrain {
-      vec![
-        Point3::new(0, 0, 0),
-        Point3::new(1, 0, 0),
-        Point3::new(3, 0, 0),
-        Point3::new(4, 0, 0),
-        Point3::new(0, 1, 0),
-        Point3::new(1, 1, 0),
-        Point3::new(2, 1, 0),
-        Point3::new(3, 1, 0),
-        Point3::new(4, 1, 0),
-        Point3::new(0, 2, 0),
-        Point3::new(1, 2, 0),
-        Point3::new(3, 2, 0),
-        Point3::new(4, 2, 0),
-      ]
+    vec![
+      Point3::new(0, 0, 0),
+      Point3::new(1, 0, 0),
+      Point3::new(3, 0, 0),
+      Point3::new(4, 0, 0),
+      Point3::new(0, 1, 0),
+      Point3::new(1, 1, 0),
+      Point3::new(2, 1, 0),
+      Point3::new(3, 1, 0),
+      Point3::new(4, 1, 0),
+      Point3::new(0, 2, 0),
+      Point3::new(1, 2, 0),
+      Point3::new(3, 2, 0),
+      Point3::new(4, 2, 0),
+    ]
   }
 
   /// A map containing a large 40-meter square of open terrain.
@@ -570,7 +573,11 @@ pub mod test {
       u32::max_value(),
       vec![success],
     );
-    let ex_path = vec![Point3::new(0, 0, 0), Point3::new(1, 1, 0), Point3::new(2, 2, 0)];
+    let ex_path = vec![
+      Point3::new(0, 0, 0),
+      Point3::new(1, 1, 0),
+      Point3::new(2, 2, 0),
+    ];
     assert_eq!(paths_and_costs, [(ex_path, 282)]);
   }
 
@@ -645,7 +652,12 @@ pub mod test {
     let terrain = box_map();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     assert_eq!(
-      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, Distance(1000)),
+      TileSystem::Realistic.get_all_accessible(
+        Point3::new(0, 0, 0),
+        &terrain,
+        size,
+        Distance(1000)
+      ),
       vec![]
     );
   }
@@ -658,7 +670,12 @@ pub mod test {
     let mut pts =
       TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, Distance(100));
     pts.sort();
-    let mut expected = vec![Point3::new(-1, 0, 0), Point3::new(1, 0, 0), Point3::new(0, -1, 0), Point3::new(0, 1, 0)];
+    let mut expected = vec![
+      Point3::new(-1, 0, 0),
+      Point3::new(1, 0, 0),
+      Point3::new(0, -1, 0),
+      Point3::new(0, 1, 0),
+    ];
     expected.sort();
     assert_eq!(pts, expected)
   }
@@ -689,7 +706,12 @@ pub mod test {
   fn test_accessible_average_speed() {
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let pts = TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, Distance(1000));
+    let pts = TileSystem::Realistic.get_all_accessible(
+      Point3::new(0, 0, 0),
+      &terrain,
+      size,
+      Distance(1000),
+    );
     // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
     // 8 degrees of movement, which leaves certain positions within a circle impossible to
     // reach even if you can technically move the radius of the circle in one turn.
@@ -734,7 +756,15 @@ pub mod test {
     let vol = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
     let vol_pt = Point3::new(1, 1, 0);
     let results = ts.points_in_volume(vol, vol_pt);
-    assert_eq!(results, vec![Point3::new(1, 1, 0), Point3::new(1, 2, 0), Point3::new(2, 1, 0), Point3::new(2, 2, 0)]);
+    assert_eq!(
+      results,
+      vec![
+        Point3::new(1, 1, 0),
+        Point3::new(1, 2, 0),
+        Point3::new(2, 1, 0),
+        Point3::new(2, 2, 0),
+      ]
+    );
   }
 
   #[test]
@@ -760,7 +790,8 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let dumbbell = dumbbell_map();
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
-    let path = ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
+    let path =
+      ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
     assert_eq!(path, None);
   }
 
@@ -770,10 +801,20 @@ pub mod test {
     let mut dumbbell = dumbbell_map();
     dumbbell.push(Point3::new(2, 2, 0));
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
-    let path = ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
+    let path =
+      ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
     assert_eq!(
       path,
-      Some((vec![Point3::new(0, 0, 0), Point3::new(1, 1, 0), Point3::new(2, 1, 0), Point3::new(3, 1, 0), Point3::new(3, 0, 0)], Distance(441)))
+      Some((
+        vec![
+          Point3::new(0, 0, 0),
+          Point3::new(1, 1, 0),
+          Point3::new(2, 1, 0),
+          Point3::new(3, 1, 0),
+          Point3::new(3, 0, 0),
+        ],
+        Distance(441)
+      ))
     );
   }
 }

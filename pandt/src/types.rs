@@ -28,7 +28,7 @@ pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Point3{
+pub struct Point3 {
   pub x: i16,
   pub y: i16,
   pub z: i16,
@@ -36,7 +36,7 @@ pub struct Point3{
 
 impl Point3 {
   pub fn new(x: i16, y: i16, z: i16) -> Point3 {
-    Point3 { x, y, z}
+    Point3 { x, y, z }
   }
 }
 
@@ -50,7 +50,7 @@ impl ::std::str::FromStr for Point3 {
   type Err = GameError;
   fn from_str(path: &str) -> Result<Point3, GameError> {
     let segments: Vec<&str> = path.split('/').collect();
-    if segments.len() != 3{
+    if segments.len() != 3 {
       bail!("Bad Point3 syntax")
     }
     match (segments[0].parse::<i16>(), segments[1].parse::<i16>(), segments[2].parse::<i16>()) {
@@ -418,8 +418,8 @@ pub enum GameCommand {
   // },
   RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
   EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
-  EditSceneHighlights {scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)>},
-  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)>},
+  EditSceneHighlights { scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)> },
+  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)> },
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -566,8 +566,8 @@ pub enum GameLog {
   RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
 
   EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
-  EditSceneHighlights {scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)>},
-  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)>},
+  EditSceneHighlights { scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)> },
+  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)> },
 
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
@@ -785,7 +785,7 @@ pub struct Ability {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget },
+  SceneVolume { effect: SceneEffect, target: SceneTarget }, 
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -826,7 +826,7 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition },
+  CreateVolumeCondition { duration: Duration, condition: Condition }, 
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -1075,7 +1075,7 @@ pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum CollisionData {
   Creature(CreatureID),
-  ConditionVolume(ConditionID),
+  ConditionVolume(ConditionID), 
   // BlockedTerrain ????
 }
 

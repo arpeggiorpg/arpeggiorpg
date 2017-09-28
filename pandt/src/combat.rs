@@ -85,22 +85,12 @@ impl<'game> DynamicCombat<'game> {
   }
 
   pub fn change(&self) -> ChangedCombat<'game> {
-    ChangedCombat {
-      scene: self.scene,
-      combat: self.combat.clone(),
-      logs: vec![],
-      game: self.game,
-    }
+    ChangedCombat { scene: self.scene, combat: self.combat.clone(), logs: vec![], game: self.game }
   }
 
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
-    Ok(ChangedCombat {
-      scene: self.scene,
-      combat: combat,
-      game: self.game,
-      logs: vec![log],
-    })
+    Ok(ChangedCombat { scene: self.scene, combat: combat, game: self.game, logs: vec![log] })
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
@@ -248,7 +238,9 @@ pub mod test {
   fn target_melee_out_of_range() {
     let game = t_combat();
     let game = game
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)))
+      .perform_command(
+        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)),
+      )
       .unwrap()
       .game;
     match t_act(&game, abid("punch"), DecidedTarget::Creature(cid_ranger())) {
@@ -263,7 +255,9 @@ pub mod test {
     let game = t_combat();
     let game = game.perform_command(GameCommand::Done).unwrap().game;
     let game = game
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(5, 0, 0)))
+      .perform_command(
+        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(5, 0, 0)),
+      )
       .unwrap()
       .game;
     let _: DynamicCombat = t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_ranger()))
@@ -338,12 +332,22 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let game =
-      game.perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0))).unwrap().game;
-    assert_eq!(game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(), Point3::new(5, 0, 0));
-    let game =
-      game.perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0))).unwrap().game;
-    assert_eq!(game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(), Point3::new(10, 0, 0));
+    let game = game
+      .perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)))
+      .unwrap()
+      .game;
+    assert_eq!(
+      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
+      Point3::new(5, 0, 0)
+    );
+    let game = game
+      .perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)))
+      .unwrap()
+      .game;
+    assert_eq!(
+      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
+      Point3::new(10, 0, 0)
+    );
     match game.perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
       Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -354,11 +358,26 @@ pub mod test {
   #[test]
   fn move_honors_path() {
     let mut game = t_combat();
-    let terrain = vec![Point3::new(0, 0, 0), Point3::new(0, 1, 0), Point3::new(1, 1, 0), Point3::new(2, 1, 0), Point3::new(2, 0, 0)];
-    game.scenes.mutate(&t_scene_id(), move |mut s| {s.terrain = terrain; s});
+    let terrain = vec![
+      Point3::new(0, 0, 0),
+      Point3::new(0, 1, 0),
+      Point3::new(1, 1, 0),
+      Point3::new(2, 1, 0),
+      Point3::new(2, 0, 0),
+    ];
+    game.scenes.mutate(&t_scene_id(), move |mut s| {
+      s.terrain = terrain;
+      s
+    });
 
-    let next_game =
-      game.get_combat().unwrap().get_movement().unwrap().move_current(Point3::new(2, 0, 0)).unwrap().game;
+    let next_game = game
+      .get_combat()
+      .unwrap()
+      .get_movement()
+      .unwrap()
+      .move_current(Point3::new(2, 0, 0))
+      .unwrap()
+      .game;
     assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));
   }
 }
