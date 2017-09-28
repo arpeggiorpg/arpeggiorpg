@@ -315,7 +315,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       = () => undefined
   ): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
-      svgVolume(vol_cond.volume, vol_cond.point,
+      svgVolume(id, vol_cond.volume, vol_cond.point,
         {
           fill: "green", fillOpacity: `${fillOpacity}`, strokeOpacity: "0.5",
           style: { pointerEvents: "auto" },
@@ -338,7 +338,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "Creature":
         switch (action.target.t) {
           case "AllCreaturesInVolumeInRange":
-            return svgVolume(action.target.volume, target);
+            return svgVolume("target-volume", action.target.volume, target);
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
@@ -351,7 +351,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "SceneVolume":
         switch (action.target.t) {
           case "RangedVolume":
-            return svgVolume(action.target.volume, target);
+            return svgVolume("target-volume", action.target.volume, target);
         }
     }
   }
@@ -508,15 +508,16 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 });
 
 function svgVolume(
-  volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>): JSX.Element {
+  key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>
+): JSX.Element {
   switch (volume.t) {
     case "Sphere":
-      return <circle cx={pt.x * 100 + 50} cy={pt.y * 100} r={volume.radius}
+      return <circle key={key} cx={pt.x * 100 + 50} cy={pt.y * 100} r={volume.radius}
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
     default:
       console.log("unimplemented! svgvolume for", volume);
-      return <g />;
+      return <g key={key} />;
   }
 }
 
