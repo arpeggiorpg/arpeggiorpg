@@ -66,12 +66,16 @@ export function test(): boolean {
   const exScene: T.Scene = {
     id: "Scene ID",
     name: "Scene Name",
-    map: "Map ID",
+    terrain: I.Set(),
+    highlights: I.Map(),
+    annotations: I.Map(),
     creatures: I.Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
-      "Creature ID" as T.CreatureID, [[0, 0, 0], { t: "GMOnly" }]),
+      "Creature ID" as T.CreatureID, [new T.Point3(0, 0, 0), { t: "GMOnly" }]),
     attribute_checks: I.Map({ "Do a backflip": exAttrCheck }),
     inventory: I.Map(),
     background_image_url: "",
+    background_image_offset: undefined,
+    background_image_scale: [0, 0],
     volume_conditions: I.Map(),
     focused_creatures: I.List(),
   };
@@ -120,7 +124,8 @@ describe("PTTypes", () => {
       "class": "creature",
       max_health: 10,
       cur_health: 10,
-      conditions: {},
+      own_conditions: {},
+      volume_conditions: {},
       note: "AC15",
       portrait_url: "",
       icon_url: "",
