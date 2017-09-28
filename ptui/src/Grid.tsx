@@ -408,7 +408,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
               const creature = M.get(creatures, obj.id);
               if (creature) {
                 return [
-                  <Menu.Item header={true}>
+                  <Menu.Item key={creature.creature.id} header={true}>
                     {CV.classIcon(creature.creature)} {creature.creature.name}
                   </Menu.Item>,
                 ].concat(creature.actions.entrySeq().toArray().map(
@@ -633,6 +633,7 @@ function findElementsAtPoint<R>(
 const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
+    let timer: number;
     let element: SVGRectElement | SVGImageElement;
     function onClick(event: React.MouseEvent<never>) {
       const creatures = findElementsAtPoint(event.pageX, event.pageY,
@@ -668,7 +669,11 @@ const GridCreature = M.connectRedux(
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
     const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
-    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}>
+    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
+      onMouseUp={() => clearTimeout(timer)}
+      onMouseDown={() => {
+        timer = window.setTimeout(() => console.log("LONG PRESS!", creature.creature.name), 1000);
+      }}>
       {contents()}
     </g>;
     function contents() {

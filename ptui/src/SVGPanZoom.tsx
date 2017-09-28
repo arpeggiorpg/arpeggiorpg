@@ -17,9 +17,13 @@ interface SVGPanZoomState {
 export class SVGPanZoom
   extends React.Component<SVGPanZoomProps & React.SVGProps<SVGSVGElement>, SVGPanZoomState> {
 
+  panStart: "idle" | "allowed" | "waiting";
+  panStartTimer: number | undefined;
+
   constructor(props: SVGPanZoomProps & React.SVGProps<SVGSVGElement>) {
     super(props);
     this.state = { spz_element: undefined, isMouseDown: false };
+    this.panStart = "idle";
   }
 
   panzoomEvents() {
@@ -65,7 +69,11 @@ export class SVGPanZoom
         options.svgElement.addEventListener('touchmove', e => e.preventDefault());
 
         // See [Note: Panning/Clicking State Management]
-        options.svgElement.addEventListener('mousedown', () => self.setState({ isMouseDown: true }));
+        options.svgElement.addEventListener('mousedown', () => {
+          self.panStart = "waiting";
+          self.panStartTimer = setTimeout(() => self.panStart = "allowed", 100);
+          self.setState({ isMouseDown: true });
+        });
 
         options.svgElement.addEventListener('mousemove', () => {
           if (self.state.isMouseDown) {
@@ -75,7 +83,12 @@ export class SVGPanZoom
         options.svgElement.addEventListener('touchend', () => {
           if (self.props.onPanZoom) { self.props.onPanZoom(false); }
         });
-        options.svgElement.addEventListener('mouseup', () => self.setState({ isMouseDown: false }));
+        options.svgElement.addEventListener('mouseup', () => {
+          self.panStart = "idle";
+          if (self.panStartTimer !== undefined) { clearTimeout(self.panStartTimer); }
+          self.setState({ isMouseDown: false });
+        }
+        );
         options.svgElement.addEventListener('click', () => {
           if (self.props.onPanZoom) { self.props.onPanZoom(false); }
           self.setState({ isMouseDown: false });
@@ -91,9 +104,22 @@ export class SVGPanZoom
       dblClickZoomEnabled: false,
       customEventsHandler: this.panzoomEvents(),
       zoomScaleSensitivity: 0.3,
+      beforePan: this.beforePan.bind(this),
     });
     this.setState({ spz_element: pz });
     this.refreshPanZoom(pz);
+  }
+
+  beforePan(_oldPan: SvgPanZoom.Point, _newPan: SvgPanZoom.Point) {
+    switch (this.panStart) {
+      case "idle":
+        // must be an API call, allow it
+        return true;
+      case "allowed":
+        return true;
+      case "waiting":
+        return false;
+    }
   }
 
   componentWillUnmount() {
