@@ -6,8 +6,8 @@ current_game:
       id: "00000000-0000-0000-0000-000000000006"
       name: "Gold Coin"
   abilities:
-    thorn_patch:
-      name: Thorn Patch
+    caltrops:
+      name: Caltrops
       action:
         SceneVolume:
           target:
@@ -89,8 +89,7 @@ current_game:
           target: Actor
           effect:
             ApplyCondition: 
-              - 
-                Rounds: 0
+              - Rounds: 0
               - DoubleMaxMovement
       usable_ooc: true
     stab: 
@@ -126,7 +125,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: ranger
+      class: archer
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -152,7 +151,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: cleric
+      class: healer
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -204,7 +203,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: ranger
+      class: archer
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -219,24 +218,42 @@ current_game:
         x: 2
         y: 2
         z: 1
-  classes: 
-    ranger: 
+  classes:
+    knight:
+      abilities:
+        - melee_weapon_attack
+        - lock_down
+        - reckless_sweep
+        - shield_bash
+        - charge
+      conditions: []
+      color: red
+    mage:
+      abilities:
+        - magic_missile
+        - curse
+        - fairy_fire
+      conditions: []
+      color: purple
+    archer: 
       abilities: 
         - shoot
-        - dash
+        - twin_shot
         - piercing_shot
-        - thorn_patch
+        - aim
+        - caltrops
       conditions: 
         - 
           RecurringEffect: 
             GenerateEnergy: 10
       color: darkgreen
-    cleric: 
+    healer: 
       abilities: 
+        - smite
         - heal
-        - bonk
-        - dash
-        - fireball
+        - drain
+        - create_potion
+        - combat_surgery
       conditions: 
         - 
           RecurringEffect: 
@@ -245,12 +262,15 @@ current_game:
     rogue: 
       abilities: 
         - stab
-        - dash
+        - cheap_shot
+        - throw_sand
+        - parting_blow
+        - poisoned_blade
       conditions: 
         - 
           RecurringEffect: 
             GenerateEnergy: 10
-      color: purple
+      color: gray
   tile_system: Realistic
   scenes: 
     "00000000-0000-0000-0000-000000000003": 
