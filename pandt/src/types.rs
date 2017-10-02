@@ -1217,6 +1217,7 @@ pub struct Folder {
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
   #[serde(default)] pub items: HashSet<ItemID>,
+  #[serde(default)] pub abilities: HashSet<AbilityID>,
 }
 
 impl Folder {
