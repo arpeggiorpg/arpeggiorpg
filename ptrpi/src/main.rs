@@ -1,7 +1,6 @@
 #![feature(slice_patterns)]
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
-
 // Disable `needless_pass_by_value` because it is triggered by all the uses of Rocket's `State`.
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
@@ -248,8 +247,7 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
       PTResponse::Success
     }
     PTRequest::Perform(command) => {
-      let game_and_logs =
-        runtime.app.perform_command(command).map_err(|e| format!("Error: {}", e));
+      let game_and_logs = runtime.app.perform_command(command).map_err(|e| format!("Error: {}", e));
       if let Ok((g, _)) = game_and_logs {
         runtime.world = g.get_world().expect("Couldn't calculate world");
       }

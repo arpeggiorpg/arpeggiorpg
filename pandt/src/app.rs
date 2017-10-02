@@ -141,8 +141,8 @@ mod test {
     App::new(t_game())
   }
 
-  pub fn t_app_act(app: &mut App, ab: &str, dtarget: DecidedTarget) -> Result<(), GameError> {
-    app.perform_command(GameCommand::CombatAct(abid(ab), dtarget))?;
+  pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {
+    app.perform_command(GameCommand::CombatAct(ab, dtarget))?;
     Ok(())
   }
 
@@ -155,10 +155,10 @@ mod test {
       )
       .unwrap();
     let iter = |app: &mut App| -> Result<(), GameError> {
-      t_app_act(app, "punch", DecidedTarget::Creature(cid_ranger()))?;
+      t_app_act(app, abid_punch(), DecidedTarget::Creature(cid_ranger()))?;
       app.perform_command(GameCommand::Done)?;
       app.perform_command(GameCommand::Done)?;
-      t_app_act(app, "heal", DecidedTarget::Creature(cid_ranger()))?;
+      t_app_act(app, abid_heal(), DecidedTarget::Creature(cid_ranger()))?;
       app.perform_command(GameCommand::Done)?;
       Ok(())
     };

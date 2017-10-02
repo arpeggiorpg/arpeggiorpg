@@ -5,7 +5,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
 use std::collections::{HashMap, HashSet, VecDeque};
-use string_wrapper::StringWrapper;
 
 use rand;
 use rand::distributions as dist;
@@ -256,12 +255,10 @@ impl ::std::str::FromStr for SceneID {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct AbilityID(StringWrapper<[u8; 64]>);
+pub struct AbilityID(Uuid);
 impl AbilityID {
-  pub fn new(s: &str) -> Result<Self, GameError> {
-    let sw =
-      StringWrapper::from_str_safe(s).ok_or_else(|| GameErrorEnum::IDTooLong(s[..64].to_string()))?;
-    Ok(AbilityID(sw))
+  pub fn gen() -> AbilityID {
+    AbilityID(Uuid::new_v4())
   }
   pub fn to_string(&self) -> String {
     self.0.to_string()
@@ -271,13 +268,8 @@ impl AbilityID {
 impl ::std::str::FromStr for AbilityID {
   type Err = GameError;
   fn from_str(s: &str) -> Result<AbilityID, GameError> {
-    AbilityID::new(s)
+    Ok(AbilityID(Uuid::parse_str(s)?))
   }
-}
-
-#[cfg(test)]
-pub fn abid(s: &str) -> AbilityID {
-  AbilityID::new(s).unwrap()
 }
 
 /// Distance in centimeters.
@@ -776,16 +768,24 @@ pub enum PotentialTargets {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Ability {
+  pub id: AbilityID,
   pub name: String,
   pub cost: Energy,
   pub action: Action,
   pub usable_ooc: bool,
 }
 
+impl DeriveKey for Ability {
+  type KeyType = AbilityID;
+  fn derive_key(&self) -> AbilityID {
+    self.id.clone()
+  }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget }, 
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -826,7 +826,7 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition }, 
+  CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -992,7 +992,7 @@ impl DeriveKey for Creature {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
   pub current_combat: Option<Combat>,
-  pub abilities: HashMap<AbilityID, Ability>,
+  pub abilities: IndexedHashMap<Ability>,
   pub creatures: IndexedHashMap<Creature>,
   pub classes: HashMap<String, Class>,
   pub tile_system: TileSystem,
@@ -1075,7 +1075,7 @@ pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum CollisionData {
   Creature(CreatureID),
-  ConditionVolume(ConditionID), 
+  ConditionVolume(ConditionID),
   // BlockedTerrain ????
 }
 
@@ -1227,6 +1227,7 @@ impl Folder {
 
 #[cfg(test)]
 pub mod test {
+  use std::iter::FromIterator;
   use types::*;
   use grid::test::*;
 
@@ -1246,6 +1247,9 @@ pub mod test {
   }
   pub fn uuid_4() -> Uuid {
     "00000000-0000-0000-0000-000000000004".parse().unwrap()
+  }
+  pub fn uuid_5() -> Uuid {
+    "00000000-0000-0000-0000-000000000005".parse().unwrap()
   }
   pub fn cid_cleric() -> CreatureID {
     CreatureID(uuid_0())
@@ -1319,8 +1323,28 @@ pub mod test {
     AppliedCondition { condition: c, remaining: r }
   }
 
+  pub fn abid_punch() -> AbilityID {
+    AbilityID(uuid_0())
+  }
+  pub fn abid_shoot() -> AbilityID {
+    AbilityID(uuid_1())
+  }
+  pub fn abid_heal() -> AbilityID {
+    AbilityID(uuid_2())
+  }
+  pub fn abid_fireball() -> AbilityID {
+    AbilityID(uuid_3())
+  }
+  pub fn abid_piercing_shot() -> AbilityID {
+    AbilityID(uuid_4())
+  }
+  pub fn abid_thorn_patch() -> AbilityID {
+    AbilityID(uuid_5())
+  }
+
   pub fn t_punch() -> Ability {
     Ability {
+      id: abid_punch(),
       name: "Punch".to_string(),
       cost: Energy(0),
       usable_ooc: true,
@@ -1333,6 +1357,7 @@ pub mod test {
 
   pub fn t_shoot() -> Ability {
     Ability {
+      id: abid_shoot(),
       name: "Shoot".to_string(),
       cost: Energy(0),
       usable_ooc: true,
@@ -1345,6 +1370,7 @@ pub mod test {
 
   pub fn t_heal() -> Ability {
     Ability {
+      id: abid_heal(),
       name: "Heal".to_string(),
       cost: Energy(0),
       usable_ooc: true,
@@ -1357,6 +1383,7 @@ pub mod test {
 
   pub fn t_fireball() -> Ability {
     Ability {
+      id: abid_fireball(),
       name: "Fireball".to_string(),
       cost: Energy(8),
       usable_ooc: true,
@@ -1372,6 +1399,7 @@ pub mod test {
 
   pub fn t_piercing_shot() -> Ability {
     Ability {
+      id: abid_piercing_shot(),
       name: "Piercing Shot".to_string(),
       cost: Energy(8),
       usable_ooc: true,
@@ -1384,6 +1412,7 @@ pub mod test {
 
   pub fn t_thorn_patch() -> Ability {
     Ability {
+      id: abid_thorn_patch(),
       name: "Thorn Patch".to_string(),
       cost: Energy(8),
       usable_ooc: true,
@@ -1400,26 +1429,24 @@ pub mod test {
     }
   }
 
-  pub fn t_abilities() -> HashMap<AbilityID, Ability> {
-    let punch = t_punch();
-    let shoot = t_shoot();
-    let heal = t_heal();
-    let fireball = t_fireball();
-    let piercing_shot = t_piercing_shot();
-    hashmap!{
-      abid("punch") => punch,
-      abid("shoot") => shoot,
-      abid("heal") => heal,
-      abid("fireball") => fireball,
-      abid("piercing_shot") => piercing_shot,
-      abid("thorn_patch") => t_thorn_patch(),
-    }
+  pub fn t_abilities() -> IndexedHashMap<Ability> {
+    IndexedHashMap::from_iter(vec![
+      t_punch(),
+      t_shoot(),
+      t_heal(),
+      t_fireball(),
+      t_piercing_shot(),
+      t_thorn_patch(),
+    ])
   }
 
   #[test]
   fn serde_ids() {
-    let id = abid("foobar");
-    assert_eq!(serde_yaml::to_string(&id).unwrap(), "---\nfoobar");
+    let id = abid_heal();
+    assert_eq!(
+      serde_yaml::to_string(&id).unwrap(),
+      "---\n\"00000000-0000-0000-0000-000000000002\""
+    );
   }
 
   #[test]

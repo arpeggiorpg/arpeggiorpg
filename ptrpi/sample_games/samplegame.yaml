@@ -6,8 +6,9 @@ current_game:
       id: "00000000-0000-0000-0000-000000000006"
       name: "Gold Coin"
   abilities:
-    caltrops:
+    00000000-0000-0000-0000-000000000000:
       name: Caltrops
+      id: 00000000-0000-0000-0000-000000000000
       action:
         SceneVolume:
           target:
@@ -26,8 +27,9 @@ current_game:
                       size: 3
       cost: 8
       usable_ooc: false
-    piercing_shot:
+    00000000-0000-0000-0000-000000000001:
       name: Piercing Shot
+      id: 00000000-0000-0000-0000-000000000001
       action:
         Creature:
           target:
@@ -40,8 +42,9 @@ current_game:
                 size: 3
       cost: 8
       usable_ooc: false 
-    shoot: 
+    00000000-0000-0000-0000-000000000002: 
       name: Shoot
+      id: 00000000-0000-0000-0000-000000000002
       action:
         Creature:
           target: 
@@ -53,8 +56,9 @@ current_game:
                 size: 2
       cost: 8
       usable_ooc: false
-    fireball: 
+    00000000-0000-0000-0000-000000000003: 
       name: Fireball
+      id: 00000000-0000-0000-0000-000000000003
       action:
         Creature:
           target: 
@@ -69,31 +73,9 @@ current_game:
                 size: 5
       cost: 10
       usable_ooc: false
-    bonk: 
-      name: Bonk
-      cost: 8
-      action:
-        Creature:
-          target: Melee
-          effect: 
-            ApplyCondition: 
-              - 
-                Rounds: 1
-              - Incapacitated
-      usable_ooc: false
-    dash: 
-      name: Dash
-      cost: 8
-      action:
-        Creature:
-          target: Actor
-          effect:
-            ApplyCondition: 
-              - Rounds: 0
-              - DoubleMaxMovement
-      usable_ooc: true
-    stab: 
+    00000000-0000-0000-0000-000000000006: 
       name: Stab
+      id: 00000000-0000-0000-0000-000000000006
       cost: 8
       action:
         Creature:
@@ -104,8 +86,9 @@ current_game:
                 num: 3
                 size: 1
       usable_ooc: false
-    heal: 
+    00000000-0000-0000-0000-000000000007: 
       name: Heal
+      id: 00000000-0000-0000-0000-000000000007
       cost: 8
       action:
         Creature:
@@ -220,28 +203,19 @@ current_game:
         z: 1
   classes:
     knight:
-      abilities:
-        - melee_weapon_attack
-        - lock_down
-        - reckless_sweep
-        - shield_bash
-        - charge
+      abilities: []
       conditions: []
       color: red
     mage:
       abilities:
-        - magic_missile
-        - curse
-        - fairy_fire
+        - 00000000-0000-0000-0000-000000000003
       conditions: []
       color: purple
     archer: 
       abilities: 
-        - shoot
-        - twin_shot
-        - piercing_shot
-        - aim
-        - caltrops
+        - 00000000-0000-0000-0000-000000000002
+        - 00000000-0000-0000-0000-000000000001
+        - 00000000-0000-0000-0000-000000000000
       conditions: 
         - 
           RecurringEffect: 
@@ -249,11 +223,7 @@ current_game:
       color: darkgreen
     healer: 
       abilities: 
-        - smite
-        - heal
-        - drain
-        - create_potion
-        - combat_surgery
+        - 00000000-0000-0000-0000-000000000007
       conditions: 
         - 
           RecurringEffect: 
@@ -261,11 +231,7 @@ current_game:
       color: lightgreen
     rogue: 
       abilities: 
-        - stab
-        - cheap_shot
-        - throw_sand
-        - parting_blow
-        - poisoned_blade
+        - 00000000-0000-0000-0000-000000000006
       conditions: 
         - 
           RecurringEffect: 

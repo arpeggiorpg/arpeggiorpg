@@ -243,7 +243,7 @@ pub mod test {
       )
       .unwrap()
       .game;
-    match t_act(&game, abid("punch"), DecidedTarget::Creature(cid_ranger())) {
+    match t_act(&game, abid_punch(), DecidedTarget::Creature(cid_ranger())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -260,7 +260,7 @@ pub mod test {
       )
       .unwrap()
       .game;
-    let _: DynamicCombat = t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_ranger()))
+    let _: DynamicCombat = t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_ranger()))
       .unwrap()
       .game
       .get_combat()
@@ -270,7 +270,9 @@ pub mod test {
   #[test]
   fn multiple_effects_per_target() {
     let mut game = t_combat();
+    let abid_multi: AbilityID = "00000000-0000-0000-0000-000000000009".parse().unwrap();
     let ab = Ability {
+      id: abid_multi,
       name: "MultiEffect".to_string(),
       cost: Energy(0),
       usable_ooc: true,
@@ -283,9 +285,9 @@ pub mod test {
         ]),
       },
     };
-    game.abilities.insert(abid("multi"), ab);
-    game.classes.get_mut("rogue").unwrap().abilities.push(abid("multi"));
-    let change = t_act(&game, abid("multi"), DecidedTarget::Creature(cid_ranger())).unwrap();
+    game.abilities.insert(ab);
+    game.classes.get_mut("rogue").unwrap().abilities.push(abid_multi);
+    let change = t_act(&game, abid_multi, DecidedTarget::Creature(cid_ranger())).unwrap();
     let next = change.game;
     assert_eq!(
       next.get_creature(cid_ranger()).unwrap().all_conditions(),
@@ -304,7 +306,7 @@ pub mod test {
       .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(6, 0, 0)))
       .unwrap()
       .game;
-    match t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_rogue())) {
+    match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -314,7 +316,7 @@ pub mod test {
       .unwrap()
       .game;
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
-    match t_act(&game, abid("shoot"), DecidedTarget::Creature(cid_rogue())) {
+    match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }

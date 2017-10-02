@@ -9,7 +9,7 @@ use foldertree::{FolderPath, FolderTree};
 use grid::line_through_point;
 
 impl Game {
-  pub fn new(classes: HashMap<String, Class>, abilities: HashMap<AbilityID, Ability>) -> Self {
+  pub fn new(classes: HashMap<String, Class>, abilities: IndexedHashMap<Ability>) -> Self {
     Game {
       campaign: FolderTree::new(Folder::new()),
       abilities: abilities,
@@ -1175,9 +1175,9 @@ pub mod test {
   }
 
   pub fn t_classes() -> HashMap<String, Class> {
-    let rogue_abs = vec![abid("punch")];
-    let ranger_abs = vec![abid("shoot"), abid("piercing_shot")];
-    let cleric_abs = vec![abid("heal"), abid("fireball")];
+    let rogue_abs = vec![abid_punch()];
+    let ranger_abs = vec![abid_shoot(), abid_piercing_shot()];
+    let cleric_abs = vec![abid_heal(), abid_fireball()];
     HashMap::from_iter(vec![
       (
         "rogue".to_string(),
@@ -1223,10 +1223,8 @@ pub mod test {
   fn stop_combat() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    let game = t_perform(
-      &game,
-      GameCommand::CombatAct(abid("punch"), DecidedTarget::Creature(cid_ranger())),
-    );
+    let game =
+      t_perform(&game, GameCommand::CombatAct(abid_punch(), DecidedTarget::Creature(cid_ranger())));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
     let game = t_perform(&game, GameCommand::StopCombat);
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
@@ -1262,10 +1260,10 @@ pub mod test {
       GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
     );
     let iter = |game: &Game| -> Result<Game, GameError> {
-      let game = t_game_act(game, abid("punch"), DecidedTarget::Creature(cid_ranger()));
+      let game = t_game_act(game, abid_punch(), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_command(GameCommand::Done)?.game;
       let game = game.perform_command(GameCommand::Done)?.game;
-      let game = t_game_act(&game, abid("heal"), DecidedTarget::Creature(cid_ranger()));
+      let game = t_game_act(&game, abid_heal(), DecidedTarget::Creature(cid_ranger()));
       let game = game.perform_command(GameCommand::Done)?.game;
       Ok(game)
     };
@@ -1285,7 +1283,7 @@ pub mod test {
       GameCommand::ActCreature(
         t_scene_id(),
         cid_cleric(),
-        abid("fireball"),
+        abid_fireball(),
         DecidedTarget::Point(Point3::new(0, 0, 0)),
       ),
     );
@@ -1369,7 +1367,7 @@ pub mod test {
     let game = t_game();
     let scene = game.get_scene(t_scene_id()).unwrap();
     let cleric = cid_cleric();
-    let ability_id = abid("thorn_patch");
+    let ability_id = abid_thorn_patch();
     let preview =
       game.preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0)).unwrap();
     let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
