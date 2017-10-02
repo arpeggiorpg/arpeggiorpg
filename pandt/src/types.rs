@@ -1275,21 +1275,15 @@ pub mod test {
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    let mut c = t_creature(name, "rogue", 20);
-    c.id = cid_rogue();
-    c
+    Creature { id: cid_rogue(), ..t_creature(name, "rogue", 20) }
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    let mut c = t_creature(name, "ranger", 10);
-    c.id = cid_ranger();
-    c
+    Creature { id: cid_ranger(), ..t_creature(name, "ranger", 10) }
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    let mut c = t_creature(name, "cleric", 0);
-    c.id = cid_rogue();
-    c
+    Creature { id: cid_rogue(), ..t_creature(name, "cleric", 0) }
   }
 
 
