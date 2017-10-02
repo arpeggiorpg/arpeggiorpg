@@ -606,6 +606,10 @@ error_chain! {
       description("A Creature does not have the supplied Attribute")
       display("The Creature with ID {} does not have the attribute {}", cid.to_string(), attrid.0)
     }
+    AbilityAlreadyExists(abid: AbilityID) {
+      description("An Ability with the given ID already exists")
+      display("The ability with ID {} already exists", abid.to_string())
+    }
     CreatureAlreadyExists(cid: CreatureID) {
       description("A Creature with the given ID already exists")
       display("The creature with ID {} already exists", cid.to_string())

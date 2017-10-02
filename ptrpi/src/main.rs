@@ -222,7 +222,9 @@ fn load_app_from_path(filename: &Path) -> App {
   let mut appf = File::open(filename).unwrap();
   let mut apps = String::new();
   appf.read_to_string(&mut apps).unwrap();
-  serde_yaml::from_str(&apps).unwrap()
+  let app: App = serde_yaml::from_str(&apps).unwrap();
+  app.current_game.validate_campaign().expect("Campaign is invalid");
+  app
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

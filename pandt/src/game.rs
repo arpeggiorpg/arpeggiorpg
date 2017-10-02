@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::cmp;
+use std::iter::FromIterator;
 
 use indexed::IndexedHashMap;
 use types::*;
@@ -22,6 +23,67 @@ impl Game {
       players: IndexedHashMap::new(),
       active_scene: None,
     }
+  }
+
+  pub fn validate_campaign(&self) -> Result<(), GameError> {
+    let mut all_abilities = HashSet::new();
+    let mut all_creatures = HashSet::new();
+    let mut all_scenes = HashSet::new();
+    let mut all_items = HashSet::new();
+    let all_folders: Vec<FolderPath> =
+      self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+    for folder_path in all_folders {
+      let folder = self.campaign.get(&folder_path).expect("walk_paths must return valid path");
+      for sid in &folder.scenes {
+        if all_scenes.contains(sid) {
+          bail!(GameErrorEnum::SceneAlreadyExists(*sid));
+        }
+        if !self.scenes.contains_key(sid) {
+          bail!(GameErrorEnum::SceneNotFound(*sid));
+        }
+        all_scenes.insert(*sid);
+      }
+      for cid in &folder.creatures {
+        if all_creatures.contains(cid) {
+          bail!(GameErrorEnum::CreatureAlreadyExists(*cid));
+        }
+        if !self.creatures.contains_key(cid) {
+          bail!(GameErrorEnum::CreatureNotFound(cid.to_string()));
+        }
+        all_creatures.insert(*cid);
+      }
+      for iid in &folder.items {
+        if all_items.contains(iid) {
+          bail!(GameErrorEnum::ItemAlreadyExists(*iid));
+        }
+        if !self.items.contains_key(iid) {
+          bail!(GameErrorEnum::ItemNotFound(*iid));
+        }
+        all_items.insert(*iid);
+      }
+      for abid in &folder.abilities {
+        if all_abilities.contains(abid) {
+          bail!(GameErrorEnum::AbilityAlreadyExists(*abid));
+        }
+        if !self.abilities.contains_key(abid) {
+          bail!(GameErrorEnum::NoAbility(*abid));
+        }
+        all_abilities.insert(*abid);
+      }
+    }
+    if all_scenes != HashSet::from_iter(self.scenes.keys().cloned()) {
+      bail!("Not all scenes were in the campaign!");
+    }
+    if all_creatures != HashSet::from_iter(self.creatures.keys().cloned()) {
+      bail!("Not all creatures were in the campaign!");
+    }
+    if all_items != HashSet::from_iter(self.items.keys().cloned()) {
+      bail!("Not all items were in the campaign!");
+    }
+    if all_abilities != HashSet::from_iter(self.abilities.keys().cloned()) {
+      bail!("Not all abilities were in the campaign!");
+    }
+    Ok(())
   }
 
   pub fn get_world(&self) -> Result<Option<CollisionWorld>, GameError> {
