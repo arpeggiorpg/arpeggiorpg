@@ -18,7 +18,6 @@ extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate string_wrapper;
 extern crate uuid;
 
 #[cfg(test)]

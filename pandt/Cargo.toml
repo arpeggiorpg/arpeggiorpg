@@ -15,7 +15,6 @@ odds = "0.2.25"
 nalgebra = "0.11.2"
 ncollide = "0.11.0"
 derive_more = "0.4.0"
-string-wrapper = {version = "0.3", features = ["use_serde"]}
 num-traits = "0.1.36"
 rand = "0.3"
 uuid = {version = "0.5", features = ["v4", "serde"]}
