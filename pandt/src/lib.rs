@@ -1,5 +1,5 @@
 #![recursion_limit = "256"]
-#![feature(conservative_impl_trait)]
+#![feature(vec_remove_item, conservative_impl_trait)]
 #![cfg_attr(test, feature(test))]
 
 //! Phone and Tablet.

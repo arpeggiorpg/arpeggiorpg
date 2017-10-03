@@ -586,6 +586,15 @@ impl Game {
               let node = self.campaign.get_mut(&path)?;
               node.abilities.remove(&abid);
             }
+            for class in self.classes.values_mut() {
+              class.abilities.remove_item(&abid);
+            }
+            for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
+              self.creatures.mutate(&cid, |mut creature| {
+                creature.abilities.remove(&abid);
+                creature
+              }).expect("Must exist");
+            }
             self.abilities.remove(&abid);
           }
           FolderItemID::SubfolderID(ref name) => {
