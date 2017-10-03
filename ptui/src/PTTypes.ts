@@ -69,6 +69,7 @@ export interface Combat {
 
 export interface Ability {
   name: string;
+  id: AbilityID;
   action: Action;
   cost: Energy;
   usable_ooc: boolean;
@@ -113,6 +114,7 @@ export interface FolderNode {
   creatures: Array<CreatureID>;
   notes: { [index: string]: Note };
   items: Array<ItemID>;
+  abilities: Array<AbilityID>;
 }
 
 export type InventoryOwner =
@@ -373,7 +375,9 @@ export type FolderItemID =
   | { t: "CreatureID"; id: CreatureID }
   | { t: "NoteID"; id: string }
   | { t: "SubfolderID"; id: string }
-  | { t: "ItemID"; id: ItemID };
+  | { t: "ItemID"; id: ItemID }
+  | { t: "AbilityID"; id: AbilityID }
+  ;
 
 export interface AttributeCheck {
   reliable: boolean;
@@ -680,6 +684,7 @@ const decodeFolderItemID: Decoder<FolderItemID> =
     CreatureID: _mkFolderItem("CreatureID"),
     NoteID: _mkFolderItem("NoteID"),
     ItemID: _mkFolderItem("ItemID"),
+    AbilityID: _mkFolderItem("AbilityID"),
     SubfolderID: _mkFolderItem("SubfolderID"),
   });
 
@@ -944,7 +949,8 @@ const decodeFolderNode: Decoder<FolderNode> = JD.object(
   ["creatures", JD.array(JD.string())],
   ["items", JD.array(JD.string())],
   ["notes", JD.dict(decodeNote)],
-  (scenes, creatures, items, notes) => ({ scenes, creatures, items, notes })
+  ["abilities", JD.array(JD.string())],
+  (scenes, creatures, items, notes, abilities) => ({ scenes, creatures, items, notes, abilities })
 );
 
 const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);
@@ -995,10 +1001,11 @@ export const decodeAction: Decoder<Action> = sum<Action>("Action", {},
 
 const decodeAbility: Decoder<Ability> = JD.object(
   ["name", JD.string()],
+  ["id", JD.string()],
   ["action", decodeAction],
   ["cost", JD.number()],
   ["usable_ooc", JD.boolean()],
-  (name, action, cost, usable_ooc) => ({ name, action, cost, usable_ooc })
+  (name, id, action, cost, usable_ooc) => ({ name, id, action, cost, usable_ooc })
 );
 
 const decodeGame: Decoder<Game> = JD.object(
