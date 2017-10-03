@@ -144,6 +144,7 @@ impl Game {
           FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
           FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
           FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
+          FolderItemID::AbilityID(_) => FolderItemID::AbilityID(AbilityID::gen()),
           FolderItemID::NoteID(_) | FolderItemID::SubfolderID(_) => item_id.clone(),
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
@@ -306,6 +307,7 @@ impl Game {
       FolderItemID::CreatureID(cid) => node.creatures.insert(cid),
       FolderItemID::SceneID(sid) => node.scenes.insert(sid),
       FolderItemID::ItemID(iid) => node.items.insert(iid),
+      FolderItemID::AbilityID(abid) => node.abilities.insert(abid),
       FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -330,6 +332,7 @@ impl Game {
       FolderItemID::CreatureID(cid) => remove_set(path, item_id, &mut node.creatures, &cid)?,
       FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
       FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
+      FolderItemID::AbilityID(abid) => remove_set(path, item_id, &mut node.abilities, &abid)?,
       FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -486,6 +489,13 @@ impl Game {
           self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
         }
         (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::AbilityID(id), &FolderItemID::AbilityID(new_id)) => {
+          let mut new_ability = self.abilities.get(&id).ok_or_else(||GameErrorEnum::NoAbility(id))?.clone();
+          new_ability.id = new_id;
+          self.abilities.try_insert(new_ability).ok_or_else(|| GameErrorEnum::AbilityAlreadyExists(new_id))?;
+          self.link_folder_item(dest, &FolderItemID::AbilityID(new_id))?;
+        }
+        (&FolderItemID::AbilityID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
         (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
       },
@@ -565,13 +575,18 @@ impl Game {
                 bail!(GameErrorEnum::SceneInUse(sid));
               }
             }
-            let all_folders: Vec<FolderPath> =
-              self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
             for path in all_folders {
               let node = self.campaign.get_mut(&path)?;
               node.scenes.remove(&sid);
             }
             self.scenes.remove(&sid);
+          }
+          FolderItemID::AbilityID(abid) => {
+            for path in all_folders {
+              let node = self.campaign.get_mut(&path)?;
+              node.abilities.remove(&abid);
+            }
+            self.abilities.remove(&abid);
           }
           FolderItemID::SubfolderID(ref name) => {
             // basically we delete everything by simulating GameLog::DeleteFolderItem for each
@@ -592,6 +607,9 @@ impl Game {
             }
             for iid in node.items {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ItemID(iid)))?;
+            }
+            for abid in node.abilities {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::AbilityID(abid)))?;
             }
             for nname in node.notes.keys() {
               self

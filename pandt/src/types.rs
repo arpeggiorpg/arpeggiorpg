@@ -297,6 +297,7 @@ pub enum FolderItemID {
   CreatureID(CreatureID),
   NoteID(String),
   ItemID(ItemID),
+  AbilityID(AbilityID),
   SubfolderID(String),
 }
 
