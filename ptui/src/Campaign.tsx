@@ -103,13 +103,14 @@ interface SelectableProps {
   on_select_folder?: (select: boolean, path: T.FolderPath) => void;
 }
 
-type FolderContentType = "Scene" | "Creature" | "Note" | "Item" | "Folder";
+type FolderContentType = "Scene" | "Creature" | "Note" | "Item" | "Ability" | "Folder";
 
 type FolderObject =
   | { t: "Scene"; path: T.FolderPath; id: T.SceneID; name: string }
   | { t: "Creature"; path: T.FolderPath; id: T.CreatureID; name: string }
   | { t: "Note"; path: T.FolderPath; name: string }
   | { t: "Item"; path: T.FolderPath; id: T.ItemID; name: string }
+  | { t: "Ability"; path: T.FolderPath; id: T.AbilityID; name: string }
   ;
 
 interface FTProps {
@@ -241,9 +242,12 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
     const item_objects = dont_show("Item") ? [] :
       ptui.getItems(folder.data.items).map(
         (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
+    const ability_objects = dont_show("Ability") ? [] : ptui.getAbilities(folder.data.abilities).map(
+      (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name }));
+
     return {
       objects: LD.concat(
-        scene_objects, creature_objects, note_objects, item_objects),
+        scene_objects, creature_objects, note_objects, item_objects, ability_objects),
     };
   })(FolderTreeComp);
 
@@ -255,6 +259,7 @@ function object_icon(name: FolderContentType): string {
     case "Note": return "comment";
     case "Item": return "shopping bag";
     case "Folder": return "folder";
+    case "Ability": return "play circle";
   }
 }
 
@@ -264,6 +269,7 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
     case "Scene": return { t: "SceneID", id: obj.id };
     case "Creature": return { t: "CreatureID", id: obj.id };
     case "Item": return { t: "ItemID", id: obj.id };
+    case "Ability": return { t: "AbilityID", id: obj.id };
   }
 }
 
@@ -363,6 +369,7 @@ function folder_object_to_item_id(o: FolderObject): T.FolderItemID {
     case "Creature": return { t: "CreatureID", id: o.id };
     case "Item": return { t: "ItemID", id: o.id };
     case "Note": return { t: "NoteID", id: o.name };
+    case "Ability": return { t: "AbilityID", id: o.id };
   }
 }
 
