@@ -461,6 +461,11 @@ export class PTUI {
   getAbility(abid: T.AbilityID): T.Ability | undefined {
     return get(this.app.current_game.abilities, abid);
   }
+  getAbilities(abids: Array<T.AbilityID>): Array<T.Ability> {
+    return LD.sortBy(
+      filterMap(abids, abid => this.getAbility(abid)),
+      i => i.name);
+  }
 
   getScene(scene_id: T.SceneID): T.Scene | undefined {
     return this.app.current_game.scenes.get(scene_id);
