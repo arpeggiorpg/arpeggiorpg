@@ -108,7 +108,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: archer
+      class: 00000000-0000-0000-0000-000000000002
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -134,7 +134,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: healer
+      class: 00000000-0000-0000-0000-000000000003
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -160,7 +160,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: rogue
+      class: 00000000-0000-0000-0000-000000000004
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -186,7 +186,7 @@ current_game:
       max_energy: 10
       cur_energy: 10
       abilities: {}
-      class: archer
+      class: 00000000-0000-0000-0000-000000000002
       max_health: 10
       cur_health: 10
       conditions: {}
@@ -202,16 +202,22 @@ current_game:
         y: 2
         z: 1
   classes:
-    knight:
+    00000000-0000-0000-0000-000000000000:
+      id: 00000000-0000-0000-0000-000000000000
+      name: Knight
       abilities: []
       conditions: []
       color: red
-    mage:
+    00000000-0000-0000-0000-000000000001:
+      id: 00000000-0000-0000-0000-000000000001
+      name: Mage
       abilities:
         - 00000000-0000-0000-0000-000000000003
       conditions: []
       color: purple
-    archer: 
+    00000000-0000-0000-0000-000000000002:
+      id: 00000000-0000-0000-0000-000000000002
+      name: Archer
       abilities: 
         - 00000000-0000-0000-0000-000000000002
         - 00000000-0000-0000-0000-000000000001
@@ -221,7 +227,9 @@ current_game:
           RecurringEffect: 
             GenerateEnergy: 10
       color: darkgreen
-    healer: 
+    00000000-0000-0000-0000-000000000003:
+      id: 00000000-0000-0000-0000-000000000003
+      name: Healer 
       abilities: 
         - 00000000-0000-0000-0000-000000000007
       conditions: 
@@ -229,7 +237,9 @@ current_game:
           RecurringEffect: 
             GenerateEnergy: 10
       color: lightgreen
-    rogue: 
+    00000000-0000-0000-0000-000000000004:
+      id: 00000000-0000-0000-0000-000000000004
+      name: Rogue 
       abilities: 
         - 00000000-0000-0000-0000-000000000006
       conditions: 
@@ -302,6 +312,12 @@ current_game:
           creatures: []
           notes: {}
           items: []
+          classes:
+            - 00000000-0000-0000-0000-000000000000
+            - 00000000-0000-0000-0000-000000000001
+            - 00000000-0000-0000-0000-000000000002
+            - 00000000-0000-0000-0000-000000000003
+            - 00000000-0000-0000-0000-000000000004
           abilities:
             - "00000000-0000-0000-0000-000000000000"
             - "00000000-0000-0000-0000-000000000001"
