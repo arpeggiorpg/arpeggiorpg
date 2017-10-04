@@ -22,7 +22,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(
     creature: &'creature Creature, game: &'game Game
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
-    Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(&creature.class)? })
+    Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(creature.class)? })
   }
 
   pub fn id(&self) -> CreatureID {
@@ -253,10 +253,6 @@ impl Creature {
       }
     }
     Ok(new)
-  }
-
-  pub fn class(&self) -> String {
-    self.class.clone()
   }
 
   pub fn id(&self) -> CreatureID {

@@ -10,13 +10,13 @@ use foldertree::{FolderPath, FolderTree};
 use grid::line_through_point;
 
 impl Game {
-  pub fn new(classes: HashMap<String, Class>, abilities: IndexedHashMap<Ability>) -> Self {
+  pub fn new(classes: IndexedHashMap<Class>, abilities: IndexedHashMap<Ability>) -> Self {
     Game {
       campaign: FolderTree::new(Folder::new()),
       abilities: abilities,
       current_combat: None,
       creatures: IndexedHashMap::new(),
-      classes: classes,
+      classes,
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
       items: IndexedHashMap::new(),
@@ -490,9 +490,13 @@ impl Game {
         }
         (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::AbilityID(id), &FolderItemID::AbilityID(new_id)) => {
-          let mut new_ability = self.abilities.get(&id).ok_or_else(||GameErrorEnum::NoAbility(id))?.clone();
+          let mut new_ability =
+            self.abilities.get(&id).ok_or_else(|| GameErrorEnum::NoAbility(id))?.clone();
           new_ability.id = new_id;
-          self.abilities.try_insert(new_ability).ok_or_else(|| GameErrorEnum::AbilityAlreadyExists(new_id))?;
+          self
+            .abilities
+            .try_insert(new_ability)
+            .ok_or_else(|| GameErrorEnum::AbilityAlreadyExists(new_id))?;
           self.link_folder_item(dest, &FolderItemID::AbilityID(new_id))?;
         }
         (&FolderItemID::AbilityID(_), _) => panic!("Mismatched folder item ID!"),
@@ -586,14 +590,23 @@ impl Game {
               let node = self.campaign.get_mut(&path)?;
               node.abilities.remove(&abid);
             }
-            for class in self.classes.values_mut() {
-              class.abilities.remove_item(&abid);
+            for class_id in self.classes.keys().cloned().collect::<Vec<_>>() {
+              self
+                .classes
+                .mutate(&class_id, |mut class| {
+                  class.abilities.remove_item(&abid);
+                  class
+                })
+                .expect("iterating classes...");
             }
             for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
-              self.creatures.mutate(&cid, |mut creature| {
-                creature.abilities.remove(&abid);
-                creature
-              }).expect("Must exist");
+              self
+                .creatures
+                .mutate(&cid, |mut creature| {
+                  creature.abilities.remove(&abid);
+                  creature
+                })
+                .expect("Must exist");
             }
             self.abilities.remove(&abid);
           }
@@ -1165,8 +1178,8 @@ impl Game {
 
   // ** END CONSIDERATION **
 
-  pub fn get_class(&self, class: &str) -> Result<&Class, GameError> {
-    self.classes.get(class).ok_or_else(|| GameErrorEnum::ClassNotFound(class.to_string()).into())
+  pub fn get_class(&self, class: ClassID) -> Result<&Class, GameError> {
+    self.classes.get(&class).ok_or_else(|| GameErrorEnum::ClassNotFound(class).into())
   }
 
   pub fn change(&self) -> ChangedGame {
@@ -1263,23 +1276,32 @@ pub mod test {
     game
   }
 
-  pub fn t_classes() -> HashMap<String, Class> {
+  pub fn t_classes() -> IndexedHashMap<Class> {
     let rogue_abs = vec![abid_punch()];
     let ranger_abs = vec![abid_shoot(), abid_piercing_shot()];
     let cleric_abs = vec![abid_heal(), abid_fireball()];
-    HashMap::from_iter(vec![
-      (
-        "rogue".to_string(),
-        Class { abilities: rogue_abs, conditions: vec![], color: "purple".to_string() },
-      ),
-      (
-        "ranger".to_string(),
-        Class { abilities: ranger_abs, conditions: vec![], color: "darkgreen".to_string() },
-      ),
-      (
-        "cleric".to_string(),
-        Class { abilities: cleric_abs, conditions: vec![], color: "lightgreen".to_string() },
-      ),
+    IndexedHashMap::from_iter(vec![
+      Class {
+        id: classid_rogue(),
+        name: "Rogue".to_string(),
+        abilities: rogue_abs,
+        conditions: vec![],
+        color: "purple".to_string(),
+      },
+      Class {
+        id: classid_ranger(),
+        name: "Ranger".to_string(),
+        abilities: ranger_abs,
+        conditions: vec![],
+        color: "darkgreen".to_string(),
+      },
+      Class {
+        id: classid_cleric(),
+        name: "Cleric".to_string(),
+        abilities: cleric_abs,
+        conditions: vec![],
+        color: "lightgreen".to_string(),
+      },
     ])
   }
 

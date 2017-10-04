@@ -272,6 +272,24 @@ impl ::std::str::FromStr for AbilityID {
   }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct ClassID(Uuid);
+impl ClassID {
+  pub fn gen() -> ClassID {
+    ClassID(Uuid::new_v4())
+  }
+  pub fn to_string(&self) -> String {
+    self.0.to_string()
+  }
+}
+
+impl ::std::str::FromStr for ClassID {
+  type Err = GameError;
+  fn from_str(s: &str) -> Result<ClassID, GameError> {
+    Ok(ClassID(Uuid::parse_str(s)?))
+  }
+}
+
 /// Distance in centimeters.
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Distance(pub u32);
@@ -647,9 +665,9 @@ error_chain! {
       description("The supplied GameCommand is not valid in the current state.")
       display("Cannot process {:?} in this state.", cmd)
     }
-    ClassNotFound(cls: String) {
+    ClassNotFound(cls: ClassID) {
       description("A class wasn't found.")
-      display("The class {} was not found.", cls)
+      display("The class {:?} was not found.", cls)
     }
     NoAbility(abid: AbilityID) {
       description("An ability wasn't found.")
@@ -914,6 +932,8 @@ impl DeriveKey for AbilityStatus {
 /// A creature class, e.g. rogue, mage, warrior
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Class {
+  pub id: ClassID,
+  pub name: String,
   /// A list of abilities that this class can use.
   pub abilities: Vec<AbilityID>,
   /// A list of conditions which will be *permanently* applied to any creature in this class.
@@ -922,11 +942,18 @@ pub struct Class {
   pub color: Color,
 }
 
+impl DeriveKey for Class {
+  type KeyType = ClassID;
+  fn derive_key(&self) -> ClassID {
+    self.id.clone()
+  }
+}
+
 /// A specification for creating a new creature.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct CreatureCreation {
   pub name: String,
-  pub class: String,
+  pub class: ClassID,
   pub portrait_url: String,
   #[serde(default)] pub icon_url: String,
   pub note: String,
@@ -949,7 +976,7 @@ pub struct Creature {
   pub max_energy: Energy,
   pub cur_energy: Energy,
   pub abilities: IndexedHashMap<AbilityStatus>,
-  pub class: String,
+  pub class: ClassID,
   pub max_health: HP,
   pub cur_health: HP,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
@@ -999,7 +1026,7 @@ pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: IndexedHashMap<Ability>,
   pub creatures: IndexedHashMap<Creature>,
-  pub classes: HashMap<String, Class>,
+  pub classes: IndexedHashMap<Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
   #[serde(default)] pub items: IndexedHashMap<Item>,
@@ -1267,12 +1294,12 @@ pub mod test {
     CreatureID(uuid_2())
   }
 
-  pub fn t_creature(name: &str, class: &str, init: i8) -> Creature {
+  pub fn t_creature(name: &str, class: ClassID, init: i8) -> Creature {
     Creature::create(&CreatureCreation {
       name: name.to_string(),
       note: "".to_string(),
       bio: "".to_string(),
-      class: class.to_string(),
+      class,
       portrait_url: "".to_string(),
       icon_url: "".to_string(),
       initiative: Dice::flat(init),
@@ -1281,15 +1308,15 @@ pub mod test {
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    Creature { id: cid_rogue(), ..t_creature(name, "rogue", 20) }
+    Creature { id: cid_rogue(), ..t_creature(name, classid_rogue(), 20) }
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    Creature { id: cid_ranger(), ..t_creature(name, "ranger", 10) }
+    Creature { id: cid_ranger(), ..t_creature(name, classid_ranger(), 10) }
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    Creature { id: cid_rogue(), ..t_creature(name, "cleric", 0) }
+    Creature { id: cid_rogue(), ..t_creature(name, classid_cleric(), 0) }
   }
 
 
@@ -1321,6 +1348,16 @@ pub mod test {
 
   pub fn app_cond(c: Condition, r: Duration) -> AppliedCondition {
     AppliedCondition { condition: c, remaining: r }
+  }
+
+  pub fn classid_rogue() -> ClassID {
+    ClassID(uuid_0())
+  }
+  pub fn classid_cleric() -> ClassID {
+    ClassID(uuid_1())
+  }
+  pub fn classid_ranger() -> ClassID {
+    ClassID(uuid_2())
   }
 
   pub fn abid_punch() -> AbilityID {

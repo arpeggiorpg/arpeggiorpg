@@ -286,7 +286,10 @@ pub mod test {
       },
     };
     game.abilities.insert(ab);
-    game.classes.get_mut("rogue").unwrap().abilities.push(abid_multi);
+    game.classes.mutate(&classid_rogue(), |mut rogue| {
+      rogue.abilities.push(abid_multi);
+      rogue
+    });
     let change = t_act(&game, abid_multi, DecidedTarget::Creature(cid_ranger())).unwrap();
     let next = change.game;
     assert_eq!(
