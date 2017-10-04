@@ -467,6 +467,16 @@ export class PTUI {
       i => i.name);
   }
 
+  getClass(classid: T.ClassID): T.Class | undefined {
+    return this.app.current_game.classes.get(classid);
+  }
+  getClasses(classids: Array<T.ClassID>): Array<T.Class> {
+    return LD.sortBy(
+      filterMap(classids, classid => this.getClass(classid)),
+      c => c.name,
+    );
+  }
+
   getScene(scene_id: T.SceneID): T.Scene | undefined {
     return this.app.current_game.scenes.get(scene_id);
   }

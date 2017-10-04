@@ -4,6 +4,7 @@ import * as JD from "type-safe-json-decoder";
 import { Decoder } from "type-safe-json-decoder";
 
 export type AbilityID = string;
+export type ClassID = string;
 export type CreatureID = string;
 export type PlayerID = string;
 export type SceneID = string;
@@ -53,7 +54,7 @@ export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 export interface Game {
   current_combat: Combat | undefined;
   creatures: I.Map<CreatureID, Creature>;
-  classes: I.Map<string, Class>;
+  classes: I.Map<ClassID, Class>;
   items: { [index: string]: Item };
   scenes: I.Map<SceneID, Scene>;
   abilities: { [index: string]: Ability };
@@ -115,6 +116,7 @@ export interface FolderNode {
   notes: { [index: string]: Note };
   items: Array<ItemID>;
   abilities: Array<AbilityID>;
+  classes: Array<ClassID>;
 }
 
 export type InventoryOwner =
@@ -219,6 +221,8 @@ export interface CreatureCreation {
 }
 
 export interface Class {
+  id: ClassID;
+  name: string;
   // abilities, conditions
   color: string;
 }
@@ -377,6 +381,7 @@ export type FolderItemID =
   | { t: "SubfolderID"; id: string }
   | { t: "ItemID"; id: ItemID }
   | { t: "AbilityID"; id: AbilityID }
+  | { t: "ClassID"; id: ClassID }
   ;
 
 export interface AttributeCheck {
@@ -685,6 +690,7 @@ const decodeFolderItemID: Decoder<FolderItemID> =
     NoteID: _mkFolderItem("NoteID"),
     ItemID: _mkFolderItem("ItemID"),
     AbilityID: _mkFolderItem("AbilityID"),
+    ClassID: _mkFolderItem("ClassID"),
     SubfolderID: _mkFolderItem("SubfolderID"),
   });
 
@@ -925,8 +931,10 @@ const decodePlayer: Decoder<Player> = JD.object(
 );
 
 const decodeClass: Decoder<Class> = JD.object(
+  ["id", JD.string()],
+  ["name", JD.string()],
   ["color", JD.string()],
-  color => ({ color })
+  (id, name, color) => ({ id, name, color })
 );
 
 function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
@@ -950,7 +958,9 @@ const decodeFolderNode: Decoder<FolderNode> = JD.object(
   ["items", JD.array(JD.string())],
   ["notes", JD.dict(decodeNote)],
   ["abilities", JD.array(JD.string())],
-  (scenes, creatures, items, notes, abilities) => ({ scenes, creatures, items, notes, abilities })
+  ["classes", JD.array(JD.string())],
+  (scenes, creatures, items, notes, abilities, classes) =>
+    ({ scenes, creatures, items, notes, abilities, classes })
 );
 
 const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);

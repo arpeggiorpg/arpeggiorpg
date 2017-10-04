@@ -103,7 +103,7 @@ interface SelectableProps {
   on_select_folder?: (select: boolean, path: T.FolderPath) => void;
 }
 
-type FolderContentType = "Scene" | "Creature" | "Note" | "Item" | "Ability" | "Folder";
+type FolderContentType = "Scene" | "Creature" | "Note" | "Item" | "Ability" | "Class" | "Folder";
 
 type FolderObject =
   | { t: "Scene"; path: T.FolderPath; id: T.SceneID; name: string }
@@ -111,6 +111,7 @@ type FolderObject =
   | { t: "Note"; path: T.FolderPath; name: string }
   | { t: "Item"; path: T.FolderPath; id: T.ItemID; name: string }
   | { t: "Ability"; path: T.FolderPath; id: T.AbilityID; name: string }
+  | { t: "Class"; path: T.FolderPath; id: T.ClassID; name: string }
   ;
 
 interface FTProps {
@@ -244,10 +245,14 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
         (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
     const ability_objects = dont_show("Ability") ? [] : ptui.getAbilities(folder.data.abilities).map(
       (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name }));
+    const class_objects = dont_show("Class") ? [] : ptui.getClasses(folder.data.classes).map(
+      (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
 
     return {
       objects: LD.concat(
-        scene_objects, creature_objects, note_objects, item_objects, ability_objects),
+        note_objects,
+        class_objects, ability_objects,
+        scene_objects, creature_objects, item_objects),
     };
   })(FolderTreeComp);
 
@@ -260,6 +265,7 @@ function object_icon(name: FolderContentType): string {
     case "Item": return "shopping bag";
     case "Folder": return "folder";
     case "Ability": return "play circle";
+    case "Class": return "users";
   }
 }
 
@@ -270,6 +276,7 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
     case "Creature": return { t: "CreatureID", id: obj.id };
     case "Item": return { t: "ItemID", id: obj.id };
     case "Ability": return { t: "AbilityID", id: obj.id };
+    case "Class": return { t: "ClassID", id: obj.id };
   }
 }
 
@@ -329,20 +336,20 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
           button={open => <Dropdown.Item onClick={open}>Copy</Dropdown.Item>}
           header={<span>Copy {name}</span>}
           content={close => <CopyFolderItem source={object.path} onDone={close}
-            item_id={folder_object_to_item_id(object)}
+            item_id={object_to_item_id(object)}
             dispatch={dispatch} />}
         />
         <CV.ModalMaker
           button={open => <Dropdown.Item onClick={open}>Move</Dropdown.Item>}
           header={<span>Move {name}</span>}
           content={close => <MoveFolderItem source={object.path} onDone={close}
-            item_id={folder_object_to_item_id(object)} dispatch={dispatch} />}
+            item_id={object_to_item_id(object)} dispatch={dispatch} />}
         />
         <CV.ModalMaker
           button={open => <Dropdown.Item onClick={open}>Delete</Dropdown.Item>}
           header={<span>Delete {name}</span>}
           content={close => <DeleteFolderItem location={object.path} onDone={close}
-            item_id={folder_object_to_item_id(object)}
+            item_id={object_to_item_id(object)}
             dispatch={dispatch} />}
         />
 
@@ -359,17 +366,6 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
     if (selecting && selecting.on_select_object && data.checked !== undefined) {
       return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
     }
-  }
-}
-
-
-function folder_object_to_item_id(o: FolderObject): T.FolderItemID {
-  switch (o.t) {
-    case "Scene": return { t: "SceneID", id: o.id };
-    case "Creature": return { t: "CreatureID", id: o.id };
-    case "Item": return { t: "ItemID", id: o.id };
-    case "Note": return { t: "NoteID", id: o.name };
-    case "Ability": return { t: "AbilityID", id: o.id };
   }
 }
 
