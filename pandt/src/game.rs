@@ -30,6 +30,7 @@ impl Game {
     let mut all_creatures = HashSet::new();
     let mut all_scenes = HashSet::new();
     let mut all_items = HashSet::new();
+    let mut all_classes = HashSet::new();
     let all_folders: Vec<FolderPath> =
       self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
     for folder_path in all_folders {
@@ -70,6 +71,15 @@ impl Game {
         }
         all_abilities.insert(*abid);
       }
+      for classid in &folder.classes {
+        if all_classes.contains(classid) {
+          bail!(GameErrorEnum::ClassAlreadyExists(*classid));
+        }
+        if !self.classes.contains_key(classid) {
+          bail!(GameErrorEnum::ClassNotFound(*classid));
+        }
+        all_classes.insert(*classid);
+      }
     }
     if all_scenes != HashSet::from_iter(self.scenes.keys().cloned()) {
       bail!("Not all scenes were in the campaign!");
@@ -82,6 +92,9 @@ impl Game {
     }
     if all_abilities != HashSet::from_iter(self.abilities.keys().cloned()) {
       bail!("Not all abilities were in the campaign!");
+    }
+    if all_classes != HashSet::from_iter(self.classes.keys().cloned()) {
+      bail!("Not all classes were in the campaign!");
     }
     Ok(())
   }
@@ -145,6 +158,7 @@ impl Game {
           FolderItemID::SceneID(_) => FolderItemID::SceneID(SceneID::gen()),
           FolderItemID::ItemID(_) => FolderItemID::ItemID(ItemID::gen()),
           FolderItemID::AbilityID(_) => FolderItemID::AbilityID(AbilityID::gen()),
+          FolderItemID::ClassID(_) => FolderItemID::ClassID(ClassID::gen()),
           FolderItemID::NoteID(_) | FolderItemID::SubfolderID(_) => item_id.clone(),
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
@@ -308,6 +322,7 @@ impl Game {
       FolderItemID::SceneID(sid) => node.scenes.insert(sid),
       FolderItemID::ItemID(iid) => node.items.insert(iid),
       FolderItemID::AbilityID(abid) => node.abilities.insert(abid),
+      FolderItemID::ClassID(classid) => node.classes.insert(classid),
       FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -333,6 +348,7 @@ impl Game {
       FolderItemID::SceneID(sid) => remove_set(path, item_id, &mut node.scenes, &sid)?,
       FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
       FolderItemID::AbilityID(abid) => remove_set(path, item_id, &mut node.abilities, &abid)?,
+      FolderItemID::ClassID(classid) => remove_set(path, item_id, &mut node.classes, &classid)?,
       FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
       FolderItemID::NoteID(ref nid) => {
         bail!(GameErrorEnum::CannotLinkNotes(path.clone(), nid.clone()))
@@ -500,6 +516,17 @@ impl Game {
           self.link_folder_item(dest, &FolderItemID::AbilityID(new_id))?;
         }
         (&FolderItemID::AbilityID(_), _) => panic!("Mismatched folder item ID!"),
+        (&FolderItemID::ClassID(id), &FolderItemID::ClassID(new_id)) => {
+          let mut new_class =
+            self.classes.get(&id).ok_or_else(|| GameErrorEnum::ClassNotFound(id))?.clone();
+          new_class.id = new_id;
+          self
+            .classes
+            .try_insert(new_class)
+            .ok_or_else(|| GameErrorEnum::ClassAlreadyExists(new_id))?;
+          self.link_folder_item(dest, &FolderItemID::ClassID(new_id))?;
+        }
+        (&FolderItemID::ClassID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
         (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
       },
@@ -610,6 +637,18 @@ impl Game {
             }
             self.abilities.remove(&abid);
           }
+          FolderItemID::ClassID(classid) => {
+            for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
+              if self.get_creature(cid)?.creature.class == classid {
+                bail!("Class in use!");
+              }
+            }
+            for path in all_folders {
+              let node = self.campaign.get_mut(&path)?;
+              node.classes.remove(&classid);
+            }
+            self.classes.remove(&classid);
+          }
           FolderItemID::SubfolderID(ref name) => {
             // basically we delete everything by simulating GameLog::DeleteFolderItem for each
             // child. Order may matter here in case some objects can't be deleted before their
@@ -632,6 +671,9 @@ impl Game {
             }
             for abid in node.abilities {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::AbilityID(abid)))?;
+            }
+            for classid in node.classes {
+              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ClassID(classid)))?;
             }
             for nname in node.notes.keys() {
               self

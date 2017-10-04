@@ -316,6 +316,7 @@ pub enum FolderItemID {
   NoteID(String),
   ItemID(ItemID),
   AbilityID(AbilityID),
+  ClassID(ClassID),
   SubfolderID(String),
 }
 
@@ -664,6 +665,10 @@ error_chain! {
     InvalidCommand(cmd: GameCommand) {
       description("The supplied GameCommand is not valid in the current state.")
       display("Cannot process {:?} in this state.", cmd)
+    }
+    ClassAlreadyExists(class: ClassID) {
+      description("A class already exists.")
+      display("The class {:?} already exists.", class)
     }
     ClassNotFound(cls: ClassID) {
       description("A class wasn't found.")
@@ -1250,6 +1255,7 @@ pub struct Folder {
   pub notes: IndexedHashMap<Note>,
   #[serde(default)] pub items: HashSet<ItemID>,
   #[serde(default)] pub abilities: HashSet<AbilityID>,
+  #[serde(default)] pub classes: HashSet<ClassID>,
 }
 
 impl Folder {
