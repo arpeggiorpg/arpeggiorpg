@@ -163,7 +163,7 @@ impl<T> FolderTree<T> {
         if self.nodes.contains_key(&new_parent.child(basename.clone())) {
           bail!(FolderTreeErrorKind::FolderExists(new_parent.child(basename)));
         }
-        let descendants = self.walk_paths(path.clone()).cloned().collect::<Vec<FolderPath>>();
+        let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
         for subpath in descendants {
           let relative = subpath.relative_to(&old_parent)?;
           let new_path = new_parent.descendant(relative.0);
@@ -193,8 +193,19 @@ impl<T> FolderTree<T> {
   }
 
   /// Iterate paths to all folders below the given one.
-  pub fn walk_paths<'a>(&'a self, parent: FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
+  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
+    let parent: FolderPath = parent.clone();
     self.nodes.keys().filter(move |p| p.is_child_of(&parent))
+  }
+
+  /// Extract a subtree from a FolderPath
+  pub fn subtree(&self, path: &FolderPath) -> Result<FolderTree<T>, FolderTreeError>
+  where
+    T: Clone,
+  {
+    let folder = self.get(path)?;
+    let new_tree = FolderTree::new(folder.clone());
+    Ok(new_tree)
   }
 }
 

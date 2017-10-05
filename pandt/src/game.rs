@@ -10,19 +10,37 @@ use foldertree::{FolderPath, FolderTree};
 use grid::line_through_point;
 
 impl Game {
-  pub fn new(classes: IndexedHashMap<Class>, abilities: IndexedHashMap<Ability>) -> Self {
+  pub fn new() -> Self {
     Game {
       campaign: FolderTree::new(Folder::new()),
-      abilities: abilities,
+      abilities: IndexedHashMap::new(),
       current_combat: None,
       creatures: IndexedHashMap::new(),
-      classes,
+      classes: IndexedHashMap::new(),
       tile_system: TileSystem::Realistic,
       scenes: IndexedHashMap::new(),
       items: IndexedHashMap::new(),
       players: IndexedHashMap::new(),
       active_scene: None,
     }
+  }
+
+  pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
+    let mut new_game = Game::new();
+    new_game.tile_system = self.tile_system;
+
+    // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
+    new_game.campaign = self.campaign.subtree(export_path)?;
+    // Now, walk that campaign and copy over the actual data to the new game.
+    for path in
+      new_game.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect::<Vec<_>>()
+    {
+      let folder = new_game.campaign.get(&path).expect("folder we're walking must exist");
+      for classid in &folder.classes {
+        new_game.classes.insert(self.get_class(*classid)?.clone());
+      }
+    }
+    Ok(new_game)
   }
 
   pub fn validate_campaign(&self) -> Result<(), GameError> {
@@ -32,7 +50,7 @@ impl Game {
     let mut all_items = HashSet::new();
     let mut all_classes = HashSet::new();
     let all_folders: Vec<FolderPath> =
-      self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+      self.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect();
     for folder_path in all_folders {
       let folder = self.campaign.get(&folder_path).expect("walk_paths must return valid path");
       for sid in &folder.scenes {
@@ -534,7 +552,7 @@ impl Game {
         // because we're being paranoid, we're walking ALL folder paths and checking if the given
         // item ID is found in ANY of them and cleaning it up.
         let all_folders: Vec<FolderPath> =
-          self.campaign.walk_paths(FolderPath::from_vec(vec![])).cloned().collect();
+          self.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect();
         match *item_id {
           FolderItemID::NoteID(ref name) => {
             self.campaign.get_mut(path)?.notes.remove(name);
@@ -1304,7 +1322,9 @@ pub mod test {
   }
 
   pub fn t_game() -> Game {
-    let mut game = Game::new(t_classes(), t_abilities());
+    let mut game = Game::new();
+    game.abilities = t_abilities();
+    game.classes = t_classes();
     let mut rogue = t_rogue("rogue");
     rogue.id = cid_rogue();
     let mut ranger = t_ranger("ranger");
@@ -1525,5 +1545,36 @@ pub mod test {
       game.preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0)).unwrap();
     let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
     assert_eq!(HashSet::from_iter(preview.0), expected);
+  }
+
+  #[test]
+  fn test_export_module() {
+    let root_path = FolderPath::from_vec(vec![]);
+    let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
+    let note = Note { name: "My Note".to_string(), content: "My Content".to_string() };
+    let mut folder = Folder::new();
+    folder.notes.insert(note.clone());
+
+    let mut game = t_game();
+    game.campaign.make_folder(&root_path, "Rules".to_string(), folder).expect("Betta woik");
+    let new_game = game.export_module(&rules_path).expect("Couldn't export");
+    let new_note = new_game.campaign.get(&root_path).unwrap().notes.get("My Note");
+    assert_eq!(new_note.expect("My Note wasn't at root"), &note);
+  }
+
+  #[test]
+  fn test_export_module_references() {
+    let root_path = FolderPath::from_vec(vec![]);
+    let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
+    let mut folder = Folder::new();
+    folder.classes.insert(classid_ranger());
+
+    let mut game = t_game();
+    game.campaign.make_folder(&root_path, "Rules".to_string(), folder).expect("Betta woik");
+    let new_game = game.export_module(&rules_path).expect("Couldn't export");
+    assert_eq!(
+      new_game.get_class(classid_ranger()).expect("new game didn't have ranger class"),
+      game.get_class(classid_ranger()).expect("Old game didn't have ranger class")
+    );
   }
 }
