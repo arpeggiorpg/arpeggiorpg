@@ -373,7 +373,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
     if (!M.idx<JSX.Element | null>(this.props.children, selected)) {
       return <div>woops</div>;
     }
-    return <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    return <div style={{ height: "100%", width: '100%', display: "flex", flexDirection: "column" }}>
       <Menu pointing={true} compact={true} size={this.props.menu_size} secondary={true}>
         {children.map((child, index) =>
           <Menu.Item key={child.props.name} name={child.props.name}
