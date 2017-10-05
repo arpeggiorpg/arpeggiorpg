@@ -158,7 +158,7 @@ class FolderTreeComp
       return <Divider horizontal={true} fitted={true} key={`${name}-div`}
         style={{
           fontSize: "70%", color: "gray", marginBottom: "4px",
-          marginTop: "4px", width: '200px'
+          marginTop: "4px", width: '200px',
         }}
       >{name}</Divider>;
     }
