@@ -3,7 +3,10 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
 
-import { Button, Checkbox, Dropdown, Icon, Input, Label, List, Menu } from 'semantic-ui-react';
+import {
+  Button, Checkbox, Divider, Dropdown, Icon, Input, Label, List, Menu,
+} from 'semantic-ui-react';
+
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
@@ -122,7 +125,12 @@ interface FTProps {
   selecting?: SelectableProps;
 }
 interface FTDerivedProps {
-  objects: Array<FolderObject>;
+  class_objects: Array<FolderObject>;
+  ability_objects: Array<FolderObject>;
+  note_objects: Array<FolderObject>;
+  scene_objects: Array<FolderObject>;
+  creature_objects: Array<FolderObject>;
+  item_objects: Array<FolderObject>;
 }
 
 class FolderTreeComp
@@ -136,13 +144,33 @@ class FolderTreeComp
     this.state = { expanded: props.start_open || false };
   }
   render(): JSX.Element {
-    const { folder, selecting, path, objects, dispatch } = this.props;
+    const { folder, selecting, path, dispatch } = this.props;
 
-    const children = objects.map(obj => {
-      const iid = object_to_item_id(obj);
-      return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
-        dispatch={dispatch} />;
-    });
+    const children = [
+      section("Notes", this.props.note_objects),
+      section("Classes", this.props.class_objects),
+      section("Abilities", this.props.ability_objects),
+      section("Scenes", this.props.scene_objects),
+      section("Creatures", this.props.creature_objects),
+      section("Items", this.props.item_objects),
+    ];
+    function divider(name: string) {
+      return <Divider horizontal={true} fitted={true} key={`${name}-div`}
+        style={{
+          fontSize: "70%", color: "gray", marginBottom: "4px",
+          marginTop: "4px", width: '200px'
+        }}
+      >{name}</Divider>;
+    }
+    function section(name: string, objects: Array<FolderObject>) {
+      if (objects.length === 0) { return []; }
+      return [divider(name)].concat(
+        objects.map(obj => {
+          const iid = object_to_item_id(obj);
+          return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
+            dispatch={dispatch} />;
+        }));
+    }
 
     const subfolders = LD.sortBy(folder.children.entrySeq().toArray(), ([name, _]) => name).map(
       ([name, subfolder]) =>
@@ -200,7 +228,7 @@ class FolderTreeComp
     </Dropdown>;
     const list_item = <List.Item>
       <List.Icon name={this.state.expanded ? 'folder open' : 'folder'} />
-      <List.Content>
+      <List.Content style={{ width: '100%' }}>
         <List.Header style={{ cursor: "pointer" }}
           onClick={() => this.setState({ expanded: !this.state.expanded })}>
           {this.props.name}
@@ -208,7 +236,9 @@ class FolderTreeComp
         </List.Header>
         {this.state.expanded
           ? <List.List>
-            {children} {subfolders}
+            {children}
+            {subfolders.length > 0 ? divider("Folders") : null}
+            {subfolders}
           </List.List>
           : null}
       </List.Content>
@@ -249,10 +279,12 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
       (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
 
     return {
-      objects: LD.concat(
-        note_objects,
-        class_objects, ability_objects,
-        scene_objects, creature_objects, item_objects),
+      note_objects,
+      class_objects,
+      ability_objects,
+      scene_objects,
+      creature_objects,
+      item_objects,
     };
   })(FolderTreeComp);
 
@@ -313,9 +345,9 @@ interface TreeObjectProps extends M.DispatchProps {
 function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
   const name = object.name;
 
-  return <List.Item>
+  return <List.Item style={{ width: '100%' }}>
     <List.Icon name={object_icon(object.t)} />
-    <List.Content style={{ cursor: 'pointer' }} onClick={handler}>
+    <List.Content style={{ cursor: 'pointer', width: '100%' }} onClick={handler}>
       {
         selecting
           ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
