@@ -1592,4 +1592,26 @@ pub mod test {
       game.get_class(classid_ranger()).expect("Old game didn't have ranger class")
     );
   }
+
+  #[test]
+  fn test_export_subfolders() {
+    let root_path = "".parse().unwrap();
+    let rules_path = "/Rules".parse().unwrap();
+    let root = Folder::new();
+    let mut classes_folder = Folder::new();
+    classes_folder.classes.insert(classid_ranger());
+
+    let mut game = t_game();
+    game.campaign.make_folder(&root_path, "Rules".to_string(), root).unwrap();
+    game.campaign.make_folder(&rules_path, "Classes".to_string(), classes_folder).unwrap();
+    let new_game = game.export_module(&rules_path).expect("Couldn't export");
+    assert_eq!(
+      new_game.get_class(classid_ranger()).expect("new game didn't have ranger class"),
+      game.get_class(classid_ranger()).expect("Old game didn't have ranger class")
+    );
+
+    let new_classes = &new_game.campaign.get(&"/Classes".parse().unwrap()).unwrap().classes;
+    let old_classes = &game.campaign.get(&"/Rules/Classes".parse().unwrap()).unwrap().classes;
+    assert_eq!(new_classes, old_classes);
+  }
 }

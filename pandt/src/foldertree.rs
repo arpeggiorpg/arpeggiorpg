@@ -40,6 +40,10 @@ error_chain! {
       description("The user attempted to move the root folder.")
       display("The root folder cannot be removed.")
     }
+    RootHasNoName {
+      description("The user attempted to get the name of the root folder.")
+      display("The root folder has no name.")
+    }
     ImpossibleMove(from: FolderPath, to: FolderPath) {
       description("The user attempted to move an item in an impossible way.")
       display("Can't move '{}' to '{}'", from.to_string(), to.to_string())
@@ -195,16 +199,31 @@ impl<T> FolderTree<T> {
   /// Iterate paths to all folders below the given one.
   pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
     let parent: FolderPath = parent.clone();
-    self.nodes.keys().filter(move |p| p.is_child_of(&parent))
+    
+    let all_nodes = self.nodes.keys().filter(move |p| p.is_child_of(&parent));
+    let mut all_nodes = all_nodes.collect::<Vec<_>>();
+    all_nodes.sort();
+    all_nodes.into_iter()
   }
 
   /// Extract a subtree from a FolderPath
+  // Our representation requires this to be O(n) which kinda sucks, but it probably doesn't matter
   pub fn subtree(&self, path: &FolderPath) -> Result<FolderTree<T>, FolderTreeError>
   where
     T: Clone,
   {
     let folder = self.get(path)?;
-    let new_tree = FolderTree::new(folder.clone());
+    let mut new_tree = FolderTree::new(folder.clone());
+    for sub_path in self.walk_paths(path).cloned().collect::<Vec<_>>() {
+      let new_path = sub_path.relative_to(path)?;
+      if new_path == FolderPath::from_vec(vec![]) {
+        continue;
+      }
+      println!("Subtree: {:?}; Relative path: {:?}", sub_path, new_path);
+      let cloned_folder = self.get(&sub_path)?.clone();
+      let (new_parent, new_leaf) = new_path.up().ok_or_else(|| FolderTreeErrorKind::RootHasNoName)?;
+      new_tree.make_folder(&new_parent, new_leaf, cloned_folder)?;
+    }
     Ok(new_tree)
   }
 }
