@@ -111,8 +111,8 @@ fn get_app(pt: State<PT>) -> Result<String, RPIError> {
 fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String, RPIError> {
   {
     let app = pt.clone_app()?;
-    if app.snapshots.len() != snapshot_len ||
-      app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
+    if app.snapshots.len() != snapshot_len
+      || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
     {
       let result = serde_json::to_string(&RPIApp(&app))?;
       return Ok(result);
@@ -203,7 +203,7 @@ fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
   save_app(pt, &name, &app)
 }
 
-#[post("/modules/<name>", data="<path>")]
+#[post("/modules/<name>", data = "<path>")]
 fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
   let app = pt.clone_app()?;
   let new_game = app.current_game.export_module(&path)?;
