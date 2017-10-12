@@ -61,7 +61,10 @@ pub struct FolderTree<T> {
   nodes: HashMap<FolderPath, (T, HashSet<String>)>,
 }
 
-impl<T> Default for FolderTree<T> where T: Default {
+impl<T> Default for FolderTree<T>
+where
+  T: Default,
+{
   fn default() -> FolderTree<T> {
     let root: T = Default::default();
     FolderTree::new(root)
@@ -206,7 +209,7 @@ impl<T> FolderTree<T> {
   /// Iterate paths to all folders below the given one.
   pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
     let parent: FolderPath = parent.clone();
-    
+
     let all_nodes = self.nodes.keys().filter(move |p| p.is_child_of(&parent));
     let mut all_nodes = all_nodes.collect::<Vec<_>>();
     all_nodes.sort();
@@ -686,7 +689,7 @@ mod test {
   #[test]
   fn folderpath_from_str() {
     assert_eq!(fpath(""), FolderPath::from_vec(vec![]));
-    assert_eq!( fpath("/foo"), FolderPath::from_vec(vec!["foo".to_string()]));
+    assert_eq!(fpath("/foo"), FolderPath::from_vec(vec!["foo".to_string()]));
     match "foo".parse::<FolderPath>() {
       Err(FolderTreeError(FolderTreeErrorKind::InvalidFolderPath(p), _)) => {
         assert_eq!(p, "foo".to_string())

@@ -156,7 +156,8 @@ impl Dice {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
+         Deserialize)]
 pub struct HP(pub u8);
 impl HP {
   pub fn saturating_add(self, other: Self) -> Self {
@@ -167,7 +168,8 @@ impl HP {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
+         Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
   pub fn saturating_add(self, other: Self) -> Self {
@@ -291,7 +293,8 @@ impl ::std::str::FromStr for ClassID {
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
+         Deserialize)]
 pub struct Distance(pub u32);
 impl Distance {
   /// Convert meters as a f32 to a Distance.

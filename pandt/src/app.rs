@@ -52,8 +52,8 @@ impl App {
       _ => {
         let (game, logs) = self.current_game.perform_command(cmd.clone())?.done();
 
-        if self.snapshots.is_empty() ||
-          self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
+        if self.snapshots.is_empty()
+          || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
         {
           self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
         }
@@ -225,7 +225,7 @@ mod test {
       .unwrap();
     // 2
     app.perform_command(GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
-    // 3
+                                                               // 3
     app
       .perform_command(
         GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)),
@@ -233,7 +233,7 @@ mod test {
       .unwrap();
     // 4
     app.perform_command(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
-    // 5
+                                                               // 5
     app
       .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1)))
       .unwrap();

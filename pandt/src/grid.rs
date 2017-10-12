@@ -274,8 +274,8 @@ impl TileSystem {
             }
           };
           // don't allow diagonal movement around corners
-          if is_angle && !is_open(terrain, Point3::new(neighbor.x, pt.y, pt.z)) ||
-            !is_open(terrain, Point3::new(pt.x, neighbor.y, pt.z))
+          if is_angle && !is_open(terrain, Point3::new(neighbor.x, pt.y, pt.z))
+            || !is_open(terrain, Point3::new(pt.x, neighbor.y, pt.z))
           {
             continue;
           }
@@ -514,8 +514,8 @@ pub mod test {
 
     let pos1p = (pos1.x as f64, pos1.y as f64, pos1.z as f64);
     let pos2p = (pos2.x as f64, pos2.y as f64, pos2.z as f64);
-    let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2) +
-      (pos1p.2 - pos2p.2).powi(2))
+    let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2)
+      + (pos1p.2 - pos2p.2).powi(2))
       .sqrt();
     println!("My calculated distance: {:?};", test_distance);
     assert_eq!(
@@ -737,7 +737,9 @@ pub mod test {
   use self::test::Bencher;
   #[bench]
   fn accessible_average_speed_bench(bencher: &mut Bencher) {
-    bencher.iter(|| { test_accessible_average_speed(); });
+    bencher.iter(|| {
+      test_accessible_average_speed();
+    });
   }
 
   #[test]

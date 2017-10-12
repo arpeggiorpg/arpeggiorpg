@@ -5,11 +5,10 @@ use std::iter::FromIterator;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use foldertree::{FolderPath};
+use foldertree::FolderPath;
 use grid::line_through_point;
 
 impl Game {
-
   pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
     let mut new_game: Game = Default::default();
     new_game.tile_system = self.tile_system;
