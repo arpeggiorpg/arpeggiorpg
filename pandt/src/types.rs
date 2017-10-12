@@ -1026,7 +1026,7 @@ impl DeriveKey for Creature {
   }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Game {
   pub current_combat: Option<Combat>,
   pub abilities: IndexedHashMap<Ability>,
@@ -1233,6 +1233,12 @@ pub enum TileSystem {
   Realistic,
   /// Square grid with diagonal movement costing 1
   DnD,
+}
+
+impl Default for TileSystem {
+  fn default() -> TileSystem {
+    TileSystem::Realistic
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

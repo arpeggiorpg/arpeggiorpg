@@ -61,6 +61,13 @@ pub struct FolderTree<T> {
   nodes: HashMap<FolderPath, (T, HashSet<String>)>,
 }
 
+impl<T> Default for FolderTree<T> where T: Default {
+  fn default() -> FolderTree<T> {
+    let root: T = Default::default();
+    FolderTree::new(root)
+  }
+}
+
 impl<T> FolderTree<T> {
   pub fn new(root: T) -> FolderTree<T> {
     let path = FolderPath::from_vec(vec![]);

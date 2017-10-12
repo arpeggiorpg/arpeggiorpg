@@ -2,31 +2,16 @@ use std::collections::{HashMap, HashSet};
 use std::cmp;
 use std::iter::FromIterator;
 
-use indexed::IndexedHashMap;
 use types::*;
 use combat::*;
 use creature::ChangedCreature;
-use foldertree::{FolderPath, FolderTree};
+use foldertree::{FolderPath};
 use grid::line_through_point;
 
 impl Game {
-  pub fn new() -> Self {
-    Game {
-      campaign: FolderTree::new(Folder::new()),
-      abilities: IndexedHashMap::new(),
-      current_combat: None,
-      creatures: IndexedHashMap::new(),
-      classes: IndexedHashMap::new(),
-      tile_system: TileSystem::Realistic,
-      scenes: IndexedHashMap::new(),
-      items: IndexedHashMap::new(),
-      players: IndexedHashMap::new(),
-      active_scene: None,
-    }
-  }
 
   pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
-    let mut new_game = Game::new();
+    let mut new_game: Game = Default::default();
     new_game.tile_system = self.tile_system;
 
     // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
@@ -1324,8 +1309,9 @@ pub mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
 
-  use game::*;
   use combat::test::*;
+  use game::*;
+  use indexed::IndexedHashMap;
   use types::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
@@ -1337,7 +1323,7 @@ pub mod test {
   }
 
   pub fn t_game() -> Game {
-    let mut game = Game::new();
+    let mut game: Game = Default::default();
     game.abilities = t_abilities();
     game.classes = t_classes();
     let mut rogue = t_rogue("rogue");
