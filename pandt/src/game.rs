@@ -428,6 +428,7 @@ impl Game {
   /// Apply a log to a *mutable* Game.
   // This is done so that we don't have to worry about `self` vs `newgame` -- all
   // manipulations here work on &mut self.
+  #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
