@@ -35,6 +35,7 @@ use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
                    PotentialTargets, RPIApp, RPIGame, Runtime};
+use pandt::foldertree::FolderPath;
 
 use actor::Actor;
 
@@ -80,6 +81,7 @@ impl PT {
     self.pollers.lock().map_err(|_| RPIErrorEnum::LockError("pollers".to_string()).into())
   }
 
+  /// This is trash, we shouldn't be cloning the app!
   fn clone_app(&self) -> Result<App, RPIError> {
     if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
       Ok(app)
@@ -187,7 +189,7 @@ fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
 
 #[post("/saved_games/<name>/load")]
 fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
-  let path = child_path(&pt.saved_game_path, name)?;
+  let path = child_path(&pt.saved_game_path, &name)?;
   let mut buffer = String::new();
   File::open(path)?.read_to_string(&mut buffer)?;
   let app = serde_yaml::from_str(&buffer)?;
@@ -197,22 +199,35 @@ fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
 
 #[post("/saved_games/<name>")]
 fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
+  let app = pt.clone_app()?; // hey! A NLL usecase!
+  save_app(pt, &name, &app)
+}
+
+#[post("/modules/<name>", data="<path>")]
+fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
+  let app = pt.clone_app()?;
+  let new_game = app.current_game.export_module(&path)?;
+  let new_app = App::new(new_game);
+  save_app(pt, &name, &new_app)
+}
+
+fn save_app(pt: State<PT>, name: &str, app: &App) -> PTResult<()> {
   let new_path = child_path(&pt.saved_game_path, name)?;
   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
   // without the extra magic that decorates the data with dynamic data for clients.
-  let yaml = serde_yaml::to_string(&pt.clone_app()?)?;
+  let yaml = serde_yaml::to_string(&app)?;
   File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(Json(()))
 }
 
-fn child_path(parent: &PathBuf, name: String) -> Result<PathBuf, RPIError> {
+fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
-    bail!(RPIErrorEnum::InsecurePath(name));
+    bail!(RPIErrorEnum::InsecurePath(name.to_string()));
   }
   let new_path = parent.join(name.clone());
   for p in &new_path {
     if p == "." || p == ".." {
-      bail!(RPIErrorEnum::InsecurePath(name));
+      bail!(RPIErrorEnum::InsecurePath(name.to_string()));
     }
   }
   Ok(new_path)
