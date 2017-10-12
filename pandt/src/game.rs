@@ -36,10 +36,23 @@ impl Game {
       new_game.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect::<Vec<_>>()
     {
       let folder = new_game.campaign.get(&path).expect("folder we're walking must exist");
+      for abid in &folder.abilities {
+        new_game.abilities.insert(self.get_ability(*abid)?.clone());
+      }
       for classid in &folder.classes {
         new_game.classes.insert(self.get_class(*classid)?.clone());
       }
+      for cid in &folder.creatures {
+        new_game.creatures.insert(self.get_creature(*cid)?.creature.clone());
+      }
+      for iid in &folder.items {
+        new_game.items.insert(self.get_item(*iid)?.clone());
+      }
+      for sid in &folder.scenes {
+        new_game.scenes.insert(self.get_scene(*sid)?.clone());
+      }
     }
+    new_game.validate_campaign()?;
     Ok(new_game)
   }
 
@@ -135,9 +148,12 @@ impl Game {
     Ok(map)
   }
 
-  pub fn get_ability(&self, abid: &AbilityID) -> Result<&Ability, GameError> {
-    // maybe this should just return &Ability?
-    self.abilities.get(abid).ok_or_else(|| GameErrorEnum::NoAbility(*abid).into())
+  pub fn get_item(&self, iid: ItemID) -> Result<&Item, GameError> {
+    self.items.get(&iid).ok_or_else(|| GameErrorEnum::ItemNotFound(iid).into())
+  }
+
+  pub fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError> {
+    self.abilities.get(&abid).ok_or_else(|| GameErrorEnum::NoAbility(abid).into())
   }
 
   /// Perform a GameCommand on the current Game.
@@ -517,8 +533,7 @@ impl Game {
         }
         (&FolderItemID::SceneID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
-          let mut new_item =
-            self.items.get(&id).ok_or_else(|| GameErrorEnum::ItemNotFound(id))?.clone();
+          let mut new_item = self.get_item(id)?.clone();
           new_item.id = new_id;
           self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
         }
@@ -1026,7 +1041,7 @@ impl Game {
         self.creature_act(
           &creature,
           scene,
-          self.get_ability(&abid)?,
+          self.get_ability(abid)?,
           target,
           self.change(),
           in_combat,
@@ -1140,7 +1155,7 @@ impl Game {
   pub fn preview_volume_targets(
     &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
-    let ability = self.get_ability(&ability_id)?;
+    let ability = self.get_ability(ability_id)?;
 
     let cids = match ability.action {
       Action::Creature { target, .. } => self.volume_creature_targets(scene, actor_id, target, pt)?,
@@ -1188,7 +1203,7 @@ impl Game {
   pub fn get_target_options(
     &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID
   ) -> Result<PotentialTargets, GameError> {
-    let ability = self.get_ability(&ability_id)?;
+    let ability = self.get_ability(ability_id)?;
 
     use types::Action as A;
     use types::CreatureTarget as CT;
