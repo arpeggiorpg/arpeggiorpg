@@ -806,7 +806,7 @@ pub struct Ability {
 impl DeriveKey for Ability {
   type KeyType = AbilityID;
   fn derive_key(&self) -> AbilityID {
-    self.id.clone()
+    self.id
   }
 }
 
@@ -950,7 +950,7 @@ pub struct Class {
 impl DeriveKey for Class {
   type KeyType = ClassID;
   fn derive_key(&self) -> ClassID {
-    self.id.clone()
+    self.id
   }
 }
 

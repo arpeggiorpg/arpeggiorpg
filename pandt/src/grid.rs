@@ -287,7 +287,7 @@ impl TileSystem {
   }
 }
 
-/// Make a CollisionWorld given some creatures and volume conditions.
+/// Make a `CollisionWorld` given some creatures and volume conditions.
 /// The factoring is a little sad; this is the only function in grid.rs that knows about these P&T
 /// types. Maybe I should just move this to collision.rs or something.
 pub fn make_world<'c, 'vc, CI, VCI>(creatures: CI, volume_conditions: VCI) -> CollisionWorld

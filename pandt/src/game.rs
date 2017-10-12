@@ -890,7 +890,7 @@ impl Game {
       EditCreatureDetails { creature_id, ref details } => {
         let mutated = self.creatures.mutate(&creature_id, move |mut c| {
           c.name = details.name.clone();
-          c.class = details.class.clone();
+          c.class = details.class;
           c.portrait_url = details.portrait_url.clone();
           c.icon_url = details.icon_url.clone();
           c.note = details.note.clone();
