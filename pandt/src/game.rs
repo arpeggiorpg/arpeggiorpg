@@ -1,6 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::cmp;
+use std::fs::File;
 use std::iter::FromIterator;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
+use serde_yaml;
 
 use types::*;
 use combat::*;
@@ -38,6 +43,10 @@ impl Game {
     }
     new_game.validate_campaign()?;
     Ok(new_game)
+  }
+
+  pub fn import_module(&self, import_path: &FolderPath, module: Game) -> Result<Game, GameError> {
+    Ok(self.clone())
   }
 
   pub fn validate_campaign(&self) -> Result<(), GameError> {
@@ -141,9 +150,16 @@ impl Game {
   }
 
   /// Perform a GameCommand on the current Game.
-  pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
+  pub fn perform_command(
+    &self, cmd: GameCommand, saved_game_path: PathBuf
+  ) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
+      LoadModule { ref name, ref path } => {
+        let app = load_app_from_path(&saved_game_path, name)?;
+        let module = app.current_game;
+        self.change_with(GameLog::LoadModule { module, path: path.clone() })
+      }
       SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
       // ** Player Management **
       RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
@@ -431,6 +447,10 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
+      LoadModule { ref module, ref path } => if self.campaign.get(path).is_ok() {
+        bail!(GameErrorEnum::FolderAlreadyExists(path.clone()))
+      },
+
       SetActiveScene(m_sid) => self.active_scene = m_sid,
 
       // Player stuff
@@ -1303,6 +1323,15 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
   Err(GameErrorEnum::BuggyProgram(msg.to_string()).into())
 }
 
+pub fn load_app_from_path(parent: &Path, filename: &str) -> Result<App, GameError> {
+  let filename = parent.join(filename);
+  let mut appf = File::open(filename)?;
+  let mut apps = String::new();
+  appf.read_to_string(&mut apps).unwrap();
+  let app: App = serde_yaml::from_str(&apps)?;
+  app.current_game.validate_campaign()?;
+  Ok(app)
+}
 
 #[cfg(test)]
 pub mod test {
@@ -1368,15 +1397,20 @@ pub mod test {
     ])
   }
 
+  pub fn perf(game: &Game, cmd: GameCommand) -> Result<ChangedGame, GameError> {
+    game.perform_command(cmd, PathBuf::from(""))
+  }
+
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
-    game.perform_command(cmd).unwrap().game
+    perf(game, cmd).unwrap().game
   }
 
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]));
+    let result =
+      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]), PathBuf::from(""));
     match result {
       Err(GameError(GameErrorEnum::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1386,7 +1420,8 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]));
+    let result =
+      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]), PathBuf::from(""));
     match result {
       Err(GameError(GameErrorEnum::CombatMustHaveCreatures, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -1435,10 +1470,10 @@ pub mod test {
     );
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid_punch(), DecidedTarget::Creature(cid_ranger()));
-      let game = game.perform_command(GameCommand::Done)?.game;
-      let game = game.perform_command(GameCommand::Done)?.game;
+      let game = t_perform(&game, GameCommand::Done);
+      let game = t_perform(&game, GameCommand::Done);
       let game = t_game_act(&game, abid_heal(), DecidedTarget::Creature(cid_ranger()));
-      let game = game.perform_command(GameCommand::Done)?.game;
+      let game = t_perform(&game, GameCommand::Done);
       Ok(game)
     };
     iter(&game).unwrap();

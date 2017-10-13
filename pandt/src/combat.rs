@@ -213,36 +213,32 @@ pub mod test {
 
   use combat::*;
   use types::test::*;
-  use game::test::t_game;
+  use game::test::*;
   use game::ChangedGame;
 
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
     let game = t_game();
-    game
-      .perform_command(
-        GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
-      )
-      .unwrap()
-      .game
+    t_perform(
+      &game,
+      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+    )
   }
 
-  pub fn t_act<'game>(
-    game: &'game Game, abid: AbilityID, target: DecidedTarget
+  pub fn t_act(
+    game: &Game, abid: AbilityID, target: DecidedTarget
   ) -> Result<ChangedGame, GameError> {
-    game.perform_command(GameCommand::CombatAct(abid, target))
+    perf(game, GameCommand::CombatAct(abid, target))
   }
 
   /// Try to melee-atack the ranger when the ranger is out of melee range.
   #[test]
   fn target_melee_out_of_range() {
     let game = t_combat();
-    let game = game
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)),
-      )
-      .unwrap()
-      .game;
+    let game = t_perform(
+      &game,
+      GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)),
+    );
     match t_act(&game, abid_punch(), DecidedTarget::Creature(cid_ranger())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
       x => panic!("Unexpected result: {:?}", x),
@@ -253,13 +249,11 @@ pub mod test {
   #[test]
   fn target_range() {
     let game = t_combat();
-    let game = game.perform_command(GameCommand::Done).unwrap().game;
-    let game = game
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(5, 0, 0)),
-      )
-      .unwrap()
-      .game;
+    let game = t_perform(&game, GameCommand::Done);
+    let game = t_perform(
+      &game,
+      GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(5, 0, 0)),
+    );
     let _: DynamicCombat = t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_ranger()))
       .unwrap()
       .game
@@ -304,20 +298,20 @@ pub mod test {
   #[test]
   fn target_out_of_range() {
     let game = t_combat();
-    let game = game.perform_command(GameCommand::Done).unwrap().game;
-    let game = game
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(6, 0, 0)))
-      .unwrap()
-      .game;
+    let game = t_perform(&game, GameCommand::Done);
+    let game = t_perform(
+      &game,
+      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(6, 0, 0)),
+    );
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
 
-    let game = game
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 3, 0)))
-      .unwrap()
-      .game;
+    let game = t_perform(
+      &game,
+      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 3, 0)),
+    );
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
       Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
@@ -337,23 +331,17 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let game = game
-      .perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)))
-      .unwrap()
-      .game;
+    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)));
     assert_eq!(
       game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(5, 0, 0)
     );
-    let game = game
-      .perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)))
-      .unwrap()
-      .game;
+    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)));
     assert_eq!(
       game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(10, 0, 0)
     );
-    match game.perform_command(GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
+    match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
       Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }

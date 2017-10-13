@@ -19,7 +19,7 @@ extern crate pandt;
 pub mod actor;
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::fs::File;
 use std::fs;
 use std::io::prelude::*;
@@ -33,6 +33,7 @@ use rocket_contrib::Json;
 use rocket::http::Method;
 use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
+use pandt::game::load_app_from_path;
 use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
                    PotentialTargets, RPIApp, RPIGame, Runtime};
 use pandt::foldertree::FolderPath;
@@ -127,7 +128,9 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String
 
 #[post("/", format = "application/json", data = "<command>")]
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
-  if let PTResponse::JSON(json) = pt.actor()?.send(PTRequest::Perform(command.0)) {
+  if let PTResponse::JSON(json) =
+    pt.actor()?.send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
+  {
     pt.pollers()?.broadcast(());
     Ok(json)
   } else {
@@ -233,19 +236,10 @@ fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
   Ok(new_path)
 }
 
-fn load_app_from_path(filename: &Path) -> App {
-  let mut appf = File::open(filename).unwrap();
-  let mut apps = String::new();
-  appf.read_to_string(&mut apps).unwrap();
-  let app: App = serde_yaml::from_str(&apps).unwrap();
-  app.current_game.validate_campaign().expect("Campaign is invalid");
-  app
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum PTRequest {
   GetReadOnlyApp,
-  Perform(GameCommand),
+  Perform(GameCommand, PathBuf),
   SetApp(App),
 }
 
@@ -263,8 +257,9 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
       runtime.app = app;
       PTResponse::Success
     }
-    PTRequest::Perform(command) => {
-      let game_and_logs = runtime.app.perform_command(command).map_err(|e| format!("Error: {}", e));
+    PTRequest::Perform(command, saved_game_path) => {
+      let game_and_logs =
+        runtime.app.perform_command(command, saved_game_path).map_err(|e| format!("Error: {}", e));
       if let Ok((g, _)) = game_and_logs {
         runtime.world = g.get_world().expect("Couldn't calculate world");
       }
@@ -287,7 +282,7 @@ fn main() {
   let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args().nth(2).unwrap_or_else(|| "samplegame.yaml".to_string());
 
-  let app: App = load_app_from_path(game_dir.join(initial_file).as_path());
+  let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
   let actor = Actor::spawn(
     move || Runtime { app, world: None },
     move |runtime, request| handle_request(runtime, request),
@@ -336,7 +331,7 @@ mod test {
 
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(Path::new("sample_games/samplegame.yaml"));
+    ::load_app_from_path(Path::new("sample_games"), "sample_games/samplegame.yaml").unwrap();
   }
 
   #[test]

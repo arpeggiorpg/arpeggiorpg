@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::path::PathBuf;
 
 use types::*;
 
@@ -40,7 +41,9 @@ impl App {
     snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
     App { current_game: g, snapshots: snapshots }
   }
-  pub fn perform_command(&mut self, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
+  pub fn perform_command(
+    &mut self, cmd: GameCommand, saved_game_path: PathBuf
+  ) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
@@ -50,7 +53,7 @@ impl App {
         Ok((&self.current_game, vec![log]))
       }
       _ => {
-        let (game, logs) = self.current_game.perform_command(cmd.clone())?.done();
+        let (game, logs) = self.current_game.perform_command(cmd.clone(), saved_game_path)?.done();
 
         if self.snapshots.is_empty()
           || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
@@ -142,24 +145,27 @@ mod test {
   }
 
   pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {
-    app.perform_command(GameCommand::CombatAct(ab, dtarget))?;
+    perf(app, GameCommand::CombatAct(ab, dtarget))?;
     Ok(())
+  }
+
+  pub fn perf(app: &mut App, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
+    app.perform_command(cmd, PathBuf::from(""))
   }
 
   #[bench]
   fn three_char_infinite_combat(bencher: &mut Bencher) {
     let mut app = t_app();
-    app
-      .perform_command(
-        GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
-      )
-      .unwrap();
+    perf(
+      &mut app,
+      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+    ).unwrap();
     let iter = |app: &mut App| -> Result<(), GameError> {
       t_app_act(app, abid_punch(), DecidedTarget::Creature(cid_ranger()))?;
-      app.perform_command(GameCommand::Done)?;
-      app.perform_command(GameCommand::Done)?;
+      perf(app, GameCommand::Done)?;
+      perf(app, GameCommand::Done)?;
       t_app_act(app, abid_heal(), DecidedTarget::Creature(cid_ranger()))?;
-      app.perform_command(GameCommand::Done)?;
+      perf(app, GameCommand::Done)?;
       Ok(())
     };
     bencher.iter(|| {
@@ -173,12 +179,9 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-      )
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
-    app.perform_command(GameCommand::Rollback(0, 0)).unwrap();
+    perf(&mut app, GameCommand::Rollback(0, 0)).unwrap();
     let ranger = app.current_game.get_creature(cid_ranger()).unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(ranger.id()).unwrap(), Point3::new(0, 0, 0));
@@ -193,20 +196,16 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app
-      .perform_command(
-        GameCommand::StartCombat(t_scene_id(), vec![cid_ranger(), cid_rogue(), cid_cleric()]),
-      )
-      .unwrap();
+    perf(
+      &mut app,
+      GameCommand::StartCombat(t_scene_id(), vec![cid_ranger(), cid_rogue(), cid_cleric()]),
+    ).unwrap();
     // 2
-    app.perform_command(GameCommand::StopCombat).unwrap();
+    perf(&mut app, GameCommand::StopCombat).unwrap();
     // 3
-    app
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-      )
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
-    app.perform_command(GameCommand::Rollback(0, 2)).unwrap();
+    perf(&mut app, GameCommand::Rollback(0, 2)).unwrap();
     assert_eq!(app.current_game.current_combat, None);
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(cid_ranger()).unwrap(), Point3::new(0, 0, 0));
@@ -218,24 +217,17 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    app
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-      )
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
       .unwrap();
     // 2
-    app.perform_command(GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
-                                                               // 3
-    app
-      .perform_command(
-        GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)),
-      )
+    perf(&mut app, GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
+                                                          // 3
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)))
       .unwrap();
     // 4
-    app.perform_command(GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
-                                                               // 5
-    app
-      .perform_command(GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1)))
+    perf(&mut app, GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
+                                                          // 5
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1)))
       .unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(cid_cleric()).unwrap(), Point3::new(0, 0, 0));

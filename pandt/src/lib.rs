@@ -18,6 +18,7 @@ extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_yaml;
 extern crate uuid;
 
 #[cfg(test)]
@@ -26,8 +27,6 @@ extern crate maplit;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
-#[cfg(test)]
-extern crate serde_yaml;
 #[cfg(test)]
 extern crate test;
 

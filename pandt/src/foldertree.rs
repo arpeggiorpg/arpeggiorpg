@@ -303,6 +303,12 @@ impl ::std::str::FromStr for FolderPath {
   }
 }
 
+impl ::std::fmt::Display for FolderPath {
+  fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    write!(f, "[{}]", self.to_string())
+  }
+}
+
 impl Serialize for FolderPath {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where

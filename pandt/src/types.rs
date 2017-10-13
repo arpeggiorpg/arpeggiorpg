@@ -15,6 +15,7 @@ use uuid::{ParseError as UuidParseError, Uuid};
 use serde::ser;
 use serde::ser::{Error as SerError, SerializeStruct};
 use serde::de;
+use serde_yaml;
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
@@ -382,6 +383,8 @@ impl InventoryOwner {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
+  LoadModule { name: String, path: FolderPath },
+
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
 
@@ -531,6 +534,8 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
+  LoadModule { module: Game, path: FolderPath },
+
   SetActiveScene(Option<SceneID>),
 
   // ** Player Manipulation **
@@ -622,9 +627,15 @@ error_chain! {
 
   foreign_links {
     UUIDParseError(UuidParseError);
+    YAMLError(serde_yaml::Error);
+    IOError(::std::io::Error);
   }
 
   errors {
+    FileNotFound(name: String) {
+      description("A saved game or module was not found")
+      display("File {} was not found", name)
+    }
     AttributeNotFound(cid: CreatureID, attrid: AttrID) {
       description("A Creature does not have the supplied Attribute")
       display("The Creature with ID {} does not have the attribute {}", cid.to_string(), attrid.0)
@@ -742,6 +753,10 @@ error_chain! {
     NoPathFound {
       description("A path can't be found.")
       display("A path can't be found.")
+    }
+    FolderAlreadyExists(path: FolderPath) {
+      description("A path already exists.")
+      display("Path {} already exists", path)
     }
     StepTooBig(from: Point3, to: Point3) {
       description("A step from one point to another is too large.")
