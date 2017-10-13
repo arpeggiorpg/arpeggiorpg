@@ -221,7 +221,13 @@ class FolderTreeComp
               content={close => <MoveFolderItem
                 source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
                 onDone={close} dispatch={dispatch} />}
-            />
+            />,
+            <Dropdown.Divider key="blo" />,
+            <CV.ModalMaker key="blu"
+              button={open =>
+                <Dropdown.Item text="Export as Module" icon="external link" onClick={open} />}
+              header={<span>Export folder</span>}
+              content={close => <div onClick={close}>Export this module!</div>} />,
           ]
           : null}
       </Dropdown.Menu>
