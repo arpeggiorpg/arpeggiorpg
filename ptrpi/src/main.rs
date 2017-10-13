@@ -321,6 +321,7 @@ fn main() {
         list_saved_games,
         load_saved_game,
         save_game,
+        save_module,
       ],
     )
     .manage(pt)
