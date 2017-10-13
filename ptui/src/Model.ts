@@ -389,6 +389,15 @@ export class PTUI {
     return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
+  exportModule(dispatch: Dispatch, path: T.FolderPath, name: string): Promise<undefined> {
+    const url = `${this.rpi_url}/modules/${name}`;
+    const opts = {
+      method: 'POST',
+      body: JSON.stringify(T.encodeFolderPath(path)),
+      headers: { "content-type": "application/json" },
+    };
+    return ptfetch(dispatch, url, opts, JD.succeed(undefined), x => x);
+  }
 
   focused_scene(): T.Scene | undefined {
     // oh for Rust's "?" operator

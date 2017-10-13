@@ -1169,28 +1169,36 @@ export const LoadGameForm = M.connectRedux(
     </Form>;
   });
 
+export const SaveGameForm = M.connectRedux(
+  function SaveGameForm(props: { onClose: () => void } & M.ReduxProps) {
+    const { onClose, ptui, dispatch } = props;
+    function save(name: string) {
+      ptui.saveGame(dispatch, name);
+      onClose();
+    }
+    return <SaveGameishForm onClose={onClose} save={save} />;
+  });
 
-class SaveGameFormComp
-  extends React.Component<{ onClose: () => void } & M.ReduxProps, { name: string }> {
-  constructor(props: { onClose: () => void } & M.ReduxProps) {
+interface SaveGameishFormProps { onClose: () => void; save: (name: string) => void }
+class SaveGameishForm extends React.Component<SaveGameishFormProps, { name: string }> {
+  constructor(props: SaveGameishFormProps) {
     super(props);
     this.state = { name: "" };
   }
   render(): JSX.Element {
-    const { onClose, ptui, dispatch } = this.props;
+    const { onClose, save } = this.props;
     return <Form>
       <Form.Input label="Name" value={this.state.name}
         onChange={(_, d) => this.setState({ name: d.value })} />
       <GameList onSelect={game => this.setState({ name: game })} />
       <Form.Group>
         <Form.Button disabled={this.state.name === ""}
-          onClick={() => { ptui.saveGame(dispatch, this.state.name); onClose(); }}>Save</Form.Button>
+          onClick={() => { save(this.state.name); onClose(); }}>Save</Form.Button>
         <Form.Button onClick={onClose}>Cancel</Form.Button>
       </Form.Group>
     </Form>;
   }
 }
-export const SaveGameForm = M.connectRedux(SaveGameFormComp);
 
 class GameListComp
   extends React.Component<{ onSelect: (game: string) => void } & M.ReduxProps,
@@ -1229,3 +1237,14 @@ export function CreatureFocus({ creature }: { creature: T.Creature }) {
     <Segment>{creature.bio}</Segment>
   </div>;
 }
+
+export const ExportModule = M.connectRedux(
+  function ExportModule(props: { path: T.FolderPath; onDone: () => void } & M.ReduxProps) {
+    const { path, onDone, ptui, dispatch } = props;
+    function save(game: string) {
+      ptui.exportModule(dispatch, path, game);
+    }
+    return <div>
+      <SaveGameishForm onClose={onDone} save={save} />
+    </div>;
+  });
