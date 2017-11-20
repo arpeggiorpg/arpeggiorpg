@@ -79,7 +79,10 @@ struct PT {
 
 impl PT {
   fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
-    self.pollers.lock().map_err(|_| RPIErrorEnum::LockError("pollers".to_string()).into())
+    self
+      .pollers
+      .lock()
+      .map_err(|_| RPIErrorEnum::LockError("pollers".to_string()).into())
   }
 
   /// This is trash, we shouldn't be cloning the app!
@@ -113,7 +116,11 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String
   {
     let app = pt.clone_app()?;
     if app.snapshots.len() != snapshot_len
-      || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
+      || app
+        .snapshots
+        .back()
+        .map(|&(_, ref ls)| ls.len())
+        .unwrap_or(0) != log_len
     {
       let result = serde_json::to_string(&RPIApp(&app))?;
       return Ok(result);
@@ -128,8 +135,8 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String
 
 #[post("/", format = "application/json", data = "<command>")]
 fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
-  if let PTResponse::JSON(json) =
-    pt.actor()?.send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
+  if let PTResponse::JSON(json) = pt.actor()?
+    .send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
   {
     pt.pollers()?.broadcast(());
     Ok(json)
@@ -258,8 +265,10 @@ fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
       PTResponse::Success
     }
     PTRequest::Perform(command, saved_game_path) => {
-      let game_and_logs =
-        runtime.app.perform_command(command, saved_game_path).map_err(|e| format!("Error: {}", e));
+      let game_and_logs = runtime
+        .app
+        .perform_command(command, saved_game_path)
+        .map_err(|e| format!("Error: {}", e));
       if let Ok((g, _)) = game_and_logs {
         runtime.world = g.get_world().expect("Couldn't calculate world");
       }
@@ -280,7 +289,9 @@ fn main() {
       .expect("Couldn't parse curdir as string")
   });
   let game_dir = PathBuf::from(game_dir);
-  let initial_file = env::args().nth(2).unwrap_or_else(|| "samplegame.yaml".to_string());
+  let initial_file = env::args()
+    .nth(2)
+    .unwrap_or_else(|| "samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
   let actor = Actor::spawn(
@@ -296,7 +307,10 @@ fn main() {
 
   let cors_opts = rocket_cors::Cors {
     allowed_origins: AllowedOrigins::all(),
-    allowed_methods: vec![Method::Get, Method::Post].into_iter().map(From::from).collect(),
+    allowed_methods: vec![Method::Get, Method::Post]
+      .into_iter()
+      .map(From::from)
+      .collect(),
     allowed_headers: AllowedHeaders::all(),
     allow_credentials: true,
     ..Default::default()
@@ -331,7 +345,7 @@ mod test {
 
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(Path::new("sample_games"), "sample_games/samplegame.yaml").unwrap();
+    ::load_app_from_path(Path::new("sample_games"), "samplegame.yaml").unwrap();
   }
 
   #[test]

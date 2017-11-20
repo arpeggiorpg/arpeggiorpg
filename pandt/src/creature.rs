@@ -60,8 +60,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn all_conditions(&self) -> Vec<AppliedCondition> {
     let mut conditions: Vec<AppliedCondition> =
       self.creature.conditions.values().cloned().collect();
-    let applied_class_conditions =
-      self.class.conditions.iter().map(|c| c.apply(Duration::Interminate));
+    let applied_class_conditions = self
+      .class
+      .conditions
+      .iter()
+      .map(|c| c.apply(Duration::Interminate));
     conditions.extend(applied_class_conditions);
     conditions.extend(self.volume_conditions().into_iter().map(|(_, v)| v));
     conditions
@@ -78,8 +81,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
         if scene.creatures.contains_key(&self.creature.id) {
           if let Ok(conds) = scene.creature_volume_conditions(self.game, self.creature) {
             for (cond_id, volume_condition) in conds {
-              conditions
-                .insert(cond_id, volume_condition.condition.clone().apply(Duration::Interminate));
+              conditions.insert(
+                cond_id,
+                volume_condition
+                  .condition
+                  .clone()
+                  .apply(Duration::Interminate),
+              );
             }
           }
         }
@@ -105,7 +113,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
     // We clone and collect the condition IDs so that the iterator doesn't keep a borrow on
     // `changes`, which we need to mutate.
-    for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
+    for condition_id in changes
+      .creature
+      .conditions
+      .keys()
+      .cloned()
+      .collect::<Vec<ConditionID>>()
+    {
       match changes.creature.conditions[&condition_id].remaining {
         Duration::Interminate => {}
         Duration::Rounds(remaining) => if remaining > 0 {
@@ -191,7 +205,10 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   pub fn has_ability(&self, ability: AbilityID) -> bool {
-    self.ability_statuses().iter().any(|ac| ac.ability_id == ability)
+    self
+      .ability_statuses()
+      .iter()
+      .any(|ac| ac.ability_id == ability)
   }
 }
 
@@ -238,7 +255,10 @@ impl Creature {
         new.conditions.insert(*id, con.apply(*dur));
       }
       CreatureLog::DecrementConditionRemaining(ref id) => {
-        let cond = new.conditions.get_mut(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
+        let cond = new
+          .conditions
+          .get_mut(id)
+          .ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
         match cond.remaining {
           Duration::Interminate => bail!(GameErrorEnum::BuggyProgram(
             "Tried to decrease condition duration of an \
@@ -249,7 +269,10 @@ impl Creature {
         }
       }
       CreatureLog::RemoveCondition(ref id) => {
-        new.conditions.remove(id).ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
+        new
+          .conditions
+          .remove(id)
+          .ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
       }
     }
     Ok(new)
@@ -331,9 +354,11 @@ impl ChangedCreature {
 }
 
 fn conditions_able(conditions: &[AppliedCondition]) -> bool {
-  !conditions.iter().any(|&AppliedCondition { ref condition, .. }| {
-    condition == &Condition::Incapacitated || condition == &Condition::Dead
-  })
+  !conditions
+    .iter()
+    .any(|&AppliedCondition { ref condition, .. }| {
+      condition == &Condition::Incapacitated || condition == &Condition::Dead
+    })
 }
 
 
@@ -358,7 +383,13 @@ pub mod test {
       c
     });
     assert_eq!(
-      game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
+      game
+        .get_creature(cid_rogue())
+        .unwrap()
+        .tick()
+        .unwrap()
+        .creature
+        .conditions,
       HashMap::from_iter(vec![
         (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, Duration::Rounds(4))),
         (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, Duration::Interminate)),
@@ -383,7 +414,12 @@ pub mod test {
       ]);
       c
     });
-    let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
+    let c = game
+      .get_creature(cid_rogue())
+      .unwrap()
+      .tick()
+      .unwrap()
+      .creature;
     assert_eq!(c.cur_health, HP(9));
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(8));
@@ -402,7 +438,12 @@ pub mod test {
       ]);
       c
     });
-    let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
+    let c = game
+      .get_creature(cid_rogue())
+      .unwrap()
+      .tick()
+      .unwrap()
+      .creature;
     assert_eq!(
       c.conditions,
       HashMap::from_iter(vec![

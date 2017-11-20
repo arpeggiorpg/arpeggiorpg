@@ -53,12 +53,17 @@ impl App {
         Ok((&self.current_game, vec![log]))
       }
       _ => {
-        let (game, logs) = self.current_game.perform_command(cmd.clone(), saved_game_path)?.done();
+        let (game, logs) = self
+          .current_game
+          .perform_command(cmd.clone(), saved_game_path)?
+          .done();
 
         if self.snapshots.is_empty()
           || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
         {
-          self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
+          self
+            .snapshots
+            .push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
         }
 
         for _ in 0..(self.snapshots.len().saturating_sub(SNAPSHOTS)) {
@@ -129,7 +134,9 @@ impl App {
     &self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
-    self.current_game.preview_volume_targets(scene, actor_id, ability_id, pt)
+    self
+      .current_game
+      .preview_volume_targets(scene, actor_id, ability_id, pt)
   }
 }
 

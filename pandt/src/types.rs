@@ -383,7 +383,10 @@ impl InventoryOwner {
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
-  LoadModule { name: String, path: FolderPath },
+  LoadModule {
+    name: String,
+    path: FolderPath,
+  },
 
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
@@ -398,7 +401,11 @@ pub enum GameCommand {
   /// Move some object from one folder to another.
   MoveFolderItem(FolderPath, FolderItemID, FolderPath),
   /// Copy an object to a folder. It's okay to copy it to the same folder.
-  CopyFolderItem { source: FolderPath, item_id: FolderItemID, dest: FolderPath },
+  CopyFolderItem {
+    source: FolderPath,
+    item_id: FolderItemID,
+    dest: FolderPath,
+  },
   DeleteFolderItem(FolderPath, FolderItemID),
 
   /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
@@ -413,20 +420,57 @@ pub enum GameCommand {
 
   // ** Inventory management **
   // These work for creatures or scenes
-  TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
-  RemoveItem { owner: InventoryOwner, item_id: ItemID, count: u64 },
-  SetItemCount { owner: InventoryOwner, item_id: ItemID, count: u64 },
+  TransferItem {
+    from: InventoryOwner,
+    to: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
+  RemoveItem {
+    owner: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
+  SetItemCount {
+    owner: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
 
   // ** Scene management **
   /// Create a Scene.
   CreateScene(FolderPath, SceneCreation),
-  EditSceneDetails { scene_id: SceneID, details: SceneCreation },
-  SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
-  AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
-  RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
-  AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
-  RemoveSceneChallenge { scene_id: SceneID, description: String },
-  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
+  EditSceneDetails {
+    scene_id: SceneID,
+    details: SceneCreation,
+  },
+  SetSceneCreatureVisibility {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    visibility: Visibility,
+  },
+  AddCreatureToScene {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    visibility: Visibility,
+  },
+  RemoveCreatureFromScene {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+  },
+  AddSceneChallenge {
+    scene_id: SceneID,
+    description: String,
+    challenge: AttributeCheck,
+  },
+  RemoveSceneChallenge {
+    scene_id: SceneID,
+    description: String,
+  },
+  SetFocusedSceneCreatures {
+    scene_id: SceneID,
+    creatures: Vec<CreatureID>,
+  },
   // AddSceneVolumeCondition {
   //   scene_id: SceneID,
   //   point: Point3,
@@ -434,10 +478,22 @@ pub enum GameCommand {
   //   condition: Condition,
   //   duration: Duration,
   // },
-  RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
-  EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
-  EditSceneHighlights { scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)> },
-  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)> },
+  RemoveSceneVolumeCondition {
+    scene_id: SceneID,
+    condition_id: ConditionID,
+  },
+  EditSceneTerrain {
+    scene_id: SceneID,
+    terrain: Vec<Point3>,
+  },
+  EditSceneHighlights {
+    scene_id: SceneID,
+    highlights: HashMap<Point3, (Color, Visibility)>,
+  },
+  EditSceneAnnotations {
+    scene_id: SceneID,
+    annotations: HashMap<Point3, (String, Visibility)>,
+  },
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -474,7 +530,10 @@ pub enum GameCommand {
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
   /// Edit an existing creature.
-  EditCreatureDetails { creature_id: CreatureID, details: CreatureCreation },
+  EditCreatureDetails {
+    creature_id: CreatureID,
+    details: CreatureCreation,
+  },
   /// Assign a creature's position within a scene.
   SetCreaturePos(SceneID, CreatureID, Point3),
   /// Move a creature along a path within a scene.
@@ -529,12 +588,17 @@ pub enum CombatLog {
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
-  ls.into_iter().map(|l| GameLog::CreatureLog(cid, l)).collect()
+  ls.into_iter()
+    .map(|l| GameLog::CreatureLog(cid, l))
+    .collect()
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
-  LoadModule { module: Game, path: FolderPath },
+  LoadModule {
+    module: Game,
+    path: FolderPath,
+  },
 
   SetActiveScene(Option<SceneID>),
 
@@ -570,24 +634,73 @@ pub enum GameLog {
   EditNote(FolderPath, String, Note),
 
   // ** Inventory management **
-  TransferItem { from: InventoryOwner, to: InventoryOwner, item_id: ItemID, count: u64 },
-  RemoveItem { owner: InventoryOwner, item_id: ItemID, count: u64 },
-  SetItemCount { owner: InventoryOwner, item_id: ItemID, count: u64 },
+  TransferItem {
+    from: InventoryOwner,
+    to: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
+  RemoveItem {
+    owner: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
+  SetItemCount {
+    owner: InventoryOwner,
+    item_id: ItemID,
+    count: u64,
+  },
 
   CreateScene(FolderPath, Scene),
   EditScene(Scene),
-  EditSceneDetails { scene_id: SceneID, details: SceneCreation },
-  SetSceneCreatureVisibility { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
-  AddCreatureToScene { scene_id: SceneID, creature_id: CreatureID, visibility: Visibility },
-  RemoveCreatureFromScene { scene_id: SceneID, creature_id: CreatureID },
-  AddSceneChallenge { scene_id: SceneID, description: String, challenge: AttributeCheck },
-  RemoveSceneChallenge { scene_id: SceneID, description: String },
-  SetFocusedSceneCreatures { scene_id: SceneID, creatures: Vec<CreatureID> },
-  RemoveSceneVolumeCondition { scene_id: SceneID, condition_id: ConditionID },
+  EditSceneDetails {
+    scene_id: SceneID,
+    details: SceneCreation,
+  },
+  SetSceneCreatureVisibility {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    visibility: Visibility,
+  },
+  AddCreatureToScene {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    visibility: Visibility,
+  },
+  RemoveCreatureFromScene {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+  },
+  AddSceneChallenge {
+    scene_id: SceneID,
+    description: String,
+    challenge: AttributeCheck,
+  },
+  RemoveSceneChallenge {
+    scene_id: SceneID,
+    description: String,
+  },
+  SetFocusedSceneCreatures {
+    scene_id: SceneID,
+    creatures: Vec<CreatureID>,
+  },
+  RemoveSceneVolumeCondition {
+    scene_id: SceneID,
+    condition_id: ConditionID,
+  },
 
-  EditSceneTerrain { scene_id: SceneID, terrain: Vec<Point3> },
-  EditSceneHighlights { scene_id: SceneID, highlights: HashMap<Point3, (Color, Visibility)> },
-  EditSceneAnnotations { scene_id: SceneID, annotations: HashMap<Point3, (String, Visibility)> },
+  EditSceneTerrain {
+    scene_id: SceneID,
+    terrain: Vec<Point3>,
+  },
+  EditSceneHighlights {
+    scene_id: SceneID,
+    highlights: HashMap<Point3, (Color, Visibility)>,
+  },
+  EditSceneAnnotations {
+    scene_id: SceneID,
+    annotations: HashMap<Point3, (String, Visibility)>,
+  },
 
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
@@ -607,7 +720,10 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
   CreateCreature(FolderPath, Creature),
-  EditCreatureDetails { creature_id: CreatureID, details: CreatureCreation },
+  EditCreatureDetails {
+    creature_id: CreatureID,
+    details: CreatureCreation,
+  },
   AddCreatureToCombat(CreatureID, i16),
   RemoveCreatureFromCombat(CreatureID),
   /// Indexes into snapshots and logs.
@@ -851,7 +967,9 @@ pub enum CreatureTarget {
   /// A *piercing* line, from an actor, which is always a fixed length.
   /// When targeted at a point, it will continue through any creatures up to *and past* that point,
   /// up to the maximum distance.
-  LineFromActor { distance: Distance },
+  LineFromActor {
+    distance: Distance,
+  },
   // LineFromActorToCreature{ distance: Distance },
   SomeCreaturesInVolumeInRange {
     volume: Volume,
@@ -859,7 +977,10 @@ pub enum CreatureTarget {
     maximum: u8,
     range: Distance,
   },
-  AllCreaturesInVolumeInRange { volume: Volume, range: Distance },
+  AllCreaturesInVolumeInRange {
+    volume: Volume,
+    range: Distance,
+  },
 }
 
 /// A target specifier for actions that ultimately affect the scene by way of `SceneEffect`.

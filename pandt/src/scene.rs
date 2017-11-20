@@ -88,14 +88,24 @@ impl Scene {
   }
 
   pub fn creatures_in_volume(&self, ts: TileSystem, pt: Point3, volume: Volume) -> Vec<CreatureID> {
-    let creature_locations = self.creatures.iter().map(|(cid, &(pt, _))| (*cid, pt)).collect();
+    let creature_locations = self
+      .creatures
+      .iter()
+      .map(|(cid, &(pt, _))| (*cid, pt))
+      .collect();
     ts.items_within_volume(volume, pt, &creature_locations)
   }
 
   pub fn get_world(&self, game: &Game) -> Result<CollisionWorld, GameError> {
-    let creatures = self.creatures.iter().filter_map(
-      |(creature_id, &(pos, _))| game.get_creature(*creature_id).map(|dc| (dc.creature, pos)).ok(),
-    );
+    let creatures = self
+      .creatures
+      .iter()
+      .filter_map(|(creature_id, &(pos, _))| {
+        game
+          .get_creature(*creature_id)
+          .map(|dc| (dc.creature, pos))
+          .ok()
+      });
     let vcs = self.volume_conditions.iter().map(|(c, vc)| (*c, vc));
     Ok(make_world(creatures, vcs))
   }
@@ -120,7 +130,9 @@ mod test {
     };
     scene.volume_conditions.insert(cond_id, volume_cond.clone());
     let rogue = t_rogue("rogue");
-    let conds = scene.creature_volume_conditions(&game, &rogue).expect("Couldn't get conds");
+    let conds = scene
+      .creature_volume_conditions(&game, &rogue)
+      .expect("Couldn't get conds");
     assert_eq!(conds, vec![(cond_id, &volume_cond)]);
   }
 }

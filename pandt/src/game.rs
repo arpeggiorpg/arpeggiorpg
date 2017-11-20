@@ -21,10 +21,16 @@ impl Game {
     // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
     new_game.campaign = self.campaign.subtree(export_path)?;
     // Now, walk that campaign and copy over the actual data to the new game.
-    for path in
-      new_game.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect::<Vec<_>>()
+    for path in new_game
+      .campaign
+      .walk_paths(&FolderPath::from_vec(vec![]))
+      .cloned()
+      .collect::<Vec<_>>()
     {
-      let folder = new_game.campaign.get(&path).expect("folder we're walking must exist");
+      let folder = new_game
+        .campaign
+        .get(&path)
+        .expect("folder we're walking must exist");
       for abid in &folder.abilities {
         new_game.abilities.insert(self.get_ability(*abid)?.clone());
       }
@@ -32,7 +38,9 @@ impl Game {
         new_game.classes.insert(self.get_class(*classid)?.clone());
       }
       for cid in &folder.creatures {
-        new_game.creatures.insert(self.get_creature(*cid)?.creature.clone());
+        new_game
+          .creatures
+          .insert(self.get_creature(*cid)?.creature.clone());
       }
       for iid in &folder.items {
         new_game.items.insert(self.get_item(*iid)?.clone());
@@ -55,10 +63,16 @@ impl Game {
     let mut all_scenes = HashSet::new();
     let mut all_items = HashSet::new();
     let mut all_classes = HashSet::new();
-    let all_folders: Vec<FolderPath> =
-      self.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect();
+    let all_folders: Vec<FolderPath> = self
+      .campaign
+      .walk_paths(&FolderPath::from_vec(vec![]))
+      .cloned()
+      .collect();
     for folder_path in all_folders {
-      let folder = self.campaign.get(&folder_path).expect("walk_paths must return valid path");
+      let folder = self
+        .campaign
+        .get(&folder_path)
+        .expect("walk_paths must return valid path");
       for sid in &folder.scenes {
         if all_scenes.contains(sid) {
           bail!(GameErrorEnum::SceneAlreadyExists(*sid));
@@ -142,11 +156,17 @@ impl Game {
   }
 
   pub fn get_item(&self, iid: ItemID) -> Result<&Item, GameError> {
-    self.items.get(&iid).ok_or_else(|| GameErrorEnum::ItemNotFound(iid).into())
+    self
+      .items
+      .get(&iid)
+      .ok_or_else(|| GameErrorEnum::ItemNotFound(iid).into())
   }
 
   pub fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError> {
-    self.abilities.get(&abid).ok_or_else(|| GameErrorEnum::NoAbility(abid).into())
+    self
+      .abilities
+      .get(&abid)
+      .ok_or_else(|| GameErrorEnum::NoAbility(abid).into())
   }
 
   /// Perform a GameCommand on the current Game.
@@ -433,10 +453,12 @@ impl Game {
   fn set_item_count(
     &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
   ) -> Result<(), GameError> {
-    self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| if count == 0 {
-      inventory.remove(&item_id).unwrap_or(0);
-    } else {
-      inventory.insert(item_id, count);
+    self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| {
+      if count == 0 {
+        inventory.remove(&item_id).unwrap_or(0);
+      } else {
+        inventory.insert(item_id, count);
+      }
     })
   }
 
@@ -461,7 +483,10 @@ impl Game {
       },
 
       UnregisterPlayer(ref pid) => {
-        self.players.remove(pid).ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
+        self
+          .players
+          .remove(pid)
+          .ok_or_else(|| GameErrorEnum::PlayerNotFound(pid.clone()))?;
       }
 
       GiveCreaturesToPlayer(ref pid, ref cids) => {
@@ -544,8 +569,11 @@ impl Game {
         }
         (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::AbilityID(id), &FolderItemID::AbilityID(new_id)) => {
-          let mut new_ability =
-            self.abilities.get(&id).ok_or_else(|| GameErrorEnum::NoAbility(id))?.clone();
+          let mut new_ability = self
+            .abilities
+            .get(&id)
+            .ok_or_else(|| GameErrorEnum::NoAbility(id))?
+            .clone();
           new_ability.id = new_id;
           self
             .abilities
@@ -555,8 +583,11 @@ impl Game {
         }
         (&FolderItemID::AbilityID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::ClassID(id), &FolderItemID::ClassID(new_id)) => {
-          let mut new_class =
-            self.classes.get(&id).ok_or_else(|| GameErrorEnum::ClassNotFound(id))?.clone();
+          let mut new_class = self
+            .classes
+            .get(&id)
+            .ok_or_else(|| GameErrorEnum::ClassNotFound(id))?
+            .clone();
           new_class.id = new_id;
           self
             .classes
@@ -571,8 +602,11 @@ impl Game {
       DeleteFolderItem(ref path, ref item_id) => {
         // because we're being paranoid, we're walking ALL folder paths and checking if the given
         // item ID is found in ANY of them and cleaning it up.
-        let all_folders: Vec<FolderPath> =
-          self.campaign.walk_paths(&FolderPath::from_vec(vec![])).cloned().collect();
+        let all_folders: Vec<FolderPath> = self
+          .campaign
+          .walk_paths(&FolderPath::from_vec(vec![]))
+          .cloned()
+          .collect();
         match *item_id {
           FolderItemID::NoteID(ref name) => {
             self.campaign.get_mut(path)?.notes.remove(name);
@@ -714,9 +748,9 @@ impl Game {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ClassID(classid)))?;
             }
             for nname in node.notes.keys() {
-              self
-                .apply_log_mut(&DeleteFolderItem(path.clone(),
-                                                 FolderItemID::NoteID(nname.clone())))?;
+              self.apply_log_mut(
+                &DeleteFolderItem(path.clone(), FolderItemID::NoteID(nname.clone())),
+              )?;
             }
             self.campaign.remove(&path)?;
           }
@@ -725,7 +759,10 @@ impl Game {
 
       CreateItem(ref path, ref ritem) => {
         let item = ritem.clone();
-        self.items.try_insert(item).ok_or_else(|| GameErrorEnum::ItemAlreadyExists(ritem.id))?;
+        self
+          .items
+          .try_insert(item)
+          .ok_or_else(|| GameErrorEnum::ItemAlreadyExists(ritem.id))?;
         self.link_folder_item(path, &FolderItemID::ItemID(ritem.id))?;
       }
       EditItem(ref item) => {
@@ -766,7 +803,10 @@ impl Game {
 
       CreateScene(ref path, ref rscene) => {
         let scene = rscene.clone();
-        self.scenes.try_insert(scene).ok_or_else(|| GameErrorEnum::SceneAlreadyExists(rscene.id))?;
+        self
+          .scenes
+          .try_insert(scene)
+          .ok_or_else(|| GameErrorEnum::SceneAlreadyExists(rscene.id))?;
         self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
       }
       EditScene(ref scene) => {
@@ -788,7 +828,11 @@ impl Game {
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
       }
       SetSceneCreatureVisibility { scene_id, creature_id, ref visibility } => {
-        if !self.get_scene(scene_id)?.creatures.contains_key(&creature_id) {
+        if !self
+          .get_scene(scene_id)?
+          .creatures
+          .contains_key(&creature_id)
+        {
           bail!(GameErrorEnum::CreatureNotFound(creature_id.to_string()));
         }
         self
@@ -807,7 +851,9 @@ impl Game {
         self
           .scenes
           .mutate(&scene_id, move |mut scene| {
-            scene.creatures.insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
+            scene
+              .creatures
+              .insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
@@ -825,7 +871,9 @@ impl Game {
         self
           .scenes
           .mutate(&scene_id, move |mut scene| {
-            scene.attribute_checks.insert(description.clone(), challenge.clone());
+            scene
+              .attribute_checks
+              .insert(description.clone(), challenge.clone());
             scene
           })
           .ok_or_else(|| GameErrorEnum::SceneNotFound(scene_id))?;
@@ -889,7 +937,10 @@ impl Game {
       }
       CreateCreature(ref path, ref rc) => {
         let c = rc.clone();
-        self.creatures.try_insert(c).ok_or_else(|| GameErrorEnum::CreatureAlreadyExists(rc.id()))?;
+        self
+          .creatures
+          .try_insert(c)
+          .ok_or_else(|| GameErrorEnum::CreatureAlreadyExists(rc.id()))?;
         self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
       }
       EditCreatureDetails { creature_id, ref details } => {
@@ -907,7 +958,10 @@ impl Game {
         mutated.ok_or_else(|| GameErrorEnum::CreatureNotFound(creature_id.to_string()))?;
       }
       AddCreatureToCombat(cid, init) => {
-        let mut combat = self.current_combat.clone().ok_or(GameErrorEnum::NotInCombat)?;
+        let mut combat = self
+          .current_combat
+          .clone()
+          .ok_or(GameErrorEnum::NotInCombat)?;
         self.check_creature_id(cid)?;
         if combat.creatures.iter().any(|&(c, _)| c == cid) {
           bail!(GameErrorEnum::AlreadyInCombat(cid));
@@ -937,7 +991,10 @@ impl Game {
         self.current_combat = Some(Combat::new(*scene, cids_with_init.clone())?);
       }
       StopCombat => {
-        self.current_combat.take().ok_or(GameErrorEnum::NotInCombat)?;
+        self
+          .current_combat
+          .take()
+          .ok_or(GameErrorEnum::NotInCombat)?;
       }
       SetCreaturePos(ref scene_id, ref cid, ref pt) => {
         let scene = self.get_scene(*scene_id)?.set_pos(*cid, *pt)?;
@@ -996,9 +1053,10 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(
-      self.creatures.get(&cid).ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?,
-    )
+    self.dyn_creature(self
+      .creatures
+      .get(&cid)
+      .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?)
   }
 
   /// Only pub for tests.
@@ -1009,11 +1067,17 @@ impl Game {
   }
 
   pub fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
-    self.scenes.get(&id).ok_or_else(|| GameErrorEnum::SceneNotFound(id).into())
+    self
+      .scenes
+      .get(&id)
+      .ok_or_else(|| GameErrorEnum::SceneNotFound(id).into())
   }
 
   pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
-    let combat = self.current_combat.as_ref().ok_or(GameErrorEnum::NotInCombat)?;
+    let combat = self
+      .current_combat
+      .as_ref()
+      .ok_or(GameErrorEnum::NotInCombat)?;
     let scene = self.get_scene(combat.scene)?;
     Ok(DynamicCombat { scene: scene, combat: combat, game: self })
   }
@@ -1172,8 +1236,8 @@ impl Game {
       Action::Creature {
         target: CreatureTarget::AllCreaturesInVolumeInRange { volume, .. },
         ..
-      } |
-      Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
+      }
+      | Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
         // TODO: unimplemented! honor and check `range`
         scene.open_terrain_in_volume(self, pt, volume)?
       }
@@ -1220,8 +1284,8 @@ impl Game {
         self.creatures_in_range(scene, creature_id, distance)?
       }
       A::Creature { target: CT::Actor, .. } => PotentialTargets::CreatureIDs(vec![creature_id]),
-      A::Creature { target: CT::AllCreaturesInVolumeInRange { range, .. }, .. } |
-      A::SceneVolume { target: SceneTarget::RangedVolume { range, .. }, .. } => {
+      A::Creature { target: CT::AllCreaturesInVolumeInRange { range, .. }, .. }
+      | A::SceneVolume { target: SceneTarget::RangedVolume { range, .. }, .. } => {
         self.open_terrain_in_range(scene, creature_id, range)?
       }
       A::Creature { target: CT::LineFromActor { distance }, .. } => {
@@ -1238,7 +1302,9 @@ impl Game {
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
-    let pts = self.tile_system.open_points_in_range(creature_pos, &scene.terrain, range);
+    let pts = self
+      .tile_system
+      .open_points_in_range(creature_pos, &scene.terrain, range);
     Ok(PotentialTargets::Points(pts))
   }
 
@@ -1249,7 +1315,10 @@ impl Game {
     let my_pos = scene.get_pos(creature_id)?;
     let mut results = vec![];
     for (creature_id, &(creature_pos, _)) in &scene.creatures {
-      if self.tile_system.points_within_distance(my_pos, creature_pos, distance) {
+      if self
+        .tile_system
+        .points_within_distance(my_pos, creature_pos, distance)
+      {
         results.push(*creature_id);
       }
     }
@@ -1259,7 +1328,10 @@ impl Game {
   // ** END CONSIDERATION **
 
   pub fn get_class(&self, class: ClassID) -> Result<&Class, GameError> {
-    self.classes.get(&class).ok_or_else(|| GameErrorEnum::ClassNotFound(class).into())
+    self
+      .classes
+      .get(&class)
+      .ok_or_else(|| GameErrorEnum::ClassNotFound(class).into())
   }
 
   pub fn change(&self) -> ChangedGame {
@@ -1288,8 +1360,7 @@ impl ChangedGame {
 
   pub fn apply_combat<'game, F>(&'game self, f: F) -> Result<ChangedGame, GameError>
   where
-    F: FnOnce(DynamicCombat<'game>)
-      -> Result<ChangedCombat<'game>, GameError>,
+    F: FnOnce(DynamicCombat<'game>) -> Result<ChangedCombat<'game>, GameError>,
   {
     let dyn_combat = self.game.get_combat()?;
     let change = f(dyn_combat)?;
@@ -1302,8 +1373,7 @@ impl ChangedGame {
 
   pub fn apply_creature<F>(&self, cid: CreatureID, f: F) -> Result<ChangedGame, GameError>
   where
-    F: FnOnce(DynamicCreature)
-      -> Result<ChangedCreature, GameError>,
+    F: FnOnce(DynamicCreature) -> Result<ChangedCreature, GameError>,
   {
     let creature = self.game.get_creature(cid)?;
     let change = f(creature)?;
@@ -1434,9 +1504,23 @@ pub mod test {
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     let game =
       t_perform(&game, GameCommand::CombatAct(abid_punch(), DecidedTarget::Creature(cid_ranger())));
-    assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
+    assert_eq!(
+      game
+        .get_creature(cid_ranger())
+        .unwrap()
+        .creature
+        .cur_health(),
+      HP(7)
+    );
     let game = t_perform(&game, GameCommand::StopCombat);
-    assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
+    assert_eq!(
+      game
+        .get_creature(cid_ranger())
+        .unwrap()
+        .creature
+        .cur_health(),
+      HP(7)
+    );
   }
 
   #[test]
@@ -1542,7 +1626,9 @@ pub mod test {
 
     let scene = game.get_scene(t_scene_id()).unwrap();
 
-    let targets = game.volume_creature_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = game
+      .volume_creature_targets(scene, cid_ranger(), target_spec, pt)
+      .unwrap();
     let targets = HashSet::<CreatureID>::from_iter(targets);
     assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
@@ -1563,7 +1649,9 @@ pub mod test {
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 
-    let targets = game.volume_creature_targets(scene, cid_ranger(), target_spec, pt).unwrap();
+    let targets = game
+      .volume_creature_targets(scene, cid_ranger(), target_spec, pt)
+      .unwrap();
     let targets = HashSet::<CreatureID>::from_iter(targets);
     assert_eq!(targets, HashSet::from_iter(vec![cid_rogue(), cid_cleric()]));
   }
@@ -1577,8 +1665,9 @@ pub mod test {
     let scene = game.get_scene(t_scene_id()).unwrap();
     let cleric = cid_cleric();
     let ability_id = abid_thorn_patch();
-    let preview =
-      game.preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0)).unwrap();
+    let preview = game
+      .preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0))
+      .unwrap();
     let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
     assert_eq!(HashSet::from_iter(preview.0), expected);
   }
@@ -1592,9 +1681,17 @@ pub mod test {
     folder.notes.insert(note.clone());
 
     let mut game = t_game();
-    game.campaign.make_folder(&root_path, "Rules".to_string(), folder).expect("Betta woik");
+    game
+      .campaign
+      .make_folder(&root_path, "Rules".to_string(), folder)
+      .expect("Betta woik");
     let new_game = game.export_module(&rules_path).expect("Couldn't export");
-    let new_note = new_game.campaign.get(&root_path).unwrap().notes.get("My Note");
+    let new_note = new_game
+      .campaign
+      .get(&root_path)
+      .unwrap()
+      .notes
+      .get("My Note");
     assert_eq!(new_note.expect("My Note wasn't at root"), &note);
   }
 
@@ -1606,11 +1703,18 @@ pub mod test {
     folder.classes.insert(classid_ranger());
 
     let mut game = t_game();
-    game.campaign.make_folder(&root_path, "Rules".to_string(), folder).expect("Betta woik");
+    game
+      .campaign
+      .make_folder(&root_path, "Rules".to_string(), folder)
+      .expect("Betta woik");
     let new_game = game.export_module(&rules_path).expect("Couldn't export");
     assert_eq!(
-      new_game.get_class(classid_ranger()).expect("new game didn't have ranger class"),
-      game.get_class(classid_ranger()).expect("Old game didn't have ranger class")
+      new_game
+        .get_class(classid_ranger())
+        .expect("new game didn't have ranger class"),
+      game
+        .get_class(classid_ranger())
+        .expect("Old game didn't have ranger class")
     );
   }
 
@@ -1623,16 +1727,34 @@ pub mod test {
     classes_folder.classes.insert(classid_ranger());
 
     let mut game = t_game();
-    game.campaign.make_folder(&root_path, "Rules".to_string(), root).unwrap();
-    game.campaign.make_folder(&rules_path, "Classes".to_string(), classes_folder).unwrap();
+    game
+      .campaign
+      .make_folder(&root_path, "Rules".to_string(), root)
+      .unwrap();
+    game
+      .campaign
+      .make_folder(&rules_path, "Classes".to_string(), classes_folder)
+      .unwrap();
     let new_game = game.export_module(&rules_path).expect("Couldn't export");
     assert_eq!(
-      new_game.get_class(classid_ranger()).expect("new game didn't have ranger class"),
-      game.get_class(classid_ranger()).expect("Old game didn't have ranger class")
+      new_game
+        .get_class(classid_ranger())
+        .expect("new game didn't have ranger class"),
+      game
+        .get_class(classid_ranger())
+        .expect("Old game didn't have ranger class")
     );
 
-    let new_classes = &new_game.campaign.get(&"/Classes".parse().unwrap()).unwrap().classes;
-    let old_classes = &game.campaign.get(&"/Rules/Classes".parse().unwrap()).unwrap().classes;
+    let new_classes = &new_game
+      .campaign
+      .get(&"/Classes".parse().unwrap())
+      .unwrap()
+      .classes;
+    let old_classes = &game
+      .campaign
+      .get(&"/Rules/Classes".parse().unwrap())
+      .unwrap()
+      .classes;
     assert_eq!(new_classes, old_classes);
   }
 }

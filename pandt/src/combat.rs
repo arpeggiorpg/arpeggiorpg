@@ -322,7 +322,13 @@ pub mod test {
   #[test]
   fn move_too_far() {
     let game = t_combat();
-    match game.get_combat().unwrap().get_movement().unwrap().move_current(Point3::new(11, 0, 0)) {
+    match game
+      .get_combat()
+      .unwrap()
+      .get_movement()
+      .unwrap()
+      .move_current(Point3::new(11, 0, 0))
+    {
       Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -333,12 +339,20 @@ pub mod test {
     let game = t_combat();
     let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)));
     assert_eq!(
-      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
+      game
+        .get_scene(t_scene_id())
+        .unwrap()
+        .get_pos(cid_rogue())
+        .unwrap(),
       Point3::new(5, 0, 0)
     );
     let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)));
     assert_eq!(
-      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
+      game
+        .get_scene(t_scene_id())
+        .unwrap()
+        .get_pos(cid_rogue())
+        .unwrap(),
       Point3::new(10, 0, 0)
     );
     match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
