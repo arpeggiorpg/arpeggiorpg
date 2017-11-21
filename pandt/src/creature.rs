@@ -247,7 +247,7 @@ impl Creature {
         new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
       }
       CreatureLog::ReduceEnergy(ref nrg) => if *nrg > new.cur_energy {
-        return Err(GameErrorEnum::NotEnoughEnergy(*nrg).into());
+        return Err(GameError::NotEnoughEnergy(*nrg).into());
       } else {
         new.cur_energy = new.cur_energy - *nrg;
       },
@@ -258,9 +258,9 @@ impl Creature {
         let cond = new
           .conditions
           .get_mut(id)
-          .ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
+          .ok_or_else(|| GameError::ConditionNotFound(*id))?;
         match cond.remaining {
-          Duration::Interminate => bail!(GameErrorEnum::BuggyProgram(
+          Duration::Interminate => bail!(GameError::BuggyProgram(
             "Tried to decrease condition duration of an \
              interminate condition"
               .to_string()
@@ -272,7 +272,7 @@ impl Creature {
         new
           .conditions
           .remove(id)
-          .ok_or_else(|| GameErrorEnum::ConditionNotFound(*id))?;
+          .ok_or_else(|| GameError::ConditionNotFound(*id))?;
       }
     }
     Ok(new)
@@ -304,7 +304,7 @@ impl Creature {
       .attributes
       .get(attr)
       .cloned()
-      .ok_or_else(|| GameErrorEnum::AttributeNotFound(self.id, attr.clone()).into())
+      .ok_or_else(|| GameError::AttributeNotFound(self.id, attr.clone()).into())
   }
 
   pub fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {

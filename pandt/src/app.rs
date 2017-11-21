@@ -84,9 +84,9 @@ impl App {
     let &(ref baseline, ref logs_to_apply) = self
       .snapshots
       .get(snapshot_idx)
-      .ok_or_else(|| GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx))?;
+      .ok_or_else(|| GameError::HistoryNotFound(snapshot_idx, log_idx))?;
     if logs_to_apply.len() - 1 < log_idx {
-      bail!(GameErrorEnum::HistoryNotFound(snapshot_idx, log_idx));
+      bail!(GameError::HistoryNotFound(snapshot_idx, log_idx));
     }
     println!("All logs: {:?}", logs_to_apply);
     let logs_to_apply = &logs_to_apply[..log_idx];

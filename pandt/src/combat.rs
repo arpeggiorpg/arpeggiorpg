@@ -26,7 +26,7 @@ impl<'game> DynamicCombat<'game> {
       }
       CombatLog::RerollInitiative(ref combatants) => {
         if new.creatures.get_cursor() != 0 {
-          bail!(GameErrorEnum::MustRerollAtStartOfRound);
+          bail!(GameError::MustRerollAtStartOfRound);
         }
         new.creatures = sort_combatants(combatants.clone())?;
       }
@@ -74,7 +74,7 @@ impl<'game> DynamicCombat<'game> {
         movement_left: self.current_creature()?.speed() - self.combat.movement_used,
       })
     } else {
-      Err(GameErrorEnum::CannotAct(current.id()).into())
+      Err(GameError::CannotAct(current.id()).into())
     }
   }
 
@@ -107,7 +107,7 @@ fn sort_combatants(
 ) -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
   combatants.sort_by_key(|&(_, i)| -i);
   nonempty::NonEmptyWithCursor::from_vec(combatants)
-    .ok_or_else(|| GameErrorEnum::CombatMustHaveCreatures.into())
+    .ok_or_else(|| GameError::CombatMustHaveCreatures.into())
 }
 
 impl Combat {
@@ -146,10 +146,10 @@ impl Combat {
       .creatures
       .iter()
       .position(|&(c, _)| c == cid)
-      .ok_or_else(|| GameErrorEnum::CreatureNotFound(cid.to_string()))?;
+      .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
       Err(nonempty::Error::OutOfBounds { .. }) => Err(
-        GameErrorEnum::BuggyProgram(
+        GameError::BuggyProgram(
           "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
         ).into(),
       ),
@@ -240,7 +240,7 @@ pub mod test {
       GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)),
     );
     match t_act(&game, abid_punch(), DecidedTarget::Creature(cid_ranger())) {
-      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
+      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -304,7 +304,7 @@ pub mod test {
       GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(6, 0, 0)),
     );
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
-      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
 
@@ -314,7 +314,7 @@ pub mod test {
     );
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
-      Err(GameError(GameErrorEnum::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -329,7 +329,7 @@ pub mod test {
       .unwrap()
       .move_current(Point3::new(11, 0, 0))
     {
-      Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
+      Err(GameError(GameError::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -356,7 +356,7 @@ pub mod test {
       Point3::new(10, 0, 0)
     );
     match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
-      Err(GameError(GameErrorEnum::NoPathFound, _)) => {}
+      Err(GameError(GameError::NoPathFound, _)) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
   }

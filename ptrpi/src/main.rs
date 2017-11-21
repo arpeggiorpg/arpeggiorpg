@@ -34,7 +34,7 @@ use rocket::http::Method;
 use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::game::load_app_from_path;
-use pandt::types::{App, CreatureID, GameCommand, GameError, GameErrorEnum, Point3,
+use pandt::types::{App, CreatureID, GameCommand, GameError, Point3,
                    PotentialTargets, RPIApp, RPIGame, Runtime};
 use pandt::foldertree::FolderPath;
 

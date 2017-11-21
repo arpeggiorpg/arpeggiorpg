@@ -373,8 +373,8 @@ pub enum InventoryOwner {
 impl InventoryOwner {
   pub fn not_found_error(&self) -> GameError {
     match *self {
-      InventoryOwner::Scene(sid) => GameErrorEnum::SceneNotFound(sid).into(),
-      InventoryOwner::Creature(cid) => GameErrorEnum::CreatureNotFound(cid.to_string()).into(),
+      InventoryOwner::Scene(sid) => GameError::SceneNotFound(sid).into(),
+      InventoryOwner::Creature(cid) => GameError::CreatureNotFound(cid.to_string()).into(),
     }
   }
 }
@@ -734,259 +734,290 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
   ls.into_iter().map(GameLog::CombatLog).collect()
 }
 
-// #[derive(Debug, Fail)]
-// enum GameError2 {
-//   #[fail(display = "File {} was not found", _0)] FileNotFound(String),
-//   #[fail(display = "The Creature with ID {:?} does not have the attribute {:?}", _0, _1)]
-//   AttributeNotFound(CreatureID, AttrID),
-//   #[fail(display = "The ability with ID {:?} already exists", _0)] AbilityAlreadyExists(AbilityID),
-//   #[fail(display = "The creature with ID {:?} already exists", _0)]
-//   CreatureAlreadyExists(CreatureID),
-//   #[fail(display = "The Item {:?} already exists", _0)] ItemAlreadyExists(ItemID),
-//   #[fail(display = "The Item {:?} couldn't be found", _0)] ItemNotFound(ItemID),
-//   #[fail(display = "The scene {:?} already exists", _0)] SceneAlreadyExists(SceneID),
-//   #[fail(display = "The Scene '{:?}' wasn't found", _0)] SceneNotFound(SceneID),
-//   #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)] SceneInUse(SceneID),
-//   #[fail(display = "The identifier '{}' is too long.", _0)] IDTooLong(String),
-//   #[fail(display = "The condition with ID {:?} wasn't found.", _0)] ConditionNotFound(ConditionID),
-//   #[fail(display = "Cannot process {:?} in this state.", _0)] InvalidCommand(GameCommand),
-//   #[fail(display = "The class {:?} already exists.", _0)] ClassAlreadyExists(ClassID),
-//   #[fail(display = "The class {:?} was not found.", _0)] ClassNotFound(ClassID),
-//   #[fail(display = "The ability with ID {:?} wasn't found.", _0)] NoAbility(AbilityID),
-//   #[fail(display = "Creatures must be supplied when starting a combat.")] CombatMustHaveCreatures,
-//   #[fail(display = "RerollInitiative can only be invoked at the beginning of a roud.")]
-//   MustRerollAtStartOfRound,
-//   #[fail(display = "The creature with ID {:?} does not have the ability {:?}", _0, _1)]
-//   CreatureLacksAbility(CreatureID, AbilityID),
-//   #[fail(display = "The creature with ID {} could not be found.", _0)] CreatureNotFound(String),
-//   #[fail(display = "Creature with ID {:?} is not a valid target.", _0)] InvalidTarget(CreatureID),
-//   #[fail(display = "DecidedTarget {:?} is not valid for TargetSpec {:?}.", _1, _0)]
-//   InvalidTargetForTargetSpec(CreatureTarget, DecidedTarget),
-//   #[fail(display = "DecidedTarget {:?} is not valid for Action {:?}.", _1, _0)]
-//   InvalidTargetForAction(Action, DecidedTarget),
-//   #[fail(display = "Creature {:?} is out of range.", _0)] CreatureOutOfRange(CreatureID),
-//   #[fail(display = "Point {:?} is out of range.", _0)] PointOutOfRange(Point3),
-//   #[fail(display = "There's a bug in the program: {}", _0)] BuggyProgram(String),
-//   #[fail(display = "There is currently no combat.")] NotInCombat,
-//   #[fail(display = "Creature {:?} is already in combat.", _0)] AlreadyInCombat(CreatureID),
-//   #[fail(display = "Creature {:?} cannot be moved.", _0)] CannotMove(CreatureID),
-//   #[fail(display = "Creature {:?} cannot act.", _0)] CannotAct(CreatureID),
-//   #[fail(display = "A path can't be found.")] NoPathFound,
-//   #[fail(display = "Path {} already exists", _0)] FolderAlreadyExists(FolderPath),
-//   #[fail(display = "Can't step from {:?} to {:?}", _0, _1)] StepTooBig(Point3, Point3),
-//   #[fail(display = "Not enough energy: {:?}", _0)] NotEnoughEnergy(Energy),
-//   #[fail(display = "Player ID {:?} is already registered.", _0)] PlayerAlreadyExists(PlayerID),
-//   #[fail(display = "Player ID {:?} was not found.", _0)] PlayerNotFound(PlayerID),
-//   #[fail(display = "Player ID {:?} does not control creature {:?}.", _0, _1)]
-//   PlayerDoesntControlCreature(PlayerID, CreatureID),
-//   #[fail(display = "Couldn't find history item at snapshot {} log item {}", _0, _1)]
-//   HistoryNotFound(usize, usize),
-//   #[fail(display = "Initiative index {} is out of bounds.", _0)] InitiativeOutOfBounds(usize),
-//   #[fail(display = "The folder {} is not empty", _0)] FolderNotEmpty(FolderPath),
-//   #[fail(display = "The folder {} does not contain item {:?}", _0, _1)]
-//   FolderItemNotFound(FolderPath, FolderItemID),
-//   #[fail(display = "The note in '{}' named '{}' could not be found.", _0, _1)]
-//   NoteNotFound(FolderPath, String),
-//   #[fail(display = "Notes can't be linked or unlinked. '{}' / '{}'", _0, _1)]
-//   CannotLinkNotes(FolderPath, String),
+#[derive(Debug, Fail)]
+pub enum GameError {
+  #[fail(display = "File {} was not found", _0)] FileNotFound(String),
+  #[fail(display = "The Creature with ID {:?} does not have the attribute {:?}", _0, _1)]
+  AttributeNotFound(CreatureID, AttrID),
+  #[fail(display = "The ability with ID {:?} already exists", _0)] AbilityAlreadyExists(AbilityID),
+  #[fail(display = "The creature with ID {:?} already exists", _0)]
+  CreatureAlreadyExists(CreatureID),
+  #[fail(display = "The Item {:?} already exists", _0)] ItemAlreadyExists(ItemID),
+  #[fail(display = "The Item {:?} couldn't be found", _0)] ItemNotFound(ItemID),
+  #[fail(display = "The scene {:?} already exists", _0)] SceneAlreadyExists(SceneID),
+  #[fail(display = "The Scene '{:?}' wasn't found", _0)] SceneNotFound(SceneID),
+  #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)] SceneInUse(SceneID),
+  #[fail(display = "The identifier '{}' is too long.", _0)] IDTooLong(String),
+  #[fail(display = "The condition with ID {:?} wasn't found.", _0)] ConditionNotFound(ConditionID),
+  #[fail(display = "Cannot process {:?} in this state.", _0)] InvalidCommand(GameCommand),
+  #[fail(display = "The class {:?} already exists.", _0)] ClassAlreadyExists(ClassID),
+  #[fail(display = "The class {:?} was not found.", _0)] ClassNotFound(ClassID),
+  #[fail(display = "The ability with ID {:?} wasn't found.", _0)] NoAbility(AbilityID),
+  #[fail(display = "Creatures must be supplied when starting a combat.")] CombatMustHaveCreatures,
+  #[fail(display = "RerollInitiative can only be invoked at the beginning of a roud.")]
+  MustRerollAtStartOfRound,
+  #[fail(display = "The creature with ID {:?} does not have the ability {:?}", _0, _1)]
+  CreatureLacksAbility(CreatureID, AbilityID),
+  #[fail(display = "The creature with ID {} could not be found.", _0)] CreatureNotFound(String),
+  #[fail(display = "Creature with ID {:?} is not a valid target.", _0)] InvalidTarget(CreatureID),
+  #[fail(display = "DecidedTarget {:?} is not valid for TargetSpec {:?}.", _1, _0)]
+  InvalidTargetForTargetSpec(CreatureTarget, DecidedTarget),
+  #[fail(display = "DecidedTarget {:?} is not valid for Action {:?}.", _1, _0)]
+  InvalidTargetForAction(Action, DecidedTarget),
+  #[fail(display = "Creature {:?} is out of range.", _0)] CreatureOutOfRange(CreatureID),
+  #[fail(display = "Point {:?} is out of range.", _0)] PointOutOfRange(Point3),
+  #[fail(display = "There's a bug in the program: {}", _0)] BuggyProgram(String),
+  #[fail(display = "There is currently no combat.")] NotInCombat,
+  #[fail(display = "Creature {:?} is already in combat.", _0)] AlreadyInCombat(CreatureID),
+  #[fail(display = "Creature {:?} cannot be moved.", _0)] CannotMove(CreatureID),
+  #[fail(display = "Creature {:?} cannot act.", _0)] CannotAct(CreatureID),
+  #[fail(display = "A path can't be found.")] NoPathFound,
+  #[fail(display = "Path {} already exists", _0)] FolderAlreadyExists(FolderPath),
+  #[fail(display = "Can't step from {:?} to {:?}", _0, _1)] StepTooBig(Point3, Point3),
+  #[fail(display = "Not enough energy: {:?}", _0)] NotEnoughEnergy(Energy),
+  #[fail(display = "Player ID {:?} is already registered.", _0)] PlayerAlreadyExists(PlayerID),
+  #[fail(display = "Player ID {:?} was not found.", _0)] PlayerNotFound(PlayerID),
+  #[fail(display = "Player ID {:?} does not control creature {:?}.", _0, _1)]
+  PlayerDoesntControlCreature(PlayerID, CreatureID),
+  #[fail(display = "Couldn't find history item at snapshot {} log item {}", _0, _1)]
+  HistoryNotFound(usize, usize),
+  #[fail(display = "Initiative index {} is out of bounds.", _0)] InitiativeOutOfBounds(usize),
+  #[fail(display = "The folder {} is not empty", _0)] FolderNotEmpty(FolderPath),
+  #[fail(display = "The folder {} does not contain item {:?}", _0, _1)]
+  FolderItemNotFound(FolderPath, FolderItemID),
+  #[fail(display = "The note in '{}' named '{}' could not be found.", _0, _1)]
+  NoteNotFound(FolderPath, String),
+  #[fail(display = "Notes can't be linked or unlinked. '{}' / '{}'", _0, _1)]
+  CannotLinkNotes(FolderPath, String),
 
-//   // Wrappers for other errors:
-//   #[fail(display="FolderTree error")]
-//   FolderTreeError(#[cause] FolderTreeError),
-//   #[fail(display="UUID Parse Error")]
-//   UUIDParseError(#[cause] UuidParseError),
-//   #[fail(display="YAML Error")]
-//   YAMLError(#[cause] serde_yaml::Error),
-//   #[fail(display="IO Error")]
-//   IOError(#[cause] ::std::io::Error),
-// }
+  // Wrappers for other errors:
+  #[fail(display="FolderTree error")]
+  FolderTreeError(#[cause] FolderTreeError),
+  #[fail(display="UUID Parse Error")]
+  UUIDParseError(#[cause] UuidParseError),
+  #[fail(display="YAML Error")]
+  YAMLError(#[cause] serde_yaml::Error),
+  #[fail(display="IO Error")]
+  IOError(#[cause] ::std::io::Error),
+}
 
-error_chain! {
-  types { GameError, GameErrorEnum, GameErrorResultExt; }
 
-  links {
-    FolderTreeError(FolderTreeError, FolderTreeErrorKind);
-  }
-
-  foreign_links {
-    UUIDParseError(UuidParseError);
-    YAMLError(serde_yaml::Error);
-    IOError(::std::io::Error);
-  }
-
-  errors {
-    FileNotFound(name: String) {
-      description("A saved game or module was not found")
-      display("File {} was not found", name)
-    }
-    AttributeNotFound(cid: CreatureID, attrid: AttrID) {
-      description("A Creature does not have the supplied Attribute")
-      display("The Creature with ID {} does not have the attribute {}", cid.to_string(), attrid.0)
-    }
-    AbilityAlreadyExists(abid: AbilityID) {
-      description("An Ability with the given ID already exists")
-      display("The ability with ID {} already exists", abid.to_string())
-    }
-    CreatureAlreadyExists(cid: CreatureID) {
-      description("A Creature with the given ID already exists")
-      display("The creature with ID {} already exists", cid.to_string())
-    }
-    ItemAlreadyExists(iid: ItemID) {
-      description("An Item already exists.")
-      display("The Item {} already exists", iid.0)
-    }
-    ItemNotFound(iid: ItemID) {
-      description("An Item couldn't be found.")
-      display("The Item {} couldn't be found.", iid.0)
-    }
-    SceneAlreadyExists(scene: SceneID) {
-      description("A scene already exists.")
-      display("The scene {} already exists", scene.0)
-    }
-    SceneNotFound(scene: SceneID) {
-      description("A scene wasn't found")
-      display("The scene '{}' wasn't found", scene.0)
-    }
-    SceneInUse(scene: SceneID) {
-      description("The scene can't be deleted because it's in use (likely because it's in combat).")
-      display("The scene {} is in use (by combat, probably).", scene.0)
-    }
-    IDTooLong(id: String) {
-      description("An identifier was too long.")
-      display("The identifier '{}' is too long.", id)
-    }
-    ConditionNotFound(id: ConditionID) {
-      description("A condition wasn't found.")
-      display("The condition with ID {:?} wasn't found.", id)
-    }
-    InvalidCommand(cmd: GameCommand) {
-      description("The supplied GameCommand is not valid in the current state.")
-      display("Cannot process {:?} in this state.", cmd)
-    }
-    ClassAlreadyExists(class: ClassID) {
-      description("A class already exists.")
-      display("The class {:?} already exists.", class)
-    }
-    ClassNotFound(cls: ClassID) {
-      description("A class wasn't found.")
-      display("The class {:?} was not found.", cls)
-    }
-    NoAbility(abid: AbilityID) {
-      description("An ability wasn't found.")
-      display("The ability with ID {} wasn't found.", abid.to_string())
-    }
-    CombatMustHaveCreatures {
-      description("Combat can't be started without creatures.")
-      display("Creatures must be supplied when starting a combat.")
-    }
-    MustRerollAtStartOfRound {
-      description("RerollInitiative can only be invoked at the beginning of a round.")
-      display("RerollInitiative can only be invoked at the beginning of a roud.")
-    }
-    CreatureLacksAbility(cid: CreatureID, abid: AbilityID) {
-      description("A creature cannot use the supplied ability.")
-      display("The creature with ID {} does not have the ability {}",
-              cid.to_string(), abid.to_string())
-    }
-    CreatureNotFound(id: String) {
-      description("A creature with the supplied ID could not be found.")
-      display("The creature with ID {} could not be found.", id)
-    }
-    InvalidTarget(cid: CreatureID) {
-      description("The specified creature is not a valid target.")
-      display("Creature with ID {} is not a valid target.", cid.to_string())
-    }
-    InvalidTargetForTargetSpec(tspec: CreatureTarget, dtarget: DecidedTarget) {
-      description("The supplied DecidedTarget is not valid for the TargetSpec in use.")
-      display("DecidedTarget {:?} is not valid for TargetSpec {:?}.", dtarget, tspec)
-    }
-    InvalidTargetForAction(action: Action, dtarget: DecidedTarget) {
-      description("The supplied DecidedTarget is not valid for the Action in use.")
-      display("DecidedTarget {:?} is not valid for Action {:?}.", dtarget, action)
-    }
-    CreatureOutOfRange(cid: CreatureID) {
-      description("The specified creature is out of range.")
-      display("Creature {} is out of range.", cid.to_string())
-    }
-    PointOutOfRange(pt: Point3) {
-      description("The specified point is out of range.")
-      display("Point {:?} is out of range.", pt)
-    }
-    BuggyProgram(msg: String) {
-      description("There was an internal error that is caused by a broken assumption, \
-                  indicating that this software is garbage.")
-      display("There's a bug in the program: {}", msg)
-    }
-    NotInCombat {
-      description("There is currently no combat when trying to do something combat-specific.")
-      display("There is currently no combat.")
-    }
-    AlreadyInCombat(cid: CreatureID) {
-      description("The specified creature is already in combat.")
-      display("Creature {} is already in combat.", cid.to_string())
-    }
-    CannotMove(cid: CreatureID) {
-      description("A creature cannot move.")
-      display("Creature {} cannot be moved.", cid.to_string())
-    }
-    CannotAct(cid: CreatureID) {
-      description("A creature cannot act.")
-      display("Creature {} cannot act.", cid.to_string())
-    }
-    NoPathFound {
-      description("A path can't be found.")
-      display("A path can't be found.")
-    }
-    FolderAlreadyExists(path: FolderPath) {
-      description("A path already exists.")
-      display("Path {} already exists", path)
-    }
-    StepTooBig(from: Point3, to: Point3) {
-      description("A step from one point to another is too large.")
-      display("Can't step from {:?} to {:?}", from, to)
-    }
-    NotEnoughEnergy(nrg: Energy) {
-      description("There is not enough energy to do something.")
-      display("Not enough energy: {:?}", nrg)
-    }
-    PlayerAlreadyExists(pid: PlayerID) {
-      description("The specified player ID is already registered.")
-      display("Player ID {} is already registered.", pid.0)
-    }
-    PlayerNotFound(pid: PlayerID) {
-      description("The specified player was not found.")
-      display("Player ID {} was not found.", pid.0)
-    }
-    PlayerDoesntControlCreature(pid: PlayerID, cid: CreatureID) {
-      description("The specified creature is not controlled by the current player.")
-      display("Player ID {} does not control creature {}.", pid.0, cid.to_string())
-    }
-    HistoryNotFound(snap_idx: usize, log_idx: usize) {
-      description("The requested history item was not found.")
-      display("Couldn't find history item at snapshot {} log item {}", snap_idx, log_idx)
-    }
-    InitiativeOutOfBounds(idx: usize) {
-      description("The initiative index is out of bound.")
-      display("Initiative index {} is out of bounds.", idx)
-    }
-    FolderNotEmpty(path: FolderPath) {
-      description("The user attempted to delete a folder when it wasn't empty.")
-      display("The folder {} is not empty", path.to_string())
-    }
-    FolderItemNotFound(path: FolderPath, item: FolderItemID) {
-      description("The given folder item was not found in the given folder path.")
-      display("The folder {} does not contain item {:?}", path.to_string(), item)
-    }
-    NoteNotFound(path: FolderPath, name: String) {
-      description("A note couldn't be found.")
-      display("The note in '{}' named '{}' could not be found.", path.to_string(), name)
-    }
-    CannotLinkNotes(path: FolderPath, name: String) {
-      description("Notes can't be linked or unlinked.")
-      display("Notes can't be linked or unlinked. '{}' / '{}'", path.to_string(), name)
-    }
+impl From<FolderTreeError> for GameError {
+  fn from(error: FolderTreeError) -> Self {
+    GameError::FolderTreeError(error)
   }
 }
+
+impl From<UuidParseError> for GameError {
+  fn from(error: UuidParseError) -> Self {
+    GameError::UUIDParseError(error)
+  }
+}
+
+impl From<serde_yaml::Error> for GameError {
+  fn from(error: serde_yaml::Error) -> Self {
+    GameError::YAMLError(error)
+  }
+}
+
+impl From<::std::io::Error> for GameError {
+  fn from(error: ::std::io::Error) -> Self {
+    GameError::IOError(error)
+  }
+}
+
+impl<'a> From<&'a str> for GameError {
+  fn from(error: &'a str) -> Self {
+    GameError::BuggyProgram(error.to_string())
+  }
+}
+
+// error_chain! {
+//   types { GameError, GameErrorEnum, GameErrorResultExt; }
+
+//   links {
+//     FolderTreeError(FolderTreeError, FolderTreeErrorKind);
+//   }
+
+//   foreign_links {
+//     UUIDParseError(UuidParseError);
+//     YAMLError(serde_yaml::Error);
+//     IOError(::std::io::Error);
+//   }
+
+//   errors {
+//     FileNotFound(name: String) {
+//       description("A saved game or module was not found")
+//       display("File {} was not found", name)
+//     }
+//     AttributeNotFound(cid: CreatureID, attrid: AttrID) {
+//       description("A Creature does not have the supplied Attribute")
+//       display("The Creature with ID {} does not have the attribute {}", cid.to_string(), attrid.0)
+//     }
+//     AbilityAlreadyExists(abid: AbilityID) {
+//       description("An Ability with the given ID already exists")
+//       display("The ability with ID {} already exists", abid.to_string())
+//     }
+//     CreatureAlreadyExists(cid: CreatureID) {
+//       description("A Creature with the given ID already exists")
+//       display("The creature with ID {} already exists", cid.to_string())
+//     }
+//     ItemAlreadyExists(iid: ItemID) {
+//       description("An Item already exists.")
+//       display("The Item {} already exists", iid.0)
+//     }
+//     ItemNotFound(iid: ItemID) {
+//       description("An Item couldn't be found.")
+//       display("The Item {} couldn't be found.", iid.0)
+//     }
+//     SceneAlreadyExists(scene: SceneID) {
+//       description("A scene already exists.")
+//       display("The scene {} already exists", scene.0)
+//     }
+//     SceneNotFound(scene: SceneID) {
+//       description("A scene wasn't found")
+//       display("The scene '{}' wasn't found", scene.0)
+//     }
+//     SceneInUse(scene: SceneID) {
+//       description("The scene can't be deleted because it's in use (likely because it's in combat).")
+//       display("The scene {} is in use (by combat, probably).", scene.0)
+//     }
+//     IDTooLong(id: String) {
+//       description("An identifier was too long.")
+//       display("The identifier '{}' is too long.", id)
+//     }
+//     ConditionNotFound(id: ConditionID) {
+//       description("A condition wasn't found.")
+//       display("The condition with ID {:?} wasn't found.", id)
+//     }
+//     InvalidCommand(cmd: GameCommand) {
+//       description("The supplied GameCommand is not valid in the current state.")
+//       display("Cannot process {:?} in this state.", cmd)
+//     }
+//     ClassAlreadyExists(class: ClassID) {
+//       description("A class already exists.")
+//       display("The class {:?} already exists.", class)
+//     }
+//     ClassNotFound(cls: ClassID) {
+//       description("A class wasn't found.")
+//       display("The class {:?} was not found.", cls)
+//     }
+//     NoAbility(abid: AbilityID) {
+//       description("An ability wasn't found.")
+//       display("The ability with ID {} wasn't found.", abid.to_string())
+//     }
+//     CombatMustHaveCreatures {
+//       description("Combat can't be started without creatures.")
+//       display("Creatures must be supplied when starting a combat.")
+//     }
+//     MustRerollAtStartOfRound {
+//       description("RerollInitiative can only be invoked at the beginning of a round.")
+//       display("RerollInitiative can only be invoked at the beginning of a roud.")
+//     }
+//     CreatureLacksAbility(cid: CreatureID, abid: AbilityID) {
+//       description("A creature cannot use the supplied ability.")
+//       display("The creature with ID {} does not have the ability {}",
+//               cid.to_string(), abid.to_string())
+//     }
+//     CreatureNotFound(id: String) {
+//       description("A creature with the supplied ID could not be found.")
+//       display("The creature with ID {} could not be found.", id)
+//     }
+//     InvalidTarget(cid: CreatureID) {
+//       description("The specified creature is not a valid target.")
+//       display("Creature with ID {} is not a valid target.", cid.to_string())
+//     }
+//     InvalidTargetForTargetSpec(tspec: CreatureTarget, dtarget: DecidedTarget) {
+//       description("The supplied DecidedTarget is not valid for the TargetSpec in use.")
+//       display("DecidedTarget {:?} is not valid for TargetSpec {:?}.", dtarget, tspec)
+//     }
+//     InvalidTargetForAction(action: Action, dtarget: DecidedTarget) {
+//       description("The supplied DecidedTarget is not valid for the Action in use.")
+//       display("DecidedTarget {:?} is not valid for Action {:?}.", dtarget, action)
+//     }
+//     CreatureOutOfRange(cid: CreatureID) {
+//       description("The specified creature is out of range.")
+//       display("Creature {} is out of range.", cid.to_string())
+//     }
+//     PointOutOfRange(pt: Point3) {
+//       description("The specified point is out of range.")
+//       display("Point {:?} is out of range.", pt)
+//     }
+//     BuggyProgram(msg: String) {
+//       description("There was an internal error that is caused by a broken assumption, \
+//                   indicating that this software is garbage.")
+//       display("There's a bug in the program: {}", msg)
+//     }
+//     NotInCombat {
+//       description("There is currently no combat when trying to do something combat-specific.")
+//       display("There is currently no combat.")
+//     }
+//     AlreadyInCombat(cid: CreatureID) {
+//       description("The specified creature is already in combat.")
+//       display("Creature {} is already in combat.", cid.to_string())
+//     }
+//     CannotMove(cid: CreatureID) {
+//       description("A creature cannot move.")
+//       display("Creature {} cannot be moved.", cid.to_string())
+//     }
+//     CannotAct(cid: CreatureID) {
+//       description("A creature cannot act.")
+//       display("Creature {} cannot act.", cid.to_string())
+//     }
+//     NoPathFound {
+//       description("A path can't be found.")
+//       display("A path can't be found.")
+//     }
+//     FolderAlreadyExists(path: FolderPath) {
+//       description("A path already exists.")
+//       display("Path {} already exists", path)
+//     }
+//     StepTooBig(from: Point3, to: Point3) {
+//       description("A step from one point to another is too large.")
+//       display("Can't step from {:?} to {:?}", from, to)
+//     }
+//     NotEnoughEnergy(nrg: Energy) {
+//       description("There is not enough energy to do something.")
+//       display("Not enough energy: {:?}", nrg)
+//     }
+//     PlayerAlreadyExists(pid: PlayerID) {
+//       description("The specified player ID is already registered.")
+//       display("Player ID {} is already registered.", pid.0)
+//     }
+//     PlayerNotFound(pid: PlayerID) {
+//       description("The specified player was not found.")
+//       display("Player ID {} was not found.", pid.0)
+//     }
+//     PlayerDoesntControlCreature(pid: PlayerID, cid: CreatureID) {
+//       description("The specified creature is not controlled by the current player.")
+//       display("Player ID {} does not control creature {}.", pid.0, cid.to_string())
+//     }
+//     HistoryNotFound(snap_idx: usize, log_idx: usize) {
+//       description("The requested history item was not found.")
+//       display("Couldn't find history item at snapshot {} log item {}", snap_idx, log_idx)
+//     }
+//     InitiativeOutOfBounds(idx: usize) {
+//       description("The initiative index is out of bound.")
+//       display("Initiative index {} is out of bounds.", idx)
+//     }
+//     FolderNotEmpty(path: FolderPath) {
+//       description("The user attempted to delete a folder when it wasn't empty.")
+//       display("The folder {} is not empty", path.to_string())
+//     }
+//     FolderItemNotFound(path: FolderPath, item: FolderItemID) {
+//       description("The given folder item was not found in the given folder path.")
+//       display("The folder {} does not contain item {:?}", path.to_string(), item)
+//     }
+//     NoteNotFound(path: FolderPath, name: String) {
+//       description("A note couldn't be found.")
+//       display("The note in '{}' named '{}' could not be found.", path.to_string(), name)
+//     }
+//     CannotLinkNotes(path: FolderPath, name: String) {
+//       description("Notes can't be linked or unlinked.")
+//       display("Notes can't be linked or unlinked. '{}' / '{}'", path.to_string(), name)
+//     }
+//   }
+// }
 
 /// Potential targets for an ability.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
