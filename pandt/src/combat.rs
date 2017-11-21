@@ -240,7 +240,7 @@ pub mod test {
       GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(2, 0, 0)),
     );
     match t_act(&game, abid_punch(), DecidedTarget::Creature(cid_ranger())) {
-      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_ranger()),
+      Err(GameError::CreatureOutOfRange(cid)) => assert_eq!(cid, cid_ranger()),
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -304,7 +304,7 @@ pub mod test {
       GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(6, 0, 0)),
     );
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
-      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      Err(GameError::CreatureOutOfRange(cid)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
 
@@ -314,7 +314,7 @@ pub mod test {
     );
     // d((5,3,0), (0,0,0)).round() is still 5 so it's still in range
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
-      Err(GameError(GameError::CreatureOutOfRange(cid), _)) => assert_eq!(cid, cid_rogue()),
+      Err(GameError::CreatureOutOfRange(cid)) => assert_eq!(cid, cid_rogue()),
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -329,7 +329,7 @@ pub mod test {
       .unwrap()
       .move_current(Point3::new(11, 0, 0))
     {
-      Err(GameError(GameError::NoPathFound, _)) => {}
+      Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -356,7 +356,7 @@ pub mod test {
       Point3::new(10, 0, 0)
     );
     match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
-      Err(GameError(GameError::NoPathFound, _)) => {}
+      Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
   }

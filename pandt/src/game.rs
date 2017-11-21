@@ -1482,7 +1482,7 @@ pub mod test {
     let result =
       game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]), PathBuf::from(""));
     match result {
-      Err(GameError(GameError::CreatureNotFound(id), _)) => assert_eq!(id, non.to_string()),
+      Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
     }
   }
@@ -1493,7 +1493,7 @@ pub mod test {
     let result =
       game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]), PathBuf::from(""));
     match result {
-      Err(GameError(GameError::CombatMustHaveCreatures, _)) => {}
+      Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
   }

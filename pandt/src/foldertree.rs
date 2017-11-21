@@ -456,7 +456,7 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
 mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
-  use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
+  use foldertree::{FolderPath, FolderTree, FolderTreeError};
   use serde_json;
 
   fn fpath(s: &str) -> FolderPath {
