@@ -24,7 +24,10 @@ pub enum FolderTreeError {
   #[fail(display="The root folder has no name.")]
   RootHasNoName,
   #[fail(display="Can't move '{}' to '{}'", _0, _1)]
-  ImpossibleMove( FolderPath, FolderPath)
+  ImpossibleMove(FolderPath, FolderPath),
+  #[fail(display="{} is not an ancestor of {}", _0, _1)]
+  NonAncestor(FolderPath, FolderPath),
+
 }
 
 
@@ -295,7 +298,7 @@ impl FolderPath {
     if self.is_child_of(ancestor) {
       Ok(FolderPath::from_vec(self.0[ancestor.0.len()..].to_vec()))
     } else {
-      bail!("Sorry, relative_to must be passed ancestor.")
+      bail!(FolderPathError::NonAncestor(ancestor.clone(), self.clone()))
     }
   }
 }
