@@ -19,7 +19,7 @@ use serde_yaml;
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
-use foldertree::{FolderPath, FolderTree, FolderTreeError, FolderTreeErrorKind};
+use foldertree::{FolderPath, FolderTree, FolderTreeError};
 
 /// Point3 defines a 3d position in meters.
 pub type VectorCM = (i32, i32, i32);
@@ -733,6 +733,73 @@ pub enum GameLog {
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
   ls.into_iter().map(GameLog::CombatLog).collect()
 }
+
+// #[derive(Debug, Fail)]
+// enum GameError2 {
+//   #[fail(display = "File {} was not found", _0)] FileNotFound(String),
+//   #[fail(display = "The Creature with ID {:?} does not have the attribute {:?}", _0, _1)]
+//   AttributeNotFound(CreatureID, AttrID),
+//   #[fail(display = "The ability with ID {:?} already exists", _0)] AbilityAlreadyExists(AbilityID),
+//   #[fail(display = "The creature with ID {:?} already exists", _0)]
+//   CreatureAlreadyExists(CreatureID),
+//   #[fail(display = "The Item {:?} already exists", _0)] ItemAlreadyExists(ItemID),
+//   #[fail(display = "The Item {:?} couldn't be found", _0)] ItemNotFound(ItemID),
+//   #[fail(display = "The scene {:?} already exists", _0)] SceneAlreadyExists(SceneID),
+//   #[fail(display = "The Scene '{:?}' wasn't found", _0)] SceneNotFound(SceneID),
+//   #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)] SceneInUse(SceneID),
+//   #[fail(display = "The identifier '{}' is too long.", _0)] IDTooLong(String),
+//   #[fail(display = "The condition with ID {:?} wasn't found.", _0)] ConditionNotFound(ConditionID),
+//   #[fail(display = "Cannot process {:?} in this state.", _0)] InvalidCommand(GameCommand),
+//   #[fail(display = "The class {:?} already exists.", _0)] ClassAlreadyExists(ClassID),
+//   #[fail(display = "The class {:?} was not found.", _0)] ClassNotFound(ClassID),
+//   #[fail(display = "The ability with ID {:?} wasn't found.", _0)] NoAbility(AbilityID),
+//   #[fail(display = "Creatures must be supplied when starting a combat.")] CombatMustHaveCreatures,
+//   #[fail(display = "RerollInitiative can only be invoked at the beginning of a roud.")]
+//   MustRerollAtStartOfRound,
+//   #[fail(display = "The creature with ID {:?} does not have the ability {:?}", _0, _1)]
+//   CreatureLacksAbility(CreatureID, AbilityID),
+//   #[fail(display = "The creature with ID {} could not be found.", _0)] CreatureNotFound(String),
+//   #[fail(display = "Creature with ID {:?} is not a valid target.", _0)] InvalidTarget(CreatureID),
+//   #[fail(display = "DecidedTarget {:?} is not valid for TargetSpec {:?}.", _1, _0)]
+//   InvalidTargetForTargetSpec(CreatureTarget, DecidedTarget),
+//   #[fail(display = "DecidedTarget {:?} is not valid for Action {:?}.", _1, _0)]
+//   InvalidTargetForAction(Action, DecidedTarget),
+//   #[fail(display = "Creature {:?} is out of range.", _0)] CreatureOutOfRange(CreatureID),
+//   #[fail(display = "Point {:?} is out of range.", _0)] PointOutOfRange(Point3),
+//   #[fail(display = "There's a bug in the program: {}", _0)] BuggyProgram(String),
+//   #[fail(display = "There is currently no combat.")] NotInCombat,
+//   #[fail(display = "Creature {:?} is already in combat.", _0)] AlreadyInCombat(CreatureID),
+//   #[fail(display = "Creature {:?} cannot be moved.", _0)] CannotMove(CreatureID),
+//   #[fail(display = "Creature {:?} cannot act.", _0)] CannotAct(CreatureID),
+//   #[fail(display = "A path can't be found.")] NoPathFound,
+//   #[fail(display = "Path {} already exists", _0)] FolderAlreadyExists(FolderPath),
+//   #[fail(display = "Can't step from {:?} to {:?}", _0, _1)] StepTooBig(Point3, Point3),
+//   #[fail(display = "Not enough energy: {:?}", _0)] NotEnoughEnergy(Energy),
+//   #[fail(display = "Player ID {:?} is already registered.", _0)] PlayerAlreadyExists(PlayerID),
+//   #[fail(display = "Player ID {:?} was not found.", _0)] PlayerNotFound(PlayerID),
+//   #[fail(display = "Player ID {:?} does not control creature {:?}.", _0, _1)]
+//   PlayerDoesntControlCreature(PlayerID, CreatureID),
+//   #[fail(display = "Couldn't find history item at snapshot {} log item {}", _0, _1)]
+//   HistoryNotFound(usize, usize),
+//   #[fail(display = "Initiative index {} is out of bounds.", _0)] InitiativeOutOfBounds(usize),
+//   #[fail(display = "The folder {} is not empty", _0)] FolderNotEmpty(FolderPath),
+//   #[fail(display = "The folder {} does not contain item {:?}", _0, _1)]
+//   FolderItemNotFound(FolderPath, FolderItemID),
+//   #[fail(display = "The note in '{}' named '{}' could not be found.", _0, _1)]
+//   NoteNotFound(FolderPath, String),
+//   #[fail(display = "Notes can't be linked or unlinked. '{}' / '{}'", _0, _1)]
+//   CannotLinkNotes(FolderPath, String),
+
+//   // Wrappers for other errors:
+//   #[fail(display="FolderTree error")]
+//   FolderTreeError(#[cause] FolderTreeError),
+//   #[fail(display="UUID Parse Error")]
+//   UUIDParseError(#[cause] UuidParseError),
+//   #[fail(display="YAML Error")]
+//   YAMLError(#[cause] serde_yaml::Error),
+//   #[fail(display="IO Error")]
+//   IOError(#[cause] ::std::io::Error),
+// }
 
 error_chain! {
   types { GameError, GameErrorEnum, GameErrorResultExt; }

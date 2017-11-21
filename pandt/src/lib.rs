@@ -9,6 +9,9 @@ extern crate bresenham;
 extern crate derive_more;
 #[macro_use]
 extern crate error_chain;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;
