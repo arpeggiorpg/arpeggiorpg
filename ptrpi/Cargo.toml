@@ -14,6 +14,8 @@ rocket_contrib = "0.3.0"
 rocket_cors = "0.2.0"
 bus = "1.2.0"
 error-chain = "0.11.0-rc.2"
+failure = "0.1"
+failure_derive = "0.1"
 
 [dependencies.pandt]
 path = "../pandt"

@@ -513,6 +513,8 @@ version = "0.1.0"
 dependencies = [
  "bus 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pandt 0.1.0",
  "rocket 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",

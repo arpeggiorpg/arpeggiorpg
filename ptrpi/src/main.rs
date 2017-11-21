@@ -8,6 +8,8 @@
 extern crate bus;
 #[macro_use]
 extern crate error_chain;
+extern crate failure;
+#[macro_use] extern crate failure_derive;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate rocket_cors;
@@ -40,33 +42,50 @@ use pandt::foldertree::FolderPath;
 
 use actor::Actor;
 
-error_chain! {
-  types { RPIError, RPIErrorEnum, RPIResultExt; }
+#[derive(Debug, Fail)]
+enum RPIError {
+  #[fail(display="Game Error")]
+  GameError(#[cause] GameError),
+  #[fail(display="JSON Error")]
+  JSONError(#[cause] serde_json::error::Error),
+  #[fail(display="IO Error")]
+  IOError(#[cause] ::std::io::Error),
+  #[fail(display="YAML Error")]
+  YAMLError(#[cause] serde_yaml::Error),
 
-  links {
-    GameError(GameError, GameErrorEnum);
-  }
-  foreign_links {
-    JSONError(serde_json::error::Error);
-    IOError(::std::io::Error);
-    YAMLError(serde_yaml::Error);
-  }
+  #[fail(display="Unexpected response. This is a bug.")]
+  UnexpectedResponse,
+  #[fail(display="The lock on {} is poisoned. The application probably needs restarted.", _0)]
+  LockError(String),
+  #[fail(display="The path {} is insecure.", _0)]
+  InsecurePath(String),
+}
 
-  errors {
-    UnexpectedResponse {
-      description("Unexpected response. This is a bug.")
-      display("Unexpected response. This is a bug.")
-    }
-    LockError(resource: String) {
-      description("Some locked resource is poisoned. The application probably needs restarted.")
-      display("The lock on {} is poisoned. The application probably needs restarted.", resource)
-    }
-    InsecurePath(name: String) {
-      description("A path cannot contain certain characters or elements for security reasons.")
-      display("The path {} is insecure.", name)
-    }
+impl From<GameError> for RPIError {
+  fn from(error: GameError) -> Self {
+    RPIError::GameError(error)
   }
 }
+impl From<serde_json::error::Error> for RPIError {
+  fn from(error: serde_json::error::Error) -> Self {
+    RPIError::JSONError(error)
+  }
+}
+
+impl From<::std::io::Error> for RPIError {
+  fn from(error: ::std::io::Error) -> Self {
+    RPIError::IOError(error)
+  }
+}
+
+impl From<serde_yaml::Error> for RPIError {
+  fn from(error: serde_yaml::Error) -> Self {
+    RPIError::YAMLError(error)
+  }
+}
+
+
+
 
 type PTResult<X> = Result<Json<X>, RPIError>;
 
@@ -82,7 +101,7 @@ impl PT {
     self
       .pollers
       .lock()
-      .map_err(|_| RPIErrorEnum::LockError("pollers".to_string()).into())
+      .map_err(|_| RPIError::LockError("pollers".to_string()).into())
   }
 
   /// This is trash, we shouldn't be cloning the app!
@@ -90,14 +109,14 @@ impl PT {
     if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
       Ok(app)
     } else {
-      bail!(RPIErrorEnum::UnexpectedResponse)
+      bail!(RPIError::UnexpectedResponse)
     }
   }
   fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
     self
       .actor
       .lock()
-      .map_err(|_| RPIErrorEnum::LockError("actor".to_string()).into())
+      .map_err(|_| RPIError::LockError("actor".to_string()).into())
       .map(|ac| ac.clone())
   }
 }
@@ -141,7 +160,7 @@ fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIErro
     pt.pollers()?.broadcast(());
     Ok(json)
   } else {
-    bail!(RPIErrorEnum::UnexpectedResponse);
+    bail!(RPIError::UnexpectedResponse);
   }
 }
 
@@ -232,12 +251,12 @@ fn save_app(pt: State<PT>, name: &str, app: &App) -> PTResult<()> {
 
 fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
-    bail!(RPIErrorEnum::InsecurePath(name.to_string()));
+    bail!(RPIError::InsecurePath(name.to_string()));
   }
   let new_path = parent.join(name.clone());
   for p in &new_path {
     if p == "." || p == ".." {
-      bail!(RPIErrorEnum::InsecurePath(name.to_string()));
+      bail!(RPIError::InsecurePath(name.to_string()));
     }
   }
   Ok(new_path)
