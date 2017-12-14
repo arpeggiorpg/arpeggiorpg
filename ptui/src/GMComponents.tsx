@@ -269,7 +269,7 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
 export const GMScenePlayers = M.connectRedux(
   function GMScenePlayers(props: { scene: T.Scene } & M.ReduxProps): JSX.Element {
     const { scene, ptui, dispatch } = props;
-    const players_here = ptui.app.current_game.players.toArray().filter(
+    const players_here = ptui.app.current_game.players.valueSeq().toArray().filter(
       player => player.scene === scene.id);
     return <List relaxed={true}>
       <List.Item>

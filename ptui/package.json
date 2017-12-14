@@ -28,7 +28,7 @@
     "@types/reselect": "^2.2.0",
     "fuse.js": "^3.0.5",
     "hammerjs": "^2.0.8",
-    "immutable": "https://github.com/facebook/immutable-js/tarball/master",
+    "immutable": "^4.0.0-rc.9",
     "isomorphic-fetch": "^2.2.1",
     "lodash": "^4.17.4",
     "parsimmon": "^1.4.0",
