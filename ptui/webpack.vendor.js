@@ -9,7 +9,7 @@ module.exports = {
             'immutable',
             'isomorphic-fetch',
             'lodash',
-            'Parsimmon',
+            'parsimmon',
             'react-color',
             'react-dom',
             'react-redux',

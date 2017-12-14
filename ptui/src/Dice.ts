@@ -1,4 +1,4 @@
-import * as P from 'Parsimmon';
+import * as P from 'parsimmon';
 import * as T from './PTTypes';
 
 function spaced<X>(parser: P.Parser<X>): P.Parser<X> {
