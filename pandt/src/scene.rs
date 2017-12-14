@@ -44,9 +44,15 @@ impl Scene {
     duration: Duration,
   ) -> Scene {
     let mut new = self.clone();
-    new
-      .volume_conditions
-      .insert(condition_id, VolumeCondition { point, volume, condition, remaining: duration });
+    new.volume_conditions.insert(
+      condition_id,
+      VolumeCondition {
+        point,
+        volume,
+        condition,
+        remaining: duration,
+      },
+    );
     new
   }
 

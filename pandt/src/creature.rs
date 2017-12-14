@@ -17,12 +17,15 @@ use types::*;
 /// circular movement distance.
 const STANDARD_CREATURE_SPEED: u32 = 1086;
 
-
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(
     creature: &'creature Creature, game: &'game Game
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
-    Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(creature.class)? })
+    Ok(DynamicCreature {
+      creature: creature,
+      game: game,
+      class: game.get_class(creature.class)?,
+    })
   }
 
   pub fn id(&self) -> CreatureID {
@@ -99,8 +102,10 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn tick(&self) -> Result<ChangedCreature, GameError> {
     let mut changes = self.creature.change();
     for condition in self.all_conditions() {
-      if let AppliedCondition { condition: Condition::RecurringEffect(ref eff), ref remaining } =
-        condition
+      if let AppliedCondition {
+        condition: Condition::RecurringEffect(ref eff),
+        ref remaining,
+      } = condition
       {
         if match *remaining {
           Duration::Rounds(0) => false,
@@ -192,11 +197,17 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let mut abs = IndexedHashMap::new();
     for acondition in self.all_conditions() {
       if let Condition::ActivateAbility(abid) = acondition.condition {
-        abs.insert(AbilityStatus { ability_id: abid, cooldown: 0 });
+        abs.insert(AbilityStatus {
+          ability_id: abid,
+          cooldown: 0,
+        });
       }
     }
     for abid in &self.class.abilities {
-      abs.insert(AbilityStatus { ability_id: *abid, cooldown: 0 });
+      abs.insert(AbilityStatus {
+        ability_id: *abid,
+        cooldown: 0,
+      });
     }
     for ab in &self.creature.abilities {
       abs.insert(*ab);
@@ -291,12 +302,18 @@ impl Creature {
   }
 
   pub fn change(&self) -> ChangedCreature {
-    ChangedCreature { creature: self.clone(), logs: vec![] }
+    ChangedCreature {
+      creature: self.clone(),
+      logs: vec![],
+    }
   }
 
   pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
     let creature = self.apply_log(&log)?;
-    Ok(ChangedCreature { creature: creature, logs: vec![log] })
+    Ok(ChangedCreature {
+      creature: creature,
+      logs: vec![log],
+    })
   }
 
   pub fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
@@ -319,7 +336,6 @@ impl Creature {
     }
   }
 }
-
 
 #[derive(Clone)]
 pub struct ChangedCreature {
@@ -361,8 +377,6 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
     })
 }
 
-
-
 #[cfg(test)]
 pub mod test {
   use creature::*;
@@ -376,9 +390,18 @@ pub mod test {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |mut c| {
       c.conditions = HashMap::from_iter(vec![
-        (ConditionID(uuid_0()), app_cond(Condition::Dead, Duration::Rounds(0))),
-        (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, Duration::Rounds(5))),
-        (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, Duration::Interminate)),
+        (
+          ConditionID(uuid_0()),
+          app_cond(Condition::Dead, Duration::Rounds(0)),
+        ),
+        (
+          ConditionID(uuid_1()),
+          app_cond(Condition::Incapacitated, Duration::Rounds(5)),
+        ),
+        (
+          ConditionID(uuid_2()),
+          app_cond(Condition::Incapacitated, Duration::Interminate),
+        ),
       ]);
       c
     });
@@ -391,8 +414,14 @@ pub mod test {
         .creature
         .conditions,
       HashMap::from_iter(vec![
-        (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, Duration::Rounds(4))),
-        (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, Duration::Interminate)),
+        (
+          ConditionID(uuid_1()),
+          app_cond(Condition::Incapacitated, Duration::Rounds(4)),
+        ),
+        (
+          ConditionID(uuid_2()),
+          app_cond(Condition::Incapacitated, Duration::Interminate),
+        ),
       ])
     );
   }
@@ -434,7 +463,10 @@ pub mod test {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |mut c| {
       c.conditions = HashMap::from_iter(vec![
-        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, Duration::Rounds(1))),
+        (
+          ConditionID(uuid_0()),
+          app_cond(Condition::Incapacitated, Duration::Rounds(1)),
+        ),
       ]);
       c
     });
@@ -447,7 +479,10 @@ pub mod test {
     assert_eq!(
       c.conditions,
       HashMap::from_iter(vec![
-        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, Duration::Rounds(0))),
+        (
+          ConditionID(uuid_0()),
+          app_cond(Condition::Incapacitated, Duration::Rounds(0)),
+        ),
       ])
     );
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;

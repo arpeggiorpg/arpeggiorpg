@@ -18,7 +18,6 @@ use serde::{Deserialize, Deserializer};
 #[cfg(feature = "use_serde")]
 use serde::de;
 
-
 /// A non-empty vector with a cursor. NO operations panic.
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "use_serde", derive(Serialize))]
@@ -27,26 +26,34 @@ pub struct NonEmptyWithCursor<T> {
   data: NonEmpty<T>,
 }
 
-
 impl<T> NonEmptyWithCursor<T> {
   // *** Cursor methods
   /// Create a new NonEmptyWithCursor with a single element and cursor set to 0.
   #[inline]
   pub fn new(head: T) -> Self {
-    NonEmptyWithCursor { cursor: 0, data: NonEmpty::new(head) }
+    NonEmptyWithCursor {
+      cursor: 0,
+      data: NonEmpty::new(head),
+    }
   }
 
   /// Construct a new NonEmptyWithCursor from the first element and a vector of the rest of the
   /// elements.
   #[inline]
   pub fn new_with_rest(head: T, rest: Vec<T>) -> Self {
-    NonEmptyWithCursor { cursor: 0, data: NonEmpty::new_with_rest(head, rest) }
+    NonEmptyWithCursor {
+      cursor: 0,
+      data: NonEmpty::new_with_rest(head, rest),
+    }
   }
 
   /// Construct a NonEmptyWithCursor from a vector. Returns None if the vector is empty.
   #[inline]
   pub fn from_vec(vec: Vec<T>) -> Option<Self> {
-    NonEmpty::from_vec(vec).map(|ne| NonEmptyWithCursor { cursor: 0, data: ne })
+    NonEmpty::from_vec(vec).map(|ne| NonEmptyWithCursor {
+      cursor: 0,
+      data: ne,
+    })
   }
 
   /// Get the current element, as determined by the cursor.
@@ -77,7 +84,11 @@ impl<T> NonEmptyWithCursor<T> {
   #[inline]
   pub fn next_circular(&mut self) {
     let newcursor = self.cursor + 1;
-    self.cursor = if newcursor >= self.data.len() { 0 } else { newcursor }
+    self.cursor = if newcursor >= self.data.len() {
+      0
+    } else {
+      newcursor
+    }
   }
 
   /// Decrement the cursor by one, and wrap around to the end if it goes past the beginning of the
@@ -178,7 +189,12 @@ impl<T> NonEmptyWithCursor<T> {
   /// assert_eq!(ne.remove(0), Err(Error::RemoveLastElement))
   /// ```
   pub fn remove(&mut self, index: usize) -> Result<T, Error> {
-    println!("Removing index: {}, cursor {}, len {}", index, self.cursor, self.data.len());
+    println!(
+      "Removing index: {}, cursor {}, len {}",
+      index,
+      self.cursor,
+      self.data.len()
+    );
     let r = self.data.remove(index)?;
     if index < self.cursor {
       self.cursor -= 1;
@@ -296,7 +312,6 @@ impl<T> NonEmpty<T> {
     }
   }
 
-
   /// Construct a new NonEmpty from the first element and a vector of the rest of the elements.
   #[inline]
   pub fn new_with_rest(head: T, rest: Vec<T>) -> Self {
@@ -373,7 +388,10 @@ impl<T> NonEmpty<T> {
     if idx == 0 && self.len() == 1 {
       Err(Error::RemoveLastElement)
     } else if idx >= self.len() {
-      Err(Error::OutOfBounds { index: idx, length: self.len() })
+      Err(Error::OutOfBounds {
+        index: idx,
+        length: self.len(),
+      })
     } else {
       Ok(self.0.remove(idx))
     }
@@ -469,15 +487,20 @@ where
   {
     let x: FakeNEC<T> = Deserialize::deserialize(deserializer)?;
     if x.data.len() == 0 {
-      Err(serde::de::Error::invalid_length(0, &format!("at least one element").as_ref()))
+      Err(serde::de::Error::invalid_length(
+        0,
+        &format!("at least one element").as_ref(),
+      ))
     } else if x.cursor >= x.data.len() {
       Err(serde::de::Error::invalid_value(
         de::Unexpected::Unsigned(x.cursor as u64),
         &format!("< {}", x.data.len()).as_ref(),
       ))
     } else {
-      let res: NonEmptyWithCursor<T> =
-        NonEmptyWithCursor { cursor: x.cursor, data: NonEmpty::from_vec(x.data).unwrap() };
+      let res: NonEmptyWithCursor<T> = NonEmptyWithCursor {
+        cursor: x.cursor,
+        data: NonEmpty::from_vec(x.data).unwrap(),
+      };
       Ok(res)
     }
   }
@@ -502,7 +525,6 @@ where
   }
 }
 
-
 #[cfg(feature = "use_serde")]
 #[test]
 fn test_serialize_deserialize_nonempty() {
@@ -518,10 +540,12 @@ fn test_deserialize_invalid_nonempty() {
   let parsed: Result<NonEmpty<i32>, _> = serde_json::from_str("[]");
   match parsed {
     Ok(x) => panic!("Somehow this parsed: {:?}", x),
-    Err(e) => assert_eq!(format!("{}", e), "invalid length 0, expected at least one element"),
+    Err(e) => assert_eq!(
+      format!("{}", e),
+      "invalid length 0, expected at least one element"
+    ),
   }
 }
-
 
 #[test]
 fn test_set_cursor() {
@@ -550,7 +574,10 @@ fn test_set_cursor() {
 #[test]
 fn test_serialize_deserialize_with_cursor() {
   let ne: NonEmptyWithCursor<i32> = NonEmptyWithCursor::new_with_rest(5, vec![50, 55]);
-  assert_eq!(serde_json::to_string(&ne).unwrap(), "{\"cursor\":0,\"data\":[5,50,55]}");
+  assert_eq!(
+    serde_json::to_string(&ne).unwrap(),
+    "{\"cursor\":0,\"data\":[5,50,55]}"
+  );
   match serde_json::from_str("{\"cursor\":0,\"data\":[5,50,55]}") {
     Ok(ne2) => assert_eq!(ne, ne2),
     Err(e) => panic!("Couldn't parse json: {}", e),
@@ -575,7 +602,10 @@ fn test_deserialize_invalid_empty() {
   match res {
     Ok(x) => panic!("Should not have parsed to {:?}", x),
     // TODO: position here is 0, 0 because our parser is dumb.
-    Err(e) => assert_eq!(format!("{}", e), "invalid length 0, expected at least one element"),
+    Err(e) => assert_eq!(
+      format!("{}", e),
+      "invalid length 0, expected at least one element"
+    ),
   }
 }
 
@@ -585,7 +615,6 @@ fn test_iter() {
   let v: Vec<&i32> = ne.iter().collect();
   assert_eq!(v, vec![&5, &50, &55]);
 }
-
 
 #[cfg(test)]
 #[derive(Debug)]

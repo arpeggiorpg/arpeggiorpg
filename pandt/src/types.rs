@@ -53,7 +53,11 @@ impl ::std::str::FromStr for Point3 {
     if segments.len() != 3 {
       bail!("Bad Point3 syntax")
     }
-    match (segments[0].parse::<i16>(), segments[1].parse::<i16>(), segments[2].parse::<i16>()) {
+    match (
+      segments[0].parse::<i16>(),
+      segments[1].parse::<i16>(),
+      segments[2].parse::<i16>(),
+    ) {
       (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
       _ => bail!("Bad Point3 syntax"),
     }
@@ -91,7 +95,11 @@ pub struct AABB {
 
 impl AABB {
   pub fn get_max(&self, pt: Point3) -> Point3 {
-    Point3::new(pt.x + i16::from(self.x), pt.y + i16::from(self.y), pt.z + i16::from(self.z))
+    Point3::new(
+      pt.x + i16::from(self.x),
+      pt.y + i16::from(self.y),
+      pt.z + i16::from(self.z),
+    )
   }
 }
 
@@ -238,7 +246,6 @@ impl ::std::str::FromStr for ItemID {
   }
 }
 
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct SceneID(Uuid);
 impl SceneID {
@@ -359,7 +366,10 @@ impl SkillLevel {
       2 => 10,
       3 => 1,
       4 => 0,
-      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
+      diff => panic!(
+        "[SkillLevel::difficulty] Two skill levels were too far apart: {:?}",
+        diff
+      ),
     }
   }
 }
@@ -378,7 +388,6 @@ impl InventoryOwner {
     }
   }
 }
-
 
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -791,16 +800,11 @@ pub enum GameError {
   CannotLinkNotes(FolderPath, String),
 
   // Wrappers for other errors:
-  #[fail(display="FolderTree error")]
-  FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display="UUID Parse Error")]
-  UUIDParseError(#[cause] UuidParseError),
-  #[fail(display="YAML Error")]
-  YAMLError(#[cause] serde_yaml::Error),
-  #[fail(display="IO Error")]
-  IOError(#[cause] ::std::io::Error),
+  #[fail(display = "FolderTree error")] FolderTreeError(#[cause] FolderTreeError),
+  #[fail(display = "UUID Parse Error")] UUIDParseError(#[cause] UuidParseError),
+  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
+  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
 }
-
 
 impl From<FolderTreeError> for GameError {
   fn from(error: FolderTreeError) -> Self {
@@ -1044,13 +1048,18 @@ impl DeriveKey for Ability {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
-  Creature { effect: CreatureEffect, target: CreatureTarget },
-  SceneVolume { effect: SceneEffect, target: SceneTarget },
+  Creature {
+    effect: CreatureEffect,
+    target: CreatureTarget,
+  },
+  SceneVolume {
+    effect: SceneEffect,
+    target: SceneTarget,
+  },
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
 }
-
 
 /// A target specifier for actions that ultimately affect creatures.
 /// This doesn't mean that the target *specifier* is always a `CreatureID`, but rather that
@@ -1091,7 +1100,10 @@ pub enum SceneTarget {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition { duration: Duration, condition: Condition },
+  CreateVolumeCondition {
+    duration: Duration,
+    condition: Condition,
+  },
   // Another example of a SceneEffect would be DestroyTerrain
 }
 
@@ -1130,7 +1142,10 @@ pub enum Condition {
 
 impl Condition {
   pub fn apply(&self, duration: Duration) -> AppliedCondition {
-    AppliedCondition { remaining: duration, condition: self.clone() }
+    AppliedCondition {
+      remaining: duration,
+      condition: self.clone(),
+    }
   }
 }
 
@@ -1308,7 +1323,11 @@ impl DeriveKey for Player {
 
 impl Player {
   pub fn new(name: PlayerID) -> Player {
-    Player { player_id: name, scene: None, creatures: HashSet::new() }
+    Player {
+      player_id: name,
+      scene: None,
+      creatures: HashSet::new(),
+    }
   }
 }
 
@@ -1352,7 +1371,6 @@ pub enum CollisionData {
   ConditionVolume(ConditionID),
   // BlockedTerrain ????
 }
-
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct VolumeCondition {
@@ -1557,17 +1575,25 @@ pub mod test {
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    Creature { id: cid_rogue(), ..t_creature(name, classid_rogue(), 20) }
+    Creature {
+      id: cid_rogue(),
+      ..t_creature(name, classid_rogue(), 20)
+    }
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    Creature { id: cid_ranger(), ..t_creature(name, classid_ranger(), 10) }
+    Creature {
+      id: cid_ranger(),
+      ..t_creature(name, classid_ranger(), 10)
+    }
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    Creature { id: cid_rogue(), ..t_creature(name, classid_cleric(), 0) }
+    Creature {
+      id: cid_rogue(),
+      ..t_creature(name, classid_cleric(), 0)
+    }
   }
-
 
   pub fn t_scene_id() -> SceneID {
     SceneID(uuid_3())
@@ -1596,7 +1622,10 @@ pub mod test {
   }
 
   pub fn app_cond(c: Condition, r: Duration) -> AppliedCondition {
-    AppliedCondition { condition: c, remaining: r }
+    AppliedCondition {
+      condition: c,
+      remaining: r,
+    }
   }
 
   pub fn classid_rogue() -> ClassID {
@@ -1690,7 +1719,9 @@ pub mod test {
       cost: Energy(8),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::LineFromActor { distance: Distance::from_meters(10.0) },
+        target: CreatureTarget::LineFromActor {
+          distance: Distance::from_meters(10.0),
+        },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }

@@ -13,7 +13,6 @@ use ncollide::world;
 use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
             TileSystem, VectorCM, Volume, VolumeCondition};
 
-
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
 //
@@ -51,7 +50,11 @@ fn na_vector(pt: Point3) -> Vector3<f32> {
 }
 
 fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
-  ((v[0] * 100.0) as i32, (v[1] * 100.0) as i32, (v[2] * 100.0) as i32)
+  (
+    (v[0] * 100.0) as i32,
+    (v[1] * 100.0) as i32,
+    (v[2] * 100.0) as i32,
+  )
 }
 
 pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
@@ -59,7 +62,9 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> 
   let mut navec = na_vector(offset);
   navec.normalize_mut();
   let new_vec = navec * length.to_meters();
-  Volume::Line { vector: na_vector_to_vector_cm(new_vec) }
+  Volume::Line {
+    vector: na_vector_to_vector_cm(new_vec),
+  }
 }
 
 /// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
@@ -106,7 +111,6 @@ impl TileSystem {
   pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: Distance) -> bool {
     self.point3_distance(c1, c2) <= d
   }
-
 
   /// Garbage Function
   pub fn items_within_volume<I: Clone + Eq + Hash>(
@@ -223,9 +227,9 @@ impl TileSystem {
       }
       Volume::AABB(aabb) => (pt.x..(pt.x + i16::from(aabb.x)))
         .flat_map(|x| {
-          (pt.y..(pt.y + i16::from(aabb.y))).flat_map(
-            move |y| (pt.z..(pt.z + i16::from(aabb.z))).map(move |z| Point3::new(x, y, z)),
-          )
+          (pt.y..(pt.y + i16::from(aabb.y))).flat_map(move |y| {
+            (pt.z..(pt.z + i16::from(aabb.z))).map(move |z| Point3::new(x, y, z))
+          })
         })
         .collect(),
       Volume::Line { .. } => unimplemented!("points_in_volume for Line"),
@@ -422,10 +426,17 @@ where
   FH: Fn(&N) -> C,
 {
   let mut to_see = BinaryHeap::new();
-  to_see.push(InvCmpHolder { key: heuristic(start), payload: (Zero::zero(), start.clone()) });
+  to_see.push(InvCmpHolder {
+    key: heuristic(start),
+    payload: (Zero::zero(), start.clone()),
+  });
   let mut parents: HashMap<N, (N, C)> = HashMap::new();
   let mut found_nodes = vec![];
-  while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
+  while let Some(InvCmpHolder {
+    payload: (cost, node),
+    ..
+  }) = to_see.pop()
+  {
     successes.retain_mut(|ref mut success_fn| {
       let was_successful = success_fn(&node);
       if was_successful {
@@ -450,7 +461,10 @@ where
       if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) && new_cost <= max_cost {
         parents.insert(neighbour.clone(), (node.clone(), new_cost));
         let new_predicted_cost = new_cost + heuristic(&neighbour);
-        to_see.push(InvCmpHolder { key: new_predicted_cost, payload: (new_cost, neighbour) });
+        to_see.push(InvCmpHolder {
+          key: new_predicted_cost,
+          payload: (new_cost, neighbour),
+        });
       }
     }
   }
@@ -529,7 +543,10 @@ pub mod test {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(1, 0, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), Distance(100));
+    assert_eq!(
+      TileSystem::Realistic.point3_distance(pos1, pos2),
+      Distance(100)
+    );
   }
 
   #[test]
@@ -641,7 +658,6 @@ pub mod test {
     );
   }
 
-
   #[test]
   fn pathfinding_astar_multi_2() {
     let start = Point3::new(0, 0, 0);
@@ -659,7 +675,10 @@ pub mod test {
     );
     let ex_path_positive = vec![Point3::new(0, 0, 0), Point3::new(1, 1, 0)];
     let ex_path_negative = vec![Point3::new(0, 0, 0), Point3::new(-1, -1, 0)];
-    assert_eq!(paths_and_costs, [(ex_path_positive, 141), (ex_path_negative, 141)]);
+    assert_eq!(
+      paths_and_costs,
+      [(ex_path_positive, 141), (ex_path_negative, 141)]
+    );
   }
 
   #[test]
@@ -757,7 +776,10 @@ pub mod test {
     for result in results.iter() {
       let result_pos = items.get(result).expect("Got result that wasn't in input");
       let dist = ts.point3_distance(*result_pos, vol_pt);
-      println!("Checking distance between {:?} and {:?}: {:?}", result_pos, vol_pt, dist);
+      println!(
+        "Checking distance between {:?} and {:?}: {:?}",
+        result_pos, vol_pt, dist
+      );
       assert!(dist <= Distance(500));
     }
     for (item, item_pos) in items.iter() {
@@ -807,8 +829,13 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let dumbbell = dumbbell_map();
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
-    let path =
-      ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
+    let path = ts.find_path(
+      Point3::new(0, 0, 0),
+      Distance(1000),
+      &dumbbell,
+      big_guy,
+      Point3::new(3, 0, 0),
+    );
     assert_eq!(path, None);
   }
 
@@ -818,8 +845,13 @@ pub mod test {
     let mut dumbbell = dumbbell_map();
     dumbbell.push(Point3::new(2, 2, 0));
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
-    let path =
-      ts.find_path(Point3::new(0, 0, 0), Distance(1000), &dumbbell, big_guy, Point3::new(3, 0, 0));
+    let path = ts.find_path(
+      Point3::new(0, 0, 0),
+      Distance(1000),
+      &dumbbell,
+      big_guy,
+      Point3::new(3, 0, 0),
+    );
     assert_eq!(
       path,
       Some((

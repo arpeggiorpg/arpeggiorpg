@@ -6,7 +6,6 @@ use std::iter::FromIterator;
 use serde::de;
 use serde::ser;
 
-
 /// A trait for fetching the "canonical" key type for a type.
 pub trait DeriveKey {
   /// The key type
@@ -27,7 +26,9 @@ where
   <V as DeriveKey>::KeyType: Clone,
 {
   fn clone(&self) -> Self {
-    IndexedHashMap { data: self.data.clone() }
+    IndexedHashMap {
+      data: self.data.clone(),
+    }
   }
 }
 
@@ -85,7 +86,9 @@ where
   where
     T: IntoIterator<Item = V>,
   {
-    IndexedHashMap { data: iter.into_iter().map(|v| (v.derive_key(), v)).collect() }
+    IndexedHashMap {
+      data: iter.into_iter().map(|v| (v.derive_key(), v)).collect(),
+    }
   }
 }
 
@@ -99,7 +102,9 @@ impl<'a, V: DeriveKey> IntoIterator for &'a IndexedHashMap<V> {
 
 impl<V: DeriveKey> IndexedHashMap<V> {
   pub fn new() -> IndexedHashMap<V> {
-    IndexedHashMap { data: HashMap::new() }
+    IndexedHashMap {
+      data: HashMap::new(),
+    }
   }
 
   pub fn iter(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
@@ -170,7 +175,6 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     }
   }
 }
-
 
 #[cfg(test)]
 mod test {

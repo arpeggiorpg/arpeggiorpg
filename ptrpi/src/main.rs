@@ -9,7 +9,8 @@ extern crate bus;
 #[macro_use]
 extern crate error_chain;
 extern crate failure;
-#[macro_use] extern crate failure_derive;
+#[macro_use]
+extern crate failure_derive;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate rocket_cors;
@@ -36,29 +37,23 @@ use rocket::http::Method;
 use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::game::load_app_from_path;
-use pandt::types::{App, CreatureID, GameCommand, GameError, Point3,
-                   PotentialTargets, RPIApp, RPIGame, Runtime};
+use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTargets, RPIApp,
+                   RPIGame, Runtime};
 use pandt::foldertree::FolderPath;
 
 use actor::Actor;
 
 #[derive(Debug, Fail)]
 enum RPIError {
-  #[fail(display="Game Error")]
-  GameError(#[cause] GameError),
-  #[fail(display="JSON Error")]
-  JSONError(#[cause] serde_json::error::Error),
-  #[fail(display="IO Error")]
-  IOError(#[cause] ::std::io::Error),
-  #[fail(display="YAML Error")]
-  YAMLError(#[cause] serde_yaml::Error),
+  #[fail(display = "Game Error")] GameError(#[cause] GameError),
+  #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
+  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
+  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
 
-  #[fail(display="Unexpected response. This is a bug.")]
-  UnexpectedResponse,
-  #[fail(display="The lock on {} is poisoned. The application probably needs restarted.", _0)]
+  #[fail(display = "Unexpected response. This is a bug.")] UnexpectedResponse,
+  #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
   LockError(String),
-  #[fail(display="The path {} is insecure.", _0)]
-  InsecurePath(String),
+  #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
 }
 
 impl From<GameError> for RPIError {
@@ -83,9 +78,6 @@ impl From<serde_yaml::Error> for RPIError {
     RPIError::YAMLError(error)
   }
 }
-
-
-
 
 type PTResult<X> = Result<Json<X>, RPIError>;
 
@@ -198,7 +190,12 @@ fn preview_volume_targets(
   let actor_id = actor_id.parse()?;
   let ability_id = ability_id.parse()?;
   let point = Point3::new(x, y, z);
-  Ok(Json(app.preview_volume_targets(sid, actor_id, ability_id, point)?))
+  Ok(Json(app.preview_volume_targets(
+    sid,
+    actor_id,
+    ability_id,
+    point,
+  )?))
 }
 
 #[get("/saved_games")]

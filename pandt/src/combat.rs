@@ -85,12 +85,22 @@ impl<'game> DynamicCombat<'game> {
   }
 
   pub fn change(&self) -> ChangedCombat<'game> {
-    ChangedCombat { scene: self.scene, combat: self.combat.clone(), logs: vec![], game: self.game }
+    ChangedCombat {
+      scene: self.scene,
+      combat: self.combat.clone(),
+      logs: vec![],
+      game: self.game,
+    }
   }
 
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
-    Ok(ChangedCombat { scene: self.scene, combat: combat, game: self.game, logs: vec![log] })
+    Ok(ChangedCombat {
+      scene: self.scene,
+      combat: combat,
+      game: self.game,
+      logs: vec![log],
+    })
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
@@ -112,7 +122,11 @@ fn sort_combatants(
 
 impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
-    Ok(Combat { scene: scene, movement_used: Distance(0), creatures: sort_combatants(combatants)? })
+    Ok(Combat {
+      scene: scene,
+      movement_used: Distance(0),
+      creatures: sort_combatants(combatants)?,
+    })
   }
 
   pub fn creature_ids(&self) -> Vec<CreatureID> {
@@ -193,7 +207,11 @@ pub struct ChangedCombat<'game> {
 
 impl<'game> ChangedCombat<'game> {
   pub fn dyn(&self) -> DynamicCombat {
-    DynamicCombat { scene: self.scene, game: self.game, combat: &self.combat }
+    DynamicCombat {
+      scene: self.scene,
+      game: self.game,
+      combat: &self.combat,
+    }
   }
 
   pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
@@ -289,7 +307,10 @@ pub mod test {
     assert_eq!(
       next.get_creature(cid_ranger()).unwrap().all_conditions(),
       vec![
-        AppliedCondition { remaining: Duration::Interminate, condition: Condition::Dead },
+        AppliedCondition {
+          remaining: Duration::Interminate,
+          condition: Condition::Dead,
+        },
       ]
     )
   }
@@ -337,7 +358,10 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)));
+    let game = t_perform(
+      &game,
+      GameCommand::PathCurrentCombatCreature(Point3::new(5, 0, 0)),
+    );
     assert_eq!(
       game
         .get_scene(t_scene_id())
@@ -346,7 +370,10 @@ pub mod test {
         .unwrap(),
       Point3::new(5, 0, 0)
     );
-    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)));
+    let game = t_perform(
+      &game,
+      GameCommand::PathCurrentCombatCreature(Point3::new(10, 0, 0)),
+    );
     assert_eq!(
       game
         .get_scene(t_scene_id())
@@ -355,7 +382,10 @@ pub mod test {
         .unwrap(),
       Point3::new(10, 0, 0)
     );
-    match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0))) {
+    match perf(
+      &game,
+      GameCommand::PathCurrentCombatCreature(Point3::new(11, 0, 0)),
+    ) {
       Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -385,6 +415,9 @@ pub mod test {
       .move_current(Point3::new(2, 0, 0))
       .unwrap()
       .game;
-    assert_eq!(next_game.get_combat().unwrap().combat.movement_used, Distance(400));
+    assert_eq!(
+      next_game.get_combat().unwrap().combat.movement_used,
+      Distance(400)
+    );
   }
 }
