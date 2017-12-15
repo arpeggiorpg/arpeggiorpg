@@ -53,8 +53,25 @@ impl Game {
     Ok(new_game)
   }
 
-  pub fn import_module(&self, import_path: &FolderPath, module: Game) -> Result<Game, GameError> {
-    Ok(self.clone())
+  fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError> {
+    // go through all the basic owned contents of the `module`, copy them to self
+    for ability in &module.abilities {
+      self.abilities.insert(ability.clone());
+    }
+    for class in &module.classes {
+      self.classes.insert(class.clone());
+    }
+    for creature in &module.creatures {
+      self.creatures.insert(creature.clone());
+    }
+    for item in &module.items {
+      self.items.insert(item.clone());
+    }
+    for scene in &module.scenes {
+      self.scenes.insert(scene.clone());
+    }
+    // then merge the `module`'s folder structure into self
+    Ok(())
   }
 
   pub fn validate_campaign(&self) -> Result<(), GameError> {
@@ -556,9 +573,13 @@ impl Game {
       LoadModule {
         ref module,
         ref path,
-      } => if self.campaign.get(path).is_ok() {
-        bail!(GameError::FolderAlreadyExists(path.clone()))
-      },
+      } => {
+        if self.campaign.get(path).is_ok() {
+          bail!(GameError::FolderAlreadyExists(path.clone()))
+        } else {
+          self.import_module(path, module)?;
+        }
+      }
 
       SetActiveScene(m_sid) => self.active_scene = m_sid,
 
