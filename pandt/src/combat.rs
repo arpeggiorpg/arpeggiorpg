@@ -3,10 +3,15 @@
 use nonempty;
 
 use types::*;
+use uom::si::length::centimeter;
+
+use std::marker::PhantomData;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-pub const MELEE_RANGE: Distance = Distance(150);
+// pub const MELEE_RANGE: Distance = Distance(u32units::Length::new::<centimeter>(150));
+
+pub const MELEE_RANGE: Distance = Distance(u32units::Length { dimension: PhantomData, units: PhantomData, value: 150 });
 
 impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
@@ -22,7 +27,7 @@ impl<'game> DynamicCombat<'game> {
       CombatLog::EndTurn(ref cid) => {
         assert_eq!(*cid, new.current_creature_id());
         new.creatures.next_circular();
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
       }
       CombatLog::RerollInitiative(ref combatants) => {
         if new.creatures.get_cursor() != 0 {
@@ -39,11 +44,11 @@ impl<'game> DynamicCombat<'game> {
         new.creatures.set_cursor(cursor);
       }
       CombatLog::ForceNextTurn => {
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
         new.creatures.next_circular();
       }
       CombatLog::ForcePrevTurn => {
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
         new.creatures.prev_circular();
       }
     }
@@ -124,7 +129,7 @@ impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     Ok(Combat {
       scene: scene,
-      movement_used: Distance(0),
+      movement_used: Distance::zero(),
       creatures: sort_combatants(combatants)?,
     })
   }
@@ -417,7 +422,7 @@ pub mod test {
       .game;
     assert_eq!(
       next_game.get_combat().unwrap().combat.movement_used,
-      Distance(400)
+      Distance::from_meters(4.0)
     );
   }
 }

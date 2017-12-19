@@ -229,7 +229,7 @@ impl Creature {
       id: CreatureID::gen(),
       name: spec.name.to_string(),
       class: spec.class,
-      speed: Distance(STANDARD_CREATURE_SPEED),
+      speed: Distance(cm(STANDARD_CREATURE_SPEED)),
       max_energy: Energy(10),
       cur_energy: Energy(10),
       abilities: IndexedHashMap::new(),

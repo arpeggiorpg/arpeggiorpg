@@ -10,6 +10,8 @@ use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
+use uom;
+use uom::si::length::{centimeter, meter};
 use uuid::{ParseError as UuidParseError, Uuid};
 
 use serde::ser;
@@ -20,6 +22,19 @@ use serde_yaml;
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
+
+
+pub mod u32units {
+  ISQ!(uom::si, u32, (centimeter, gram, second, ampere, kelvin, mole, candela));
+}
+
+pub fn cm(v: u32) -> u32units::Length {
+  u32units::Length::new::<centimeter>(v)
+}
+
+pub mod i64units {
+  ISQ!(uom::si, i64, (centimeter, gram, second, ampere, kelvin, mole, candela));
+}
 
 /// Point3 defines a 3d position in meters.
 pub type VectorCM = (i32, i32, i32);
@@ -301,24 +316,71 @@ impl ::std::str::FromStr for ClassID {
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
-         Deserialize)]
-pub struct Distance(pub u32);
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash)]
+pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
   pub fn from_meters(x: f32) -> Distance {
-    Distance((x * 100.0) as u32)
+    Distance(cm((x * 100.0) as u32))
   }
   pub fn saturating_add(self, other: Self) -> Self {
-    Distance(self.0.saturating_add(other.0))
+    Distance(cm(self.cm().saturating_add(other.cm())))
   }
   pub fn saturating_sub(self, other: Self) -> Self {
-    Distance(self.0.saturating_sub(other.0))
+    Distance(cm(self.cm().saturating_sub(other.cm())))
   }
   pub fn to_meters(&self) -> f32 {
-    self.0 as f32 / 100.0
+    self.cm() as f32 / 100.0
+  }
+  pub fn zero() -> Self { // todo: Zero::zero
+    Distance(cm(0))
+  }
+  pub fn cm(&self) -> u32 {
+    self.0.get(centimeter)
   }
 }
+
+impl PartialOrd for Distance {
+    fn partial_cmp(&self, other: &Distance) -> Option<::std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Distance {
+    fn cmp(&self, other: &Distance) -> ::std::cmp::Ordering {
+        self.cm().cmp(&other.cm())
+    }
+}
+
+
+impl PartialEq for Distance {
+  fn eq(&self, other: &Distance) -> bool {
+    self.cm() == other.cm()
+  }
+  fn ne(&self, other: &Distance) -> bool {
+    self.cm() != other.cm()
+  }
+}
+
+impl Eq for Distance{}
+
+impl ser::Serialize for Distance {
+  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_u32(self.cm())
+  }
+}
+
+impl<'de> de::Deserialize<'de> for Distance {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: de::Deserializer<'de>,
+  {
+    let num: u32 = de::Deserialize::deserialize(deserializer)?;
+    Ok(Distance(cm(num)))
+  }
+}
+
+
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
