@@ -1797,8 +1797,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::SceneVolume {
         target: SceneTarget::RangedVolume {
-          volume: Volume::Sphere(Distance(200)),
-          range: Distance(1000),
+          volume: Volume::Sphere(Distance(cm(200))),
+          range: Distance(cm(1000)),
         },
         effect: SceneEffect::CreateVolumeCondition {
           duration: Duration::Interminate,
