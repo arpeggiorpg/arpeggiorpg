@@ -25,7 +25,5 @@ failure = "0.1"
 failure_derive = "0.1"
 
 [dependencies.uom]
-git = "https://github.com/iliekturtles/uom"
-branch = "dev-num"
-rev = "b96836d355f7f775a6c3a7396c0b609db40e89aa"
+version = "0.16"
 features = ["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64"]
