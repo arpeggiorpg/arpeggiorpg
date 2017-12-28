@@ -318,7 +318,7 @@ impl ::std::str::FromStr for ClassID {
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, Serialize, Deserialize)]
 pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
@@ -370,25 +370,7 @@ impl PartialEq for Distance {
   }
 }
 
-impl Eq for Distance{}
-
-impl ser::Serialize for Distance {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_u32(self.cm())
-  }
-}
-
-impl<'de> de::Deserialize<'de> for Distance {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-  where
-    D: de::Deserializer<'de>,
-  {
-    let num: u32 = de::Deserialize::deserialize(deserializer)?;
-    Ok(Distance(cm(num)))
-  }
-}
-
-
+impl Eq for Distance {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
