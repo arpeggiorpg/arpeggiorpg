@@ -1,6 +1,7 @@
 //! Simulation of combat.
 
 use nonempty;
+use num::Zero;
 
 use types::*;
 use uom::si::length::centimeter;

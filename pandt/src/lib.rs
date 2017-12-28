@@ -15,6 +15,7 @@ extern crate failure_derive;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;
+extern crate num;
 extern crate num_traits;
 extern crate odds;
 extern crate rand;

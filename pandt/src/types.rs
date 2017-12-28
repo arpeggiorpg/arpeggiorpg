@@ -6,6 +6,8 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use num::Zero;
+
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
@@ -332,11 +334,17 @@ impl Distance {
   pub fn to_meters(&self) -> f32 {
     self.cm() as f32 / 100.0
   }
-  pub fn zero() -> Self { // todo: Zero::zero
-    Distance(cm(0))
-  }
   pub fn cm(&self) -> u32 {
     self.0.get(centimeter)
+  }
+}
+
+impl Zero for Distance {
+  fn zero() -> Self {
+    Distance(u32units::Length::zero())
+  }
+  fn is_zero(&self) -> bool {
+    self.0.is_zero()
   }
 }
 
