@@ -1,6 +1,4 @@
 #![recursion_limit = "256"]
-#![feature(vec_remove_item, conservative_impl_trait)]
-#![cfg_attr(test, feature(test))]
 
 //! Phone and Tablet.
 
@@ -32,8 +30,6 @@ extern crate maplit;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
-#[cfg(test)]
-extern crate test;
 
 pub mod app;
 pub mod combat;

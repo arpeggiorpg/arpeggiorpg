@@ -754,15 +754,6 @@ pub mod test {
     assert_eq!(pts.len(), 284);
   }
 
-  extern crate test;
-  use self::test::Bencher;
-  #[bench]
-  fn accessible_average_speed_bench(bencher: &mut Bencher) {
-    bencher.iter(|| {
-      test_accessible_average_speed();
-    });
-  }
-
   #[test]
   fn items_within_volume() {
     let ts = TileSystem::Realistic;

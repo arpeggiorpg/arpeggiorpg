@@ -208,7 +208,7 @@ impl<T> FolderTree<T> {
   }
 
   /// Iterate paths to all folders below the given one.
-  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
+  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> ::std::vec::IntoIter<&FolderPath> {
     let parent: FolderPath = parent.clone();
 
     let all_nodes = self.nodes.keys().filter(move |p| p.is_child_of(&parent));

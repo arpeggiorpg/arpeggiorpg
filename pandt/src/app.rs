@@ -149,7 +149,6 @@ impl App {
 #[cfg(test)]
 mod test {
   use app::*;
-  use test::Bencher;
   use game::test::*;
   use types::test::*;
 
@@ -166,26 +165,26 @@ mod test {
     app.perform_command(cmd, PathBuf::from(""))
   }
 
-  #[bench]
-  fn three_char_infinite_combat(bencher: &mut Bencher) {
-    let mut app = t_app();
-    perf(
-      &mut app,
-      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
-    ).unwrap();
-    let iter = |app: &mut App| -> Result<(), GameError> {
-      t_app_act(app, abid_punch(), DecidedTarget::Creature(cid_ranger()))?;
-      perf(app, GameCommand::Done)?;
-      perf(app, GameCommand::Done)?;
-      t_app_act(app, abid_heal(), DecidedTarget::Creature(cid_ranger()))?;
-      perf(app, GameCommand::Done)?;
-      Ok(())
-    };
-    bencher.iter(|| {
-      iter(&mut app).unwrap();
-      app.clone()
-    });
-  }
+//  #[bench]
+//  fn three_char_infinite_combat(bencher: &mut Bencher) {
+//    let mut app = t_app();
+//    perf(
+//      &mut app,
+//      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+//    ).unwrap();
+//    let iter = |app: &mut App| -> Result<(), GameError> {
+//      t_app_act(app, abid_punch(), DecidedTarget::Creature(cid_ranger()))?;
+//      perf(app, GameCommand::Done)?;
+//      perf(app, GameCommand::Done)?;
+//      t_app_act(app, abid_heal(), DecidedTarget::Creature(cid_ranger()))?;
+//      perf(app, GameCommand::Done)?;
+//      Ok(())
+//    };
+//    bencher.iter(|| {
+//      iter(&mut app).unwrap();
+//      app.clone()
+//    });
+//  }
 
   #[test]
   fn rollback() {

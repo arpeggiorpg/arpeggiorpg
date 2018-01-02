@@ -811,7 +811,7 @@ impl Game {
               self
                 .classes
                 .mutate(&class_id, |mut class| {
-                  class.abilities.remove_item(&abid);
+                  class.abilities.retain(|el| *el == abid);
                   class
                 })
                 .expect("iterating classes...");
