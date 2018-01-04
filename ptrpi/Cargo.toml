@@ -8,10 +8,6 @@ serde = "1.0.8"
 serde_derive = "1.0.8"
 serde_json = "1.0.2"
 serde_yaml = "0.7.0"
-rocket = "0.3.0"
-rocket_codegen = "0.3.0"
-rocket_contrib = "0.3.0"
-rocket_cors = "0.2.0"
 bus = "1.2.0"
 error-chain = "0.11.0-rc.2"
 failure = "0.1"
@@ -20,3 +16,10 @@ failure_derive = "0.1"
 [dependencies.pandt]
 path = "../pandt"
 
+[dependencies.gotham]
+rev = "1e4c7027b2a76dca7d96be64e33532db1ecd76ce"
+git = "https://github.com/gotham-rs/gotham"
+
+[dependencies.gotham_derive]
+rev = "1e4c7027b2a76dca7d96be64e33532db1ecd76ce"
+git = "https://github.com/gotham-rs/gotham"
