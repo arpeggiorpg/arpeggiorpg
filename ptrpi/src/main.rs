@@ -9,6 +9,9 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate gotham;
+#[macro_use] extern crate gotham_derive;
+extern crate hyper;
+extern crate mime;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -26,6 +29,15 @@ use std::time;
 
 use bus::Bus;
 
+use gotham::http::response::create_response;
+use gotham::middleware::pipeline::new_pipeline;
+use gotham::router::Router;
+use gotham::router::builder::*;
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+use gotham::state::{State, FromState};
+
+use hyper::{Body, Response, StatusCode};
+
 // use rocket::State;
 // use rocket_contrib::Json;
 // use rocket::http::Method;
@@ -37,6 +49,30 @@ use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTar
 use pandt::foldertree::FolderPath;
 
 use actor::Actor;
+
+fn router() -> Router {
+  let pipelines = new_pipeline_set();
+  let (pipelines, global) = pipelines.add(new_pipeline().build());
+  let default_pipeline_chain = (global, ());
+  let pipelines = finalize_pipeline_set(pipelines);
+  build_router(default_pipeline_chain, pipelines, |route| {
+    route.get("/").to(Echo::get);
+  })
+}
+
+struct Echo;
+
+impl Echo {
+  fn get(state: State) -> (State, Response) {
+    let res = create_response(
+      &state,
+      StatusCode::Ok,
+      Some(("Hello, world!".to_string().into_bytes(), mime::TEXT_PLAIN)),
+    );
+    (state, res)
+  }
+}
+
 
 #[derive(Debug, Fail)]
 enum RPIError {
@@ -309,6 +345,8 @@ fn main() {
     move || Runtime { app, world: None },
     move |runtime, request| handle_request(runtime, request),
   );
+
+ gotham::start("0.0.0.0:1337", router());
 
   // let pt = PT {
   //   actor: Arc::new(Mutex::new(actor)),
