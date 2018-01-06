@@ -29,7 +29,9 @@ use std::time;
 
 use bus::Bus;
 
+use gotham::handler::HandlerFuture;
 use gotham::http::response::create_response;
+use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::router::Router;
 use gotham::router::builder::*;
@@ -50,24 +52,34 @@ use pandt::foldertree::FolderPath;
 
 use actor::Actor;
 
-fn router() -> Router {
+fn router(pt: PT) -> Router {
   let pipelines = new_pipeline_set();
-  let (pipelines, global) = pipelines.add(new_pipeline().build());
+  let (pipelines, global) = pipelines.add(
+    new_pipeline().add(pt)
+    .build());
   let default_pipeline_chain = (global, ());
   let pipelines = finalize_pipeline_set(pipelines);
+
+
   build_router(default_pipeline_chain, pipelines, |route| {
-    route.get("/").to(Echo::get);
+    route.get("/").to(Echo::get_app);
   })
 }
 
 struct Echo;
 
 impl Echo {
-  fn get(state: State) -> (State, Response) {
+  fn get_app(state: State) -> (State, Response) {
+    let app_result = state.borrow::<PT>().clone_app();
+    let json = match app_result {
+      Ok(app) => serde_json::to_string(&RPIApp(&app)).unwrap_or("{'error': 'serialize'}".to_string()),
+      Err(x) => "{'error': 'clone_app'}".to_string(),
+    };
+
     let res = create_response(
       &state,
       StatusCode::Ok,
-      Some(("Hello, world!".to_string().into_bytes(), mime::TEXT_PLAIN)),
+      Some((json.into_bytes(), mime::APPLICATION_JSON)),
     );
     (state, res)
   }
@@ -112,7 +124,7 @@ impl From<serde_yaml::Error> for RPIError {
 
 // type PTResult<X> = Result<Json<X>, RPIError>;
 
-#[derive(Clone)]
+#[derive(Clone, StateData)]
 struct PT {
   actor: Arc<Mutex<Actor<PTRequest, PTResponse>>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
@@ -141,6 +153,22 @@ impl PT {
       .lock()
       .map_err(|_| RPIError::LockError("actor".to_string()).into())
       .map(|ac| ac.clone())
+  }
+}
+
+impl NewMiddleware for PT {
+  type Instance = PT;
+
+  fn new_middleware(&self) -> ::std::io::Result<Self::Instance> {
+    Ok(self.clone())
+  }
+}
+
+impl Middleware for PT {
+  fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+  where Chain: FnOnce(State) -> Box<HandlerFuture> {
+    state.put(self);
+    chain(state)
   }
 }
 
@@ -346,13 +374,13 @@ fn main() {
     move |runtime, request| handle_request(runtime, request),
   );
 
- gotham::start("0.0.0.0:1337", router());
+  let pt = PT {
+    actor: Arc::new(Mutex::new(actor)),
+    pollers: Arc::new(Mutex::new(Bus::new(1000))),
+    saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
+  };
 
-  // let pt = PT {
-  //   actor: Arc::new(Mutex::new(actor)),
-  //   pollers: Arc::new(Mutex::new(Bus::new(1000))),
-  //   saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
-  // };
+  gotham::start("0.0.0.0:1337", router(pt));
 
   // let cors_opts = rocket_cors::Cors {
   //   allowed_origins: AllowedOrigins::all(),
