@@ -50,7 +50,7 @@ use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTar
                    RPIGame, Runtime};
 use pandt::foldertree::FolderPath;
 
-use actor::Actor;
+// use actor::Actor;
 
 fn router(pt: PT) -> Router {
   let pipelines = new_pipeline_set();
@@ -70,10 +70,9 @@ struct Echo;
 
 impl Echo {
   fn get_app(state: State) -> (State, Response) {
-    let app_result = state.borrow::<PT>().clone_app();
-    let json = match app_result {
-      Ok(app) => serde_json::to_string(&RPIApp(&app)).unwrap_or("{'error': 'serialize'}".to_string()),
-      Err(x) => "{'error': 'clone_app'}".to_string(),
+    let json = {
+      let app = state.borrow::<PT>().app.lock().unwrap();
+      serde_json::to_string(&RPIApp(&*app)).unwrap_or("{'error': 'serialize'}".to_string())
     };
 
     let res = create_response(
@@ -126,7 +125,7 @@ impl From<serde_yaml::Error> for RPIError {
 
 #[derive(Clone, StateData)]
 struct PT {
-  actor: Arc<Mutex<Actor<PTRequest, PTResponse>>>,
+  app: Arc<Mutex<App>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
   saved_game_path: PathBuf,
 }
@@ -139,21 +138,6 @@ impl PT {
       .map_err(|_| RPIError::LockError("pollers".to_string()).into())
   }
 
-  /// This is trash, we shouldn't be cloning the app!
-  fn clone_app(&self) -> Result<App, RPIError> {
-    if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
-      Ok(app)
-    } else {
-      bail!(RPIError::UnexpectedResponse)
-    }
-  }
-  fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
-    self
-      .actor
-      .lock()
-      .map_err(|_| RPIError::LockError("actor".to_string()).into())
-      .map(|ac| ac.clone())
-  }
 }
 
 impl NewMiddleware for PT {
@@ -369,13 +353,13 @@ fn main() {
     .unwrap_or_else(|| "samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
-  let actor = Actor::spawn(
-    move || Runtime { app, world: None },
-    move |runtime, request| handle_request(runtime, request),
-  );
+  // let actor = Actor::spawn(
+  //   move || Runtime { app, world: None },
+  //   move |runtime, request| handle_request(runtime, request),
+  // );
 
   let pt = PT {
-    actor: Arc::new(Mutex::new(actor)),
+    app: Arc::new(Mutex::new(app)),
     pollers: Arc::new(Mutex::new(Bus::new(1000))),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
