@@ -10,7 +10,10 @@ extern crate futures;
 extern crate gotham;
 #[macro_use] extern crate gotham_derive;
 extern crate hyper;
+#[macro_use] extern crate log;
 extern crate mime;
+extern crate multiqueue;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -32,13 +35,15 @@ use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
 mod webapp {
+  use gotham;
   use gotham::http::response::create_response;
   use gotham::middleware::pipeline::new_pipeline;
   use gotham::router::Router;
   use gotham::router::builder::*;
   use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-  use gotham::state::{State};
+  use gotham::state::{FromState, State};
 
+  use hyper;
   use hyper::{Response, StatusCode};
   use mime;
   use serde_json;
@@ -46,6 +51,12 @@ mod webapp {
   use pandt::types::{RPIApp};
 
   use super::PT;
+
+  #[derive(StateData, PathExtractor, StaticResponseExtender)]
+  struct LogIndexExtractor {
+    snapshot_idx: usize,
+    log_idx: usize,
+  }
 
   pub fn router(pt: PT) -> Router {
     let pipelines = new_pipeline_set();
@@ -58,21 +69,54 @@ mod webapp {
 
     build_router(default_pipeline_chain, pipelines, |route| {
       route.get("/").to(get_app);
+      route
+        .get("/poll/:snapshot_idx/:log_idx")
+        .with_path_extractor::<LogIndexExtractor>()
+        .to(poll_app);
     })
   }
 
   pub fn get_app(state: State) -> (State, Response) {
-    let json = {
+    let response = {
       let app = state.borrow::<PT>().app.lock().unwrap();
-      serde_json::to_string(&RPIApp(&*app)).unwrap_or("{'error': 'serialize'}".to_string())
+      json_response(&state, &RPIApp(&*app))
     };
+    (state, response) 
+  }
 
-    let res = create_response(
-      &state,
-      StatusCode::Ok,
-      Some((json.into_bytes(), mime::APPLICATION_JSON)),
-    );
-    (state, res)
+  /// If the client is polling with a non-current app "version", then immediately return the current
+  /// App. Otherwise, wait 30 seconds for any new changes.
+  // #[get("/poll/<snapshot_len>/<log_len>")]
+  fn poll_app(mut state: State) -> (State, Response) {
+    let LogIndexExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = LogIndexExtractor::take_from(&mut state);
+    let updated: Option<Response> = {
+      let app = state.borrow::<PT>().app.lock().unwrap();
+      if app.snapshots.len() != snapshot_len
+        || app
+          .snapshots
+          .back()
+          .map(|&(_, ref ls)| ls.len())
+          .unwrap_or(0) != log_len
+      {
+        Some(json_response(&state, &RPIApp(&app)))
+      } else {
+        None
+      }
+    };
+    if let Some(r) = updated {
+      return (state, r)
+    }
+    let receiver = state.borrow::<PT>().notification_receiver.lock().unwrap();
+    panic!()
+//    let mut reader = pt.pollers()?.add_rx();
+//    // this will either return a timeout or (); in any case we'll just return the App to the client.
+//    let _ = reader.recv_timeout(time::Duration::from_secs(30));
+//    get_app(pt)
+  }
+
+  fn json_response<T: ::serde::Serialize>(state: &State, b: &T) -> Response {
+    let s = serde_json::to_string(b).unwrap();
+    create_response(state, StatusCode::Ok, Some((s.into_bytes(), mime::APPLICATION_JSON)))
   }
 }
 
@@ -117,6 +161,8 @@ impl From<serde_yaml::Error> for RPIError {
 #[derive(Clone, StateData)]
 pub struct PT {
   app: Arc<Mutex<App>>,
+  notification_sender: Arc<Mutex<multiqueue::BroadcastFutSender<()>>>,
+  notification_receiver: Arc<Mutex<multiqueue::BroadcastFutReceiver<()>>>,
   saved_game_path: PathBuf,
 }
 
@@ -129,8 +175,8 @@ impl NewMiddleware for PT {
 }
 
 impl Middleware for PT {
-  /// 1. insert CORS headers
-  /// 2. insert the `PT` object into the State
+  /// - insert CORS headers
+  /// - insert the `PT` object into the State
   fn call<Chain>(self , mut state: State, chain: Chain) -> Box<HandlerFuture>
   where Chain: FnOnce(State) -> Box<HandlerFuture> {
     state.put(self);
@@ -148,30 +194,6 @@ impl Middleware for PT {
     Box::new(f)
   }
 }
-
-// /// If the client is polling with a non-current app "version", then immediately return the current
-// /// App. Otherwise, wait 30 seconds for any new changes.
-// #[get("/poll/<snapshot_len>/<log_len>")]
-// fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String, RPIError> {
-//   {
-//     let app = pt.clone_app()?;
-//     if app.snapshots.len() != snapshot_len
-//       || app
-//         .snapshots
-//         .back()
-//         .map(|&(_, ref ls)| ls.len())
-//         .unwrap_or(0) != log_len
-//     {
-//       let result = serde_json::to_string(&RPIApp(&app))?;
-//       return Ok(result);
-//     }
-//   }
-
-//   let mut reader = pt.pollers()?.add_rx();
-//   // this will either return a timeout or (); in any case we'll just return the App to the client.
-//   let _ = reader.recv_timeout(time::Duration::from_secs(30));
-//   get_app(pt)
-// }
 
 // #[post("/", format = "application/json", data = "<command>")]
 // fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
@@ -307,8 +329,12 @@ fn main() {
   //   move |runtime, request| handle_request(runtime, request),
   // );
 
+
+  let (not_sender, not_receiver) = multiqueue::broadcast_fut_queue(512);
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
+    notification_sender: Arc::new(Mutex::new(not_sender)),
+    notification_receiver: Arc::new(Mutex::new(not_receiver)),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
