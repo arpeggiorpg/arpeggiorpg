@@ -35,7 +35,11 @@ use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
 mod webapp {
+
+  use futures::{Future, future, Stream};
+
   use gotham;
+  use gotham::handler::HandlerFuture;
   use gotham::http::response::create_response;
   use gotham::middleware::pipeline::new_pipeline;
   use gotham::router::Router;
@@ -86,8 +90,7 @@ mod webapp {
 
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
-  // #[get("/poll/<snapshot_len>/<log_len>")]
-  fn poll_app(mut state: State) -> (State, Response) {
+  fn poll_app(mut state: State) -> Box<HandlerFuture> {
     let LogIndexExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = LogIndexExtractor::take_from(&mut state);
     let updated: Option<Response> = {
       let app = state.borrow::<PT>().app.lock().unwrap();
@@ -104,10 +107,12 @@ mod webapp {
       }
     };
     if let Some(r) = updated {
-      return (state, r)
+      return Box::new(future::ok((state, r)));
     }
     let receiver = state.borrow::<PT>().notification_receiver.lock().unwrap();
-    panic!()
+    Box::new(receiver.clone().into_future().and_then(move |(Some(()), rest)| {
+      future::ok(get_app(state))
+    }))
 //    let mut reader = pt.pollers()?.add_rx();
 //    // this will either return a timeout or (); in any case we'll just return the App to the client.
 //    let _ = reader.recv_timeout(time::Duration::from_secs(30));
@@ -184,12 +189,12 @@ impl Middleware for PT {
     let result = chain(state);
 
     let f = result.and_then(move |(state, mut response)| {
-        {
-            let headers = response.headers_mut();
-            headers.set_raw("Access-Control-Allow-Origin", "*");
-        }
+      {
+        let headers = response.headers_mut();
+        headers.set_raw("Access-Control-Allow-Origin", "*");
+      }
 
-        future::ok((state, response))
+      future::ok((state, response))
     });
     Box::new(f)
   }
