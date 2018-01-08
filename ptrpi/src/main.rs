@@ -30,15 +30,12 @@ use std::time;
 use bus::Bus;
 
 use gotham::handler::HandlerFuture;
-use gotham::http::response::create_response;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 use gotham::state::{State, FromState};
-
-use hyper::{Body, Response, StatusCode};
 
 // use rocket::State;
 // use rocket_contrib::Json;
@@ -62,14 +59,24 @@ fn router(pt: PT) -> Router {
 
 
   build_router(default_pipeline_chain, pipelines, |route| {
-    route.get("/").to(Echo::get_app);
+    route.get("/").to(webapp::get_app);
   })
 }
 
-struct Echo;
+mod webapp {
+  use gotham::http::response::create_response;
+  use gotham::state::{State, FromState};
+  use hyper::{Response, StatusCode};
+  use mime;
+  use serde_json;
 
-impl Echo {
-  fn get_app(state: State) -> (State, Response) {
+  use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTargets, RPIApp,
+                     RPIGame, Runtime};
+
+  use super::PT;
+
+
+  pub fn get_app(state: State) -> (State, Response) {
     let json = {
       let app = state.borrow::<PT>().app.lock().unwrap();
       serde_json::to_string(&RPIApp(&*app)).unwrap_or("{'error': 'serialize'}".to_string())
