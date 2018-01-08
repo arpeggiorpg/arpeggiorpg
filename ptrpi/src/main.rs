@@ -3,7 +3,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
 extern crate bus;
-#[macro_use]
 extern crate error_chain;
 extern crate failure;
 #[macro_use]
@@ -21,21 +20,14 @@ pub mod actor;
 
 use std::env;
 use std::path::PathBuf;
-use std::fs::File;
 use std::fs;
-use std::io::prelude::*;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time;
 
 use bus::Bus;
 
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
-use gotham::middleware::pipeline::new_pipeline;
-use gotham::router::Router;
-use gotham::router::builder::*;
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-use gotham::state::{State, FromState};
+use gotham::state::{State};
 
 // use rocket::State;
 // use rocket_contrib::Json;
@@ -43,38 +35,39 @@ use gotham::state::{State, FromState};
 // use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::game::load_app_from_path;
-use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTargets, RPIApp,
-                   RPIGame, Runtime};
-use pandt::foldertree::FolderPath;
+use pandt::types::{App, GameError};
 
 // use actor::Actor;
 
-fn router(pt: PT) -> Router {
-  let pipelines = new_pipeline_set();
-  let (pipelines, global) = pipelines.add(
-    new_pipeline().add(pt)
-    .build());
-  let default_pipeline_chain = (global, ());
-  let pipelines = finalize_pipeline_set(pipelines);
-
-
-  build_router(default_pipeline_chain, pipelines, |route| {
-    route.get("/").to(webapp::get_app);
-  })
-}
-
 mod webapp {
   use gotham::http::response::create_response;
-  use gotham::state::{State, FromState};
+  use gotham::middleware::pipeline::new_pipeline;
+  use gotham::router::Router;
+  use gotham::router::builder::*;
+  use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+  use gotham::state::{State};
+
   use hyper::{Response, StatusCode};
   use mime;
   use serde_json;
 
-  use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTargets, RPIApp,
-                     RPIGame, Runtime};
+  use pandt::types::{RPIApp};
 
   use super::PT;
 
+  pub fn router(pt: PT) -> Router {
+    let pipelines = new_pipeline_set();
+    let (pipelines, global) = pipelines.add(
+      new_pipeline().add(pt)
+      .build());
+    let default_pipeline_chain = (global, ());
+    let pipelines = finalize_pipeline_set(pipelines);
+
+
+    build_router(default_pipeline_chain, pipelines, |route| {
+      route.get("/").to(get_app);
+    })
+  }
 
   pub fn get_app(state: State) -> (State, Response) {
     let json = {
@@ -131,7 +124,7 @@ impl From<serde_yaml::Error> for RPIError {
 // type PTResult<X> = Result<Json<X>, RPIError>;
 
 #[derive(Clone, StateData)]
-struct PT {
+pub struct PT {
   app: Arc<Mutex<App>>,
   pollers: Arc<Mutex<bus::Bus<()>>>,
   saved_game_path: PathBuf,
@@ -296,55 +289,18 @@ impl Middleware for PT {
 //   Ok(Json(()))
 // }
 
-fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
-  if name.contains('/') || name.contains(':') || name.contains('\\') {
-    bail!(RPIError::InsecurePath(name.to_string()));
-  }
-  let new_path = parent.join(name.clone());
-  for p in &new_path {
-    if p == "." || p == ".." {
-      bail!(RPIError::InsecurePath(name.to_string()));
-    }
-  }
-  Ok(new_path)
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PTRequest {
-  GetReadOnlyApp,
-  Perform(GameCommand, PathBuf),
-  SetApp(App),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PTResponse {
-  App(App),
-  JSON(String),
-  Success,
-}
-
-fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
-  match req {
-    PTRequest::GetReadOnlyApp => PTResponse::App(runtime.app.clone()),
-    PTRequest::SetApp(app) => {
-      runtime.app = app;
-      PTResponse::Success
-    }
-    PTRequest::Perform(command, saved_game_path) => {
-      let game_and_logs = runtime
-        .app
-        .perform_command(command, saved_game_path)
-        .map_err(|e| format!("Error: {}", e));
-      if let Ok((g, _)) = game_and_logs {
-        runtime.world = g.get_world().expect("Couldn't calculate world");
-      }
-      let rpi_game_and_logs = game_and_logs.map(|(g, l)| (RPIGame(g), l));
-      PTResponse::JSON(
-        serde_json::to_string(&rpi_game_and_logs).expect("Must be able to serialize Games"),
-      )
-    }
-  }
-}
+// fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
+//   if name.contains('/') || name.contains(':') || name.contains('\\') {
+//     bail!(RPIError::InsecurePath(name.to_string()));
+//   }
+//   let new_path = parent.join(name.clone());
+//   for p in &new_path {
+//     if p == "." || p == ".." {
+//       bail!(RPIError::InsecurePath(name.to_string()));
+//     }
+//   }
+//   Ok(new_path)
+// }
 
 fn main() {
   let game_dir = env::args().nth(1).unwrap_or_else(|| {
@@ -371,7 +327,7 @@ fn main() {
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
-  gotham::start("0.0.0.0:1337", router(pt));
+  gotham::start("0.0.0.0:1337", webapp::router(pt));
 
   // let cors_opts = rocket_cors::Cors {
   //   allowed_origins: AllowedOrigins::all(),
