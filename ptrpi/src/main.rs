@@ -2,7 +2,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
-extern crate bus;
 extern crate error_chain;
 extern crate failure;
 #[macro_use]
@@ -20,11 +19,9 @@ extern crate pandt;
 pub mod actor;
 
 use std::env;
-use std::path::PathBuf;
 use std::fs;
-use std::sync::{Arc, Mutex, MutexGuard};
-
-use bus::Bus;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use futures::{Future, future};
 use gotham::handler::HandlerFuture;
@@ -89,7 +86,6 @@ enum RPIError {
   #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
   #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
 
-  #[fail(display = "Unexpected response. This is a bug.")] UnexpectedResponse,
   #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
   LockError(String),
   #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
@@ -123,18 +119,7 @@ impl From<serde_yaml::Error> for RPIError {
 #[derive(Clone, StateData)]
 pub struct PT {
   app: Arc<Mutex<App>>,
-  pollers: Arc<Mutex<bus::Bus<()>>>,
   saved_game_path: PathBuf,
-}
-
-impl PT {
-  fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
-    self
-      .pollers
-      .lock()
-      .map_err(|_| RPIError::LockError("pollers".to_string()).into())
-  }
-
 }
 
 impl NewMiddleware for PT {
@@ -326,7 +311,6 @@ fn main() {
 
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
-    pollers: Arc::new(Mutex::new(Bus::new(1000))),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
