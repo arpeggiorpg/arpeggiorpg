@@ -31,8 +31,6 @@ use gotham::state::{State};
 use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
-// use actor::Actor;
-
 mod webapp {
   use gotham::http::response::create_response;
   use gotham::middleware::pipeline::new_pipeline;
