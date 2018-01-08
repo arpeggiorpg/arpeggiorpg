@@ -7,6 +7,7 @@ extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate futures;
 extern crate gotham;
 #[macro_use] extern crate gotham_derive;
 extern crate hyper;
@@ -25,14 +26,10 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use bus::Bus;
 
+use futures::{Future, future};
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{State};
-
-// use rocket::State;
-// use rocket_contrib::Json;
-// use rocket::http::Method;
-// use rocket_cors::{AllowedHeaders, AllowedOrigins};
 
 use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
@@ -149,19 +146,25 @@ impl NewMiddleware for PT {
 }
 
 impl Middleware for PT {
-  fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+  /// 1. insert CORS headers
+  /// 2. insert the `PT` object into the State
+  fn call<Chain>(self , mut state: State, chain: Chain) -> Box<HandlerFuture>
   where Chain: FnOnce(State) -> Box<HandlerFuture> {
     state.put(self);
-    chain(state)
+
+    let result = chain(state);
+
+    let f = result.and_then(move |(state, mut response)| {
+        {
+            let headers = response.headers_mut();
+            headers.set_raw("Access-Control-Allow-Origin", "*");
+        }
+
+        future::ok((state, response))
+    });
+    Box::new(f)
   }
 }
-
-// #[get("/")]
-// fn get_app(pt: State<PT>) -> Result<String, RPIError> {
-//   let app = pt.clone_app()?;
-//   let json = serde_json::to_string(&RPIApp(&app))?;
-//   Ok(json)
-// }
 
 // /// If the client is polling with a non-current app "version", then immediately return the current
 // /// App. Otherwise, wait 30 seconds for any new changes.

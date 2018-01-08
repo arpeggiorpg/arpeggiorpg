@@ -697,6 +697,7 @@ dependencies = [
  "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "gotham 0.1.2 (git+https://github.com/gotham-rs/gotham?rev=1e4c7027b2a76dca7d96be64e33532db1ecd76ce)",
  "gotham_derive 0.1.0 (git+https://github.com/gotham-rs/gotham?rev=1e4c7027b2a76dca7d96be64e33532db1ecd76ce)",
  "hyper 0.11.10 (registry+https://github.com/rust-lang/crates.io-index)",
