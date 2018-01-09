@@ -12,7 +12,6 @@ extern crate gotham;
 extern crate hyper;
 #[macro_use] extern crate log;
 extern crate mime;
-extern crate multiqueue;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
@@ -37,6 +36,7 @@ use pandt::types::{App, GameError};
 mod webapp {
 
   use futures::{Future, future, Stream};
+  use futures::sync::mpsc::channel;
 
   use gotham;
   use gotham::handler::HandlerFuture;
@@ -91,6 +91,11 @@ mod webapp {
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
   fn poll_app(mut state: State) -> Box<HandlerFuture> {
+
+    // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
+    // We can work around this by just putting a 30 second timeout on the poll.
+    // TODO: the multiqueue is SUPER INEFFICIENT. Each time I poll I'm using >15% CPU,
+    // scaling linearly.
     let LogIndexExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = LogIndexExtractor::take_from(&mut state);
     let updated: Option<Response> = {
       let app = state.borrow::<PT>().app.lock().unwrap();
@@ -109,7 +114,8 @@ mod webapp {
     if let Some(r) = updated {
       return Box::new(future::ok((state, r)));
     }
-    let receiver = state.borrow::<PT>().notification_receiver.lock().unwrap().clone();
+    let (sender, receiver) = channel(1);
+    state.borrow::<PT>().waiters.lock().unwrap().push(sender);
     let receiver = receiver.into_future();
     let fut = receiver.and_then(move |(_, rest)| {
       Ok(get_app(state))
@@ -164,8 +170,7 @@ impl From<serde_yaml::Error> for RPIError {
 #[derive(Clone, StateData)]
 pub struct PT {
   app: Arc<Mutex<App>>,
-  notification_sender: Arc<Mutex<multiqueue::BroadcastFutSender<()>>>,
-  notification_receiver: Arc<Mutex<multiqueue::BroadcastFutReceiver<()>>>,
+  waiters: Arc<Mutex<Vec<futures::sync::mpsc::Sender<()>>>>,
   saved_game_path: PathBuf,
 }
 
@@ -333,11 +338,9 @@ fn main() {
   // );
 
 
-  let (not_sender, not_receiver) = multiqueue::broadcast_fut_queue(512);
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
-    notification_sender: Arc::new(Mutex::new(not_sender)),
-    notification_receiver: Arc::new(Mutex::new(not_receiver)),
+    waiters: Arc::new(Mutex::new(vec![])),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
