@@ -109,14 +109,12 @@ mod webapp {
     if let Some(r) = updated {
       return Box::new(future::ok((state, r)));
     }
-    let receiver = state.borrow::<PT>().notification_receiver.lock().unwrap();
-    Box::new(receiver.clone().into_future().and_then(move |(Some(()), rest)| {
-      future::ok(get_app(state))
-    }))
-//    let mut reader = pt.pollers()?.add_rx();
-//    // this will either return a timeout or (); in any case we'll just return the App to the client.
-//    let _ = reader.recv_timeout(time::Duration::from_secs(30));
-//    get_app(pt)
+    let receiver = state.borrow::<PT>().notification_receiver.lock().unwrap().clone();
+    let receiver = receiver.into_future();
+    let fut = receiver.and_then(move |(_, rest)| {
+      Ok(get_app(state))
+    }).map_err(|_| panic!()); // TODO: real error handling!
+    Box::new(fut)
   }
 
   fn json_response<T: ::serde::Serialize>(state: &State, b: &T) -> Response {
