@@ -39,7 +39,7 @@ mod webapp {
   use futures::sync::mpsc::channel;
 
   use gotham;
-  use gotham::handler::HandlerFuture;
+  use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
   use gotham::http::response::create_response;
   use gotham::middleware::pipeline::new_pipeline;
   use gotham::router::Router;
@@ -48,11 +48,11 @@ mod webapp {
   use gotham::state::{FromState, State};
 
   use hyper;
-  use hyper::{Response, StatusCode};
+  use hyper::{Body, Response, StatusCode};
   use mime;
   use serde_json;
 
-  use pandt::types::{RPIApp};
+  use pandt::types::{GameCommand, RPIApp};
 
   use super::PT;
 
@@ -77,7 +77,45 @@ mod webapp {
         .get("/poll/:snapshot_idx/:log_idx")
         .with_path_extractor::<PollExtractor>()
         .to(poll_app);
+      route.post("/").to(post_app);
     })
+  }
+
+  fn decode_body<'a, T: ::serde::Deserialize<'a>>(chunk: &'a hyper::Chunk) -> Result<T, HandlerError> {
+    let s = ::std::str::from_utf8(chunk).map_err(|e| e.into_handler_error())?;
+    serde_json::from_str(s).map_err(|e| e.into_handler_error())
+  }
+
+  fn post_app(mut state: State) -> Box<HandlerFuture> {
+    let f = Body::take_from(&mut state).concat2().then(move |body| {
+      match body {
+        Ok(body) => {
+          match decode_body(&body) {
+            Ok(command) => {
+              let res = {
+                let pt = state.borrow::<PT>();
+                let mut app = pt.app.lock().unwrap();
+                app.perform_command(command, pt.saved_game_path.clone());
+                json_response(&state, &())
+              };
+              future::ok((state, res))
+            }
+            Err(e) => future::err((state, e.into_handler_error()))
+          }
+
+          //   if let PTResponse::JSON(json) = pt.actor()?
+          //     .send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
+          //   {
+          //     pt.pollers()?.broadcast(());
+          //     Ok(json)
+          //   } else {
+          //     bail!(RPIError::UnexpectedResponse);
+          //   }
+        },
+        Err(e) => future::err((state, e.into_handler_error()))
+      }
+    });
+    Box::new(f)
   }
 
   pub fn get_app(state: State) -> (State, Response) {
