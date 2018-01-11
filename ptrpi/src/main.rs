@@ -57,7 +57,7 @@ mod webapp {
   use super::PT;
 
   #[derive(StateData, PathExtractor, StaticResponseExtender)]
-  struct LogIndexExtractor {
+  struct PollExtractor {
     snapshot_idx: usize,
     log_idx: usize,
   }
@@ -75,7 +75,7 @@ mod webapp {
       route.get("/").to(get_app);
       route
         .get("/poll/:snapshot_idx/:log_idx")
-        .with_path_extractor::<LogIndexExtractor>()
+        .with_path_extractor::<PollExtractor>()
         .to(poll_app);
     })
   }
@@ -91,12 +91,9 @@ mod webapp {
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
   fn poll_app(mut state: State) -> Box<HandlerFuture> {
-
     // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
     // We can work around this by just putting a 30 second timeout on the poll.
-    // TODO: the multiqueue is SUPER INEFFICIENT. Each time I poll I'm using >15% CPU,
-    // scaling linearly.
-    let LogIndexExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = LogIndexExtractor::take_from(&mut state);
+    let PollExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = PollExtractor::take_from(&mut state);
     let updated: Option<Response> = {
       let app = state.borrow::<PT>().app.lock().unwrap();
       if app.snapshots.len() != snapshot_len
@@ -332,11 +329,6 @@ fn main() {
     .unwrap_or_else(|| "samplegame.yaml".to_string());
 
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
-  // let actor = Actor::spawn(
-  //   move || Runtime { app, world: None },
-  //   move |runtime, request| handle_request(runtime, request),
-  // );
-
 
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
@@ -361,8 +353,6 @@ fn main() {
   //   .mount(
   //     "/",
   //     routes![
-  //       get_app,
-  //       poll_app,
   //       post_app,
   //       combat_movement_options,
   //       movement_options,
