@@ -70,15 +70,20 @@ mod webapp {
     let default_pipeline_chain = (global, ());
     let pipelines = finalize_pipeline_set(pipelines);
 
-
     build_router(default_pipeline_chain, pipelines, |route| {
+      route.options("/").to(options);
       route.get("/").to(get_app);
+      route.post("/").to(post_app);
       route
         .get("/poll/:snapshot_idx/:log_idx")
         .with_path_extractor::<PollExtractor>()
         .to(poll_app);
-      route.post("/").to(post_app);
     })
+  }
+
+  fn options(state: State) -> (State, Response) {
+    let response = create_response(&state, StatusCode::Ok, Some((vec![], mime::APPLICATION_JSON)));
+    (state, response)
   }
 
   fn decode_body<'a, T: ::serde::Deserialize<'a>>(chunk: &'a hyper::Chunk) -> Result<T, HandlerError> {
@@ -96,6 +101,10 @@ mod webapp {
                 let pt = state.borrow::<PT>();
                 let mut app = pt.app.lock().unwrap();
                 app.perform_command(command, pt.saved_game_path.clone());
+                // TODO:
+                // 1. Return proper response
+                // 2. handle Err from perform_command
+                // 3. broadcast to waiters
                 json_response(&state, &())
               };
               future::ok((state, res))
@@ -230,6 +239,7 @@ impl Middleware for PT {
       {
         let headers = response.headers_mut();
         headers.set_raw("Access-Control-Allow-Origin", "*");
+        headers.set_raw("Access-Control-Allow-Headers", "Content-Type");
       }
 
       future::ok((state, response))
