@@ -86,45 +86,44 @@ mod webapp {
     (state, response)
   }
 
-  fn decode_body<'a, T: ::serde::Deserialize<'a>>(chunk: &'a hyper::Chunk) -> Result<T, HandlerError> {
-    let s = ::std::str::from_utf8(chunk).map_err(|e| e.into_handler_error())?;
+  fn decode_body<'a, T: ::serde::Deserialize<'a>>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
+    let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
     serde_json::from_str(s).map_err(|e| e.into_handler_error())
   }
 
-  fn post_app(mut state: State) -> Box<HandlerFuture> {
+  fn with_body_as<'a, T: ::serde::Deserialize<'a>>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
     let f = Body::take_from(&mut state).concat2().then(move |body| {
       match body {
         Ok(body) => {
-          match decode_body(&body) {
-            Ok(command) => {
-              let res = {
-                let pt = state.borrow::<PT>();
-                let mut app = pt.app.lock().unwrap();
-                app.perform_command(command, pt.saved_game_path.clone());
-                // TODO:
-                // 1. Return proper response
-                // 2. handle Err from perform_command
-                // 3. broadcast to waiters
-                json_response(&state, &())
-              };
-              future::ok((state, res))
+          match decode_body::<T>(body) {
+            Ok(obj) => {
+              match f(&mut state, obj) {
+                Ok(r) => future::ok((state, r)),
+                Err(e) => future::err((state, e.into_handler_error()))
+              }
             }
             Err(e) => future::err((state, e.into_handler_error()))
           }
-
-          //   if let PTResponse::JSON(json) = pt.actor()?
-          //     .send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
-          //   {
-          //     pt.pollers()?.broadcast(());
-          //     Ok(json)
-          //   } else {
-          //     bail!(RPIError::UnexpectedResponse);
-          //   }
-        },
+        }
         Err(e) => future::err((state, e.into_handler_error()))
       }
     });
     Box::new(f)
+  }
+
+  fn post_gamecommand(state: &mut State, command: GameCommand) -> Result<Response, HandlerError> {
+    let pt = state.borrow::<PT>();
+    let mut app = pt.app.lock().unwrap();
+    app.perform_command(command, pt.saved_game_path.clone());
+    // TODO:
+    // 1. Return proper response
+    // 2. handle Err from perform_command
+    // 3. broadcast to waiters
+    Ok(json_response(state, &()))
+  }
+
+  fn post_app(mut state: State) -> Box<HandlerFuture> {
+    with_body_as::<GameCommand>(state, post_gamecommand)
   }
 
   pub fn get_app(state: State) -> (State, Response) {
@@ -247,18 +246,6 @@ impl Middleware for PT {
     Box::new(f)
   }
 }
-
-// #[post("/", format = "application/json", data = "<command>")]
-// fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
-//   if let PTResponse::JSON(json) = pt.actor()?
-//     .send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
-//   {
-//     pt.pollers()?.broadcast(());
-//     Ok(json)
-//   } else {
-//     bail!(RPIError::UnexpectedResponse);
-//   }
-// }
 
 // #[get("/combat_movement_options")]
 // fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
