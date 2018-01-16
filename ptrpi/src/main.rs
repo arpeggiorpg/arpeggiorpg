@@ -26,6 +26,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use futures::{Future, future};
+use futures::sync::oneshot;
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{State};
@@ -36,7 +37,7 @@ use pandt::types::{App, GameError};
 mod webapp {
 
   use futures::{Future, future, Stream};
-  use futures::sync::mpsc::channel;
+  use futures::sync::oneshot;
 
   use gotham;
   use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
@@ -112,9 +113,18 @@ mod webapp {
   }
 
   fn post_gamecommand(state: &mut State, command: GameCommand) -> Result<Response, HandlerError> {
-    let pt = state.borrow::<PT>();
-    let mut app = pt.app.lock().unwrap();
-    app.perform_command(command, pt.saved_game_path.clone());
+    {
+      let pt = state.borrow::<PT>();
+      let mut app = pt.app.lock().unwrap();
+      app.perform_command(command, pt.saved_game_path.clone());
+    }
+    {
+      let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
+      for sender in waiters.drain(0..) {
+        sender.send(());
+      }
+    }
+
     // TODO:
     // 1. Return proper response
     // 2. handle Err from perform_command
@@ -122,7 +132,7 @@ mod webapp {
     Ok(json_response(state, &()))
   }
 
-  fn post_app(mut state: State) -> Box<HandlerFuture> {
+  fn post_app(state: State) -> Box<HandlerFuture> {
     with_body::<GameCommand>(state, post_gamecommand)
   }
 
@@ -157,10 +167,9 @@ mod webapp {
     if let Some(r) = updated {
       return Box::new(future::ok((state, r)));
     }
-    let (sender, receiver) = channel(1);
+    let (sender, receiver) = oneshot::channel();
     state.borrow::<PT>().waiters.lock().unwrap().push(sender);
-    let receiver = receiver.into_future();
-    let fut = receiver.and_then(move |(_, rest)| {
+    let fut = receiver.and_then(move |()| {
       Ok(get_app(state))
     }).map_err(|_| panic!()); // TODO: real error handling!
     Box::new(fut)
@@ -213,7 +222,7 @@ impl From<serde_yaml::Error> for RPIError {
 #[derive(Clone, StateData)]
 pub struct PT {
   app: Arc<Mutex<App>>,
-  waiters: Arc<Mutex<Vec<futures::sync::mpsc::Sender<()>>>>,
+  waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   saved_game_path: PathBuf,
 }
 
