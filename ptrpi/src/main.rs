@@ -86,12 +86,12 @@ mod webapp {
     (state, response)
   }
 
-  fn decode_body<'a, T: ::serde::Deserialize<'a>>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
+  fn decode_body<T: ::serde::de::DeserializeOwned>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
     let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
     serde_json::from_str(s).map_err(|e| e.into_handler_error())
   }
 
-  fn with_body_as<'a, T: ::serde::Deserialize<'a>>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
+  fn with_body<T: ::serde::de::DeserializeOwned + 'static>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
     let f = Body::take_from(&mut state).concat2().then(move |body| {
       match body {
         Ok(body) => {
@@ -123,7 +123,7 @@ mod webapp {
   }
 
   fn post_app(mut state: State) -> Box<HandlerFuture> {
-    with_body_as::<GameCommand>(state, post_gamecommand)
+    with_body::<GameCommand>(state, post_gamecommand)
   }
 
   pub fn get_app(state: State) -> (State, Response) {
