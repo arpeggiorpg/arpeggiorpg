@@ -313,38 +313,6 @@ fn main() {
     webapp::router(pt)
   });
   server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").run();
-
-  // gotham::start("0.0.0.0:1337", webapp::router(pt));
-
-  // let cors_opts = rocket_cors::Cors {
-  //   allowed_origins: AllowedOrigins::all(),
-  //   allowed_methods: vec![Method::Get, Method::Post]
-  //     .into_iter()
-  //     .map(From::from)
-  //     .collect(),
-  //   allowed_headers: AllowedHeaders::all(),
-  //   allow_credentials: true,
-  //   ..Default::default()
-  // };
-
-  // rocket::ignite()
-  //   .mount(
-  //     "/",
-  //     routes![
-  //       post_app,
-  //       combat_movement_options,
-  //       movement_options,
-  //       target_options,
-  //       preview_volume_targets,
-  //       list_saved_games,
-  //       load_saved_game,
-  //       save_game,
-  //       save_module,
-  //     ],
-  //   )
-  //   .manage(pt)
-  //   .attach(cors_opts)
-  //   .launch();
 }
 
 #[cfg(test)]
