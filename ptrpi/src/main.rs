@@ -116,7 +116,9 @@ mod webapp {
     {
       let pt = state.borrow::<PT>();
       let mut app = pt.app.lock().unwrap();
-      app.perform_command(command, pt.saved_game_path.clone());
+      if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
+        error!("Error running GameCommand! {:?}", e);
+      }
     }
     {
       let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
