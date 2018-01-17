@@ -121,7 +121,9 @@ mod webapp {
     {
       let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
       for sender in waiters.drain(0..) {
-        sender.send(());
+        if let Err(e) = sender.send(()) {
+          error!("Random failure notifying a waiter: {:?}", e);
+        }
       }
     }
 
