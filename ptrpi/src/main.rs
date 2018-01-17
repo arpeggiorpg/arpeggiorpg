@@ -26,7 +26,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use futures::{Future, future};
 use futures::sync::oneshot;
 
 use pandt::game::load_app_from_path;
@@ -36,8 +35,9 @@ mod webapp {
 
   use actix_web;
   use actix_web::middleware::cors;
-  use actix_web::{Application, HttpRequest, HttpResponse, Json};
+  use actix_web::{Application, HttpRequest, HttpResponse};
 
+  use futures;
   use futures::{Future, future, Stream};
   use futures::sync::oneshot;
   use http::header;
@@ -56,24 +56,15 @@ mod webapp {
   }
 
   pub fn router(pt: PT) -> Application<PT> {
-    
-    Application::with_state(pt)
-      .resource("/", |r| {enable_cors(r); r.f(get_app)})
-    // build_router(default_pipeline_chain, pipelines, |route| {
-    //   route.options("/").to(options);
-    //   route.get("/").to(get_app);
-    //   route.post("/").to(post_app);
-    //   route
-    //     .get("/poll/:snapshot_idx/:log_idx")
-    //     .with_path_extractor::<PollExtractor>()
-    //     .to(poll_app);
-    // })
-  }
+    let mut corsm = cors::Cors::build();
+    corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
+    let corsm = corsm.finish().unwrap();
 
-  // fn options(state: State) -> (State, Response) {
-  //   let response = create_response(&state, StatusCode::Ok, Some((vec![], mime::APPLICATION_JSON)));
-  //   (state, response)
-  // }
+    Application::with_state(pt)
+      .middleware(corsm)
+      .resource("/", |r| r.f(get_app))
+      .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
+  }
 
   // fn decode_body<T: ::serde::de::DeserializeOwned>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
   //   let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
@@ -133,36 +124,38 @@ mod webapp {
     json_response(&RPIApp(&*app))
   }
 
-  // /// If the client is polling with a non-current app "version", then immediately return the current
-  // /// App. Otherwise, wait 30 seconds for any new changes.
-  // fn poll_app(mut state: State) -> Box<HandlerFuture> {
-  //   // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
-  //   // We can work around this by just putting a 30 second timeout on the poll.
-  //   let PollExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = PollExtractor::take_from(&mut state);
-  //   let updated: Option<Response> = {
-  //     let app = state.borrow::<PT>().app.lock().unwrap();
-  //     if app.snapshots.len() != snapshot_len
-  //       || app
-  //         .snapshots
-  //         .back()
-  //         .map(|&(_, ref ls)| ls.len())
-  //         .unwrap_or(0) != log_len
-  //     {
-  //       Some(json_response(&state, &RPIApp(&app)))
-  //     } else {
-  //       None
-  //     }
-  //   };
-  //   if let Some(r) = updated {
-  //     return Box::new(future::ok((state, r)));
-  //   }
-  //   let (sender, receiver) = oneshot::channel();
-  //   state.borrow::<PT>().waiters.lock().unwrap().push(sender);
-  //   let fut = receiver.and_then(move |()| {
-  //     Ok(get_app(state))
-  //   }).map_err(|_| panic!()); // TODO: real error handling!
-  //   Box::new(fut)
-  // }
+  /// If the client is polling with a non-current app "version", then immediately return the current
+  /// App. Otherwise, wait 30 seconds for any new changes.
+  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
+    // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
+    // We can work around this by just putting a 30 second timeout on the poll.
+    let snapshot_len: usize = req.match_info().query("snapshot_len").unwrap();
+    let log_len: usize = req.match_info().query("log_len").unwrap();
+
+    let updated = {
+      let app = req.state().app.lock().unwrap();
+      if app.snapshots.len() != snapshot_len
+        || app
+          .snapshots
+          .back()
+          .map(|&(_, ref ls)| ls.len())
+          .unwrap_or(0) != log_len
+      {
+        Some(json_response(&RPIApp(&app)))
+      } else {
+        None
+      }
+    };
+    if let Some(r) = updated {
+      return Box::new(futures::done(r));
+    }
+    let (sender, receiver) = oneshot::channel();
+    req.state().waiters.lock().unwrap().push(sender);
+    let fut = receiver.and_then(move |()| {
+      get_app(req).map_err(|_| panic!())
+    }).map_err(|_| panic!());
+    Box::new(fut)
+  }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> actix_web::Result<HttpResponse> {
     let body = serde_json::to_string(b)?;
