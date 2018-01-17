@@ -7,8 +7,8 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate futures;
-extern crate gotham;
-#[macro_use] extern crate gotham_derive;
+extern crate actix;
+extern crate actix_web;
 extern crate hyper;
 #[macro_use] extern crate log;
 extern crate mime;
@@ -27,29 +27,18 @@ use std::sync::{Arc, Mutex};
 
 use futures::{Future, future};
 use futures::sync::oneshot;
-use gotham::handler::HandlerFuture;
-use gotham::middleware::{Middleware, NewMiddleware};
-use gotham::state::{State};
 
 use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
 mod webapp {
 
+  use actix_web;
+  use actix_web::{Application, HttpRequest, HttpResponse, Json};
+
   use futures::{Future, future, Stream};
   use futures::sync::oneshot;
 
-  use gotham;
-  use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
-  use gotham::http::response::create_response;
-  use gotham::middleware::pipeline::new_pipeline;
-  use gotham::router::Router;
-  use gotham::router::builder::*;
-  use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-  use gotham::state::{FromState, State};
-
-  use hyper;
-  use hyper::{Body, Response, StatusCode};
   use mime;
   use serde_json;
 
@@ -57,131 +46,119 @@ mod webapp {
 
   use super::PT;
 
-  #[derive(StateData, PathExtractor, StaticResponseExtender)]
-  struct PollExtractor {
-    snapshot_idx: usize,
-    log_idx: usize,
+  pub fn router(pt: PT) -> Application<PT> {
+    Application::with_state(pt)
+      .resource("/", |r| r.f(get_app))
+    // build_router(default_pipeline_chain, pipelines, |route| {
+    //   route.options("/").to(options);
+    //   route.get("/").to(get_app);
+    //   route.post("/").to(post_app);
+    //   route
+    //     .get("/poll/:snapshot_idx/:log_idx")
+    //     .with_path_extractor::<PollExtractor>()
+    //     .to(poll_app);
+    // })
   }
 
-  pub fn router(pt: PT) -> Router {
-    let pipelines = new_pipeline_set();
-    let (pipelines, global) = pipelines.add(
-      new_pipeline().add(pt)
-      .build());
-    let default_pipeline_chain = (global, ());
-    let pipelines = finalize_pipeline_set(pipelines);
+  // fn options(state: State) -> (State, Response) {
+  //   let response = create_response(&state, StatusCode::Ok, Some((vec![], mime::APPLICATION_JSON)));
+  //   (state, response)
+  // }
 
-    build_router(default_pipeline_chain, pipelines, |route| {
-      route.options("/").to(options);
-      route.get("/").to(get_app);
-      route.post("/").to(post_app);
-      route
-        .get("/poll/:snapshot_idx/:log_idx")
-        .with_path_extractor::<PollExtractor>()
-        .to(poll_app);
-    })
+  // fn decode_body<T: ::serde::de::DeserializeOwned>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
+  //   let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
+  //   serde_json::from_str(s).map_err(|e| e.into_handler_error())
+  // }
+
+  // fn with_body<T: ::serde::de::DeserializeOwned + 'static>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
+  //   let f = Body::take_from(&mut state).concat2().then(move |body| {
+  //     match body {
+  //       Ok(body) => {
+  //         match decode_body::<T>(body) {
+  //           Ok(obj) => {
+  //             match f(&mut state, obj) {
+  //               Ok(r) => future::ok((state, r)),
+  //               Err(e) => future::err((state, e.into_handler_error()))
+  //             }
+  //           }
+  //           Err(e) => future::err((state, e.into_handler_error()))
+  //         }
+  //       }
+  //       Err(e) => future::err((state, e.into_handler_error()))
+  //     }
+  //   });
+  //   Box::new(f)
+  // }
+
+  // fn post_gamecommand(state: &mut State, command: GameCommand) -> Result<Response, HandlerError> {
+  //   {
+  //     let pt = state.borrow::<PT>();
+  //     let mut app = pt.app.lock().unwrap();
+  //     if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
+  //       error!("Error running GameCommand! {:?}", e);
+  //     }
+  //   }
+  //   {
+  //     let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
+  //     for sender in waiters.drain(0..) {
+  //       if let Err(e) = sender.send(()) {
+  //         error!("Random failure notifying a waiter: {:?}", e);
+  //       }
+  //     }
+  //   }
+
+  //   // TODO:
+  //   // 1. Return proper response
+  //   // 2. handle Err from perform_command
+  //   // 3. broadcast to waiters
+  //   Ok(json_response(state, &()))
+  // }
+
+  // fn post_app(state: State) -> Box<HandlerFuture> {
+  //   with_body::<GameCommand>(state, post_gamecommand)
+  // }
+
+  pub fn get_app(req: HttpRequest<PT>) -> actix_web::Result<HttpResponse> {
+    let app = req.state().app.lock().unwrap();
+    json_response(&RPIApp(&*app))
   }
 
-  fn options(state: State) -> (State, Response) {
-    let response = create_response(&state, StatusCode::Ok, Some((vec![], mime::APPLICATION_JSON)));
-    (state, response)
-  }
+  // /// If the client is polling with a non-current app "version", then immediately return the current
+  // /// App. Otherwise, wait 30 seconds for any new changes.
+  // fn poll_app(mut state: State) -> Box<HandlerFuture> {
+  //   // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
+  //   // We can work around this by just putting a 30 second timeout on the poll.
+  //   let PollExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = PollExtractor::take_from(&mut state);
+  //   let updated: Option<Response> = {
+  //     let app = state.borrow::<PT>().app.lock().unwrap();
+  //     if app.snapshots.len() != snapshot_len
+  //       || app
+  //         .snapshots
+  //         .back()
+  //         .map(|&(_, ref ls)| ls.len())
+  //         .unwrap_or(0) != log_len
+  //     {
+  //       Some(json_response(&state, &RPIApp(&app)))
+  //     } else {
+  //       None
+  //     }
+  //   };
+  //   if let Some(r) = updated {
+  //     return Box::new(future::ok((state, r)));
+  //   }
+  //   let (sender, receiver) = oneshot::channel();
+  //   state.borrow::<PT>().waiters.lock().unwrap().push(sender);
+  //   let fut = receiver.and_then(move |()| {
+  //     Ok(get_app(state))
+  //   }).map_err(|_| panic!()); // TODO: real error handling!
+  //   Box::new(fut)
+  // }
 
-  fn decode_body<T: ::serde::de::DeserializeOwned>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
-    let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
-    serde_json::from_str(s).map_err(|e| e.into_handler_error())
-  }
-
-  fn with_body<T: ::serde::de::DeserializeOwned + 'static>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
-    let f = Body::take_from(&mut state).concat2().then(move |body| {
-      match body {
-        Ok(body) => {
-          match decode_body::<T>(body) {
-            Ok(obj) => {
-              match f(&mut state, obj) {
-                Ok(r) => future::ok((state, r)),
-                Err(e) => future::err((state, e.into_handler_error()))
-              }
-            }
-            Err(e) => future::err((state, e.into_handler_error()))
-          }
-        }
-        Err(e) => future::err((state, e.into_handler_error()))
-      }
-    });
-    Box::new(f)
-  }
-
-  fn post_gamecommand(state: &mut State, command: GameCommand) -> Result<Response, HandlerError> {
-    {
-      let pt = state.borrow::<PT>();
-      let mut app = pt.app.lock().unwrap();
-      if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
-        error!("Error running GameCommand! {:?}", e);
-      }
-    }
-    {
-      let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
-      for sender in waiters.drain(0..) {
-        if let Err(e) = sender.send(()) {
-          error!("Random failure notifying a waiter: {:?}", e);
-        }
-      }
-    }
-
-    // TODO:
-    // 1. Return proper response
-    // 2. handle Err from perform_command
-    // 3. broadcast to waiters
-    Ok(json_response(state, &()))
-  }
-
-  fn post_app(state: State) -> Box<HandlerFuture> {
-    with_body::<GameCommand>(state, post_gamecommand)
-  }
-
-  pub fn get_app(state: State) -> (State, Response) {
-    let response = {
-      let app = state.borrow::<PT>().app.lock().unwrap();
-      json_response(&state, &RPIApp(&*app))
-    };
-    (state, response) 
-  }
-
-  /// If the client is polling with a non-current app "version", then immediately return the current
-  /// App. Otherwise, wait 30 seconds for any new changes.
-  fn poll_app(mut state: State) -> Box<HandlerFuture> {
-    // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
-    // We can work around this by just putting a 30 second timeout on the poll.
-    let PollExtractor {snapshot_idx: snapshot_len, log_idx: log_len} = PollExtractor::take_from(&mut state);
-    let updated: Option<Response> = {
-      let app = state.borrow::<PT>().app.lock().unwrap();
-      if app.snapshots.len() != snapshot_len
-        || app
-          .snapshots
-          .back()
-          .map(|&(_, ref ls)| ls.len())
-          .unwrap_or(0) != log_len
-      {
-        Some(json_response(&state, &RPIApp(&app)))
-      } else {
-        None
-      }
-    };
-    if let Some(r) = updated {
-      return Box::new(future::ok((state, r)));
-    }
-    let (sender, receiver) = oneshot::channel();
-    state.borrow::<PT>().waiters.lock().unwrap().push(sender);
-    let fut = receiver.and_then(move |()| {
-      Ok(get_app(state))
-    }).map_err(|_| panic!()); // TODO: real error handling!
-    Box::new(fut)
-  }
-
-  fn json_response<T: ::serde::Serialize>(state: &State, b: &T) -> Response {
-    let s = serde_json::to_string(b).unwrap();
-    create_response(state, StatusCode::Ok, Some((s.into_bytes(), mime::APPLICATION_JSON)))
+  fn json_response<T: ::serde::Serialize>(b: &T) -> actix_web::Result<HttpResponse> {
+    let body = serde_json::to_string(b)?;
+    Ok(HttpResponse::Ok()
+      .content_type("application/json")
+      .body(body)?)
   }
 }
 
@@ -223,41 +200,11 @@ impl From<serde_yaml::Error> for RPIError {
 
 // type PTResult<X> = Result<Json<X>, RPIError>;
 
-#[derive(Clone, StateData)]
+#[derive(Clone)]
 pub struct PT {
   app: Arc<Mutex<App>>,
   waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   saved_game_path: PathBuf,
-}
-
-impl NewMiddleware for PT {
-  type Instance = PT;
-
-  fn new_middleware(&self) -> ::std::io::Result<Self::Instance> {
-    Ok(self.clone())
-  }
-}
-
-impl Middleware for PT {
-  /// - insert CORS headers
-  /// - insert the `PT` object into the State
-  fn call<Chain>(self , mut state: State, chain: Chain) -> Box<HandlerFuture>
-  where Chain: FnOnce(State) -> Box<HandlerFuture> {
-    state.put(self);
-
-    let result = chain(state);
-
-    let f = result.and_then(move |(state, mut response)| {
-      {
-        let headers = response.headers_mut();
-        headers.set_raw("Access-Control-Allow-Origin", "*");
-        headers.set_raw("Access-Control-Allow-Headers", "Content-Type");
-      }
-
-      future::ok((state, response))
-    });
-    Box::new(f)
-  }
 }
 
 // #[get("/combat_movement_options")]
@@ -371,20 +318,23 @@ fn main() {
       .into_string()
       .expect("Couldn't parse curdir as string")
   });
-  let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args()
     .nth(2)
     .unwrap_or_else(|| "samplegame.yaml".to_string());
 
-  let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
+  let server = actix_web::HttpServer::new(move || {
+    let game_dir = PathBuf::from(game_dir.clone());
+    let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
+    let pt = PT {
+      app: Arc::new(Mutex::new(app)),
+      waiters: Arc::new(Mutex::new(vec![])),
+      saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
+    };
+    webapp::router(pt)
+  });
+  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").run();
 
-  let pt = PT {
-    app: Arc::new(Mutex::new(app)),
-    waiters: Arc::new(Mutex::new(vec![])),
-    saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
-  };
-
-  gotham::start("0.0.0.0:1337", webapp::router(pt));
+  // gotham::start("0.0.0.0:1337", webapp::router(pt));
 
   // let cors_opts = rocket_cors::Cors {
   //   allowed_origins: AllowedOrigins::all(),

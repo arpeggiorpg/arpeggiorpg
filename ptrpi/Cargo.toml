@@ -15,14 +15,8 @@ failure_derive = "0.1"
 hyper = "~0.11.7"
 mime = "0.3"
 futures = "0.1"
+actix = "0.4"
+actix-web = "0.3"
 
 [dependencies.pandt]
 path = "../pandt"
-
-[dependencies.gotham]
-rev = "1e4c7027b2a76dca7d96be64e33532db1ecd76ce"
-git = "https://github.com/gotham-rs/gotham"
-
-[dependencies.gotham_derive]
-rev = "1e4c7027b2a76dca7d96be64e33532db1ecd76ce"
-git = "https://github.com/gotham-rs/gotham"
