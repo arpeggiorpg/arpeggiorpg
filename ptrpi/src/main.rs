@@ -38,14 +38,14 @@ mod webapp {
   use actix_web::{Application, HttpRequest, HttpResponse};
 
   use futures;
-  use futures::{Future, future, Stream};
+  use futures::{Future, future};
   use futures::sync::oneshot;
   use http::{header, Method};
 
   use mime;
   use serde_json;
 
-  use pandt::types::{GameCommand, RPIApp};
+  use pandt::types::{GameCommand, RPIApp, RPIGame};
 
   use super::PT;
 
@@ -71,13 +71,14 @@ mod webapp {
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
     let f = req.json().from_err().and_then(move |command: GameCommand| {
-      {
+      let response = {
         let pt = req.state();
         let mut app = pt.app.lock().unwrap();
-        if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
-          error!("Error running GameCommand! {:?}", e);
-        }
-      }
+        let result = app.perform_command(command, pt.saved_game_path.clone());
+        let result = result.map_err(|e| format!("Error: {}", e));
+        let result = result.map(|(g, l)| (RPIGame(g), l));
+        json_response(&result)
+      };
       {
         let mut waiters = req.state().waiters.lock().unwrap();
         for sender in waiters.drain(0..) {
@@ -86,12 +87,7 @@ mod webapp {
           }
         }
       }
-
-      // TODO:
-      // 1. Return proper response
-      // 2. handle Err from perform_command
-      // 3. broadcast to waiters
-      json_response(&())
+      response
     });
     Box::new(f)
   }
