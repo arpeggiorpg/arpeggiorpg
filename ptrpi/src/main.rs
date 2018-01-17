@@ -49,12 +49,6 @@ mod webapp {
 
   use super::PT;
 
-  fn enable_cors(r: &mut actix_web::Resource<PT>) {
-    let mut corsm = cors::Cors::build();
-    corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
-    corsm.finish().unwrap().register(r);
-  }
-
   pub fn router(pt: PT) -> Application<PT> {
     let mut corsm = cors::Cors::build();
     corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
