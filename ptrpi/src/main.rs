@@ -1,5 +1,3 @@
-// Disable `needless_pass_by_value` because it is triggered by all the uses of Rocket's `State`.
-#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
 extern crate actix;
@@ -12,10 +10,10 @@ extern crate futures;
 extern crate http;
 extern crate hyper;
 #[macro_use] extern crate log;
-extern crate mime;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
+extern crate tokio_core;
 
 extern crate pandt;
 
@@ -32,18 +30,18 @@ use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
 mod webapp {
+  use std::time::Duration;
 
+  use actix;
   use actix_web;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse};
-
   use futures;
-  use futures::{Future, future};
+  use futures::Future;
   use futures::sync::oneshot;
   use http::{header, Method};
-
-  use mime;
   use serde_json;
+  use tokio_core::reactor::Timeout;
 
   use pandt::types::{GameCommand, RPIApp, RPIGame};
 
@@ -94,8 +92,6 @@ mod webapp {
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
   fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
-    // TODO: Nothing is *stopping* the polling when a browser is reloaded or whatever.
-    // We can work around this by just putting a 30 second timeout on the poll.
     let snapshot_len: usize = req.match_info().query("snapshot_len").unwrap();
     let log_len: usize = req.match_info().query("log_len").unwrap();
 
@@ -118,9 +114,14 @@ mod webapp {
     }
     let (sender, receiver) = oneshot::channel();
     req.state().waiters.lock().unwrap().push(sender);
-    let fut = receiver.and_then(move |()| {
+
+    let handle = actix::Arbiter::handle();
+    let timeout = Timeout::new(Duration::from_secs(30), handle).unwrap();
+
+    let fut = timeout.select2(receiver).and_then(move |_| {
       get_app(req).map_err(|_| panic!())
     }).map_err(|_| panic!());
+
     Box::new(fut)
   }
 
