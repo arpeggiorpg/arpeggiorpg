@@ -2,13 +2,14 @@
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 #![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
+extern crate actix;
+extern crate actix_web;
 extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate futures;
-extern crate actix;
-extern crate actix_web;
+extern crate http;
 extern crate hyper;
 #[macro_use] extern crate log;
 extern crate mime;
@@ -34,10 +35,12 @@ use pandt::types::{App, GameError};
 mod webapp {
 
   use actix_web;
+  use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
 
   use futures::{Future, future, Stream};
   use futures::sync::oneshot;
+  use http::header;
 
   use mime;
   use serde_json;
@@ -46,9 +49,16 @@ mod webapp {
 
   use super::PT;
 
+  fn enable_cors(r: &mut actix_web::Resource<PT>) {
+    let mut corsm = cors::Cors::build();
+    corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
+    corsm.finish().unwrap().register(r);
+  }
+
   pub fn router(pt: PT) -> Application<PT> {
+    
     Application::with_state(pt)
-      .resource("/", |r| r.f(get_app))
+      .resource("/", |r| {enable_cors(r); r.f(get_app)})
     // build_router(default_pipeline_chain, pipelines, |route| {
     //   route.options("/").to(options);
     //   route.get("/").to(get_app);
