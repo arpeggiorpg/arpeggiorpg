@@ -40,7 +40,7 @@ mod webapp {
   use futures;
   use futures::{Future, future, Stream};
   use futures::sync::oneshot;
-  use http::header;
+  use http::{header, Method};
 
   use mime;
   use serde_json;
@@ -62,62 +62,39 @@ mod webapp {
 
     Application::with_state(pt)
       .middleware(corsm)
-      .resource("/", |r| r.f(get_app))
+      .resource("/", |r| {
+        r.method(Method::GET).f(get_app);
+        r.method(Method::POST).a(post_app);
+      })
       .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
   }
 
-  // fn decode_body<T: ::serde::de::DeserializeOwned>(chunk: hyper::Chunk) -> Result<T, HandlerError> {
-  //   let s = ::std::str::from_utf8(&chunk).map_err(|e| e.into_handler_error())?;
-  //   serde_json::from_str(s).map_err(|e| e.into_handler_error())
-  // }
+  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
+    let f = req.json().from_err().and_then(move |command: GameCommand| {
+      {
+        let pt = req.state();
+        let mut app = pt.app.lock().unwrap();
+        if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
+          error!("Error running GameCommand! {:?}", e);
+        }
+      }
+      {
+        let mut waiters = req.state().waiters.lock().unwrap();
+        for sender in waiters.drain(0..) {
+          if let Err(e) = sender.send(()) {
+            error!("Random failure notifying a waiter: {:?}", e);
+          }
+        }
+      }
 
-  // fn with_body<T: ::serde::de::DeserializeOwned + 'static>(mut state: State, f: fn(&mut State, T) -> Result<Response, HandlerError>) -> Box<HandlerFuture> {
-  //   let f = Body::take_from(&mut state).concat2().then(move |body| {
-  //     match body {
-  //       Ok(body) => {
-  //         match decode_body::<T>(body) {
-  //           Ok(obj) => {
-  //             match f(&mut state, obj) {
-  //               Ok(r) => future::ok((state, r)),
-  //               Err(e) => future::err((state, e.into_handler_error()))
-  //             }
-  //           }
-  //           Err(e) => future::err((state, e.into_handler_error()))
-  //         }
-  //       }
-  //       Err(e) => future::err((state, e.into_handler_error()))
-  //     }
-  //   });
-  //   Box::new(f)
-  // }
-
-  // fn post_gamecommand(state: &mut State, command: GameCommand) -> Result<Response, HandlerError> {
-  //   {
-  //     let pt = state.borrow::<PT>();
-  //     let mut app = pt.app.lock().unwrap();
-  //     if let Err(e) = app.perform_command(command, pt.saved_game_path.clone()) {
-  //       error!("Error running GameCommand! {:?}", e);
-  //     }
-  //   }
-  //   {
-  //     let mut waiters = state.borrow::<PT>().waiters.lock().unwrap();
-  //     for sender in waiters.drain(0..) {
-  //       if let Err(e) = sender.send(()) {
-  //         error!("Random failure notifying a waiter: {:?}", e);
-  //       }
-  //     }
-  //   }
-
-  //   // TODO:
-  //   // 1. Return proper response
-  //   // 2. handle Err from perform_command
-  //   // 3. broadcast to waiters
-  //   Ok(json_response(state, &()))
-  // }
-
-  // fn post_app(state: State) -> Box<HandlerFuture> {
-  //   with_body::<GameCommand>(state, post_gamecommand)
-  // }
+      // TODO:
+      // 1. Return proper response
+      // 2. handle Err from perform_command
+      // 3. broadcast to waiters
+      json_response(&())
+    });
+    Box::new(f)
+  }
 
   pub fn get_app(req: HttpRequest<PT>) -> actix_web::Result<HttpResponse> {
     let app = req.state().app.lock().unwrap();
