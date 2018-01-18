@@ -39,7 +39,7 @@ mod webapp {
   use serde_json;
   use tokio_core::reactor::Timeout;
 
-  use pandt::types::{CreatureID, SceneID, GameCommand, Point3, RPIApp, RPIGame};
+  use pandt::types::{AbilityID, CreatureID, SceneID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame};
 
   use super::{PT, RPIError};
 
@@ -59,6 +59,8 @@ mod webapp {
       .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
       .resource("/movement_options/{scene_id}/{cid}", |r| r.f(movement_options))
       .resource("/combat_movement_options", |r| r.f(combat_movement_options))
+      .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.f(target_options))
+      
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
@@ -141,6 +143,14 @@ mod webapp {
     Ok(Json(app.get_combat_movement_options()?))
   }
 
+  fn target_options( req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
+    let scene_id: SceneID = req.match_info().query::<String>("scene_id").map_err(RPIError::from_response_error)?.parse()?;
+    let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
+    let abid: AbilityID = req.match_info().query::<String>("abid").map_err(RPIError::from_response_error)?.parse()?;
+    let app = req.state().app()?;
+    Ok(Json(app.get_target_options(scene_id, cid, abid)?))
+  }
+
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
     Ok(HttpResponse::Ok()
@@ -219,17 +229,6 @@ impl PT {
   }
 
 }
-
-// #[get("/target_options/<scene_id>/<cid>/<abid>")]
-// fn target_options(
-//   pt: State<PT>, scene_id: String, cid: String, abid: String
-// ) -> PTResult<PotentialTargets> {
-//   let app = pt.clone_app()?;
-//   let scene = scene_id.parse()?;
-//   let cid = cid.parse()?;
-//   let abid = abid.parse()?;
-//   Ok(Json(app.get_target_options(scene, cid, abid)?))
-// }
 
 // #[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
 // fn preview_volume_targets(
