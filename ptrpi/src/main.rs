@@ -319,16 +319,16 @@ fn main() {
   let initial_file = env::args()
     .nth(2)
     .unwrap_or_else(|| "samplegame.yaml".to_string());
+  let game_dir = PathBuf::from(game_dir.clone());
+  let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
+  let pt = PT {
+    app: Arc::new(Mutex::new(app)),
+    waiters: Arc::new(Mutex::new(vec![])),
+    saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
+  };
 
   let server = actix_web::HttpServer::new(move || {
-    let game_dir = PathBuf::from(game_dir.clone());
-    let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
-    let pt = PT {
-      app: Arc::new(Mutex::new(app)),
-      waiters: Arc::new(Mutex::new(vec![])),
-      saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
-    };
-    webapp::router(pt)
+    webapp::router(pt.clone())
   });
   server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").run();
 }
