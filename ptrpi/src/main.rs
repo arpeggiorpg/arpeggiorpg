@@ -58,6 +58,7 @@ mod webapp {
       })
       .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
       .resource("/movement_options/{scene_id}/{cid}", |r| r.f(movement_options))
+      .resource("/combat_movement_options", |r| r.f(combat_movement_options))
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
@@ -133,6 +134,11 @@ mod webapp {
     let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
     let scene_id: SceneID = req.match_info().query::<String>("scene_id").map_err(RPIError::from_response_error)?.parse()?;
     Ok(Json(app.get_movement_options(scene_id, cid)?))
+  }
+
+  fn combat_movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
+    let app = req.state().app()?;
+    Ok(Json(app.get_combat_movement_options()?))
   }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
@@ -213,13 +219,6 @@ impl PT {
   }
 
 }
-
-
-// #[get("/combat_movement_options")]
-// fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
-//   let app = pt.clone_app()?;
-//   Ok(Json(app.get_combat_movement_options()?))
-// }
 
 // #[get("/target_options/<scene_id>/<cid>/<abid>")]
 // fn target_options(
