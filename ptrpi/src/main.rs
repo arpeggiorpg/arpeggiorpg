@@ -31,11 +31,9 @@ mod webapp {
   use std::time::Duration;
 
   use actix;
-  use actix_web;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
-  use futures;
-  use futures::Future;
+  use futures::{Future, future};
   use futures::sync::oneshot;
   use http::{header, Method};
   use serde_json;
@@ -90,29 +88,33 @@ mod webapp {
     json_response(&RPIApp(&*app))
   }
 
+  fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
+    let snapshot_len: usize = req.match_info().query("snapshot_len").map_err(RPIError::from_response_error)?;
+    let log_len: usize = req.match_info().query("log_len").map_err(RPIError::from_response_error)?;
+    let app = req.state().app()?;
+    if app.snapshots.len() != snapshot_len
+      || app
+        .snapshots
+        .back()
+        .map(|&(_, ref ls)| ls.len())
+        .unwrap_or(0) != log_len
+    {
+      json_response(&RPIApp(&app)).map(Some)
+    } else {
+      Ok(None)
+    }
+  }
+
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
   fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
-    let snapshot_len: usize = req.match_info().query("snapshot_len").unwrap();
-    let log_len: usize = req.match_info().query("log_len").unwrap();
-
-    let updated = {
-      let app = req.state().app.lock().unwrap();
-      if app.snapshots.len() != snapshot_len
-        || app
-          .snapshots
-          .back()
-          .map(|&(_, ref ls)| ls.len())
-          .unwrap_or(0) != log_len
-      {
-        Some(json_response(&RPIApp(&app)))
-      } else {
-        None
-      }
-    };
-    if let Some(r) = updated {
-      return Box::new(futures::done(r));
+    let result = get_current_app(&req);
+    match result {
+      Ok(Some(r)) => return Box::new(future::ok(r)),
+      Err(e) => return Box::new(future::err(e)),
+      Ok(None) => {},
     }
+
     let (sender, receiver) = oneshot::channel();
     req.state().waiters.lock().unwrap().push(sender);
 
@@ -159,38 +161,26 @@ enum RPIError {
 }
 
 impl From<GameError> for RPIError {
-  fn from(error: GameError) -> Self {
-    RPIError::GameError(error)
-  }
+  fn from(error: GameError) -> Self { RPIError::GameError(error) }
 }
 impl From<serde_json::error::Error> for RPIError {
-  fn from(error: serde_json::error::Error) -> Self {
-    RPIError::JSONError(error)
-  }
+  fn from(error: serde_json::error::Error) -> Self { RPIError::JSONError(error) }
 }
 
 impl From<::std::io::Error> for RPIError {
-  fn from(error: ::std::io::Error) -> Self {
-    RPIError::IOError(error)
-  }
+  fn from(error: ::std::io::Error) -> Self { RPIError::IOError(error) }
 }
 
 impl From<serde_yaml::Error> for RPIError {
-  fn from(error: serde_yaml::Error) -> Self {
-    RPIError::YAMLError(error)
-  }
+  fn from(error: serde_yaml::Error) -> Self { RPIError::YAMLError(error) }
 }
 
 impl From<http::Error> for RPIError {
-  fn from(error: http::Error) -> Self {
-    RPIError::HTTPError(error)
-  }
+  fn from(error: http::Error) -> Self { RPIError::HTTPError(error) }
 }
 
 impl From<actix_web::error::JsonPayloadError> for RPIError {
-  fn from(error: actix_web::error::JsonPayloadError) -> Self {
-    RPIError::JSONPayloadError(error)
-  }
+  fn from(error: actix_web::error::JsonPayloadError) -> Self { RPIError::JSONPayloadError(error) }
 }
 
 impl RPIError {
