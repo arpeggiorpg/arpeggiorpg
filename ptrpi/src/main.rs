@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
-
 extern crate actix;
 extern crate actix_web;
 extern crate error_chain;
@@ -35,7 +33,7 @@ mod webapp {
   use actix;
   use actix_web;
   use actix_web::middleware::cors;
-  use actix_web::{Application, HttpRequest, HttpResponse};
+  use actix_web::{Application, HttpRequest, HttpResponse, Json};
   use futures;
   use futures::Future;
   use futures::sync::oneshot;
@@ -43,9 +41,11 @@ mod webapp {
   use serde_json;
   use tokio_core::reactor::Timeout;
 
-  use pandt::types::{GameCommand, RPIApp, RPIGame};
+  use pandt::types::{CreatureID, SceneID, GameCommand, Point3, RPIApp, RPIGame};
 
-  use super::PT;
+  use super::{PT, RPIError};
+
+  type PTResult<X> = Result<Json<X>, RPIError>;
 
   pub fn router(pt: PT) -> Application<PT> {
     let mut corsm = cors::Cors::build();
@@ -59,13 +59,14 @@ mod webapp {
         r.method(Method::POST).a(post_app);
       })
       .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
+      .resource("/movement_options/{scene_id}/{cid}", |r| r.f(movement_options))
   }
 
-  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
+  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
     let f = req.json().from_err().and_then(move |command: GameCommand| {
       let response = {
         let pt = req.state();
-        let mut app = pt.app.lock().unwrap();
+        let mut app = pt.app().unwrap();
         let result = app.perform_command(command, pt.saved_game_path.clone());
         let result = result.map_err(|e| format!("Error: {}", e));
         let result = result.map(|(g, l)| (RPIGame(g), l));
@@ -84,14 +85,14 @@ mod webapp {
     Box::new(f)
   }
 
-  pub fn get_app(req: HttpRequest<PT>) -> actix_web::Result<HttpResponse> {
-    let app = req.state().app.lock().unwrap();
+  fn get_app(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
+    let app = req.state().app()?;
     json_response(&RPIApp(&*app))
   }
 
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
-  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=actix_web::error::Error>> {
+  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
     let snapshot_len: usize = req.match_info().query("snapshot_len").unwrap();
     let log_len: usize = req.match_info().query("log_len").unwrap();
 
@@ -125,7 +126,15 @@ mod webapp {
     Box::new(fut)
   }
 
-  fn json_response<T: ::serde::Serialize>(b: &T) -> actix_web::Result<HttpResponse> {
+  fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
+    let app = req.state().app()?;
+    let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
+    Ok(Json(vec![]))
+    // let scene = scene_id.parse()?;
+    // Ok(Json(app.get_movement_options(scene, cid)?))
+  }
+
+  fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
     Ok(HttpResponse::Ok()
       .content_type("application/json")
@@ -140,6 +149,9 @@ enum RPIError {
   #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
   #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
   #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
+  #[fail(display = "Web Error")] WebError(Box<actix_web::ResponseError>),
+  #[fail(display = "JSON Payload Error")] JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
+  #[fail(display = "HTTP Error")] HTTPError(#[cause] http::Error),
 
   #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
   LockError(String),
@@ -169,7 +181,35 @@ impl From<serde_yaml::Error> for RPIError {
   }
 }
 
-// type PTResult<X> = Result<Json<X>, RPIError>;
+impl From<http::Error> for RPIError {
+  fn from(error: http::Error) -> Self {
+    RPIError::HTTPError(error)
+  }
+}
+
+impl From<actix_web::error::JsonPayloadError> for RPIError {
+  fn from(error: actix_web::error::JsonPayloadError) -> Self {
+    RPIError::JSONPayloadError(error)
+  }
+}
+
+impl RPIError {
+  fn from_response_error<T: actix_web::ResponseError>(e: T) -> Self {
+    RPIError::WebError(Box::new(e))
+  }
+}
+
+impl actix_web::ResponseError for RPIError {
+  fn error_response(&self) -> actix_web::HttpResponse {
+    match self {
+      &RPIError::JSONPayloadError(ref e) => e.error_response(),
+      &RPIError::WebError(ref e) => e.error_response(),
+      &RPIError::HTTPError(ref e) => e.error_response(),
+      &RPIError::IOError(ref e) => e.error_response(),
+      _ => actix_web::HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR, actix_web::Body::Empty),
+    }
+  }
+}
 
 #[derive(Clone)]
 pub struct PT {
@@ -178,18 +218,18 @@ pub struct PT {
   saved_game_path: PathBuf,
 }
 
+impl PT {
+  fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {
+    self.app.lock().map_err(|_| RPIError::LockError("app".to_string()))
+  }
+
+}
+
+
 // #[get("/combat_movement_options")]
 // fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
 //   let app = pt.clone_app()?;
 //   Ok(Json(app.get_combat_movement_options()?))
-// }
-
-// #[get("/movement_options/<scene_id>/<cid>")]
-// fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Vec<Point3>> {
-//   let app = pt.clone_app()?;
-//   let cid = cid.parse()?;
-//   let scene = scene_id.parse()?;
-//   Ok(Json(app.get_movement_options(scene, cid)?))
 // }
 
 // #[get("/target_options/<scene_id>/<cid>/<abid>")]
