@@ -4,6 +4,8 @@
 extern crate actix;
 extern crate actix_web;
 #[macro_use]
+extern crate env_logger;
+#[macro_use]
 extern crate error_chain;
 extern crate failure;
 #[macro_use]
@@ -371,6 +373,13 @@ impl PT {
 }
 
 fn main() {
+  if let Err(_) = env::var("PANDT_LOG") {
+    env::set_var("PANDT_LOG", "info");
+  }
+  let env = env_logger::Env::new().filter("PANDT_LOG").write_style("PANDT_LOG_STYLE");
+  env_logger::init_from_env(env);
+
+  info!("Starting up the P&T Remote Programming Interface HTTP server!");
   let game_dir = env::args().nth(1).unwrap_or_else(|| {
     env::current_dir()
       .expect("couldn't get curdir")
