@@ -131,9 +131,8 @@ mod webapp {
   fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
     let app = req.state().app()?;
     let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
-    Ok(Json(vec![]))
-    // let scene = scene_id.parse()?;
-    // Ok(Json(app.get_movement_options(scene, cid)?))
+    let scene_id: SceneID = req.match_info().query::<String>("scene_id").map_err(RPIError::from_response_error)?.parse()?;
+    Ok(Json(app.get_movement_options(scene_id, cid)?))
   }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
