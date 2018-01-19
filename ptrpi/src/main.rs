@@ -1,3 +1,7 @@
+
+// Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+
 extern crate actix;
 extern crate actix_web;
 extern crate error_chain;
@@ -238,11 +242,11 @@ impl RPIError {
 
 impl actix_web::ResponseError for RPIError {
   fn error_response(&self) -> actix_web::HttpResponse {
-    match self {
-      &RPIError::JSONPayloadError(ref e) => e.error_response(),
-      &RPIError::WebError(ref e) => e.error_response(),
-      &RPIError::HTTPError(ref e) => e.error_response(),
-      &RPIError::IOError(ref e) => e.error_response(),
+    match *self {
+      RPIError::JSONPayloadError(ref e) => e.error_response(),
+      RPIError::WebError(ref e) => e.error_response(),
+      RPIError::HTTPError(ref e) => e.error_response(),
+      RPIError::IOError(ref e) => e.error_response(),
       _ => actix_web::HttpResponse::new(
         http::StatusCode::INTERNAL_SERVER_ERROR,
         actix_web::Body::Empty,
