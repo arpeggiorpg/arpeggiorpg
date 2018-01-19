@@ -32,6 +32,7 @@ use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
 
 mod webapp {
+  use std::fs;
   use std::time::Duration;
 
   use actix;
@@ -74,6 +75,7 @@ mod webapp {
         "/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}",
         |r| r.f(preview_volume_targets),
       )
+      .resource("/saved_games", |r| r.f(list_saved_games))
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
@@ -178,6 +180,21 @@ mod webapp {
     Ok(Json(preview))
   }
 
+  fn list_saved_games(req: HttpRequest<PT>) -> PTResult<Vec<String>> {
+    let mut result = vec![];
+    for mpath in fs::read_dir(&req.state().saved_game_path)? {
+      let path = mpath?;
+      if path.file_type()?.is_file() {
+        match path.file_name().into_string() {
+          Ok(s) => result.push(s),
+          Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
+        }
+      }
+    }
+    Ok(Json(result))
+  }
+
+
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
     Ok(HttpResponse::Ok()
@@ -275,21 +292,6 @@ impl PT {
       .map_err(|_| RPIError::LockError("app".to_string()))
   }
 }
-
-// #[get("/saved_games")]
-// fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
-//   let mut result = vec![];
-//   for mpath in fs::read_dir(&pt.saved_game_path)? {
-//     let path = mpath?;
-//     if path.file_type()?.is_file() {
-//       match path.file_name().into_string() {
-//         Ok(s) => result.push(s),
-//         Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
-//       }
-//     }
-//   }
-//   Ok(Json(result))
-// }
 
 // #[post("/saved_games/<name>/load")]
 // fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
