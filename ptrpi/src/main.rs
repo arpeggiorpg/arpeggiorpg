@@ -1,4 +1,3 @@
-
 // Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 
@@ -36,6 +35,7 @@ mod webapp {
   use std::time::Duration;
 
   use actix;
+  use actix_web::dev::{FromParam};
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
   use futures::{future, Future};
@@ -70,6 +70,10 @@ mod webapp {
       .resource("/target_options/{scene_id}/{cid}/{abid}", |r| {
         r.f(target_options)
       })
+      .resource(
+        "/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}",
+        |r| r.f(preview_volume_targets),
+      )
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
@@ -101,14 +105,8 @@ mod webapp {
   }
 
   fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
-    let snapshot_len: usize = req
-      .match_info()
-      .query("snapshot_len")
-      .map_err(RPIError::from_response_error)?;
-    let log_len: usize = req
-      .match_info()
-      .query("log_len")
-      .map_err(RPIError::from_response_error)?;
+    let snapshot_len: usize = get_arg(&req, "snapshot_len")?;
+    let log_len: usize = get_arg(&req, "log_len")?;
     let app = req.state().app()?;
     if app.snapshots.len() != snapshot_len
       || app
@@ -149,16 +147,8 @@ mod webapp {
 
   fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
     let app = req.state().app()?;
-    let cid: CreatureID = req
-      .match_info()
-      .query::<String>("cid")
-      .map_err(RPIError::from_response_error)?
-      .parse()?;
-    let scene_id: SceneID = req
-      .match_info()
-      .query::<String>("scene_id")
-      .map_err(RPIError::from_response_error)?
-      .parse()?;
+    let cid: CreatureID = parse_arg(&req, "cid")?;
+    let scene_id: SceneID = parse_arg(&req, "scene_id")?;
     Ok(Json(app.get_movement_options(scene_id, cid)?))
   }
 
@@ -168,23 +158,24 @@ mod webapp {
   }
 
   fn target_options(req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
-    let scene_id: SceneID = req
-      .match_info()
-      .query::<String>("scene_id")
-      .map_err(RPIError::from_response_error)?
-      .parse()?;
-    let cid: CreatureID = req
-      .match_info()
-      .query::<String>("cid")
-      .map_err(RPIError::from_response_error)?
-      .parse()?;
-    let abid: AbilityID = req
-      .match_info()
-      .query::<String>("abid")
-      .map_err(RPIError::from_response_error)?
-      .parse()?;
+    let scene_id = parse_arg(&req, "scene_id")?;
+    let cid = parse_arg(&req, "cid")?;
+    let abid = parse_arg(&req, "abid")?;
     let app = req.state().app()?;
     Ok(Json(app.get_target_options(scene_id, cid, abid)?))
+  }
+
+  fn preview_volume_targets(req: HttpRequest<PT>) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
+    let scene_id = parse_arg(&req, "scene_id")?;
+    let actor_id = parse_arg(&req, "actor_id")?;
+    let ability_id = parse_arg(&req, "ability_id")?;
+    let x = get_arg(&req, "x")?;
+    let y = get_arg(&req, "y")?;
+    let z = get_arg(&req, "z")?;
+    let point = Point3::new(x, y, z);
+    let app = req.state().app()?;
+    let preview = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
+    Ok(Json(preview))
   }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
@@ -192,6 +183,20 @@ mod webapp {
     Ok(HttpResponse::Ok()
       .content_type("application/json")
       .body(body)?)
+  }
+
+  fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  where T: FromParam {
+    req.match_info().query::<T>(key).map_err(RPIError::from_response_error)
+  }
+
+  fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  where
+    T: ::std::str::FromStr,
+    RPIError: From<<T as ::std::str::FromStr>::Err>, // I dunno man
+  {
+    let s = req.match_info().query::<String>(key);
+    Ok(s.map_err(RPIError::from_response_error)?.parse()?)
   }
 }
 
@@ -270,23 +275,6 @@ impl PT {
       .map_err(|_| RPIError::LockError("app".to_string()))
   }
 }
-
-// #[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-// fn preview_volume_targets(
-//   pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16
-// ) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
-//   let app = pt.clone_app()?;
-//   let sid = scene_id.parse()?;
-//   let actor_id = actor_id.parse()?;
-//   let ability_id = ability_id.parse()?;
-//   let point = Point3::new(x, y, z);
-//   Ok(Json(app.preview_volume_targets(
-//     sid,
-//     actor_id,
-//     ability_id,
-//     point,
-//   )?))
-// }
 
 // #[get("/saved_games")]
 // fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
