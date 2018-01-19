@@ -3,7 +3,8 @@
 
 extern crate actix;
 extern crate actix_web;
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -33,7 +34,7 @@ use pandt::types::{App, GameError};
 
 mod webapp {
   use std::fs;
-  use std::io::Read;
+  use std::io::{Read, Write};
   use std::path::PathBuf;
   use std::time::Duration;
 
@@ -48,8 +49,8 @@ mod webapp {
   use serde_yaml;
   use tokio_core::reactor::Timeout;
 
-  use pandt::types::{CreatureID, GameCommand, Point3, PotentialTargets, RPIApp,
-                     RPIGame, SceneID};
+  use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
+                     SceneID};
 
   use super::{RPIError, PT};
 
@@ -81,6 +82,9 @@ mod webapp {
       .resource("/saved_games", |r| r.f(list_saved_games))
       .resource("/saved_games/{name}/load", |r| {
         r.method(Method::POST).f(load_saved_game)
+      })
+      .resource("/saved_games/{name}", |r| {
+        r.method(Method::POST).f(save_game)
       })
   }
 
@@ -213,6 +217,21 @@ mod webapp {
     get_app(req)
   }
 
+  fn save_game(req: HttpRequest<PT>) -> PTResult<()> {
+    let name: String = get_arg(&req, "name")?;
+    let app = req.state().app()?;
+    save_app(&req, &name, &app)
+  }
+
+  fn save_app(req: &HttpRequest<PT>, name: &str, app: &App) -> PTResult<()> {
+    let new_path = child_path(&req.state().saved_game_path, name)?;
+    // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
+    // without the extra magic that decorates the data with dynamic data for clients.
+    let yaml = serde_yaml::to_string(&app)?;
+    fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+    Ok(Json(()))
+  }
+
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
     Ok(HttpResponse::Ok()
@@ -329,27 +348,12 @@ impl PT {
   }
 }
 
-// #[post("/saved_games/<name>")]
-// fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
-//   let app = pt.clone_app()?; // hey! A NLL usecase!
-//   save_app(pt, &name, &app)
-// }
-
 // #[post("/modules/<name>", data = "<path>")]
 // fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
 //   let app = pt.clone_app()?;
 //   let new_game = app.current_game.export_module(&path)?;
 //   let new_app = App::new(new_game);
 //   save_app(pt, &name, &new_app)
-// }
-
-// fn save_app(pt: State<PT>, name: &str, app: &App) -> PTResult<()> {
-//   let new_path = child_path(&pt.saved_game_path, name)?;
-//   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
-//   // without the extra magic that decorates the data with dynamic data for clients.
-//   let yaml = serde_yaml::to_string(&app)?;
-//   File::create(new_path)?.write_all(yaml.as_bytes())?;
-//   Ok(Json(()))
 // }
 
 fn main() {
