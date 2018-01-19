@@ -3,7 +3,7 @@
 
 extern crate actix;
 extern crate actix_web;
-extern crate error_chain;
+#[macro_use] extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -33,19 +33,22 @@ use pandt::types::{App, GameError};
 
 mod webapp {
   use std::fs;
+  use std::io::Read;
+  use std::path::PathBuf;
   use std::time::Duration;
 
   use actix;
-  use actix_web::dev::{FromParam};
+  use actix_web::dev::FromParam;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
   use futures::{future, Future};
   use futures::sync::oneshot;
   use http::{header, Method};
   use serde_json;
+  use serde_yaml;
   use tokio_core::reactor::Timeout;
 
-  use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp,
+  use pandt::types::{CreatureID, GameCommand, Point3, PotentialTargets, RPIApp,
                      RPIGame, SceneID};
 
   use super::{RPIError, PT};
@@ -76,6 +79,9 @@ mod webapp {
         |r| r.f(preview_volume_targets),
       )
       .resource("/saved_games", |r| r.f(list_saved_games))
+      .resource("/saved_games/{name}/load", |r| {
+        r.method(Method::POST).f(load_saved_game)
+      })
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
@@ -194,6 +200,18 @@ mod webapp {
     Ok(Json(result))
   }
 
+  fn load_saved_game(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
+    {
+      let state = req.state();
+      let name: String = get_arg(&req, "name")?;
+      let path = child_path(&state.saved_game_path, &name)?;
+      let mut buffer = String::new();
+      fs::File::open(path)?.read_to_string(&mut buffer)?;
+      let mut app = state.app()?;
+      *app = serde_yaml::from_str(&buffer)?;
+    }
+    get_app(req)
+  }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
@@ -203,8 +221,13 @@ mod webapp {
   }
 
   fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
-  where T: FromParam {
-    req.match_info().query::<T>(key).map_err(RPIError::from_response_error)
+  where
+    T: FromParam,
+  {
+    req
+      .match_info()
+      .query::<T>(key)
+      .map_err(RPIError::from_response_error)
   }
 
   fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
@@ -214,6 +237,19 @@ mod webapp {
   {
     let s = req.match_info().query::<String>(key);
     Ok(s.map_err(RPIError::from_response_error)?.parse()?)
+  }
+
+  fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
+    if name.contains('/') || name.contains(':') || name.contains('\\') {
+      bail!(RPIError::InsecurePath(name.to_string()));
+    }
+    let new_path = parent.join(name.clone());
+    for p in &new_path {
+      if p == "." || p == ".." {
+        bail!(RPIError::InsecurePath(name.to_string()));
+      }
+    }
+    Ok(new_path)
   }
 }
 
@@ -293,16 +329,6 @@ impl PT {
   }
 }
 
-// #[post("/saved_games/<name>/load")]
-// fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
-//   let path = child_path(&pt.saved_game_path, &name)?;
-//   let mut buffer = String::new();
-//   File::open(path)?.read_to_string(&mut buffer)?;
-//   let app = serde_yaml::from_str(&buffer)?;
-//   pt.actor()?.send(PTRequest::SetApp(app));
-//   get_app(pt)
-// }
-
 // #[post("/saved_games/<name>")]
 // fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
 //   let app = pt.clone_app()?; // hey! A NLL usecase!
@@ -324,19 +350,6 @@ impl PT {
 //   let yaml = serde_yaml::to_string(&app)?;
 //   File::create(new_path)?.write_all(yaml.as_bytes())?;
 //   Ok(Json(()))
-// }
-
-// fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
-//   if name.contains('/') || name.contains(':') || name.contains('\\') {
-//     bail!(RPIError::InsecurePath(name.to_string()));
-//   }
-//   let new_path = parent.join(name.clone());
-//   for p in &new_path {
-//     if p == "." || p == ".." {
-//       bail!(RPIError::InsecurePath(name.to_string()));
-//     }
-//   }
-//   Ok(new_path)
 // }
 
 fn main() {
