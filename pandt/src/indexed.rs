@@ -36,9 +36,7 @@ impl<V> Default for IndexedHashMap<V>
 where
   V: DeriveKey,
 {
-  fn default() -> IndexedHashMap<V> {
-    IndexedHashMap::new()
-  }
+  fn default() -> IndexedHashMap<V> { IndexedHashMap::new() }
 }
 
 impl<V> fmt::Debug for IndexedHashMap<V>
@@ -46,9 +44,7 @@ where
   V: DeriveKey + fmt::Debug,
   <V as DeriveKey>::KeyType: fmt::Debug,
 {
-  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-    self.data.fmt(f)
-  }
+  fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> { self.data.fmt(f) }
 }
 
 impl<V> ser::Serialize for IndexedHashMap<V>
@@ -95,9 +91,7 @@ where
 impl<'a, V: DeriveKey> IntoIterator for &'a IndexedHashMap<V> {
   type Item = &'a V;
   type IntoIter = ::std::collections::hash_map::Values<'a, <V as DeriveKey>::KeyType, V>;
-  fn into_iter(self) -> Self::IntoIter {
-    self.data.values()
-  }
+  fn into_iter(self) -> Self::IntoIter { self.data.values() }
 }
 
 impl<V: DeriveKey> IndexedHashMap<V> {
@@ -115,9 +109,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     self.data.keys()
   }
 
-  pub fn insert(&mut self, v: V) -> Option<V> {
-    self.data.insert(v.derive_key(), v)
-  }
+  pub fn insert(&mut self, v: V) -> Option<V> { self.data.insert(v.derive_key(), v) }
 
   pub fn get<'a, Q: ?Sized>(&'a self, k: &Q) -> Option<&'a V>
   where
@@ -127,9 +119,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     self.data.get(k)
   }
 
-  pub fn remove(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> {
-    self.data.remove(k)
-  }
+  pub fn remove(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> { self.data.remove(k) }
   pub fn contains_key<'a>(&'a self, k: &<V as DeriveKey>::KeyType) -> bool {
     self.data.contains_key(k)
   }
@@ -138,13 +128,9 @@ impl<V: DeriveKey> IndexedHashMap<V> {
     self.data.values()
   }
 
-  pub fn len(&self) -> usize {
-    self.data.len()
-  }
+  pub fn len(&self) -> usize { self.data.len() }
 
-  pub fn is_empty(&self) -> bool {
-    self.data.is_empty()
-  }
+  pub fn is_empty(&self) -> bool { self.data.is_empty() }
 
   // If your function panics, the item will disappear from the collection.
   // We may want to allow FnMut(&mut V) as the mutator, but this would require the following extra
@@ -187,9 +173,7 @@ mod test {
   }
   impl DeriveKey for TestObj {
     type KeyType = String;
-    fn derive_key(&self) -> Self::KeyType {
-      self.name.clone()
-    }
+    fn derive_key(&self) -> Self::KeyType { self.name.clone() }
   }
 
 }

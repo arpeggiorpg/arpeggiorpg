@@ -11,8 +11,8 @@ use ncollide::query::PointQuery;
 use ncollide::world;
 
 use uom::si::length::centimeter;
-use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
-            TileSystem, VectorCM, Volume, VolumeCondition, cm};
+use types::{cm, CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
+            TileSystem, VectorCM, Volume, VolumeCondition};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -38,9 +38,7 @@ use types::{CollisionData, CollisionWorld, ConditionID, Creature, Distance, Poin
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn na_iso(pt: Point3) -> Isometry3<f32> {
-  Isometry3::new(na_vector(pt), na::zero())
-}
+fn na_iso(pt: Point3) -> Isometry3<f32> { Isometry3::new(na_vector(pt), na::zero()) }
 
 fn na_point(pt: Point3) -> na::Point3<f32> {
   na::Point3::new(f32::from(pt.x), f32::from(pt.y), f32::from(pt.z))
@@ -82,9 +80,7 @@ pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
   )
 }
 
-fn is_open(terrain: &Terrain, pt: Point3) -> bool {
-  terrain.contains(&pt)
-}
+fn is_open(terrain: &Terrain, pt: Point3) -> bool { terrain.contains(&pt) }
 
 impl TileSystem {
   /// Get the distance between two points, considering the system being used.
@@ -387,9 +383,7 @@ struct InvCmpHolder<K, P> {
 }
 
 impl<K: PartialEq, P> PartialEq for InvCmpHolder<K, P> {
-  fn eq(&self, other: &InvCmpHolder<K, P>) -> bool {
-    self.key.eq(&other.key)
-  }
+  fn eq(&self, other: &InvCmpHolder<K, P>) -> bool { self.key.eq(&other.key) }
 }
 
 impl<K: PartialEq, P> Eq for InvCmpHolder<K, P> {}
@@ -401,9 +395,7 @@ impl<K: PartialOrd, P> PartialOrd for InvCmpHolder<K, P> {
 }
 
 impl<K: Ord, P> Ord for InvCmpHolder<K, P> {
-  fn cmp(&self, other: &InvCmpHolder<K, P>) -> Ordering {
-    other.key.cmp(&self.key)
-  }
+  fn cmp(&self, other: &InvCmpHolder<K, P>) -> Ordering { other.key.cmp(&self.key) }
 }
 
 /// Find a path through the given DAG.
@@ -488,9 +480,7 @@ pub mod test {
   use types::*;
 
   /// A map containing a single open block of terrain at 0,0,0
-  fn box_map() -> Terrain {
-    vec![Point3::new(0, 0, 0)]
-  }
+  fn box_map() -> Terrain { vec![Point3::new(0, 0, 0)] }
 
   /// A map shaped like a dumbbell, with two 2x3 rooms connected by a 1x1 passage
   fn dumbbell_map() -> Terrain {
@@ -703,8 +693,12 @@ pub mod test {
     // a speed of 100 means you can only move on the axes
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let mut pts =
-      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, Distance(cm(100)));
+    let mut pts = TileSystem::Realistic.get_all_accessible(
+      Point3::new(0, 0, 0),
+      &terrain,
+      size,
+      Distance(cm(100)),
+    );
     pts.sort();
     let mut expected = vec![
       Point3::new(-1, 0, 0),
@@ -721,8 +715,12 @@ pub mod test {
     // a speed of 141 means you can also move diagonally, but only once
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let mut pts =
-      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, Distance(cm(141)));
+    let mut pts = TileSystem::Realistic.get_all_accessible(
+      Point3::new(0, 0, 0),
+      &terrain,
+      size,
+      Distance(cm(141)),
+    );
     pts.sort();
     let mut expected = vec![
       Point3::new(-1, 0, 0),
@@ -801,7 +799,11 @@ pub mod test {
 
   #[test]
   fn line_through_point_simple() {
-    let line = line_through_point(Point3::new(0, 0, 0), Point3::new(1, 0, 0), Distance(cm(200)));
+    let line = line_through_point(
+      Point3::new(0, 0, 0),
+      Point3::new(1, 0, 0),
+      Distance(cm(200)),
+    );
     match line {
       Volume::Line { vector } => assert_eq!(vector, (200, 0, 0)),
       _ => panic!("Expected Line"),
@@ -810,7 +812,11 @@ pub mod test {
 
   #[test]
   fn line_through_point_accuracy() {
-    let line = line_through_point(Point3::new(0, 0, 0), Point3::new(2, 1, 0), Distance(cm(1000)));
+    let line = line_through_point(
+      Point3::new(0, 0, 0),
+      Point3::new(2, 1, 0),
+      Distance(cm(1000)),
+    );
     match line {
       Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
       _ => panic!("Expected Line"),

@@ -7,7 +7,8 @@ extern crate failure_derive;
 extern crate futures;
 extern crate http;
 extern crate hyper;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
@@ -33,15 +34,16 @@ mod webapp {
   use actix;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
-  use futures::{Future, future};
+  use futures::{future, Future};
   use futures::sync::oneshot;
   use http::{header, Method};
   use serde_json;
   use tokio_core::reactor::Timeout;
 
-  use pandt::types::{AbilityID, CreatureID, SceneID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame};
+  use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp,
+                     RPIGame, SceneID};
 
-  use super::{PT, RPIError};
+  use super::{RPIError, PT};
 
   type PTResult<X> = Result<Json<X>, RPIError>;
 
@@ -57,13 +59,16 @@ mod webapp {
         r.method(Method::POST).a(post_app);
       })
       .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
-      .resource("/movement_options/{scene_id}/{cid}", |r| r.f(movement_options))
+      .resource("/movement_options/{scene_id}/{cid}", |r| {
+        r.f(movement_options)
+      })
       .resource("/combat_movement_options", |r| r.f(combat_movement_options))
-      .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.f(target_options))
-      
+      .resource("/target_options/{scene_id}/{cid}/{abid}", |r| {
+        r.f(target_options)
+      })
   }
 
-  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
+  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
     let f = req.json().from_err().and_then(move |command: GameCommand| {
       let response = {
         let pt = req.state();
@@ -92,8 +97,14 @@ mod webapp {
   }
 
   fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
-    let snapshot_len: usize = req.match_info().query("snapshot_len").map_err(RPIError::from_response_error)?;
-    let log_len: usize = req.match_info().query("log_len").map_err(RPIError::from_response_error)?;
+    let snapshot_len: usize = req
+      .match_info()
+      .query("snapshot_len")
+      .map_err(RPIError::from_response_error)?;
+    let log_len: usize = req
+      .match_info()
+      .query("log_len")
+      .map_err(RPIError::from_response_error)?;
     let app = req.state().app()?;
     if app.snapshots.len() != snapshot_len
       || app
@@ -110,12 +121,12 @@ mod webapp {
 
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
-  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
+  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
     let result = get_current_app(&req);
     match result {
       Ok(Some(r)) => return Box::new(future::ok(r)),
       Err(e) => return Box::new(future::err(e)),
-      Ok(None) => {},
+      Ok(None) => {}
     }
 
     let (sender, receiver) = oneshot::channel();
@@ -124,17 +135,26 @@ mod webapp {
     let handle = actix::Arbiter::handle();
     let timeout = Timeout::new(Duration::from_secs(30), handle).unwrap();
 
-    let fut = timeout.select2(receiver).and_then(move |_| {
-      get_app(req).map_err(|_| panic!())
-    }).map_err(|_| panic!());
+    let fut = timeout
+      .select2(receiver)
+      .and_then(move |_| get_app(req).map_err(|_| panic!()))
+      .map_err(|_| panic!());
 
     Box::new(fut)
   }
 
   fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
     let app = req.state().app()?;
-    let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
-    let scene_id: SceneID = req.match_info().query::<String>("scene_id").map_err(RPIError::from_response_error)?.parse()?;
+    let cid: CreatureID = req
+      .match_info()
+      .query::<String>("cid")
+      .map_err(RPIError::from_response_error)?
+      .parse()?;
+    let scene_id: SceneID = req
+      .match_info()
+      .query::<String>("scene_id")
+      .map_err(RPIError::from_response_error)?
+      .parse()?;
     Ok(Json(app.get_movement_options(scene_id, cid)?))
   }
 
@@ -143,10 +163,22 @@ mod webapp {
     Ok(Json(app.get_combat_movement_options()?))
   }
 
-  fn target_options( req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
-    let scene_id: SceneID = req.match_info().query::<String>("scene_id").map_err(RPIError::from_response_error)?.parse()?;
-    let cid: CreatureID = req.match_info().query::<String>("cid").map_err(RPIError::from_response_error)?.parse()?;
-    let abid: AbilityID = req.match_info().query::<String>("abid").map_err(RPIError::from_response_error)?.parse()?;
+  fn target_options(req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
+    let scene_id: SceneID = req
+      .match_info()
+      .query::<String>("scene_id")
+      .map_err(RPIError::from_response_error)?
+      .parse()?;
+    let cid: CreatureID = req
+      .match_info()
+      .query::<String>("cid")
+      .map_err(RPIError::from_response_error)?
+      .parse()?;
+    let abid: AbilityID = req
+      .match_info()
+      .query::<String>("abid")
+      .map_err(RPIError::from_response_error)?
+      .parse()?;
     let app = req.state().app()?;
     Ok(Json(app.get_target_options(scene_id, cid, abid)?))
   }
@@ -159,7 +191,6 @@ mod webapp {
   }
 }
 
-
 #[derive(Debug, Fail)]
 enum RPIError {
   #[fail(display = "Game Error")] GameError(#[cause] GameError),
@@ -167,7 +198,8 @@ enum RPIError {
   #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
   #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
   #[fail(display = "Web Error")] WebError(Box<actix_web::ResponseError>),
-  #[fail(display = "JSON Payload Error")] JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
+  #[fail(display = "JSON Payload Error")]
+  JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
   #[fail(display = "HTTP Error")] HTTPError(#[cause] http::Error),
 
   #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
@@ -211,7 +243,10 @@ impl actix_web::ResponseError for RPIError {
       &RPIError::WebError(ref e) => e.error_response(),
       &RPIError::HTTPError(ref e) => e.error_response(),
       &RPIError::IOError(ref e) => e.error_response(),
-      _ => actix_web::HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR, actix_web::Body::Empty),
+      _ => actix_web::HttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        actix_web::Body::Empty,
+      ),
     }
   }
 }
@@ -225,9 +260,11 @@ pub struct PT {
 
 impl PT {
   fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {
-    self.app.lock().map_err(|_| RPIError::LockError("app".to_string()))
+    self
+      .app
+      .lock()
+      .map_err(|_| RPIError::LockError("app".to_string()))
   }
-
 }
 
 // #[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
@@ -327,10 +364,11 @@ fn main() {
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
-  let server = actix_web::HttpServer::new(move || {
-    webapp::router(pt.clone())
-  });
-  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").run();
+  let server = actix_web::HttpServer::new(move || webapp::router(pt.clone()));
+  server
+    .bind("0.0.0.0:1337")
+    .expect("Couldn't bind to 1337")
+    .run();
 }
 
 #[cfg(test)]
@@ -345,9 +383,7 @@ mod test {
 
   #[test]
   fn actors() {
-    fn handler(_: &mut (), i: usize) -> usize {
-      i + 1
-    }
+    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
     let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.send(2), 3);
@@ -356,9 +392,7 @@ mod test {
 
   #[test]
   fn actor_clone() {
-    fn handler(_: &mut (), i: usize) -> usize {
-      i + 1
-    }
+    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
     let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.clone().send(2), 3);

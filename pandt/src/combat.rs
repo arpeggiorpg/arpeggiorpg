@@ -12,7 +12,11 @@ use std::marker::PhantomData;
 /// diagonally!
 // pub const MELEE_RANGE: Distance = Distance(u32units::Length::new::<centimeter>(150));
 
-pub const MELEE_RANGE: Distance = Distance(u32units::Length { dimension: PhantomData, units: PhantomData, value: 150 });
+pub const MELEE_RANGE: Distance = Distance(u32units::Length {
+  dimension: PhantomData,
+  units: PhantomData,
+  value: 150,
+});
 
 impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
@@ -135,9 +139,7 @@ impl Combat {
     })
   }
 
-  pub fn creature_ids(&self) -> Vec<CreatureID> {
-    self.creatures.iter().map(|&(c, _)| c).collect()
-  }
+  pub fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
 
   pub fn roll_initiative(
     game: &Game, cids: Vec<CreatureID>
@@ -151,9 +153,7 @@ impl Combat {
       .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()
   }
 
-  pub fn current_creature_id(&self) -> CreatureID {
-    self.creatures.get_current().0
-  }
+  pub fn current_creature_id(&self) -> CreatureID { self.creatures.get_current().0 }
 
   pub fn contains_creature(&self, cid: CreatureID) -> bool {
     self.creatures.iter().any(|&(c, _)| c == cid)
@@ -186,9 +186,7 @@ pub struct CombatMove<'game> {
 }
 
 impl<'game> CombatMove<'game> {
-  pub fn movement_left(&self) -> Distance {
-    self.movement_left
-  }
+  pub fn movement_left(&self) -> Distance { self.movement_left }
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
@@ -227,9 +225,7 @@ impl<'game> ChangedCombat<'game> {
     Ok(new)
   }
 
-  pub fn done(self) -> (Combat, Vec<CombatLog>) {
-    (self.combat, self.logs)
-  }
+  pub fn done(self) -> (Combat, Vec<CombatLog>) { (self.combat, self.logs) }
 }
 
 #[cfg(test)]

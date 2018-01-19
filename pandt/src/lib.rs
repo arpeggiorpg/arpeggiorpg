@@ -21,7 +21,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
-#[macro_use] extern crate uom;
+#[macro_use]
+extern crate uom;
 extern crate uuid;
 
 #[cfg(test)]
