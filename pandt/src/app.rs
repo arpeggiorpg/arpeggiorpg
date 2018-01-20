@@ -37,8 +37,7 @@ const SNAPSHOTS: usize = 2;
 
 impl App {
   pub fn new(g: Game) -> Self {
-    let mut snapshots = VecDeque::with_capacity(SNAPSHOTS);
-    snapshots.push_back((g.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
+    let snapshots = VecDeque::with_capacity(SNAPSHOTS);
     App {
       current_game: g,
       snapshots: snapshots,
