@@ -6,10 +6,14 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use num::Zero;
+
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
+use uom;
+use uom::si::length::{centimeter, meter};
 use uuid::{ParseError as UuidParseError, Uuid};
 
 use serde::ser;
@@ -20,6 +24,24 @@ use serde_yaml;
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
+
+pub mod u32units {
+  ISQ!(
+    uom::si,
+    u32,
+    (centimeter, gram, second, ampere, kelvin, mole, candela)
+  );
+}
+
+pub fn cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
+
+pub mod i64units {
+  ISQ!(
+    uom::si,
+    i64,
+    (centimeter, gram, second, ampere, kelvin, mole, candela)
+  );
+}
 
 /// Point3 defines a 3d position in meters.
 pub type VectorCM = (i32, i32, i32);
@@ -35,9 +57,7 @@ pub struct Point3 {
 }
 
 impl Point3 {
-  pub fn new(x: i16, y: i16, z: i16) -> Point3 {
-    Point3 { x, y, z }
-  }
+  pub fn new(x: i16, y: i16, z: i16) -> Point3 { Point3 { x, y, z } }
 }
 
 impl ::std::fmt::Display for Point3 {
@@ -112,17 +132,11 @@ pub enum Dice {
 }
 
 impl Dice {
-  pub fn expr(n: u8, d: u8) -> Dice {
-    Dice::Expr { num: n, size: d }
-  }
+  pub fn expr(n: u8, d: u8) -> Dice { Dice::Expr { num: n, size: d } }
 
-  pub fn flat(val: i8) -> Dice {
-    Dice::Flat(val)
-  }
+  pub fn flat(val: i8) -> Dice { Dice::Flat(val) }
 
-  pub fn plus(&self, d: Dice) -> Dice {
-    Dice::Plus(Box::new(self.clone()), Box::new(d))
-  }
+  pub fn plus(&self, d: Dice) -> Dice { Dice::Plus(Box::new(self.clone()), Box::new(d)) }
 
   /// Roll the dice, returning a vector containing all of the individual die rolls, and then the
   /// final result.
@@ -169,24 +183,16 @@ impl Dice {
          Deserialize)]
 pub struct HP(pub u8);
 impl HP {
-  pub fn saturating_add(self, other: Self) -> Self {
-    HP(self.0.saturating_add(other.0))
-  }
-  pub fn saturating_sub(self, other: Self) -> Self {
-    HP(self.0.saturating_sub(other.0))
-  }
+  pub fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
+  pub fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
 }
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct Energy(pub u8);
 impl Energy {
-  pub fn saturating_add(self, other: Self) -> Self {
-    Energy(self.0.saturating_add(other.0))
-  }
-  pub fn saturating_sub(self, other: Self) -> Self {
-    Energy(self.0.saturating_sub(other.0))
-  }
+  pub fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
+  pub fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -195,130 +201,110 @@ pub struct PlayerID(pub String);
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct ConditionID(pub Uuid);
 impl ConditionID {
-  pub fn gen() -> ConditionID {
-    ConditionID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.hyphenated().to_string()
-  }
+  pub fn gen() -> ConditionID { ConditionID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
 }
 
 impl ::std::str::FromStr for ConditionID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<ConditionID, GameError> {
-    Ok(ConditionID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<ConditionID, GameError> { Ok(ConditionID(Uuid::parse_str(s)?)) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CreatureID(Uuid);
 impl CreatureID {
-  pub fn gen() -> CreatureID {
-    CreatureID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.hyphenated().to_string()
-  }
+  pub fn gen() -> CreatureID { CreatureID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
 }
 
 impl ::std::str::FromStr for CreatureID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<CreatureID, GameError> {
-    Ok(CreatureID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<CreatureID, GameError> { Ok(CreatureID(Uuid::parse_str(s)?)) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct ItemID(Uuid);
 impl ItemID {
-  pub fn gen() -> ItemID {
-    ItemID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.hyphenated().to_string()
-  }
+  pub fn gen() -> ItemID { ItemID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
 }
 
 impl ::std::str::FromStr for ItemID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<ItemID, GameError> {
-    Ok(ItemID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<ItemID, GameError> { Ok(ItemID(Uuid::parse_str(s)?)) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct SceneID(Uuid);
 impl SceneID {
-  pub fn gen() -> SceneID {
-    SceneID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.hyphenated().to_string()
-  }
+  pub fn gen() -> SceneID { SceneID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
 }
 
 impl ::std::str::FromStr for SceneID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<SceneID, GameError> {
-    Ok(SceneID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<SceneID, GameError> { Ok(SceneID(Uuid::parse_str(s)?)) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct AbilityID(Uuid);
 impl AbilityID {
-  pub fn gen() -> AbilityID {
-    AbilityID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.to_string()
-  }
+  pub fn gen() -> AbilityID { AbilityID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.to_string() }
 }
 
 impl ::std::str::FromStr for AbilityID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<AbilityID, GameError> {
-    Ok(AbilityID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<AbilityID, GameError> { Ok(AbilityID(Uuid::parse_str(s)?)) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct ClassID(Uuid);
 impl ClassID {
-  pub fn gen() -> ClassID {
-    ClassID(Uuid::new_v4())
-  }
-  pub fn to_string(&self) -> String {
-    self.0.to_string()
-  }
+  pub fn gen() -> ClassID { ClassID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.to_string() }
 }
 
 impl ::std::str::FromStr for ClassID {
   type Err = GameError;
-  fn from_str(s: &str) -> Result<ClassID, GameError> {
-    Ok(ClassID(Uuid::parse_str(s)?))
-  }
+  fn from_str(s: &str) -> Result<ClassID, GameError> { Ok(ClassID(Uuid::parse_str(s)?)) }
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
-         Deserialize)]
-pub struct Distance(pub u32);
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, Serialize, Deserialize)]
+pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
-  pub fn from_meters(x: f32) -> Distance {
-    Distance((x * 100.0) as u32)
-  }
+  pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
   pub fn saturating_add(self, other: Self) -> Self {
-    Distance(self.0.saturating_add(other.0))
+    Distance(cm(self.cm().saturating_add(other.cm())))
   }
   pub fn saturating_sub(self, other: Self) -> Self {
-    Distance(self.0.saturating_sub(other.0))
+    Distance(cm(self.cm().saturating_sub(other.cm())))
   }
-  pub fn to_meters(&self) -> f32 {
-    self.0 as f32 / 100.0
-  }
+  pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
+  pub fn cm(&self) -> u32 { self.0.get(centimeter) }
 }
+
+impl Zero for Distance {
+  fn zero() -> Self { Distance(u32units::Length::zero()) }
+  fn is_zero(&self) -> bool { self.0.is_zero() }
+}
+
+impl PartialOrd for Distance {
+  fn partial_cmp(&self, other: &Distance) -> Option<::std::cmp::Ordering> { Some(self.cmp(other)) }
+}
+
+impl Ord for Distance {
+  fn cmp(&self, other: &Distance) -> ::std::cmp::Ordering { self.cm().cmp(&other.cm()) }
+}
+
+impl PartialEq for Distance {
+  fn eq(&self, other: &Distance) -> bool { self.cm() == other.cm() }
+  fn ne(&self, other: &Distance) -> bool { self.cm() != other.cm() }
+}
+
+impl Eq for Distance {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
@@ -807,33 +793,23 @@ pub enum GameError {
 }
 
 impl From<FolderTreeError> for GameError {
-  fn from(error: FolderTreeError) -> Self {
-    GameError::FolderTreeError(error)
-  }
+  fn from(error: FolderTreeError) -> Self { GameError::FolderTreeError(error) }
 }
 
 impl From<UuidParseError> for GameError {
-  fn from(error: UuidParseError) -> Self {
-    GameError::UUIDParseError(error)
-  }
+  fn from(error: UuidParseError) -> Self { GameError::UUIDParseError(error) }
 }
 
 impl From<serde_yaml::Error> for GameError {
-  fn from(error: serde_yaml::Error) -> Self {
-    GameError::YAMLError(error)
-  }
+  fn from(error: serde_yaml::Error) -> Self { GameError::YAMLError(error) }
 }
 
 impl From<::std::io::Error> for GameError {
-  fn from(error: ::std::io::Error) -> Self {
-    GameError::IOError(error)
-  }
+  fn from(error: ::std::io::Error) -> Self { GameError::IOError(error) }
 }
 
 impl<'a> From<&'a str> for GameError {
-  fn from(error: &'a str) -> Self {
-    GameError::BuggyProgram(error.to_string())
-  }
+  fn from(error: &'a str) -> Self { GameError::BuggyProgram(error.to_string()) }
 }
 
 /// Potential targets for an ability.
@@ -854,9 +830,7 @@ pub struct Ability {
 
 impl DeriveKey for Ability {
   type KeyType = AbilityID;
-  fn derive_key(&self) -> AbilityID {
-    self.id
-  }
+  fn derive_key(&self) -> AbilityID { self.id }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -994,9 +968,7 @@ pub struct AbilityStatus {
 
 impl DeriveKey for AbilityStatus {
   type KeyType = AbilityID;
-  fn derive_key(&self) -> AbilityID {
-    self.ability_id
-  }
+  fn derive_key(&self) -> AbilityID { self.ability_id }
 }
 
 /// A creature class, e.g. rogue, mage, warrior
@@ -1014,9 +986,7 @@ pub struct Class {
 
 impl DeriveKey for Class {
   type KeyType = ClassID;
-  fn derive_key(&self) -> ClassID {
-    self.id
-  }
+  fn derive_key(&self) -> ClassID { self.id }
 }
 
 /// A specification for creating a new creature.
@@ -1025,9 +995,11 @@ pub struct CreatureCreation {
   pub name: String,
   pub class: ClassID,
   pub portrait_url: String,
-  #[serde(default)] pub icon_url: String,
+  #[serde(default)]
+  pub icon_url: String,
   pub note: String,
-  #[serde(default)] pub bio: String,
+  #[serde(default)]
+  pub bio: String,
   pub initiative: Dice,
   pub size: AABB,
 }
@@ -1051,13 +1023,16 @@ pub struct Creature {
   pub cur_health: HP,
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
-  #[serde(default)] pub bio: String,
+  #[serde(default)]
+  pub bio: String,
   pub portrait_url: String,
-  #[serde(default)] pub icon_url: String,
+  #[serde(default)]
+  pub icon_url: String,
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
   pub size: AABB,
-  #[serde(default)] pub inventory: Inventory,
+  #[serde(default)]
+  pub inventory: Inventory,
 }
 
 /// A definition of an Item, which can be referenced by creatures' inventories.
@@ -1069,9 +1044,7 @@ pub struct Item {
 
 impl DeriveKey for Item {
   type KeyType = ItemID;
-  fn derive_key(&self) -> Self::KeyType {
-    self.id
-  }
+  fn derive_key(&self) -> Self::KeyType { self.id }
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1086,9 +1059,7 @@ pub struct Combat {
 
 impl DeriveKey for Creature {
   type KeyType = CreatureID;
-  fn derive_key(&self) -> CreatureID {
-    self.id
-  }
+  fn derive_key(&self) -> CreatureID { self.id }
 }
 
 #[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1099,12 +1070,15 @@ pub struct Game {
   pub classes: IndexedHashMap<Class>,
   pub tile_system: TileSystem,
   pub scenes: IndexedHashMap<Scene>,
-  #[serde(default)] pub items: IndexedHashMap<Item>,
+  #[serde(default)]
+  pub items: IndexedHashMap<Item>,
   pub campaign: FolderTree<Folder>,
-  #[serde(default)] pub players: IndexedHashMap<Player>,
+  #[serde(default)]
+  pub players: IndexedHashMap<Player>,
   // The "active scene" determines which scene has mechanical effect as far as game simulation
   // goes.
-  #[serde(default)] pub active_scene: Option<SceneID>,
+  #[serde(default)]
+  pub active_scene: Option<SceneID>,
 }
 
 pub struct Runtime {
@@ -1129,9 +1103,7 @@ pub struct Player {
 
 impl DeriveKey for Player {
   type KeyType = PlayerID;
-  fn derive_key(&self) -> PlayerID {
-    self.player_id.clone()
-  }
+  fn derive_key(&self) -> PlayerID { self.player_id.clone() }
 }
 
 impl Player {
@@ -1159,7 +1131,8 @@ pub struct Scene {
   pub terrain: Vec<Point3>,
   pub highlights: HashMap<Point3, (Color, Visibility)>,
   pub annotations: HashMap<Point3, (String, Visibility)>,
-  #[serde(default)] pub background_image_url: String,
+  #[serde(default)]
+  pub background_image_url: String,
   /// If this field is None, then the image will "float" fixed on the screen, instead of panning
   /// with the scene.
   pub background_image_offset: Option<(i32, i32)>,
@@ -1167,8 +1140,10 @@ pub struct Scene {
 
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
   pub attribute_checks: HashMap<String, AttributeCheck>,
-  #[serde(default)] pub inventory: Inventory,
-  #[serde(default)] pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
+  #[serde(default)]
+  pub inventory: Inventory,
+  #[serde(default)]
+  pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
 
   /// "Focused" creatures are those which have their portraits rendered over the scene
   /// background
@@ -1202,9 +1177,7 @@ pub struct AttributeCheck {
 
 impl DeriveKey for Scene {
   type KeyType = SceneID;
-  fn derive_key(&self) -> SceneID {
-    self.id
-  }
+  fn derive_key(&self) -> SceneID { self.id }
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1304,9 +1277,7 @@ pub enum TileSystem {
 }
 
 impl Default for TileSystem {
-  fn default() -> TileSystem {
-    TileSystem::Realistic
-  }
+  fn default() -> TileSystem { TileSystem::Realistic }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -1317,9 +1288,7 @@ pub struct Note {
 
 impl DeriveKey for Note {
   type KeyType = String;
-  fn derive_key(&self) -> String {
-    self.name.clone()
-  }
+  fn derive_key(&self) -> String { self.name.clone() }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -1327,15 +1296,16 @@ pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
   pub notes: IndexedHashMap<Note>,
-  #[serde(default)] pub items: HashSet<ItemID>,
-  #[serde(default)] pub abilities: HashSet<AbilityID>,
-  #[serde(default)] pub classes: HashSet<ClassID>,
+  #[serde(default)]
+  pub items: HashSet<ItemID>,
+  #[serde(default)]
+  pub abilities: HashSet<AbilityID>,
+  #[serde(default)]
+  pub classes: HashSet<ClassID>,
 }
 
 impl Folder {
-  pub fn new() -> Folder {
-    Default::default()
-  }
+  pub fn new() -> Folder { Default::default() }
 }
 
 #[cfg(test)]
@@ -1346,33 +1316,15 @@ pub mod test {
 
   use serde_yaml;
   use serde_json;
-  pub fn uuid_0() -> Uuid {
-    "00000000-0000-0000-0000-000000000000".parse().unwrap()
-  }
-  pub fn uuid_1() -> Uuid {
-    "00000000-0000-0000-0000-000000000001".parse().unwrap()
-  }
-  pub fn uuid_2() -> Uuid {
-    "00000000-0000-0000-0000-000000000002".parse().unwrap()
-  }
-  pub fn uuid_3() -> Uuid {
-    "00000000-0000-0000-0000-000000000003".parse().unwrap()
-  }
-  pub fn uuid_4() -> Uuid {
-    "00000000-0000-0000-0000-000000000004".parse().unwrap()
-  }
-  pub fn uuid_5() -> Uuid {
-    "00000000-0000-0000-0000-000000000005".parse().unwrap()
-  }
-  pub fn cid_cleric() -> CreatureID {
-    CreatureID(uuid_0())
-  }
-  pub fn cid_ranger() -> CreatureID {
-    CreatureID(uuid_1())
-  }
-  pub fn cid_rogue() -> CreatureID {
-    CreatureID(uuid_2())
-  }
+  pub fn uuid_0() -> Uuid { "00000000-0000-0000-0000-000000000000".parse().unwrap() }
+  pub fn uuid_1() -> Uuid { "00000000-0000-0000-0000-000000000001".parse().unwrap() }
+  pub fn uuid_2() -> Uuid { "00000000-0000-0000-0000-000000000002".parse().unwrap() }
+  pub fn uuid_3() -> Uuid { "00000000-0000-0000-0000-000000000003".parse().unwrap() }
+  pub fn uuid_4() -> Uuid { "00000000-0000-0000-0000-000000000004".parse().unwrap() }
+  pub fn uuid_5() -> Uuid { "00000000-0000-0000-0000-000000000005".parse().unwrap() }
+  pub fn cid_cleric() -> CreatureID { CreatureID(uuid_0()) }
+  pub fn cid_ranger() -> CreatureID { CreatureID(uuid_1()) }
+  pub fn cid_rogue() -> CreatureID { CreatureID(uuid_2()) }
 
   pub fn t_creature(name: &str, class: ClassID, init: i8) -> Creature {
     Creature::create(&CreatureCreation {
@@ -1408,9 +1360,7 @@ pub mod test {
     }
   }
 
-  pub fn t_scene_id() -> SceneID {
-    SceneID(uuid_3())
-  }
+  pub fn t_scene_id() -> SceneID { SceneID(uuid_3()) }
 
   pub fn t_scene() -> Scene {
     Scene {
@@ -1441,34 +1391,16 @@ pub mod test {
     }
   }
 
-  pub fn classid_rogue() -> ClassID {
-    ClassID(uuid_0())
-  }
-  pub fn classid_cleric() -> ClassID {
-    ClassID(uuid_1())
-  }
-  pub fn classid_ranger() -> ClassID {
-    ClassID(uuid_2())
-  }
+  pub fn classid_rogue() -> ClassID { ClassID(uuid_0()) }
+  pub fn classid_cleric() -> ClassID { ClassID(uuid_1()) }
+  pub fn classid_ranger() -> ClassID { ClassID(uuid_2()) }
 
-  pub fn abid_punch() -> AbilityID {
-    AbilityID(uuid_0())
-  }
-  pub fn abid_shoot() -> AbilityID {
-    AbilityID(uuid_1())
-  }
-  pub fn abid_heal() -> AbilityID {
-    AbilityID(uuid_2())
-  }
-  pub fn abid_fireball() -> AbilityID {
-    AbilityID(uuid_3())
-  }
-  pub fn abid_piercing_shot() -> AbilityID {
-    AbilityID(uuid_4())
-  }
-  pub fn abid_thorn_patch() -> AbilityID {
-    AbilityID(uuid_5())
-  }
+  pub fn abid_punch() -> AbilityID { AbilityID(uuid_0()) }
+  pub fn abid_shoot() -> AbilityID { AbilityID(uuid_1()) }
+  pub fn abid_heal() -> AbilityID { AbilityID(uuid_2()) }
+  pub fn abid_fireball() -> AbilityID { AbilityID(uuid_3()) }
+  pub fn abid_piercing_shot() -> AbilityID { AbilityID(uuid_4()) }
+  pub fn abid_thorn_patch() -> AbilityID { AbilityID(uuid_5()) }
 
   pub fn t_punch() -> Ability {
     Ability {
@@ -1548,8 +1480,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::SceneVolume {
         target: SceneTarget::RangedVolume {
-          volume: Volume::Sphere(Distance(200)),
-          range: Distance(1000),
+          volume: Volume::Sphere(Distance(cm(200))),
+          range: Distance(cm(1000)),
         },
         effect: SceneEffect::CreateVolumeCondition {
           duration: Duration::Interminate,

@@ -28,9 +28,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     })
   }
 
-  pub fn id(&self) -> CreatureID {
-    self.creature.id
-  }
+  pub fn id(&self) -> CreatureID { self.creature.id }
 
   // TODO: DynamicCreature should have a `conditions` field, since calculating the conditions is
   // becoming more expensive, and we look up the conditions several times even just to serialize a
@@ -40,13 +38,9 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   // We could at least reduce the number of times we calculate it by passing conditions to
   // can_act, can_move, and speed.
 
-  pub fn can_act(&self) -> bool {
-    conditions_able(&self.all_conditions())
-  }
+  pub fn can_act(&self) -> bool { conditions_able(&self.all_conditions()) }
 
-  pub fn can_move(&self) -> bool {
-    conditions_able(&self.all_conditions())
-  }
+  pub fn can_move(&self) -> bool { conditions_able(&self.all_conditions()) }
 
   pub fn speed(&self) -> Distance {
     let mut speed = self.creature.speed;
@@ -229,7 +223,7 @@ impl Creature {
       id: CreatureID::gen(),
       name: spec.name.to_string(),
       class: spec.class,
-      speed: Distance(STANDARD_CREATURE_SPEED),
+      speed: Distance(cm(STANDARD_CREATURE_SPEED)),
       max_energy: Energy(10),
       cur_energy: Energy(10),
       abilities: IndexedHashMap::new(),
@@ -289,13 +283,9 @@ impl Creature {
     Ok(new)
   }
 
-  pub fn id(&self) -> CreatureID {
-    self.id
-  }
+  pub fn id(&self) -> CreatureID { self.id }
 
-  pub fn cur_health(&self) -> HP {
-    self.cur_health
-  }
+  pub fn cur_health(&self) -> HP { self.cur_health }
 
   pub fn reduce_energy(&self, delta: Energy) -> Result<ChangedCreature, GameError> {
     self.change_with(CreatureLog::ReduceEnergy(delta))
@@ -364,9 +354,7 @@ impl ChangedCreature {
     new
   }
 
-  pub fn done(self) -> (Creature, Vec<CreatureLog>) {
-    (self.creature, self.logs)
-  }
+  pub fn done(self) -> (Creature, Vec<CreatureLog>) { (self.creature, self.logs) }
 }
 
 fn conditions_able(conditions: &[AppliedCondition]) -> bool {

@@ -1,131 +1,125 @@
-#![feature(slice_patterns)]
-#![feature(plugin)]
-#![plugin(rocket_codegen)]
-// Disable `needless_pass_by_value` because it is triggered by all the uses of Rocket's `State`.
+// Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-#![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 
-extern crate bus;
+extern crate actix;
+extern crate actix_web;
 #[macro_use]
 extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate rocket_cors;
+extern crate futures;
+extern crate http;
+extern crate hyper;
+#[macro_use]
+extern crate log;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
+extern crate tokio_core;
 
 extern crate pandt;
 
 pub mod actor;
 
 use std::env;
-use std::path::PathBuf;
-use std::fs::File;
 use std::fs;
-use std::io::prelude::*;
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::time;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
-use bus::Bus;
-
-use rocket::State;
-use rocket_contrib::Json;
-use rocket::http::Method;
-use rocket_cors::{AllowedHeaders, AllowedOrigins};
+use futures::sync::oneshot;
 
 use pandt::game::load_app_from_path;
-use pandt::types::{App, CreatureID, GameCommand, GameError, Point3, PotentialTargets, RPIApp,
-                   RPIGame, Runtime};
-use pandt::foldertree::FolderPath;
+use pandt::types::{App, GameError};
 
-use actor::Actor;
+mod webapp {
+  use std::fs;
+  use std::io::{Read, Write};
+  use std::path::PathBuf;
+  use std::time::Duration;
 
-#[derive(Debug, Fail)]
-enum RPIError {
-  #[fail(display = "Game Error")] GameError(#[cause] GameError),
-  #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
-  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
-  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
+  use actix;
+  use actix_web::dev::FromParam;
+  use actix_web::middleware::cors;
+  use actix_web::{Application, HttpRequest, HttpResponse, Json};
+  use futures::{future, Future};
+  use futures::sync::oneshot;
+  use http::{header, Method};
+  use serde_json;
+  use serde_yaml;
+  use tokio_core::reactor::Timeout;
 
-  #[fail(display = "Unexpected response. This is a bug.")] UnexpectedResponse,
-  #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
-  LockError(String),
-  #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
-}
+  use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
+                     SceneID};
 
-impl From<GameError> for RPIError {
-  fn from(error: GameError) -> Self {
-    RPIError::GameError(error)
+  use super::{RPIError, PT};
+
+  type PTResult<X> = Result<Json<X>, RPIError>;
+
+  pub fn router(pt: PT) -> Application<PT> {
+    let mut corsm = cors::Cors::build();
+    corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
+    let corsm = corsm.finish().unwrap();
+
+    Application::with_state(pt)
+      .middleware(corsm)
+      .resource("/", |r| {
+        r.method(Method::GET).f(get_app);
+        r.method(Method::POST).a(post_app);
+      })
+      .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
+      .resource("/movement_options/{scene_id}/{cid}", |r| {
+        r.f(movement_options)
+      })
+      .resource("/combat_movement_options", |r| r.f(combat_movement_options))
+      .resource("/target_options/{scene_id}/{cid}/{abid}", |r| {
+        r.f(target_options)
+      })
+      .resource(
+        "/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}",
+        |r| r.f(preview_volume_targets),
+      )
+      .resource("/saved_games", |r| r.f(list_saved_games))
+      .resource("/saved_games/{name}/load", |r| {
+        r.method(Method::POST).f(load_saved_game)
+      })
+      .resource("/saved_games/{name}", |r| {
+        r.method(Method::POST).f(save_game)
+      })
   }
-}
-impl From<serde_json::error::Error> for RPIError {
-  fn from(error: serde_json::error::Error) -> Self {
-    RPIError::JSONError(error)
-  }
-}
 
-impl From<::std::io::Error> for RPIError {
-  fn from(error: ::std::io::Error) -> Self {
-    RPIError::IOError(error)
-  }
-}
-
-impl From<serde_yaml::Error> for RPIError {
-  fn from(error: serde_yaml::Error) -> Self {
-    RPIError::YAMLError(error)
-  }
-}
-
-type PTResult<X> = Result<Json<X>, RPIError>;
-
-#[derive(Clone)]
-struct PT {
-  actor: Arc<Mutex<Actor<PTRequest, PTResponse>>>,
-  pollers: Arc<Mutex<bus::Bus<()>>>,
-  saved_game_path: PathBuf,
-}
-
-impl PT {
-  fn pollers(&self) -> Result<MutexGuard<bus::Bus<()>>, RPIError> {
-    self
-      .pollers
-      .lock()
-      .map_err(|_| RPIError::LockError("pollers".to_string()).into())
+  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+    let f = req.json().from_err().and_then(move |command: GameCommand| {
+      let response = {
+        let pt = req.state();
+        let mut app = pt.app().unwrap();
+        let result = app.perform_command(command, pt.saved_game_path.clone());
+        let result = result.map_err(|e| format!("Error: {}", e));
+        let result = result.map(|(g, l)| (RPIGame(g), l));
+        json_response(&result)
+      };
+      {
+        let mut waiters = req.state().waiters.lock().unwrap();
+        for sender in waiters.drain(0..) {
+          if let Err(e) = sender.send(()) {
+            error!("Random failure notifying a waiter: {:?}", e);
+          }
+        }
+      }
+      response
+    });
+    Box::new(f)
   }
 
-  /// This is trash, we shouldn't be cloning the app!
-  fn clone_app(&self) -> Result<App, RPIError> {
-    if let PTResponse::App(app) = self.actor()?.send(PTRequest::GetReadOnlyApp) {
-      Ok(app)
-    } else {
-      bail!(RPIError::UnexpectedResponse)
-    }
+  fn get_app(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
+    let app = req.state().app()?;
+    json_response(&RPIApp(&*app))
   }
-  fn actor(&self) -> Result<Actor<PTRequest, PTResponse>, RPIError> {
-    self
-      .actor
-      .lock()
-      .map_err(|_| RPIError::LockError("actor".to_string()).into())
-      .map(|ac| ac.clone())
-  }
-}
 
-#[get("/")]
-fn get_app(pt: State<PT>) -> Result<String, RPIError> {
-  let app = pt.clone_app()?;
-  let json = serde_json::to_string(&RPIApp(&app))?;
-  Ok(json)
-}
-
-/// If the client is polling with a non-current app "version", then immediately return the current
-/// App. Otherwise, wait 30 seconds for any new changes.
-#[get("/poll/<snapshot_len>/<log_len>")]
-fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String, RPIError> {
-  {
-    let app = pt.clone_app()?;
+  fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
+    let snapshot_len: usize = get_arg(&req, "snapshot_len")?;
+    let log_len: usize = get_arg(&req, "log_len")?;
+    let app = req.state().app()?;
     if app.snapshots.len() != snapshot_len
       || app
         .snapshots
@@ -133,168 +127,234 @@ fn poll_app(pt: State<PT>, snapshot_len: usize, log_len: usize) -> Result<String
         .map(|&(_, ref ls)| ls.len())
         .unwrap_or(0) != log_len
     {
-      let result = serde_json::to_string(&RPIApp(&app))?;
-      return Ok(result);
+      json_response(&RPIApp(&app)).map(Some)
+    } else {
+      Ok(None)
     }
   }
 
-  let mut reader = pt.pollers()?.add_rx();
-  // this will either return a timeout or (); in any case we'll just return the App to the client.
-  let _ = reader.recv_timeout(time::Duration::from_secs(30));
-  get_app(pt)
-}
+  /// If the client is polling with a non-current app "version", then immediately return the current
+  /// App. Otherwise, wait 30 seconds for any new changes.
+  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+    let result = get_current_app(&req);
+    match result {
+      Ok(Some(r)) => return Box::new(future::ok(r)),
+      Err(e) => return Box::new(future::err(e)),
+      Ok(None) => {}
+    }
 
-#[post("/", format = "application/json", data = "<command>")]
-fn post_app(command: Json<GameCommand>, pt: State<PT>) -> Result<String, RPIError> {
-  if let PTResponse::JSON(json) = pt.actor()?
-    .send(PTRequest::Perform(command.0, pt.saved_game_path.clone()))
-  {
-    pt.pollers()?.broadcast(());
-    Ok(json)
-  } else {
-    bail!(RPIError::UnexpectedResponse);
+    let (sender, receiver) = oneshot::channel();
+    req.state().waiters.lock().unwrap().push(sender);
+
+    let handle = actix::Arbiter::handle();
+    let timeout = Timeout::new(Duration::from_secs(30), handle).unwrap();
+
+    let fut = timeout
+      .select2(receiver)
+      .and_then(move |_| get_app(req).map_err(|_| panic!()))
+      .map_err(|_| panic!());
+
+    Box::new(fut)
   }
-}
 
-#[get("/combat_movement_options")]
-fn combat_movement_options(pt: State<PT>) -> PTResult<Vec<Point3>> {
-  let app = pt.clone_app()?;
-  Ok(Json(app.get_combat_movement_options()?))
-}
+  fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
+    let app = req.state().app()?;
+    let cid: CreatureID = parse_arg(&req, "cid")?;
+    let scene_id: SceneID = parse_arg(&req, "scene_id")?;
+    Ok(Json(app.get_movement_options(scene_id, cid)?))
+  }
 
-#[get("/movement_options/<scene_id>/<cid>")]
-fn movement_options(pt: State<PT>, scene_id: String, cid: String) -> PTResult<Vec<Point3>> {
-  let app = pt.clone_app()?;
-  let cid = cid.parse()?;
-  let scene = scene_id.parse()?;
-  Ok(Json(app.get_movement_options(scene, cid)?))
-}
+  fn combat_movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
+    let app = req.state().app()?;
+    Ok(Json(app.get_combat_movement_options()?))
+  }
 
-#[get("/target_options/<scene_id>/<cid>/<abid>")]
-fn target_options(
-  pt: State<PT>, scene_id: String, cid: String, abid: String
-) -> PTResult<PotentialTargets> {
-  let app = pt.clone_app()?;
-  let scene = scene_id.parse()?;
-  let cid = cid.parse()?;
-  let abid = abid.parse()?;
-  Ok(Json(app.get_target_options(scene, cid, abid)?))
-}
+  fn target_options(req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
+    let scene_id = parse_arg(&req, "scene_id")?;
+    let cid = parse_arg(&req, "cid")?;
+    let abid = parse_arg(&req, "abid")?;
+    let app = req.state().app()?;
+    Ok(Json(app.get_target_options(scene_id, cid, abid)?))
+  }
 
-#[post("/preview_volume_targets/<scene_id>/<actor_id>/<ability_id>/<x>/<y>/<z>")]
-fn preview_volume_targets(
-  pt: State<PT>, scene_id: String, actor_id: String, ability_id: String, x: i16, y: i16, z: i16
-) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
-  let app = pt.clone_app()?;
-  let sid = scene_id.parse()?;
-  let actor_id = actor_id.parse()?;
-  let ability_id = ability_id.parse()?;
-  let point = Point3::new(x, y, z);
-  Ok(Json(app.preview_volume_targets(
-    sid,
-    actor_id,
-    ability_id,
-    point,
-  )?))
-}
+  fn preview_volume_targets(req: HttpRequest<PT>) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
+    let scene_id = parse_arg(&req, "scene_id")?;
+    let actor_id = parse_arg(&req, "actor_id")?;
+    let ability_id = parse_arg(&req, "ability_id")?;
+    let x = get_arg(&req, "x")?;
+    let y = get_arg(&req, "y")?;
+    let z = get_arg(&req, "z")?;
+    let point = Point3::new(x, y, z);
+    let app = req.state().app()?;
+    let preview = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
+    Ok(Json(preview))
+  }
 
-#[get("/saved_games")]
-fn list_saved_games(pt: State<PT>) -> PTResult<Vec<String>> {
-  let mut result = vec![];
-  for mpath in fs::read_dir(&pt.saved_game_path)? {
-    let path = mpath?;
-    if path.file_type()?.is_file() {
-      match path.file_name().into_string() {
-        Ok(s) => result.push(s),
-        Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
+  fn list_saved_games(req: HttpRequest<PT>) -> PTResult<Vec<String>> {
+    let mut result = vec![];
+    for mpath in fs::read_dir(&req.state().saved_game_path)? {
+      let path = mpath?;
+      if path.file_type()?.is_file() {
+        match path.file_name().into_string() {
+          Ok(s) => result.push(s),
+          Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
+        }
       }
     }
+    Ok(Json(result))
   }
-  Ok(Json(result))
-}
 
-#[post("/saved_games/<name>/load")]
-fn load_saved_game(pt: State<PT>, name: String) -> Result<String, RPIError> {
-  let path = child_path(&pt.saved_game_path, &name)?;
-  let mut buffer = String::new();
-  File::open(path)?.read_to_string(&mut buffer)?;
-  let app = serde_yaml::from_str(&buffer)?;
-  pt.actor()?.send(PTRequest::SetApp(app));
-  get_app(pt)
-}
-
-#[post("/saved_games/<name>")]
-fn save_game(pt: State<PT>, name: String) -> PTResult<()> {
-  let app = pt.clone_app()?; // hey! A NLL usecase!
-  save_app(pt, &name, &app)
-}
-
-#[post("/modules/<name>", data = "<path>")]
-fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
-  let app = pt.clone_app()?;
-  let new_game = app.current_game.export_module(&path)?;
-  let new_app = App::new(new_game);
-  save_app(pt, &name, &new_app)
-}
-
-fn save_app(pt: State<PT>, name: &str, app: &App) -> PTResult<()> {
-  let new_path = child_path(&pt.saved_game_path, name)?;
-  // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
-  // without the extra magic that decorates the data with dynamic data for clients.
-  let yaml = serde_yaml::to_string(&app)?;
-  File::create(new_path)?.write_all(yaml.as_bytes())?;
-  Ok(Json(()))
-}
-
-fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
-  if name.contains('/') || name.contains(':') || name.contains('\\') {
-    bail!(RPIError::InsecurePath(name.to_string()));
+  fn load_saved_game(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
+    {
+      let state = req.state();
+      let name: String = get_arg(&req, "name")?;
+      let path = child_path(&state.saved_game_path, &name)?;
+      let mut buffer = String::new();
+      fs::File::open(path)?.read_to_string(&mut buffer)?;
+      let mut app = state.app()?;
+      *app = serde_yaml::from_str(&buffer)?;
+    }
+    get_app(req)
   }
-  let new_path = parent.join(name.clone());
-  for p in &new_path {
-    if p == "." || p == ".." {
+
+  fn save_game(req: HttpRequest<PT>) -> PTResult<()> {
+    let name: String = get_arg(&req, "name")?;
+    let app = req.state().app()?;
+    save_app(&req, &name, &app)
+  }
+
+  fn save_app(req: &HttpRequest<PT>, name: &str, app: &App) -> PTResult<()> {
+    let new_path = child_path(&req.state().saved_game_path, name)?;
+    // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
+    // without the extra magic that decorates the data with dynamic data for clients.
+    let yaml = serde_yaml::to_string(&app)?;
+    fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+    Ok(Json(()))
+  }
+
+  fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
+    let body = serde_json::to_string(b)?;
+    Ok(HttpResponse::Ok()
+      .content_type("application/json")
+      .body(body)?)
+  }
+
+  fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  where
+    T: FromParam,
+  {
+    req
+      .match_info()
+      .query::<T>(key)
+      .map_err(RPIError::from_response_error)
+  }
+
+  fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  where
+    T: ::std::str::FromStr,
+    RPIError: From<<T as ::std::str::FromStr>::Err>, // I dunno man
+  {
+    let s = req.match_info().query::<String>(key);
+    Ok(s.map_err(RPIError::from_response_error)?.parse()?)
+  }
+
+  fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
+    if name.contains('/') || name.contains(':') || name.contains('\\') {
       bail!(RPIError::InsecurePath(name.to_string()));
     }
-  }
-  Ok(new_path)
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PTRequest {
-  GetReadOnlyApp,
-  Perform(GameCommand, PathBuf),
-  SetApp(App),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum PTResponse {
-  App(App),
-  JSON(String),
-  Success,
-}
-
-fn handle_request(runtime: &mut Runtime, req: PTRequest) -> PTResponse {
-  match req {
-    PTRequest::GetReadOnlyApp => PTResponse::App(runtime.app.clone()),
-    PTRequest::SetApp(app) => {
-      runtime.app = app;
-      PTResponse::Success
-    }
-    PTRequest::Perform(command, saved_game_path) => {
-      let game_and_logs = runtime
-        .app
-        .perform_command(command, saved_game_path)
-        .map_err(|e| format!("Error: {}", e));
-      if let Ok((g, _)) = game_and_logs {
-        runtime.world = g.get_world().expect("Couldn't calculate world");
+    let new_path = parent.join(name.clone());
+    for p in &new_path {
+      if p == "." || p == ".." {
+        bail!(RPIError::InsecurePath(name.to_string()));
       }
-      let rpi_game_and_logs = game_and_logs.map(|(g, l)| (RPIGame(g), l));
-      PTResponse::JSON(
-        serde_json::to_string(&rpi_game_and_logs).expect("Must be able to serialize Games"),
-      )
+    }
+    Ok(new_path)
+  }
+}
+
+#[derive(Debug, Fail)]
+enum RPIError {
+  #[fail(display = "Game Error")] GameError(#[cause] GameError),
+  #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
+  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
+  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
+  #[fail(display = "Web Error")] WebError(Box<actix_web::ResponseError>),
+  #[fail(display = "JSON Payload Error")]
+  JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
+  #[fail(display = "HTTP Error")] HTTPError(#[cause] http::Error),
+
+  #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
+  LockError(String),
+  #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
+}
+
+impl From<GameError> for RPIError {
+  fn from(error: GameError) -> Self { RPIError::GameError(error) }
+}
+impl From<serde_json::error::Error> for RPIError {
+  fn from(error: serde_json::error::Error) -> Self { RPIError::JSONError(error) }
+}
+
+impl From<::std::io::Error> for RPIError {
+  fn from(error: ::std::io::Error) -> Self { RPIError::IOError(error) }
+}
+
+impl From<serde_yaml::Error> for RPIError {
+  fn from(error: serde_yaml::Error) -> Self { RPIError::YAMLError(error) }
+}
+
+impl From<http::Error> for RPIError {
+  fn from(error: http::Error) -> Self { RPIError::HTTPError(error) }
+}
+
+impl From<actix_web::error::JsonPayloadError> for RPIError {
+  fn from(error: actix_web::error::JsonPayloadError) -> Self { RPIError::JSONPayloadError(error) }
+}
+
+impl RPIError {
+  fn from_response_error<T: actix_web::ResponseError>(e: T) -> Self {
+    RPIError::WebError(Box::new(e))
+  }
+}
+
+impl actix_web::ResponseError for RPIError {
+  fn error_response(&self) -> actix_web::HttpResponse {
+    match *self {
+      RPIError::JSONPayloadError(ref e) => e.error_response(),
+      RPIError::WebError(ref e) => e.error_response(),
+      RPIError::HTTPError(ref e) => e.error_response(),
+      RPIError::IOError(ref e) => e.error_response(),
+      _ => actix_web::HttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        actix_web::Body::Empty,
+      ),
     }
   }
 }
+
+#[derive(Clone)]
+pub struct PT {
+  app: Arc<Mutex<App>>,
+  waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
+  saved_game_path: PathBuf,
+}
+
+impl PT {
+  fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {
+    self
+      .app
+      .lock()
+      .map_err(|_| RPIError::LockError("app".to_string()))
+  }
+}
+
+// #[post("/modules/<name>", data = "<path>")]
+// fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
+//   let app = pt.clone_app()?;
+//   let new_game = app.current_game.export_module(&path)?;
+//   let new_app = App::new(new_game);
+//   save_app(pt, &name, &new_app)
+// }
 
 fn main() {
   let game_dir = env::args().nth(1).unwrap_or_else(|| {
@@ -304,54 +364,22 @@ fn main() {
       .into_string()
       .expect("Couldn't parse curdir as string")
   });
-  let game_dir = PathBuf::from(game_dir);
   let initial_file = env::args()
     .nth(2)
     .unwrap_or_else(|| "samplegame.yaml".to_string());
-
+  let game_dir = PathBuf::from(game_dir.clone());
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
-  let actor = Actor::spawn(
-    move || Runtime { app, world: None },
-    move |runtime, request| handle_request(runtime, request),
-  );
-
   let pt = PT {
-    actor: Arc::new(Mutex::new(actor)),
-    pollers: Arc::new(Mutex::new(Bus::new(1000))),
+    app: Arc::new(Mutex::new(app)),
+    waiters: Arc::new(Mutex::new(vec![])),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
   };
 
-  let cors_opts = rocket_cors::Cors {
-    allowed_origins: AllowedOrigins::all(),
-    allowed_methods: vec![Method::Get, Method::Post]
-      .into_iter()
-      .map(From::from)
-      .collect(),
-    allowed_headers: AllowedHeaders::all(),
-    allow_credentials: true,
-    ..Default::default()
-  };
-
-  rocket::ignite()
-    .mount(
-      "/",
-      routes![
-        get_app,
-        poll_app,
-        post_app,
-        combat_movement_options,
-        movement_options,
-        target_options,
-        preview_volume_targets,
-        list_saved_games,
-        load_saved_game,
-        save_game,
-        save_module,
-      ],
-    )
-    .manage(pt)
-    .attach(cors_opts)
-    .launch();
+  let server = actix_web::HttpServer::new(move || webapp::router(pt.clone()));
+  server
+    .bind("0.0.0.0:1337")
+    .expect("Couldn't bind to 1337")
+    .run();
 }
 
 #[cfg(test)]
@@ -366,9 +394,7 @@ mod test {
 
   #[test]
   fn actors() {
-    fn handler(_: &mut (), i: usize) -> usize {
-      i + 1
-    }
+    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
     let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.send(2), 3);
@@ -377,9 +403,7 @@ mod test {
 
   #[test]
   fn actor_clone() {
-    fn handler(_: &mut (), i: usize) -> usize {
-      i + 1
-    }
+    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
     let actor = Actor::spawn(|| (), handler);
     assert_eq!(actor.send(1), 2);
     assert_eq!(actor.clone().send(2), 3);

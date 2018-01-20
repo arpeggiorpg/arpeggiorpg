@@ -58,9 +58,7 @@ impl<T> NonEmptyWithCursor<T> {
 
   /// Get the current element, as determined by the cursor.
   #[inline]
-  pub fn get_current(&self) -> &T {
-    self.data.get(self.cursor).unwrap()
-  }
+  pub fn get_current(&self) -> &T { self.data.get(self.cursor).unwrap() }
 
   /// Get a mutable reference to the current element.
   #[inline]
@@ -147,9 +145,7 @@ impl<T> NonEmptyWithCursor<T> {
 
   /// Get the current cursor.
   #[inline]
-  pub fn get_cursor(&self) -> usize {
-    self.cursor
-  }
+  pub fn get_cursor(&self) -> usize { self.cursor }
 
   /// Remove an element by index, adjusting the cursor so that it points at the same element.
   ///
@@ -214,45 +210,31 @@ impl<T> NonEmptyWithCursor<T> {
   // *** Pass-through methods
   /// Get the length of the underlying non-empty vector.
   #[inline]
-  pub fn len(&self) -> usize {
-    self.data.len()
-  }
+  pub fn len(&self) -> usize { self.data.len() }
 
   /// Iterate over the elements, providing &T.
   #[inline]
-  pub fn iter(&self) -> std::slice::Iter<T> {
-    self.data.iter()
-  }
+  pub fn iter(&self) -> std::slice::Iter<T> { self.data.iter() }
 
   /// Consume the NonEmptyWithCursor and iterate over the owned elements, providing T.
   #[inline]
-  pub fn into_iter(self) -> std::vec::IntoIter<T> {
-    self.data.into_iter()
-  }
+  pub fn into_iter(self) -> std::vec::IntoIter<T> { self.data.into_iter() }
 
   /// Iterate over the elements, providing &mut T.
   #[inline]
-  pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
-    self.data.iter_mut()
-  }
+  pub fn iter_mut(&mut self) -> std::slice::IterMut<T> { self.data.iter_mut() }
 
   /// Get an immutable reference to an arbitrary element, by index.
   #[inline]
-  pub fn get(&self, idx: usize) -> Option<&T> {
-    self.data.get(idx)
-  }
+  pub fn get(&self, idx: usize) -> Option<&T> { self.data.get(idx) }
 
   /// Get a mutable reference to an arbitrary element, by index.
   #[inline]
-  pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
-    self.data.get_mut(idx)
-  }
+  pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> { self.data.get_mut(idx) }
 
   /// Append an element.
   #[inline]
-  pub fn push(&mut self, t: T) {
-    self.data.push(t)
-  }
+  pub fn push(&mut self, t: T) { self.data.push(t) }
 
   /// Check if a NonEmptyWithCursor contains the given element, by equality.
   #[inline]
@@ -274,9 +256,7 @@ pub struct NonEmpty<T>(Vec<T>);
 impl<T> NonEmpty<T> {
   /// Construct a new NonEmpty. The first element is necessary.
   #[inline]
-  pub fn new(head: T) -> Self {
-    NonEmpty(vec![head])
-  }
+  pub fn new(head: T) -> Self { NonEmpty(vec![head]) }
 
   /// Invoke a function to mutate the underlying vector.
   /// If the function removes all of the elements of the vector, the first element of the tuple
@@ -332,39 +312,27 @@ impl<T> NonEmpty<T> {
 
   /// Iterate over the elements, providing &T.
   #[inline]
-  pub fn iter(&self) -> std::slice::Iter<T> {
-    self.0.iter()
-  }
+  pub fn iter(&self) -> std::slice::Iter<T> { self.0.iter() }
 
   /// Consume the NonEmpty and iterate over the owned elements, providing T.
   #[inline]
-  pub fn into_iter(self) -> std::vec::IntoIter<T> {
-    self.0.into_iter()
-  }
+  pub fn into_iter(self) -> std::vec::IntoIter<T> { self.0.into_iter() }
 
   /// Iterate over the elements, providing &mut T.
   #[inline]
-  pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
-    self.0.iter_mut()
-  }
+  pub fn iter_mut(&mut self) -> std::slice::IterMut<T> { self.0.iter_mut() }
 
   /// Get an immutable reference to an arbitrary element, by index.
   #[inline]
-  pub fn get(&self, idx: usize) -> Option<&T> {
-    self.0.get(idx)
-  }
+  pub fn get(&self, idx: usize) -> Option<&T> { self.0.get(idx) }
 
   /// Get a mutable reference to an arbitrary element, by index.
   #[inline]
-  pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> {
-    self.0.get_mut(idx)
-  }
+  pub fn get_mut(&mut self, idx: usize) -> Option<&mut T> { self.0.get_mut(idx) }
 
   /// Append an element.
   #[inline]
-  pub fn push(&mut self, t: T) {
-    self.0.push(t)
-  }
+  pub fn push(&mut self, t: T) { self.0.push(t) }
 
   /// Remove a single element matching a predicate.
   ///
@@ -416,9 +384,7 @@ impl<T> NonEmpty<T> {
 
   /// Return the total length.
   #[inline]
-  pub fn len(&self) -> usize {
-    self.0.len()
-  }
+  pub fn len(&self) -> usize { self.0.len() }
 
   /// Check if an element is contained in the NonEmpty, by equality.
   ///
@@ -460,9 +426,7 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {
-  fn description(&self) -> &str {
-    "A Game Error occurred"
-  }
+  fn description(&self) -> &str { "A Game Error occurred" }
 }
 
 // *** Deserializing NonEmptyWithCursor.
@@ -621,6 +585,4 @@ fn test_iter() {
 struct A(());
 
 #[test]
-fn test_non_clonable() {
-  NonEmpty::new(A(()));
-}
+fn test_non_clonable() { NonEmpty::new(A(())); }

@@ -293,7 +293,7 @@ export class PTUI {
       const num_snaps = app.snapshots.length;
       const snaps = app.snapshots[num_snaps - 1];
       const num_logs = snaps ? snaps.logs.length : 0;
-      const url = `${rpi_url}poll/${num_snaps}/${num_logs}`;
+      const url = `${rpi_url}/poll/${num_snaps}/${num_logs}`;
       return ptfetch(dispatch, url, undefined, T.decodeApp,
         app => {
           dispatch({ type: "RefreshApp", app });
@@ -376,12 +376,12 @@ export class PTUI {
   }
 
   fetchSavedGames(dispatch: Dispatch): Promise<Array<string>> {
-    return ptfetch(dispatch, this.rpi_url + 'saved_games', undefined, JD.array(JD.string()),
+    return ptfetch(dispatch, this.rpi_url + '/saved_games', undefined, JD.array(JD.string()),
       x => x);
   }
 
   loadGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${this.rpi_url}saved_games/${game}/load`, { method: 'POST' },
+    return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}/load`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
 
@@ -681,7 +681,7 @@ export function fetchAbilityTargets(
   ability_id: T.AbilityID, point: T.Point3)
   : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const uri =
-    `${rpi_url}preview_volume_targets/${scene_id}/${actor_id}/`
+    `${rpi_url}/preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point.x}/${point.y}/${point.z}`;
   return ptfetch(dispatch, uri, { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),

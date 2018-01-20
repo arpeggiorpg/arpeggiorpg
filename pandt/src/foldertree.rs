@@ -208,7 +208,7 @@ impl<T> FolderTree<T> {
   }
 
   /// Iterate paths to all folders below the given one.
-  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> impl Iterator<Item = &FolderPath> + 'a {
+  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> ::std::vec::IntoIter<&FolderPath> {
     let parent: FolderPath = parent.clone();
 
     let all_nodes = self.nodes.keys().filter(move |p| p.is_child_of(&parent));
@@ -259,13 +259,9 @@ impl FolderPath {
       .map(|(last, trunk)| (FolderPath::from_vec(trunk.to_vec()), last.clone()))
   }
 
-  pub fn from_vec(segs: Vec<String>) -> FolderPath {
-    FolderPath(segs)
-  }
+  pub fn from_vec(segs: Vec<String>) -> FolderPath { FolderPath(segs) }
 
-  pub fn is_root(&self) -> bool {
-    self.0.is_empty()
-  }
+  pub fn is_root(&self) -> bool { self.0.is_empty() }
 
   pub fn child(&self, seg: String) -> FolderPath {
     let mut new = self.clone();
@@ -279,9 +275,7 @@ impl FolderPath {
     new
   }
 
-  pub fn is_child_of(&self, other: &FolderPath) -> bool {
-    self.0.starts_with(&other.0)
-  }
+  pub fn is_child_of(&self, other: &FolderPath) -> bool { self.0.starts_with(&other.0) }
 
   pub fn relative_to(&self, ancestor: &FolderPath) -> Result<FolderPath, FolderTreeError> {
     if self.is_child_of(ancestor) {
@@ -458,9 +452,7 @@ mod test {
   use foldertree::{FolderPath, FolderTree, FolderTreeError};
   use serde_json;
 
-  fn fpath(s: &str) -> FolderPath {
-    s.parse().expect("Couldn't parse string as FolderPath")
-  }
+  fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
 
   #[test]
   fn get_root() {

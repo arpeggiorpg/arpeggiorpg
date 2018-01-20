@@ -15,7 +15,8 @@ odds = "0.2.25"
 nalgebra = "0.11.2"
 ncollide = "0.11.0"
 derive_more = "0.4.0"
-num-traits = "0.1.36"
+num = "0.1.41"
+num-traits = "0.1.41"
 rand = "0.3"
 uuid = {version = "0.5", features = ["v4", "serde"]}
 error-chain = "0.11.0-rc.2"
@@ -23,3 +24,9 @@ bresenham = "0.1.1"
 maplit = "0.1.4"
 failure = "0.1"
 failure_derive = "0.1"
+
+[dependencies.uom]
+# version = "0.16"
+git = "https://github.com/iliekturtles/uom"
+rev = "0b33222ac78cf1d6c1337a4c9aa145b0fd6c669b"
+features = ["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64", "serde"]

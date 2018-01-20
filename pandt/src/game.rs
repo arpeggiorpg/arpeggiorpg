@@ -811,7 +811,7 @@ impl Game {
               self
                 .classes
                 .mutate(&class_id, |mut class| {
-                  class.abilities.remove_item(&abid);
+                  class.abilities.retain(|el| *el == abid);
                   class
                 })
                 .expect("iterating classes...");
@@ -1606,9 +1606,7 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn done(self) -> (Game, Vec<GameLog>) {
-    (self.game, self.logs)
-  }
+  pub fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> {
@@ -1693,9 +1691,7 @@ pub mod test {
     game.perform_command(cmd, PathBuf::from(""))
   }
 
-  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
-    perf(game, cmd).unwrap().game
-  }
+  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
 
   #[test]
   fn start_combat_not_found() {

@@ -1,6 +1,4 @@
 #![recursion_limit = "256"]
-#![feature(vec_remove_item, conservative_impl_trait)]
-#![cfg_attr(test, feature(test))]
 
 //! Phone and Tablet.
 
@@ -15,6 +13,7 @@ extern crate failure_derive;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;
+extern crate num;
 extern crate num_traits;
 extern crate odds;
 extern crate rand;
@@ -22,6 +21,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
+#[macro_use]
+extern crate uom;
 extern crate uuid;
 
 #[cfg(test)]
@@ -30,8 +31,6 @@ extern crate maplit;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
-#[cfg(test)]
-extern crate test;
 
 pub mod app;
 pub mod combat;

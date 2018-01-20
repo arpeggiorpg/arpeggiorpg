@@ -1,12 +1,22 @@
 //! Simulation of combat.
 
 use nonempty;
+use num::Zero;
 
 use types::*;
+use uom::si::length::centimeter;
+
+use std::marker::PhantomData;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-pub const MELEE_RANGE: Distance = Distance(150);
+// pub const MELEE_RANGE: Distance = Distance(u32units::Length::new::<centimeter>(150));
+
+pub const MELEE_RANGE: Distance = Distance(u32units::Length {
+  dimension: PhantomData,
+  units: PhantomData,
+  value: 150,
+});
 
 impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
@@ -22,7 +32,7 @@ impl<'game> DynamicCombat<'game> {
       CombatLog::EndTurn(ref cid) => {
         assert_eq!(*cid, new.current_creature_id());
         new.creatures.next_circular();
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
       }
       CombatLog::RerollInitiative(ref combatants) => {
         if new.creatures.get_cursor() != 0 {
@@ -39,11 +49,11 @@ impl<'game> DynamicCombat<'game> {
         new.creatures.set_cursor(cursor);
       }
       CombatLog::ForceNextTurn => {
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
         new.creatures.next_circular();
       }
       CombatLog::ForcePrevTurn => {
-        new.movement_used = Distance(0);
+        new.movement_used = Distance::zero();
         new.creatures.prev_circular();
       }
     }
@@ -124,14 +134,12 @@ impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     Ok(Combat {
       scene: scene,
-      movement_used: Distance(0),
+      movement_used: Distance::zero(),
       creatures: sort_combatants(combatants)?,
     })
   }
 
-  pub fn creature_ids(&self) -> Vec<CreatureID> {
-    self.creatures.iter().map(|&(c, _)| c).collect()
-  }
+  pub fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
 
   pub fn roll_initiative(
     game: &Game, cids: Vec<CreatureID>
@@ -145,9 +153,7 @@ impl Combat {
       .collect::<Result<Vec<(CreatureID, i16)>, GameError>>()
   }
 
-  pub fn current_creature_id(&self) -> CreatureID {
-    self.creatures.get_current().0
-  }
+  pub fn current_creature_id(&self) -> CreatureID { self.creatures.get_current().0 }
 
   pub fn contains_creature(&self, cid: CreatureID) -> bool {
     self.creatures.iter().any(|&(c, _)| c == cid)
@@ -180,9 +186,7 @@ pub struct CombatMove<'game> {
 }
 
 impl<'game> CombatMove<'game> {
-  pub fn movement_left(&self) -> Distance {
-    self.movement_left
-  }
+  pub fn movement_left(&self) -> Distance { self.movement_left }
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
@@ -221,9 +225,7 @@ impl<'game> ChangedCombat<'game> {
     Ok(new)
   }
 
-  pub fn done(self) -> (Combat, Vec<CombatLog>) {
-    (self.combat, self.logs)
-  }
+  pub fn done(self) -> (Combat, Vec<CombatLog>) { (self.combat, self.logs) }
 }
 
 #[cfg(test)]
@@ -417,7 +419,7 @@ pub mod test {
       .game;
     assert_eq!(
       next_game.get_combat().unwrap().combat.movement_used,
-      Distance(400)
+      Distance::from_meters(4.0)
     );
   }
 }

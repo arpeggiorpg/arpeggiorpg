@@ -47,7 +47,5 @@ where
     response_receiver.recv().unwrap()
   }
 
-  pub fn stop(&self) {
-    self.request_sender.send(ActorMsg::Stop).unwrap();
-  }
+  pub fn stop(&self) { self.request_sender.send(ActorMsg::Stop).unwrap(); }
 }
