@@ -49,7 +49,6 @@ mod webapp {
   use serde_yaml;
   use tokio_core::reactor::Timeout;
 
-  use pandt::foldertree::FolderPath;
   use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
                      SceneID};
 
@@ -90,49 +89,34 @@ mod webapp {
       .resource("/modules/{name}", |r| r.method(Method::POST).a(save_module))
   }
 
-  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
-    let f = req.json().from_err().and_then(move |command: GameCommand| {
-      let response = {
-        let pt = req.state();
-        let mut app = pt.app().unwrap();
-        let result = app.perform_command(command, pt.saved_game_path.clone());
-        let result = result.map_err(|e| format!("Error: {}", e));
-        let result = result.map(|(g, l)| (RPIGame(g), l));
-        json_response(&result)
-      };
-      {
-        let mut waiters = req.state().waiters.lock().unwrap();
-        for sender in waiters.drain(0..) {
-          if let Err(e) = sender.send(()) {
-            error!("Random failure notifying a waiter: {:?}", e);
-          }
-        }
-      }
-      response
-    });
-    Box::new(f)
-  }
-
   fn get_app(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
     let app = req.state().app()?;
     json_response(&RPIApp(&*app))
   }
 
-  fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
-    let snapshot_len: usize = get_arg(req, "snapshot_len")?;
-    let log_len: usize = get_arg(req, "log_len")?;
-    let app = req.state().app()?;
-    if app.snapshots.len() != snapshot_len
-      || app
-        .snapshots
-        .back()
-        .map(|&(_, ref ls)| ls.len())
-        .unwrap_or(0) != log_len
-    {
-      json_response(&RPIApp(&app)).map(Some)
-    } else {
-      Ok(None)
-    }
+  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+    let f = req.json().from_err().and_then(
+      move |command: GameCommand| -> Result<HttpResponse, RPIError> {
+        let response = {
+          let pt = req.state();
+          let mut app = pt.app()?;
+          let result = app.perform_command(command, pt.saved_game_path.clone());
+          let result = result.map_err(|e| format!("Error: {}", e));
+          let result = result.map(|(g, l)| (RPIGame(g), l));
+          json_response(&result)
+        };
+        {
+          let mut waiters = req.state().waiters()?;
+          for sender in waiters.drain(0..) {
+            if let Err(e) = sender.send(()) {
+              error!("Random failure notifying a waiter: {:?}", e);
+            }
+          }
+        }
+        response
+      },
+    );
+    Box::new(f)
   }
 
   /// If the client is polling with a non-current app "version", then immediately return the current
@@ -157,6 +141,23 @@ mod webapp {
       .map_err(|_| panic!());
 
     Box::new(fut)
+  }
+
+  fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
+    let snapshot_len: usize = get_arg(req, "snapshot_len")?;
+    let log_len: usize = get_arg(req, "log_len")?;
+    let app = req.state().app()?;
+    if app.snapshots.len() != snapshot_len
+      || app
+        .snapshots
+        .back()
+        .map(|&(_, ref ls)| ls.len())
+        .unwrap_or(0) != log_len
+    {
+      json_response(&RPIApp(&app)).map(Some)
+    } else {
+      Ok(None)
+    }
   }
 
   fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
@@ -235,18 +236,14 @@ mod webapp {
   }
 
   fn save_module(req: HttpRequest<PT>) -> Box<Future<Item = Json<()>, Error = RPIError>> {
-    let f = req.json().from_err().and_then(move |path| {
-      future::result(save_module_result(&req, path))
+    let f = req.json().from_err().and_then(move |path| -> PTResult<()> {
+      let name: String = get_arg(&req, "name")?;
+      let app = req.state().app()?;
+      let new_game = app.current_game.export_module(&path)?;
+      let new_app = App::new(new_game);
+      save_app(&req, &name, &new_app)
     });
     Box::new(f)
-  }
-
-  fn save_module_result(req: &HttpRequest<PT>, path: FolderPath) -> PTResult<()> {
-    let name: String = get_arg(req, "name")?;
-    let app = req.state().app()?;
-    let new_game = app.current_game.export_module(&path)?;
-    let new_app = App::new(new_game);
-    save_app(&req, &name, &new_app)
   }
 
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
@@ -362,6 +359,13 @@ impl PT {
       .app
       .lock()
       .map_err(|_| RPIError::LockError("app".to_string()))
+  }
+
+  fn waiters(&self) -> Result<::std::sync::MutexGuard<Vec<oneshot::Sender<()>>>, RPIError> {
+    self
+      .waiters
+      .lock()
+      .map_err(|_| RPIError::LockError("pollers".to_string()))
   }
 }
 
