@@ -117,8 +117,8 @@ mod webapp {
   }
 
   fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
-    let snapshot_len: usize = get_arg(&req, "snapshot_len")?;
-    let log_len: usize = get_arg(&req, "log_len")?;
+    let snapshot_len: usize = get_arg(req, "snapshot_len")?;
+    let log_len: usize = get_arg(req, "log_len")?;
     let app = req.state().app()?;
     if app.snapshots.len() != snapshot_len
       || app
@@ -262,7 +262,7 @@ mod webapp {
     if name.contains('/') || name.contains(':') || name.contains('\\') {
       bail!(RPIError::InsecurePath(name.to_string()));
     }
-    let new_path = parent.join(name.clone());
+    let new_path = parent.join(name);
     for p in &new_path {
       if p == "." || p == ".." {
         bail!(RPIError::InsecurePath(name.to_string()));
