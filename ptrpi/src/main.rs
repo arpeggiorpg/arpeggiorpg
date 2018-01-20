@@ -49,6 +49,7 @@ mod webapp {
   use serde_yaml;
   use tokio_core::reactor::Timeout;
 
+  use pandt::foldertree::FolderPath;
   use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
                      SceneID};
 
@@ -86,6 +87,7 @@ mod webapp {
       .resource("/saved_games/{name}", |r| {
         r.method(Method::POST).f(save_game)
       })
+      .resource("/modules/{name}", |r| r.method(Method::POST).a(save_module))
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
@@ -232,6 +234,21 @@ mod webapp {
     Ok(Json(()))
   }
 
+  fn save_module(req: HttpRequest<PT>) -> Box<Future<Item = Json<()>, Error = RPIError>> {
+    let f = req.json().from_err().and_then(move |path| {
+      future::result(save_module_result(&req, path))
+    });
+    Box::new(f)
+  }
+
+  fn save_module_result(req: &HttpRequest<PT>, path: FolderPath) -> PTResult<()> {
+    let name: String = get_arg(req, "name")?;
+    let app = req.state().app()?;
+    let new_game = app.current_game.export_module(&path)?;
+    let new_app = App::new(new_game);
+    save_app(&req, &name, &new_app)
+  }
+
   fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
     let body = serde_json::to_string(b)?;
     Ok(HttpResponse::Ok()
@@ -347,14 +364,6 @@ impl PT {
       .map_err(|_| RPIError::LockError("app".to_string()))
   }
 }
-
-// #[post("/modules/<name>", data = "<path>")]
-// fn save_module(pt: State<PT>, name: String, path: Json<FolderPath>) -> PTResult<()> {
-//   let app = pt.clone_app()?;
-//   let new_game = app.current_game.export_module(&path)?;
-//   let new_app = App::new(new_game);
-//   save_app(pt, &name, &new_app)
-// }
 
 fn main() {
   let game_dir = env::args().nth(1).unwrap_or_else(|| {
