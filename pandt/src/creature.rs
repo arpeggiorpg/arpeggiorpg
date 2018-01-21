@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::cmp;
 
+use num::Saturating;
+
 use indexed::*;
 use types::*;
 

@@ -170,17 +170,17 @@ impl Dice {
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct HP(pub u8);
-impl HP {
-  pub fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
-  pub fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
+impl Saturating for HP {
+  fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
+  fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
 }
 
 #[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
          Deserialize)]
 pub struct Energy(pub u8);
-impl Energy {
-  pub fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
-  pub fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
+impl Saturating for Energy {
+  fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
+  fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -257,27 +257,6 @@ impl ::std::str::FromStr for ClassID {
   type Err = GameError;
   fn from_str(s: &str) -> Result<ClassID, GameError> { Ok(ClassID(Uuid::parse_str(s)?)) }
 }
-
-/// Distance in centimeters.
-// #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Serialize,
-//          Deserialize)]
-// pub struct Distance(pub u32units::Length);
-// impl Distance {
-//   /// Convert meters as a f32 to a Distance.
-//   pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
-//   pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
-//   pub fn cm(&self) -> u32 { self.0.get(centimeter) }
-// }
-
-// impl Saturating for Distance {
-//   fn saturating_add(self, v: Self) -> Self { Distance(self.0.saturating_add(v.0)) }
-//   fn saturating_sub(self, v: Self) -> Self { Distance(self.0.saturating_sub(v.0))}
-// }
-
-// impl Zero for Distance {
-//   fn zero() -> Self { Distance(u32units::Length::zero()) }
-//   fn is_zero(&self) -> bool { self.0.is_zero() }
-// }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
