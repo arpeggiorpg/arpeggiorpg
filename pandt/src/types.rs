@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use num::{Saturating};
+use num::Saturating;
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
@@ -855,7 +855,10 @@ pub enum CreatureTarget {
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
-  RangedVolume { volume: Volume, range: u32units::Length },
+  RangedVolume {
+    volume: Volume,
+    range: u32units::Length,
+  },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -926,8 +929,13 @@ pub struct AppliedCondition {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Volume {
   Sphere(u32units::Length),
-  Line { vector: VectorCM },
-  VerticalCylinder { radius: u32units::Length, height: u32units::Length },
+  Line {
+    vector: VectorCM,
+  },
+  VerticalCylinder {
+    radius: u32units::Length,
+    height: u32units::Length,
+  },
   // An Axis-Aligned Bounding Box, origin at top-left,
   // with x going east, y going south, and z going up.
   AABB(AABB),
@@ -1437,9 +1445,7 @@ pub mod test {
       cost: Energy(8),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::LineFromActor {
-          distance: cm(1000),
-        },
+        target: CreatureTarget::LineFromActor { distance: cm(1000) },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }

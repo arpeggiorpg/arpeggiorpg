@@ -11,8 +11,8 @@ use ncollide::query::PointQuery;
 use ncollide::world;
 use uom::si::length::{centimeter, meter};
 
-use types::{u32units, cm, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
-            TileSystem, VectorCM, Volume, VolumeCondition};
+use types::{cm, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
+            VectorCM, Volume, VolumeCondition, u32units};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -193,7 +193,8 @@ impl TileSystem {
   /// Find a path from some start point to some destination point. If one can be found, a Vec of
   /// points on the way to the destination is returned, along with the total length of that path.
   pub fn find_path(
-    &self, start: Point3, speed: u32units::Length, terrain: &Terrain, volume: Volume, destination: Point3
+    &self, start: Point3, speed: u32units::Length, terrain: &Terrain, volume: Volume,
+    destination: Point3,
   ) -> Option<(Vec<Point3>, u32units::Length)> {
     let success = Box::new(move |n: &Point3| *n == destination);
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(
@@ -359,7 +360,9 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f32 / 100.0)),
+    Volume::Sphere(r) => {
+      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f32 / 100.0))
+    }
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f32::from(aabb.x) / 100.0) / 2.0,
       (f32::from(aabb.y) / 100.0) / 2.0,
@@ -535,10 +538,7 @@ pub mod test {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(1, 0, 0);
-    assert_eq!(
-      TileSystem::Realistic.point3_distance(pos1, pos2),
-      cm(100)
-    );
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), cm(100));
   }
 
   #[test]
@@ -590,7 +590,11 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       u32::max_value(),
       vec![success],
     );
@@ -610,7 +614,11 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       499,
       vec![success],
     );
@@ -625,7 +633,11 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       500,
       vec![success],
     );
@@ -658,7 +670,11 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       u32::max_value(),
       successes,
     );
@@ -675,12 +691,7 @@ pub mod test {
     let terrain = box_map();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
     assert_eq!(
-      TileSystem::Realistic.get_all_accessible(
-        Point3::new(0, 0, 0),
-        &terrain,
-        size,
-        cm(1000)
-      ),
+      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, cm(1000)),
       vec![]
     );
   }
@@ -690,12 +701,8 @@ pub mod test {
     // a speed of 100 means you can only move on the axes
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let mut pts = TileSystem::Realistic.get_all_accessible(
-      Point3::new(0, 0, 0),
-      &terrain,
-      size,
-      cm(100),
-    );
+    let mut pts =
+      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, cm(100));
     pts.sort();
     let mut expected = vec![
       Point3::new(-1, 0, 0),
@@ -712,12 +719,8 @@ pub mod test {
     // a speed of 141 means you can also move diagonally, but only once
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let mut pts = TileSystem::Realistic.get_all_accessible(
-      Point3::new(0, 0, 0),
-      &terrain,
-      size,
-      cm(141),
-    );
+    let mut pts =
+      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, cm(141));
     pts.sort();
     let mut expected = vec![
       Point3::new(-1, 0, 0),
@@ -737,12 +740,8 @@ pub mod test {
   fn test_accessible_average_speed() {
     let terrain = huge_box();
     let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
-    let pts = TileSystem::Realistic.get_all_accessible(
-      Point3::new(0, 0, 0),
-      &terrain,
-      size,
-      cm(1000),
-    );
+    let pts =
+      TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, cm(1000));
     // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
     // 8 degrees of movement, which leaves certain positions within a circle impossible to
     // reach even if you can technically move the radius of the circle in one turn.
@@ -796,11 +795,7 @@ pub mod test {
 
   #[test]
   fn line_through_point_simple() {
-    let line = line_through_point(
-      Point3::new(0, 0, 0),
-      Point3::new(1, 0, 0),
-      cm(200),
-    );
+    let line = line_through_point(Point3::new(0, 0, 0), Point3::new(1, 0, 0), cm(200));
     match line {
       Volume::Line { vector } => assert_eq!(vector, (200, 0, 0)),
       _ => panic!("Expected Line"),
@@ -809,11 +804,7 @@ pub mod test {
 
   #[test]
   fn line_through_point_accuracy() {
-    let line = line_through_point(
-      Point3::new(0, 0, 0),
-      Point3::new(2, 1, 0),
-      cm(1000),
-    );
+    let line = line_through_point(Point3::new(0, 0, 0), Point3::new(2, 1, 0), cm(1000));
     match line {
       Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
       _ => panic!("Expected Line"),
