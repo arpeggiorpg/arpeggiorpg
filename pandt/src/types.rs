@@ -6,19 +6,16 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use num::Zero;
-
+use num::{Saturating, Zero};
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
-
-use uom::si::length::centimeter;
-use uuid::{ParseError as UuidParseError, Uuid};
-
 use serde::ser;
 use serde::ser::{Error as SerError, SerializeStruct};
 use serde::de;
 use serde_yaml;
+use uom::si::length::centimeter;
+use uuid::{ParseError as UuidParseError, Uuid};
 
 use nonempty;
 use indexed::{DeriveKey, IndexedHashMap};
@@ -276,12 +273,8 @@ pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
   pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
-  pub fn saturating_add(self, other: Self) -> Self {
-    Distance(cm(self.cm().saturating_add(other.cm())))
-  }
-  pub fn saturating_sub(self, other: Self) -> Self {
-    Distance(cm(self.cm().saturating_sub(other.cm())))
-  }
+  pub fn saturating_add(self, other: Self) -> Self { Distance(self.0.saturating_add(other.0)) }
+  pub fn saturating_sub(self, other: Self) -> Self { Distance(self.0.saturating_sub(other.0)) }
   pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
   pub fn cm(&self) -> u32 { self.0.get(centimeter) }
 }
