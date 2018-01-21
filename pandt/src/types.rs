@@ -273,10 +273,13 @@ pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
   pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
-  pub fn saturating_add(self, other: Self) -> Self { Distance(self.0.saturating_add(other.0)) }
-  pub fn saturating_sub(self, other: Self) -> Self { Distance(self.0.saturating_sub(other.0)) }
   pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
   pub fn cm(&self) -> u32 { self.0.get(centimeter) }
+}
+
+impl Saturating for Distance {
+  fn saturating_add(self, v: Self) -> Self { Distance(self.0.saturating_add(v.0)) }
+  fn saturating_sub(self, v: Self) -> Self { Distance(self.0.saturating_sub(v.0))}
 }
 
 impl Zero for Distance {

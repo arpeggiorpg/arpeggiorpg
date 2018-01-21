@@ -1,7 +1,7 @@
 //! Simulation of combat.
 
 use nonempty;
-use num::Zero;
+use num::{Saturating, Zero};
 
 use types::*;
 
