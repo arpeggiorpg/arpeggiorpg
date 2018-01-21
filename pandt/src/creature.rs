@@ -32,14 +32,6 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   pub fn id(&self) -> CreatureID { self.creature.id }
 
-  // TODO: DynamicCreature should have a `conditions` field, since calculating the conditions is
-  // becoming more expensive, and we look up the conditions several times even just to serialize a
-  // creature.
-  // But... would we have any race conditions where we would be looking at old condition data after
-  // an update?
-  // We could at least reduce the number of times we calculate it by passing conditions to
-  // can_act, can_move, and speed.
-
   pub fn can_act(&self) -> bool { conditions_able(&self.all_conditions()) }
 
   pub fn can_move(&self) -> bool { conditions_able(&self.all_conditions()) }
@@ -57,6 +49,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   /// Get all conditions applied to a creature, including permanent conditions associated with
   /// the creature's class and any volume-conditions from the current active scene.
   pub fn all_conditions(&self) -> Vec<AppliedCondition> {
+    // TODO: DynamicCreature should have a `conditions` field, since calculating the conditions is
+    // becoming more expensive, and we look up the conditions several times even just to serialize a
+    // creature.
+    // But... would we have any race conditions where we would be looking at old condition data after
+    // an update?
+    // We could at least reduce the number of times we calculate it by passing conditions to
+    // can_act, can_move, and speed.
     let mut conditions: Vec<AppliedCondition> =
       self.creature.conditions.values().cloned().collect();
     let applied_class_conditions = self
