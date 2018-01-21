@@ -10,7 +10,6 @@ use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
 
-use uom::si::length::centimeter;
 use types::{cm, CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
             TileSystem, VectorCM, Volume, VolumeCondition};
 

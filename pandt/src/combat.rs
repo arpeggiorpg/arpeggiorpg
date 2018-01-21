@@ -4,14 +4,11 @@ use nonempty;
 use num::Zero;
 
 use types::*;
-use uom::si::length::centimeter;
 
 use std::marker::PhantomData;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-// pub const MELEE_RANGE: Distance = Distance(u32units::Length::new::<centimeter>(150));
-
 pub const MELEE_RANGE: Distance = Distance(u32units::Length {
   dimension: PhantomData,
   units: PhantomData,

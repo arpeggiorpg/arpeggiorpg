@@ -12,8 +12,7 @@ use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
 
-use uom;
-use uom::si::length::{centimeter, meter};
+use uom::si::length::centimeter;
 use uuid::{ParseError as UuidParseError, Uuid};
 
 use serde::ser;
