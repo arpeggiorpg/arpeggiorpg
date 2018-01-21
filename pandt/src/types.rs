@@ -270,7 +270,8 @@ impl ::std::str::FromStr for ClassID {
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, Serialize, Deserialize)]
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Serialize,
+         Deserialize)]
 pub struct Distance(pub u32units::Length);
 impl Distance {
   /// Convert meters as a f32 to a Distance.
@@ -289,21 +290,6 @@ impl Zero for Distance {
   fn zero() -> Self { Distance(u32units::Length::zero()) }
   fn is_zero(&self) -> bool { self.0.is_zero() }
 }
-
-impl PartialOrd for Distance {
-  fn partial_cmp(&self, other: &Distance) -> Option<::std::cmp::Ordering> { Some(self.cmp(other)) }
-}
-
-impl Ord for Distance {
-  fn cmp(&self, other: &Distance) -> ::std::cmp::Ordering { self.cm().cmp(&other.cm()) }
-}
-
-impl PartialEq for Distance {
-  fn eq(&self, other: &Distance) -> bool { self.cm() == other.cm() }
-  fn ne(&self, other: &Distance) -> bool { self.cm() != other.cm() }
-}
-
-impl Eq for Distance {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
