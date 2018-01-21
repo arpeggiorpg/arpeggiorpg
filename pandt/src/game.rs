@@ -438,14 +438,14 @@ impl Game {
 
   pub fn path_creature(
     &self, scene: SceneID, cid: CreatureID, pt: Point3
-  ) -> Result<(ChangedGame, Distance), GameError> {
+  ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
   pub fn path_creature_distance(
-    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: Distance
-  ) -> Result<(ChangedGame, Distance), GameError> {
+    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: u32units::Length
+  ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let scene = self.get_scene(scene_id)?;
     let creature = self.get_creature(cid)?;
     let (pts, distance) = self
@@ -1515,7 +1515,7 @@ impl Game {
   }
 
   fn open_terrain_in_range(
-    &self, scene: SceneID, creature_id: CreatureID, range: Distance
+    &self, scene: SceneID, creature_id: CreatureID, range: u32units::Length
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
@@ -1526,7 +1526,7 @@ impl Game {
   }
 
   fn creatures_in_range(
-    &self, scene: SceneID, creature_id: CreatureID, distance: Distance
+    &self, scene: SceneID, creature_id: CreatureID, distance: u32units::Length
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
@@ -1827,7 +1827,7 @@ pub mod test {
   #[test]
   fn test_creatures_in_sphere() {
     let game = t_game();
-    let volume = Volume::Sphere(Distance::from_meters(2.0));
+    let volume = Volume::Sphere(cm(200));
     let pt = Point3::new(5, 0, 0);
 
     let game = t_perform(
@@ -1849,8 +1849,8 @@ pub mod test {
   fn test_sphere_targets() {
     let game = t_game();
     let target_spec = CreatureTarget::AllCreaturesInVolumeInRange {
-      range: Distance::from_meters(10.0),
-      volume: Volume::Sphere(Distance::from_meters(2.0)),
+      range: cm(1000),
+      volume: Volume::Sphere(cm(200)),
     };
     let pt = Point3::new(5, 0, 0);
 
@@ -1876,7 +1876,7 @@ pub mod test {
   fn test_line_targets() {
     let game = t_game();
     let target_spec = CreatureTarget::LineFromActor {
-      distance: Distance::from_meters(10.0),
+      distance: cm(1000),
     };
     let pt = Point3::new(1, 0, 0);
 

@@ -42,7 +42,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
 
   pub fn can_move(&self) -> bool { conditions_able(&self.all_conditions()) }
 
-  pub fn speed(&self) -> Distance {
+  pub fn speed(&self) -> u32units::Length {
     let mut speed = self.creature.speed;
     for acondition in self.all_conditions() {
       if acondition.condition == Condition::DoubleMaxMovement {
@@ -223,7 +223,7 @@ impl Creature {
       id: CreatureID::gen(),
       name: spec.name.to_string(),
       class: spec.class,
-      speed: Distance(cm(STANDARD_CREATURE_SPEED)),
+      speed: cm(STANDARD_CREATURE_SPEED),
       max_energy: Energy(10),
       cur_energy: Energy(10),
       abilities: IndexedHashMap::new(),

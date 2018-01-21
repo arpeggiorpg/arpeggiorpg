@@ -9,11 +9,11 @@ use std::marker::PhantomData;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-pub const MELEE_RANGE: Distance = Distance(u32units::Length {
+pub const MELEE_RANGE: u32units::Length = u32units::Length {
   dimension: PhantomData,
   units: PhantomData,
   value: 150,
-});
+};
 
 impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
@@ -29,7 +29,7 @@ impl<'game> DynamicCombat<'game> {
       CombatLog::EndTurn(ref cid) => {
         assert_eq!(*cid, new.current_creature_id());
         new.creatures.next_circular();
-        new.movement_used = Distance::zero();
+        new.movement_used = Zero::zero();
       }
       CombatLog::RerollInitiative(ref combatants) => {
         if new.creatures.get_cursor() != 0 {
@@ -46,11 +46,11 @@ impl<'game> DynamicCombat<'game> {
         new.creatures.set_cursor(cursor);
       }
       CombatLog::ForceNextTurn => {
-        new.movement_used = Distance::zero();
+        new.movement_used = Zero::zero();
         new.creatures.next_circular();
       }
       CombatLog::ForcePrevTurn => {
-        new.movement_used = Distance::zero();
+        new.movement_used = Zero::zero();
         new.creatures.prev_circular();
       }
     }
@@ -131,7 +131,7 @@ impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     Ok(Combat {
       scene: scene,
-      movement_used: Distance::zero(),
+      movement_used: Zero::zero(),
       creatures: sort_combatants(combatants)?,
     })
   }
@@ -178,12 +178,12 @@ impl Combat {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CombatMove<'game> {
-  movement_left: Distance,
+  movement_left: u32units::Length,
   pub combat: &'game DynamicCombat<'game>,
 }
 
 impl<'game> CombatMove<'game> {
-  pub fn movement_left(&self) -> Distance { self.movement_left }
+  pub fn movement_left(&self) -> u32units::Length { self.movement_left }
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
@@ -416,7 +416,7 @@ pub mod test {
       .game;
     assert_eq!(
       next_game.get_combat().unwrap().combat.movement_used,
-      Distance::from_meters(4.0)
+      cm(400)
     );
   }
 }

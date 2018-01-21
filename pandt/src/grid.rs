@@ -9,8 +9,9 @@ use ncollide::shape;
 use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
+use uom::si::length::{centimeter, meter};
 
-use types::{cm, CollisionData, CollisionWorld, ConditionID, Creature, Distance, Point3, Terrain,
+use types::{u32units, cm, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
             TileSystem, VectorCM, Volume, VolumeCondition};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
@@ -55,11 +56,11 @@ fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
   )
 }
 
-pub fn line_through_point(origin: Point3, clicked: Point3, length: Distance) -> Volume {
+pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Length) -> Volume {
   let offset = point3_difference(clicked, origin);
   let mut navec = na_vector(offset);
   navec.normalize_mut();
-  let new_vec = navec * length.to_meters();
+  let new_vec = navec * length.get(meter) as f32;
   Volume::Line {
     vector: na_vector_to_vector_cm(new_vec),
   }
@@ -85,26 +86,26 @@ impl TileSystem {
   /// Get the distance between two points, considering the system being used.
   /// In DnD, an angular distance is "equivalent" to a horizontal/vertical distance.
   /// i.e., The distance from 0,0 to 1,1 is sqrt(2) in Realistic and 1.0 in DnD.
-  pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> Distance {
+  pub fn point3_distance(&self, pos1: Point3, pos2: Point3) -> u32units::Length {
     match *self {
       TileSystem::Realistic => {
         let meaningless = Cuboid::new(Vector3::new(0.0, 0.0, 0.0));
         let ncpos1 = na_iso(pos1);
         let ncpos2 = na_point(pos2);
         let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-        Distance::from_meters(distance)
+        u32units::Length::new::<centimeter>((distance * 100.0) as u32)
       }
       TileSystem::DnD => {
         // I'd use cmp::max but it's not usable on floats
         let xdiff = (pos1.x - pos2.x).abs() as u32;
         let ydiff = (pos1.y - pos2.y).abs() as u32;
-        Distance(cm(if xdiff > ydiff { xdiff } else { ydiff } * 100))
+        cm(if xdiff > ydiff { xdiff } else { ydiff } * 100)
       }
     }
   }
 
   /// Check whether two points are within some distance of each other.
-  pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: Distance) -> bool {
+  pub fn points_within_distance(&self, c1: Point3, c2: Point3, d: u32units::Length) -> bool {
     self.point3_distance(c1, c2) <= d
   }
 
@@ -143,9 +144,9 @@ impl TileSystem {
   }
 
   pub fn open_points_in_range(
-    &self, start: Point3, terrain: &Terrain, range: Distance
+    &self, start: Point3, terrain: &Terrain, range: u32units::Length
   ) -> Vec<Point3> {
-    let cm: u32 = range.cm();
+    let cm: u32 = range.get(centimeter);
     let meters = (cm / 100) as i16;
     let mut open = vec![];
     for x in start.x - meters..start.x + meters + 1 {
@@ -162,7 +163,7 @@ impl TileSystem {
 
   /// Get the set of points which can be pathed to from some point.
   pub fn get_all_accessible(
-    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: Distance
+    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
@@ -176,11 +177,11 @@ impl TileSystem {
     for (path, cost) in astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).cm(),
-      speed.cm(),
+      |n| self.point3_distance(start, *n).get(centimeter),
+      speed.get(centimeter),
       success_fns,
     ) {
-      if Distance(cm(cost)) <= speed {
+      if cm(cost) <= speed {
         // FIXME: we should NOT be checking cost here, instead astar_multi should support
         // max distance.
         final_points.push(*path.last().unwrap())
@@ -192,18 +193,18 @@ impl TileSystem {
   /// Find a path from some start point to some destination point. If one can be found, a Vec of
   /// points on the way to the destination is returned, along with the total length of that path.
   pub fn find_path(
-    &self, start: Point3, speed: Distance, terrain: &Terrain, volume: Volume, destination: Point3
-  ) -> Option<(Vec<Point3>, Distance)> {
+    &self, start: Point3, speed: u32units::Length, terrain: &Terrain, volume: Volume, destination: Point3
+  ) -> Option<(Vec<Point3>, u32units::Length)> {
     let success = Box::new(move |n: &Point3| *n == destination);
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).cm(),
-      speed.cm(),
+      |n| self.point3_distance(start, *n).get(centimeter),
+      speed.get(centimeter),
       vec![success],
     );
     if let Some((path, cost)) = result.into_iter().next() {
-      Some((path, Distance(cm(cost))))
+      Some((path, cm(cost)))
     } else {
       None
     }
@@ -358,7 +359,7 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.cm() as f32 / 100.0)),
+    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f32 / 100.0)),
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f32::from(aabb.x) / 100.0) / 2.0,
       (f32::from(aabb.y) / 100.0) / 2.0,
@@ -525,7 +526,7 @@ pub mod test {
     println!("My calculated distance: {:?};", test_distance);
     assert_eq!(
       (TileSystem::Realistic.point3_distance(pos1, pos2)),
-      Distance::from_meters(test_distance as f32)
+      u32units::Length::new::<meter>(test_distance as u32)
     );
   }
 
@@ -536,7 +537,7 @@ pub mod test {
     let pos2 = Point3::new(1, 0, 0);
     assert_eq!(
       TileSystem::Realistic.point3_distance(pos1, pos2),
-      Distance(cm(100))
+      cm(100)
     );
   }
 
@@ -544,10 +545,7 @@ pub mod test {
   fn test_diagonal_distance() {
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(1, 1, 0);
-    assert_eq!(
-      TileSystem::Realistic.point3_distance(pos1, pos2),
-      Distance::from_meters(2.0f32.sqrt())
-    );
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), cm(141));
   }
 
   #[test]
@@ -592,7 +590,7 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).cm(),
+      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
       u32::max_value(),
       vec![success],
     );
@@ -612,7 +610,7 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).cm(),
+      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
       499,
       vec![success],
     );
@@ -627,7 +625,7 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).cm(),
+      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
       500,
       vec![success],
     );
@@ -660,7 +658,7 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).cm(),
+      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
       u32::max_value(),
       successes,
     );
@@ -681,7 +679,7 @@ pub mod test {
         Point3::new(0, 0, 0),
         &terrain,
         size,
-        Distance(cm(1000))
+        cm(1000)
       ),
       vec![]
     );
@@ -696,7 +694,7 @@ pub mod test {
       Point3::new(0, 0, 0),
       &terrain,
       size,
-      Distance(cm(100)),
+      cm(100),
     );
     pts.sort();
     let mut expected = vec![
@@ -718,7 +716,7 @@ pub mod test {
       Point3::new(0, 0, 0),
       &terrain,
       size,
-      Distance(cm(141)),
+      cm(141),
     );
     pts.sort();
     let mut expected = vec![
@@ -743,7 +741,7 @@ pub mod test {
       Point3::new(0, 0, 0),
       &terrain,
       size,
-      Distance(cm(1000)),
+      cm(1000),
     );
     // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
     // 8 degrees of movement, which leaves certain positions within a circle impossible to
@@ -754,7 +752,7 @@ pub mod test {
   #[test]
   fn items_within_volume() {
     let ts = TileSystem::Realistic;
-    let vol = Volume::Sphere(Distance(cm(500)));
+    let vol = Volume::Sphere(cm(500));
     let vol_pt = Point3::new(4, 4, 0);
     let items = hashmap!{
       "Elron" => Point3::new(-1, 0, 0),
@@ -770,11 +768,11 @@ pub mod test {
         "Checking distance between {:?} and {:?}: {:?}",
         result_pos, vol_pt, dist
       );
-      assert!(dist <= Distance(cm(500)));
+      assert!(dist <= cm(500));
     }
     for (item, item_pos) in items.iter() {
       if !results.contains(item) {
-        assert!(ts.point3_distance(*item_pos, vol_pt) > Distance(cm(500)))
+        assert!(ts.point3_distance(*item_pos, vol_pt) > cm(500))
       }
     }
   }
@@ -801,7 +799,7 @@ pub mod test {
     let line = line_through_point(
       Point3::new(0, 0, 0),
       Point3::new(1, 0, 0),
-      Distance(cm(200)),
+      cm(200),
     );
     match line {
       Volume::Line { vector } => assert_eq!(vector, (200, 0, 0)),
@@ -814,7 +812,7 @@ pub mod test {
     let line = line_through_point(
       Point3::new(0, 0, 0),
       Point3::new(2, 1, 0),
-      Distance(cm(1000)),
+      cm(1000),
     );
     match line {
       Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
@@ -829,7 +827,7 @@ pub mod test {
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
     let path = ts.find_path(
       Point3::new(0, 0, 0),
-      Distance(cm(1000)),
+      cm(1000),
       &dumbbell,
       big_guy,
       Point3::new(3, 0, 0),
@@ -845,7 +843,7 @@ pub mod test {
     let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
     let path = ts.find_path(
       Point3::new(0, 0, 0),
-      Distance(cm(1000)),
+      cm(1000),
       &dumbbell,
       big_guy,
       Point3::new(3, 0, 0),
@@ -860,7 +858,7 @@ pub mod test {
           Point3::new(3, 1, 0),
           Point3::new(3, 0, 0),
         ],
-        Distance(cm(441))
+        cm(441)
       ))
     );
   }

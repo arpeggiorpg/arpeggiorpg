@@ -151,14 +151,14 @@ mod test {
 
   pub fn t_app() -> App { App::new(t_game()) }
 
-  pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {
-    perf(app, GameCommand::CombatAct(ab, dtarget))?;
-    Ok(())
-  }
-
   pub fn perf(app: &mut App, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
     app.perform_command(cmd, PathBuf::from(""))
   }
+
+  // pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {
+  //   perf(app, GameCommand::CombatAct(ab, dtarget))?;
+  //   Ok(())
+  // }
 
   //  #[bench]
   //  fn three_char_infinite_combat(bencher: &mut Bencher) {

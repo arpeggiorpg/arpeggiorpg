@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use num::{Saturating, Zero};
+use num::{Saturating};
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
@@ -30,14 +30,6 @@ pub mod u32units {
 }
 
 pub fn cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
-
-pub mod i64units {
-  ISQ!(
-    uom::si,
-    i64,
-    (centimeter, gram, second, ampere, kelvin, mole, candela)
-  );
-}
 
 /// Point3 defines a 3d position in meters.
 pub type VectorCM = (i32, i32, i32);
@@ -267,25 +259,25 @@ impl ::std::str::FromStr for ClassID {
 }
 
 /// Distance in centimeters.
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Serialize,
-         Deserialize)]
-pub struct Distance(pub u32units::Length);
-impl Distance {
-  /// Convert meters as a f32 to a Distance.
-  pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
-  pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
-  pub fn cm(&self) -> u32 { self.0.get(centimeter) }
-}
+// #[derive(Add, Sub, Mul, Div, Clone, Copy, Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Serialize,
+//          Deserialize)]
+// pub struct Distance(pub u32units::Length);
+// impl Distance {
+//   /// Convert meters as a f32 to a Distance.
+//   pub fn from_meters(x: f32) -> Distance { Distance(cm((x * 100.0) as u32)) }
+//   pub fn to_meters(&self) -> f32 { self.cm() as f32 / 100.0 }
+//   pub fn cm(&self) -> u32 { self.0.get(centimeter) }
+// }
 
-impl Saturating for Distance {
-  fn saturating_add(self, v: Self) -> Self { Distance(self.0.saturating_add(v.0)) }
-  fn saturating_sub(self, v: Self) -> Self { Distance(self.0.saturating_sub(v.0))}
-}
+// impl Saturating for Distance {
+//   fn saturating_add(self, v: Self) -> Self { Distance(self.0.saturating_add(v.0)) }
+//   fn saturating_sub(self, v: Self) -> Self { Distance(self.0.saturating_sub(v.0))}
+// }
 
-impl Zero for Distance {
-  fn zero() -> Self { Distance(u32units::Length::zero()) }
-  fn is_zero(&self) -> bool { self.0.is_zero() }
-}
+// impl Zero for Distance {
+//   fn zero() -> Self { Distance(u32units::Length::zero()) }
+//   fn is_zero(&self) -> bool { self.0.is_zero() }
+// }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
@@ -555,7 +547,7 @@ pub enum CreatureLog {
 /// Representation of state changes in a Combat. See `CreatureLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
-  ConsumeMovement(Distance),
+  ConsumeMovement(u32units::Length),
   ChangeCreatureInitiative(CreatureID, i16),
   EndTurn(CreatureID), // the end of this creature's turn
   ForceNextTurn,
@@ -837,24 +829,24 @@ pub enum Action {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureTarget {
   Melee,
-  Range(Distance),
+  Range(u32units::Length),
   Actor,
   /// A *piercing* line, from an actor, which is always a fixed length.
   /// When targeted at a point, it will continue through any creatures up to *and past* that point,
   /// up to the maximum distance.
   LineFromActor {
-    distance: Distance,
+    distance: u32units::Length,
   },
-  // LineFromActorToCreature{ distance: Distance },
+  // LineFromActorToCreature{ distance: u32units::Length },
   SomeCreaturesInVolumeInRange {
     volume: Volume,
     /// maximum number of creatures that can be hit
     maximum: u8,
-    range: Distance,
+    range: u32units::Length,
   },
   AllCreaturesInVolumeInRange {
     volume: Volume,
-    range: Distance,
+    range: u32units::Length,
   },
 }
 
@@ -863,7 +855,7 @@ pub enum CreatureTarget {
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
-  RangedVolume { volume: Volume, range: Distance },
+  RangedVolume { volume: Volume, range: u32units::Length },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -933,9 +925,9 @@ pub struct AppliedCondition {
 /// Volume describes a volume in 3d space at an implied origin point.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Volume {
-  Sphere(Distance),
+  Sphere(u32units::Length),
   Line { vector: VectorCM },
-  VerticalCylinder { radius: Distance, height: Distance },
+  VerticalCylinder { radius: u32units::Length, height: u32units::Length },
   // An Axis-Aligned Bounding Box, origin at top-left,
   // with x going east, y going south, and z going up.
   AABB(AABB),
@@ -995,7 +987,7 @@ pub struct CreatureCreation {
 pub struct Creature {
   pub id: CreatureID,
   pub name: String,
-  pub speed: Distance,
+  pub speed: u32units::Length,
   pub max_energy: Energy,
   pub cur_energy: Energy,
   pub abilities: IndexedHashMap<AbilityStatus>,
@@ -1035,7 +1027,7 @@ pub struct AttrID(pub String);
 pub struct Combat {
   pub scene: SceneID,
   pub creatures: nonempty::NonEmptyWithCursor<(CreatureID, i16)>,
-  pub movement_used: Distance,
+  pub movement_used: u32units::Length,
 }
 
 impl DeriveKey for Creature {
@@ -1403,7 +1395,7 @@ pub mod test {
       cost: Energy(0),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::Range(Distance::from_meters(5.0)),
+        target: CreatureTarget::Range(cm(500)),
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }
@@ -1416,7 +1408,7 @@ pub mod test {
       cost: Energy(0),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::Range(Distance::from_meters(5.0)),
+        target: CreatureTarget::Range(cm(500)),
         effect: CreatureEffect::Heal(Dice::flat(3)),
       },
     }
@@ -1430,8 +1422,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::Creature {
         target: CreatureTarget::AllCreaturesInVolumeInRange {
-          volume: Volume::Sphere(Distance::from_meters(10.0)),
-          range: Distance::from_meters(20.0),
+          volume: Volume::Sphere(cm(1000)),
+          range: cm(2000),
         },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
@@ -1446,7 +1438,7 @@ pub mod test {
       usable_ooc: true,
       action: Action::Creature {
         target: CreatureTarget::LineFromActor {
-          distance: Distance::from_meters(10.0),
+          distance: cm(1000),
         },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
@@ -1461,8 +1453,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::SceneVolume {
         target: SceneTarget::RangedVolume {
-          volume: Volume::Sphere(Distance(cm(200))),
-          range: Distance(cm(1000)),
+          volume: Volume::Sphere(cm(200)),
+          range: cm(1000),
         },
         effect: SceneEffect::CreateVolumeCondition {
           duration: Duration::Interminate,
