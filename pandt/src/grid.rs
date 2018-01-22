@@ -522,24 +522,6 @@ pub mod test {
   }
 
   #[test]
-  fn test_biggest_distance() {
-    let pos1 = Point3::new(i16::min_value(), i16::min_value(), i16::min_value());
-    let pos2 = Point3::new(i16::max_value(), i16::max_value(), i16::max_value());
-    println!("pos1: {:?};\npos2: {:?}", pos1, pos2);
-
-    let pos1p = (pos1.x as f64, pos1.y as f64, pos1.z as f64);
-    let pos2p = (pos2.x as f64, pos2.y as f64, pos2.z as f64);
-    let test_distance = ((pos1p.0 - pos2p.0).powi(2) + (pos1p.1 - pos2p.1).powi(2)
-      + (pos1p.2 - pos2p.2).powi(2))
-      .sqrt();
-    println!("My calculated distance: {:?};", test_distance);
-    assert_eq!(
-      (TileSystem::Realistic.point3_distance(pos1, pos2)),
-      u32units::Length::new::<meter>(test_distance as u32)
-    );
-  }
-
-  #[test]
   fn test_simple_distance() {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = Point3::new(0, 0, 0);

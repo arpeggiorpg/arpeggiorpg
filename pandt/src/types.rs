@@ -29,7 +29,7 @@ pub mod u32units {
   );
 }
 
-pub fn u32cm<T: Into<u32>>(v: T) -> u32units::Length { u32units::Length::new::<centimeter>(v.into()) }
+pub fn u32cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
 
 pub mod i64units {
   ISQ!(
