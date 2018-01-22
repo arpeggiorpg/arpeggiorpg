@@ -29,27 +29,44 @@ pub mod u32units {
   );
 }
 
-pub fn u32cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
+pub fn u32cm<T: Into<u32>>(v: T) -> u32units::Length { u32units::Length::new::<centimeter>(v.into()) }
+
+pub mod i64units {
+  ISQ!(
+    uom::si,
+    i64,
+    (centimeter, gram, second, ampere, kelvin, mole, candela)
+  );
+}
+
+pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new::<centimeter>(v.into()) }
 
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
 
+/// Point3 holds a position in 3d space in meters (FOR NOW --radix)
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Point3 {
-  pub x: i16,
-  pub y: i16,
-  pub z: i16,
+  pub x: i64units::Length,
+  pub y: i64units::Length,
+  pub z: i64units::Length,
 }
 
 impl Point3 {
-  pub fn new(x: i16, y: i16, z: i16) -> Point3 { Point3 { x, y, z } }
+  pub fn new(x: i64, y: i64, z: i64) -> Point3 {
+    Point3 { x: i64cm(x), y: i64cm(y), z: i64cm(z) }
+  }
+  pub fn from_quantities(x: i64units::Length, y: i64units::Length, z: i64units::Length) -> Self {
+    Point3 { x, y, z }
+  }
+
 }
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "{}/{}/{}", self.x, self.y, self.z)
+    write!(f, "{}/{}/{}", self.x.get(centimeter), self.y.get(centimeter), self.z.get(centimeter))
   }
 }
 
@@ -61,9 +78,9 @@ impl ::std::str::FromStr for Point3 {
       bail!("Bad Point3 syntax")
     }
     match (
-      segments[0].parse::<i16>(),
-      segments[1].parse::<i16>(),
-      segments[2].parse::<i16>(),
+      segments[0].parse::<i64>(),
+      segments[1].parse::<i64>(),
+      segments[2].parse::<i64>(),
     ) {
       (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
       _ => bail!("Bad Point3 syntax"),
@@ -102,10 +119,10 @@ pub struct AABB {
 
 impl AABB {
   pub fn get_max(&self, pt: Point3) -> Point3 {
-    Point3::new(
-      pt.x + i16::from(self.x),
-      pt.y + i16::from(self.y),
-      pt.z + i16::from(self.z),
+    Point3::from_quantities(
+      pt.x + i64cm(self.x),
+      pt.y + i64cm(self.y),
+      pt.z + i64cm(self.z),
     )
   }
 }
