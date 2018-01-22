@@ -416,7 +416,7 @@ pub mod test {
       .game;
     assert_eq!(
       next_game.get_combat().unwrap().combat.movement_used,
-      cm(400)
+      u32cm(400)
     );
   }
 }

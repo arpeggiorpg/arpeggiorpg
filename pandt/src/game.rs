@@ -1827,7 +1827,7 @@ pub mod test {
   #[test]
   fn test_creatures_in_sphere() {
     let game = t_game();
-    let volume = Volume::Sphere(cm(200));
+    let volume = Volume::Sphere(u32cm(200));
     let pt = Point3::new(5, 0, 0);
 
     let game = t_perform(
@@ -1849,8 +1849,8 @@ pub mod test {
   fn test_sphere_targets() {
     let game = t_game();
     let target_spec = CreatureTarget::AllCreaturesInVolumeInRange {
-      range: cm(1000),
-      volume: Volume::Sphere(cm(200)),
+      range: u32cm(1000),
+      volume: Volume::Sphere(u32cm(200)),
     };
     let pt = Point3::new(5, 0, 0);
 
@@ -1875,7 +1875,7 @@ pub mod test {
   #[test]
   fn test_line_targets() {
     let game = t_game();
-    let target_spec = CreatureTarget::LineFromActor { distance: cm(1000) };
+    let target_spec = CreatureTarget::LineFromActor { distance: u32cm(1000) };
     let pt = Point3::new(1, 0, 0);
 
     let game = t_perform(

@@ -29,9 +29,8 @@ pub mod u32units {
   );
 }
 
-pub fn cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
+pub fn u32cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
 
-/// Point3 defines a 3d position in meters.
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
@@ -1382,7 +1381,7 @@ pub mod test {
       cost: Energy(0),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::Range(cm(500)),
+        target: CreatureTarget::Range(u32cm(500)),
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }
@@ -1395,7 +1394,7 @@ pub mod test {
       cost: Energy(0),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::Range(cm(500)),
+        target: CreatureTarget::Range(u32cm(500)),
         effect: CreatureEffect::Heal(Dice::flat(3)),
       },
     }
@@ -1409,8 +1408,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::Creature {
         target: CreatureTarget::AllCreaturesInVolumeInRange {
-          volume: Volume::Sphere(cm(1000)),
-          range: cm(2000),
+          volume: Volume::Sphere(u32cm(1000)),
+          range: u32cm(2000),
         },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
@@ -1424,7 +1423,7 @@ pub mod test {
       cost: Energy(8),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::LineFromActor { distance: cm(1000) },
+        target: CreatureTarget::LineFromActor { distance: u32cm(1000) },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }
@@ -1438,8 +1437,8 @@ pub mod test {
       usable_ooc: true,
       action: Action::SceneVolume {
         target: SceneTarget::RangedVolume {
-          volume: Volume::Sphere(cm(200)),
-          range: cm(1000),
+          volume: Volume::Sphere(u32cm(200)),
+          range: u32cm(1000),
         },
         effect: SceneEffect::CreateVolumeCondition {
           duration: Duration::Interminate,

@@ -130,7 +130,7 @@ mod test {
     let cond_id = ConditionID::gen();
     let volume_cond = VolumeCondition {
       point: Point3::new(0, 0, 0),
-      volume: Volume::Sphere(cm(300)),
+      volume: Volume::Sphere(u32cm(300)),
       remaining: Duration::Interminate,
       condition: Condition::Dead,
     };
