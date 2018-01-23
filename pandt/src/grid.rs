@@ -1,6 +1,7 @@
 use std::cmp;
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use std::time;
 use bresenham;
 use odds::vec::VecExt;
 
@@ -44,12 +45,12 @@ fn na_iso(pt: Point3) -> Isometry3<f32> { Isometry3::new(na_vector(pt), na::zero
 
 fn na_point(pt: Point3) -> na::Point3<f32> {
   // this is a potential representation error: max i64 does not fit in f32.
-  na::Point3::new(pt.x.get(centimeter) as f32, pt.y.get(centimeter) as f32, pt.z.get(centimeter) as f32)
+  na::Point3::new(pt.x.value as f32, pt.y.value as f32, pt.z.value as f32)
 }
 
 fn na_vector(pt: Point3) -> Vector3<f32> {
   // this is a potential representation error: max i64 does not fit in f32.
-  Vector3::new(pt.x.get(centimeter) as f32, pt.y.get(centimeter) as f32, pt.z.get(centimeter) as f32)
+  Vector3::new(pt.x.value as f32, pt.y.value as f32, pt.z.value as f32)
 }
 
 fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
@@ -79,9 +80,9 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
   Point3::new(
     // TODO RADIX: actually treat Point3 as centimeters!
-    (pt.x.get(centimeter) * 100 + diff.0 as i64) / 100,
-    (pt.y.get(centimeter) * 100 + diff.1 as i64) / 100,
-    (pt.z.get(centimeter) * 100 + diff.2 as i64) / 100,
+    (pt.x.value * 100 + diff.0 as i64) / 100,
+    (pt.y.value * 100 + diff.1 as i64) / 100,
+    (pt.z.value * 100 + diff.2 as i64) / 100,
   )
 }
 
@@ -104,7 +105,7 @@ impl TileSystem {
         let xdiff = (pos1.x - pos2.x).abs();
         let ydiff = (pos1.y - pos2.y).abs();
         // TODO radix treat point3s as centimeters
-        u32cm((cmp::max(xdiff, ydiff) * 100).get(centimeter) as u32)
+        u32cm((cmp::max(xdiff, ydiff) * 100).value as u32)
       }
     }
   }
@@ -133,8 +134,8 @@ impl TileSystem {
         let dest = point3_add_vec(pt, vector);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
           bresenham::Bresenham::new(
-            (pt.x.get(centimeter) as isize, pt.y.get(centimeter) as isize),
-            (dest.x.get(centimeter) as isize, dest.y.get(centimeter) as isize),
+            (pt.x.value as isize, pt.y.value as isize),
+            (dest.x.value as isize, dest.y.value as isize),
           ).map(|(x, y)| Point3::new(x as i64, y as i64, 0)),
         );
         for (item, item_pos) in items {
@@ -151,11 +152,11 @@ impl TileSystem {
   pub fn open_points_in_range(
     &self, start: Point3, terrain: &Terrain, range: u32units::Length
   ) -> Vec<Point3> {
-    let cm: u32 = range.get(centimeter);
+    let cm: u32 = range.value;
     let meters = (cm / 100) as i64;
     let mut open = vec![];
-    for x in start.x.get(centimeter) - meters..start.x.get(centimeter) + meters + 1 {
-      for y in start.y.get(centimeter) - meters..start.y.get(centimeter) + meters + 1 {
+    for x in start.x.value - meters..start.x.value + meters + 1 {
+      for y in start.y.value - meters..start.y.value + meters + 1 {
         let end_point = Point3::new(x, y, 0);
         if !is_open(terrain, end_point) {
           continue;
@@ -170,6 +171,7 @@ impl TileSystem {
   pub fn get_all_accessible(
     &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
   ) -> Vec<Point3> {
+    
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
@@ -179,13 +181,18 @@ impl TileSystem {
       }
     }
     let mut final_points = vec![];
-    for (path, cost) in astar_multi(
+    let start_time = time::Instant::now();
+    let path_result = astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).get(centimeter),
-      speed.get(centimeter),
+      |n| self.point3_distance(start, *n).value,
+      speed.value,
       success_fns,
-    ) {
+    );
+    let end_time = time::Instant::now();
+    println!("astar_multi time: {:?}", end_time - start_time);
+
+    for (path, cost) in path_result {
       if u32cm(cost) <= speed {
         // FIXME: we should NOT be checking cost here, instead astar_multi should support
         // max distance.
@@ -205,8 +212,8 @@ impl TileSystem {
     let result: Vec<(Vec<Point3>, u32)> = astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).get(centimeter),
-      speed.get(centimeter),
+      |n| self.point3_distance(start, *n).value,
+      speed.value,
       vec![success],
     );
     if let Some((path, cost)) = result.into_iter().next() {
@@ -230,10 +237,10 @@ impl TileSystem {
         unimplemented!("unimplemented: points_in_volume for Sphere");
       }
         // sadly uom doesn't implement Step for Quantity
-      Volume::AABB(aabb) => (pt.x.get(centimeter)..(pt.x.get(centimeter) + i64::from(aabb.x)))
+      Volume::AABB(aabb) => (pt.x.value..(pt.x.value + i64::from(aabb.x)))
         .flat_map(|x| {
-          (pt.y.get(centimeter)..(pt.y.get(centimeter) + i64::from(aabb.y))).flat_map(move |y| {
-            (pt.z.get(centimeter)..(pt.z.get(centimeter) + i64::from(aabb.z))).map(move |z| Point3::new(x, y, z))
+          (pt.y.value..(pt.y.value + i64::from(aabb.y))).flat_map(move |y| {
+            (pt.z.value..(pt.z.value + i64::from(aabb.z))).map(move |z| Point3::new(x, y, z))
           })
         })
         .collect(),
@@ -367,7 +374,7 @@ where
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
     Volume::Sphere(r) => {
-      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f32 / 100.0))
+      shape::ShapeHandle3::new(shape::Ball::new(r.value as f32 / 100.0))
     }
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f32::from(aabb.x) / 100.0) / 2.0,
@@ -581,7 +588,7 @@ pub mod test {
       |n| {
         TileSystem::Realistic
           .point3_distance(start, *n)
-          .get(centimeter)
+          .value
       },
       u32::max_value(),
       vec![success],
@@ -605,7 +612,7 @@ pub mod test {
       |n| {
         TileSystem::Realistic
           .point3_distance(start, *n)
-          .get(centimeter)
+          .value
       },
       499,
       vec![success],
@@ -624,7 +631,7 @@ pub mod test {
       |n| {
         TileSystem::Realistic
           .point3_distance(start, *n)
-          .get(centimeter)
+          .value
       },
       500,
       vec![success],
@@ -661,7 +668,7 @@ pub mod test {
       |n| {
         TileSystem::Realistic
           .point3_distance(start, *n)
-          .get(centimeter)
+          .value
       },
       u32::max_value(),
       successes,
