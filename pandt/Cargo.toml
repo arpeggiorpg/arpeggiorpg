@@ -5,6 +5,7 @@ authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dev-dependencies]
 serde_json = "1.0.2"
+criterion = "0.1.2"
 
 [dependencies]
 bresenham = "0.1.1"
@@ -28,6 +29,12 @@ uuid = {version = "0.5", features = ["v4", "serde"]}
 
 [dependencies.uom]
 # version = "0.16"
-git = "https://github.com/iliekturtles/uom"
-rev = "e10f7ecf31ecc9c49f9909419566629892cd4dfc"
+git = "https://github.com/radix/uom"
+# my fork of uom which disables inter-type comparisons
+rev = "beb230d12b0bdf485cdb0921eecdc0e51db17845"
 features = ["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64", "serde"]
+
+
+[[bench]]
+name = "uom_ops"
+harness = false
