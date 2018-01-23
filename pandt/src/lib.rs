@@ -10,7 +10,8 @@ extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate nalgebra;
 extern crate ncollide;
 extern crate nonempty;

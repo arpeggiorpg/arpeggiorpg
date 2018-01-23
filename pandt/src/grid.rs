@@ -14,8 +14,8 @@ use ncollide::world;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
-use types::{i64cm, u32cm, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
-            VectorCM, Volume, VolumeCondition, u32units};
+use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
+            VectorCM, Volume, VolumeCondition, i64cm, u32cm, u32units};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -171,7 +171,6 @@ impl TileSystem {
   pub fn get_all_accessible(
     &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
   ) -> Vec<Point3> {
-    
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     // println!("Number of points to check: {:?}", points_to_check.len());
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
@@ -236,7 +235,7 @@ impl TileSystem {
       Volume::Sphere(..) => {
         unimplemented!("unimplemented: points_in_volume for Sphere");
       }
-        // sadly uom doesn't implement Step for Quantity
+      // sadly uom doesn't implement Step for Quantity
       Volume::AABB(aabb) => (pt.x.value..(pt.x.value + i64::from(aabb.x)))
         .flat_map(|x| {
           (pt.y.value..(pt.y.value + i64::from(aabb.y))).flat_map(move |y| {
@@ -373,9 +372,7 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
   match volume {
-    Volume::Sphere(r) => {
-      shape::ShapeHandle3::new(shape::Ball::new(r.value as f32 / 100.0))
-    }
+    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.value as f32 / 100.0)),
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f32::from(aabb.x) / 100.0) / 2.0,
       (f32::from(aabb.y) / 100.0) / 2.0,
@@ -533,14 +530,20 @@ pub mod test {
     // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(1, 0, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), u32cm(100));
+    assert_eq!(
+      TileSystem::Realistic.point3_distance(pos1, pos2),
+      u32cm(100)
+    );
   }
 
   #[test]
   fn test_diagonal_distance() {
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(1, 1, 0);
-    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), u32cm(141));
+    assert_eq!(
+      TileSystem::Realistic.point3_distance(pos1, pos2),
+      u32cm(141)
+    );
   }
 
   #[test]
@@ -585,11 +588,7 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .value
-      },
+      |n| TileSystem::Realistic.point3_distance(start, *n).value,
       u32::max_value(),
       vec![success],
     );
@@ -609,11 +608,7 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .value
-      },
+      |n| TileSystem::Realistic.point3_distance(start, *n).value,
       499,
       vec![success],
     );
@@ -628,11 +623,7 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .value
-      },
+      |n| TileSystem::Realistic.point3_distance(start, *n).value,
       500,
       vec![success],
     );
@@ -665,11 +656,7 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .value
-      },
+      |n| TileSystem::Realistic.point3_distance(start, *n).value,
       u32::max_value(),
       successes,
     );

@@ -1875,7 +1875,9 @@ pub mod test {
   #[test]
   fn test_line_targets() {
     let game = t_game();
-    let target_spec = CreatureTarget::LineFromActor { distance: u32cm(1000) };
+    let target_spec = CreatureTarget::LineFromActor {
+      distance: u32cm(1000),
+    };
     let pt = Point3::new(1, 0, 0);
 
     let game = t_perform(

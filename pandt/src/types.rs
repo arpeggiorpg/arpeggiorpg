@@ -39,7 +39,9 @@ pub mod i64units {
   );
 }
 
-pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new::<centimeter>(v.into()) }
+pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
+  i64units::Length::new::<centimeter>(v.into())
+}
 
 pub type VectorCM = (i32, i32, i32);
 pub type Color = String;
@@ -56,17 +58,26 @@ pub struct Point3 {
 
 impl Point3 {
   pub fn new(x: i64, y: i64, z: i64) -> Point3 {
-    Point3 { x: i64cm(x), y: i64cm(y), z: i64cm(z) }
+    Point3 {
+      x: i64cm(x),
+      y: i64cm(y),
+      z: i64cm(z),
+    }
   }
   pub fn from_quantities(x: i64units::Length, y: i64units::Length, z: i64units::Length) -> Self {
     Point3 { x, y, z }
   }
-
 }
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "{}/{}/{}", self.x.get(centimeter), self.y.get(centimeter), self.z.get(centimeter))
+    write!(
+      f,
+      "{}/{}/{}",
+      self.x.get(centimeter),
+      self.y.get(centimeter),
+      self.z.get(centimeter)
+    )
   }
 }
 
@@ -1440,7 +1451,9 @@ pub mod test {
       cost: Energy(8),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::LineFromActor { distance: u32cm(1000) },
+        target: CreatureTarget::LineFromActor {
+          distance: u32cm(1000),
+        },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }
