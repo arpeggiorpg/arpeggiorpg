@@ -41,19 +41,19 @@ use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrai
 // 113511.68172483394 -- as an integer, requires a (signed-ok) 32.
 // so we need a i32/u32 for the result, and we need to use a i64/u64 for the calculation.
 
-fn na_iso(pt: Point3) -> Isometry3<f32> { Isometry3::new(na_vector(pt), na::zero()) }
+fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero()) }
 
-fn na_point(pt: Point3) -> na::Point3<f32> {
-  // this is a potential representation error: max i64 does not fit in f32.
-  na::Point3::new(pt.x.get(centimeter) as f32, pt.y.get(centimeter) as f32, pt.z.get(centimeter) as f32)
+fn na_point(pt: Point3) -> na::Point3<f64> {
+  // this is a potential representation error: max i64 does not fit in f64.
+  na::Point3::new(pt.x.get(centimeter) as f64, pt.y.get(centimeter) as f64, pt.z.get(centimeter) as f64)
 }
 
-fn na_vector(pt: Point3) -> Vector3<f32> {
-  // this is a potential representation error: max i64 does not fit in f32.
-  Vector3::new(pt.x.get(centimeter) as f32, pt.y.get(centimeter) as f32, pt.z.get(centimeter) as f32)
+fn na_vector(pt: Point3) -> Vector3<f64> {
+  // this is a potential representation error: max i64 does not fit in f64.
+  Vector3::new(pt.x.get(centimeter) as f64, pt.y.get(centimeter) as f64, pt.z.get(centimeter) as f64)
 }
 
-fn na_vector_to_vector_cm(v: Vector3<f32>) -> VectorCM {
+fn na_vector_to_vector_cm(v: Vector3<f64>) -> VectorCM {
   (
     (v[0] * 100.0) as i32,
     (v[1] * 100.0) as i32,
@@ -65,7 +65,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Len
   let offset = point3_difference(clicked, origin);
   let mut navec = na_vector(offset);
   navec.normalize_mut();
-  let new_vec = navec * length.get(meter) as f32;
+  let new_vec = navec * length.get(meter) as f64;
   Volume::Line {
     vector: na_vector_to_vector_cm(new_vec),
   }
@@ -370,13 +370,13 @@ where
   results
 }
 
-fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f32> {
+fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f64> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f32 / 100.0)),
+    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64 / 100.0)),
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
-      (f32::from(aabb.x) / 100.0) / 2.0,
-      (f32::from(aabb.y) / 100.0) / 2.0,
-      (f32::from(aabb.z) / 100.0) / 2.0,
+      (f64::from(aabb.x) / 100.0) / 2.0,
+      (f64::from(aabb.y) / 100.0) / 2.0,
+      (f64::from(aabb.z) / 100.0) / 2.0,
     ))),
     Volume::Line { .. } => unimplemented!("volume_to_na_shape for Line"),
     Volume::VerticalCylinder { .. } => unimplemented!("volume_to_na_shape for VerticalCylinder"),

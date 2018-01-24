@@ -1138,7 +1138,7 @@ pub struct Scene {
   pub focused_creatures: Vec<CreatureID>,
 }
 
-pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f32, CollisionData>;
+pub type CollisionWorld = ::ncollide::world::CollisionWorld3<f64, CollisionData>;
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum CollisionData {
