@@ -27,7 +27,7 @@ use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrai
 // Abilities like D&D's "fireball" and P&T's "thorn patch" should be "wrap-around-corner" AoE
 // effects: Fireball is a sphere and Thorn Patch is a Circle or VerticalCylinder{height=1}.
 //
-// These "crawl" out from the origin point and can go anywhere within the radius that has a valid
+// These "crawl" out from the origin point and can go anywhere within the radius that has a valid.
 // path. This could be implemented exactly the same way we implement potential walk-targets.
 // However, for 3d shapes this might get expensive...
 
@@ -55,9 +55,9 @@ fn na_vector(pt: Point3) -> Vector3<f64> {
 
 fn na_vector_to_vector_cm(v: Vector3<f64>) -> VectorCM {
   (
-    (v[0] * 100.0) as i32,
-    (v[1] * 100.0) as i32,
-    (v[2] * 100.0) as i32,
+    i64cm((v[0] * 100.0) as i64),
+    i64cm((v[1] * 100.0) as i64),
+    i64cm((v[2] * 100.0) as i64),
   )
 }
 
@@ -80,9 +80,9 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
   Point3::new(
     // TODO RADIX: actually treat Point3 as centimeters!
-    (pt.x.get(centimeter) * 100 + diff.0 as i64) / 100,
-    (pt.y.get(centimeter) * 100 + diff.1 as i64) / 100,
-    (pt.z.get(centimeter) * 100 + diff.2 as i64) / 100,
+    (pt.x.get(centimeter) * 100 + diff.0.get(centimeter)) / 100,
+    (pt.y.get(centimeter) * 100 + diff.1.get(centimeter)) / 100,
+    (pt.z.get(centimeter) * 100 + diff.2.get(centimeter)) / 100,
   )
 }
 
@@ -779,7 +779,7 @@ pub mod test {
   fn line_through_point_simple() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(1, 0, 0), u32cm(200));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, (200, 0, 0)),
+      Volume::Line { vector } => assert_eq!(vector, (i64cm(200), i64cm(0), i64cm(0))),
       _ => panic!("Expected Line"),
     }
   }
@@ -788,7 +788,7 @@ pub mod test {
   fn line_through_point_accuracy() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(2, 1, 0), u32cm(1000));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, (894, 447, 0)),
+      Volume::Line { vector } => assert_eq!(vector, (i64cm(894), i64cm(447), i64cm(0))),
       _ => panic!("Expected Line"),
     }
   }
