@@ -15,7 +15,7 @@ use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
 use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
-            VectorCM, Volume, VolumeCondition, i64cm, u32cm, u32units};
+            Volume, VolumeCondition, i64cm, u32cm, u32units};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -45,19 +45,27 @@ fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero
 
 fn na_point(pt: Point3) -> na::Point3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  na::Point3::new(pt.x.get(centimeter) as f64, pt.y.get(centimeter) as f64, pt.z.get(centimeter) as f64)
+  na::Point3::new(
+    pt.x.get(centimeter) as f64,
+    pt.y.get(centimeter) as f64,
+    pt.z.get(centimeter) as f64,
+  )
 }
 
 fn na_vector(pt: Point3) -> Vector3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  Vector3::new(pt.x.get(centimeter) as f64, pt.y.get(centimeter) as f64, pt.z.get(centimeter) as f64)
+  Vector3::new(
+    pt.x.get(centimeter) as f64,
+    pt.y.get(centimeter) as f64,
+    pt.z.get(centimeter) as f64,
+  )
 }
 
-fn na_vector_to_vector_cm(v: Vector3<f64>) -> VectorCM {
-  (
-    i64cm((v[0] * 100.0) as i64),
-    i64cm((v[1] * 100.0) as i64),
-    i64cm((v[2] * 100.0) as i64),
+fn na_vector_to_point3(v: Vector3<f64>) -> Point3 {
+  Point3::new(
+    (v[0] * 100.0) as i64,
+    (v[1] * 100.0) as i64,
+    (v[2] * 100.0) as i64,
   )
 }
 
@@ -67,7 +75,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Len
   navec.normalize_mut();
   let new_vec = navec * length.get(meter) as f64;
   Volume::Line {
-    vector: na_vector_to_vector_cm(new_vec),
+    vector: na_vector_to_point3(new_vec),
   }
 }
 
@@ -77,12 +85,12 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
   Point3::from_quantities(pt1.x - pt2.x, pt1.y - pt2.y, pt1.z - pt2.z)
 }
 
-pub fn point3_add_vec(pt: Point3, diff: VectorCM) -> Point3 {
+pub fn point3_add_vec(pt: Point3, diff: Point3) -> Point3 {
   Point3::new(
     // TODO RADIX: actually treat Point3 as centimeters!
-    (pt.x.get(centimeter) * 100 + diff.0.get(centimeter)) / 100,
-    (pt.y.get(centimeter) * 100 + diff.1.get(centimeter)) / 100,
-    (pt.z.get(centimeter) * 100 + diff.2.get(centimeter)) / 100,
+    (pt.x.get(centimeter) * 100 + diff.x.get(centimeter)) / 100,
+    (pt.y.get(centimeter) * 100 + diff.y.get(centimeter)) / 100,
+    (pt.z.get(centimeter) * 100 + diff.z.get(centimeter)) / 100,
   )
 }
 
@@ -135,7 +143,10 @@ impl TileSystem {
         let line_pts: HashSet<Point3> = HashSet::from_iter(
           bresenham::Bresenham::new(
             (pt.x.get(centimeter) as isize, pt.y.get(centimeter) as isize),
-            (dest.x.get(centimeter) as isize, dest.y.get(centimeter) as isize),
+            (
+              dest.x.get(centimeter) as isize,
+              dest.y.get(centimeter) as isize,
+            ),
           ).map(|(x, y)| Point3::new(x as i64, y as i64, 0)),
         );
         for (item, item_pos) in items {
@@ -239,7 +250,8 @@ impl TileSystem {
       Volume::AABB(aabb) => (pt.x.get(centimeter)..(pt.x.get(centimeter) + i64::from(aabb.x)))
         .flat_map(|x| {
           (pt.y.get(centimeter)..(pt.y.get(centimeter) + i64::from(aabb.y))).flat_map(move |y| {
-            (pt.z.get(centimeter)..(pt.z.get(centimeter) + i64::from(aabb.z))).map(move |z| Point3::new(x, y, z))
+            (pt.z.get(centimeter)..(pt.z.get(centimeter) + i64::from(aabb.z)))
+              .map(move |z| Point3::new(x, y, z))
           })
         })
         .collect(),
@@ -372,7 +384,9 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f64> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64 / 100.0)),
+    Volume::Sphere(r) => {
+      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64 / 100.0))
+    }
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f64::from(aabb.x) / 100.0) / 2.0,
       (f64::from(aabb.y) / 100.0) / 2.0,
@@ -588,7 +602,11 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       u32::max_value(),
       vec![success],
     );
@@ -608,7 +626,11 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       499,
       vec![success],
     );
@@ -623,7 +645,11 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       500,
       vec![success],
     );
@@ -656,7 +682,11 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| TileSystem::Realistic.point3_distance(start, *n).get(centimeter),
+      |n| {
+        TileSystem::Realistic
+          .point3_distance(start, *n)
+          .get(centimeter)
+      },
       u32::max_value(),
       successes,
     );
@@ -779,7 +809,7 @@ pub mod test {
   fn line_through_point_simple() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(1, 0, 0), u32cm(200));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, (i64cm(200), i64cm(0), i64cm(0))),
+      Volume::Line { vector } => assert_eq!(vector, Point3::new(200, 0, 0)),
       _ => panic!("Expected Line"),
     }
   }
@@ -788,7 +818,7 @@ pub mod test {
   fn line_through_point_accuracy() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(2, 1, 0), u32cm(1000));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, (i64cm(894), i64cm(447), i64cm(0))),
+      Volume::Line { vector } => assert_eq!(vector, Point3::new(894, 447, 0)),
       _ => panic!("Expected Line"),
     }
   }

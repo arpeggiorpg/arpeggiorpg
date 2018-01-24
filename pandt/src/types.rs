@@ -43,7 +43,6 @@ pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
   i64units::Length::new::<centimeter>(v.into())
 }
 
-pub type VectorCM = (i64units::Length, i64units::Length, i64units::Length);
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
@@ -936,7 +935,7 @@ pub struct AppliedCondition {
 pub enum Volume {
   Sphere(u32units::Length),
   Line {
-    vector: VectorCM,
+    vector: Point3, // this Point3 is used as a relative offset, not from 0,0,0
   },
   VerticalCylinder {
     radius: u32units::Length,

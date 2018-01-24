@@ -16,7 +16,6 @@ export type HP = number;
 export type Energy = number;
 export type ConditionID = string;
 export type FolderPath = Array<string>;
-export type VectorCM = [number, number, number];
 export type Terrain = I.Set<Point3>;
 export type Highlights = I.Map<Point3, [Color, Visibility]>;
 export type Annotations = I.Map<Point3, [string, Visibility]>;
@@ -101,7 +100,7 @@ export type DecidedTarget =
 
 export type Volume =
   | { t: "Sphere"; radius: Distance }
-  | { t: "Line"; vector: VectorCM }
+  | { t: "Line"; vector: Point3 }
   | { t: "VerticalCylinder"; radius: Distance; height: Distance }
   | { t: "AABB"; aabb: AABB };
 
@@ -627,12 +626,10 @@ const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
     ({ name, background_image_url, background_image_scale, background_image_offset })
 );
 
-const decodeVectorCM: Decoder<VectorCM> = JD.tuple(JD.number(), JD.number(), JD.number());
-
 const decodeVolume: Decoder<Volume> = sum("Volume", {},
   {
     Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
-    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodeVectorCM),
+    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodePoint3),
     VerticalCylinder: JD.object(
       ["radius", JD.number()],
       ["height", JD.number()],
