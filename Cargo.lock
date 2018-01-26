@@ -928,7 +928,7 @@ dependencies = [
  "serde_derive 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "uom 0.16.0 (git+https://github.com/radix/uom?rev=beb230d12b0bdf485cdb0921eecdc0e51db17845)",
+ "uom 0.16.0 (git+https://github.com/radix/uom?rev=595b3aeb726c084cc56a837ab18b17cd6532edc4)",
  "uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1468,7 +1468,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "uom"
 version = "0.16.0"
-source = "git+https://github.com/radix/uom?rev=beb230d12b0bdf485cdb0921eecdc0e51db17845#beb230d12b0bdf485cdb0921eecdc0e51db17845"
+source = "git+https://github.com/radix/uom?rev=595b3aeb726c084cc56a837ab18b17cd6532edc4#595b3aeb726c084cc56a837ab18b17cd6532edc4"
 dependencies = [
  "num 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1734,7 +1734,7 @@ dependencies = [
 "checksum unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
 "checksum unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
 "checksum untrusted 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f392d7819dbe58833e26872f5f6f0d68b7bbbe90fc3667e98731c4a15ad9a7ae"
-"checksum uom 0.16.0 (git+https://github.com/radix/uom?rev=beb230d12b0bdf485cdb0921eecdc0e51db17845)" = "<none>"
+"checksum uom 0.16.0 (git+https://github.com/radix/uom?rev=595b3aeb726c084cc56a837ab18b17cd6532edc4)" = "<none>"
 "checksum url 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fa35e768d4daf1d85733418a49fb42e10d7f633e394fccab4ab7aba897053fe2"
 "checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
 "checksum uuid 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bcc7e3b898aa6f6c08e5295b6c89258d1331e9ac578cc992fb818759951bdc22"

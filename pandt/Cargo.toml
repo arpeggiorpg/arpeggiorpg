@@ -30,6 +30,6 @@ uuid = {version = "0.5", features = ["v4", "serde"]}
 [dependencies.uom]
 # version = "0.16"
 git = "https://github.com/radix/uom"
-# my fork of uom which disables inter-type comparisons
-rev = "beb230d12b0bdf485cdb0921eecdc0e51db17845"
+# my fork of uom which disables automatic conversion between types when performing basic operations
+rev = "595b3aeb726c084cc56a837ab18b17cd6532edc4"
 features = ["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64", "serde"]

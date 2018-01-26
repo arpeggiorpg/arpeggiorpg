@@ -107,13 +107,12 @@ impl TileSystem {
         let ncpos1 = na_iso(pos1);
         let ncpos2 = na_point(pos2);
         let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-        u32units::Length::new::<centimeter>((distance * 100.0) as u32)
+        u32units::Length::new::<centimeter>(distance as u32)
       }
       TileSystem::DnD => {
         let xdiff = (pos1.x - pos2.x).abs();
         let ydiff = (pos1.y - pos2.y).abs();
-        // TODO radix treat point3s as centimeters
-        u32cm((cmp::max(xdiff, ydiff) * 100).get(centimeter) as u32)
+        u32cm((cmp::max(xdiff, ydiff)).get(centimeter) as u32)
       }
     }
   }
@@ -247,14 +246,16 @@ impl TileSystem {
         unimplemented!("unimplemented: points_in_volume for Sphere");
       }
       // sadly uom doesn't implement Step for Quantity
-      Volume::AABB(aabb) => (pt.x.get(centimeter)..(pt.x.get(centimeter) + i64::from(aabb.x)))
-        .flat_map(|x| {
-          (pt.y.get(centimeter)..(pt.y.get(centimeter) + i64::from(aabb.y))).flat_map(move |y| {
-            (pt.z.get(centimeter)..(pt.z.get(centimeter) + i64::from(aabb.z)))
+      Volume::AABB(aabb) => {
+        let max = aabb.get_max(pt);
+        (pt.x.get(centimeter)..(max.x.get(centimeter))).flat_map(|x| {
+          (pt.y.get(centimeter)..(max.y.get(centimeter))).flat_map(move |y| {
+            (pt.z.get(centimeter)..(max.z.get(centimeter)))
               .map(move |z| Point3::new(x, y, z))
           })
         })
-        .collect(),
+        .collect()
+      }
       Volume::Line { .. } => unimplemented!("points_in_volume for Line"),
       Volume::VerticalCylinder { .. } => {
         unimplemented!("unimplemented: points_in_volume for VerticalCylinder")
@@ -385,12 +386,12 @@ where
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f64> {
   match volume {
     Volume::Sphere(r) => {
-      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64 / 100.0))
+      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64))
     }
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
-      (f64::from(aabb.x) / 100.0) / 2.0,
-      (f64::from(aabb.y) / 100.0) / 2.0,
-      (f64::from(aabb.z) / 100.0) / 2.0,
+      (f64::from(aabb.x.get(centimeter))) / 2.0,
+      (f64::from(aabb.y.get(centimeter))) / 2.0,
+      (f64::from(aabb.z.get(centimeter))) / 2.0,
     ))),
     Volume::Line { .. } => unimplemented!("volume_to_na_shape for Line"),
     Volume::VerticalCylinder { .. } => unimplemented!("volume_to_na_shape for VerticalCylinder"),
@@ -539,9 +540,16 @@ pub mod test {
     map
   }
 
+  fn medium_size() -> AABB {
+    AABB { x: u32cm(100), y: u32cm(100), z: u32cm(100)}
+  }
+
+  fn large_size() -> AABB {
+    AABB { x: u32cm(200), y: u32cm(200), z: u32cm(100)}
+  }
+
   #[test]
   fn test_simple_distance() {
-    // Points are in meters, so the distance between 0 and 1 should be 100 centimeters
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(100, 0, 0);
     assert_eq!(
@@ -563,7 +571,7 @@ pub mod test {
   #[test]
   fn test_neighbors() {
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let mut pts = TileSystem::Realistic.point3_neighbors(&terrain, size, Point3::new(0, 0, 0));
     pts.sort();
     let mut expected = vec![
@@ -584,7 +592,7 @@ pub mod test {
   #[test]
   fn test_neighbors_around_corners() {
     let terrain = vec![Point3::new(100, 0, 0)];
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let pts: Vec<Point3> = TileSystem::Realistic
       .point3_neighbors(&terrain, size, Point3::new(0, 0, 0))
       .iter()
@@ -598,7 +606,7 @@ pub mod test {
   fn pathfinding_astar_multi() {
     let start = Point3::new(0, 0, 0);
     let success = Box::new(|n: &Point3| *n == Point3::new(200, 200, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -622,7 +630,7 @@ pub mod test {
   fn astar_multi_max_cost() {
     let start = Point3::new(0, 0, 0);
     let success = Box::new(|n: &Point3| *n == Point3::new(500, 0, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -641,7 +649,7 @@ pub mod test {
   fn astar_multi_eq_max_cost() {
     let start = Point3::new(0, 0, 0);
     let success = Box::new(|n: &Point3| *n == Point3::new(5, 0, 0));
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -678,7 +686,7 @@ pub mod test {
       Box::new(|n: &Point3| *n == Point3::new(100, 100, 0)),
       Box::new(|n: &Point3| *n == Point3::new(-100, -100, 0)),
     ];
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
@@ -701,7 +709,7 @@ pub mod test {
   #[test]
   fn test_accessible_nowhere_to_go() {
     let terrain = box_map();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     assert_eq!(
       TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, u32cm(1000)),
       vec![]
@@ -712,7 +720,7 @@ pub mod test {
   fn test_accessible_small_limit() {
     // a speed of 100 means you can only move on the axes
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let mut pts =
       TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, u32cm(100));
     pts.sort();
@@ -730,7 +738,7 @@ pub mod test {
   fn test_accessible_less_small_limit() {
     // a speed of 141 means you can also move diagonally, but only once
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let mut pts =
       TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, u32cm(141));
     pts.sort();
@@ -751,7 +759,7 @@ pub mod test {
   #[test]
   fn test_accessible_average_speed() {
     let terrain = huge_box();
-    let size = Volume::AABB(AABB { x: 1, y: 1, z: 1 });
+    let size = Volume::AABB(medium_size());
     let pts =
       TileSystem::Realistic.get_all_accessible(Point3::new(0, 0, 0), &terrain, size, u32cm(1000));
     // NOTE: The reason this isn't 314 (pie are square of radius=100) is that we only allow
@@ -791,7 +799,7 @@ pub mod test {
   #[test]
   fn points_in_volume() {
     let ts = TileSystem::Realistic;
-    let vol = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let vol = Volume::AABB(large_size());
     let vol_pt = Point3::new(100, 100, 0);
     let results = ts.points_in_volume(vol, vol_pt);
     assert_eq!(
@@ -827,7 +835,7 @@ pub mod test {
   fn large_creature_cannot_fit_through_small_opening() {
     let ts = TileSystem::Realistic;
     let dumbbell = dumbbell_map();
-    let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let big_guy = Volume::AABB(large_size());
     let path = ts.find_path(
       Point3::new(0, 0, 0),
       u32cm(1000),
@@ -843,7 +851,7 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let mut dumbbell = dumbbell_map();
     dumbbell.push(Point3::new(200, 200, 0));
-    let big_guy = Volume::AABB(AABB { x: 2, y: 2, z: 1 });
+    let big_guy = Volume::AABB(large_size());
     let path = ts.find_path(
       Point3::new(0, 0, 0),
       u32cm(1000),
