@@ -46,18 +46,18 @@ fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero
 fn na_point(pt: Point3) -> na::Point3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
   na::Point3::new(
-    pt.x.get(centimeter) as f64,
-    pt.y.get(centimeter) as f64,
-    pt.z.get(centimeter) as f64,
+    pt.x.get(meter) as f64,
+    pt.y.get(meter) as f64,
+    pt.z.get(meter) as f64,
   )
 }
 
 fn na_vector(pt: Point3) -> Vector3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
   Vector3::new(
-    pt.x.get(centimeter) as f64,
-    pt.y.get(centimeter) as f64,
-    pt.z.get(centimeter) as f64,
+    pt.x.get(meter) as f64,
+    pt.y.get(meter) as f64,
+    pt.z.get(meter) as f64,
   )
 }
 
@@ -248,10 +248,10 @@ impl TileSystem {
       // sadly uom doesn't implement Step for Quantity
       Volume::AABB(aabb) => {
         let max = aabb.get_max(pt);
-        (pt.x.get(centimeter)..(max.x.get(centimeter))).flat_map(|x| {
-          (pt.y.get(centimeter)..(max.y.get(centimeter))).flat_map(move |y| {
-            (pt.z.get(centimeter)..(max.z.get(centimeter)))
-              .map(move |z| Point3::new(x, y, z))
+        (pt.x.get(meter)..(max.x.get(meter))).flat_map(|x| {
+          (pt.y.get(meter)..(max.y.get(meter))).flat_map(move |y| {
+            (pt.z.get(meter)..(max.z.get(meter)))
+              .map(move |z| Point3::new(x * 100, y * 100, z * 100))
           })
         })
         .collect()
@@ -276,31 +276,29 @@ impl TileSystem {
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.
   fn point3_neighbors(&self, terrain: &Terrain, volume: Volume, pt: Point3) -> Vec<(Point3, u32)> {
+    let diagonal_distance = match *self {
+      TileSystem::Realistic => 141,
+      TileSystem::DnD => 100
+    };
+    let straight_distance = match *self {
+      TileSystem::Realistic => 100,
+      // ok, this is ridiculous, but:
+      // since D&D movement makes diagonals cost the same as cardinals, the pathfinder
+      // will arbitrarily choose to move diagonally when a normal person would move in
+      // a straight line. By ever-so-slightly reducing the cost of straight lines here,
+      // we get it to prefer to move straight.
+      TileSystem::DnD => 99,
+    };
     let mut results = vec![];
-    for x in -1..2 {
-      for y in -1..2 {
+    for &x in [-100, 0, 100].into_iter() {
+      for &y in [-100, 0, 100].into_iter() {
         if (x, y) == (0, 0) {
           continue;
         }
         let neighbor = Point3::from_quantities(pt.x + i64cm(x), pt.y + i64cm(y), pt.z);
         if is_open(terrain, neighbor) && self.volume_fits_at_point(volume, terrain, neighbor) {
-          let is_angle = x.abs() == y.abs();
-          let cost = if is_angle {
-            match *self {
-              TileSystem::Realistic => 141,
-              TileSystem::DnD => 100,
-            }
-          } else {
-            match *self {
-              TileSystem::Realistic => 100,
-              // ok, this is ridiculous, but:
-              // since D&D movement makes diagonals cost the same as cardinals, the pathfinder
-              // will arbitrarily choose to move diagonally when a normal person would move in
-              // a straight line. By ever-so-slightly reducing the cost of straight lines here,
-              // we get it to prefer to move straight.
-              TileSystem::DnD => 99,
-            }
-          };
+          let is_angle = x.abs() == y.abs(); // there's probably a cheaper way to do this
+          let cost = if is_angle { diagonal_distance } else { straight_distance };
           // don't allow diagonal movement around corners
           if is_angle && !is_open(terrain, Point3::from_quantities(neighbor.x, pt.y, pt.z))
             || !is_open(terrain, Point3::from_quantities(pt.x, neighbor.y, pt.z))
