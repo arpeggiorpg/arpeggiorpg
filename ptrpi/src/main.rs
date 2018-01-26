@@ -398,29 +398,10 @@ fn main() {
 #[cfg(test)]
 mod test {
   use std::path::Path;
-  use Actor;
 
   #[test]
   fn load_samplegame_yaml() {
     ::load_app_from_path(Path::new("sample_games"), "samplegame.yaml").unwrap();
-  }
-
-  #[test]
-  fn actors() {
-    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
-    let actor = Actor::spawn(|| (), handler);
-    assert_eq!(actor.send(1), 2);
-    assert_eq!(actor.send(2), 3);
-    actor.stop()
-  }
-
-  #[test]
-  fn actor_clone() {
-    fn handler(_: &mut (), i: usize) -> usize { i + 1 }
-    let actor = Actor::spawn(|| (), handler);
-    assert_eq!(actor.send(1), 2);
-    assert_eq!(actor.clone().send(2), 3);
-    actor.stop()
   }
 
 }
