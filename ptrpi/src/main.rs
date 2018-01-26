@@ -346,6 +346,7 @@ impl actix_web::ResponseError for RPIError {
   }
 }
 
+// TODO: annihilate usage of Mutex, switch to actors
 #[derive(Clone)]
 pub struct PT {
   app: Arc<Mutex<App>>,
