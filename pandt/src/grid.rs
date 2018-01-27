@@ -107,12 +107,12 @@ impl TileSystem {
         let ncpos1 = na_iso(pos1);
         let ncpos2 = na_point(pos2);
         let distance = meaningless.distance_to_point(&ncpos1, &ncpos2, false);
-        u32units::Length::new::<centimeter>(distance as u32)
+        u32units::Length::new::<centimeter>((distance * 100.0) as u32)
       }
       TileSystem::DnD => {
         let xdiff = (pos1.x - pos2.x).abs();
         let ydiff = (pos1.y - pos2.y).abs();
-        u32cm((cmp::max(xdiff, ydiff)).get(centimeter) as u32)
+        u32cm(cmp::max(xdiff, ydiff).get(centimeter) as u32)
       }
     }
   }
