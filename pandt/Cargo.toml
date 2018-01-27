@@ -31,5 +31,6 @@ uuid = {version = "0.5", features = ["v4", "serde"]}
 # version = "0.16"
 git = "https://github.com/radix/uom"
 # my fork of uom which disables automatic conversion between types when performing basic operations
-rev = "595b3aeb726c084cc56a837ab18b17cd6532edc4"
-features = ["u8", "i8", "u16", "i16", "u32", "i32", "u64", "i64", "f32", "f64", "serde"]
+rev = "7f1b99cf050e3c126e94141e27f6efc58785d975"
+default-features = false
+features = ["u32", "i64", "serde", "si"]
