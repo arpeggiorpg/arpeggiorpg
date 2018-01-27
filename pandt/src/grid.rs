@@ -194,19 +194,16 @@ impl TileSystem {
       }
     }
     let mut final_points = vec![];
-    let start_time = time::Instant::now();
     let path_result = astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).get(centimeter),
-      speed.get(centimeter),
+      |n| self.point3_distance(start, *n),
+      speed,
       success_fns,
     );
-    let end_time = time::Instant::now();
-    println!("astar_multi time: {:?}", end_time - start_time);
 
     for (path, cost) in path_result {
-      if u32cm(cost) <= speed {
+      if cost <= speed {
         // FIXME: we should NOT be checking cost here, instead astar_multi should support
         // max distance.
         final_points.push(*path.last().unwrap())
@@ -222,15 +219,15 @@ impl TileSystem {
     destination: Point3,
   ) -> Option<(Vec<Point3>, u32units::Length)> {
     let success = Box::new(move |n: &Point3| *n == destination);
-    let result: Vec<(Vec<Point3>, u32)> = astar_multi(
+    let result = astar_multi(
       &start,
       |n| self.point3_neighbors(terrain, volume, *n),
-      |n| self.point3_distance(start, *n).get(centimeter),
-      speed.get(centimeter),
+      |n| self.point3_distance(start, *n),
+      speed,
       vec![success],
     );
     if let Some((path, cost)) = result.into_iter().next() {
-      Some((path, u32cm(cost)))
+      Some((path, cost))
     } else {
       None
     }
@@ -279,19 +276,19 @@ impl TileSystem {
   }
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.
-  fn point3_neighbors(&self, terrain: &Terrain, volume: Volume, pt: Point3) -> Vec<(Point3, u32)> {
+  fn point3_neighbors(&self, terrain: &Terrain, volume: Volume, pt: Point3) -> Vec<(Point3, u32units::Length)> {
     let diagonal_distance = match *self {
-      TileSystem::Realistic => 141,
-      TileSystem::DnD => 100
+      TileSystem::Realistic => u32cm(141),
+      TileSystem::DnD => u32cm(100)
     };
     let straight_distance = match *self {
-      TileSystem::Realistic => 100,
+      TileSystem::Realistic => u32cm(100),
       // ok, this is ridiculous, but:
       // since D&D movement makes diagonals cost the same as cardinals, the pathfinder
       // will arbitrarily choose to move diagonally when a normal person would move in
       // a straight line. By ever-so-slightly reducing the cost of straight lines here,
       // we get it to prefer to move straight.
-      TileSystem::DnD => 99,
+      TileSystem::DnD => u32cm(99),
     };
     let mut results = vec![];
     for &x in [-100, 0, 100].into_iter() {
@@ -444,7 +441,7 @@ pub fn astar_multi<N, C, FN, IN, FH>(
 ) -> Vec<(Vec<N>, C)>
 where
   N: Eq + Hash + Clone,
-  C: Zero + Ord + Copy + PartialEq + PartialOrd, // maybe relax these so floats can be used?
+  C: Zero + Ord + Copy + PartialEq + PartialOrd,
   FN: Fn(&N) -> IN,
   IN: IntoIterator<Item = (N, C)>,
   FH: Fn(&N) -> C,
@@ -577,14 +574,14 @@ pub mod test {
     let mut pts = TileSystem::Realistic.point3_neighbors(&terrain, size, Point3::new(0, 0, 0));
     pts.sort();
     let mut expected = vec![
-      (Point3::new(-100, 0, 0), 100),
-      (Point3::new(100, 0, 0), 100),
-      (Point3::new(0, -100, 0), 100),
-      (Point3::new(0, 100, 0), 100),
-      (Point3::new(-100, -100, 0), 141),
-      (Point3::new(100, 100, 0), 141),
-      (Point3::new(-100, 100, 0), 141),
-      (Point3::new(100, -100, 0), 141),
+      (Point3::new(-100, 0, 0), u32cm(100)),
+      (Point3::new(100, 0, 0), u32cm(100)),
+      (Point3::new(0, -100, 0), u32cm(100)),
+      (Point3::new(0, 100, 0), u32cm(100)),
+      (Point3::new(-100, -100, 0), u32cm(141)),
+      (Point3::new(100, 100, 0), u32cm(141)),
+      (Point3::new(-100, 100, 0), u32cm(141)),
+      (Point3::new(100, -100, 0), u32cm(141)),
     ];
     expected.sort();
     assert_eq!(pts, expected)
@@ -612,12 +609,8 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .get(centimeter)
-      },
-      u32::max_value(),
+      |n| TileSystem::Realistic.point3_distance(start, *n),
+      u32cm(u32::max_value()),
       vec![success],
     );
     let ex_path = vec![
@@ -625,7 +618,7 @@ pub mod test {
       Point3::new(100, 100, 0),
       Point3::new(200, 200, 0),
     ];
-    assert_eq!(paths_and_costs, [(ex_path, 282)]);
+    assert_eq!(paths_and_costs, [(ex_path, u32cm(282))]);
   }
 
   #[test]
@@ -636,12 +629,8 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .get(centimeter)
-      },
-      499,
+      |n| TileSystem::Realistic.point3_distance(start, *n),
+      u32cm(499),
       vec![success],
     );
     assert_eq!(result, vec![]);
@@ -655,12 +644,8 @@ pub mod test {
     let result = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .get(centimeter)
-      },
-      500,
+      |n| TileSystem::Realistic.point3_distance(start, *n),
+      u32cm(500),
       vec![success],
     );
     assert_eq!(
@@ -675,7 +660,7 @@ pub mod test {
             Point3::new(400, 0, 0),
             Point3::new(500, 0, 0),
           ],
-          500,
+          u32cm(500),
         ),
       ]
     );
@@ -692,19 +677,15 @@ pub mod test {
     let paths_and_costs = astar_multi(
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
-      |n| {
-        TileSystem::Realistic
-          .point3_distance(start, *n)
-          .get(centimeter)
-      },
-      u32::max_value(),
+      |n| TileSystem::Realistic.point3_distance(start, *n),
+      u32cm(u32::max_value()),
       successes,
     );
     let ex_path_positive = vec![Point3::new(0, 0, 0), Point3::new(100, 100, 0)];
     let ex_path_negative = vec![Point3::new(0, 0, 0), Point3::new(-100, -100, 0)];
     assert_eq!(
       paths_and_costs,
-      [(ex_path_positive, 141), (ex_path_negative, 141)]
+      [(ex_path_positive, u32cm(141)), (ex_path_negative, u32cm(141))]
     );
   }
 
