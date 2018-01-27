@@ -11,11 +11,12 @@ use ncollide::shape;
 use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
+use num::range_step;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
 use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
-            Volume, VolumeCondition, i64cm, u32cm, u32units};
+            Volume, VolumeCondition, i64cm, u32cm, u32units, up_length};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -162,11 +163,14 @@ impl TileSystem {
   pub fn open_points_in_range(
     &self, start: Point3, terrain: &Terrain, range: u32units::Length
   ) -> Vec<Point3> {
-    let cm: u32 = range.get(centimeter);
-    let meters = (cm / 100) as i64;
+    let range = up_length(range);
+    let lowx = start.x - range;
+    let highx = start.x + range + i64cm(1);
+    let lowy = start.y - range;
+    let highy = start.y + range + i64cm(1);
     let mut open = vec![];
-    for x in start.x.get(centimeter) - meters..start.x.get(centimeter) + meters + 1 {
-      for y in start.y.get(centimeter) - meters..start.y.get(centimeter) + meters + 1 {
+    for x in range_step(lowx.get(centimeter), highx.get(centimeter), 100) {
+      for y in range_step(lowy.get(centimeter), highy.get(centimeter), 100) {
         let end_point = Point3::new(x, y, 0);
         if !is_open(terrain, end_point) {
           continue;

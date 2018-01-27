@@ -43,6 +43,10 @@ pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
   i64units::Length::new::<centimeter>(v.into())
 }
 
+pub fn up_length(v: u32units::Length) -> i64units::Length {
+  i64cm(v.get(centimeter))
+}
+
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
