@@ -1753,7 +1753,7 @@ pub mod test {
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
     t_perform(
       &game,
-      GameCommand::PathCurrentCombatCreature(Point3::new(1, 0, 0)),
+      GameCommand::PathCurrentCombatCreature(Point3::new(100, 0, 0)),
     );
   }
 
@@ -1799,7 +1799,7 @@ pub mod test {
     let game = t_game();
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(11, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1100, 0, 0)),
     );
     let game = t_perform(
       &game,
@@ -1828,15 +1828,15 @@ pub mod test {
   fn test_creatures_in_sphere() {
     let game = t_game();
     let volume = Volume::Sphere(u32cm(200));
-    let pt = Point3::new(5, 0, 0);
+    let pt = Point3::new(500, 0, 0);
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(6, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 
@@ -1852,15 +1852,15 @@ pub mod test {
       range: u32cm(1000),
       volume: Volume::Sphere(u32cm(200)),
     };
-    let pt = Point3::new(5, 0, 0);
+    let pt = Point3::new(500, 0, 0);
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(5, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(6, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
     );
 
     let scene = game.get_scene(t_scene_id()).unwrap();
@@ -1878,15 +1878,15 @@ pub mod test {
     let target_spec = CreatureTarget::LineFromActor {
       distance: u32cm(1000),
     };
-    let pt = Point3::new(1, 0, 0);
+    let pt = Point3::new(100, 0, 0);
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(100, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(2, 0, 0)),
+      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(200, 0, 0)),
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 
