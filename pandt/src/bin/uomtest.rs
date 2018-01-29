@@ -3,13 +3,6 @@ extern crate uom;
 use uom::si::length::{centimeter, meter};
 use uom::si;
 
-mod u64units {
-  ISQ!(
-    uom::si,
-    u64,
-    (centimeter, gram, second, ampere, kelvin, mole, candela)
-  );
-}
 mod i64units {
   ISQ!(
     uom::si,
@@ -20,16 +13,18 @@ mod i64units {
 
 // use units;
 
-fn main() {
-  let onecm: u64units::Length = u64units::Length::new::<centimeter>(1);
-  let m: u64units::Length = u64units::Length::new::<meter>(1);
-  //let r = cm + m;
-  println!("int 1m: {:?}", m);
-  println!("int 1cm: {:?}", onecm);
-  //println!("added: {:?}", r);
+fn i64cm(v: i64) -> i64units::Length {
+  i64units::Length::new::<centimeter>(v)
+}
+fn i64m(v: i64) -> i64units::Length {
+  i64units::Length::new::<meter>(v)
+}
 
-  let fcm: si::f32::Length = si::f32::Length::new::<centimeter>(1.0);
-  let fm: si::f32::Length = si::f32::Length::new::<meter>(1.0);
-  println!("float 1m: {:?}", fm);
-  println!("float 1cm: {:?}", fcm);
+fn main() {
+  println!("101 cm in meters: {:?}", i64cm(101).get(meter));
+  println!("99cm in meters: {:?}", i64cm(99).get(meter));
+  println!("-101 cm in meters: {:?}", i64cm(-101).get(meter));
+  println!("-99cm in meters: {:?}", i64cm(-99).get(meter));
+
+
 }

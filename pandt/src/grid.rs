@@ -1,7 +1,6 @@
 use std::cmp;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::time;
 use bresenham;
 use odds::vec::VecExt;
 
@@ -11,12 +10,12 @@ use ncollide::shape;
 use ncollide::shape::Cuboid;
 use ncollide::query::PointQuery;
 use ncollide::world;
-use num::range_step;
+use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
 use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
-            Volume, VolumeCondition, i64cm, u32cm, u32units, up_length};
+            Volume, VolumeCondition, i64cm, i64meter, u32cm, u32units, up_length};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -81,7 +80,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Len
 }
 
 /// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
-/// This returns a plain old Point3, but it'd be nicer if it we re a `Point3Difference`...
+/// This returns a plain old Point3 to represent the delta... Is that the best thing to do?
 pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
   Point3::from_quantities(pt1.x - pt2.x, pt1.y - pt2.y, pt1.z - pt2.z)
 }
@@ -161,17 +160,18 @@ impl TileSystem {
   }
 
   pub fn open_points_in_range(
-    &self, start: Point3, terrain: &Terrain, range: u32units::Length
+    &self, start: Point3, terrain: &Terrain, speed: u32units::Length
   ) -> Vec<Point3> {
-    let range = up_length(range);
-    let lowx = start.x - range;
-    let highx = start.x + range + i64cm(1);
-    let lowy = start.y - range;
-    let highy = start.y + range + i64cm(1);
+    let speed = up_length(speed);
+    let lowx = start.x - speed;
+    // why am I adding 1 to these highs???
+    let highx = start.x + speed + i64meter(1);
+    let lowy = start.y - speed;
+    let highy = start.y + speed + i64meter(1);
     let mut open = vec![];
-    for x in range_step(lowx.get(centimeter), highx.get(centimeter), 100) {
-      for y in range_step(lowy.get(centimeter), highy.get(centimeter), 100) {
-        let end_point = Point3::new(x, y, 0);
+    for x_meters in range(lowx.get(meter), highx.get(meter)) {
+      for y_meters in range(lowy.get(meter), highy.get(meter)) {
+        let end_point = Point3::new(x_meters * 100, y_meters * 100, 0);
         if !is_open(terrain, end_point) {
           continue;
         }
@@ -186,7 +186,6 @@ impl TileSystem {
     &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
-    // println!("Number of points to check: {:?}", points_to_check.len());
     let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
     for pt in points_to_check {
       if pt != start {
@@ -205,7 +204,7 @@ impl TileSystem {
     for (path, cost) in path_result {
       if cost <= speed {
         // FIXME: we should NOT be checking cost here, instead astar_multi should support
-        // max distance.
+        // max distance.  (um, it does support max distance? )
         final_points.push(*path.last().unwrap())
       }
     }
@@ -440,8 +439,8 @@ pub fn astar_multi<N, C, FN, IN, FH>(
   start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<Fn(&N) -> bool>>
 ) -> Vec<(Vec<N>, C)>
 where
-  N: Eq + Hash + Clone,
-  C: Zero + Ord + Copy + PartialEq + PartialOrd,
+  N: Eq + Hash + Clone + ::std::fmt::Debug,
+  C: Zero + Ord + Copy + PartialEq + PartialOrd + ::std::fmt::Debug,
   FN: Fn(&N) -> IN,
   IN: IntoIterator<Item = (N, C)>,
   FH: Fn(&N) -> C,
@@ -636,10 +635,12 @@ pub mod test {
     assert_eq!(result, vec![]);
   }
 
+  /// The maximum cost passed to `astar_multi` is meant to be the maximum, so it should allow paths
+  /// that are exactly that long.
   #[test]
   fn astar_multi_eq_max_cost() {
     let start = Point3::new(0, 0, 0);
-    let success = Box::new(|n: &Point3| *n == Point3::new(5, 0, 0));
+    let success = Box::new(|n: &Point3| *n == Point3::new(500, 0, 0));
     let size = Volume::AABB(medium_size());
     let result = astar_multi(
       &start,
@@ -736,6 +737,13 @@ pub mod test {
       Point3::new(100, -100, 0),
     ];
     expected.sort();
+
+    for p in &expected {
+      println!("Expect: {}", p);
+    }
+    for p in &pts {
+      println!("Got: {}", p);
+    }
     assert_eq!(pts, expected)
   }
 
@@ -800,7 +808,7 @@ pub mod test {
   fn line_through_point_simple() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(100, 0, 0), u32cm(200));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, Point3::new(20_000, 0, 0)),
+      Volume::Line { vector } => assert_eq!(vector, Point3::new(200, 0, 0)),
       _ => panic!("Expected Line"),
     }
   }
@@ -809,7 +817,7 @@ pub mod test {
   fn line_through_point_accuracy() {
     let line = line_through_point(Point3::new(0, 0, 0), Point3::new(200, 100, 0), u32cm(1000));
     match line {
-      Volume::Line { vector } => assert_eq!(vector, Point3::new(89_400, 44_700, 0)),
+      Volume::Line { vector } => assert_eq!(vector, Point3::new(894, 447, 0)),
       _ => panic!("Expected Line"),
     }
   }
