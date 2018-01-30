@@ -86,12 +86,7 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 }
 
 pub fn point3_add_vec(pt: Point3, diff: Point3) -> Point3 {
-  Point3::new(
-    // TODO RADIX: actually treat Point3 as centimeters!
-    (pt.x.get(centimeter) * 100 + diff.x.get(centimeter)) / 100,
-    (pt.y.get(centimeter) * 100 + diff.y.get(centimeter)) / 100,
-    (pt.z.get(centimeter) * 100 + diff.z.get(centimeter)) / 100,
-  )
+  Point3::from_quantities((pt.x + diff.x), (pt.y + diff.y), (pt.z + diff.z))
 }
 
 fn is_open(terrain: &Terrain, pt: Point3) -> bool { terrain.contains(&pt) }
@@ -139,14 +134,10 @@ impl TileSystem {
       Volume::AABB(_) => unimplemented!("unimplemented: items_within_volume for AABB"),
       Volume::Line { vector } => {
         let dest = point3_add_vec(pt, vector);
+        let start = (pt.x.get(meter) as isize, pt.y.get(meter) as isize);
+        let end = (dest.x.get(meter) as isize, dest.y.get(meter) as isize);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
-          bresenham::Bresenham::new(
-            (pt.x.get(centimeter) as isize, pt.y.get(centimeter) as isize),
-            (
-              dest.x.get(centimeter) as isize,
-              dest.y.get(centimeter) as isize,
-            ),
-          ).map(|(x, y)| Point3::new(x as i64, y as i64, 0)),
+          bresenham::Bresenham::new(start, end).map(|(x, y)| Point3::new(x as i64 * 100, y as i64 * 100, 0)),
         );
         for (item, item_pos) in items {
           if line_pts.contains(item_pos) {
@@ -760,7 +751,7 @@ pub mod test {
   }
 
   #[test]
-  fn items_within_volume() {
+  fn items_within_volume_sphere() {
     let ts = TileSystem::Realistic;
     let vol = Volume::Sphere(u32cm(500));
     let vol_pt = Point3::new(400, 400, 0);
@@ -785,6 +776,32 @@ pub mod test {
         assert!(ts.point3_distance(*item_pos, vol_pt) > u32cm(500))
       }
     }
+  }
+
+  #[test]
+  fn items_within_volume_line() {
+    let ts = TileSystem::Realistic;
+    let vol = Volume::Line{ vector: Point3::new(400, 0, 0) };
+    let vol_pt = Point3::new(100, 0, 0);
+    let items = hashmap!{
+      "Elron" => Point3::new(0, 0, 0),
+      "Kurok To" => Point3::new(100, 0, 0),
+      // TODO: Support smaller-than-meter creatures at fractional positions!
+      // "Middleman" => Point3::new(250, 0, 0),
+      "Silmarillion" => Point3::new(400, 0, 0),
+      "Dudman" => Point3::new(500, 0, 0),
+      "Dudman2" => Point3::new(100, 100, 0),
+    };
+    let mut results = ts.items_within_volume(vol, vol_pt, &items);
+    println!("{:?}", results);
+    let mut expected = vec![
+      "Kurok To",
+      // "Middleman",
+      "Silmarillion"
+    ];
+    expected.sort();
+    results.sort();
+    assert_eq!(results, expected);
   }
 
   #[test]
