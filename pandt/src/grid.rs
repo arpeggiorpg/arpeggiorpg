@@ -14,8 +14,8 @@ use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
-use types::{CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain, TileSystem,
-            Volume, VolumeCondition, i64cm, i64meter, u32cm, u32units, up_length};
+use types::{up_length, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
+            TileSystem, Volume, VolumeCondition, i64cm, i64meter, u32cm, u32units};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -137,7 +137,8 @@ impl TileSystem {
         let start = (pt.x.get(meter) as isize, pt.y.get(meter) as isize);
         let end = (dest.x.get(meter) as isize, dest.y.get(meter) as isize);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
-          bresenham::Bresenham::new(start, end).map(|(x, y)| Point3::new(x as i64 * 100, y as i64 * 100, 0)),
+          bresenham::Bresenham::new(start, end)
+            .map(|(x, y)| Point3::new(x as i64 * 100, y as i64 * 100, 0)),
         );
         for (item, item_pos) in items {
           if line_pts.contains(item_pos) {
@@ -239,13 +240,14 @@ impl TileSystem {
       // sadly uom doesn't implement Step for Quantity
       Volume::AABB(aabb) => {
         let max = aabb.get_max(pt);
-        (pt.x.get(meter)..(max.x.get(meter))).flat_map(|x| {
-          (pt.y.get(meter)..(max.y.get(meter))).flat_map(move |y| {
-            (pt.z.get(meter)..(max.z.get(meter)))
-              .map(move |z| Point3::new(x * 100, y * 100, z * 100))
+        (pt.x.get(meter)..(max.x.get(meter)))
+          .flat_map(|x| {
+            (pt.y.get(meter)..(max.y.get(meter))).flat_map(move |y| {
+              (pt.z.get(meter)..(max.z.get(meter)))
+                .map(move |z| Point3::new(x * 100, y * 100, z * 100))
+            })
           })
-        })
-        .collect()
+          .collect()
       }
       Volume::Line { .. } => unimplemented!("points_in_volume for Line"),
       Volume::VerticalCylinder { .. } => {
@@ -266,10 +268,12 @@ impl TileSystem {
   }
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.
-  fn point3_neighbors(&self, terrain: &Terrain, volume: Volume, pt: Point3) -> Vec<(Point3, u32units::Length)> {
+  fn point3_neighbors(
+    &self, terrain: &Terrain, volume: Volume, pt: Point3
+  ) -> Vec<(Point3, u32units::Length)> {
     let diagonal_distance = match *self {
       TileSystem::Realistic => u32cm(141),
-      TileSystem::DnD => u32cm(100)
+      TileSystem::DnD => u32cm(100),
     };
     let straight_distance = match *self {
       TileSystem::Realistic => u32cm(100),
@@ -289,7 +293,11 @@ impl TileSystem {
         let neighbor = Point3::from_quantities(pt.x + i64cm(x), pt.y + i64cm(y), pt.z);
         if is_open(terrain, neighbor) && self.volume_fits_at_point(volume, terrain, neighbor) {
           let is_angle = x.abs() == y.abs(); // there's probably a cheaper way to do this
-          let cost = if is_angle { diagonal_distance } else { straight_distance };
+          let cost = if is_angle {
+            diagonal_distance
+          } else {
+            straight_distance
+          };
           // don't allow diagonal movement around corners
           if is_angle && !is_open(terrain, Point3::from_quantities(neighbor.x, pt.y, pt.z))
             || !is_open(terrain, Point3::from_quantities(pt.x, neighbor.y, pt.z))
@@ -374,9 +382,7 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f64> {
   match volume {
-    Volume::Sphere(r) => {
-      shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64))
-    }
+    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64)),
     Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
       (f64::from(aabb.x.get(centimeter))) / 2.0,
       (f64::from(aabb.y.get(centimeter))) / 2.0,
@@ -530,11 +536,19 @@ pub mod test {
   }
 
   fn medium_size() -> AABB {
-    AABB { x: u32cm(100), y: u32cm(100), z: u32cm(100)}
+    AABB {
+      x: u32cm(100),
+      y: u32cm(100),
+      z: u32cm(100),
+    }
   }
 
   fn large_size() -> AABB {
-    AABB { x: u32cm(200), y: u32cm(200), z: u32cm(100)}
+    AABB {
+      x: u32cm(200),
+      y: u32cm(200),
+      z: u32cm(100),
+    }
   }
 
   #[test]
@@ -600,7 +614,7 @@ pub mod test {
       &start,
       |n| TileSystem::Realistic.point3_neighbors(&huge_box(), size, *n),
       |n| TileSystem::Realistic.point3_distance(start, *n),
-      u32cm(u32::max_value() / 64 - 1),  // FIXME this is a workaround for uom bug #55
+      u32cm(u32::max_value() / 64 - 1), // FIXME this is a workaround for uom bug #55
       vec![success],
     );
     let ex_path = vec![
@@ -677,7 +691,10 @@ pub mod test {
     let ex_path_negative = vec![Point3::new(0, 0, 0), Point3::new(-100, -100, 0)];
     assert_eq!(
       paths_and_costs,
-      [(ex_path_positive, u32cm(141)), (ex_path_negative, u32cm(141))]
+      [
+        (ex_path_positive, u32cm(141)),
+        (ex_path_negative, u32cm(141))
+      ]
     );
   }
 
@@ -781,7 +798,9 @@ pub mod test {
   #[test]
   fn items_within_volume_line() {
     let ts = TileSystem::Realistic;
-    let vol = Volume::Line{ vector: Point3::new(400, 0, 0) };
+    let vol = Volume::Line {
+      vector: Point3::new(400, 0, 0),
+    };
     let vol_pt = Point3::new(100, 0, 0);
     let items = hashmap!{
       "Elron" => Point3::new(0, 0, 0),
@@ -797,7 +816,7 @@ pub mod test {
     let mut expected = vec![
       "Kurok To",
       // "Middleman",
-      "Silmarillion"
+      "Silmarillion",
     ];
     expected.sort();
     results.sort();

@@ -124,7 +124,6 @@ impl<'de> de::Deserialize<'de> for Point3 {
   }
 }
 
-
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
   pub x: u32units::Length,
@@ -1325,7 +1324,11 @@ pub mod test {
       portrait_url: "".to_string(),
       icon_url: "".to_string(),
       initiative: Dice::flat(init),
-      size: AABB { x: u32cm(100), y: u32cm(100), z: u32cm(100) },
+      size: AABB {
+        x: u32cm(100),
+        y: u32cm(100),
+        z: u32cm(100),
+      },
     })
   }
 

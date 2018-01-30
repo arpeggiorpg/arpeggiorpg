@@ -376,7 +376,9 @@ fn main() {
   if let Err(_) = env::var("PANDT_LOG") {
     env::set_var("PANDT_LOG", "info");
   }
-  let env = env_logger::Env::new().filter("PANDT_LOG").write_style("PANDT_LOG_STYLE");
+  let env = env_logger::Env::new()
+    .filter("PANDT_LOG")
+    .write_style("PANDT_LOG_STYLE");
   env_logger::init_from_env(env);
 
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
