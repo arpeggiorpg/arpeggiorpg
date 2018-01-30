@@ -954,12 +954,6 @@ impl Game {
           .ok_or_else(|| GameError::SceneAlreadyExists(rscene.id))?;
         self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
       }
-      EditScene(ref scene) => {
-        self
-          .scenes
-          .mutate(&scene.id, move |_| scene.clone())
-          .ok_or_else(|| GameError::SceneNotFound(scene.id))?;
-      }
       EditSceneDetails {
         scene_id,
         ref details,

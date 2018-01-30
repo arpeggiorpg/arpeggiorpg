@@ -630,7 +630,6 @@ pub enum GameLog {
   },
 
   CreateScene(FolderPath, Scene),
-  EditScene(Scene),
   EditSceneDetails {
     scene_id: SceneID,
     details: SceneCreation,
