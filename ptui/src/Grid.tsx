@@ -228,7 +228,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       const clicker = onClick !== undefined ? () => onClick(pt) : undefined;
       return <g key={pointKey("highlight", pt)} style={style} onClick={clicker}>
         <rect {...tprops} />
-        {gmonly ? <text x={pt.x * 100 + 65} y={pt.y * 100 + 35} fontSize="25px">👁️</text> : null}
+        {gmonly ? <text x={pt.x + 65} y={pt.y + 35} fontSize="25px">👁️</text> : null}
       </g>;
     });
   }
@@ -342,8 +342,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
-            return <line x1={caster_pos.x * 100 + 50} y1={caster_pos.y * 100}
-              x2={target.x * 100 + 50} y2={target.y * 100}
+            return <line x1={caster_pos.x + 50} y1={caster_pos.y}
+              x2={target.x + 50} y2={target.y}
               style={{ pointerEvents: "none" }}
               strokeWidth="3" stroke="black" />;
         }
@@ -512,7 +512,7 @@ function svgVolume(
 ): JSX.Element {
   switch (volume.t) {
     case "Sphere":
-      return <circle key={key} cx={pt.x * 100 + 50} cy={pt.y * 100} r={volume.radius}
+      return <circle key={key} cx={pt.x + 50} cy={pt.y} r={volume.radius}
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
     default:
@@ -588,12 +588,12 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
   }
 
   return <g>
-    <rect width="100" height="100" x={pt.x * 100} y={pt.y * 100 - 50} fillOpacity="0"
+    <rect width="100" height="100" x={pt.x} y={pt.y - 50} fillOpacity="0"
       ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
     />
     <text
       style={{ pointerEvents: "none" }}
-      x={pt.x * 100 + 25} y={pt.y * 100 + 50}
+      x={pt.x + 25} y={pt.y + 50}
       fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
   </g>;
 }
@@ -702,7 +702,7 @@ const GridCreature = M.connectRedux(
 
 function text_tile(text: string, pos: T.Point3, key?: string): JSX.Element {
   return <text key={key} style={{ pointerEvents: "none" }} fontSize="50"
-    x={pos.x * 100} y={pos.y * 100}>
+    x={pos.x} y={pos.y}>
     {text}
   </text>;
 }
@@ -717,7 +717,7 @@ function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SV
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
-    x: pt.x * 100, y: (pt.y * 100) - 50,
+    x: pt.x, y: pt.y - 50,
   };
 }
 
@@ -792,8 +792,8 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 
 export function nearby_points(pos: T.Point3): Array<T.Point3> {
   const result = [];
-  for (const x of LD.range(pos.x - 20, pos.x + 20)) {
-    for (const y of LD.range(pos.y - 20, pos.y + 20)) {
+  for (const x of LD.range(pos.x - 2000, pos.x + 2000, 100)) {
+    for (const y of LD.range(pos.y - 2000, pos.y + 2000, 100)) {
       result.push(new T.Point3(x, y, pos.z));
     }
   }
