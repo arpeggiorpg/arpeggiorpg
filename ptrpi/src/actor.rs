@@ -52,7 +52,7 @@ impl actix::Handler<GetApp> for AppActor {
 }
 
 
-pub struct PerformCommand(types::GameCommand);
+pub struct PerformCommand(pub types::GameCommand);
 
 impl actix::ResponseType for PerformCommand {
   type Item = String;
@@ -62,13 +62,15 @@ impl actix::ResponseType for PerformCommand {
 impl actix::Handler<PerformCommand> for AppActor {
   type Result = actix::MessageResult<PerformCommand>;
   fn handle(&mut self, command: PerformCommand, _: &mut actix::Context<Self>) -> Self::Result {
-    let _result = self.app.perform_command(command.0, self.saved_game_path.clone())?;
+    let result = self.app.perform_command(command.0, self.saved_game_path.clone());
     for sender in self.waiters.drain(0..) {
       if let Err(e) = sender.send(()) {
         error!("Unexpected failure while notifying a waiter: {:?}", e);
       }
     }
-    Ok(())
+    let result = result.map_err(|e| format!("Error: {}", e));
+    let result = result.map(|(g, l)| (types::RPIGame(g), l));
+    Ok(serde_json::to_string(&result)?)
   }
 }
 

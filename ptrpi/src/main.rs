@@ -124,26 +124,13 @@ mod webapp {
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
     let f = req.json().from_err().and_then(
-      move |command: GameCommand| -> Result<HttpResponse, RPIError> {
-        let response = {
-          let pt = req.state();
-          let mut app = pt.app()?;
-          let result = app.perform_command(command, pt.saved_game_path.clone());
-          let result = result.map_err(|e| format!("Error: {}", e));
-          let result = result.map(|(g, l)| (RPIGame(g), l));
-          json_response(&result)
-        };
-        {
-          let mut waiters = req.state().waiters()?;
-          for sender in waiters.drain(0..) {
-            if let Err(e) = sender.send(()) {
-              error!("Random failure notifying a waiter: {:?}", e);
-            }
-          }
-        }
-        response
-      },
-    );
+        move |command: GameCommand| -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+            let fut = req.state().app_address.call_fut(actor::PerformCommand(command));
+            let fut = fut.map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
+                .and_then(|s| s)
+                .and_then(string_json_response);
+            Box::new(fut)
+        });
     Box::new(f)
   }
 
@@ -343,7 +330,6 @@ impl actix_web::ResponseError for RPIError {
 #[derive(Clone)]
 pub struct PT {
   app: Arc<Mutex<App>>,
-  waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   saved_game_path: PathBuf,
   app_address: actix::SyncAddress<actor::AppActor>,
 }
@@ -353,13 +339,6 @@ impl PT {
       .app
       .lock()
       .map_err(|_| RPIError::LockError("app".to_string()))
-  }
-
-  fn waiters(&self) -> Result<::std::sync::MutexGuard<Vec<oneshot::Sender<()>>>, RPIError> {
-    self
-      .waiters
-      .lock()
-      .map_err(|_| RPIError::LockError("pollers".to_string()))
   }
 }
 
@@ -395,7 +374,6 @@ fn main() {
 
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
-    waiters: Arc::new(Mutex::new(vec![])),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
     app_address: app_addr,
   };
