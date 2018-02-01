@@ -1,51 +1,100 @@
-use std::sync::mpsc;
-use std::thread;
+use std::path::PathBuf;
+use std::time::Duration;
 
-#[derive(Clone)]
-pub struct Actor<Req, Resp> {
-  request_sender: mpsc::Sender<ActorMsg<Req, Resp>>,
+use actix;
+use actix::{Actor};
+use actix::fut::WrapFuture;
+use futures::{Future};
+use futures::sync::oneshot;
+use tokio_core::reactor::Timeout;
+use serde_json;
+
+use pandt::types;
+
+pub struct AppActor {
+  app: types::App,
+  waiters: Vec<oneshot::Sender<()>>,
+  saved_game_path: PathBuf,
 }
 
-enum ActorMsg<Req, Resp> {
-  Payload(Req, mpsc::Sender<Resp>),
-  Stop,
+impl AppActor {
+  pub fn new(app: types::App, saved_game_path: PathBuf) -> AppActor {
+    AppActor { app, saved_game_path, waiters: vec![] }
+  }
 }
 
-impl<Req, Resp> Actor<Req, Resp>
-where
-  Req: Send + 'static,
-  Resp: Send + 'static,
-{
-  pub fn spawn<Init, S, Handler>(init: Init, mut handler: Handler) -> Self
-  where
-    Init: FnOnce() -> S,
-    Init: Send + 'static,
-    Handler: FnMut(&mut S, Req) -> Resp,
-    Handler: Send + 'static,
-  {
-    let (request_sender, request_receiver) = mpsc::channel();
-    let actor = Actor { request_sender };
-    thread::spawn(move || {
-      let mut state = init();
-      loop {
-        let request = request_receiver.recv().unwrap();
-        match request {
-          ActorMsg::Payload(r, sender) => sender.send(handler(&mut state, r)).unwrap(),
-          ActorMsg::Stop => break,
-        }
+impl actix::Actor for AppActor {
+  type Context = actix::Context<Self>;
+}
+
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Void {}
+
+
+pub struct GetApp;
+
+impl actix::ResponseType for GetApp {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<GetApp> for AppActor {
+  type Result = actix::MessageResult<GetApp>;
+  fn handle(&mut self, _: GetApp, _: &mut actix::Context<Self>) -> Self::Result {
+    let body = serde_json::to_string(&self.app)?;
+    Ok(body)
+  }
+}
+
+
+pub struct PerformCommand(types::GameCommand);
+
+impl actix::ResponseType for PerformCommand {
+  type Item = ();
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<PerformCommand> for AppActor {
+  type Result = actix::MessageResult<PerformCommand>;
+  fn handle(&mut self, command: PerformCommand, _: &mut actix::Context<Self>) -> Self::Result {
+    let _result = self.app.perform_command(command.0, self.saved_game_path.clone())?;
+    for sender in self.waiters.drain(0..) {
+      if let Err(e) = sender.send(()) {
+        error!("Unexpected failure while notifying a waiter: {:?}", e);
       }
-    });
-    actor
+    }
+    Ok(())
   }
+}
 
-  pub fn send(&self, message: Req) -> Resp {
-    let (response_sender, response_receiver) = mpsc::channel();
-    self
-      .request_sender
-      .send(ActorMsg::Payload(message, response_sender))
-      .unwrap();
-    response_receiver.recv().unwrap()
+
+pub struct PollApp;
+
+impl actix::ResponseType for PollApp {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<PollApp> for AppActor {
+  type Result = actix::Response<Self, PollApp>;
+  fn handle(&mut self, _: PollApp, _: &mut actix::Context<Self>) -> Self::Result {
+    let (sender, receiver) = oneshot::channel();
+    self.waiters.push(sender);
+
+    let handle = actix::Arbiter::handle();
+    let timeout = Timeout::new(Duration::from_secs(30), handle).unwrap();
+
+    let fut = timeout
+      .select2(receiver)
+      .and_then(move |_|
+        // TODO: Return app!
+        Ok("".to_string()))
+      .map_err(|e| {
+        error!("Error while polling: {:?}", e);
+        ::RPIError::MessageError("Error while polling".to_string())
+      });
+
+    Self::async_reply(fut.into_actor(self))
   }
-
-  pub fn stop(&self) { self.request_sender.send(ActorMsg::Stop).unwrap(); }
 }

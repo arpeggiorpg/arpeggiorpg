@@ -3,7 +3,6 @@
 
 extern crate actix;
 extern crate actix_web;
-#[macro_use]
 extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
@@ -29,6 +28,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use actix::Actor;
 use futures::sync::oneshot;
 
 use pandt::game::load_app_from_path;
@@ -55,6 +55,8 @@ mod webapp {
                      SceneID};
 
   use super::{RPIError, PT};
+  use actor;
+
 
   type PTResult<X> = Result<Json<X>, RPIError>;
 
@@ -91,9 +93,13 @@ mod webapp {
       .resource("/modules/{name}", |r| r.method(Method::POST).a(save_module))
   }
 
-  fn get_app(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
-    let app = req.state().app()?;
-    json_response(&RPIApp(&*app))
+  fn get_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
+    let fut = req.state().app_address.call_fut(actor::GetApp);
+    let fut = fut
+      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
+      .and_then(|s| s)
+      .and_then(string_json_response) ;
+    Box::new(fut)
   }
 
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
@@ -209,17 +215,19 @@ mod webapp {
     Ok(Json(result))
   }
 
-  fn load_saved_game(req: HttpRequest<PT>) -> Result<HttpResponse, RPIError> {
-    {
-      let state = req.state();
-      let name: String = get_arg(&req, "name")?;
-      let path = child_path(&state.saved_game_path, &name)?;
-      let mut buffer = String::new();
-      fs::File::open(path)?.read_to_string(&mut buffer)?;
-      let mut app = state.app()?;
-      *app = serde_yaml::from_str(&buffer)?;
-    }
-    get_app(req)
+  fn _load_saved_game(req: &HttpRequest<PT>) -> Result<(), RPIError> {
+    let state = req.state();
+    let name: String = get_arg(req, "name")?;
+    let path = child_path(&state.saved_game_path, &name)?;
+    let mut buffer = String::new();
+    fs::File::open(path)?.read_to_string(&mut buffer)?;
+    let mut app = state.app()?;
+    *app = serde_yaml::from_str(&buffer)?;
+    Ok(())
+  }
+
+  fn load_saved_game(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
+    Box::new(future::result(_load_saved_game(&req)).and_then(|_| get_app(req)))
   }
 
   fn save_game(req: HttpRequest<PT>) -> PTResult<()> {
@@ -248,11 +256,15 @@ mod webapp {
     Box::new(f)
   }
 
-  fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
-    let body = serde_json::to_string(b)?;
+  fn string_json_response(body: String) -> Result<HttpResponse, RPIError> {
     Ok(HttpResponse::Ok()
       .content_type("application/json")
       .body(body)?)
+  }
+
+  fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
+    let body = serde_json::to_string(b)?;
+    string_json_response(body)
   }
 
   fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
@@ -289,7 +301,8 @@ mod webapp {
 }
 
 #[derive(Debug, Fail)]
-enum RPIError {
+pub enum RPIError {
+  #[fail(display = "Internal Error")] MessageError(String),
   #[fail(display = "Game Error")] GameError(#[cause] GameError),
   #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
   #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
@@ -298,7 +311,6 @@ enum RPIError {
   #[fail(display = "JSON Payload Error")]
   JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
   #[fail(display = "HTTP Error")] HTTPError(#[cause] http::Error),
-
   #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
   LockError(String),
   #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
@@ -354,11 +366,11 @@ pub struct PT {
   app: Arc<Mutex<App>>,
   waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   saved_game_path: PathBuf,
+  app_address: actix::SyncAddress<actor::AppActor>,
 }
 
 impl PT {
-  fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {
-    self
+  fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {    self
       .app
       .lock()
       .map_err(|_| RPIError::LockError("app".to_string()))
@@ -394,17 +406,24 @@ fn main() {
     .unwrap_or_else(|| "samplegame.yaml".to_string());
   let game_dir = PathBuf::from(game_dir.clone());
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
+
+  let actable_app = app.clone();
+
+  let actor = actor::AppActor::new(actable_app, game_dir.clone());
+
+  let actix_system = actix::System::new("P&T-RPI");
+  let app_addr: actix::SyncAddress<actor::AppActor> = actor.start();
+
   let pt = PT {
     app: Arc::new(Mutex::new(app)),
     waiters: Arc::new(Mutex::new(vec![])),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
+    app_address: app_addr,
   };
 
   let server = actix_web::HttpServer::new(move || webapp::router(pt.clone()));
-  server
-    .bind("0.0.0.0:1337")
-    .expect("Couldn't bind to 1337")
-    .run();
+  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
+  actix_system.run();
 }
 
 #[cfg(test)]
