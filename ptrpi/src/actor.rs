@@ -32,6 +32,11 @@ impl actix::Actor for AppActor {
 pub enum Void {}
 
 
+fn app_to_string(app: &types::App) -> Result<String, ::RPIError> {
+  Ok(serde_json::to_string(&types::RPIApp(app))?)
+}
+
+
 pub struct GetApp;
 
 impl actix::ResponseType for GetApp {
@@ -42,8 +47,7 @@ impl actix::ResponseType for GetApp {
 impl actix::Handler<GetApp> for AppActor {
   type Result = actix::MessageResult<GetApp>;
   fn handle(&mut self, _: GetApp, _: &mut actix::Context<Self>) -> Self::Result {
-    let body = serde_json::to_string(&self.app)?;
-    Ok(body)
+    app_to_string(&self.app)
   }
 }
 
@@ -51,7 +55,7 @@ impl actix::Handler<GetApp> for AppActor {
 pub struct PerformCommand(types::GameCommand);
 
 impl actix::ResponseType for PerformCommand {
-  type Item = ();
+  type Item = String;
   type Error = ::RPIError;
 }
 
@@ -119,7 +123,7 @@ fn get_current_app(app: &types::App, snapshot_len: usize, log_len: usize)
       .map(|&(_, ref ls)| ls.len())
       .unwrap_or(0) != log_len
   {
-    Ok(Some(serde_json::to_string(&types::RPIApp(app))?))
+    Ok(Some(app_to_string(app)?))
   } else {
     Ok(None)
   }
