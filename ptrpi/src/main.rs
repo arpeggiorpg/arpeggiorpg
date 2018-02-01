@@ -21,6 +21,16 @@ extern crate tokio_core;
 
 extern crate pandt;
 
+#[macro_use]
+mod macros {
+  macro_rules! try_fut {
+    ($e:expr) => (match $e {
+      Ok(x) => x,
+      Err(e) => return Box::new(::futures::future::err(From::from(e))),
+    })
+  }
+}
+
 pub mod actor;
 
 use std::env;
@@ -38,18 +48,14 @@ mod webapp {
   use std::fs;
   use std::io::{Read, Write};
   use std::path::PathBuf;
-  use std::time::Duration;
 
-  use actix;
   use actix_web::dev::FromParam;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
   use futures::{future, Future};
-  use futures::sync::oneshot;
   use http::{header, Method};
   use serde_json;
   use serde_yaml;
-  use tokio_core::reactor::Timeout;
 
   use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
                      SceneID};
@@ -102,6 +108,20 @@ mod webapp {
     Box::new(fut)
   }
 
+  /// If the client is polling with a non-current app "version", then immediately return the current
+  /// App. Otherwise, wait 30 seconds for any new changes.
+  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+    let snapshot_len: usize = try_fut!(get_arg(&req, "snapshot_len"));
+    let log_len: usize = try_fut!(get_arg(&req, "log_len"));
+
+    let fut = req.state().app_address.call_fut(actor::PollApp {snapshot_len, log_len});
+    let fut = fut
+      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
+      .and_then(|s| s)
+      .and_then(string_json_response) ;
+    Box::new(fut)
+  }
+
   fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
     let f = req.json().from_err().and_then(
       move |command: GameCommand| -> Result<HttpResponse, RPIError> {
@@ -125,47 +145,6 @@ mod webapp {
       },
     );
     Box::new(f)
-  }
-
-  /// If the client is polling with a non-current app "version", then immediately return the current
-  /// App. Otherwise, wait 30 seconds for any new changes.
-  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
-    let result = get_current_app(&req);
-    match result {
-      Ok(Some(r)) => return Box::new(future::ok(r)),
-      Err(e) => return Box::new(future::err(e)),
-      Ok(None) => {}
-    }
-
-    let (sender, receiver) = oneshot::channel();
-    req.state().waiters.lock().unwrap().push(sender);
-
-    let handle = actix::Arbiter::handle();
-    let timeout = Timeout::new(Duration::from_secs(30), handle).unwrap();
-
-    let fut = timeout
-      .select2(receiver)
-      .and_then(move |_| get_app(req).map_err(|_| panic!()))
-      .map_err(|_| panic!());
-
-    Box::new(fut)
-  }
-
-  fn get_current_app(req: &HttpRequest<PT>) -> Result<Option<HttpResponse>, RPIError> {
-    let snapshot_len: usize = get_arg(req, "snapshot_len")?;
-    let log_len: usize = get_arg(req, "log_len")?;
-    let app = req.state().app()?;
-    if app.snapshots.len() != snapshot_len
-      || app
-        .snapshots
-        .back()
-        .map(|&(_, ref ls)| ls.len())
-        .unwrap_or(0) != log_len
-    {
-      json_response(&RPIApp(&app)).map(Some)
-    } else {
-      Ok(None)
-    }
   }
 
   fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
