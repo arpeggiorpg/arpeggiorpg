@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -8,8 +10,9 @@ use futures::{Future, future};
 use futures::sync::oneshot;
 use tokio_core::reactor::Timeout;
 use serde_json;
+use serde_yaml;
 
-use pandt::types;
+use pandt::{foldertree, types};
 
 pub struct AppActor {
   app: types::App,
@@ -131,3 +134,129 @@ fn get_current_app(app: &types::App, snapshot_len: usize, log_len: usize)
   }
 }
 
+struct MovementOptions {creature_id: types::CreatureID, scene_id: types::SceneID}
+impl actix::ResponseType for MovementOptions {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<MovementOptions> for AppActor {
+  type Result = actix::MessageResult<MovementOptions>;
+
+  fn handle(&mut self, cmd: MovementOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+    Ok(serde_json::to_string(&self.app.get_movement_options(cmd.scene_id, cmd.creature_id)?)?)
+  }
+}
+
+struct CombatMovementOptions;
+impl actix::ResponseType for CombatMovementOptions {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<CombatMovementOptions> for AppActor {
+  type Result = actix::MessageResult<CombatMovementOptions>;
+
+  fn handle(&mut self, _: CombatMovementOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+    Ok(serde_json::to_string(&self.app.get_combat_movement_options()?)?)
+  }
+}
+
+struct TargetOptions { creature_id: types::CreatureID, scene_id: types::SceneID, ability_id: types::AbilityID }
+impl actix::ResponseType for TargetOptions {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<TargetOptions> for AppActor {
+  type Result = actix::MessageResult<TargetOptions>;
+
+  fn handle(&mut self, cmd: TargetOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+    Ok(serde_json::to_string(&self.app.get_target_options(cmd.scene_id, cmd.creature_id, cmd.ability_id)?)?)
+  }
+}
+
+struct PreviewVolumeTargets { scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID, point: types::Point3 }
+impl actix::ResponseType for PreviewVolumeTargets {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<PreviewVolumeTargets> for AppActor {
+  type Result = actix::MessageResult<PreviewVolumeTargets>;
+
+  fn handle(&mut self, cmd: PreviewVolumeTargets, _: &mut actix::Context<AppActor>) -> Self::Result {
+    Ok(serde_json::to_string(&self.app.preview_volume_targets(cmd.scene_id, cmd.actor_id, cmd.ability_id, cmd.point)?)?)
+  }
+}
+
+struct LoadSavedGame(String);
+impl actix::ResponseType for LoadSavedGame {
+  type Item = String;
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<LoadSavedGame> for AppActor {
+  type Result = actix::MessageResult<LoadSavedGame>;
+
+  fn handle(&mut self, cmd: LoadSavedGame, _: &mut actix::Context<AppActor>) -> Self::Result {
+    let path = child_path(&self.saved_game_path, &cmd.0)?;
+    let mut buffer = String::new();
+    fs::File::open(path)?.read_to_string(&mut buffer)?;
+    self.app = serde_yaml::from_str(&buffer)?;
+    app_to_string(&self.app)
+  }
+}
+
+struct SaveGame(String);
+impl actix::ResponseType for SaveGame {
+  type Item = ();
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<SaveGame> for AppActor {
+  type Result = actix::MessageResult<SaveGame>;
+
+  fn handle(&mut self, cmd: SaveGame, _: &mut actix::Context<AppActor>) -> Self::Result {
+    save_app(&self.app, &cmd.0, &self.saved_game_path)
+  }
+}
+
+struct SaveModule { name: String, path: foldertree::FolderPath }
+impl actix::ResponseType for SaveModule {
+  type Item = ();
+  type Error = ::RPIError;
+}
+
+impl actix::Handler<SaveModule> for AppActor {
+  type Result = actix::MessageResult<SaveModule>;
+
+  fn handle(&mut self, cmd: SaveModule, _: &mut actix::Context<AppActor>) -> Self::Result {
+    let new_game = self.app.current_game.export_module(&cmd.path)?;
+    let new_app = types::App::new(new_game);
+    save_app(&new_app, &cmd.name, &self.saved_game_path)
+  }
+}
+
+fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), ::RPIError> {
+  let new_path = child_path(file_path, name)?;
+  // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
+  // without the extra magic that decorates the data with dynamic data for clients.
+  let yaml = serde_yaml::to_string(app)?;
+  fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+  Ok(())
+}
+
+
+fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, ::RPIError> {
+  if name.contains('/') || name.contains(':') || name.contains('\\') {
+      bail!(::RPIError::InsecurePath(name.to_string()));
+  }
+  let new_path = parent.join(name);
+  for p in &new_path {
+    if p == "." || p == ".." {
+      bail!(::RPIError::InsecurePath(name.to_string()));
+    }
+  }
+  Ok(new_path)
+}
