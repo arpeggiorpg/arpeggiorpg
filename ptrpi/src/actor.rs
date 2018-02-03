@@ -134,7 +134,7 @@ fn get_current_app(app: &types::App, snapshot_len: usize, log_len: usize)
   }
 }
 
-struct MovementOptions {creature_id: types::CreatureID, scene_id: types::SceneID}
+pub struct MovementOptions { pub creature_id: types::CreatureID, pub scene_id: types::SceneID}
 impl actix::ResponseType for MovementOptions {
   type Item = String;
   type Error = ::RPIError;
@@ -148,7 +148,7 @@ impl actix::Handler<MovementOptions> for AppActor {
   }
 }
 
-struct CombatMovementOptions;
+pub struct CombatMovementOptions;
 impl actix::ResponseType for CombatMovementOptions {
   type Item = String;
   type Error = ::RPIError;
@@ -162,7 +162,7 @@ impl actix::Handler<CombatMovementOptions> for AppActor {
   }
 }
 
-struct TargetOptions { creature_id: types::CreatureID, scene_id: types::SceneID, ability_id: types::AbilityID }
+pub struct TargetOptions { pub creature_id: types::CreatureID, pub scene_id: types::SceneID, pub ability_id: types::AbilityID }
 impl actix::ResponseType for TargetOptions {
   type Item = String;
   type Error = ::RPIError;
@@ -176,7 +176,7 @@ impl actix::Handler<TargetOptions> for AppActor {
   }
 }
 
-struct PreviewVolumeTargets { scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID, point: types::Point3 }
+pub struct PreviewVolumeTargets { pub scene_id: types::SceneID, pub actor_id: types::CreatureID, pub ability_id: types::AbilityID, pub point: types::Point3 }
 impl actix::ResponseType for PreviewVolumeTargets {
   type Item = String;
   type Error = ::RPIError;
@@ -190,7 +190,7 @@ impl actix::Handler<PreviewVolumeTargets> for AppActor {
   }
 }
 
-struct LoadSavedGame(String);
+pub struct LoadSavedGame(pub String);
 impl actix::ResponseType for LoadSavedGame {
   type Item = String;
   type Error = ::RPIError;
@@ -208,9 +208,9 @@ impl actix::Handler<LoadSavedGame> for AppActor {
   }
 }
 
-struct SaveGame(String);
+pub struct SaveGame(pub String);
 impl actix::ResponseType for SaveGame {
-  type Item = ();
+  type Item = String;
   type Error = ::RPIError;
 }
 
@@ -218,13 +218,14 @@ impl actix::Handler<SaveGame> for AppActor {
   type Result = actix::MessageResult<SaveGame>;
 
   fn handle(&mut self, cmd: SaveGame, _: &mut actix::Context<AppActor>) -> Self::Result {
-    save_app(&self.app, &cmd.0, &self.saved_game_path)
+    save_app(&self.app, &cmd.0, &self.saved_game_path)?;
+    Ok("{}".to_string())
   }
 }
 
-struct SaveModule { name: String, path: foldertree::FolderPath }
+pub struct SaveModule { pub name: String, pub path: foldertree::FolderPath }
 impl actix::ResponseType for SaveModule {
-  type Item = ();
+  type Item = String;
   type Error = ::RPIError;
 }
 
@@ -234,7 +235,8 @@ impl actix::Handler<SaveModule> for AppActor {
   fn handle(&mut self, cmd: SaveModule, _: &mut actix::Context<AppActor>) -> Self::Result {
     let new_game = self.app.current_game.export_module(&cmd.path)?;
     let new_app = types::App::new(new_game);
-    save_app(&new_app, &cmd.name, &self.saved_game_path)
+    save_app(&new_app, &cmd.name, &self.saved_game_path)?;
+    Ok("{}".to_string())
   }
 }
 

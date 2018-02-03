@@ -36,7 +36,6 @@ pub mod actor;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use actix::Actor;
 
@@ -45,24 +44,22 @@ use pandt::types::{App, GameError};
 
 mod webapp {
   use std::fs;
-  use std::io::{Read, Write};
-  use std::path::PathBuf;
 
+  use actix;
   use actix_web::dev::FromParam;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
-  use futures::{future, Future};
+  use futures::Future;
   use http::{header, Method};
-  use serde_yaml;
 
-  use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets,
-                     SceneID};
+  use pandt::types::{CreatureID, GameCommand, Point3, SceneID};
 
   use super::{RPIError, PT};
   use actor;
 
 
   type PTResult<X> = Result<Json<X>, RPIError>;
+  type AsyncRPIResponse = Box<Future<Item = HttpResponse, Error = RPIError>>;
 
   pub fn router(pt: PT) -> Application<PT> {
     let mut corsm = cors::Cors::build();
@@ -73,15 +70,15 @@ mod webapp {
       .middleware(corsm)
       .resource("/", |r| {
         r.method(Method::GET).f(get_app);
-        r.method(Method::POST).a(post_app);
+        r.method(Method::POST).f(post_app);
       })
-      .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().a(poll_app))
+      .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
       .resource("/movement_options/{scene_id}/{cid}", |r| {
-        r.f(movement_options)
+        r.route().f(movement_options)
       })
-      .resource("/combat_movement_options", |r| r.f(combat_movement_options))
+      .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
       .resource("/target_options/{scene_id}/{cid}/{abid}", |r| {
-        r.f(target_options)
+        r.route().f(target_options)
       })
       .resource(
         "/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}",
@@ -94,78 +91,72 @@ mod webapp {
       .resource("/saved_games/{name}", |r| {
         r.method(Method::POST).f(save_game)
       })
-      .resource("/modules/{name}", |r| r.method(Method::POST).a(save_module))
+      .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
   }
 
-  fn get_app(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
-    let fut = req.state().app_address.call_fut(actor::GetApp);
-    let fut = fut
-      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
-      .and_then(|s| s)
-      .and_then(string_json_response) ;
-    Box::new(fut)
+  fn get_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    invoke_actor_string_result(&req.state().app_address, actor::GetApp)
   }
 
   /// If the client is polling with a non-current app "version", then immediately return the current
   /// App. Otherwise, wait 30 seconds for any new changes.
-  fn poll_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+  fn poll_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
     let snapshot_len: usize = try_fut!(get_arg(&req, "snapshot_len"));
     let log_len: usize = try_fut!(get_arg(&req, "log_len"));
-
-    let fut = req.state().app_address.call_fut(actor::PollApp {snapshot_len, log_len});
-    let fut = fut
-      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
-      .and_then(|s| s)
-      .and_then(string_json_response) ;
-    Box::new(fut)
+    invoke_actor_string_result(&req.state().app_address, actor::PollApp {snapshot_len, log_len})
   }
 
-  fn post_app(req: HttpRequest<PT>) -> Box<Future<Item = HttpResponse, Error = RPIError>> {
+  fn post_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
     let f = req.json().from_err().and_then(
-        move |command: GameCommand| -> Box<Future<Item = HttpResponse, Error = RPIError>> {
-            let fut = req.state().app_address.call_fut(actor::PerformCommand(command));
-            let fut = fut.map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
-                .and_then(|s| s)
-                .and_then(string_json_response);
-            Box::new(fut)
+        move |command: GameCommand| -> AsyncRPIResponse {
+            invoke_actor_string_result(&req.state().app_address, actor::PerformCommand(command))
         });
     Box::new(f)
   }
 
-  fn movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
-    let app = req.state().app()?;
-    let cid: CreatureID = parse_arg(&req, "cid")?;
-    let scene_id: SceneID = parse_arg(&req, "scene_id")?;
-    Ok(Json(app.get_movement_options(scene_id, cid)?))
+  fn invoke_actor_string_result<M>(address: &actix::SyncAddress<actor::AppActor>, msg: M) -> AsyncRPIResponse
+    where
+      actor::AppActor: actix::Handler<M>,
+      M: actix::ResponseType<Item=String, Error=RPIError> + Send + 'static,
+  {
+    let fut = address.call_fut(msg)
+      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
+      .and_then(|s| s)
+      .and_then(string_json_response);
+    Box::new(fut) // I should not need to box this result, but it is too hard to write the type of the return value
   }
 
-  fn combat_movement_options(req: HttpRequest<PT>) -> PTResult<Vec<Point3>> {
-    let app = req.state().app()?;
-    Ok(Json(app.get_combat_movement_options()?))
+  fn movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let creature_id: CreatureID = try_fut!(parse_arg(&req, "cid"));
+    let scene_id: SceneID = try_fut!(parse_arg(&req, "scene_id"));
+    invoke_actor_string_result(&req.state().app_address, actor::MovementOptions { creature_id, scene_id })
   }
 
-  fn target_options(req: HttpRequest<PT>) -> PTResult<PotentialTargets> {
-    let scene_id = parse_arg(&req, "scene_id")?;
-    let cid = parse_arg(&req, "cid")?;
-    let abid = parse_arg(&req, "abid")?;
-    let app = req.state().app()?;
-    Ok(Json(app.get_target_options(scene_id, cid, abid)?))
+  fn combat_movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    invoke_actor_string_result(&req.state().app_address, actor::CombatMovementOptions)
   }
 
-  fn preview_volume_targets(req: HttpRequest<PT>) -> PTResult<(Vec<CreatureID>, Vec<Point3>)> {
-    let scene_id = parse_arg(&req, "scene_id")?;
-    let actor_id = parse_arg(&req, "actor_id")?;
-    let ability_id = parse_arg(&req, "ability_id")?;
-    let x = get_arg(&req, "x")?;
-    let y = get_arg(&req, "y")?;
-    let z = get_arg(&req, "z")?;
+  fn target_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let scene_id = try_fut!(parse_arg(&req, "scene_id"));
+    let creature_id = try_fut!(parse_arg(&req, "cid"));
+    let ability_id = try_fut!(parse_arg(&req, "abid"));
+    invoke_actor_string_result(&req.state().app_address, actor::TargetOptions {scene_id, creature_id, ability_id})
+  }
+
+  fn preview_volume_targets(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let scene_id = try_fut!(parse_arg(&req, "scene_id"));
+    let actor_id = try_fut!(parse_arg(&req, "actor_id"));
+    let ability_id = try_fut!(parse_arg(&req, "ability_id"));
+    let x = try_fut!(get_arg(&req, "x"));
+    let y = try_fut!(get_arg(&req, "y"));
+    let z = try_fut!(get_arg(&req, "z"));
     let point = Point3::new(x, y, z);
-    let app = req.state().app()?;
-    let preview = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
-    Ok(Json(preview))
+
+    invoke_actor_string_result(&req.state().app_address, actor::PreviewVolumeTargets { scene_id, actor_id, ability_id, point })
   }
 
   fn list_saved_games(req: HttpRequest<PT>) -> PTResult<Vec<String>> {
+    // This does not require access to the app, so we don't dispatch to the actor.
     let mut result = vec![];
     for mpath in fs::read_dir(&req.state().saved_game_path)? {
       let path = mpath?;
@@ -179,43 +170,20 @@ mod webapp {
     Ok(Json(result))
   }
 
-  fn _load_saved_game(req: &HttpRequest<PT>) -> Result<(), RPIError> {
-    let state = req.state();
-    let name: String = get_arg(req, "name")?;
-    let path = child_path(&state.saved_game_path, &name)?;
-    let mut buffer = String::new();
-    fs::File::open(path)?.read_to_string(&mut buffer)?;
-    let mut app = state.app()?;
-    *app = serde_yaml::from_str(&buffer)?;
-    Ok(())
+  fn load_saved_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let name: String = try_fut!(get_arg(&req, "name"));
+    invoke_actor_string_result(&req.state().app_address, actor::LoadSavedGame(name))
   }
 
-  fn load_saved_game(req: HttpRequest<PT>) -> Box<Future<Item=HttpResponse, Error=RPIError>> {
-    Box::new(future::result(_load_saved_game(&req)).and_then(|_| get_app(req)))
+  fn save_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let name: String = try_fut!(get_arg(&req, "name"));
+    invoke_actor_string_result(&req.state().app_address, actor::SaveGame(name))
   }
 
-  fn save_game(req: HttpRequest<PT>) -> PTResult<()> {
-    let name: String = get_arg(&req, "name")?;
-    let app = req.state().app()?;
-    save_app(&req, &name, &app)
-  }
-
-  fn save_app(req: &HttpRequest<PT>, name: &str, app: &App) -> PTResult<()> {
-    let new_path = child_path(&req.state().saved_game_path, name)?;
-    // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
-    // without the extra magic that decorates the data with dynamic data for clients.
-    let yaml = serde_yaml::to_string(&app)?;
-    fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
-    Ok(Json(()))
-  }
-
-  fn save_module(req: HttpRequest<PT>) -> Box<Future<Item = Json<()>, Error = RPIError>> {
-    let f = req.json().from_err().and_then(move |path| -> PTResult<()> {
-      let name: String = get_arg(&req, "name")?;
-      let app = req.state().app()?;
-      let new_game = app.current_game.export_module(&path)?;
-      let new_app = App::new(new_game);
-      save_app(&req, &name, &new_app)
+  fn save_module(req: HttpRequest<PT>) -> AsyncRPIResponse {
+    let f = req.json().from_err().and_then(move |path| -> AsyncRPIResponse {
+      let name: String = try_fut!(get_arg(&req, "name"));
+      invoke_actor_string_result(&req.state().app_address, actor::SaveModule { name, path })
     });
     Box::new(f)
   }
@@ -245,18 +213,6 @@ mod webapp {
     Ok(s.map_err(RPIError::from_response_error)?.parse()?)
   }
 
-  fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, RPIError> {
-    if name.contains('/') || name.contains(':') || name.contains('\\') {
-      bail!(RPIError::InsecurePath(name.to_string()));
-    }
-    let new_path = parent.join(name);
-    for p in &new_path {
-      if p == "." || p == ".." {
-        bail!(RPIError::InsecurePath(name.to_string()));
-      }
-    }
-    Ok(new_path)
-  }
 }
 
 #[derive(Debug, Fail)]
@@ -321,17 +277,8 @@ impl actix_web::ResponseError for RPIError {
 
 #[derive(Clone)]
 pub struct PT {
-  app: Arc<Mutex<App>>,
   saved_game_path: PathBuf,
   app_address: actix::SyncAddress<actor::AppActor>,
-}
-
-impl PT {
-  fn app(&self) -> Result<::std::sync::MutexGuard<App>, RPIError> {    self
-      .app
-      .lock()
-      .map_err(|_| RPIError::LockError("app".to_string()))
-  }
 }
 
 fn main() {
@@ -357,15 +304,12 @@ fn main() {
   let game_dir = PathBuf::from(game_dir.clone());
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
 
-  let actable_app = app.clone();
-
-  let actor = actor::AppActor::new(actable_app, game_dir.clone());
+  let actor = actor::AppActor::new(app, game_dir.clone());
 
   let actix_system = actix::System::new("P&T-RPI");
   let app_addr: actix::SyncAddress<actor::AppActor> = actor.start();
 
   let pt = PT {
-    app: Arc::new(Mutex::new(app)),
     saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
     app_address: app_addr,
   };
