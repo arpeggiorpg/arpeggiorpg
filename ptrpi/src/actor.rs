@@ -129,7 +129,7 @@ fn get_current_app(
       .map(|&(_, ref ls)| ls.len())
       .unwrap_or(0) != log_len
   {
-    Ok(Some(app_to_string(app)?))
+    app_to_string(app).map(Some)
   } else {
     Ok(None)
   }
