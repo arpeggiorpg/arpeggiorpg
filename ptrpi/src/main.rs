@@ -57,7 +57,6 @@ mod webapp {
   use super::{RPIError, PT};
   use actor;
 
-
   type PTResult<X> = Result<Json<X>, RPIError>;
   type AsyncRPIResponse = Box<Future<Item = HttpResponse, Error = RPIError>>;
 
@@ -76,7 +75,9 @@ mod webapp {
       .resource("/movement_options/{scene_id}/{cid}", |r| {
         r.route().f(movement_options)
       })
-      .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
+      .resource("/combat_movement_options", |r| {
+        r.route().f(combat_movement_options)
+      })
       .resource("/target_options/{scene_id}/{cid}/{abid}", |r| {
         r.route().f(target_options)
       })
@@ -103,23 +104,34 @@ mod webapp {
   fn poll_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
     let snapshot_len: usize = try_fut!(get_arg(&req, "snapshot_len"));
     let log_len: usize = try_fut!(get_arg(&req, "log_len"));
-    invoke_actor_string_result(&req.state().app_address, actor::PollApp {snapshot_len, log_len})
+    invoke_actor_string_result(
+      &req.state().app_address,
+      actor::PollApp {
+        snapshot_len,
+        log_len,
+      },
+    )
   }
 
   fn post_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
-    let f = req.json().from_err().and_then(
-        move |command: GameCommand| -> AsyncRPIResponse {
-            invoke_actor_string_result(&req.state().app_address, actor::PerformCommand(command))
-        });
+    let f = req
+      .json()
+      .from_err()
+      .and_then(move |command: GameCommand| -> AsyncRPIResponse {
+        invoke_actor_string_result(&req.state().app_address, actor::PerformCommand(command))
+      });
     Box::new(f)
   }
 
-  fn invoke_actor_string_result<M>(address: &actix::SyncAddress<actor::AppActor>, msg: M) -> AsyncRPIResponse
-    where
-      actor::AppActor: actix::Handler<M>,
-      M: actix::ResponseType<Item=String, Error=RPIError> + Send + 'static,
+  fn invoke_actor_string_result<M>(
+    address: &actix::SyncAddress<actor::AppActor>, msg: M
+  ) -> AsyncRPIResponse
+  where
+    actor::AppActor: actix::Handler<M>,
+    M: actix::ResponseType<Item = String, Error = RPIError> + Send + 'static,
   {
-    let fut = address.call_fut(msg)
+    let fut = address
+      .call_fut(msg)
       .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
       .and_then(|s| s)
       .and_then(string_json_response);
@@ -129,7 +141,13 @@ mod webapp {
   fn movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
     let creature_id: CreatureID = try_fut!(parse_arg(&req, "cid"));
     let scene_id: SceneID = try_fut!(parse_arg(&req, "scene_id"));
-    invoke_actor_string_result(&req.state().app_address, actor::MovementOptions { creature_id, scene_id })
+    invoke_actor_string_result(
+      &req.state().app_address,
+      actor::MovementOptions {
+        creature_id,
+        scene_id,
+      },
+    )
   }
 
   fn combat_movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
@@ -140,7 +158,14 @@ mod webapp {
     let scene_id = try_fut!(parse_arg(&req, "scene_id"));
     let creature_id = try_fut!(parse_arg(&req, "cid"));
     let ability_id = try_fut!(parse_arg(&req, "abid"));
-    invoke_actor_string_result(&req.state().app_address, actor::TargetOptions {scene_id, creature_id, ability_id})
+    invoke_actor_string_result(
+      &req.state().app_address,
+      actor::TargetOptions {
+        scene_id,
+        creature_id,
+        ability_id,
+      },
+    )
   }
 
   fn preview_volume_targets(req: HttpRequest<PT>) -> AsyncRPIResponse {
@@ -152,7 +177,15 @@ mod webapp {
     let z = try_fut!(get_arg(&req, "z"));
     let point = Point3::new(x, y, z);
 
-    invoke_actor_string_result(&req.state().app_address, actor::PreviewVolumeTargets { scene_id, actor_id, ability_id, point })
+    invoke_actor_string_result(
+      &req.state().app_address,
+      actor::PreviewVolumeTargets {
+        scene_id,
+        actor_id,
+        ability_id,
+        point,
+      },
+    )
   }
 
   fn list_saved_games(req: HttpRequest<PT>) -> PTResult<Vec<String>> {
@@ -181,10 +214,13 @@ mod webapp {
   }
 
   fn save_module(req: HttpRequest<PT>) -> AsyncRPIResponse {
-    let f = req.json().from_err().and_then(move |path| -> AsyncRPIResponse {
-      let name: String = try_fut!(get_arg(&req, "name"));
-      invoke_actor_string_result(&req.state().app_address, actor::SaveModule { name, path })
-    });
+    let f = req
+      .json()
+      .from_err()
+      .and_then(move |path| -> AsyncRPIResponse {
+        let name: String = try_fut!(get_arg(&req, "name"));
+        invoke_actor_string_result(&req.state().app_address, actor::SaveModule { name, path })
+      });
     Box::new(f)
   }
 
@@ -315,7 +351,10 @@ fn main() {
   };
 
   let server = actix_web::HttpServer::new(move || webapp::router(pt.clone()));
-  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
+  server
+    .bind("0.0.0.0:1337")
+    .expect("Couldn't bind to 1337")
+    .start();
   actix_system.run();
 }
 
