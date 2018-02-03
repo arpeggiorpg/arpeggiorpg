@@ -39,7 +39,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use actix::Actor;
-use futures::sync::oneshot;
 
 use pandt::game::load_app_from_path;
 use pandt::types::{App, GameError};
@@ -54,10 +53,9 @@ mod webapp {
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
   use futures::{future, Future};
   use http::{header, Method};
-  use serde_json;
   use serde_yaml;
 
-  use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets, RPIApp, RPIGame,
+  use pandt::types::{App, CreatureID, GameCommand, Point3, PotentialTargets,
                      SceneID};
 
   use super::{RPIError, PT};
@@ -226,11 +224,6 @@ mod webapp {
     Ok(HttpResponse::Ok()
       .content_type("application/json")
       .body(body)?)
-  }
-
-  fn json_response<T: ::serde::Serialize>(b: &T) -> Result<HttpResponse, RPIError> {
-    let body = serde_json::to_string(b)?;
-    string_json_response(body)
   }
 
   fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
