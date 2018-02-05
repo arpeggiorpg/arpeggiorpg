@@ -235,7 +235,7 @@ mod webapp {
   where
     T: FromParam,
   {
-    req.match_info().query::<T>(key).map_err(|e| e.into())
+    Ok(req.match_info().query::<T>(key)?)
   }
 
   fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
