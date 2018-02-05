@@ -5,7 +5,6 @@ authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dependencies]
 actix = "0.4.5"
-actix-web = "0.3"
 env_logger = "0.5"
 error-chain = "0.11.0-rc.2"
 failure = "0.1"
@@ -22,3 +21,7 @@ tokio-core = "0.1"
 
 [dependencies.pandt]
 path = "../pandt"
+
+[dependencies.actix-web]
+git = "https://github.com/radix/actix-web"
+rev = "c16062d6bc842a5a5e9c7578273af7f5cce71416"

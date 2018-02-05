@@ -4,8 +4,8 @@
 extern crate actix;
 extern crate actix_web;
 extern crate env_logger;
-#[macro_use]
 extern crate error_chain;
+#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
@@ -40,7 +40,7 @@ use std::path::PathBuf;
 use actix::Actor;
 
 use pandt::game::load_app_from_path;
-use pandt::types::{App, GameError};
+use pandt::types::App;
 
 mod webapp {
   use std::fs;
@@ -132,7 +132,7 @@ mod webapp {
   {
     let fut = address
       .call_fut(msg)
-      .map_err(|e| RPIError::MessageError(format!("Actor request failed: {:?}", e)))
+      .from_err()
       .and_then(|s| s)
       .and_then(string_json_response);
     Box::new(fut) // I should not need to box this result, but it is too hard to write the type of the return value
@@ -234,10 +234,7 @@ mod webapp {
   where
     T: FromParam,
   {
-    req
-      .match_info()
-      .query::<T>(key)
-      .map_err(RPIError::from_response_error)
+    req.match_info().query::<T>(key).map_err(|e| e.into())
   }
 
   fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
@@ -246,70 +243,11 @@ mod webapp {
     RPIError: From<<T as ::std::str::FromStr>::Err>, // I dunno man
   {
     let s = req.match_info().query::<String>(key);
-    Ok(s.map_err(RPIError::from_response_error)?.parse()?)
-  }
-
-}
-
-#[derive(Debug, Fail)]
-pub enum RPIError {
-  #[fail(display = "Internal Error")] MessageError(String),
-  #[fail(display = "Game Error")] GameError(#[cause] GameError),
-  #[fail(display = "JSON Error")] JSONError(#[cause] serde_json::error::Error),
-  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
-  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
-  #[fail(display = "Web Error")] WebError(Box<actix_web::ResponseError>),
-  #[fail(display = "JSON Payload Error")]
-  JSONPayloadError(#[cause] actix_web::error::JsonPayloadError),
-  #[fail(display = "HTTP Error")] HTTPError(#[cause] http::Error),
-  #[fail(display = "The lock on {} is poisoned. The application probably needs restarted.", _0)]
-  LockError(String),
-  #[fail(display = "The path {} is insecure.", _0)] InsecurePath(String),
-}
-
-impl From<GameError> for RPIError {
-  fn from(error: GameError) -> Self { RPIError::GameError(error) }
-}
-impl From<serde_json::error::Error> for RPIError {
-  fn from(error: serde_json::error::Error) -> Self { RPIError::JSONError(error) }
-}
-
-impl From<::std::io::Error> for RPIError {
-  fn from(error: ::std::io::Error) -> Self { RPIError::IOError(error) }
-}
-
-impl From<serde_yaml::Error> for RPIError {
-  fn from(error: serde_yaml::Error) -> Self { RPIError::YAMLError(error) }
-}
-
-impl From<http::Error> for RPIError {
-  fn from(error: http::Error) -> Self { RPIError::HTTPError(error) }
-}
-
-impl From<actix_web::error::JsonPayloadError> for RPIError {
-  fn from(error: actix_web::error::JsonPayloadError) -> Self { RPIError::JSONPayloadError(error) }
-}
-
-impl RPIError {
-  fn from_response_error<T: actix_web::ResponseError>(e: T) -> Self {
-    RPIError::WebError(Box::new(e))
+    Ok(s.map_err(|e| format_err!("Failed to parse an argument: {:?} ({:?})", key, e))?.parse()?)
   }
 }
 
-impl actix_web::ResponseError for RPIError {
-  fn error_response(&self) -> actix_web::HttpResponse {
-    match *self {
-      RPIError::JSONPayloadError(ref e) => e.error_response(),
-      RPIError::WebError(ref e) => e.error_response(),
-      RPIError::HTTPError(ref e) => e.error_response(),
-      RPIError::IOError(ref e) => e.error_response(),
-      _ => actix_web::HttpResponse::new(
-        http::StatusCode::INTERNAL_SERVER_ERROR,
-        actix_web::Body::Empty,
-      ),
-    }
-  }
-}
+type RPIError = failure::Error;
 
 #[derive(Clone)]
 pub struct PT {

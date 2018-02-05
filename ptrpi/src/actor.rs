@@ -73,6 +73,7 @@ impl actix::Handler<PerformCommand> for AppActor {
         error!("Unexpected failure while notifying a waiter: {:?}", e);
       }
     }
+    // Convert the rich error into a generic string error to serialize back to the client
     let result = result.map_err(|e| format!("Error: {}", e));
     let result = result.map(|(g, l)| (types::RPIGame(g), l));
     Ok(serde_json::to_string(&result)?)
@@ -108,11 +109,11 @@ impl actix::Handler<PollApp> for AppActor {
 
       let fut = timeout
         .select2(receiver)
-        .map_err(|e| {
-          error!("Error while polling: {:?}", e);
-          ::RPIError::MessageError("Error while polling".to_string())
+        .map_err(|e| match e {
+          future::Either::A((err, _)) => err.into(),
+          future::Either::B((err, _)) => err.into(),
         })
-        .and_then(move |_| me.call_fut(GetApp).map_err(|_| panic!()).and_then(|s| s));
+        .and_then(move |_| me.call_fut(GetApp).from_err().and_then(|s| s));
       Box::new(fut)
     }
     Self::async_reply(handle(self, cmd, ctx).into_actor(self))
@@ -280,14 +281,18 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), ::R
   Ok(())
 }
 
-fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, ::RPIError> {
+#[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
+#[fail(display = "Path is insecure: {}", name)]
+struct InsecurePathError {name: String}
+
+fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, InsecurePathError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
-    bail!(::RPIError::InsecurePath(name.to_string()));
+    return Err(InsecurePathError { name: name.to_string() })
   }
   let new_path = parent.join(name);
   for p in &new_path {
     if p == "." || p == ".." {
-      bail!(::RPIError::InsecurePath(name.to_string()));
+      return Err(InsecurePathError { name: name.to_string() })
     }
   }
   Ok(new_path)
