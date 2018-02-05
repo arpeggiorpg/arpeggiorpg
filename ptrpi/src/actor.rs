@@ -6,6 +6,7 @@ use std::time::Duration;
 use actix;
 use actix::{Actor, AsyncContext};
 use actix::fut::WrapFuture;
+use failure::Error;
 use futures::{future, Future};
 use futures::sync::oneshot;
 use tokio_core::reactor::Timeout;
@@ -37,7 +38,7 @@ impl actix::Actor for AppActor {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Void {}
 
-fn app_to_string(app: &types::App) -> Result<String, ::RPIError> {
+fn app_to_string(app: &types::App) -> Result<String, Error> {
   Ok(serde_json::to_string(&types::RPIApp(app))?)
 }
 
@@ -45,7 +46,7 @@ pub struct GetApp;
 
 impl actix::ResponseType for GetApp {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<GetApp> for AppActor {
@@ -59,7 +60,7 @@ pub struct PerformCommand(pub types::GameCommand);
 
 impl actix::ResponseType for PerformCommand {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<PerformCommand> for AppActor {
@@ -87,7 +88,7 @@ pub struct PollApp {
 
 impl actix::ResponseType for PollApp {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<PollApp> for AppActor {
@@ -96,7 +97,7 @@ impl actix::Handler<PollApp> for AppActor {
     // In actix master we can specify the result directly as a Box<Future>> so we won't need this inner function!
     fn handle(
       actor: &mut AppActor, cmd: PollApp, ctx: &mut actix::Context<AppActor>
-    ) -> Box<Future<Item = String, Error = ::RPIError>> {
+    ) -> Box<Future<Item = String, Error = Error>> {
       if let Some(r) = try_fut!(get_current_app(&actor.app, cmd.snapshot_len, cmd.log_len)) {
         return Box::new(future::ok(r));
       }
@@ -122,7 +123,7 @@ impl actix::Handler<PollApp> for AppActor {
 
 fn get_current_app(
   app: &types::App, snapshot_len: usize, log_len: usize
-) -> Result<Option<String>, ::RPIError> {
+) -> Result<Option<String>, Error> {
   if app.snapshots.len() != snapshot_len
     || app
       .snapshots
@@ -142,7 +143,7 @@ pub struct MovementOptions {
 }
 impl actix::ResponseType for MovementOptions {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<MovementOptions> for AppActor {
@@ -158,7 +159,7 @@ impl actix::Handler<MovementOptions> for AppActor {
 pub struct CombatMovementOptions;
 impl actix::ResponseType for CombatMovementOptions {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<CombatMovementOptions> for AppActor {
@@ -178,7 +179,7 @@ pub struct TargetOptions {
 }
 impl actix::ResponseType for TargetOptions {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<TargetOptions> for AppActor {
@@ -201,7 +202,7 @@ pub struct PreviewVolumeTargets {
 }
 impl actix::ResponseType for PreviewVolumeTargets {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<PreviewVolumeTargets> for AppActor {
@@ -222,7 +223,7 @@ impl actix::Handler<PreviewVolumeTargets> for AppActor {
 pub struct LoadSavedGame(pub String);
 impl actix::ResponseType for LoadSavedGame {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<LoadSavedGame> for AppActor {
@@ -240,7 +241,7 @@ impl actix::Handler<LoadSavedGame> for AppActor {
 pub struct SaveGame(pub String);
 impl actix::ResponseType for SaveGame {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<SaveGame> for AppActor {
@@ -258,7 +259,7 @@ pub struct SaveModule {
 }
 impl actix::ResponseType for SaveModule {
   type Item = String;
-  type Error = ::RPIError;
+  type Error = Error;
 }
 
 impl actix::Handler<SaveModule> for AppActor {
@@ -272,7 +273,7 @@ impl actix::Handler<SaveModule> for AppActor {
   }
 }
 
-fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), ::RPIError> {
+fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
   let new_path = child_path(file_path, name)?;
   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
   // without the extra magic that decorates the data with dynamic data for clients.

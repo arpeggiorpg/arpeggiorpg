@@ -49,16 +49,17 @@ mod webapp {
   use actix_web::dev::FromParam;
   use actix_web::middleware::cors;
   use actix_web::{Application, HttpRequest, HttpResponse, Json};
+  use failure::Error;
   use futures::Future;
   use http::{header, Method};
 
   use pandt::types::{CreatureID, GameCommand, Point3, SceneID};
 
-  use super::{RPIError, PT};
+  use super::PT;
   use actor;
 
-  type PTResult<X> = Result<Json<X>, RPIError>;
-  type AsyncRPIResponse = Box<Future<Item = HttpResponse, Error = RPIError>>;
+  type PTResult<X> = Result<Json<X>, Error>;
+  type AsyncRPIResponse = Box<Future<Item = HttpResponse, Error = Error>>;
 
   pub fn router(pt: PT) -> Application<PT> {
     let mut corsm = cors::Cors::build();
@@ -128,7 +129,7 @@ mod webapp {
   ) -> AsyncRPIResponse
   where
     actor::AppActor: actix::Handler<M>,
-    M: actix::ResponseType<Item = String, Error = RPIError> + Send + 'static,
+    M: actix::ResponseType<Item = String, Error = Error> + Send + 'static,
   {
     let fut = address
       .call_fut(msg)
@@ -224,30 +225,28 @@ mod webapp {
     Box::new(f)
   }
 
-  fn string_json_response(body: String) -> Result<HttpResponse, RPIError> {
+  fn string_json_response(body: String) -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok()
       .content_type("application/json")
       .body(body)?)
   }
 
-  fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
   where
     T: FromParam,
   {
     req.match_info().query::<T>(key).map_err(|e| e.into())
   }
 
-  fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, RPIError>
+  fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
   where
     T: ::std::str::FromStr,
-    RPIError: From<<T as ::std::str::FromStr>::Err>, // I dunno man
+    Error: From<<T as ::std::str::FromStr>::Err>, // I dunno man
   {
     let s = req.match_info().query::<String>(key);
     Ok(s.map_err(|e| format_err!("Failed to parse an argument: {:?} ({:?})", key, e))?.parse()?)
   }
 }
-
-type RPIError = failure::Error;
 
 #[derive(Clone)]
 pub struct PT {
