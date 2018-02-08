@@ -136,7 +136,9 @@ mod webapp {
       .from_err()
       .and_then(|s| s)
       .and_then(string_json_response);
-    Box::new(fut) // I should not need to box this result, but it is too hard to write the type of the return value
+    // I should not need to box this result, but it is too hard to write the type of the return
+    // value
+    Box::new(fut)
   }
 
   fn movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
@@ -244,7 +246,10 @@ mod webapp {
     Error: From<<T as ::std::str::FromStr>::Err>, // I dunno man
   {
     let s = req.match_info().query::<String>(key);
-    Ok(s.map_err(|e| format_err!("Failed to parse an argument: {:?} ({:?})", key, e))?.parse()?)
+    Ok(
+      s.map_err(|e| format_err!("Failed to parse an argument: {:?} ({:?})", key, e))?
+        .parse()?,
+    )
   }
 }
 

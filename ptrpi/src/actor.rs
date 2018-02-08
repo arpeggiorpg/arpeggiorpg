@@ -207,9 +207,7 @@ impl ResponseType for PreviewVolumeTargets {
 impl Handler<PreviewVolumeTargets> for AppActor {
   type Result = MessageResult<PreviewVolumeTargets>;
 
-  fn handle(
-    &mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>
-  ) -> Self::Result {
+  fn handle(&mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self.app.preview_volume_targets(
       cmd.scene_id,
       cmd.actor_id,
@@ -283,16 +281,22 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
 #[fail(display = "Path is insecure: {}", name)]
-struct InsecurePathError {name: String}
+struct InsecurePathError {
+  name: String,
+}
 
 fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, InsecurePathError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
-    return Err(InsecurePathError { name: name.to_string() })
+    return Err(InsecurePathError {
+      name: name.to_string(),
+    });
   }
   let new_path = parent.join(name);
   for p in &new_path {
     if p == "." || p == ".." {
-      return Err(InsecurePathError { name: name.to_string() })
+      return Err(InsecurePathError {
+        name: name.to_string(),
+      });
     }
   }
   Ok(new_path)
