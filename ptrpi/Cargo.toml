@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dependencies]
-actix = "0.4.5"
+# actix = "0.4.5"
 env_logger = "0.5"
 error-chain = "0.11.0-rc.2"
 failure = "0.1"
@@ -22,6 +22,10 @@ tokio-core = "0.1"
 [dependencies.pandt]
 path = "../pandt"
 
+[dependencies.actix]
+git = "https://github.com/actix/actix.git"
+# rev = "cd3ff610d9acd64b49d865d257c193862058a59c"
+
 [dependencies.actix-web]
-git = "https://github.com/radix/actix-web"
-rev = "c16062d6bc842a5a5e9c7578273af7f5cce71416"
+git = "https://github.com/actix/actix-web"
+rev = "d0cbf7cd2538bedc2aff34967235c3dfe6396430"

@@ -4,8 +4,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use actix;
-use actix::{Actor, AsyncContext};
-use actix::fut::WrapFuture;
+use actix::{Actor, AsyncContext, Context, Handler, MessageResult, ResponseType};
 use failure::Error;
 use futures::{future, Future};
 use futures::sync::oneshot;
@@ -31,8 +30,8 @@ impl AppActor {
   }
 }
 
-impl actix::Actor for AppActor {
-  type Context = actix::Context<Self>;
+impl Actor for AppActor {
+  type Context = Context<Self>;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -44,28 +43,28 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
 
 pub struct GetApp;
 
-impl actix::ResponseType for GetApp {
+impl ResponseType for GetApp {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<GetApp> for AppActor {
-  type Result = actix::MessageResult<GetApp>;
-  fn handle(&mut self, _: GetApp, _: &mut actix::Context<Self>) -> Self::Result {
+impl Handler<GetApp> for AppActor {
+  type Result = MessageResult<GetApp>;
+  fn handle(&mut self, _: GetApp, _: &mut Context<Self>) -> Self::Result {
     app_to_string(&self.app)
   }
 }
 
 pub struct PerformCommand(pub types::GameCommand);
 
-impl actix::ResponseType for PerformCommand {
+impl ResponseType for PerformCommand {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<PerformCommand> for AppActor {
-  type Result = actix::MessageResult<PerformCommand>;
-  fn handle(&mut self, command: PerformCommand, _: &mut actix::Context<Self>) -> Self::Result {
+impl Handler<PerformCommand> for AppActor {
+  type Result = MessageResult<PerformCommand>;
+  fn handle(&mut self, command: PerformCommand, _: &mut Context<Self>) -> Self::Result {
     let result = self
       .app
       .perform_command(command.0, self.saved_game_path.clone());
@@ -86,17 +85,17 @@ pub struct PollApp {
   pub log_len: usize,
 }
 
-impl actix::ResponseType for PollApp {
+impl ResponseType for PollApp {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<PollApp> for AppActor {
-  type Result = actix::Response<Self, PollApp>;
-  fn handle(&mut self, cmd: PollApp, ctx: &mut actix::Context<Self>) -> Self::Result {
+impl Handler<PollApp> for AppActor {
+  type Result = Box<Future<Item = String, Error = Error>>;
+  fn handle(&mut self, cmd: PollApp, ctx: &mut Context<Self>) -> Self::Result {
     // In actix master we can specify the result directly as a Box<Future>> so we won't need this inner function!
     fn handle(
-      actor: &mut AppActor, cmd: PollApp, ctx: &mut actix::Context<AppActor>
+      actor: &mut AppActor, cmd: PollApp, ctx: &mut Context<AppActor>
     ) -> Box<Future<Item = String, Error = Error>> {
       if let Some(r) = try_fut!(get_current_app(&actor.app, cmd.snapshot_len, cmd.log_len)) {
         return Box::new(future::ok(r));
@@ -117,7 +116,7 @@ impl actix::Handler<PollApp> for AppActor {
         .and_then(move |_| me.call_fut(GetApp).from_err().and_then(|s| s));
       Box::new(fut)
     }
-    Self::async_reply(handle(self, cmd, ctx).into_actor(self))
+    handle(self, cmd, ctx)
   }
 }
 
@@ -141,15 +140,15 @@ pub struct MovementOptions {
   pub creature_id: types::CreatureID,
   pub scene_id: types::SceneID,
 }
-impl actix::ResponseType for MovementOptions {
+impl ResponseType for MovementOptions {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<MovementOptions> for AppActor {
-  type Result = actix::MessageResult<MovementOptions>;
+impl Handler<MovementOptions> for AppActor {
+  type Result = MessageResult<MovementOptions>;
 
-  fn handle(&mut self, cmd: MovementOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, cmd: MovementOptions, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self
       .app
       .get_movement_options(cmd.scene_id, cmd.creature_id)?)?)
@@ -157,15 +156,15 @@ impl actix::Handler<MovementOptions> for AppActor {
 }
 
 pub struct CombatMovementOptions;
-impl actix::ResponseType for CombatMovementOptions {
+impl ResponseType for CombatMovementOptions {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<CombatMovementOptions> for AppActor {
-  type Result = actix::MessageResult<CombatMovementOptions>;
+impl Handler<CombatMovementOptions> for AppActor {
+  type Result = MessageResult<CombatMovementOptions>;
 
-  fn handle(&mut self, _: CombatMovementOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, _: CombatMovementOptions, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self
       .app
       .get_combat_movement_options()?)?)
@@ -177,15 +176,15 @@ pub struct TargetOptions {
   pub scene_id: types::SceneID,
   pub ability_id: types::AbilityID,
 }
-impl actix::ResponseType for TargetOptions {
+impl ResponseType for TargetOptions {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<TargetOptions> for AppActor {
-  type Result = actix::MessageResult<TargetOptions>;
+impl Handler<TargetOptions> for AppActor {
+  type Result = MessageResult<TargetOptions>;
 
-  fn handle(&mut self, cmd: TargetOptions, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, cmd: TargetOptions, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self.app.get_target_options(
       cmd.scene_id,
       cmd.creature_id,
@@ -200,16 +199,16 @@ pub struct PreviewVolumeTargets {
   pub ability_id: types::AbilityID,
   pub point: types::Point3,
 }
-impl actix::ResponseType for PreviewVolumeTargets {
+impl ResponseType for PreviewVolumeTargets {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<PreviewVolumeTargets> for AppActor {
-  type Result = actix::MessageResult<PreviewVolumeTargets>;
+impl Handler<PreviewVolumeTargets> for AppActor {
+  type Result = MessageResult<PreviewVolumeTargets>;
 
   fn handle(
-    &mut self, cmd: PreviewVolumeTargets, _: &mut actix::Context<AppActor>
+    &mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>
   ) -> Self::Result {
     Ok(serde_json::to_string(&self.app.preview_volume_targets(
       cmd.scene_id,
@@ -221,15 +220,15 @@ impl actix::Handler<PreviewVolumeTargets> for AppActor {
 }
 
 pub struct LoadSavedGame(pub String);
-impl actix::ResponseType for LoadSavedGame {
+impl ResponseType for LoadSavedGame {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<LoadSavedGame> for AppActor {
-  type Result = actix::MessageResult<LoadSavedGame>;
+impl Handler<LoadSavedGame> for AppActor {
+  type Result = MessageResult<LoadSavedGame>;
 
-  fn handle(&mut self, cmd: LoadSavedGame, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, cmd: LoadSavedGame, _: &mut Context<AppActor>) -> Self::Result {
     let path = child_path(&self.saved_game_path, &cmd.0)?;
     let mut buffer = String::new();
     fs::File::open(path)?.read_to_string(&mut buffer)?;
@@ -239,15 +238,15 @@ impl actix::Handler<LoadSavedGame> for AppActor {
 }
 
 pub struct SaveGame(pub String);
-impl actix::ResponseType for SaveGame {
+impl ResponseType for SaveGame {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<SaveGame> for AppActor {
-  type Result = actix::MessageResult<SaveGame>;
+impl Handler<SaveGame> for AppActor {
+  type Result = MessageResult<SaveGame>;
 
-  fn handle(&mut self, cmd: SaveGame, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, cmd: SaveGame, _: &mut Context<AppActor>) -> Self::Result {
     save_app(&self.app, &cmd.0, &self.saved_game_path)?;
     Ok("{}".to_string())
   }
@@ -257,15 +256,15 @@ pub struct SaveModule {
   pub name: String,
   pub path: foldertree::FolderPath,
 }
-impl actix::ResponseType for SaveModule {
+impl ResponseType for SaveModule {
   type Item = String;
   type Error = Error;
 }
 
-impl actix::Handler<SaveModule> for AppActor {
-  type Result = actix::MessageResult<SaveModule>;
+impl Handler<SaveModule> for AppActor {
+  type Result = MessageResult<SaveModule>;
 
-  fn handle(&mut self, cmd: SaveModule, _: &mut actix::Context<AppActor>) -> Self::Result {
+  fn handle(&mut self, cmd: SaveModule, _: &mut Context<AppActor>) -> Self::Result {
     let new_game = self.app.current_game.export_module(&cmd.path)?;
     let new_app = types::App::new(new_game);
     save_app(&new_app, &cmd.name, &self.saved_game_path)?;
