@@ -92,31 +92,26 @@ impl ResponseType for PollApp {
 
 impl Handler<PollApp> for AppActor {
   type Result = Box<Future<Item = String, Error = Error>>;
+
   fn handle(&mut self, cmd: PollApp, ctx: &mut Context<Self>) -> Self::Result {
-    // In actix master we can specify the result directly as a Box<Future>> so we won't need this inner function!
-    fn handle(
-      actor: &mut AppActor, cmd: PollApp, ctx: &mut Context<AppActor>
-    ) -> Box<Future<Item = String, Error = Error>> {
-      if let Some(r) = try_fut!(get_current_app(&actor.app, cmd.snapshot_len, cmd.log_len)) {
-        return Box::new(future::ok(r));
-      }
-      let (sender, receiver) = oneshot::channel();
-      actor.waiters.push(sender);
-
-      let handle = actix::Arbiter::handle();
-      let timeout = Timeout::new(Duration::from_secs(30), handle).expect("Timeout::new panic!");
-      let me: actix::Address<AppActor> = ctx.address();
-
-      let fut = timeout
-        .select2(receiver)
-        .map_err(|e| match e {
-          future::Either::A((err, _)) => err.into(),
-          future::Either::B((err, _)) => err.into(),
-        })
-        .and_then(move |_| me.call_fut(GetApp).from_err().and_then(|s| s));
-      Box::new(fut)
+    if let Some(r) = try_fut!(get_current_app(&self.app, cmd.snapshot_len, cmd.log_len)) {
+      return Box::new(future::ok(r));
     }
-    handle(self, cmd, ctx)
+    let (sender, receiver) = oneshot::channel();
+    self.waiters.push(sender);
+
+    let handle = actix::Arbiter::handle();
+    let timeout = Timeout::new(Duration::from_secs(30), handle).expect("Timeout::new panic!");
+    let me: actix::Address<AppActor> = ctx.address();
+
+    let fut = timeout
+      .select2(receiver)
+      .map_err(|e| match e {
+        future::Either::A((err, _)) => err.into(),
+        future::Either::B((err, _)) => err.into(),
+      })
+      .and_then(move |_| me.call_fut(GetApp).from_err().and_then(|s| s));
+    Box::new(fut)
   }
 }
 
