@@ -26,7 +26,7 @@ mod macros {
   macro_rules! try_fut {
     ($e:expr) => (match $e {
       Ok(x) => x,
-      Err(e) => return Box::new(::futures::future::err(From::from(e))),
+      Err(e) => return Box::new(::futures::future::err(e.into())),
     })
   }
 }
@@ -260,7 +260,7 @@ pub struct PT {
 }
 
 fn main() {
-  if let Err(_) = env::var("PANDT_LOG") {
+  if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info");
   }
   let env = env_logger::Env::new()

@@ -86,7 +86,7 @@ pub fn point3_difference(pt1: Point3, pt2: Point3) -> Point3 {
 }
 
 pub fn point3_add_vec(pt: Point3, diff: Point3) -> Point3 {
-  Point3::from_quantities((pt.x + diff.x), (pt.y + diff.y), (pt.z + diff.z))
+  Point3::from_quantities(pt.x + diff.x, pt.y + diff.y, pt.z + diff.z)
 }
 
 fn is_open(terrain: &Terrain, pt: Point3) -> bool { terrain.contains(&pt) }
