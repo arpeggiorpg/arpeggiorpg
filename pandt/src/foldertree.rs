@@ -19,7 +19,7 @@ pub enum FolderTreeError {
 }
 
 // Using *just* a BTreeMap, and dropping the extra `children` sets, would be simpler and faster in
-//  some ways, *except* that listing the direct children of a node would be O(descendents).
+// some ways, *except* that listing the direct children of a node would be O(descendents).
 // However... consider using a BTreeMap for the `nodes` list, and then tree.walk(path) becomes
 // trivial with BTreeMap.range. We could also change it to
 // `nodes: BTreeMap<FolderPath, (T, HashSet<String>)>`

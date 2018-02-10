@@ -765,29 +765,24 @@ pub enum GameError {
   NoteNotFound(FolderPath, String),
   #[fail(display = "Notes can't be linked or unlinked. '{}' / '{}'", _0, _1)]
   CannotLinkNotes(FolderPath, String),
+  #[fail(display = "Failed to open a file containing an application: {}", _0)]
+  CouldNotOpenAppFile(String, #[cause] ::std::io::Error),
+  #[fail(display = "Failed to parse a serialized application: {}", _0)]
+  CouldNotParseApp(#[cause] serde_yaml::Error),
 
   // Wrappers for other errors:
   #[fail(display = "FolderTree error")] FolderTreeError(#[cause] FolderTreeError),
   #[fail(display = "UUID Parse Error")] UUIDParseError(#[cause] UuidParseError),
-  #[fail(display = "YAML Error")] YAMLError(#[cause] serde_yaml::Error),
-  #[fail(display = "IO Error")] IOError(#[cause] ::std::io::Error),
 }
 
-impl From<FolderTreeError> for GameError {
-  fn from(error: FolderTreeError) -> Self { GameError::FolderTreeError(error) }
+macro_rules! impl_from {
+  ($type:ty, $variant:ident) => (
+    impl From<$type> for GameError { fn from(error: $type) -> Self { GameError::$variant(error) } }
+  );
 }
 
-impl From<UuidParseError> for GameError {
-  fn from(error: UuidParseError) -> Self { GameError::UUIDParseError(error) }
-}
-
-impl From<serde_yaml::Error> for GameError {
-  fn from(error: serde_yaml::Error) -> Self { GameError::YAMLError(error) }
-}
-
-impl From<::std::io::Error> for GameError {
-  fn from(error: ::std::io::Error) -> Self { GameError::IOError(error) }
-}
+impl_from!(FolderTreeError, FolderTreeError);
+impl_from!(UuidParseError, UUIDParseError);
 
 impl<'a> From<&'a str> for GameError {
   fn from(error: &'a str) -> Self { GameError::BuggyProgram(error.to_string()) }

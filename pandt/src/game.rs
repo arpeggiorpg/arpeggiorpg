@@ -1609,10 +1609,11 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
 
 pub fn load_app_from_path(parent: &Path, filename: &str) -> Result<App, GameError> {
   let filename = parent.join(filename);
-  let mut appf = File::open(filename)?;
+  let mut appf = File::open(filename.clone())
+    .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
   let mut apps = String::new();
   appf.read_to_string(&mut apps).unwrap();
-  let app: App = serde_yaml::from_str(&apps)?;
+  let app: App = serde_yaml::from_str(&apps).map_err(|e| GameError::CouldNotParseApp(e))?;
   app.current_game.validate_campaign()?;
   Ok(app)
 }
