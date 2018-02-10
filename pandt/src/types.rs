@@ -216,77 +216,32 @@ impl Saturating for Energy {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct PlayerID(pub String);
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct ConditionID(pub Uuid);
-impl ConditionID {
-  pub fn gen() -> ConditionID { ConditionID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
+macro_rules! uuid_id {
+  ($type:ident) => (
+    #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+    pub struct $type(pub Uuid);
+    impl $type {
+      pub fn gen() -> $type { $type(Uuid::new_v4()) }
+      pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
+    }
+
+    impl ::std::str::FromStr for $type {
+      type Err = GameError;
+      fn from_str(s: &str) -> Result<$type, GameError> {
+        Uuid::parse_str(s)
+          .map_err(|e| GameError::InvalidID(s.to_string(), e))
+          .map($type)
+      }
+    }
+  );
 }
 
-impl ::std::str::FromStr for ConditionID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<ConditionID, GameError> { Ok(ConditionID(Uuid::parse_str(s)?)) }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct CreatureID(Uuid);
-impl CreatureID {
-  pub fn gen() -> CreatureID { CreatureID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
-}
-
-impl ::std::str::FromStr for CreatureID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<CreatureID, GameError> { Ok(CreatureID(Uuid::parse_str(s)?)) }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct ItemID(Uuid);
-impl ItemID {
-  pub fn gen() -> ItemID { ItemID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
-}
-
-impl ::std::str::FromStr for ItemID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<ItemID, GameError> { Ok(ItemID(Uuid::parse_str(s)?)) }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct SceneID(Uuid);
-impl SceneID {
-  pub fn gen() -> SceneID { SceneID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
-}
-
-impl ::std::str::FromStr for SceneID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<SceneID, GameError> { Ok(SceneID(Uuid::parse_str(s)?)) }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct AbilityID(Uuid);
-impl AbilityID {
-  pub fn gen() -> AbilityID { AbilityID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.to_string() }
-}
-
-impl ::std::str::FromStr for AbilityID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<AbilityID, GameError> { Ok(AbilityID(Uuid::parse_str(s)?)) }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
-pub struct ClassID(Uuid);
-impl ClassID {
-  pub fn gen() -> ClassID { ClassID(Uuid::new_v4()) }
-  pub fn to_string(&self) -> String { self.0.to_string() }
-}
-
-impl ::std::str::FromStr for ClassID {
-  type Err = GameError;
-  fn from_str(s: &str) -> Result<ClassID, GameError> { Ok(ClassID(Uuid::parse_str(s)?)) }
-}
+uuid_id!(ConditionID);
+uuid_id!(CreatureID);
+uuid_id!(ItemID);
+uuid_id!(SceneID);
+uuid_id!(AbilityID);
+uuid_id!(ClassID);
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FolderItemID {
@@ -772,7 +727,8 @@ pub enum GameError {
 
   // Wrappers for other errors:
   #[fail(display = "FolderTree error")] FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display = "UUID Parse Error")] UUIDParseError(#[cause] UuidParseError),
+  #[fail(display = "UUID Parse Error")]
+  InvalidID(String, #[cause] UuidParseError),
 }
 
 macro_rules! impl_from {
@@ -782,7 +738,6 @@ macro_rules! impl_from {
 }
 
 impl_from!(FolderTreeError, FolderTreeError);
-impl_from!(UuidParseError, UUIDParseError);
 
 impl<'a> From<&'a str> for GameError {
   fn from(error: &'a str) -> Self { GameError::BuggyProgram(error.to_string()) }
