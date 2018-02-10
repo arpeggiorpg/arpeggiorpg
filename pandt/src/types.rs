@@ -124,6 +124,7 @@ impl<'de> de::Deserialize<'de> for Point3 {
   }
 }
 
+/// An axis-aligned bounding box.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
 pub struct AABB {
   pub x: u32units::Length,
@@ -132,6 +133,7 @@ pub struct AABB {
 }
 
 impl AABB {
+  /// Get the "maximum" point of the AABB (aka the top-right point) relative to a fixed point.
   pub fn get_max(&self, pt: Point3) -> Point3 {
     Point3::from_quantities(
       pt.x + i64cm(self.x.get(centimeter)),
@@ -493,9 +495,7 @@ pub enum GameCommand {
   Rollback(usize, usize),
 }
 
-/// A representation of state change in a Creature. All change to a Creature happens via these
-/// values. Note that these represent *concrete* changes to the Creature, which will have
-/// deterministic results.
+/// A representation of state change in a Creature. See `GameLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureLog {
   Damage(HP, Vec<i16>),
@@ -507,8 +507,8 @@ pub enum CreatureLog {
   RemoveCondition(ConditionID),
 }
 
-// TODO: get rid of CombatLog, it's dumb... unless we ever support multiple Combats
-/// Representation of state changes in a Combat. See `CreatureLog`.
+// TODO: get rid of CombatLog, it's dumb... unless we ever support multiple Combats?
+/// Representation of state changes in a Combat. See `GameLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CombatLog {
   ConsumeMovement(u32units::Length),
@@ -525,6 +525,11 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
     .collect()
 }
 
+
+/// Representation of a change to the game state. All change to the game happens via these values.
+/// Note that these represent *concrete* changes to the game, which will have deterministic results.
+/// i.e., randomness happens when processing `GameCommand`s, which then result in specific
+/// `GameLog`s.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
   LoadModule {
@@ -778,7 +783,7 @@ pub enum Action {
 /// A target specifier for actions that ultimately affect creatures.
 /// This doesn't mean that the target *specifier* is always a `CreatureID`, but rather that
 /// ultimately the target is resolved into one or more creatures which `CreatureEffect`s will be
-/// applied to. For example, `LineFromActor` is specified as the client as a Point, but will
+/// applied to. For example, `LineFromActor` is specified by the client as a Point, but will
 /// affect the creatures in that line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CreatureTarget {
@@ -821,11 +826,11 @@ pub enum SceneEffect {
     duration: Duration,
     condition: Condition,
   },
-  // Another example of a SceneEffect would be DestroyTerrain
+  // Another example of a SceneEffect would be DestroyTerrain or BuildTerrain
 }
 
 /// The target of an ability, as chosen at play-time by a player. Generally this falls into
-/// "specific creature" targeting (`Melee` and `Ranged`) and "aoe" targeting (the others). The
+/// "specific creature" targeting (`Melee` and `Range`) and "aoe" targeting (the others). The
 /// parameters of these variants indicate the specific target creature or point that is being
 /// targeted by the player.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
