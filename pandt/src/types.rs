@@ -731,13 +731,9 @@ pub enum GameError {
   InvalidID(String, #[cause] UuidParseError),
 }
 
-macro_rules! impl_from {
-  ($type:ty, $variant:ident) => (
-    impl From<$type> for GameError { fn from(error: $type) -> Self { GameError::$variant(error) } }
-  );
+impl From<FolderTreeError> for GameError {
+  fn from(error: FolderTreeError) -> Self { GameError::FolderTreeError(error) }
 }
-
-impl_from!(FolderTreeError, FolderTreeError);
 
 impl<'a> From<&'a str> for GameError {
   fn from(error: &'a str) -> Self { GameError::BuggyProgram(error.to_string()) }
