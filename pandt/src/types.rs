@@ -525,7 +525,6 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
     .collect()
 }
 
-
 /// Representation of a change to the game state. All change to the game happens via these values.
 /// Note that these represent *concrete* changes to the game, which will have deterministic results.
 /// i.e., randomness happens when processing `GameCommand`s, which then result in specific
@@ -732,8 +731,7 @@ pub enum GameError {
 
   // Wrappers for other errors:
   #[fail(display = "FolderTree error")] FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display = "UUID Parse Error")]
-  InvalidID(String, #[cause] UuidParseError),
+  #[fail(display = "UUID Parse Error")] InvalidID(String, #[cause] UuidParseError),
 }
 
 impl From<FolderTreeError> for GameError {
