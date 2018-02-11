@@ -43,6 +43,19 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
 
 macro_rules! handle_actor {
   (
+    async $type:ty => $success:ty, $error: ty;
+    $($handler:tt)*
+  ) => (
+    impl ResponseType for $type {
+      type Item = $success;
+      type Error = $error;
+    }
+    impl Handler<$type> for AppActor {
+      type Result = Box<Future<Item = $success, Error = $error>>;
+      $($handler)*
+    }
+  );
+  (
     $type:ty => $success:ty, $error:ty;
     $($handler:tt)*
   ) => (
@@ -58,7 +71,6 @@ macro_rules! handle_actor {
 }
 
 pub struct GetApp;
-
 handle_actor! {
   GetApp => String, Error;
   fn handle(&mut self, _: GetApp, _: &mut Context<Self>) -> Self::Result {
@@ -67,7 +79,6 @@ handle_actor! {
 }
 
 pub struct PerformCommand(pub types::GameCommand);
-
 handle_actor! {
   PerformCommand => String, Error;
   fn handle(&mut self, command: PerformCommand, _: &mut Context<Self>) -> Self::Result {
@@ -88,15 +99,8 @@ pub struct PollApp {
   pub snapshot_len: usize,
   pub log_len: usize,
 }
-
-impl ResponseType for PollApp {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<PollApp> for AppActor {
-  type Result = Box<Future<Item = String, Error = Error>>;
-
+handle_actor! {
+  async PollApp => String, Error;
   fn handle(&mut self, cmd: PollApp, ctx: &mut Context<Self>) -> Self::Result {
     if let Some(r) = try_fut!(get_current_app(&self.app, cmd.snapshot_len, cmd.log_len)) {
       return Box::new(future::ok(r));
@@ -139,7 +143,6 @@ pub struct MovementOptions {
   pub creature_id: types::CreatureID,
   pub scene_id: types::SceneID,
 }
-
 handle_actor! {
   MovementOptions => String, Error;
   fn handle(&mut self, cmd: MovementOptions, _: &mut Context<Self>) -> Self::Result {
@@ -178,7 +181,6 @@ pub struct PreviewVolumeTargets {
   pub ability_id: types::AbilityID,
   pub point: types::Point3,
 }
-
 handle_actor! {
   PreviewVolumeTargets => String, Error;
   fn handle(&mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>) -> Self::Result {
@@ -190,7 +192,6 @@ handle_actor! {
     )?)?)
   }
 }
-
 
 pub struct LoadSavedGame(pub String);
 handle_actor! {
