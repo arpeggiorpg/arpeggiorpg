@@ -2011,7 +2011,17 @@ pub mod test {
     module.classes.insert(class);
     module.link_folder_item(&"".parse().unwrap(), &FolderItemID::ClassID(classid)).unwrap();
 
+    let sys_path = "/System".parse().unwrap();
+
     let mut game = t_game();
-    game.import_module(&"/System".parse().unwrap(), &module);
+    game.import_module(&sys_path, &module);
+
+    assert_eq!(
+      game.get_class(classid).expect("new game didn't have Blood Hunter"),
+      module.get_class(classid).expect("Old game didn't have Blood Hunter")
+    );
+    
+    assert!(game.campaign.get(&sys_path).unwrap().classes.contains(&classid));
+
   }
 }
