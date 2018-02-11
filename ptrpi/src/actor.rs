@@ -41,15 +41,26 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
   Ok(serde_json::to_string(&types::RPIApp(app))?)
 }
 
-pub struct GetApp;
-
-impl ResponseType for GetApp {
-  type Item = String;
-  type Error = Error;
+macro_rules! handle_actor {
+  (
+    $type:ty => $success:ty, $error:ty;
+    $($handler:tt)*
+  ) => (
+    impl ResponseType for $type {
+      type Item = $success;
+      type Error = $error;
+    }
+    impl Handler<$type> for AppActor {
+      type Result = MessageResult<$type>;
+      $($handler)*
+    }
+  )
 }
 
-impl Handler<GetApp> for AppActor {
-  type Result = MessageResult<GetApp>;
+pub struct GetApp;
+
+handle_actor! {
+  GetApp => String, Error;
   fn handle(&mut self, _: GetApp, _: &mut Context<Self>) -> Self::Result {
     app_to_string(&self.app)
   }
@@ -57,17 +68,10 @@ impl Handler<GetApp> for AppActor {
 
 pub struct PerformCommand(pub types::GameCommand);
 
-impl ResponseType for PerformCommand {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<PerformCommand> for AppActor {
-  type Result = MessageResult<PerformCommand>;
+handle_actor! {
+  PerformCommand => String, Error;
   fn handle(&mut self, command: PerformCommand, _: &mut Context<Self>) -> Self::Result {
-    let result = self
-      .app
-      .perform_command(command.0, self.saved_game_path.clone());
+    let result = self.app.perform_command(command.0, self.saved_game_path.clone());
     for sender in self.waiters.drain(0..) {
       if let Err(e) = sender.send(()) {
         error!("Unexpected failure while notifying a waiter: {:?}", e);
@@ -135,34 +139,20 @@ pub struct MovementOptions {
   pub creature_id: types::CreatureID,
   pub scene_id: types::SceneID,
 }
-impl ResponseType for MovementOptions {
-  type Item = String;
-  type Error = Error;
-}
 
-impl Handler<MovementOptions> for AppActor {
-  type Result = MessageResult<MovementOptions>;
-
-  fn handle(&mut self, cmd: MovementOptions, _: &mut Context<AppActor>) -> Self::Result {
-    Ok(serde_json::to_string(&self
-      .app
-      .get_movement_options(cmd.scene_id, cmd.creature_id)?)?)
+handle_actor! {
+  MovementOptions => String, Error;
+  fn handle(&mut self, cmd: MovementOptions, _: &mut Context<Self>) -> Self::Result {
+    let options = &self.app.get_movement_options(cmd.scene_id, cmd.creature_id)?;
+    serde_json::to_string(options).map_err(From::from)
   }
 }
 
 pub struct CombatMovementOptions;
-impl ResponseType for CombatMovementOptions {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<CombatMovementOptions> for AppActor {
-  type Result = MessageResult<CombatMovementOptions>;
-
+handle_actor! {
+  CombatMovementOptions => String, Error;
   fn handle(&mut self, _: CombatMovementOptions, _: &mut Context<AppActor>) -> Self::Result {
-    Ok(serde_json::to_string(&self
-      .app
-      .get_combat_movement_options()?)?)
+    Ok(serde_json::to_string(&self.app.get_combat_movement_options()?)?)
   }
 }
 
@@ -171,14 +161,8 @@ pub struct TargetOptions {
   pub scene_id: types::SceneID,
   pub ability_id: types::AbilityID,
 }
-impl ResponseType for TargetOptions {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<TargetOptions> for AppActor {
-  type Result = MessageResult<TargetOptions>;
-
+handle_actor! {
+  TargetOptions => String, Error;
   fn handle(&mut self, cmd: TargetOptions, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self.app.get_target_options(
       cmd.scene_id,
@@ -194,14 +178,9 @@ pub struct PreviewVolumeTargets {
   pub ability_id: types::AbilityID,
   pub point: types::Point3,
 }
-impl ResponseType for PreviewVolumeTargets {
-  type Item = String;
-  type Error = Error;
-}
 
-impl Handler<PreviewVolumeTargets> for AppActor {
-  type Result = MessageResult<PreviewVolumeTargets>;
-
+handle_actor! {
+  PreviewVolumeTargets => String, Error;
   fn handle(&mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>) -> Self::Result {
     Ok(serde_json::to_string(&self.app.preview_volume_targets(
       cmd.scene_id,
@@ -212,15 +191,10 @@ impl Handler<PreviewVolumeTargets> for AppActor {
   }
 }
 
+
 pub struct LoadSavedGame(pub String);
-impl ResponseType for LoadSavedGame {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<LoadSavedGame> for AppActor {
-  type Result = MessageResult<LoadSavedGame>;
-
+handle_actor! {
+  LoadSavedGame => String, Error;
   fn handle(&mut self, cmd: LoadSavedGame, _: &mut Context<AppActor>) -> Self::Result {
     let path = child_path(&self.saved_game_path, &cmd.0)?;
     let mut buffer = String::new();
@@ -231,14 +205,8 @@ impl Handler<LoadSavedGame> for AppActor {
 }
 
 pub struct SaveGame(pub String);
-impl ResponseType for SaveGame {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<SaveGame> for AppActor {
-  type Result = MessageResult<SaveGame>;
-
+handle_actor! {
+  SaveGame => String, Error;
   fn handle(&mut self, cmd: SaveGame, _: &mut Context<AppActor>) -> Self::Result {
     save_app(&self.app, &cmd.0, &self.saved_game_path)?;
     Ok("{}".to_string())
@@ -249,14 +217,8 @@ pub struct SaveModule {
   pub name: String,
   pub path: foldertree::FolderPath,
 }
-impl ResponseType for SaveModule {
-  type Item = String;
-  type Error = Error;
-}
-
-impl Handler<SaveModule> for AppActor {
-  type Result = MessageResult<SaveModule>;
-
+handle_actor! {
+  SaveModule => String, Error;
   fn handle(&mut self, cmd: SaveModule, _: &mut Context<AppActor>) -> Self::Result {
     let new_game = self.app.current_game.export_module(&cmd.path)?;
     let new_app = types::App::new(new_game);
