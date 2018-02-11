@@ -1996,4 +1996,22 @@ pub mod test {
       .classes;
     assert_eq!(new_classes, old_classes);
   }
+
+  #[test]
+  fn test_import_module() {
+    let mut module: Game = Default::default();
+    let classid = ClassID::gen();
+    let class = Class {
+      id: classid,
+      name: "Blood Hunter".to_string(),
+      abilities: vec![],
+      conditions: vec![],
+      color: "blue".to_string(),
+    };
+    module.classes.insert(class);
+    module.link_folder_item(&"".parse().unwrap(), &FolderItemID::ClassID(classid)).unwrap();
+
+    let mut game = t_game();
+    game.import_module(&"/System".parse().unwrap(), &module);
+  }
 }
