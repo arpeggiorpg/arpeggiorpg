@@ -42,32 +42,30 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
 }
 
 macro_rules! handle_actor {
-  (
-    async $type:ty => $success:ty, $error: ty;
-    $($handler:tt)*
-  ) => (
+  ($type:ty => $success:ty, $error:ty; result: $result:ty; $($handler:tt)*) => (
     impl ResponseType for $type {
       type Item = $success;
       type Error = $error;
     }
     impl Handler<$type> for AppActor {
-      type Result = Box<Future<Item = $success, Error = $error>>;
+      type Result = $result;
       $($handler)*
     }
   );
-  (
-    $type:ty => $success:ty, $error:ty;
-    $($handler:tt)*
-  ) => (
-    impl ResponseType for $type {
-      type Item = $success;
-      type Error = $error;
-    }
-    impl Handler<$type> for AppActor {
-      type Result = MessageResult<$type>;
+  (async $type:ty => $success:ty, $error: ty; $($handler:tt)*) => (
+    handle_actor! {
+      $type => $success, $error;
+      result: Box<Future<Item = $success, Error = $error>>;
       $($handler)*
     }
-  )
+  );
+  ($type:ty => $success:ty, $error:ty; $($handler:tt)*) => (
+    handle_actor! {
+      $type => $success, $error;
+      result: MessageResult<$type>;
+      $($handler)*
+    }
+  );
 }
 
 pub struct GetApp;
