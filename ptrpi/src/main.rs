@@ -280,6 +280,7 @@ fn main() {
     .nth(2)
     .unwrap_or_else(|| "samplegame.yaml".to_string());
   let game_dir = PathBuf::from(game_dir.clone());
+  let game_dir = fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir");
   let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
 
   let actor = actor::AppActor::new(app, game_dir.clone());
@@ -288,7 +289,7 @@ fn main() {
   let app_addr: actix::SyncAddress<actor::AppActor> = actor.start();
 
   let pt = PT {
-    saved_game_path: fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir"),
+    saved_game_path: game_dir,
     app_address: app_addr,
   };
 
