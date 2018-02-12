@@ -70,7 +70,7 @@ impl Game {
     for scene in &module.scenes {
       self.scenes.insert(scene.clone());
     }
-    // then merge the `module`'s folder structure into self
+    self.campaign.copy_from_tree(import_path, &module.campaign)?;
     Ok(())
   }
 
@@ -2014,13 +2014,12 @@ pub mod test {
     let sys_path = "/System".parse().unwrap();
 
     let mut game = t_game();
-    game.import_module(&sys_path, &module);
+    game.import_module(&sys_path, &module).expect("import must succeed");
 
     assert_eq!(
       game.get_class(classid).expect("new game didn't have Blood Hunter"),
       module.get_class(classid).expect("Old game didn't have Blood Hunter")
     );
-    
     assert!(game.campaign.get(&sys_path).unwrap().classes.contains(&classid));
 
   }
