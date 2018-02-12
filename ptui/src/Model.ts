@@ -381,6 +381,7 @@ export class PTUI {
   }
 
   loadGame(dispatch: Dispatch, game: string): Promise<undefined> {
+    // TODO: RefreshApp with the result, and set this.state to default_state
     return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}/load`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }

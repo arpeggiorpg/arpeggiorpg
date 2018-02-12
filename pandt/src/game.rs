@@ -2021,6 +2021,5 @@ pub mod test {
       module.get_class(classid).expect("Old game didn't have Blood Hunter")
     );
     assert!(game.campaign.get(&sys_path).unwrap().classes.contains(&classid));
-
   }
 }
