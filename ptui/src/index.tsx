@@ -1,10 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-// import * as Perf from 'react-addons-perf';
-
-// (window as any).Perf = Perf;
-
 import * as CV from './CommonView';
 import * as GMView from './GMView';
 import * as PlayerView from "./PlayerView";
