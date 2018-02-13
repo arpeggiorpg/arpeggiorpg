@@ -228,7 +228,12 @@ class FolderTreeComp
                 <Dropdown.Item key="blub" text="Export as module" icon="upload" onClick={open} />}
               header={<span>Export folder</span>}
               content={close => <GM.ExportModule path={path} onDone={close} />} />,
-	    <Dropdown.Item key="bly" text="Import module here" icon="download" />,
+            <CV.ModalMaker key="bly"
+              button={open =>
+                <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
+              header={<span>Import Module</span>}
+              content={close => <GM.ImportModule path={path} onDone={close} />}
+            />
           ]
           : null}
       </Dropdown.Menu>

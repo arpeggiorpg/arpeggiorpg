@@ -170,43 +170,8 @@ export type GameCommand =
   | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck }
   | { t: "SetPlayerScene"; player_id: PlayerID; scene_id: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number }
+  | { t: "LoadModule"; name: string; path: FolderPath }
   ;
-
-
-// AttributeCheck(CreatureID, AttributeCheck),
-// CreateFolder(FolderPath),
-// RenameFolder(FolderPath, String),
-// MoveFolderItem(FolderPath, FolderItemID, FolderPath),
-// DeleteFolderItem(FolderPath, FolderItemID),
-// CreateItem(FolderPath, String),
-// EditItem(Item),
-// CreateNote(FolderPath, Note),
-// EditNote(FolderPath, String, Note),
-// CreateScene(FolderPath, SceneCreation),
-// CreateMap(FolderPath, MapCreation),
-// EditMap(Map),
-// StartCombat(SceneID, Vec<CreatureID>),
-// StopCombat,
-// AddCreatureToCombat(CreatureID),
-// RemoveCreatureFromCombat(CreatureID),
-// ChangeCreatureInitiative(CreatureID, i16),
-// RerollCombatInitiative,
-// ForceNextTurn,
-// ForcePrevTurn,
-// ActCreature(SceneID, CreatureID, AbilityID, DecidedTarget),
-// CombatAct(AbilityID, DecidedTarget),
-// PathCurrentCombatCreature(Point3),
-// Done,
-// CreateCreature(FolderPath, CreatureCreation),
-// SetCreaturePos(SceneID, CreatureID, Point3),
-// PathCreature(SceneID, CreatureID, Point3),
-// RegisterPlayer(PlayerID),
-// GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
-// UnregisterPlayer(PlayerID),
-// RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
-// SetPlayerScene(PlayerID, Option<SceneID>),
-// Rollback(usize, usize),
-
 
 export interface CreatureCreation {
   name: string;
@@ -286,7 +251,9 @@ export type GameLog =
   | { t: "CombatLog"; log: CombatLog }
   | { t: "CreatureLog"; creature_id: CreatureID; log: CreatureLog }
   | { t: "StopCombat" }
-  | { t: "Rollback"; snapshot_index: number; log_index: number };
+  | { t: "Rollback"; snapshot_index: number; log_index: number }
+  | { t: "LoadModule"; name: string; path: FolderPath } // `module` is left out
+  ;
 
 export type CombatLog =
   | { t: "ConsumeMovement"; distance: Distance }
@@ -918,6 +885,9 @@ export const decodeGameLog: Decoder<GameLog> =
     Rollback: JD.map(
       ([snapshot_index, log_index]): GameLog => ({ t: "Rollback", snapshot_index, log_index }),
       JD.tuple(JD.number(), JD.number())),
+    LoadModule: JD.object(
+      ["name", JD.string()], ["path", decodeFolderPath],
+      (name, path): GameLog => ({t: "LoadModule", name, path})),
   });
 
 const decodePlayer: Decoder<Player> = JD.object(
@@ -1190,6 +1160,8 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return { SetPlayerScene: [cmd.player_id, cmd.scene_id] };
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
+    case "LoadModule":
+      return { LoadModule: { name: cmd.name, path: encodeFolderPath(cmd.path) } };
   }
 }
 

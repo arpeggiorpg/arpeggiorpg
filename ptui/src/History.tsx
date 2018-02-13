@@ -127,6 +127,8 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
       return creature_log(creatures, log.creature_id, log.log);
     case "Rollback":
       return <div>Rolled back to {log.snapshot_index}/{log.log_index}</div>;
+    case "LoadModule":
+      return <div>Loaded module {log.name}</div>;
   }
 }
 

@@ -1179,7 +1179,7 @@ export const SaveGameForm = M.connectRedux(
     return <SaveGameishForm onClose={onClose} save={save} />;
   });
 
-interface SaveGameishFormProps { onClose: () => void; save: (name: string) => void }
+interface SaveGameishFormProps { onClose: () => void; save: (name: string) => void; }
 class SaveGameishForm extends React.Component<SaveGameishFormProps, { name: string }> {
   constructor(props: SaveGameishFormProps) {
     super(props);
@@ -1248,3 +1248,16 @@ export const ExportModule = M.connectRedux(
       <SaveGameishForm onClose={onDone} save={save} />
     </div>;
   });
+
+export const ImportModule = M.connectRedux(
+  function ImportModule(props: { path: T.FolderPath; onDone: () => void } & M.ReduxProps) {
+    const { path, onDone, dispatch } = props;
+    return <Form>
+      <GameList onSelect={name => {
+        const suffixed_path = path.concat(name);
+        dispatch(M.sendCommand({ t: "LoadModule", path: suffixed_path, name }));
+      }} />
+      <Form.Button onClick={onDone}>Cancel</Form.Button>
+    </Form>;
+  }
+);
