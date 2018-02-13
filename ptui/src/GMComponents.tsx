@@ -1256,6 +1256,7 @@ export const ImportModule = M.connectRedux(
       <GameList onSelect={name => {
         const suffixed_path = path.concat(name);
         dispatch(M.sendCommand({ t: "LoadModule", path: suffixed_path, name }));
+        onDone();
       }} />
       <Form.Button onClick={onDone}>Cancel</Form.Button>
     </Form>;
