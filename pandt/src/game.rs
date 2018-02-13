@@ -25,7 +25,6 @@ impl Game {
       .campaign
       .walk_paths(&FolderPath::from_vec(vec![]))
       .cloned()
-      .collect::<Vec<_>>()
     {
       let folder = new_game
         .campaign
@@ -53,9 +52,7 @@ impl Game {
     Ok(new_game)
   }
 
-  pub fn import_module(
-    &mut self, import_path: &FolderPath, module: &Game
-  ) -> Result<(), GameError> {
+  fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError> {
     // go through all the basic owned contents of the `module`, copy them to self
     for ability in &module.abilities {
       self.abilities.insert(ability.clone());
@@ -73,6 +70,7 @@ impl Game {
       self.scenes.insert(scene.clone());
     }
     self.campaign.copy_from_tree(import_path, &module.campaign)?;
+    self.validate_campaign()?;
     Ok(())
   }
 
@@ -82,12 +80,11 @@ impl Game {
     let mut all_scenes = HashSet::new();
     let mut all_items = HashSet::new();
     let mut all_classes = HashSet::new();
-    let all_folders: Vec<FolderPath> = self
+    for folder_path in self
       .campaign
       .walk_paths(&FolderPath::from_vec(vec![]))
       .cloned()
-      .collect();
-    for folder_path in all_folders {
+    {
       let folder = self
         .campaign
         .get(&folder_path)
@@ -577,13 +574,11 @@ impl Game {
         ref module,
         ref path,
         ..
-      } => {
-        if self.campaign.get(path).is_ok() {
-          bail!(GameError::FolderAlreadyExists(path.clone()))
-        } else {
-          self.import_module(path, module)?;
-        }
-      }
+      } => if self.campaign.get(path).is_ok() {
+        bail!(GameError::FolderAlreadyExists(path.clone()))
+      } else {
+        self.import_module(path, module)?;
+      },
 
       SetActiveScene(m_sid) => self.active_scene = m_sid,
 
@@ -729,8 +724,7 @@ impl Game {
           }
           FolderItemID::ItemID(iid) => {
             for folder in all_folders {
-              let node = self.campaign.get_mut(&folder)?;
-              node.items.remove(&iid);
+              self.campaign.get_mut(&folder)?.items.remove(&iid);
             }
             // Also delete the item from all creature inventory slots
             let cids: Vec<CreatureID> = self.creatures.keys().cloned().collect();
@@ -1654,7 +1648,26 @@ pub mod test {
     game.creatures.insert(ranger);
     game.creatures.insert(cleric);
     game.scenes.insert(t_scene());
+    let mut folder = Folder::new();
+    for creature_id in game.creatures.keys() {
+      folder.creatures.insert(*creature_id);
+    }
+    for scene_id in game.scenes.keys() {
+      folder.scenes.insert(*scene_id);
+    }
+    for class_id in game.classes.keys() {
+      folder.classes.insert(*class_id);
+    }
+    for ab_id in game.abilities.keys() {
+      folder.abilities.insert(*ab_id);
+    }
+    game.campaign.make_folder(&FolderPath::from_vec(vec![]), "testdata".to_string(), folder).unwrap();
     game
+  }
+
+  #[test]
+  fn validate_test_game() {
+    t_game().validate_campaign().expect("Test game must validate");
   }
 
   pub fn t_classes() -> IndexedHashMap<Class> {
