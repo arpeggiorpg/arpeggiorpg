@@ -276,12 +276,14 @@ fn main() {
       .into_string()
       .expect("Couldn't parse curdir as string")
   });
-  let initial_file = env::args()
-    .nth(2)
-    .unwrap_or_else(|| "samplegame.yaml".to_string());
   let game_dir = PathBuf::from(game_dir.clone());
   let game_dir = fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir");
-  let app: App = load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file");
+
+  let app = match env::args().nth(2) {
+    Some(initial_file) =>
+      load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file"),
+    None => App::new(Default::default()),
+  };
 
   let actor = actor::AppActor::new(app, game_dir.clone());
 
