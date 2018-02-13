@@ -23,7 +23,7 @@ impl Game {
     // Now, walk that campaign and copy over the actual data to the new game.
     for path in new_game
       .campaign
-      .walk_paths(&FolderPath::from_vec(vec![]))
+      .walk_paths(&FolderPath::root())
       .cloned()
     {
       let folder = new_game
@@ -82,7 +82,7 @@ impl Game {
     let mut all_classes = HashSet::new();
     for folder_path in self
       .campaign
-      .walk_paths(&FolderPath::from_vec(vec![]))
+      .walk_paths(&FolderPath::root())
       .cloned()
     {
       let folder = self
@@ -715,7 +715,7 @@ impl Game {
         // item ID is found in ANY of them and cleaning it up.
         let all_folders: Vec<FolderPath> = self
           .campaign
-          .walk_paths(&FolderPath::from_vec(vec![]))
+          .walk_paths(&FolderPath::root())
           .cloned()
           .collect();
         match *item_id {
@@ -1661,13 +1661,22 @@ pub mod test {
     for ab_id in game.abilities.keys() {
       folder.abilities.insert(*ab_id);
     }
-    game.campaign.make_folder(&FolderPath::from_vec(vec![]), "testdata".to_string(), folder).unwrap();
+    game
+      .campaign
+      .make_folder(
+        &FolderPath::root(),
+        "testdata".to_string(),
+        folder,
+      )
+      .unwrap();
     game
   }
 
   #[test]
   fn validate_test_game() {
-    t_game().validate_campaign().expect("Test game must validate");
+    t_game()
+      .validate_campaign()
+      .expect("Test game must validate");
   }
 
   pub fn t_classes() -> IndexedHashMap<Class> {
@@ -1927,7 +1936,7 @@ pub mod test {
 
   #[test]
   fn test_export_module() {
-    let root_path = FolderPath::from_vec(vec![]);
+    let root_path = FolderPath::root();
     let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
     let note = Note {
       name: "My Note".to_string(),
@@ -1953,7 +1962,7 @@ pub mod test {
 
   #[test]
   fn test_export_module_references() {
-    let root_path = FolderPath::from_vec(vec![]);
+    let root_path = FolderPath::root();
     let rules_path = FolderPath::from_vec(vec!["Rules".to_string()]);
     let mut folder = Folder::new();
     folder.classes.insert(classid_ranger());
@@ -1976,7 +1985,7 @@ pub mod test {
 
   #[test]
   fn test_export_subfolders() {
-    let root_path = "".parse().unwrap();
+    let root_path = FolderPath::root();
     let rules_path = "/Rules".parse().unwrap();
     let root = Folder::new();
     let mut classes_folder = Folder::new();
@@ -2027,7 +2036,7 @@ pub mod test {
     };
     module.classes.insert(class);
     module
-      .link_folder_item(&"".parse().unwrap(), &FolderItemID::ClassID(classid))
+      .link_folder_item(&FolderPath::root(), &FolderItemID::ClassID(classid))
       .unwrap();
 
     let sys_path = "/System".parse().unwrap();
@@ -2038,12 +2047,8 @@ pub mod test {
       .expect("import must succeed");
 
     assert_eq!(
-      game
-        .get_class(classid)
-        .expect("new game didn't have Blood Hunter"),
-      module
-        .get_class(classid)
-        .expect("Old game didn't have Blood Hunter")
+      game.get_class(classid).expect("New game missing class"),
+      module.get_class(classid).expect("Old game missing class")
     );
     assert!(
       game

@@ -40,7 +40,7 @@ where
 
 impl<T> FolderTree<T> {
   pub fn new(root: T) -> FolderTree<T> {
-    let path = FolderPath::from_vec(vec![]);
+    let path = FolderPath::root();
     FolderTree {
       nodes: HashMap::from_iter(vec![(path.clone(), (root, HashSet::new()))]),
     }
@@ -69,7 +69,7 @@ impl<T> FolderTree<T> {
   where
     T: Clone,
   {
-    let mut cur_path = FolderPath::from_vec(vec![]);
+    let mut cur_path = FolderPath::root();
     for seg in &path.0 {
       let child_path = cur_path.child(seg.clone());
       let exists = self.nodes.contains_key(&child_path);
@@ -227,7 +227,7 @@ impl<T> FolderTree<T> {
     let mut new_tree = FolderTree::new(folder.clone());
     for sub_path in self.walk_paths(path).cloned().collect::<Vec<_>>() {
       let new_path = sub_path.relative_to(path)?;
-      if new_path == FolderPath::from_vec(vec![]) {
+      if new_path == FolderPath::root() {
         continue;
       }
       println!("Subtree: {:?}; Relative path: {:?}", sub_path, new_path);
@@ -244,7 +244,7 @@ impl<T> FolderTree<T> {
   where
     T: Clone,
   {
-    for path in other.walk_paths(&FolderPath::from_vec(vec![])) {
+    for path in other.walk_paths(&FolderPath::root()) {
       let cur_path = target.descendant(path.0.clone());
       let (parent, child) = cur_path.up().unwrap();
       let new_folder = other.get(path)?.clone();
@@ -275,6 +275,8 @@ impl FolderPath {
   }
 
   pub fn from_vec(segs: Vec<String>) -> FolderPath { FolderPath(segs) }
+
+  pub fn root() -> FolderPath { FolderPath::from_vec(vec![]) }
 
   pub fn is_root(&self) -> bool { self.0.is_empty() }
 
@@ -400,7 +402,7 @@ impl<T: Serialize> Serialize for FolderTree<T> {
   where
     S: Serializer,
   {
-    let root_path = FolderPath::from_vec(vec![]);
+    let root_path = FolderPath::root();
     let root = self.get(&root_path).expect("Root node must always exist.");
     let helper = SerializerHelper {
       data: root,
@@ -422,12 +424,12 @@ struct DeserializeHelper<T> {
 impl<T> DeserializeHelper<T> {
   fn into_folder_tree(self) -> FolderTree<T> {
     let mut paths: Vec<(FolderPath, T)> = vec![];
-    self.serialize_tree(FolderPath::from_vec(vec![]), &mut paths);
+    self.serialize_tree(FolderPath::root(), &mut paths);
     let mut iter = paths.into_iter();
     let first = iter
       .next()
       .expect("There must always be at least one element if this data structure exists... right?");
-    debug_assert_eq!(first.0, FolderPath::from_vec(vec![]));
+    debug_assert_eq!(first.0, FolderPath::root());
     let mut tree = FolderTree::new(first.1);
     for (path, node) in iter {
       let (parent, child_name) = path
@@ -769,7 +771,7 @@ mod test {
 
   #[test]
   fn folderpath_from_str() {
-    assert_eq!(fpath(""), FolderPath::from_vec(vec![]));
+    assert_eq!(fpath(""), FolderPath::root());
     assert_eq!(fpath("/foo"), FolderPath::from_vec(vec!["foo".to_string()]));
     match "foo".parse::<FolderPath>() {
       Err(FolderTreeError::InvalidFolderPath(p)) => assert_eq!(p, "foo".to_string()),
