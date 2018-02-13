@@ -532,6 +532,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameLog {
   LoadModule {
+    name: String,
     module: Game,
     path: FolderPath,
   },
@@ -730,8 +731,8 @@ pub enum GameError {
   CouldNotParseApp(#[cause] serde_yaml::Error),
 
   // Wrappers for other errors:
-  #[fail(display = "FolderTree error")] FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display = "UUID Parse Error")] InvalidID(String, #[cause] UuidParseError),
+  #[fail(display = "FolderTree error: {}", _0)] FolderTreeError(#[cause] FolderTreeError),
+  #[fail(display = "UUID Parse Error: {}", _0)] InvalidID(String, #[cause] UuidParseError),
 }
 
 impl From<FolderTreeError> for GameError {

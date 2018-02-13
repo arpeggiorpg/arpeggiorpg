@@ -238,8 +238,11 @@ impl<T> FolderTree<T> {
     Ok(new_tree)
   }
 
-  pub fn copy_from_tree(&mut self, target: &FolderPath, other: &FolderTree<T>) -> Result<(), FolderTreeError>
-    where T: Clone,
+  pub fn copy_from_tree(
+    &mut self, target: &FolderPath, other: &FolderTree<T>
+  ) -> Result<(), FolderTreeError>
+  where
+    T: Clone,
   {
     for path in other.walk_paths(&FolderPath::from_vec(vec![])) {
       let cur_path = target.descendant(path.0.clone());

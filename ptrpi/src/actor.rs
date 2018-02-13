@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use actix;
-use actix::{Actor, AsyncContext, Context, Handler, MessageResult, ResponseType};
+use actix::{Actor, AsyncContext, Context, Handler, Message};
 use failure::Error;
 use futures::{future, Future};
 use futures::sync::oneshot;
@@ -43,9 +43,8 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
 
 macro_rules! handle_actor {
   ($type:ty => $success:ty, $error:ty; result: $result:ty; $($handler:tt)*) => (
-    impl ResponseType for $type {
-      type Item = $success;
-      type Error = $error;
+    impl Message for $type {
+      type Result = Result<$success, $error>;
     }
     impl Handler<$type> for AppActor {
       type Result = $result;
@@ -62,7 +61,7 @@ macro_rules! handle_actor {
   ($type:ty => $success:ty, $error:ty; $($handler:tt)*) => (
     handle_actor! {
       $type => $success, $error;
-      result: MessageResult<$type>;
+      result: Result<$success, $error>;
       $($handler)*
     }
   );
@@ -108,7 +107,7 @@ handle_actor! {
 
     let handle = actix::Arbiter::handle();
     let timeout = Timeout::new(Duration::from_secs(30), handle).expect("Timeout::new panic!");
-    let me: actix::Address<AppActor> = ctx.address();
+    let me = ctx.sync_address();
 
     let fut = timeout
       .select2(receiver)
@@ -116,7 +115,7 @@ handle_actor! {
         future::Either::A((err, _)) => err.into(),
         future::Either::B((err, _)) => err.into(),
       })
-      .and_then(move |_| me.call_fut(GetApp).from_err().and_then(|s| s));
+      .and_then(move |_| me.call(GetApp).from_err().and_then(|s| s));
     Box::new(fut)
   }
 }
@@ -195,10 +194,7 @@ pub struct LoadSavedGame(pub String);
 handle_actor! {
   LoadSavedGame => String, Error;
   fn handle(&mut self, cmd: LoadSavedGame, _: &mut Context<AppActor>) -> Self::Result {
-    let path = child_path(&self.saved_game_path, &cmd.0)?;
-    let mut buffer = String::new();
-    fs::File::open(path)?.read_to_string(&mut buffer)?;
-    self.app = serde_yaml::from_str(&buffer)?;
+    self.app = load_app(self, &cmd.0)?;
     app_to_string(&self.app)
   }
 }
@@ -233,6 +229,13 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   let yaml = serde_yaml::to_string(app)?;
   fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(())
+}
+
+fn load_app(actor: &AppActor, name: &str) -> Result<types::App, Error> {
+  let file_path = child_path(&actor.saved_game_path, name)?;
+  let mut buffer = String::new();
+  fs::File::open(file_path)?.read_to_string(&mut buffer)?;
+  Ok(serde_yaml::from_str(&buffer)?)
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]

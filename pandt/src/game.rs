@@ -53,7 +53,9 @@ impl Game {
     Ok(new_game)
   }
 
-  fn import_module(&mut self, import_path: &FolderPath, module: &Game) -> Result<(), GameError> {
+  pub fn import_module(
+    &mut self, import_path: &FolderPath, module: &Game
+  ) -> Result<(), GameError> {
     // go through all the basic owned contents of the `module`, copy them to self
     for ability in &module.abilities {
       self.abilities.insert(ability.clone());
@@ -196,6 +198,7 @@ impl Game {
         let app = load_app_from_path(&saved_game_path, name)?;
         let module = app.current_game;
         self.change_with(GameLog::LoadModule {
+          name: name.clone(),
           module,
           path: path.clone(),
         })
@@ -573,6 +576,7 @@ impl Game {
       LoadModule {
         ref module,
         ref path,
+        ..
       } => {
         if self.campaign.get(path).is_ok() {
           bail!(GameError::FolderAlreadyExists(path.clone()))
@@ -2009,17 +2013,32 @@ pub mod test {
       color: "blue".to_string(),
     };
     module.classes.insert(class);
-    module.link_folder_item(&"".parse().unwrap(), &FolderItemID::ClassID(classid)).unwrap();
+    module
+      .link_folder_item(&"".parse().unwrap(), &FolderItemID::ClassID(classid))
+      .unwrap();
 
     let sys_path = "/System".parse().unwrap();
 
     let mut game = t_game();
-    game.import_module(&sys_path, &module).expect("import must succeed");
+    game
+      .import_module(&sys_path, &module)
+      .expect("import must succeed");
 
     assert_eq!(
-      game.get_class(classid).expect("new game didn't have Blood Hunter"),
-      module.get_class(classid).expect("Old game didn't have Blood Hunter")
+      game
+        .get_class(classid)
+        .expect("new game didn't have Blood Hunter"),
+      module
+        .get_class(classid)
+        .expect("Old game didn't have Blood Hunter")
     );
-    assert!(game.campaign.get(&sys_path).unwrap().classes.contains(&classid));
+    assert!(
+      game
+        .campaign
+        .get(&sys_path)
+        .unwrap()
+        .classes
+        .contains(&classid)
+    );
   }
 }

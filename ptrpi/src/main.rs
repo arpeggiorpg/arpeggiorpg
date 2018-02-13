@@ -124,15 +124,13 @@ mod webapp {
     Box::new(f)
   }
 
-  fn invoke_actor_string_result<M>(
-    address: &actix::SyncAddress<actor::AppActor>, msg: M
-  ) -> AsyncRPIResponse
+  fn invoke_actor_string_result<M>(address: &::AppAddress, msg: M) -> AsyncRPIResponse
   where
     actor::AppActor: actix::Handler<M>,
-    M: actix::ResponseType<Item = String, Error = Error> + Send + 'static,
+    M: actix::Message<Result = Result<String, Error>> + Send + 'static,
   {
     let fut = address
-      .call_fut(msg)
+      .call(msg)
       .from_err()
       .and_then(|s| s)
       .and_then(string_json_response);
@@ -253,10 +251,12 @@ mod webapp {
   }
 }
 
+type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
+
 #[derive(Clone)]
 pub struct PT {
   saved_game_path: PathBuf,
-  app_address: actix::SyncAddress<actor::AppActor>,
+  app_address: AppAddress,
 }
 
 fn main() {
@@ -286,7 +286,7 @@ fn main() {
   let actor = actor::AppActor::new(app, game_dir.clone());
 
   let actix_system = actix::System::new("P&T-RPI");
-  let app_addr: actix::SyncAddress<actor::AppActor> = actor.start();
+  let app_addr: AppAddress = actor.start();
 
   let pt = PT {
     saved_game_path: game_dir,

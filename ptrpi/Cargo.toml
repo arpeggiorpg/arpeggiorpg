@@ -28,4 +28,4 @@ git = "https://github.com/actix/actix.git"
 
 [dependencies.actix-web]
 git = "https://github.com/actix/actix-web"
-rev = "728377a447219ed4c8ef5e9399dd68d08897f3b6"
+rev = "eb041de36d99935903cf8cc70790a352a9876bd2"
