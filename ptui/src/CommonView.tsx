@@ -19,7 +19,6 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-console.log("REACT-SPLIT-PANE", SplitPane);
 /**
  * The threshold at which we switch from narrow to wide view.
  * I chose 500 because it's between portait and landscape mode on pretty much all phones, so
