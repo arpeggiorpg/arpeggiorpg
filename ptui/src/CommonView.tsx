@@ -612,7 +612,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         {tabs_}
       </TabbedView>;
       return extra !== undefined
-        ? 
+        ?
         <SplitPane split="horizontal" minSize="70%"
           resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
           {tabbed_view}
@@ -792,12 +792,12 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
     this.state = { toggled: false };
   }
 
-  render(): JSX.Element {
+  render(): JSX.Element | Array<JSX.Element> {
     const toggle = () => this.setState({ toggled: !this.state.toggled });
     if (this.state.toggled) {
-      return this.props.b(toggle) as JSX.Element; // `as` because @types/react disallows arrays
+      return this.props.b(toggle);
     } else {
-      return this.props.a(toggle) as JSX.Element; // `as` because @types/react disallows arrays
+      return this.props.a(toggle);
     }
   }
 }
