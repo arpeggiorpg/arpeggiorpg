@@ -3,7 +3,7 @@ import * as LD from "lodash";
 import * as React from "react";
 import { Provider } from 'react-redux';
 import * as SplitPane from "react-split-pane";
-import * as WindowSizeListener from 'react-window-size-listener';
+import WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 import thunk from 'redux-thunk';
 
@@ -19,7 +19,9 @@ import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
-/** The threshold at which we switch from narrow to wide view.
+console.log("REACT-SPLIT-PANE", SplitPane);
+/**
+ * The threshold at which we switch from narrow to wide view.
  * I chose 500 because it's between portait and landscape mode on pretty much all phones, so
  * any phone user that switches to landscape mode should switch to wide view.
  */
@@ -30,7 +32,7 @@ interface MainProps {
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps,
-  { store: "Unfetched" | "Error" | Redux.Store<M.PTUI>; }> {
+  { store: "Unfetched" | "Error" | Redux.Store<M.PTUI> }> {
 
   constructor(props: MainProps) {
     super(props);
@@ -110,7 +112,7 @@ export function square_style(size: number, color?: string) {
 }
 
 export function CreatureIcon(
-  { size = 50, app, creature }: { size?: number, app: T.App, creature: T.Creature }
+  { size = 50, app, creature }: { size?: number; app: T.App; creature: T.Creature }
 ): JSX.Element | null {
   if (creature.icon_url !== "") {
     return <SquareImageIcon size={size} url={creature.icon_url} />;
@@ -121,7 +123,7 @@ export function CreatureIcon(
   }
 }
 
-export function SquareImageIcon({ url, size = 50 }: { url: string, size?: number }): JSX.Element {
+export function SquareImageIcon({ url, size = 50 }: { url: string; size?: number }): JSX.Element {
   return <img src={url} style={square_style(size)} />;
 }
 
@@ -512,12 +514,13 @@ const MoveButton = M.connectRedux((props: { creature: T.Creature; combat?: T.Com
 });
 
 
-/** A component which renders a very light grey translucent block over the entire screen,
+/**
+ * A component which renders a very light grey translucent block over the entire screen,
  * and then renders child elements inside of it.
  *
  * Caveat: child elements should be position: fixed.
  */
-export function ClickAway({ onClick, children }: { onClick: () => void, children: React.ReactNode })
+export function ClickAway({ onClick, children }: { onClick: () => void; children: React.ReactNode })
   : JSX.Element {
   return <div>
     <Dimmer page={true} inverted={true} active={true} onClick={() => onClick()} />
@@ -610,7 +613,8 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         {tabs_}
       </TabbedView>;
       return extra !== undefined
-        ? <SplitPane split="horizontal" minSize="70%"
+        ? 
+        <SplitPane split="horizontal" minSize="70%"
           resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
           {tabbed_view}
           {extra}
@@ -676,7 +680,8 @@ export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element
 }
 
 
-/** The Note Editor
+/**
+ * The Note Editor
  * Complexities:
  * - The `name` prop may be undefined if we're creating a new note.
  * - Focusing on notes is done by name, since there is no ID. So if we rename a note, we must
@@ -789,10 +794,7 @@ export class Toggler extends React.Component<TogglerProps, { toggled: boolean }>
   }
 
   render(): JSX.Element {
-    const self = this;
-    function toggle() {
-      self.setState({ toggled: !self.state.toggled });
-    }
+    const toggle = () => this.setState({ toggled: !this.state.toggled });
     if (this.state.toggled) {
       return this.props.b(toggle) as JSX.Element; // `as` because @types/react disallows arrays
     } else {
@@ -811,13 +813,14 @@ export function ModalMaker({ button, header, content }: ModalMakerProps) {
   return <Toggler
     a={button}
     b={tf =>
-      [button(tf),
-      <Modal dimmer='inverted' open={true} onClose={tf}
-        closeIcon='close' closeOnDimmerClick={false}>
-        <Modal.Header>{header}</Modal.Header>
-        <Modal.Content>{content(tf)}</Modal.Content>
-      </Modal>
-      ]} />;
+      <>
+        button(tf),
+        <Modal dimmer='inverted' open={true} onClose={tf}
+          closeIcon='close' closeOnDimmerClick={false}>
+          <Modal.Header>{header}</Modal.Header>
+          <Modal.Content>{content(tf)}</Modal.Content>
+        </Modal>
+      </>} />;
 }
 
 export function describeChallenge(challenge: T.AttributeCheck) {
@@ -869,7 +872,7 @@ export const GenericChat = Comp.connect<GenericChatProps, ChatDerivedProps>(
     [ptui => ptui.app.snapshots],
     snapshots => ({ snapshots }))
 )(function GenericChat(
-  props: GenericChatProps & ChatDerivedProps & { dispatch: M.Dispatch; }
+  props: GenericChatProps & ChatDerivedProps & { dispatch: M.Dispatch }
 ): JSX.Element {
   const { renderLog, sendCommand, snapshots, dispatch } = props;
   return <div

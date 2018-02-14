@@ -69,20 +69,19 @@ export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
   }
   render(): JSX.Element {
     const { ptui } = this.props;
-    const self = this;
-    function on_check(checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) {
+    const on_check = (checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) => {
       switch (folder_item.t) {
         case "CreatureID":
           const new_selected = checked
-            ? self.state.selections.add(folder_item.id)
-            : self.state.selections.remove(folder_item.id);
-          self.setState({ selections: new_selected });
+            ? this.state.selections.add(folder_item.id)
+            : this.state.selections.remove(folder_item.id);
+          this.setState({ selections: new_selected });
           return;
         default:
           console.log("Got a non-creature selection in a creature-only campaign selector:",
             folder_item);
       }
-    }
+    };
     const selecting: SelectableProps = {
       item_type: 'Creature', allow_multiple: true, on_select_object: on_check,
       is_selected: (_, item_id) =>
@@ -301,7 +300,7 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
   })(FolderTreeComp);
 
 
-function object_icon(name: FolderContentType): string {
+function object_icon(name: FolderContentType): SUI.SemanticICONS {
   switch (name) {
     case "Scene": return "object group";
     case "Creature": return "user";

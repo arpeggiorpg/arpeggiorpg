@@ -11,7 +11,7 @@ interface TextInputProps {
 
 export class TextInput extends React.Component<TextInputProps, { value: string }> {
 
-  private input: HTMLInputElement;
+  private input: HTMLInputElement | undefined;
 
   constructor(props: TextInputProps) {
     super(props);
@@ -45,7 +45,7 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
     }
   }
 
-  componentDidMount() { this.input.select(); }
+  componentDidMount() { if (this.input !== undefined) { this.input.select(); } }
 
   render() {
     return <input type="text"

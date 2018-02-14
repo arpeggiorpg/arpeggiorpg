@@ -246,7 +246,8 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
 
-  function changeObjectTool(_: any, index: number) {
+  function changeObjectTool(_: any, index: number | Array<number>) {
+    if (typeof index !== "number") { return; }
     const selected = object_panels[index];
     dispatch({ type: "SetObjectTool", tool: selected.key });
   }
@@ -419,17 +420,17 @@ class GMChallengeComp
         creature_id => ptui.sendCommandWithResult(
           { t: 'AttributeCheck', creature_id, check: this.props.challenge })
           .then(
-          (result): [T.CreatureID, T.GameLog | string] => {
-            if (result.t !== 'Ok') {
-              return [creature_id, result.error];
-            } else {
-              if (result.result.length !== 1) {
-                return [creature_id, "Got unexpected results"];
+            (result): [T.CreatureID, T.GameLog | string] => {
+              if (result.t !== 'Ok') {
+                return [creature_id, result.error];
               } else {
-                return [creature_id, result.result[0]];
+                if (result.result.length !== 1) {
+                  return [creature_id, "Got unexpected results"];
+                } else {
+                  return [creature_id, result.result[0]];
+                }
               }
             }
-          }
           ));
     const gathered: Promise<Array<[T.CreatureID, T.GameLog | string]>> = Promise.all(promises);
     this.setState({ results: I.Map() as I.Map<T.CreatureID, T.GameLog> });
@@ -660,8 +661,16 @@ interface GMSceneCreaturesDerivedProps {
 
 export const GMSceneCreatures = ReactRedux.connect(
   Comp.createDeepEqualSelector(
-    [(ptui: M.PTUI): T.App => ptui.app,
-    (_: any, props: { scene: T.Scene }) => props.scene],
+    [
+      (ptui: M.PTUI): T.App => ptui.app,
+      (_: any, props: { scene: T.Scene } | undefined) => {
+        // WHY is props suddenly maybe undefined? typescript upgrade caused this
+        if (props === undefined) {
+          throw new Error("BUG: props must be defined in GMSceneCreatures selector");
+        }
+        return props.scene;
+      }
+    ],
     (app: T.App, scene: T.Scene) => ({
       creatures: M.getSceneCreatures(app, scene),
       combat: app.current_game.current_combat,

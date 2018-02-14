@@ -27,7 +27,6 @@ export class SVGPanZoom
   }
 
   panzoomEvents() {
-    const self = this;
     return {
       haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
       init: (options: SvgPanZoom.CustomEventOptions) => {
@@ -41,7 +40,7 @@ export class SVGPanZoom
           inputClass: (Hammer as any).SUPPORT_POINTER_EVENTS
             ? Hammer.PointerEventInput : Hammer.TouchInput,
         });
-        self.setState({ hammer });
+        this.setState({ hammer });
         // Enable pinch
         hammer.get('pinch').set({ enable: true });
         // Handle pan
@@ -70,31 +69,31 @@ export class SVGPanZoom
 
         // See [Note: Panning/Clicking State Management]
         options.svgElement.addEventListener('mousedown', () => {
-          self.panStart = "waiting";
-          self.panStartTimer = setTimeout(() => self.panStart = "allowed", 100);
-          self.setState({ isMouseDown: true });
+          this.panStart = "waiting";
+          this.panStartTimer = window.setTimeout(() => this.panStart = "allowed", 100);
+          this.setState({ isMouseDown: true });
         });
 
         options.svgElement.addEventListener('mousemove', () => {
-          if (self.state.isMouseDown) {
-            if (self.props.onPanZoom) { self.props.onPanZoom(true); }
+          if (this.state.isMouseDown) {
+            if (this.props.onPanZoom) { this.props.onPanZoom(true); }
           }
         });
         options.svgElement.addEventListener('touchend', () => {
-          if (self.props.onPanZoom) { self.props.onPanZoom(false); }
+          if (this.props.onPanZoom) { this.props.onPanZoom(false); }
         });
         options.svgElement.addEventListener('mouseup', () => {
-          self.panStart = "idle";
-          if (self.panStartTimer !== undefined) { clearTimeout(self.panStartTimer); }
-          self.setState({ isMouseDown: false });
+          this.panStart = "idle";
+          if (this.panStartTimer !== undefined) { clearTimeout(this.panStartTimer); }
+          this.setState({ isMouseDown: false });
         }
         );
         options.svgElement.addEventListener('click', () => {
-          if (self.props.onPanZoom) { self.props.onPanZoom(false); }
-          self.setState({ isMouseDown: false });
+          if (this.props.onPanZoom) { this.props.onPanZoom(false); }
+          this.setState({ isMouseDown: false });
         });
       },
-      destroy: () => { if (self.state.hammer) { self.state.hammer.destroy(); } },
+      destroy: () => { if (this.state.hammer) { this.state.hammer.destroy(); } },
     };
   }
 

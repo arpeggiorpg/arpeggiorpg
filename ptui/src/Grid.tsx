@@ -71,8 +71,6 @@ interface SceneGridState {
 export const SceneGrid = M.connectRedux(class SceneGrid
   extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
 
-  spz: SPZ.SVGPanZoom;
-
   constructor(props: SceneGridProps & M.ReduxProps) {
     super(props);
     this.state = {};
@@ -95,7 +93,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       : [];
 
     const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
-    const disable_style = layer ? { pointerEvents: "none", opacity: "0.3" } : {};
+    const disable_style = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
 
     const [bg_width, bg_height] = scene.background_image_scale;
     const background_image = scene.background_image_url && scene.background_image_offset
@@ -147,11 +145,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       {annotation}
       <SPZ.SVGPanZoom
         id="pt-grid"
-        ref={
-          (el: any
-            /* I can't figure out how to prove that `el` is actually an SPZ.SVGPanZoom instance,
-             * hence the `any` type in this `ref` */
-          ) => { this.spz = el; }}
         preserveAspectRatio="xMinYMid slice"
         style={{
           width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
@@ -293,9 +286,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         return <rect key={pointKey("non-ann", pt)} {...tprops} onClick={() => addAnnotation(pt)} />;
       });
 
-    return [
+    return <>
       <g id="existing-annotations">{annotated_tiles}</g>,
-      <g id="empty-annotations">{empty_tiles}</g>];
+      <g id="empty-annotations">{empty_tiles}</g>
+    </>;
   }
 
   getEditableVolumes(): Array<JSX.Element> | undefined {
@@ -311,7 +305,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
   getVolumeConditions(
     fillOpacity: number = 0.1,
-    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<never>) => void
+    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<any>) => void
       = () => undefined
   ): Array<JSX.Element> | undefined {
     return this.props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
@@ -380,8 +374,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     this.setState({ targeting_point: { point, rect } });
     M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
       options.ability_id, point).then(
-      ({ points, creatures }) =>
-        this.setState({ affected_points: points, affected_creatures: creatures }));
+        ({ points, creatures }) =>
+          this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
   renderAnnotation(scene: T.Scene, { pt, rect }: { pt: T.Point3; rect: M.Rect })
@@ -636,7 +630,7 @@ const GridCreature = M.connectRedux(
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let timer: number;
     let element: SVGRectElement | SVGImageElement;
-    function onClick(event: React.MouseEvent<never>) {
+    function onClick(event: React.MouseEvent<any>) {
       const creatures = findElementsAtPoint(event.pageX, event.pageY,
         el => el.getAttribute('data-pt-type') === 'creature'
           && (el.getAttribute('data-pt-id') || undefined)

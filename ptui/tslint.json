@@ -9,8 +9,10 @@
 		"max-line-length": [true, 101],
 		"no-unused-expression": true,
 		"no-duplicate-variable": true,
+		"no-duplicate-imports": false,
 		"no-unused-variable": true,
 		"no-shadowed-variable": false,
+		"no-submodule-imports": false,
 		"curly": true,
 		"class-name": true,
 		"semicolon": [

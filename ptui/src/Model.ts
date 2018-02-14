@@ -157,8 +157,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
         grid => ({ ...grid, target_options: { cid, ability_id, options } }));
     case "ClearPotentialTargets":
       return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
-    case "ClearPotentialTargets":
-      return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
     case "ClearMovementOptions":
       return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
 
@@ -422,7 +420,7 @@ export class PTUI {
   }
 
 
-  /** Execute an ability that has already been selected, with a target.
+  /* Execute an ability that has already been selected, with a target.
    * This relies on the state being set up ahead of time: we must have a target_options already.
    */
   executeCombatAbility(dispatch: Dispatch, target_id: T.CreatureID) {

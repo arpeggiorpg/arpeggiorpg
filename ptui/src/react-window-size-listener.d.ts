@@ -3,5 +3,5 @@ declare module 'react-window-size-listener' {
         onResize: (x: {windowWidth: number, windowHeight: number}) => void;
     }
     const WindowSizeListener: React.ComponentClass<WindowSizeProps>;
-    export = WindowSizeListener;
+    export default WindowSizeListener;
 }

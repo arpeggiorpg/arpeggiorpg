@@ -1,4 +1,5 @@
-/** Cool Forms
+/**
+ * Cool Forms
  *
  * This code is a piece of shit. I use `any` all over the place. And it doesn't even expose a
  * typesafe API.
@@ -26,14 +27,14 @@ interface CoolSubmitProps {
 }
 export class Submit extends React.Component<CoolSubmitProps> { }
 
-interface CoolFormState { data: { [index: string]: { type: string, value: any, extra: any } }; }
+interface CoolFormState { data: { [index: string]: { type: string; value: any; extra: any } }; }
 
 export class CoolForm extends React.Component<{}, CoolFormState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    const data: { [index: string]: { type: string, value: any, extra: any } } = {};
+    const data: { [index: string]: { type: string; value: any; extra: any } } = {};
     this.walkChildren(props.children, input => {
-      switch (input.type) {
+      switch (input.type as any) {
         case PlaintextInput:
           {
             const props = input.props as CoolTextInputProps;

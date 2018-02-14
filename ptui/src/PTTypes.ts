@@ -613,7 +613,9 @@ export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
   (point, volume, remaining, condition): VolumeCondition => ({ point, volume, remaining, condition })
 );
 
-const decodeTerrain: Decoder<Terrain> = JD.map(I.Set, JD.array(decodePoint3));
+const decodeTerrain: Decoder<Terrain> = JD.map(
+  I.Set as ((arr: Array<Point3>) => I.Set<Point3>), // WHY, I didn't previously need this!
+  JD.array(decodePoint3));
 const decodeHighlights: Decoder<Highlights> =
   decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility));
 const decodeAnnotations: Decoder<Annotations> = decodeHighlights;
@@ -633,7 +635,8 @@ export const decodeScene: Decoder<Scene> =
     ["background_image_offset", maybe(JD.tuple(JD.number(), JD.number()))],
     ["background_image_scale", JD.tuple(JD.number(), JD.number())],
     ["volume_conditions", JD.map(I.Map, JD.dict(decodeVolumeCondition))],
-    ["focused_creatures", JD.map(I.List, JD.array(JD.string()))],
+    ["focused_creatures",
+      JD.map(I.List as ((arr: Array<string>) => I.List<CreatureID>), JD.array(JD.string()))],
     (
       id, name, terrain, highlights, annotations, creatures, attribute_checks, inventory,
       background_image_url, background_image_offset, background_image_scale, volume_conditions,
@@ -834,7 +837,9 @@ export const decodeGameLog: Decoder<GameLog> =
       (scene_id, description): GameLog => ({ t: "RemoveSceneChallenge", scene_id, description })
     ),
     SetFocusedSceneCreatures: JD.object(
-      ["scene_id", JD.string()], ["creatures", JD.map(I.List, JD.array(JD.string()))],
+      ["scene_id", JD.string()],
+      ["creatures", JD.map(I.List as ((arr: Array<string>) => I.List<CreatureID>),
+        JD.array(JD.string()))],
       (scene_id, creatures): GameLog => ({ t: "SetFocusedSceneCreatures", scene_id, creatures })
     ),
     RemoveSceneVolumeCondition: JD.object(
@@ -887,7 +892,7 @@ export const decodeGameLog: Decoder<GameLog> =
       JD.tuple(JD.number(), JD.number())),
     LoadModule: JD.object(
       ["name", JD.string()], ["path", decodeFolderPath],
-      (name, path): GameLog => ({t: "LoadModule", name, path})),
+      (name, path): GameLog => ({ t: "LoadModule", name, path })),
   });
 
 const decodePlayer: Decoder<Player> = JD.object(
@@ -1032,7 +1037,9 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "MoveFolderItem":
       return {
         MoveFolderItem:
-        [encodeFolderPath(cmd.source), encodeFolderItemID(cmd.item_id), encodeFolderPath(cmd.dest)],
+          [encodeFolderPath(cmd.source),
+          encodeFolderItemID(cmd.item_id),
+          encodeFolderPath(cmd.dest)],
       };
     case "CopyFolderItem":
       return {
@@ -1047,7 +1054,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "EditCreatureDetails":
       return {
         EditCreatureDetails:
-        { creature_id: cmd.creature_id, details: encodeCreatureCreation(cmd.details) },
+          { creature_id: cmd.creature_id, details: encodeCreatureCreation(cmd.details) },
       };
     case "CreateCreature":
       return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
@@ -1067,12 +1074,12 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "RemoveItem":
       return {
         RemoveItem:
-        { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
+          { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
     case "SetItemCount":
       return {
         SetItemCount:
-        { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
+          { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
       };
     case "CreateScene":
       return { CreateScene: [encodeFolderPath(cmd.path), encodeSceneCreation(cmd.spec)] };
