@@ -2,6 +2,7 @@ import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
 import { Provider } from 'react-redux';
+import * as ReactRedux from 'react-redux';
 import * as SplitPane from "react-split-pane";
 import WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
@@ -861,14 +862,13 @@ export class SingleInputForm
 interface ChatDerivedProps {
   snapshots: Array<T.Snapshot>;
 }
-interface CreaturesProps { creatures: I.Map<T.CreatureID, T.Creature>; }
 interface GenericChatProps {
   renderLog: (input: T.GameLog) => JSX.Element | undefined;
   sendCommand: (input: string) => T.GameCommand;
 }
-export const GenericChat = Comp.connect<GenericChatProps, ChatDerivedProps>(
+export const GenericChat = ReactRedux.connect(
   Comp.createDeepEqualSelector(
-    [ptui => ptui.app.snapshots],
+    [(ptui: M.PTUI) => ptui.app.snapshots],
     snapshots => ({ snapshots }))
 )(function GenericChat(
   props: GenericChatProps & ChatDerivedProps & { dispatch: M.Dispatch }
@@ -901,37 +901,39 @@ export const GenericChat = Comp.connect<GenericChatProps, ChatDerivedProps>(
   }
 });
 
+
 const creaturesSelector = Comp.createDeepEqualSelector(
   [(ptui: M.PTUI) => ptui.app.current_game.creatures],
-  creatures => ({ creatures }));
+  (creatures): GMChatProps => ({ creatures }));
 
-export const GMChat = Comp.connect(creaturesSelector)(function GMChat(props): JSX.Element {
-  const { creatures } = props;
-  const GMChatCmd = (message: string): T.GameCommand => ({ t: "ChatFromGM", message });
-  return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
-
-  function get_chat_line(log: T.GameLog) {
-    const chatmsg = renderChat(log);
-    if (chatmsg) { return chatmsg; }
-    switch (log.t) {
-      case "CreatureLog":
-        return History.creature_log(creatures, log.creature_id, log.log);
-    }
-  }
-});
-
-interface PlayerChatProps { player_id: T.PlayerID; }
-export const PlayerChat = Comp.connect<PlayerChatProps, CreaturesProps>(creaturesSelector)(
-  function PlayerChat(props): JSX.Element {
-    const { player_id } = props;
-    const chatCmd = (message: string): T.GameCommand =>
-      ({ t: "ChatFromPlayer", player_id, message });
-    return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
+interface GMChatProps { creatures: I.Map<string, T.Creature>; }
+export const GMChat = ReactRedux.connect(creaturesSelector)(
+  function GMChat(props: GMChatProps): JSX.Element {
+    const { creatures } = props;
+    const GMChatCmd = (message: string): T.GameCommand => ({ t: "ChatFromGM", message });
+    return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
 
     function get_chat_line(log: T.GameLog) {
-      return renderChat(log);
+      const chatmsg = renderChat(log);
+      if (chatmsg) { return chatmsg; }
+      switch (log.t) {
+        case "CreatureLog":
+          return History.creature_log(creatures, log.creature_id, log.log);
+      }
     }
   });
+
+interface PlayerChatProps { player_id: T.PlayerID; }
+export function PlayerChat(props: PlayerChatProps): JSX.Element {
+  const { player_id } = props;
+  const chatCmd = (message: string): T.GameCommand =>
+    ({ t: "ChatFromPlayer", player_id, message });
+  return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
+
+  function get_chat_line(log: T.GameLog) {
+    return renderChat(log);
+  }
+}
 
 function renderChat(log: T.GameLog): JSX.Element | undefined {
   switch (log.t) {

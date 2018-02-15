@@ -2,6 +2,7 @@ import * as Fuse from 'fuse.js';
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
+import * as ReactRedux from 'react-redux';
 
 import {
   Button, Checkbox, Divider, Dropdown, Icon, Input, Label, List, Menu,
@@ -16,8 +17,8 @@ import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export const Campaign = Comp.connect(
-  ptui => ({ campaign: ptui.app.current_game.campaign })
+export const Campaign = ReactRedux.connect(
+  (ptui: M.PTUI) => ({ campaign: ptui.app.current_game.campaign })
 )(
   function campaignComp(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
     const { campaign } = props;
@@ -263,7 +264,7 @@ class FolderTreeComp
   }
 }
 
-const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
+const FolderTree = ReactRedux.connect(
   (ptui: M.PTUI, props: FTProps) => {
 
     const { selecting, folder, path } = props;
@@ -297,7 +298,8 @@ const FolderTree = Comp.connect<FTProps, FTDerivedProps>(
       creature_objects,
       item_objects,
     };
-  })(FolderTreeComp);
+  }
+)(FolderTreeComp);
 
 
 function object_icon(name: FolderContentType): SUI.SemanticICONS {
@@ -571,8 +573,8 @@ function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
-const SelectFolder = Comp.connect<SelectFolderProps, { all_folders: Array<T.FolderPath> }>(
-  ptui => ({ all_folders: collectAllFolders([], ptui.app.current_game.campaign) }),
+const SelectFolder = ReactRedux.connect(
+  (ptui: M.PTUI) => ({ all_folders: collectAllFolders([], ptui.app.current_game.campaign) }),
 )(class SelectFolderComp
   extends
   React.Component<SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps,

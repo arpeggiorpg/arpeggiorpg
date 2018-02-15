@@ -1,5 +1,6 @@
 import * as I from 'immutable';
 import * as React from "react";
+import * as ReactRedux from 'react-redux';
 
 import { Button, List, Table } from 'semantic-ui-react';
 
@@ -9,9 +10,18 @@ import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export const Players = Comp.connect(
+
+interface RuntimePlayerData {
+  player: T.Player;
+  id: T.PlayerID;
+  creatures: Array<T.Creature>;
+  scene_name: string;
+}
+
+interface PlayersDerivedProps { gm_scene?: T.Scene; player_creatures: Array<RuntimePlayerData>; }
+export const Players = ReactRedux.connect(
   Comp.createDeepEqualSelector(
-    [ptui => ptui.app,
+    [(ptui: M.PTUI) => ptui.app,
     ptui => ptui.app.current_game.players,
     ptui => ptui.focused_scene(),
     ],
@@ -27,9 +37,11 @@ export const Players = Comp.connect(
           };
         }
       ),
-    }))
+    })),
+  (dispatch: M.Dispatch) => ({ dispatch }),
 )(
-  function Players({ gm_scene, player_creatures, dispatch }): JSX.Element {
+  function Players(props: PlayersDerivedProps & M.DispatchProps): JSX.Element {
+    const { gm_scene, player_creatures, dispatch } = props;
     return <Table celled={true}>
       <Table.Header>
         <Table.Row>

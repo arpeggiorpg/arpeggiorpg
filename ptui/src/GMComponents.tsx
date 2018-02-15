@@ -4,6 +4,7 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 import * as ReactRedux from 'react-redux';
+import { OutputParametricSelector } from 'reselect';
 
 import {
   Accordion,
@@ -659,25 +660,23 @@ interface GMSceneCreaturesDerivedProps {
   combat: T.Combat | undefined;
 }
 
-export const GMSceneCreatures = ReactRedux.connect(
-  Comp.createDeepEqualSelector(
+const GMSceneCreaturesSelector: OutputParametricSelector<
+  M.PTUI,
+  { scene: T.Scene }, // props
+  { creatures: Array<T.Creature>; combat?: T.Combat }, // output
+  (res1: T.App, res2: T.Scene) => { creatures: Array<T.Creature>; combat?: T.Combat }
+  > = Comp.createDeepEqualSelector(
     [
       (ptui: M.PTUI): T.App => ptui.app,
-      (_: any, props: { scene: T.Scene } | undefined) => {
-        // WHY is props suddenly maybe undefined? typescript upgrade caused this
-        if (props === undefined) {
-          throw new Error("BUG: props must be defined in GMSceneCreatures selector");
-        }
-        return props.scene;
-      }
+      (_: any, props: { scene: T.Scene }) => props.scene
     ],
     (app: T.App, scene: T.Scene) => ({
       creatures: M.getSceneCreatures(app, scene),
       combat: app.current_game.current_combat,
     })
-  ),
-  (dispatch: M.Dispatch) => ({ dispatch }),
-)(
+  );
+
+export const GMSceneCreatures = ReactRedux.connect(GMSceneCreaturesSelector)(
   function GMSceneCreatures(
     props: { scene: T.Scene } & GMSceneCreaturesDerivedProps & M.DispatchProps) {
     const { scene, creatures, combat, dispatch } = props;

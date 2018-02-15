@@ -1,14 +1,22 @@
 import * as I from 'immutable';
 import * as React from "react";
+import * as ReactRedux from 'react-redux';
 
 import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export const History = Comp.connect(
-  Comp.createDeepEqualSelector([ptui => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
-    (snapshots, creatures) => ({ snapshots, creatures }))
-)(function History(props): JSX.Element {
+
+interface HistoryDerivedProps {
+  snapshots: Array<T.Snapshot>;
+  creatures: I.Map<T.CreatureID, T.Creature>;
+}
+export const History = ReactRedux.connect(
+  Comp.createDeepEqualSelector(
+    [(ptui: M.PTUI) => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
+    (snapshots, creatures) => ({ snapshots, creatures })),
+  (dispatch: M.Dispatch) => ({ dispatch }),
+)(function History(props: HistoryDerivedProps & M.DispatchProps): JSX.Element {
   const { snapshots, creatures, dispatch } = props;
   console.log("[EXPENSIVE:History.render]");
   return <div>{
