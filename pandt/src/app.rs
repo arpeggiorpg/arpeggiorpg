@@ -38,10 +38,7 @@ const SNAPSHOTS: usize = 2;
 impl App {
   pub fn new(g: Game) -> Self {
     let snapshots = VecDeque::with_capacity(SNAPSHOTS);
-    App {
-      current_game: g,
-      snapshots: snapshots,
-    }
+    App { current_game: g, snapshots: snapshots }
   }
   pub fn perform_command(
     &mut self, cmd: GameCommand, saved_game_path: PathBuf
@@ -55,24 +52,16 @@ impl App {
         Ok((&self.current_game, vec![log]))
       }
       _ => {
-        let (game, logs) = self
-          .current_game
-          .perform_command(cmd.clone(), saved_game_path)?
-          .done();
+        let (game, logs) = self.current_game.perform_command(cmd.clone(), saved_game_path)?.done();
 
         if self.snapshots.is_empty()
           || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
         {
-          self
-            .snapshots
-            .push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
+          self.snapshots.push_back((self.current_game.clone(), Vec::with_capacity(LOGS_PER_SNAP)));
         }
 
         for _ in 0..(self.snapshots.len().saturating_sub(SNAPSHOTS)) {
-          println!(
-            "There are {} too many snapshots",
-            self.snapshots.len() - SNAPSHOTS
-          );
+          println!("There are {} too many snapshots", self.snapshots.len() - SNAPSHOTS);
           self.snapshots.pop_front();
         }
 
@@ -137,9 +126,7 @@ impl App {
     &self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
-    self
-      .current_game
-      .preview_volume_targets(scene, actor_id, ability_id, pt)
+    self.current_game.preview_volume_targets(scene, actor_id, ability_id, pt)
   }
 }
 
@@ -186,10 +173,8 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    perf(
-      &mut app,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-    ).unwrap();
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
+      .unwrap();
     perf(&mut app, GameCommand::Rollback(0, 0)).unwrap();
     let ranger = app.current_game.get_creature(cid_ranger()).unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
@@ -212,10 +197,8 @@ mod test {
     // 2
     perf(&mut app, GameCommand::StopCombat).unwrap();
     // 3
-    perf(
-      &mut app,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-    ).unwrap();
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
+      .unwrap();
     perf(&mut app, GameCommand::Rollback(0, 2)).unwrap();
     assert_eq!(app.current_game.current_combat, None);
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
@@ -228,24 +211,18 @@ mod test {
     // 0
     let mut app = t_app();
     // 1
-    perf(
-      &mut app,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)),
-    ).unwrap();
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(1, 1, 1)))
+      .unwrap();
     // 2
     perf(&mut app, GameCommand::Rollback(0, 0)).unwrap(); // oops didn't mean to move ranger
                                                           // 3
-    perf(
-      &mut app,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)),
-    ).unwrap();
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1, 1, 1)))
+      .unwrap();
     // 4
     perf(&mut app, GameCommand::Rollback(0, 2)).unwrap(); // oops didn't mean to move cleric
                                                           // 5
-    perf(
-      &mut app,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1)),
-    ).unwrap();
+    perf(&mut app, GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(1, 1, 1)))
+      .unwrap();
     let scene = app.current_game.get_scene(t_scene_id()).unwrap();
     assert_eq!(scene.get_pos(cid_cleric()).unwrap(), Point3::new(0, 0, 0));
     assert_eq!(scene.get_pos(cid_rogue()).unwrap(), Point3::new(1, 1, 1));

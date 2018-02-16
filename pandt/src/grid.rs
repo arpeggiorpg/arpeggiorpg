@@ -45,28 +45,16 @@ fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero
 
 fn na_point(pt: Point3) -> na::Point3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  na::Point3::new(
-    pt.x.get(meter) as f64,
-    pt.y.get(meter) as f64,
-    pt.z.get(meter) as f64,
-  )
+  na::Point3::new(pt.x.get(meter) as f64, pt.y.get(meter) as f64, pt.z.get(meter) as f64)
 }
 
 fn na_vector(pt: Point3) -> Vector3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  Vector3::new(
-    pt.x.get(meter) as f64,
-    pt.y.get(meter) as f64,
-    pt.z.get(meter) as f64,
-  )
+  Vector3::new(pt.x.get(meter) as f64, pt.y.get(meter) as f64, pt.z.get(meter) as f64)
 }
 
 fn na_vector_to_point3(v: Vector3<f64>) -> Point3 {
-  Point3::new(
-    (v[0] * 100.0) as i64,
-    (v[1] * 100.0) as i64,
-    (v[2] * 100.0) as i64,
-  )
+  Point3::new((v[0] * 100.0) as i64, (v[1] * 100.0) as i64, (v[2] * 100.0) as i64)
 }
 
 pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Length) -> Volume {
@@ -74,9 +62,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Len
   let mut navec = na_vector(offset);
   navec.normalize_mut();
   let new_vec = navec * length.get(meter) as f64;
-  Volume::Line {
-    vector: na_vector_to_point3(new_vec),
-  }
+  Volume::Line { vector: na_vector_to_point3(new_vec) }
 }
 
 /// Get the vector difference between two points, i.e., the offset of pt2 from pt1.
@@ -293,11 +279,7 @@ impl TileSystem {
         let neighbor = Point3::from_quantities(pt.x + i64cm(x), pt.y + i64cm(y), pt.z);
         if is_open(terrain, neighbor) && self.volume_fits_at_point(volume, terrain, neighbor) {
           let is_angle = x.abs() == y.abs(); // there's probably a cheaper way to do this
-          let cost = if is_angle {
-            diagonal_distance
-          } else {
-            straight_distance
-          };
+          let cost = if is_angle { diagonal_distance } else { straight_distance };
           // don't allow diagonal movement around corners
           if is_angle && !is_open(terrain, Point3::from_quantities(neighbor.x, pt.y, pt.z))
             || !is_open(terrain, Point3::from_quantities(pt.x, neighbor.y, pt.z))
@@ -443,17 +425,10 @@ where
   FH: Fn(&N) -> C,
 {
   let mut to_see = BinaryHeap::new();
-  to_see.push(InvCmpHolder {
-    key: heuristic(start),
-    payload: (Zero::zero(), start.clone()),
-  });
+  to_see.push(InvCmpHolder { key: heuristic(start), payload: (Zero::zero(), start.clone()) });
   let mut parents: HashMap<N, (N, C)> = HashMap::new();
   let mut found_nodes = vec![];
-  while let Some(InvCmpHolder {
-    payload: (cost, node),
-    ..
-  }) = to_see.pop()
-  {
+  while let Some(InvCmpHolder { payload: (cost, node), .. }) = to_see.pop() {
     successes.retain_mut(|ref mut success_fn| {
       let was_successful = success_fn(&node);
       if was_successful {
@@ -478,10 +453,7 @@ where
       if neighbour != *start && old_cost.map_or(true, |c| new_cost < c) && new_cost <= max_cost {
         parents.insert(neighbour.clone(), (node.clone(), new_cost));
         let new_predicted_cost = new_cost + heuristic(&neighbour);
-        to_see.push(InvCmpHolder {
-          key: new_predicted_cost,
-          payload: (new_cost, neighbour),
-        });
+        to_see.push(InvCmpHolder { key: new_predicted_cost, payload: (new_cost, neighbour) });
       }
     }
   }
@@ -535,40 +507,22 @@ pub mod test {
     map
   }
 
-  fn medium_size() -> AABB {
-    AABB {
-      x: u32cm(100),
-      y: u32cm(100),
-      z: u32cm(100),
-    }
-  }
+  fn medium_size() -> AABB { AABB { x: u32cm(100), y: u32cm(100), z: u32cm(100) } }
 
-  fn large_size() -> AABB {
-    AABB {
-      x: u32cm(200),
-      y: u32cm(200),
-      z: u32cm(100),
-    }
-  }
+  fn large_size() -> AABB { AABB { x: u32cm(200), y: u32cm(200), z: u32cm(100) } }
 
   #[test]
   fn test_simple_distance() {
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(100, 0, 0);
-    assert_eq!(
-      TileSystem::Realistic.point3_distance(pos1, pos2),
-      u32cm(100)
-    );
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), u32cm(100));
   }
 
   #[test]
   fn test_diagonal_distance() {
     let pos1 = Point3::new(0, 0, 0);
     let pos2 = Point3::new(100, 100, 0);
-    assert_eq!(
-      TileSystem::Realistic.point3_distance(pos1, pos2),
-      u32cm(141)
-    );
+    assert_eq!(TileSystem::Realistic.point3_distance(pos1, pos2), u32cm(141));
   }
 
   #[test]
@@ -617,11 +571,7 @@ pub mod test {
       u32cm(u32::max_value() / 64 - 1), // FIXME this is a workaround for uom bug #55
       vec![success],
     );
-    let ex_path = vec![
-      Point3::new(0, 0, 0),
-      Point3::new(100, 100, 0),
-      Point3::new(200, 200, 0),
-    ];
+    let ex_path = vec![Point3::new(0, 0, 0), Point3::new(100, 100, 0), Point3::new(200, 200, 0)];
     assert_eq!(paths_and_costs, [(ex_path, u32cm(282))]);
   }
 
@@ -689,13 +639,7 @@ pub mod test {
     );
     let ex_path_positive = vec![Point3::new(0, 0, 0), Point3::new(100, 100, 0)];
     let ex_path_negative = vec![Point3::new(0, 0, 0), Point3::new(-100, -100, 0)];
-    assert_eq!(
-      paths_and_costs,
-      [
-        (ex_path_positive, u32cm(141)),
-        (ex_path_negative, u32cm(141))
-      ]
-    );
+    assert_eq!(paths_and_costs, [(ex_path_positive, u32cm(141)), (ex_path_negative, u32cm(141))]);
   }
 
   #[test]
@@ -782,10 +726,7 @@ pub mod test {
     for result in results.iter() {
       let result_pos = items.get(result).expect("Got result that wasn't in input");
       let dist = ts.point3_distance(*result_pos, vol_pt);
-      println!(
-        "Checking distance between {:?} and {:?}: {:?}",
-        result_pos, vol_pt, dist
-      );
+      println!("Checking distance between {:?} and {:?}: {:?}", result_pos, vol_pt, dist);
       assert!(dist <= u32cm(500));
     }
     for (item, item_pos) in items.iter() {
@@ -798,9 +739,7 @@ pub mod test {
   #[test]
   fn items_within_volume_line() {
     let ts = TileSystem::Realistic;
-    let vol = Volume::Line {
-      vector: Point3::new(400, 0, 0),
-    };
+    let vol = Volume::Line { vector: Point3::new(400, 0, 0) };
     let vol_pt = Point3::new(100, 0, 0);
     let items = hashmap!{
       "Elron" => Point3::new(0, 0, 0),
@@ -863,13 +802,8 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let dumbbell = dumbbell_map();
     let big_guy = Volume::AABB(large_size());
-    let path = ts.find_path(
-      Point3::new(0, 0, 0),
-      u32cm(1000),
-      &dumbbell,
-      big_guy,
-      Point3::new(300, 0, 0),
-    );
+    let path =
+      ts.find_path(Point3::new(0, 0, 0), u32cm(1000), &dumbbell, big_guy, Point3::new(300, 0, 0));
     assert_eq!(path, None);
   }
 
@@ -879,13 +813,8 @@ pub mod test {
     let mut dumbbell = dumbbell_map();
     dumbbell.push(Point3::new(200, 200, 0));
     let big_guy = Volume::AABB(large_size());
-    let path = ts.find_path(
-      Point3::new(0, 0, 0),
-      u32cm(1000),
-      &dumbbell,
-      big_guy,
-      Point3::new(300, 0, 0),
-    );
+    let path =
+      ts.find_path(Point3::new(0, 0, 0), u32cm(1000), &dumbbell, big_guy, Point3::new(300, 0, 0));
     assert_eq!(
       path,
       Some((

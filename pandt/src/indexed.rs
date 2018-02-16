@@ -25,11 +25,7 @@ where
   V: DeriveKey + Clone,
   <V as DeriveKey>::KeyType: Clone,
 {
-  fn clone(&self) -> Self {
-    IndexedHashMap {
-      data: self.data.clone(),
-    }
-  }
+  fn clone(&self) -> Self { IndexedHashMap { data: self.data.clone() } }
 }
 
 impl<V> Default for IndexedHashMap<V>
@@ -82,9 +78,7 @@ where
   where
     T: IntoIterator<Item = V>,
   {
-    IndexedHashMap {
-      data: iter.into_iter().map(|v| (v.derive_key(), v)).collect(),
-    }
+    IndexedHashMap { data: iter.into_iter().map(|v| (v.derive_key(), v)).collect() }
   }
 }
 
@@ -95,11 +89,7 @@ impl<'a, V: DeriveKey> IntoIterator for &'a IndexedHashMap<V> {
 }
 
 impl<V: DeriveKey> IndexedHashMap<V> {
-  pub fn new() -> IndexedHashMap<V> {
-    IndexedHashMap {
-      data: HashMap::new(),
-    }
-  }
+  pub fn new() -> IndexedHashMap<V> { IndexedHashMap { data: HashMap::new() } }
 
   pub fn iter(&self) -> ::std::collections::hash_map::Values<<V as DeriveKey>::KeyType, V> {
     self.into_iter()

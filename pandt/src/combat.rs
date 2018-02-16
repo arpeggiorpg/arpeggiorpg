@@ -9,11 +9,8 @@ use std::marker::PhantomData;
 
 /// This is set to 1.5 so that it's greater than sqrt(2) -- meaning that creatures can attack
 /// diagonally!
-pub const MELEE_RANGE: u32units::Length = u32units::Length {
-  dimension: PhantomData,
-  units: PhantomData,
-  value: 150,
-};
+pub const MELEE_RANGE: u32units::Length =
+  u32units::Length { dimension: PhantomData, units: PhantomData, value: 150 };
 
 impl<'game> DynamicCombat<'game> {
   pub fn remove_from_combat(&self, cid: CreatureID) -> Result<Option<Combat>, GameError> {
@@ -92,22 +89,12 @@ impl<'game> DynamicCombat<'game> {
   }
 
   pub fn change(&self) -> ChangedCombat<'game> {
-    ChangedCombat {
-      scene: self.scene,
-      combat: self.combat.clone(),
-      logs: vec![],
-      game: self.game,
-    }
+    ChangedCombat { scene: self.scene, combat: self.combat.clone(), logs: vec![], game: self.game }
   }
 
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
-    Ok(ChangedCombat {
-      scene: self.scene,
-      combat: combat,
-      game: self.game,
-      logs: vec![log],
-    })
+    Ok(ChangedCombat { scene: self.scene, combat: combat, game: self.game, logs: vec![log] })
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
@@ -208,11 +195,7 @@ pub struct ChangedCombat<'game> {
 
 impl<'game> ChangedCombat<'game> {
   pub fn dyn(&self) -> DynamicCombat {
-    DynamicCombat {
-      scene: self.scene,
-      game: self.game,
-      combat: &self.combat,
-    }
+    DynamicCombat { scene: self.scene, game: self.game, combat: &self.combat }
   }
 
   pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
@@ -305,12 +288,7 @@ pub mod test {
     let next = change.game;
     assert_eq!(
       next.get_creature(cid_ranger()).unwrap().all_conditions(),
-      vec![
-        AppliedCondition {
-          remaining: Duration::Interminate,
-          condition: Condition::Dead,
-        },
-      ]
+      vec![AppliedCondition { remaining: Duration::Interminate, condition: Condition::Dead }]
     )
   }
 
@@ -342,13 +320,7 @@ pub mod test {
   #[test]
   fn move_too_far() {
     let game = t_combat();
-    match game
-      .get_combat()
-      .unwrap()
-      .get_movement()
-      .unwrap()
-      .move_current(Point3::new(1100, 0, 0))
-    {
+    match game.get_combat().unwrap().get_movement().unwrap().move_current(Point3::new(1100, 0, 0)) {
       Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -357,34 +329,17 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let game = t_perform(
-      &game,
-      GameCommand::PathCurrentCombatCreature(Point3::new(500, 0, 0)),
-    );
+    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(500, 0, 0)));
     assert_eq!(
-      game
-        .get_scene(t_scene_id())
-        .unwrap()
-        .get_pos(cid_rogue())
-        .unwrap(),
+      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(500, 0, 0)
     );
-    let game = t_perform(
-      &game,
-      GameCommand::PathCurrentCombatCreature(Point3::new(1000, 0, 0)),
-    );
+    let game = t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(1000, 0, 0)));
     assert_eq!(
-      game
-        .get_scene(t_scene_id())
-        .unwrap()
-        .get_pos(cid_rogue())
-        .unwrap(),
+      game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(1000, 0, 0)
     );
-    match perf(
-      &game,
-      GameCommand::PathCurrentCombatCreature(Point3::new(1100, 0, 0)),
-    ) {
+    match perf(&game, GameCommand::PathCurrentCombatCreature(Point3::new(1100, 0, 0))) {
       Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }
@@ -414,9 +369,6 @@ pub mod test {
       .move_current(Point3::new(200, 0, 0))
       .unwrap()
       .game;
-    assert_eq!(
-      next_game.get_combat().unwrap().combat.movement_used,
-      u32cm(400)
-    );
+    assert_eq!(next_game.get_combat().unwrap().combat.movement_used, u32cm(400));
   }
 }

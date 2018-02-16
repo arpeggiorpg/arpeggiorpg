@@ -22,11 +22,7 @@ pub struct AppActor {
 
 impl AppActor {
   pub fn new(app: types::App, saved_game_path: PathBuf) -> AppActor {
-    AppActor {
-      app,
-      saved_game_path,
-      waiters: vec![],
-    }
+    AppActor { app, saved_game_path, waiters: vec![] }
   }
 }
 
@@ -124,11 +120,7 @@ fn get_current_app(
   app: &types::App, snapshot_len: usize, log_len: usize
 ) -> Result<Option<String>, Error> {
   if app.snapshots.len() != snapshot_len
-    || app
-      .snapshots
-      .back()
-      .map(|&(_, ref ls)| ls.len())
-      .unwrap_or(0) != log_len
+    || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
   {
     app_to_string(app).map(Some)
   } else {
@@ -246,16 +238,12 @@ struct InsecurePathError {
 
 fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, InsecurePathError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
-    return Err(InsecurePathError {
-      name: name.to_string(),
-    });
+    return Err(InsecurePathError { name: name.to_string() });
   }
   let new_path = parent.join(name);
   for p in &new_path {
     if p == "." || p == ".." {
-      return Err(InsecurePathError {
-        name: name.to_string(),
-      });
+      return Err(InsecurePathError { name: name.to_string() });
     }
   }
   Ok(new_path)

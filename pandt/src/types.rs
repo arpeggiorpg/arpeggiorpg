@@ -22,22 +22,14 @@ use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
 
 pub mod u32units {
-  ISQ!(
-    uom::si,
-    u32,
-    (centimeter, gram, second, ampere, kelvin, mole, candela)
-  );
+  ISQ!(uom::si, u32, (centimeter, gram, second, ampere, kelvin, mole, candela));
 }
 
 pub fn u32cm(v: u32) -> u32units::Length { u32units::Length::new::<centimeter>(v) }
 pub fn u32meter<T: Into<u32>>(v: T) -> u32units::Length { u32units::Length::new::<meter>(v.into()) }
 
 pub mod i64units {
-  ISQ!(
-    uom::si,
-    i64,
-    (centimeter, gram, second, ampere, kelvin, mole, candela)
-  );
+  ISQ!(uom::si, i64, (centimeter, gram, second, ampere, kelvin, mole, candela));
 }
 
 pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
@@ -60,13 +52,7 @@ pub struct Point3 {
 }
 
 impl Point3 {
-  pub fn new(x: i64, y: i64, z: i64) -> Point3 {
-    Point3 {
-      x: i64cm(x),
-      y: i64cm(y),
-      z: i64cm(z),
-    }
-  }
+  pub fn new(x: i64, y: i64, z: i64) -> Point3 { Point3 { x: i64cm(x), y: i64cm(y), z: i64cm(z) } }
   pub fn from_quantities(x: i64units::Length, y: i64units::Length, z: i64units::Length) -> Self {
     Point3 { x, y, z }
   }
@@ -74,13 +60,7 @@ impl Point3 {
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(
-      f,
-      "{}/{}/{}",
-      self.x.get(centimeter),
-      self.y.get(centimeter),
-      self.z.get(centimeter)
-    )
+    write!(f, "{}/{}/{}", self.x.get(centimeter), self.y.get(centimeter), self.z.get(centimeter))
   }
 }
 
@@ -91,11 +71,7 @@ impl ::std::str::FromStr for Point3 {
     if segments.len() != 3 {
       bail!("Bad Point3 syntax")
     }
-    match (
-      segments[0].parse::<i64>(),
-      segments[1].parse::<i64>(),
-      segments[2].parse::<i64>(),
-    ) {
+    match (segments[0].parse::<i64>(), segments[1].parse::<i64>(), segments[2].parse::<i64>()) {
       (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
       _ => bail!("Bad Point3 syntax"),
     }
@@ -219,7 +195,7 @@ impl Saturating for Energy {
 pub struct PlayerID(pub String);
 
 macro_rules! uuid_id {
-  ($type:ident) => (
+  ($type: ident) => {
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
     pub struct $type(pub Uuid);
     impl $type {
@@ -230,12 +206,10 @@ macro_rules! uuid_id {
     impl ::std::str::FromStr for $type {
       type Err = GameError;
       fn from_str(s: &str) -> Result<$type, GameError> {
-        Uuid::parse_str(s)
-          .map_err(|e| GameError::InvalidID(s.to_string(), e))
-          .map($type)
+        Uuid::parse_str(s).map_err(|e| GameError::InvalidID(s.to_string(), e)).map($type)
       }
     }
-  );
+  };
 }
 
 uuid_id!(ConditionID);
@@ -291,10 +265,7 @@ impl SkillLevel {
       2 => 10,
       3 => 1,
       4 => 0,
-      diff => panic!(
-        "[SkillLevel::difficulty] Two skill levels were too far apart: {:?}",
-        diff
-      ),
+      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
     }
   }
 }
@@ -520,9 +491,7 @@ pub enum CombatLog {
 }
 
 pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
-  ls.into_iter()
-    .map(|l| GameLog::CreatureLog(cid, l))
-    .collect()
+  ls.into_iter().map(|l| GameLog::CreatureLog(cid, l)).collect()
 }
 
 /// Representation of a change to the game state. All change to the game happens via these values.
@@ -672,53 +641,84 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
 
 #[derive(Debug, Fail)]
 pub enum GameError {
-  #[fail(display = "File {} was not found", _0)] FileNotFound(String),
+  #[fail(display = "File {} was not found", _0)]
+  FileNotFound(String),
   #[fail(display = "The Creature with ID {:?} does not have the attribute {:?}", _0, _1)]
   AttributeNotFound(CreatureID, AttrID),
-  #[fail(display = "The ability with ID {:?} already exists", _0)] AbilityAlreadyExists(AbilityID),
+  #[fail(display = "The ability with ID {:?} already exists", _0)]
+  AbilityAlreadyExists(AbilityID),
   #[fail(display = "The creature with ID {:?} already exists", _0)]
   CreatureAlreadyExists(CreatureID),
-  #[fail(display = "The Item {:?} already exists", _0)] ItemAlreadyExists(ItemID),
-  #[fail(display = "The Item {:?} couldn't be found", _0)] ItemNotFound(ItemID),
-  #[fail(display = "The scene {:?} already exists", _0)] SceneAlreadyExists(SceneID),
-  #[fail(display = "The Scene '{:?}' wasn't found", _0)] SceneNotFound(SceneID),
-  #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)] SceneInUse(SceneID),
-  #[fail(display = "The identifier '{}' is too long.", _0)] IDTooLong(String),
-  #[fail(display = "The condition with ID {:?} wasn't found.", _0)] ConditionNotFound(ConditionID),
-  #[fail(display = "Cannot process {:?} in this state.", _0)] InvalidCommand(GameCommand),
-  #[fail(display = "The class {:?} already exists.", _0)] ClassAlreadyExists(ClassID),
-  #[fail(display = "The class {:?} was not found.", _0)] ClassNotFound(ClassID),
-  #[fail(display = "The ability with ID {:?} wasn't found.", _0)] NoAbility(AbilityID),
-  #[fail(display = "Creatures must be supplied when starting a combat.")] CombatMustHaveCreatures,
+  #[fail(display = "The Item {:?} already exists", _0)]
+  ItemAlreadyExists(ItemID),
+  #[fail(display = "The Item {:?} couldn't be found", _0)]
+  ItemNotFound(ItemID),
+  #[fail(display = "The scene {:?} already exists", _0)]
+  SceneAlreadyExists(SceneID),
+  #[fail(display = "The Scene '{:?}' wasn't found", _0)]
+  SceneNotFound(SceneID),
+  #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)]
+  SceneInUse(SceneID),
+  #[fail(display = "The identifier '{}' is too long.", _0)]
+  IDTooLong(String),
+  #[fail(display = "The condition with ID {:?} wasn't found.", _0)]
+  ConditionNotFound(ConditionID),
+  #[fail(display = "Cannot process {:?} in this state.", _0)]
+  InvalidCommand(GameCommand),
+  #[fail(display = "The class {:?} already exists.", _0)]
+  ClassAlreadyExists(ClassID),
+  #[fail(display = "The class {:?} was not found.", _0)]
+  ClassNotFound(ClassID),
+  #[fail(display = "The ability with ID {:?} wasn't found.", _0)]
+  NoAbility(AbilityID),
+  #[fail(display = "Creatures must be supplied when starting a combat.")]
+  CombatMustHaveCreatures,
   #[fail(display = "RerollInitiative can only be invoked at the beginning of a roud.")]
   MustRerollAtStartOfRound,
   #[fail(display = "The creature with ID {:?} does not have the ability {:?}", _0, _1)]
   CreatureLacksAbility(CreatureID, AbilityID),
-  #[fail(display = "The creature with ID {} could not be found.", _0)] CreatureNotFound(String),
-  #[fail(display = "Creature with ID {:?} is not a valid target.", _0)] InvalidTarget(CreatureID),
+  #[fail(display = "The creature with ID {} could not be found.", _0)]
+  CreatureNotFound(String),
+  #[fail(display = "Creature with ID {:?} is not a valid target.", _0)]
+  InvalidTarget(CreatureID),
   #[fail(display = "DecidedTarget {:?} is not valid for TargetSpec {:?}.", _1, _0)]
   InvalidTargetForTargetSpec(CreatureTarget, DecidedTarget),
   #[fail(display = "DecidedTarget {:?} is not valid for Action {:?}.", _1, _0)]
   InvalidTargetForAction(Action, DecidedTarget),
-  #[fail(display = "Creature {:?} is out of range.", _0)] CreatureOutOfRange(CreatureID),
-  #[fail(display = "Point {:?} is out of range.", _0)] PointOutOfRange(Point3),
-  #[fail(display = "There's a bug in the program: {}", _0)] BuggyProgram(String),
-  #[fail(display = "There is currently no combat.")] NotInCombat,
-  #[fail(display = "Creature {:?} is already in combat.", _0)] AlreadyInCombat(CreatureID),
-  #[fail(display = "Creature {:?} cannot be moved.", _0)] CannotMove(CreatureID),
-  #[fail(display = "Creature {:?} cannot act.", _0)] CannotAct(CreatureID),
-  #[fail(display = "A path can't be found.")] NoPathFound,
-  #[fail(display = "Path {} already exists", _0)] FolderAlreadyExists(FolderPath),
-  #[fail(display = "Can't step from {:?} to {:?}", _0, _1)] StepTooBig(Point3, Point3),
-  #[fail(display = "Not enough energy: {:?}", _0)] NotEnoughEnergy(Energy),
-  #[fail(display = "Player ID {:?} is already registered.", _0)] PlayerAlreadyExists(PlayerID),
-  #[fail(display = "Player ID {:?} was not found.", _0)] PlayerNotFound(PlayerID),
+  #[fail(display = "Creature {:?} is out of range.", _0)]
+  CreatureOutOfRange(CreatureID),
+  #[fail(display = "Point {:?} is out of range.", _0)]
+  PointOutOfRange(Point3),
+  #[fail(display = "There's a bug in the program: {}", _0)]
+  BuggyProgram(String),
+  #[fail(display = "There is currently no combat.")]
+  NotInCombat,
+  #[fail(display = "Creature {:?} is already in combat.", _0)]
+  AlreadyInCombat(CreatureID),
+  #[fail(display = "Creature {:?} cannot be moved.", _0)]
+  CannotMove(CreatureID),
+  #[fail(display = "Creature {:?} cannot act.", _0)]
+  CannotAct(CreatureID),
+  #[fail(display = "A path can't be found.")]
+  NoPathFound,
+  #[fail(display = "Path {} already exists", _0)]
+  FolderAlreadyExists(FolderPath),
+  #[fail(display = "Can't step from {:?} to {:?}", _0, _1)]
+  StepTooBig(Point3, Point3),
+  #[fail(display = "Not enough energy: {:?}", _0)]
+  NotEnoughEnergy(Energy),
+  #[fail(display = "Player ID {:?} is already registered.", _0)]
+  PlayerAlreadyExists(PlayerID),
+  #[fail(display = "Player ID {:?} was not found.", _0)]
+  PlayerNotFound(PlayerID),
   #[fail(display = "Player ID {:?} does not control creature {:?}.", _0, _1)]
   PlayerDoesntControlCreature(PlayerID, CreatureID),
   #[fail(display = "Couldn't find history item at snapshot {} log item {}", _0, _1)]
   HistoryNotFound(usize, usize),
-  #[fail(display = "Initiative index {} is out of bounds.", _0)] InitiativeOutOfBounds(usize),
-  #[fail(display = "The folder {} is not empty", _0)] FolderNotEmpty(FolderPath),
+  #[fail(display = "Initiative index {} is out of bounds.", _0)]
+  InitiativeOutOfBounds(usize),
+  #[fail(display = "The folder {} is not empty", _0)]
+  FolderNotEmpty(FolderPath),
   #[fail(display = "The folder {} does not contain item {:?}", _0, _1)]
   FolderItemNotFound(FolderPath, FolderItemID),
   #[fail(display = "The note in '{}' named '{}' could not be found.", _0, _1)]
@@ -731,8 +731,10 @@ pub enum GameError {
   CouldNotParseApp(#[cause] serde_yaml::Error),
 
   // Wrappers for other errors:
-  #[fail(display = "FolderTree error: {}", _0)] FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display = "UUID Parse Error: {}", _0)] InvalidID(String, #[cause] UuidParseError),
+  #[fail(display = "FolderTree error: {}", _0)]
+  FolderTreeError(#[cause] FolderTreeError),
+  #[fail(display = "UUID Parse Error: {}", _0)]
+  InvalidID(String, #[cause] UuidParseError),
 }
 
 impl From<FolderTreeError> for GameError {
@@ -766,14 +768,8 @@ impl DeriveKey for Ability {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Action {
-  Creature {
-    effect: CreatureEffect,
-    target: CreatureTarget,
-  },
-  SceneVolume {
-    effect: SceneEffect,
-    target: SceneTarget,
-  },
+  Creature { effect: CreatureEffect, target: CreatureTarget },
+  SceneVolume { effect: SceneEffect, target: SceneTarget },
   // Multi will require DecidedTarget::Multi
   // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
   // Multi(Vec<(String, Action)>),
@@ -813,18 +809,12 @@ pub enum CreatureTarget {
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
-  RangedVolume {
-    volume: Volume,
-    range: u32units::Length,
-  },
+  RangedVolume { volume: Volume, range: u32units::Length },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SceneEffect {
-  CreateVolumeCondition {
-    duration: Duration,
-    condition: Condition,
-  },
+  CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain or BuildTerrain
 }
 
@@ -863,10 +853,7 @@ pub enum Condition {
 
 impl Condition {
   pub fn apply(&self, duration: Duration) -> AppliedCondition {
-    AppliedCondition {
-      remaining: duration,
-      condition: self.clone(),
-    }
+    AppliedCondition { remaining: duration, condition: self.clone() }
   }
 }
 
@@ -1047,11 +1034,7 @@ impl DeriveKey for Player {
 
 impl Player {
   pub fn new(name: PlayerID) -> Player {
-    Player {
-      player_id: name,
-      scene: None,
-      creatures: HashSet::new(),
-    }
+    Player { player_id: name, scene: None, creatures: HashSet::new() }
   }
 }
 
@@ -1274,33 +1257,20 @@ pub mod test {
       portrait_url: "".to_string(),
       icon_url: "".to_string(),
       initiative: Dice::flat(init),
-      size: AABB {
-        x: u32cm(100),
-        y: u32cm(100),
-        z: u32cm(100),
-      },
+      size: AABB { x: u32cm(100), y: u32cm(100), z: u32cm(100) },
     })
   }
 
   pub fn t_rogue(name: &str) -> Creature {
-    Creature {
-      id: cid_rogue(),
-      ..t_creature(name, classid_rogue(), 20)
-    }
+    Creature { id: cid_rogue(), ..t_creature(name, classid_rogue(), 20) }
   }
 
   pub fn t_ranger(name: &str) -> Creature {
-    Creature {
-      id: cid_ranger(),
-      ..t_creature(name, classid_ranger(), 10)
-    }
+    Creature { id: cid_ranger(), ..t_creature(name, classid_ranger(), 10) }
   }
 
   pub fn t_cleric(name: &str) -> Creature {
-    Creature {
-      id: cid_rogue(),
-      ..t_creature(name, classid_cleric(), 0)
-    }
+    Creature { id: cid_rogue(), ..t_creature(name, classid_cleric(), 0) }
   }
 
   pub fn t_scene_id() -> SceneID { SceneID(uuid_3()) }
@@ -1328,10 +1298,7 @@ pub mod test {
   }
 
   pub fn app_cond(c: Condition, r: Duration) -> AppliedCondition {
-    AppliedCondition {
-      condition: c,
-      remaining: r,
-    }
+    AppliedCondition { condition: c, remaining: r }
   }
 
   pub fn classid_rogue() -> ClassID { ClassID(uuid_0()) }
@@ -1407,9 +1374,7 @@ pub mod test {
       cost: Energy(8),
       usable_ooc: true,
       action: Action::Creature {
-        target: CreatureTarget::LineFromActor {
-          distance: u32cm(1000),
-        },
+        target: CreatureTarget::LineFromActor { distance: u32cm(1000) },
         effect: CreatureEffect::Damage(Dice::flat(3)),
       },
     }

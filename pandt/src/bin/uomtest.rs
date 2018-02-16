@@ -3,11 +3,7 @@ extern crate uom;
 use uom::si::length::{centimeter, meter};
 
 mod i64units {
-  ISQ!(
-    uom::si,
-    i64,
-    (centimeter, gram, second, ampere, kelvin, mole, candela)
-  );
+  ISQ!(uom::si, i64, (centimeter, gram, second, ampere, kelvin, mole, candela));
 }
 
 // use units;
