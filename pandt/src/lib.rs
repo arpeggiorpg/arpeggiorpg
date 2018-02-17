@@ -10,6 +10,7 @@ extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate foldertree;
 extern crate indexed;
 #[macro_use]
 extern crate log;
@@ -38,7 +39,6 @@ extern crate serde_json;
 pub mod app;
 pub mod combat;
 pub mod creature;
-pub mod foldertree;
 pub mod game;
 pub mod grid;
 pub mod scene;

@@ -12,7 +12,8 @@ use tokio_core::reactor::Timeout;
 use serde_json;
 use serde_yaml;
 
-use pandt::{foldertree, types};
+use foldertree;
+use pandt::types;
 
 pub struct AppActor {
   app: types::App,

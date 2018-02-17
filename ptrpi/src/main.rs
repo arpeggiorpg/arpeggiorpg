@@ -9,6 +9,7 @@ extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate foldertree;
 extern crate futures;
 extern crate http;
 extern crate hyper;

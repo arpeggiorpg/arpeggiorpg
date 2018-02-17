@@ -1,7 +1,17 @@
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
+
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+#[cfg(feature = "serde")]
 use serde::ser::{Error, Serialize, SerializeMap, Serializer};
+#[cfg(feature = "serde")]
 use serde::de;
 
 #[derive(Debug, Fail)]
@@ -104,14 +114,14 @@ impl<T> FolderTree<T> {
   /// will be returned.
   pub fn remove(&mut self, path: &FolderPath) -> Result<T, FolderTreeError> {
     if self.get_children(path)?.is_empty() {
-      bail!(FolderTreeError::FolderNotEmpty(path.clone()));
+      return Err(FolderTreeError::FolderNotEmpty(path.clone()));
     }
     match path.up() {
       Some((parent, child)) => {
         self.nodes.get_mut(&parent).expect("Parent must exist").1.remove(&child);
         Ok(self.nodes.remove(path).expect("Folder must exist if it had children.").0)
       }
-      None => bail!(FolderTreeError::CannotRemoveRoot),
+      None => return Err(FolderTreeError::CannotRemoveRoot),
     }
   }
 
@@ -122,7 +132,7 @@ impl<T> FolderTree<T> {
       Some((parent, basename)) => {
         let new_path = parent.child(new_name.clone());
         if self.nodes.contains_key(&new_path) {
-          bail!(FolderTreeError::FolderExists(new_path));
+          return Err(FolderTreeError::FolderExists(new_path));
         }
         {
           let mut_data = self.nodes.get_mut(&parent).expect("Parent must exist.");
@@ -133,7 +143,7 @@ impl<T> FolderTree<T> {
         self.nodes.insert(new_path, data);
         Ok(())
       }
-      None => bail!(FolderTreeError::CannotRenameRoot),
+      None => return Err(FolderTreeError::CannotRenameRoot),
     }
   }
 
@@ -141,18 +151,18 @@ impl<T> FolderTree<T> {
     &mut self, path: &FolderPath, new_parent: &FolderPath
   ) -> Result<(), FolderTreeError> {
     if new_parent.is_child_of(path) {
-      bail!(FolderTreeError::ImpossibleMove(path.clone(), new_parent.clone()));
+      return Err(FolderTreeError::ImpossibleMove(path.clone(), new_parent.clone()));
     }
     if !self.nodes.contains_key(new_parent) {
-      bail!(FolderTreeError::FolderNotFound(new_parent.clone()));
+      return Err(FolderTreeError::FolderNotFound(new_parent.clone()));
     }
     if !self.nodes.contains_key(path) {
-      bail!(FolderTreeError::FolderNotFound(path.clone()));
+      return Err(FolderTreeError::FolderNotFound(path.clone()));
     }
     match path.up() {
       Some((old_parent, basename)) => {
         if self.nodes.contains_key(&new_parent.child(basename.clone())) {
-          bail!(FolderTreeError::FolderExists(new_parent.child(basename)));
+          return Err(FolderTreeError::FolderExists(new_parent.child(basename)));
         }
         let descendants = self.walk_paths(path).cloned().collect::<Vec<FolderPath>>();
         for subpath in descendants {
@@ -169,7 +179,7 @@ impl<T> FolderTree<T> {
         self.nodes.get_mut(new_parent).expect("Target directory must exist").1.insert(basename);
         Ok(())
       }
-      None => bail!(FolderTreeError::CannotMoveRoot),
+      None => return Err(FolderTreeError::CannotMoveRoot),
     }
   }
 
@@ -271,7 +281,7 @@ impl FolderPath {
     if self.is_child_of(ancestor) {
       Ok(FolderPath::from_vec(self.0[ancestor.0.len()..].to_vec()))
     } else {
-      bail!(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()))
+      return Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()))
     }
   }
 }
@@ -296,6 +306,7 @@ impl ::std::fmt::Display for FolderPath {
   }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for FolderPath {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -305,6 +316,7 @@ impl Serialize for FolderPath {
   }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> de::Deserialize<'de> for FolderPath {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -324,17 +336,20 @@ impl<'de> de::Deserialize<'de> for FolderPath {
   }
 }
 
+#[cfg(feature = "serde")]
 #[derive(Serialize)]
 struct SerializerHelper<'a, T: 'a> {
   data: &'a T,
   children: ChildrenSerializer<'a, T>,
 }
 
+#[cfg(feature = "serde")]
 struct ChildrenSerializer<'a, T: 'a> {
   tree: &'a FolderTree<T>,
   path: &'a FolderPath,
 }
 
+#[cfg(feature = "serde")]
 impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -361,6 +376,7 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
   }
 }
 
+#[cfg(feature = "serde")]
 impl<T: Serialize> Serialize for FolderTree<T> {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
@@ -376,12 +392,14 @@ impl<T: Serialize> Serialize for FolderTree<T> {
   }
 }
 
+#[cfg(feature = "serde")]
 #[derive(Deserialize)]
 struct DeserializeHelper<T> {
   data: T,
   children: HashMap<String, Box<DeserializeHelper<T>>>,
 }
 
+#[cfg(feature = "serde")]
 impl<T> DeserializeHelper<T> {
   fn into_folder_tree(self) -> FolderTree<T> {
     let mut paths: Vec<(FolderPath, T)> = vec![];
@@ -412,6 +430,7 @@ impl<T> DeserializeHelper<T> {
   }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
