@@ -334,13 +334,12 @@ pub mod test {
   #[test]
   fn test_tick_and_expire_condition_remaining() {
     let mut game = t_game();
-    game.creatures.mutate(&cid_rogue(), |mut c| {
+    game.creatures.mutate(&cid_rogue(), |c| {
       c.conditions = HashMap::from_iter(vec![
         (ConditionID(uuid_0()), app_cond(Condition::Dead, Duration::Rounds(0))),
         (ConditionID(uuid_1()), app_cond(Condition::Incapacitated, Duration::Rounds(5))),
         (ConditionID(uuid_2()), app_cond(Condition::Incapacitated, Duration::Interminate)),
       ]);
-      c
     });
     assert_eq!(
       game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature.conditions,
@@ -356,7 +355,7 @@ pub mod test {
   #[test]
   fn test_recurring_effect_ticks_duration_times() {
     let mut game = t_game();
-    game.creatures.mutate(&cid_rogue(), |mut c| {
+    game.creatures.mutate(&cid_rogue(), |c| {
       c.conditions = HashMap::from_iter(vec![
         (
           ConditionID(uuid_0()),
@@ -366,7 +365,6 @@ pub mod test {
           ),
         ),
       ]);
-      c
     });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
@@ -381,11 +379,10 @@ pub mod test {
   #[test]
   fn test_condition_duration() {
     let mut game = t_game();
-    game.creatures.mutate(&cid_rogue(), |mut c| {
+    game.creatures.mutate(&cid_rogue(), |c| {
       c.conditions = HashMap::from_iter(vec![
         (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, Duration::Rounds(1))),
       ]);
-      c
     });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(

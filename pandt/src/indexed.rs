@@ -129,13 +129,15 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   //   changed, and update the hashmap if it has
   // - If we want to handle panics without leaving the collection in an inconsistent state, we'll
   //   need to explicitly catch them.
+  // TODO: BORROW the key?
   pub fn mutate<F>(&mut self, k: &<V as DeriveKey>::KeyType, f: F) -> Option<()>
   where
-    F: FnOnce(V) -> V,
+    F: FnOnce(&mut V) -> (),
   {
     match self.data.remove(k) {
-      Some(thing) => {
-        self.insert(f(thing));
+      Some(mut thing) => {
+        f(&mut thing);
+        self.insert(thing);
         Some(())
       }
       None => None,
@@ -164,6 +166,15 @@ mod test {
   impl DeriveKey for TestObj {
     type KeyType = String;
     fn derive_key(&self) -> Self::KeyType { self.name.clone() }
+  }
+
+  #[test]
+  fn mutate() {
+    let mut hm = IndexedHashMap::new();
+    let obj = TestObj { name: "Bob".to_string(), num: 37 };
+    hm.insert(obj);
+    hm.mutate(&"Bob".to_string(), |b| b.name = "Bab".to_string());
+    assert_eq!(hm.get("Bab").unwrap(), &TestObj { name: "Bab".to_string(), num: 37 });
   }
 
 }

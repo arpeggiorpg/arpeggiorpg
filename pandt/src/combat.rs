@@ -280,10 +280,7 @@ pub mod test {
       },
     };
     game.abilities.insert(ab);
-    game.classes.mutate(&classid_rogue(), |mut rogue| {
-      rogue.abilities.push(abid_multi);
-      rogue
-    });
+    game.classes.mutate(&classid_rogue(), |r| r.abilities.push(abid_multi));
     let change = t_act(&game, abid_multi, DecidedTarget::Creature(cid_ranger())).unwrap();
     let next = change.game;
     assert_eq!(
@@ -356,10 +353,7 @@ pub mod test {
       Point3::new(200, 100, 0),
       Point3::new(200, 0, 0),
     ];
-    game.scenes.mutate(&t_scene_id(), move |mut s| {
-      s.terrain = terrain;
-      s
-    });
+    game.scenes.mutate(&t_scene_id(), move |s| s.terrain = terrain);
 
     let next_game = game
       .get_combat()

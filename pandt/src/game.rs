@@ -412,14 +412,8 @@ impl Game {
     F: FnOnce(&mut Inventory) -> (),
   {
     let opt = match owner_id {
-      InventoryOwner::Scene(sid) => self.scenes.mutate(&sid, |mut s| {
-        f(&mut s.inventory);
-        s
-      }),
-      InventoryOwner::Creature(cid) => self.creatures.mutate(&cid, |mut c| {
-        f(&mut c.inventory);
-        c
-      }),
+      InventoryOwner::Scene(sid) => self.scenes.mutate(&sid, |s| f(&mut s.inventory)),
+      InventoryOwner::Creature(cid) => self.creatures.mutate(&cid, |c| f(&mut c.inventory)),
     };
     opt.ok_or_else(|| owner_id.not_found_error())
   }
@@ -484,21 +478,17 @@ impl Game {
         }
         self
           .players
-          .mutate(pid, |mut p| {
-            p.creatures.extend(cids);
-            p
-          })
+          .mutate(pid, |p| p.creatures.extend(cids))
           .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
       }
 
       RemoveCreaturesFromPlayer(ref pid, ref cids) => {
         self
           .players
-          .mutate(pid, |mut p| {
+          .mutate(pid, |p| {
             for cid in cids {
               p.creatures.remove(cid);
             }
-            p
           })
           .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
       }
@@ -506,10 +496,7 @@ impl Game {
       SetPlayerScene(ref pid, scene) => {
         self
           .players
-          .mutate(pid, move |mut p| {
-            p.scene = scene;
-            p
-          })
+          .mutate(pid, move |p| p.scene = scene)
           .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
       }
 
@@ -597,9 +584,8 @@ impl Game {
             for cid in cids {
               self
                 .creatures
-                .mutate(&cid, |mut c| {
+                .mutate(&cid, |c| {
                   c.inventory.remove(&iid);
-                  c
                 })
                 .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
             }
@@ -608,9 +594,8 @@ impl Game {
             for sid in sids {
               self
                 .scenes
-                .mutate(&sid, |mut s| {
+                .mutate(&sid, |s| {
                   s.inventory.remove(&iid);
-                  s
                 })
                 .ok_or_else(|| GameError::SceneNotFound(sid))?;
             }
@@ -628,9 +613,8 @@ impl Game {
               .filter_map(|s| if s.creatures.contains_key(&cid) { Some(s.id) } else { None })
               .collect();
             for sid in scenes_with_this_creature {
-              self.scenes.mutate(&sid, |mut sc| {
+              self.scenes.mutate(&sid, |sc| {
                 sc.creatures.remove(&cid);
-                sc
               });
             }
             self.current_combat = {
@@ -668,18 +652,16 @@ impl Game {
             for class_id in self.classes.keys().cloned().collect::<Vec<_>>() {
               self
                 .classes
-                .mutate(&class_id, |mut class| {
-                  class.abilities.retain(|el| *el == abid);
-                  class
+                .mutate(&class_id, |c| {
+                  c.abilities.retain(|el| *el == abid);
                 })
                 .expect("iterating classes...");
             }
             for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
               self
                 .creatures
-                .mutate(&cid, |mut creature| {
-                  creature.abilities.remove(&abid);
-                  creature
+                .mutate(&cid, |c| {
+                  c.abilities.remove(&abid);
                 })
                 .expect("Must exist");
             }
@@ -743,7 +725,7 @@ impl Game {
       EditItem(ref item) => {
         self
           .items
-          .mutate(&item.id, move |_| item.clone())
+          .mutate(&item.id, move |i| *i = item.clone())
           .ok_or_else(|| GameError::ItemNotFound(item.id))?;
       }
 
@@ -754,7 +736,7 @@ impl Game {
         let node = self.campaign.get_mut(path)?;
         node
           .notes
-          .mutate(name, move |_| new_note.clone())
+          .mutate(name, move |note| *note = new_note.clone())
           .ok_or_else(|| GameError::NoteNotFound(path.clone(), name.to_string()))?;
       }
 
@@ -784,12 +766,11 @@ impl Game {
       EditSceneDetails { scene_id, ref details } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
+          .mutate(&scene_id, move |scene| {
             scene.name = details.name.clone();
             scene.background_image_url = details.background_image_url.clone();
             scene.background_image_offset = details.background_image_offset;
             scene.background_image_scale = details.background_image_scale;
-            scene
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
@@ -799,49 +780,42 @@ impl Game {
         }
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            {
-              let entry = scene.creatures.get_mut(&creature_id);
-              let entry = entry.expect("Already checked that creature exists?!");
-              entry.1 = visibility.clone();
-            }
-            scene
+          .mutate(&scene_id, move |scene| {
+            let entry = scene.creatures.get_mut(&creature_id);
+            let entry = entry.expect("Already checked that creature exists?!");
+            entry.1 = visibility.clone();
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       AddCreatureToScene { scene_id, creature_id, ref visibility } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.creatures.insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
-            scene
+          .mutate(&scene_id, move |s| {
+            s.creatures.insert(creature_id, (Point3::new(0, 0, 0), visibility.clone()));
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       RemoveCreatureFromScene { scene_id, creature_id } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.creatures.remove(&creature_id);
-            scene
+          .mutate(&scene_id, move |s| {
+            s.creatures.remove(&creature_id);
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       AddSceneChallenge { scene_id, ref description, ref challenge } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.attribute_checks.insert(description.clone(), challenge.clone());
-            scene
+          .mutate(&scene_id, move |s| {
+            s.attribute_checks.insert(description.clone(), challenge.clone());
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       RemoveSceneChallenge { scene_id, ref description } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.attribute_checks.remove(description);
-            scene
+          .mutate(&scene_id, move |s| {
+            s.attribute_checks.remove(description);
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
@@ -849,19 +823,15 @@ impl Game {
       SetFocusedSceneCreatures { scene_id, ref creatures } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.focused_creatures = creatures.clone();
-            scene
-          })
+          .mutate(&scene_id, move |s| s.focused_creatures = creatures.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
 
       RemoveSceneVolumeCondition { scene_id, condition_id } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.volume_conditions.remove(&condition_id);
-            scene
+          .mutate(&scene_id, move |s| {
+            s.volume_conditions.remove(&condition_id);
           })
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
@@ -869,28 +839,19 @@ impl Game {
       EditSceneTerrain { scene_id, ref terrain } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.terrain = terrain.clone();
-            scene
-          })
+          .mutate(&scene_id, move |s| s.terrain = terrain.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       EditSceneHighlights { scene_id, ref highlights } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.highlights = highlights.clone();
-            scene
-          })
+          .mutate(&scene_id, move |s| s.highlights = highlights.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       EditSceneAnnotations { scene_id, ref annotations } => {
         self
           .scenes
-          .mutate(&scene_id, move |mut scene| {
-            scene.annotations = annotations.clone();
-            scene
-          })
+          .mutate(&scene_id, move |s| s.annotations = annotations.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       CreateCreature(ref path, ref rc) => {
@@ -899,7 +860,7 @@ impl Game {
         self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
       }
       EditCreatureDetails { creature_id, ref details } => {
-        let mutated = self.creatures.mutate(&creature_id, move |mut c| {
+        let mutated = self.creatures.mutate(&creature_id, move |c| {
           c.name = details.name.clone();
           c.class = details.class;
           c.portrait_url = details.portrait_url.clone();
@@ -908,7 +869,6 @@ impl Game {
           c.bio = details.bio.clone();
           c.initiative = details.initiative.clone();
           c.size = details.size;
-          c
         });
         mutated.ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))?;
       }
@@ -933,7 +893,7 @@ impl Game {
       }
       CreatureLog(cid, ref cl) => {
         let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
-        self.creatures.mutate(&cid, |_| creature);
+        self.creatures.mutate(&cid, |c| *c = creature);
       }
       StartCombat(ref scene, ref cids_with_init) => {
         for &(cid, _) in cids_with_init {
@@ -1314,7 +1274,7 @@ impl ChangedGame {
     let change = f(creature)?;
     let mut new = self.clone();
     let (creature, logs) = change.done();
-    new.game.creatures.mutate(&cid, |_| creature);
+    new.game.creatures.mutate(&cid, move |c| *c = creature);
     new.logs.extend(creature_logs_into_game_logs(cid, logs));
     Ok(new)
   }
