@@ -281,7 +281,7 @@ impl FolderPath {
     if self.is_child_of(ancestor) {
       Ok(FolderPath::from_vec(self.0[ancestor.0.len()..].to_vec()))
     } else {
-      return Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()))
+      return Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()));
     }
   }
 }
