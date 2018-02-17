@@ -1,9 +1,14 @@
+#[cfg(feature = "serde")]
+extern crate serde;
+
 use std::collections::HashMap;
 use std::fmt;
 use std::hash;
 use std::iter::FromIterator;
 
+#[cfg(feature = "serde")]
 use serde::de;
+#[cfg(feature = "serde")]
 use serde::ser;
 
 /// A trait for fetching the "canonical" key type for a type.
@@ -43,6 +48,7 @@ where
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> { self.data.fmt(f) }
 }
 
+#[cfg(feature = "serde")]
 impl<V> ser::Serialize for IndexedHashMap<V>
 where
   V: DeriveKey + ser::Serialize,
@@ -56,6 +62,7 @@ where
   }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, V> de::Deserialize<'de> for IndexedHashMap<V>
 where
   V: DeriveKey + de::Deserialize<'de>,

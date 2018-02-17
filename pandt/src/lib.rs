@@ -10,6 +10,7 @@ extern crate error_chain;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate indexed;
 #[macro_use]
 extern crate log;
 extern crate nalgebra;
@@ -40,6 +41,5 @@ pub mod creature;
 pub mod foldertree;
 pub mod game;
 pub mod grid;
-pub mod indexed;
 pub mod scene;
 pub mod types;

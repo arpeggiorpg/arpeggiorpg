@@ -13,6 +13,7 @@ derive_more = "0.4.0"
 error-chain = "0.11.0-rc.2"
 failure = "0.1"
 failure_derive = "0.1"
+indexed = {version = "*", path = "../indexed", features = ["serde"]}
 log = "0.3"
 maplit = "0.1.4"
 nalgebra = "0.11.2"
