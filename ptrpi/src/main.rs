@@ -112,7 +112,7 @@ mod webapp {
     actor::AppActor: actix::Handler<M>,
     M: actix::Message<Result = Result<String, Error>> + Send + 'static,
   {
-    let fut = address.call(msg).from_err().and_then(|s| s).and_then(string_json_response);
+    let fut = address.send(msg).from_err().and_then(|s| s).and_then(string_json_response);
     // I should not need to box this result, but it is too hard to write the type of the return
     // value
     Box::new(fut)

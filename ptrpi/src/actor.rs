@@ -112,7 +112,7 @@ handle_actor! {
         future::Either::A((err, _)) => err.into(),
         future::Either::B((err, _)) => err.into(),
       })
-      .and_then(move |_| me.call(GetApp).from_err().and_then(|s| s));
+      .and_then(move |_| me.send(GetApp).from_err().and_then(|s| s));
     Box::new(fut)
   }
 }
