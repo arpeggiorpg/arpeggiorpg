@@ -18,6 +18,7 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
+#[macro_use] extern crate structopt;
 extern crate tokio_core;
 
 extern crate pandt;
@@ -41,6 +42,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use actix::Actor;
+use structopt::StructOpt;
 
 use pandt::game::load_app_from_path;
 use pandt::types::App;
@@ -226,17 +228,10 @@ fn main() {
   env_logger::init_from_env(env);
 
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
-  let game_dir = env::args().nth(1).unwrap_or_else(|| {
-    env::current_dir()
-      .expect("couldn't get curdir")
-      .into_os_string()
-      .into_string()
-      .expect("Couldn't parse curdir as string")
-  });
-  let game_dir = PathBuf::from(game_dir.clone());
-  let game_dir = fs::canonicalize(game_dir).expect("Couldn't canonicalize game dir");
+  let opts = Opts::from_args();
+  let game_dir = fs::canonicalize(opts.saved_games_dir).expect("Couldn't canonicalize game dir");
 
-  let app = match env::args().nth(2) {
+  let app = match opts.load_game {
     Some(initial_file) => {
       load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file")
     }
@@ -253,6 +248,21 @@ fn main() {
   let server = actix_web::HttpServer::new(move || webapp::router(pt.clone()));
   server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
   actix_system.run();
+}
+
+#[derive(StructOpt)]
+#[structopt(name = "basic")]
+struct Opts {
+  /// The directory where saved games should be stored
+  #[structopt(long = "saved-games", parse(from_os_str))]
+  saved_games_dir: PathBuf,
+
+  /// The directory where read-only modules should be loaded from
+  #[structopt(long = "modules", parse(from_os_str))]
+  modules_dir: Option<PathBuf>,
+
+  #[structopt(long="load-game")]
+  load_game: Option<String>,
 }
 
 #[cfg(test)]
