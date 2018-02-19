@@ -54,6 +54,7 @@ type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
 #[derive(Clone)]
 pub struct PT {
   saved_game_path: PathBuf,
+  module_path: Option<PathBuf>,
   app_address: AppAddress,
 }
 
@@ -66,21 +67,24 @@ fn main() {
 
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
   let opts = Opts::from_args();
-  let game_dir = fs::canonicalize(opts.saved_games_dir).expect("Couldn't canonicalize game dir");
+  let saved_game_path =
+    fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
+  let module_path =
+    opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
 
   let app = match opts.load_game {
     Some(initial_file) => {
-      load_app_from_path(&game_dir, &initial_file).expect("Couldn't load app from file")
+      load_app_from_path(&saved_game_path, &initial_file).expect("Couldn't load app from file")
     }
     None => App::new(Default::default()),
   };
 
-  let actor = actor::AppActor::new(app, game_dir.clone());
+  let actor = actor::AppActor::new(app, saved_game_path.clone());
 
   let actix_system = actix::System::new("P&T-RPI");
-  let app_addr: AppAddress = actor.start();
+  let app_address: AppAddress = actor.start();
 
-  let pt = PT { saved_game_path: game_dir, app_address: app_addr };
+  let pt = PT { saved_game_path, module_path, app_address };
 
   let server = actix_web::HttpServer::new(move || web::router(pt.clone()));
   server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
@@ -92,11 +96,11 @@ fn main() {
 struct Opts {
   /// The directory where saved games should be stored
   #[structopt(long = "saved-games", parse(from_os_str))]
-  saved_games_dir: PathBuf,
+  saved_game_path: PathBuf,
 
   /// The directory where read-only modules should be loaded from
   #[structopt(long = "modules", parse(from_os_str))]
-  modules_dir: Option<PathBuf>,
+  module_path: Option<PathBuf>,
 
   #[structopt(long = "load-game")]
   load_game: Option<String>,
@@ -110,5 +114,4 @@ mod test {
   fn load_samplegame_yaml() {
     ::load_app_from_path(Path::new("sample_games"), "samplegame.yaml").unwrap();
   }
-
 }

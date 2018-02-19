@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 
 use actix;
 use actix_web::dev::FromParam;
@@ -13,7 +14,6 @@ use pandt::types::{CreatureID, GameCommand, Point3, SceneID};
 use super::PT;
 use actor;
 
-type PTResult<X> = Result<Json<X>, Error>;
 type AsyncRPIResponse = Box<Future<Item = HttpResponse, Error = Error>>;
 
 pub fn router(pt: PT) -> Application<PT> {
@@ -108,18 +108,26 @@ fn preview_volume_targets(req: HttpRequest<PT>) -> AsyncRPIResponse {
   )
 }
 
-fn list_saved_games(req: HttpRequest<PT>) -> PTResult<Vec<String>> {
+fn list_saved_games(req: HttpRequest<PT>) -> Result<Json<(Vec<String>, Vec<String>)>, Error> {
   // This does not require access to the app, so we don't dispatch to the actor.
-  let mut result = vec![];
-  for mpath in fs::read_dir(&req.state().saved_game_path)? {
-    let path = mpath?;
-    if path.file_type()?.is_file() {
-      match path.file_name().into_string() {
-        Ok(s) => result.push(s),
-        Err(x) => println!("Couldn't parse filename as unicode: {:?}", x),
+  fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
+    let mut result = vec![];
+    for mpath in fs::read_dir(path)? {
+      let path = mpath?;
+      if path.file_type()?.is_file() {
+        match path.file_name().into_string() {
+          Ok(s) => result.push(s),
+          Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
+        }
       }
     }
+    return Ok(result);
   }
+  let modules = match req.state().module_path {
+    Some(ref path) => list_dir_into_strings(path)?,
+    None => vec![]
+  };
+  let result = (modules, list_dir_into_strings(&req.state().saved_game_path)?);
   Ok(Json(result))
 }
 
