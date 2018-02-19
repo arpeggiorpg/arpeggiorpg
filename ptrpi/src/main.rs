@@ -18,7 +18,8 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
-#[macro_use] extern crate structopt;
+#[macro_use]
+extern crate structopt;
 extern crate tokio_core;
 
 extern crate pandt;
@@ -97,7 +98,7 @@ struct Opts {
   #[structopt(long = "modules", parse(from_os_str))]
   modules_dir: Option<PathBuf>,
 
-  #[structopt(long="load-game")]
+  #[structopt(long = "load-game")]
   load_game: Option<String>,
 }
 
