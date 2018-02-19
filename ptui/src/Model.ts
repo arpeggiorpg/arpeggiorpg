@@ -373,8 +373,9 @@ export class PTUI {
     return rpi_result;
   }
 
-  fetchSavedGames(dispatch: Dispatch): Promise<Array<string>> {
-    return ptfetch(dispatch, this.rpi_url + '/saved_games', undefined, JD.array(JD.string()),
+  fetchSavedGames(dispatch: Dispatch): Promise<[Array<string>, Array<string>]> {
+    return ptfetch(dispatch, this.rpi_url + '/saved_games', undefined,
+      JD.tuple(JD.array(JD.string()), JD.array(JD.string())),
       x => x);
   }
 

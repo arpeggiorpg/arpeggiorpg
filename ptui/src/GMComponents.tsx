@@ -1210,15 +1210,16 @@ class SaveGameishForm extends React.Component<SaveGameishFormProps, { name: stri
 
 class GameListComp
   extends React.Component<{ onSelect: (game: string) => void } & M.ReduxProps,
-  { games: Array<string> | undefined }> {
+  { modules: Array<string> | undefined; games: Array<string> | undefined }> {
 
   constructor(props: { onSelect: (game: string) => void } & M.ReduxProps) {
     super(props);
-    this.state = { games: undefined };
+    this.state = { games: undefined, modules: undefined };
   }
 
   componentDidMount() {
-    this.props.ptui.fetchSavedGames(this.props.dispatch).then(games => this.setState({ games }));
+    this.props.ptui.fetchSavedGames(this.props.dispatch)
+      .then(([modules, games]) => this.setState({ games }));
   }
 
   render(): JSX.Element {
