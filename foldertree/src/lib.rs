@@ -442,13 +442,14 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
 }
 
 #[cfg(test)]
-#[macro_use] extern crate serde_json;
+#[macro_use]
+extern crate serde_json;
 
 #[cfg(test)]
 mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
-  use ::{FolderPath, FolderTree, FolderTreeError};
+  use {FolderPath, FolderTree, FolderTreeError};
   use serde_json;
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }

@@ -1400,8 +1400,11 @@ pub mod test {
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result =
-      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]), &PathBuf::from(""), None);
+    let result = game.perform_command(
+      GameCommand::StartCombat(t_scene_id(), vec![non]),
+      &PathBuf::from(""),
+      None,
+    );
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1411,8 +1414,11 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result =
-      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]), &PathBuf::from(""), None);
+    let result = game.perform_command(
+      GameCommand::StartCombat(t_scene_id(), vec![]),
+      &PathBuf::from(""),
+      None,
+    );
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),

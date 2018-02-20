@@ -115,6 +115,11 @@ mod test {
 
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(Path::new("sample_games"), None, ModuleSource::SavedGame, "samplegame.yaml").unwrap();
+    ::load_app_from_path(
+      Path::new("sample_games"),
+      None,
+      ModuleSource::SavedGame,
+      "samplegame.yaml",
+    ).unwrap();
   }
 }
