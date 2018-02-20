@@ -206,36 +206,35 @@ class FolderTreeComp
           content={close => <GM.CreateFolder path={path} onDone={close} />}
         />
         {!M.isEqual(path, [])
-          ? [
-            <Dropdown.Divider key="bla" />,
-            <Dropdown.Item key="ble" text="Delete this folder" icon="delete"
+          ? <>
+            <Dropdown.Divider />
+            <Dropdown.Item text="Delete this folder" icon="delete"
               onClick={() => dispatch(M.sendCommand(
                 {
                   t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
                   // ! because we KNOW this isn't [] (see conditional above)
                   item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
-                }))} />,
-            <CV.ModalMaker key="bli"
+                }))} />
+            <CV.ModalMaker
               button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
               header={<span>Rename {M.folderPathToString(path)}</span>}
               content={close => <MoveFolderItem
                 source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
                 onDone={close} dispatch={dispatch} />}
-            />,
-            <Dropdown.Divider key="blo" />,
-            <CV.ModalMaker key="blu"
-              button={open =>
-                <Dropdown.Item key="blub" text="Export as module" icon="upload" onClick={open} />}
-              header={<span>Export folder</span>}
-              content={close => <GM.ExportModule path={path} onDone={close} />} />,
-            <CV.ModalMaker key="bly"
-              button={open =>
-                <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
-              header={<span>Import Module</span>}
-              content={close => <GM.ImportModule path={path} onDone={close} />}
             />
-          ]
+            <Dropdown.Divider />
+            <CV.ModalMaker
+              button={open =>
+                <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
+              header={<span>Export folder</span>}
+              content={close => <GM.ExportModule path={path} onDone={close} />} />
+          </>
           : null}
+        <CV.ModalMaker
+          button={open =>
+            <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
+          header={<span>Import Module</span>}
+          content={close => <GM.ImportModule path={path} onDone={close} />} />
       </Dropdown.Menu>
     </Dropdown>;
     const list_item = <List.Item>
