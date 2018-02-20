@@ -172,7 +172,12 @@ impl Game {
       LoadModule { ref name, ref path, source } => {
         let app = load_app_from_path(saved_game_path, module_path, source, name)?;
         let module = app.current_game;
-        self.change_with(GameLog::LoadModule { name: name.clone(), module, path: path.clone() })
+        self.change_with(GameLog::LoadModule {
+          name: name.clone(),
+          module,
+          path: path.clone(),
+          source,
+        })
       }
       SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
       // ** Player Management **

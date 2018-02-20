@@ -509,6 +509,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 pub enum GameLog {
   LoadModule {
     name: String,
+    source: ModuleSource,
     module: Game,
     path: FolderPath,
   },
