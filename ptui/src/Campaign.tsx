@@ -223,13 +223,13 @@ class FolderTreeComp
                 onDone={close} dispatch={dispatch} />}
             />
             <Dropdown.Divider />
-            <CV.ModalMaker
-              button={open =>
-                <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
-              header={<span>Export folder</span>}
-              content={close => <GM.ExportModule path={path} onDone={close} />} />
           </>
           : null}
+        <CV.ModalMaker
+          button={open =>
+            <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
+          header={<span>Export folder</span>}
+          content={close => <GM.ExportModule path={path} onDone={close} />} />
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
