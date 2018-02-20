@@ -111,6 +111,8 @@ export const ClassIcon = ReactRedux.connect(
       case "Healer": return <span>💉</span>;
       case "Rogue": return <span>🗡️</span>;
       case "Archer": return <span>🏹</span>;
+      case "Mage": return <span>🔮</span>;
+      case "Knight": return <span>🛡️</span>;
       case "Creature": return <span>🙂</span>;
       case "Baddie": return <span>👹</span>;
       default: return null;

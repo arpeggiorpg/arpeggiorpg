@@ -1018,8 +1018,11 @@ class EditCreatureDataComp
   render(): JSX.Element {
     const { onClose, ptui } = this.props;
     const parsed_initiative = Dice.maybeParse(this.state.initiative_string);
-    const classes = ptui.app.current_game.classes.keySeq().toArray().map((className: string) =>
-      ({ key: className, text: className, value: className }));
+    const classes = ptui.app.current_game.classes.valueSeq().toArray().map(class_ =>
+      ({
+        key: class_.id, text: <><CV.ClassIcon class_id={class_.id} />{class_.name}</>,
+        value: class_.id,
+      }));
     const form_ok = (
       parsed_initiative.status
       && ptui.app.current_game.classes.has(this.state.class_)
