@@ -8,6 +8,7 @@ import * as JD from "type-safe-json-decoder";
 import * as T from './PTTypes';
 
 export type Action =
+  | { type: "ResetState" }
   | { type: "RefreshApp"; app: T.App }
   | { type: "RefreshGame"; game: T.Game; logs: Array<T.GameLog> }
   | { type: "DisplayError"; error: string }
@@ -45,6 +46,8 @@ export type Action =
 export function update(ptui: PTUI, action: Action): PTUI {
   console.log("[Model.update]", action.type, action);
   switch (action.type) {
+    case "ResetState":
+      return new PTUI(ptui.rpi_url, ptui.app);
     case "RefreshApp":
       return new PTUI(ptui.rpi_url, action.app, ptui.state);
     case "RefreshGame":
@@ -379,14 +382,17 @@ export class PTUI {
       x => x);
   }
 
-  loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<undefined> {
-    // TODO: RefreshApp with the result, and set this.state to default_state
+  loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<void> {
     const url = source === "SavedGame"
       ? `${this.rpi_url}/saved_games/user/${name}/load`
-      : `${this.rpi_url}/modules/user/${name}/load`;
+      : `${this.rpi_url}/saved_games/module/${name}/load`;
 
     return ptfetch(dispatch, url, { method: 'POST' },
-      JD.succeed(undefined), x => x);
+      T.decodeApp, app => {
+        dispatch({ type: "ResetState" });
+        dispatch({ type: "RefreshApp", app });
+        return;
+      });
   }
 
   saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
