@@ -305,18 +305,21 @@ export const GMSceneVolumes = M.connectRedux(
 interface GMSceneLinkedScenesProps { scene: T.Scene; }
 interface GMSceneLinkedScenesDerivedProps { related_scenes: Array<T.Scene>; }
 const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
-  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) => {
-    return ptui.getScenes(props.scene.related_scenes.toArray());
-  }],
+  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) =>
+    ptui.getScenes(props.scene.related_scenes.toArray())],
   related_scenes => ({ related_scenes }))
 )(
   function GMSceneLinkedScenes(
     props: GMSceneLinkedScenesProps & GMSceneLinkedScenesDerivedProps & M.DispatchProps) {
-    const { related_scenes } = props;
+    const { related_scenes, dispatch } = props;
     return <>
       <List>
-        <List.Header>Related Scenes</List.Header>
-        {related_scenes.map(scene => <List.Item key={scene.id}>{scene.name}</List.Item>)}
+        <List.Item><List.Header>Related Scenes</List.Header></List.Item>
+        {related_scenes.map(scene => <List.Item key={scene.id}
+          style={{ cursor: 'pointer' }}
+          onClick={() => dispatch({ type: "FocusGrid", scene_id: scene.id })}>
+          {scene.name}
+        </List.Item>)}
       </List>
     </>;
   }
