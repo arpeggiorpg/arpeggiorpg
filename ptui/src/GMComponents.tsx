@@ -36,6 +36,7 @@ export const GMScene = M.connectRedux(
     const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
     const total_players = ptui.app.current_game.players.count();
     const player_count = `${scene_players}/${total_players}`;
+    const linked_scenes_count = scene.related_scenes.count() + scene.scene_hotspots.count();
 
     const panes = [
       menuItem("Background", () =>
@@ -53,6 +54,8 @@ export const GMScene = M.connectRedux(
         undefined, scene.inventory.count().toString()),
       menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
         undefined, scene.attribute_checks.count().toString()),
+      menuItem('Linked Scenes', () => <GMSceneLinkedScenes scene={scene} />, undefined,
+        linked_scenes_count.toString())
     ];
 
     return <Segment>
@@ -80,7 +83,6 @@ export const GMScene = M.connectRedux(
         }} />
     </Segment>;
   });
-
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
 export const CreateScene = M.connectRedux(class CreateScene
@@ -299,6 +301,26 @@ export const GMSceneVolumes = M.connectRedux(
     // ).toArray()}</div>;
   });
 
+
+interface GMSceneLinkedScenesProps { scene: T.Scene; }
+interface GMSceneLinkedScenesDerivedProps { related_scenes: Array<T.Scene>; }
+const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
+  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) => {
+    return ptui.getScenes(props.scene.related_scenes.toArray());
+  }],
+  related_scenes => ({ related_scenes }))
+)(
+  function GMSceneLinkedScenes(
+    props: GMSceneLinkedScenesProps & GMSceneLinkedScenesDerivedProps & M.DispatchProps) {
+    const { related_scenes } = props;
+    return <>
+      <List>
+        <List.Header>Related Scenes</List.Header>
+        {related_scenes.map(scene => <List.Item key={scene.id}>{scene.name}</List.Item>)}
+      </List>
+    </>;
+  }
+);
 
 export const GMSceneChallenges = M.connectRedux(
   function GMSCeneChallenges({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
