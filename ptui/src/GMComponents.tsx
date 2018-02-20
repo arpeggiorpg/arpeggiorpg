@@ -1172,7 +1172,7 @@ export const LoadGameForm = M.connectRedux(
   function LoadGameForm(props: { onClose: () => void } & M.ReduxProps) {
     const { onClose, ptui, dispatch } = props;
     return <Form>
-      <GameList onSelect={game => { ptui.loadGame(dispatch, game); onClose(); }} />
+      <GameList onSelect={(source, name) => { ptui.loadGame(dispatch, source, name); onClose(); }} />
       <Form.Button onClick={onClose}>Cancel</Form.Button>
     </Form>;
   });
@@ -1208,29 +1208,43 @@ class SaveGameishForm extends React.Component<SaveGameishFormProps, { name: stri
   }
 }
 
+interface GameListProps {
+  onSelect: (type: T.ModuleSource, name: string) => void;
+  gamesOnly?: boolean;
+}
 class GameListComp
-  extends React.Component<{ onSelect: (game: string) => void } & M.ReduxProps,
+  extends React.Component<GameListProps & M.ReduxProps,
   { modules: Array<string> | undefined; games: Array<string> | undefined }> {
 
-  constructor(props: { onSelect: (game: string) => void } & M.ReduxProps) {
+  constructor(props: GameListProps & M.ReduxProps) {
     super(props);
     this.state = { games: undefined, modules: undefined };
   }
 
   componentDidMount() {
     this.props.ptui.fetchSavedGames(this.props.dispatch)
-      .then(([modules, games]) => this.setState({ games }));
+      .then(([modules, games]) => this.setState({ modules, games }));
   }
 
   render(): JSX.Element {
     const { onSelect } = this.props;
-    if (this.state.games === undefined) {
+    if (this.state.games === undefined || this.state.modules === undefined) {
       return <Dimmer active={true} inverted={true}>
         <Loader inverted={true}>Loading games...</Loader>
       </Dimmer>;
     } else {
       return <Menu vertical={true}>
-        {this.state.games.map(name => <Menu.Item key={name} onClick={() => onSelect(name)}>
+        {!this.props.gamesOnly
+          ?
+          <>
+            <Menu.Header>Modules</Menu.Header>
+            {this.state.modules.map(name =>
+              <Menu.Item key={name} onClick={() => onSelect('Module', name)}>{name}</Menu.Item>)}
+          </>
+          : null}
+        <Menu.Header>Saved Games</Menu.Header>
+        {this.state.games.map(name => <Menu.Item key={name}
+          onClick={() => onSelect('SavedGame', name)}>
           {name}
         </Menu.Item>)}
       </Menu>;
@@ -1262,9 +1276,9 @@ export const ImportModule = M.connectRedux(
   function ImportModule(props: { path: T.FolderPath; onDone: () => void } & M.ReduxProps) {
     const { path, onDone, dispatch } = props;
     return <Form>
-      <GameList onSelect={name => {
+      <GameList onSelect={(source, name) => {
         const suffixed_path = path.concat(name);
-        dispatch(M.sendCommand({ t: "LoadModule", path: suffixed_path, name }));
+        dispatch(M.sendCommand({ t: "LoadModule", path: suffixed_path, name, source }));
         onDone();
       }} />
       <Form.Button onClick={onDone}>Cancel</Form.Button>

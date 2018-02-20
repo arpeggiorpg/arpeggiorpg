@@ -9,7 +9,7 @@ use failure::Error;
 use futures::Future;
 use http::{header, Method};
 
-use pandt::types::{CreatureID, GameCommand, Point3, SceneID};
+use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
 use super::PT;
 use actor;
@@ -35,8 +35,9 @@ pub fn router(pt: PT) -> Application<PT> {
       r.f(preview_volume_targets)
     })
     .resource("/saved_games", |r| r.f(list_saved_games))
-    .resource("/saved_games/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
-    .resource("/saved_games/{name}", |r| r.method(Method::POST).f(save_game))
+    .resource("/saved_games/module/{name}/load", |r| r.method(Method::POST).f(load_module_as_game))
+    .resource("/saved_games/user/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
+    .resource("/saved_games/user/{name}", |r| r.method(Method::POST).f(save_game))
     .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
 }
 
@@ -125,7 +126,7 @@ fn list_saved_games(req: HttpRequest<PT>) -> Result<Json<(Vec<String>, Vec<Strin
   }
   let modules = match req.state().module_path {
     Some(ref path) => list_dir_into_strings(path)?,
-    None => vec![]
+    None => vec![],
   };
   let result = (modules, list_dir_into_strings(&req.state().saved_game_path)?);
   Ok(Json(result))
@@ -133,7 +134,18 @@ fn list_saved_games(req: HttpRequest<PT>) -> Result<Json<(Vec<String>, Vec<Strin
 
 fn load_saved_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
   let name: String = try_fut!(get_arg(&req, "name"));
-  invoke_actor_string_result(&req.state().app_address, actor::LoadSavedGame(name))
+  invoke_actor_string_result(
+    &req.state().app_address,
+    actor::LoadSavedGame { name, source: ModuleSource::SavedGame },
+  )
+}
+
+fn load_module_as_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
+  let name: String = try_fut!(get_arg(&req, "name"));
+  invoke_actor_string_result(
+    &req.state().app_address,
+    actor::LoadSavedGame { name, source: ModuleSource::Module },
+  )
 }
 
 fn save_game(req: HttpRequest<PT>) -> AsyncRPIResponse {

@@ -47,7 +47,7 @@ use actix::Actor;
 use structopt::StructOpt;
 
 use pandt::game::load_app_from_path;
-use pandt::types::App;
+use pandt::types::{App, ModuleSource};
 
 type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
 
@@ -74,12 +74,13 @@ fn main() {
 
   let app = match opts.load_game {
     Some(initial_file) => {
-      load_app_from_path(&saved_game_path, &initial_file).expect("Couldn't load app from file")
+      load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
+        .expect("Couldn't load app from file")
     }
     None => App::new(Default::default()),
   };
 
-  let actor = actor::AppActor::new(app, saved_game_path.clone());
+  let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
 
   let actix_system = actix::System::new("P&T-RPI");
   let app_address: AppAddress = actor.start();

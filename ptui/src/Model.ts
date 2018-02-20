@@ -379,14 +379,18 @@ export class PTUI {
       x => x);
   }
 
-  loadGame(dispatch: Dispatch, game: string): Promise<undefined> {
+  loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<undefined> {
     // TODO: RefreshApp with the result, and set this.state to default_state
-    return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}/load`, { method: 'POST' },
+    const url = source === "SavedGame"
+      ? `${this.rpi_url}/saved_games/user/${name}/load`
+      : `${this.rpi_url}/modules/user/${name}/load`;
+
+    return ptfetch(dispatch, url, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
 
   saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${this.rpi_url}/saved_games/${game}`, { method: 'POST' },
+    return ptfetch(dispatch, `${this.rpi_url}/saved_games/user/${game}`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
 

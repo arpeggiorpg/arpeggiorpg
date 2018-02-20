@@ -3,7 +3,7 @@ use std::cmp;
 use std::fs::File;
 use std::iter::FromIterator;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_yaml;
 
@@ -165,12 +165,12 @@ impl Game {
 
   /// Perform a GameCommand on the current Game.
   pub fn perform_command(
-    &self, cmd: GameCommand, saved_game_path: PathBuf
+    &self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>
   ) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
-      LoadModule { ref name, ref path } => {
-        let app = load_app_from_path(&saved_game_path, name)?;
+      LoadModule { ref name, ref path, source } => {
+        let app = load_app_from_path(saved_game_path, module_path, source, name)?;
         let module = app.current_game;
         self.change_with(GameLog::LoadModule { name: name.clone(), module, path: path.clone() })
       }
@@ -1286,8 +1286,14 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
   Err(GameError::BuggyProgram(msg.to_string()).into())
 }
 
-pub fn load_app_from_path(parent: &Path, filename: &str) -> Result<App, GameError> {
-  let filename = parent.join(filename);
+pub fn load_app_from_path(
+  saved_game_path: &Path, module_path: Option<&Path>, source: ModuleSource, filename: &str
+) -> Result<App, GameError> {
+  let filename = match (source, module_path) {
+    (ModuleSource::Module, Some(module_path)) => module_path.join(filename),
+    (ModuleSource::Module, None) => return Err(GameError::NoModuleSource),
+    (ModuleSource::SavedGame, _) => saved_game_path.join(filename),
+  };
   let mut appf = File::open(filename.clone())
     .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
   let mut apps = String::new();
@@ -1379,7 +1385,7 @@ pub mod test {
   }
 
   pub fn perf(game: &Game, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    game.perform_command(cmd, PathBuf::from(""))
+    game.perform_command(cmd, PathBuf::from(""), None)
   }
 
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }

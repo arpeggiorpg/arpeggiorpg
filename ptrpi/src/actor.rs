@@ -1,6 +1,6 @@
 use std::fs;
-use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use actix;
@@ -14,16 +14,18 @@ use serde_yaml;
 
 use foldertree;
 use pandt::types;
+use pandt::game::load_app_from_path;
 
 pub struct AppActor {
   app: types::App,
   waiters: Vec<oneshot::Sender<()>>,
   saved_game_path: PathBuf,
+  module_path: Option<PathBuf>,
 }
 
 impl AppActor {
-  pub fn new(app: types::App, saved_game_path: PathBuf) -> AppActor {
-    AppActor { app, saved_game_path, waiters: vec![] }
+  pub fn new(app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>) -> AppActor {
+    AppActor { app, saved_game_path, module_path, waiters: vec![] }
   }
 }
 
@@ -76,7 +78,8 @@ pub struct PerformCommand(pub types::GameCommand);
 handle_actor! {
   PerformCommand => String, Error;
   fn handle(&mut self, command: PerformCommand, _: &mut Context<Self>) -> Self::Result {
-    let result = self.app.perform_command(command.0, self.saved_game_path.clone());
+    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let result = self.app.perform_command(command.0, &self.saved_game_path, module_path);
     for sender in self.waiters.drain(0..) {
       if let Err(e) = sender.send(()) {
         error!("Unexpected failure while notifying a waiter: {:?}", e);
@@ -183,11 +186,16 @@ handle_actor! {
   }
 }
 
-pub struct LoadSavedGame(pub String);
+pub struct LoadSavedGame {
+  pub name: String,
+  pub source: types::ModuleSource,
+}
 handle_actor! {
   LoadSavedGame => String, Error;
   fn handle(&mut self, cmd: LoadSavedGame, _: &mut Context<AppActor>) -> Self::Result {
-    self.app = load_app(self, &cmd.0)?;
+    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let app = load_app_from_path(&self.saved_game_path, module_path, cmd.source, &cmd.name)?;
+    self.app = app;
     app_to_string(&self.app)
   }
 }
@@ -224,20 +232,13 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   Ok(())
 }
 
-fn load_app(actor: &AppActor, name: &str) -> Result<types::App, Error> {
-  let file_path = child_path(&actor.saved_game_path, name)?;
-  let mut buffer = String::new();
-  fs::File::open(file_path)?.read_to_string(&mut buffer)?;
-  Ok(serde_yaml::from_str(&buffer)?)
-}
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
 #[fail(display = "Path is insecure: {}", name)]
 struct InsecurePathError {
   name: String,
 }
 
-fn child_path(parent: &PathBuf, name: &str) -> Result<PathBuf, InsecurePathError> {
+fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
   if name.contains('/') || name.contains(':') || name.contains('\\') {
     return Err(InsecurePathError { name: name.to_string() });
   }

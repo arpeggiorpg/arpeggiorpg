@@ -170,8 +170,10 @@ export type GameCommand =
   | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck }
   | { t: "SetPlayerScene"; player_id: PlayerID; scene_id: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number }
-  | { t: "LoadModule"; name: string; path: FolderPath }
+  | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath }
   ;
+
+export type ModuleSource = 'Module' | 'SavedGame';
 
 export interface CreatureCreation {
   name: string;
@@ -252,7 +254,7 @@ export type GameLog =
   | { t: "CreatureLog"; creature_id: CreatureID; log: CreatureLog }
   | { t: "StopCombat" }
   | { t: "Rollback"; snapshot_index: number; log_index: number }
-  | { t: "LoadModule"; name: string; path: FolderPath } // `module` is left out
+  | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath } // `module` is left out
   ;
 
 export type CombatLog =
@@ -693,6 +695,9 @@ export const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>
     Creature: JD.map(Creature => ({ Creature }), JD.string()),
   });
 
+const decodeModuleSource: Decoder<ModuleSource> =
+  JD.oneOf(JD.equal('Module' as ModuleSource), JD.equal('SavedGame' as ModuleSource));
+
 const decodeCreatureLog: Decoder<CreatureLog> =
   sum<CreatureLog>("CreatureLog", {}, {
     Damage: JD.map(
@@ -891,8 +896,8 @@ export const decodeGameLog: Decoder<GameLog> =
       ([snapshot_index, log_index]): GameLog => ({ t: "Rollback", snapshot_index, log_index }),
       JD.tuple(JD.number(), JD.number())),
     LoadModule: JD.object(
-      ["name", JD.string()], ["path", decodeFolderPath],
-      (name, path): GameLog => ({ t: "LoadModule", name, path })),
+      ["name", JD.string()], ["path", decodeFolderPath], ["source", decodeModuleSource],
+      (name, path, source): GameLog => ({ t: "LoadModule", name, path, source })),
   });
 
 const decodePlayer: Decoder<Player> = JD.object(
@@ -991,7 +996,7 @@ const decodeAbility: Decoder<Ability> = JD.object(
 );
 
 const decodeGame: Decoder<Game> = JD.object(
-  ["current_combat", JD.oneOf(decodeCombat, JD.map(_ => undefined, JD.equal(null)))],
+  ["current_combat", maybe(decodeCombat)],
   ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
   ["classes", JD.map(I.Map, JD.dict(decodeClass))],
   ["items", JD.dict(decodeItem)],
@@ -1168,8 +1173,17 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "Rollback":
       return { Rollback: [cmd.snapshot_index, cmd.log_index] };
     case "LoadModule":
-      return { LoadModule: { name: cmd.name, path: encodeFolderPath(cmd.path) } };
+      return {
+        LoadModule: {
+          name: cmd.name, path: encodeFolderPath(cmd.path),
+          source: encodeModuleSource(cmd.source),
+        },
+      };
   }
+}
+
+function encodeModuleSource(s: ModuleSource): string {
+  return s;
 }
 
 function encodeFolderItemID(fid: FolderItemID): object {

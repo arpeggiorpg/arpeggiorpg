@@ -285,10 +285,17 @@ impl InventoryOwner {
   }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ModuleSource {
+  Module,
+  SavedGame,
+}
+
 /// Top-level commands that can be sent from a client to affect the state of the app.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum GameCommand {
   LoadModule {
+    source: ModuleSource,
     name: String,
     path: FolderPath,
   },
@@ -729,6 +736,9 @@ pub enum GameError {
   CouldNotOpenAppFile(String, #[cause] ::std::io::Error),
   #[fail(display = "Failed to parse a serialized application: {}", _0)]
   CouldNotParseApp(#[cause] serde_yaml::Error),
+
+  #[fail(display = "No module source found")]
+  NoModuleSource,
 
   // Wrappers for other errors:
   #[fail(display = "FolderTree error: {}", _0)]
