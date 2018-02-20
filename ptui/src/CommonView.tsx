@@ -49,7 +49,7 @@ export class Main extends React.Component<MainProps,
         this.setState({ store });
       }
     ).catch(err => {
-      console.log("[Main.networkError]", err);
+      console.log("[Main.componentDidMount] [error]", err);
       this.setState({ store: "Error" });
       this.componentDidMount();
     });
@@ -103,7 +103,6 @@ export const ClassIcon = ReactRedux.connect(
     // XXX TODO: this should not hard-code class names! Instead the game data should have a
     // "game_emoji" property on class objects.
     const { class_ } = props;
-    console.log("[ClassIcon] props=", props);
     if (class_ === undefined) { return null; }
     // We *should* be able to use <>💉</> et al, but there's a bug requiring us to use <span>
     // https://github.com/Microsoft/TypeScript/issues/22012
@@ -279,7 +278,7 @@ export class TransferItemsToRecipientFormComp extends React.Component<
     const receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
     const receiver = this.props.ptui.app.current_game.creatures.get(receiver_id);
     if (!receiver) {
-      console.log("[give] Receiver has disappeared", receiver_id);
+      console.log("[TransferItemsToRecipientForm.give] Receiver has disappeared", receiver_id);
       this.props.onClose();
       return;
     }
@@ -781,12 +780,12 @@ class NoteEditorComp
   }
   submit() {
     const { path, ptui, dispatch, afterSave } = this.props;
-    if (!this.state.name) { console.log("I have no name"); return; }
+    if (!this.state.name) { console.log("[NoteEditorComp.submit] I have no name"); return; }
     const name = this.state.name;
     const oldNote = this.props.name ? ptui.getNote(path, this.props.name) : undefined;
     const content = this.state.content === undefined && oldNote !== undefined
       ? oldNote.content : this.state.content;
-    if (!content) { console.log("There's no content for me to save"); return; }
+    if (!content) { console.log("[NoteEditorComp.submit] No content to save"); return; }
     const newNote = { name, content };
     const cmd: T.GameCommand = oldNote
       ? { t: "EditNote", path, name: oldNote.name, note: newNote }
