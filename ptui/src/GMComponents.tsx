@@ -1198,7 +1198,7 @@ class SaveGameishForm extends React.Component<SaveGameishFormProps, { name: stri
     return <Form>
       <Form.Input label="Name" value={this.state.name}
         onChange={(_, d) => this.setState({ name: d.value })} />
-      <GameList onSelect={game => this.setState({ name: game })} />
+      <GameList gamesOnly={true} onSelect={game => this.setState({ name: game })} />
       <Form.Group>
         <Form.Button disabled={this.state.name === ""}
           onClick={() => { save(this.state.name); onClose(); }}>Save</Form.Button>
