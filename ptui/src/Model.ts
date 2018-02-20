@@ -387,12 +387,7 @@ export class PTUI {
       ? `${this.rpi_url}/saved_games/user/${name}/load`
       : `${this.rpi_url}/saved_games/module/${name}/load`;
 
-    return ptfetch(dispatch, url, { method: 'POST' },
-      T.decodeApp, app => {
-        dispatch({ type: "ResetState" });
-        dispatch({ type: "RefreshApp", app });
-        return;
-      });
+    return ptfetch(dispatch, url, { method: 'POST' }, T.decodeApp, app => resetApp(dispatch, app));
   }
 
   saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
@@ -645,6 +640,20 @@ export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
       sendCommand(cmd)(dispatch, getState, undefined);
     }
   };
+
+export const newGame: ThunkAction<void> =
+  (dispatch, getState) => {
+    const ptui = getState();
+    return ptfetch(
+      dispatch, `${ptui.rpi_url}/new_game`, { method: "POST" }, T.decodeApp,
+      app => resetApp(dispatch, app));
+  };
+
+function resetApp(dispatch: Dispatch, app: T.App) {
+  dispatch({ type: "ResetState" });
+  dispatch({ type: "RefreshApp", app });
+  return;
+}
 
 function selectAbility(
   scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID): ThunkAction<void> {

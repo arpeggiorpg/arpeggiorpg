@@ -232,6 +232,16 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   Ok(())
 }
 
+pub struct NewGame;
+handle_actor! {
+  NewGame => String, Error;
+  fn handle(&mut self, _: NewGame, _: &mut Context<AppActor>) -> Self::Result {
+    let new_game = Default::default();
+    self.app = types::App::new(new_game);
+    app_to_string(&self.app)
+  }
+}
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
 #[fail(display = "Path is insecure: {}", name)]
 struct InsecurePathError {

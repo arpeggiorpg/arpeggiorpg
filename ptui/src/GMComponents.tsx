@@ -4,7 +4,6 @@ import * as LD from 'lodash';
 import * as React from 'react';
 import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 import * as ReactRedux from 'react-redux';
-import { OutputParametricSelector } from 'reselect';
 
 import {
   Accordion,
@@ -660,21 +659,16 @@ interface GMSceneCreaturesDerivedProps {
   combat: T.Combat | undefined;
 }
 
-const GMSceneCreaturesSelector: OutputParametricSelector<
-  M.PTUI,
-  { scene: T.Scene }, // props
-  { creatures: Array<T.Creature>; combat?: T.Combat }, // output
-  (res1: T.App, res2: T.Scene) => { creatures: Array<T.Creature>; combat?: T.Combat }
-  > = Comp.createDeepEqualSelector(
-    [
-      (ptui: M.PTUI): T.App => ptui.app,
-      (_: any, props: { scene: T.Scene }) => props.scene
-    ],
-    (app: T.App, scene: T.Scene) => ({
-      creatures: M.getSceneCreatures(app, scene),
-      combat: app.current_game.current_combat,
-    })
-  );
+const GMSceneCreaturesSelector = Comp.createDeepEqualSelector(
+  [
+    (ptui: M.PTUI): T.App => ptui.app,
+    (_: any, props: { scene: T.Scene }) => props.scene
+  ],
+  (app: T.App, scene: T.Scene) => ({
+    creatures: M.getSceneCreatures(app, scene),
+    combat: app.current_game.current_combat,
+  })
+);
 
 export const GMSceneCreatures = ReactRedux.connect(GMSceneCreaturesSelector)(
   function GMSceneCreatures(
@@ -1168,8 +1162,26 @@ export function SavedGames(): JSX.Element {
       button={open => <Button onClick={open}>Save Game</Button>}
       header={<span>Save Game</span>}
       content={close => <SaveGameForm onClose={close} />} />
+    <CV.ModalMaker
+      button={open => <Button onClick={open}>New Game</Button>}
+      header={<span>New Game</span>}
+      content={close => <NewGame onClose={close} />}
+    />
   </Button.Group>;
 }
+
+const NewGame = ReactRedux.connect()(
+  function NewGame(props: { onClose: () => void } & M.DispatchProps) {
+    const { dispatch, onClose } = props;
+    function onClick() {
+      dispatch(M.newGame);
+      onClose();
+    }
+    return <>
+      <div>Are you sure? Your unsaved data will be lost.</div>
+      <Button onClick={() => onClick()}>Do it!</Button>
+    </>;
+  });
 
 export const LoadGameForm = M.connectRedux(
   function LoadGameForm(props: { onClose: () => void } & M.ReduxProps) {

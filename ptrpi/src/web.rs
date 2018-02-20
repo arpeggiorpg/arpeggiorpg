@@ -39,6 +39,7 @@ pub fn router(pt: PT) -> Application<PT> {
     .resource("/saved_games/user/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
     .resource("/saved_games/user/{name}", |r| r.method(Method::POST).f(save_game))
     .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
+    .resource("/new_game", |r| r.method(Method::POST).f(new_game))
 }
 
 fn get_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
@@ -159,6 +160,10 @@ fn save_module(req: HttpRequest<PT>) -> AsyncRPIResponse {
     invoke_actor_string_result(&req.state().app_address, actor::SaveModule { name, path })
   });
   Box::new(f)
+}
+
+fn new_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
+  invoke_actor_string_result(&req.state().app_address, actor::NewGame)
 }
 
 fn string_json_response(body: String) -> Result<HttpResponse, Error> {
