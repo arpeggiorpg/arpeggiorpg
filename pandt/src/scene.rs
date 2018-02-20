@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use types::*;
 use grid::{make_world, query_world};
@@ -14,6 +14,8 @@ impl Scene {
       terrain: vec![],
       highlights: HashMap::new(),
       annotations: HashMap::new(),
+      scene_hotspots: HashMap::new(),
+      related_scenes: HashSet::new(),
       creatures: HashMap::new(),
       attribute_checks: HashMap::new(),
       inventory: HashMap::new(),

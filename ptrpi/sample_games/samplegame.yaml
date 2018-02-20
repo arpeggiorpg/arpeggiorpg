@@ -327,7 +327,7 @@ current_game:
       highlights: {}
       annotations: {}
       scene_hotspots: {}
-      related_scenes: []
+      related_scenes: ["00000000-0000-0000-0000-000000000003"]
       background_image_url: ""
       background_image_offset: ~
       background_image_scale:

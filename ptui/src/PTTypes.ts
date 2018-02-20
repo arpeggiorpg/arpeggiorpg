@@ -380,6 +380,8 @@ export interface Scene {
   terrain: Terrain;
   highlights: Highlights;
   annotations: Annotations;
+  scene_hotspots: I.Map<Point3, SceneID>;
+  related_scenes: I.Set<SceneID>;
   creatures: I.Map<CreatureID, [Point3, Visibility]>;
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
@@ -518,6 +520,23 @@ export const decodeCreatureData: Decoder<CreatureData> = JD.object(
   name => ({ name })
 );
 
+function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
+  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
+  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
+  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>,
+  _cons: (
+    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
+  ) => T): Decoder<T>;
+function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
+  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
+  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
+  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
+  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>,
+  _cons: (
+    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
+    p: P, q: Q, r: R) => T): Decoder<T>;
 function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
   _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
@@ -526,8 +545,9 @@ function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
   _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>, _sd: JD.EntryDecoder<S>,
   _cons: (
     a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P, q: Q, r: R, s: S) => T): Decoder<T> {
-  return JD.object.apply(undefined, arguments);
+    p: P, q: Q, r: R, s: S) => T): Decoder<T>;
+function objectBig<T>(...args: Array<any>): Decoder<T> {
+  return JD.object.apply(undefined, args);
 }
 
 export const decodeCreature: Decoder<Creature> = objectBig(
@@ -615,21 +635,27 @@ export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
   (point, volume, remaining, condition): VolumeCondition => ({ point, volume, remaining, condition })
 );
 
-const decodeTerrain: Decoder<Terrain> = JD.map(
-  I.Set as ((arr: Array<Point3>) => I.Set<Point3>), // WHY, I didn't previously need this!
-  JD.array(decodePoint3));
+const decodeTerrain: Decoder<Terrain> = decodeSet(decodePoint3);
 const decodeHighlights: Decoder<Highlights> =
   decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility));
 const decodeAnnotations: Decoder<Annotations> = decodeHighlights;
 
+function decodeSet<T>(d: Decoder<T>): Decoder<I.Set<T>> {
+  // In the upgrade to a latest typescript (and many other dependencies), for some reason
+  // I needed to explicitly cast the `I.Set` constructor in this way, when previously I did not.
+  return JD.map(I.Set as ((arr: Array<T>) => I.Set<T>), JD.array(d));
+}
+
 
 export const decodeScene: Decoder<Scene> =
-  JD.object(
+  objectBig(
     ["id", JD.string()],
     ["name", JD.string()],
     ["terrain", decodeTerrain],
     ["highlights", decodeHighlights],
     ["annotations", decodeAnnotations],
+    ["scene_hotspots", decodeIMap(decodePoint3, JD.string())],
+    ["related_scenes", decodeSet(JD.string())],
     ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
     ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
     ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
@@ -640,12 +666,12 @@ export const decodeScene: Decoder<Scene> =
     ["focused_creatures",
       JD.map(I.List as ((arr: Array<string>) => I.List<CreatureID>), JD.array(JD.string()))],
     (
-      id, name, terrain, highlights, annotations, creatures, attribute_checks, inventory,
-      background_image_url, background_image_offset, background_image_scale, volume_conditions,
-      focused_creatures): Scene => ({
-        id, name, terrain, highlights, annotations, creatures, attribute_checks, inventory,
-        background_image_url, background_image_offset, background_image_scale, volume_conditions,
-        focused_creatures,
+      id, name, terrain, highlights, annotations, scene_hotspots, related_scenes, creatures,
+      attribute_checks, inventory, background_image_url, background_image_offset,
+      background_image_scale, volume_conditions, focused_creatures): Scene => ({
+        id, name, terrain, highlights, annotations, scene_hotspots, related_scenes, creatures,
+        attribute_checks, inventory, background_image_url, background_image_offset,
+        background_image_scale, volume_conditions, focused_creatures,
       }));
 
 function _mkFolderItem(t: string): Decoder<FolderItemID> {

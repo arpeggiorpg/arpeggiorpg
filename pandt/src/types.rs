@@ -1064,6 +1064,12 @@ pub struct Scene {
   pub terrain: Vec<Point3>,
   pub highlights: HashMap<Point3, (Color, Visibility)>,
   pub annotations: HashMap<Point3, (String, Visibility)>,
+
+  #[serde(default)]
+  pub scene_hotspots: HashMap<Point3, SceneID>,
+  #[serde(default)]
+  pub related_scenes: HashSet<SceneID>,
+
   #[serde(default)]
   pub background_image_url: String,
   /// If this field is None, then the image will "float" fixed on the screen, instead of panning
@@ -1296,6 +1302,10 @@ pub mod test {
       terrain: huge_box(),
       highlights: HashMap::new(),
       annotations: HashMap::new(),
+
+      scene_hotspots: HashMap::new(),
+      related_scenes: HashSet::new(),
+
       attribute_checks: HashMap::new(),
       creatures: hashmap!{
         cid_rogue() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
