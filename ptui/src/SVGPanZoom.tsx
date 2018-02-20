@@ -92,6 +92,9 @@ export class SVGPanZoom
           if (this.props.onPanZoom) { this.props.onPanZoom(false); }
           this.setState({ isMouseDown: false });
         });
+        options.svgElement.addEventListener('contextmenu', e => {
+          e.preventDefault();
+        });
       },
       destroy: () => { if (this.state.hammer) { this.state.hammer.destroy(); } },
     };
