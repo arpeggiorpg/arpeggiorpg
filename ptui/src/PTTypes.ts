@@ -1297,7 +1297,7 @@ function encodeDecidedTarget(dt: DecidedTarget): object | string {
   }
 }
 
-function encodePoint3(pt: Point3): string {
+export function encodePoint3(pt: Point3): string {
   return `${pt.x}/${pt.y}/${pt.z}`;
 }
 

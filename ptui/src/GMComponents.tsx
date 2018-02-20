@@ -303,22 +303,44 @@ export const GMSceneVolumes = M.connectRedux(
 
 
 interface GMSceneLinkedScenesProps { scene: T.Scene; }
-interface GMSceneLinkedScenesDerivedProps { related_scenes: Array<T.Scene>; }
+interface GMSceneLinkedScenesDerivedProps {
+  related_scenes: Array<T.Scene>;
+  hotspot_scenes: Array<[T.Scene, T.Point3]>;
+}
 const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
-  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) =>
-    ptui.getScenes(props.scene.related_scenes.toArray())],
-  related_scenes => ({ related_scenes }))
-)(
+  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) => {
+    const related_scenes = ptui.getScenes(props.scene.related_scenes.toArray());
+    const hotspot_scenes = LD.sortBy(
+      M.filterMap(props.scene.scene_hotspots.entrySeq().toArray(),
+        ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
+          const scene = ptui.getScene(scene_id);
+          if (scene) { return [scene, pos]; }
+        }),
+      ([s, _]) => s.name);
+    return { related_scenes, hotspot_scenes };
+  }],
+  (p): GMSceneLinkedScenesDerivedProps => p
+))(
   function GMSceneLinkedScenes(
     props: GMSceneLinkedScenesProps & GMSceneLinkedScenesDerivedProps & M.DispatchProps) {
-    const { related_scenes, dispatch } = props;
+    const { hotspot_scenes, related_scenes, dispatch } = props;
+    const focus_scene = (scene: T.Scene) =>
+      () => dispatch({ type: "FocusGrid", scene_id: scene.id });
     return <>
       <List>
         <List.Item><List.Header>Related Scenes</List.Header></List.Item>
-        {related_scenes.map(scene => <List.Item key={scene.id}
-          style={{ cursor: 'pointer' }}
-          onClick={() => dispatch({ type: "FocusGrid", scene_id: scene.id })}>
-          {scene.name}
+        {related_scenes.map(scene =>
+          <List.Item key={`r:${scene.id}`}
+            style={{ cursor: 'pointer' }}
+            onClick={focus_scene(scene)}>
+            {scene.name}
+          </List.Item>)}
+        <List.Item><List.Header>Hotspot Scenes</List.Header></List.Item>
+        {hotspot_scenes.map(([scene, point]) =>
+          <List.Item key={`h:${scene.id}`}
+            style={{ cursor: 'pointer' }}
+            onClick={focus_scene(scene)}>
+            {scene.name} ({T.encodePoint3(point)})
         </List.Item>)}
       </List>
     </>;
