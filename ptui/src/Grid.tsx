@@ -403,7 +403,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
               if (creature) {
                 return [
                   <Menu.Item key={creature.creature.id} header={true}>
-                    {CV.classIcon(creature.creature)} {creature.creature.name}
+                    <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
                   </Menu.Item>,
                 ].concat(creature.actions.entrySeq().toArray().map(
                   ([actionName, action]) => {

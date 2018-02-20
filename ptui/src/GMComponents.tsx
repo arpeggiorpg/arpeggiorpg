@@ -713,7 +713,7 @@ export const GMSceneCreatures = ReactRedux.connect(GMSceneCreaturesSelector)(
         const vis_desc = vis.t === 'GMOnly'
           ? 'Only visible to the GM' : 'Visible to all players';
         return <List.Item key={`cid:${creature.id}`}>
-          <List.Content floated='left'>{CV.classIcon(creature)}</List.Content>
+          <List.Content floated='left'><CV.ClassIcon class_id={creature.class_} /></List.Content>
           {creature.name}
           <List.Content floated='right'>
             <Popup
@@ -842,7 +842,7 @@ const SelectSceneCreatures = M.connectRedux(
           <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
             <input type="checkbox" checked={selections.includes(creature.id)}
               onChange={nv => nv.currentTarget.checked ? add(creature.id) : remove(creature.id)} />
-            {CV.classIcon(creature)}
+            <CV.ClassIcon class_id={creature.class_} />
             {creature.name}
           </List.Item>)
       }</List>;

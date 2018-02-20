@@ -78,7 +78,7 @@ export const CreatureCard = M.connectRedux(
           <CreatureIcon app={props.ptui.app} creature={creature} size={80} />
           <div>
             <div style={{ display: "flex" }}>
-              <Header>{creature.name}</Header> {classIcon(creature)}
+              <Header>{creature.name}</Header><ClassIcon class_id={creature.class_} />
             </div>
             <div>
               {creature.dynamic_conditions().valueSeq().map(ac => conditionIcon(ac.condition))}
@@ -92,16 +92,31 @@ export const CreatureCard = M.connectRedux(
 
   });
 
-export function classIcon(creature: T.Creature): string {
-  switch (creature.class_) {
-    case "cleric": return "💉";
-    case "rogue": return "🗡️";
-    case "ranger": return "🏹";
-    case "creature": return "🙂";
-    case "baddie": return "👹";
-    default: return "";
+interface ClassIconProps { class_id: T.ClassID; }
+interface ClassIconDerivedProps { class_?: T.Class; }
+export const ClassIcon = ReactRedux.connect(
+  Comp.createDeepEqualSelector(
+    [(ptui: M.PTUI, props: ClassIconProps) => ptui.app.current_game.classes.get(props.class_id)],
+    (class_): ClassIconDerivedProps => ({ class_ }))
+)(
+  function ClassIcon(props: ClassIconProps & ClassIconDerivedProps): JSX.Element | null {
+    // XXX TODO: this should not hard-code class names! Instead the game data should have a
+    // "game_emoji" property on class objects.
+    const { class_ } = props;
+    console.log("[ClassIcon] props=", props);
+    if (class_ === undefined) { return null; }
+    // We *should* be able to use <>💉</> et al, but there's a bug requiring us to use <span>
+    // https://github.com/Microsoft/TypeScript/issues/22012
+    switch (class_.name) {
+      case "Healer": return <span>💉</span>;
+      case "Rogue": return <span>🗡️</span>;
+      case "Archer": return <span>🏹</span>;
+      case "Creature": return <span>🙂</span>;
+      case "Baddie": return <span>👹</span>;
+      default: return null;
+    }
   }
-}
+);
 
 export function square_style(size: number, color?: string) {
   return {
