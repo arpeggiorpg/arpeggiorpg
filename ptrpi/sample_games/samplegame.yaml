@@ -357,7 +357,7 @@ current_game:
         - "-100/100/0"
       highlights: {}
       annotations: {}
-      scene_hotspots: {}
+      scene_hotspots: {"100/100/0": f32e3fa3-2df9-472d-bee3-7b5cf855ce4c}
       related_scenes: []
       background_image_url: ""
       background_image_offset: ~
