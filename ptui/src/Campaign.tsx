@@ -205,9 +205,11 @@ class FolderTreeComp
           header={<span>Create a folder in {M.folderPathToString(path)}</span>}
           content={close => <GM.CreateFolder path={path} onDone={close} />}
         />
+
+        <Dropdown.Divider />
+
         {!M.isEqual(path, [])
           ? <>
-            <Dropdown.Divider />
             <Dropdown.Item text="Delete this folder" icon="delete"
               onClick={() => dispatch(M.sendCommand(
                 {
@@ -225,6 +227,7 @@ class FolderTreeComp
             <Dropdown.Divider />
           </>
           : null}
+
         <CV.ModalMaker
           button={open =>
             <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
