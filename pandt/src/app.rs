@@ -136,11 +136,12 @@ mod test {
   use app::*;
   use game::test::*;
   use types::test::*;
+  use std::path::PathBuf;
 
   pub fn t_app() -> App { App::new(t_game()) }
 
   pub fn perf(app: &mut App, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
-    app.perform_command(cmd, PathBuf::from(""), PathBuf::from(""))
+    app.perform_command(cmd, &PathBuf::from(""), None)
   }
 
   // pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {

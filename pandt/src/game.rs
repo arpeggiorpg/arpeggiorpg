@@ -1312,6 +1312,7 @@ pub fn load_app_from_path(
 pub mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
+  use std::path::PathBuf;
 
   use combat::test::*;
   use game::*;
@@ -1390,7 +1391,7 @@ pub mod test {
   }
 
   pub fn perf(game: &Game, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    game.perform_command(cmd, PathBuf::from(""), None)
+    game.perform_command(cmd, &PathBuf::from(""), None)
   }
 
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
@@ -1400,7 +1401,7 @@ pub mod test {
     let game = t_game();
     let non = CreatureID::gen();
     let result =
-      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]), PathBuf::from(""));
+      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]), &PathBuf::from(""), None);
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1411,7 +1412,7 @@ pub mod test {
   fn combat_must_have_creatures() {
     let game = t_game();
     let result =
-      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]), PathBuf::from(""));
+      game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]), &PathBuf::from(""), None);
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),

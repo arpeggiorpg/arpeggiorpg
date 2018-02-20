@@ -111,8 +111,10 @@ struct Opts {
 mod test {
   use std::path::Path;
 
+  use pandt::types::ModuleSource;
+
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(Path::new("sample_games"), "samplegame.yaml").unwrap();
+    ::load_app_from_path(Path::new("sample_games"), None, ModuleSource::SavedGame, "samplegame.yaml").unwrap();
   }
 }
