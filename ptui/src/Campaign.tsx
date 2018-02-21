@@ -20,7 +20,7 @@ import * as T from './PTTypes';
 export const Campaign = ReactRedux.connect(
   (ptui: M.PTUI) => ({ campaign: ptui.app.current_game.campaign })
 )(
-  function campaignComp(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
+  function Campaign(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
     const { campaign } = props;
     return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
   });
@@ -50,6 +50,36 @@ export const MultiItemSelector = M.connectRedux(class MultiItemSelector
         display={display}
       />
       <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
+      <Button onClick={this.props.on_cancel}>Cancel</Button>
+    </div>;
+  }
+});
+
+interface MultiSceneSelectorProps {
+  already_selected: I.Set<T.SceneID>;
+  on_selected: (cs: I.Set<T.SceneID>) => void;
+  on_cancel: () => void;
+}
+export const MultiSceneSelector = M.connectRedux(class MultiSceneSelector
+  extends React.Component<MultiSceneSelectorProps & M.ReduxProps, { selections: I.Set<T.ItemID> }> {
+  constructor(props: MultiSceneSelectorProps & M.ReduxProps) {
+    super(props);
+    this.state = { selections: this.props.already_selected };
+  }
+  render(): JSX.Element {
+    const { ptui } = this.props;
+    const scenes = collectAllScenes(ptui, [], ptui.app.current_game.campaign);
+    const display = ([path, scene]: [T.FolderPath, T.Scene]) =>
+      `${M.folderPathToString(path)}/${scene.name}`;
+    return <div>
+      {ptui.getScenes(this.state.selections.toArray()).map(
+        scene => <Label key={scene.id}>{scene.name}</Label>)}
+      <SearchSelect values={scenes}
+        onSelect={([_, scene]: [T.FolderPath, T.Scene]) =>
+          this.setState({ selections: this.state.selections.add(scene.id) })}
+        display={display}
+      />
+      <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Scenes</Button>
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
@@ -572,6 +602,11 @@ function collectFolderObjects<T>(
 function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
   Array<[T.FolderPath, T.Item]> {
   return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getItems(node.items));
+}
+
+function collectAllScenes(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+  Array<[T.FolderPath, T.Scene]> {
+  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getScenes(node.scenes));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }

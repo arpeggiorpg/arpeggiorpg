@@ -323,12 +323,21 @@ const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
 ))(
   function GMSceneLinkedScenes(
     props: GMSceneLinkedScenesProps & GMSceneLinkedScenesDerivedProps & M.DispatchProps) {
-    const { hotspot_scenes, related_scenes, dispatch } = props;
+    const { scene, hotspot_scenes, related_scenes, dispatch } = props;
     const focus_scene = (scene: T.Scene) =>
       () => dispatch({ type: "FocusGrid", scene_id: scene.id });
     return <>
       <List>
-        <List.Item><List.Header>Related Scenes</List.Header></List.Item>
+        <List.Item>
+          <List.Header>
+            Related Scenes
+            <CV.ModalMaker
+              button={open => <List.Icon name="add" style={{ cursor: 'pointer' }} onClick={open} />}
+              header={<>Add a related scene</>}
+              content={close => <GMAddRelatedScene scene={scene} onClose={close} />}
+            />
+          </List.Header>
+        </List.Item>
         {related_scenes.map(scene =>
           <List.Item key={`r:${scene.id}`}
             style={{ cursor: 'pointer' }}
@@ -347,7 +356,25 @@ const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
   }
 );
 
-export const GMSceneChallenges = M.connectRedux(
+interface GMAddRelatedSceneProps { scene: T.Scene; onClose: () => void; }
+const GMAddRelatedScene = ReactRedux.connect(
+  // Comp.createDeepEqualSelector(
+  //   [],
+
+  // )
+)(
+  function GMAddRelatedScene(props: GMAddRelatedSceneProps & M.DispatchProps) {
+    const { scene, onClose, dispatch } = props;
+    return <Campaign.MultiSceneSelector already_selected={scene.related_scenes} on_cancel={onClose}
+      on_selected={related_scenes => {
+        dispatch(M.sendCommand({ t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes }));
+        onClose();
+      }}
+    />;
+  }
+);
+
+const GMSceneChallenges = M.connectRedux(
   function GMSCeneChallenges({ scene, ptui, dispatch }: { scene: T.Scene } & M.ReduxProps) {
     const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
     return <List relaxed={true}>
