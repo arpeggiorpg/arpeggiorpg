@@ -407,6 +407,19 @@ export const SceneGrid = M.connectRedux(class SceneGrid
                 </Menu.Item>;
               }
               return;
+            case "SceneHotSpot":
+              const linked_scene = this.props.ptui.getScene(obj.scene_id);
+              if (!linked_scene) { return; }
+              const jumpScene = () => {
+                dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
+                close();
+              };
+              return <>
+                <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
+                <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
+                  {linked_scene.name}
+                </Menu.Item>
+              </>;
             case "Creature":
               const creature = M.get(creatures, obj.id);
               if (creature) {
@@ -533,10 +546,14 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
   function SceneHotSpot(props: SceneHotSpotProps & SceneHotSpotDerivedProps & M.DispatchProps) {
     const { pos, scene, dispatch } = props;
     const tprops = tile_props("purple", pos);
+    let element: SVGRectElement;
 
-    const onClick = () => dispatch({ type: "FocusGrid", scene_id: scene.id });
+    const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element, dispatch);
+    const reflection_props = { 'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene.id };
     return <g>
-      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} />
+      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }}
+        ref={el => { if (el !== null) { element = el; } }}
+        {...reflection_props} />
       {text_tile(scene.name, pos)}
     </g>;
   }
@@ -678,6 +695,10 @@ function activateGridObjects(
             const pt = el.getAttribute('data-pt-pos');
             if (!pt) { return; }
             return { t: "Annotation", pt: T.parsePoint3(pt) };
+          case "scene-hotspot":
+            const scene_id = el.getAttribute('data-pt-scene-id');
+            if (!scene_id) { return; }
+            return { t: "SceneHotSpot", scene_id };
         }
       }
     },

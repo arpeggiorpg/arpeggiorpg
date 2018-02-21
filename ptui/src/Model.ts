@@ -188,6 +188,7 @@ export type GridObject =
   | { t: "VolumeCondition"; id: T.ConditionID }
   | { t: "Creature"; id: T.CreatureID }
   | { t: "Annotation"; pt: T.Point3 }
+  | { t: "SceneHotSpot"; scene_id: T.SceneID }
   ;
 
 export type ObjectTool = "Highlight" | "Annotation";
