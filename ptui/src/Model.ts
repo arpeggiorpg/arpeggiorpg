@@ -37,7 +37,6 @@ export type Action =
     teleport?: boolean;
   }
   | { type: "ClearMovementOptions" }
-  | { type: "ToggleAnnotation"; pt: T.Point3; rect?: Rect }
   | {
     type: "DisplayPotentialTargets";
     cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
@@ -139,14 +138,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
           };
         } else { return state; }
       });
-
-    case "ToggleAnnotation":
-      const curDisplay = ptui.state.grid.display_annotation;
-      const nv =
-        (curDisplay && isEqual(curDisplay.pt, action.pt)) || !action.rect
-          ? undefined
-          : { pt: action.pt, rect: action.rect };
-      return ptui.updateGridState(grid => ({ ...grid, display_annotation: nv }));
     case "DisplayMovementOptions":
       return ptui.updateGridState(
         grid => ({
@@ -186,7 +177,6 @@ export interface GridModel {
     options: Array<T.Point3>;
     teleport: boolean;
   };
-  display_annotation?: { pt: T.Point3; rect: Rect };
   target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets };
   object_tool: ObjectTool;
   highlight_color: T.Color;
@@ -197,6 +187,7 @@ export interface GridModel {
 export type GridObject =
   | { t: "VolumeCondition"; id: T.ConditionID }
   | { t: "Creature"; id: T.CreatureID }
+  | { t: "Annotation"; pt: T.Point3 }
   ;
 
 export type ObjectTool = "Highlight" | "Annotation";

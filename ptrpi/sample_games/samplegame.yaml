@@ -325,7 +325,7 @@ current_game:
         - 300/200/0
         - 200/300/0
       highlights: {}
-      annotations: {}
+      annotations: {"500/500/0": ["Hello, world!", "AllPlayers"]}
       scene_hotspots: {}
       related_scenes: ["00000000-0000-0000-0000-000000000003"]
       background_image_url: ""

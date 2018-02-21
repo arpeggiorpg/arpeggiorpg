@@ -421,16 +421,16 @@ export type RustResult<T, E> =
 
 // ** Decoders **
 
-export const decodePoint3: Decoder<Point3> = JD.map(
-  str => {
-    const segments = str.split("/");
-    if (segments.length !== 3) {
-      throw new Error(`${str} did not have three segments separated by /`);
-    }
-    const [xs, ys, zs] = segments;
-    return new Point3(Number(xs), Number(ys), Number(zs));
-  },
-  JD.string());
+export function parsePoint3(str: string): Point3 {
+  const segments = str.split("/");
+  if (segments.length !== 3) {
+    throw new Error(`${str} did not have three segments separated by /`);
+  }
+  const [xs, ys, zs] = segments;
+  return new Point3(Number(xs), Number(ys), Number(zs));
+}
+
+export const decodePoint3: Decoder<Point3> = JD.map(parsePoint3, JD.string());
 
 export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", {}, {
   CreatureIDs: JD.map((cids): PotentialTargets =>

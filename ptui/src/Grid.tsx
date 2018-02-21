@@ -50,7 +50,7 @@ import * as ReactRedux from 'react-redux';
 import {
   Button,
   // Checkbox, Dimmer, Input,
-  Menu, Segment
+  Menu,
 } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
@@ -85,9 +85,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const creature_menu = grid.active_objects.objects.length !== 0
       ? this.renderMenu(grid.active_objects) : null;
-    const annotation = grid.display_annotation
-      ? this.renderAnnotation(scene, grid.display_annotation)
-      : null;
 
     const target_els = ptui.state.grid.target_options
       ? this.getTargetTiles(ptui.state.grid.target_options.options,
@@ -148,7 +145,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {this.topBar()}
       </div>
       {creature_menu}
-      {annotation}
       <SPZ.SVGPanZoom
         id="pt-grid"
         preserveAspectRatio="xMinYMid slice"
@@ -260,9 +256,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
       });
 
-    return [
+    return <>
       <g key="existing-highlights" id="existing-highlights">{highlighted_tiles}</g>,
-      <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>];
+      <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>
+    </>;
   }
 
   getAnnotations(
@@ -392,17 +389,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
-  renderAnnotation(scene: T.Scene, { pt, rect }: { pt: T.Point3; rect: M.Rect })
-    : JSX.Element | null {
-    const { dispatch } = this.props;
-    const ann = scene.annotations.get(pt);
-    if (!ann) { return null; }
-    return <RectPositioned coords={[rect.sw.x, rect.sw.y]}
-      onClose={() => dispatch({ type: "ToggleAnnotation", pt })}>
-      <Segment>{ann[0]}</Segment>
-    </RectPositioned>;
-  }
-
   renderMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }): JSX.Element | null {
     const { objects, coords } = arg;
     const { scene, creatures, dispatch } = this.props;
@@ -412,23 +398,30 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <Menu vertical={true}>
         {objects.map(obj => {
           switch (obj.t) {
+            case "Annotation":
+              const ann = scene.annotations.get(obj.pt);
+              if (ann) {
+                return <Menu.Item key="ANN">
+                  <Menu.Header>Annotation</Menu.Header>
+                  {ann[0]}
+                </Menu.Item>;
+              }
+              return;
             case "Creature":
               const creature = M.get(creatures, obj.id);
               if (creature) {
-                return [
+                return <>
                   <Menu.Item key={creature.creature.id} header={true}>
                     <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
-                  </Menu.Item>,
-                ].concat(creature.actions.entrySeq().toArray().map(
-                  ([actionName, action]) => {
-                    function onClick() {
-                      close();
-                      action(obj.id);
-                    }
-                    return <Menu.Item key={actionName} onClick={() => onClick()}>
-                      {actionName}
-                    </Menu.Item>;
-                  }));
+                  </Menu.Item>
+                  {creature.actions.entrySeq().toArray().map(
+                    ([actionName, action]) => {
+                      const onClick = () => { close(); action(obj.id); };
+                      return <Menu.Item key={actionName} onClick={() => onClick()}>
+                        {actionName}
+                      </Menu.Item>;
+                    })}
+                </>;
               }
               return;
             case "VolumeCondition":
@@ -437,10 +430,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
                   { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id: obj.id }));
                 close();
               };
-              return [
-                // unimplemented!: put a name here
-                <Menu.Item key="Header" header={true}>Condition</Menu.Item>,
-                <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>];
+              // unimplemented!: put a name here
+              return <>
+                <Menu.Item key="Header" header={true}>Condition</Menu.Item>
+                <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
+              </>;
           }
         }
         )}
@@ -613,17 +607,19 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
 
   let element: SVGRectElement;
 
-  function onClick() {
+  const onClick = (event: React.MouseEvent<any>) => {
     if (specialClick) {
       specialClick(pt);
     } else {
-      dispatch({ type: "ToggleAnnotation", pt, rect: screenCoordsForRect(element) });
+      activateGridObjects(event, element, dispatch);
     }
-  }
+  };
 
+  const reflection_props = { 'data-pt-type': "annotation", 'data-pt-pos': T.encodePoint3(pt) };
   return <g>
     <rect width="100" height="100" x={pt.x} y={pt.y - 50} fillOpacity="0"
       ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
+      {...reflection_props}
     />
     <text
       style={{ pointerEvents: "none" }}
@@ -665,25 +661,43 @@ function findElementsAtPoint<R>(
 }
 
 
+function activateGridObjects(
+  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
+  dispatch: M.Dispatch) {
+  const objects = findElementsAtPoint(
+    event.pageX, event.pageY,
+    (el): M.GridObject | undefined => {
+      const type = el.getAttribute('data-pt-type');
+      if (type) {
+        switch (type) {
+          case "creature":
+            const id = el.getAttribute('data-pt-id');
+            if (!id) { return; }
+            return { t: "Creature", id };
+          case "annotation":
+            const pt = el.getAttribute('data-pt-pos');
+            if (!pt) { return; }
+            return { t: "Annotation", pt: T.parsePoint3(pt) };
+        }
+      }
+    },
+    'svg');
+  const rect = screenCoordsForRect(element);
+  const act: M.Action = {
+    type: "ActivateGridObjects",
+    objects,
+    coords: [rect.sw.x, rect.sw.y],
+  };
+  dispatch(act);
+}
+
 const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let timer: number;
     let element: SVGRectElement | SVGImageElement;
-    function onClick(event: React.MouseEvent<any>) {
-      const creatures = findElementsAtPoint(event.pageX, event.pageY,
-        el => el.getAttribute('data-pt-type') === 'creature'
-          && (el.getAttribute('data-pt-id') || undefined)
-          || undefined,
-        'svg');
-      const rect = screenCoordsForRect(element);
-      const act: M.Action = {
-        type: "ActivateGridObjects",
-        objects: creatures.map((id): M.GridObject => ({ t: "Creature", id })),
-        coords: [rect.sw.x, rect.sw.y],
-      };
-      dispatch(act);
-    }
+    const onClick = (event: React.MouseEvent<any>) => activateGridObjects(event, element, dispatch);
+
     const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
     const combat = ptui.app.current_game.current_combat;
     if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.creature.id) {
@@ -704,6 +718,7 @@ const GridCreature = M.connectRedux(
 
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
     const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
+
     return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
       onMouseUp={() => clearTimeout(timer)}
       onMouseDown={() => {
@@ -711,16 +726,17 @@ const GridCreature = M.connectRedux(
       }}>
       {contents()}
     </g>;
+
     function contents() {
       if (creature.creature.icon_url !== "") {
         const props = tile_props("white", creature.pos, creature.creature.size);
         const bare_props = bare_tile_props(creature.pos, creature.creature.size);
-        return [
+        return <>
           <image key="image" ref={el => { if (el !== null) { element = el; } }}
-            xlinkHref={creature.creature.icon_url} {...props} />,
+            xlinkHref={creature.creature.icon_url} {...props} />
           <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps}
             fillOpacity="0" />
-        ];
+        </>;
       } else {
         const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
         return <>
