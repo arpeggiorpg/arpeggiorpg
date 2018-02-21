@@ -537,10 +537,12 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
   (scene): SceneHotSpotDerivedProps => ({ scene })
 ))(
   function SceneHotSpot(props: SceneHotSpotProps & SceneHotSpotDerivedProps & M.DispatchProps) {
-    const { pos, scene } = props;
+    const { pos, scene, dispatch } = props;
     const tprops = tile_props("purple", pos);
+
+    const onClick = () => dispatch({ type: "FocusGrid", scene_id: scene.id });
     return <g>
-      <rect {...tprops} />
+      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} />
       {text_tile(scene.name, pos)}
     </g>;
   }

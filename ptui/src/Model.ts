@@ -19,6 +19,8 @@ export type Action =
   | { type: "FocusGrid"; scene_id: T.SceneID; layer?: SceneLayerType }
   | { type: "FocusSecondary"; focus: SecondaryFocus }
 
+  // Lots of grid-related actions!
+
   | { type: "SetTerrain"; terrain: T.Terrain }
   | { type: "SetHighlights"; highlights: T.Highlights }
   | { type: "SetAnnotations"; annotations: T.Annotations }
