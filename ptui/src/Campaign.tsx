@@ -72,8 +72,16 @@ export const MultiSceneSelector = M.connectRedux(class MultiSceneSelector
     const display = ([path, scene]: [T.FolderPath, T.Scene]) =>
       `${M.folderPathToString(path)}/${scene.name}`;
     return <div>
-      {ptui.getScenes(this.state.selections.toArray()).map(
-        scene => <Label key={scene.id}>{scene.name}</Label>)}
+      <Menu compact={true}>
+        <Menu.Item header={true}>Currently selected</Menu.Item>
+        {ptui.getScenes(this.state.selections.toArray()).map(
+          scene => <Menu.Item key={scene.id}>
+            {scene.name}
+            <Icon name="delete" style={{ cursor: 'pointer' }}
+              onClick={() => this.setState({ selections: this.state.selections.remove(scene.id) })}
+            />
+          </Menu.Item>)}
+      </Menu>
       <SearchSelect values={scenes}
         onSelect={([_, scene]: [T.FolderPath, T.Scene]) =>
           this.setState({ selections: this.state.selections.add(scene.id) })}

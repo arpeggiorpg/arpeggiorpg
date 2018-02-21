@@ -332,7 +332,7 @@ const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
           <List.Header>
             Related Scenes
             <CV.ModalMaker
-              button={open => <List.Icon name="add" style={{ cursor: 'pointer' }} onClick={open} />}
+              button={open => <List.Icon name="edit" style={{ cursor: 'pointer' }} onClick={open} />}
               header={<>Add a related scene</>}
               content={close => <GMAddRelatedScene scene={scene} onClose={close} />}
             />
