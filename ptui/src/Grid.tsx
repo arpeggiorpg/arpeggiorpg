@@ -45,6 +45,7 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
+import * as ReactRedux from 'react-redux';
 
 import {
   Button,
@@ -53,6 +54,7 @@ import {
 } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
+import * as Comp from "./Component";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
@@ -173,10 +175,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   getSceneHotspots() {
     return this.props.scene.scene_hotspots.entrySeq().toArray().map(
-      ([pos, scene_id]) => {
-        const props = tile_props("purple", pos);
-        return <rect key={`scene-hotspot-${scene_id}`} {...props}/>;
-      }
+      ([pos, scene_id]) =>
+        <SceneHotSpot key={`scene-hotspot-${scene_id}`} pos={pos} scene_id={scene_id} />
     );
   }
 
@@ -530,6 +530,30 @@ function svgVolume(
 }
 
 
+interface SceneHotSpotProps { scene_id: T.SceneID; pos: T.Point3; }
+interface SceneHotSpotDerivedProps { scene: T.Scene; }
+const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
+  [(ptui: M.PTUI, props: SceneHotSpotProps) => unwrap(ptui.getScene(props.scene_id))],
+  (scene): SceneHotSpotDerivedProps => ({ scene })
+))(
+  function SceneHotSpot(props: SceneHotSpotProps & SceneHotSpotDerivedProps & M.DispatchProps) {
+    const { pos, scene } = props;
+    const tprops = tile_props("purple", pos);
+    return <g>
+      <rect {...tprops} />
+      {text_tile(scene.name, pos)}
+    </g>;
+  }
+);
+
+function unwrap<T>(t: T | undefined): T {
+  if (t === undefined) {
+    throw new Error("Undefined value found while unwrapping");
+  }
+  return t;
+}
+
+
 interface RectPositionedProps {
   coords: [number, number];
   onClose: () => void;
@@ -697,12 +721,12 @@ const GridCreature = M.connectRedux(
         ];
       } else {
         const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-        return [
+        return <>
           <rect key="rect" ref={el => { if (el !== null) { element = el; } }} {...props}
             {...reflection_props}
-            {...highlightProps} />,
-          text_tile(creature.creature.name.slice(0, 4), creature.pos, "text")
-        ];
+            {...highlightProps} />
+          {text_tile(creature.creature.name.slice(0, 4), creature.pos, "text")}
+        </>;
       }
     }
   });
