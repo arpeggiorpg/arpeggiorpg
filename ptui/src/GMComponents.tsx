@@ -54,7 +54,7 @@ export const GMScene = M.connectRedux(
         undefined, scene.inventory.count().toString()),
       menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
         undefined, scene.attribute_checks.count().toString()),
-      menuItem('Linked Scenes', () => <GMSceneLinkedScenes scene={scene} />, undefined,
+      menuItem('Linked Scenes', () => <GMSceneLinkedScenes scene={scene} />, "LinkedScenes",
         linked_scenes_count.toString())
     ];
 

@@ -119,6 +119,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableAnnotations(layer.annotations)
       : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
 
+    const scene_hotspots = this.getSceneHotspots();
+
     const volumes = layer && layer.t === "Volumes"
       ? this.getEditableVolumes()
       : this.getVolumeConditions();
@@ -134,6 +136,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? disable_style
       : {};
     const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
+    const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
+
     return <div style={{ width: "100%", height: "100%" }}>
       <div style={{
         height: '45px', display: 'flex',
@@ -155,6 +159,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         {background_image}
         <g id="terrain">{terrain_els}</g>
         <g id="volume-conditions" style={volumes_style}>{volumes}</g>
+        <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
         <g id="creatures" style={disable_style}>{this.getCreatures()}</g>
         <g id="highlights" style={highlights_style}>{highlights}</g>
         <g id="annotations" style={annotations_style}>{annotations}</g>
@@ -164,6 +169,15 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         <g id="targeted-volume" style={disable_style}>{this.drawTargetedVolume()}</g>
       </SPZ.SVGPanZoom>
     </div>;
+  }
+
+  getSceneHotspots() {
+    return this.props.scene.scene_hotspots.entrySeq().toArray().map(
+      ([pos, scene_id]) => {
+        const props = tile_props("purple", pos);
+        return <rect key={`scene-hotspot-${scene_id}`} {...props}/>;
+      }
+    );
   }
 
   getMovementTargets() {

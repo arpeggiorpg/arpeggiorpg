@@ -211,12 +211,14 @@ export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
   | { t: "Objects"; highlights: T.Highlights; annotations: T.Annotations }
   | { t: "Volumes" }
+  | { t: "LinkedScenes" }
   ;
 
 export type SceneLayerType =
   | "Terrain"
   | "Objects"
   | "Volumes"
+  | "LinkedScenes"
   ;
 
 export interface GridFocus { scene_id: T.SceneID; layer?: SceneLayer; }
