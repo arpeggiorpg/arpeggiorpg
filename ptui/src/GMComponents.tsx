@@ -357,12 +357,7 @@ const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
 );
 
 interface GMAddRelatedSceneProps { scene: T.Scene; onClose: () => void; }
-const GMAddRelatedScene = ReactRedux.connect(
-  // Comp.createDeepEqualSelector(
-  //   [],
-
-  // )
-)(
+const GMAddRelatedScene = ReactRedux.connect()(
   function GMAddRelatedScene(props: GMAddRelatedSceneProps & M.DispatchProps) {
     const { scene, onClose, dispatch } = props;
     return <Campaign.MultiSceneSelector already_selected={scene.related_scenes} on_cancel={onClose}
