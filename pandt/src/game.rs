@@ -294,6 +294,8 @@ impl Game {
       }
       EditSceneAnnotations { scene_id, ref annotations } => self
         .change_with(GameLog::EditSceneAnnotations { scene_id, annotations: annotations.clone() }),
+      EditSceneRelatedScenes { scene_id, ref related_scenes } => self
+        .change_with(GameLog::EditSceneRelatedScenes { scene_id, related_scenes: related_scenes.clone() }),
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -857,6 +859,12 @@ impl Game {
         self
           .scenes
           .mutate(&scene_id, move |s| s.annotations = annotations.clone())
+          .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
+      }
+      EditSceneRelatedScenes { scene_id, ref related_scenes } => {
+        self
+          .scenes
+          .mutate(&scene_id, move |s| s.related_scenes = related_scenes.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
       CreateCreature(ref path, ref rc) => {
