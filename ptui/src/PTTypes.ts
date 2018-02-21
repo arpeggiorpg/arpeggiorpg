@@ -157,6 +157,7 @@ export type GameCommand =
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
+  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -243,6 +244,7 @@ export type GameLog =
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
+  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
@@ -891,6 +893,11 @@ export const decodeGameLog: Decoder<GameLog> =
       ["scene_id", JD.string()],
       ["annotations", decodeAnnotations],
       (scene_id, annotations): GameLog => ({ t: "EditSceneAnnotations", scene_id, annotations })),
+    EditSceneRelatedScenes: JD.object(
+      ["scene_id", JD.string()],
+      ["related_scenes", decodeSet(JD.string())],
+      (scene_id, related_scenes): GameLog =>
+        ({ t: "EditSceneRelatedScenes", scene_id, related_scenes })),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
@@ -1171,6 +1178,13 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
             ([point, [annotation, vis]]) =>
               [encodePoint3(point), [annotation, encodeVisibility(vis)]]
           ).toJS(),
+        },
+      };
+    case "EditSceneRelatedScenes":
+      return {
+        EditSceneRelatedScenes: {
+          scene_id: cmd.scene_id,
+          related_scenes: cmd.related_scenes.toArray(),
         },
       };
 

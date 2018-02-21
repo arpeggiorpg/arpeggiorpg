@@ -110,6 +110,8 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
       return <div>Edited a scene's highlights</div>;
     case "EditSceneAnnotations":
       return <div>Edited a scene's annotations</div>;
+    case "EditSceneRelatedScenes":
+      return <div>Edited a scene's related scenes</div>;
     case "SetCreaturePos":
       return <div>Set a creature position to {log.pos.toString()}</div>;
     case "PathCreature":
