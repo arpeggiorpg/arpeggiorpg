@@ -220,22 +220,22 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
   const object_panels = [
     {
       key: "Highlight" as M.ObjectTool, title: "Highlights",
-      content: <div>
+      content: <Accordion.Content key="Highlight">
         {vis_checkbox}
         <TwitterPicker
           triangle="hide"
           color={ptui.state.grid.highlight_color}
-          onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })}
-        /></div>,
+          onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })} />
+      </Accordion.Content>,
     },
     {
       key: "Annotation" as M.ObjectTool, title: "Annotations",
-      content: <div>
+      content: <Accordion.Content key="Annotation">
         {vis_checkbox}
         <Input label="Annotation" onChange={LD.debounce(
           (_: any, d: any) => dispatch({ type: "SetAnnotation", text: d.value } as M.Action),
           300)} />
-      </div>,
+      </Accordion.Content>,
     }];
   const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
 
@@ -248,9 +248,10 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
 
-  function changeObjectTool(_: any, index: number | Array<number>) {
-    if (typeof index !== "number") { return; }
-    const selected = object_panels[index];
+  function changeObjectTool(_: any, data: any) {
+    // SEMANTIC-UI BUG: https://github.com/Semantic-Org/Semantic-UI-React/issues/2557
+    if (typeof data.index !== "number") { return; }
+    const selected = object_panels[data.index];
     dispatch({ type: "SetObjectTool", tool: selected.key });
   }
   function saveObjects() {
