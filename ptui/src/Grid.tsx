@@ -414,12 +414,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
                 dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
                 close();
               };
-              return <>
+              return <React.Fragment key="Scene-Hotspot">
                 <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
                 <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
                   {linked_scene.name}
                 </Menu.Item>
-              </>;
+              </React.Fragment>;
             case "Creature":
               const creature = M.get(creatures, obj.id);
               if (creature) {
@@ -545,16 +545,19 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
 ))(
   function SceneHotSpot(props: SceneHotSpotProps & SceneHotSpotDerivedProps & M.DispatchProps) {
     const { pos, scene, dispatch } = props;
-    const tprops = tile_props("purple", pos);
+    const tprops = bare_tile_props(pos);
     let element: SVGRectElement;
 
     const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element, dispatch);
     const reflection_props = { 'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene.id };
     return <g>
-      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }}
+      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
         ref={el => { if (el !== null) { element = el; } }}
         {...reflection_props} />
-      {text_tile(scene.name, pos)}
+      <text
+        style={{ pointerEvents: "none" }}
+        x={pos.x + 15} y={pos.y + 15}
+        fontSize="50px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
     </g>;
   }
 );
