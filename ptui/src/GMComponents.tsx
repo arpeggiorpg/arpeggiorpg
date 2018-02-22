@@ -1,4 +1,4 @@
-/// A grab-bag of GM-only components
+/// GM-only components
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
@@ -319,8 +319,7 @@ const LinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
   }],
   (p): LinkedScenesDerivedProps => p
 ))(
-  function LinkedScenes(
-    props: LinkedScenesProps & LinkedScenesDerivedProps & M.DispatchProps) {
+  function LinkedScenes(props: LinkedScenesProps & LinkedScenesDerivedProps & M.DispatchProps) {
     const { scene, hotspot_scenes, related_scenes, dispatch } = props;
     const focus_scene = (scene: T.Scene) =>
       () => dispatch({ type: "FocusGrid", scene_id: scene.id });
@@ -331,8 +330,16 @@ const LinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
             Related Scenes
             <CV.ModalMaker
               button={open => <List.Icon name="edit" style={{ cursor: 'pointer' }} onClick={open} />}
-              header={<>Add a related scene</>}
-              content={close => <GMAddRelatedScene scene={scene} onClose={close} />}
+              header={<>Add or Remove related scenes</>}
+              content={close =>
+                <Campaign.MultiSceneSelector already_selected={scene.related_scenes}
+                  on_cancel={close}
+                  on_selected={related_scenes => {
+                    dispatch(M.sendCommand(
+                      { t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes }));
+                    close();
+                  }}
+                />}
             />
           </List.Header>
         </List.Item>
@@ -351,19 +358,6 @@ const LinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
         </List.Item>)}
       </List>
     </>;
-  }
-);
-
-interface GMAddRelatedSceneProps { scene: T.Scene; onClose: () => void; }
-const GMAddRelatedScene = ReactRedux.connect()(
-  function GMAddRelatedScene(props: GMAddRelatedSceneProps & M.DispatchProps) {
-    const { scene, onClose, dispatch } = props;
-    return <Campaign.MultiSceneSelector already_selected={scene.related_scenes} on_cancel={onClose}
-      on_selected={related_scenes => {
-        dispatch(M.sendCommand({ t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes }));
-        onClose();
-      }}
-    />;
   }
 );
 
