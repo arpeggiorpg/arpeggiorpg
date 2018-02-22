@@ -54,7 +54,7 @@ export const GMScene = M.connectRedux(
         undefined, scene.inventory.count().toString()),
       menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
         undefined, scene.attribute_checks.count().toString()),
-      menuItem('Linked Scenes', () => <GMSceneLinkedScenes scene={scene} />, "LinkedScenes",
+      menuItem('Linked Scenes', () => <LinkedScenes scene={scene} />, "LinkedScenes",
         linked_scenes_count.toString())
     ];
 
@@ -295,21 +295,18 @@ export const GMScenePlayers = M.connectRedux(
 
 export const GMSceneVolumes = M.connectRedux(
   function GMSceneVolumes(_: { scene: T.Scene } & M.ReduxProps): JSX.Element {
-    // const { scene } = props;
+    // TODO: add volumes manually
     return <div>Interact with volumes on the grid.</div>;
-    // return <div>{scene.volume_conditions.valueSeq().map((_: any) =>
-    //   <div>Interact with volumes on the grid.</div>
-    // ).toArray()}</div>;
   });
 
 
-interface GMSceneLinkedScenesProps { scene: T.Scene; }
-interface GMSceneLinkedScenesDerivedProps {
+interface LinkedScenesProps { scene: T.Scene; }
+interface LinkedScenesDerivedProps {
   related_scenes: Array<T.Scene>;
   hotspot_scenes: Array<[T.Scene, T.Point3]>;
 }
-const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
-  [(ptui: M.PTUI, props: GMSceneLinkedScenesProps) => {
+const LinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
+  [(ptui: M.PTUI, props: LinkedScenesProps) => {
     const related_scenes = ptui.getScenes(props.scene.related_scenes.toArray());
     const hotspot_scenes = LD.sortBy(
       M.filterMap(props.scene.scene_hotspots.entrySeq().toArray(),
@@ -320,10 +317,10 @@ const GMSceneLinkedScenes = ReactRedux.connect(Comp.createDeepEqualSelector(
       ([s, _]) => s.name);
     return { related_scenes, hotspot_scenes };
   }],
-  (p): GMSceneLinkedScenesDerivedProps => p
+  (p): LinkedScenesDerivedProps => p
 ))(
-  function GMSceneLinkedScenes(
-    props: GMSceneLinkedScenesProps & GMSceneLinkedScenesDerivedProps & M.DispatchProps) {
+  function LinkedScenes(
+    props: LinkedScenesProps & LinkedScenesDerivedProps & M.DispatchProps) {
     const { scene, hotspot_scenes, related_scenes, dispatch } = props;
     const focus_scene = (scene: T.Scene) =>
       () => dispatch({ type: "FocusGrid", scene_id: scene.id });
