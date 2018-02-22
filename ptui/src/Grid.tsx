@@ -109,7 +109,22 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           backgroundImage: static_background,
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
-        }}>
+        }}
+        onClick={ev => {
+          const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
+          const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
+          const pt = svg.createSVGPoint();
+          pt.x = ev.clientX;
+          pt.y = ev.clientY;
+
+          // The cursor point, translated into svg coordinates
+          const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
+          const factor = Math.pow(10, -2);
+          const x = Math.round(cursorpt.x * factor) / factor;
+          const y = Math.round(cursorpt.y * factor) / factor;
+          console.log("[click-coordinates]", x, y);
+        }}
+      >
         {background_image}
         <g id="terrain">{terrain_els}</g>
         <g id="volume-conditions" style={volumes_style}>{volumes}</g>
@@ -187,7 +202,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       const clicker = onClick !== undefined ? () => onClick(pt) : undefined;
       return <g key={pointKey("highlight", pt)} style={style} onClick={clicker}>
         <rect {...tprops} />
-        {gmonly ? <text x={pt.x + 65} y={pt.y + 35} fontSize="25px">👁️</text> : null}
+        {gmonly
+          ? eyeball(pt)
+          : null}
       </g>;
     });
   }
@@ -303,8 +320,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
-            return <line x1={caster_pos.x + 50} y1={caster_pos.y}
-              x2={target.x + 50} y2={target.y}
+            return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
+              x2={target.x + 50} y2={target.y + 50}
               style={{ pointerEvents: "none" }}
               strokeWidth="3" stroke="black" />;
         }
@@ -483,13 +500,17 @@ function svgVolume(
 ): JSX.Element {
   switch (volume.t) {
     case "Sphere":
-      return <circle key={key} cx={pt.x + 50} cy={pt.y} r={volume.radius}
+      return <circle key={key} cx={pt.x + 50} cy={pt.y + 50} r={volume.radius}
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
     default:
       console.log("unimplemented! svgvolume for", volume);
       return <g key={key} />;
   }
+}
+
+function eyeball(pt: T.Point3): JSX.Element {
+  return <text x={pt.x} y={pt.y} dominant-baseline="hanging" fontSize="25px">👁️</text>;
 }
 
 
@@ -512,8 +533,10 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
         {...reflection_props} />
       <text
         style={{ pointerEvents: "none" }}
-        x={pos.x + 15} y={pos.y + 15}
-        fontSize="50px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
+        x={pos.x + 50} y={pos.y}
+        dominantBaseline="hanging"
+        textAnchor="middle"
+        fontSize="65px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
     </g>;
   }
 );
@@ -593,14 +616,17 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
 
   const reflection_props = { 'data-pt-type': "annotation", 'data-pt-pos': T.encodePoint3(pt) };
   return <g>
-    <rect width="100" height="100" x={pt.x} y={pt.y - 50} fillOpacity="0"
+    <rect width="100" height="100" x={pt.x} y={pt.y} fillOpacity="0"
       ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
       {...reflection_props}
     />
     <text
       style={{ pointerEvents: "none" }}
-      x={pt.x + 25} y={pt.y + 50}
+      dominantBaseline="hanging"
+      textAnchor="middle"
+      x={pt.x + 50} y={pt.y}
       fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
+    {vis.t === "GMOnly" ? eyeball(pt) : null}
   </g>;
 }
 
@@ -674,7 +700,6 @@ function activateGridObjects(
 const GridCreature = M.connectRedux(
   function GridCreature({ ptui, dispatch, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
-    let timer: number;
     let element: SVGRectElement | SVGImageElement;
     const onClick = (event: React.MouseEvent<any>) => activateGridObjects(event, element, dispatch);
 
@@ -699,11 +724,7 @@ const GridCreature = M.connectRedux(
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
     const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
 
-    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
-      onMouseUp={() => clearTimeout(timer)}
-      onMouseDown={() => {
-        timer = window.setTimeout(() => console.log("LONG PRESS!", creature.creature.name), 500);
-      }}>
+    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}>
       {contents()}
     </g>;
 
@@ -720,22 +741,19 @@ const GridCreature = M.connectRedux(
       } else {
         const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
         return <>
-          <rect key="rect" ref={el => { if (el !== null) { element = el; } }} {...props}
+          <rect ref={el => { if (el !== null) { element = el; } }} {...props}
             {...reflection_props}
             {...highlightProps} />
-          {text_tile(creature.creature.name.slice(0, 4), creature.pos, "text")}
+          <text style={{ pointerEvents: "none" }} fontSize="50"
+            x={creature.pos.x + 50} y={creature.pos.y}
+            dominantBaseline="hanging"
+            textAnchor="middle">
+            {creature.creature.name.slice(0, 4)}
+          </text>
         </>;
       }
     }
   });
-
-
-function text_tile(text: string, pos: T.Point3, key?: string): JSX.Element {
-  return <text key={key} style={{ pointerEvents: "none" }} fontSize="50"
-    x={pos.x} y={pos.y}>
-    {text}
-  </text>;
-}
 
 function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number; y: number })
   : JSX.Element {
@@ -747,7 +765,7 @@ function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SV
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
-    x: pt.x, y: pt.y - 50,
+    x: pt.x, y: pt.y,
   };
 }
 
