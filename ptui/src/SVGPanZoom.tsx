@@ -17,13 +17,10 @@ interface SVGPanZoomState {
 export class SVGPanZoom
   extends React.Component<SVGPanZoomProps & React.SVGProps<SVGSVGElement>, SVGPanZoomState> {
 
-  panStart: "idle" | "allowed" | "waiting";
-  panStartTimer: number | undefined;
 
   constructor(props: SVGPanZoomProps & React.SVGProps<SVGSVGElement>) {
     super(props);
     this.state = { spz_element: undefined, isMouseDown: false };
-    this.panStart = "idle";
   }
 
   panzoomEvents() {
@@ -45,6 +42,7 @@ export class SVGPanZoom
         hammer.get('pinch').set({ enable: true });
         // Handle pan
         hammer.on('panstart panmove', ev => {
+          this.setState({ isMouseDown: true });
           // On pan start reset panned variables
           if (ev.type === 'panstart') {
             pannedX = 0;
@@ -54,6 +52,9 @@ export class SVGPanZoom
           options.instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY });
           pannedX = ev.deltaX;
           pannedY = ev.deltaY;
+        });
+        hammer.on('panend', () => {
+          this.setState({ isMouseDown: false });
         });
         // Handle pinch
         hammer.on('pinchstart pinchmove', ev => {
@@ -68,10 +69,10 @@ export class SVGPanZoom
         options.svgElement.addEventListener('touchmove', e => e.preventDefault());
 
         // See [Note: Panning/Clicking State Management]
-        options.svgElement.addEventListener('mousedown', () => {
-          this.panStart = "waiting";
-          this.panStartTimer = window.setTimeout(() => this.panStart = "allowed", 100);
-          this.setState({ isMouseDown: true });
+        options.svgElement.addEventListener('mousedown', event => {
+          if (event.button === 2 || event.ctrlKey) {
+            this.setState({ isMouseDown: true });
+          }
         });
 
         options.svgElement.addEventListener('mousemove', () => {
@@ -83,8 +84,6 @@ export class SVGPanZoom
           if (this.props.onPanZoom) { this.props.onPanZoom(false); }
         });
         options.svgElement.addEventListener('mouseup', () => {
-          this.panStart = "idle";
-          if (this.panStartTimer !== undefined) { clearTimeout(this.panStartTimer); }
           this.setState({ isMouseDown: false });
         }
         );
@@ -113,15 +112,7 @@ export class SVGPanZoom
   }
 
   beforePan(_oldPan: SvgPanZoom.Point, _newPan: SvgPanZoom.Point) {
-    switch (this.panStart) {
-      case "idle":
-        // must be an API call, allow it
-        return true;
-      case "allowed":
-        return true;
-      case "waiting":
-        return false;
-    }
+    return this.state.isMouseDown;
   }
 
   componentWillUnmount() {

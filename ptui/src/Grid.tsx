@@ -1,47 +1,3 @@
-/**
- * UI design notes.
- *
- * Things we need to do with Grids:
- * - Edit Maps (GM-only)
- *   - Toggle collision tiles
- *   - Toggle highlighted tiles
- *   - (eventually) Toggle vision-occluding tiles
- *   - Add/edit annotations on tiles
- * - View scenes
- *   - View background image for scene
- *   - View map
- *     - Collision tiles
- *     - Special tiles (w/ permission)
- *     - Annotations (w/ permission)
- *   - Objects in scene:
- *     - Creatures (w/ permission)
- *     - Other "objects" w/ tile graphics
- *     - Volume conditions
- * - Interact with scenes:
- *   - Creature actions (some GM-only, others player-only, assuming player control)
- *   - Volume Condition actions (remove)
- *   - Move creatures with long-press
- *   - Add creatures to them
- *
- * Objects we need to interact with:
- * - arbitrary open tiles (add creature here, add volume condition here)
- * - creatures
- * - volume conditions
- * - handle cases when these objects are stacked: volume condition covering area where there's a
- *   large creature and a small creature in that large creature's space
- *
- * Ways in which we want to interact with the Grid:
- * - click/touch: bring up menu for objects under point
- * - long-click / long-press: move object (and maybe enable deleting items a la iOS).
- *   - This can only affect one object, so it must be the topmost?
- *   - Maybe restricted to creatures as well.
- * - Pan (swipe), zoom (2-finger pinch)
- *
- * https://stackoverflow.com/a/38727977/4930992
- *
- */
-
-
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
@@ -505,7 +461,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
       </div>;
     }
-    return <div>Ready to serve.</div>;
+    return <div>Right-click-drag to pan, mousewheel to zoom, click objects for more options</div>;
   }
 
   clearTargets() {
