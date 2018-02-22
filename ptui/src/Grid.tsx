@@ -119,9 +119,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
           // The cursor point, translated into svg coordinates
           const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
-          const factor = Math.pow(10, -2);
-          const x = Math.round(cursorpt.x * factor) / factor;
-          const y = Math.round(cursorpt.y * factor) / factor;
+          const x = Math.floor(cursorpt.x / 100) * 100;
+          const y = Math.floor(cursorpt.y / 100) * 100;
           console.log("[click-coordinates]", x, y);
         }}
       >
