@@ -124,6 +124,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           console.log("[click-coordinates]", x, y);
         }}
         shouldPan={ev => {
+          if (layer && (layer.t === "Terrain" || layer.t === "Objects")) { return false; }
           const objects = findPTObjects(ev);
           return objects.length === 0;
         }}
