@@ -7,6 +7,7 @@ import * as svgPanZoom from 'svg-pan-zoom';
 
 interface SVGPanZoomProps {
   onPanZoom?: (x: boolean) => void;
+  shouldPan: (ev: React.MouseEvent<SVGSVGElement>) => boolean;
 }
 interface SVGPanZoomState {
   spz_element: SvgPanZoom.Instance | undefined;
@@ -68,9 +69,12 @@ export class SVGPanZoom
         // Prevent moving the page on some devices when panning over SVG
         options.svgElement.addEventListener('touchmove', e => e.preventDefault());
 
-        // See [Note: Panning/Clicking State Management]
         options.svgElement.addEventListener('mousedown', event => {
-          if (event.button === 2 || event.ctrlKey) {
+          if (event.pageX === undefined || event.pageY === undefined) {
+            console.log("[SVGPanZoom.mousedown] DEBUG: Got non-mouse mousedown event?");
+            return;
+          }
+          if (this.props.shouldPan(event as any as React.MouseEvent<any>)) {
             this.setState({ isMouseDown: true });
           }
         });
@@ -139,7 +143,8 @@ export class SVGPanZoom
   }
 
   render(): JSX.Element {
-    const props = LD.omit(this.props, ['children', 'onPanZoom']);
+    const props = LD.omit(this.props, ['children', 'onPanZoom', 'shouldPan']);
+    (props as any).style = { cursor: this.state.isMouseDown ? 'grabbing' : 'grab', ...props.style };
     return <svg {...props}>
       <g id="svg-pan-zoom-viewport">
         {/* this <g> needs to be here for svg-pan-zoom. Otherwise it will reparent all

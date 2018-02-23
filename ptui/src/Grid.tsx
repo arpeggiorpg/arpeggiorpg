@@ -123,6 +123,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           const y = Math.floor(cursorpt.y / 100) * 100;
           console.log("[click-coordinates]", x, y);
         }}
+        shouldPan={ev => {
+          const objects = findPTObjects(ev);
+          return objects.length === 0;
+        }}
       >
         {background_image}
         <g id="terrain">{terrain_els}</g>
@@ -477,7 +481,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
       </div>;
     }
-    return <div>Right-click-drag to pan, mousewheel to zoom, click objects for more options</div>;
+    return <div>Drag to pan, mousewheel to zoom, click objects for more options,
+      right-click to add things.</div>;
   }
 
   clearTargets() {
@@ -662,10 +667,8 @@ function findElementsAtPoint<R>(
 }
 
 
-function activateGridObjects(
-  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
-  dispatch: M.Dispatch) {
-  const objects = findElementsAtPoint(
+function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
+  return findElementsAtPoint(
     event.pageX, event.pageY,
     (el): M.GridObject | undefined => {
       const type = el.getAttribute('data-pt-type');
@@ -687,6 +690,12 @@ function activateGridObjects(
       }
     },
     'svg');
+}
+
+function activateGridObjects(
+  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
+  dispatch: M.Dispatch) {
+  const objects = findPTObjects(event);
   const rect = screenCoordsForRect(element);
   const act: M.Action = {
     type: "ActivateGridObjects",
@@ -723,7 +732,8 @@ const GridCreature = M.connectRedux(
     const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
     const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
 
-    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}>
+    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
+      style={{ cursor: 'pointer' }}>
       {contents()}
     </g>;
 
