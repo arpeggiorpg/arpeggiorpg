@@ -370,24 +370,21 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const { objects, coords } = arg;
     const { scene, creatures, dispatch } = this.props;
     const close = () => dispatch({ type: 'ClearActiveGridObjects' });
-    return <RectPositioned coords={coords}
-      onClose={close}>
-      <Menu vertical={true}>
-        {objects.map(obj => {
-          switch (obj.t) {
-            case "Annotation": return this.annotationMenu(scene, obj.pt);
-            case "SceneHotSpot":
-              return this.sceneHotspotMenu(close, dispatch, scene, obj.scene_id, obj.pt);
-            case "Creature": return this.creatureMenu(close, creatures, obj.id);
-            case "VolumeCondition": return this.volumeConditionMenu(close, dispatch, scene, obj.id);
-          }
+    return <PopupMenu coords={coords} onClose={close}>
+      {objects.map(obj => {
+        switch (obj.t) {
+          case "Annotation": return this.annotationMenu(scene, obj.pt);
+          case "SceneHotSpot":
+            return this.sceneHotspotMenu(close, dispatch, scene, obj.scene_id, obj.pt);
+          case "Creature": return this.creatureMenu(close, creatures, obj.id);
+          case "VolumeCondition": return this.volumeConditionMenu(close, dispatch, scene, obj.id);
         }
-        )}
-      </Menu>
-    </RectPositioned>;
+      }
+      )}
+    </PopupMenu>;
   }
 
-  annotationMenu(scene: T.Scene, pt: T.Point3) {
+  annotationMenu(scene: T.Scene, pt: T.Point3): JSX.Element | undefined {
     const ann = scene.annotations.get(pt);
     if (ann) {
       return <Menu.Item key="ANN">
@@ -582,17 +579,19 @@ function unwrap<T>(t: T | undefined): T {
 }
 
 
-interface RectPositionedProps {
+interface PopupMenuProps {
   coords: [number, number];
   onClose: () => void;
-  children: React.ReactChild;
+  children: React.ReactNode;
 }
-function RectPositioned(props: RectPositionedProps): JSX.Element {
+function PopupMenu(props: PopupMenuProps): JSX.Element {
   const { coords, onClose, children } = props;
   return <CV.ClickAway onClick={onClose}>
     <div
       style={{ position: "fixed", left: coords[0], top: coords[1] }}>
-      {children}
+      <Menu vertical={true}>
+        {children}
+      </Menu>
     </div>
   </CV.ClickAway>;
 }
