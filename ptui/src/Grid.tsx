@@ -40,7 +40,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const menu = grid.active_objects.objects.length !== 0
       ? this.renderGridObjectMenu(grid.active_objects)
-      : grid.context_menu ? this.contextMenu()
+      : grid.context_menu ? this.contextMenu(grid.context_menu.pt, grid.context_menu.coords)
         : null;
 
     const target_els = ptui.state.grid.target_options
@@ -124,7 +124,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
           const x = Math.floor(cursorpt.x / 100) * 100;
           const y = Math.floor(cursorpt.y / 100) * 100;
-          dispatch({ type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0) });
+          dispatch({
+            type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0),
+            coords: [ev.clientX, ev.clientY],
+          });
         }}
         shouldPan={ev => {
           if (layer && (layer.t === "Terrain" || layer.t === "Objects")) { return false; }
@@ -369,8 +372,21 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
-  contextMenu() {
-    return;
+  contextMenu(pt: T.Point3, coords: [number, number]) {
+    const close = () => this.props.dispatch({ type: 'ClearGridMenu' });
+    const closeAnd = (open: () => void) => () => { close(); open(); };
+    return <PopupMenu coords={coords} onClose={close}>
+      <Menu.Item><Menu.Header>{T.encodePoint3(pt)}</Menu.Header></Menu.Item>
+      <Menu.Item>Add Creature to Scene</Menu.Item>
+      <CV.ModalMaker
+        button={open =>
+          <Menu.Item style={{ cursor: 'pointer' }} onClick={open}>
+          Add Scene Hotspot</Menu.Item>}
+        header={<>Add a Scene Hotspot</>}
+        content={close => <div>Hi</div>}
+      />
+      <Menu.Item>Add Annotation</Menu.Item>
+    </PopupMenu>;
   }
 
   renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
@@ -382,9 +398,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         switch (obj.t) {
           case "Annotation": return this.annotationMenu(scene, obj.pt);
           case "SceneHotSpot":
-            return this.sceneHotspotMenu(close, dispatch, scene, obj.scene_id, obj.pt);
+            return this.sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
           case "Creature": return this.creatureMenu(close, creatures, obj.id);
-          case "VolumeCondition": return this.volumeConditionMenu(close, dispatch, scene, obj.id);
+          case "VolumeCondition": return this.volumeConditionMenu(close, scene, obj.id);
         }
       }
       )}
@@ -403,17 +419,16 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   sceneHotspotMenu(
-    closeMenu: () => void,
-    dispatch: M.Dispatch, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3) {
+    closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3) {
     const linked_scene = this.props.ptui.getScene(target_scene_id);
     if (!linked_scene) { return; }
     const jumpScene = () => {
-      dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
+      this.props.dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
       closeMenu();
     };
     const deleteHotspot = () => {
       const scene_hotspots = scene.scene_hotspots.remove(pt);
-      dispatch(M.sendCommand(
+      this.props.dispatch(M.sendCommand(
         { t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
       closeMenu();
     };
@@ -448,9 +463,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 
   volumeConditionMenu(
-    closeMenu: () => void, dispatch: M.Dispatch, scene: T.Scene, condition_id: T.ConditionID) {
+    closeMenu: () => void, scene: T.Scene, condition_id: T.ConditionID) {
     const onClick = () => {
-      dispatch(M.sendCommand(
+      this.props.dispatch(M.sendCommand(
         { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id }));
       closeMenu();
     };

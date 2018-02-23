@@ -32,7 +32,7 @@ export type Action =
 
   | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
   | { type: "ClearGridMenu" }
-  | { type: "ActivateGridContextMenu"; pt: T.Point3 }
+  | { type: "ActivateGridContextMenu"; pt: T.Point3; coords: [number, number] }
 
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
@@ -56,12 +56,11 @@ export function update(ptui: PTUI, action: Action): PTUI {
     case "RefreshGame":
       return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
     case "ActivateGridObjects":
-      return ptui.updateGridState(grid => ({
-        ...grid,
-        active_objects: { objects: action.objects, coords: action.coords },
-      }));
+      return ptui.updateGridState(grid =>
+        ({ ...grid, active_objects: { objects: action.objects, coords: action.coords } }));
     case "ActivateGridContextMenu":
-      return ptui.updateGridState(grid => ({ ...grid, context_menu: action.pt }));
+      return ptui.updateGridState(grid =>
+        ({ ...grid, context_menu: { pt: action.pt, coords: action.coords } }));
     case "ClearGridMenu":
       return ptui.updateGridState(
         grid => ({
@@ -176,7 +175,7 @@ export interface GridModel {
     objects: Array<GridObject>;
     coords: [number, number];
   };
-  context_menu?: T.Point3;
+  context_menu?: { pt: T.Point3; coords: [number, number] };
   movement_options?: {
     cid?: T.CreatureID; // undefined when we're moving in combat
     options: Array<T.Point3>;
