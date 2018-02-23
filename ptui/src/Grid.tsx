@@ -395,7 +395,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
             case "Creature":
               const creature = M.get(creatures, obj.id);
               if (creature) {
-                return <>
+                return <React.Fragment key="CREATURE">
                   <Menu.Item key={creature.creature.id} header={true}>
                     <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
                   </Menu.Item>
@@ -406,7 +406,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
                         {actionName}
                       </Menu.Item>;
                     })}
-                </>;
+                </React.Fragment>;
               }
               return;
             case "VolumeCondition":
