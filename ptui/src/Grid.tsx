@@ -21,7 +21,7 @@ interface SceneGridProps {
   creatures: Obj<MapCreature>;
 }
 interface SceneGridState {
-  targeting_point?: { point: T.Point3; rect: M.Rect };
+  targeting_point?: T.Point3;
   affected_points?: Array<T.Point3>;
   affected_creatures?: Array<T.CreatureID>;
 }
@@ -38,12 +38,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
     const grid = ptui.state.grid;
 
-    const creature_menu = grid.active_objects.objects.length !== 0
-      ? this.renderMenu(grid.active_objects) : null;
+    const menu = grid.active_objects.objects.length !== 0
+      ? this.renderGridObjectMenu(grid.active_objects)
+      : grid.context_menu ? this.contextMenu()
+        : null;
 
     const target_els = ptui.state.grid.target_options
       ? this.getTargetTiles(ptui.state.grid.target_options.options,
-        (point, rect) => this.targetClicked(point, rect))
+        point => this.targetClicked(point))
       : [];
 
     const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
@@ -99,7 +101,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       }}>
         {this.topBar()}
       </div>
-      {creature_menu}
+      {menu}
       <SPZ.SVGPanZoom
         id="pt-grid"
         preserveAspectRatio="xMinYMid slice"
@@ -109,7 +111,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
         }}
-        onClick={ev => {
+        onContextMenu={ev => {
+          ev.preventDefault();
+          // if (ev.button !== 2 || !ev.altKey) { return; }
           const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
           const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
           const pt = svg.createSVGPoint();
@@ -120,7 +124,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
           const x = Math.floor(cursorpt.x / 100) * 100;
           const y = Math.floor(cursorpt.y / 100) * 100;
-          console.log("[click-coordinates]", x, y);
+          dispatch({ type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0) });
         }}
         shouldPan={ev => {
           if (layer && (layer.t === "Terrain" || layer.t === "Objects")) { return false; }
@@ -309,7 +313,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const options = ptui.state.grid.target_options;
     if (!options) { return; }
     if (!this.state.targeting_point) { return; }
-    const target = this.state.targeting_point.point;
+    const target = this.state.targeting_point;
     const ability_id = options.ability_id;
     const ability = ptui.getAbility(ability_id);
     if (!ability) { return; }
@@ -337,7 +341,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     }
   }
 
-  targetClicked(point: T.Point3, rect: M.Rect) {
+  targetClicked(point: T.Point3) {
     const { ptui, dispatch } = this.props;
     const options = ptui.state.grid.target_options!;
     const ability = ptui.getAbility(options.ability_id);
@@ -358,17 +362,21 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           default: return;
         }
     }
-    this.setState({ targeting_point: { point, rect } });
+    this.setState({ targeting_point: point });
     M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
       options.ability_id, point).then(
         ({ points, creatures }) =>
           this.setState({ affected_points: points, affected_creatures: creatures }));
   }
 
-  renderMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }): JSX.Element | null {
+  contextMenu() {
+    return;
+  }
+
+  renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
     const { objects, coords } = arg;
     const { scene, creatures, dispatch } = this.props;
-    const close = () => dispatch({ type: 'ClearActiveGridObjects' });
+    const close = () => dispatch({ type: 'ClearGridMenu' });
     return <PopupMenu coords={coords} onClose={close}>
       {objects.map(obj => {
         switch (obj.t) {
@@ -383,7 +391,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </PopupMenu>;
   }
 
-  annotationMenu(scene: T.Scene, pt: T.Point3): JSX.Element | undefined {
+  annotationMenu(scene: T.Scene, pt: T.Point3) {
     const ann = scene.annotations.get(pt);
     if (ann) {
       return <Menu.Item key="ANN">
@@ -455,19 +463,16 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   getTargetTiles(
     options: T.PotentialTargets,
-    onClick: (pt: T.Point3, rect: M.Rect) => void): JSX.Element[] | undefined {
+    onClick: (pt: T.Point3) => void): JSX.Element[] | undefined {
     switch (options.t) {
       case "CreatureIDs": return undefined;
       case "Points":
         return options.points.map(pt => {
-          let element: SVGRectElement;
           const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
           function clickTile() {
-            onClick(pt, screenCoordsForRect(element));
+            onClick(pt);
           }
-          return <rect key={pointKey("target", pt)}
-            ref={el => { if (el !== null) { element = el; } }}
-            {...rprops} onClick={clickTile} />;
+          return <rect key={pointKey("target", pt)} {...rprops} onClick={clickTile} />;
         });
     }
   }
@@ -516,7 +521,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   executePointTargetedAbility() {
     if (!this.state.targeting_point) { return; }
     this.props.ptui.executeCombatPointTargetedAbility(
-      this.props.dispatch, this.state.targeting_point.point);
+      this.props.dispatch, this.state.targeting_point);
     this.clearTargets();
   }
 });
@@ -716,11 +721,11 @@ function activateGridObjects(
   event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
   dispatch: M.Dispatch) {
   const objects = findPTObjects(event);
-  const rect = screenCoordsForRect(element);
+  const coords = screenCoordsForRect(element);
   const act: M.Action = {
     type: "ActivateGridObjects",
     objects,
-    coords: [rect.sw.x, rect.sw.y],
+    coords,
   };
   dispatch(act);
 }
@@ -806,20 +811,15 @@ function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity:
   };
 }
 
-function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): M.Rect {
+function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): [number, number] {
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
   const matrix = rect.getScreenCTM();
   const pt = svg.createSVGPoint();
   pt.x = rect.x.animVal.value;
   pt.y = rect.y.animVal.value;
-  const nw = pt.matrixTransform(matrix);
-  pt.x += rect.width.animVal.value;
-  const ne = pt.matrixTransform(matrix);
   pt.y += rect.height.animVal.value;
-  const se = pt.matrixTransform(matrix);
-  pt.x -= rect.width.animVal.value;
   const sw = pt.matrixTransform(matrix);
-  return { nw, ne, se, sw };
+  return [sw.x, sw.y];
 }
 
 /**

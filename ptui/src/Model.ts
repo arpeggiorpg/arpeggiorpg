@@ -31,7 +31,9 @@ export type Action =
   | { type: "SetObjectVisibility"; visibility: T.Visibility }
 
   | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
-  | { type: "ClearActiveGridObjects" }
+  | { type: "ClearGridMenu" }
+  | { type: "ActivateGridContextMenu"; pt: T.Point3 }
+
   | {
     type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
     teleport?: boolean;
@@ -58,9 +60,13 @@ export function update(ptui: PTUI, action: Action): PTUI {
         ...grid,
         active_objects: { objects: action.objects, coords: action.coords },
       }));
-    case "ClearActiveGridObjects":
+    case "ActivateGridContextMenu":
+      return ptui.updateGridState(grid => ({ ...grid, context_menu: action.pt }));
+    case "ClearGridMenu":
       return ptui.updateGridState(
-        grid => ({ ...grid, active_objects: { ...grid.active_objects, objects: [] } }));
+        grid => ({
+          ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] },
+        }));
     case "SetPlayerID":
       return ptui.updateState(state => ({ ...state, player_id: action.pid }));
 
@@ -165,13 +171,12 @@ export function update(ptui: PTUI, action: Action): PTUI {
   }
 }
 
-export interface Rect { nw: SVGPoint; ne: SVGPoint; se: SVGPoint; sw: SVGPoint; }
-
 export interface GridModel {
   active_objects: {
     objects: Array<GridObject>;
     coords: [number, number];
   };
+  context_menu?: T.Point3;
   movement_options?: {
     cid?: T.CreatureID; // undefined when we're moving in combat
     options: Array<T.Point3>;

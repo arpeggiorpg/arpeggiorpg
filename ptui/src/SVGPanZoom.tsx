@@ -70,6 +70,7 @@ export class SVGPanZoom
         options.svgElement.addEventListener('touchmove', e => e.preventDefault());
 
         options.svgElement.addEventListener('mousedown', event => {
+          if (event.button !== 0) { return; }
           if (event.pageX === undefined || event.pageY === undefined) {
             console.log("[SVGPanZoom.mousedown] DEBUG: Got non-mouse mousedown event?");
             return;
@@ -94,9 +95,6 @@ export class SVGPanZoom
         options.svgElement.addEventListener('click', () => {
           if (this.props.onPanZoom) { this.props.onPanZoom(false); }
           this.setState({ isMouseDown: false });
-        });
-        options.svgElement.addEventListener('contextmenu', e => {
-          e.preventDefault();
         });
       },
       destroy: () => { if (this.state.hammer) { this.state.hammer.destroy(); } },
