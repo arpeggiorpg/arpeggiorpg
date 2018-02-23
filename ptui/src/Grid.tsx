@@ -10,7 +10,6 @@ import {
 } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
-import * as Comp from "./Component";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
@@ -542,19 +541,15 @@ function eyeball(pt: T.Point3): JSX.Element {
 
 
 interface SceneHotSpotProps { scene_id: T.SceneID; pos: T.Point3; }
-interface SceneHotSpotDerivedProps { scene: T.Scene; }
-const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
-  [(ptui: M.PTUI, props: SceneHotSpotProps) => unwrap(ptui.getScene(props.scene_id))],
-  (scene): SceneHotSpotDerivedProps => ({ scene })
-))(
-  function SceneHotSpot(props: SceneHotSpotProps & SceneHotSpotDerivedProps & M.DispatchProps) {
-    const { pos, scene, dispatch } = props;
+const SceneHotSpot = ReactRedux.connect()(
+  function SceneHotSpot(props: SceneHotSpotProps & M.DispatchProps) {
+    const { pos, scene_id, dispatch } = props;
     const tprops = bare_tile_props(pos);
     let element: SVGRectElement;
 
     const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element, dispatch);
     const reflection_props = {
-      'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene.id,
+      'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene_id,
       'data-pt-pos': T.encodePoint3(pos),
     };
     return <g>
@@ -570,14 +565,6 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
     </g>;
   }
 );
-
-function unwrap<T>(t: T | undefined): T {
-  if (t === undefined) {
-    throw new Error("Undefined value found while unwrapping");
-  }
-  return t;
-}
-
 
 interface PopupMenuProps {
   coords: [number, number];
