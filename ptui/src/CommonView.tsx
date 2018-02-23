@@ -830,7 +830,7 @@ export function ModalMaker({ button, header, content }: ModalMakerProps) {
     a={button}
     b={tf =>
       <>
-        button(tf),
+        {button(tf)}
         <Modal dimmer='inverted' open={true} onClose={tf}
           closeIcon='close' closeOnDimmerClick={false}>
           <Modal.Header>{header}</Modal.Header>
