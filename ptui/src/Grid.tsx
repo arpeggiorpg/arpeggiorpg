@@ -391,10 +391,19 @@ export const SceneGrid = M.connectRedux(class SceneGrid
                 dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
                 close();
               };
+              const deleteHotspot = () => {
+                const scene_hotspots = scene.scene_hotspots.remove(obj.pt);
+                dispatch(M.sendCommand(
+                  { t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
+                close();
+              };
               return <React.Fragment key="Scene-Hotspot">
                 <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
                 <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
                   {linked_scene.name}
+                </Menu.Item>
+                <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
+                  Delete Hotspot
                 </Menu.Item>
               </React.Fragment>;
             case "Creature":
@@ -531,7 +540,10 @@ const SceneHotSpot = ReactRedux.connect(Comp.createDeepEqualSelector(
     let element: SVGRectElement;
 
     const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element, dispatch);
-    const reflection_props = { 'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene.id };
+    const reflection_props = {
+      'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene.id,
+      'data-pt-pos': T.encodePoint3(pos),
+    };
     return <g>
       <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
         ref={el => { if (el !== null) { element = el; } }}
@@ -676,18 +688,22 @@ function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
       const type = el.getAttribute('data-pt-type');
       if (type) {
         switch (type) {
-          case "creature":
+          case "creature": {
             const id = el.getAttribute('data-pt-id');
             if (!id) { return; }
             return { t: "Creature", id };
-          case "annotation":
+          }
+          case "annotation": {
             const pt = el.getAttribute('data-pt-pos');
             if (!pt) { return; }
             return { t: "Annotation", pt: T.parsePoint3(pt) };
-          case "scene-hotspot":
+          }
+          case "scene-hotspot": {
             const scene_id = el.getAttribute('data-pt-scene-id');
-            if (!scene_id) { return; }
-            return { t: "SceneHotSpot", scene_id };
+            const pt = el.getAttribute('data-pt-pos');
+            if (!scene_id || !pt) { return; }
+            return { t: "SceneHotSpot", scene_id, pt: T.parsePoint3(pt) };
+          }
         }
       }
     },

@@ -158,6 +158,7 @@ export type GameCommand =
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
   | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
+  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: I.Map<Point3, SceneID> }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -245,6 +246,7 @@ export type GameLog =
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
   | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
+  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: I.Map<Point3, SceneID> }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
@@ -898,6 +900,11 @@ export const decodeGameLog: Decoder<GameLog> =
       ["related_scenes", decodeSet(JD.string())],
       (scene_id, related_scenes): GameLog =>
         ({ t: "EditSceneRelatedScenes", scene_id, related_scenes })),
+    EditSceneSceneHotspots: JD.object(
+      ["scene_id", JD.string()],
+      ["scene_hotspots", decodeIMap(decodePoint3, JD.string())],
+      (scene_id, scene_hotspots): GameLog =>
+        ({ t: "EditSceneSceneHotspots", scene_id, scene_hotspots })),
     SetCreaturePos: JD.map(
       ([scene_id, creature_id, pos]): GameLog =>
         ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
@@ -1187,7 +1194,12 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
           related_scenes: cmd.related_scenes.toArray(),
         },
       };
-
+    case "EditSceneSceneHotspots":
+      return {
+        EditSceneSceneHotspots: {
+          scene_id: cmd.scene_id, scene_hotspots: cmd.scene_hotspots.mapKeys(encodePoint3).toJS(),
+        },
+      };
     case "RemoveCreatureFromCombat":
       return { RemoveCreatureFromCombat: cmd.creature_id };
     case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
