@@ -375,70 +375,86 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <Menu vertical={true}>
         {objects.map(obj => {
           switch (obj.t) {
-            case "Annotation":
-              const ann = scene.annotations.get(obj.pt);
-              if (ann) {
-                return <Menu.Item key="ANN">
-                  <Menu.Header>Annotation</Menu.Header>
-                  {ann[0]}
-                </Menu.Item>;
-              }
-              return;
+            case "Annotation": return this.annotationMenu(scene, obj.pt);
             case "SceneHotSpot":
-              const linked_scene = this.props.ptui.getScene(obj.scene_id);
-              if (!linked_scene) { return; }
-              const jumpScene = () => {
-                dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
-                close();
-              };
-              const deleteHotspot = () => {
-                const scene_hotspots = scene.scene_hotspots.remove(obj.pt);
-                dispatch(M.sendCommand(
-                  { t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
-                close();
-              };
-              return <React.Fragment key="Scene-Hotspot">
-                <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
-                <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
-                  {linked_scene.name}
-                </Menu.Item>
-                <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
-                  Delete Hotspot
-                </Menu.Item>
-              </React.Fragment>;
-            case "Creature":
-              const creature = M.get(creatures, obj.id);
-              if (creature) {
-                return <React.Fragment key="CREATURE">
-                  <Menu.Item key={creature.creature.id} header={true}>
-                    <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
-                  </Menu.Item>
-                  {creature.actions.entrySeq().toArray().map(
-                    ([actionName, action]) => {
-                      const onClick = () => { close(); action(obj.id); };
-                      return <Menu.Item key={actionName} onClick={() => onClick()}>
-                        {actionName}
-                      </Menu.Item>;
-                    })}
-                </React.Fragment>;
-              }
-              return;
-            case "VolumeCondition":
-              const onClick = () => {
-                dispatch(M.sendCommand(
-                  { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id: obj.id }));
-                close();
-              };
-              // unimplemented!: put a name here
-              return <>
-                <Menu.Item key="Header" header={true}>Condition</Menu.Item>
-                <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
-              </>;
+              return this.sceneHotspotMenu(close, dispatch, scene, obj.scene_id, obj.pt);
+            case "Creature": return this.creatureMenu(close, creatures, obj.id);
+            case "VolumeCondition": return this.volumeConditionMenu(close, dispatch, scene, obj.id);
           }
         }
         )}
       </Menu>
     </RectPositioned>;
+  }
+
+  annotationMenu(scene: T.Scene, pt: T.Point3) {
+    const ann = scene.annotations.get(pt);
+    if (ann) {
+      return <Menu.Item key="ANN">
+        <Menu.Header>Annotation</Menu.Header>
+        {ann[0]}
+      </Menu.Item>;
+    }
+    return;
+  }
+
+  sceneHotspotMenu(
+    closeMenu: () => void,
+    dispatch: M.Dispatch, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3) {
+    const linked_scene = this.props.ptui.getScene(target_scene_id);
+    if (!linked_scene) { return; }
+    const jumpScene = () => {
+      dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
+      closeMenu();
+    };
+    const deleteHotspot = () => {
+      const scene_hotspots = scene.scene_hotspots.remove(pt);
+      dispatch(M.sendCommand(
+        { t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
+      closeMenu();
+    };
+    return <React.Fragment key="Scene-Hotspot">
+      <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
+      <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
+        {linked_scene.name}
+      </Menu.Item>
+      <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
+        Delete Hotspot
+      </Menu.Item>
+    </React.Fragment>;
+  }
+
+  creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
+    const creature = M.get(creatures, creature_id);
+    if (creature) {
+      return <React.Fragment key="CREATURE">
+        <Menu.Item key={creature.creature.id} header={true}>
+          <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
+        </Menu.Item>
+        {creature.actions.entrySeq().toArray().map(
+          ([actionName, action]) => {
+            const onClick = () => { closeMenu(); action(creature_id); };
+            return <Menu.Item key={actionName} onClick={() => onClick()}>
+              {actionName}
+            </Menu.Item>;
+          })}
+      </React.Fragment>;
+    }
+    return;
+  }
+
+  volumeConditionMenu(
+    closeMenu: () => void, dispatch: M.Dispatch, scene: T.Scene, condition_id: T.ConditionID) {
+    const onClick = () => {
+      dispatch(M.sendCommand(
+        { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id }));
+      closeMenu();
+    };
+    // unimplemented!: put a name here
+    return <>
+      <Menu.Item key="Header" header={true}>Condition</Menu.Item>
+      <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
+    </>;
   }
 
   getTargetTiles(
