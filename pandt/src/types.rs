@@ -410,6 +410,10 @@ pub enum GameCommand {
     scene_id: SceneID,
     related_scenes: HashSet<SceneID>,
   },
+  EditSceneSceneHotspots {
+    scene_id: SceneID,
+    scene_hotspots: HashMap<Point3, SceneID>,
+  },
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
@@ -621,6 +625,10 @@ pub enum GameLog {
   EditSceneRelatedScenes {
     scene_id: SceneID,
     related_scenes: HashSet<SceneID>,
+  },
+  EditSceneSceneHotspots {
+    scene_id: SceneID,
+    scene_hotspots: HashMap<Point3, SceneID>,
   },
 
   CombatLog(CombatLog),

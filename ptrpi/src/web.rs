@@ -56,6 +56,7 @@ fn poll_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
 
 fn post_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
   let f = req.json().from_err().and_then(move |command: GameCommand| -> AsyncRPIResponse {
+    info!("[perform_command] {:?}", command);
     invoke_actor_string_result(&req.state().app_address, actor::PerformCommand(command))
   });
   Box::new(f)
