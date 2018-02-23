@@ -74,7 +74,8 @@ export class SVGPanZoom
             console.log("[SVGPanZoom.mousedown] DEBUG: Got non-mouse mousedown event?");
             return;
           }
-          if (this.props.shouldPan(event as any as React.MouseEvent<any>)) {
+          if (event.ctrlKey || event.button === 2
+            || this.props.shouldPan(event as any as React.MouseEvent<any>)) {
             this.setState({ isMouseDown: true });
           }
         });

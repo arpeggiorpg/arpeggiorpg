@@ -622,6 +622,7 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
   return <g>
     <rect width="100" height="100" x={pt.x} y={pt.y} fillOpacity="0"
       ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
+      style={{ cursor: 'pointer' }}
       {...reflection_props}
     />
     <text
