@@ -16,8 +16,11 @@ MIT-licensed: http://opensource.org/licenses/MIT
 To start the backend (this defaults to serving on all network interfaces on port 1337):
 
 ```shell
-cd ptrpi; cargo run -- sample_games
+cd ptrpi; cargo run -- --saved-games sample_games --init samplegame.yaml
 ```
+
+This will start an RPI server which will load & save games to the `sample_games` directory, and
+automatically load up the `samplegame.yaml` file as the initial state.
 
 To build the UI, you must have npm installed (ideally npm 5).
 

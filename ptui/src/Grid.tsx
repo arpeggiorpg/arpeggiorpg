@@ -861,8 +861,8 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
   }
   return result;
 
-  function targetAction(
-    creature: T.Creature): { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
+  function targetAction(creature: T.Creature)
+    : { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
     if (ptui.state.grid.target_options) {
       const { ability_id, options } = ptui.state.grid.target_options;
       if (options.t !== "CreatureIDs") { return undefined; }
