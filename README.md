@@ -15,12 +15,15 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 To start the backend (this defaults to serving on all network interfaces on port 1337):
 
+WARNING: the "--saved-games" argument specifies a directory that users of the web endpoint will
+be able to write arbitrary files to.
+
 ```shell
-cd ptrpi; cargo run -- --saved-games sample_games --init samplegame.yaml
+cd ptrpi; cargo run -- --saved-games sample_games --init testgame.yaml
 ```
 
 This will start an RPI server which will load & save games to the `sample_games` directory, and
-automatically load up the `samplegame.yaml` file as the initial state.
+automatically load up the `testgame.yaml` file as the initial state.
 
 To build the UI, you must have npm installed (ideally npm 5).
 
