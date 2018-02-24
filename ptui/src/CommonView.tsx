@@ -823,20 +823,27 @@ interface ModalMakerProps {
   button: (clicker: () => void) => JSX.Element;
   header: JSX.Element;
   content: (closer: () => void) => JSX.Element;
+  onClose?: () => void;
 }
 
-export function ModalMaker({ button, header, content }: ModalMakerProps) {
+export function ModalMaker({ button, header, content, onClose }: ModalMakerProps) {
   return <Toggler
     a={button}
-    b={tf =>
-      <>
+    b={tf => {
+      const close = () => {
+        if (onClose) { onClose(); }
+        tf();
+      };
+      return <>
         {button(tf)}
-        <Modal dimmer='inverted' open={true} onClose={tf}
+        <Modal dimmer='inverted' open={true} onClose={close}
+          style={{ zIndex: 1002 }}
           closeIcon='close' closeOnDimmerClick={false}>
           <Modal.Header>{header}</Modal.Header>
-          <Modal.Content>{content(tf)}</Modal.Content>
+          <Modal.Content>{content(close)}</Modal.Content>
         </Modal>
-      </>} />;
+      </>;
+    }} />;
 }
 
 export function describeChallenge(challenge: T.AttributeCheck) {

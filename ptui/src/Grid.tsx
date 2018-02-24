@@ -374,18 +374,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
   contextMenu(pt: T.Point3, coords: [number, number]) {
     const close = () => this.props.dispatch({ type: 'ClearGridMenu' });
-    const closeAnd = (open: () => void) => () => { close(); open(); };
     return <PopupMenu coords={coords} onClose={close}>
-      <Menu.Item><Menu.Header>{T.encodePoint3(pt)}</Menu.Header></Menu.Item>
-      <Menu.Item>Add Creature to Scene</Menu.Item>
-      <CV.ModalMaker
-        button={open =>
-          <Menu.Item style={{ cursor: 'pointer' }} onClick={open}>
-          Add Scene Hotspot</Menu.Item>}
-        header={<>Add a Scene Hotspot</>}
-        content={close => <div>Hi</div>}
-      />
-      <Menu.Item>Add Annotation</Menu.Item>
+      <ContextMenu pt={pt} onClose={close} />
     </PopupMenu>;
   }
 
@@ -394,16 +384,18 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const { scene, creatures, dispatch } = this.props;
     const close = () => dispatch({ type: 'ClearGridMenu' });
     return <PopupMenu coords={coords} onClose={close}>
-      {objects.map(obj => {
-        switch (obj.t) {
-          case "Annotation": return this.annotationMenu(scene, obj.pt);
-          case "SceneHotSpot":
-            return this.sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
-          case "Creature": return this.creatureMenu(close, creatures, obj.id);
-          case "VolumeCondition": return this.volumeConditionMenu(close, scene, obj.id);
+      <Menu vertical={true}>
+        {objects.map(obj => {
+          switch (obj.t) {
+            case "Annotation": return this.annotationMenu(scene, obj.pt);
+            case "SceneHotSpot":
+              return this.sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
+            case "Creature": return this.creatureMenu(close, creatures, obj.id);
+            case "VolumeCondition": return this.volumeConditionMenu(close, scene, obj.id);
+          }
         }
-      }
-      )}
+        )}
+      </Menu>
     </PopupMenu>;
   }
 
@@ -541,6 +533,34 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 });
 
+
+interface ContextMenuProps {
+  pt: T.Point3;
+  onClose: () => void;
+}
+interface ContextMenuState { visible: boolean; }
+class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
+  constructor(props: ContextMenuProps) {
+    super(props);
+    this.state = { visible: true };
+  }
+  render() {
+    const hideAnd = (open: () => void) => () => { this.setState({ visible: false }); open(); };
+    return <Menu vertical={true} style={{ display: this.state.visible ? 'block' : 'none' }}>
+      <Menu.Item>Add Creature to Scene</Menu.Item>
+      <CV.ModalMaker
+        button={open =>
+          <Menu.Item style={{ cursor: 'pointer' }} onClick={hideAnd(open)}>
+            Add Scene Hotspot</Menu.Item>}
+        header={<>Add a Scene Hotspot</>}
+        content={close => <Button onClick={() => { close(); this.props.onClose(); }}>Close</Button>}
+        onClose={this.props.onClose}
+      />
+      <Menu.Item>Add Annotation</Menu.Item>
+    </Menu>;
+  }
+}
+
 function svgVolume(
   key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>
 ): JSX.Element {
@@ -596,9 +616,7 @@ function PopupMenu(props: PopupMenuProps): JSX.Element {
   return <CV.ClickAway onClick={onClose}>
     <div
       style={{ position: "fixed", left: coords[0], top: coords[1] }}>
-      <Menu vertical={true}>
-        {children}
-      </Menu>
+      {children}
     </div>
   </CV.ClickAway>;
 }
