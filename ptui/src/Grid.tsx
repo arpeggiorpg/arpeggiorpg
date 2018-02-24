@@ -10,6 +10,7 @@ import {
 } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
+import * as GM from "./GMComponents";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
@@ -153,7 +154,8 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   getSceneHotspots() {
     return this.props.scene.scene_hotspots.entrySeq().toArray().map(
       ([pos, scene_id]) =>
-        <SceneHotSpot key={`scene-hotspot-${scene_id}`} pos={pos} scene_id={scene_id} />
+        <SceneHotSpot key={`scene-hotspot-${scene_id}-${pos.toString()}`}
+         pos={pos} scene_id={scene_id} />
     );
   }
 
@@ -375,7 +377,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   contextMenu(pt: T.Point3, coords: [number, number]) {
     const close = () => this.props.dispatch({ type: 'ClearGridMenu' });
     return <PopupMenu coords={coords} onClose={close}>
-      <ContextMenu pt={pt} onClose={close} />
+      <ContextMenu scene={this.props.scene} pt={pt} onClose={close} />
     </PopupMenu>;
   }
 
@@ -535,6 +537,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
 
 
 interface ContextMenuProps {
+  scene: T.Scene;
   pt: T.Point3;
   onClose: () => void;
 }
@@ -545,7 +548,9 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
     this.state = { visible: true };
   }
   render() {
+    const { scene, pt, onClose } = this.props;
     const hideAnd = (open: () => void) => () => { this.setState({ visible: false }); open(); };
+    // TODO: oh crap, this popup should probably only happen for GMs.
     return <Menu vertical={true} style={{ display: this.state.visible ? 'block' : 'none' }}>
       <Menu.Item>Add Creature to Scene</Menu.Item>
       <CV.ModalMaker
@@ -553,8 +558,8 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
           <Menu.Item style={{ cursor: 'pointer' }} onClick={hideAnd(open)}>
             Add Scene Hotspot</Menu.Item>}
         header={<>Add a Scene Hotspot</>}
-        content={close => <Button onClick={close}>Close</Button>}
-        onClose={this.props.onClose}
+        content={close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />}
+        onClose={onClose}
       />
       <Menu.Item>Add Annotation</Menu.Item>
     </Menu>;

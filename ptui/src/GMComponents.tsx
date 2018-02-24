@@ -1362,3 +1362,22 @@ export const ImportModule = M.connectRedux(
     </Form>;
   }
 );
+
+
+interface AddSceneHotspotProps {
+  scene: T.Scene;
+  pt: T.Point3;
+  onClose: () => void;
+}
+export const AddSceneHotspot = ReactRedux.connect()(
+  function AddSceneHotspot(props: AddSceneHotspotProps & M.DispatchProps) {
+    const { pt, onClose, dispatch, scene } = props;
+
+    const select = (sid: T.SceneID) => {
+      onClose();
+      const scene_hotspots = scene.scene_hotspots.set(pt, sid);
+      dispatch(M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots}));
+    };
+    return <Campaign.SceneSelector onCancel={onClose} onSelect={select} />;
+  }
+);

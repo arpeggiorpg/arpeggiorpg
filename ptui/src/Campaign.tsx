@@ -55,6 +55,31 @@ export const MultiItemSelector = M.connectRedux(class MultiItemSelector
   }
 });
 
+interface SceneSelectorProps {
+  onCancel: () => void;
+  onSelect: (sid: T.SceneID) => void;
+}
+export const SceneSelector = M.connectRedux(class SceneSelector
+  extends React.Component<SceneSelectorProps & M.ReduxProps> {
+  constructor(props: SceneSelectorProps & M.ReduxProps) {
+    super(props);
+  }
+  render(): JSX.Element {
+    const { ptui } = this.props;
+    const scenes = collectAllScenes(ptui, [], ptui.app.current_game.campaign);
+    const display = ([path, scene]: [T.FolderPath, T.Scene]) =>
+      `${M.folderPathToString(path)}/${scene.name}`;
+    return <div>
+      <SearchSelect values={scenes}
+        onSelect={([_, scene]: [T.FolderPath, T.Scene]) => this.props.onSelect(scene.id)}
+        display={display}
+      />
+      <Button onClick={this.props.onCancel}>Cancel</Button>
+    </div>;
+  }
+});
+
+
 interface MultiSceneSelectorProps {
   already_selected: I.Set<T.SceneID>;
   on_selected: (cs: I.Set<T.SceneID>) => void;
