@@ -23,11 +23,8 @@ export type Action =
 
   | { type: "SetTerrain"; terrain: T.Terrain }
   | { type: "SetHighlights"; highlights: T.Highlights }
-  | { type: "SetAnnotations"; annotations: T.Annotations }
 
-  | { type: "SetObjectTool"; tool: ObjectTool }
   | { type: "SetHighlightColor"; color: T.Color }
-  | { type: "SetAnnotation"; text: "" }
   | { type: "SetObjectVisibility"; visibility: T.Visibility }
 
   | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
@@ -81,7 +78,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
           layer = {
             t: "Objects",
             highlights: scene ? scene.highlights : I.Map(),
-            annotations: scene ? scene.annotations : I.Map(),
           };
           break;
         case "Volumes":
@@ -96,12 +92,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
 
     // Grid-related
 
-    case "SetObjectTool": // ; tool: ObjectTool }
-      return ptui.updateGridState(grid => ({ ...grid, object_tool: action.tool }));
     case "SetHighlightColor":
       return ptui.updateGridState(grid => ({ ...grid, highlight_color: action.color }));
-    case "SetAnnotation":
-      return ptui.updateGridState(grid => ({ ...grid, annotation_text: action.text }));
     case "SetObjectVisibility":
       return ptui.updateGridState(grid => ({ ...grid, object_visibility: action.visibility }));
 
@@ -131,18 +123,6 @@ export function update(ptui: PTUI, action: Action): PTUI {
         } else { return state; }
       });
 
-    case "SetAnnotations":
-      return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Objects") {
-          return {
-            ...state,
-            grid_focus: {
-              ...state.grid_focus,
-              layer: { ...state.grid_focus.layer, annotations: action.annotations },
-            },
-          };
-        } else { return state; }
-      });
     case "DisplayMovementOptions":
       return ptui.updateGridState(
         grid => ({
@@ -182,9 +162,7 @@ export interface GridModel {
     teleport: boolean;
   };
   target_options?: { cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets };
-  object_tool: ObjectTool;
   highlight_color: T.Color;
-  annotation_text: string;
   object_visibility: T.Visibility;
 }
 
@@ -194,8 +172,6 @@ export type GridObject =
   | { t: "Annotation"; pt: T.Point3 }
   | { t: "SceneHotSpot"; scene_id: T.SceneID; pt: T.Point3 }
   ;
-
-export type ObjectTool = "Highlight" | "Annotation";
 
 export interface PTUIState {
   grid: GridModel;
@@ -207,7 +183,7 @@ export interface PTUIState {
 
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
-  | { t: "Objects"; highlights: T.Highlights; annotations: T.Annotations }
+  | { t: "Objects"; highlights: T.Highlights }
   | { t: "Volumes" }
   | { t: "LinkedScenes" }
   ;
@@ -270,9 +246,7 @@ export function ptfetch<J, R>(
 
 const default_state = {
   grid: {
-    object_tool: "Highlight" as ObjectTool,
     highlight_color: "#FF0000",
-    annotation_text: "",
     object_visibility: { t: "AllPlayers" } as T.Visibility,
     active_objects: { objects: [], coords: [0, 0] as [number, number] },
   },

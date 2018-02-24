@@ -64,13 +64,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableTerrain(layer.terrain)
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
-    const highlights = layer && layer.t === "Objects" && ptui.state.grid.object_tool === "Highlight"
+    const highlights = layer && layer.t === "Objects"
       ? this.getEditableHighlights(layer.highlights)
       : this.getHighlights(scene.highlights, ptui.state.player_id);
-    const annotations = layer && layer.t === "Objects"
-      && ptui.state.grid.object_tool === "Annotation"
-      ? this.getEditableAnnotations(layer.annotations)
-      : this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
+    const annotations = this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
 
     const scene_hotspots = this.getSceneHotspots();
 
@@ -79,15 +76,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       : this.getVolumeConditions();
 
     const annotations_style = layer
-      && ((layer.t === "Terrain")
-        || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Annotation"))
+      && (layer.t === "Terrain" || layer.t === "Objects")
       ? disable_style
       : {};
-    const highlights_style = layer
-      && ((layer.t === "Terrain")
-        || (layer.t === "Objects" && ptui.state.grid.object_tool !== "Highlight"))
-      ? disable_style
-      : {};
+    const highlights_style = layer && (layer.t !== "Objects") ? disable_style : {};
     const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
     const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
 
@@ -256,34 +248,6 @@ export const SceneGrid = M.connectRedux(class SceneGrid
             player_id={player_id} />;
         }
       });
-  }
-
-  getEditableAnnotations(annotations: T.Annotations) {
-    const { dispatch } = this.props;
-    const ann_text = this.props.ptui.state.grid.annotation_text;
-    const vis = this.props.ptui.state.grid.object_visibility;
-    function removeAnnotation(pt: T.Point3) {
-      dispatch({ type: "SetAnnotations", annotations: annotations.remove(pt) });
-    }
-    function addAnnotation(pt: T.Point3) {
-      if (!ann_text) { return; }
-      dispatch({
-        type: "SetAnnotations", annotations: annotations.set(pt, [ann_text, vis]),
-      });
-    }
-    const annotated_tiles = this.getAnnotations(dispatch, annotations, undefined,
-      pt => removeAnnotation(pt));
-    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
-      pt => {
-        if (annotations.has(pt)) { return; }
-        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.0);
-        return <rect key={pointKey("non-ann", pt)} {...tprops} onClick={() => addAnnotation(pt)} />;
-      });
-
-    return <>
-      <g id="existing-annotations">{annotated_tiles}</g>,
-      <g id="empty-annotations">{empty_tiles}</g>
-    </>;
   }
 
   getEditableVolumes(): Array<JSX.Element> | undefined {

@@ -6,7 +6,6 @@ import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 import * as ReactRedux from 'react-redux';
 
 import {
-  Accordion,
   Button, Card, Checkbox, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
   Menu, Message, Popup, Segment, Tab, Table
 } from 'semantic-ui-react';
@@ -217,52 +216,24 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
           visibility: { t: d.checked ? "AllPlayers" : "GMOnly" } as T.Visibility,
         })
     } />;
-  const object_panels = [
-    {
-      key: "Highlight" as M.ObjectTool, title: "Highlights",
-      content: <Accordion.Content key="Highlight">
-        {vis_checkbox}
-        <TwitterPicker
-          triangle="hide"
-          color={ptui.state.grid.highlight_color}
-          onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })} />
-      </Accordion.Content>,
-    },
-    {
-      key: "Annotation" as M.ObjectTool, title: "Annotations",
-      content: <Accordion.Content key="Annotation">
-        {vis_checkbox}
-        <Input label="Annotation" onChange={LD.debounce(
-          (_: any, d: any) => dispatch({ type: "SetAnnotation", text: d.value } as M.Action),
-          300)} />
-      </Accordion.Content>,
-    }];
-  const selectedObjectPanel = ptui.state.grid.object_tool === "Highlight" ? 0 : 1;
 
   return <div>
-    Accordion:
-  <Accordion activeIndex={selectedObjectPanel} panels={object_panels}
-      onTitleClick={changeObjectTool} />
+    {vis_checkbox}
+    <TwitterPicker
+      triangle="hide"
+      color={ptui.state.grid.highlight_color}
+      onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })} />
     Edit the objects on the map and then
   <Button onClick={saveObjects}>Save</Button> or
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
 
-  function changeObjectTool(_: any, data: any) {
-    // SEMANTIC-UI BUG: https://github.com/Semantic-Org/Semantic-UI-React/issues/2557
-    if (typeof data.index !== "number") { return; }
-    const selected = object_panels[data.index];
-    dispatch({ type: "SetObjectTool", tool: selected.key });
-  }
   function saveObjects() {
     if (!ptui.state.grid_focus) { return; }
     const scene_id = ptui.state.grid_focus.scene_id;
     if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Objects") { return; }
     const highlights = ptui.state.grid_focus.layer.highlights;
-    const annotations = ptui.state.grid_focus.layer.annotations;
-    dispatch(M.sendCommands([
-      { t: "EditSceneHighlights", scene_id, highlights },
-      { t: "EditSceneAnnotations", scene_id, annotations }]));
+    dispatch(M.sendCommand({ t: "EditSceneHighlights", scene_id, highlights }));
     dispatch({ type: "FocusGrid", scene_id: scene.id });
   }
   function cancelObjects() {
