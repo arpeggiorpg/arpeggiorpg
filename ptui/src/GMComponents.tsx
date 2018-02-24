@@ -1376,8 +1376,38 @@ export const AddSceneHotspot = ReactRedux.connect()(
     const select = (sid: T.SceneID) => {
       onClose();
       const scene_hotspots = scene.scene_hotspots.set(pt, sid);
-      dispatch(M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots}));
+      dispatch(M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
     };
     return <Campaign.SceneSelector onCancel={onClose} onSelect={select} />;
   }
 );
+
+interface AddAnnotationProps {
+  scene: T.Scene;
+  pt: T.Point3;
+  onClose: () => void;
+}
+interface AddAnnotationState { all_players: boolean; }
+
+export const AddAnnotation = ReactRedux.connect()(
+  class AddAnnotation
+    extends React.Component<AddAnnotationProps & M.DispatchProps, AddAnnotationState> {
+    constructor(props: AddAnnotationProps & M.DispatchProps) {
+      super(props);
+      this.state = { all_players: false };
+    }
+    render() {
+      const { pt, onClose, dispatch, scene } = this.props;
+      const annotate = (text: string) => {
+        const vis: T.Visibility = this.state.all_players ? { t: "AllPlayers" } : { t: "GMOnly" };
+        const annotations = scene.annotations.set(pt, [text, vis]);
+        dispatch(M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations }));
+        onClose();
+      };
+      return <>
+        <Checkbox label="Visible to all players?" checked={this.state.all_players}
+          onChange={(_, d) => this.setState({ all_players: d.checked === true })} />
+        <CV.SingleInputForm buttonText="Annotate" onSubmit={annotate} />
+      </>;
+    }
+  });

@@ -3,11 +3,7 @@ import * as LD from "lodash";
 import * as React from "react";
 import * as ReactRedux from 'react-redux';
 
-import {
-  Button,
-  // Checkbox, Dimmer, Input,
-  Menu,
-} from 'semantic-ui-react';
+import { Button, Menu } from 'semantic-ui-react';
 
 import * as CV from "./CommonView";
 import * as GM from "./GMComponents";
@@ -155,7 +151,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return this.props.scene.scene_hotspots.entrySeq().toArray().map(
       ([pos, scene_id]) =>
         <SceneHotSpot key={`scene-hotspot-${scene_id}-${pos.toString()}`}
-         pos={pos} scene_id={scene_id} />
+          pos={pos} scene_id={scene_id} />
     );
   }
 
@@ -551,17 +547,21 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
     const { scene, pt, onClose } = this.props;
     const hideAnd = (open: () => void) => () => { this.setState({ visible: false }); open(); };
     // TODO: oh crap, this popup should probably only happen for GMs.
+    const items: Array<[string, (c: () => void) => JSX.Element]> = [
+      ["Add Scene Hotspot",
+        close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
+      ["Add Annotation", close => <GM.AddAnnotation scene={scene} pt={pt} onClose={close} />],
+    ];
     return <Menu vertical={true} style={{ display: this.state.visible ? 'block' : 'none' }}>
-      <Menu.Item>Add Creature to Scene</Menu.Item>
-      <CV.ModalMaker
+      {items.map(([title, comp]) => <CV.ModalMaker
+        key={title}
         button={open =>
           <Menu.Item style={{ cursor: 'pointer' }} onClick={hideAnd(open)}>
-            Add Scene Hotspot</Menu.Item>}
-        header={<>Add a Scene Hotspot</>}
-        content={close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />}
+            {title}</Menu.Item>}
+        header={<>{title}</>}
+        content={comp}
         onClose={onClose}
-      />
-      <Menu.Item>Add Annotation</Menu.Item>
+      />)}
     </Menu>;
   }
 }
@@ -581,7 +581,7 @@ function svgVolume(
 }
 
 function eyeball(pt: T.Point3): JSX.Element {
-  return <text x={pt.x} y={pt.y} dominant-baseline="hanging" fontSize="25px">👁️</text>;
+  return <text x={pt.x} y={pt.y} dominantBaseline="hanging" fontSize="25px">👁️</text>;
 }
 
 
