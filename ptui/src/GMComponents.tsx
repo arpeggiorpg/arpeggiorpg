@@ -43,8 +43,8 @@ export const GMScene = M.connectRedux(
       menuItem("Terrain", () =>
         <SceneTerrain scene={scene} ptui={ptui} dispatch={dispatch} />,
         "Terrain"),
-      menuItem('Objects', () => <SceneObjects scene={scene} ptui={ptui} dispatch={dispatch} />,
-        "Objects"),
+      menuItem('Highlights', () => <SceneHighlights scene={scene} ptui={ptui} dispatch={dispatch} />,
+        "Highlights"),
       menuItem('Volumes', () => <GMSceneVolumes scene={scene} />, "Volumes"),
       menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
         undefined, scene.creatures.count().toString()),
@@ -205,7 +205,7 @@ function SceneTerrain(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
   }
 }
 
-function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
+function SceneHighlights(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatch }) {
   const { scene, ptui, dispatch } = props;
   const all_players = ptui.state.grid.object_visibility.t === "AllPlayers";
   const vis_checkbox = <Checkbox label="Visible to all players?" checked={all_players}
@@ -223,7 +223,7 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
       triangle="hide"
       color={ptui.state.grid.highlight_color}
       onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })} />
-    Edit the objects on the map and then
+    Edit the highlights on the map and then
   <Button onClick={saveObjects}>Save</Button> or
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
@@ -231,13 +231,13 @@ function SceneObjects(props: { scene: T.Scene; ptui: M.PTUI; dispatch: M.Dispatc
   function saveObjects() {
     if (!ptui.state.grid_focus) { return; }
     const scene_id = ptui.state.grid_focus.scene_id;
-    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Objects") { return; }
+    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Highlights") { return; }
     const highlights = ptui.state.grid_focus.layer.highlights;
     dispatch(M.sendCommand({ t: "EditSceneHighlights", scene_id, highlights }));
     dispatch({ type: "FocusGrid", scene_id: scene.id });
   }
   function cancelObjects() {
-    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Objects" });
+    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Highlights" });
   }
 }
 

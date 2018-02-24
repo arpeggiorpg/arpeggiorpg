@@ -64,7 +64,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? this.getEditableTerrain(layer.terrain)
       : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
-    const highlights = layer && layer.t === "Objects"
+    const highlights = layer && layer.t === "Highlights"
       ? this.getEditableHighlights(layer.highlights)
       : this.getHighlights(scene.highlights, ptui.state.player_id);
     const annotations = this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
@@ -76,10 +76,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       : this.getVolumeConditions();
 
     const annotations_style = layer
-      && (layer.t === "Terrain" || layer.t === "Objects")
+      && (layer.t === "Terrain" || layer.t === "Highlights")
       ? disable_style
       : {};
-    const highlights_style = layer && (layer.t !== "Objects") ? disable_style : {};
+    const highlights_style = layer && (layer.t !== "Highlights") ? disable_style : {};
     const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
     const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
 
@@ -121,7 +121,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           }
         }}
         shouldPan={ev => {
-          if (layer && (layer.t === "Terrain" || layer.t === "Objects")) { return false; }
+          if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) { return false; }
           const objects = findPTObjects(ev);
           return objects.length === 0;
         }}

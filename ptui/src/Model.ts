@@ -74,9 +74,9 @@ export function update(ptui: PTUI, action: Action): PTUI {
           // When switching to the Terrain layer, create a copy of the terrain data for editing.
           layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
           break;
-        case "Objects":
+        case "Highlights":
           layer = {
-            t: "Objects",
+            t: "Highlights",
             highlights: scene ? scene.highlights : I.Map(),
           };
           break;
@@ -112,7 +112,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
 
     case "SetHighlights":
       return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Objects") {
+        if (state.grid_focus && state.grid_focus.layer
+          && state.grid_focus.layer.t === "Highlights") {
           return {
             ...state,
             grid_focus: {
@@ -183,14 +184,14 @@ export interface PTUIState {
 
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
-  | { t: "Objects"; highlights: T.Highlights }
+  | { t: "Highlights"; highlights: T.Highlights }
   | { t: "Volumes" }
   | { t: "LinkedScenes" }
   ;
 
 export type SceneLayerType =
   | "Terrain"
-  | "Objects"
+  | "Highlights"
   | "Volumes"
   | "LinkedScenes"
   ;
