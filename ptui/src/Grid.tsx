@@ -553,7 +553,7 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
           <Menu.Item style={{ cursor: 'pointer' }} onClick={hideAnd(open)}>
             Add Scene Hotspot</Menu.Item>}
         header={<>Add a Scene Hotspot</>}
-        content={close => <Button onClick={() => { close(); this.props.onClose(); }}>Close</Button>}
+        content={close => <Button onClick={close}>Close</Button>}
         onClose={this.props.onClose}
       />
       <Menu.Item>Add Annotation</Menu.Item>
