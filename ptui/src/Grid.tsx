@@ -121,10 +121,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
           const x = Math.floor(cursorpt.x / 100) * 100;
           const y = Math.floor(cursorpt.y / 100) * 100;
-          dispatch({
-            type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0),
-            coords: [ev.clientX, ev.clientY],
-          });
+          if (this.props.ptui.state.player_id === undefined) {
+            dispatch({
+              type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0),
+              coords: [ev.clientX, ev.clientY],
+            });
+          }
         }}
         shouldPan={ev => {
           if (layer && (layer.t === "Terrain" || layer.t === "Objects")) { return false; }
@@ -385,7 +387,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       <Menu vertical={true}>
         {objects.map(obj => {
           switch (obj.t) {
-            case "Annotation": return this.annotationMenu(scene, obj.pt);
+            case "Annotation": return this.annotationMenu(close, scene, obj.pt);
             case "SceneHotSpot":
               return this.sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
             case "Creature": return this.creatureMenu(close, creatures, obj.id);
@@ -397,13 +399,22 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </PopupMenu>;
   }
 
-  annotationMenu(scene: T.Scene, pt: T.Point3) {
+  annotationMenu(close: () => void, scene: T.Scene, pt: T.Point3) {
     const ann = scene.annotations.get(pt);
+    const delet = () => {
+      const annotations = scene.annotations.delete(pt);
+      this.props.dispatch(
+        M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations }));
+      close();
+    };
     if (ann) {
-      return <Menu.Item key="ANN">
-        <Menu.Header>Annotation</Menu.Header>
-        {ann[0]}
-      </Menu.Item>;
+      return <>
+        <Menu.Item key="ANN">
+          <Menu.Header>Annotation: {ann[0]}</Menu.Header>
+        </Menu.Item>
+        {this.props.ptui.state.player_id ? null :
+          <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
+      </>;
     }
     return;
   }
