@@ -125,7 +125,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           }
           dispatch({ type: "SetTerrain", terrain });
         }}
-        onMouseUp={ev => {
+        onMouseUp={() => {
           this.setState({ painting: undefined });
         }}
         onContextMenu={ev => {
