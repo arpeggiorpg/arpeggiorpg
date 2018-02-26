@@ -63,7 +63,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
     const open_terrain_color = scene.background_image_url ? "transparent" : "white";
     const closed_terrain_els = layer && layer.t === "Terrain"
-     ? this.getClosedTerrain(current_terrain) : null;
+      ? this.getClosedTerrain(current_terrain) : null;
     const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
     const highlights = layer && layer.t === "Highlights"
@@ -111,7 +111,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           }
         }}
         onMouseMove={ev => {
-          if (!layer || layer.t !== "Terrain") { return; }
+          if (!layer || layer.t !== "Terrain" || this.state.painting === undefined) { return; }
+          // make sure we've actually got the mouse down before trying to paint
+          if (ev.buttons !== 1) {
+            this.setState({ painting: undefined });
+            return;
+          }
           const pt = getPoint3AtMouse(ev);
           let terrain;
           switch (this.state.painting) {
@@ -129,9 +134,24 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           }
           this.props.dispatch({ type: "SetTerrain", terrain });
         }}
-        onMouseUp={() => {
+        onMouseUp={ev => {
+          if (!layer || layer.t !== "Terrain" || this.state.painting === undefined) { return; }
+          const pt = getPoint3AtMouse(ev);
+          switch (this.state.painting) {
+            case "Opening": {
+              if (layer.terrain.contains(pt)) { return; }
+              dispatch({ type: "SetTerrain", terrain: layer.terrain.add(pt) });
+              break;
+            }
+            case "Closing": {
+              if (!layer.terrain.contains(pt)) { return; }
+              dispatch({ type: "SetTerrain", terrain: layer.terrain.remove(pt) });
+              break;
+            }
+          }
           this.setState({ painting: undefined });
         }}
+        onMouseLeave={() => this.setState({ painting: undefined })}
         onContextMenu={ev => {
           ev.preventDefault();
           const pt = getPoint3AtMouse(ev);
