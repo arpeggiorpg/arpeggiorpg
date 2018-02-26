@@ -21,6 +21,7 @@ interface SceneGridState {
   targeting_point?: T.Point3;
   affected_points?: Array<T.Point3>;
   affected_creatures?: Array<T.CreatureID>;
+  painting?: "Opening" | "Closing";
 }
 export const SceneGrid = M.connectRedux(class SceneGrid
   extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
@@ -100,22 +101,39 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           backgroundRepeat: "no-repeat",
           backgroundSize: "contain",
         }}
+        onMouseDown={ev => {
+          if (layer && layer.t === "Terrain") {
+            const pt = getPoint3AtMouse(ev);
+            const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
+            this.setState({ painting });
+          }
+        }}
+        onMouseMove={ev => {
+          if (!layer || layer.t !== "Terrain") { return; }
+          const pt = getPoint3AtMouse(ev);
+          let terrain;
+          switch (this.state.painting) {
+            case "Opening": {
+              terrain = layer.terrain.add(pt);
+              break;
+            }
+            case "Closing": {
+              terrain = layer.terrain.remove(pt);
+              break;
+            }
+            default: return;
+          }
+          dispatch({ type: "SetTerrain", terrain });
+        }}
+        onMouseUp={ev => {
+          this.setState({ painting: undefined });
+        }}
         onContextMenu={ev => {
           ev.preventDefault();
-          // if (ev.button !== 2 || !ev.altKey) { return; }
-          const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
-          const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
-          const pt = svg.createSVGPoint();
-          pt.x = ev.clientX;
-          pt.y = ev.clientY;
-
-          // The cursor point, translated into svg coordinates
-          const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
-          const x = Math.floor(cursorpt.x / 100) * 100;
-          const y = Math.floor(cursorpt.y / 100) * 100;
+          const pt = getPoint3AtMouse(ev);
           if (this.props.ptui.state.player_id === undefined) {
             dispatch({
-              type: "ActivateGridContextMenu", pt: new T.Point3(x, y, 0),
+              type: "ActivateGridContextMenu", pt,
               coords: [ev.clientX, ev.clientY],
             });
           }
@@ -506,6 +524,20 @@ export const SceneGrid = M.connectRedux(class SceneGrid
   }
 });
 
+function getPoint3AtMouse(event: React.MouseEvent<any>) {
+  const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
+  const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
+  const pt = svg.createSVGPoint();
+  pt.x = event.clientX;
+  pt.y = event.clientY;
+
+  // The cursor point, translated into svg coordinates
+  const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
+  const x = Math.floor(cursorpt.x / 100) * 100;
+  const y = Math.floor(cursorpt.y / 100) * 100;
+  return new T.Point3(x, y, 0);
+}
+
 
 interface ContextMenuProps {
   scene: T.Scene;
@@ -668,38 +700,18 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
   </g>;
 }
 
-/**
- * Find all elements under a specific coordinate.
- */
-function findElementsAtPoint<R>(
-  x: number, y: number, filterNode: (el: HTMLElement) => (R | undefined), stopAt: string = 'html'
-): Array<R> {
-  const results: Array<R> = [];
-  const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
-  let el: HTMLElement | null;
-  while (true) {
-    if (dirtied.length > 100) {
-      console.log("[findElementsAtPoint] giving up on determining creatures under click");
-      return results;
-    }
-    el = document.elementFromPoint(x, y) as HTMLElement | null;
-    if (!el) { break; }
-    if (el.tagName === stopAt) { break; }
-    const result = filterNode(el);
-    if (result) {
-      results.push(result);
-    }
-    if (el.style.pointerEvents !== 'none') {
-      dirtied.push({ el, oldPE: el.style.pointerEvents });
-      el.style.pointerEvents = 'none';
-    }
-  }
-  for (const { el, oldPE } of dirtied) {
-    el.style.pointerEvents = oldPE;
-  }
-  return results;
+function activateGridObjects(
+  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
+  dispatch: M.Dispatch) {
+  const objects = findPTObjects(event);
+  const coords = screenCoordsForRect(element);
+  const act: M.Action = {
+    type: "ActivateGridObjects",
+    objects,
+    coords,
+  };
+  dispatch(act);
 }
-
 
 function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
   return findElementsAtPoint(
@@ -730,17 +742,36 @@ function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
     'svg');
 }
 
-function activateGridObjects(
-  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
-  dispatch: M.Dispatch) {
-  const objects = findPTObjects(event);
-  const coords = screenCoordsForRect(element);
-  const act: M.Action = {
-    type: "ActivateGridObjects",
-    objects,
-    coords,
-  };
-  dispatch(act);
+/**
+ * Find all elements under a specific coordinate.
+ */
+function findElementsAtPoint<R>(
+  x: number, y: number, filterNode: (el: HTMLElement) => (R | undefined), stopAt: string = 'html'
+): Array<R> {
+  const results: Array<R> = [];
+  const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
+  let el: HTMLElement | null;
+  while (true) {
+    if (dirtied.length > 100) {
+      console.log("[findElementsAtPoint] giving up on determining creatures under click");
+      return results;
+    }
+    el = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (!el) { break; }
+    if (el.tagName === stopAt) { break; }
+    const result = filterNode(el);
+    if (result) {
+      results.push(result);
+    }
+    if (el.style.pointerEvents !== 'none') {
+      dirtied.push({ el, oldPE: el.style.pointerEvents });
+      el.style.pointerEvents = 'none';
+    }
+  }
+  for (const { el, oldPE } of dirtied) {
+    el.style.pointerEvents = oldPE;
+  }
+  return results;
 }
 
 const GridCreature = M.connectRedux(
