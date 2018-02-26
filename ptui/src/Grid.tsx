@@ -60,10 +60,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       ? `url(${scene.background_image_url})`
       : undefined;
 
+    const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
     const open_terrain_color = scene.background_image_url ? "transparent" : "white";
-    const terrain_els = layer && layer.t === "Terrain"
-      ? this.getEditableTerrain(layer.terrain)
-      : scene.terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+    const closed_terrain_els = layer && layer.t === "Terrain"
+     ? this.getClosedTerrain(current_terrain) : null;
+    const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
     const highlights = layer && layer.t === "Highlights"
       ? this.getEditableHighlights(layer.highlights)
@@ -148,7 +149,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }}
       >
         {background_image}
-        <g id="terrain">{terrain_els}</g>
+        <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
         <g id="volume-conditions" style={volumes_style}>{volumes}</g>
         <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
         <g id="creatures" style={disable_style}>{this.getCreatures()}</g>
@@ -187,31 +188,15 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     });
   }
 
-  getEditableTerrain(terrain: T.Terrain) {
-    const { dispatch } = this.props;
-    function closeTerrain(pt: T.Point3) {
-      dispatch({ type: "SetTerrain", terrain: terrain.remove(pt) });
-    }
-    function openTerrain(pt: T.Point3) {
-      dispatch({ type: "SetTerrain", terrain: terrain.add(pt) });
-    }
-
-    const open_tiles = terrain.toArray().map(pt => {
-      const tprops = tile_props("white", pt, { x: 1, y: 1 }, 0.0);
-      return <rect {...tprops}
-        style={{ cursor: 'pointer' }}
-        onClick={() => closeTerrain(pt)}
-        key={pointKey("open", pt)} />;
-    });
+  getClosedTerrain(terrain: T.Terrain) {
     const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (terrain.contains(pt)) { return; }
         const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
-          onClick={() => openTerrain(pt)}
           key={pointKey("closed", pt)} />;
       });
-    return [open_tiles, closed_tiles];
+    return closed_tiles;
   }
 
   getHighlights(highlights: T.Highlights, player_id?: T.PlayerID, onClick?: (pt: T.Point3) => void) {
