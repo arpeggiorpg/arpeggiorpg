@@ -102,6 +102,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           backgroundSize: "contain",
         }}
         onMouseDown={ev => {
+          if (ev.button !== 0 || ev.ctrlKey) { return; }
           if (layer && layer.t === "Terrain") {
             const pt = getPoint3AtMouse(ev);
             const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
@@ -114,16 +115,18 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           let terrain;
           switch (this.state.painting) {
             case "Opening": {
+              if (layer.terrain.contains(pt)) { return; }
               terrain = layer.terrain.add(pt);
               break;
             }
             case "Closing": {
+              if (!layer.terrain.contains(pt)) { return; }
               terrain = layer.terrain.remove(pt);
               break;
             }
             default: return;
           }
-          dispatch({ type: "SetTerrain", terrain });
+          this.props.dispatch({ type: "SetTerrain", terrain });
         }}
         onMouseUp={() => {
           this.setState({ painting: undefined });
