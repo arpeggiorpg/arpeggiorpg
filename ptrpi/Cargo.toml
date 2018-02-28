@@ -5,6 +5,7 @@ authors = ["Christopher Armstrong <radix@twistedmatrix.com>"]
 
 [dependencies]
 actix = "0.5"
+actix-web = "0.4"
 env_logger = "0.5"
 error-chain = "0.11.0-rc.2"
 failure = "0.1"
@@ -21,7 +22,3 @@ serde_json = "1.0.2"
 serde_yaml = "0.7.0"
 structopt = "0.2"
 tokio-core = "0.1"
-
-[dependencies.actix-web]
-git = "https://github.com/actix/actix-web"
-rev = "0da382a7a464d9403a80f31a62bc18f9490fc11c"

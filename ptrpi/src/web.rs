@@ -4,7 +4,7 @@ use std::path::Path;
 use actix;
 use actix_web::dev::FromParam;
 use actix_web::middleware::cors;
-use actix_web::{Application, HttpRequest, HttpResponse, Json};
+use actix_web::{Application, HttpMessage, HttpRequest, HttpResponse, Json};
 use failure::Error;
 use futures::Future;
 use http::{header, Method};
@@ -55,9 +55,10 @@ fn poll_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
 }
 
 fn post_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
+  let app_address = req.state().app_address.clone();
   let f = req.json().from_err().and_then(move |command: GameCommand| -> AsyncRPIResponse {
     info!("[perform_command] {:?}", command);
-    invoke_actor_string_result(&req.state().app_address, actor::PerformCommand(command))
+    invoke_actor_string_result(&app_address, actor::PerformCommand(command))
   });
   Box::new(f)
 }
@@ -156,9 +157,10 @@ fn save_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
 }
 
 fn save_module(req: HttpRequest<PT>) -> AsyncRPIResponse {
+  let name: String = try_fut!(get_arg(&req, "name"));
+  let app_address = req.state().app_address.clone();
   let f = req.json().from_err().and_then(move |path| -> AsyncRPIResponse {
-    let name: String = try_fut!(get_arg(&req, "name"));
-    invoke_actor_string_result(&req.state().app_address, actor::SaveModule { name, path })
+    invoke_actor_string_result(&app_address, actor::SaveModule { name, path })
   });
   Box::new(f)
 }
