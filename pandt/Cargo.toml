@@ -31,8 +31,8 @@ uuid = {version = "0.5", features = ["v4", "serde"]}
 
 [dependencies.uom]
 # version = "0.16"
-git = "https://github.com/radix/uom"
-# my fork of uom which disables automatic conversion between types when performing basic operations
-rev = "7f1b99cf050e3c126e94141e27f6efc58785d975"
+git = "https://github.com/iliekturtles/uom"
+# revision of uom which disables automatic conversion between types when performing basic operations
+rev = "965d1112894a790c9f8519bd996131bcd8596244"
 default-features = false
 features = ["u32", "i64", "serde", "si"]
