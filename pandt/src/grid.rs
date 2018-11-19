@@ -14,7 +14,7 @@ use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
-use types::{up_length, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
+use crate::types::{up_length, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
             TileSystem, Volume, VolumeCondition, i64cm, i64meter, u32cm, u32units};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
@@ -471,8 +471,8 @@ where
 
 #[cfg(test)]
 pub mod test {
-  use grid::*;
-  use types::*;
+  use crate::grid::*;
+  use crate::types::*;
 
   /// A map containing a single open block of terrain at 0,0,0
   fn box_map() -> Terrain { vec![Point3::new(0, 0, 0)] }

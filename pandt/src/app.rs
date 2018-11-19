@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::path::Path;
 
-use types::*;
+use crate::types::*;
 
 // random misplaced notes
 //
@@ -133,9 +133,9 @@ impl App {
 
 #[cfg(test)]
 mod test {
-  use app::*;
-  use game::test::*;
-  use types::test::*;
+  use crate::app::*;
+  use crate::game::test::*;
+  use crate::types::test::*;
   use std::path::PathBuf;
 
   pub fn t_app() -> App { App::new(t_game()) }

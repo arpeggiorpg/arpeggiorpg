@@ -7,11 +7,11 @@ use std::path::Path;
 
 use serde_yaml;
 
-use types::*;
-use combat::*;
-use creature::ChangedCreature;
+use crate::types::*;
+use crate::combat::*;
+use crate::creature::ChangedCreature;
 use foldertree::FolderPath;
-use grid::line_through_point;
+use crate::grid::line_through_point;
 
 impl Game {
   pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
@@ -1201,8 +1201,8 @@ impl Game {
   ) -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(ability_id)?;
 
-    use types::Action as A;
-    use types::CreatureTarget as CT;
+    use crate::types::Action as A;
+    use crate::types::CreatureTarget as CT;
     Ok(match ability.action {
       A::Creature { target: CT::Melee, .. } => {
         self.creatures_in_range(scene, creature_id, MELEE_RANGE)?
@@ -1330,10 +1330,10 @@ pub mod test {
   use std::iter::FromIterator;
   use std::path::PathBuf;
 
-  use combat::test::*;
-  use game::*;
+  use crate::combat::test::*;
+  use crate::game::*;
   use indexed::IndexedHashMap;
-  use types::test::*;
+  use crate::types::test::*;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
     t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))

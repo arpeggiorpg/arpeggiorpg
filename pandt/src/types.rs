@@ -1266,8 +1266,8 @@ impl Folder {
 #[cfg(test)]
 pub mod test {
   use std::iter::FromIterator;
-  use types::*;
-  use grid::test::*;
+  use crate::types::*;
+  use crate::grid::test::*;
 
   use serde_yaml;
   use serde_json;

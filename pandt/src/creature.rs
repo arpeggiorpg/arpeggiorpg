@@ -4,7 +4,7 @@ use std::cmp;
 use num::Saturating;
 
 use indexed::*;
-use types::*;
+use crate::types::*;
 
 /// `STANDARD_CREATURE_SPEED` is carefully chosen to allow for circular-looking movement options.
 /// Since we only allow 8-way movement, the available movement options are biased towards
@@ -325,9 +325,9 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
 
 #[cfg(test)]
 pub mod test {
-  use creature::*;
-  use types::test::*;
-  use game::test::*;
+  use crate::creature::*;
+  use crate::types::test::*;
+  use crate::game::test::*;
 
   use std::iter::FromIterator;
 

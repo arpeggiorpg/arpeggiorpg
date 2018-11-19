@@ -3,7 +3,7 @@
 use nonempty;
 use num::{Saturating, Zero};
 
-use types::*;
+use crate::types::*;
 
 use std::marker::PhantomData;
 
@@ -174,7 +174,7 @@ impl<'game> CombatMove<'game> {
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
-  pub fn move_current(&self, pt: Point3) -> Result<::game::ChangedGame, GameError> {
+  pub fn move_current(&self, pt: Point3) -> Result<crate::game::ChangedGame, GameError> {
     let (change, distance) = self.combat.game.path_creature_distance(
       self.combat.scene.id,
       self.combat.combat.current_creature_id(),
@@ -194,13 +194,13 @@ pub struct ChangedCombat<'game> {
 }
 
 impl<'game> ChangedCombat<'game> {
-  pub fn dyn(&self) -> DynamicCombat {
+  pub fn r#dyn(&self) -> DynamicCombat {
     DynamicCombat { scene: self.scene, game: self.game, combat: &self.combat }
   }
 
   pub fn apply(&self, log: &CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let mut new = self.clone();
-    new.combat = new.dyn().apply_log(log)?;
+    new.combat = new.r#dyn().apply_log(log)?;
     new.logs.push(log.clone());
     Ok(new)
   }
@@ -211,10 +211,10 @@ impl<'game> ChangedCombat<'game> {
 #[cfg(test)]
 pub mod test {
 
-  use combat::*;
-  use types::test::*;
-  use game::test::*;
-  use game::ChangedGame;
+  use crate::combat::*;
+  use crate::types::test::*;
+  use crate::game::test::*;
+  use crate::game::ChangedGame;
 
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
