@@ -12,7 +12,6 @@ extern crate failure;
 extern crate failure_derive;
 extern crate foldertree;
 extern crate indexed;
-#[macro_use]
 extern crate log;
 extern crate nalgebra;
 extern crate ncollide;
