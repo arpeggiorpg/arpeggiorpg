@@ -1,0 +1,8 @@
+[package]
+name = "pandt_lambda"
+version = "0.1.0"
+authors = ["Christopher Armstrong <227068+radix@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+aws_lambda = { git = "https://github.com/srijs/rust-aws-lambda", rev = "1435a4dbdf72a1d35afd5943a0d7f0f2938ba649" }
