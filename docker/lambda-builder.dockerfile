@@ -3,13 +3,14 @@
 ## Builder
 ##
 
-FROM rust-builder-base as builder
+# FROM rust-builder-base as builder
+FROM ekidd/rust-musl-builder:beta
 
-RUN mkdir .cargo
-COPY docker/cargo_config .cargo/config
+# RUN mkdir .cargo
+# COPY docker/cargo_config .cargo/config
 
-ENV OPENSSL_DIR=$PREFIX \
-    OPENSSL_STATIC=true
+# ENV OPENSSL_DIR=$PREFIX \
+#     OPENSSL_STATIC=true
 
 # Some caching tricks! We want all the build dependencies to be cached as long
 # as Cargo.lock hasn't changed.
@@ -53,9 +54,9 @@ COPY nonempty nonempty
 COPY pandt pandt
 COPY ptrpi ptrpi
 COPY pandt_lambda pandt_lambda
-RUN cargo build --target $BUILD_TARGET --release --package pandt_lambda
+RUN cargo build --release --package pandt_lambda
 
-RUN find target/$BUILD_TARGET/release -maxdepth 1 -type f -executable -exec cp '{}' $OUTPUT_DIR \;
+RUN mkdir /home/rust/output
 
-WORKDIR $OUTPUT_DIR
-RUN find . -maxdepth 1 -type f -executable -exec zip pandt_lambda.zip '{}' \;
+RUN find target/x86_64-unknown-linux-musl/release -maxdepth 1 -type f -executable -exec cp '{}' /home/rust/output \;
+
