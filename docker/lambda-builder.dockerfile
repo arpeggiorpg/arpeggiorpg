@@ -1,16 +1,5 @@
-
-##
-## Builder
-##
-
-# FROM rust-builder-base as builder
 FROM ekidd/rust-musl-builder:beta
 
-# RUN mkdir .cargo
-# COPY docker/cargo_config .cargo/config
-
-# ENV OPENSSL_DIR=$PREFIX \
-#     OPENSSL_STATIC=true
 
 # Some caching tricks! We want all the build dependencies to be cached as long
 # as Cargo.lock hasn't changed.
