@@ -126,4 +126,4 @@ I keep track of my todo lists using [GitHub's "Projects" feature](https://github
 
 # Talk to me
 
-I realize this post is a lot longer than it should be, so thanks for reading this far! If you have any interest in this project, I'd love to chat about it and hear your ideas. I talk about tabletop RPG design and P&T a lot on the Mastodon social network here: [@radix@mastodon.weaponvsac.space](https://mastodon.weaponvsac.space/@radix). You can also email me directly at radix@twistedmatrix.com. If you are interested in contributing, whether as a writer, artist, system designer, programmer, or playtester, hit me up!
+I realize this post is a lot longer than it should be, so thanks for reading this far! If you have any interest in this project, I'd love to chat about it and hear your ideas. I talk about tabletop RPG design and P&T a lot on the Mastodon social network here: [@radix@dice.camp](https://dice.camp/@radix). You can also email me directly at pandt@wordeology.com. If you are interested in contributing, whether as a writer, artist, system designer, programmer, or playtester, hit me up!

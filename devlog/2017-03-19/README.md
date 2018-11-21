@@ -56,4 +56,4 @@ There's an unimaginable amount of work left to do on P&T before it's ready to ru
 
 ## End
 
-Thanks for reading, if you have! If you have any interest in a project like this, either as a writer, artist, system designer, programmer, or playtester, please give me a shout at radix@twistedmatrix.com.
+Thanks for reading, if you have! If you have any interest in a project like this, either as a writer, artist, system designer, programmer, or playtester, please give me a shout at pandt@wordeology.com.

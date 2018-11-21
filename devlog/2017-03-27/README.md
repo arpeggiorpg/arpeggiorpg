@@ -83,4 +83,4 @@ Of course, making the grid size finer-grained is probably going to put a lot mor
 
 ## End
 
-Thanks for reading, if you have! If you have any interest in a project like this, either as a writer, artist, system designer, programmer, or playtester, please give me a shout at radix@twistedmatrix.com.
+Thanks for reading, if you have! If you have any interest in a project like this, either as a writer, artist, system designer, programmer, or playtester, please give me a shout at pandt@wordeology.com.
