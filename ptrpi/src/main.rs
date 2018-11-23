@@ -12,7 +12,6 @@ extern crate failure_derive;
 extern crate foldertree;
 extern crate futures;
 extern crate http;
-extern crate hyper;
 #[macro_use]
 extern crate log;
 extern crate serde;
