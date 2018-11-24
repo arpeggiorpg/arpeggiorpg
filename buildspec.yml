@@ -1,0 +1,39 @@
+version: 0.2
+
+#env:
+  #variables:
+     # key: "value"
+     # key: "value"
+  #parameter-store:
+     # key: "value"
+     # key: "value"
+
+phases:
+  #install:
+    #commands:
+      # - command
+      # - command
+  pre_build:
+    commands:
+      - docker pull ekidd/rust-musl-builder:beta
+  build:
+    commands:
+      - docker build -t pandt-lambda -f docker/lambda-builder.dockerfile .
+      - docker run --cidfile CIDFILE pandt-lambda
+      - mkdir artifacts
+      - docker cp $(cat CIDFILE):/home/rust/output/pandt_lambda artifacts/
+      - cd artifacts
+      - zip pandt_lambda.zip pandt_lambda
+  #post_build:
+    #commands:
+      # - command
+      # - command
+artifacts:
+  files:
+    - artifacts/pandt_lambda.zip
+  #name: $(date +%Y-%m-%d)
+  #discard-paths: yes
+  #base-directory: location
+#cache:
+  #paths:
+    # - paths
