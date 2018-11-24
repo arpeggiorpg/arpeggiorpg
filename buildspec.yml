@@ -19,6 +19,7 @@ phases:
       - mkdir -p docker/cache/cargo_git
       - mkdir -p docker/cache/cargo_registry
       - mkdir -p docker/cache/cargo_target
+      - chmod a+rwX -R docker/cache
       - rm -f CIDFILE
 
   build:
