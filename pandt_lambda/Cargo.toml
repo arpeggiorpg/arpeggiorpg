@@ -10,6 +10,7 @@ failure = "0.1"
 failure_derive = "0.1"
 graphql_client = "0.5"
 pandt = { path = "../pandt" }
+rusoto_cognito_identity = "0.35"
 rusoto_core = "0.35"
 rusoto_dynamodb = "0.35"
 rusoto_ssm = "0.35"
