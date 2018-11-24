@@ -22,13 +22,12 @@ mkdir -Force docker/cache/cargo_registry
 mkdir -Force docker/cache/cargo_target
 Remove-Item CIDFILE -ErrorAction Ignore
 
-docker build --force-rm -t pandt-lambda:latest -f .\docker\lambda-builder.dockerfile .
+docker build -t pandt-lambda:latest -f .\docker\lambda-builder.dockerfile .
 docker run -it `
     -v "$pwd/docker/cache/cargo_git:/home/rust/.cargo/git" `
     -v "$pwd/docker/cache/cargo_registry:/home/rust/.cargo/registry" `
     -v "$pwd/docker/cache/cargo_target:/home/rust/src/target" `
-    --cidfile CIDFILE pandt-lambda:latest `
-    bash
+    --cidfile CIDFILE pandt-lambda:latest
 CheckLastExitCode
 
 $container_id = get-content CIDFILE
