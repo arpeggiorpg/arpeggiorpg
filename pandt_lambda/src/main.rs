@@ -16,7 +16,13 @@ fn main() -> Result<(), failure::Error> {
             with_decryption: Some(true),
         })
         .sync()?;
-    let appsync_secret = appsync_secret_param.parameter.ok_or_else(|| failure::format_err!("Couldn't find pandt-backend-cognita-password parameter?"))?.value;
+    let appsync_secret = appsync_secret_param
+        .parameter
+        .ok_or_else(|| {
+            failure::format_err!("Couldn't find pandt-backend-cognito-password parameter?")
+        })?
+        .value
+        .ok_or_else(|| failure::format_err!("pandt-backend-cognito-password didn't have a value"));
 
     Ok(start(move |()| Ok(format!("Hello {:?}!", appsync_secret))))
 }
