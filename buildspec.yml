@@ -39,7 +39,7 @@ artifacts:
   files:
     - artifacts/pandt_lambda.zip
   #name: $(date +%Y-%m-%d)
-  #discard-paths: yes
+  discard-paths: yes
   #base-directory: location
 cache:
   paths:
