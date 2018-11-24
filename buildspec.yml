@@ -26,8 +26,9 @@ phases:
     commands:
       - docker build -t pandt-lambda -f docker/lambda-builder.dockerfile .
       - docker run --cidfile CIDFILE -v "$(pwd)/docker_cache/cargo_git:/home/rust/.cargo/git" -v "$(pwd)/docker_cache/cargo_registry:/home/rust/.cargo/registry" -v "$(pwd)/docker_cache/cargo_target:/home/rust/src/target" pandt-lambda:latest
+      - find docker_cache
       - mkdir artifacts
-      - docker cp $(cat CIDFILE):/home/rust/src/target/x86_64-unknown-linux-musl/release/pandt_lambda artifacts/
+      - cp docker_cache/cargo_target/x86_64-unknown-linux-musl/release/pandt_lambda artifacts/
       - cd artifacts
       - zip pandt_lambda.zip pandt_lambda
   #post_build:
