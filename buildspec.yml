@@ -43,4 +43,4 @@ artifacts:
   #base-directory: location
 cache:
   paths:
-    - docker_cache
+    - docker_cache/**/*
