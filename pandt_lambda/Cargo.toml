@@ -5,10 +5,10 @@ authors = ["Christopher Armstrong"]
 edition = "2018"
 
 [dependencies]
-aws_lambda = { git = "https://github.com/srijs/rust-aws-lambda", rev = "1435a4dbdf72a1d35afd5943a0d7f0f2938ba649" }
 failure = "0.1"
 failure_derive = "0.1"
 graphql_client = "0.5"
+lambda_runtime = "0.1"
 pandt = { path = "../pandt" }
 rusoto_cognito_identity = "0.35"
 rusoto_core = "0.35"
