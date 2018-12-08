@@ -15,7 +15,7 @@ phases:
       # - command
   pre_build:
     commands:
-      - docker pull ekidd/rust-musl-builder:beta
+      - docker pull ekidd/rust-musl-builder:stable
       - mkdir -p docker_cache/cargo_git
       - mkdir -p docker_cache/cargo_registry
       - mkdir -p docker_cache/cargo_target
