@@ -1,7 +1,9 @@
-target
-lambda-target
-.git
-devlog
-.vscode
-docker/cache
-docker_cache
+*
+!foldertree
+!indexed
+!nonempty
+!pandt
+!pandt_lambda
+!ptrpi
+!Cargo.lock
+!Cargo.toml
