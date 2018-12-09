@@ -8,7 +8,6 @@ edition = "2018"
 failure = "0.1"
 failure_derive = "0.1"
 graphql_client = "0.5"
-lambda_runtime = "0.1"
 pandt = { path = "../pandt" }
 rusoto_cognito_identity = "0.35"
 rusoto_core = "0.35"
@@ -17,3 +16,8 @@ rusoto_ssm = "0.35"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
+
+[dependencies.lambda_runtime]
+git = "https://github.com/awslabs/aws-lambda-rust-runtime"
+# Revision which includes closure support for handlers
+rev = "a8bdf7b7377000ef9de694642035ebe5124e2ae1"
