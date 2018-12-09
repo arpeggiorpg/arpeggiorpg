@@ -1,13 +1,5 @@
 version: 0.2
 
-#env:
-  #variables:
-     # key: "value"
-     # key: "value"
-  #parameter-store:
-     # key: "value"
-     # key: "value"
-
 phases:
   #install:
     #commands:
@@ -26,17 +18,16 @@ phases:
     commands:
       - docker build -t pandt-lambda -f docker/lambda-builder.dockerfile .
       - docker run --cidfile CIDFILE -v "$(pwd)/docker_cache/cargo_git:/home/rust/.cargo/git" -v "$(pwd)/docker_cache/cargo_registry:/home/rust/.cargo/registry" -v "$(pwd)/docker_cache/cargo_target:/home/rust/src/target" pandt-lambda:latest
+  post_build:
+    commands:
       - mkdir artifacts
       - cp docker_cache/cargo_target/x86_64-unknown-linux-musl/debug/pandt_lambda artifacts/
-      - cd artifacts
-      - zip pandt_lambda.zip pandt_lambda
-  #post_build:
-    #commands:
-      # - command
-      # - command
+      # AWS Lambda requires the executable to be called "bootstrap"
+      - mv artifacts/pandt_lambda artifacts/bootstrap
+
 artifacts:
   files:
-    - artifacts/pandt_lambda.zip
+    - artifacts/*
   #name: $(date +%Y-%m-%d)
   discard-paths: yes
   #base-directory: location
