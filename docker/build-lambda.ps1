@@ -16,7 +16,7 @@ CALLSTACK:$(Get-PSCallStack | Out-String)
     }
 }
 
-mkdir -Force lambda-target
+mkdir -Force artifacts
 mkdir -Force docker/cache/cargo_git
 mkdir -Force docker/cache/cargo_registry
 mkdir -Force docker/cache/cargo_target
@@ -33,4 +33,4 @@ CheckLastExitCode
 $container_id = get-content CIDFILE
 rm -Force CIDFILE
 
-cp ./docker/cache/cargo_target/x86_64-unknown-linux-musl/release/pandt_lambda lambda-target/
+cp ./docker/cache/cargo_target/x86_64-unknown-linux-musl/release/pandt_lambda artifacts/bootstrap
