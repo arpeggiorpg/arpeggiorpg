@@ -29,9 +29,9 @@ To build the UI, you must have npm installed (ideally npm 5).
 
 ```
 cd ptui;
-  npm install;
-  ./node_modules/.bin/webpack --config ./webpack.vendor.js
-  ./node_modules/.bin/webpack --env.rpi_url=http://localhost:1337/
+npm install;
+./node_modules/.bin/webpack --config ./webpack.vendor.js
+./node_modules/.bin/webpack --env.rpi_url=http://localhost:1337/
 ```
 
 That will generate the UI in the `ptui/build` directory -- now host that on a static web server and
