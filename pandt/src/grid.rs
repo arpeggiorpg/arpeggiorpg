@@ -6,10 +6,11 @@ use odds::vec::VecExt;
 
 use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
-use ncollide::shape;
-use ncollide::shape::Cuboid;
-use ncollide::query::PointQuery;
-use ncollide::world;
+use ncollide3d::shape;
+use ncollide3d::shape::Cuboid;
+use ncollide3d::query::PointQuery;
+use ncollide3d::world;
+use ncollide3d::pipeline::object::{CollisionGroups, GeometricQueryType};
 use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
@@ -164,7 +165,7 @@ impl TileSystem {
     &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
-    let mut success_fns: Vec<Box<Fn(&Point3) -> bool>> = vec![];
+    let mut success_fns: Vec<Box<dyn Fn(&Point3) -> bool>> = vec![];
     for pt in points_to_check {
       if pt != start {
         success_fns.push(Box::new(move |n: &Point3| *n == pt));
@@ -302,44 +303,39 @@ where
   CI: Iterator<Item = (&'c Creature, Point3)>,
   VCI: Iterator<Item = (ConditionID, &'vc VolumeCondition)>,
 {
-  let mut world = world::CollisionWorld3::new(0.0, true);
-  let mut creature_group = world::CollisionGroups::new();
+  let mut world = world::CollisionWorld::new(0.0);
+  let mut creature_group = CollisionGroups::new();
   creature_group.set_membership(&[1]);
   creature_group.set_whitelist(&[2]);
   creature_group.set_blacklist(&[1]);
 
-  let mut condition_group = world::CollisionGroups::new();
+  let mut condition_group = CollisionGroups::new();
   condition_group.set_membership(&[2]);
   condition_group.set_whitelist(&[1]);
   condition_group.set_blacklist(&[2]);
 
-  let query = world::GeometricQueryType::Contacts(0.0);
+  let query = GeometricQueryType::Contacts(0.0, 0.0);
 
-  let mut idx = 0;
 
   for (creature, pos) in creatures {
     let volume = Volume::AABB(creature.size);
-    world.deferred_add(
-      idx,
+    world.add(
       na_iso(pos),
       volume_to_na_shape(volume),
       creature_group,
       query,
       CollisionData::Creature(creature.id),
     );
-    idx += 1;
   }
 
   for (condition_id, volume_condition) in volume_conditions {
-    world.deferred_add(
-      idx,
+    world.add(
       na_iso(volume_condition.point),
       volume_to_na_shape(volume_condition.volume),
       condition_group,
       query,
       CollisionData::ConditionVolume(condition_id),
     );
-    idx += 1;
   }
 
   world.update();
@@ -348,24 +344,24 @@ where
 
 pub fn query_world<F, R>(world: &CollisionWorld, f: F) -> Vec<R>
 where
-  F: Fn(CollisionData, CollisionData) -> Option<R>,
+  F: Fn(&CollisionData, &CollisionData) -> Option<R>,
 {
   let mut results = vec![];
-  for (obj1, obj2, _) in world.contact_pairs() {
-    if let Some(r) = f(obj1.data, obj2.data) {
+  for (obj1, obj2, ..) in world.contact_pairs(true) {
+    if let Some(r) = f(world.collision_object(obj1).unwrap().data(), world.collision_object(obj2).unwrap().data()) {
       results.push(r);
     }
-    if let Some(r) = f(obj2.data, obj1.data) {
+    if let Some(r) = f(world.collision_object(obj2).unwrap().data(), world.collision_object(obj1).unwrap().data()) {
       results.push(r);
     }
   }
   results
 }
 
-fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle3<f64> {
+fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle<f64> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle3::new(shape::Ball::new(r.get(centimeter) as f64)),
-    Volume::AABB(aabb) => shape::ShapeHandle3::new(shape::Cuboid::new(Vector3::new(
+    Volume::Sphere(r) => shape::ShapeHandle::new(shape::Ball::new(r.get(centimeter) as f64)),
+    Volume::AABB(aabb) => shape::ShapeHandle::new(shape::Cuboid::new(Vector3::new(
       (f64::from(aabb.x.get(centimeter))) / 2.0,
       (f64::from(aabb.y.get(centimeter))) / 2.0,
       (f64::from(aabb.z.get(centimeter))) / 2.0,
@@ -415,7 +411,7 @@ fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
 }
 
 pub fn astar_multi<N, C, FN, IN, FH>(
-  start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<Fn(&N) -> bool>>
+  start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<dyn Fn(&N) -> bool>>
 ) -> Vec<(Vec<N>, C)>
 where
   N: Eq + Hash + Clone + ::std::fmt::Debug,
@@ -625,7 +621,7 @@ pub mod test {
   #[test]
   fn pathfinding_astar_multi_2() {
     let start = Point3::new(0, 0, 0);
-    let successes: Vec<Box<Fn(&Point3) -> bool>> = vec![
+    let successes: Vec<Box<dyn Fn(&Point3) -> bool>> = vec![
       Box::new(|n: &Point3| *n == Point3::new(100, 100, 0)),
       Box::new(|n: &Point3| *n == Point3::new(-100, -100, 0)),
     ];

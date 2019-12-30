@@ -56,7 +56,7 @@ impl Scene {
   ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
     let condition_ids = query_world(&self.get_world(game)?, |cdata1, cdata2| {
       if let (CollisionData::Creature(cid), CollisionData::ConditionVolume(cond_id)) =
-        (cdata1, cdata2)
+        (*cdata1, *cdata2)
       {
         if cid == creature.id {
           Some(cond_id)

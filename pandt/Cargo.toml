@@ -18,8 +18,8 @@ foldertree = {version = "*", path = "../foldertree", features = ["serde"]}
 indexed = {version = "*", path = "../indexed", features = ["serde"]}
 log = "0.3"
 maplit = "0.1.4"
-nalgebra = "0.11.2"
-ncollide = "0.11.0"
+nalgebra = "0.19"
+ncollide3d = "0.21"
 nonempty = {version = "*", path = "../nonempty", features = ["use_serde"]}
 num = "0.1.41"
 num-traits = "0.1.41"

@@ -14,7 +14,7 @@ extern crate foldertree;
 extern crate indexed;
 extern crate log;
 extern crate nalgebra;
-extern crate ncollide;
+extern crate ncollide3d;
 extern crate nonempty;
 extern crate num;
 extern crate num_traits;
