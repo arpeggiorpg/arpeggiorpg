@@ -18,7 +18,7 @@ use pandt::types;
 use pandt::game::load_app_from_path;
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PT {
   saved_game_path: PathBuf,
   module_path: Option<PathBuf>,
@@ -33,8 +33,8 @@ impl PT {
     }
   }
 
-  pub async fn get_app(&self) -> String {
-    app_to_string(&*self.appm.lock().await).unwrap()
+  pub async fn get_app(&self) -> Result<String, Error> {
+    app_to_string(&*self.appm.lock().await)
   }
 }
 

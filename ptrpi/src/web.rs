@@ -1,23 +1,38 @@
 use std::fs;
 use std::path::Path;
 
-use tide::{Request, Response, Route};
-
+use http::status::StatusCode;
+use tide::{
+  Request, Response, Route,
+  IntoResponse
+};
 // use failure::Error;
 // use futures::Future;
 // use http::{header, Method};
 
 // use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
-use crate::actor::{self, PT};
+use crate::actor::{PT};
 
-// pub(crate) fn router(mut router: &mut Route<'static, PT>) -> () {
-//   router.at("/").get(|r|);
-// }
-
-pub(crate) async fn get_app(req: Request<PT>) -> String {
-  req.state().get_app().await
+pub(crate) fn router<'a>(router: &mut Route<'a, PT>) -> () {
+  router.at("/").get(get_app);
 }
+
+async fn get_app(req: Request<PT>) -> Response {
+  let state = req.state();
+  let s = state.get_app().await.map_err(convert_error);
+  // why the heck can't I return a Result from a handler!?
+  match s {
+    Ok(x) => x.with_status(StatusCode::OK).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+fn convert_error(error: failure::Error) -> tide::Error {
+  error!("Error: {}", error);
+  return StatusCode::INTERNAL_SERVER_ERROR.into()
+}
+
 
 // pub fn router(pt: PT) -> Application<PT> {
 //   let mut corsm = cors::Cors::build();

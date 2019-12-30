@@ -41,12 +41,7 @@ async fn main() -> Result<(), std::io::Error> {
 
   let pt = actor::PT::new(saved_game_path, module_path, app);
   let mut tide_app = tide::with_state(pt);
-  // tide_app.at("/").nest(web::router);
-  tide_app.at("/").get(|req: tide::Request<actor::PT>| async move {
-    let state = req.state();
-    let s = state.get_app().await;
-    s
-  });
+  tide_app.at("/").nest(web::router);
   tide_app.listen("127.0.0.1:1337").await?;
   Ok(())
 }
