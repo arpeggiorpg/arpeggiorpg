@@ -119,6 +119,7 @@ handle_actor! {
   }
 }
 
+/// Return the current app, but only if you give the current snapshot/log revisions.
 fn get_current_app(
   app: &types::App, snapshot_len: usize, log_len: usize
 ) -> Result<Option<String>, Error> {

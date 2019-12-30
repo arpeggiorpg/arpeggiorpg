@@ -1,12 +1,11 @@
 #[macro_use]
 extern crate log;
-use async_std::prelude::*;
 
 // mod actor;
 // mod web;
 
 use std::env;
-// use std::fs;
+use std::fs;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
@@ -32,29 +31,31 @@ async fn main() -> Result<(), std::io::Error> {
 
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
 
+  let opts = Opts::from_args();
+  let saved_game_path =
+    fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
+  info!("Saved game directory is {}", saved_game_path.to_str().unwrap());
+  let module_path =
+    opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
+
+  let app = match opts.load_game {
+    Some(initial_file) => {
+      load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
+        .expect("Couldn't load app from file")
+    }
+    None => App::new(Default::default()),
+  };
+
   let mut app = tide::new();
   app.at("/").get(|_| async move { "Hello, world!" });
   app.listen("127.0.0.1:1337").await?;
-  Ok(())
-  // let opts = Opts::from_args();
-  // let saved_game_path =
-  //   fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
-  // let module_path =
-  //   opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
-
-  // let app = match opts.load_game {
-  //   Some(initial_file) => {
-  //     load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
-  //       .expect("Couldn't load app from file")
-  //   }
-  //   None => App::new(Default::default()),
-  // };
-
   // let pt = PT { saved_game_path, module_path, app_address };
+  Ok(())
 }
 
-#[derive(StructOpt)]
-#[structopt(name = "basic")]
+#[derive(Debug, StructOpt)]
+#[structopt(name = "ptrpi")]
+/// The P&T Remote Programming Interface HTTP server
 struct Opts {
   /// The directory where saved games should be stored
   #[structopt(long = "saved-games", parse(from_os_str))]
