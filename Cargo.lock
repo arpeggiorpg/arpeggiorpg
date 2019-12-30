@@ -1190,6 +1190,7 @@ dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "foldertree 0.1.0",
+ "http 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pandt 0.1.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",

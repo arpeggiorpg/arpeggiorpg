@@ -1,9 +1,6 @@
 #[macro_use]
 extern crate log;
 
-// mod actor;
-// mod web;
-
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -13,13 +10,9 @@ use structopt::StructOpt;
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
+mod web;
+mod actor;
 
-// #[derive(Clone)]
-// pub struct PT {
-//   saved_game_path: PathBuf,
-//   module_path: Option<PathBuf>,
-//   app_address: AppAddress,
-// }
 
 #[async_std::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -46,10 +39,15 @@ async fn main() -> Result<(), std::io::Error> {
     None => App::new(Default::default()),
   };
 
-  let mut app = tide::new();
-  app.at("/").get(|_| async move { "Hello, world!" });
-  app.listen("127.0.0.1:1337").await?;
-  // let pt = PT { saved_game_path, module_path, app_address };
+  let pt = actor::PT::new(saved_game_path, module_path, app);
+  let mut tide_app = tide::with_state(pt);
+  // tide_app.at("/").nest(web::router);
+  tide_app.at("/").get(|req: tide::Request<actor::PT>| async move {
+    let state = req.state();
+    let s = state.get_app().await;
+    s
+  });
+  tide_app.listen("127.0.0.1:1337").await?;
   Ok(())
 }
 
