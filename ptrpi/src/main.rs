@@ -1,27 +1,11 @@
-// Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
-#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-
-extern crate actix;
-extern crate actix_web;
-extern crate env_logger;
-extern crate error_chain;
 #[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate foldertree;
-extern crate futures;
-extern crate http;
 #[macro_use]
 extern crate log;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
 #[macro_use]
 extern crate structopt;
-extern crate tokio_core;
-
-extern crate pandt;
 
 #[macro_use]
 mod macros {
@@ -57,7 +41,8 @@ pub struct PT {
   app_address: AppAddress,
 }
 
-fn main() {
+#[async_std::main]
+async fn main() -> Result<(), std::io::Error> {
   if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info");
   }
@@ -65,30 +50,26 @@ fn main() {
   env_logger::init_from_env(env);
 
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
-  let opts = Opts::from_args();
-  let saved_game_path =
-    fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
-  let module_path =
-    opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
 
-  let app = match opts.load_game {
-    Some(initial_file) => {
-      load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
-        .expect("Couldn't load app from file")
-    }
-    None => App::new(Default::default()),
-  };
+  let mut app = tide::new();
+  app.at("/").get(|_| async move { "Hello, world!" });
+  app.listen("127.0.0.1:1337").await?;
+  Ok(())
+  // let opts = Opts::from_args();
+  // let saved_game_path =
+  //   fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
+  // let module_path =
+  //   opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
 
-  let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
+  // let app = match opts.load_game {
+  //   Some(initial_file) => {
+  //     load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
+  //       .expect("Couldn't load app from file")
+  //   }
+  //   None => App::new(Default::default()),
+  // };
 
-  let actix_system = actix::System::new("P&T-RPI");
-  let app_address: AppAddress = actor.start();
-
-  let pt = PT { saved_game_path, module_path, app_address };
-
-  let server = actix_web::HttpServer::new(move || web::router(pt.clone()));
-  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
-  actix_system.run();
+  // let pt = PT { saved_game_path, module_path, app_address };
 }
 
 #[derive(StructOpt)]

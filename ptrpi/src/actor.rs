@@ -8,7 +8,6 @@ use actix::{Actor, AsyncContext, Context, Handler, Message};
 use failure::Error;
 use futures::{future, Future};
 use futures::sync::oneshot;
-use tokio_core::reactor::Timeout;
 use serde_json;
 use serde_yaml;
 

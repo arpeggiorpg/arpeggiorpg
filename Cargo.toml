@@ -1,2 +1,2 @@
 [workspace]
-members = ["foldertree", "indexed", "nonempty", "pandt", "ptrpi", "pandt_lambda"]
+members = ["foldertree", "indexed", "nonempty", "pandt", "ptrpi"]
