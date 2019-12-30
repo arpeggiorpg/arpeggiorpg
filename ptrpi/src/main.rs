@@ -1,45 +1,26 @@
 #[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
 extern crate log;
-#[macro_use]
-extern crate structopt;
+use async_std::prelude::*;
 
-#[macro_use]
-mod macros {
-  macro_rules! try_fut {
-    ($e: expr) => {
-      match $e {
-        Ok(x) => x,
-        Err(e) => return Box::new(::futures::future::err(e.into())),
-      }
-    };
-  }
-}
-
-mod actor;
-mod web;
+// mod actor;
+// mod web;
 
 use std::env;
-use std::fs;
+// use std::fs;
 use std::path::PathBuf;
 
-use actix::Actor;
 use structopt::StructOpt;
 
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
-type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
 
-#[derive(Clone)]
-pub struct PT {
-  saved_game_path: PathBuf,
-  module_path: Option<PathBuf>,
-  app_address: AppAddress,
-}
+// #[derive(Clone)]
+// pub struct PT {
+//   saved_game_path: PathBuf,
+//   module_path: Option<PathBuf>,
+//   app_address: AppAddress,
+// }
 
 #[async_std::main]
 async fn main() -> Result<(), std::io::Error> {

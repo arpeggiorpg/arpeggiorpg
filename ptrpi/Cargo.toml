@@ -5,6 +5,7 @@ authors = ["Christopher Armstrong"]
 edition = "2018"
 
 [dependencies]
+async-std = {version = "1.4", features = ["attributes"]}
 env_logger = "0.7"
 failure = "0.1"
 failure_derive = "0.1"
