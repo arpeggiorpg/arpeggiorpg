@@ -38,7 +38,7 @@ pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
 }
 pub fn i64meter<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new::<meter>(v.into()) }
 
-pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get(centimeter)) }
+pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centimeter>()) }
 
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
@@ -61,7 +61,7 @@ impl Point3 {
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "{}/{}/{}", self.x.get(centimeter), self.y.get(centimeter), self.z.get(centimeter))
+    write!(f, "{}/{}/{}", self.x.get::<centimeter>(), self.y.get::<centimeter>(), self.z.get::<centimeter>())
   }
 }
 
@@ -113,9 +113,9 @@ impl AABB {
   /// Get the "maximum" point of the AABB (aka the top-right point) relative to a fixed point.
   pub fn get_max(&self, pt: Point3) -> Point3 {
     Point3::from_quantities(
-      pt.x + i64cm(self.x.get(centimeter)),
-      pt.y + i64cm(self.y.get(centimeter)),
-      pt.z + i64cm(self.z.get(centimeter)),
+      pt.x + i64cm(self.x.get::<centimeter>()),
+      pt.y + i64cm(self.y.get::<centimeter>()),
+      pt.z + i64cm(self.z.get::<centimeter>()),
     )
   }
 }

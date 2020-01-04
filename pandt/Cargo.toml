@@ -31,9 +31,6 @@ serde_yaml = "0.7.0"
 uuid = {version = "0.5", features = ["v4", "serde"]}
 
 [dependencies.uom]
-# version = "0.16"
-git = "https://github.com/iliekturtles/uom"
-# revision of uom which disables automatic conversion between types when performing basic operations
-rev = "965d1112894a790c9f8519bd996131bcd8596244"
+version = "0.26"
 default-features = false
 features = ["u32", "i64", "serde", "si"]

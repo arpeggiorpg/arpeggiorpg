@@ -46,12 +46,12 @@ fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero
 
 fn na_point(pt: Point3) -> na::Point3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  na::Point3::new(pt.x.get(meter) as f64, pt.y.get(meter) as f64, pt.z.get(meter) as f64)
+  na::Point3::new(pt.x.get::<meter>() as f64, pt.y.get::<meter>() as f64, pt.z.get::<meter>() as f64)
 }
 
 fn na_vector(pt: Point3) -> Vector3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  Vector3::new(pt.x.get(meter) as f64, pt.y.get(meter) as f64, pt.z.get(meter) as f64)
+  Vector3::new(pt.x.get::<meter>() as f64, pt.y.get::<meter>() as f64, pt.z.get::<meter>() as f64)
 }
 
 fn na_vector_to_point3(v: Vector3<f64>) -> Point3 {
@@ -62,7 +62,7 @@ pub fn line_through_point(origin: Point3, clicked: Point3, length: u32units::Len
   let offset = point3_difference(clicked, origin);
   let mut navec = na_vector(offset);
   navec.normalize_mut();
-  let new_vec = navec * length.get(meter) as f64;
+  let new_vec = navec * length.get::<meter>() as f64;
   Volume::Line { vector: na_vector_to_point3(new_vec) }
 }
 
@@ -94,7 +94,7 @@ impl TileSystem {
       TileSystem::DnD => {
         let xdiff = (pos1.x - pos2.x).abs();
         let ydiff = (pos1.y - pos2.y).abs();
-        u32cm(cmp::max(xdiff, ydiff).get(centimeter) as u32)
+        u32cm(cmp::max(xdiff, ydiff).get::<centimeter>() as u32)
       }
     }
   }
@@ -121,8 +121,8 @@ impl TileSystem {
       Volume::AABB(_) => unimplemented!("unimplemented: items_within_volume for AABB"),
       Volume::Line { vector } => {
         let dest = point3_add_vec(pt, vector);
-        let start = (pt.x.get(meter) as isize, pt.y.get(meter) as isize);
-        let end = (dest.x.get(meter) as isize, dest.y.get(meter) as isize);
+        let start = (pt.x.get::<meter>() as isize, pt.y.get::<meter>() as isize);
+        let end = (dest.x.get::<meter>() as isize, dest.y.get::<meter>() as isize);
         let line_pts: HashSet<Point3> = HashSet::from_iter(
           bresenham::Bresenham::new(start, end)
             .map(|(x, y)| Point3::new(x as i64 * 100, y as i64 * 100, 0)),
@@ -148,8 +148,8 @@ impl TileSystem {
     let lowy = start.y - speed;
     let highy = start.y + speed + i64meter(1);
     let mut open = vec![];
-    for x_meters in range(lowx.get(meter), highx.get(meter)) {
-      for y_meters in range(lowy.get(meter), highy.get(meter)) {
+    for x_meters in range(lowx.get::<meter>(), highx.get::<meter>()) {
+      for y_meters in range(lowy.get::<meter>(), highy.get::<meter>()) {
         let end_point = Point3::new(x_meters * 100, y_meters * 100, 0);
         if !is_open(terrain, end_point) {
           continue;
@@ -227,10 +227,10 @@ impl TileSystem {
       // sadly uom doesn't implement Step for Quantity
       Volume::AABB(aabb) => {
         let max = aabb.get_max(pt);
-        (pt.x.get(meter)..(max.x.get(meter)))
+        (pt.x.get::<meter>()..(max.x.get::<meter>()))
           .flat_map(|x| {
-            (pt.y.get(meter)..(max.y.get(meter))).flat_map(move |y| {
-              (pt.z.get(meter)..(max.z.get(meter)))
+            (pt.y.get::<meter>()..(max.y.get::<meter>())).flat_map(move |y| {
+              (pt.z.get::<meter>()..(max.z.get::<meter>()))
                 .map(move |z| Point3::new(x * 100, y * 100, z * 100))
             })
           })
@@ -360,11 +360,11 @@ where
 
 fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle<f64> {
   match volume {
-    Volume::Sphere(r) => shape::ShapeHandle::new(shape::Ball::new(r.get(centimeter) as f64)),
+    Volume::Sphere(r) => shape::ShapeHandle::new(shape::Ball::new(r.get::<centimeter>() as f64)),
     Volume::AABB(aabb) => shape::ShapeHandle::new(shape::Cuboid::new(Vector3::new(
-      (f64::from(aabb.x.get(centimeter))) / 2.0,
-      (f64::from(aabb.y.get(centimeter))) / 2.0,
-      (f64::from(aabb.z.get(centimeter))) / 2.0,
+      (f64::from(aabb.x.get::<centimeter>())) / 2.0,
+      (f64::from(aabb.y.get::<centimeter>())) / 2.0,
+      (f64::from(aabb.z.get::<centimeter>())) / 2.0,
     ))),
     Volume::Line { .. } => unimplemented!("volume_to_na_shape for Line"),
     Volume::VerticalCylinder { .. } => unimplemented!("volume_to_na_shape for VerticalCylinder"),
