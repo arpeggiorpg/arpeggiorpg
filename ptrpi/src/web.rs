@@ -13,14 +13,19 @@ use crate::actor::PT;
 
 pub(crate) fn router<'a>(router: &mut Route<'a, PT>) -> () { router.at("/").get(get_app); }
 
-async fn get_app(req: Request<PT>) -> Response {
-  let state = req.state();
-  let s = state.get_app().await.map_err(convert_error);
-  // why the heck can't I return a Result from a handler!?
-  match s {
-    Ok(x) => x.with_status(StatusCode::OK).into_response(),
-    Err(e) => e.into_response(),
+fn r500<S: IntoResponse>(result: Result<S, failure::Error>) -> Response {
+  match result {
+    Ok(s) => s.into_response(),
+    Err(e) => {
+      error!("Error: {}", e);
+      Response::new(500).body_string(format!("{}", e))
+    }
   }
+}
+
+async fn get_app(req: Request<PT>) -> impl IntoResponse {
+  let state = req.state();
+  r500(state.get_app().await)
 }
 
 fn convert_error(error: failure::Error) -> tide::Error {
