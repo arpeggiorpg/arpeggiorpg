@@ -1,5 +1,6 @@
 //! Simulation of combat.
 
+use error_chain::bail;
 use nonempty;
 use num::{Saturating, Zero};
 

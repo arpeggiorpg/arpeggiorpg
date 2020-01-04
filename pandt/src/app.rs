@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::path::Path;
 
+use error_chain::bail;
+
 use crate::types::*;
 
 // random misplaced notes

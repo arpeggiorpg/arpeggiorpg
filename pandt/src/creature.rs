@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::cmp;
 
+use error_chain::bail;
 use num::Saturating;
 
 use indexed::*;

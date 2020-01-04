@@ -6,13 +6,14 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use derive_more::{Add, Sub, Div, Mul};
+use error_chain::bail;
+use failure::Fail;
 use num::Saturating;
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
-use serde::ser;
-use serde::ser::{Error as SerError, SerializeStruct};
-use serde::de;
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::{SerializeStruct, Error as SerError}};
 use serde_yaml;
 use uom::si::length::{centimeter, meter};
 use uuid::{ParseError as UuidParseError, Uuid};
@@ -78,18 +79,18 @@ impl ::std::str::FromStr for Point3 {
   }
 }
 
-impl ser::Serialize for Point3 {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl Serialize for Point3 {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&self.to_string())
   }
 }
 
-impl<'de> de::Deserialize<'de> for Point3 {
+impl<'de> Deserialize<'de> for Point3 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
-    D: de::Deserializer<'de>,
+    D: Deserializer<'de>,
   {
-    let st: String = de::Deserialize::deserialize(deserializer)?;
+    let st: String = Deserialize::deserialize(deserializer)?;
     match st.parse() {
       Ok(x) => Ok(x),
       Err(x) => Err(de::Error::invalid_value(
@@ -1161,8 +1162,8 @@ pub struct RPIApp<'a>(pub &'a App);
 /// Like `RPIApp` for Game.
 pub struct RPIGame<'a>(pub &'a Game);
 
-impl<'a> ser::Serialize for RPIApp<'a> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'a> Serialize for RPIApp<'a> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("App", 2)?;
     let app = self.0;
     str.serialize_field("current_game", &RPIGame(&app.current_game))?;
@@ -1171,8 +1172,8 @@ impl<'a> ser::Serialize for RPIApp<'a> {
   }
 }
 
-impl<'a> ser::Serialize for RPIGame<'a> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'a> Serialize for RPIGame<'a> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Game", 10)?;
     let game = self.0;
 
@@ -1194,8 +1195,8 @@ impl<'a> ser::Serialize for RPIGame<'a> {
   }
 }
 
-impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Creature", 21)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
@@ -1266,6 +1267,7 @@ impl Folder {
 #[cfg(test)]
 pub mod test {
   use std::iter::FromIterator;
+  use maplit::hashmap;
   use crate::types::*;
   use crate::grid::test::*;
 

@@ -5,6 +5,7 @@ use std::iter::FromIterator;
 use std::io::Read;
 use std::path::Path;
 
+use error_chain::bail;
 use serde_yaml;
 
 use crate::types::*;
@@ -1329,6 +1330,8 @@ pub mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
   use std::path::PathBuf;
+
+  use maplit::hashset;
 
   use crate::combat::test::*;
   use crate::game::*;

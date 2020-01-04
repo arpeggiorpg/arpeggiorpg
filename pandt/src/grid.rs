@@ -467,6 +467,8 @@ where
 
 #[cfg(test)]
 pub mod test {
+  use maplit::hashmap;
+
   use crate::grid::*;
   use crate::types::*;
 
