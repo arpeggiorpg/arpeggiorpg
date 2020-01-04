@@ -163,7 +163,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
 
 #[cfg(test)]
 mod test {
-  use ::*;
+  use *;
 
   #[derive(Eq, PartialEq, Debug)]
   struct TestObj {
@@ -183,5 +183,4 @@ mod test {
     hm.mutate(&"Bob".to_string(), |b| b.name = "Bab".to_string());
     assert_eq!(hm.get("Bab").unwrap(), &TestObj { name: "Bab".to_string(), num: 37 });
   }
-
 }

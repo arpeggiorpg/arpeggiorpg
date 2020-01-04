@@ -2,21 +2,16 @@ use std::fs;
 use std::path::Path;
 
 use http::status::StatusCode;
-use tide::{
-  Request, Response, Route,
-  IntoResponse
-};
+use tide::{IntoResponse, Request, Response, Route};
 // use failure::Error;
 // use futures::Future;
 // use http::{header, Method};
 
 // use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
-use crate::actor::{PT};
+use crate::actor::PT;
 
-pub(crate) fn router<'a>(router: &mut Route<'a, PT>) -> () {
-  router.at("/").get(get_app);
-}
+pub(crate) fn router<'a>(router: &mut Route<'a, PT>) -> () { router.at("/").get(get_app); }
 
 async fn get_app(req: Request<PT>) -> Response {
   let state = req.state();
@@ -30,9 +25,8 @@ async fn get_app(req: Request<PT>) -> Response {
 
 fn convert_error(error: failure::Error) -> tide::Error {
   error!("Error: {}", error);
-  return StatusCode::INTERNAL_SERVER_ERROR.into()
+  return StatusCode::INTERNAL_SERVER_ERROR.into();
 }
-
 
 // pub fn router(pt: PT) -> Application<PT> {
 //   let mut corsm = cors::Cors::build();

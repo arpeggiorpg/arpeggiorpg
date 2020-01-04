@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 // use std::time::Duration;
 
-
 use async_std::sync::Mutex;
 
 use failure::Error;
@@ -14,9 +13,8 @@ use failure::Error;
 // use serde_yaml;
 
 use foldertree;
-use pandt::types;
 use pandt::game::load_app_from_path;
-
+use pandt::types;
 
 #[derive(Clone, Debug)]
 pub struct PT {
@@ -27,15 +25,10 @@ pub struct PT {
 
 impl PT {
   pub fn new(saved_game_path: PathBuf, module_path: Option<PathBuf>, app: types::App) -> PT {
-    PT {
-      saved_game_path, module_path,
-      appm: Arc::new(Mutex::new(app)),
-    }
+    PT { saved_game_path, module_path, appm: Arc::new(Mutex::new(app)) }
   }
 
-  pub async fn get_app(&self) -> Result<String, Error> {
-    app_to_string(&*self.appm.lock().await)
-  }
+  pub async fn get_app(&self) -> Result<String, Error> { app_to_string(&*self.appm.lock().await) }
 }
 
 // pub struct AppActor {

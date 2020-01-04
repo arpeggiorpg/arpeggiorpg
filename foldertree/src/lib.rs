@@ -10,9 +10,9 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 #[cfg(feature = "serde")]
-use serde::ser::{Error, Serialize, SerializeMap, Serializer};
-#[cfg(feature = "serde")]
 use serde::de;
+#[cfg(feature = "serde")]
+use serde::ser::{Error, Serialize, SerializeMap, Serializer};
 
 #[derive(Debug, Fail)]
 pub enum FolderTreeError {
@@ -67,7 +67,7 @@ impl<T> FolderTree<T> {
   /// Make a child folder.
   /// Returns an error if the child already exists.
   pub fn make_folder(
-    &mut self, parent: &FolderPath, new_child: String, node: T
+    &mut self, parent: &FolderPath, new_child: String, node: T,
   ) -> Result<FolderPath, FolderTreeError> {
     let new_full_path = parent.child(new_child.clone());
     {
@@ -126,7 +126,7 @@ impl<T> FolderTree<T> {
   }
 
   pub fn rename_folder(
-    &mut self, path: &FolderPath, new_name: String
+    &mut self, path: &FolderPath, new_name: String,
   ) -> Result<(), FolderTreeError> {
     match path.up() {
       Some((parent, basename)) => {
@@ -148,7 +148,7 @@ impl<T> FolderTree<T> {
   }
 
   pub fn move_folder(
-    &mut self, path: &FolderPath, new_parent: &FolderPath
+    &mut self, path: &FolderPath, new_parent: &FolderPath,
   ) -> Result<(), FolderTreeError> {
     if new_parent.is_child_of(path) {
       return Err(FolderTreeError::ImpossibleMove(path.clone(), new_parent.clone()));
@@ -188,7 +188,7 @@ impl<T> FolderTree<T> {
   }
 
   fn get_data_mut(
-    &mut self, path: &FolderPath
+    &mut self, path: &FolderPath,
   ) -> Result<&mut (T, HashSet<String>), FolderTreeError> {
     self.nodes.get_mut(path).ok_or_else(|| FolderTreeError::FolderNotFound(path.clone()).into())
   }
@@ -225,7 +225,7 @@ impl<T> FolderTree<T> {
   }
 
   pub fn copy_from_tree(
-    &mut self, target: &FolderPath, other: &FolderTree<T>
+    &mut self, target: &FolderPath, other: &FolderTree<T>,
   ) -> Result<(), FolderTreeError>
   where
     T: Clone,
@@ -447,10 +447,10 @@ extern crate serde_json;
 
 #[cfg(test)]
 mod test {
+  use serde_json;
   use std::collections::HashSet;
   use std::iter::FromIterator;
   use {FolderPath, FolderTree, FolderTreeError};
-  use serde_json;
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
 

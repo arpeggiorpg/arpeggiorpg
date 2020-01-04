@@ -6,21 +6,25 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use derive_more::{Add, Sub, Div, Mul};
+use derive_more::{Add, Div, Mul, Sub};
 use error_chain::bail;
 use failure::Fail;
 use num::Saturating;
 use rand;
 use rand::distributions as dist;
 use rand::distributions::IndependentSample;
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser::{SerializeStruct, Error as SerError}};
+use serde::{
+  de,
+  ser::{Error as SerError, SerializeStruct},
+  Deserialize, Deserializer, Serialize, Serializer,
+};
 use serde_yaml;
 use uom::si::length::{centimeter, meter};
 use uuid::{ParseError as UuidParseError, Uuid};
 
-use nonempty;
-use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
+use indexed::{DeriveKey, IndexedHashMap};
+use nonempty;
 
 pub mod u32units {
   ISQ!(uom::si, u32, (centimeter, gram, second, ampere, kelvin, mole, candela));
@@ -61,7 +65,13 @@ impl Point3 {
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "{}/{}/{}", self.x.get::<centimeter>(), self.y.get::<centimeter>(), self.z.get::<centimeter>())
+    write!(
+      f,
+      "{}/{}/{}",
+      self.x.get::<centimeter>(),
+      self.y.get::<centimeter>(),
+      self.z.get::<centimeter>()
+    )
   }
 }
 
@@ -176,16 +186,44 @@ impl Dice {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Clone,
+  Copy,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Debug,
+  Hash,
+  Serialize,
+  Deserialize,
+)]
 pub struct HP(pub u8);
 impl Saturating for HP {
   fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
   fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Clone,
+  Copy,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Debug,
+  Hash,
+  Serialize,
+  Deserialize,
+)]
 pub struct Energy(pub u8);
 impl Saturating for Energy {
   fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
@@ -256,18 +294,19 @@ impl SkillLevel {
   }
 
   pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
-    100 - match difficulty_level.to_ord() - self.to_ord() {
-      -4 => 100,
-      -3 => 99,
-      -2 => 95,
-      -1 => 85,
-      0 => 75,
-      1 => 50,
-      2 => 10,
-      3 => 1,
-      4 => 0,
-      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
-    }
+    100
+      - match difficulty_level.to_ord() - self.to_ord() {
+        -4 => 100,
+        -3 => 99,
+        -2 => 95,
+        -1 => 85,
+        0 => 75,
+        1 => 50,
+        2 => 10,
+        3 => 1,
+        4 => 0,
+        diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
+      }
   }
 }
 
@@ -1266,13 +1305,13 @@ impl Folder {
 
 #[cfg(test)]
 pub mod test {
-  use std::iter::FromIterator;
-  use maplit::hashmap;
-  use crate::types::*;
   use crate::grid::test::*;
+  use crate::types::*;
+  use maplit::hashmap;
+  use std::iter::FromIterator;
 
-  use serde_yaml;
   use serde_json;
+  use serde_yaml;
   pub fn uuid_0() -> Uuid { "00000000-0000-0000-0000-000000000000".parse().unwrap() }
   pub fn uuid_1() -> Uuid { "00000000-0000-0000-0000-000000000001".parse().unwrap() }
   pub fn uuid_2() -> Uuid { "00000000-0000-0000-0000-000000000002".parse().unwrap() }
@@ -1325,7 +1364,7 @@ pub mod test {
       related_scenes: HashSet::new(),
 
       attribute_checks: HashMap::new(),
-      creatures: hashmap!{
+      creatures: hashmap! {
         cid_rogue() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
         cid_cleric() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
         cid_ranger() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
@@ -1481,7 +1520,7 @@ pub mod test {
   #[test]
   fn serialize_hashmap_point3() {
     let p = Point3::new(0, 0, 0);
-    let hm = hashmap!{p => 5};
+    let hm = hashmap! {p => 5};
     assert_eq!(serde_json::to_string(&hm).unwrap(), "{\"0/0/0\":5}");
   }
 }

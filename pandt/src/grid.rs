@@ -1,22 +1,24 @@
+use bresenham;
+use odds::vec::VecExt;
 use std::cmp;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use bresenham;
-use odds::vec::VecExt;
 
 use nalgebra as na;
 use nalgebra::{Isometry3, Vector3};
+use ncollide3d::pipeline::object::{CollisionGroups, GeometricQueryType};
+use ncollide3d::query::PointQuery;
 use ncollide3d::shape;
 use ncollide3d::shape::Cuboid;
-use ncollide3d::query::PointQuery;
 use ncollide3d::world;
-use ncollide3d::pipeline::object::{CollisionGroups, GeometricQueryType};
 use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
 
-use crate::types::{up_length, CollisionData, CollisionWorld, ConditionID, Creature, Point3, Terrain,
-            TileSystem, Volume, VolumeCondition, i64cm, i64meter, u32cm, u32units};
+use crate::types::{
+  i64cm, i64meter, u32cm, u32units, up_length, CollisionData, CollisionWorld, ConditionID,
+  Creature, Point3, Terrain, TileSystem, Volume, VolumeCondition,
+};
 
 // unimplemented!: "burst"-style AoE effects, and "wrap-around-corner" AoE effects.
 // This needs to be implemented for both Spheres and Circles (or VerticalCylinder?)
@@ -46,7 +48,11 @@ fn na_iso(pt: Point3) -> Isometry3<f64> { Isometry3::new(na_vector(pt), na::zero
 
 fn na_point(pt: Point3) -> na::Point3<f64> {
   // this is a potential representation error: max i64 does not fit in f64.
-  na::Point3::new(pt.x.get::<meter>() as f64, pt.y.get::<meter>() as f64, pt.z.get::<meter>() as f64)
+  na::Point3::new(
+    pt.x.get::<meter>() as f64,
+    pt.y.get::<meter>() as f64,
+    pt.z.get::<meter>() as f64,
+  )
 }
 
 fn na_vector(pt: Point3) -> Vector3<f64> {
@@ -106,18 +112,20 @@ impl TileSystem {
 
   /// Garbage Function
   pub fn items_within_volume<I: Clone + Eq + Hash>(
-    &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>
+    &self, volume: Volume, pt: Point3, items: &HashMap<I, Point3>,
   ) -> Vec<I> {
     // TODO: unimplemented! this doesn't support non-1x1 items
     // TODO: this function is really dumb, and instead should probably work on a HashSet of Point3s,
     // or maybe a HashMap<Point3, I>. And it should make use of points_in_volume.
     let mut results = vec![];
     match volume {
-      Volume::Sphere(radius) => for (item, item_pos) in items {
-        if self.point3_distance(pt, *item_pos) <= radius {
-          results.push(item.clone());
+      Volume::Sphere(radius) => {
+        for (item, item_pos) in items {
+          if self.point3_distance(pt, *item_pos) <= radius {
+            results.push(item.clone());
+          }
         }
-      },
+      }
       Volume::AABB(_) => unimplemented!("unimplemented: items_within_volume for AABB"),
       Volume::Line { vector } => {
         let dest = point3_add_vec(pt, vector);
@@ -139,7 +147,7 @@ impl TileSystem {
   }
 
   pub fn open_points_in_range(
-    &self, start: Point3, terrain: &Terrain, speed: u32units::Length
+    &self, start: Point3, terrain: &Terrain, speed: u32units::Length,
   ) -> Vec<Point3> {
     let speed = up_length(speed);
     let lowx = start.x - speed;
@@ -162,7 +170,7 @@ impl TileSystem {
 
   /// Get the set of points which can be pathed to from some point.
   pub fn get_all_accessible(
-    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length
+    &self, start: Point3, terrain: &Terrain, volume: Volume, speed: u32units::Length,
   ) -> Vec<Point3> {
     let points_to_check = self.open_points_in_range(start, terrain, speed);
     let mut success_fns: Vec<Box<dyn Fn(&Point3) -> bool>> = vec![];
@@ -256,7 +264,7 @@ impl TileSystem {
 
   /// Find neighbors of the given point that the given volume can fit in, given the terrain.
   fn point3_neighbors(
-    &self, terrain: &Terrain, volume: Volume, pt: Point3
+    &self, terrain: &Terrain, volume: Volume, pt: Point3,
   ) -> Vec<(Point3, u32units::Length)> {
     let diagonal_distance = match *self {
       TileSystem::Realistic => u32cm(141),
@@ -316,7 +324,6 @@ where
 
   let query = GeometricQueryType::Contacts(0.0, 0.0);
 
-
   for (creature, pos) in creatures {
     let volume = Volume::AABB(creature.size);
     world.add(
@@ -348,10 +355,14 @@ where
 {
   let mut results = vec![];
   for (obj1, obj2, ..) in world.contact_pairs(true) {
-    if let Some(r) = f(world.collision_object(obj1).unwrap().data(), world.collision_object(obj2).unwrap().data()) {
+    if let Some(r) =
+      f(world.collision_object(obj1).unwrap().data(), world.collision_object(obj2).unwrap().data())
+    {
       results.push(r);
     }
-    if let Some(r) = f(world.collision_object(obj2).unwrap().data(), world.collision_object(obj1).unwrap().data()) {
+    if let Some(r) =
+      f(world.collision_object(obj2).unwrap().data(), world.collision_object(obj1).unwrap().data())
+    {
       results.push(r);
     }
   }
@@ -374,9 +385,9 @@ fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle<f64> {
 // FOLLOWING COPIED FROM PATHFINDING CRATE
 // ***************************************
 use num_traits::Zero;
+use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 use std::hash::Hash;
-use std::cmp::Ordering;
 
 struct InvCmpHolder<K, P> {
   key: K,
@@ -411,7 +422,8 @@ fn reverse_path<N: Eq + Hash>(mut parents: HashMap<N, N>, start: N) -> Vec<N> {
 }
 
 pub fn astar_multi<N, C, FN, IN, FH>(
-  start: &N, neighbours: FN, heuristic: FH, max_cost: C, mut successes: Vec<Box<dyn Fn(&N) -> bool>>
+  start: &N, neighbours: FN, heuristic: FH, max_cost: C,
+  mut successes: Vec<Box<dyn Fn(&N) -> bool>>,
 ) -> Vec<(Vec<N>, C)>
 where
   N: Eq + Hash + Clone + ::std::fmt::Debug,
@@ -604,19 +616,17 @@ pub mod test {
     );
     assert_eq!(
       result,
-      vec![
-        (
-          vec![
-            Point3::new(0, 0, 0),
-            Point3::new(100, 0, 0),
-            Point3::new(200, 0, 0),
-            Point3::new(300, 0, 0),
-            Point3::new(400, 0, 0),
-            Point3::new(500, 0, 0),
-          ],
-          u32cm(500),
-        ),
-      ]
+      vec![(
+        vec![
+          Point3::new(0, 0, 0),
+          Point3::new(100, 0, 0),
+          Point3::new(200, 0, 0),
+          Point3::new(300, 0, 0),
+          Point3::new(400, 0, 0),
+          Point3::new(500, 0, 0),
+        ],
+        u32cm(500),
+      ),]
     );
   }
 
@@ -714,7 +724,7 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let vol = Volume::Sphere(u32cm(500));
     let vol_pt = Point3::new(400, 400, 0);
-    let items = hashmap!{
+    let items = hashmap! {
       "Elron" => Point3::new(-100, 0, 0),
       "Kurok To" => Point3::new(100, 100, 0),
       "Silmarillion" => Point3::new(0, 0, 0),
@@ -739,7 +749,7 @@ pub mod test {
     let ts = TileSystem::Realistic;
     let vol = Volume::Line { vector: Point3::new(400, 0, 0) };
     let vol_pt = Point3::new(100, 0, 0);
-    let items = hashmap!{
+    let items = hashmap! {
       "Elron" => Point3::new(0, 0, 0),
       "Kurok To" => Point3::new(100, 0, 0),
       // TODO: Support smaller-than-meter creatures at fractional positions!

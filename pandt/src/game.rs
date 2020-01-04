@@ -1,18 +1,18 @@
-use std::collections::{HashMap, HashSet};
 use std::cmp;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::iter::FromIterator;
 use std::io::Read;
+use std::iter::FromIterator;
 use std::path::Path;
 
 use error_chain::bail;
 use serde_yaml;
 
-use crate::types::*;
 use crate::combat::*;
 use crate::creature::ChangedCreature;
-use foldertree::FolderPath;
 use crate::grid::line_through_point;
+use crate::types::*;
+use foldertree::FolderPath;
 
 impl Game {
   pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
@@ -166,7 +166,7 @@ impl Game {
 
   /// Perform a GameCommand on the current Game.
   pub fn perform_command(
-    &self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>
+    &self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>,
   ) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
@@ -254,9 +254,13 @@ impl Game {
           visibility: visibility.clone(),
         })
       }
-      AddCreatureToScene { scene_id, creature_id, ref visibility } => self.change_with(
-        GameLog::AddCreatureToScene { scene_id, creature_id, visibility: visibility.clone() },
-      ),
+      AddCreatureToScene { scene_id, creature_id, ref visibility } => {
+        self.change_with(GameLog::AddCreatureToScene {
+          scene_id,
+          creature_id,
+          visibility: visibility.clone(),
+        })
+      }
       RemoveCreatureFromScene { scene_id, creature_id } => {
         self.change_with(GameLog::RemoveCreatureFromScene { scene_id, creature_id })
       }
@@ -295,10 +299,18 @@ impl Game {
       }
       EditSceneAnnotations { scene_id, ref annotations } => self
         .change_with(GameLog::EditSceneAnnotations { scene_id, annotations: annotations.clone() }),
-      EditSceneRelatedScenes { scene_id, ref related_scenes } => self
-        .change_with(GameLog::EditSceneRelatedScenes { scene_id, related_scenes: related_scenes.clone() }),
-      EditSceneSceneHotspots { scene_id, ref scene_hotspots } => self
-        .change_with(GameLog::EditSceneSceneHotspots{ scene_id, scene_hotspots: scene_hotspots.clone() }),
+      EditSceneRelatedScenes { scene_id, ref related_scenes } => {
+        self.change_with(GameLog::EditSceneRelatedScenes {
+          scene_id,
+          related_scenes: related_scenes.clone(),
+        })
+      }
+      EditSceneSceneHotspots { scene_id, ref scene_hotspots } => {
+        self.change_with(GameLog::EditSceneSceneHotspots {
+          scene_id,
+          scene_hotspots: scene_hotspots.clone(),
+        })
+      }
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
@@ -318,7 +330,7 @@ impl Game {
   }
 
   fn start_combat(
-    &self, scene_id: SceneID, cids: Vec<CreatureID>
+    &self, scene_id: SceneID, cids: Vec<CreatureID>,
   ) -> Result<ChangedGame, GameError> {
     let cids_with_inits = Combat::roll_initiative(self, cids)?;
     self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
@@ -331,7 +343,7 @@ impl Game {
   }
 
   fn attribute_check(
-    &self, cid: CreatureID, check: &AttributeCheck
+    &self, cid: CreatureID, check: &AttributeCheck,
   ) -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(cid)?;
     let (rolled, success) = creature.creature.attribute_check(check)?;
@@ -339,14 +351,14 @@ impl Game {
   }
 
   pub fn path_creature(
-    &self, scene: SceneID, cid: CreatureID, pt: Point3
+    &self, scene: SceneID, cid: CreatureID, pt: Point3,
   ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let creature = self.get_creature(cid)?;
     self.path_creature_distance(scene, cid, pt, creature.speed())
   }
 
   pub fn path_creature_distance(
-    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: u32units::Length
+    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: u32units::Length,
   ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let scene = self.get_scene(scene_id)?;
     let creature = self.get_creature(cid)?;
@@ -372,7 +384,7 @@ impl Game {
   }
 
   fn link_folder_item(
-    &mut self, path: &FolderPath, item_id: &FolderItemID
+    &mut self, path: &FolderPath, item_id: &FolderItemID,
   ) -> Result<(), GameError> {
     let node = self.campaign.get_mut(path)?;
     match *item_id {
@@ -388,10 +400,10 @@ impl Game {
   }
 
   fn unlink_folder_item(
-    &mut self, path: &FolderPath, item_id: &FolderItemID
+    &mut self, path: &FolderPath, item_id: &FolderItemID,
   ) -> Result<(), GameError> {
     fn remove_set<T: ::std::hash::Hash + Eq>(
-      path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T
+      path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T,
     ) -> Result<(), GameError> {
       if !s.remove(key) {
         bail!(GameError::FolderItemNotFound(path.clone(), item.clone()))
@@ -437,7 +449,7 @@ impl Game {
 
   /// Remove some number of items from an inventory, returning the actual number removed.
   fn remove_inventory(
-    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
+    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64,
   ) -> Result<u64, GameError> {
     let actually_has = *self.get_owner_inventory(owner)?.get(&item_id).unwrap_or(&0);
     self.set_item_count(owner, item_id, actually_has - count)?;
@@ -445,7 +457,7 @@ impl Game {
   }
 
   fn set_item_count(
-    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64
+    &mut self, owner: InventoryOwner, item_id: ItemID, count: u64,
   ) -> Result<(), GameError> {
     self.mutate_owner_inventory(owner, move |inventory: &mut Inventory| {
       if count == 0 {
@@ -463,20 +475,24 @@ impl Game {
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
     use self::GameLog::*;
     match *log {
-      LoadModule { ref module, ref path, .. } => if self.campaign.get(path).is_ok() {
-        bail!(GameError::FolderAlreadyExists(path.clone()))
-      } else {
-        self.import_module(path, module)?;
-      },
+      LoadModule { ref module, ref path, .. } => {
+        if self.campaign.get(path).is_ok() {
+          bail!(GameError::FolderAlreadyExists(path.clone()))
+        } else {
+          self.import_module(path, module)?;
+        }
+      }
 
       SetActiveScene(m_sid) => self.active_scene = m_sid,
 
       // Player stuff
-      RegisterPlayer(ref pid) => if self.players.contains_key(pid) {
-        bail!(GameError::PlayerAlreadyExists(pid.clone()))
-      } else {
-        self.players.insert(Player::new(pid.clone()));
-      },
+      RegisterPlayer(ref pid) => {
+        if self.players.contains_key(pid) {
+          bail!(GameError::PlayerAlreadyExists(pid.clone()))
+        } else {
+          self.players.insert(Player::new(pid.clone()));
+        }
+      }
 
       UnregisterPlayer(ref pid) => {
         self.players.remove(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
@@ -569,7 +585,10 @@ impl Game {
           let mut new_class =
             self.classes.get(&id).ok_or_else(|| GameError::ClassNotFound(id))?.clone();
           new_class.id = new_id;
-          self.classes.try_insert(new_class).ok_or_else(|| GameError::ClassAlreadyExists(new_id))?;
+          self
+            .classes
+            .try_insert(new_class)
+            .ok_or_else(|| GameError::ClassAlreadyExists(new_id))?;
           self.link_folder_item(dest, &FolderItemID::ClassID(new_id))?;
         }
         (&FolderItemID::ClassID(_), _) => panic!("Mismatched folder item ID!"),
@@ -702,7 +721,8 @@ impl Game {
             }
             let node = self.campaign.get(&path)?.clone();
             for scene_id in node.scenes {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::SceneID(scene_id)))?;
+              self
+                .apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::SceneID(scene_id)))?;
             }
             for cid in node.creatures {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::CreatureID(cid)))?;
@@ -714,7 +734,8 @@ impl Game {
               self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::AbilityID(abid)))?;
             }
             for classid in node.classes {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ClassID(classid)))?;
+              self
+                .apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ClassID(classid)))?;
             }
             for nname in node.notes.keys() {
               self.apply_log_mut(&DeleteFolderItem(
@@ -984,15 +1005,14 @@ impl Game {
   }
 
   pub fn get_creature(&self, cid: CreatureID) -> Result<DynamicCreature, GameError> {
-    self.dyn_creature(self
-      .creatures
-      .get(&cid)
-      .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?)
+    self.dyn_creature(
+      self.creatures.get(&cid).ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?,
+    )
   }
 
   /// Only pub for tests.
   pub fn dyn_creature<'creature, 'game: 'creature>(
-    &'game self, creature: &'creature Creature
+    &'game self, creature: &'creature Creature,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(creature, self)
   }
@@ -1017,14 +1037,14 @@ impl Game {
   }
 
   fn ooc_act(
-    &self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget
+    &self, scene: SceneID, cid: CreatureID, abid: AbilityID, target: DecidedTarget,
   ) -> Result<ChangedGame, GameError> {
     let scene = self.get_scene(scene)?;
     self._act(scene, cid, abid, target, false)
   }
 
   fn _act(
-    &self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool
+    &self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
     if !scene.creatures.contains_key(&cid) {
       bail!(GameError::CreatureNotFound(cid.to_string()));
@@ -1106,14 +1126,17 @@ impl Game {
           Err(GameError::CreatureOutOfRange(cid).into())
         }
       }
-      (CreatureTarget::Range(max), DecidedTarget::Creature(cid)) => if self
-        .tile_system
-        .points_within_distance(scene.get_pos(creature.id())?, scene.get_pos(cid)?, max)
-      {
-        Ok(vec![cid])
-      } else {
-        Err(GameError::CreatureOutOfRange(cid).into())
-      },
+      (CreatureTarget::Range(max), DecidedTarget::Creature(cid)) => {
+        if self.tile_system.points_within_distance(
+          scene.get_pos(creature.id())?,
+          scene.get_pos(cid)?,
+          max,
+        ) {
+          Ok(vec![cid])
+        } else {
+          Err(GameError::CreatureOutOfRange(cid).into())
+        }
+      }
       (CreatureTarget::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
       (_, DecidedTarget::Point(pt)) => {
         self.volume_creature_targets(scene, creature.creature.id, target, pt)
@@ -1127,7 +1150,7 @@ impl Game {
   // 2. volumes must not go through blocked terrain
   // 3. volumes must (generally) not go around corners
   fn volume_creature_targets(
-    &self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3
+    &self, scene: &Scene, actor_id: CreatureID, target: CreatureTarget, pt: Point3,
   ) -> Result<Vec<CreatureID>, GameError> {
     match target {
       CreatureTarget::AllCreaturesInVolumeInRange { volume, .. } => {
@@ -1150,12 +1173,14 @@ impl Game {
   /// Calculate which *points* and which *creatures* will be affected by an ability targeted at a
   /// point.
   pub fn preview_volume_targets(
-    &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
+    &self, scene: &Scene, actor_id: CreatureID, ability_id: AbilityID, pt: Point3,
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let ability = self.get_ability(ability_id)?;
 
     let cids = match ability.action {
-      Action::Creature { target, .. } => self.volume_creature_targets(scene, actor_id, target, pt)?,
+      Action::Creature { target, .. } => {
+        self.volume_creature_targets(scene, actor_id, target, pt)?
+      }
       Action::SceneVolume { target: SceneTarget::RangedVolume { volume, .. }, .. } => {
         scene.creatures_in_volume(self.tile_system, pt, volume)
       }
@@ -1180,7 +1205,7 @@ impl Game {
   }
 
   pub fn get_movement_options(
-    &self, scene: SceneID, creature_id: CreatureID
+    &self, scene: SceneID, creature_id: CreatureID,
   ) -> Result<Vec<Point3>, GameError> {
     let scene = self.get_scene(scene)?;
     let creature = self.get_creature(creature_id)?;
@@ -1198,7 +1223,7 @@ impl Game {
 
   /// Get a list of possible targets for an ability being used by a creature.
   pub fn get_target_options(
-    &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID
+    &self, scene: SceneID, creature_id: CreatureID, ability_id: AbilityID,
   ) -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(ability_id)?;
 
@@ -1226,7 +1251,7 @@ impl Game {
   }
 
   fn open_terrain_in_range(
-    &self, scene: SceneID, creature_id: CreatureID, range: u32units::Length
+    &self, scene: SceneID, creature_id: CreatureID, range: u32units::Length,
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let creature_pos = scene.get_pos(creature_id)?;
@@ -1235,7 +1260,7 @@ impl Game {
   }
 
   fn creatures_in_range(
-    &self, scene: SceneID, creature_id: CreatureID, distance: u32units::Length
+    &self, scene: SceneID, creature_id: CreatureID, distance: u32units::Length,
   ) -> Result<PotentialTargets, GameError> {
     let scene = self.get_scene(scene)?;
     let my_pos = scene.get_pos(creature_id)?;
@@ -1309,7 +1334,7 @@ fn bug<T>(msg: &str) -> Result<T, GameError> {
 }
 
 pub fn load_app_from_path(
-  saved_game_path: &Path, module_path: Option<&Path>, source: ModuleSource, filename: &str
+  saved_game_path: &Path, module_path: Option<&Path>, source: ModuleSource, filename: &str,
 ) -> Result<App, GameError> {
   let filename = match (source, module_path) {
     (ModuleSource::Module, Some(module_path)) => module_path.join(filename),
@@ -1335,8 +1360,8 @@ pub mod test {
 
   use crate::combat::test::*;
   use crate::game::*;
-  use indexed::IndexedHashMap;
   use crate::types::test::*;
+  use indexed::IndexedHashMap;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
     t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))
@@ -1595,7 +1620,7 @@ pub mod test {
     let ability_id = abid_thorn_patch();
     let preview =
       game.preview_volume_targets(scene, cleric, ability_id, Point3::new(0, 0, 0)).unwrap();
-    let expected = hashset!{cid_cleric(), cid_ranger(), cid_rogue()};
+    let expected = hashset! {cid_cleric(), cid_ranger(), cid_rogue()};
     assert_eq!(HashSet::from_iter(preview.0), expected);
   }
 

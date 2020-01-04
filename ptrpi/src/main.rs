@@ -10,9 +10,8 @@ use structopt::StructOpt;
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
-mod web;
 mod actor;
-
+mod web;
 
 #[async_std::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -75,6 +74,7 @@ mod test {
       None,
       ModuleSource::SavedGame,
       "samplegame.yaml",
-    ).unwrap();
+    )
+    .unwrap();
   }
 }
