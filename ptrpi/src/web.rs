@@ -28,11 +28,6 @@ async fn get_app(req: Request<PT>) -> impl IntoResponse {
   r500(state.get_app().await)
 }
 
-fn convert_error(error: failure::Error) -> tide::Error {
-  error!("Error: {}", error);
-  return StatusCode::INTERNAL_SERVER_ERROR.into();
-}
-
 // pub fn router(pt: PT) -> Application<PT> {
 //   let mut corsm = cors::Cors::build();
 //   corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);

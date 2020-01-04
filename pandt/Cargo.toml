@@ -6,29 +6,29 @@ edition = "2018"
 
 [dev-dependencies]
 serde_json = "1.0.2"
-criterion = "0.1.2"
+criterion = "0.3.0"
 
 [dependencies]
 bresenham = "0.1.1"
-derive_more = "0.4.0"
-error-chain = "0.11.0-rc.2"
+derive_more = "0.99.2"
+error-chain = "0.12.1"
 failure = "0.1"
 failure_derive = "0.1"
 foldertree = {version = "*", path = "../foldertree", features = ["serde"]}
 indexed = {version = "*", path = "../indexed", features = ["serde"]}
-log = "0.3"
-maplit = "0.1.4"
+log = "0.4.8"
+maplit = "1.0.2"
 nalgebra = "0.19"
 ncollide3d = "0.21"
 nonempty = {version = "*", path = "../nonempty", features = ["use_serde"]}
-num = "0.1.41"
-num-traits = "0.1.41"
-odds = "0.2.25"
-rand = "0.3"
+num = "0.2.0"
+num-traits = "0.2.10"
+odds = {version = "0.3", features = ["std-vec"]}
+rand = "0.7.2"
 serde = "1.0.8"
 serde_derive = "1.0.8"
-serde_yaml = "0.7.0"
-uuid = {version = "0.5", features = ["v4", "serde"]}
+serde_yaml = "0.8.11"
+uuid = { version = "0.8.1", features = ["v4", "serde"] }
 
 [dependencies.uom]
 version = "0.26"
