@@ -25,9 +25,9 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app)))
       .service(
         web::resource("movement_options/{scene_id}/{cid}").route(web::get().to(movement_options)),
-      ),
+      )
+      .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
   );
-  // .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
   // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
   // .resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}", |r| {
   //   r.f(preview_volume_targets)
@@ -61,9 +61,9 @@ async fn movement_options(
   string_json_response(actor.movement_options(path.0, path.1).await?)
 }
 
-// fn combat_movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   invoke_actor_string_result(&req.state().app_address, actor::CombatMovementOptions)
-// }
+async fn combat_movement_options(actor: web::Data<AppActor>) -> impl Responder {
+  string_json_response(actor.combat_movement_options().await?)
+}
 
 // fn target_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
 //   let scene_id = try_fut!(parse_arg(&req, "scene_id"));
