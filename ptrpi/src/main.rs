@@ -79,7 +79,7 @@ mod test {
 
   #[test]
   fn load_samplegame_yaml() {
-    ::load_app_from_path(
+    crate::load_app_from_path(
       Path::new("sample_games"),
       None,
       ModuleSource::SavedGame,
