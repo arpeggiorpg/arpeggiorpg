@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use actix_cors::Cors;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use failure::Error;
 use futures::Future;
@@ -11,12 +12,14 @@ use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 use crate::actor::AppActor;
 
 pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
-  // let mut corsm = cors::Cors::build();
-  // corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
-  // let corsm = corsm.finish().unwrap();
-
-  config.data(actor).service(web::resource("/").route(web::get().to(get_app)));
-  // .middleware(corsm)
+  let corsm = Cors::new()
+    .send_wildcard()
+    .allowed_header(header::CONTENT_TYPE)
+    .allowed_methods(vec!["*"])
+    .finish();
+  config
+    .data(actor)
+    .service(web::scope("/").wrap(corsm).service(web::resource("").route(web::get().to(get_app))));
   // r.method(Method::POST).f(post_app);
   // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
   // .resource("/movement_options/{scene_id}/{cid}", |r| r.route().f(movement_options))

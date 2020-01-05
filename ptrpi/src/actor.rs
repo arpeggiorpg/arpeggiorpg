@@ -35,6 +35,9 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
   Ok(serde_json::to_string(&types::RPIApp(app))?)
 }
 
+/// The methods on this type return Strings containing JSON data.
+/// That's because these responses are generated while a mutex is locked,
+/// and we can't return a reference to the locked data outside of the guarded code.
 impl AppActor {
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
