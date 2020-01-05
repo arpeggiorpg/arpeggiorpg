@@ -6,6 +6,7 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use failure::Error;
 use futures::Future;
 use http::{header, Method};
+use log::{info};
 
 use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
@@ -15,13 +16,13 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
   let corsm = Cors::new()
     .send_wildcard()
     .allowed_header(header::CONTENT_TYPE)
-    .allowed_methods(vec!["*"])
+    .allowed_methods(vec!["POST", "GET", "OPTIONS"])
     .finish();
   config.data(actor).service(
     web::scope("/")
       .wrap(corsm)
-      .service(web::resource("").route(web::get().to(get_app)))
-      .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app))),
+      .service(web::resource("").route(web::get().to(get_app)).route(web::post().to(post_command)))
+      .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app)))
   );
   // r.method(Method::POST).f(post_app);
   // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
@@ -39,30 +40,18 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
   // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
 }
 
-async fn get_app(data: web::Data<AppActor>) -> impl Responder {
-  string_json_response(data.get_app().await?)
+async fn get_app(actor: web::Data<AppActor>) -> impl Responder {
+  string_json_response(actor.get_app().await?)
 }
 
-async fn poll_app(path: web::Path<(usize, usize)>, data: web::Data<AppActor>) -> impl Responder {
-  string_json_response(data.poll_app(path.0, path.1).await?)
+async fn poll_app(actor: web::Data<AppActor>, path: web::Path<(usize, usize)>) -> impl Responder {
+  string_json_response(actor.poll_app(path.0, path.1).await?)
 }
 
-// /// If the client is polling with a non-current app "version", then immediately return the current
-// /// App. Otherwise, wait 30 seconds for any new changes.
-// fn poll_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   let snapshot_len: usize = try_fut!(get_arg(&req, "snapshot_len"));
-//   let log_len: usize = try_fut!(get_arg(&req, "log_len"));
-//   invoke_actor_string_result(&req.state().app_address, actor::PollApp { snapshot_len, log_len })
-// }
-
-// fn post_app(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   let app_address = req.state().app_address.clone();
-//   let f = req.json().from_err().and_then(move |command: GameCommand| -> AsyncRPIResponse {
-//     info!("[perform_command] {:?}", command);
-//     invoke_actor_string_result(&app_address, actor::PerformCommand(command))
-//   });
-//   Box::new(f)
-// }
+async fn post_command(actor: web::Data<AppActor>, command: web::Json<GameCommand>) -> impl Responder {
+  info!("[perform_command] {:?}", command);
+  string_json_response(actor.perform_command(command.into_inner()).await?)
+}
 
 // fn invoke_actor_string_result<M>(address: &::AppAddress, msg: M) -> AsyncRPIResponse
 // where

@@ -7,6 +7,7 @@ use std::time::Duration;
 use failure::Error;
 use futures::channel::oneshot;
 use futures::{future, Future};
+use log::{error};
 use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
@@ -70,25 +71,25 @@ impl AppActor {
     let received = timeout(Duration::from_secs(30), receiver).await;
     self.get_app().await
   }
-}
 
-// pub struct PerformCommand(pub types::GameCommand);
-// handle_actor! {
-//   PerformCommand => String, Error;
-//   fn handle(&mut self, command: PerformCommand, _: &mut Context<Self>) -> Self::Result {
-//     let module_path = self.module_path.as_ref().map(|b| b.as_path());
-//     let result = self.app.perform_command(command.0, &self.saved_game_path, module_path);
-//     for sender in self.waiters.drain(0..) {
-//       if let Err(e) = sender.send(()) {
-//         error!("Unexpected failure while notifying a waiter: {:?}", e);
-//       }
-//     }
-//     // Convert the rich error into a generic string error to serialize back to the client
-//     let result = result.map_err(|e| format!("Error: {}", e));
-//     let result = result.map(|(g, l)| (types::RPIGame(g), l));
-//     Ok(serde_json::to_string(&result)?)
-//   }
-// }
+  pub async fn perform_command(&self, command: types::GameCommand) -> Result<String, Error> {
+    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let result = {
+      let mut app = self.app.lock().await;
+      let result = app.perform_command(command, &self.saved_game_path, module_path);
+      // Convert the rich error into a generic string error to serialize back to the client
+      let result = result.map_err(|e| format!("Error: {}", e));
+      let result = result.map(|(g, l)| (types::RPIGame(g), l));
+      serde_json::to_string(&result)?
+    };
+    for sender in self.waiters.lock().await.drain(0..) {
+      if let Err(e) = sender.send(()) {
+        error!("Unexpected failure while notifying a waiter: {:?}", e);
+      }
+    }
+    Ok(result)
+  }
+}
 
 // pub struct MovementOptions {
 //   pub creature_id: types::CreatureID,
