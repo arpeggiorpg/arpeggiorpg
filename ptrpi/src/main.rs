@@ -27,15 +27,6 @@ use structopt::StructOpt;
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
-// type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
-
-// #[derive(Clone)]
-// pub struct PT {
-//   saved_game_path: PathBuf,
-//   module_path: Option<PathBuf>,
-//   // app_address: AppAddress,
-// }
-
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
   if env::var("PANDT_LOG").is_err() {
@@ -60,13 +51,8 @@ async fn main() -> std::io::Result<()> {
   };
 
   let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
-
-  // let actix_system = actix::System::new("P&T-RPI");
-  // let app_address = actor.start();
-
-  // let pt = PT { saved_game_path, module_path };
-
-  let server = actix_web::HttpServer::new(move || WebApp::new().configure(|c| web::router(actor.clone(), c)));
+  let server =
+    actix_web::HttpServer::new(move || WebApp::new().configure(|c| web::router(actor.clone(), c)));
   server.bind("0.0.0.0:1337")?.run().await
 }
 
@@ -98,6 +84,7 @@ mod test {
       None,
       ModuleSource::SavedGame,
       "samplegame.yaml",
-    ).unwrap();
+    )
+    .unwrap();
   }
 }
