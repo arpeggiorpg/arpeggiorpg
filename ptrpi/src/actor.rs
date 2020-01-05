@@ -1,24 +1,22 @@
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use std::sync::Arc;
+use std::time::Duration;
 
-use actix;
-
-// use actix::{Actor, AsyncContext, Context, Handler, Message};
 use failure::Error;
-use futures::{future, Future};
 use futures::channel::oneshot;
-use tokio::sync::Mutex;
-use tokio_core::reactor::Timeout;
+use futures::{future, Future};
 use serde_json;
 use serde_yaml;
+use tokio::sync::Mutex;
+use tokio_core::reactor::Timeout;
 
 use foldertree;
-use pandt::types;
 use pandt::game::load_app_from_path;
+use pandt::types;
 
+/// Not really an actor for now, we're just pretending.
 #[derive(Clone)]
 pub struct AppActor {
   app: Arc<Mutex<types::App>>,
@@ -37,22 +35,12 @@ fn app_to_string(app: &types::App) -> Result<String, Error> {
   Ok(serde_json::to_string(&types::RPIApp(app))?)
 }
 
-
 impl AppActor {
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
     app_to_string(&app)
   }
 }
-
-
-// pub struct GetApp;
-// handle_actor! {
-//   GetApp => String, Error;
-//   fn handle(&mut self, _: GetApp, _: &mut Context<Self>) -> Self::Result {
-//     app_to_string(&self.app)
-//   }
-// }
 
 // pub struct PerformCommand(pub types::GameCommand);
 // handle_actor! {

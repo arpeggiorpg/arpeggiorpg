@@ -1,11 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use actix;
-// use actix_web::dev::FromParam;
-// use actix_web::middleware::cors;
-use actix_service::ServiceFactory;
-use actix_web::{web, App as WebApp, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use failure::Error;
 use futures::Future;
 use http::{header, Method};
@@ -14,33 +10,31 @@ use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
 use crate::actor::AppActor;
 
-pub fn router(actor: AppActor, config: &mut web::ServiceConfig) -> () {
+pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
   // let mut corsm = cors::Cors::build();
   // corsm.send_wildcard().allowed_header(header::CONTENT_TYPE);
   // let corsm = corsm.finish().unwrap();
 
-  config.data(actor).service(
-    web::resource("/").route(web::get().to(get_app))
-  );
-    // .middleware(corsm)
-      // r.method(Method::POST).f(post_app);
-    // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
-    // .resource("/movement_options/{scene_id}/{cid}", |r| r.route().f(movement_options))
-    // .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
-    // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
-    // .resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}", |r| {
-    //   r.f(preview_volume_targets)
-    // })
-    // .resource("/saved_games", |r| r.f(list_saved_games))
-    // .resource("/saved_games/module/{name}/load", |r| r.method(Method::POST).f(load_module_as_game))
-    // .resource("/saved_games/user/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
-    // .resource("/saved_games/user/{name}", |r| r.method(Method::POST).f(save_game))
-    // .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
-    // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
+  config.data(actor).service(web::resource("/").route(web::get().to(get_app)));
+  // .middleware(corsm)
+  // r.method(Method::POST).f(post_app);
+  // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
+  // .resource("/movement_options/{scene_id}/{cid}", |r| r.route().f(movement_options))
+  // .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
+  // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
+  // .resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}", |r| {
+  //   r.f(preview_volume_targets)
+  // })
+  // .resource("/saved_games", |r| r.f(list_saved_games))
+  // .resource("/saved_games/module/{name}/load", |r| r.method(Method::POST).f(load_module_as_game))
+  // .resource("/saved_games/user/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
+  // .resource("/saved_games/user/{name}", |r| r.method(Method::POST).f(save_game))
+  // .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
+  // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
 }
 
 async fn get_app(data: web::Data<AppActor>) -> impl Responder {
-  return data.get_app().await
+  string_json_response(data.get_app().await?)
 }
 
 // /// If the client is polling with a non-current app "version", then immediately return the current
@@ -166,9 +160,9 @@ async fn get_app(data: web::Data<AppActor>) -> impl Responder {
 //   invoke_actor_string_result(&req.state().app_address, actor::NewGame)
 // }
 
-// fn string_json_response(body: String) -> Result<HttpResponse, Error> {
-//   Ok(HttpResponse::Ok().content_type("application/json").body(body)?)
-// }
+fn string_json_response(body: String) -> Result<HttpResponse, Error> {
+  Ok(HttpResponse::Ok().content_type("application/json").body(body))
+}
 
 // fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
 // where
