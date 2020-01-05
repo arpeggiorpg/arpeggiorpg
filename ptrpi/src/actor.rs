@@ -11,6 +11,7 @@ use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
 use tokio_core::reactor::Timeout;
+use tokio::time::timeout;
 
 use foldertree;
 use pandt::game::load_app_from_path;
@@ -20,14 +21,19 @@ use pandt::types;
 #[derive(Clone)]
 pub struct AppActor {
   app: Arc<Mutex<types::App>>,
-  // waiters: Vec<oneshot::Sender<()>>,
+  waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   saved_game_path: PathBuf,
   module_path: Option<PathBuf>,
 }
 
 impl AppActor {
   pub fn new(app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>) -> AppActor {
-    AppActor { app: Arc::new(Mutex::new(app)), saved_game_path, module_path }
+    AppActor {
+      app: Arc::new(Mutex::new(app)),
+      saved_game_path,
+      module_path,
+      waiters: Arc::new(Mutex::new(vec![])),
+    }
   }
 }
 
@@ -42,6 +48,27 @@ impl AppActor {
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
     app_to_string(&app)
+  }
+
+  /// Wait for an app to change and then return it.
+  pub async fn poll_app(&self, snapshot_len: usize, log_len: usize) -> Result<String, Error> {
+    // First, if the app has already changed, return it immediately.
+    {
+      let app = self.app.lock().await;
+      if app.snapshots.len() != snapshot_len
+        || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
+      {
+        return self.get_app().await;
+      }
+    }
+    // Now, we wait.
+    let (sender, receiver) = oneshot::channel();
+    {
+      let mut waiters = self.waiters.lock().await;
+      waiters.push(sender);
+    }
+    let received = timeout(Duration::from_secs(30), receiver).await;
+    self.get_app().await
   }
 }
 
@@ -60,46 +87,6 @@ impl AppActor {
 //     let result = result.map_err(|e| format!("Error: {}", e));
 //     let result = result.map(|(g, l)| (types::RPIGame(g), l));
 //     Ok(serde_json::to_string(&result)?)
-//   }
-// }
-
-// pub struct PollApp {
-//   pub snapshot_len: usize,
-//   pub log_len: usize,
-// }
-// handle_actor! {
-//   async PollApp => String, Error;
-//   fn handle(&mut self, cmd: PollApp, ctx: &mut Context<Self>) -> Self::Result {
-//     if let Some(r) = try_fut!(get_current_app(&self.app, cmd.snapshot_len, cmd.log_len)) {
-//       return Box::new(future::ok(r));
-//     }
-//     let (sender, receiver) = oneshot::channel();
-//     self.waiters.push(sender);
-
-//     let handle = actix::Arbiter::handle();
-//     let timeout = Timeout::new(Duration::from_secs(30), handle).expect("Timeout::new panic!");
-//     let me = ctx.sync_address();
-
-//     let fut = timeout
-//       .select2(receiver)
-//       .map_err(|e| match e {
-//         future::Either::A((err, _)) => err.into(),
-//         future::Either::B((err, _)) => err.into(),
-//       })
-//       .and_then(move |_| me.send(GetApp).from_err().and_then(|s| s));
-//     Box::new(fut)
-//   }
-// }
-
-// fn get_current_app(
-//   app: &types::App, snapshot_len: usize, log_len: usize
-// ) -> Result<Option<String>, Error> {
-//   if app.snapshots.len() != snapshot_len
-//     || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
-//   {
-//     app_to_string(app).map(Some)
-//   } else {
-//     Ok(None)
 //   }
 // }
 
