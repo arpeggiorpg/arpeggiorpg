@@ -24,8 +24,6 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       .service(web::resource("").route(web::get().to(get_app)).route(web::post().to(post_command)))
       .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app)))
   );
-  // r.method(Method::POST).f(post_app);
-  // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
   // .resource("/movement_options/{scene_id}/{cid}", |r| r.route().f(movement_options))
   // .resource("/combat_movement_options", |r| r.route().f(combat_movement_options))
   // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
@@ -52,17 +50,6 @@ async fn post_command(actor: web::Data<AppActor>, command: web::Json<GameCommand
   info!("[perform_command] {:?}", command);
   string_json_response(actor.perform_command(command.into_inner()).await?)
 }
-
-// fn invoke_actor_string_result<M>(address: &::AppAddress, msg: M) -> AsyncRPIResponse
-// where
-//   actor::AppActor: actix::Handler<M>,
-//   M: actix::Message<Result = Result<String, Error>> + Send + 'static,
-// {
-//   let fut = address.send(msg).from_err().and_then(|s| s).and_then(string_json_response);
-//   // I should not need to box this result, but it is too hard to write the type of the return
-//   // value
-//   Box::new(fut)
-// }
 
 // fn movement_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
 //   let creature_id: CreatureID = try_fut!(parse_arg(&req, "cid"));
@@ -162,19 +149,3 @@ async fn post_command(actor: web::Data<AppActor>, command: web::Json<GameCommand
 fn string_json_response(body: String) -> Result<HttpResponse, Error> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))
 }
-
-// fn get_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
-// where
-//   T: FromParam,
-// {
-//   Ok(req.match_info().query::<T>(key)?)
-// }
-
-// fn parse_arg<T>(req: &HttpRequest<PT>, key: &str) -> Result<T, Error>
-// where
-//   T: ::std::str::FromStr,
-//   Error: From<<T as ::std::str::FromStr>::Err>, // I dunno man
-// {
-//   let s = req.match_info().query::<String>(key);
-//   Ok(s.map_err(|e| format_err!("Failed to parse an argument: {:?} ({:?})", key, e))?.parse()?)
-// }
