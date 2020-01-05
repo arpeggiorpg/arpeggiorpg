@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::path::Path;
 
+use error_chain::bail;
+
 use crate::types::*;
 
 // random misplaced notes
@@ -41,7 +43,7 @@ impl App {
     App { current_game: g, snapshots: snapshots }
   }
   pub fn perform_command(
-    &mut self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>
+    &mut self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>,
   ) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
@@ -108,7 +110,7 @@ impl App {
   pub fn game(&self) -> &Game { &self.current_game }
 
   pub fn get_movement_options(
-    &self, scene: SceneID, creature_id: CreatureID
+    &self, scene: SceneID, creature_id: CreatureID,
   ) -> Result<Vec<Point3>, GameError> {
     self.current_game.get_movement_options(scene, creature_id)
   }
@@ -118,13 +120,13 @@ impl App {
   }
 
   pub fn get_target_options(
-    &self, scene: SceneID, cid: CreatureID, abid: AbilityID
+    &self, scene: SceneID, cid: CreatureID, abid: AbilityID,
   ) -> Result<PotentialTargets, GameError> {
     self.current_game.get_target_options(scene, cid, abid)
   }
 
   pub fn preview_volume_targets(
-    &self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3
+    &self, sid: SceneID, actor_id: CreatureID, ability_id: AbilityID, pt: Point3,
   ) -> Result<(Vec<CreatureID>, Vec<Point3>), GameError> {
     let scene = self.current_game.get_scene(sid)?;
     self.current_game.preview_volume_targets(scene, actor_id, ability_id, pt)
@@ -195,7 +197,8 @@ mod test {
     perf(
       &mut app,
       GameCommand::StartCombat(t_scene_id(), vec![cid_ranger(), cid_rogue(), cid_cleric()]),
-    ).unwrap();
+    )
+    .unwrap();
     // 2
     perf(&mut app, GameCommand::StopCombat).unwrap();
     // 3

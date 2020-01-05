@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::types::*;
 use crate::grid::{make_world, query_world};
+use crate::types::*;
 
 impl Scene {
   pub fn create(creation: SceneCreation) -> Scene {
@@ -52,7 +52,7 @@ impl Scene {
 
   /// Figure out which volume conditions apply to the given creature.
   pub fn creature_volume_conditions(
-    &self, game: &Game, creature: &Creature
+    &self, game: &Game, creature: &Creature,
   ) -> Result<Vec<(ConditionID, &VolumeCondition)>, GameError> {
     let condition_ids = query_world(&self.get_world(game)?, |cdata1, cdata2| {
       if let (CollisionData::Creature(cid), CollisionData::ConditionVolume(cond_id)) =
@@ -81,7 +81,7 @@ impl Scene {
   /// Return a set of points of open terrain which  intersect a volume.
   /// Largely used for previewing the area that will be affected by a volume-affecting ability.
   pub fn open_terrain_in_volume(
-    &self, game: &Game, pt: Point3, volume: Volume
+    &self, game: &Game, pt: Point3, volume: Volume,
   ) -> Result<Terrain, GameError> {
     let all_open = self.terrain.iter().map(|pt| (*pt, *pt)).collect();
     Ok(game.tile_system.items_within_volume(volume, pt, &all_open))
@@ -103,9 +103,9 @@ impl Scene {
 
 #[cfg(test)]
 mod test {
-  use crate::types::*;
-  use crate::types::test::*;
   use crate::game::test::*;
+  use crate::types::test::*;
+  use crate::types::*;
 
   #[test]
   fn creature_volume_conditions() {

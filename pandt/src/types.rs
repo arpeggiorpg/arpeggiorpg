@@ -6,20 +6,23 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use derive_more::{Add, Div, Mul, Sub};
+use error_chain::bail;
+use failure::Fail;
 use num::Saturating;
-use rand;
-use rand::distributions as dist;
-use rand::distributions::IndependentSample;
-use serde::ser;
-use serde::ser::{Error as SerError, SerializeStruct};
-use serde::de;
+use rand::Rng;
+use serde::{
+  de,
+  ser::{Error as SerError, SerializeStruct},
+  Deserialize, Deserializer, Serialize, Serializer,
+};
 use serde_yaml;
 use uom::si::length::{centimeter, meter};
-use uuid::{ParseError as UuidParseError, Uuid};
+use uuid::{Error as UuidParseError, Uuid};
 
-use nonempty;
-use indexed::{DeriveKey, IndexedHashMap};
 use foldertree::{FolderPath, FolderTree, FolderTreeError};
+use indexed::{DeriveKey, IndexedHashMap};
+use nonempty;
 
 pub mod u32units {
   ISQ!(uom::si, u32, (centimeter, gram, second, ampere, kelvin, mole, candela));
@@ -37,7 +40,7 @@ pub fn i64cm<T: Into<i64>>(v: T) -> i64units::Length {
 }
 pub fn i64meter<T: Into<i64>>(v: T) -> i64units::Length { i64units::Length::new::<meter>(v.into()) }
 
-pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get(centimeter)) }
+pub fn up_length(v: u32units::Length) -> i64units::Length { i64cm(v.get::<centimeter>()) }
 
 pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
@@ -60,7 +63,13 @@ impl Point3 {
 
 impl ::std::fmt::Display for Point3 {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "{}/{}/{}", self.x.get(centimeter), self.y.get(centimeter), self.z.get(centimeter))
+    write!(
+      f,
+      "{}/{}/{}",
+      self.x.get::<centimeter>(),
+      self.y.get::<centimeter>(),
+      self.z.get::<centimeter>()
+    )
   }
 }
 
@@ -78,18 +87,18 @@ impl ::std::str::FromStr for Point3 {
   }
 }
 
-impl ser::Serialize for Point3 {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl Serialize for Point3 {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&self.to_string())
   }
 }
 
-impl<'de> de::Deserialize<'de> for Point3 {
+impl<'de> Deserialize<'de> for Point3 {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
-    D: de::Deserializer<'de>,
+    D: Deserializer<'de>,
   {
-    let st: String = de::Deserialize::deserialize(deserializer)?;
+    let st: String = Deserialize::deserialize(deserializer)?;
     match st.parse() {
       Ok(x) => Ok(x),
       Err(x) => Err(de::Error::invalid_value(
@@ -112,9 +121,9 @@ impl AABB {
   /// Get the "maximum" point of the AABB (aka the top-right point) relative to a fixed point.
   pub fn get_max(&self, pt: Point3) -> Point3 {
     Point3::from_quantities(
-      pt.x + i64cm(self.x.get(centimeter)),
-      pt.y + i64cm(self.y.get(centimeter)),
-      pt.z + i64cm(self.z.get(centimeter)),
+      pt.x + i64cm(self.x.get::<centimeter>()),
+      pt.y + i64cm(self.y.get::<centimeter>()),
+      pt.z + i64cm(self.z.get::<centimeter>()),
     )
   }
 }
@@ -141,10 +150,10 @@ impl Dice {
       Dice::Expr { num, size } => {
         let mut intermediate = vec![];
         let mut result = 0i32;
-        let range: dist::Range<i32> = dist::Range::new(1, i32::from(size) + 1);
         let mut rng = rand::thread_rng();
+
         for _ in 0..num {
-          let val = range.ind_sample(&mut rng);
+          let val = rng.gen_range(1, i32::from(size) + 1);
           result += val;
           intermediate.push(val as i16);
         }
@@ -175,16 +184,44 @@ impl Dice {
   }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Clone,
+  Copy,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Debug,
+  Hash,
+  Serialize,
+  Deserialize,
+)]
 pub struct HP(pub u8);
 impl Saturating for HP {
   fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
   fn saturating_sub(self, other: Self) -> Self { HP(self.0.saturating_sub(other.0)) }
 }
 
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+#[derive(
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Clone,
+  Copy,
+  Eq,
+  PartialEq,
+  Ord,
+  PartialOrd,
+  Debug,
+  Hash,
+  Serialize,
+  Deserialize,
+)]
 pub struct Energy(pub u8);
 impl Saturating for Energy {
   fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
@@ -200,7 +237,7 @@ macro_rules! uuid_id {
     pub struct $type(pub Uuid);
     impl $type {
       pub fn gen() -> $type { $type(Uuid::new_v4()) }
-      pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
+      pub fn to_string(&self) -> String { self.0.to_hyphenated().to_string() }
     }
 
     impl ::std::str::FromStr for $type {
@@ -255,18 +292,19 @@ impl SkillLevel {
   }
 
   pub fn difficulty(&self, difficulty_level: SkillLevel) -> u8 {
-    100 - match difficulty_level.to_ord() - self.to_ord() {
-      -4 => 100,
-      -3 => 99,
-      -2 => 95,
-      -1 => 85,
-      0 => 75,
-      1 => 50,
-      2 => 10,
-      3 => 1,
-      4 => 0,
-      diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
-    }
+    100
+      - match difficulty_level.to_ord() - self.to_ord() {
+        -4 => 100,
+        -3 => 99,
+        -2 => 95,
+        -1 => 85,
+        0 => 75,
+        1 => 50,
+        2 => 10,
+        3 => 1,
+        4 => 0,
+        diff => panic!("[SkillLevel::difficulty] Two skill levels were too far apart: {:?}", diff),
+      }
   }
 }
 
@@ -1161,8 +1199,8 @@ pub struct RPIApp<'a>(pub &'a App);
 /// Like `RPIApp` for Game.
 pub struct RPIGame<'a>(pub &'a Game);
 
-impl<'a> ser::Serialize for RPIApp<'a> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'a> Serialize for RPIApp<'a> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("App", 2)?;
     let app = self.0;
     str.serialize_field("current_game", &RPIGame(&app.current_game))?;
@@ -1171,8 +1209,8 @@ impl<'a> ser::Serialize for RPIApp<'a> {
   }
 }
 
-impl<'a> ser::Serialize for RPIGame<'a> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'a> Serialize for RPIGame<'a> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Game", 10)?;
     let game = self.0;
 
@@ -1194,8 +1232,8 @@ impl<'a> ser::Serialize for RPIGame<'a> {
   }
 }
 
-impl<'creature, 'game: 'creature> ser::Serialize for DynamicCreature<'creature, 'game> {
-  fn serialize<S: ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Creature", 21)?;
     let creat = &self.creature;
     str.serialize_field("id", &creat.id)?;
@@ -1265,12 +1303,13 @@ impl Folder {
 
 #[cfg(test)]
 pub mod test {
-  use std::iter::FromIterator;
-  use crate::types::*;
   use crate::grid::test::*;
+  use crate::types::*;
+  use maplit::hashmap;
+  use std::iter::FromIterator;
 
-  use serde_yaml;
   use serde_json;
+  use serde_yaml;
   pub fn uuid_0() -> Uuid { "00000000-0000-0000-0000-000000000000".parse().unwrap() }
   pub fn uuid_1() -> Uuid { "00000000-0000-0000-0000-000000000001".parse().unwrap() }
   pub fn uuid_2() -> Uuid { "00000000-0000-0000-0000-000000000002".parse().unwrap() }
@@ -1323,7 +1362,7 @@ pub mod test {
       related_scenes: HashSet::new(),
 
       attribute_checks: HashMap::new(),
-      creatures: hashmap!{
+      creatures: hashmap! {
         cid_rogue() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
         cid_cleric() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
         cid_ranger() => (Point3::new(0, 0, 0), Visibility::AllPlayers),
@@ -1450,10 +1489,11 @@ pub mod test {
   #[test]
   fn serde_ids() {
     let id = abid_heal();
-    assert_eq!(
-      serde_yaml::to_string(&id).unwrap(),
-      "---\n\"00000000-0000-0000-0000-000000000002\""
-    );
+    let serialized = serde_yaml::to_string(&id).unwrap();
+    assert_eq!(serialized, "---\n00000000-0000-0000-0000-000000000002");
+    let deserialized =
+      serde_yaml::from_str::<AbilityID>("---\n00000000-0000-0000-0000-000000000002").unwrap();
+    assert_eq!(deserialized, id);
   }
 
   #[test]
@@ -1479,7 +1519,7 @@ pub mod test {
   #[test]
   fn serialize_hashmap_point3() {
     let p = Point3::new(0, 0, 0);
-    let hm = hashmap!{p => 5};
+    let hm = hashmap! {p => 5};
     assert_eq!(serde_json::to_string(&hm).unwrap(), "{\"0/0/0\":5}");
   }
 }

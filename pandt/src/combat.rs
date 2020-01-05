@@ -1,5 +1,6 @@
 //! Simulation of combat.
 
+use error_chain::bail;
 use nonempty;
 use num::{Saturating, Zero};
 
@@ -107,7 +108,7 @@ impl<'game> DynamicCombat<'game> {
 }
 
 fn sort_combatants(
-  mut combatants: Vec<(CreatureID, i16)>
+  mut combatants: Vec<(CreatureID, i16)>,
 ) -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
   combatants.sort_by_key(|&(_, i)| -i);
   nonempty::NonEmptyWithCursor::from_vec(combatants)
@@ -126,7 +127,7 @@ impl Combat {
   pub fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
 
   pub fn roll_initiative(
-    game: &Game, cids: Vec<CreatureID>
+    game: &Game, cids: Vec<CreatureID>,
   ) -> Result<Vec<(CreatureID, i16)>, GameError> {
     cids
       .iter()
@@ -155,7 +156,8 @@ impl Combat {
       Err(nonempty::Error::OutOfBounds { .. }) => Err(
         GameError::BuggyProgram(
           "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
-        ).into(),
+        )
+        .into(),
       ),
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
       Ok(_) => Ok(Some(combat)),
@@ -212,9 +214,9 @@ impl<'game> ChangedCombat<'game> {
 pub mod test {
 
   use crate::combat::*;
-  use crate::types::test::*;
   use crate::game::test::*;
   use crate::game::ChangedGame;
+  use crate::types::test::*;
 
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {
@@ -226,7 +228,7 @@ pub mod test {
   }
 
   pub fn t_act(
-    game: &Game, abid: AbilityID, target: DecidedTarget
+    game: &Game, abid: AbilityID, target: DecidedTarget,
   ) -> Result<ChangedGame, GameError> {
     perf(game, GameCommand::CombatAct(abid, target))
   }
