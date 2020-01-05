@@ -1,27 +1,5 @@
 // Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
-#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
-
-extern crate actix;
-extern crate actix_web;
-extern crate env_logger;
-extern crate error_chain;
-#[macro_use]
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate foldertree;
-extern crate futures;
-extern crate http;
-#[macro_use]
-extern crate log;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-#[macro_use]
-extern crate structopt;
-extern crate tokio_core;
-
-extern crate pandt;
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 
 #[macro_use]
 mod macros {
@@ -42,22 +20,24 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use actix::Actor;
+use actix_web::App as WebApp;
+use log::info;
 use structopt::StructOpt;
 
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
-type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
+// type AppAddress = actix::Addr<actix::Syn, actor::AppActor>;
 
-#[derive(Clone)]
-pub struct PT {
-  saved_game_path: PathBuf,
-  module_path: Option<PathBuf>,
-  app_address: AppAddress,
-}
+// #[derive(Clone)]
+// pub struct PT {
+//   saved_game_path: PathBuf,
+//   module_path: Option<PathBuf>,
+//   // app_address: AppAddress,
+// }
 
-fn main() {
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
   if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info");
   }
@@ -81,14 +61,13 @@ fn main() {
 
   let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
 
-  let actix_system = actix::System::new("P&T-RPI");
-  let app_address: AppAddress = actor.start();
+  // let actix_system = actix::System::new("P&T-RPI");
+  // let app_address = actor.start();
 
-  let pt = PT { saved_game_path, module_path, app_address };
+  // let pt = PT { saved_game_path, module_path };
 
-  let server = actix_web::HttpServer::new(move || web::router(pt.clone()));
-  server.bind("0.0.0.0:1337").expect("Couldn't bind to 1337").start();
-  actix_system.run();
+  let server = actix_web::HttpServer::new(move || WebApp::new().configure(|c| web::router(actor.clone(), c)));
+  server.bind("0.0.0.0:1337")?.run().await
 }
 
 #[derive(StructOpt)]
