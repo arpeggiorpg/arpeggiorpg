@@ -103,8 +103,13 @@ impl AppActor {
     let options = app.get_combat_movement_options()?;
     Ok(serde_json::to_string(&options)?)
   }
-}
 
+  pub async fn target_options(&self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID) -> Result<String, Error> {
+    let app = self.app.lock().await;
+    let options = app.get_target_options(scene_id, creature_id, ability_id)?;
+    Ok(serde_json::to_string(&options)?)
+  }
+}
 
 // pub struct TargetOptions {
 //   pub creature_id: types::CreatureID,

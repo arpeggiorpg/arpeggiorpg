@@ -8,7 +8,7 @@ use futures::Future;
 use http::{header, Method};
 use log::info;
 
-use pandt::types::{CreatureID, GameCommand, ModuleSource, Point3, SceneID};
+use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
 use crate::actor::AppActor;
 
@@ -27,6 +27,7 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
         web::resource("movement_options/{scene_id}/{cid}").route(web::get().to(movement_options)),
       )
       .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
+      .service(web::resource("target_options/{scene_id}/{cid}/{abid}").route(web::get().to(target_options)))
   );
   // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
   // .resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}", |r| {
@@ -65,15 +66,9 @@ async fn combat_movement_options(actor: web::Data<AppActor>) -> impl Responder {
   string_json_response(actor.combat_movement_options().await?)
 }
 
-// fn target_options(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   let scene_id = try_fut!(parse_arg(&req, "scene_id"));
-//   let creature_id = try_fut!(parse_arg(&req, "cid"));
-//   let ability_id = try_fut!(parse_arg(&req, "abid"));
-//   invoke_actor_string_result(
-//     &req.state().app_address,
-//     actor::TargetOptions { scene_id, creature_id, ability_id },
-//   )
-// }
+async fn target_options(actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID)>) -> impl Responder {
+  string_json_response(actor.target_options(path.0, path.1, path.2).await?)
+}
 
 // fn preview_volume_targets(req: HttpRequest<PT>) -> AsyncRPIResponse {
 //   let scene_id = try_fut!(parse_arg(&req, "scene_id"));
