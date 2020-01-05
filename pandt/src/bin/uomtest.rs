@@ -11,8 +11,8 @@ mod i64units {
 fn i64cm(v: i64) -> i64units::Length { i64units::Length::new::<centimeter>(v) }
 
 fn main() {
-  println!("101 cm in meters: {:?}", i64cm(101).get(meter));
-  println!("99cm in meters: {:?}", i64cm(99).get(meter));
-  println!("-101 cm in meters: {:?}", i64cm(-101).get(meter));
-  println!("-99cm in meters: {:?}", i64cm(-99).get(meter));
+  println!("101 cm in meters: {:?}", i64cm(101).get::<meter>());
+  println!("99cm in meters: {:?}", i64cm(99).get::<meter>());
+  println!("-101 cm in meters: {:?}", i64cm(-101).get::<meter>());
+  println!("-99cm in meters: {:?}", i64cm(-99).get::<meter>());
 }

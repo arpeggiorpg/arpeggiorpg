@@ -14,9 +14,9 @@ use std::error;
 use std::fmt;
 
 #[cfg(feature = "use_serde")]
-use serde::{Deserialize, Deserializer};
-#[cfg(feature = "use_serde")]
 use serde::de;
+#[cfg(feature = "use_serde")]
+use serde::{Deserialize, Deserializer};
 
 /// A non-empty vector with a cursor. NO operations panic.
 #[derive(Clone, Eq, PartialEq, Debug)]

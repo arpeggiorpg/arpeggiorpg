@@ -1,10 +1,11 @@
-use std::collections::HashMap;
 use std::cmp;
+use std::collections::HashMap;
 
+use error_chain::bail;
 use num::Saturating;
 
-use indexed::*;
 use crate::types::*;
+use indexed::*;
 
 /// `STANDARD_CREATURE_SPEED` is carefully chosen to allow for circular-looking movement options.
 /// Since we only allow 8-way movement, the available movement options are biased towards
@@ -21,7 +22,7 @@ const STANDARD_CREATURE_SPEED: u32 = 1086;
 
 impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(
-    creature: &'creature Creature, game: &'game Game
+    creature: &'creature Creature, game: &'game Game,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(creature.class)? })
   }
@@ -102,11 +103,13 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     for condition_id in changes.creature.conditions.keys().cloned().collect::<Vec<ConditionID>>() {
       match changes.creature.conditions[&condition_id].remaining {
         Duration::Interminate => {}
-        Duration::Rounds(remaining) => if remaining > 0 {
-          changes = changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
-        } else {
-          changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
-        },
+        Duration::Rounds(remaining) => {
+          if remaining > 0 {
+            changes = changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
+          } else {
+            changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
+          }
+        }
       }
     }
     Ok(changes)
@@ -223,11 +226,13 @@ impl Creature {
       CreatureLog::GenerateEnergy(ref nrg) => {
         new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
       }
-      CreatureLog::ReduceEnergy(ref nrg) => if *nrg > new.cur_energy {
-        return Err(GameError::NotEnoughEnergy(*nrg).into());
-      } else {
-        new.cur_energy = new.cur_energy - *nrg;
-      },
+      CreatureLog::ReduceEnergy(ref nrg) => {
+        if *nrg > new.cur_energy {
+          return Err(GameError::NotEnoughEnergy(*nrg).into());
+        } else {
+          new.cur_energy = new.cur_energy - *nrg;
+        }
+      }
       CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
         new.conditions.insert(*id, con.apply(*dur));
       }
@@ -295,7 +300,7 @@ pub struct ChangedCreature {
 
 impl ChangedCreature {
   pub fn creature<'creature, 'game>(
-    &'creature self, game: &'game Game
+    &'creature self, game: &'game Game,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
     DynamicCreature::new(&self.creature, game)
   }
@@ -326,8 +331,8 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
 #[cfg(test)]
 pub mod test {
   use crate::creature::*;
-  use crate::types::test::*;
   use crate::game::test::*;
+  use crate::types::test::*;
 
   use std::iter::FromIterator;
 
@@ -356,15 +361,13 @@ pub mod test {
   fn test_recurring_effect_ticks_duration_times() {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |c| {
-      c.conditions = HashMap::from_iter(vec![
-        (
-          ConditionID(uuid_0()),
-          app_cond(
-            Condition::RecurringEffect(Box::new(CreatureEffect::Damage(Dice::flat(1)))),
-            Duration::Rounds(2),
-          ),
+      c.conditions = HashMap::from_iter(vec![(
+        ConditionID(uuid_0()),
+        app_cond(
+          Condition::RecurringEffect(Box::new(CreatureEffect::Damage(Dice::flat(1)))),
+          Duration::Rounds(2),
         ),
-      ]);
+      )]);
     });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(c.cur_health, HP(9));
@@ -380,16 +383,18 @@ pub mod test {
   fn test_condition_duration() {
     let mut game = t_game();
     game.creatures.mutate(&cid_rogue(), |c| {
-      c.conditions = HashMap::from_iter(vec![
-        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, Duration::Rounds(1))),
-      ]);
+      c.conditions = HashMap::from_iter(vec![(
+        ConditionID(uuid_0()),
+        app_cond(Condition::Incapacitated, Duration::Rounds(1)),
+      )]);
     });
     let c = game.get_creature(cid_rogue()).unwrap().tick().unwrap().creature;
     assert_eq!(
       c.conditions,
-      HashMap::from_iter(vec![
-        (ConditionID(uuid_0()), app_cond(Condition::Incapacitated, Duration::Rounds(0))),
-      ])
+      HashMap::from_iter(vec![(
+        ConditionID(uuid_0()),
+        app_cond(Condition::Incapacitated, Duration::Rounds(0))
+      ),])
     );
     let c = game.dyn_creature(&c).unwrap().tick().unwrap().creature;
     assert_eq!(c.conditions, HashMap::new());
