@@ -17,9 +17,12 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
     .allowed_header(header::CONTENT_TYPE)
     .allowed_methods(vec!["*"])
     .finish();
-  config
-    .data(actor)
-    .service(web::scope("/").wrap(corsm).service(web::resource("").route(web::get().to(get_app))));
+  config.data(actor).service(
+    web::scope("/")
+      .wrap(corsm)
+      .service(web::resource("").route(web::get().to(get_app)))
+      .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app))),
+  );
   // r.method(Method::POST).f(post_app);
   // .resource("/poll/{snapshot_len}/{log_len}", |r| r.route().f(poll_app))
   // .resource("/movement_options/{scene_id}/{cid}", |r| r.route().f(movement_options))
@@ -38,6 +41,10 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
 
 async fn get_app(data: web::Data<AppActor>) -> impl Responder {
   string_json_response(data.get_app().await?)
+}
+
+async fn poll_app(path: web::Path<(usize, usize)>, data: web::Data<AppActor>) -> impl Responder {
+  string_json_response(data.poll_app(path.0, path.1).await?)
 }
 
 // /// If the client is polling with a non-current app "version", then immediately return the current
