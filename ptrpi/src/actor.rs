@@ -7,12 +7,12 @@ use std::time::Duration;
 use failure::Error;
 use futures::channel::oneshot;
 use futures::{future, Future};
-use log::{error};
+use log::error;
 use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
-use tokio_core::reactor::Timeout;
 use tokio::time::timeout;
+use tokio_core::reactor::Timeout;
 
 use foldertree;
 use pandt::game::load_app_from_path;
@@ -88,6 +88,14 @@ impl AppActor {
       }
     }
     Ok(result)
+  }
+
+  pub async fn movement_options(
+    &self, scene_id: types::SceneID, creature_id: types::CreatureID,
+  ) -> Result<String, Error> {
+    let app = self.app.lock().await;
+    let options = app.get_movement_options(scene_id, creature_id)?;
+    Ok(serde_json::to_string(&options)?)
   }
 }
 
