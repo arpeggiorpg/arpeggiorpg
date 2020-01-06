@@ -21,10 +21,10 @@ use pandt::types;
 /// Not really an actor for now, we're just pretending.
 #[derive(Clone)]
 pub struct AppActor {
-  app: Arc<Mutex<types::App>>,
-  waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
-  saved_game_path: PathBuf,
-  module_path: Option<PathBuf>,
+  pub app: Arc<Mutex<types::App>>,
+  pub waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
+  pub saved_game_path: PathBuf,
+  pub module_path: Option<PathBuf>,
 }
 
 impl AppActor {
@@ -104,21 +104,23 @@ impl AppActor {
     Ok(serde_json::to_string(&options)?)
   }
 
-  pub async fn target_options(&self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID) -> Result<String, Error> {
+  pub async fn target_options(
+    &self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID,
+  ) -> Result<String, Error> {
     let app = self.app.lock().await;
     let options = app.get_target_options(scene_id, creature_id, ability_id)?;
     Ok(serde_json::to_string(&options)?)
   }
 
-  pub async fn preview_volume_targets(&self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID, point: types::Point3) -> Result<String, Error> {
+  pub async fn preview_volume_targets(
+    &self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID,
+    point: types::Point3,
+  ) -> Result<String, Error> {
     let app = self.app.lock().await;
     let targets = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
     Ok(serde_json::to_string(&targets)?)
   }
-  
 }
-
-
 
 // pub struct LoadSavedGame {
 //   pub name: String,
