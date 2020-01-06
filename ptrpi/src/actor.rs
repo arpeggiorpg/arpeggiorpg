@@ -130,34 +130,17 @@ impl AppActor {
   }
 
   pub async fn save_game(&self, name: String) -> Result<String, Error> {
-    info!("[RADIX] SAVING GAME");
     save_app(&*self.app.lock().await, &name, &self.saved_game_path)?;
     Ok("{}".to_string())
   }
+
+  pub async fn save_module(&self, name: String, folder_path: foldertree::FolderPath) -> Result<String, Error> {
+    let new_game = self.app.lock().await.current_game.export_module(&folder_path)?;
+    let new_app = types::App::new(new_game);
+    save_app(&new_app, &name, &self.saved_game_path)?;
+    Ok("{}".to_string())
+  }
 }
-
-// pub struct SaveGame(pub String);
-// handle_actor! {
-//   SaveGame => String, Error;
-//   fn handle(&mut self, cmd: SaveGame, _: &mut Context<AppActor>) -> Self::Result {
-//     save_app(&self.app, &cmd.0, &self.saved_game_path)?;
-//     Ok("{}".to_string())
-//   }
-// }
-
-// pub struct SaveModule {
-//   pub name: String,
-//   pub path: foldertree::FolderPath,
-// }
-// handle_actor! {
-//   SaveModule => String, Error;
-//   fn handle(&mut self, cmd: SaveModule, _: &mut Context<AppActor>) -> Self::Result {
-//     let new_game = self.app.current_game.export_module(&cmd.path)?;
-//     let new_app = types::App::new(new_game);
-//     save_app(&new_app, &cmd.name, &self.saved_game_path)?;
-//     Ok("{}".to_string())
-//   }
-// }
 
 fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
   let new_path = child_path(file_path, name)?;
