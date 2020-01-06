@@ -40,7 +40,7 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
       .service(web::resource("saved_games/module/{name}/load").route(web::post().to(load_module_as_game)))
       .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
-      .service(web::resource("saved_games/user/{name}").route(web::post()).to(save_game))
+      .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
   );
   // .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
   // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
