@@ -28,11 +28,8 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       )
       .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
       .service(web::resource("target_options/{scene_id}/{cid}/{abid}").route(web::get().to(target_options)))
-  );
-  // .resource("/target_options/{scene_id}/{cid}/{abid}", |r| r.route().f(target_options))
-  // .resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}", |r| {
-  //   r.f(preview_volume_targets)
-  // })
+      .service(web::resource("/preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}").route(web::post().to(preview_volume_targets)))
+    );
   // .resource("/saved_games", |r| r.f(list_saved_games))
   // .resource("/saved_games/module/{name}/load", |r| r.method(Method::POST).f(load_module_as_game))
   // .resource("/saved_games/user/{name}/load", |r| r.method(Method::POST).f(load_saved_game))
@@ -70,20 +67,10 @@ async fn target_options(actor: web::Data<AppActor>, path: web::Path<(SceneID, Cr
   string_json_response(actor.target_options(path.0, path.1, path.2).await?)
 }
 
-// fn preview_volume_targets(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   let scene_id = try_fut!(parse_arg(&req, "scene_id"));
-//   let actor_id = try_fut!(parse_arg(&req, "actor_id"));
-//   let ability_id = try_fut!(parse_arg(&req, "ability_id"));
-//   let x = try_fut!(get_arg(&req, "x"));
-//   let y = try_fut!(get_arg(&req, "y"));
-//   let z = try_fut!(get_arg(&req, "z"));
-//   let point = Point3::new(x, y, z);
-
-//   invoke_actor_string_result(
-//     &req.state().app_address,
-//     actor::PreviewVolumeTargets { scene_id, actor_id, ability_id, point },
-//   )
-// }
+async fn preview_volume_targets(actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>) -> impl Responder {
+  let point = Point3::new(path.3, path.4, path.5);
+  string_json_response(actor.preview_volume_targets(path.0, path.1, path.2, point).await?)
+}
 
 // fn list_saved_games(req: HttpRequest<PT>) -> Result<Json<(Vec<String>, Vec<String>)>, Error> {
 //   // This does not require access to the app, so we don't dispatch to the actor.

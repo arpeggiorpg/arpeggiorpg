@@ -109,41 +109,16 @@ impl AppActor {
     let options = app.get_target_options(scene_id, creature_id, ability_id)?;
     Ok(serde_json::to_string(&options)?)
   }
+
+  pub async fn preview_volume_targets(&self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID, point: types::Point3) -> Result<String, Error> {
+    let app = self.app.lock().await;
+    let targets = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
+    Ok(serde_json::to_string(&targets)?)
+  }
+  
 }
 
-// pub struct TargetOptions {
-//   pub creature_id: types::CreatureID,
-//   pub scene_id: types::SceneID,
-//   pub ability_id: types::AbilityID,
-// }
-// handle_actor! {
-//   TargetOptions => String, Error;
-//   fn handle(&mut self, cmd: TargetOptions, _: &mut Context<AppActor>) -> Self::Result {
-//     Ok(serde_json::to_string(&self.app.get_target_options(
-//       cmd.scene_id,
-//       cmd.creature_id,
-//       cmd.ability_id,
-//     )?)?)
-//   }
-// }
 
-// pub struct PreviewVolumeTargets {
-//   pub scene_id: types::SceneID,
-//   pub actor_id: types::CreatureID,
-//   pub ability_id: types::AbilityID,
-//   pub point: types::Point3,
-// }
-// handle_actor! {
-//   PreviewVolumeTargets => String, Error;
-//   fn handle(&mut self, cmd: PreviewVolumeTargets, _: &mut Context<AppActor>) -> Self::Result {
-//     Ok(serde_json::to_string(&self.app.preview_volume_targets(
-//       cmd.scene_id,
-//       cmd.actor_id,
-//       cmd.ability_id,
-//       cmd.point,
-//     )?)?)
-//   }
-// }
 
 // pub struct LoadSavedGame {
 //   pub name: String,
