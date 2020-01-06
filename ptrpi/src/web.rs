@@ -40,8 +40,8 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
       .service(web::resource("saved_games/module/{name}/load").route(web::post().to(load_module_as_game)))
       .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
+      .service(web::resource("saved_games/user/{name}").route(web::post()).to(save_game))
   );
-  // .resource("/saved_games/user/{name}", |r| r.method(Method::POST).f(save_game))
   // .resource("/modules/{name}", |r| r.method(Method::POST).f(save_module))
   // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
 }
@@ -119,10 +119,9 @@ async fn load_module_as_game(actor: web::Data<AppActor>, path: web::Path<String>
   string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::Module).await?)
 }
 
-// fn save_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   let name: String = try_fut!(get_arg(&req, "name"));
-//   invoke_actor_string_result(&req.state().app_address, actor::SaveGame(name))
-// }
+async fn save_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
+  string_json_response(actor.save_game(path.into_inner()).await?)
+}
 
 // fn save_module(req: HttpRequest<PT>) -> AsyncRPIResponse {
 //   let name: String = try_fut!(get_arg(&req, "name"));

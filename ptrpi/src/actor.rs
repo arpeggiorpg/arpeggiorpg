@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use failure::Error;
+use failure::{Error, Fail};
 use futures::channel::oneshot;
 use futures::{future, Future};
-use log::error;
+use log::{error, info};
 use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
@@ -120,12 +120,19 @@ impl AppActor {
     let targets = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
     Ok(serde_json::to_string(&targets)?)
   }
+
   pub async fn load_saved_game(&self, name: String, source: types::ModuleSource) -> Result<String, Error> {
     let module_path = self.module_path.as_ref().map(|b| b.as_path());
     let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
     result
+  }
+
+  pub async fn save_game(&self, name: String) -> Result<String, Error> {
+    info!("[RADIX] SAVING GAME");
+    save_app(&*self.app.lock().await, &name, &self.saved_game_path)?;
+    Ok("{}".to_string())
   }
 }
 
@@ -152,14 +159,14 @@ impl AppActor {
 //   }
 // }
 
-// fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
-//   let new_path = child_path(file_path, name)?;
-//   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
-//   // without the extra magic that decorates the data with dynamic data for clients.
-//   let yaml = serde_yaml::to_string(app)?;
-//   fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
-//   Ok(())
-// }
+fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
+  let new_path = child_path(file_path, name)?;
+  // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
+  // without the extra magic that decorates the data with dynamic data for clients.
+  let yaml = serde_yaml::to_string(app)?;
+  fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+  Ok(())
+}
 
 // pub struct NewGame;
 // handle_actor! {
@@ -171,21 +178,21 @@ impl AppActor {
 //   }
 // }
 
-// #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
-// #[fail(display = "Path is insecure: {}", name)]
-// struct InsecurePathError {
-//   name: String,
-// }
+#[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
+#[fail(display = "Path is insecure: {}", name)]
+struct InsecurePathError {
+  name: String,
+}
 
-// fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
-//   if name.contains('/') || name.contains(':') || name.contains('\\') {
-//     return Err(InsecurePathError { name: name.to_string() });
-//   }
-//   let new_path = parent.join(name);
-//   for p in &new_path {
-//     if p == "." || p == ".." {
-//       return Err(InsecurePathError { name: name.to_string() });
-//     }
-//   }
-//   Ok(new_path)
-// }
+fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
+  if name.contains('/') || name.contains(':') || name.contains('\\') {
+    return Err(InsecurePathError { name: name.to_string() });
+  }
+  let new_path = parent.join(name);
+  for p in &new_path {
+    if p == "." || p == ".." {
+      return Err(InsecurePathError { name: name.to_string() });
+    }
+  }
+  Ok(new_path)
+}

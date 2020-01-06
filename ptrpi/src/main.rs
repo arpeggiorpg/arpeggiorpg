@@ -8,7 +8,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use actix_web::App as WebApp;
+use actix_web::{App as WebApp, middleware::Logger};
 use log::info;
 use structopt::StructOpt;
 
@@ -40,7 +40,7 @@ async fn main() -> std::io::Result<()> {
 
   let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
   let server =
-    actix_web::HttpServer::new(move || WebApp::new().configure(|c| web::router(actor.clone(), c)));
+    actix_web::HttpServer::new(move || WebApp::new().wrap(Logger::default()).configure(|c| web::router(actor.clone(), c)));
   server.bind("0.0.0.0:1337")?.run().await
 }
 
