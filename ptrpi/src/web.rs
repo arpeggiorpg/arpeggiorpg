@@ -42,8 +42,8 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
       .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
       .service(web::resource("modules/{name}").route(web::post().to(save_module)))
+      .service(web::resource("new_game").route(web::post().to(new_game)))
   );
-  // .resource("/new_game", |r| r.method(Method::POST).f(new_game))
 }
 
 async fn get_app(actor: web::Data<AppActor>) -> impl Responder {
@@ -127,9 +127,9 @@ async fn save_module(actor: web::Data<AppActor>, path: web::Path<String>, folder
   string_json_response(actor.save_module(path.into_inner(), folder_path.into_inner()).await?)
 }
 
-// fn new_game(req: HttpRequest<PT>) -> AsyncRPIResponse {
-//   invoke_actor_string_result(&req.state().app_address, actor::NewGame)
-// }
+async fn new_game(actor: web::Data<AppActor>) -> impl Responder {
+  string_json_response(actor.new_game().await?)
+}
 
 fn string_json_response(body: String) -> Result<HttpResponse, Error> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))

@@ -140,6 +140,13 @@ impl AppActor {
     save_app(&new_app, &name, &self.saved_game_path)?;
     Ok("{}".to_string())
   }
+
+  pub async fn new_game(&self) -> Result<String, Error> {
+    let new_game = Default::default();
+    let mut app = self.app.lock().await;
+    *app = types::App::new(new_game);
+    app_to_string(&app)
+  }
 }
 
 fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
