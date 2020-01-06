@@ -72,6 +72,14 @@ impl AppActor {
     self.get_app().await
   }
 
+  async fn ping_waiters(&self) {
+    for sender in self.waiters.lock().await.drain(0..) {
+      if let Err(e) = sender.send(()) {
+        error!("Unexpected failure while notifying a waiter: {:?}", e);
+      }
+    }
+  }
+
   pub async fn perform_command(&self, command: types::GameCommand) -> Result<String, Error> {
     let module_path = self.module_path.as_ref().map(|b| b.as_path());
     let result = {
@@ -82,11 +90,7 @@ impl AppActor {
       let result = result.map(|(g, l)| (types::RPIGame(g), l));
       serde_json::to_string(&result)?
     };
-    for sender in self.waiters.lock().await.drain(0..) {
-      if let Err(e) = sender.send(()) {
-        error!("Unexpected failure while notifying a waiter: {:?}", e);
-      }
-    }
+    self.ping_waiters();
     Ok(result)
   }
 
@@ -126,6 +130,7 @@ impl AppActor {
     let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
+    self.ping_waiters();
     result
   }
 
@@ -145,6 +150,7 @@ impl AppActor {
     let new_game = Default::default();
     let mut app = self.app.lock().await;
     *app = types::App::new(new_game);
+    self.ping_waiters();
     app_to_string(&app)
   }
 }
@@ -158,15 +164,6 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   Ok(())
 }
 
-// pub struct NewGame;
-// handle_actor! {
-//   NewGame => String, Error;
-//   fn handle(&mut self, _: NewGame, _: &mut Context<AppActor>) -> Self::Result {
-//     let new_game = Default::default();
-//     self.app = types::App::new(new_game);
-//     app_to_string(&self.app)
-//   }
-// }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
 #[fail(display = "Path is insecure: {}", name)]
