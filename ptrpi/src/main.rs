@@ -1,18 +1,6 @@
 // Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 
-#[macro_use]
-mod macros {
-  macro_rules! try_fut {
-    ($e: expr) => {
-      match $e {
-        Ok(x) => x,
-        Err(e) => return Box::new(::futures::future::err(e.into())),
-      }
-    };
-  }
-}
-
 mod actor;
 mod web;
 
