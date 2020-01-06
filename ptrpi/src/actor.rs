@@ -120,21 +120,14 @@ impl AppActor {
     let targets = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
     Ok(serde_json::to_string(&targets)?)
   }
+  pub async fn load_saved_game(&self, name: String, source: types::ModuleSource) -> Result<String, Error> {
+    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
+    let result = app_to_string(&app);
+    *self.app.lock().await = app;
+    result
+  }
 }
-
-// pub struct LoadSavedGame {
-//   pub name: String,
-//   pub source: types::ModuleSource,
-// }
-// handle_actor! {
-//   LoadSavedGame => String, Error;
-//   fn handle(&mut self, cmd: LoadSavedGame, _: &mut Context<AppActor>) -> Self::Result {
-//     let module_path = self.module_path.as_ref().map(|b| b.as_path());
-//     let app = load_app_from_path(&self.saved_game_path, module_path, cmd.source, &cmd.name)?;
-//     self.app = app;
-//     app_to_string(&self.app)
-//   }
-// }
 
 // pub struct SaveGame(pub String);
 // handle_actor! {
