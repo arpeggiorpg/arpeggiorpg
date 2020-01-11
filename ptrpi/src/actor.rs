@@ -7,7 +7,7 @@ use std::time::Duration;
 use failure::{Error, Fail};
 use futures::channel::oneshot;
 use futures::{future, Future};
-use log::{error, info};
+use log::{debug, error, info};
 use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
@@ -90,7 +90,7 @@ impl AppActor {
       let result = result.map(|(g, l)| (types::RPIGame(g), l));
       serde_json::to_string(&result)?
     };
-    self.ping_waiters();
+    self.ping_waiters().await;
     Ok(result)
   }
 
@@ -130,7 +130,7 @@ impl AppActor {
     let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
-    self.ping_waiters();
+    self.ping_waiters().await;
     result
   }
 
@@ -150,7 +150,7 @@ impl AppActor {
     let new_game = Default::default();
     let mut app = self.app.lock().await;
     *app = types::App::new(new_game);
-    self.ping_waiters();
+    self.ping_waiters().await;
     app_to_string(&app)
   }
 }
