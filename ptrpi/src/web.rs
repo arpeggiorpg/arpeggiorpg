@@ -2,9 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use actix_cors::Cors;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use failure::Error;
-use futures::Future;
 use http::header;
 use log::{error, info};
 
@@ -57,7 +56,6 @@ async fn poll_app(actor: web::Data<AppActor>, path: web::Path<(usize, usize)>) -
 async fn post_command(
   actor: web::Data<AppActor>, command: web::Json<GameCommand>,
 ) -> impl Responder {
-  info!("[perform_command] {:?}", command);
   string_json_response(actor.perform_command(command.into_inner()).await?)
 }
 
@@ -100,7 +98,7 @@ async fn list_saved_games(
         }
       }
     }
-    return Ok(result);
+    Ok(result)
   }
 
   let modules = match actor.module_path {
