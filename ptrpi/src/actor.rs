@@ -6,13 +6,11 @@ use std::time::Duration;
 
 use failure::{Error, Fail};
 use futures::channel::oneshot;
-use futures::{future, Future};
 use log::{debug, error, info};
 use serde_json;
 use serde_yaml;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
-use tokio_core::reactor::Timeout;
 
 use foldertree;
 use pandt::game::load_app_from_path;
@@ -54,12 +52,13 @@ impl AppActor {
   /// Wait for an app to change and then return it.
   pub async fn poll_app(&self, snapshot_len: usize, log_len: usize) -> Result<String, Error> {
     // First, if the app has already changed, return it immediately.
+    debug!("poll_app:start");
     {
       let app = self.app.lock().await;
       if app.snapshots.len() != snapshot_len
         || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
       {
-        return self.get_app().await;
+        return app_to_string(&app);
       }
     }
     // Now, we wait.
@@ -68,20 +67,23 @@ impl AppActor {
       let mut waiters = self.waiters.lock().await;
       waiters.push(sender);
     }
-    let received = timeout(Duration::from_secs(30), receiver).await;
+    let event = timeout(Duration::from_secs(30), receiver).await;
+    event.expect("timing out failed?").expect("receiving an event failed?");
     self.get_app().await
   }
 
   async fn ping_waiters(&self) {
     for sender in self.waiters.lock().await.drain(0..) {
       if let Err(e) = sender.send(()) {
-        error!("Unexpected failure while notifying a waiter: {:?}", e);
+        error!("ping_waiters:receiver-unavailable when sending {:?}", e);
       }
     }
   }
 
   pub async fn perform_command(&self, command: types::GameCommand) -> Result<String, Error> {
     let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let log_cmd = command.clone();
+    info!("perform_command:start: {:?}", &log_cmd);
     let result = {
       let mut app = self.app.lock().await;
       let result = app.perform_command(command, &self.saved_game_path, module_path);
@@ -91,6 +93,7 @@ impl AppActor {
       serde_json::to_string(&result)?
     };
     self.ping_waiters().await;
+    debug!("perform_command:done: {:?}", &log_cmd);
     Ok(result)
   }
 
