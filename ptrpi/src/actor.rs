@@ -34,16 +34,10 @@ impl AppActor {
       waiters: Arc::new(Mutex::new(vec![])),
     }
   }
-}
-
-fn app_to_string(app: &types::App) -> Result<String, Error> {
-  Ok(serde_json::to_string(&types::RPIApp(app))?)
-}
 
 /// The methods on this type return Strings containing JSON data.
 /// That's because these responses are generated while a mutex is locked,
 /// and we can't return a reference to the locked data outside of the guarded code.
-impl AppActor {
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
     app_to_string(&app)
@@ -158,6 +152,10 @@ impl AppActor {
   }
 }
 
+fn app_to_string(app: &types::App) -> Result<String, Error> {
+  Ok(serde_json::to_string(&types::RPIApp(app))?)
+}
+
 fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
   let new_path = child_path(file_path, name)?;
   // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
@@ -166,7 +164,6 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
   Ok(())
 }
-
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
 #[fail(display = "Path is insecure: {}", name)]
