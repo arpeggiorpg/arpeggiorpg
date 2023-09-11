@@ -40,7 +40,7 @@ const SNAPSHOTS: usize = 2;
 impl App {
   pub fn new(g: Game) -> Self {
     let snapshots = VecDeque::with_capacity(SNAPSHOTS);
-    App { current_game: g, snapshots: snapshots }
+    App { current_game: g, snapshots }
   }
   pub fn perform_command(
     &mut self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>,
@@ -55,7 +55,7 @@ impl App {
       }
       _ => {
         let (game, logs) =
-          self.current_game.perform_command(cmd.clone(), saved_game_path, module_path)?.done();
+          self.current_game.perform_command(cmd, saved_game_path, module_path)?.done();
 
         if self.snapshots.is_empty()
           || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
@@ -78,7 +78,7 @@ impl App {
   /// Rollback to a particular point by replaying logs after a snapshot
   fn rollback_to(&self, snapshot_idx: usize, log_idx: usize) -> Result<Game, GameError> {
     println!("Calling rollback_to {:?}[{:?}]", snapshot_idx, log_idx);
-    let &(ref baseline, ref logs_to_apply) = self
+    let (baseline, logs_to_apply) = self
       .snapshots
       .get(snapshot_idx)
       .ok_or_else(|| GameError::HistoryNotFound(snapshot_idx, log_idx))?;
@@ -116,7 +116,7 @@ impl App {
   }
 
   pub fn get_combat_movement_options(&self) -> Result<Vec<Point3>, GameError> {
-    Ok(self.current_game.get_combat()?.current_movement_options()?)
+    self.current_game.get_combat()?.current_movement_options()
   }
 
   pub fn get_target_options(

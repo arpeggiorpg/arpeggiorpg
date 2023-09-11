@@ -22,7 +22,7 @@ impl<'game> DynamicCombat<'game> {
     let mut new = self.combat.clone();
     match *l {
       CombatLog::ConsumeMovement(distance) => {
-        new.movement_used = new.movement_used + distance;
+        new.movement_used += distance;
       }
       CombatLog::EndTurn(ref cid) => {
         assert_eq!(*cid, new.current_creature_id());
@@ -79,7 +79,7 @@ impl<'game> DynamicCombat<'game> {
         movement_left: self.current_creature()?.speed() - self.combat.movement_used,
       })
     } else {
-      Err(GameError::CannotAct(current.id()).into())
+      Err(GameError::CannotAct(current.id()))
     }
   }
 
@@ -95,7 +95,7 @@ impl<'game> DynamicCombat<'game> {
 
   pub fn change_with(&self, log: CombatLog) -> Result<ChangedCombat<'game>, GameError> {
     let combat = self.apply_log(&log)?;
-    Ok(ChangedCombat { scene: self.scene, combat: combat, game: self.game, logs: vec![log] })
+    Ok(ChangedCombat { scene: self.scene, combat, game: self.game, logs: vec![log] })
   }
 
   pub fn current_creature(&self) -> Result<DynamicCreature<'game, 'game>, GameError> {
@@ -112,13 +112,13 @@ fn sort_combatants(
 ) -> Result<nonempty::NonEmptyWithCursor<(CreatureID, i16)>, GameError> {
   combatants.sort_by_key(|&(_, i)| -i);
   nonempty::NonEmptyWithCursor::from_vec(combatants)
-    .ok_or_else(|| GameError::CombatMustHaveCreatures.into())
+    .ok_or_else(|| GameError::CombatMustHaveCreatures)
 }
 
 impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
     Ok(Combat {
-      scene: scene,
+      scene,
       movement_used: Zero::zero(),
       creatures: sort_combatants(combatants)?,
     })
@@ -156,8 +156,7 @@ impl Combat {
       Err(nonempty::Error::OutOfBounds { .. }) => Err(
         GameError::BuggyProgram(
           "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
-        )
-        .into(),
+        ),
       ),
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
       Ok(_) => Ok(Some(combat)),

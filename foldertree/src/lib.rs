@@ -61,7 +61,7 @@ where
 impl<T> FolderTree<T> {
   pub fn new(root: T) -> FolderTree<T> {
     let path = FolderPath::root();
-    FolderTree { nodes: HashMap::from_iter(vec![(path.clone(), (root, HashSet::new()))]) }
+    FolderTree { nodes: HashMap::from_iter(vec![(path, (root, HashSet::new()))]) }
   }
 
   /// Make a child folder.
@@ -73,7 +73,7 @@ impl<T> FolderTree<T> {
     {
       let pdata = self.get_data_mut(parent)?;
       if pdata.1.contains(&new_child) {
-        return Err(FolderTreeError::FolderExists(new_full_path.clone()).into());
+        return Err(FolderTreeError::FolderExists(new_full_path));
       }
       pdata.1.insert(new_child);
     }
@@ -121,7 +121,7 @@ impl<T> FolderTree<T> {
         self.nodes.get_mut(&parent).expect("Parent must exist").1.remove(&child);
         Ok(self.nodes.remove(path).expect("Folder must exist if it had children.").0)
       }
-      None => return Err(FolderTreeError::CannotRemoveRoot),
+      None => Err(FolderTreeError::CannotRemoveRoot),
     }
   }
 
@@ -137,13 +137,13 @@ impl<T> FolderTree<T> {
         {
           let mut_data = self.nodes.get_mut(&parent).expect("Parent must exist.");
           mut_data.1.remove(&basename);
-          mut_data.1.insert(new_name.clone());
+          mut_data.1.insert(new_name);
         }
         let data = self.nodes.remove(path).expect("Node must exist.");
         self.nodes.insert(new_path, data);
         Ok(())
       }
-      None => return Err(FolderTreeError::CannotRenameRoot),
+      None => Err(FolderTreeError::CannotRenameRoot),
     }
   }
 
@@ -179,18 +179,18 @@ impl<T> FolderTree<T> {
         self.nodes.get_mut(new_parent).expect("Target directory must exist").1.insert(basename);
         Ok(())
       }
-      None => return Err(FolderTreeError::CannotMoveRoot),
+      None => Err(FolderTreeError::CannotMoveRoot),
     }
   }
 
   fn get_data(&self, path: &FolderPath) -> Result<&(T, HashSet<String>), FolderTreeError> {
-    self.nodes.get(path).ok_or_else(|| FolderTreeError::FolderNotFound(path.clone()).into())
+    self.nodes.get(path).ok_or_else(|| FolderTreeError::FolderNotFound(path.clone()))
   }
 
   fn get_data_mut(
     &mut self, path: &FolderPath,
   ) -> Result<&mut (T, HashSet<String>), FolderTreeError> {
-    self.nodes.get_mut(path).ok_or_else(|| FolderTreeError::FolderNotFound(path.clone()).into())
+    self.nodes.get_mut(path).ok_or_else(|| FolderTreeError::FolderNotFound(path.clone()))
   }
 
   /// Iterate paths to all folders below the given one.
@@ -218,7 +218,7 @@ impl<T> FolderTree<T> {
       }
       println!("Subtree: {:?}; Relative path: {:?}", sub_path, new_path);
       let cloned_folder = self.get(&sub_path)?.clone();
-      let (new_parent, new_leaf) = new_path.up().ok_or_else(|| FolderTreeError::RootHasNoName)?;
+      let (new_parent, new_leaf) = new_path.up().ok_or(FolderTreeError::RootHasNoName)?;
       new_tree.make_folder(&new_parent, new_leaf, cloned_folder)?;
     }
     Ok(new_tree)
@@ -247,7 +247,7 @@ impl FolderPath {
   pub fn to_string(&self) -> String {
     let mut s = String::new();
     for seg in &self.0 {
-      s.push_str("/");
+      s.push('/');
       s.push_str(seg);
     }
     s
@@ -281,7 +281,7 @@ impl FolderPath {
     if self.is_child_of(ancestor) {
       Ok(FolderPath::from_vec(self.0[ancestor.0.len()..].to_vec()))
     } else {
-      return Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()));
+      Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()))
     }
   }
 }
@@ -292,8 +292,8 @@ impl ::std::str::FromStr for FolderPath {
     let segments: Vec<&str> = path.split('/').collect();
     if segments.is_empty() {
       Ok(FolderPath(vec![]))
-    } else if segments[0] != "" {
-      Err(FolderTreeError::InvalidFolderPath(path.to_string()).into())
+    } else if !segments[0].is_empty() {
+      Err(FolderTreeError::InvalidFolderPath(path.to_string()))
     } else {
       Ok(FolderPath(segments.iter().skip(1).map(|s| s.to_string()).collect()))
     }
@@ -356,7 +356,7 @@ impl<'a, T: Serialize> Serialize for ChildrenSerializer<'a, T> {
     S: Serializer,
   {
     let children = self.tree.get_children(self.path).map_err(|e| {
-      S::Error::custom(&format!("BUG: couldn't find child while serializing: {:?}", e))
+      S::Error::custom(format!("BUG: couldn't find child while serializing: {:?}", e))
     })?;
     let mut map = serializer.serialize_map(Some(children.len()))?;
     for child in children {

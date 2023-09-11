@@ -81,7 +81,7 @@ impl<T> NonEmptyWithCursor<T> {
     if self.cursor == 0 {
       self.cursor = self.data.len() - 1;
     } else {
-      self.cursor = self.cursor - 1;
+      self.cursor -= 1;
     }
   }
 
@@ -264,7 +264,7 @@ impl<T> NonEmpty<T> {
     F: FnMut(&mut Vec<T>) -> R,
   {
     let result = f(&mut self.0);
-    if self.0.len() == 0 {
+    if self.0.is_empty() {
       (Err(Error::RemoveLastElement), result)
     } else {
       (Ok(self), result)
@@ -282,7 +282,7 @@ impl<T> NonEmpty<T> {
   /// Construct a new NonEmpty from a Vec, if it has at least one element.
   #[inline]
   pub fn from_vec(vec: Vec<T>) -> Option<Self> {
-    if vec.len() >= 1 {
+    if !vec.is_empty() {
       Some(NonEmpty(vec))
     } else {
       None
@@ -426,8 +426,8 @@ where
     D: Deserializer<'de>,
   {
     let x: FakeNEC<T> = Deserialize::deserialize(deserializer)?;
-    if x.data.len() == 0 {
-      Err(serde::de::Error::invalid_length(0, &format!("at least one element").as_ref()))
+    if x.data.is_empty() {
+      Err(serde::de::Error::invalid_length(0, &"at least one element".to_string().as_ref()))
     } else if x.cursor >= x.data.len() {
       Err(serde::de::Error::invalid_value(
         de::Unexpected::Unsigned(x.cursor as u64),
@@ -452,7 +452,7 @@ where
     D: Deserializer<'de>,
   {
     let x: Vec<T> = Deserialize::deserialize(deserializer)?;
-    if x.len() == 0 {
+    if x.is_empty() {
       Err(serde::de::Error::invalid_length(0, &"at least one element"))
     } else {
       Ok(NonEmpty(x))
