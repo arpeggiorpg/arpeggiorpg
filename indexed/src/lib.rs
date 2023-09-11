@@ -117,7 +117,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   }
 
   pub fn remove(&mut self, k: &<V as DeriveKey>::KeyType) -> Option<V> { self.data.remove(k) }
-  pub fn contains_key<'a>(&'a self, k: &<V as DeriveKey>::KeyType) -> bool {
+  pub fn contains_key(&self, k: &<V as DeriveKey>::KeyType) -> bool {
     self.data.contains_key(k)
   }
 

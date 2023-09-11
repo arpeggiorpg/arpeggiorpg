@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-//! A non-empty vector with a cursor.
+//! non-empty vectors.
 
 #[cfg(feature = "use_serde")]
 extern crate serde;
@@ -191,6 +191,10 @@ impl<T> NonEmptyWithCursor<T> {
   #[inline]
   pub fn len(&self) -> usize { self.data.len() }
 
+  /// Check if the vector is empty.
+  #[inline]
+  pub fn is_empty(&self) -> bool { self.data.is_empty() }
+
   /// Iterate over the elements, providing &T.
   #[inline]
   pub fn iter(&self) -> std::slice::Iter<T> { self.data.iter() }
@@ -362,6 +366,10 @@ impl<T> NonEmpty<T> {
   #[inline]
   pub fn len(&self) -> usize { self.0.len() }
 
+  /// Check if the vector is empty.
+  #[inline]
+  pub fn is_empty(&self) -> bool { self.0.is_empty() }
+
   /// Check if an element is contained in the NonEmpty, by equality.
   ///
   /// # Examples
@@ -397,7 +405,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
   fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
-    write!(fmter, "{}", format!("{:?}", self))
+    write!(fmter, "{:?}", self)
   }
 }
 
