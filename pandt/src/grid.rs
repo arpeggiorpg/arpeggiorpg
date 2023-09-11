@@ -1,11 +1,10 @@
 use bresenham;
-use odds::vec::VecExt;
 use std::cmp;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use nalgebra as na;
-use nalgebra::{Isometry3, Vector3};
+use ncollide3d::na;
+use ncollide3d::na::{Isometry3, Vector3};
 use ncollide3d::pipeline::object::{CollisionGroups, GeometricQueryType};
 use ncollide3d::query::PointQuery;
 use ncollide3d::shape;
