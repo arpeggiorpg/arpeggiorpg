@@ -139,7 +139,7 @@ impl<V: DeriveKey> IndexedHashMap<V> {
   // TODO: BORROW the key?
   pub fn mutate<F>(&mut self, k: &<V as DeriveKey>::KeyType, f: F) -> Option<()>
   where
-    F: FnOnce(&mut V) -> (),
+    F: FnOnce(&mut V),
   {
     match self.data.remove(k) {
       Some(mut thing) => {

@@ -22,8 +22,8 @@ impl Game {
     // First the easy part: create a subtree of the campaign to use as the new campaign folder tree.
     new_game.campaign = self.campaign.subtree(export_path)?;
     // Now, walk that campaign and copy over the actual data to the new game.
-    for path in new_game.campaign.walk_paths(&FolderPath::root()).cloned() {
-      let folder = new_game.campaign.get(&path).expect("folder we're walking must exist");
+    for path in new_game.campaign.walk_paths(&FolderPath::root()) {
+      let folder = new_game.campaign.get(path).expect("folder we're walking must exist");
       for abid in &folder.abilities {
         new_game.abilities.insert(self.get_ability(*abid)?.clone());
       }
@@ -72,8 +72,8 @@ impl Game {
     let mut all_scenes = HashSet::new();
     let mut all_items = HashSet::new();
     let mut all_classes = HashSet::new();
-    for folder_path in self.campaign.walk_paths(&FolderPath::root()).cloned() {
-      let folder = self.campaign.get(&folder_path).expect("walk_paths must return valid path");
+    for folder_path in self.campaign.walk_paths(&FolderPath::root()) {
+      let folder = self.campaign.get(folder_path).expect("walk_paths must return valid path");
       for sid in &folder.scenes {
         if all_scenes.contains(sid) {
           bail!(GameError::SceneAlreadyExists(*sid));
@@ -157,11 +157,11 @@ impl Game {
   }
 
   pub fn get_item(&self, iid: ItemID) -> Result<&Item, GameError> {
-    self.items.get(&iid).ok_or_else(|| GameError::ItemNotFound(iid).into())
+    self.items.get(&iid).ok_or_else(|| GameError::ItemNotFound(iid))
   }
 
   pub fn get_ability(&self, abid: AbilityID) -> Result<&Ability, GameError> {
-    self.abilities.get(&abid).ok_or_else(|| GameError::NoAbility(abid).into())
+    self.abilities.get(&abid).ok_or_else(|| GameError::NoAbility(abid))
   }
 
   /// Perform a GameCommand on the current Game.
@@ -251,7 +251,7 @@ impl Game {
         self.change_with(GameLog::SetSceneCreatureVisibility {
           scene_id,
           creature_id,
-          visibility: visibility.clone(),
+          visibility,
         })
       }
       AddCreatureToScene { scene_id, creature_id, ref visibility } => {
@@ -431,7 +431,7 @@ impl Game {
 
   fn mutate_owner_inventory<F>(&mut self, owner_id: InventoryOwner, f: F) -> Result<(), GameError>
   where
-    F: FnOnce(&mut Inventory) -> (),
+    F: FnOnce(&mut Inventory),
   {
     let opt = match owner_id {
       InventoryOwner::Scene(sid) => self.scenes.mutate(&sid, |s| f(&mut s.inventory)),
@@ -540,7 +540,7 @@ impl Game {
             .notes
             .remove(name)
             .ok_or_else(|| GameError::NoteNotFound(src.clone(), name.clone()))?;
-          self.campaign.get_mut(dst)?.notes.insert(note.clone());
+          self.campaign.get_mut(dst)?.notes.insert(note);
         }
         FolderItemID::SubfolderID(ref name) => {
           self.campaign.move_folder(&src.child(name.clone()), dst)?;
@@ -985,7 +985,7 @@ impl Game {
     if self.creatures.contains_key(&cid) {
       Ok(())
     } else {
-      Err(GameError::CreatureNotFound(cid.to_string()).into())
+      Err(GameError::CreatureNotFound(cid.to_string()))
     }
   }
 
@@ -993,7 +993,7 @@ impl Game {
     if self.scenes.contains_key(&scene) {
       Ok(())
     } else {
-      Err(GameError::SceneNotFound(scene).into())
+      Err(GameError::SceneNotFound(scene))
     }
   }
 
@@ -1018,13 +1018,13 @@ impl Game {
   }
 
   pub fn get_scene(&self, id: SceneID) -> Result<&Scene, GameError> {
-    self.scenes.get(&id).ok_or_else(|| GameError::SceneNotFound(id).into())
+    self.scenes.get(&id).ok_or_else(|| GameError::SceneNotFound(id))
   }
 
   pub fn get_combat(&self) -> Result<DynamicCombat, GameError> {
     let combat = self.current_combat.as_ref().ok_or(GameError::NotInCombat)?;
     let scene = self.get_scene(combat.scene)?;
-    Ok(DynamicCombat { scene: scene, combat: combat, game: self })
+    Ok(DynamicCombat { scene, combat, game: self })
   }
 
   // ** CONSIDER ** moving this chunk of code to... Scene.rs?
@@ -1061,10 +1061,10 @@ impl Game {
           in_combat,
         )
       } else {
-        Err(GameError::CreatureLacksAbility(creature.id(), abid).into())
+        Err(GameError::CreatureLacksAbility(creature.id(), abid))
       }
     } else {
-      Err(GameError::CannotAct(creature.id()).into())
+      Err(GameError::CannotAct(creature.id()))
     }
   }
 
@@ -1092,7 +1092,7 @@ impl Game {
               condition_id: ConditionID::gen(),
               scene_id: scene.id,
               point,
-              volume: volume,
+              volume,
               condition: condition.clone(),
               duration,
             };
@@ -1123,7 +1123,7 @@ impl Game {
         ) {
           Ok(vec![cid])
         } else {
-          Err(GameError::CreatureOutOfRange(cid).into())
+          Err(GameError::CreatureOutOfRange(cid))
         }
       }
       (CreatureTarget::Range(max), DecidedTarget::Creature(cid)) => {
@@ -1134,14 +1134,14 @@ impl Game {
         ) {
           Ok(vec![cid])
         } else {
-          Err(GameError::CreatureOutOfRange(cid).into())
+          Err(GameError::CreatureOutOfRange(cid))
         }
       }
       (CreatureTarget::Actor, DecidedTarget::Actor) => Ok(vec![creature.id()]),
       (_, DecidedTarget::Point(pt)) => {
         self.volume_creature_targets(scene, creature.creature.id, target, pt)
       }
-      (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided).into()),
+      (spec, decided) => Err(GameError::InvalidTargetForTargetSpec(spec, decided)),
     }
   }
 
@@ -1217,7 +1217,7 @@ impl Game {
         creature.speed(),
       ))
     } else {
-      Err(GameError::CannotAct(creature.id()).into())
+      Err(GameError::CannotAct(creature.id()))
     }
   }
 
@@ -1276,14 +1276,14 @@ impl Game {
   // ** END CONSIDERATION **
 
   pub fn get_class(&self, class: ClassID) -> Result<&Class, GameError> {
-    self.classes.get(&class).ok_or_else(|| GameError::ClassNotFound(class).into())
+    self.classes.get(&class).ok_or_else(|| GameError::ClassNotFound(class))
   }
 
   pub fn change(&self) -> ChangedGame { ChangedGame { game: self.clone(), logs: vec![] } }
 
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
-    Ok(ChangedGame { game: game, logs: vec![log] })
+    Ok(ChangedGame { game, logs: vec![log] })
   }
 }
 
@@ -1330,7 +1330,7 @@ impl ChangedGame {
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> {
-  Err(GameError::BuggyProgram(msg.to_string()).into())
+  Err(GameError::BuggyProgram(msg.to_string()))
 }
 
 pub fn load_app_from_path(
@@ -1345,7 +1345,7 @@ pub fn load_app_from_path(
     .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
   let mut apps = String::new();
   appf.read_to_string(&mut apps).unwrap();
-  let app: App = serde_yaml::from_str(&apps).map_err(|e| GameError::CouldNotParseApp(e))?;
+  let app: App = serde_yaml::from_str(&apps).map_err(GameError::CouldNotParseApp)?;
   app.current_game.validate_campaign()?;
   Ok(app)
 }

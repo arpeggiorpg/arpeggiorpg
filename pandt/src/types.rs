@@ -2,7 +2,7 @@
 
 // Just disable large_enum_variant lints for now, since I'm not really that interested in fixing
 // that for a while
-#![cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -317,8 +317,8 @@ pub enum InventoryOwner {
 impl InventoryOwner {
   pub fn not_found_error(&self) -> GameError {
     match *self {
-      InventoryOwner::Scene(sid) => GameError::SceneNotFound(sid).into(),
-      InventoryOwner::Creature(cid) => GameError::CreatureNotFound(cid.to_string()).into(),
+      InventoryOwner::Scene(sid) => GameError::SceneNotFound(sid),
+      InventoryOwner::Creature(cid) => GameError::CreatureNotFound(cid.to_string()),
     }
   }
 }
@@ -1220,7 +1220,7 @@ impl<'a> Serialize for RPIGame<'a> {
       "creatures",
       &game
         .creatures()
-        .map_err(|e| S::Error::custom(&format!("Oh no! Couldn't serialize creatures!? {:?}", e)))?,
+        .map_err(|e| S::Error::custom(format!("Oh no! Couldn't serialize creatures!? {:?}", e)))?,
     )?;
     str.serialize_field("classes", &game.classes)?;
     str.serialize_field("tile_system", &game.tile_system)?;
@@ -1262,16 +1262,16 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Default)]
 pub enum TileSystem {
   /// Square grid with diagonal movement costing 1.41
+  #[default]
   Realistic,
   /// Square grid with diagonal movement costing 1
   DnD,
 }
 
-impl Default for TileSystem {
-  fn default() -> TileSystem { TileSystem::Realistic }
-}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Note {

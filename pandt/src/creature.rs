@@ -24,7 +24,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   pub fn new(
     creature: &'creature Creature, game: &'game Game,
   ) -> Result<DynamicCreature<'creature, 'game>, GameError> {
-    Ok(DynamicCreature { creature: creature, game: game, class: game.get_class(creature.class)? })
+    Ok(DynamicCreature { creature, game, class: game.get_class(creature.class)? })
   }
 
   pub fn id(&self) -> CreatureID { self.creature.id }
@@ -37,7 +37,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let mut speed = self.creature.speed;
     for acondition in self.all_conditions() {
       if acondition.condition == Condition::DoubleMaxMovement {
-        speed = speed + self.creature.speed;
+        speed += self.creature.speed;
       }
     }
     speed
@@ -58,7 +58,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let applied_class_conditions =
       self.class.conditions.iter().map(|c| c.apply(Duration::Interminate));
     conditions.extend(applied_class_conditions);
-    conditions.extend(self.volume_conditions().into_iter().map(|(_, v)| v));
+    conditions.extend(self.volume_conditions().into_values());
     conditions
   }
 
@@ -168,7 +168,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn apply_condition_log(duration: Duration, condition: Condition) -> CreatureLog {
-    CreatureLog::ApplyCondition(ConditionID::gen(), duration, condition.clone())
+    CreatureLog::ApplyCondition(ConditionID::gen(), duration, condition)
   }
 
   pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {
@@ -228,7 +228,7 @@ impl Creature {
       }
       CreatureLog::ReduceEnergy(ref nrg) => {
         if *nrg > new.cur_energy {
-          return Err(GameError::NotEnoughEnergy(*nrg).into());
+          return Err(GameError::NotEnoughEnergy(*nrg));
         } else {
           new.cur_energy = new.cur_energy - *nrg;
         }
@@ -268,7 +268,7 @@ impl Creature {
 
   pub fn change_with(&self, log: CreatureLog) -> Result<ChangedCreature, GameError> {
     let creature = self.apply_log(&log)?;
-    Ok(ChangedCreature { creature: creature, logs: vec![log] })
+    Ok(ChangedCreature { creature, logs: vec![log] })
   }
 
   pub fn get_attribute_score(&self, attr: &AttrID) -> Result<SkillLevel, GameError> {
@@ -276,7 +276,7 @@ impl Creature {
       .attributes
       .get(attr)
       .cloned()
-      .ok_or_else(|| GameError::AttributeNotFound(self.id, attr.clone()).into())
+      .ok_or_else(|| GameError::AttributeNotFound(self.id, attr.clone()))
   }
 
   pub fn attribute_check(&self, check: &AttributeCheck) -> Result<(u8, bool), GameError> {
@@ -323,7 +323,7 @@ impl ChangedCreature {
 }
 
 fn conditions_able(conditions: &[AppliedCondition]) -> bool {
-  !conditions.iter().any(|&AppliedCondition { ref condition, .. }| {
+  !conditions.iter().any(|AppliedCondition { condition, .. }| {
     condition == &Condition::Incapacitated || condition == &Condition::Dead
   })
 }

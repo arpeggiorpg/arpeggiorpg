@@ -28,7 +28,7 @@ impl Scene {
       .creatures
       .get(&creature_id)
       .map(|x| x.0)
-      .ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()).into())
+      .ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))
   }
   pub fn set_pos(&self, cid: CreatureID, pt: Point3) -> Result<Scene, GameError> {
     let mut new = self.clone();
