@@ -1490,9 +1490,9 @@ pub mod test {
   fn serde_ids() {
     let id = abid_heal();
     let serialized = serde_yaml::to_string(&id).unwrap();
-    assert_eq!(serialized, "---\n00000000-0000-0000-0000-000000000002");
+    assert_eq!(serialized, "---\n00000000-0000-0000-0000-000000000002\n");
     let deserialized =
-      serde_yaml::from_str::<AbilityID>("---\n00000000-0000-0000-0000-000000000002").unwrap();
+      serde_yaml::from_str::<AbilityID>(&serialized).unwrap();
     assert_eq!(deserialized, id);
   }
 
