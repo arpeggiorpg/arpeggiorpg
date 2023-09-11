@@ -194,7 +194,7 @@ impl<T> FolderTree<T> {
   }
 
   /// Iterate paths to all folders below the given one.
-  pub fn walk_paths<'a>(&'a self, parent: &FolderPath) -> ::std::vec::IntoIter<&FolderPath> {
+  pub fn walk_paths(&self, parent: &FolderPath) -> ::std::vec::IntoIter<&FolderPath> {
     let parent: FolderPath = parent.clone();
 
     let all_nodes = self.nodes.keys().filter(move |p| p.is_child_of(&parent));
@@ -244,14 +244,6 @@ impl<T> FolderTree<T> {
 pub struct FolderPath(Vec<String>);
 
 impl FolderPath {
-  pub fn to_string(&self) -> String {
-    let mut s = String::new();
-    for seg in &self.0 {
-      s.push('/');
-      s.push_str(seg);
-    }
-    s
-  }
 
   pub fn up(&self) -> Option<(FolderPath, String)> {
     self.0.split_last().map(|(last, trunk)| (FolderPath::from_vec(trunk.to_vec()), last.clone()))
@@ -302,7 +294,11 @@ impl ::std::str::FromStr for FolderPath {
 
 impl ::std::fmt::Display for FolderPath {
   fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-    write!(f, "[{}]", self.to_string())
+    for seg in &self.0 {
+      write!(f, "/")?;
+      write!(f, "{}", seg)?;
+    }
+    Ok(())
   }
 }
 
