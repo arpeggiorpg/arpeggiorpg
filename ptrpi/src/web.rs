@@ -5,7 +5,7 @@ use actix_cors::Cors;
 use actix_web::{web, HttpResponse, Responder};
 use failure::Error;
 use http::header;
-use log::{error, info};
+use log::{error};
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
