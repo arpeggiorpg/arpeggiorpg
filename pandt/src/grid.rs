@@ -25,14 +25,15 @@ use crate::types::{
 //
 // Grenades should be "burst"-style spheres. These basically "cast" the effect outward from the
 // center, and are blocked by any solid terrain. This could be implemented by raycasting from
-// the origin to every point within a particular radius of the origin.
+// the origin to every point around the perimeter of the sphere.
 //
 // Abilities like D&D's "fireball" and P&T's "thorn patch" should be "wrap-around-corner" AoE
-// effects: Fireball is a sphere and Thorn Patch is a Circle or VerticalCylinder{height=1}.
+// effects: Fireball is a Sphere and Thorn Patch is a Circle or VerticalCylinder{height=1}.
 //
-// These "crawl" out from the origin point and can go anywhere within the radius that has a valid.
+// These "crawl" out from the origin point and can go anywhere within the radius that has a valid
 // path. This could be implemented exactly the same way we implement potential walk-targets.
-// However, for 3d shapes this might get expensive...
+// However, for 3d shapes this might get expensive... Probably more efficient to first, find
+// potential targets within the radius, and then try to path to each target.
 
 // I got curious about how to implement this in integer math.
 // the maximum distance on a grid of i16 positions (−32768 to 32767) is....?
