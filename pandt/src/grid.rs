@@ -280,8 +280,8 @@ impl TileSystem {
       TileSystem::DnD => u32cm(99),
     };
     let mut results = vec![];
-    for &x in [-100, 0, 100].into_iter() {
-      for &y in [-100, 0, 100].into_iter() {
+    for &x in [-100, 0, 100].iter() {
+      for &y in [-100, 0, 100].iter() {
         if (x, y) == (0, 0) {
           continue;
         }
