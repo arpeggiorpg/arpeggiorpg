@@ -7,12 +7,12 @@ use std::time::Duration;
 use failure::{Error, Fail};
 use futures::channel::oneshot;
 use log::{debug, error, info};
-use serde_json;
-use serde_yaml;
+
+
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-use foldertree;
+
 use pandt::game::load_app_from_path;
 use pandt::types;
 
@@ -50,7 +50,7 @@ impl AppActor {
     {
       let app = self.app.lock().await;
       if app.snapshots.len() != snapshot_len
-        || app.snapshots.back().map(|&(_, ref ls)| ls.len()).unwrap_or(0) != log_len
+        || app.snapshots.back().map(|(_, ls)| ls.len()).unwrap_or(0) != log_len
       {
         return app_to_string(&app);
       }
@@ -75,7 +75,7 @@ impl AppActor {
   }
 
   pub async fn perform_command(&self, command: types::GameCommand) -> Result<String, Error> {
-    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let module_path = self.module_path.as_deref();
     let log_cmd = command.clone();
     info!("perform_command:start: {:?}", &log_cmd);
     let result = {
@@ -123,7 +123,7 @@ impl AppActor {
   }
 
   pub async fn load_saved_game(&self, name: String, source: types::ModuleSource) -> Result<String, Error> {
-    let module_path = self.module_path.as_ref().map(|b| b.as_path());
+    let module_path = self.module_path.as_deref();
     let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
