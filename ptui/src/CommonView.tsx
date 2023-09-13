@@ -3,8 +3,8 @@ import * as LD from "lodash";
 import * as React from "react";
 import { Provider } from 'react-redux';
 import * as ReactRedux from 'react-redux';
-import * as SplitPane from "react-split-pane";
-import WindowSizeListener from 'react-window-size-listener';
+// FIXME-DEP: WindowSizeListener needs replaced
+// import WindowSizeListener from 'react-window-size-listener';
 import * as Redux from 'redux';
 import thunk from 'redux-thunk';
 
@@ -51,7 +51,7 @@ export class Main extends React.Component<MainProps,
     ).catch(err => {
       console.log("[Main.componentDidMount] [error]", err);
       this.setState({ store: "Error" });
-      this.componentDidMount();
+      setTimeout(() => this.componentDidMount(), 2000);
     });
   }
 
@@ -613,12 +613,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </div>;
 
     return <div style={{ height: "100%", width: "100%" }} >
-      <WindowSizeListener
+      {/* <WindowSizeListener
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
       {this.state.width >= NARROW_THRESHOLD
-        ? wideView()
-        : narrowView(this.state.width)}
+        ?  */}
+        wideView()
+        {/* : narrowView(this.state.width)} */}
       <ErrorModal />
     </div>;
 
@@ -630,11 +631,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </TabbedView>;
       return extra !== undefined
         ?
-        <SplitPane split="horizontal" minSize="70%"
-          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
+        // FIXME-DEP: SplitPlane. This allowed resizing the panes!
+        <div style={{display: "flex", flexDirection: "row"}}>
           {tabbed_view}
           {extra}
-        </SplitPane>
+        </div>
         : tabbed_view;
     }
 
@@ -643,15 +644,15 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         style={{
           position: 'relative', height: "100%", width: "20%", minWidth: "20em",
         }}>
-        <SplitPane split="horizontal" minSize="70%"
-          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
+        {/*FIXME-DEP: replace SplitPane so these two things can be resized.*/}
+        <div style={{display: "flex", flexDirection: "row"}}>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {top_left}
           </div>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {bottom_left}
           </div>
-        </SplitPane>
+        </div>
         {disable_div}
       </div>;
     }
