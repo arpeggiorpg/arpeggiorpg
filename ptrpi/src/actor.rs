@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use failure::{Error, Fail};
+use anyhow::Error;
+use thiserror;
 use futures::channel::oneshot;
 use log::{debug, error, info};
 
@@ -165,8 +166,8 @@ fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Err
   Ok(())
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Fail, Debug)]
-#[fail(display = "Path is insecure: {}", name)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, thiserror::Error, Debug)]
+#[error("Path is insecure: {name}")]
 struct InsecurePathError {
   name: String,
 }

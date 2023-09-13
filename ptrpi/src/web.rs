@@ -2,24 +2,18 @@ use std::fs;
 use std::path::Path;
 
 use actix_cors::Cors;
-use actix_web::{web, HttpResponse, Responder};
-use failure::Error;
-use http::header;
-use log::{error};
+use actix_web::{web, HttpResponse, Responder, App as WebApp};
+use anyhow::Error;
+use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
 use crate::actor::AppActor;
 
 pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
-  let corsm = Cors::new()
-    .send_wildcard()
-    .allowed_header(header::CONTENT_TYPE)
-    .allowed_methods(vec!["POST", "GET", "OPTIONS"])
-    .finish();
   config.data(actor).service(
     web::scope("/")
-      .wrap(corsm)
+      .wrap(Cors::permissive())
       .service(web::resource("").route(web::get().to(get_app)).route(web::post().to(post_command)))
       .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app)))
       .service(
@@ -84,7 +78,7 @@ async fn preview_volume_targets(
 
 async fn list_saved_games(
   actor: web::Data<AppActor>,
-) -> Result<web::Json<(Vec<String>, Vec<String>)>, Error> {
+) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {
   // This does not require access to the app, so we don't dispatch to the actor.
 
   fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
@@ -129,6 +123,6 @@ async fn new_game(actor: web::Data<AppActor>) -> impl Responder {
   string_json_response(actor.new_game().await?)
 }
 
-fn string_json_response(body: String) -> Result<HttpResponse, Error> {
+fn string_json_response(body: String) -> Result<HttpResponse, Box<dyn ::std::error::Error>> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))
 }
