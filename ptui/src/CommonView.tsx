@@ -4,7 +4,7 @@ import * as React from "react";
 import * as ReactRedux from 'react-redux';
 // FIXME-DEP: WindowSizeListener needs replaced
 // import WindowSizeListener from 'react-window-size-listener';
-
+import * as Panels from "react-resizable-panels";
 
 import {
   Accordion, Button, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal,
@@ -630,11 +630,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </TabbedView>;
       return extra !== undefined
         ?
-        // FIXME-DEP: SplitPlane. This allowed resizing the panes!
-        <div style={{display: "flex", flexDirection: "row"}}>
-          {tabbed_view}
-          {extra}
-        </div>
+        <Panels.PanelGroup direction="vertical">
+          <Panels.Panel>{tabbed_view}</Panels.Panel>
+          <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
+          <Panels.Panel>{extra}</Panels.Panel>
+        </Panels.PanelGroup>
         : tabbed_view;
     }
 
@@ -643,15 +643,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         style={{
           position: 'relative', height: "100%", width: "20%", minWidth: "20em",
         }}>
-        {/*FIXME-DEP: replace SplitPane so these two things can be resized.*/}
-        <div style={{display: "flex", flexDirection: "row"}}>
-          <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-            {top_left}
-          </div>
-          <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
-            {bottom_left}
-          </div>
-        </div>
+        <Panels.PanelGroup direction="vertical">
+          <Panels.Panel>{top_left}</Panels.Panel>
+          <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
+          <Panels.Panel>{bottom_left}</Panels.Panel>
+        </Panels.PanelGroup>
         {disable_div}
       </div>;
     }
