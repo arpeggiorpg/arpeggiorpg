@@ -350,7 +350,7 @@ export class PositiveIntegerInput
 
 export function conditionIcon(cond: T.Condition): string {
   switch (cond.t) {
-    case "RecurringEffect": return "Recurring effect of some sort";
+    case "RecurringEffect": return "🔁";
     case "Dead": return "💀";
     case "Incapacitated": return "😞";
     case "AddDamageBuff": return "😈";
@@ -359,7 +359,7 @@ export function conditionIcon(cond: T.Condition): string {
   }
 }
 
-type MenuSize = 'mini' | 'tiny' | 'small' | 'large' | 'huge' | 'massive';
+type MenuSize = React.ComponentProps<typeof Menu>["size"];
 
 interface TabbedViewProps {
   children: Array<JSX.Element | null>;
@@ -378,7 +378,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
     let selected = this.state.selected;
     const children_ = React.Children.map(
       this.props.children,
-      c => c);
+      c => c) ?? [];
     const children: Array<Tab> = M.filterMap(
       children_, (c: any) => { if (c && c.type === Tab) { return c; } });
     children.forEach((item, index) => {
@@ -397,9 +397,9 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
             onClick={() => this.setState({ selected: index })} />)
         }
       </Menu>
-      <div style={{ overflowY: "auto", position: "relative", height: "100%" }}>
+      <div style={{ position: "relative", height: "100%" }}>
         {children.map((child, index) => {
-          const style = index === selected
+          const style: React.CSSProperties = index === selected
             ? {}
             : (child.props.always_render ?
               { zIndex: -100, visibility: "hidden" } : { display: "none" });
@@ -413,7 +413,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   }
 }
 
-interface TabProps {
+interface TabProps extends React.PropsWithChildren {
   name: string;
   // always_render indicates that the tab contents must be rendered to the DOM *in a realized box*
   // at all times. Meaning that even when the tab is not focused, the contents will be rendered with
@@ -423,7 +423,7 @@ interface TabProps {
   always_render?: boolean;
 }
 export class Tab extends React.Component<TabProps> {
-  render(): JSX.Element {
+  render() {
     return React.Children.only(this.props.children);
   }
 }
@@ -560,6 +560,7 @@ export const ErrorModal = M.connectRedux(
     }
   });
 
+
 interface TheLayoutProps {
   map: JSX.Element;
   tabs: Array<JSX.Element>;
@@ -690,7 +691,7 @@ export const TheLayout = M.connectRedux(TheLayoutComp);
 export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
     className="material-icons"
-    style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
+    style={{ MozUserSelect: "none", WebkitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
 
