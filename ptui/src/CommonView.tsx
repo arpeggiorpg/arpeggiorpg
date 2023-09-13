@@ -570,13 +570,12 @@ interface TheLayoutProps {
   bar_width: number;
   menu_size: MenuSize;
   bottom_bar?: JSX.Element;
+  window_size: {height: number, width: number};
 }
-class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
-  { width: number; height: number }> {
+class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps> {
 
   constructor(props: TheLayoutProps & M.ReduxProps) {
     super(props);
-    this.state = { width: window.innerWidth, height: window.innerHeight };
   }
 
   render(): JSX.Element {
@@ -612,13 +611,9 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </div>;
 
     return <div style={{ height: "100%", width: "100%" }} >
-      {/* <WindowSizeListener
-        onResize={({ windowWidth, windowHeight }) =>
-          this.setState({ width: windowWidth, height: windowHeight })} />
-      {this.state.width >= NARROW_THRESHOLD
-        ?  */}
-        {wideView()}
-        {/* : narrowView(this.state.width)} */}
+      {this.props.window_size.width >= NARROW_THRESHOLD ?
+        wideView()
+        : narrowView(this.props.window_size.width)}
       <ErrorModal />
     </div>;
 
