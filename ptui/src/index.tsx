@@ -22,7 +22,6 @@ function PT_renderMain(rpi_url: string, component_name: string, id: string) {
     el);
 }
 
-// I can't figure out any other way to export these functions such that they can be called from plain
-// old javascript callers
+const RPI_URL = import.meta.env.VITE_RPI_URL;
 
-(window as any).PT_renderMain = PT_renderMain;
+PT_renderMain(RPI_URL, 'GM', 'react-main');

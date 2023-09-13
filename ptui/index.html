@@ -1,0 +1,64 @@
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.13/semantic.min.css" />
+
+  <style>
+    @font-face {
+      font-family: 'Material Icons';
+      font-style: normal;
+      font-weight: 400;
+      src: local('Material Icons'), local('MaterialIcons-Regular'), url(https://fonts.gstatic.com/s/materialicons/v22/2fcrYFNaTjcS6g4U3t-Y5ZjZjT5FdEJ140U2DJYC3mY.woff2) format('woff2');
+    }
+
+    .material-icons {
+      font-family: 'Material Icons';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -moz-font-feature-settings: 'liga';
+      font-feature-settings: 'liga';
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0px;
+    }
+
+    #react-main {
+      height: 100%;
+      width: 100%;
+    }
+
+    .panelGroup .divider {
+      cursor: row-resize;
+    }
+
+    /* Work around https://github.com/Semantic-Org/Semantic-UI/issues/3070 */
+    .ui.inverted > .ui.modal > .close {
+      color: #000;
+      top: 0px;
+      right: 0px;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="react-main"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
+</html>
