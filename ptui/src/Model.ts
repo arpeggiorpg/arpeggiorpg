@@ -1,13 +1,15 @@
 import * as I from 'immutable';
-import "isomorphic-fetch";
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as ReactRedux from 'react-redux';
+import * as RTK from '@reduxjs/toolkit';
 import * as JD from "type-safe-json-decoder";
 
 import * as T from './PTTypes';
 
-export type Action =
+
+export type PTAction =
+  | { type: "SetPTUI", ptui: PTUI }
   | { type: "ResetState" }
   | { type: "RefreshApp"; app: T.App }
   | { type: "RefreshGame"; game: T.Game; logs: Array<T.GameLog> }
@@ -40,12 +42,14 @@ export type Action =
     type: "DisplayPotentialTargets";
     cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
   }
-  | { type: "ClearPotentialTargets" }
-  | { type: "@@redux/INIT" };
+  | { type: "ClearPotentialTargets" };
 
-export function update(ptui: PTUI, action: Action): PTUI {
+export function update(ptui: PTUI|undefined, action: PTAction): PTUI {
   console.log("[Model.update]", action.type, action);
+  if (!ptui) ptui = initialState;
   switch (action.type) {
+    case "SetPTUI":
+      return action.ptui;
     case "ResetState":
       return new PTUI(ptui.rpi_url, ptui.app);
     case "RefreshApp":
@@ -146,9 +150,8 @@ export function update(ptui: PTUI, action: Action): PTUI {
       return ptui.updateState(state => ({ ...state, error: action.error }));
     case "ClearError":
       return ptui.updateState(state => ({ ...state, error: undefined }));
-    case "@@redux/INIT":
-      return ptui;
   }
+  return ptui;
 }
 
 export interface GridModel {
@@ -219,7 +222,7 @@ export function decodeFetch<J>(
 }
 
 export function ptfetch<J, R>(
-  dispatch: Dispatch, url: string, init: RequestInit | undefined,
+  dispatch: typeof store.dispatch, url: string, init: RequestInit | undefined,
   decoder: JD.Decoder<J>, then: (result: J) => R)
   : Promise<R> {
   const json_promise = decodeFetch(url, init, decoder);
@@ -264,7 +267,7 @@ export class PTUI {
     this.rpi_url = rpi_url;
   }
 
-  startPoll(dispatch: Dispatch) {
+  startPoll(dispatch: RTK.Dispatch) {
     function poll(rpi_url: string, app: T.App) {
       const num_snaps = app.snapshots.length;
       const snaps = app.snapshots[num_snaps - 1];
@@ -523,6 +526,30 @@ export class PTUI {
   }
 }
 
+
+const initialState: PTUI = new PTUI(
+  import.meta.env.VITE_RPI_URL,
+  {
+    snapshots: [],
+    current_game: {
+      players: I.Map(),
+      current_combat: undefined,
+      creatures: I.Map(),
+      classes: I.Map(),
+      items: {},
+      scenes: I.Map(),
+      abilities: {},
+      campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
+    }
+  })
+
+export const store = RTK.configureStore({ reducer: update, preloadedState: initialState});
+
+export type Dispatch = typeof store.dispatch;
+
+window.ptstore = store;
+
+
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   // I can't "naturally" convince TypeScript that this filter makes an
   // Array<R> instead of Array<R|undefined>, hence the assertion
@@ -650,11 +677,6 @@ export function requestCombatAbility(
   }
 }
 
-// We define our own Dispatch type instead of using Redux.Dispatch because Redux.Dispatch does not
-// have a type-parameter for the *type of Action*, only the *type of Store*. We don't want to allow
-// call-sites to be able to dispatch action objects that don't actually fit the format of the
-// `Action` interface (above), so we define our own more specific one.
-export type Dispatch = (action: Action | ThunkAction<void>) => void;
 
 type ThunkAction<R> = (dispatch: Dispatch, getState: () => PTUI, extraArgument: undefined) => R;
 
