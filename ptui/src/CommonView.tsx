@@ -1,12 +1,10 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import { Provider } from 'react-redux';
 import * as ReactRedux from 'react-redux';
 // FIXME-DEP: WindowSizeListener needs replaced
 // import WindowSizeListener from 'react-window-size-listener';
-import * as Redux from 'redux';
-import thunk from 'redux-thunk';
+
 
 import {
   Accordion, Button, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal,
@@ -28,15 +26,15 @@ import * as TextInput from './TextInput';
 const NARROW_THRESHOLD = 500;
 
 
-interface MainProps {
+interface MainProps extends React.PropsWithChildren {
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps,
-  { store: "Unfetched" | "Error" | Redux.Store<M.PTUI> }> {
+  { status: "Unfetched" | "Error" | "Ready" }> {
 
   constructor(props: MainProps) {
     super(props);
-    this.state = { store: "Unfetched" };
+    this.state = { status: "Unfetched" };
   }
 
   componentDidMount() {
@@ -44,25 +42,25 @@ export class Main extends React.Component<MainProps,
     M.decodeFetch(this.props.rpi_url, undefined, T.decodeApp).then(
       app => {
         const ptui = new M.PTUI(this.props.rpi_url, app);
-        const store = Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk));
-        ptui.startPoll(store.dispatch);
-        this.setState({ store });
+        M.store.dispatch({type: "SetPTUI", ptui});
+        ptui.startPoll(M.store.dispatch);
+        this.setState({ status: "Ready" });
       }
     ).catch(err => {
       console.log("[Main.componentDidMount] [error]", err);
-      this.setState({ store: "Error" });
+      this.setState({ status: "Error" });
       setTimeout(() => this.componentDidMount(), 2000);
     });
   }
 
   render(): JSX.Element {
-    if (this.state.store === "Unfetched") {
+    if (this.state.status === "Unfetched") {
       return <div>Waiting for initial data from server.</div>;
-    } else if (this.state.store === "Error") {
+    } else if (this.state.status === "Error") {
       return <div>There was an error fetching the application state from {this.props.rpi_url}.
          Trying again...</div>;
     } else {
-      return <Provider store={this.state.store}>{this.props.children}</Provider>;
+      return <ReactRedux.Provider store={M.store}>{this.props.children}</ReactRedux.Provider>;
     }
   }
 }
@@ -618,7 +616,7 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
           this.setState({ width: windowWidth, height: windowHeight })} />
       {this.state.width >= NARROW_THRESHOLD
         ?  */}
-        wideView()
+        {wideView()}
         {/* : narrowView(this.state.width)} */}
       <ErrorModal />
     </div>;
