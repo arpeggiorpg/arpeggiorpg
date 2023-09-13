@@ -913,6 +913,7 @@ pub enum Condition {
   Incapacitated,
   AddDamageBuff(HP),
   DoubleMaxMovement,
+  // Make an ability temporarily available to a creature.
   ActivateAbility(AbilityID),
 }
 
