@@ -1,6 +1,4 @@
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
+extern crate thiserror;
 
 #[cfg(feature = "serde")]
 #[macro_use]
@@ -9,32 +7,33 @@ extern crate serde;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
+use thiserror::Error;
 #[cfg(feature = "serde")]
 use serde::de;
 #[cfg(feature = "serde")]
 use serde::ser::{Error, Serialize, SerializeMap, Serializer};
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum FolderTreeError {
-  #[fail(display = "The string '{}' is not a valid folder path", _0)]
+  #[error("The string {0:?} is not a valid folder path")]
   InvalidFolderPath(String),
-  #[fail(display = "The folder '{}' doesn't exist", _0)]
+  #[error("The folder '{0}' doesn't exist")]
   FolderNotFound(FolderPath),
-  #[fail(display = "The folder '{}' already exists", _0)]
+  #[error("The folder '{0}' already exists")]
   FolderExists(FolderPath),
-  #[fail(display = "The folder '{}' was not empty", _0)]
+  #[error("The folder '{0}' was not empty")]
   FolderNotEmpty(FolderPath),
-  #[fail(display = "The root folder cannot be renamed.")]
+  #[error("The root folder cannot be renamed.")]
   CannotRenameRoot,
-  #[fail(display = "The root folder cannot be removed.")]
+  #[error("The root folder cannot be removed.")]
   CannotRemoveRoot,
-  #[fail(display = "The root folder cannot be removed.")]
+  #[error("The root folder cannot be removed.")]
   CannotMoveRoot,
-  #[fail(display = "The root folder has no name.")]
+  #[error("The root folder has no name.")]
   RootHasNoName,
-  #[fail(display = "Can't move '{}' to '{}'", _0, _1)]
+  #[error("Can't move '{0}' to '{1}'")]
   ImpossibleMove(FolderPath, FolderPath),
-  #[fail(display = "{} is not an ancestor of {}", _0, _1)]
+  #[error("{0} is not an ancestor of {1}")]
   NonAncestor(FolderPath, FolderPath),
 }
 

@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use derive_more::{Add, Div, Mul, Sub};
 use error_chain::bail;
-use failure::Fail;
+use thiserror::Error;
 use num::Saturating;
 use rand::Rng;
 use serde::{
@@ -701,105 +701,105 @@ pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
   ls.into_iter().map(GameLog::CombatLog).collect()
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum GameError {
-  #[fail(display = "File {} was not found", _0)]
+  #[error("File {0} was not found")]
   FileNotFound(String),
-  #[fail(display = "The Creature with ID {:?} does not have the attribute {:?}", _0, _1)]
+  #[error("The Creature with ID {0:?} does not have the attribute {1:?}")]
   AttributeNotFound(CreatureID, AttrID),
-  #[fail(display = "The ability with ID {:?} already exists", _0)]
+  #[error("The ability with ID {0:?} already exists")]
   AbilityAlreadyExists(AbilityID),
-  #[fail(display = "The creature with ID {:?} already exists", _0)]
+  #[error("The creature with ID {0:?} already exists")]
   CreatureAlreadyExists(CreatureID),
-  #[fail(display = "The Item {:?} already exists", _0)]
+  #[error("The Item {0:?} already exists")]
   ItemAlreadyExists(ItemID),
-  #[fail(display = "The Item {:?} couldn't be found", _0)]
+  #[error("The Item {0:?} couldn't be found")]
   ItemNotFound(ItemID),
-  #[fail(display = "The scene {:?} already exists", _0)]
+  #[error("The scene {0:?} already exists")]
   SceneAlreadyExists(SceneID),
-  #[fail(display = "The Scene '{:?}' wasn't found", _0)]
+  #[error("The Scene '{0:?}' wasn't found")]
   SceneNotFound(SceneID),
-  #[fail(display = "The scene {:?} is in use (by combat, probably).", _0)]
+  #[error("The scene {0:?} is in use (by combat, probably).")]
   SceneInUse(SceneID),
-  #[fail(display = "The identifier '{}' is too long.", _0)]
+  #[error("The identifier {0:?} is too long.")]
   IDTooLong(String),
-  #[fail(display = "The condition with ID {:?} wasn't found.", _0)]
+  #[error("The condition with ID {0:?} wasn't found.")]
   ConditionNotFound(ConditionID),
-  #[fail(display = "Cannot process {:?} in this state.", _0)]
+  #[error("Cannot process {0:?} in this state.")]
   InvalidCommand(GameCommand),
-  #[fail(display = "The class {:?} already exists.", _0)]
+  #[error("The class {0:?} already exists.")]
   ClassAlreadyExists(ClassID),
-  #[fail(display = "The class {:?} was not found.", _0)]
+  #[error("The class {0:?} was not found.")]
   ClassNotFound(ClassID),
-  #[fail(display = "The ability with ID {:?} wasn't found.", _0)]
+  #[error("The ability with ID {0:?} wasn't found.")]
   NoAbility(AbilityID),
-  #[fail(display = "Creatures must be supplied when starting a combat.")]
+  #[error("Creatures must be supplied when starting a combat.")]
   CombatMustHaveCreatures,
-  #[fail(display = "RerollInitiative can only be invoked at the beginning of a roud.")]
+  #[error("RerollInitiative can only be invoked at the beginning of a round.")]
   MustRerollAtStartOfRound,
-  #[fail(display = "The creature with ID {:?} does not have the ability {:?}", _0, _1)]
+  #[error("The creature with ID {0:?} does not have the ability {1:?}")]
   CreatureLacksAbility(CreatureID, AbilityID),
-  #[fail(display = "The creature with ID {} could not be found.", _0)]
+  #[error("The creature with ID {0:?} could not be found.")]
   CreatureNotFound(String),
-  #[fail(display = "Creature with ID {:?} is not a valid target.", _0)]
+  #[error("Creature with ID {0:?} is not a valid target.")]
   InvalidTarget(CreatureID),
-  #[fail(display = "DecidedTarget {:?} is not valid for TargetSpec {:?}.", _1, _0)]
+  #[error("DecidedTarget {1:?} is not valid for TargetSpec {0:?}.")]
   InvalidTargetForTargetSpec(CreatureTarget, DecidedTarget),
-  #[fail(display = "DecidedTarget {:?} is not valid for Action {:?}.", _1, _0)]
+  #[error("DecidedTarget {1:?} is not valid for Action {0:?}.")]
   InvalidTargetForAction(Action, DecidedTarget),
-  #[fail(display = "Creature {:?} is out of range.", _0)]
+  #[error("Creature {0:?} is out of range.")]
   CreatureOutOfRange(CreatureID),
-  #[fail(display = "Point {:?} is out of range.", _0)]
+  #[error("Point {0:?} is out of range.")]
   PointOutOfRange(Point3),
-  #[fail(display = "There's a bug in the program: {}", _0)]
+  #[error("There's a bug in the program: {0}")]
   BuggyProgram(String),
-  #[fail(display = "There is currently no combat.")]
+  #[error("There is currently no combat.")]
   NotInCombat,
-  #[fail(display = "Creature {:?} is already in combat.", _0)]
+  #[error("Creature {0:?} is already in combat.")]
   AlreadyInCombat(CreatureID),
-  #[fail(display = "Creature {:?} cannot be moved.", _0)]
+  #[error("Creature {0:?} cannot be moved.")]
   CannotMove(CreatureID),
-  #[fail(display = "Creature {:?} cannot act.", _0)]
+  #[error("Creature {0:?} cannot act.")]
   CannotAct(CreatureID),
-  #[fail(display = "A path can't be found.")]
+  #[error("A path can't be found.")]
   NoPathFound,
-  #[fail(display = "Path {} already exists", _0)]
+  #[error("Path {0} already exists")]
   FolderAlreadyExists(FolderPath),
-  #[fail(display = "Can't step from {:?} to {:?}", _0, _1)]
+  #[error("Can't step from {0:?} to {1:?}")]
   StepTooBig(Point3, Point3),
-  #[fail(display = "Not enough energy: {:?}", _0)]
+  #[error("Not enough energy: {0:?}")]
   NotEnoughEnergy(Energy),
-  #[fail(display = "Player ID {:?} is already registered.", _0)]
+  #[error("Player ID {0:?} is already registered.")]
   PlayerAlreadyExists(PlayerID),
-  #[fail(display = "Player ID {:?} was not found.", _0)]
+  #[error("Player ID {0:?} was not found.")]
   PlayerNotFound(PlayerID),
-  #[fail(display = "Player ID {:?} does not control creature {:?}.", _0, _1)]
+  #[error("Player ID {0:?} does not control creature {1:?}.")]
   PlayerDoesntControlCreature(PlayerID, CreatureID),
-  #[fail(display = "Couldn't find history item at snapshot {} log item {}", _0, _1)]
+  #[error("Couldn't find history item at snapshot {0} log item {1}")]
   HistoryNotFound(usize, usize),
-  #[fail(display = "Initiative index {} is out of bounds.", _0)]
+  #[error("Initiative index {0} is out of bounds.")]
   InitiativeOutOfBounds(usize),
-  #[fail(display = "The folder {} is not empty", _0)]
+  #[error("The folder {0} is not empty")]
   FolderNotEmpty(FolderPath),
-  #[fail(display = "The folder {} does not contain item {:?}", _0, _1)]
+  #[error("The folder {0} does not contain item {1:?}")]
   FolderItemNotFound(FolderPath, FolderItemID),
-  #[fail(display = "The note in '{}' named '{}' could not be found.", _0, _1)]
+  #[error("The note in '{0}' named '{1}' could not be found.")]
   NoteNotFound(FolderPath, String),
-  #[fail(display = "Notes can't be linked or unlinked. '{}' / '{}'", _0, _1)]
+  #[error("Notes can't be linked or unlinked. '{0}' / '{1}'")]
   CannotLinkNotes(FolderPath, String),
-  #[fail(display = "Failed to open a file containing an application: {}", _0)]
-  CouldNotOpenAppFile(String, #[cause] ::std::io::Error),
-  #[fail(display = "Failed to parse a serialized application: {}", _0)]
-  CouldNotParseApp(#[cause] serde_yaml::Error),
+  #[error("Failed to open a file containing an application: {0}")]
+  CouldNotOpenAppFile(String, #[source] ::std::io::Error),
+  #[error("Failed to parse a serialized application: {0}")]
+  CouldNotParseApp(#[source] serde_yaml::Error),
 
-  #[fail(display = "No module source found")]
+  #[error("No module source found")]
   NoModuleSource,
 
   // Wrappers for other errors:
-  #[fail(display = "FolderTree error: {}", _0)]
-  FolderTreeError(#[cause] FolderTreeError),
-  #[fail(display = "UUID Parse Error: {}", _0)]
-  InvalidID(String, #[cause] UuidParseError),
+  #[error("FolderTree error: {0}")]
+  FolderTreeError(#[source] FolderTreeError),
+  #[error("UUID Parse Error: {0}")]
+  InvalidID(String, #[source] UuidParseError),
 }
 
 impl From<FolderTreeError> for GameError {
@@ -913,6 +913,7 @@ pub enum Condition {
   Incapacitated,
   AddDamageBuff(HP),
   DoubleMaxMovement,
+  // Make an ability temporarily available to a creature.
   ActivateAbility(AbilityID),
 }
 

@@ -1,12 +1,10 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import { Provider } from 'react-redux';
 import * as ReactRedux from 'react-redux';
-import * as SplitPane from "react-split-pane";
-import WindowSizeListener from 'react-window-size-listener';
-import * as Redux from 'redux';
-import thunk from 'redux-thunk';
+// FIXME-DEP: WindowSizeListener needs replaced
+// import WindowSizeListener from 'react-window-size-listener';
+
 
 import {
   Accordion, Button, Dimmer, Dropdown, Form, Header, Icon, Input, Label, List, Menu, Message, Modal,
@@ -28,15 +26,15 @@ import * as TextInput from './TextInput';
 const NARROW_THRESHOLD = 500;
 
 
-interface MainProps {
+interface MainProps extends React.PropsWithChildren {
   rpi_url: string;
 }
 export class Main extends React.Component<MainProps,
-  { store: "Unfetched" | "Error" | Redux.Store<M.PTUI> }> {
+  { status: "Unfetched" | "Error" | "Ready" }> {
 
   constructor(props: MainProps) {
     super(props);
-    this.state = { store: "Unfetched" };
+    this.state = { status: "Unfetched" };
   }
 
   componentDidMount() {
@@ -44,25 +42,25 @@ export class Main extends React.Component<MainProps,
     M.decodeFetch(this.props.rpi_url, undefined, T.decodeApp).then(
       app => {
         const ptui = new M.PTUI(this.props.rpi_url, app);
-        const store = Redux.createStore(M.update, ptui, Redux.applyMiddleware(thunk));
-        ptui.startPoll(store.dispatch);
-        this.setState({ store });
+        M.store.dispatch({type: "SetPTUI", ptui});
+        ptui.startPoll(M.store.dispatch);
+        this.setState({ status: "Ready" });
       }
     ).catch(err => {
       console.log("[Main.componentDidMount] [error]", err);
-      this.setState({ store: "Error" });
-      this.componentDidMount();
+      this.setState({ status: "Error" });
+      setTimeout(() => this.componentDidMount(), 2000);
     });
   }
 
   render(): JSX.Element {
-    if (this.state.store === "Unfetched") {
+    if (this.state.status === "Unfetched") {
       return <div>Waiting for initial data from server.</div>;
-    } else if (this.state.store === "Error") {
+    } else if (this.state.status === "Error") {
       return <div>There was an error fetching the application state from {this.props.rpi_url}.
          Trying again...</div>;
     } else {
-      return <Provider store={this.state.store}>{this.props.children}</Provider>;
+      return <ReactRedux.Provider store={M.store}>{this.props.children}</ReactRedux.Provider>;
     }
   }
 }
@@ -352,7 +350,7 @@ export class PositiveIntegerInput
 
 export function conditionIcon(cond: T.Condition): string {
   switch (cond.t) {
-    case "RecurringEffect": return "Recurring effect of some sort";
+    case "RecurringEffect": return "🔁";
     case "Dead": return "💀";
     case "Incapacitated": return "😞";
     case "AddDamageBuff": return "😈";
@@ -361,7 +359,7 @@ export function conditionIcon(cond: T.Condition): string {
   }
 }
 
-type MenuSize = 'mini' | 'tiny' | 'small' | 'large' | 'huge' | 'massive';
+type MenuSize = React.ComponentProps<typeof Menu>["size"];
 
 interface TabbedViewProps {
   children: Array<JSX.Element | null>;
@@ -380,7 +378,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
     let selected = this.state.selected;
     const children_ = React.Children.map(
       this.props.children,
-      c => c);
+      c => c) ?? [];
     const children: Array<Tab> = M.filterMap(
       children_, (c: any) => { if (c && c.type === Tab) { return c; } });
     children.forEach((item, index) => {
@@ -399,9 +397,9 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
             onClick={() => this.setState({ selected: index })} />)
         }
       </Menu>
-      <div style={{ overflowY: "auto", position: "relative", height: "100%" }}>
+      <div style={{ position: "relative", height: "100%" }}>
         {children.map((child, index) => {
-          const style = index === selected
+          const style: React.CSSProperties = index === selected
             ? {}
             : (child.props.always_render ?
               { zIndex: -100, visibility: "hidden" } : { display: "none" });
@@ -415,7 +413,7 @@ export class TabbedView extends React.Component<TabbedViewProps, { selected: num
   }
 }
 
-interface TabProps {
+interface TabProps extends React.PropsWithChildren {
   name: string;
   // always_render indicates that the tab contents must be rendered to the DOM *in a realized box*
   // at all times. Meaning that even when the tab is not focused, the contents will be rendered with
@@ -425,7 +423,7 @@ interface TabProps {
   always_render?: boolean;
 }
 export class Tab extends React.Component<TabProps> {
-  render(): JSX.Element {
+  render() {
     return React.Children.only(this.props.children);
   }
 }
@@ -562,6 +560,7 @@ export const ErrorModal = M.connectRedux(
     }
   });
 
+
 interface TheLayoutProps {
   map: JSX.Element;
   tabs: Array<JSX.Element>;
@@ -613,12 +612,13 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </div>;
 
     return <div style={{ height: "100%", width: "100%" }} >
-      <WindowSizeListener
+      {/* <WindowSizeListener
         onResize={({ windowWidth, windowHeight }) =>
           this.setState({ width: windowWidth, height: windowHeight })} />
       {this.state.width >= NARROW_THRESHOLD
-        ? wideView()
-        : narrowView(this.state.width)}
+        ?  */}
+        {wideView()}
+        {/* : narrowView(this.state.width)} */}
       <ErrorModal />
     </div>;
 
@@ -630,11 +630,11 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
       </TabbedView>;
       return extra !== undefined
         ?
-        <SplitPane split="horizontal" minSize="70%"
-          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
+        // FIXME-DEP: SplitPlane. This allowed resizing the panes!
+        <div style={{display: "flex", flexDirection: "row"}}>
           {tabbed_view}
           {extra}
-        </SplitPane>
+        </div>
         : tabbed_view;
     }
 
@@ -643,15 +643,15 @@ class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps,
         style={{
           position: 'relative', height: "100%", width: "20%", minWidth: "20em",
         }}>
-        <SplitPane split="horizontal" minSize="70%"
-          resizerStyle={{ backgroundColor: "grey", height: "5px", cursor: "row-resize" }}>
+        {/*FIXME-DEP: replace SplitPane so these two things can be resized.*/}
+        <div style={{display: "flex", flexDirection: "row"}}>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {top_left}
           </div>
           <div style={{ width: "100%", backgroundColor: "white", overflowY: "auto" }}>
             {bottom_left}
           </div>
-        </SplitPane>
+        </div>
         {disable_div}
       </div>;
     }
@@ -691,7 +691,7 @@ export const TheLayout = M.connectRedux(TheLayoutComp);
 export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
     className="material-icons"
-    style={{ MozUserSelect: "none", WebKitUserSelect: "none", msUserSelect: "none" }}
+    style={{ MozUserSelect: "none", WebkitUserSelect: "none", msUserSelect: "none" }}
   >{props.children}</i>;
 }
 
