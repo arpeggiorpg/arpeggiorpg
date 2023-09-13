@@ -17,6 +17,7 @@ import * as History from './History';
 import * as M from './Model';
 import * as T from './PTTypes';
 import * as TextInput from './TextInput';
+import { useWindowSize } from './lib/hooks';
 
 /**
  * The threshold at which we switch from narrow to wide view.
@@ -570,114 +571,106 @@ interface TheLayoutProps {
   bar_width: number;
   menu_size: MenuSize;
   bottom_bar?: JSX.Element;
-  window_size: {height: number, width: number};
 }
-class TheLayoutComp extends React.Component<TheLayoutProps & M.ReduxProps> {
+export const TheLayout = M.connectRedux((props: TheLayoutProps & M.ReduxProps) => {
+  const {
+    map, tabs, bottom_left, top_left, bottom_right, bar_width, menu_size, bottom_bar, ptui,
+  } = props;
+  const window_size = useWindowSize();
 
-  constructor(props: TheLayoutProps & M.ReduxProps) {
-    super(props);
-  }
+  // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
+  // all other UI interactions until they're done because otherwise we get into weird inconsistent
+  // states. For example: user clicks to move, never chooses destination, and then ends their turn.
+  // The movement options would remain on screen and clicking them might do something wrong
+  // or just return an error. So we work around this by just disabling all sidebar actions.
+  // There are still some other places this needs to be worked around, i.e. when generating actions
+  // for the grid creature popup menu.
+  const disable_bars = !!(ptui.state.grid.movement_options || ptui.state.grid.target_options);
 
-  render(): JSX.Element {
-    const {
-      map, tabs, bottom_left, top_left, bottom_right, bar_width, menu_size, bottom_bar, ptui,
-    } = this.props;
+  const disable_div = disable_bars
+    ? <Dimmer active={true} inverted={true} />
+    : null;
 
-    // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
-    // all other UI interactions until they're done because otherwise we get into weird inconsistent
-    // states. For example: user clicks to move, never chooses destination, and then ends their turn.
-    // The movement options would remain on screen and clicking them might do something wrong
-    // or just return an error. So we work around this by just disabling all sidebar actions.
-    // There are still some other places this needs to be worked around, i.e. when generating actions
-    // for the grid creature popup menu.
-    const disable_bars = !!(ptui.state.grid.movement_options || ptui.state.grid.target_options);
-
-    const disable_div = disable_bars
-      ? <Dimmer active={true} inverted={true} />
-      : null;
-
-    const middle =
-      // all this relative/absolute crap is because chrome has a stupid flexbox model
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
-        </div>
-        <div style={{ position: 'relative', height: '50px', width: '100%', overflowX: 'auto' }}>
-          <div style={{ position: 'absolute', width: '100%', height: '50px' }}>
-            {bottom_bar}
-            {disable_div}
-          </div>
-        </div>
-      </div>;
-
-    return <div style={{ height: "100%", width: "100%" }} >
-      {this.props.window_size.width >= NARROW_THRESHOLD ?
-        wideView()
-        : narrowView(this.props.window_size.width)}
-      <ErrorModal />
-    </div>;
-
-
-    function right_bar(tabs_: Array<JSX.Element>, extra?: JSX.Element, force_map: boolean = false) {
-      const selected_tab = force_map ? "Map" : undefined;
-      const tabbed_view = <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
-        {tabs_}
-      </TabbedView>;
-      return extra !== undefined
-        ?
-        <Panels.PanelGroup direction="vertical">
-          <Panels.Panel>{tabbed_view}</Panels.Panel>
-          <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
-          <Panels.Panel>{extra}</Panels.Panel>
-        </Panels.PanelGroup>
-        : tabbed_view;
-    }
-
-    function left_bar() {
-      return <div
-        style={{
-          position: 'relative', height: "100%", width: "20%", minWidth: "20em",
-        }}>
-        <Panels.PanelGroup direction="vertical">
-          <Panels.Panel>{top_left}</Panels.Panel>
-          <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
-          <Panels.Panel>{bottom_left}</Panels.Panel>
-        </Panels.PanelGroup>
-        {disable_div}
-      </div>;
-    }
-
-    function wideView() {
-      return <div style={{ width: "100%", height: "100%", display: "flex" }}>
-        {(bottom_left || top_left)
-          ? left_bar()
-          : null}
-        <div style={{ flex: "1" }}>{middle}</div>
-        <div style={{ position: 'relative', width: bar_width, height: "100%" }}>
-          {right_bar(tabs, bottom_right)}
+  const middle =
+    // all this relative/absolute crap is because chrome has a stupid flexbox model
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ position: 'absolute', width: '100%', height: '100%' }}>{map}</div>
+      </div>
+      <div style={{ position: 'relative', height: '50px', width: '100%', overflowX: 'auto' }}>
+        <div style={{ position: 'absolute', width: '100%', height: '50px' }}>
+          {bottom_bar}
           {disable_div}
         </div>
-      </div>;
-    }
+      </div>
+    </div>;
 
-    function narrowView(width: number) {
-      const amended_tabs = LD.concat(tabs,
-        <Tab key="Map" name="Map" always_render={true}>{middle}</Tab>);
-      const scale = width / bar_width;
-      return <div style={{
-        height: "100%",
-        width: bar_width,
-        zoom: `${scale * 100}%`,
-      }}>
-        <div style={{ width: bar_width }}>
-          {right_bar(amended_tabs, bottom_right, disable_bars)}
-        </div>
-      </div>;
-    }
+  return <div style={{ height: "100%", width: "100%" }} >
+    {window_size.width >= NARROW_THRESHOLD ?
+      wideView()
+      : narrowView(window_size.width)}
+    <ErrorModal />
+  </div>;
+
+
+  function right_bar(tabs_: Array<JSX.Element>, extra?: JSX.Element, force_map: boolean = false) {
+    const selected_tab = force_map ? "Map" : undefined;
+    const tabbed_view = <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
+      {tabs_}
+    </TabbedView>;
+    return extra !== undefined
+      ?
+      <Panels.PanelGroup direction="vertical">
+        <Panels.Panel>{tabbed_view}</Panels.Panel>
+        <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
+        <Panels.Panel>{extra}</Panels.Panel>
+      </Panels.PanelGroup>
+      : tabbed_view;
   }
-}
 
-export const TheLayout = M.connectRedux(TheLayoutComp);
+  function left_bar() {
+    return <div
+      style={{
+        position: 'relative', height: "100%", width: "20%", minWidth: "20em",
+      }}>
+      <Panels.PanelGroup direction="vertical">
+        <Panels.Panel>{top_left}</Panels.Panel>
+        <Panels.PanelResizeHandle><hr /></Panels.PanelResizeHandle>
+        <Panels.Panel>{bottom_left}</Panels.Panel>
+      </Panels.PanelGroup>
+      {disable_div}
+    </div>;
+  }
+
+  function wideView() {
+    return <div style={{ width: "100%", height: "100%", display: "flex" }}>
+      {(bottom_left || top_left)
+        ? left_bar()
+        : null}
+      <div style={{ flex: "1" }}>{middle}</div>
+      <div style={{ position: 'relative', width: bar_width, height: "100%" }}>
+        {right_bar(tabs, bottom_right)}
+        {disable_div}
+      </div>
+    </div>;
+  }
+
+  function narrowView(width: number) {
+    const amended_tabs = LD.concat(tabs,
+      <Tab key="Map" name="Map" always_render={true}>{middle}</Tab>);
+    const scale = width / bar_width;
+    return <div style={{
+      height: "100%",
+      width: bar_width,
+      zoom: `${scale * 100}%`,
+    }}>
+      <div style={{ width: bar_width }}>
+        {right_bar(amended_tabs, bottom_right, disable_bars)}
+      </div>
+    </div>;
+  }
+});
+
 
 export function MaterialIcon(props: { children: Array<any> | any }): JSX.Element {
   return <i
