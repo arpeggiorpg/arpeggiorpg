@@ -1,8 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use actix_cors::Cors;
-use actix_web::{web, HttpResponse, Responder, App as WebApp};
+use actix_web::{web, App as WebApp, HttpResponse, Responder};
 use anyhow::Error;
 use log::error;
 
@@ -11,32 +10,29 @@ use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, Sce
 use crate::actor::AppActor;
 
 pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
-  config.data(actor).service(
-    web::scope("/")
-      .wrap(Cors::permissive())
-      .service(web::resource("").route(web::get().to(get_app)).route(web::post().to(post_command)))
-      .service(web::resource("poll/{snapshot_len}/{log_len}").route(web::get().to(poll_app)))
-      .service(
-        web::resource("movement_options/{scene_id}/{cid}").route(web::get().to(movement_options)),
-      )
-      .service(
-        web::resource("combat_movement_options").route(web::get().to(combat_movement_options)),
-      )
-      .service(
-        web::resource("target_options/{scene_id}/{cid}/{abid}")
-          .route(web::get().to(target_options)),
-      )
-      .service(
-        web::resource("preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}")
-          .route(web::post().to(preview_volume_targets)),
-      )
-      .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
-      .service(web::resource("saved_games/module/{name}/load").route(web::post().to(load_module_as_game)))
-      .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
-      .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
-      .service(web::resource("modules/{name}").route(web::post().to(save_module)))
-      .service(web::resource("new_game").route(web::post().to(new_game)))
-  );
+  config
+    .data(actor)
+    .service(web::resource("/").route(web::get().to(get_app)).route(web::post().to(post_command)))
+    .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
+    .service(
+      web::resource("movement_options/{scene_id}/{cid}").route(web::get().to(movement_options)),
+    )
+    .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
+    .service(
+      web::resource("target_options/{scene_id}/{cid}/{abid}").route(web::get().to(target_options)),
+    )
+    .service(
+      web::resource("preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}")
+        .route(web::post().to(preview_volume_targets)),
+    )
+    .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
+    .service(
+      web::resource("saved_games/module/{name}/load").route(web::post().to(load_module_as_game)),
+    )
+    .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
+    .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
+    .service(web::resource("modules/{name}").route(web::post().to(save_module)))
+    .service(web::resource("new_game").route(web::post().to(new_game)));
 }
 
 async fn get_app(actor: web::Data<AppActor>) -> impl Responder {
@@ -107,7 +103,9 @@ async fn load_saved_game(actor: web::Data<AppActor>, path: web::Path<String>) ->
   string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::SavedGame).await?)
 }
 
-async fn load_module_as_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
+async fn load_module_as_game(
+  actor: web::Data<AppActor>, path: web::Path<String>,
+) -> impl Responder {
   string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::Module).await?)
 }
 
@@ -115,7 +113,10 @@ async fn save_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl 
   string_json_response(actor.save_game(path.into_inner()).await?)
 }
 
-async fn save_module(actor: web::Data<AppActor>, path: web::Path<String>, folder_path: web::Json<::foldertree::FolderPath>) -> impl Responder {
+async fn save_module(
+  actor: web::Data<AppActor>, path: web::Path<String>,
+  folder_path: web::Json<::foldertree::FolderPath>,
+) -> impl Responder {
   string_json_response(actor.save_module(path.into_inner(), folder_path.into_inner()).await?)
 }
 
