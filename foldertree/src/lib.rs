@@ -436,12 +436,14 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
   }
 }
 
+#[cfg(feature = "serde")]
 #[cfg(test)]
 #[macro_use]
 extern crate serde_json;
 
 #[cfg(test)]
 mod test {
+  #[cfg(feature = "serde")]
   use serde_json;
   use std::collections::HashSet;
   use std::iter::FromIterator;
@@ -635,6 +637,7 @@ mod test {
     assert_eq!(ftree.get(&fpath("/bar")).unwrap(), &"foo folder".to_string());
   }
 
+  #[cfg(feature = "serde")]
   #[test]
   fn serialize_json() {
     let mut ftree = FolderTree::new("Root node!".to_string());
@@ -653,6 +656,7 @@ mod test {
     assert_eq!(json, expected);
   }
 
+  #[cfg(feature = "serde")]
   #[test]
   fn deserialize_json() {
     let json = json!({
