@@ -3,18 +3,22 @@ import * as LD from "lodash";
 import * as JD from "type-safe-json-decoder";
 import { Decoder } from "type-safe-json-decoder";
 
-export type AbilityID = string;
-export type ClassID = string;
-export type CreatureID = string;
-export type PlayerID = string;
-export type SceneID = string;
-export type ItemID = string;
-export type AttrID = string;
+import type { AbilityID } from "./bindings/AbilityID";
+import type { ClassID } from "./bindings/ClassID";
+import type { CreatureID } from "./bindings/CreatureID";
+import type { PlayerID } from "./bindings/PlayerID";
+import type { SceneID } from "./bindings/SceneID";
+import type { ItemID } from "./bindings/ItemID";
+import type { AttrID } from "./bindings/AttrID";
+import type { ConditionID } from "./bindings/ConditionID";
+import type { HP } from "./bindings/HP";
+import type { Energy } from "./bindings/Energy";
+import type { Note } from "./bindings/Note";
+
+export { AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note};
+
 export type Color = string;
 export type Distance = number;
-export type HP = number;
-export type Energy = number;
-export type ConditionID = string;
 export type FolderPath = Array<string>;
 export type Terrain = I.Set<Point3>;
 export type Highlights = I.Map<Point3, [Color, Visibility]>;
@@ -366,11 +370,6 @@ export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Superna
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
-export interface Note {
-  name: string;
-  content: string;
-}
-
 export interface SceneCreation {
   name: string;
   background_image_url: string;
@@ -488,13 +487,13 @@ const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
     DoubleMaxMovement: { t: "DoubleMaxMovement" },
     Incapacitated: { t: "Incapacitated" },
   }, {
-    ActivateAbility: JD.map(
-      (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
-      JD.string()),
-    RecurringEffect: JD.map(
-      (effect): Condition => ({ t: "RecurringEffect", effect }),
-      decodeEffect),
-  }
+  ActivateAbility: JD.map(
+    (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
+    JD.string()),
+  RecurringEffect: JD.map(
+    (effect): Condition => ({ t: "RecurringEffect", effect }),
+    decodeEffect),
+}
 );
 
 const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
