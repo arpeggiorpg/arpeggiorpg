@@ -17,6 +17,7 @@ use serde::{
   Deserialize, Deserializer, Serialize, Serializer,
 };
 use serde_yaml;
+use ts_rs::TS;
 use uom::si::length::{centimeter, meter};
 use uuid::{Error as UuidParseError, Uuid};
 
@@ -47,10 +48,14 @@ pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
 
 /// Point3 holds a position in 3d space in meters (FOR NOW --radix)
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, TS)]
+#[ts(export)]
 pub struct Point3 {
+  #[ts(type="number")]
   pub x: i64units::Length,
+  #[ts(type="number")]
   pub y: i64units::Length,
+  #[ts(type="number")]
   pub z: i64units::Length,
 }
 
@@ -199,7 +204,9 @@ impl Dice {
   Hash,
   Serialize,
   Deserialize,
+  TS
 )]
+#[ts(export)]
 pub struct HP(pub u8);
 impl Saturating for HP {
   fn saturating_add(self, other: Self) -> Self { HP(self.0.saturating_add(other.0)) }
@@ -221,19 +228,23 @@ impl Saturating for HP {
   Hash,
   Serialize,
   Deserialize,
+  TS
 )]
+#[ts(export)]
 pub struct Energy(pub u8);
 impl Saturating for Energy {
   fn saturating_add(self, other: Self) -> Self { Energy(self.0.saturating_add(other.0)) }
   fn saturating_sub(self, other: Self) -> Self { Energy(self.0.saturating_sub(other.0)) }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct PlayerID(pub String);
 
 macro_rules! uuid_id {
   ($type: ident) => {
-    #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+    #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
+    #[ts(export)]
     pub struct $type(pub Uuid);
     impl $type {
       pub fn gen() -> $type { $type(Uuid::new_v4()) }
@@ -256,7 +267,8 @@ uuid_id!(SceneID);
 uuid_id!(AbilityID);
 uuid_id!(ClassID);
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum FolderItemID {
   SceneID(SceneID),
   CreatureID(CreatureID),
@@ -267,7 +279,8 @@ pub enum FolderItemID {
   SubfolderID(String),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum SkillLevel {
   // The way to read these are:
   // "A {variant} person has a 75% chance of doing this."
@@ -1028,7 +1041,8 @@ pub struct Creature {
 }
 
 /// A definition of an Item, which can be referenced by creatures' inventories.
-#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Item {
   pub id: ItemID,
   pub name: String,
@@ -1039,7 +1053,8 @@ impl DeriveKey for Item {
   fn derive_key(&self) -> Self::KeyType { self.id }
 }
 
-#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AttrID(pub String);
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
@@ -1274,7 +1289,8 @@ pub enum TileSystem {
 
 
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
+#[ts(export)]
 pub struct Note {
   pub name: String,
   pub content: String,
