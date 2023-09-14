@@ -1,158 +1,11 @@
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
-import * as ReactRedux from 'react-redux';
-import * as RTK from '@reduxjs/toolkit';
 import * as JD from "type-safe-json-decoder";
+import * as Z from "zustand";
 
 import * as T from './PTTypes';
 
-
-export type PTAction =
-  | { type: "SetPTUI", ptui: PTUI }
-  | { type: "ResetState" }
-  | { type: "RefreshApp"; app: T.App }
-  | { type: "RefreshGame"; game: T.Game; logs: Array<T.GameLog> }
-  | { type: "DisplayError"; error: string }
-  | { type: "ClearError" }
-
-  | { type: "SetPlayerID"; pid: T.PlayerID }
-
-  | { type: "FocusGrid"; scene_id: T.SceneID; layer?: SceneLayerType }
-  | { type: "FocusSecondary"; focus: SecondaryFocus }
-
-  // Lots of grid-related actions!
-
-  | { type: "SetTerrain"; terrain: T.Terrain }
-  | { type: "SetHighlights"; highlights: T.Highlights }
-
-  | { type: "SetHighlightColor"; color: T.Color }
-  | { type: "SetObjectVisibility"; visibility: T.Visibility }
-
-  | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
-  | { type: "ClearGridMenu" }
-  | { type: "ActivateGridContextMenu"; pt: T.Point3; coords: [number, number] }
-
-  | {
-    type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
-    teleport?: boolean;
-  }
-  | { type: "ClearMovementOptions" }
-  | {
-    type: "DisplayPotentialTargets";
-    cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
-  }
-  | { type: "ClearPotentialTargets" };
-
-export function update(ptui: PTUI|undefined, action: PTAction): PTUI {
-  console.log("[Model.update]", action.type, action);
-  if (!ptui) ptui = initialState;
-  switch (action.type) {
-    case "SetPTUI":
-      return action.ptui;
-    case "ResetState":
-      return new PTUI(ptui.rpi_url, ptui.app);
-    case "RefreshApp":
-      return new PTUI(ptui.rpi_url, action.app, ptui.state);
-    case "RefreshGame":
-      return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
-    case "ActivateGridObjects":
-      return ptui.updateGridState(grid =>
-        ({ ...grid, active_objects: { objects: action.objects, coords: action.coords } }));
-    case "ActivateGridContextMenu":
-      return ptui.updateGridState(grid =>
-        ({ ...grid, context_menu: { pt: action.pt, coords: action.coords } }));
-    case "ClearGridMenu":
-      return ptui.updateGridState(
-        grid => ({
-          ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] },
-        }));
-    case "SetPlayerID":
-      return ptui.updateState(state => ({ ...state, player_id: action.pid }));
-
-    case "FocusGrid":
-      const scene = ptui.app.current_game.scenes.get(action.scene_id);
-      let layer: SceneLayer;
-      switch (action.layer) {
-        case "Terrain":
-          // When switching to the Terrain layer, create a copy of the terrain data for editing.
-          layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
-          break;
-        case "Highlights":
-          layer = {
-            t: "Highlights",
-            highlights: scene ? scene.highlights : I.Map(),
-          };
-          break;
-        case "Volumes":
-          layer = { t: "Volumes" };
-          break;
-        case undefined:
-      }
-      return ptui.updateState(state =>
-        ({ ...state, grid_focus: { scene_id: action.scene_id, layer } }));
-    case "FocusSecondary":
-      return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
-
-    // Grid-related
-
-    case "SetHighlightColor":
-      return ptui.updateGridState(grid => ({ ...grid, highlight_color: action.color }));
-    case "SetObjectVisibility":
-      return ptui.updateGridState(grid => ({ ...grid, object_visibility: action.visibility }));
-
-    case "SetTerrain":
-      return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Terrain") {
-          return {
-            ...state,
-            grid_focus: {
-              ...state.grid_focus,
-              layer: { ...state.grid_focus.layer, terrain: action.terrain },
-            },
-          };
-        } else { return state; }
-      });
-
-    case "SetHighlights":
-      return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer
-          && state.grid_focus.layer.t === "Highlights") {
-          return {
-            ...state,
-            grid_focus: {
-              ...state.grid_focus,
-              layer: { ...state.grid_focus.layer, highlights: action.highlights },
-            },
-          };
-        } else { return state; }
-      });
-
-    case "DisplayMovementOptions":
-      return ptui.updateGridState(
-        grid => ({
-          ...grid,
-          movement_options: {
-            cid: action.cid, options: action.options,
-            teleport: action.teleport ? true : false,
-          },
-        }));
-    case "DisplayPotentialTargets":
-      const { cid, ability_id, options } = action;
-      return ptui.updateGridState(
-        grid => ({ ...grid, target_options: { cid, ability_id, options } }));
-    case "ClearPotentialTargets":
-      return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
-    case "ClearMovementOptions":
-      return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
-
-    case "DisplayError":
-      return ptui.updateState(state => ({ ...state, error: action.error }));
-    case "ClearError":
-      return ptui.updateState(state => ({ ...state, error: undefined }));
-  }
-  return ptui;
-}
 
 export interface GridModel {
   active_objects: {
@@ -176,14 +29,6 @@ export type GridObject =
   | { t: "Annotation"; pt: T.Point3 }
   | { t: "SceneHotSpot"; scene_id: T.SceneID; pt: T.Point3 }
   ;
-
-export interface PTUIState {
-  grid: GridModel;
-  player_id?: T.PlayerID;
-  error?: string;
-  grid_focus?: GridFocus;
-  secondary_focus?: SecondaryFocus;
-}
 
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
@@ -257,16 +102,6 @@ const default_state = {
 };
 
 export class PTUI {
-  readonly app: T.App;
-  readonly state: PTUIState;
-  readonly rpi_url: string;
-
-  constructor(rpi_url: string, app: T.App, state: PTUIState = default_state) {
-    this.app = app;
-    this.state = state;
-    this.rpi_url = rpi_url;
-  }
-
   startPoll(dispatch: RTK.Dispatch) {
     function poll(rpi_url: string, app: T.App) {
       const num_snaps = app.snapshots.length;
@@ -281,13 +116,6 @@ export class PTUI {
       );
     }
     poll(this.rpi_url, this.app);
-  }
-
-  updateState(updater: (state: PTUIState) => PTUIState): PTUI {
-    return new PTUI(this.rpi_url, this.app, updater(this.state));
-  }
-  updateGridState(updater: (state: GridModel) => GridModel): PTUI {
-    return this.updateState(state => ({ ...state, grid: updater(state.grid) }));
   }
 
   requestMove(dispatch: Dispatch, cid: T.CreatureID) {
@@ -527,23 +355,139 @@ export class PTUI {
 }
 
 
-const initialState: PTUI = new PTUI(
-  import.meta.env.VITE_RPI_URL,
-  {
-    snapshots: [],
-    current_game: {
-      players: I.Map(),
-      current_combat: undefined,
-      creatures: I.Map(),
-      classes: I.Map(),
-      items: {},
-      scenes: I.Map(),
-      abilities: {},
-      campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
-    }
-  })
+const initialApp: T.App = {
+  snapshots: [],
+  current_game: {
+    players: I.Map(),
+    current_combat: undefined,
+    creatures: I.Map(),
+    classes: I.Map(),
+    items: {},
+    scenes: I.Map(),
+    abilities: {},
+    campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
+  }
+};
 
-export const store = RTK.configureStore({ reducer: update, preloadedState: initialState});
+interface AppState {
+  app: T.App;
+  refresh: (app: T.App) => void;
+  refreshGame: (game: T.Game) => void;
+}
+
+export const useApp = Z.create<AppState>()(set => ({
+  app: initialApp,
+  refresh: app => set(() => ({ app })),
+  refreshGame: game => set(state => ({ app: { ...state.app, current_game: game } })),
+  // TODO: maybe "fetch"?
+}));
+
+interface SecondaryFocusState {
+  focus?: SecondaryFocus;
+  setFocus: (f: SecondaryFocus) => void;
+}
+
+export const useSecondaryFocus = Z.create<SecondaryFocusState>()(set => ({
+  focus: undefined,
+  setFocus: focus => set(() => ({ focus }))
+}));
+
+interface GridState {
+  grid: GridModel;
+  focus?: GridFocus;
+  // reset is used in New Game
+  reset: () => void;
+  setFocus: (s: T.SceneID, l?: SceneLayerType) => void;
+  activateObjects: (objects: GridObject[], coords: [number, number]) => void;
+  activateContextMenu: (pt: T.Point3, coords: [number, number]) => void;
+  clearContextMenu: () => void;
+  setHighlightColor: (color: T.Color) => void;
+  setObjectVisibility: (v: T.Visibility) => void;
+  setTerrain: (t: T.Terrain) => void;
+  setHighlights: (h: T.Highlights) => void;
+  displayMovementOptions: (options: T.Point3[], cid?: T.CreatureID, teleport?: boolean) => void;
+  displayPotentialTargets: (cid: T.CreatureID, ability_id: T.AbilityID, options: T.PotentialTargets) => void;
+  clearPotentialTargets: () => void;
+  clearMovementOptions: () => void;
+}
+
+export const useGrid = Z.create<GridState>()(set => ({
+  grid: default_state.grid,
+  focus: undefined,
+  reset: () => set(() => ({ grid: default_state.grid })),
+  setFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
+    const scene = useApp.getState().app.current_game.scenes.get(scene_id);
+    let layer: SceneLayer | undefined = undefined;
+    switch (t) {
+      case "Terrain":
+        // When switching to the Terrain layer, create a copy of the terrain data for editing.
+        layer = { t, terrain: scene ? scene.terrain : I.Set() };
+        break;
+      case "Highlights":
+        layer = { t, highlights: scene ? scene.highlights : I.Map() };
+        break;
+      case "Volumes":
+        layer = { t };
+        break;
+    }
+    return { focus: { scene_id, layer } };
+  }),
+  activateObjects: (objects, coords) => set(({ grid }) => ({ grid: { ...grid, activate_objects: { objects, coords } } })),
+  activateContextMenu: (pt, coords) => set(({ grid }) => ({ grid: { ...grid, context_menu: { pt, coords } } })),
+  clearContextMenu: () => set(({ grid }) => ({ grid: { ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] } } })),
+  setHighlightColor: highlight_color => set(({ grid }) => ({ grid: { ...grid, highlight_color } })),
+  setObjectVisibility: object_visibility => set(({ grid }) => ({ grid: { ...grid, object_visibility } })),
+  setTerrain: terrain => set(({ focus }) => {
+    // TODO: do we really need to do this conditional?
+    if (focus?.layer?.t === "Terrain") {
+      return { focus: { ...focus, layer: { ...focus.layer, terrain } } }
+    }
+    return {};
+  }),
+  setHighlights: highlights => set(({ focus }) => {
+    if (focus?.layer?.t === "Highlights") {
+      return { focus: { ...focus, layer: { ...focus.layer, highlights } } };
+    }
+    return {}
+  }),
+  displayMovementOptions: (options, cid, teleport) => set(({ grid }) => ({ grid: { ...grid, movement_options: { cid, options, teleport: !!teleport } } })),
+  displayPotentialTargets: (cid, ability_id, options) => set(({ grid }) => ({ grid: { ...grid, target_options: { cid, ability_id, options } } })),
+  clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid: target_options: undefined } })),
+  clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
+}));
+
+
+class PlayerState {
+  id: T.PlayerID | undefined;
+
+  set(id: T.PlayerID) {
+    this.id = id;
+  }
+}
+
+export const usePlayer = Z.create<PlayerState>()(() => new PlayerState());
+
+interface ErrorState {
+  error: string | undefined;
+  set: (e: string) => void,
+  clear: () => void
+}
+
+export const useError = Z.create<ErrorState>()(set => ({
+  error: undefined,
+  set: error => set(() => ({ error })),
+  clear: () => set(() => ({ error: undefined }))
+}));
+
+//     case "FocusSecondary":
+//       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
+
+//   }
+//   return ptui;
+// }
+
+
+// }));
 
 export type Dispatch = typeof store.dispatch;
 
