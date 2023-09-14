@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use actix_web::{web, App as WebApp, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder};
 use anyhow::Error;
 use log::error;
 
@@ -11,7 +11,7 @@ use crate::actor::AppActor;
 
 pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
   config
-    .data(actor)
+    .app_data(web::Data::new(actor))
     .service(web::resource("/").route(web::get().to(get_app)).route(web::post().to(post_command)))
     .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
     .service(
