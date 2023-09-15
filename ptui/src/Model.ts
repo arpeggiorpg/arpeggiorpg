@@ -6,6 +6,7 @@ import * as Z from "zustand";
 
 import * as T from './PTTypes';
 
+export const RPI_URL = import.meta.env.VITE_RPI_URL;
 
 export interface GridModel {
   active_objects: {
@@ -52,45 +53,46 @@ export type SecondaryFocus =
   | { t: "Item"; item_id: T.ItemID }
   ;
 
-export function decodeFetch<J>(
+export async function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>): Promise<J> {
-  const p: Promise<Response> = fetch(url, init);
-  const p2: Promise<any> = p.then(response => response.json());
-  return p2.then(json => {
-    try {
-      return decoder.decodeAny(json);
-    } catch (e) {
-      throw { _pt_error: "JSON", original: e };
-    }
-  });
+  decoder: JD.Decoder<J>
+): Promise<J> {
+  const result = await fetch(url, init);
+  const json = await result.json();
+  try {
+    return decoder.decodeAny(json);
+  } catch (e) {
+    console.error(e);
+    throw { _pt_error: "JSON", original: e };
+  }
 }
 
-export function ptfetch<J, R>(
-  dispatch: typeof store.dispatch, url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>, then: (result: J) => R)
-  : Promise<R> {
-  const json_promise = decodeFetch(url, init, decoder);
-  const p4: Promise<R> = json_promise.then(then);
-  const p5: Promise<R> = p4.catch(
-    e => {
-      function extract_error_details(error: any): [string, string] {
-        if (error._pt_error) {
-          switch (error._pt_error) {
-            case "JSON": return ["Failed to decode JSON", error.original];
-            case "RPI": return ["Error received from server", error.message];
-            default: return ["Unknown error", error.toString()];
-          }
-        } else {
-          return ["Unknown error", error.toString()];
-        }
-      }
+export async function ptfetch<J>(
+  url: string,
+  init: RequestInit | undefined,
+  decoder: JD.Decoder<J>
+): Promise<J> {
+  try {
+    const json = await decodeFetch(url, init, decoder);
+    return json;
+  } catch (e) {
+    const error = extract_error_details(e);
+    useError.getState().set(error);
+    throw e;
+  }
 
-      const [prefix, suffix] = extract_error_details(e);
-      dispatch({ type: "DisplayError", error: `${prefix}: ${suffix}` });
-      throw e;
-    });
-  return p5;
+  function extract_error_details(error: any): string {
+    if (error._pt_error) {
+      switch (error._pt_error) {
+        case "JSON": return `Failed to decode JSON ${error.original}`;
+        // RADIX: is "RPI" actually produced anywhere?
+        case "RPI": return `Error received from server ${error.message}`;
+        default: return `Unknown error ${error.toString()}`;
+      }
+    } else {
+      return `Unknown error ${error.toString()}`;
+    }
+  }
 }
 
 const default_state = {
@@ -101,27 +103,42 @@ const default_state = {
   },
 };
 
-export class PTUI {
-  startPoll(dispatch: RTK.Dispatch) {
-    function poll(rpi_url: string, app: T.App) {
+export async function startPoll() {
+  // This is kinda dumb, but:
+  // - first, we fetch the entire APP at "/"
+  // - then, we start long-polling at /poll/{snapidx}/{logidx}
+  //
+  // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
+  // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
+  const app = await ptfetch(RPI_URL, undefined, T.decodeApp);
+  useApp.getState().refresh(app);
+  await poll(app);
+
+  async function poll(app: T.App) {
+    while (true) {
       const num_snaps = app.snapshots.length;
       const snaps = app.snapshots[num_snaps - 1];
       const num_logs = snaps ? snaps.logs.length : 0;
-      const url = `${rpi_url}/poll/${num_snaps}/${num_logs}`;
-      return ptfetch(dispatch, url, undefined, T.decodeApp,
-        app => {
-          dispatch({ type: "RefreshApp", app });
-          poll(rpi_url, app);
-        }
-      );
+      const url = `${RPI_URL}/poll/${num_snaps}/${num_logs}`;
+      try {
+        console.log("gonna fetch");
+        app = await ptfetch(url, undefined, T.decodeApp);
+        useApp.getState().refresh(app);
+      } catch (e) {
+        console.error("oops got an error", e);
+        useApp.getState().setFetchStatus("Error");
+      }
     }
-    poll(this.rpi_url, this.app);
   }
+}
 
-  requestMove(dispatch: Dispatch, cid: T.CreatureID) {
+
+export class PTUI {
+
+  requestMove(cid: T.CreatureID) {
     const scene = this.focused_scene();
     if (scene) {
-      return ptfetch(dispatch, this.rpi_url + "/movement_options/" + scene.id + "/" + cid,
+      return ptfetch(RPI_URL + "/movement_options/" + scene.id + "/" + cid,
         undefined,
         JD.array(T.decodePoint3),
         options => dispatch({
@@ -167,7 +184,7 @@ export class PTUI {
     const json = T.encodeGameCommand(cmd);
     console.log("[sendCommand:JSON]", json);
     const rpi_result = decodeFetch(
-      this.rpi_url,
+      RPI_URL,
       {
         method: "POST",
         body: JSON.stringify(json),
@@ -183,26 +200,26 @@ export class PTUI {
   }
 
   fetchSavedGames(dispatch: Dispatch): Promise<[Array<string>, Array<string>]> {
-    return ptfetch(dispatch, this.rpi_url + '/saved_games', undefined,
+    return ptfetch(dispatch, RPI_URL + '/saved_games', undefined,
       JD.tuple(JD.array(JD.string()), JD.array(JD.string())),
       x => x);
   }
 
   loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<void> {
     const url = source === "SavedGame"
-      ? `${this.rpi_url}/saved_games/user/${name}/load`
-      : `${this.rpi_url}/saved_games/module/${name}/load`;
+      ? `${RPI_URL}/saved_games/user/${name}/load`
+      : `${RPI_URL}/saved_games/module/${name}/load`;
 
     return ptfetch(dispatch, url, { method: 'POST' }, T.decodeApp, app => resetApp(dispatch, app));
   }
 
   saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${this.rpi_url}/saved_games/user/${game}`, { method: 'POST' },
+    return ptfetch(dispatch, `${RPI_URL}/saved_games/user/${game}`, { method: 'POST' },
       JD.succeed(undefined), x => x);
   }
 
   exportModule(dispatch: Dispatch, path: T.FolderPath, name: string): Promise<undefined> {
-    const url = `${this.rpi_url}/modules/${name}`;
+    const url = `${RPI_URL}/modules/${name}`;
     const opts = {
       method: 'POST',
       body: JSON.stringify(T.encodeFolderPath(path)),
@@ -226,7 +243,7 @@ export class PTUI {
 
   requestCombatMovement(dispatch: Dispatch) {
     return ptfetch(
-      dispatch, this.rpi_url + "/combat_movement_options", undefined,
+      dispatch, RPI_URL + "/combat_movement_options", undefined,
       JD.array(T.decodePoint3),
       options => dispatch({ type: "DisplayMovementOptions", options }));
   }
@@ -369,15 +386,20 @@ const initialApp: T.App = {
   }
 };
 
+type FetchStatus = "Unfetched" | "Ready" | "Error";
 interface AppState {
   app: T.App;
+  fetchStatus: FetchStatus;
+  setFetchStatus: (s: FetchStatus) => void;
   refresh: (app: T.App) => void;
   refreshGame: (game: T.Game) => void;
 }
 
 export const useApp = Z.create<AppState>()(set => ({
   app: initialApp,
-  refresh: app => set(() => ({ app })),
+  fetchStatus: "Unfetched",
+  setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
+  refresh: app => set(() => ({ app, fetchStatus: "Ready" })),
   refreshGame: game => set(state => ({ app: { ...state.app, current_game: game } })),
   // TODO: maybe "fetch"?
 }));
@@ -452,7 +474,7 @@ export const useGrid = Z.create<GridState>()(set => ({
   }),
   displayMovementOptions: (options, cid, teleport) => set(({ grid }) => ({ grid: { ...grid, movement_options: { cid, options, teleport: !!teleport } } })),
   displayPotentialTargets: (cid, ability_id, options) => set(({ grid }) => ({ grid: { ...grid, target_options: { cid, ability_id, options } } })),
-  clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid: target_options: undefined } })),
+  clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
   clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
 }));
 
@@ -479,19 +501,8 @@ export const useError = Z.create<ErrorState>()(set => ({
   clear: () => set(() => ({ error: undefined }))
 }));
 
-//     case "FocusSecondary":
-//       return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
-
-//   }
-//   return ptui;
-// }
-
-
-// }));
-
-export type Dispatch = typeof store.dispatch;
-
-window.ptstore = store;
+// Just for debugging
+(window as any).ptstate = { useError, usePlayer, useGrid, useSecondaryFocus, useApp };
 
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
@@ -562,7 +573,7 @@ export const sendCommand = (cmd: T.GameCommand): ThunkAction<void> =>
     console.log("[sendCommand:JSON]", json);
     ptfetch(
       dispatch,
-      ptui.rpi_url,
+      RPI_URL,
       {
         method: "POST",
         body: JSON.stringify(json),
@@ -604,8 +615,7 @@ function resetApp(dispatch: Dispatch, app: T.App) {
 function selectAbility(
   scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID): ThunkAction<void> {
   return (dispatch, getState) => {
-    const rpi_url = getState().rpi_url;
-    const url = `${rpi_url}/target_options/${scene_id}/${cid}/${ability_id}`;
+    const url = `${RPI_URL}/target_options/${scene_id}/${cid}/${ability_id}`;
     ptfetch(dispatch, url, undefined, T.decodePotentialTargets,
       options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
   };
@@ -638,11 +648,11 @@ export function connectRedux<BaseProps extends {} & object>(
 }
 
 export function fetchAbilityTargets(
-  dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, actor_id: T.CreatureID,
+  dispatch: Dispatch, scene_id: T.SceneID, actor_id: T.CreatureID,
   ability_id: T.AbilityID, point: T.Point3)
   : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const uri =
-    `${rpi_url}/preview_volume_targets/${scene_id}/${actor_id}/`
+    `${RPI_URL}/preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point.x}/${point.y}/${point.z}`;
   return ptfetch(dispatch, uri, { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),

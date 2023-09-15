@@ -1,9 +1,6 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
-// FIXME-DEP: WindowSizeListener needs replaced
-// import WindowSizeListener from 'react-window-size-listener';
 import * as Panels from "react-resizable-panels";
 
 import {
@@ -27,44 +24,6 @@ import { useWindowSize } from './lib/hooks';
 const NARROW_THRESHOLD = 500;
 
 
-interface MainProps extends React.PropsWithChildren {
-  rpi_url: string;
-}
-export class Main extends React.Component<MainProps,
-  { status: "Unfetched" | "Error" | "Ready" }> {
-
-  constructor(props: MainProps) {
-    super(props);
-    this.state = { status: "Unfetched" };
-  }
-
-  componentDidMount() {
-    // kick off a fetch of the app
-    M.decodeFetch(this.props.rpi_url, undefined, T.decodeApp).then(
-      app => {
-        const ptui = new M.PTUI(this.props.rpi_url, app);
-        M.store.dispatch({type: "SetPTUI", ptui});
-        ptui.startPoll(M.store.dispatch);
-        this.setState({ status: "Ready" });
-      }
-    ).catch(err => {
-      console.log("[Main.componentDidMount] [error]", err);
-      this.setState({ status: "Error" });
-      setTimeout(() => this.componentDidMount(), 2000);
-    });
-  }
-
-  render(): JSX.Element {
-    if (this.state.status === "Unfetched") {
-      return <div>Waiting for initial data from server.</div>;
-    } else if (this.state.status === "Error") {
-      return <div>There was an error fetching the application state from {this.props.rpi_url}.
-         Trying again...</div>;
-    } else {
-      return <ReactRedux.Provider store={M.store}>{this.props.children}</ReactRedux.Provider>;
-    }
-  }
-}
 
 export const CreatureCard = M.connectRedux(
   function CreatureCard(
