@@ -2,39 +2,44 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-import * as Campaign from './Campaign';
+// import * as Campaign from './Campaign';
 import * as CV from './CommonView';
-import * as GM from './GMComponents';
-import * as Grid from './Grid';
-import * as History from './History';
+// import * as GM from './GMComponents';
+// import * as Grid from './Grid';
+// import * as History from './History';
 import * as M from './Model';
-import * as Players from './Players';
+// import * as Players from './Players';
 import * as T from './PTTypes';
-import { useWindowSize } from './lib/hooks';
 
-export const GMMain = M.connectRedux<{}>(({ ptui, dispatch }): JSX.Element => {
-  const focus = gridFocus(ptui, dispatch);
+export function GMMain() {
+  const scene = M.useFocusedScene();
+  const grid = scene
+    ? <div>GRID {JSON.stringify(scene)}</div> // </div><Grid.SceneGrid scene={scene} creatures={mapCreatures(scene)} />
+    : <div>No scene yet!</div>;
+
   const tabs = [
-    <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
-    <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
-    <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
-    <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
-    <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
+    <CV.Tab key="Cool" name="Cool"><div>Cool!</div></CV.Tab>
+  //   <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
+  //   <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
+  //   <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
+  //   <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
+  //   <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
-  const secondary = renderSecondary(ptui, dispatch);
-  const tertiary = renderTertiary(ptui);
-  const combat = ptui.app.current_game.current_combat;
-  const bottom_bar = combat ?
-    <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
-    : undefined;
+  const secondary = <div>Secondary!</div>; // renderSecondary();
+  const tertiary = <div>Tertiary!</div>; // renderTertiary();
+  const bottom_bar = <div>Bottom!</div>;
+  // const combat = M.useCombat();
+  // const bottom_bar = combat ?
+  //   <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
+  //   : undefined;
 
-  return <CV.TheLayout map={focus} tabs={tabs}
+  return <CV.TheLayout map={grid} tabs={tabs}
     bottom_left={secondary}
     top_left={tertiary}
     bottom_right={<CV.GMChat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
-});
+}
 
 function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
   if (!ptui.state.secondary_focus) { return undefined; }
@@ -90,10 +95,3 @@ function creatureMenuActions(
   return actions;
 }
 
-function gridFocus(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element {
-  if (!ptui.state.grid_focus) { return <div>No focus!</div>; }
-  const scene = ptui.focused_scene();
-  return scene
-    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(ptui, dispatch, scene)} />
-    : <div>No scene yet!</div>;
-}
