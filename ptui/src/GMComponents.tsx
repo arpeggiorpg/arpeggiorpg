@@ -3,7 +3,6 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
-import * as ReactRedux from 'react-redux';
 
 import {
   Button, Card, Checkbox, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
