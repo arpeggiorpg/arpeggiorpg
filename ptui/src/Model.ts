@@ -172,43 +172,6 @@ export class PTUI {
     this.sendCommand(dispatch, { t: "PathCurrentCombatCreature", dest });
   }
 
-  sendCommand(dispatch: Dispatch, cmd: T.GameCommand): void {
-    return sendCommand(cmd)(dispatch, () => this, undefined);
-  }
-
-  /// Send a Command and *don't* automatically handle errors, but instead return a future
-  /// representing the result. This is useful for code which wants to send a command and interpret
-  /// the resulting gamelogs.
-  sendCommandWithResult(cmd: T.GameCommand)
-    : Promise<T.RustResult<Array<T.GameLog>, string>> {
-    const json = T.encodeGameCommand(cmd);
-    console.log("[sendCommand:JSON]", json);
-    const rpi_result = decodeFetch(
-      RPI_URL,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(
-        JD.map(
-          ([_, logs]) => logs,
-          T.decodeSendCommandResult),
-        JD.string())
-    );
-    return rpi_result;
-  }
-
-  exportModule(dispatch: Dispatch, path: T.FolderPath, name: string): Promise<undefined> {
-    const url = `${RPI_URL}/modules/${name}`;
-    const opts = {
-      method: 'POST',
-      body: JSON.stringify(T.encodeFolderPath(path)),
-      headers: { "content-type": "application/json" },
-    };
-    return ptfetch(dispatch, url, opts, JD.succeed(undefined), x => x);
-  }
-
   requestCombatMovement(dispatch: Dispatch) {
     return ptfetch(
       dispatch, RPI_URL + "/combat_movement_options", undefined,
@@ -242,18 +205,6 @@ export class PTUI {
     dispatch({ type: "ClearPotentialTargets" });
   }
 
-  // Utility functions for interacting with the model
-  // TODO: Consider making Game, Combat, Folder classes and moving these methods to those classes.
-  // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
-  // then it would be a good way forward, but I'm not sure it will be necessary.
-  getCreature(cid: T.CreatureID): T.Creature | undefined {
-    return getCreature(this.app, cid);
-  }
-
-  getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
-    return getCreatures(this.app, cids);
-  }
-
   getItem(iid: T.ItemID): T.Item | undefined {
     return get(this.app.current_game.items, iid);
   }
@@ -281,15 +232,6 @@ export class PTUI {
       filterMap(classids, classid => this.getClass(classid)),
       c => c.name,
     );
-  }
-
-  getScene(scene_id: T.SceneID): T.Scene | undefined {
-    return this.app.current_game.scenes.get(scene_id);
-  }
-  getScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
-    return LD.sortBy(
-      filterMap(scene_ids, sid => this.getScene(sid)),
-      s => s.name);
   }
 
   getNote(path: T.FolderPath, name: string): T.Note | undefined {
@@ -362,6 +304,30 @@ export async function saveGame(game: string): Promise<undefined> {
     { method: 'POST' },
     JD.succeed(undefined)
   );
+}
+
+export function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
+  const url = `${RPI_URL}/modules/${name}`;
+  const opts = {
+    method: 'POST',
+    body: JSON.stringify(T.encodeFolderPath(path)),
+    headers: { "content-type": "application/json" },
+  };
+  return ptfetch(url, opts, JD.succeed(undefined));
+}
+
+
+
+export function useScene(scene_id: T.SceneID): T.Scene | undefined {
+  return useApp(s => s.app.current_game.scenes.get(scene_id));
+}
+
+export function useScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
+  // TODO: this isn't cacheable without deep equality checks
+  const scenes = useApp(s => s.app.current_game.scenes);
+  return LD.sortBy(
+    filterMap(scene_ids, sid => scenes.get(sid)),
+    s => s.name);
 }
 
 const initialApp: T.App = {
@@ -572,38 +538,58 @@ export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefin
   return app.current_game.creatures.get(cid);
 }
 
+export function useCreature(cid: T.CreatureID) {}
 
-export const sendCommand = (cmd: T.GameCommand): ThunkAction<void> =>
-  (dispatch, getState) => {
-    const ptui = getState();
-    const json = T.encodeGameCommand(cmd);
-    console.log("[sendCommand:JSON]", json);
-    ptfetch(
-      dispatch,
-      RPI_URL,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(T.decodeSendCommandResult, JD.string()),
-      (x: T.RustResult<[T.Game, Array<T.GameLog>], string>) => {
-        switch (x.t) {
-          case "Ok":
-            dispatch({ type: "RefreshGame", game: x.result[0], logs: x.result[1] });
-            return;
-          case "Err":
-            throw { _pt_error: 'RPI', message: x.error };
-        }
-      });
-  };
+export async function sendCommand(cmd: T.GameCommand) {
+  const json = T.encodeGameCommand(cmd);
+  console.log("[sendCommand:JSON]", json);
+  const result = await ptfetch(
+    RPI_URL,
+    {
+      method: "POST",
+      body: JSON.stringify(json),
+      headers: { "content-type": "application/json" },
+    },
+    T.decodeRustResult(T.decodeSendCommandResult, JD.string())
+  );
+  switch (result.t) {
+    case "Ok":
+      useApp.getState().refreshGame(result.result[0]);
+      return;
+    case "Err":
+      throw { _pt_error: 'RPI', message: result.error };
+  }
+}
 
-export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
-  (dispatch, getState) => {
-    for (const cmd of cmds) {
-      sendCommand(cmd)(dispatch, getState, undefined);
-    }
-  };
+export function sendCommands(cmds: Array<T.GameCommand>) {
+  // TODO: I guess we could add an endpoint that handles multiple commands at once
+  for (const cmd of cmds) {
+    sendCommand(cmd);
+  }
+}
+
+/// Send a Command and *don't* automatically handle errors, but instead return a future
+/// representing the result. This is useful for code which wants to send a command and interpret
+/// the resulting gamelogs.
+export async function sendCommandWithResult(cmd: T.GameCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
+  const json = T.encodeGameCommand(cmd);
+  console.log("[sendCommand:JSON]", json);
+  const rpi_result = decodeFetch(
+    RPI_URL,
+    {
+      method: "POST",
+      body: JSON.stringify(json),
+      headers: { "content-type": "application/json" },
+    },
+    T.decodeRustResult(
+      JD.map(
+        ([_, logs]) => logs,
+        T.decodeSendCommandResult),
+      JD.string())
+  );
+  return rpi_result;
+}
+
 
 export async function newGame() {
   const app = await ptfetch(`${RPI_URL}/new_game`, { method: "POST" }, T.decodeApp);
