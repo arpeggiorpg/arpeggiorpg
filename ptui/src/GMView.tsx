@@ -5,7 +5,7 @@ import * as React from 'react';
 import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as GM from './GMComponents';
-// import * as Grid from './Grid';
+import * as Grid from './Grid';
 // import * as History from './History';
 import * as M from './Model';
 // import * as Players from './Players';
@@ -13,8 +13,10 @@ import * as T from './PTTypes';
 
 export function GMMain() {
   const scene = M.useFocusedScene();
+  const app = M.useApp(s => s.app);
+  const gridModel = M.useGrid(s => s.grid);
   const grid = scene
-    ? <div>GRID {JSON.stringify(scene)}</div> // </div><Grid.SceneGrid scene={scene} creatures={mapCreatures(scene)} />
+    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(app, gridModel, scene)} />
     : <div>No scene yet!</div>;
 
   const tabs = [
@@ -28,7 +30,6 @@ export function GMMain() {
   const secondary = renderSecondary();
   const tertiary = <div>Tertiary!</div>; // renderTertiary();
   const bottom_bar = <div>Bottom!</div>;
-  // const combat = M.useCombat();
   // const bottom_bar = combat ?
   //   <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
   //   : undefined;
@@ -69,28 +70,25 @@ function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
 
 /** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
  */
-function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
-  : { [index: string]: Grid.MapCreature } {
-  return LD.mapValues(Grid.mapCreatures(ptui, dispatch, scene),
+function mapCreatures(app: T.App, grid: M.GridModel, scene: T.Scene): { [index: string]: Grid.MapCreature } {
+  return LD.mapValues(Grid.mapCreatures(app, grid, scene),
     mapc => ({
       ...mapc,
-      actions: mapc.actions.merge(creatureMenuActions(ptui, dispatch, scene, mapc.creature)),
+      actions: mapc.actions.merge(creatureMenuActions(scene, app.current_game.current_combat, mapc.creature)),
     }));
 }
 
-function creatureMenuActions(
-  ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene, creature: T.Creature):
-  I.Map<string, (cid: T.CreatureID) => void> {
+function creatureMenuActions(scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): I.Map<string, (cid: T.CreatureID) => void> {
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
-    "Walk": (cid: T.CreatureID) => ptui.requestMove(dispatch, cid),
-    "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(dispatch, scene, cid),
+    "Walk": (cid: T.CreatureID) => M.requestMove(cid),
+    "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),
   });
-  const combat = ptui.app.current_game.current_combat;
-  if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.id) {
+  if (combat && M.getCurrentCombatCreatureID(combat) === creature.id) {
     actions = actions.merge({
-      "Combat-move": (_: T.CreatureID) => ptui.requestCombatMovement(dispatch),
+      "Combat-move": (_: T.CreatureID) => M.requestCombatMovement(),
     });
   }
   return actions;
 }
+
 

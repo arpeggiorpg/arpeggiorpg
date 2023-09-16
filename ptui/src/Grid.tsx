@@ -16,198 +16,186 @@ interface SceneGridProps {
   scene: T.Scene;
   creatures: Obj<MapCreature>;
 }
-interface SceneGridState {
-  targeting_point?: T.Point3;
-  affected_points?: Array<T.Point3>;
-  affected_creatures?: Array<T.CreatureID>;
-  painting?: "Opening" | "Closing";
-}
-export const SceneGrid = M.connectRedux(class SceneGrid
-  extends React.Component<SceneGridProps & M.ReduxProps, SceneGridState> {
+export function SceneGrid(props: SceneGridProps) {
+  const [targetingPoint, setTargetingPoint] = React.useState<T.Point3|undefined>();
+  const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[]|undefined>();
+  const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[] | undefined>();
+  const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
-  constructor(props: SceneGridProps & M.ReduxProps) {
-    super(props);
-    this.state = {};
-  }
+  const { scene } = props;
+  const grid = M.useGrid(s => s.grid);
+  const focus = M.useGrid(s => s.focus);
+  const playerID = M.usePlayer(s => s.id);
 
-  render(): JSX.Element {
-    const { scene, ptui, dispatch } = this.props;
-
-    const grid = ptui.state.grid;
-
-    const menu = grid.active_objects.objects.length !== 0
-      ? this.renderGridObjectMenu(grid.active_objects)
-      : grid.context_menu ? this.contextMenu(grid.context_menu.pt, grid.context_menu.coords)
-        : null;
-
-    const target_els = ptui.state.grid.target_options
-      ? this.getTargetTiles(ptui.state.grid.target_options.options,
-        point => this.targetClicked(point))
-      : [];
-
-    const layer = ptui.state.grid_focus && ptui.state.grid_focus.layer;
-    const disable_style = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
-
-    const [bg_width, bg_height] = scene.background_image_scale;
-    const background_image = scene.background_image_url && scene.background_image_offset
-      ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
-        height={bg_height ? bg_height : undefined}
-        x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
-        preserveAspectRatio="none" />
+  const menu = grid.active_objects.objects.length !== 0
+    ? renderGridObjectMenu(grid.active_objects)
+    : grid.context_menu ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
       : null;
-    const static_background = scene.background_image_url && !scene.background_image_offset
-      ? `url(${scene.background_image_url})`
-      : undefined;
 
-    const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
-    const open_terrain_color = scene.background_image_url ? "transparent" : "white";
-    const closed_terrain_els = layer && layer.t === "Terrain"
-      ? this.getClosedTerrain(current_terrain) : null;
-    const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
+  const target_els = grid.target_options
+    ? getTargetTiles(grid.target_options.options,
+      point => targetClicked(point))
+    : [];
 
-    const highlights = layer && layer.t === "Highlights"
-      ? this.getEditableHighlights(layer.highlights)
-      : this.getHighlights(scene.highlights, ptui.state.player_id);
-    const annotations = this.getAnnotations(dispatch, scene.annotations, ptui.state.player_id);
+  const layer = focus?.layer;
+  const disable_style = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
 
-    const scene_hotspots = this.getSceneHotspots();
+  const [bg_width, bg_height] = scene.background_image_scale;
+  const background_image = scene.background_image_url && scene.background_image_offset
+    ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
+      height={bg_height ? bg_height : undefined}
+      x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
+      preserveAspectRatio="none" />
+    : null;
+  const static_background = scene.background_image_url && !scene.background_image_offset
+    ? `url(${scene.background_image_url})`
+    : undefined;
 
-    const volumes = layer && layer.t === "Volumes"
-      ? this.getEditableVolumes()
-      : this.getVolumeConditions();
+  const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
+  const open_terrain_color = scene.background_image_url ? "transparent" : "white";
+  const closed_terrain_els = layer && layer.t === "Terrain"
+    ? getClosedTerrain(current_terrain) : null;
+  const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
-    const annotations_style = layer
-      && (layer.t === "Terrain" || layer.t === "Highlights")
-      ? disable_style
-      : {};
-    const highlights_style = layer && (layer.t !== "Highlights") ? disable_style : {};
-    const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
-    const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
+  const highlights = layer && layer.t === "Highlights"
+    ? getEditableHighlights(layer.highlights)
+    : getHighlights(scene.highlights, playerID);
+  const annotations = getAnnotations(scene.annotations, playerID);
 
-    return <div style={{ width: "100%", height: "100%" }}>
-      <div style={{
-        height: '45px', display: 'flex',
-        justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        {this.topBar()}
-      </div>
-      {menu}
-      <SPZ.SVGPanZoom
-        id="pt-grid"
-        preserveAspectRatio="xMinYMid slice"
-        style={{
-          width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
-          backgroundImage: static_background,
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "contain",
-        }}
-        onMouseDown={ev => {
-          if (ev.button !== 0 || ev.ctrlKey) { return; }
-          if (layer && layer.t === "Terrain") {
-            const pt = getPoint3AtMouse(ev);
-            const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
-            this.setState({ painting });
-          }
-        }}
-        onMouseMove={ev => {
-          if (!layer || layer.t !== "Terrain" || this.state.painting === undefined) { return; }
-          // make sure we've actually got the mouse down before trying to paint
-          if (ev.buttons !== 1) {
-            this.setState({ painting: undefined });
-            return;
-          }
+  const scene_hotspots = getSceneHotspots();
+
+  const volumes = layer && layer.t === "Volumes"
+    ? getEditableVolumes()
+    : getVolumeConditions();
+
+  const annotations_style = layer
+    && (layer.t === "Terrain" || layer.t === "Highlights")
+    ? disable_style
+    : {};
+  const highlights_style = layer && (layer.t !== "Highlights") ? disable_style : {};
+  const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
+  const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
+
+  return <div style={{ width: "100%", height: "100%" }}>
+    <div style={{
+      height: '45px', display: 'flex',
+      justifyContent: 'space-between', alignItems: 'center',
+    }}>
+      {topBar()}
+    </div>
+    {menu}
+    <SPZ.SVGPanZoom
+      id="pt-grid"
+      preserveAspectRatio="xMinYMid slice"
+      style={{
+        width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
+        backgroundImage: static_background,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "contain",
+      }}
+      onMouseDown={ev => {
+        if (ev.button !== 0 || ev.ctrlKey) { return; }
+        if (layer && layer.t === "Terrain") {
           const pt = getPoint3AtMouse(ev);
-          let terrain;
-          switch (this.state.painting) {
-            case "Opening": {
-              if (layer.terrain.contains(pt)) { return; }
-              terrain = layer.terrain.add(pt);
-              break;
-            }
-            case "Closing": {
-              if (!layer.terrain.contains(pt)) { return; }
-              terrain = layer.terrain.remove(pt);
-              break;
-            }
-            default: return;
+          const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
+          setPainting(painting);
+        }
+      }}
+      onMouseMove={ev => {
+        if (!layer || layer.t !== "Terrain" || painting === undefined) { return; }
+        // make sure we've actually got the mouse down before trying to paint
+        if (ev.buttons !== 1) {
+          setPainting(undefined);
+          return;
+        }
+        const pt = getPoint3AtMouse(ev);
+        let terrain;
+        switch (painting) {
+          case "Opening": {
+            if (layer.terrain.contains(pt)) { return; }
+            terrain = layer.terrain.add(pt);
+            break;
           }
-          this.props.dispatch({ type: "SetTerrain", terrain });
-        }}
-        onMouseUp={ev => {
-          if (!layer || layer.t !== "Terrain" || this.state.painting === undefined) { return; }
-          const pt = getPoint3AtMouse(ev);
-          switch (this.state.painting) {
-            case "Opening": {
-              if (layer.terrain.contains(pt)) { return; }
-              dispatch({ type: "SetTerrain", terrain: layer.terrain.add(pt) });
-              break;
-            }
-            case "Closing": {
-              if (!layer.terrain.contains(pt)) { return; }
-              dispatch({ type: "SetTerrain", terrain: layer.terrain.remove(pt) });
-              break;
-            }
+          case "Closing": {
+            if (!layer.terrain.contains(pt)) { return; }
+            terrain = layer.terrain.remove(pt);
+            break;
           }
-          this.setState({ painting: undefined });
-        }}
-        onMouseLeave={() => this.setState({ painting: undefined })}
-        onContextMenu={ev => {
-          ev.preventDefault();
-          const pt = getPoint3AtMouse(ev);
-          if (this.props.ptui.state.player_id === undefined) {
-            dispatch({
-              type: "ActivateGridContextMenu", pt,
-              coords: [ev.clientX, ev.clientY],
-            });
+          default: return;
+        }
+        M.useGrid.getState().setTerrain(terrain);
+      }}
+      onMouseUp={ev => {
+        if (!layer || layer.t !== "Terrain" || painting === undefined) { return; }
+        const pt = getPoint3AtMouse(ev);
+        switch (painting) {
+          case "Opening": {
+            if (layer.terrain.contains(pt)) { return; }
+            M.useGrid.getState().setTerrain(layer.terrain.add(pt));
+            break;
           }
-        }}
-        shouldPan={ev => {
-          if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) { return false; }
-          const objects = findPTObjects(ev);
-          return objects.length === 0;
-        }}
-      >
-        {background_image}
-        <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
-        <g id="volume-conditions" style={volumes_style}>{volumes}</g>
-        <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
-        <g id="creatures" style={disable_style}>{this.getCreatures()}</g>
-        <g id="highlights" style={highlights_style}>{highlights}</g>
-        <g id="annotations" style={annotations_style}>{annotations}</g>
-        <g id="movement-targets" style={disable_style}>{this.getMovementTargets()}</g>
-        <g id="targets" style={disable_style}>{target_els}</g>
-        <g id="affected" style={disable_style}>{this.getAffectedTiles()}</g>
-        <g id="targeted-volume" style={disable_style}>{this.drawTargetedVolume()}</g>
-      </SPZ.SVGPanZoom>
-    </div>;
-  }
+          case "Closing": {
+            if (!layer.terrain.contains(pt)) { return; }
+            M.useGrid.getState().setTerrain(layer.terrain.remove(pt));
+            break;
+          }
+        }
+        setPainting(undefined);
+      }}
+      onMouseLeave={() => setPainting(undefined)}
+      onContextMenu={ev => {
+        ev.preventDefault();
+        const pt = getPoint3AtMouse(ev);
+        if (playerID === undefined) {
+          M.useGrid.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
+        }
+      }}
+      shouldPan={ev => {
+        if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) { return false; }
+        const objects = findPTObjects(ev);
+        return objects.length === 0;
+      }}
+    >
+      {background_image}
+      <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
+      <g id="volume-conditions" style={volumes_style}>{volumes}</g>
+      <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
+      <g id="creatures" style={disable_style}>{getCreatures()}</g>
+      <g id="highlights" style={highlights_style}>{highlights}</g>
+      <g id="annotations" style={annotations_style}>{annotations}</g>
+      <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
+      <g id="targets" style={disable_style}>{target_els}</g>
+      <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
+      <g id="targeted-volume" style={disable_style}>{drawTargetedVolume()}</g>
+    </SPZ.SVGPanZoom>
+  </div>;
 
-  getSceneHotspots() {
-    return this.props.scene.scene_hotspots.entrySeq().toArray().map(
+  function getSceneHotspots() {
+    return props.scene.scene_hotspots.entrySeq().toArray().map(
       ([pos, scene_id]) =>
         <SceneHotSpot key={`scene-hotspot-${scene_id}-${pos.toString()}`}
           pos={pos} scene_id={scene_id} />
     );
   }
 
-  getMovementTargets() {
-    const move = this.props.ptui.state.grid.movement_options;
+  function getMovementTargets() {
+    const move = grid.movement_options;
     return move
       ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
         teleport={move.teleport} />)
       : null;
   }
 
-  getCreatures() {
-    const creatures = LD.sortBy(this.props.creatures, c => -c.creature.size.x);
+  function getCreatures() {
+    const creatures = LD.sortBy(props.creatures, c => -c.creature.size.x);
     return LD.values(creatures).map(c => {
-      const highlight = LD.includes(this.state.affected_creatures, c.creature.id)
+      const highlight = LD.includes(affectedCreatures, c.creature.id)
         ? "red" : undefined;
       return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
     });
   }
 
-  getClosedTerrain(terrain: T.Terrain) {
+  function getClosedTerrain(terrain: T.Terrain) {
     const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (terrain.contains(pt)) { return; }
@@ -218,7 +206,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return closed_tiles;
   }
 
-  getHighlights(highlights: T.Highlights, player_id?: T.PlayerID, onClick?: (pt: T.Point3) => void) {
+  function getHighlights(highlights: T.Highlights, player_id?: T.PlayerID, onClick?: (pt: T.Point3) => void) {
     return highlights.entrySeq().map(([pt, [color, vis]]) => {
       const gmonly = vis.t === "GMOnly";
       if (gmonly && player_id) {
@@ -236,19 +224,16 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     });
   }
 
-  getEditableHighlights(highlights: T.Highlights) {
-    const { dispatch } = this.props;
-    const color = this.props.ptui.state.grid.highlight_color;
-    const vis = this.props.ptui.state.grid.object_visibility;
+  function getEditableHighlights(highlights: T.Highlights) {
+    const color = grid.highlight_color;
+    const vis = grid.object_visibility;
     function removeHighlight(pt: T.Point3) {
-      dispatch({ type: "SetHighlights", highlights: highlights.remove(pt) });
+      M.useGrid.getState().setHighlights(highlights.remove(pt));
     }
     function addHighlight(pt: T.Point3) {
-      dispatch({
-        type: "SetHighlights", highlights: highlights.set(pt, [color, vis]),
-      });
+      M.useGrid.getState().setHighlights(highlights.set(pt, [color, vis]));
     }
-    const highlighted_tiles = this.getHighlights(highlights, undefined, pt => removeHighlight(pt));
+    const highlighted_tiles = getHighlights(highlights, undefined, pt => removeHighlight(pt));
     const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (highlights.has(pt)) { return; }
@@ -262,36 +247,33 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </>;
   }
 
-  getAnnotations(
-    dispatch: M.Dispatch, annotations: T.Annotations, player_id?: T.PlayerID,
+  function getAnnotations(
+    annotations: T.Annotations, player_id?: T.PlayerID,
     specialClick?: (pt: T.Point3) => void) {
     return M.filterMap(annotations.entrySeq().toArray(),
       ([pt, [note, vis]]) => {
         if (note !== "") {
-          return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis} dispatch={dispatch}
+          return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis}
             specialClick={specialClick}
             player_id={player_id} />;
         }
       });
   }
 
-  getEditableVolumes(): Array<JSX.Element> | undefined {
-    const { dispatch } = this.props;
-    return this.getVolumeConditions(0.5, (vcid, _, me) => {
+  function getEditableVolumes(): Array<JSX.Element> | undefined {
+    return getVolumeConditions(0.5, (vcid, _, me) => {
       const coords: [number, number] = [me.pageX, me.pageY];
-      dispatch({
-        type: "ActivateGridObjects", objects: [{ t: "VolumeCondition", id: vcid }],
-        coords,
-      });
+      M.useGrid.getState().activateObjects([{ t: "VolumeCondition", id: vcid }], coords);
     }
     );
   }
-  getVolumeConditions(
+
+  function getVolumeConditions(
     fillOpacity: number = 0.1,
     onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<any>) => void
       = () => undefined
   ): Array<JSX.Element> | undefined {
-    return this.props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
+    return props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
       svgVolume(id, vol_cond.volume, vol_cond.point,
         {
           fill: "green", fillOpacity: `${fillOpacity}`, strokeOpacity: "0.5",
@@ -300,14 +282,13 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         })).toArray();
   }
 
-  drawTargetedVolume(): JSX.Element | undefined {
-    const { scene, ptui } = this.props;
-    const options = ptui.state.grid.target_options;
+  function drawTargetedVolume(): JSX.Element | undefined {
+    const { scene } = props;
+    const options = grid.target_options;
     if (!options) { return; }
-    if (!this.state.targeting_point) { return; }
-    const target = this.state.targeting_point;
+    if (!targetingPoint) { return; }
     const ability_id = options.ability_id;
-    const ability = ptui.getAbility(ability_id);
+    const ability = M.useAbility(ability_id);
     if (!ability) { return; }
     const action = ability.action;
 
@@ -315,12 +296,12 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "Creature":
         switch (action.target.t) {
           case "AllCreaturesInVolumeInRange":
-            return svgVolume("target-volume", action.target.volume, target);
+            return svgVolume("target-volume", action.target.volume, targetingPoint);
           case "LineFromActor":
             const caster_pos = M.getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
             return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
-              x2={target.x + 50} y2={target.y + 50}
+              x2={targetingPoint.x + 50} y2={targetingPoint.y + 50}
               style={{ pointerEvents: "none" }}
               strokeWidth="3" stroke="black" />;
         }
@@ -328,15 +309,14 @@ export const SceneGrid = M.connectRedux(class SceneGrid
       case "SceneVolume":
         switch (action.target.t) {
           case "RangedVolume":
-            return svgVolume("target-volume", action.target.volume, target);
+            return svgVolume("target-volume", action.target.volume, targetingPoint);
         }
     }
   }
 
-  targetClicked(point: T.Point3) {
-    const { ptui, dispatch } = this.props;
-    const options = ptui.state.grid.target_options!;
-    const ability = ptui.getAbility(options.ability_id);
+  async function targetClicked(point: T.Point3) {
+    const options = grid.target_options!;
+    const ability = M.getAbility(options.ability_id);
     if (!ability) { return; }
     switch (ability.action.t) {
       case "Creature":
@@ -354,33 +334,32 @@ export const SceneGrid = M.connectRedux(class SceneGrid
           default: return;
         }
     }
-    this.setState({ targeting_point: point });
-    M.fetchAbilityTargets(dispatch, this.props.scene.id, options.cid,
-      options.ability_id, point).then(
-        ({ points, creatures }) =>
-          this.setState({ affected_points: points, affected_creatures: creatures }));
+    setTargetingPoint(point);
+    const {points, creatures} = await M.fetchAbilityTargets(props.scene.id, options.cid, options.ability_id, point);
+    setAffectedPoints(points);
+    setAffectedCreatures(creatures);
   }
 
-  contextMenu(pt: T.Point3, coords: [number, number]) {
-    const close = () => this.props.dispatch({ type: 'ClearGridMenu' });
+  function contextMenu(pt: T.Point3, coords: [number, number]) {
+    const close = () => M.useGrid.getState().clearContextMenu();
     return <PopupMenu coords={coords} onClose={close}>
-      <ContextMenu scene={this.props.scene} pt={pt} onClose={close} />
+      <ContextMenu scene={props.scene} pt={pt} onClose={close} />
     </PopupMenu>;
   }
 
-  renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
+  function renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
     const { objects, coords } = arg;
-    const { scene, creatures, dispatch } = this.props;
-    const close = () => dispatch({ type: 'ClearGridMenu' });
+    const { scene, creatures } = props;
+    const close = () => M.useGrid.getState().clearContextMenu();
     return <PopupMenu coords={coords} onClose={close}>
       <Menu vertical={true}>
         {objects.map(obj => {
           switch (obj.t) {
-            case "Annotation": return this.annotationMenu(close, scene, obj.pt);
+            case "Annotation": return annotationMenu(close, scene, obj.pt);
             case "SceneHotSpot":
-              return this.sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
-            case "Creature": return this.creatureMenu(close, creatures, obj.id);
-            case "VolumeCondition": return this.volumeConditionMenu(close, scene, obj.id);
+              return sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
+            case "Creature": return creatureMenu(close, creatures, obj.id);
+            case "VolumeCondition": return volumeConditionMenu(close, scene, obj.id);
           }
         }
         )}
@@ -388,12 +367,11 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </PopupMenu>;
   }
 
-  annotationMenu(close: () => void, scene: T.Scene, pt: T.Point3) {
+  function annotationMenu(close: () => void, scene: T.Scene, pt: T.Point3) {
     const ann = scene.annotations.get(pt);
     const delet = () => {
       const annotations = scene.annotations.delete(pt);
-      this.props.dispatch(
-        M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations }));
+      M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
       close();
     };
     if (ann) {
@@ -401,25 +379,24 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         <Menu.Item key="ANN">
           <Menu.Header>Annotation: {ann[0]}</Menu.Header>
         </Menu.Item>
-        {this.props.ptui.state.player_id ? null :
+        {playerID ? null :
           <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
       </>;
     }
     return;
   }
 
-  sceneHotspotMenu(
+  function sceneHotspotMenu(
     closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3) {
-    const linked_scene = this.props.ptui.getScene(target_scene_id);
+    const linked_scene = M.useScene(target_scene_id);
     if (!linked_scene) { return; }
     const jumpScene = () => {
-      this.props.dispatch({ type: "FocusGrid", scene_id: linked_scene.id });
+      M.useGrid.getState().setFocus(linked_scene.id);
       closeMenu();
     };
     const deleteHotspot = () => {
       const scene_hotspots = scene.scene_hotspots.remove(pt);
-      this.props.dispatch(M.sendCommand(
-        { t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
+      M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
       closeMenu();
     };
     return <React.Fragment key="Scene-Hotspot">
@@ -433,7 +410,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </React.Fragment>;
   }
 
-  creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
+  function creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
     const creature = M.get(creatures, creature_id);
     if (creature) {
       return <React.Fragment key="CREATURE">
@@ -452,11 +429,10 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     return;
   }
 
-  volumeConditionMenu(
+  function volumeConditionMenu(
     closeMenu: () => void, scene: T.Scene, condition_id: T.ConditionID) {
     const onClick = () => {
-      this.props.dispatch(M.sendCommand(
-        { t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id }));
+      M.sendCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id });
       closeMenu();
     };
     // unimplemented!: put a name here
@@ -466,7 +442,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     </>;
   }
 
-  getTargetTiles(
+  function getTargetTiles(
     options: T.PotentialTargets,
     onClick: (pt: T.Point3) => void): JSX.Element[] | undefined {
     switch (options.t) {
@@ -482,9 +458,9 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     }
   }
 
-  getAffectedTiles(): JSX.Element[] | undefined {
-    if (!this.state.affected_points) { return; }
-    return this.state.affected_points.map(
+  function getAffectedTiles(): JSX.Element[] | undefined {
+    if (!affectedPoints) { return; }
+    return affectedPoints.map(
       pt => {
         const rprops = tile_props("red", pt, { x: 1, y: 1 }, 0.5);
         return <rect key={pointKey("affected", pt)}
@@ -494,42 +470,40 @@ export const SceneGrid = M.connectRedux(class SceneGrid
     );
   }
 
-  topBar(): JSX.Element {
-    const { ptui, dispatch } = this.props;
-    if (this.state.targeting_point) {
+  function topBar(): JSX.Element {
+    if (targetingPoint) {
       return <div>Proceed with action?
-        <Button onClick={() => this.executePointTargetedAbility()}>Act</Button>
-        <Button onClick={() => this.clearTargets()}>Cancel</Button>
+        <Button onClick={() => executePointTargetedAbility()}>Act</Button>
+        <Button onClick={() => clearTargets()}>Cancel</Button>
       </div>;
     }
 
-    if (ptui.state.grid.movement_options) {
+    if (grid.movement_options) {
       return <div>Select a destination or
-       <Button onClick={() => dispatch({ type: 'ClearMovementOptions' })}>Cancel</Button>
+       <Button onClick={() => M.useGrid.getState().clearMovementOptions()}>Cancel</Button>
       </div>;
     }
-    if (ptui.state.grid.target_options) {
+    if (grid.target_options) {
       return <div>Select a target or
-      <Button onClick={() => dispatch({ type: 'ClearPotentialTargets' })}>Cancel</Button>
+      <Button onClick={() => M.useGrid.getState().clearPotentialTargets()}>Cancel</Button>
       </div>;
     }
     return <div>Drag to pan, mousewheel to zoom, click objects for more options,
       right-click to add things.</div>;
   }
 
-  clearTargets() {
-    this.setState({
-      affected_points: undefined, affected_creatures: undefined, targeting_point: undefined,
-    });
+  function clearTargets() {
+    setAffectedPoints(undefined);
+    setAffectedCreatures(undefined);
+    setTargetingPoint(undefined);
   }
 
-  executePointTargetedAbility() {
-    if (!this.state.targeting_point) { return; }
-    this.props.ptui.executeCombatPointTargetedAbility(
-      this.props.dispatch, this.state.targeting_point);
-    this.clearTargets();
+  function executePointTargetedAbility() {
+    if (!targetingPoint) { return; }
+    M.executeCombatPointTargetedAbility(targetingPoint);
+    clearTargets();
   }
-});
+}
 
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
@@ -600,30 +574,28 @@ function eyeball(pt: T.Point3): JSX.Element {
 
 
 interface SceneHotSpotProps { scene_id: T.SceneID; pos: T.Point3; }
-const SceneHotSpot = ReactRedux.connect()(
-  function SceneHotSpot(props: SceneHotSpotProps & M.DispatchProps) {
-    const { pos, scene_id, dispatch } = props;
-    const tprops = bare_tile_props(pos);
-    let element: SVGRectElement;
+function SceneHotSpot(props: SceneHotSpotProps) {
+  const { pos, scene_id } = props;
+  const tprops = bare_tile_props(pos);
+  let element: SVGRectElement;
 
-    const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element, dispatch);
-    const reflection_props = {
-      'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene_id,
-      'data-pt-pos': T.encodePoint3(pos),
-    };
-    return <g>
-      <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
-        ref={el => { if (el !== null) { element = el; } }}
-        {...reflection_props} />
-      <text
-        style={{ pointerEvents: "none" }}
-        x={pos.x + 50} y={pos.y}
-        dominantBaseline="hanging"
-        textAnchor="middle"
-        fontSize="65px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
-    </g>;
-  }
-);
+  const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element);
+  const reflection_props = {
+    'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene_id,
+    'data-pt-pos': T.encodePoint3(pos),
+  };
+  return <g>
+    <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
+      ref={el => { if (el !== null) { element = el; } }}
+      {...reflection_props} />
+    <text
+      style={{ pointerEvents: "none" }}
+      x={pos.x + 50} y={pos.y}
+      dominantBaseline="hanging"
+      textAnchor="middle"
+      fontSize="65px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
+  </g>;
+}
 
 interface PopupMenuProps {
   coords: [number, number];
@@ -652,17 +624,17 @@ const MovementTarget = M.connectRedux(
   function MovementTarget(
     props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean } & M.ReduxProps
   ): JSX.Element {
-    const { cid, pt, ptui, dispatch, teleport } = props;
+    const { cid, pt, teleport } = props;
     const tprops = tile_props("cyan", pt);
     function moveCreature() {
       if (cid) {
         if (teleport) {
-          ptui.setCreaturePos(dispatch, cid, pt);
+          M.setCreaturePos(cid, pt);
         } else {
-          ptui.moveCreature(dispatch, cid, pt);
+          M.moveCreature(cid, pt);
         }
       } else {
-        ptui.moveCombatCreature(dispatch, pt);
+        M.moveCombatCreature(pt);
       }
     }
     return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
@@ -674,8 +646,8 @@ interface AnnotationProps {
   player_id?: T.PlayerID;
   specialClick?: (pt: T.Point3) => void;
 }
-function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | null {
-  const { dispatch, pt, vis, player_id, specialClick } = props;
+function Annotation(props: AnnotationProps): JSX.Element | null {
+  const { pt, vis, player_id, specialClick } = props;
   if (M.isEqual(vis, { t: "GMOnly" }) && player_id) {
     return null;
   }
@@ -686,7 +658,7 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
     if (specialClick) {
       specialClick(pt);
     } else {
-      activateGridObjects(event, element, dispatch);
+      activateGridObjects(event, element);
     }
   };
 
@@ -707,17 +679,10 @@ function Annotation(props: AnnotationProps & M.DispatchProps): JSX.Element | nul
   </g>;
 }
 
-function activateGridObjects(
-  event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement,
-  dispatch: M.Dispatch) {
+function activateGridObjects(event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement) {
   const objects = findPTObjects(event);
   const coords = screenCoordsForRect(element);
-  const act: M.Action = {
-    type: "ActivateGridObjects",
-    objects,
-    coords,
-  };
-  dispatch(act);
+  M.useGrid.getState().activateObjects(objects, coords);
 }
 
 function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
@@ -782,10 +747,10 @@ function findElementsAtPoint<R>(
 }
 
 const GridCreature = M.connectRedux(
-  function GridCreature({ ptui, dispatch, creature, highlight }:
+  function GridCreature({ ptui, creature, highlight }:
     { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
     let element: SVGRectElement | SVGImageElement;
-    const onClick = (event: React.MouseEvent<any>) => activateGridObjects(event, element, dispatch);
+    const onClick = (event: React.MouseEvent<any>) => activateGridObjects(event, element);
 
     const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
     const combat = ptui.app.current_game.current_combat;
@@ -877,13 +842,16 @@ function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): [number, n
  * Create the `MapCreature`s for all creatures in a scene. This is common code shared for player
  * and GM views.
  */
-export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
-  : { [index: string]: MapCreature } {
+export function mapCreatures(app: T.App, grid: T.GridModel, scene: T.Scene): { [index: string]: MapCreature } {
+  const classes = app.current_game.classes;
+  const targetOptions = grid.target_options;
+  const abilities = app.current_game.abilities;
+  const sceneCreatures = M.getSceneCreatures(app, scene);
   const creatures = M.filterMap(
-    ptui.getSceneCreatures(scene),
+    sceneCreatures,
     creature => {
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
-      const class_ = ptui.app.current_game.classes.get(creature.class_);
+      const class_ = classes.get(creature.class_);
       if (class_) {
         let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
         const target = targetAction(creature);
@@ -901,16 +869,16 @@ export function mapCreatures(ptui: M.PTUI, dispatch: M.Dispatch, scene: T.Scene)
 
   function targetAction(creature: T.Creature)
     : { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
-    if (ptui.state.grid.target_options) {
-      const { ability_id, options } = ptui.state.grid.target_options;
+    if (targetOptions) {
+      const { ability_id, options } = targetOptions;
       if (options.t !== "CreatureIDs") { return undefined; }
       // this is quadratic (TODO: switch options.cids to a hashmap)
       if (LD.includes(options.cids, creature.id)) {
-        const ability = M.get(ptui.app.current_game.abilities, ability_id);
+        const ability = M.get(abilities, ability_id);
         if (ability) {
           return {
             name: `${ability.name} this creature`,
-            action: cid => { ptui.executeCombatAbility(dispatch, cid); },
+            action: cid => { M.executeCombatAbility(cid); },
           };
         }
       }
@@ -928,13 +896,10 @@ export function nearby_points(pos: T.Point3): Array<T.Point3> {
   return result;
 }
 
-export function requestTeleport(dispatch: M.Dispatch, scene: T.Scene, cid: T.CreatureID) {
+export function requestTeleport(scene: T.Scene, cid: T.CreatureID) {
   const scene_creature = scene.creatures.get(cid);
   if (scene_creature) {
-    dispatch({
-      type: 'DisplayMovementOptions',
-      cid, teleport: true, options: nearby_points(scene_creature[0]),
-    });
+    M.useGrid.getState().displayMovementOptions(nearby_points(scene_creature[0]), cid, true);
   }
 }
 
