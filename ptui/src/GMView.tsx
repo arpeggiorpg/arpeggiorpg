@@ -25,7 +25,7 @@ export function GMMain() {
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
-  const secondary = <div>Secondary!</div>; // renderSecondary();
+  const secondary = renderSecondary();
   const tertiary = <div>Tertiary!</div>; // renderTertiary();
   const bottom_bar = <div>Bottom!</div>;
   // const combat = M.useCombat();
@@ -40,15 +40,15 @@ export function GMMain() {
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 }
 
-function renderSecondary(ptui: M.PTUI, dispatch: M.Dispatch): JSX.Element | undefined {
-  if (!ptui.state.secondary_focus) { return undefined; }
-  const focus2 = ptui.state.secondary_focus;
+function renderSecondary() {
+  const focus2 = M.useSecondaryFocus(s => s.focus);
+  if (!focus2) { return undefined; }
   switch (focus2.t) {
     case "Note":
       return <CV.NoteEditor path={focus2.path} name={focus2.name}
         // We need to refocus with the new name after a note gets renamed:
         afterSave={(path, note) =>
-          dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: note.name } })} />;
+          M.useSecondaryFocus.getState().setFocus({ t: "Note", path, name: note.name })}/>;
     case "Creature":
       const creature = ptui.getCreature(focus2.creature_id);
       return creature

@@ -379,26 +379,19 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
   }
 }
 
-function activate_object(obj: FolderObject, dispatch: M.Dispatch): void {
+function activate_object(obj: FolderObject): void {
   switch (obj.t) {
     case "Scene":
-      dispatch({ type: "FocusGrid", scene_id: obj.id });
+      M.useGrid.getState().setFocus(obj.id);
       return;
     case "Creature":
-      dispatch({
-        type: "FocusSecondary",
-        focus: { t: "Creature", creature_id: obj.id },
-      });
+      M.useSecondaryFocus.getState().setFocus({ t: "Creature", creature_id: obj.id });
       return;
     case "Note":
-      dispatch({
-        type: "FocusSecondary",
-        focus: { t: "Note", path: obj.path, name: obj.name },
-      });
+      M.useSecondaryFocus.getState().setFocus({ t: "Note", path: obj.path, name: obj.name });
       return;
     case "Item":
-      dispatch(
-        { type: "FocusSecondary", focus: { t: "Item", path: obj.path, item_id: obj.id } });
+      M.useSecondaryFocus.getState().setFocus({ t: "Item", item_id: obj.id });
       return;
   }
 }
