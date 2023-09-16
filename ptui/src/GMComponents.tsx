@@ -1137,7 +1137,7 @@ export function SaveGameForm(props: { onClose: () => void }) {
   return <SaveGameishForm onClose={onClose} save={save} />;
 
   function save(name: string) {
-    ptui.saveGame(dispatch, name);
+    M.saveGame(name);
     onClose();
   }
 }

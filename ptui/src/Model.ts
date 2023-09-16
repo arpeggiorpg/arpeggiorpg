@@ -199,11 +199,6 @@ export class PTUI {
     return rpi_result;
   }
 
-  saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${RPI_URL}/saved_games/user/${game}`, { method: 'POST' },
-      JD.succeed(undefined), x => x);
-  }
-
   exportModule(dispatch: Dispatch, path: T.FolderPath, name: string): Promise<undefined> {
     const url = `${RPI_URL}/modules/${name}`;
     const opts = {
@@ -361,7 +356,13 @@ export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]>
   );
 }
 
-
+export async function saveGame(game: string): Promise<undefined> {
+  return ptfetch(
+    `${RPI_URL}/saved_games/user/${game}`,
+    { method: 'POST' },
+    JD.succeed(undefined)
+  );
+}
 
 const initialApp: T.App = {
   snapshots: [],
