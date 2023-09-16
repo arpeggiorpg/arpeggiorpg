@@ -2,9 +2,10 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 import * as JD from "type-safe-json-decoder";
-import * as Z from "zustand";
+import { createWithEqualityFn } from "zustand/traditional";
 
 import * as T from './PTTypes';
+import { shallow } from 'zustand/shallow';
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 
@@ -324,10 +325,9 @@ export function useScene(scene_id: T.SceneID): T.Scene | undefined {
 
 export function useScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
   // TODO: this isn't cacheable without deep equality checks
-  const scenes = useApp(s => s.app.current_game.scenes);
-  return LD.sortBy(
-    filterMap(scene_ids, sid => scenes.get(sid)),
-    s => s.name);
+  return useApp(s => LD.sortBy(
+    filterMap(scene_ids, sid => s.app.current_game.scenes.get(sid)),
+    s => s.name));
 }
 
 const initialApp: T.App = {
@@ -353,24 +353,27 @@ interface AppState {
   refreshGame: (game: T.Game) => void;
 }
 
-export const useApp = Z.create<AppState>()(set => ({
+export const useApp = createWithEqualityFn<AppState>()(set => ({
   app: initialApp,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
   refresh: app => set(() => ({ app, fetchStatus: "Ready" })),
   refreshGame: game => set(state => ({ app: { ...state.app, current_game: game } })),
   // TODO: maybe "fetch"?
-}));
+}),
+  // There may be an argument for *deep* comparison here. The app is 100%
+  // replaced on every refresh.
+  shallow);
 
 interface SecondaryFocusState {
   focus?: SecondaryFocus;
   setFocus: (f: SecondaryFocus) => void;
 }
 
-export const useSecondaryFocus = Z.create<SecondaryFocusState>()(set => ({
+export const useSecondaryFocus = createWithEqualityFn<SecondaryFocusState>()(set => ({
   focus: undefined,
   setFocus: focus => set(() => ({ focus }))
-}));
+}), shallow);
 
 interface GridState {
   grid: GridModel;
@@ -391,7 +394,7 @@ interface GridState {
   clearMovementOptions: () => void;
 }
 
-export const useGrid = Z.create<GridState>()(set => ({
+export const useGrid = createWithEqualityFn<GridState>()(set => ({
   grid: default_state.grid,
   focus: undefined,
   reset: () => set(() => ({ grid: default_state.grid })),
@@ -434,7 +437,7 @@ export const useGrid = Z.create<GridState>()(set => ({
   displayPotentialTargets: (cid, ability_id, options) => set(({ grid }) => ({ grid: { ...grid, target_options: { cid, ability_id, options } } })),
   clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
   clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
-}));
+}), shallow);
 
 export function useFocusedScene(): T.Scene | undefined {
   const focus = useGrid(g => g.focus);
@@ -452,15 +455,14 @@ export function useFocusedScene(): T.Scene | undefined {
 }
 
 
-class PlayerState {
+interface PlayerState {
   id: T.PlayerID | undefined;
-
-  set(id: T.PlayerID) {
-    this.id = id;
-  }
+  set: (id: T.PlayerID) => void;
 }
-
-export const usePlayer = Z.create<PlayerState>()(() => new PlayerState());
+export const usePlayer = createWithEqualityFn<PlayerState>()((set) => ({
+  id: undefined,
+  set: id => set(() => ({id}))
+}), Object.is);
 
 interface ErrorState {
   error: string | undefined;
@@ -468,11 +470,11 @@ interface ErrorState {
   clear: () => void
 }
 
-export const useError = Z.create<ErrorState>()(set => ({
+export const useError = createWithEqualityFn<ErrorState>()(set => ({
   error: undefined,
   set: error => set(() => ({ error })),
   clear: () => set(() => ({ error: undefined }))
-}));
+}), Object.is);
 
 // Just for debugging
 (window as any).ptstate = { useError, usePlayer, useGrid, useSecondaryFocus, useApp };
@@ -538,7 +540,7 @@ export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefin
   return app.current_game.creatures.get(cid);
 }
 
-export function useCreature(cid: T.CreatureID) {}
+export function useCreature(cid: T.CreatureID) { }
 
 export async function sendCommand(cmd: T.GameCommand) {
   const json = T.encodeGameCommand(cmd);
@@ -629,8 +631,8 @@ export interface ReduxProps extends DispatchProps { ptui: PTUI; }
 
 export function connectRedux<BaseProps extends {} & object>(
   x: React.ComponentType<BaseProps & ReduxProps>
-) : React.ComponentType<BaseProps> {
-    return x;
+): React.ComponentType<BaseProps> {
+  return x;
 }
 
 export function fetchAbilityTargets(
