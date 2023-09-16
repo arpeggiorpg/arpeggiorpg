@@ -235,21 +235,6 @@ export class PTUI {
     );
   }
 
-  getNote(path: T.FolderPath, name: string): T.Note | undefined {
-    const fnode = this.getFolderNode(path);
-    if (fnode && fnode.notes.hasOwnProperty(name)) {
-      return fnode.notes[name];
-    }
-  }
-
-  getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
-    let cur: T.Folder | undefined = this.app.current_game.campaign;
-    for (const seg of path) {
-      cur = cur.children.get(seg);
-      if (!cur) { return undefined; }
-    }
-    return cur.data;
-  }
 
   getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
     const entry = idx(combat.creatures.data, combat.creatures.cursor);
@@ -280,6 +265,26 @@ export class PTUI {
     const list = I.List(arr);
     return list.sortBy(([i, _]) => i.name);
   }
+}
+
+export function useNote(path: T.FolderPath, name: string | undefined): T.Note | undefined {
+  if (!name) return;
+  const fnode = useFolderNode(path);
+  if (fnode && fnode.notes.hasOwnProperty(name)) {
+    return fnode.notes[name];
+  }
+}
+
+export function useFolderNode(path: T.FolderPath): T.FolderNode | undefined {
+  return useApp(s => {
+    let cur: T.Folder | undefined = s.app.current_game.campaign;
+    for (const seg of path) {
+      cur = cur.children.get(seg);
+      if (!cur) { return undefined; }
+    }
+    return cur.data;
+  });
+
 }
 
 export async function loadGame(source: T.ModuleSource, name: string): Promise<void> {

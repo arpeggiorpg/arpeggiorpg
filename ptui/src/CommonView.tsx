@@ -967,141 +967,115 @@ interface NoteEditorProps {
   disallow_rename?: boolean;
   afterSave?: (path: T.FolderPath, note: T.Note) => void;
 }
-class NoteEditorComp extends React.Component<
-  NoteEditorProps & M.ReduxProps,
-  { name: string | undefined; content: string | undefined }
-> {
-  constructor(props: NoteEditorProps & M.ReduxProps) {
-    super(props);
-    this.state = { name: this.props.name, content: undefined };
+
+export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) {
+
+  // RADIX BIG OLD TODO
+  // componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
+  //   // Reasons this is called:
+  //   // 1. clicking on a different note while a note is already loaded. We get new path and/or name
+  //   // 2. new data from the server. We need to make sure we're displaying the latest data as long as
+  //   //    user hasn't made any changes to the content.
+  //   if (
+  //     !M.isEqual(
+  //       [this.props.path, this.props.name],
+  //       [nextProps.path, nextProps.name]
+  //     )
+  //   ) {
+  //     this.setState({ name: nextProps.name, content: undefined });
+  //   }
+  //   if (nextProps.name !== undefined) {
+  //     const existing = nextProps.ptui.getNote(nextProps.path, nextProps.name);
+  //     if (existing !== undefined && existing.content === this.state.content) {
+  //       this.setState({ content: undefined });
+  //     }
+  //   }
+  // }
+
+  const [draftName, setDraftName] = React.useState(props.name);
+  const [draftContent, setDraftContent] = React.useState<string|undefined>(undefined);
+
+  const originalNote = M.useNote(path, props.name);
+  if (!originalNote) {
+    return <div>The note at "{M.folderPathToString(path)}" does not exist.</div>;
   }
+  const originalContent = originalNote?.content;
+  const renderedContent = draftContent ?? originalContent ?? "";
 
-  componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
-    // Reasons this is called:
-    // 1. clicking on a different note while a note is already loaded. We get new path and/or name
-    // 2. new data from the server. We need to make sure we're displaying the latest data as long as
-    //    user hasn't made any changes to the content.
-    if (
-      !M.isEqual(
-        [this.props.path, this.props.name],
-        [nextProps.path, nextProps.name]
-      )
-    ) {
-      this.setState({ name: nextProps.name, content: undefined });
-    }
-    if (nextProps.name !== undefined) {
-      const existing = nextProps.ptui.getNote(nextProps.path, nextProps.name);
-      if (existing !== undefined && existing.content === this.state.content) {
-        this.setState({ content: undefined });
-      }
-    }
-  }
-
-  render(): JSX.Element {
-    const { path, disallow_rename, ptui } = this.props;
-
-    if (!ptui.getFolderNode(path)) {
-      return <div>The path "{M.folderPathToString(path)}" does not exist.</div>;
-    }
-    const originalNote = this.props.name
-      ? ptui.getNote(path, this.props.name)
-      : undefined;
-    const originalContent = originalNote ? originalNote.content : undefined;
-
-    function chain<T>(arr: Array<T | undefined>): T | undefined {
-      for (const el of arr) {
-        if (el !== undefined) {
-          return el;
-        }
-      }
-    }
-    const renderedContent = chain([this.state.content, originalContent, ""]);
-
-    return (
-      <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div>
-            <span style={{ fontSize: "xx-small" }}>
-              {M.folderPathToString(path)}
-            </span>
-            <br />
-            <Toggler
-              a={(edit) => (
-                <div>
-                  <strong>
-                    {this.state.name === undefined
-                      ? "Enter a name"
-                      : this.state.name}
-                  </strong>
-                  {disallow_rename ? null : (
-                    <Icon
-                      onClick={edit}
-                      name="edit"
-                      style={{ cursor: "pointer" }}
-                    />
-                  )}
-                </div>
-              )}
-              b={(view) => (
-                <TextInput.TextInput
-                  defaultValue={this.state.name || ""}
-                  onSubmit={(input) => {
-                    this.setState({ name: input });
-                    view();
-                  }}
-                  onCancel={view}
-                />
-              )}
-            />
-          </div>
-          <Button
-            disabled={
-              this.state.name === undefined ||
-              (renderedContent === originalContent &&
-                this.state.name === this.props.name)
-            }
-            onClick={() => this.submit()}
-          >
-            Save
-          </Button>
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>
+          <span style={{ fontSize: "xx-small" }}>
+            {M.folderPathToString(path)}
+          </span>
+          <br />
+          <Toggler
+            a={(edit) => (
+              <div>
+                <strong>
+                  {draftName ?? "Enter a name"}
+                </strong>
+                {disallow_rename ? null : (
+                  <Icon
+                    onClick={edit}
+                    name="edit"
+                    style={{ cursor: "pointer" }}
+                  />
+                )}
+              </div>
+            )}
+            b={(view) => (
+              <TextInput.TextInput
+                defaultValue={draftName || ""}
+                onSubmit={(input) => {
+                  setDraftName(input);
+                  view();
+                }}
+                onCancel={view}
+              />
+            )}
+          />
         </div>
-        <textarea
-          style={{ flex: "1", resize: "none", width: "100%", height: "100%" }}
-          value={renderedContent}
-          onChange={(e) => this.setState({ content: e.currentTarget.value })}
-        />
+        <Button
+          disabled={
+            draftName === undefined ||
+            (renderedContent === originalContent && draftName === props.name)
+          }
+          onClick={submit}
+        >
+          Save
+        </Button>
       </div>
-    );
-  }
-  submit() {
-    const { path, ptui, dispatch, afterSave } = this.props;
-    if (!this.state.name) {
+      <textarea
+        style={{ flex: "1", resize: "none", width: "100%", height: "100%" }}
+        value={renderedContent}
+        onChange={(e) => setDraftContent(e.currentTarget.value)}
+      />
+    </div>
+  );
+
+  function submit() {
+    const { afterSave } = props;
+    if (!draftName) {
       console.log("[NoteEditorComp.submit] I have no name");
       return;
     }
-    const name = this.state.name;
-    const oldNote = this.props.name
-      ? ptui.getNote(path, this.props.name)
-      : undefined;
-    const content =
-      this.state.content === undefined && oldNote !== undefined
-        ? oldNote.content
-        : this.state.content;
+    const content = draftContent ?? originalNote?.content;
     if (!content) {
       console.log("[NoteEditorComp.submit] No content to save");
       return;
     }
-    const newNote = { name, content };
-    const cmd: T.GameCommand = oldNote
-      ? { t: "EditNote", path, name: oldNote.name, note: newNote }
+    const newNote = { name: draftName, content };
+    const cmd: T.GameCommand = originalNote
+      ? { t: "EditNote", path, name: originalNote.name, note: newNote }
       : { t: "CreateNote", path, note: newNote };
-    ptui.sendCommand(dispatch, cmd);
+    M.sendCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);
     }
   }
 }
-export const NoteEditor = M.connectRedux(NoteEditorComp);
 
 export type ToggleFunc = () => void;
 interface TogglerProps {
