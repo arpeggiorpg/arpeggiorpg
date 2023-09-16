@@ -1,7 +1,6 @@
 import * as I from 'immutable';
 import * as LD from "lodash";
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
 import { Button, Menu } from 'semantic-ui-react';
 
@@ -356,7 +355,7 @@ export const SceneGrid = M.connectRedux(class SceneGrid
         }
     }
     this.setState({ targeting_point: point });
-    M.fetchAbilityTargets(dispatch, ptui.rpi_url, this.props.scene.id, options.cid,
+    M.fetchAbilityTargets(dispatch, this.props.scene.id, options.cid,
       options.ability_id, point).then(
         ({ points, creatures }) =>
           this.setState({ affected_points: points, affected_creatures: creatures }));

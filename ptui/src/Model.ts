@@ -199,20 +199,6 @@ export class PTUI {
     return rpi_result;
   }
 
-  fetchSavedGames(dispatch: Dispatch): Promise<[Array<string>, Array<string>]> {
-    return ptfetch(dispatch, RPI_URL + '/saved_games', undefined,
-      JD.tuple(JD.array(JD.string()), JD.array(JD.string())),
-      x => x);
-  }
-
-  loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<void> {
-    const url = source === "SavedGame"
-      ? `${RPI_URL}/saved_games/user/${name}/load`
-      : `${RPI_URL}/saved_games/module/${name}/load`;
-
-    return ptfetch(dispatch, url, { method: 'POST' }, T.decodeApp, app => resetApp(dispatch, app));
-  }
-
   saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
     return ptfetch(dispatch, `${RPI_URL}/saved_games/user/${game}`, { method: 'POST' },
       JD.succeed(undefined), x => x);
@@ -226,19 +212,6 @@ export class PTUI {
       headers: { "content-type": "application/json" },
     };
     return ptfetch(dispatch, url, opts, JD.succeed(undefined), x => x);
-  }
-
-  focused_scene(): T.Scene | undefined {
-    // oh for Rust's "?" operator
-    const pid = this.state.player_id;
-    if (pid) {
-      const player = this.app.current_game.players.get(pid);
-      if (player && player.scene) {
-        return this.app.current_game.scenes.get(player.scene);
-      }
-    } else if (this.state.grid_focus) {
-      return this.app.current_game.scenes.get(this.state.grid_focus.scene_id);
-    }
   }
 
   requestCombatMovement(dispatch: Dispatch) {
@@ -371,6 +344,24 @@ export class PTUI {
   }
 }
 
+export async function loadGame(source: T.ModuleSource, name: string): Promise<void> {
+  const url = source === "SavedGame"
+    ? `${RPI_URL}/saved_games/user/${name}/load`
+    : `${RPI_URL}/saved_games/module/${name}/load`;
+
+  const app = await ptfetch(url, { method: 'POST' }, T.decodeApp);
+  resetApp(app);
+}
+
+export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]> {
+  return ptfetch(
+    RPI_URL + '/saved_games',
+    undefined,
+    JD.tuple(JD.array(JD.string()), JD.array(JD.string()))
+  );
+}
+
+
 
 const initialApp: T.App = {
   snapshots: [],
@@ -477,6 +468,21 @@ export const useGrid = Z.create<GridState>()(set => ({
   clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
   clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
 }));
+
+export function useFocusedScene(): T.Scene | undefined {
+  const focus = useGrid(g => g.focus);
+  const pid = usePlayer(p => p.id);
+  const game = useApp(a => a.app.current_game);
+  // oh for Rust's "?" operator
+  if (pid) {
+    const player = game.players.get(pid);
+    if (player && player.scene) {
+      return game.scenes.get(player.scene);
+    }
+  } else if (focus) {
+    return game.scenes.get(focus.scene_id);
+  }
+}
 
 
 class PlayerState {
@@ -598,18 +604,14 @@ export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
     }
   };
 
-export const newGame: ThunkAction<void> =
-  (dispatch, getState) => {
-    const ptui = getState();
-    return ptfetch(
-      dispatch, `${ptui.rpi_url}/new_game`, { method: "POST" }, T.decodeApp,
-      app => resetApp(dispatch, app));
-  };
+export async function newGame() {
+  const app = await ptfetch(`${RPI_URL}/new_game`, { method: "POST" }, T.decodeApp);
+  resetApp(app);
+}
 
-function resetApp(dispatch: Dispatch, app: T.App) {
-  dispatch({ type: "ResetState" });
-  dispatch({ type: "RefreshApp", app });
-  return;
+function resetApp(app: T.App) {
+  useApp.getState().refresh(app);
+  useGrid.getState().reset();
 }
 
 function selectAbility(
@@ -639,12 +641,9 @@ export interface DispatchProps { dispatch: Dispatch; }
 export interface ReduxProps extends DispatchProps { ptui: PTUI; }
 
 export function connectRedux<BaseProps extends {} & object>(
-  x: React.ComponentType<BaseProps & ReduxProps>)
-  : React.ComponentType<BaseProps> {
-  const connector = ReactRedux.connect((ptui, _) => ({ ptui }), dispatch => ({ dispatch }));
-  // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
-  // `as any`, when I didn't need it previously.
-  return (connector as any)(x);
+  x: React.ComponentType<BaseProps & ReduxProps>
+) : React.ComponentType<BaseProps> {
+    return x;
 }
 
 export function fetchAbilityTargets(

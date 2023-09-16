@@ -1113,20 +1113,21 @@ export function SavedGames(): JSX.Element {
 
 function NewGame(props: { onClose: () => void }) {
   const { onClose } = props;
-  function onClick() {
-    dispatch(M.newGame);
-    onClose();
-  }
   return <>
     <div>Are you sure? Your unsaved data will be lost.</div>
     <Button onClick={() => onClick()}>Do it!</Button>
   </>;
+
+  function onClick() {
+    M.newGame();
+    onClose();
+  }
 }
 
 export function LoadGameForm(props: { onClose: () => void }) {
   const { onClose } = props;
   return <Form>
-    <GameList onSelect={(source, name) => { ptui.loadGame(dispatch, source, name); onClose(); }} />
+    <GameList onSelect={(source, name) => { M.loadGame(source, name); onClose(); }} />
     <Form.Button onClick={onClose}>Cancel</Form.Button>
   </Form>;
 }
@@ -1166,11 +1167,16 @@ function GameList(props: GameListProps) {
   const [modules, setModules] = React.useState<string[] | undefined>(undefined);
   const [games, setGames] = React.useState<string[] | undefined>(undefined);
 
-  // TODO: useEffect?
-  // componentDidMount() {
-  //   this.props.ptui.fetchSavedGames(this.props.dispatch)
-  //     .then(([modules, games]) => {setGames(games); setModules(modules)});
-  // }
+  // Gross :-(
+  React.useEffect(() => {
+    const fetch = async () => {
+      const [modules, games] = await M.fetchSavedGames();
+      setGames(games);
+      setModules(modules);
+      console.log("saved games:", games, modules);
+    };
+    fetch();
+  }, []);
 
   const { onSelect } = props;
   if (games === undefined || modules === undefined) {
