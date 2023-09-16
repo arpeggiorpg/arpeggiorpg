@@ -2,7 +2,6 @@ import * as Fuse from 'fuse.js';
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
 import {
   Button, Checkbox, Divider, Dropdown, Icon, Input, Label, List, Menu,
@@ -11,49 +10,38 @@ import {
 import * as SUI from 'semantic-ui-react';
 
 import * as CV from './CommonView';
-import * as Comp from './Component';
 import * as CF from './CoolForm';
 import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export const Campaign = ReactRedux.connect(
-  (ptui: M.PTUI) => ({ campaign: ptui.app.current_game.campaign })
-)(
-  function Campaign(props: { campaign: T.Folder; dispatch: M.Dispatch }): JSX.Element {
-    const { campaign } = props;
-    return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
-  });
+export function Campaign(props: { campaign: T.Folder }) {
+  const campaign = M.useApp(s => s.app.current_game.campaign);
+  return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
+}
 
 interface MultiItemSelectorProps {
   require_selected: I.Set<T.ItemID>;
   on_selected: (cs: I.Set<T.ItemID>) => void;
   on_cancel: () => void;
 }
-export const MultiItemSelector = M.connectRedux(class MultiItemSelector
-  extends React.Component<MultiItemSelectorProps & M.ReduxProps, { selections: I.Set<T.ItemID> }> {
-  constructor(props: MultiItemSelectorProps & M.ReduxProps) {
-    super(props);
-    this.state = { selections: this.props.require_selected };
-  }
-  render(): JSX.Element {
-    const { ptui } = this.props;
-    const items = collectAllItems(ptui, [], ptui.app.current_game.campaign);
-    const display = ([path, item]: [T.FolderPath, T.Item]) =>
-      `${M.folderPathToString(path)}/${item.name}`;
-    return <div>
-      {ptui.getItems(this.state.selections.toArray()).map(
-        item => <Label key={item.id}>{item.name}</Label>)}
-      <SearchSelect values={items}
-        onSelect={([_, item]: [T.FolderPath, T.Item]) =>
-          this.setState({ selections: this.state.selections.add(item.id) })}
-        display={display}
-      />
-      <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
-      <Button onClick={this.props.on_cancel}>Cancel</Button>
-    </div>;
-  }
-});
+export function MultiItemSelector(props: MultiItemSelectorProps) {
+  const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.require_selected);
+  const items = collectAllItems([], ptui.app.current_game.campaign);
+  const display = ([path, item]: [T.FolderPath, T.Item]) =>
+    `${M.folderPathToString(path)}/${item.name}`;
+  return <div>
+    {ptui.getItems(this.state.selections.toArray()).map(
+      item => <Label key={item.id}>{item.name}</Label>)}
+    <SearchSelect values={items}
+      onSelect={([_, item]: [T.FolderPath, T.Item]) =>
+        this.setState({ selections: this.state.selections.add(item.id) })}
+      display={display}
+    />
+    <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
+    <Button onClick={this.props.on_cancel}>Cancel</Button>
+  </div>;
+}
 
 interface SceneSelectorProps {
   onCancel: () => void;
@@ -187,7 +175,133 @@ interface FTProps {
   start_open?: boolean;
   selecting?: SelectableProps;
 }
-interface FTDerivedProps {
+
+function FolderTree(props: FTProps) {
+  const [expanded, setExpanded] = React.useState(props.start_open || false);
+  const { folder, selecting, path } = props;
+
+  const objects = useFolderTreeData(path, folder, selecting);
+
+  const children = [
+    section("Notes", objects.note_objects),
+    section("Classes", objects.class_objects),
+    section("Abilities", objects.ability_objects),
+    section("Scenes", objects.scene_objects),
+    section("Creatures", objects.creature_objects),
+    section("Items", objects.item_objects),
+  ];
+  function divider(name: string) {
+    return <Divider horizontal={true} fitted={true} key={`${name}-div`}
+      style={{
+        fontSize: "70%", color: "gray", marginBottom: "4px",
+        marginTop: "4px", width: '200px',
+      }}
+    >{name}</Divider>;
+  }
+  function section(name: string, objects: Array<FolderObject>) {
+    if (objects.length === 0) { return []; }
+    return [divider(name)].concat(
+      objects.map(obj => {
+        const iid = object_to_item_id(obj);
+        return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
+          />;
+      }));
+  }
+
+  const subfolders = LD.sortBy(folder.children.entrySeq().toArray(), ([name, _]) => name).map(
+    ([name, subfolder]) =>
+      <FolderTree key={name} name={name} folder={subfolder}
+        path={LD.concat(props.path, name)} selecting={selecting} />
+  );
+  const folder_menu = <Dropdown icon='ellipsis horizontal'>
+    <Dropdown.Menu>
+      <Dropdown.Header content={M.folderPathToString(path)} />
+      <CV.ModalMaker
+        button={open =>
+          <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
+        header={<span>Create new scene in {M.folderPathToString(path)}</span>}
+        content={close => <GM.CreateScene path={path} onDone={close} />} />
+      <CV.ModalMaker
+        button={open =>
+          <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
+        header={<span>Create new creature in {M.folderPathToString(path)}</span>}
+        content={close => <GM.CreateCreature path={path} onClose={close} />}
+      />
+      <Dropdown.Item icon={object_icon("Note")} text='Create Note'
+        onClick={() =>
+          dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: undefined } })} />
+      <CV.ModalMaker
+        button={toggler =>
+          <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
+        header={<span>Create item in {M.folderPathToString(path)}</span>}
+        content={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
+      <CV.ModalMaker
+        button={open => <Dropdown.Item icon={object_icon("Folder")} text='Create Folder'
+          onClick={open} />}
+        header={<span>Create a folder in {M.folderPathToString(path)}</span>}
+        content={close => <GM.CreateFolder path={path} onDone={close} />}
+      />
+
+      <Dropdown.Divider />
+
+      {!M.isEqual(path, [])
+        ? <>
+          <Dropdown.Item text="Delete this folder" icon="delete"
+            onClick={() => dispatch(M.sendCommand(
+              {
+                t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
+                // ! because we KNOW this isn't [] (see conditional above)
+                item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
+              }))} />
+          <CV.ModalMaker
+            button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
+            header={<span>Rename {M.folderPathToString(path)}</span>}
+            content={close => <MoveFolderItem
+              source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
+              onDone={close} />}
+          />
+          <Dropdown.Divider />
+        </>
+        : null}
+
+      <CV.ModalMaker
+        button={open =>
+          <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
+        header={<span>Export folder</span>}
+        content={close => <GM.ExportModule path={path} onDone={close} />} />
+      <CV.ModalMaker
+        button={open =>
+          <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
+        header={<span>Import Module</span>}
+        content={close => <GM.ImportModule path={path} onDone={close} />} />
+    </Dropdown.Menu>
+  </Dropdown>;
+  const list_item = <List.Item>
+    <List.Icon name={expanded ? 'folder open' : 'folder'} />
+    <List.Content style={{ width: '100%' }}>
+      <List.Header style={{ cursor: "pointer" }}
+        onClick={() => setExpanded(!expanded)}>
+        {props.name}
+        {expanded ? folder_menu : null}
+      </List.Header>
+      {expanded
+        ? <List.List>
+          {children}
+          {subfolders.length > 0 ? divider("Folders") : null}
+          {subfolders}
+        </List.List>
+        : null}
+    </List.Content>
+  </List.Item>;
+
+  if (M.isEqual(path, [])) {
+    return <List size="large">{list_item}</List>;
+  } else {
+    return list_item;
+  }
+}
+
+interface FTData {
   class_objects: Array<FolderObject>;
   ability_objects: Array<FolderObject>;
   note_objects: Array<FolderObject>;
@@ -196,175 +310,50 @@ interface FTDerivedProps {
   item_objects: Array<FolderObject>;
 }
 
-class FolderTreeComp
-  extends Comp.Component<
-  FTProps & FTDerivedProps & M.DispatchProps,
-  { expanded: boolean }
-  > {
-
-  constructor(props: FTProps & FTDerivedProps & M.DispatchProps) {
-    super(props);
-    this.state = { expanded: props.start_open || false };
+function useFolderTreeData(path: T.FolderPath, folder: T.Folder, selecting?: SelectableProps): FTData {
+  function dont_show(t: FolderContentType) {
+    return selecting && selecting.item_type !== t;
   }
-  render(): JSX.Element {
-    const { folder, selecting, path, dispatch } = this.props;
-
-    const children = [
-      section("Notes", this.props.note_objects),
-      section("Classes", this.props.class_objects),
-      section("Abilities", this.props.ability_objects),
-      section("Scenes", this.props.scene_objects),
-      section("Creatures", this.props.creature_objects),
-      section("Items", this.props.item_objects),
-    ];
-    function divider(name: string) {
-      return <Divider horizontal={true} fitted={true} key={`${name}-div`}
-        style={{
-          fontSize: "70%", color: "gray", marginBottom: "4px",
-          marginTop: "4px", width: '200px',
-        }}
-      >{name}</Divider>;
-    }
-    function section(name: string, objects: Array<FolderObject>) {
-      if (objects.length === 0) { return []; }
-      return [divider(name)].concat(
-        objects.map(obj => {
-          const iid = object_to_item_id(obj);
-          return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
-            dispatch={dispatch} />;
-        }));
-    }
-
-    const subfolders = LD.sortBy(folder.children.entrySeq().toArray(), ([name, _]) => name).map(
-      ([name, subfolder]) =>
-        <FolderTree key={name} name={name} folder={subfolder}
-          path={LD.concat(this.props.path, name)} selecting={selecting} />
-    );
-    const folder_menu = <Dropdown icon='ellipsis horizontal'>
-      <Dropdown.Menu>
-        <Dropdown.Header content={M.folderPathToString(path)} />
-        <CV.ModalMaker
-          button={open =>
-            <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
-          header={<span>Create new scene in {M.folderPathToString(path)}</span>}
-          content={close => <GM.CreateScene path={path} onDone={close} />} />
-        <CV.ModalMaker
-          button={open =>
-            <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
-          header={<span>Create new creature in {M.folderPathToString(path)}</span>}
-          content={close => <GM.CreateCreature path={path} onClose={close} />}
-        />
-        <Dropdown.Item icon={object_icon("Note")} text='Create Note'
-          onClick={() =>
-            dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: undefined } })} />
-        <CV.ModalMaker
-          button={toggler =>
-            <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
-          header={<span>Create item in {M.folderPathToString(path)}</span>}
-          content={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
-        <CV.ModalMaker
-          button={open => <Dropdown.Item icon={object_icon("Folder")} text='Create Folder'
-            onClick={open} />}
-          header={<span>Create a folder in {M.folderPathToString(path)}</span>}
-          content={close => <GM.CreateFolder path={path} onDone={close} />}
-        />
-
-        <Dropdown.Divider />
-
-        {!M.isEqual(path, [])
-          ? <>
-            <Dropdown.Item text="Delete this folder" icon="delete"
-              onClick={() => dispatch(M.sendCommand(
-                {
-                  t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
-                  // ! because we KNOW this isn't [] (see conditional above)
-                  item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
-                }))} />
-            <CV.ModalMaker
-              button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
-              header={<span>Rename {M.folderPathToString(path)}</span>}
-              content={close => <MoveFolderItem
-                source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
-                onDone={close} dispatch={dispatch} />}
-            />
-            <Dropdown.Divider />
-          </>
-          : null}
-
-        <CV.ModalMaker
-          button={open =>
-            <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
-          header={<span>Export folder</span>}
-          content={close => <GM.ExportModule path={path} onDone={close} />} />
-        <CV.ModalMaker
-          button={open =>
-            <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
-          header={<span>Import Module</span>}
-          content={close => <GM.ImportModule path={path} onDone={close} />} />
-      </Dropdown.Menu>
-    </Dropdown>;
-    const list_item = <List.Item>
-      <List.Icon name={this.state.expanded ? 'folder open' : 'folder'} />
-      <List.Content style={{ width: '100%' }}>
-        <List.Header style={{ cursor: "pointer" }}
-          onClick={() => this.setState({ expanded: !this.state.expanded })}>
-          {this.props.name}
-          {this.state.expanded ? folder_menu : null}
-        </List.Header>
-        {this.state.expanded
-          ? <List.List>
-            {children}
-            {subfolders.length > 0 ? divider("Folders") : null}
-            {subfolders}
-          </List.List>
-          : null}
-      </List.Content>
-    </List.Item>;
-
-    if (M.isEqual(path, [])) {
-      return <List size="large">{list_item}</List>;
-    } else {
-      return list_item;
-    }
+  function mget<K, V>(m: I.Map<K, V>, keys: K[]): V[] {
+    return M.filterMap(keys, k => m.get(k));
   }
+  function mgetO<V>(m: { [index: string]: V }, keys: string[]): V[] {
+    return M.filterMap(keys, k => m[k]);
+  }
+
+  const scene_objects = M.useApp(s =>
+    dont_show("Scene") ? []
+    : mget(s.app.current_game.scenes, folder.data.scenes).map(
+        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name })));
+  const creature_objects = M.useApp(s =>
+    dont_show("Creature") ? [] : mget(s.app.current_game.creatures, folder.data.creatures).map(
+      (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name })));
+  const item_objects = M.useApp(s =>
+    dont_show("Item") ? [] :
+    mgetO(s.app.current_game.items, folder.data.items).map(
+      (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name })));
+  const ability_objects = M.useApp(s =>
+    dont_show("Ability") ? [] :
+    mgetO(s.app.current_game.abilities, folder.data.abilities).map(
+    (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name })));
+  const class_objects = M.useApp(s =>
+    dont_show("Class") ? [] :
+    mget(s.app.current_game.classes, folder.data.classes).map(
+    (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name })));
+
+  const note_objects = dont_show("Note") ? [] :
+    LD.sortBy(LD.keys(folder.data.notes), n => n).map(
+      (name): FolderObject => ({ t: "Note", path, name }));
+
+  return {
+    note_objects,
+    class_objects,
+    ability_objects,
+    scene_objects,
+    creature_objects,
+    item_objects,
+  };
 }
-
-const FolderTree = ReactRedux.connect(
-  (ptui: M.PTUI, props: FTProps) => {
-
-    const { selecting, folder, path } = props;
-
-    function dont_show(t: FolderContentType) {
-      return selecting && selecting.item_type !== t;
-    }
-
-    const scene_objects = dont_show("Scene") ? [] :
-      ptui.getScenes(folder.data.scenes).map(
-        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
-    const creature_objects = dont_show("Creature") ? [] :
-      ptui.getCreatures(folder.data.creatures).map(
-        (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
-    const note_objects = dont_show("Note") ? [] :
-      LD.sortBy(LD.keys(folder.data.notes), n => n).map(
-        (name): FolderObject => ({ t: "Note", path, name }));
-    const item_objects = dont_show("Item") ? [] :
-      ptui.getItems(folder.data.items).map(
-        (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
-    const ability_objects = dont_show("Ability") ? [] : ptui.getAbilities(folder.data.abilities).map(
-      (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name }));
-    const class_objects = dont_show("Class") ? [] : ptui.getClasses(folder.data.classes).map(
-      (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
-
-    return {
-      note_objects,
-      class_objects,
-      ability_objects,
-      scene_objects,
-      creature_objects,
-      item_objects,
-    };
-  }
-)(FolderTreeComp);
 
 
 function object_icon(name: FolderContentType): SUI.SemanticICONS {
@@ -447,20 +436,20 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
           header={<span>Copy {name}</span>}
           content={close => <CopyFolderItem source={object.path} onDone={close}
             item_id={object_to_item_id(object)}
-            dispatch={dispatch} />}
+            />}
         />
         <CV.ModalMaker
           button={open => <Dropdown.Item onClick={open}>Move</Dropdown.Item>}
           header={<span>Move {name}</span>}
           content={close => <MoveFolderItem source={object.path} onDone={close}
-            item_id={object_to_item_id(object)} dispatch={dispatch} />}
+            item_id={object_to_item_id(object)} />}
         />
         <CV.ModalMaker
           button={open => <Dropdown.Item onClick={open}>Delete</Dropdown.Item>}
           header={<span>Delete {name}</span>}
           content={close => <DeleteFolderItem location={object.path} onDone={close}
             item_id={object_to_item_id(object)}
-            dispatch={dispatch} />}
+            />}
         />
 
       </Dropdown.Menu>
@@ -619,49 +608,36 @@ function collectAllFolders(path: T.FolderPath, folder: T.Folder): Array<T.Folder
 }
 
 function collectFolderObjects<T>(
-  ptui: M.PTUI, path: T.FolderPath, folder: T.Folder,
-  getObjects: (ptui: M.PTUI, node: T.FolderNode) => Array<T>):
-  Array<[T.FolderPath, T]> {
-  const objs = getObjects(ptui, folder.data);
+  path: T.FolderPath, folder: T.Folder, getObjects: (node: T.FolderNode) => Array<T>
+): Array<[T.FolderPath, T]> {
+  const objs = getObjects(folder.data);
   const this_folder_results = objs.map((obj): [T.FolderPath, T] => [path, obj]);
   return LD.concat(
     this_folder_results,
     LD.flatMap(
       folder.children.entrySeq().toArray(),
       ([subname, subfolder]) =>
-        collectFolderObjects(ptui, path.concat(subname), subfolder, getObjects)));
+        collectFolderObjects(path.concat(subname), subfolder, getObjects)));
 }
 
-function collectAllItems(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+function collectAllItems(path: T.FolderPath, folder: T.Folder):
   Array<[T.FolderPath, T.Item]> {
-  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getItems(node.items));
+  return collectFolderObjects(path, folder, (node) => ptui.getItems(node.items));
 }
 
-function collectAllScenes(ptui: M.PTUI, path: T.FolderPath, folder: T.Folder):
+function collectAllScenes(path: T.FolderPath, folder: T.Folder):
   Array<[T.FolderPath, T.Scene]> {
-  return collectFolderObjects(ptui, path, folder, (ptui, node) => ptui.getScenes(node.scenes));
+  return collectFolderObjects(path, folder, (node) => ptui.getScenes(node.scenes));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
-const SelectFolder = ReactRedux.connect(
-  (ptui: M.PTUI) => ({ all_folders: collectAllFolders([], ptui.app.current_game.campaign) }),
-)(class SelectFolderComp
-  extends
-  React.Component<SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps,
-  SearchSelectState> {
+function SelectFolder(props: SelectFolderProps) {
+  const all_folders = M.useApp(s => collectAllFolders([], s.app.current_game.campaign));
 
-  constructor(props: SelectFolderProps & { all_folders: Array<T.FolderPath> } & M.DispatchProps) {
-    super(props);
-    this.state = { results: [], current_selection: 0 };
-  }
-
-  render() {
-    return <SearchSelect values={this.props.all_folders}
-      onSelect={(entry: T.FolderPath) => this.props.onSelect(entry)}
-      display={M.folderPathToString} />;
-  }
-
-});
+  return <SearchSelect values={all_folders}
+    onSelect={(entry: T.FolderPath) => props.onSelect(entry)}
+    display={M.folderPathToString} />;
+}
 
 interface MoveFolderItemProps { source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; }
 function MoveFolderItem(props: MoveFolderItemProps & M.DispatchProps) {

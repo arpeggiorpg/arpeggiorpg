@@ -2,7 +2,7 @@ import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from 'react';
 
-// import * as Campaign from './Campaign';
+import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as GM from './GMComponents';
 // import * as Grid from './Grid';
@@ -18,7 +18,7 @@ export function GMMain() {
     : <div>No scene yet!</div>;
 
   const tabs = [
-  //   <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
+    <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
     <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
   //   <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
   //   <CV.Tab key="History" name="History"><History.History /></CV.Tab>,

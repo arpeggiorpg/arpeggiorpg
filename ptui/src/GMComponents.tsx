@@ -252,7 +252,7 @@ interface LinkedScenesProps { scene: T.Scene; }
 function LinkedScenes(props: LinkedScenesProps) {
   const { scene } = props;
   const relatedScenes = M.useScenes(scene.related_scenes.toArray());
-  // TODO: this is inefficient without deep-equality on scenes
+  // TODO: this is inefficient without deep-equality on scenes (I don't *think* zustand "shallow" equality will work)
   const scenes = M.useApp(s => s.app.current_game.scenes);
   const hotspotScenes = LD.sortBy(
     M.filterMap(scene.scene_hotspots.entrySeq().toArray(),
