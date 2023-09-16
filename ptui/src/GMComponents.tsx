@@ -18,29 +18,18 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 export function GMScene({ scene }: { scene: T.Scene }) {
-  function menuItem(
-    name: string, content: () => JSX.Element, layer?: M.SceneLayerType, detail?: string) {
-    const item = detail
-      ? <Menu.Item key={name}>
-        {name}
-        <Label basic={true} color='grey' circular={true} size='mini'>{detail}</Label>
-      </Menu.Item>
-      : name;
-    return { menuItem: item, layer, render: content };
-  }
-
-  const scene_players = ptui.app.current_game.players.count(p => p.scene === scene.id);
-  const total_players = ptui.app.current_game.players.count();
-  const player_count = `${scene_players}/${total_players}`;
+  const scenePlayers = M.useApp(s => s.app.current_game.players.count(p => p.scene === scene.id));
+  const totalPlayers = M.useApp(s => s.app.current_game.players.count());
+  const player_count = `${scenePlayers}/${totalPlayers}`;
   const linked_scenes_count = scene.related_scenes.count() + scene.scene_hotspots.count();
 
   const panes = [
     menuItem("Background", () =>
-      <EditSceneBackground scene={scene} onDone={() => undefined} dispatch={dispatch} />),
+      <EditSceneBackground scene={scene} onDone={() => undefined} />),
     menuItem("Terrain", () =>
-      <SceneTerrain scene={scene} ptui={ptui} dispatch={dispatch} />,
+      <SceneTerrain scene={scene} />,
       "Terrain"),
-    menuItem('Highlights', () => <SceneHighlights scene={scene} ptui={ptui} dispatch={dispatch} />,
+    menuItem('Highlights', () => <SceneHighlights scene={scene} />,
       "Highlights"),
     menuItem('Volumes', () => <GMSceneVolumes scene={scene} />, "Volumes"),
     menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
@@ -60,7 +49,7 @@ export function GMScene({ scene }: { scene: T.Scene }) {
         {scene.name}
         <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />
       </Header>}
-      b={close => <EditSceneName scene={scene} onDone={close} dispatch={dispatch} />}
+      b={close => <EditSceneName scene={scene} onDone={close} />}
     />
 
     <Tab panes={panes}
@@ -69,8 +58,7 @@ export function GMScene({ scene }: { scene: T.Scene }) {
         const menuItem: { menuItem: string; layer?: M.SceneLayerType } =
           data.panes![data.activeIndex as number] as any;
         // unimplemented!: disable tab-switching when Terrain is unsaved
-        dispatch(
-          { type: "FocusGrid", scene_id: scene.id, layer: menuItem.layer });
+        M.useGrid.getState().setFocus(scene.id, menuItem.layer);
       }}
       menu={{
         size: 'small',
@@ -78,6 +66,17 @@ export function GMScene({ scene }: { scene: T.Scene }) {
         style: { justifyContent: "center", flexWrap: "wrap" },
       }} />
   </Segment>;
+
+  function menuItem(
+    name: string, content: () => JSX.Element, layer?: M.SceneLayerType, detail?: string) {
+    const item = detail
+      ? <Menu.Item key={name}>
+        {name}
+        <Label basic={true} color='grey' circular={true} size='mini'>{detail}</Label>
+      </Menu.Item>
+      : name;
+    return { menuItem: item, layer, render: content };
+  }
 }
 
 interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
@@ -98,12 +97,12 @@ export function CreateScene({path, onDone}: CreateSceneProps) {
       name, background_image_url, background_image_offset: undefined,
       background_image_scale: [0, 0] as [number, number],
     };
-    dispatch(M.sendCommand({ t: "CreateScene", path, spec }));
+    M.sendCommand({ t: "CreateScene", path, spec });
     onDone();
   }
 }
 
-export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
+function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
   return <TextInput.TextInput
     onSubmit={name => save(name)}
     onCancel={props.onDone}
@@ -111,22 +110,21 @@ export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
 
     function save(name: string) {
     const scene = props.scene;
-    props.dispatch(
-      M.sendCommand({
-        t: "EditSceneDetails",
-        scene_id: scene.id,
-        details: {
-          name,
-          background_image_url: scene.background_image_url,
-          background_image_offset: scene.background_image_offset,
-          background_image_scale: scene.background_image_scale,
-        },
-      }));
+    M.sendCommand({
+      t: "EditSceneDetails",
+      scene_id: scene.id,
+      details: {
+        name,
+        background_image_url: scene.background_image_url,
+        background_image_offset: scene.background_image_offset,
+        background_image_scale: scene.background_image_scale,
+      },
+    });
     props.onDone();
   }
 }
 
-export function EditSceneBackground({scene, onDone}: { scene: T.Scene; onDone: () => void }) {
+function EditSceneBackground({scene, onDone}: { scene: T.Scene; onDone: () => void }) {
   const [pinned, setPinned] = React.useState(scene.background_image_offset !== undefined);
   return <CoolForm>
     <PlaintextInput label="Background Image URL" name="background_image_url"
@@ -160,7 +158,7 @@ export function EditSceneBackground({scene, onDone}: { scene: T.Scene; onDone: (
     const details = {
       name: scene.name, background_image_url, background_image_scale, background_image_offset,
     };
-    props.dispatch(M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details }));
+    M.sendCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
     onDone();
   }
 }
@@ -173,58 +171,59 @@ function SceneTerrain(props: { scene: T.Scene }) {
   </div>;
 
   function saveTerrain() {
-    if (!ptui.state.grid_focus) { return; }
-    const scene_id = ptui.state.grid_focus.scene_id;
-    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Terrain") { return; }
-    const terrain = ptui.state.grid_focus.layer.terrain;
-    dispatch(M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain }));
-    dispatch({ type: "FocusGrid", scene_id: scene.id });
+    const {focus, setFocus} = M.useGrid.getState();
+    if (focus?.layer?.t !== "Terrain") { return; }
+    const scene_id = focus.scene_id;
+    const terrain = focus.layer.terrain;
+    M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain });
+    // RADIX: why am I setting focus here?
+    setFocus(scene.id);
   }
   function cancelTerrain() {
-    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Terrain" });
+    M.useGrid.getState().setFocus(scene.id, "Terrain");
   }
 }
 
 function SceneHighlights(props: { scene: T.Scene }) {
   const { scene } = props;
-  const all_players = ptui.state.grid.object_visibility.t === "AllPlayers";
-  const vis_checkbox = <Checkbox label="Visible to all players?" checked={all_players}
-    onChange={(_, d) =>
-      dispatch(
-        {
-          type: "SetObjectVisibility",
-          visibility: { t: d.checked ? "AllPlayers" : "GMOnly" } as T.Visibility,
-        })
+  const allPlayers = M.useGrid(s => s.grid.object_visibility.t === "AllPlayers");
+  const highlightColor = M.useGrid(s => s.grid.highlight_color);
+
+  const vis_checkbox = <Checkbox label="Visible to all players?" checked={allPlayers}
+    onChange={
+      (_, d) => M.useGrid.getState().setObjectVisibility({ t: d.checked ? "AllPlayers" : "GMOnly" })
     } />;
 
   return <div>
     {vis_checkbox}
     <TwitterPicker
       triangle="hide"
-      color={ptui.state.grid.highlight_color}
-      onChange={color => dispatch({ type: "SetHighlightColor", color: color.hex })} />
+      color={highlightColor}
+      onChange={color => M.useGrid.getState().setHighlightColor(color.hex)} />
     Edit the highlights on the map and then
   <Button onClick={saveObjects}>Save</Button> or
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
 
   function saveObjects() {
-    if (!ptui.state.grid_focus) { return; }
-    const scene_id = ptui.state.grid_focus.scene_id;
-    if (!ptui.state.grid_focus.layer || ptui.state.grid_focus.layer.t !== "Highlights") { return; }
-    const highlights = ptui.state.grid_focus.layer.highlights;
-    dispatch(M.sendCommand({ t: "EditSceneHighlights", scene_id, highlights }));
-    dispatch({ type: "FocusGrid", scene_id: scene.id });
+    const {focus, setFocus} = M.useGrid.getState();
+    if (focus?.layer?.t !== "Highlights") { return; }
+    const scene_id = focus.scene_id;
+    const highlights = focus.layer.highlights;
+    M.sendCommand({ t: "EditSceneHighlights", scene_id, highlights });
+    // RADIX: Why am I setting focus here?
+    setFocus(scene.id);
   }
   function cancelObjects() {
-    dispatch({ type: "FocusGrid", scene_id: scene.id, layer: "Highlights" });
+    M.useGrid.getState().setFocus(scene.id, "Highlights");
   }
 }
 
-export function GMScenePlayers(props: { scene: T.Scene }) {
+function GMScenePlayers(props: { scene: T.Scene }) {
   const { scene } = props;
-  const players_here = ptui.app.current_game.players.valueSeq().toArray().filter(
-    player => player.scene === scene.id);
+  const players_here = M.useApp(
+    s => s.app.current_game.players.valueSeq().toArray().filter(player => player.scene === scene.id)
+  );
   return <List relaxed={true}>
     <List.Item>
       <Button onClick={() => moveAll()}>Set as Active Scene and move all players</Button>
@@ -235,42 +234,34 @@ export function GMScenePlayers(props: { scene: T.Scene }) {
   </List>;
 
   function moveAll() {
-    const pids = ptui.app.current_game.players.keySeq().toArray();
-    const commands = pids.map(
-      (player_id): T.GameCommand => ({ t: "SetPlayerScene", player_id, scene_id: scene.id }));
+    const pids = M.useApp.getState().app.current_game.players.keySeq().toArray();
+    const commands: T.GameCommand[] = pids.map(
+      player_id => ({ t: "SetPlayerScene", player_id, scene_id: scene.id }));
     commands.push({ t: "SetActiveScene", scene_id: scene.id });
-    dispatch(M.sendCommands(commands));
+    M.sendCommands(commands);
   }
 };
 
-export function GMSceneVolumes(_: { scene: T.Scene }) {
+function GMSceneVolumes(_: { scene: T.Scene }) {
   // TODO: add volumes manually
   return <div>Interact with volumes on the grid.</div>;
 }
 
 
 interface LinkedScenesProps { scene: T.Scene; }
-// interface LinkedScenesDerivedProps {
-//   related_scenes: Array<T.Scene>;
-//   hotspot_scenes: Array<[T.Scene, T.Point3]>;
-// }
-export function LinkedScenes(props: LinkedScenesProps) {
-//   [(ptui: M.PTUI, props: LinkedScenesProps) => {
-//     const related_scenes = ptui.getScenes(props.scene.related_scenes.toArray());
-//     const hotspot_scenes = LD.sortBy(
-//       M.filterMap(props.scene.scene_hotspots.entrySeq().toArray(),
-//         ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
-//           const scene = ptui.getScene(scene_id);
-//           if (scene) { return [scene, pos]; }
-//         }),
-//       ([s, _]) => s.name);
-//     return { related_scenes, hotspot_scenes };
-//   }],
-//   (p): LinkedScenesDerivedProps => p
-// ))(
+function LinkedScenes(props: LinkedScenesProps) {
   const { scene } = props;
-  const focus_scene = (scene: T.Scene) =>
-    () => dispatch({ type: "FocusGrid", scene_id: scene.id });
+  const relatedScenes = M.useScenes(scene.related_scenes.toArray());
+  // TODO: this is inefficient without deep-equality on scenes
+  const scenes = M.useApp(s => s.app.current_game.scenes);
+  const hotspotScenes = LD.sortBy(
+    M.filterMap(scene.scene_hotspots.entrySeq().toArray(),
+      ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
+        const hsScene = scenes.get(scene_id);
+        if (hsScene) { return [hsScene, pos]; }
+      }),
+    ([s, _]) => s.name);
+  const focusScene = (scene: T.Scene) => () => M.useGrid.getState().setFocus(scene.id);
   return <List>
     <List.Item>
       <List.Header>
@@ -282,31 +273,32 @@ export function LinkedScenes(props: LinkedScenesProps) {
             <Campaign.MultiSceneSelector already_selected={scene.related_scenes}
               on_cancel={close}
               on_selected={related_scenes => {
-                dispatch(M.sendCommand(
-                  { t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes }));
+                M.sendCommand(
+                  { t: "EditSceneRelatedScenes", scene_id: scene.id, related_scenes }
+                );
                 close();
               }}
             />}
         />
       </List.Header>
     </List.Item>
-    {related_scenes.map(scene =>
+    {relatedScenes.map(scene =>
       <List.Item key={`r:${scene.id}`}
         style={{ cursor: 'pointer' }}
-        onClick={focus_scene(scene)}>
+        onClick={focusScene(scene)}>
         {scene.name}
       </List.Item>)}
     <List.Item><List.Header>Hotspot Scenes</List.Header></List.Item>
-    {hotspot_scenes.map(([scene, point]) =>
+    {hotspotScenes.map(([scene, point]) =>
       <List.Item key={`h:${scene.id}`}
         style={{ cursor: 'pointer' }}
-        onClick={focus_scene(scene)}>
+        onClick={focusScene(scene)}>
         {scene.name} ({T.encodePoint3(point)})
     </List.Item>)}
   </List>;
 }
 
-export function GMSCeneChallenges({ scene }: { scene: T.Scene }) {
+function GMSCeneChallenges({ scene }: { scene: T.Scene }) {
   const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
   return <List relaxed={true}>
     <List.Item key="add">
@@ -326,7 +318,7 @@ export function GMSCeneChallenges({ scene }: { scene: T.Scene }) {
               <Dropdown.Menu>
                 <Dropdown.Header content={description} />
                 <Dropdown.Item content="Delete"
-                  onClick={() => ptui.sendCommand(dispatch,
+                  onClick={() => M.sendCommand(
                     { t: 'RemoveSceneChallenge', scene_id: scene.id, description })}
                 />
               </Dropdown.Menu>
@@ -353,7 +345,7 @@ interface GMChallengeProps {
 //   creatures: I.Set<T.CreatureID>;
 //   results: I.Map<T.CreatureID, T.GameLog | string> | undefined;
 // }
-export function GMChallenge(props: GMChallengeProps) {
+function GMChallenge(props: GMChallengeProps) {
   const [creatures, setCreatures] = React.useState<I.Set<T.CreatureID>>(I.Set());
   const [results, setResults] = React.useState<I.Map<T.CreatureID, T.GameLog | string> | undefined>(undefined);
   const { scene, description, challenge, onClose } = props;
@@ -376,8 +368,8 @@ export function GMChallenge(props: GMChallengeProps) {
       <Button onClick={() => performChallenge()}>Challenge</Button>
       <Button onClick={onClose}>Cancel</Button>
     </Button.Group>
-    {results === undefined ? null :
 
+    {results === undefined ? null :
       results.count() !== creatures.count()
         ? <Loader />
         : <Table celled={true}>
@@ -418,8 +410,8 @@ export function GMChallenge(props: GMChallengeProps) {
   function performChallenge() {
     const promises: Array<Promise<[T.CreatureID, T.GameLog | string]>> =
       creatures.toArray().map(
-        creature_id => ptui.sendCommandWithResult(
-          { t: 'AttributeCheck', creature_id, check: this.props.challenge }
+        creature_id => M.sendCommandWithResult(
+          { t: 'AttributeCheck', creature_id, check: challenge }
         ).then(
             (result): [T.CreatureID, T.GameLog | string] => {
               if (result.t !== 'Ok') {
@@ -470,7 +462,7 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   function save() {
     const { scene } = props;
     const challenge = { attr, target, reliable };
-    ptui.sendCommand(dispatch,
+    M.sendCommand(
       {
         t: 'AddSceneChallenge', scene_id: scene.id, description: description, challenge,
       });
@@ -478,7 +470,7 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   }
 }
 
-export function GMSceneInventory({ scene }: { scene: T.Scene }) {
+function GMSceneInventory({ scene }: { scene: T.Scene }) {
   return <div>
     <List relaxed={true}>
       <List.Item key="add">
@@ -513,7 +505,7 @@ export function GMSceneInventory({ scene }: { scene: T.Scene }) {
   </div>;
 }
 
-export function CreatureInventory({ creature }: { creature: T.Creature }) {
+function GMCreatureInventory({ creature }: { creature: T.Creature }) {
   const inv = creature.inventory;
   const items = ptui.getItems(inv.keySeq().toArray());
 
@@ -551,7 +543,7 @@ export function CreatureInventory({ creature }: { creature: T.Creature }) {
 
 
 
-export function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
+function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
   const { value, save } = props;
   const edit = (to_view: CV.ToggleFunc) =>
     <TextInput.TextInput defaultValue={value.toString()} numbersOnly={true}
@@ -563,27 +555,27 @@ export function EditableNumericLabel(props: { value: number; save: (num: number)
 }
 
 
-export function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: number }) {
+function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: number }) {
   const { scene, item, count } = props;
   return <EditableNumericLabel value={count} save={save} />;
 
   function save(num: number) {
-    ptui.sendCommand(dispatch,
+    M.sendCommand(
       { t: 'SetItemCount', owner: { Scene: scene.id }, item_id: item.id, count: num });
   }
 }
 
-export function CreatureItemCountEditor(props: { creature: T.Creature; item: T.Item; count: number }) {
+function CreatureItemCountEditor(props: { creature: T.Creature; item: T.Item; count: number }) {
   const { creature, item, count } = props;
   return <EditableNumericLabel value={count} save={save} />;
 
   function save(num: number) {
-    ptui.sendCommand(dispatch,
+    M.sendCommand(
       { t: 'SetItemCount', owner: { Creature: creature.id }, item_id: item.id, count: num });
   }
 }
 
-export function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () => void }) {
+function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () => void }) {
   const { scene, item, onClose } = props;
   const available_count = scene.inventory.get(item.id);
   if (!available_count) { return <div>Lost item {item.name}!</div>; }
@@ -593,7 +585,7 @@ export function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose
     onGive={give}
     onClose={onClose} />;
   function give(recip: T.Creature, count: number) {
-    ptui.sendCommand(dispatch, {
+    M.sendCommand( {
       t: "TransferItem", from: { Scene: scene.id },
       to: { Creature: recip.id }, item_id: item.id, count,
     });
@@ -601,13 +593,13 @@ export function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose
   }
 }
 
-export function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
+function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
   const { scene, onClose } = props;
   return <Campaign.MultiItemSelector require_selected={scene.inventory.keySeq().toSet()}
     on_selected={item_ids => {
       const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
       for (const item_id of new_items.toArray()) {
-        ptui.sendCommand(dispatch,
+        M.sendCommand(
           { t: "SetItemCount", owner: { Scene: scene.id }, item_id, count: 1 });
       }
       onClose();
@@ -616,13 +608,13 @@ export function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) 
   />;
 }
 
-export function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void }) {
+function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void }) {
   const { creature, onClose } = props;
   return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
     on_selected={item_ids => {
       const new_items = item_ids.subtract(creature.inventory.keySeq().toSet());
       for (const item_id of new_items.toArray()) {
-        ptui.sendCommand(dispatch,
+        M.sendCommand(
           { t: "SetItemCount", owner: { Creature: creature.id }, item_id, count: 1 });
       }
       onClose();
@@ -648,7 +640,7 @@ interface GMSceneCreaturesDerivedProps {
 //   })
 // );
 
-export function GMSceneCreatures(props: { scene: T.Scene }) {
+function GMSceneCreatures(props: { scene: T.Scene }) {
   const { scene } = props;
   // TODO: get creatures and combat from ZUSTAND
 
@@ -674,7 +666,7 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
               const rem_commands = removed_cids.map(
                 (creature_id): T.GameCommand =>
                   ({ t: "RemoveCreatureFromScene", scene_id: scene.id, creature_id }));
-              dispatch(M.sendCommands(LD.concat(add_commands, rem_commands)));
+              M.sendCommands(LD.concat(add_commands, rem_commands));
               toggler();
             }
             } />} />
@@ -695,11 +687,10 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
               onClick={() => {
                 const new_vis: T.Visibility =
                   vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
-                dispatch(M.sendCommand(
-                  {
-                    t: "SetSceneCreatureVisibility", scene_id: scene.id, creature_id: creature.id,
-                    visibility: new_vis,
-                  }));
+                M.sendCommand({
+                  t: "SetSceneCreatureVisibility", scene_id: scene.id, creature_id: creature.id,
+                  visibility: new_vis,
+                });
               }} />}
             content={vis_desc}
           />
@@ -721,7 +712,7 @@ export function GMSceneCreatures(props: { scene: T.Scene }) {
   </List>;
 
   function addToCombat(creature: T.Creature) {
-    dispatch(M.sendCommand({ t: 'AddCreatureToCombat', creature_id: creature.id }));
+    M.sendCommand({ t: 'AddCreatureToCombat', creature_id: creature.id });
   }
 }
 
@@ -758,7 +749,7 @@ export function GMCombat() {
 
   function changeInit(creature: T.Creature, new_init: string) {
     const new_init_num = Number(new_init);
-    ptui.sendCommand(dispatch, {
+    M.sendCommand( {
       t: "ChangeCreatureInitiative", creature_id: creature.id,
       init: new_init_num,
     });
@@ -781,7 +772,7 @@ function StartCombat(props: { scene: T.Scene }) {
   const { scene } = props;
   return <div>
     <Button
-      onClick={() => ptui.sendCommand(dispatch,
+      onClick={() => M.sendCommand(
         { t: "StartCombat", scene_id: scene.id, creature_ids: selected.toArray() })}
     >Start combat</Button>
     <SelectSceneCreatures scene={scene}
@@ -814,19 +805,17 @@ function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
 
 
 function GMCombatHeader({ combat }: { combat: T.Combat }) {
-  const scene = ptui.getScene(combat.scene);
+  const scene = M.useScene(combat.scene);
 
   return <Segment>
     {
       scene
         ?
         <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
-        <a href="#"
-            onClick={() =>
-              dispatch({ type: "FocusGrid", scene_id: scene.id })}>
+        <a href="#" onClick={() => M.useGrid.getState().setFocus(scene.id)}>
             {scene.name}
           </a>
-          <Button onClick={() => ptui.sendCommand(dispatch, { t: "StopCombat" })}>
+          <Button onClick={() => M.sendCommand( { t: "StopCombat" })}>
             Stop combat
           </Button>
         </div>
@@ -837,7 +826,7 @@ function GMCombatHeader({ combat }: { combat: T.Combat }) {
 }
 
 /// A customized CreatureCard that renders an editable note in the content area.
-export function GMCreatureCard(props: { creature: T.Creature; menu_items?: Array<JSX.Element> }) {
+function GMCreatureCard(props: { creature: T.Creature; menu_items?: Array<JSX.Element> }) {
   const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
     <Dropdown.Menu>
       <Dropdown.Header content={props.creature.name} />
@@ -853,7 +842,7 @@ export function GMCreatureCard(props: { creature: T.Creature; menu_items?: Array
   </CV.CreatureCard>;
 }
 
-export function GMCombatCreatureCard(props: { creature: T.Creature }) {
+function GMCombatCreatureCard(props: { creature: T.Creature }) {
   const { creature } = props;
   const menu_items = [
     <Dropdown.Item key="Remove from Combat" onClick={removeFromCombat} text="Remove from Combat" />
@@ -862,7 +851,7 @@ export function GMCombatCreatureCard(props: { creature: T.Creature }) {
   return <GMCreatureCard creature={creature} menu_items={menu_items} />;
 
   function removeFromCombat() {
-    ptui.sendCommand(dispatch, { t: "RemoveCreatureFromCombat", creature_id: creature.id });
+    M.sendCommand( { t: "RemoveCreatureFromCombat", creature_id: creature.id });
   }
 }
 
@@ -886,7 +875,7 @@ function CreatureNote({ creature }: { creature: T.Creature }) {
 
   function submitNote(note: string) {
     const details = { ...M.getCreatureDetails(creature), note };
-    ptui.sendCommand(dispatch, { t: "EditCreatureDetails", creature_id: creature.id, details });
+    M.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });
   }
 }
 
@@ -898,7 +887,7 @@ export function CreateFolder(props: { path: T.FolderPath; onDone: () => void }) 
     const new_path = path.slice();
     new_path.push(input);
     onDone();
-    return ptui.sendCommand(dispatch, { t: 'CreateFolder', path: new_path });
+    return M.sendCommand( { t: 'CreateFolder', path: new_path });
   }
 }
 
@@ -917,7 +906,7 @@ export function CreateCreature(props: GMCreateCreatureProps) {
     onSave={cdata => save(cdata)} onClose={props.onClose} />;
 
   function save(cdata: T.CreatureCreation) {
-    ptui.sendCommand(dispatch, { t: "CreateCreature", path, spec: cdata });
+    M.sendCommand( { t: "CreateCreature", path, spec: cdata });
   }
 }
 
@@ -938,7 +927,7 @@ function GMEditCreature(props: GMEditCreatureProps) {
       initiative: creature_data.initiative,
       size: creature_data.size,
     };
-    ptui.sendCommand(dispatch, { t: "EditCreatureDetails", creature_id: creature.id, details });
+    M.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });
     onClose();
   }
 }
@@ -948,7 +937,7 @@ interface EditCreatureDataProps {
   onClose: () => void;
   onSave: (cdata: T.CreatureCreation) => void;
 }
-function EditCreatureDataComp(props: EditCreatureDataProps) {
+function EditCreatureData(props: EditCreatureDataProps) {
   // TODO RADIX this is probably bad state management
   const [portrait_url, set_portrait_url] = React.useState(props.creature.portrait_url);
   const [name, set_name] = React.useState(props.creature.name);
@@ -1061,9 +1050,8 @@ export function GMCreateItem(props: GMCreateItemProps) {
   return <CV.SingleInputForm buttonText="Create" onSubmit={input => save(input)} />;
 
   function save(name: string) {
-    this.props.ptui.sendCommand(this.props.dispatch,
-      { t: "CreateItem", path: this.props.path, name });
-    this.props.onClose();
+    M.sendCommand({ t: "CreateItem", path: props.path, name });
+    props.onClose();
   }
 }
 
@@ -1076,7 +1064,7 @@ export function GMViewItem({ item }: { item: T.Item }) {
   const editName = (view: CV.ToggleFunc) =>
     <Card.Header><TextInput.TextInput defaultValue={item.name} onCancel={view}
       onSubmit={input => {
-        ptui.sendCommand(dispatch, { t: "EditItem", item: { ...item, name: input } });
+        M.sendCommand( { t: "EditItem", item: { ...item, name: input } });
         view();
       }} />
     </Card.Header>;
@@ -1091,7 +1079,6 @@ export function GMViewItem({ item }: { item: T.Item }) {
     </Card.Content>
   </Card>;
 }
-
 
 export function SavedGames(): JSX.Element {
   return <Button.Group>
@@ -1125,7 +1112,7 @@ function NewGame(props: { onClose: () => void }) {
   }
 }
 
-export function LoadGameForm(props: { onClose: () => void }) {
+function LoadGameForm(props: { onClose: () => void }) {
   const { onClose } = props;
   return <Form>
     <GameList onSelect={load} />
@@ -1139,7 +1126,7 @@ export function LoadGameForm(props: { onClose: () => void }) {
   }
 }
 
-export function SaveGameForm(props: { onClose: () => void }) {
+function SaveGameForm(props: { onClose: () => void }) {
   const { onClose } = props;
   return <SaveGameishForm onClose={onClose} save={save} />;
 
@@ -1175,7 +1162,8 @@ function GameList(props: GameListProps) {
   const [modules, setModules] = React.useState<string[] | undefined>(undefined);
   const [games, setGames] = React.useState<string[] | undefined>(undefined);
 
-  // Gross :-(
+  // Gross :-( Should I use something like SWC or react-query?
+  // I have very few of these kinds of things so maybe this is fine.
   React.useEffect(() => {
     const fetch = async () => {
       const [modules, games] = await M.fetchSavedGames();
@@ -1213,7 +1201,6 @@ function GameList(props: GameListProps) {
 export function CreatureFocus({ creature }: { creature: T.Creature }) {
   return <div>
     <GMCreatureCard creature={creature} />
-    {/* TODO WTF? */}
     <GMCreatureInventory creature={creature} />
     <Segment>{creature.bio}</Segment>
   </div>;
@@ -1225,7 +1212,7 @@ export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) 
     <SaveGameishForm onClose={onDone} save={save} />
   </div>;
   function save(game: string) {
-    ptui.exportModule(dispatch, path, game);
+    M.exportModule(path, game);
   }
 }
 
@@ -1234,7 +1221,7 @@ export function ImportModule(props: { path: T.FolderPath; onDone: () => void }) 
   return <Form>
     <GameList onSelect={(source, name) => {
       const suffixed_path = path.concat(name);
-      dispatch(M.sendCommand({ t: "LoadModule", path: suffixed_path, name, source }));
+      M.sendCommand({ t: "LoadModule", path: suffixed_path, name, source });
       onDone();
     }} />
     <Form.Button onClick={onDone}>Cancel</Form.Button>
@@ -1254,7 +1241,7 @@ export function AddSceneHotspot(props: AddSceneHotspotProps) {
   function select(sid: T.SceneID) {
     onClose();
     const scene_hotspots = scene.scene_hotspots.set(pt, sid);
-    dispatch(M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots }));
+    M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
   }
 
 }
@@ -1271,7 +1258,7 @@ export function AddAnnotation(props: AddAnnotationProps) {
   const annotate = (text: string) => {
     const vis: T.Visibility = allPlayers ? { t: "AllPlayers" } : { t: "GMOnly" };
     const annotations = scene.annotations.set(pt, [text, vis]);
-    dispatch(M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations }));
+    M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
     onClose();
   };
   return <>
