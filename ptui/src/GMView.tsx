@@ -4,7 +4,7 @@ import * as React from 'react';
 
 // import * as Campaign from './Campaign';
 import * as CV from './CommonView';
-// import * as GM from './GMComponents';
+import * as GM from './GMComponents';
 // import * as Grid from './Grid';
 // import * as History from './History';
 import * as M from './Model';
@@ -18,12 +18,11 @@ export function GMMain() {
     : <div>No scene yet!</div>;
 
   const tabs = [
-    <CV.Tab key="Cool" name="Cool"><div>Cool!</div></CV.Tab>
   //   <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
   //   <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
   //   <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
   //   <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
-  //   <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
+    <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
   const secondary = <div>Secondary!</div>; // renderSecondary();
