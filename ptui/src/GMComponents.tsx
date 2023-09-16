@@ -1118,8 +1118,9 @@ function NewGame(props: { onClose: () => void }) {
     <Button onClick={() => onClick()}>Do it!</Button>
   </>;
 
-  function onClick() {
-    M.newGame();
+  async function onClick() {
+    // TODO: spinner
+    await M.newGame();
     onClose();
   }
 }
@@ -1127,17 +1128,24 @@ function NewGame(props: { onClose: () => void }) {
 export function LoadGameForm(props: { onClose: () => void }) {
   const { onClose } = props;
   return <Form>
-    <GameList onSelect={(source, name) => { M.loadGame(source, name); onClose(); }} />
+    <GameList onSelect={load} />
     <Form.Button onClick={onClose}>Cancel</Form.Button>
   </Form>;
+
+  async function load(source: T.ModuleSource, name: string) {
+    // TODO: spinner
+    await M.loadGame(source, name);
+    onClose();
+  }
 }
 
 export function SaveGameForm(props: { onClose: () => void }) {
   const { onClose } = props;
   return <SaveGameishForm onClose={onClose} save={save} />;
 
-  function save(name: string) {
-    M.saveGame(name);
+  async function save(name: string) {
+    // TODO: spinner
+    await M.saveGame(name);
     onClose();
   }
 }
