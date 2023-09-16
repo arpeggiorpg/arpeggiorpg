@@ -3,7 +3,7 @@ import {createRoot} from "react-dom/client";
 
 import { Main } from "./Main";
 // import * as CV from "./CommonView";
-// import * as GMView from "./GMView";
+import * as GMView from "./GMView";
 // import * as PlayerView from "./PlayerView";
 
 function getInnerComponent(component_name: string): JSX.Element {
@@ -23,8 +23,7 @@ function PT_renderMain(component_name: string, id: string) {
   const el = document.getElementById(id);
   const comp = (
     <Main>
-      Hi
-      {/* {getInnerComponent(component_name)} */}
+      {getInnerComponent(component_name)}
     </Main>
   );
   if (!el) {
