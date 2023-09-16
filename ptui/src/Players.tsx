@@ -1,6 +1,5 @@
 import * as I from 'immutable';
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
 import { Button, List, Table } from 'semantic-ui-react';
 

@@ -1,6 +1,5 @@
 import * as I from 'immutable';
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
 import * as Comp from './Component';
 import * as M from './Model';
