@@ -133,78 +133,82 @@ export async function startPoll() {
   }
 }
 
+function getFocusedScene() {
+  const focus = useGrid.getState().focus;
+  if (!focus) return;
+  return useApp.getState().app.current_game.scenes.get(focus.scene_id);
+}
+
+export async function requestMove(cid: T.CreatureID) {
+  const scene = getFocusedScene();
+  if (scene) {
+    const result = await ptfetch(
+      `${RPI_URL}/movement_options/${scene.id}/${cid}`,
+      undefined,
+      JD.array(T.decodePoint3)
+    );
+    useGrid.getState().displayMovementOptions(result, cid);
+  }
+}
+
+export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
+  useGrid.getState().clearMovementOptions();
+  const scene = getFocusedScene();
+  if (scene) {
+    sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
+  } else {
+    throw new Error(`Tried moving when there is no scene`);
+  }
+}
+
+export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
+  useGrid.getState().clearMovementOptions();
+  const scene = getFocusedScene();
+  if (scene) {
+    sendCommand({ t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
+  }
+}
+
+export function moveCombatCreature(dest: T.Point3) {
+  useGrid.getState().clearMovementOptions();
+  sendCommand({ t: "PathCurrentCombatCreature", dest });
+}
+
+export async function requestCombatMovement() {
+  const options = await ptfetch(
+    RPI_URL + "/combat_movement_options", undefined,
+    JD.array(T.decodePoint3));
+  useGrid.getState().displayMovementOptions(options);
+}
+
+
+/* Execute an ability that has already been selected, with a target.
+ * This relies on the state being set up ahead of time: we must have a target_options already.
+ */
+export async function executeCombatAbility(target_id: T.CreatureID) {
+  const opts = useGrid.getState().grid.target_options;
+  if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+  const { ability_id, options } = opts;
+  if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
+  const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
+  sendCommand({ t: "CombatAct", ability_id, target });
+  useGrid.getState().clearPotentialTargets();
+}
+
+export function executeCombatPointTargetedAbility(point: T.Point3) {
+  const opts = useGrid.getState().grid.target_options;
+  if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+  const { ability_id, options } = opts;
+  if (options.t !== "Points") {
+    throw new Error(`This function only works for abilities that use Points`);
+  }
+  const target: T.DecidedTarget = { t: "Point", point };
+  sendCommand({ t: "CombatAct", ability_id, target });
+  useGrid.getState().clearPotentialTargets();
+}
+
 
 export class PTUI {
-
-  requestMove(cid: T.CreatureID) {
-    const scene = this.focused_scene();
-    if (scene) {
-      return ptfetch(RPI_URL + "/movement_options/" + scene.id + "/" + cid,
-        undefined,
-        JD.array(T.decodePoint3),
-        options => dispatch({
-          type: "DisplayMovementOptions",
-          cid,
-          options,
-        }));
-    }
-  }
-
-  moveCreature(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
-    dispatch({ type: "ClearMovementOptions" });
-    const scene = this.focused_scene();
-    if (scene) {
-      this.sendCommand(dispatch, { t: "PathCreature", scene_id: scene.id, creature_id, dest });
-    } else {
-      throw new Error(`Tried moving when there is no scene`);
-    }
-  }
-
-  setCreaturePos(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
-    dispatch({ type: 'ClearMovementOptions' });
-    const scene = this.focused_scene();
-    if (scene) {
-      this.sendCommand(dispatch, { t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
-    }
-  }
-
-  moveCombatCreature(dispatch: Dispatch, dest: T.Point3) {
-    dispatch({ type: "ClearMovementOptions" });
-    this.sendCommand(dispatch, { t: "PathCurrentCombatCreature", dest });
-  }
-
-  requestCombatMovement(dispatch: Dispatch) {
-    return ptfetch(
-      dispatch, RPI_URL + "/combat_movement_options", undefined,
-      JD.array(T.decodePoint3),
-      options => dispatch({ type: "DisplayMovementOptions", options }));
-  }
-
-
-  /* Execute an ability that has already been selected, with a target.
-   * This relies on the state being set up ahead of time: we must have a target_options already.
-   */
-  executeCombatAbility(dispatch: Dispatch, target_id: T.CreatureID) {
-    const opts = this.state.grid.target_options;
-    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
-    const { ability_id, options } = opts;
-    if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
-    const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
-    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
-    dispatch({ type: "ClearPotentialTargets" });
-  }
-
-  executeCombatPointTargetedAbility(dispatch: Dispatch, point: T.Point3) {
-    const opts = this.state.grid.target_options;
-    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
-    const { ability_id, options } = opts;
-    if (options.t !== "Points") {
-      throw new Error(`This function only works for abilities that use Points`);
-    }
-    const target: T.DecidedTarget = { t: "Point", point };
-    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
-    dispatch({ type: "ClearPotentialTargets" });
-  }
 
   getItem(iid: T.ItemID): T.Item | undefined {
     return get(this.app.current_game.items, iid);
@@ -235,13 +239,6 @@ export class PTUI {
     );
   }
 
-
-  getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
-    const entry = idx(combat.creatures.data, combat.creatures.cursor);
-    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
-    return entry[0];
-  }
-
   getCurrentCombatCreature(combat: T.Combat): T.Creature {
     const cid = this.getCurrentCombatCreatureID(combat);
     const creature = this.getCreature(cid);
@@ -265,6 +262,12 @@ export class PTUI {
     const list = I.List(arr);
     return list.sortBy(([i, _]) => i.name);
   }
+}
+
+export function getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
+  const entry = idx(combat.creatures.data, combat.creatures.cursor);
+  if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
+  return entry[0];
 }
 
 export function useNote(path: T.FolderPath, name: string | undefined): T.Note | undefined {
@@ -362,8 +365,21 @@ export const useApp = createWithEqualityFn<AppState>()(set => ({
   app: initialApp,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
-  refresh: app => set(() => ({ app, fetchStatus: "Ready" })),
-  refreshGame: game => set(state => ({ app: { ...state.app, current_game: game } })),
+  refresh: app => set(() => {
+    const pid = usePlayer.getState().id;
+    if (pid) {
+      // we always want to force the focus on the players to whatever scene they're focused on
+      const playerScene = app.current_game.players.get(pid)?.scene;
+      if (playerScene) {
+        useGrid.getState().setFocus(playerScene);
+      }
+    }
+    return { app, fetchStatus: "Ready" };
+  }),
+  refreshGame: game => set(state => {
+    state.refresh({ ...state.app, current_game: game });
+    return state;
+  })
   // TODO: maybe "fetch"?
 }),
   // There may be an argument for *deep* comparison here. The app is 100%
@@ -446,19 +462,12 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
 
 export function useFocusedScene(): T.Scene | undefined {
   const focus = useGrid(g => g.focus);
-  const pid = usePlayer(p => p.id);
   const game = useApp(a => a.app.current_game);
   // oh for Rust's "?" operator
-  if (pid) {
-    const player = game.players.get(pid);
-    if (player && player.scene) {
-      return game.scenes.get(player.scene);
-    }
-  } else if (focus) {
+  if (focus) {
     return game.scenes.get(focus.scene_id);
   }
 }
-
 
 interface PlayerState {
   id: T.PlayerID | undefined;
@@ -535,6 +544,10 @@ export function creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID):
 
 export function getSceneCreatures(app: T.App, scene: T.Scene) {
   return getCreatures(app, scene.creatures.keySeq().toArray());
+}
+
+export function useSceneCreatures<T>(scene: T.Scene, selector: (c: T.Creature[]) => T): T {
+  return useApp(s => selector(getSceneCreatures(s.app, scene)));
 }
 
 export function getCreatures(app: T.App, cids: Array<T.CreatureID>): Array<T.Creature> {
@@ -641,16 +654,16 @@ export function connectRedux<BaseProps extends {} & object>(
 }
 
 export function fetchAbilityTargets(
-  dispatch: Dispatch, scene_id: T.SceneID, actor_id: T.CreatureID,
-  ability_id: T.AbilityID, point: T.Point3)
-  : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
+  scene_id: T.SceneID, actor_id: T.CreatureID, ability_id: T.AbilityID, point: T.Point3
+): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const uri =
     `${RPI_URL}/preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point.x}/${point.y}/${point.z}`;
-  return ptfetch(dispatch, uri, { method: 'POST' },
+  return ptfetch(
+    uri,
+    { method: 'POST' },
     JD.map(([creatures, points]) => ({ points, creatures }),
       JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
-    x => x
   );
 }
 

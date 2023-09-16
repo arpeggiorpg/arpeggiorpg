@@ -758,7 +758,7 @@ export function GMCombat() {
 
 
 function StartCombat(props: { scene: T.Scene }) {
-  const sceneCreatureIDs = props.ptui.getSceneCreatures(props.scene).map(c => c.id);
+  const sceneCreatureIDs = M.useSceneCreatures(props.scene, cs => cs.map(c => c.id));
   // TODO: clean up this mess. Should this be a useEffect? I hate useEffect!
   const [selected, setSelected] = React.useState<I.Set<T.CreatureID>>(I.Set(sceneCreatureIDs));
 
@@ -790,7 +790,7 @@ interface SelectSceneCreaturesProps {
 }
 function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
   const { scene, add, remove, selections } = props;
-  const creatures = ptui.getSceneCreatures(scene);
+  const creatures = M.useSceneCreatures(scene, x => x);
   return <List relaxed={true}>
     {
       creatures.map(creature =>

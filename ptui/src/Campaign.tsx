@@ -15,7 +15,7 @@ import * as GM from './GMComponents';
 import * as M from './Model';
 import * as T from './PTTypes';
 
-export function Campaign(props: { campaign: T.Folder }) {
+export function Campaign() {
   const campaign = M.useApp(s => s.app.current_game.campaign);
   return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
 }
