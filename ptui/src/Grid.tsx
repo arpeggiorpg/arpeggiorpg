@@ -248,8 +248,7 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function getAnnotations(
-    annotations: T.Annotations, player_id?: T.PlayerID,
-    specialClick?: (pt: T.Point3) => void) {
+    annotations: T.Annotations, player_id?: T.PlayerID, specialClick?: (pt: T.Point3) => void) {
     return M.filterMap(annotations.entrySeq().toArray(),
       ([pt, [note, vis]]) => {
         if (note !== "") {
@@ -483,6 +482,7 @@ export function SceneGrid(props: SceneGridProps) {
 
 function SceneHotspotMenu(
   props: {closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3}) {
+  const playerId = M.useState(s => s.playerId);
   const linked_scene = M.useState(s => s.getScene(props.target_scene_id));
   if (!linked_scene) { return; }
   const jumpScene = () => {
@@ -499,9 +499,9 @@ function SceneHotspotMenu(
     <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
       {linked_scene.name}
     </Menu.Item>
-    <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
+    {playerId ? null : <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
       Delete Hotspot
-    </Menu.Item>
+    </Menu.Item>}
   </React.Fragment>;
 }
 
