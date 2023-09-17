@@ -1,5 +1,5 @@
-import * as I from 'immutable';
-import * as LD from "lodash";
+import I from 'immutable';
+import LD from "lodash";
 import * as React from "react";
 
 import { Button, Menu } from 'semantic-ui-react';
@@ -7,6 +7,7 @@ import { Button, Menu } from 'semantic-ui-react';
 import * as CV from "./CommonView";
 import * as GM from "./GMComponents";
 import * as M from "./Model";
+import * as A from "./Actions";
 import * as T from "./PTTypes";
 import * as SPZ from './SVGPanZoom';
 
@@ -297,7 +298,7 @@ export function SceneGrid(props: SceneGridProps) {
           case "AllCreaturesInVolumeInRange":
             return svgVolume("target-volume", action.target.volume, targetingPoint);
           case "LineFromActor":
-            const caster_pos = M.getCreaturePos(scene, options.cid);
+            const caster_pos = getCreaturePos(scene, options.cid);
             if (!caster_pos) { return; }
             return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
               x2={targetingPoint.x + 50} y2={targetingPoint.y + 50}
@@ -334,7 +335,7 @@ export function SceneGrid(props: SceneGridProps) {
         }
     }
     setTargetingPoint(point);
-    const {points, creatures} = await M.fetchAbilityTargets(props.scene.id, options.cid, options.ability_id, point);
+    const {points, creatures} = await A.fetchAbilityTargets(props.scene.id, options.cid, options.ability_id, point);
     setAffectedPoints(points);
     setAffectedCreatures(creatures);
   }
@@ -370,7 +371,7 @@ export function SceneGrid(props: SceneGridProps) {
     const ann = scene.annotations.get(pt);
     const delet = () => {
       const annotations = scene.annotations.delete(pt);
-      M.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
+      A.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
       close();
     };
     if (ann) {
@@ -407,7 +408,7 @@ export function SceneGrid(props: SceneGridProps) {
   function volumeConditionMenu(
     closeMenu: () => void, scene: T.Scene, condition_id: T.ConditionID) {
     const onClick = () => {
-      M.sendCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id });
+      A.sendCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id });
       closeMenu();
     };
     // unimplemented!: put a name here
@@ -475,10 +476,15 @@ export function SceneGrid(props: SceneGridProps) {
 
   function executePointTargetedAbility() {
     if (!targetingPoint) { return; }
-    M.executeCombatPointTargetedAbility(targetingPoint);
+    A.executeCombatPointTargetedAbility(targetingPoint);
     clearTargets();
   }
 }
+
+function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
+  return M.optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
+}
+
 
 function SceneHotspotMenu(
   props: {closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3}) {
@@ -491,7 +497,7 @@ function SceneHotspotMenu(
   };
   const deleteHotspot = () => {
     const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
-    M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: props.scene.id, scene_hotspots });
+    A.sendCommand({ t: "EditSceneSceneHotspots", scene_id: props.scene.id, scene_hotspots });
     props.closeMenu();
   };
   return <React.Fragment key="Scene-Hotspot">
@@ -626,12 +632,12 @@ function MovementTarget(props: { cid?: T.CreatureID; pt: T.Point3; teleport: boo
   function moveCreature() {
     if (cid) {
       if (teleport) {
-        M.setCreaturePos(cid, pt);
+        A.setCreaturePos(cid, pt);
       } else {
-        M.moveCreature(cid, pt);
+        A.moveCreature(cid, pt);
       }
     } else {
-      M.moveCombatCreature(pt);
+      A.moveCombatCreature(pt);
     }
   }
   return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
@@ -883,7 +889,7 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
         if (ability) {
           return {
             name: `${ability.name} this creature`,
-            action: cid => { M.executeCombatAbility(cid); },
+            action: cid => { A.executeCombatAbility(cid); },
           };
         }
       }

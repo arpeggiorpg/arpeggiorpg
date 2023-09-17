@@ -1,6 +1,6 @@
 import Fuse from 'fuse.js';
-import * as I from 'immutable';
-import * as LD from 'lodash';
+import I from 'immutable';
+import LD from 'lodash';
 import * as React from "react";
 
 import {
@@ -13,6 +13,7 @@ import * as CV from './CommonView';
 import * as CF from './CoolForm';
 import * as GM from './GMComponents';
 import * as M from './Model';
+import * as A from './Actions';
 import * as T from './PTTypes';
 
 export function Campaign() {
@@ -31,7 +32,7 @@ export function MultiItemSelector(props: MultiItemSelectorProps) {
   );
   const selectedItems = M.useState(s => s.getItems(selections.toArray()));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
-    `${M.folderPathToString(path)}/${name}`;
+    `${T.folderPathToString(path)}/${name}`;
   return <div>
     {selectedItems.map(item => <Label key={item.id}>{item.name}</Label>)}
     <SearchSelect values={items}
@@ -56,7 +57,7 @@ export function SceneSelector(props: SceneSelectorProps) {
     return collectAllScenes(s).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
   });
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
-    `${M.folderPathToString(path)}/${name}`;
+    `${T.folderPathToString(path)}/${name}`;
   return <div>
     <SearchSelect values={scenes}
       onSelect={({id}) => props.onSelect(id)}
@@ -76,7 +77,7 @@ export function MultiSceneSelector(props: MultiSceneSelectorProps) {
   const scenes = M.useState(s => collectAllScenes(s)).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
   const selectedScenes = M.useState(s => s.getScenes(selections.toArray()).map(s => LD.pick(s, ['name', 'id'])));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
-    `${M.folderPathToString(path)}/${name}`;
+    `${T.folderPathToString(path)}/${name}`;
   return <div>
     <Menu compact={true}>
       <Menu.Item header={true}>Currently selected</Menu.Item>
@@ -166,7 +167,7 @@ function FolderTree(props: FTProps) {
   const { selecting, path } = props;
   const [expanded, setExpanded] = React.useState(props.start_open || false);
   const folder = M.useState(s => s.getFolder(path));
-  if (!folder) { return <div>No folder found for {M.folderPathToString(path)}</div>;}
+  if (!folder) { return <div>No folder found for {T.folderPathToString(path)}</div>;}
 
   const objects = M.useState(s => useFolderTreeData(s, path, folder, selecting));
 
@@ -203,16 +204,16 @@ function FolderTree(props: FTProps) {
   );
   const folder_menu = <Dropdown icon='ellipsis horizontal'>
     <Dropdown.Menu>
-      <Dropdown.Header content={M.folderPathToString(path)} />
+      <Dropdown.Header content={T.folderPathToString(path)} />
       <CV.ModalMaker
         button={open =>
           <Dropdown.Item icon={object_icon("Scene")} text='Create Scene' onClick={open} />}
-        header={<span>Create new scene in {M.folderPathToString(path)}</span>}
+        header={<span>Create new scene in {T.folderPathToString(path)}</span>}
         content={close => <GM.CreateScene path={path} onDone={close} />} />
       <CV.ModalMaker
         button={open =>
           <Dropdown.Item icon={object_icon("Creature")} onClick={open} text='Create Creature' />}
-        header={<span>Create new creature in {M.folderPathToString(path)}</span>}
+        header={<span>Create new creature in {T.folderPathToString(path)}</span>}
         content={close => <GM.CreateCreature path={path} onClose={close} />}
       />
       <Dropdown.Item icon={object_icon("Note")} text='Create Note'
@@ -221,12 +222,12 @@ function FolderTree(props: FTProps) {
       <CV.ModalMaker
         button={toggler =>
           <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
-        header={<span>Create item in {M.folderPathToString(path)}</span>}
+        header={<span>Create item in {T.folderPathToString(path)}</span>}
         content={toggler => <GM.GMCreateItem path={path} onClose={toggler} />} />
       <CV.ModalMaker
         button={open => <Dropdown.Item icon={object_icon("Folder")} text='Create Folder'
           onClick={open} />}
-        header={<span>Create a folder in {M.folderPathToString(path)}</span>}
+        header={<span>Create a folder in {T.folderPathToString(path)}</span>}
         content={close => <GM.CreateFolder path={path} onDone={close} />}
       />
 
@@ -235,7 +236,7 @@ function FolderTree(props: FTProps) {
       {!M.isEqual(path, [])
         ? <>
           <Dropdown.Item text="Delete this folder" icon="delete"
-            onClick={() => M.sendCommand(
+            onClick={() => A.sendCommand(
               {
                 t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
                 // ! because we KNOW this isn't [] (see conditional above)
@@ -243,7 +244,7 @@ function FolderTree(props: FTProps) {
               })} />
           <CV.ModalMaker
             button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
-            header={<span>Rename {M.folderPathToString(path)}</span>}
+            header={<span>Rename {T.folderPathToString(path)}</span>}
             content={close => <MoveFolderItem
               source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
               onDone={close} />}
@@ -452,7 +453,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
   return <div>
     <CV.Toggler
       a={toggle => <span onClick={toggle} style={{ cursor: 'pointer' }}>
-        <Label><Icon name='edit' />Destination</Label>{M.folderPathToString(dest)}
+        <Label><Icon name='edit' />Destination</Label>{T.folderPathToString(dest)}
       </span>}
       b={toggle => <SelectFolder onSelect={dest => { setDest(dest); toggle(); }} />}
     />
@@ -464,7 +465,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
 function copy({ copies }: { copies: number }) {
     const { source, item_id, onDone } = props;
     for (const _ of LD.range(copies)) {
-      M.sendCommand({ t: "CopyFolderItem", source, item_id, dest: dest });
+      A.sendCommand({ t: "CopyFolderItem", source, item_id, dest: dest });
     }
     onDone();
   }
@@ -478,7 +479,7 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   return <Button onClick={deleteIt}>Yes, really!</Button>;
 
   function deleteIt() {
-    M.sendCommand({ t: "DeleteFolderItem", location, item_id });
+    A.sendCommand({ t: "DeleteFolderItem", location, item_id });
     onDone();
   }
 }
@@ -531,16 +532,14 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
   }
 
   function handleKey(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.keyCode === 38) {
-      this.setState({ current_selection: Math.max(this.state.current_selection - 1, 0) });
-    } else if (event.keyCode === 40) {
-      this.setState({
-        current_selection: Math.min(this.state.current_selection + 1, this.state.results.length - 1),
-      });
-    } else if (event.keyCode === 13) {
-      if (this.state.results.length > this.state.current_selection) {
-        this.props.onSelect(
-          this.props.values[this.state.results[this.state.current_selection].item]);
+    console.log(event.key);
+    if (event.key === "ArrowUp") {
+      setCurrentSelection(Math.max(currentSelection - 1, 0));
+    } else if (event.key === "ArrowDown") {
+      setCurrentSelection(Math.min(currentSelection + 1, results.length - 1));
+    } else if (event.key === "Enter") {
+      if (results.length > currentSelection) {
+        props.onSelect(values[results[currentSelection].refIndex]);
       }
     }
   }
@@ -600,7 +599,7 @@ function SelectFolder(props: SelectFolderProps) {
 
   return <SearchSelect values={all_folders}
     onSelect={(entry: T.FolderPath) => props.onSelect(entry)}
-    display={M.folderPathToString} />;
+    display={T.folderPathToString} />;
 }
 
 interface MoveFolderItemProps { source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; }
@@ -611,7 +610,7 @@ function MoveFolderItem(props: MoveFolderItemProps) {
   </div>;
 
   function move(dest: T.FolderPath) {
-    M.sendCommand({ t: "MoveFolderItem", source, item_id, dest });
+    A.sendCommand({ t: "MoveFolderItem", source, item_id, dest });
     onDone();
   }
 }

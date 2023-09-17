@@ -5,6 +5,7 @@ import * as React from "react";
 import * as CV from "./CommonView";
 import * as Grid from './Grid';
 import * as M from './Model';
+import * as A from './Actions';
 import * as T from './PTTypes';
 
 import { Menu } from 'semantic-ui-react';
@@ -44,7 +45,7 @@ function PlayerLogin() {
   </div>;
 
   function registerPlayer(name: string) {
-    M.sendCommand({ t: "RegisterPlayer", player_id: name });
+    A.sendCommand({ t: "RegisterPlayer", player_id: name });
     M.getState().setPlayerId(name);
   }
 }
@@ -108,12 +109,12 @@ function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.C
     if (!LD.includes(player.creatures, creature.id)) { return undefined; }
     if (combat) {
       if (state.getCurrentCombatCreatureID() === creature.id) {
-        return _ => M.requestCombatMovement();
+        return _ => A.requestCombatMovement();
       } else {
         return undefined;
       }
     } else {
-      return cid => M.requestMove(cid);
+      return cid => A.requestMove(cid);
     }
   }
 }
@@ -141,7 +142,7 @@ function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
   const folder = M.useState(s => s.getFolder(path));
   React.useEffect(() => {
     if (!folder) {
-      M.sendCommand({t: "CreateFolder", path});
+      A.sendCommand({t: "CreateFolder", path});
     }
   }, []);
   return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
