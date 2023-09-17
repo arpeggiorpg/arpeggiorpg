@@ -298,7 +298,7 @@ function LinkedScenes(props: LinkedScenesProps) {
   </List>;
 }
 
-function GMSCeneChallenges({ scene }: { scene: T.Scene }) {
+function GMSceneChallenges({ scene }: { scene: T.Scene }) {
   const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
   return <List relaxed={true}>
     <List.Item key="add">
@@ -346,9 +346,10 @@ interface GMChallengeProps {
 //   results: I.Map<T.CreatureID, T.GameLog | string> | undefined;
 // }
 function GMChallenge(props: GMChallengeProps) {
-  const [creatures, setCreatures] = React.useState<I.Set<T.CreatureID>>(I.Set());
+  const [creatureIds, setCreatureIds] = React.useState<I.Set<T.CreatureID>>(I.Set());
   const [results, setResults] = React.useState<I.Map<T.CreatureID, T.GameLog | string> | undefined>(undefined);
   const { scene, description, challenge, onClose } = props;
+  const creatureResults = M.useState(s => results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result })));
   return <div>
     <List>
       <List.Item>
@@ -361,16 +362,16 @@ function GMChallenge(props: GMChallengeProps) {
     <Header>Select creatures to challenge</Header>
     <SelectSceneCreatures
       scene={scene}
-      selections={creatures}
-      add={cid => setCreatures(creatures.add(cid))}
-      remove={cid => setCreatures(creatures.delete(cid))} />
+      selections={creatureIds}
+      add={cid => setCreatureIds(creatureIds.add(cid))}
+      remove={cid => setCreatureIds(creatureIds.delete(cid))} />
     <Button.Group>
-      <Button onClick={() => performChallenge()}>Challenge</Button>
-      <Button onClick={onClose}>Cancel</Button>
+      {results === undefined ? <Button onClick={() => performChallenge()}>Challenge</Button> : null}
+      <Button onClick={onClose}>{results === undefined ? "Cancel" : "Close"}</Button>
     </Button.Group>
 
     {results === undefined ? null :
-      results.count() !== creatures.count()
+      results.count() !== creatureIds.count()
         ? <Loader />
         : <Table celled={true}>
           <Table.Header>
@@ -382,17 +383,16 @@ function GMChallenge(props: GMChallengeProps) {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {results.entrySeq().toArray().map(([creature_id, result]) => {
-              const creature = ptui.getCreature(creature_id);
+            {creatureResults?.map(({creature, result}) => {
               const creature_name = creature ? creature.name : "Creature disappeared!";
               const creature_skill_level = creature
                 ? creature.attributes.get(challenge.attr)
                 : 'Creature does not have attribute';
-              return <Table.Row key={creature_id}>
+              return <Table.Row key={creature?.id}>
                 <Table.Cell>{creature_name}</Table.Cell>
                 <Table.Cell>{creature_skill_level}</Table.Cell>
                 {typeof result === 'string'
-                  ? <Table.Cell colSpan={2}>{result.toString()}</Table.Cell>
+                  ? <Table.Cell colSpan={2}>{result}</Table.Cell>
                   : result.t !== 'AttributeCheckResult'
                     ? <Table.Cell colSpan={2}>BUG: Unexpected GameLog result</Table.Cell>
                     : [
@@ -407,27 +407,27 @@ function GMChallenge(props: GMChallengeProps) {
     }
   </div>;
 
-  function performChallenge() {
+  async function performChallenge() {
     const promises: Array<Promise<[T.CreatureID, T.GameLog | string]>> =
-      creatures.toArray().map(
-        creature_id => M.sendCommandWithResult(
-          { t: 'AttributeCheck', creature_id, check: challenge }
+      creatureIds.toArray().map(
+        creatureId => M.sendCommandWithResult(
+          { t: 'AttributeCheck', creature_id: creatureId, check: challenge }
         ).then(
             (result): [T.CreatureID, T.GameLog | string] => {
               if (result.t !== 'Ok') {
-                return [creature_id, result.error];
+                return [creatureId, result.error];
               } else {
                 if (result.result.length !== 1) {
-                  return [creature_id, "Got unexpected results"];
+                  return [creatureId, "Got unexpected results"];
                 } else {
-                  return [creature_id, result.result[0]];
+                  return [creatureId, result.result[0]];
                 }
               }
             }
           ));
-    const gathered: Promise<Array<[T.CreatureID, T.GameLog | string]>> = Promise.all(promises);
     setResults(I.Map());
-    gathered.then(rpi_results => setResults(I.Map(rpi_results)));
+    const gathered: Array<[T.CreatureID, T.GameLog | string]> = await Promise.all(promises);
+    setResults(I.Map(gathered));
   }
 }
 
