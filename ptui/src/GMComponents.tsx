@@ -9,7 +9,7 @@ import {
   Menu, Message, Popup, Segment, Tab, Table
 } from 'semantic-ui-react';
 
-// import * as Campaign from './Campaign';
+import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import { CoolForm, NumericInput, PlaintextInput, Submit } from './CoolForm';
 import * as Dice from './Dice';

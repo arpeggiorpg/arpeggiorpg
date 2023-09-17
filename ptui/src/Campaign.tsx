@@ -1,4 +1,4 @@
-import * as Fuse from 'fuse.js';
+import Fuse from 'fuse.js';
 import * as I from 'immutable';
 import * as LD from 'lodash';
 import * as React from "react";
@@ -31,15 +31,14 @@ export function MultiItemSelector(props: MultiItemSelectorProps) {
   const display = ([path, item]: [T.FolderPath, T.Item]) =>
     `${M.folderPathToString(path)}/${item.name}`;
   return <div>
-    {ptui.getItems(this.state.selections.toArray()).map(
-      item => <Label key={item.id}>{item.name}</Label>)}
+    {ptui.getItems(selections.toArray()).map(item => <Label key={item.id}>{item.name}</Label>)}
     <SearchSelect values={items}
       onSelect={([_, item]: [T.FolderPath, T.Item]) =>
-        this.setState({ selections: this.state.selections.add(item.id) })}
+        setSelections(selections.add(item.id))}
       display={display}
     />
-    <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Items</Button>
-    <Button onClick={this.props.on_cancel}>Cancel</Button>
+    <Button onClick={() => props.on_selected(selections)}>Select Items</Button>
+    <Button onClick={props.on_cancel}>Cancel</Button>
   </div>;
 }
 
@@ -47,26 +46,26 @@ interface SceneSelectorProps {
   onCancel: () => void;
   onSelect: (sid: T.SceneID) => void;
 }
-export const SceneSelector = M.connectRedux(class SceneSelector
-  extends React.Component<SceneSelectorProps & M.ReduxProps> {
-  constructor(props: SceneSelectorProps & M.ReduxProps) {
-    super(props);
-  }
-  render(): JSX.Element {
-    const { ptui } = this.props;
-    const scenes = collectAllScenes(ptui, [], ptui.app.current_game.campaign);
-    const display = ([path, scene]: [T.FolderPath, T.Scene]) =>
-      `${M.folderPathToString(path)}/${scene.name}`;
-    return <div>
-      <SearchSelect values={scenes}
-        onSelect={([_, scene]: [T.FolderPath, T.Scene]) => this.props.onSelect(scene.id)}
-        display={display}
-      />
-      <Button onClick={this.props.onCancel}>Cancel</Button>
-    </div>;
-  }
-});
-
+export function SceneSelector(props: SceneSelectorProps) {
+  // RADIX: okay, so this is a case where I think I've actually done a good job at only selecting
+  // the things I need out of the store. Is this actually optimized? Is "shallow" equality actually
+  // sufficient to get this? I kinda doubt it! scenes is an array of objects, and those objects are
+  // created fresh on every render. I suspect we probably need deep equality.
+  const scenes: {id: string, name: string, path: T.FolderPath}[] = M.useApp(s => {
+    const campaign = s.app.current_game.campaign;
+    const allScenes = s.app.current_game.scenes;
+    return collectAllScenes([], campaign, allScenes).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
+  });
+  const display = ({path, name}: {name: string, path: T.FolderPath}) =>
+    `${M.folderPathToString(path)}/${name}`;
+  return <div>
+    <SearchSelect values={scenes}
+      onSelect={({id}) => props.onSelect(id)}
+      display={display}
+    />
+    <Button onClick={props.onCancel}>Cancel</Button>
+  </div>;
+}
 
 interface MultiSceneSelectorProps {
   already_selected: I.Set<T.SceneID>;
@@ -504,60 +503,54 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   }
 }
 
-interface FuseResult { item: number; matches: Array<{ indices: Array<[number, number]> }>; }
-
 interface SearchSelectProps<T> {
   label?: string;
   values: Array<T>;
   onSelect: (value: T) => void;
   display: (t: T) => string;
 }
-interface SearchSelectState { results: Array<FuseResult>; current_selection: number; }
+function SearchSelect<T>(props: SearchSelectProps<T>) {
+  const [results, setResults] = React.useState<Fuse.FuseResult<string>[]>([]);
+  const [ currentSelection, setCurrentSelection] = React.useState<number>(0);
+  const { values, label } = props;
+  const fuse = new Fuse(values.map(props.display),
+    {
+      shouldSort: true,
+      includeMatches: true,
+      minMatchCharLength: 0,
+    });
+  const optionsToDisplay = results.length === 0 ? values.slice(0, 20).map((v, i) => ({refIndex: i, matches: []})) : results;
+  return <div>
+    <Input label={label ?? "Search"}
+      onChange={(_, d) => search(fuse, d.value)}
+      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKey(e)}
+    />
+    <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
+      {optionsToDisplay.map((result, i) => {
+        const matchedValue = values[result.refIndex];
+        return <Menu.Item active={i === currentSelection}
+          onClick={() => props.onSelect(matchedValue)}
+          key={props.display(matchedValue)}>
+          {/* RADIX WTF? */}
+          <span
+            dangerouslySetInnerHTML={{
+              __html: highlight(props.display(matchedValue), result.matches ?? []),
+            }} />
+        </Menu.Item>;
+      })}
 
-class SearchSelect<T> extends React.Component<SearchSelectProps<T>, SearchSelectState> {
-  constructor(props: SearchSelectProps<T>) {
-    super(props);
-    this.state = { results: [], current_selection: 0 };
-  }
-  render(): JSX.Element | null {
-    const { values, label } = this.props;
-    const fuse = new Fuse(values.map(this.props.display),
-      {
-        shouldSort: true,
-        includeMatches: true,
-        minMatchCharLength: 2,
-      });
-    return <div>
-      <Input label={label ? label : "Search"}
-        onChange={(_, d) => this.search(fuse, d.value)}
-        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => this.handleKey(e)}
-      />
-      <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
-        {this.state.results.map((result, i) => {
-          const matched_value = values[result.item];
-          return <Menu.Item active={i === this.state.current_selection}
-            onClick={() => this.props.onSelect(matched_value)}
-            key={this.props.display(matched_value)}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: this.highlight(this.props.display(matched_value), result.matches),
-              }} />
-          </Menu.Item>;
-        })}
+    </Menu>
+  </div>;
 
-      </Menu>
-    </div>;
-  }
-
-  search(fuse: Fuse, term: string) {
-    const results = fuse.search<FuseResult>(term);
-    this.setState({ results });
-    if (this.state.current_selection >= results.length) {
-      this.setState({ current_selection: Math.max(results.length - 1, 0) });
+  function search(fuse: Fuse<string>, term: string) {
+    const results = fuse.search(term);
+    setResults(results);
+    if (currentSelection >= results.length) {
+      setCurrentSelection(Math.max(results.length - 1, 0));
     }
   }
 
-  handleKey(event: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKey(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.keyCode === 38) {
       this.setState({ current_selection: Math.max(this.state.current_selection - 1, 0) });
     } else if (event.keyCode === 40) {
@@ -572,7 +565,7 @@ class SearchSelect<T> extends React.Component<SearchSelectProps<T>, SearchSelect
     }
   }
 
-  highlight(s: string, matches: Array<{ indices: Array<[number, number]> }>): string {
+  function highlight(s: string, matches: readonly Fuse.FuseResultMatch[]): string {
     const result = ['<span style="color: gray;">'];
     const pairs = LD.flatMap(matches, m => m.indices);
     let pair = pairs.shift();
@@ -618,9 +611,8 @@ function collectAllItems(path: T.FolderPath, folder: T.Folder):
   return collectFolderObjects(path, folder, (node) => ptui.getItems(node.items));
 }
 
-function collectAllScenes(path: T.FolderPath, folder: T.Folder):
-  Array<[T.FolderPath, T.Scene]> {
-  return collectFolderObjects(path, folder, (node) => ptui.getScenes(node.scenes));
+function collectAllScenes(path: T.FolderPath, folder: T.Folder, allScenes: I.Map<string, T.Scene>): Array<[T.FolderPath, T.Scene]> {
+  return collectFolderObjects(path, folder, node => M.getScenes(allScenes, node.scenes));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }

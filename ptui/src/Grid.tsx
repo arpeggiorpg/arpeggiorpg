@@ -23,7 +23,7 @@ export function SceneGrid(props: SceneGridProps) {
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
   const { scene } = props;
-  const grid = M.useGrid(s => s.grid);
+  const grid = M.useGrid(s => s.grid); // This is bad, I think?
   const focus = M.useGrid(s => s.focus);
   const playerID = M.usePlayer(s => s.id);
 
