@@ -1,22 +1,13 @@
 import * as I from 'immutable';
 import * as React from "react";
 
-import * as Comp from './Component';
 import * as M from './Model';
 import * as T from './PTTypes';
 
 
-interface HistoryDerivedProps {
-  snapshots: Array<T.Snapshot>;
-  creatures: I.Map<T.CreatureID, T.Creature>;
-}
-export const History = ReactRedux.connect(
-  Comp.createDeepEqualSelector(
-    [(ptui: M.PTUI) => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
-    (snapshots, creatures) => ({ snapshots, creatures })),
-  (dispatch: M.Dispatch) => ({ dispatch }),
-)(function History(props: HistoryDerivedProps & M.DispatchProps): JSX.Element {
-  const { snapshots, creatures, dispatch } = props;
+export function History(): JSX.Element {
+  const snapshots = M.useState(s => s.app.snapshots);
+  const creatures = M.useState(s => s.getGame().creatures);
   console.log("[EXPENSIVE:History.render]");
   return <div>{
     snapshots.map(
@@ -26,12 +17,12 @@ export const History = ReactRedux.connect(
             key={snapshot_index.toString() + "-" + log_index.toString()}>
             <GameLog log={log} creatures={creatures} />
             <button className="material-icons"
-              onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
+              onClick={() => M.sendCommand({ t: "Rollback", snapshot_index, log_index })}
             >history</button>
           </div>)
     )
   }</div>;
-});
+}
 
 
 export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, T.Creature> }):
