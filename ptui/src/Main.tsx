@@ -3,7 +3,7 @@ import * as React from "react";
 import * as M from "./Model";
 
 export function Main(props: React.PropsWithChildren) {
-  const fetchStatus = M.useApp((a) => a.fetchStatus);
+  const fetchStatus = M.useState(s => s.fetchStatus);
   // kick off a fetch of the app
   React.useEffect(() => {
     M.startPoll();

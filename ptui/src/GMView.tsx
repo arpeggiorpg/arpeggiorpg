@@ -12,9 +12,9 @@ import * as M from './Model';
 import * as T from './PTTypes';
 
 export function GMMain() {
-  const scene = M.useFocusedScene();
-  const app = M.useApp(s => s.app);
-  const gridModel = M.useGrid(s => s.grid);
+  const scene = M.useState(s => s.getFocusedScene());
+  const app = M.useState(s => s.app);
+  const gridModel = M.useState(s => s.grid);
   const grid = scene
     ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(app, gridModel, scene)} />
     : <div>No scene yet!</div>;
@@ -41,14 +41,14 @@ export function GMMain() {
 }
 
 function Secondary() {
-  const focus2 = M.useSecondaryFocus(s => s.focus);
+  const focus2 = M.useState(s => s.secondaryFocus);
   if (!focus2) { return undefined; }
   switch (focus2.t) {
     case "Note":
       return <CV.NoteEditor path={focus2.path} name={focus2.name}
         // We need to refocus with the new name after a note gets renamed:
         afterSave={(path, note) =>
-          M.useSecondaryFocus.getState().setFocus({ t: "Note", path, name: note.name })}/>;
+          M.getState().setSecondaryFocus({ t: "Note", path, name: note.name })}/>;
     case "Creature":
       return <GM.CreatureFocus creatureId={focus2.creature_id} />;
     case "Item":
