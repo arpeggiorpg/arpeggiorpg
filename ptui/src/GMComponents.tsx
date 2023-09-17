@@ -1056,7 +1056,9 @@ export function GMCreateItem(props: GMCreateItemProps) {
 }
 
 
-export function GMViewItem({ item }: { item: T.Item }) {
+export function GMViewItem({ itemId }: { itemId: T.ItemID }) {
+  const item = M.useState(s => s.getItem(itemId));
+  if (!item) return <div>Item {itemId} not found!</div>;
   const viewName = (edit: CV.ToggleFunc) =>
     <Card.Header>
       {item.name} <Icon onClick={edit} style={{ cursor: 'pointer', float: 'right' }} name='edit' />
@@ -1074,7 +1076,7 @@ export function GMViewItem({ item }: { item: T.Item }) {
     </Card.Content>
     <Card.Content extra={true}>
       <div className="ui buttons">
-        <Button>Give to Creature</Button>
+        <Button>Give to Creature (NYI)</Button>
       </div>
     </Card.Content>
   </Card>;
