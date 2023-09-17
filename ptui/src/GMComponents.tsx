@@ -510,36 +510,39 @@ function GMCreatureInventory({ creature }: { creature: T.Creature }) {
   const inv = creature.inventory;
   const items = M.useState(s => s.getItems(inv.keySeq().toArray()));
 
-  return <List relaxed={true}>
-    <List.Item key="add">
-      <CV.ModalMaker
-        button={pop => <Button onClick={pop}>Add</Button>}
-        header={<span>Add items to {creature.name}</span>}
-        content={close => <AddItemsToCreature creature={creature} onClose={close} />}
-      />
-    </List.Item>
-    {items.map(item => {
-      const count = inv.get(item.id);
-      if (!count) { return; }
-      return <List.Item key={`item:${item.id}`}>
-        {item.name}
-        <div style={{ float: 'right', display: 'flex' }}>
-          <CreatureItemCountEditor creature={creature} item={item} count={count} />
-          <Dropdown icon='caret down'
-            className='right' pointing={true} floating={true}>
-            <Dropdown.Menu>
-              <Dropdown.Header content={item.name} />
-              <CV.ModalMaker
-                button={open => <Dropdown.Item onClick={open} content='Give' />}
-                header={<span>Give {item.name}</span>}
-                content={close => <CV.GiveItem giver={creature} item={item} onClose={close} />} />
-            </Dropdown.Menu>
-          </Dropdown>
-        </div>
-      </List.Item>;
-    }
-    )}
-  </List>;
+  return <>
+    <h3>Inventory - {creature.name}</h3>
+    <List relaxed={true}>
+      <List.Item key="add">
+        <CV.ModalMaker
+          button={pop => <Button onClick={pop}>Add</Button>}
+          header={<span>Add items to {creature.name}</span>}
+          content={close => <AddItemsToCreature creature={creature} onClose={close} />}
+        />
+      </List.Item>
+      {items.map(item => {
+        const count = inv.get(item.id);
+        if (!count) { return; }
+        return <List.Item key={`item:${item.id}`}>
+          {item.name}
+          <div style={{ float: 'right', display: 'flex' }}>
+            <CreatureItemCountEditor creature={creature} item={item} count={count} />
+            <Dropdown icon='caret down'
+              className='right' pointing={true} floating={true}>
+              <Dropdown.Menu>
+                <Dropdown.Header content={item.name} />
+                <CV.ModalMaker
+                  button={open => <Dropdown.Item onClick={open} content='Give' />}
+                  header={<span>Give {item.name}</span>}
+                  content={close => <CV.GiveItem giver={creature} item={item} onClose={close} />} />
+              </Dropdown.Menu>
+            </Dropdown>
+          </div>
+        </List.Item>;
+      }
+      )}
+    </List>
+  </>;
 }
 
 
@@ -579,9 +582,10 @@ function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () =>
   const { scene, item, onClose } = props;
   const available_count = scene.inventory.get(item.id);
   if (!available_count) { return <div>Lost item {item.name}!</div>; }
+  const availableRecipients = M.useState(s => s.getSceneCreatures(scene));
   return <CV.TransferItemsToRecipientForm
     available_count={available_count}
-    available_recipients={ptui.getSceneCreatures(scene)}
+    available_recipients={availableRecipients}
     onGive={give}
     onClose={onClose} />;
   function give(recip: T.Creature, count: number) {
