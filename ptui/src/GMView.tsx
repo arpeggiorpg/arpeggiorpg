@@ -1,5 +1,5 @@
-import * as I from 'immutable';
-import * as LD from 'lodash';
+import I from 'immutable';
+import LD from 'lodash';
 import * as React from 'react';
 
 import * as Campaign from './Campaign';
@@ -8,6 +8,7 @@ import * as GM from './GMComponents';
 import * as Grid from './Grid';
 import * as History from './History';
 import * as M from './Model';
+import * as A from './Actions';
 import * as Players from './Players';
 import * as T from './PTTypes';
 
@@ -70,12 +71,12 @@ function mapCreatures(state: M.AllStates): { [index: string]: Grid.MapCreature }
 
 function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): I.Map<string, (cid: T.CreatureID) => void> {
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
-    "Walk": (cid: T.CreatureID) => M.requestMove(cid),
+    "Walk": (cid: T.CreatureID) => A.requestMove(cid),
     "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),
   });
   if (combat && state.getCurrentCombatCreatureID() === creature.id) {
     actions = actions.merge({
-      "Combat-move": (_: T.CreatureID) => M.requestCombatMovement(),
+      "Combat-move": (_: T.CreatureID) => A.requestCombatMovement(),
     });
   }
   return actions;

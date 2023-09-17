@@ -23,6 +23,7 @@ import {
 // import * as Comp from './Component';
 import * as History from './History';
 import * as M from "./Model";
+import * as A from "./Actions";
 import * as T from "./PTTypes";
 import * as TextInput from "./TextInput";
 import { useWindowSize } from "./lib/hooks";
@@ -254,7 +255,7 @@ export class RemoveItem extends React.Component<
     if (!this.state.count) {
       return;
     }
-    M.sendCommand({
+    A.sendCommand({
       t: "RemoveItem",
       owner: { Creature: creature.id },
       item_id: item.id,
@@ -389,7 +390,7 @@ export function GiveItem( props: GiveItemProps ) {
   );
 
   function give(recip: T.Creature, count: number) {
-    M.sendCommand({
+    A.sendCommand({
       t: "TransferItem",
       from: { Creature: giver.id },
       to: { Creature: recip.id },
@@ -640,7 +641,7 @@ function DoneButton(): JSX.Element {
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => M.sendCommand(command)}
+      onClick={() => A.sendCommand(command)}
     >
       Done
     </Button>
@@ -655,7 +656,7 @@ interface AbilityButtonProps {
 
 function AbilityButton(props: AbilityButtonProps): JSX.Element {
   const { abinfo, creature, scene_id } = props;
-  const onClick = () => M.requestCombatAbility(
+  const onClick = () => A.requestCombatAbility(
     creature.id, abinfo.ability_id, abinfo.ability, scene_id
   );
   const disabled = creature.cur_energy < abinfo.ability.cost;
@@ -680,7 +681,7 @@ function MoveButton(props: { creature: T.Creature; combat?: T.Combat }) {
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => M.requestCombatMovement()}
+      onClick={() => A.requestCombatMovement()}
     >
       Move {suffix}
     </Button>
@@ -958,7 +959,7 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div>
           <span style={{ fontSize: "xx-small" }}>
-            {M.folderPathToString(path)}
+            {T.folderPathToString(path)}
           </span>
           <br />
           <Toggler
@@ -1021,7 +1022,7 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
     const cmd: T.GameCommand = originalNote
       ? { t: "EditNote", path, name: originalNote.name, note: newNote }
       : { t: "CreateNote", path, note: newNote };
-    M.sendCommand(cmd);
+    A.sendCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);
     }
@@ -1193,7 +1194,7 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
   );
   function send(input: string) {
     const cmd = sendCommand(input);
-    M.sendCommand(cmd);
+    A.sendCommand(cmd);
   }
 }
 

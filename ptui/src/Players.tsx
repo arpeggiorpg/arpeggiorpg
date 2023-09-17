@@ -6,6 +6,7 @@ import { Button, List, Table } from "semantic-ui-react";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
 import * as M from "./Model";
+import * as A from "./Actions";
 import * as T from "./PTTypes";
 
 
@@ -96,7 +97,7 @@ export function Players() {
       <Button
         key={"set-" + player_id + scene_id}
         onClick={() =>
-          M.sendCommand({ t: "SetPlayerScene", player_id, scene_id })
+          A.sendCommand({ t: "SetPlayerScene", player_id, scene_id })
         }
       >
         {text}
@@ -112,7 +113,7 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
       already_selected={I.Set(player.creatures)}
       on_cancel={onDone}
       on_selected={cids => {
-        M.sendCommand({
+        A.sendCommand({
           t: "GiveCreaturesToPlayer",
           player_id: player.player_id,
           creature_ids: cids.toArray(),
