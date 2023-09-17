@@ -112,7 +112,7 @@ export async function startPoll() {
   // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
   // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
   const app = await ptfetch(RPI_URL, undefined, T.decodeApp);
-  useApp.getState().refresh(app);
+  useState.getState().refresh(app);
   await poll(app);
 
   async function poll(app: T.App) {
@@ -124,21 +124,19 @@ export async function startPoll() {
       try {
         console.log("gonna fetch");
         app = await ptfetch(url, undefined, T.decodeApp);
-        useApp.getState().refresh(app);
+        useState.getState().refresh(app);
       } catch (e) {
         console.error("oops got an error", e);
-        useApp.getState().setFetchStatus("Error");
+        useState.getState().setFetchStatus("Error");
       }
     }
   }
 }
 
-function getFocusedScene() {
-  const focus = useGrid.getState().focus;
-  if (!focus) return;
-  return useApp.getState().app.current_game.scenes.get(focus.scene_id);
-}
-
+// ACTIONS!
+// These should probably be moved to a different module.
+// All of these should ONLY be called in "imperative" code, i.e. event handlers,
+// never while rendering components.
 export async function requestMove(cid: T.CreatureID) {
   const scene = getFocusedScene();
   if (scene) {
@@ -207,12 +205,6 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
   useGrid.getState().clearPotentialTargets();
 }
 
-
-export function getScenes(allScenes: I.Map<string, T.Scene>, sceneIds: T.SceneID[]): T.Scene[] {
-  return LD.sortBy(filterMap(sceneIds, s => allScenes.get(s)), s => s.name);
-}
-
-
 export class PTUI {
 
   getAbility(abid: T.AbilityID): T.Ability | undefined {
@@ -259,32 +251,6 @@ export class PTUI {
   }
 }
 
-export function getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
-  const entry = idx(combat.creatures.data, combat.creatures.cursor);
-  if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
-  return entry[0];
-}
-
-export function useNote(path: T.FolderPath, name: string | undefined): T.Note | undefined {
-  if (!name) return;
-  const fnode = useFolderNode(path);
-  if (fnode && fnode.notes.hasOwnProperty(name)) {
-    return fnode.notes[name];
-  }
-}
-
-export function useFolderNode(path: T.FolderPath): T.FolderNode | undefined {
-  return useApp(s => {
-    let cur: T.Folder | undefined = s.app.current_game.campaign;
-    for (const seg of path) {
-      cur = cur.children.get(seg);
-      if (!cur) { return undefined; }
-    }
-    return cur.data;
-  });
-
-}
-
 export async function loadGame(source: T.ModuleSource, name: string): Promise<void> {
   const url = source === "SavedGame"
     ? `${RPI_URL}/saved_games/user/${name}/load`
@@ -321,16 +287,13 @@ export function exportModule(path: T.FolderPath, name: string): Promise<undefine
 }
 
 
-
-export function useScene(scene_id: T.SceneID): T.Scene | undefined {
-  return useApp(s => s.app.current_game.scenes.get(scene_id));
-}
-
-export function useScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
-  // TODO: this isn't cacheable without deep equality checks
-  return useApp(s => LD.sortBy(
-    filterMap(scene_ids, sid => s.app.current_game.scenes.get(sid)),
-    s => s.name));
+// I don't think I can move this into the zustand store unless I merge all the
+// different stores into one. Which, it turns out, is what zustand docs
+// recommend. Whoops!
+function getFocusedScene() {
+  const focus = useGrid.getState().focus;
+  if (!focus) return;
+  return useState.getState().app.current_game.scenes.get(focus.scene_id);
 }
 
 const initialApp: T.App = {
@@ -347,20 +310,32 @@ const initialApp: T.App = {
   }
 };
 
-type FetchStatus = "Unfetched" | "Ready" | "Error";
-interface AppState {
+export type FetchStatus = "Unfetched" | "Ready" | "Error";
+export interface AppState {
   app: T.App;
   fetchStatus: FetchStatus;
   setFetchStatus: (s: FetchStatus) => void;
   refresh: (app: T.App) => void;
   refreshGame: (game: T.Game) => void;
 
-  // utility functions
+  // utility functions for fetching state
   getItem: (iid: T.ItemID) => T.Item | undefined,
   getItems: (iids: T.ItemID[]) => T.Item[],
+  getScenes: (sceneIds: T.SceneID[]) => T.Scene[],
+  getCurrentCombatCreatureID: () => T.CreatureID | undefined,
+  getNote: (path: T.FolderPath, name: string | undefined) => T.Note | undefined,
+  getFolderNode: (path: T.FolderPath) => T.FolderNode | undefined,
+  getScene: (sceneId: T.SceneID) => T.Scene | undefined,
+
+  creatureIsInCombat: (creatureId: T.CreatureID) => boolean,
+  getSceneCreatures: (scene: T.Scene) => T.Creature[],
+  getCreatures: (cids: T.CreatureID[]) => T.Creature[],
+  getCreature: (cid: T.CreatureID) => T.Creature | undefined,
+  getCombat: () => T.Combat | undefined,
+  getGame: () => T.Game,
 }
 
-export const useApp = createWithEqualityFn<AppState>()((set, get) => ({
+export const useState = createWithEqualityFn<AppState>()((set, get) => ({
   app: initialApp,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
@@ -379,16 +354,57 @@ export const useApp = createWithEqualityFn<AppState>()((set, get) => ({
     state.refresh({ ...state.app, current_game: game });
     return state;
   }),
-  getItem: iid => get().app.current_game.items[iid],
+
+  getItem: iid => get().getGame().items[iid],
   getItems: iids => LD.sortBy(
     filterMap(iids, iid => get().getItem(iid)),
     i => i.name
   ),
 
+  // RADIX CONTINUE HERE: I am moving these functions into the store because it
+  // gives us the flexibility to call them either in hooks or imperatively!
+  getScenes: (sceneIds) => LD.sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
+  getScene: (scene_id) => get().getGame().scenes.get(scene_id),
+
+  getCurrentCombatCreatureID: () => {
+    const combat = get().getCombat();
+    if (!combat) return;
+    const entry = idx(combat.creatures.data, combat.creatures.cursor);
+    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
+    return entry[0];
+  },
+
+  getNote: (path, name) => {
+    if (!name) return;
+    const fnode = get().getFolderNode(path);
+    if (fnode && fnode.notes.hasOwnProperty(name)) {
+      return fnode.notes[name];
+    }
+  },
+
+  getFolderNode: (path) => {
+    let cur: T.Folder | undefined = get().getGame().campaign;
+    for (const seg of path) {
+      cur = cur.children.get(seg);
+      if (!cur) { return undefined; }
+    }
+    return cur.data;
+  },
+
+  creatureIsInCombat: creatureId =>
+    LD.find(
+      get().getCombat()?.creatures.data,
+      ([cid, _]) => cid === creatureId
+    ) !== undefined,
+  getSceneCreatures: scene => get().getCreatures(scene.creatures.keySeq().toArray()),
+  getCreatures: cids => LD.sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
+  getCreature: cid => get().getGame().creatures.get(cid),
+  getCombat: () => get().getGame().current_combat,
+  getGame: () => get().app.current_game,
   // TODO: maybe "fetch"?
 }),
   // There may be an argument for *deep* comparison here. The app is 100%
-  // replaced on every refresh.
+  // replaced on every refresh, and selectors will often return structures deeper than just 1 level.
   shallow);
 
 interface SecondaryFocusState {
@@ -425,7 +441,7 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
   focus: undefined,
   reset: () => set(() => ({ grid: default_state.grid })),
   setFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
-    const scene = useApp.getState().app.current_game.scenes.get(scene_id);
+    const scene = useState.getState().app.current_game.scenes.get(scene_id);
     let layer: SceneLayer | undefined = undefined;
     switch (t) {
       case "Terrain":
@@ -467,7 +483,7 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
 
 export function useFocusedScene(): T.Scene | undefined {
   const focus = useGrid(g => g.focus);
-  const game = useApp(a => a.app.current_game);
+  const game = useState(a => a.app.current_game);
   // oh for Rust's "?" operator
   if (focus) {
     return game.scenes.get(focus.scene_id);
@@ -496,7 +512,7 @@ export const useError = createWithEqualityFn<ErrorState>()(set => ({
 }), Object.is);
 
 // Just for debugging
-(window as any).ptstate = { useError, usePlayer, useGrid, useSecondaryFocus, useApp };
+(window as any).ptstate = { useError, usePlayer, useGrid, useSecondaryFocus, useState };
 
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
@@ -541,30 +557,6 @@ export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined 
   }
 }
 
-export function creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
-  return LD.find(
-    combat.creatures.data,
-    ([cid, _]) => cid === creature_id) !== undefined;
-}
-
-export function getSceneCreatures(app: T.App, scene: T.Scene) {
-  return getCreatures(app, scene.creatures.keySeq().toArray());
-}
-
-export function useSceneCreatures<T>(scene: T.Scene, selector: (c: T.Creature[]) => T): T {
-  return useApp(s => selector(getSceneCreatures(s.app, scene)));
-}
-
-export function getCreatures(app: T.App, cids: Array<T.CreatureID>): Array<T.Creature> {
-  return LD.sortBy(filterMap(cids, cid => getCreature(app, cid)), (c: T.Creature) => c.name);
-}
-
-export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefined {
-  return app.current_game.creatures.get(cid);
-}
-
-export function useCreature(cid: T.CreatureID) { }
-
 export async function sendCommand(cmd: T.GameCommand) {
   const json = T.encodeGameCommand(cmd);
   console.log("[sendCommand:JSON]", json);
@@ -579,7 +571,7 @@ export async function sendCommand(cmd: T.GameCommand) {
   );
   switch (result.t) {
     case "Ok":
-      useApp.getState().refreshGame(result.result[0]);
+      useState.getState().refreshGame(result.result[0]);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
@@ -622,7 +614,7 @@ export async function newGame() {
 }
 
 function resetApp(app: T.App) {
-  useApp.getState().refresh(app);
+  useState.getState().refresh(app);
   useGrid.getState().reset();
 }
 

@@ -27,14 +27,16 @@ interface MultiItemSelectorProps {
 }
 export function MultiItemSelector(props: MultiItemSelectorProps) {
   const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.require_selected);
-  const items = collectAllItems([], ptui.app.current_game.campaign);
-  const display = ([path, item]: [T.FolderPath, T.Item]) =>
-    `${M.folderPathToString(path)}/${item.name}`;
+  const items = M.useApp(s =>
+    collectAllItems(s).map(([path, item]) => ({path, ...LD.pick(item, ['id', 'name'])}))
+  );
+  const selectedItems = M.useApp(s => s.getItems(selections.toArray()));
+  const display = ({path, name}: {name: string, path: T.FolderPath}) =>
+    `${M.folderPathToString(path)}/${name}`;
   return <div>
-    {ptui.getItems(selections.toArray()).map(item => <Label key={item.id}>{item.name}</Label>)}
+    {selectedItems.map(item => <Label key={item.id}>{item.name}</Label>)}
     <SearchSelect values={items}
-      onSelect={([_, item]: [T.FolderPath, T.Item]) =>
-        setSelections(selections.add(item.id))}
+      onSelect={({id}) => setSelections(selections.add(id))}
       display={display}
     />
     <Button onClick={() => props.on_selected(selections)}>Select Items</Button>
@@ -52,9 +54,7 @@ export function SceneSelector(props: SceneSelectorProps) {
   // sufficient to get this? I kinda doubt it! scenes is an array of objects, and those objects are
   // created fresh on every render. I suspect we probably need deep equality.
   const scenes: {id: string, name: string, path: T.FolderPath}[] = M.useApp(s => {
-    const campaign = s.app.current_game.campaign;
-    const allScenes = s.app.current_game.scenes;
-    return collectAllScenes([], campaign, allScenes).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
+    return collectAllScenes(s).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
   });
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
     `${M.folderPathToString(path)}/${name}`;
@@ -228,7 +228,7 @@ function FolderTree(props: FTProps) {
       />
       <Dropdown.Item icon={object_icon("Note")} text='Create Note'
         onClick={() =>
-          dispatch({ type: "FocusSecondary", focus: { t: "Note", path, name: undefined } })} />
+          M.useSecondaryFocus.getState().setFocus({ t: "Note", path, name: undefined })} />
       <CV.ModalMaker
         button={toggler =>
           <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
@@ -246,12 +246,12 @@ function FolderTree(props: FTProps) {
       {!M.isEqual(path, [])
         ? <>
           <Dropdown.Item text="Delete this folder" icon="delete"
-            onClick={() => dispatch(M.sendCommand(
+            onClick={() => M.sendCommand(
               {
                 t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
                 // ! because we KNOW this isn't [] (see conditional above)
                 item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
-              }))} />
+              })} />
           <CV.ModalMaker
             button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
             header={<span>Rename {M.folderPathToString(path)}</span>}
@@ -606,13 +606,12 @@ function collectFolderObjects<T>(
         collectFolderObjects(path.concat(subname), subfolder, getObjects)));
 }
 
-function collectAllItems(path: T.FolderPath, folder: T.Folder):
-  Array<[T.FolderPath, T.Item]> {
-  return collectFolderObjects(path, folder, (node) => ptui.getItems(node.items));
+function collectAllItems(state: M.AppState): Array<[T.FolderPath, T.Item]> {
+  return collectFolderObjects([], state.getGame().campaign, node => state.getItems(node.items));
 }
 
-function collectAllScenes(path: T.FolderPath, folder: T.Folder, allScenes: I.Map<string, T.Scene>): Array<[T.FolderPath, T.Scene]> {
-  return collectFolderObjects(path, folder, node => M.getScenes(allScenes, node.scenes));
+function collectAllScenes(state: M.AppState): Array<[T.FolderPath, T.Scene]> {
+  return collectFolderObjects([], state.getGame().campaign, node => state.getScenes(node.scenes));
 }
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
@@ -625,14 +624,14 @@ function SelectFolder(props: SelectFolderProps) {
 }
 
 interface MoveFolderItemProps { source: T.FolderPath; item_id: T.FolderItemID; onDone: () => void; }
-function MoveFolderItem(props: MoveFolderItemProps & M.DispatchProps) {
-  const { source, item_id, onDone, dispatch } = props;
+function MoveFolderItem(props: MoveFolderItemProps) {
+  const { source, item_id, onDone } = props;
   return <div>
     <SelectFolder onSelect={move} />
   </div>;
 
   function move(dest: T.FolderPath) {
-    dispatch(M.sendCommand({ t: "MoveFolderItem", source, item_id, dest }));
+    M.sendCommand({ t: "MoveFolderItem", source, item_id, dest });
     onDone();
   }
 }
