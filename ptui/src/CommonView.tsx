@@ -326,8 +326,7 @@ export class TransferItemsToRecipientForm extends React.Component<
   give() {
     const count = this.state.count as number; // Protected by button `disabled`
     const receiver_id = this.state.receiver as T.CreatureID; // Protected by button `disabled`
-    const receiver =
-      this.props.ptui.app.current_game.creatures.get(receiver_id);
+    const receiver = M.getState().getCreature(receiver_id);
     if (!receiver) {
       console.log(
         "[TransferItemsToRecipientForm.give] Receiver has disappeared",
