@@ -285,6 +285,7 @@ export interface AppState {
   getAbilities: (abids: T.AbilityID[]) => T.Ability[];
   getClass: (classid: T.ClassID) => T.Class | undefined;
   getClasses: (classids: T.ClassID[]) => T.Class[];
+  getSceneInventory: (scene: T.Scene) => I.List<[T.Item, number]>;
 }
 
 const appSlice: Slice<AppState> = (set, get) => ({
@@ -362,7 +363,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
       c => c.name,
     ),
 
-  getSceneInventory(scene: T.Scene): I.List<[T.Item, number]> {
+  getSceneInventory: scene => {
     const arr = filterMap(scene.inventory.entrySeq().toArray(),
       ([iid, count]) => optMap(get().getItem(iid), (i): [T.Item, number] => [i, count]));
     const list = I.List(arr);
