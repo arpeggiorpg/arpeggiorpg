@@ -978,10 +978,7 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
   const [draftName, setDraftName] = React.useState(props.name);
   const [draftContent, setDraftContent] = React.useState<string|undefined>(undefined);
 
-  const originalNote = M.useNote(path, props.name);
-  if (!originalNote) {
-    return <div>The note at "{M.folderPathToString(path)}" does not exist.</div>;
-  }
+  const originalNote = M.useApp(s => s.getNote(path, props.name));
   const originalContent = originalNote?.content;
   const renderedContent = draftContent ?? originalContent ?? "";
 
