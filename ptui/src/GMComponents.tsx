@@ -507,7 +507,7 @@ function GMSceneInventory({ scene }: { scene: T.Scene }) {
 
 function GMCreatureInventory({ creature }: { creature: T.Creature }) {
   const inv = creature.inventory;
-  const items = ptui.getItems(inv.keySeq().toArray());
+  const items = M.useApp(s => s.getItems(inv.keySeq().toArray()));
 
   return <List relaxed={true}>
     <List.Item key="add">
@@ -1198,7 +1198,11 @@ function GameList(props: GameListProps) {
   }
 }
 
-export function CreatureFocus({ creature }: { creature: T.Creature }) {
+export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
+  const creature = M.useApp(s => s.app.current_game.creatures.get(creatureId));
+  if (!creature) {
+    return <div>Can't find creature {creatureId}</div>;
+  }
   return <div>
     <GMCreatureCard creature={creature} />
     <GMCreatureInventory creature={creature} />

@@ -27,7 +27,6 @@ export function GMMain() {
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
-  const secondary = renderSecondary();
   const tertiary = <div>Tertiary!</div>; // renderTertiary();
   const bottom_bar = <div>Bottom!</div>;
   // const bottom_bar = combat ?
@@ -35,13 +34,13 @@ export function GMMain() {
   //   : undefined;
 
   return <CV.TheLayout map={grid} tabs={tabs}
-    bottom_left={secondary}
+    bottom_left={<Secondary />}
     top_left={tertiary}
     bottom_right={<CV.GMChat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 }
 
-function renderSecondary() {
+function Secondary() {
   const focus2 = M.useSecondaryFocus(s => s.focus);
   if (!focus2) { return undefined; }
   switch (focus2.t) {
@@ -51,10 +50,7 @@ function renderSecondary() {
         afterSave={(path, note) =>
           M.useSecondaryFocus.getState().setFocus({ t: "Note", path, name: note.name })}/>;
     case "Creature":
-      const creature = ptui.getCreature(focus2.creature_id);
-      return creature
-        ? <GM.CreatureFocus creature={creature} />
-        : undefined;
+      return <GM.CreatureFocus creatureId={focus2.creature_id} />;
     case "Item":
       const item = ptui.getItem(focus2.item_id);
       return item ? <GM.GMViewItem item={item} /> : undefined;

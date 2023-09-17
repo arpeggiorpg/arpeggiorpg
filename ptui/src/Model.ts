@@ -212,17 +212,8 @@ export function getScenes(allScenes: I.Map<string, T.Scene>, sceneIds: T.SceneID
   return LD.sortBy(filterMap(sceneIds, s => allScenes.get(s)), s => s.name);
 }
 
+
 export class PTUI {
-
-  getItem(iid: T.ItemID): T.Item | undefined {
-    return get(this.app.current_game.items, iid);
-  }
-
-  getItems(iids: Array<T.ItemID>): Array<T.Item> {
-    return LD.sortBy(
-      filterMap(iids, iid => this.getItem(iid)),
-      i => i.name);
-  }
 
   getAbility(abid: T.AbilityID): T.Ability | undefined {
     return get(this.app.current_game.abilities, abid);
@@ -363,9 +354,13 @@ interface AppState {
   setFetchStatus: (s: FetchStatus) => void;
   refresh: (app: T.App) => void;
   refreshGame: (game: T.Game) => void;
+
+  // utility functions
+  getItem: (iid: T.ItemID) => T.Item | undefined,
+  getItems: (iids: T.ItemID[]) => T.Item[],
 }
 
-export const useApp = createWithEqualityFn<AppState>()(set => ({
+export const useApp = createWithEqualityFn<AppState>()((set, get) => ({
   app: initialApp,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
@@ -383,7 +378,13 @@ export const useApp = createWithEqualityFn<AppState>()(set => ({
   refreshGame: game => set(state => {
     state.refresh({ ...state.app, current_game: game });
     return state;
-  })
+  }),
+  getItem: iid => get().app.current_game.items[iid],
+  getItems: iids => LD.sortBy(
+    filterMap(iids, iid => get().getItem(iid)),
+    i => i.name
+  ),
+
   // TODO: maybe "fetch"?
 }),
   // There may be an argument for *deep* comparison here. The app is 100%
