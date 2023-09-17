@@ -303,7 +303,6 @@ function useFolderTreeData(state: M.AllStates, path: T.FolderPath, folder: T.Fol
     return selecting && selecting.item_type !== t;
   }
 
-  console.log("[useFolderTreeData]", folder);
   const scene_objects =
     dont_show("Scene") ? []
     : state.getScenes(folder.data.scenes).map(

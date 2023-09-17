@@ -142,10 +142,10 @@ export const PlayerActionBar = M.connectRedux((
   props: { player: T.Player; combat: T.Combat | undefined } & M.ReduxProps): JSX.Element => {
   if (props.combat) {
     const cid = props.ptui.getCurrentCombatCreatureID(props.combat);
-    const creature = props.ptui.getCreature(cid);
+    const creature = M.useState(s => s.getCreature(cid));
     if (creature) {
       if (LD.includes(props.player.creatures, cid)) {
-        return <CV.ActionBar combat={props.combat} creature={creature} />;
+        return <CV.ActionBar combat={props.combat} creatureId={creature.id} />;
       } else {
         return <div>{creature.name} is acting</div>;
       }

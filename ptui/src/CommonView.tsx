@@ -595,11 +595,13 @@ export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
   );
 }
 
-export function ActionBar(props: { creature: T.Creature; combat?: T.Combat }) {
+export function ActionBar(props: { creatureId: T.CreatureID; combat?: T.Combat }) {
+  const creature = M.useState(s => s.getCreature(props.creatureId));
+  if (!creature) return <div>Can't find creature {props.creatureId}.</div>
   let abilities = M.useState(s =>
     LD.sortBy(
       M.filterMap(
-        LD.values(props.creature.abilities),
+        LD.values(creature.abilities),
         (abstatus) => {
           const ability = s.getAbility(abstatus.ability_id);
           if (ability) {
@@ -615,7 +617,7 @@ export function ActionBar(props: { creature: T.Creature; combat?: T.Combat }) {
     abilityButtons = abilities.map(abinfo => (
       <AbilityButton
         key={abinfo.ability_id}
-        creature={props.creature}
+        creature={creature}
         abinfo={abinfo}
         scene_id={combat.scene}
       />
@@ -625,9 +627,9 @@ export function ActionBar(props: { creature: T.Creature; combat?: T.Combat }) {
   }
   return (
     <div style={{ display: "flex" }}>
-      <CreatureIcon creature={props.creature} />
+      <CreatureIcon creature={creature} />
       {props.combat ? <DoneButton /> : <noscript />}
-      <MoveButton creature={props.creature} combat={props.combat} />
+      <MoveButton creature={creature} combat={props.combat} />
       {abilityButtons}
     </div>
   );

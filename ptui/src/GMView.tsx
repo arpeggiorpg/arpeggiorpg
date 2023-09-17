@@ -26,10 +26,12 @@ export function GMMain() {
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
-  const bottom_bar = <div>Bottom!</div>;
-  // const bottom_bar = combat ?
-  //   <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
-  //   : undefined;
+  const combat = M.useState(s => s.getCombat());
+  const currentCreatureInCombat = M.useState(s => s.getCurrentCombatCreatureID());
+
+  const bottom_bar = combat ?
+    <CV.ActionBar creatureId={currentCreatureInCombat} combat={combat} />
+    : undefined;
 
   return <CV.TheLayout map={grid} tabs={tabs}
     bottom_left={<Secondary />}

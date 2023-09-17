@@ -139,7 +139,7 @@ export async function startPoll() {
 // All of these should ONLY be called in "imperative" code, i.e. event handlers,
 // never while rendering components.
 export async function requestMove(cid: T.CreatureID) {
-  const scene = getFocusedScene();
+  const scene = getState().getFocusedScene();
   if (scene) {
     const result = await ptfetch(
       `${RPI_URL}/movement_options/${scene.id}/${cid}`,
@@ -152,7 +152,7 @@ export async function requestMove(cid: T.CreatureID) {
 
 export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
   getState().clearMovementOptions();
-  const scene = getFocusedScene();
+  const scene = getState().getFocusedScene();
   if (scene) {
     sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
   } else {
@@ -162,7 +162,7 @@ export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
 
 export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
   getState().clearMovementOptions();
-  const scene = getFocusedScene();
+  const scene = getState().getFocusedScene();
   if (scene) {
     sendCommand({ t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
   }
@@ -298,7 +298,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
       // we always want to force the focus on the players to whatever scene they're focused on
       const playerScene = app.current_game.players.get(pid)?.scene;
       if (playerScene) {
-        getState().setFocus(playerScene);
+        getState().setGridFocus(playerScene);
       }
     }
     return { app, fetchStatus: "Ready" };
@@ -598,18 +598,15 @@ function resetApp(app: T.App) {
   getState().reset();
 }
 
-function selectAbility(
-  scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID): ThunkAction<void> {
-  return (dispatch, getState) => {
-    const url = `${RPI_URL}/target_options/${scene_id}/${cid}/${ability_id}`;
-    ptfetch(dispatch, url, undefined, T.decodePotentialTargets,
-      options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
-  };
+async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
+  const url = `${RPI_URL}/target_options/${scene_id}/${cid}/${ability_id}`;
+  const options = await ptfetch(url, undefined, T.decodePotentialTargets);
+  getState().displayPotentialTargets(cid, ability_id, options);
 }
 
 export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
-): ThunkAction<void> {
+) {
   if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
     return sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
   } else {

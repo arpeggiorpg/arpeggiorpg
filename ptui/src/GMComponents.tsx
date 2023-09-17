@@ -722,8 +722,8 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
 
 export function GMCombat() {
   const combat = M.useState(s => s.getGame().current_combat);
+  const scene = M.useState(s => s.getFocusedScene());
   if (!combat) {
-    const scene = M.useState(s => s.getFocusedScene());
     const startCombat = scene
       ? <StartCombat scene={scene} />
       : <div>Load a scene to start a combat.</div>;
