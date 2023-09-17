@@ -1,23 +1,14 @@
-import * as I from 'immutable';
+import I from 'immutable';
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
-import * as Comp from './Component';
 import * as M from './Model';
+import * as A from './Actions';
 import * as T from './PTTypes';
 
 
-interface HistoryDerivedProps {
-  snapshots: Array<T.Snapshot>;
-  creatures: I.Map<T.CreatureID, T.Creature>;
-}
-export const History = ReactRedux.connect(
-  Comp.createDeepEqualSelector(
-    [(ptui: M.PTUI) => ptui.app.snapshots, ptui => ptui.app.current_game.creatures],
-    (snapshots, creatures) => ({ snapshots, creatures })),
-  (dispatch: M.Dispatch) => ({ dispatch }),
-)(function History(props: HistoryDerivedProps & M.DispatchProps): JSX.Element {
-  const { snapshots, creatures, dispatch } = props;
+export function History(): JSX.Element {
+  const snapshots = M.useState(s => s.app.snapshots);
+  const creatures = M.useState(s => s.getGame().creatures);
   console.log("[EXPENSIVE:History.render]");
   return <div>{
     snapshots.map(
@@ -27,12 +18,12 @@ export const History = ReactRedux.connect(
             key={snapshot_index.toString() + "-" + log_index.toString()}>
             <GameLog log={log} creatures={creatures} />
             <button className="material-icons"
-              onClick={() => dispatch(M.sendCommand({ t: "Rollback", snapshot_index, log_index }))}
+              onClick={() => A.sendCommand({ t: "Rollback", snapshot_index, log_index })}
             >history</button>
           </div>)
     )
   }</div>;
-});
+}
 
 
 export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, T.Creature> }):
@@ -61,19 +52,19 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
         <div>Success? {log.success.toString()}</div>
       </div>;
     case "CreateFolder":
-      return <div><div>Created Folder</div><div>{M.folderPathToString(log.path)}</div></div>;
+      return <div><div>Created Folder</div><div>{T.folderPathToString(log.path)}</div></div>;
     case "RenameFolder":
       return <div>Renamed Folder</div>;
     case "DeleteFolderItem":
-      return <div>Deleted folder item in {M.folderPathToString(log.path)}</div>;
+      return <div>Deleted folder item in {T.folderPathToString(log.path)}</div>;
     case "MoveFolderItem":
-      return <div>Moved folder item from {M.folderPathToString(log.path)}
-        to {M.folderPathToString(log.newPath)}</div>;
+      return <div>Moved folder item from {T.folderPathToString(log.path)}
+        to {T.folderPathToString(log.newPath)}</div>;
     case "CopyFolderItem":
-      return <div>Copied folder item from {M.folderPathToString(log.source)}
-        to {M.folderPathToString(log.dest)}</div>;
+      return <div>Copied folder item from {T.folderPathToString(log.source)}
+        to {T.folderPathToString(log.dest)}</div>;
     case "CreateItem":
-      return <div>Created item {log.item.name} in {M.folderPathToString(log.path)}</div>;
+      return <div>Created item {log.item.name} in {T.folderPathToString(log.path)}</div>;
     case "EditItem":
       return <div>Edited item {log.item.name}</div>;
     case "CreateNote":

@@ -5,58 +5,65 @@ import * as React from "react";
 import * as CV from "./CommonView";
 import * as Grid from './Grid';
 import * as M from './Model';
+import * as A from './Actions';
 import * as T from './PTTypes';
 
 import { Menu } from 'semantic-ui-react';
 
 
-export const PlayerMain = M.connectRedux(
-  function PlayerMain(props) {
-    const { ptui, dispatch } = props;
-    if (ptui.state.player_id) {
-      const player = ptui.app.current_game.players.get(ptui.state.player_id);
-      if (player) {
-        return <PlayerGameView player={player} />;
-      } else {
-        return <div>Couldn't find player {ptui.state.player_id}</div>;
-      }
-    } else {
-      return <div style={{ display: "flex", justifyContent: "space-around" }}>
-        <div style={{ width: "600px" }}>
-          <h1>P&T</h1>
-          <p>Welcome to P&T!</p>
-          {ptui.app.current_game.players.count() > 0
-            ? <div>
-              <p>You can rejoin a session if you've already registered as a player.</p>
-              <Menu compact={true}>
-                {ptui.app.current_game.players.keySeq().toArray().map(pid =>
-                  <Menu.Item key={pid}
-                    onClick={() => dispatch({ type: "SetPlayerID", pid })}
-                    name={pid} />)
-                }
-              </Menu>
-            </div>
-            : null}
-          <p>Or you can register a new player.</p>
-          <CV.SingleInputForm buttonText="Register"
-            onSubmit={input => registerPlayer(input)} />
+export function PlayerMain() {
+  const playerId = M.useState(s => s.playerId);
+  if (playerId) {
+    return <PlayerGameView playerId={playerId} />;
+  } else {
+    return <PlayerLogin />
+  }
+}
+
+function PlayerLogin() {
+  const players = M.useState(s => s.getGame().players);
+  return <div style={{ display: "flex", justifyContent: "space-around" }}>
+    <div style={{ width: "600px" }}>
+      <h1>P&T</h1>
+      <p>Welcome to P&T!</p>
+      {players.count() > 0
+        ? <div>
+          <p>You can rejoin a session if you've already registered as a player.</p>
+          <Menu compact={true}>
+            {players.keySeq().toArray().map(pid =>
+              <Menu.Item key={pid}
+                onClick={() => M.getState().setPlayerId(pid)}
+                name={pid} />)
+            }
+          </Menu>
         </div>
-      </div>;
-    }
+        : <div>There are no players yet!</div>}
+      <p>You can register a new player.</p>
+      <CV.SingleInputForm buttonText="Register"
+        onSubmit={input => registerPlayer(input)} />
+    </div>
+  </div>;
 
-    function registerPlayer(name: string) {
-      ptui.sendCommand(dispatch, { t: "RegisterPlayer", player_id: name });
-      dispatch({ type: "SetPlayerID", pid: name });
-    }
+  function registerPlayer(name: string) {
+    A.sendCommand({ t: "RegisterPlayer", player_id: name });
+    M.getState().setPlayerId(name);
+  }
+}
+
+export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
+  const {player, scene, mapCreatures} = M.useState(s => {
+    const player = s.getGame().players.get(playerId);
+    const scene = player?.scene ? s.getScene(player.scene) : undefined;
+    const mapCreatures = player?.scene && scene ? selectMapCreatures(s, player, scene) : {};
+    return {player, scene, mapCreatures};
   });
-
-export const PlayerGameView = M.connectRedux((
-  { player, ptui, dispatch }: { player: T.Player } & M.ReduxProps): JSX.Element => {
-  const scene = player.scene ? ptui.app.current_game.scenes.get(player.scene) : undefined;
+  const combat = M.useState(s => s.getCombat());
+  if (!player) {
+    return <div>Player {playerId} not found</div>;
+  }
   const map = scene
-    ? <Grid.SceneGrid scene={scene} creatures={selectMapCreatures(ptui, player, scene, dispatch)} />
+    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
     : <div>No scene loaded</div>;
-  const combat = ptui.app.current_game.current_combat;
   const tabs = [
     <CV.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
@@ -68,7 +75,7 @@ export const PlayerGameView = M.connectRedux((
   return <CV.TheLayout map={map} bottom_right={<CV.PlayerChat player_id={player.player_id} />}
     tabs={tabs} bar_width={325} menu_size="large"
     bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;
-});
+}
 
 
 /**
@@ -77,23 +84,21 @@ export const PlayerGameView = M.connectRedux((
  * moving them (if the player has control of them), or targeting them for an ability that has been
  * selected.
  */
-function selectMapCreatures(
-  ptui: M.PTUI, player: T.Player, scene: T.Scene, dispatch: M.Dispatch)
-  : { [index: string]: Grid.MapCreature } {
-  return M.filterMapValues(Grid.mapCreatures(ptui, dispatch, scene),
+function selectMapCreatures(state: M.AllStates, player: T.Player, scene: T.Scene): { [index: string]: Grid.MapCreature } {
+  return M.filterMapValues(Grid.mapCreatures(state, scene),
     mapc => {
       // !: must exist in filterMapValues()
       if (scene.creatures.get(mapc.creature.id)![1].t === "AllPlayers") {
-        const actions = creatureMenuActions(ptui, dispatch, player, mapc.creature);
+        const actions = creatureMenuActions(state, player, mapc.creature);
         return { ...mapc, actions: mapc.actions.merge(actions) };
       }
     }
   );
 }
 
-function creatureMenuActions(
-  ptui: M.PTUI, dispatch: M.Dispatch, player: T.Player, creature: T.Creature) {
+function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.Creature) {
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
+  const combat = state.getCombat();
   const move = moveAction();
   if (move) {
     actions = actions.set("Walk", move);
@@ -102,22 +107,21 @@ function creatureMenuActions(
 
   function moveAction(): ((cid: T.CreatureID) => void) | undefined {
     if (!LD.includes(player.creatures, creature.id)) { return undefined; }
-    const combat = ptui.app.current_game.current_combat;
     if (combat) {
-      if (ptui.getCurrentCombatCreatureID(combat) === creature.id) {
-        return _ => ptui.requestCombatMovement(dispatch);
+      if (state.getCurrentCombatCreatureID() === creature.id) {
+        return _ => A.requestCombatMovement();
       } else {
         return undefined;
       }
     } else {
-      return cid => ptui.requestMove(dispatch, cid);
+      return cid => A.requestMove(cid);
     }
   }
 }
 
-const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxProps): JSX.Element => {
+function PlayerCreatures(props: { player: T.Player }) {
   const cids = props.player.creatures;
-  const creatures = props.ptui.getCreatures(cids);
+  const creatures = M.useState(s => s.getCreatures(cids));
   if (creatures.length === 0) {
     return <div>You have no creatures in your control yet.</div>;
   }
@@ -131,21 +135,26 @@ const PlayerCreatures = M.connectRedux((props: { player: T.Player } & M.ReduxPro
       </div>
     )}
   </div>;
-});
+}
 
 function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
   const path = ["Players", player_id];
+  const folder = M.useState(s => s.getFolder(path));
+  React.useEffect(() => {
+    if (!folder) {
+      A.sendCommand({t: "CreateFolder", path});
+    }
+  }, []);
   return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
 }
 
-export const PlayerActionBar = M.connectRedux((
-  props: { player: T.Player; combat: T.Combat | undefined } & M.ReduxProps): JSX.Element => {
+function PlayerActionBar(props: { player: T.Player; combat: T.Combat | undefined }) {
+  const cid = M.useState(s => s.getCurrentCombatCreatureID());
+  const creature = M.useState(s => cid ? s.getCreature(cid) : undefined);
   if (props.combat) {
-    const cid = props.ptui.getCurrentCombatCreatureID(props.combat);
-    const creature = props.ptui.getCreature(cid);
     if (creature) {
       if (LD.includes(props.player.creatures, cid)) {
-        return <CV.ActionBar combat={props.combat} creature={creature} />;
+        return <CV.ActionBar combat={props.combat} creatureId={creature.id} />;
       } else {
         return <div>{creature.name} is acting</div>;
       }
@@ -155,4 +164,4 @@ export const PlayerActionBar = M.connectRedux((
   } else {
     return <div>TODO: out-of-combat actions</div>;
   }
-});
+}
