@@ -357,7 +357,7 @@ export function SceneGrid(props: SceneGridProps) {
           switch (obj.t) {
             case "Annotation": return annotationMenu(close, scene, obj.pt);
             case "SceneHotSpot":
-              return sceneHotspotMenu(close, scene, obj.scene_id, obj.pt);
+              return <SceneHotspotMenu closeMenu={close} scene={scene} target_scene_id={obj.scene_id} pt={obj.pt} />;
             case "Creature": return creatureMenu(close, creatures, obj.id);
             case "VolumeCondition": return volumeConditionMenu(close, scene, obj.id);
           }
@@ -384,30 +384,6 @@ export function SceneGrid(props: SceneGridProps) {
       </>;
     }
     return;
-  }
-
-  function sceneHotspotMenu(
-    closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3) {
-    const linked_scene = M.useScene(target_scene_id);
-    if (!linked_scene) { return; }
-    const jumpScene = () => {
-      M.useGrid.getState().setFocus(linked_scene.id);
-      closeMenu();
-    };
-    const deleteHotspot = () => {
-      const scene_hotspots = scene.scene_hotspots.remove(pt);
-      M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: scene.id, scene_hotspots });
-      closeMenu();
-    };
-    return <React.Fragment key="Scene-Hotspot">
-      <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
-      <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
-        {linked_scene.name}
-      </Menu.Item>
-      <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
-        Delete Hotspot
-      </Menu.Item>
-    </React.Fragment>;
   }
 
   function creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
@@ -505,6 +481,30 @@ export function SceneGrid(props: SceneGridProps) {
   }
 }
 
+function SceneHotspotMenu(
+  props: {closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3}) {
+  const linked_scene = M.useScene(props.target_scene_id);
+  if (!linked_scene) { return; }
+  const jumpScene = () => {
+    M.useGrid.getState().setFocus(linked_scene.id);
+    props.closeMenu();
+  };
+  const deleteHotspot = () => {
+    const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
+    M.sendCommand({ t: "EditSceneSceneHotspots", scene_id: props.scene.id, scene_hotspots });
+    props.closeMenu();
+  };
+  return <React.Fragment key="Scene-Hotspot">
+    <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
+    <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
+      {linked_scene.name}
+    </Menu.Item>
+    <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
+      Delete Hotspot
+    </Menu.Item>
+  </React.Fragment>;
+}
+
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
   const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
@@ -577,16 +577,16 @@ interface SceneHotSpotProps { scene_id: T.SceneID; pos: T.Point3; }
 function SceneHotSpot(props: SceneHotSpotProps) {
   const { pos, scene_id } = props;
   const tprops = bare_tile_props(pos);
-  let element: SVGRectElement;
+  const element = React.useRef<SVGRectElement>(null);
 
-  const onClick = (ev: React.MouseEvent<any>) => activateGridObjects(ev, element);
+  const onClick = (ev: React.MouseEvent<any>) => element.current && activateGridObjects(ev, element.current);
   const reflection_props = {
     'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene_id,
     'data-pt-pos': T.encodePoint3(pos),
   };
   return <g>
     <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
-      ref={el => { if (el !== null) { element = el; } }}
+      ref={element}
       {...reflection_props} />
     <text
       style={{ pointerEvents: "none" }}
@@ -652,20 +652,20 @@ function Annotation(props: AnnotationProps): JSX.Element | null {
     return null;
   }
 
-  let element: SVGRectElement;
+  const element = React.useRef<SVGRectElement>(null);
 
   const onClick = (event: React.MouseEvent<any>) => {
     if (specialClick) {
       specialClick(pt);
     } else {
-      activateGridObjects(event, element);
+      if (element.current) activateGridObjects(event, element.current);
     }
   };
 
   const reflection_props = { 'data-pt-type': "annotation", 'data-pt-pos': T.encodePoint3(pt) };
   return <g>
     <rect width="100" height="100" x={pt.x} y={pt.y} fillOpacity="0"
-      ref={el => { if (el !== null) { element = el; } }} onClick={onClick}
+      ref={element} onClick={onClick}
       style={{ cursor: 'pointer' }}
       {...reflection_props}
     />
@@ -735,75 +735,81 @@ function findElementsAtPoint<R>(
     if (result) {
       results.push(result);
     }
+    // This is a hack! elementFromPoint finds the most specific element that has
+    // pointerEvents enabled. So, in order to find the next one behind this one,
+    // we have to disable pointer events and loop. Later, we restore all the
+    // pointerEvents values.
     if (el.style.pointerEvents !== 'none') {
       dirtied.push({ el, oldPE: el.style.pointerEvents });
       el.style.pointerEvents = 'none';
     }
   }
   for (const { el, oldPE } of dirtied) {
-    el.style.pointerEvents = oldPE;
+    el.style.pointerEvents = oldPE || '';
   }
   return results;
 }
 
-const GridCreature = M.connectRedux(
-  function GridCreature({ ptui, creature, highlight }:
-    { creature: MapCreature; highlight?: string } & M.ReduxProps): JSX.Element {
-    let element: SVGRectElement | SVGImageElement;
-    const onClick = (event: React.MouseEvent<any>) => activateGridObjects(event, element);
+function GridCreature({ creature, highlight }: { creature: MapCreature; highlight?: string }) {
+  const element = React.useRef<SVGImageElement | SVGRectElement>(null);
+  const combat = M.useApp(s => s.app.current_game.current_combat);
+  const targetOptions = M.useGrid(s => s.grid.target_options);
 
-    const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
-    const combat = ptui.app.current_game.current_combat;
-    if (combat && ptui.getCurrentCombatCreatureID(combat) === creature.creature.id) {
-      highlightProps.stroke = "black";
+  const onClick = (event: React.MouseEvent<any>) => {
+    if (element.current) {
+      activateGridObjects(event, element.current);
+    } else {
+      console.log("NO ELEMENT!!!!!!!!!!", element);
+    }}
+
+  const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
+  if (combat && M.getCurrentCombatCreatureID(combat) === creature.creature.id) {
+    highlightProps.stroke = "black";
+    highlightProps.strokeWidth = 3;
+  }
+  if (targetOptions?.options.t === "CreatureIDs") {
+    if (LD.includes(targetOptions.options.cids, creature.creature.id)) {
+      highlightProps.stroke = "red";
       highlightProps.strokeWidth = 3;
     }
-    const target_opts = ptui.state.grid.target_options;
-    if (target_opts && target_opts.options.t === "CreatureIDs") {
-      if (LD.includes(target_opts.options.cids, creature.creature.id)) {
-        highlightProps.stroke = "red";
-        highlightProps.strokeWidth = 3;
-      }
-    }
-    if (highlight) {
-      highlightProps.stroke = highlight;
-      highlightProps.strokeWidth = 15;
-    }
+  }
+  if (highlight) {
+    highlightProps.stroke = highlight;
+    highlightProps.strokeWidth = 15;
+  }
 
-    const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
-    const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
+  const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
+  const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
 
-    return <g key={creature.creature.id} opacity={opacity} onClick={e => onClick(e)}
-      style={{ cursor: 'pointer' }}>
-      {contents()}
-    </g>;
+  return <g key={creature.creature.id} opacity={opacity} onClick={onClick}
+    style={{ cursor: 'pointer' }}>
+    {contents()}
+  </g>;
 
-    function contents() {
-      if (creature.creature.icon_url !== "") {
-        const props = tile_props("white", creature.pos, creature.creature.size);
-        const bare_props = bare_tile_props(creature.pos, creature.creature.size);
-        return <>
-          <image key="image" ref={el => { if (el !== null) { element = el; } }}
-            xlinkHref={creature.creature.icon_url} {...props} />
-          <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps}
-            fillOpacity="0" />
-        </>;
-      } else {
-        const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
-        return <>
-          <rect ref={el => { if (el !== null) { element = el; } }} {...props}
-            {...reflection_props}
-            {...highlightProps} />
-          <text style={{ pointerEvents: "none" }} fontSize="50"
-            x={creature.pos.x + 50} y={creature.pos.y}
-            dominantBaseline="hanging"
-            textAnchor="middle">
-            {creature.creature.name.slice(0, 4)}
-          </text>
-        </>;
-      }
+  function contents() {
+    if (creature.creature.icon_url !== "") {
+      const props = tile_props("white", creature.pos, creature.creature.size);
+      const bare_props = bare_tile_props(creature.pos, creature.creature.size);
+      return <>
+        <image key="image" ref={element} xlinkHref={creature.creature.icon_url} {...props} />
+        <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps} fillOpacity="0" />
+      </>;
+    } else {
+      const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
+      return <>
+        <rect ref={element} {...props}
+          {...reflection_props}
+          {...highlightProps} />
+        <text style={{ pointerEvents: "none" }} fontSize="50"
+          x={creature.pos.x + 50} y={creature.pos.y}
+          dominantBaseline="hanging"
+          textAnchor="middle">
+          {creature.creature.name.slice(0, 4)}
+        </text>
+      </>;
     }
-  });
+  }
+}
 
 function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number; y: number })
   : JSX.Element {
@@ -830,6 +836,9 @@ function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity:
 function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): [number, number] {
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
   const matrix = rect.getScreenCTM();
+  if (!matrix) {
+    throw new Error("Couldn't get screen CTM");
+  }
   const pt = svg.createSVGPoint();
   pt.x = rect.x.animVal.value;
   pt.y = rect.y.animVal.value;
