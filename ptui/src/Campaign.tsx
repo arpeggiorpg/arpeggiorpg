@@ -71,37 +71,30 @@ interface MultiSceneSelectorProps {
   on_selected: (cs: I.Set<T.SceneID>) => void;
   on_cancel: () => void;
 }
-export class MultiSceneSelector
-  extends React.Component<MultiSceneSelectorProps, { selections: I.Set<T.ItemID> }> {
-  constructor(props: MultiSceneSelectorProps) {
-    super(props);
-    this.state = { selections: this.props.already_selected };
-  }
-  render(): JSX.Element {
-    const { ptui } = this.props;
-    const scenes = collectAllScenes(ptui, [], ptui.app.current_game.campaign);
-    const display = ([path, scene]: [T.FolderPath, T.Scene]) =>
-      `${M.folderPathToString(path)}/${scene.name}`;
-    return <div>
-      <Menu compact={true}>
-        <Menu.Item header={true}>Currently selected</Menu.Item>
-        {ptui.getScenes(this.state.selections.toArray()).map(
-          scene => <Menu.Item key={scene.id}>
-            {scene.name}
-            <Icon name="delete" style={{ cursor: 'pointer' }}
-              onClick={() => this.setState({ selections: this.state.selections.remove(scene.id) })}
-            />
-          </Menu.Item>)}
-      </Menu>
-      <SearchSelect values={scenes}
-        onSelect={([_, scene]: [T.FolderPath, T.Scene]) =>
-          this.setState({ selections: this.state.selections.add(scene.id) })}
-        display={display}
-      />
-      <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Scenes</Button>
-      <Button onClick={this.props.on_cancel}>Cancel</Button>
-    </div>;
-  }
+export function MultiSceneSelector(props: MultiSceneSelectorProps) {
+  const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.already_selected);
+  const scenes = M.useState(s => collectAllScenes(s)).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
+  const selectedScenes = M.useState(s => s.getScenes(selections.toArray()).map(s => LD.pick(s, ['name', 'id'])));
+  const display = ({path, name}: {name: string, path: T.FolderPath}) =>
+    `${M.folderPathToString(path)}/${name}`;
+  return <div>
+    <Menu compact={true}>
+      <Menu.Item header={true}>Currently selected</Menu.Item>
+      {selectedScenes.map(
+        scene => <Menu.Item key={scene.id}>
+          {scene.name}
+          <Icon name="delete" style={{ cursor: 'pointer' }}
+            onClick={() => setSelections(selections.remove(scene.id))}
+          />
+        </Menu.Item>)}
+    </Menu>
+    <SearchSelect values={scenes}
+      onSelect={({id}) => setSelections(selections.add(id))}
+      display={display}
+    />
+    <Button onClick={() => props.on_selected(selections)}>Select Scenes</Button>
+    <Button onClick={props.on_cancel}>Cancel</Button>
+  </div>;
 }
 
 interface MultiCreatureSelectorProps {
