@@ -849,16 +849,14 @@ function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): [number, n
  * Create the `MapCreature`s for all creatures in a scene. This is common code shared for player
  * and GM views.
  */
-export function mapCreatures(app: T.App, grid: T.GridModel, scene: T.Scene): { [index: string]: MapCreature } {
-  const classes = app.current_game.classes;
-  const targetOptions = grid.target_options;
-  const abilities = app.current_game.abilities;
-  const sceneCreatures = M.getSceneCreatures(app, scene);
+export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: string]: MapCreature } {
+  const targetOptions = state.grid.target_options;
+  const sceneCreatures = state.getSceneCreatures(scene);
   const creatures = M.filterMap(
     sceneCreatures,
     creature => {
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
-      const class_ = classes.get(creature.class_);
+      const class_ = state.getClass(creature.class_);
       if (class_) {
         let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
         const target = targetAction(creature);
@@ -881,7 +879,7 @@ export function mapCreatures(app: T.App, grid: T.GridModel, scene: T.Scene): { [
       if (options.t !== "CreatureIDs") { return undefined; }
       // this is quadratic (TODO: switch options.cids to a hashmap)
       if (LD.includes(options.cids, creature.id)) {
-        const ability = M.get(abilities, ability_id);
+        const ability = state.getAbility(ability_id);
         if (ability) {
           return {
             name: `${ability.name} this creature`,

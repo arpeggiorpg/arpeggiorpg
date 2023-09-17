@@ -13,10 +13,9 @@ import * as T from './PTTypes';
 
 export function GMMain() {
   const scene = M.useState(s => s.getFocusedScene());
-  const app = M.useState(s => s.app);
-  const gridModel = M.useState(s => s.grid);
+  const creaturesInMap = M.useState(s => mapCreatures(s))
   const grid = scene
-    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures(app, gridModel, scene)} />
+    ? <Grid.SceneGrid scene={scene} creatures={creaturesInMap} />
     : <div>No scene yet!</div>;
 
   const tabs = [
@@ -66,20 +65,22 @@ function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
 
 /** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
  */
-function mapCreatures(app: T.App, grid: M.GridModel, scene: T.Scene): { [index: string]: Grid.MapCreature } {
-  return LD.mapValues(Grid.mapCreatures(app, grid, scene),
+function mapCreatures(state: M.AllStates): { [index: string]: Grid.MapCreature } {
+  const scene = state.getFocusedScene();
+  if (!scene) return {};
+  return LD.mapValues(Grid.mapCreatures(state, scene),
     mapc => ({
       ...mapc,
-      actions: mapc.actions.merge(creatureMenuActions(scene, app.current_game.current_combat, mapc.creature)),
+      actions: mapc.actions.merge(creatureMenuActions(state, scene, state.getGame().current_combat, mapc.creature)),
     }));
 }
 
-function creatureMenuActions(scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): I.Map<string, (cid: T.CreatureID) => void> {
+function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): I.Map<string, (cid: T.CreatureID) => void> {
   let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
     "Walk": (cid: T.CreatureID) => M.requestMove(cid),
     "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),
   });
-  if (combat && M.getCurrentCombatCreatureID(combat) === creature.id) {
+  if (combat && state.getCurrentCombatCreatureID() === creature.id) {
     actions = actions.merge({
       "Combat-move": (_: T.CreatureID) => M.requestCombatMovement(),
     });
