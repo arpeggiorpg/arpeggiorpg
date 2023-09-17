@@ -471,6 +471,7 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
 }
 
 function GMSceneInventory({ scene }: { scene: T.Scene }) {
+  const inventory = M.useState(s => s.getSceneInventory(scene));
   return <div>
     <List relaxed={true}>
       <List.Item key="add">
@@ -482,7 +483,7 @@ function GMSceneInventory({ scene }: { scene: T.Scene }) {
             content={close => <AddItemsToScene scene={scene} onClose={close} />} />
         </List.Content>
       </List.Item>
-      {ptui.getSceneInventory(scene).map(([item, count]) =>
+      {inventory.map(([item, count]) =>
         <List.Item key={`item:${item.id}`}>
           {item.name}
           <div style={{ float: 'right', display: 'flex' }}>
@@ -540,7 +541,6 @@ function GMCreatureInventory({ creature }: { creature: T.Creature }) {
     )}
   </List>;
 }
-
 
 
 function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
