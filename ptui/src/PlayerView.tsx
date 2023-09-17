@@ -138,6 +138,12 @@ function PlayerCreatures(props: { player: T.Player }) {
 
 function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
   const path = ["Players", player_id];
+  const folder = M.useState(s => s.getFolder(path));
+  React.useEffect(() => {
+    if (!folder) {
+      M.sendCommand({t: "CreateFolder", path});
+    }
+  }, []);
   return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
 }
 
