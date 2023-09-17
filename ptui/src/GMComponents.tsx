@@ -18,8 +18,8 @@ import * as T from './PTTypes';
 import * as TextInput from './TextInput';
 
 export function GMScene({ scene }: { scene: T.Scene }) {
-  const scenePlayers = M.useApp(s => s.app.current_game.players.count(p => p.scene === scene.id));
-  const totalPlayers = M.useApp(s => s.app.current_game.players.count());
+  const scenePlayers = M.useState(s => s.getGame().players.count(p => p.scene === scene.id));
+  const totalPlayers = M.useState(s => s.getGame().players.count());
   const player_count = `${scenePlayers}/${totalPlayers}`;
   const linked_scenes_count = scene.related_scenes.count() + scene.scene_hotspots.count();
 
@@ -58,7 +58,7 @@ export function GMScene({ scene }: { scene: T.Scene }) {
         const menuItem: { menuItem: string; layer?: M.SceneLayerType } =
           data.panes![data.activeIndex as number] as any;
         // unimplemented!: disable tab-switching when Terrain is unsaved
-        M.useGrid.getState().setFocus(scene.id, menuItem.layer);
+        M.getState().setGridFocus(scene.id, menuItem.layer);
       }}
       menu={{
         size: 'small',
@@ -171,27 +171,27 @@ function SceneTerrain(props: { scene: T.Scene }) {
   </div>;
 
   function saveTerrain() {
-    const {focus, setFocus} = M.useGrid.getState();
-    if (focus?.layer?.t !== "Terrain") { return; }
-    const scene_id = focus.scene_id;
-    const terrain = focus.layer.terrain;
+    const {gridFocus, setGridFocus} = M.getState();
+    if (gridFocus?.layer?.t !== "Terrain") { return; }
+    const scene_id = gridFocus.scene_id;
+    const terrain = gridFocus.layer.terrain;
     M.sendCommand({ t: "EditSceneTerrain", scene_id, terrain });
     // RADIX: why am I setting focus here?
-    setFocus(scene.id);
+    setGridFocus(scene.id);
   }
   function cancelTerrain() {
-    M.useGrid.getState().setFocus(scene.id, "Terrain");
+    M.getState().setGridFocus(scene.id, "Terrain");
   }
 }
 
 function SceneHighlights(props: { scene: T.Scene }) {
   const { scene } = props;
-  const allPlayers = M.useGrid(s => s.grid.object_visibility.t === "AllPlayers");
-  const highlightColor = M.useGrid(s => s.grid.highlight_color);
+  const allPlayers = M.useState(s => s.grid.object_visibility.t === "AllPlayers");
+  const highlightColor = M.useState(s => s.grid.highlight_color);
 
   const vis_checkbox = <Checkbox label="Visible to all players?" checked={allPlayers}
     onChange={
-      (_, d) => M.useGrid.getState().setObjectVisibility({ t: d.checked ? "AllPlayers" : "GMOnly" })
+      (_, d) => M.getState().setObjectVisibility({ t: d.checked ? "AllPlayers" : "GMOnly" })
     } />;
 
   return <div>
@@ -199,30 +199,30 @@ function SceneHighlights(props: { scene: T.Scene }) {
     <TwitterPicker
       triangle="hide"
       color={highlightColor}
-      onChange={color => M.useGrid.getState().setHighlightColor(color.hex)} />
+      onChange={color => M.getState().setHighlightColor(color.hex)} />
     Edit the highlights on the map and then
   <Button onClick={saveObjects}>Save</Button> or
   <Button onClick={cancelObjects}>Cancel</Button>
   </div>;
 
   function saveObjects() {
-    const {focus, setFocus} = M.useGrid.getState();
-    if (focus?.layer?.t !== "Highlights") { return; }
-    const scene_id = focus.scene_id;
-    const highlights = focus.layer.highlights;
+    const {gridFocus, setGridFocus} = M.getState();
+    if (gridFocus?.layer?.t !== "Highlights") { return; }
+    const scene_id = gridFocus.scene_id;
+    const highlights = gridFocus.layer.highlights;
     M.sendCommand({ t: "EditSceneHighlights", scene_id, highlights });
     // RADIX: Why am I setting focus here?
-    setFocus(scene.id);
+    setGridFocus(scene.id);
   }
   function cancelObjects() {
-    M.useGrid.getState().setFocus(scene.id, "Highlights");
+    M.getState().setGridFocus(scene.id, "Highlights");
   }
 }
 
 function GMScenePlayers(props: { scene: T.Scene }) {
   const { scene } = props;
-  const players_here = M.useApp(
-    s => s.app.current_game.players.valueSeq().toArray().filter(player => player.scene === scene.id)
+  const players_here = M.useState(
+    s => s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id)
   );
   return <List relaxed={true}>
     <List.Item>
@@ -234,7 +234,7 @@ function GMScenePlayers(props: { scene: T.Scene }) {
   </List>;
 
   function moveAll() {
-    const pids = M.useApp.getState().app.current_game.players.keySeq().toArray();
+    const pids = M.getState().app.current_game.players.keySeq().toArray();
     const commands: T.GameCommand[] = pids.map(
       player_id => ({ t: "SetPlayerScene", player_id, scene_id: scene.id }));
     commands.push({ t: "SetActiveScene", scene_id: scene.id });
@@ -251,9 +251,9 @@ function GMSceneVolumes(_: { scene: T.Scene }) {
 interface LinkedScenesProps { scene: T.Scene; }
 function LinkedScenes(props: LinkedScenesProps) {
   const { scene } = props;
-  const relatedScenes = M.useScenes(scene.related_scenes.toArray());
+  const relatedScenes = M.useState(s => s.getScenes(scene.related_scenes.toArray()));
   // TODO: this is inefficient without deep-equality on scenes (I don't *think* zustand "shallow" equality will work)
-  const scenes = M.useApp(s => s.app.current_game.scenes);
+  const scenes = M.useState(s => s.getGame().scenes);
   const hotspotScenes = LD.sortBy(
     M.filterMap(scene.scene_hotspots.entrySeq().toArray(),
       ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
@@ -261,7 +261,7 @@ function LinkedScenes(props: LinkedScenesProps) {
         if (hsScene) { return [hsScene, pos]; }
       }),
     ([s, _]) => s.name);
-  const focusScene = (scene: T.Scene) => () => M.useGrid.getState().setFocus(scene.id);
+  const focusScene = (scene: T.Scene) => () => M.getState().setGridFocus(scene.id);
   return <List>
     <List.Item>
       <List.Header>
@@ -507,7 +507,7 @@ function GMSceneInventory({ scene }: { scene: T.Scene }) {
 
 function GMCreatureInventory({ creature }: { creature: T.Creature }) {
   const inv = creature.inventory;
-  const items = M.useApp(s => s.getItems(inv.keySeq().toArray()));
+  const items = M.useState(s => s.getItems(inv.keySeq().toArray()));
 
   return <List relaxed={true}>
     <List.Item key="add">
@@ -717,9 +717,9 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
 }
 
 export function GMCombat() {
-  const combat = M.useApp(s => s.app.current_game.current_combat);
+  const combat = M.useState(s => s.getGame().current_combat);
   if (!combat) {
-    const scene = M.useFocusedScene();
+    const scene = M.useState(s => s.getFocusedScene());
     const startCombat = scene
       ? <StartCombat scene={scene} />
       : <div>Load a scene to start a combat.</div>;
@@ -758,7 +758,7 @@ export function GMCombat() {
 
 
 function StartCombat(props: { scene: T.Scene }) {
-  const sceneCreatureIDs = M.useSceneCreatures(props.scene, cs => cs.map(c => c.id));
+  const sceneCreatureIDs = M.useState(s => s.getSceneCreatures(props.scene).map(c => c.id));
   // TODO: clean up this mess. Should this be a useEffect? I hate useEffect!
   const [selected, setSelected] = React.useState<I.Set<T.CreatureID>>(I.Set(sceneCreatureIDs));
 
@@ -790,7 +790,7 @@ interface SelectSceneCreaturesProps {
 }
 function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
   const { scene, add, remove, selections } = props;
-  const creatures = M.useSceneCreatures(scene, x => x);
+  const creatures = M.useState(s => s.getSceneCreatures(scene));
   return <List relaxed={true}>
     {
       creatures.map(creature =>
@@ -805,14 +805,14 @@ function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
 
 
 function GMCombatHeader({ combat }: { combat: T.Combat }) {
-  const scene = M.useScene(combat.scene);
+  const scene = M.useState(s => s.getScene(combat.scene));
 
   return <Segment>
     {
       scene
         ?
         <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
-        <a href="#" onClick={() => M.useGrid.getState().setFocus(scene.id)}>
+        <a href="#" onClick={() => M.getState().setFocus(scene.id)}>
             {scene.name}
           </a>
           <Button onClick={() => M.sendCommand( { t: "StopCombat" })}>
@@ -1199,7 +1199,7 @@ function GameList(props: GameListProps) {
 }
 
 export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
-  const creature = M.useApp(s => s.app.current_game.creatures.get(creatureId));
+  const creature = M.useState(s => s.getCreature(creatureId));
   if (!creature) {
     return <div>Can't find creature {creatureId}</div>;
   }

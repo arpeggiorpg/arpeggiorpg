@@ -5,6 +5,7 @@ import * as JD from "type-safe-json-decoder";
 import { createWithEqualityFn } from "zustand/traditional";
 
 import * as T from './PTTypes';
+import type { StateCreator } from "zustand";
 import { shallow } from 'zustand/shallow';
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
@@ -78,7 +79,7 @@ export async function ptfetch<J>(
     return json;
   } catch (e) {
     const error = extract_error_details(e);
-    useError.getState().set(error);
+    getState().setError(error);
     throw e;
   }
 
@@ -112,7 +113,7 @@ export async function startPoll() {
   // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
   // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
   const app = await ptfetch(RPI_URL, undefined, T.decodeApp);
-  useState.getState().refresh(app);
+  getState().refresh(app);
   await poll(app);
 
   async function poll(app: T.App) {
@@ -124,10 +125,10 @@ export async function startPoll() {
       try {
         console.log("gonna fetch");
         app = await ptfetch(url, undefined, T.decodeApp);
-        useState.getState().refresh(app);
+        getState().refresh(app);
       } catch (e) {
         console.error("oops got an error", e);
-        useState.getState().setFetchStatus("Error");
+        getState().setFetchStatus("Error");
       }
     }
   }
@@ -145,12 +146,12 @@ export async function requestMove(cid: T.CreatureID) {
       undefined,
       JD.array(T.decodePoint3)
     );
-    useGrid.getState().displayMovementOptions(result, cid);
+    getState().displayMovementOptions(result, cid);
   }
 }
 
 export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
-  useGrid.getState().clearMovementOptions();
+  getState().clearMovementOptions();
   const scene = getFocusedScene();
   if (scene) {
     sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
@@ -160,7 +161,7 @@ export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
 }
 
 export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
-  useGrid.getState().clearMovementOptions();
+  getState().clearMovementOptions();
   const scene = getFocusedScene();
   if (scene) {
     sendCommand({ t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
@@ -168,7 +169,7 @@ export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
 }
 
 export function moveCombatCreature(dest: T.Point3) {
-  useGrid.getState().clearMovementOptions();
+  getState().clearMovementOptions();
   sendCommand({ t: "PathCurrentCombatCreature", dest });
 }
 
@@ -176,7 +177,7 @@ export async function requestCombatMovement() {
   const options = await ptfetch(
     RPI_URL + "/combat_movement_options", undefined,
     JD.array(T.decodePoint3));
-  useGrid.getState().displayMovementOptions(options);
+  getState().displayMovementOptions(options);
 }
 
 
@@ -184,17 +185,17 @@ export async function requestCombatMovement() {
  * This relies on the state being set up ahead of time: we must have a target_options already.
  */
 export async function executeCombatAbility(target_id: T.CreatureID) {
-  const opts = useGrid.getState().grid.target_options;
+  const opts = getState().grid.target_options;
   if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
   const { ability_id, options } = opts;
   if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
   const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
   sendCommand({ t: "CombatAct", ability_id, target });
-  useGrid.getState().clearPotentialTargets();
+  getState().clearPotentialTargets();
 }
 
 export function executeCombatPointTargetedAbility(point: T.Point3) {
-  const opts = useGrid.getState().grid.target_options;
+  const opts = getState().grid.target_options;
   if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
   const { ability_id, options } = opts;
   if (options.t !== "Points") {
@@ -202,53 +203,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
   }
   const target: T.DecidedTarget = { t: "Point", point };
   sendCommand({ t: "CombatAct", ability_id, target });
-  useGrid.getState().clearPotentialTargets();
-}
-
-export class PTUI {
-
-  getAbility(abid: T.AbilityID): T.Ability | undefined {
-    return get(this.app.current_game.abilities, abid);
-  }
-  getAbilities(abids: Array<T.AbilityID>): Array<T.Ability> {
-    return LD.sortBy(
-      filterMap(abids, abid => this.getAbility(abid)),
-      i => i.name);
-  }
-
-  getClass(classid: T.ClassID): T.Class | undefined {
-    return this.app.current_game.classes.get(classid);
-  }
-  getClasses(classids: Array<T.ClassID>): Array<T.Class> {
-    return LD.sortBy(
-      filterMap(classids, classid => this.getClass(classid)),
-      c => c.name,
-    );
-  }
-
-  getCurrentCombatCreature(combat: T.Combat): T.Creature {
-    const cid = this.getCurrentCombatCreatureID(combat);
-    const creature = this.getCreature(cid);
-    if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`); }
-    return creature;
-  }
-
-  creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
-    return LD.find(
-      combat.creatures.data,
-      ([cid, _]) => cid === creature_id) !== undefined;
-  }
-
-  getSceneCreatures(scene: T.Scene): Array<T.Creature> {
-    return this.getCreatures(scene.creatures.keySeq().toArray());
-  }
-
-  getSceneInventory(scene: T.Scene): I.List<[T.Item, number]> {
-    const arr = filterMap(scene.inventory.entrySeq().toArray(),
-      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
-    const list = I.List(arr);
-    return list.sortBy(([i, _]) => i.name);
-  }
+  getState().clearPotentialTargets();
 }
 
 export async function loadGame(source: T.ModuleSource, name: string): Promise<void> {
@@ -287,15 +242,6 @@ export function exportModule(path: T.FolderPath, name: string): Promise<undefine
 }
 
 
-// I don't think I can move this into the zustand store unless I merge all the
-// different stores into one. Which, it turns out, is what zustand docs
-// recommend. Whoops!
-function getFocusedScene() {
-  const focus = useGrid.getState().focus;
-  if (!focus) return;
-  return useState.getState().app.current_game.scenes.get(focus.scene_id);
-}
-
 const initialApp: T.App = {
   snapshots: [],
   current_game: {
@@ -325,6 +271,7 @@ export interface AppState {
   getCurrentCombatCreatureID: () => T.CreatureID | undefined,
   getNote: (path: T.FolderPath, name: string | undefined) => T.Note | undefined,
   getFolderNode: (path: T.FolderPath) => T.FolderNode | undefined,
+  getFolder: (path: T.FolderPath) => T.Folder | undefined,
   getScene: (sceneId: T.SceneID) => T.Scene | undefined,
 
   creatureIsInCombat: (creatureId: T.CreatureID) => boolean,
@@ -333,19 +280,24 @@ export interface AppState {
   getCreature: (cid: T.CreatureID) => T.Creature | undefined,
   getCombat: () => T.Combat | undefined,
   getGame: () => T.Game,
+
+  getAbility: (abid: T.AbilityID) => T.Ability | undefined;
+  getAbilities: (abids: T.AbilityID[]) => T.Ability[];
+  getClass: (classid: T.ClassID) => T.Class | undefined;
+  getClasses: (classids: T.ClassID[]) => T.Class[];
 }
 
-export const useState = createWithEqualityFn<AppState>()((set, get) => ({
+const appSlice: Slice<AppState> = (set, get) => ({
   app: initialApp,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
-  refresh: app => set(() => {
-    const pid = usePlayer.getState().id;
+  refresh: app => set(state => {
+    const pid = state.playerId;
     if (pid) {
       // we always want to force the focus on the players to whatever scene they're focused on
       const playerScene = app.current_game.players.get(pid)?.scene;
       if (playerScene) {
-        useGrid.getState().setFocus(playerScene);
+        getState().setFocus(playerScene);
       }
     }
     return { app, fetchStatus: "Ready" };
@@ -361,8 +313,6 @@ export const useState = createWithEqualityFn<AppState>()((set, get) => ({
     i => i.name
   ),
 
-  // RADIX CONTINUE HERE: I am moving these functions into the store because it
-  // gives us the flexibility to call them either in hooks or imperatively!
   getScenes: (sceneIds) => LD.sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
   getScene: (scene_id) => get().getGame().scenes.get(scene_id),
 
@@ -382,13 +332,15 @@ export const useState = createWithEqualityFn<AppState>()((set, get) => ({
     }
   },
 
-  getFolderNode: (path) => {
+  getFolderNode: path => get().getFolder(path)?.data,
+
+  getFolder: path => {
     let cur: T.Folder | undefined = get().getGame().campaign;
     for (const seg of path) {
       cur = cur.children.get(seg);
       if (!cur) { return undefined; }
     }
-    return cur.data;
+    return cur;
   },
 
   creatureIsInCombat: creatureId =>
@@ -401,28 +353,39 @@ export const useState = createWithEqualityFn<AppState>()((set, get) => ({
   getCreature: cid => get().getGame().creatures.get(cid),
   getCombat: () => get().getGame().current_combat,
   getGame: () => get().app.current_game,
-  // TODO: maybe "fetch"?
-}),
-  // There may be an argument for *deep* comparison here. The app is 100%
-  // replaced on every refresh, and selectors will often return structures deeper than just 1 level.
-  shallow);
+
+  getAbility: abid => get().getGame().abilities[abid],
+  getAbilities: abids => LD.sortBy( filterMap(abids, abid => get().getAbility(abid)), i => i.name),
+  getClass: classid => get().getGame().classes.get(classid),
+  getClasses: classids => LD.sortBy(
+      filterMap(classids, classid => get().getClass(classid)),
+      c => c.name,
+    ),
+
+  getSceneInventory(scene: T.Scene): I.List<[T.Item, number]> {
+    const arr = filterMap(scene.inventory.entrySeq().toArray(),
+      ([iid, count]) => optMap(get().getItem(iid), (i): [T.Item, number] => [i, count]));
+    const list = I.List(arr);
+    return list.sortBy(([i, _]) => i.name);
+  }
+});
 
 interface SecondaryFocusState {
-  focus?: SecondaryFocus;
-  setFocus: (f: SecondaryFocus) => void;
+  secondaryFocus?: SecondaryFocus;
+  setSecondaryFocus: (f: SecondaryFocus) => void;
 }
 
-export const useSecondaryFocus = createWithEqualityFn<SecondaryFocusState>()(set => ({
-  focus: undefined,
-  setFocus: focus => set(() => ({ focus }))
-}), shallow);
+const secondaryFocusSlice: Slice<SecondaryFocusState> = set => ({
+  secondaryFocus: undefined,
+  setSecondaryFocus: secondaryFocus => set(() => ({ secondaryFocus }))
+});
 
 interface GridState {
   grid: GridModel;
-  focus?: GridFocus;
+  gridFocus?: GridFocus;
   // reset is used in New Game
   reset: () => void;
-  setFocus: (s: T.SceneID, l?: SceneLayerType) => void;
+  setGridFocus: (s: T.SceneID, l?: SceneLayerType) => void;
   activateObjects: (objects: GridObject[], coords: [number, number]) => void;
   activateContextMenu: (pt: T.Point3, coords: [number, number]) => void;
   clearContextMenu: () => void;
@@ -434,14 +397,20 @@ interface GridState {
   displayPotentialTargets: (cid: T.CreatureID, ability_id: T.AbilityID, options: T.PotentialTargets) => void;
   clearPotentialTargets: () => void;
   clearMovementOptions: () => void;
+
+  // accessors
+  getFocusedScene: () => T.Scene | undefined;
 }
 
-export const useGrid = createWithEqualityFn<GridState>()(set => ({
+export type AllStates = PlayerState & GridState & AppState & ErrorState & SecondaryFocusState;
+type Slice<T> = StateCreator<AllStates, [], [], T>;
+
+const gridSlice: Slice<GridState> = (set, get) => ({
   grid: default_state.grid,
-  focus: undefined,
+  gridFocus: undefined,
   reset: () => set(() => ({ grid: default_state.grid })),
-  setFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
-    const scene = useState.getState().app.current_game.scenes.get(scene_id);
+  setGridFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
+    const scene = get().getGame().scenes.get(scene_id);
     let layer: SceneLayer | undefined = undefined;
     switch (t) {
       case "Terrain":
@@ -455,23 +424,23 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
         layer = { t };
         break;
     }
-    return { focus: { scene_id, layer } };
+    return { gridFocus: { scene_id, layer } };
   }),
   activateObjects: (objects, coords) => set(({ grid }) => ({ grid: { ...grid, active_objects: { objects, coords } } })),
   activateContextMenu: (pt, coords) => set(({ grid }) => ({ grid: { ...grid, context_menu: { pt, coords } } })),
   clearContextMenu: () => set(({ grid }) => ({ grid: { ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] } } })),
   setHighlightColor: highlight_color => set(({ grid }) => ({ grid: { ...grid, highlight_color } })),
   setObjectVisibility: object_visibility => set(({ grid }) => ({ grid: { ...grid, object_visibility } })),
-  setTerrain: terrain => set(({ focus }) => {
+  setTerrain: terrain => set(({ gridFocus }) => {
     // TODO: do we really need to do this conditional?
-    if (focus?.layer?.t === "Terrain") {
-      return { focus: { ...focus, layer: { ...focus.layer, terrain } } }
+    if (gridFocus?.layer?.t === "Terrain") {
+      return { gridFocus: { ...gridFocus, layer: { ...gridFocus.layer, terrain } } }
     }
     return {};
   }),
-  setHighlights: highlights => set(({ focus }) => {
-    if (focus?.layer?.t === "Highlights") {
-      return { focus: { ...focus, layer: { ...focus.layer, highlights } } };
+  setHighlights: highlights => set(({ gridFocus }) => {
+    if (gridFocus?.layer?.t === "Highlights") {
+      return { gridFocus: { ...gridFocus, layer: { ...gridFocus.layer, highlights } } };
     }
     return {}
   }),
@@ -479,40 +448,50 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
   displayPotentialTargets: (cid, ability_id, options) => set(({ grid }) => ({ grid: { ...grid, target_options: { cid, ability_id, options } } })),
   clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
   clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
-}), shallow);
 
-export function useFocusedScene(): T.Scene | undefined {
-  const focus = useGrid(g => g.focus);
-  const game = useState(a => a.app.current_game);
-  // oh for Rust's "?" operator
-  if (focus) {
-    return game.scenes.get(focus.scene_id);
+  getFocusedScene: () => {
+    const state = get();
+    if (!state.gridFocus) return;
+    return state.getGame().scenes.get(state.gridFocus.scene_id);
   }
-}
+});
 
 interface PlayerState {
-  id: T.PlayerID | undefined;
-  set: (id: T.PlayerID) => void;
+  playerId: T.PlayerID | undefined;
+  setPlayerId: (id: T.PlayerID) => void;
 }
-export const usePlayer = createWithEqualityFn<PlayerState>()((set) => ({
-  id: undefined,
-  set: id => set(() => ({id}))
-}), Object.is);
+const playerSlice: Slice<PlayerState> = set => ({
+  playerId: undefined,
+  setPlayerId: playerId => set(() => ({playerId}))
+});
 
 interface ErrorState {
   error: string | undefined;
-  set: (e: string) => void,
-  clear: () => void
+  setError: (e: string) => void,
+  clearError: () => void,
 }
 
-export const useError = createWithEqualityFn<ErrorState>()(set => ({
+const errorSlice: Slice<ErrorState> = set => ({
   error: undefined,
-  set: error => set(() => ({ error })),
-  clear: () => set(() => ({ error: undefined }))
-}), Object.is);
+  setError: error => set(() => ({ error })),
+  clearError: () => set(() => ({ error: undefined }))
+});
+
+export const useState = createWithEqualityFn<AllStates>()((...a) => ({
+  ...errorSlice(...a),
+  ...playerSlice(...a),
+  ...gridSlice(...a),
+  ...appSlice(...a),
+  ...secondaryFocusSlice(...a),
+}),
+  // There may be an argument for *deep* comparison here. The app is 100%
+  // replaced on every refresh, and selectors will often return structures deeper than just 1 level.
+  shallow);
+
+export const getState = useState.getState;
 
 // Just for debugging
-(window as any).ptstate = { useError, usePlayer, useGrid, useSecondaryFocus, useState };
+(window as any).getState = getState;
 
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
@@ -571,7 +550,7 @@ export async function sendCommand(cmd: T.GameCommand) {
   );
   switch (result.t) {
     case "Ok":
-      useState.getState().refreshGame(result.result[0]);
+      getState().refreshGame(result.result[0]);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
@@ -614,8 +593,8 @@ export async function newGame() {
 }
 
 function resetApp(app: T.App) {
-  useState.getState().refresh(app);
-  useGrid.getState().reset();
+  getState().refresh(app);
+  getState().reset();
 }
 
 function selectAbility(
@@ -635,19 +614,6 @@ export function requestCombatAbility(
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }
-}
-
-
-type ThunkAction<R> = (dispatch: Dispatch, getState: () => PTUI, extraArgument: undefined) => R;
-
-
-export interface DispatchProps { dispatch: Dispatch; }
-export interface ReduxProps extends DispatchProps { ptui: PTUI; }
-
-export function connectRedux<BaseProps extends {} & object>(
-  x: React.ComponentType<BaseProps & ReduxProps>
-): React.ComponentType<BaseProps> {
-  return x;
 }
 
 export function fetchAbilityTargets(

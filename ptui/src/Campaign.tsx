@@ -16,8 +16,7 @@ import * as M from './Model';
 import * as T from './PTTypes';
 
 export function Campaign() {
-  const campaign = M.useApp(s => s.app.current_game.campaign);
-  return <FolderTree name="Campaign" path={[]} folder={campaign} start_open={true} />;
+  return <FolderTree name="Campaign" path={[]} start_open={true} />;
 }
 
 interface MultiItemSelectorProps {
@@ -27,10 +26,10 @@ interface MultiItemSelectorProps {
 }
 export function MultiItemSelector(props: MultiItemSelectorProps) {
   const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.require_selected);
-  const items = M.useApp(s =>
+  const items = M.useState(s =>
     collectAllItems(s).map(([path, item]) => ({path, ...LD.pick(item, ['id', 'name'])}))
   );
-  const selectedItems = M.useApp(s => s.getItems(selections.toArray()));
+  const selectedItems = M.useState(s => s.getItems(selections.toArray()));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
     `${M.folderPathToString(path)}/${name}`;
   return <div>
@@ -53,7 +52,7 @@ export function SceneSelector(props: SceneSelectorProps) {
   // the things I need out of the store. Is this actually optimized? Is "shallow" equality actually
   // sufficient to get this? I kinda doubt it! scenes is an array of objects, and those objects are
   // created fresh on every render. I suspect we probably need deep equality.
-  const scenes: {id: string, name: string, path: T.FolderPath}[] = M.useApp(s => {
+  const scenes: {id: string, name: string, path: T.FolderPath}[] = M.useState(s => {
     return collectAllScenes(s).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
   });
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
@@ -72,9 +71,9 @@ interface MultiSceneSelectorProps {
   on_selected: (cs: I.Set<T.SceneID>) => void;
   on_cancel: () => void;
 }
-export const MultiSceneSelector = M.connectRedux(class MultiSceneSelector
-  extends React.Component<MultiSceneSelectorProps & M.ReduxProps, { selections: I.Set<T.ItemID> }> {
-  constructor(props: MultiSceneSelectorProps & M.ReduxProps) {
+export class MultiSceneSelector
+  extends React.Component<MultiSceneSelectorProps, { selections: I.Set<T.ItemID> }> {
+  constructor(props: MultiSceneSelectorProps) {
     super(props);
     this.state = { selections: this.props.already_selected };
   }
@@ -103,23 +102,19 @@ export const MultiSceneSelector = M.connectRedux(class MultiSceneSelector
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
-});
+}
 
 interface MultiCreatureSelectorProps {
   already_selected: I.Set<T.CreatureID>;
   on_selected: (cs: I.Set<T.CreatureID>) => void;
   on_cancel: () => void;
 }
-export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
-  extends React.Component<
-  MultiCreatureSelectorProps & M.ReduxProps,
-  { selections: I.Set<T.CreatureID> }> {
-  constructor(props: MultiCreatureSelectorProps & M.ReduxProps) {
+export class MultiCreatureSelector extends React.Component< MultiCreatureSelectorProps, { selections: I.Set<T.CreatureID> }> {
+  constructor(props: MultiCreatureSelectorProps) {
     super(props);
     this.state = { selections: this.props.already_selected };
   }
   render(): JSX.Element {
-    const { ptui } = this.props;
     const on_check = (checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) => {
       switch (folder_item.t) {
         case "CreatureID":
@@ -139,13 +134,13 @@ export const MultiCreatureSelector = M.connectRedux(class MultiCreatureSelector
         item_id.t === "CreatureID" && this.state.selections.includes(item_id.id),
     };
     return <div>
-      <FolderTree name="Campaign" path={[]} folder={ptui.app.current_game.campaign} start_open={true}
+      <FolderTree name="Campaign" path={[]} start_open={true}
         selecting={selecting} />
       <Button onClick={() => this.props.on_selected(this.state.selections)}>Select Creatures</Button>
       <Button onClick={this.props.on_cancel}>Cancel</Button>
     </div>;
   }
-});
+}
 
 interface SelectableProps {
   item_type: FolderContentType;
@@ -170,16 +165,17 @@ type FolderObject =
 interface FTProps {
   path: T.FolderPath;
   name: string;
-  folder: T.Folder;
   start_open?: boolean;
   selecting?: SelectableProps;
 }
 
 function FolderTree(props: FTProps) {
+  const { selecting, path } = props;
   const [expanded, setExpanded] = React.useState(props.start_open || false);
-  const { folder, selecting, path } = props;
+  const folder = M.useState(s => s.getFolder(path));
+  if (!folder) { return <div>No folder found for {M.folderPathToString(path)}</div>;}
 
-  const objects = useFolderTreeData(path, folder, selecting);
+  const objects = M.useState(s => useFolderTreeData(s, path, folder, selecting));
 
   const children = [
     section("Notes", objects.note_objects),
@@ -207,9 +203,9 @@ function FolderTree(props: FTProps) {
       }));
   }
 
-  const subfolders = LD.sortBy(folder.children.entrySeq().toArray(), ([name, _]) => name).map(
-    ([name, subfolder]) =>
-      <FolderTree key={name} name={name} folder={subfolder}
+  const subfolders = Array.from(folder.children.keys()).sort().map(
+    name =>
+      <FolderTree key={name} name={name}
         path={LD.concat(props.path, name)} selecting={selecting} />
   );
   const folder_menu = <Dropdown icon='ellipsis horizontal'>
@@ -228,7 +224,7 @@ function FolderTree(props: FTProps) {
       />
       <Dropdown.Item icon={object_icon("Note")} text='Create Note'
         onClick={() =>
-          M.useSecondaryFocus.getState().setFocus({ t: "Note", path, name: undefined })} />
+          M.getState().setSecondaryFocus({ t: "Note", path, name: undefined })} />
       <CV.ModalMaker
         button={toggler =>
           <Dropdown.Item icon={object_icon("Item")} text='Create Item' onClick={toggler} />}
@@ -309,36 +305,32 @@ interface FTData {
   item_objects: Array<FolderObject>;
 }
 
-function useFolderTreeData(path: T.FolderPath, folder: T.Folder, selecting?: SelectableProps): FTData {
+function useFolderTreeData(state: M.AllStates, path: T.FolderPath, folder: T.Folder, selecting?: SelectableProps): FTData {
   function dont_show(t: FolderContentType) {
     return selecting && selecting.item_type !== t;
   }
-  function mget<K, V>(m: I.Map<K, V>, keys: K[]): V[] {
-    return M.filterMap(keys, k => m.get(k));
-  }
-  function mgetO<V>(m: { [index: string]: V }, keys: string[]): V[] {
-    return M.filterMap(keys, k => m[k]);
-  }
 
-  const scene_objects = M.useApp(s =>
+  console.log("[useFolderTreeData]", folder);
+  const scene_objects =
     dont_show("Scene") ? []
-    : mget(s.app.current_game.scenes, folder.data.scenes).map(
-        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name })));
-  const creature_objects = M.useApp(s =>
-    dont_show("Creature") ? [] : mget(s.app.current_game.creatures, folder.data.creatures).map(
-      (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name })));
-  const item_objects = M.useApp(s =>
-    dont_show("Item") ? [] :
-    mgetO(s.app.current_game.items, folder.data.items).map(
-      (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name })));
-  const ability_objects = M.useApp(s =>
-    dont_show("Ability") ? [] :
-    mgetO(s.app.current_game.abilities, folder.data.abilities).map(
-    (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name })));
-  const class_objects = M.useApp(s =>
-    dont_show("Class") ? [] :
-    mget(s.app.current_game.classes, folder.data.classes).map(
-    (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name })));
+    : state.getScenes(folder.data.scenes).map(
+        (scene): FolderObject => ({ t: "Scene", path, id: scene.id, name: scene.name }));
+  const creature_objects =
+    dont_show("Creature") ? []
+    : state.getCreatures(folder.data.creatures).map(
+      (creature): FolderObject => ({ t: "Creature", path, id: creature.id, name: creature.name }));
+  const item_objects =
+    dont_show("Item") ? []
+    : state.getItems(folder.data.items).map(
+      (item): FolderObject => ({ t: "Item", path, id: item.id, name: item.name }));
+  const ability_objects =
+    dont_show("Ability") ? []
+    : state.getAbilities(folder.data.abilities).map(
+      (item): FolderObject => ({ t: "Ability", path, id: item.id, name: item.name }));
+  const class_objects =
+    dont_show("Class") ? []
+    : state.getClasses(folder.data.classes).map(
+      (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
 
   const note_objects = dont_show("Note") ? [] :
     LD.sortBy(LD.keys(folder.data.notes), n => n).map(
@@ -381,27 +373,27 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
 function activate_object(obj: FolderObject): void {
   switch (obj.t) {
     case "Scene":
-      M.useGrid.getState().setFocus(obj.id);
+      M.getState().setGridFocus(obj.id);
       return;
     case "Creature":
-      M.useSecondaryFocus.getState().setFocus({ t: "Creature", creature_id: obj.id });
+      M.getState().setSecondaryFocus({ t: "Creature", creature_id: obj.id });
       return;
     case "Note":
-      M.useSecondaryFocus.getState().setFocus({ t: "Note", path: obj.path, name: obj.name });
+      M.getState().setSecondaryFocus({ t: "Note", path: obj.path, name: obj.name });
       return;
     case "Item":
-      M.useSecondaryFocus.getState().setFocus({ t: "Item", item_id: obj.id });
+      M.getState().setSecondaryFocus({ t: "Item", item_id: obj.id });
       return;
   }
 }
 
 
-interface TreeObjectProps extends M.DispatchProps {
+interface TreeObjectProps {
   object: FolderObject;
   selecting: SelectableProps | undefined;
 }
 
-function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
+function TreeObject({ object, selecting }: TreeObjectProps) {
   const name = object.name;
 
   return <List.Item style={{ width: '100%' }}>
@@ -450,7 +442,7 @@ function TreeObject({ object, selecting, dispatch }: TreeObjectProps) {
 
   function handler() {
     if (selecting) { return; }
-    return activate_object(object, dispatch);
+    return activate_object(object);
   }
 
   function onCheck(_: any, data: SUI.CheckboxProps) {
@@ -616,7 +608,7 @@ function collectAllScenes(state: M.AppState): Array<[T.FolderPath, T.Scene]> {
 
 interface SelectFolderProps { onSelect: (p: T.FolderPath) => void; }
 function SelectFolder(props: SelectFolderProps) {
-  const all_folders = M.useApp(s => collectAllFolders([], s.app.current_game.campaign));
+  const all_folders = M.useState(s => collectAllFolders([], s.getGame().campaign));
 
   return <SearchSelect values={all_folders}
     onSelect={(entry: T.FolderPath) => props.onSelect(entry)}

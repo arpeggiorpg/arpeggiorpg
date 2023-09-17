@@ -73,9 +73,7 @@ interface ClassIconProps {
 export function ClassIcon(props: ClassIconProps) {
   // XXX TODO: this should not hard-code class names! Instead the game data should have a
   // "game_emoji" property on class objects.
-  const class_ = M.useApp((a) =>
-    a.app.current_game.classes.get(props.class_id)
-  );
+  const class_ = M.useState(s => s.getClass(props.class_id));
   if (class_ === undefined) {
     return null;
   }
@@ -112,7 +110,7 @@ export function square_style(size: number, color?: string) {
 }
 
 export function CreatureIcon({ size = 50, creature, }: { size?: number; creature: T.Creature; }) {
-  const classColor = M.useApp(s => s.app.current_game.classes.get(creature.class_)?.color);
+  const classColor = M.useState(s => s.getClass(creature.class_)?.color);
   if (creature.icon_url !== "") {
     return <SquareImageIcon size={size} url={creature.icon_url} />;
   } else {
@@ -131,33 +129,24 @@ export function SquareImageIcon({
   return <img src={url} style={square_style(size)} />;
 }
 
-export const CollapsibleInventory = M.connectRedux(
-  function CollapsibleInventory({
-    creature,
-  }: {
-    creature: T.Creature;
-  }): JSX.Element {
-    return (
-      <Accordion
-        panels={[
-          {
-            key: "Inventory",
-            title: "Inventory",
-            content: <CreatureInventory creature={creature} />,
-          },
-        ]}
-      />
-    );
-  }
-);
+export function CollapsibleInventory({ creature }: { creature: T.Creature }): JSX.Element {
+  return (
+    <Accordion
+      panels={[
+        {
+          key: "Inventory",
+          title: "Inventory",
+          content: <CreatureInventory creature={creature} />,
+        },
+      ]}
+    />
+  );
+}
 
 interface CreatureInventoryProps {
   creature: T.Creature;
 }
-export const CreatureInventory = M.connectRedux(function CreatureInventory({
-  creature,
-  ptui,
-}: CreatureInventoryProps & M.ReduxProps): JSX.Element {
+export function CreatureInventory({ creature }: CreatureInventoryProps) {
   const inv = creature.inventory;
   const items = ptui.getItems(inv.keySeq().toArray());
 
@@ -214,18 +203,18 @@ export const CreatureInventory = M.connectRedux(function CreatureInventory({
       })}
     </List>
   );
-});
+}
 
 interface RemoveItemProps {
   creature: T.Creature;
   item: T.Item;
   onClose: () => void;
 }
-class RemoveItemComp extends React.Component<
-  RemoveItemProps & M.ReduxProps,
+export class RemoveItem extends React.Component<
+  RemoveItemProps,
   { count: number | undefined }
 > {
-  constructor(props: RemoveItemProps & M.ReduxProps) {
+  constructor(props: RemoveItemProps) {
     super(props);
     this.state = { count: 1 };
   }
@@ -274,7 +263,6 @@ class RemoveItemComp extends React.Component<
     onClose();
   }
 }
-export const RemoveItem = M.connectRedux(RemoveItemComp);
 
 interface TransferItemsToRecipientFormProps {
   available_count: number;
@@ -282,11 +270,11 @@ interface TransferItemsToRecipientFormProps {
   onGive: (recipient: T.Creature, count: number) => void;
   onClose: () => void;
 }
-export class TransferItemsToRecipientFormComp extends React.Component<
-  TransferItemsToRecipientFormProps & M.ReduxProps,
+export class TransferItemsToRecipientForm extends React.Component<
+  TransferItemsToRecipientFormProps,
   { receiver: T.CreatureID | undefined; count: number | undefined }
 > {
-  constructor(props: TransferItemsToRecipientFormProps & M.ReduxProps) {
+  constructor(props: TransferItemsToRecipientFormProps) {
     super(props);
     this.state = { receiver: undefined, count: 1 };
   }
@@ -352,18 +340,12 @@ export class TransferItemsToRecipientFormComp extends React.Component<
   }
 }
 
-export const TransferItemsToRecipientForm = M.connectRedux(
-  TransferItemsToRecipientFormComp
-);
-
 interface GiveItemProps {
   item: T.Item;
   giver: T.Creature;
   onClose: () => void;
 }
-export const GiveItem = M.connectRedux(function GiveItem(
-  props: GiveItemProps & M.ReduxProps
-) {
+export function GiveItem( props: GiveItemProps ) {
   const { item, giver, onClose, ptui, dispatch } = props;
   const scene = ptui.focused_scene();
   if (!scene) {
@@ -414,7 +396,7 @@ export const GiveItem = M.connectRedux(function GiveItem(
     });
     onClose();
   }
-});
+}
 
 interface PositiveIntegerInputProps {
   max?: number;
@@ -569,12 +551,7 @@ interface CombatProps {
   card?: React.ComponentType<{ creature: T.Creature }>;
   initiative?: (creature: T.Creature, init: number) => JSX.Element;
 }
-export const Combat = M.connectRedux(function Combat({
-  combat,
-  card,
-  ptui,
-  initiative,
-}: CombatProps & M.ReduxProps): JSX.Element {
+export function Combat({ combat, card, ptui, initiative }: CombatProps): JSX.Element {
   const creatures_with_init = M.filterMap(
     combat.creatures.data,
     ([cid, init]) => {
@@ -614,17 +591,15 @@ export const Combat = M.connectRedux(function Combat({
       })}
     </Segment.Group>
   );
-});
+}
 
-export const ActionBar = M.connectRedux(function ActionBar(
-  props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps
-): JSX.Element {
-  let abilities = M.useApp(s =>
+export function ActionBar(props: { creature: T.Creature; combat?: T.Combat }) {
+  let abilities = M.useState(s =>
     LD.sortBy(
       M.filterMap(
         LD.values(props.creature.abilities),
         (abstatus) => {
-          const ability = M.get(s.app.current_game.abilities, abstatus.ability_id);
+          const ability = s.getAbility(abstatus.ability_id);
           if (ability) {
             return { ability_id: abstatus.ability_id, ability };
           }
@@ -654,7 +629,7 @@ export const ActionBar = M.connectRedux(function ActionBar(
       {abilityButtons}
     </div>
   );
-});
+}
 
 function DoneButton(): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
@@ -691,26 +666,22 @@ function AbilityButton(props: AbilityButtonProps): JSX.Element {
   );
 }
 
-const MoveButton = M.connectRedux(
-  (
-    props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps
-  ): JSX.Element => {
-    const movement_left = props.combat
-      ? props.creature.speed - props.combat.movement_used
-      : 0;
-    const suffix = props.combat
-      ? " (" + Number(movement_left / 100).toFixed(0) + ")"
-      : "";
-    return (
-      <Button
-        style={{ height: "50px", flex: "1" }}
-        onClick={() => props.ptui.requestCombatMovement(props.dispatch)}
-      >
-        Move {suffix}
-      </Button>
-    );
-  }
-);
+function MoveButton(props: { creature: T.Creature; combat?: T.Combat }) {
+  const movement_left = props.combat
+    ? props.creature.speed - props.combat.movement_used
+    : 0;
+  const suffix = props.combat
+    ? " (" + Number(movement_left / 100).toFixed(0) + ")"
+    : "";
+  return (
+    <Button
+      style={{ height: "50px", flex: "1" }}
+      onClick={() => props.ptui.requestCombatMovement(props.dispatch)}
+    >
+      Move {suffix}
+    </Button>
+  );
+}
 
 /**
  * A component which renders a very light grey translucent block over the entire screen,
@@ -740,8 +711,8 @@ export function ClickAway({
 }
 
 export function ErrorModal(){
-  const error = M.useError(s => s.error);
-  const clearError = () => M.useError.getState().clear();
+  const error = M.useState(s => s.error);
+  const clearError = () => M.getState().clearError();
   if (error) {
     return (
       <Modal
@@ -771,157 +742,153 @@ interface TheLayoutProps {
   menu_size: MenuSize;
   bottom_bar?: JSX.Element;
 }
-export const TheLayout = M.connectRedux(
-  (props: TheLayoutProps & M.ReduxProps) => {
-    const {
-      map,
-      tabs,
-      bottom_left,
-      top_left,
-      bottom_right,
-      bar_width,
-      menu_size,
-      bottom_bar,
-    } = props;
-    const window_size = useWindowSize();
+export function TheLayout(props: TheLayoutProps) {
+  const {
+    map,
+    tabs,
+    bottom_left,
+    top_left,
+    bottom_right,
+    bar_width,
+    menu_size,
+    bottom_bar,
+  } = props;
+  const window_size = useWindowSize();
 
-    // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
-    // all other UI interactions until they're done because otherwise we get into weird inconsistent
-    // states. For example: user clicks to move, never chooses destination, and then ends their turn.
-    // The movement options would remain on screen and clicking them might do something wrong
-    // or just return an error. So we work around this by just disabling all sidebar actions.
-    // There are still some other places this needs to be worked around, i.e. when generating actions
-    // for the grid creature popup menu.
-    const movementOptions = M.useGrid(s => s.grid.movement_options);
-    const targetOptions = M.useGrid(s => s.grid.target_options);
-    const disable_bars = !!( movementOptions || targetOptions );
+  // if we're doing certain grid-oriented things like moving or using abilities, we want to disable
+  // all other UI interactions until they're done because otherwise we get into weird inconsistent
+  // states. For example: user clicks to move, never chooses destination, and then ends their turn.
+  // The movement options would remain on screen and clicking them might do something wrong
+  // or just return an error. So we work around this by just disabling all sidebar actions.
+  // There are still some other places this needs to be worked around, i.e. when generating actions
+  // for the grid creature popup menu.
+  const movementOptions = M.useState(s => s.grid.movement_options);
+  const targetOptions = M.useState(s => s.grid.target_options);
+  const disable_bars = !!( movementOptions || targetOptions );
 
-    const disable_div = disable_bars ? (
-      <Dimmer active={true} inverted={true} />
-    ) : null;
+  const disable_div = disable_bars ? (
+    <Dimmer active={true} inverted={true} />
+  ) : null;
 
-    const middle = (
-      // all this relative/absolute crap is because chrome has a stupid flexbox model
-      <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <div style={{ position: "absolute", width: "100%", height: "100%" }}>
-            {map}
-          </div>
-        </div>
-        <div
-          style={{
-            position: "relative",
-            height: "50px",
-            width: "100%",
-            overflowX: "auto",
-          }}
-        >
-          <div style={{ position: "absolute", width: "100%", height: "50px" }}>
-            {bottom_bar}
-            {disable_div}
-          </div>
+  const middle = (
+    // all this relative/absolute crap is because chrome has a stupid flexbox model
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ position: "absolute", width: "100%", height: "100%" }}>
+          {map}
         </div>
       </div>
-    );
+      <div
+        style={{
+          position: "relative",
+          height: "50px",
+          width: "100%",
+          overflowX: "auto",
+        }}
+      >
+        <div style={{ position: "absolute", width: "100%", height: "50px" }}>
+          {bottom_bar}
+          {disable_div}
+        </div>
+      </div>
+    </div>
+  );
 
+  return (
+    <div style={{ height: "100%", width: "100%" }}>
+      {window_size.width >= NARROW_THRESHOLD
+        ? wideView()
+        : narrowView(window_size.width)}
+      <ErrorModal />
+    </div>
+  );
+
+  function right_bar(
+    tabs_: Array<JSX.Element>,
+    extra?: JSX.Element,
+    force_map: boolean = false
+  ) {
+    const selected_tab = force_map ? "Map" : undefined;
+    const tabbed_view = (
+      <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
+        {tabs_}
+      </TabbedView>
+    );
+    return extra !== undefined ? (
+      <Panels.PanelGroup direction="vertical">
+        <Panels.Panel>{tabbed_view}</Panels.Panel>
+        <Panels.PanelResizeHandle>
+          <hr />
+        </Panels.PanelResizeHandle>
+        <Panels.Panel>{extra}</Panels.Panel>
+      </Panels.PanelGroup>
+    ) : (
+      tabbed_view
+    );
+  }
+
+  function left_bar() {
     return (
-      <div style={{ height: "100%", width: "100%" }}>
-        {window_size.width >= NARROW_THRESHOLD
-          ? wideView()
-          : narrowView(window_size.width)}
-        <ErrorModal />
-      </div>
-    );
-
-    function right_bar(
-      tabs_: Array<JSX.Element>,
-      extra?: JSX.Element,
-      force_map: boolean = false
-    ) {
-      const selected_tab = force_map ? "Map" : undefined;
-      const tabbed_view = (
-        <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
-          {tabs_}
-        </TabbedView>
-      );
-      return extra !== undefined ? (
+      <div
+        style={{
+          position: "relative",
+          height: "100%",
+          width: "20%",
+          minWidth: "20em",
+        }}
+      >
         <Panels.PanelGroup direction="vertical">
-          <Panels.Panel>{tabbed_view}</Panels.Panel>
+          <Panels.Panel>{top_left}</Panels.Panel>
           <Panels.PanelResizeHandle>
             <hr />
           </Panels.PanelResizeHandle>
-          <Panels.Panel>{extra}</Panels.Panel>
+          <Panels.Panel>{bottom_left}</Panels.Panel>
         </Panels.PanelGroup>
-      ) : (
-        tabbed_view
-      );
-    }
+        {disable_div}
+      </div>
+    );
+  }
 
-    function left_bar() {
-      return (
+  function wideView() {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex" }}>
+        {bottom_left || top_left ? left_bar() : null}
+        <div style={{ flex: "1" }}>{middle}</div>
         <div
-          style={{
-            position: "relative",
-            height: "100%",
-            width: "20%",
-            minWidth: "20em",
-          }}
+          style={{ position: "relative", width: bar_width, height: "100%" }}
         >
-          <Panels.PanelGroup direction="vertical">
-            <Panels.Panel>{top_left}</Panels.Panel>
-            <Panels.PanelResizeHandle>
-              <hr />
-            </Panels.PanelResizeHandle>
-            <Panels.Panel>{bottom_left}</Panels.Panel>
-          </Panels.PanelGroup>
+          {right_bar(tabs, bottom_right)}
           {disable_div}
         </div>
-      );
-    }
-
-    function wideView() {
-      return (
-        <div style={{ width: "100%", height: "100%", display: "flex" }}>
-          {bottom_left || top_left ? left_bar() : null}
-          <div style={{ flex: "1" }}>{middle}</div>
-          <div
-            style={{ position: "relative", width: bar_width, height: "100%" }}
-          >
-            {right_bar(tabs, bottom_right)}
-            {disable_div}
-          </div>
-        </div>
-      );
-    }
-
-    function narrowView(width: number) {
-      const amended_tabs = LD.concat(
-        tabs,
-        <Tab key="Map" name="Map" always_render={true}>
-          {middle}
-        </Tab>
-      );
-      const scale = width / bar_width;
-      return (
-        <div
-          style={{
-            height: "100%",
-            width: bar_width,
-            zoom: `${scale * 100}%`,
-          }}
-        >
-          <div style={{ width: bar_width }}>
-            {right_bar(amended_tabs, bottom_right, disable_bars)}
-          </div>
-        </div>
-      );
-    }
+      </div>
+    );
   }
-);
 
-export function MaterialIcon(props: {
-  children: Array<any> | any;
-}): JSX.Element {
+  function narrowView(width: number) {
+    const amended_tabs = LD.concat(
+      tabs,
+      <Tab key="Map" name="Map" always_render={true}>
+        {middle}
+      </Tab>
+    );
+    const scale = width / bar_width;
+    return (
+      <div
+        style={{
+          height: "100%",
+          width: bar_width,
+          zoom: `${scale * 100}%`,
+        }}
+      >
+        <div style={{ width: bar_width }}>
+          {right_bar(amended_tabs, bottom_right, disable_bars)}
+        </div>
+      </div>
+    );
+  }
+}
+
+export function MaterialIcon(props: { children: Array<any> | any }) {
   return (
     <i
       className="material-icons"
@@ -954,7 +921,7 @@ interface NoteEditorProps {
 export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) {
 
   // RADIX BIG OLD TODO
-  // componentWillReceiveProps(nextProps: NoteEditorProps & M.ReduxProps) {
+  // componentWillReceiveProps(nextProps: NoteEditorProps) {
   //   // Reasons this is called:
   //   // 1. clicking on a different note while a note is already loaded. We get new path and/or name
   //   // 2. new data from the server. We need to make sure we're displaying the latest data as long as
@@ -978,7 +945,7 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
   const [draftName, setDraftName] = React.useState(props.name);
   const [draftContent, setDraftContent] = React.useState<string|undefined>(undefined);
 
-  const originalNote = M.useApp(s => s.getNote(path, props.name));
+  const originalNote = M.useState(s => s.getNote(path, props.name));
   const originalContent = originalNote?.content;
   const renderedContent = draftContent ?? originalContent ?? "";
 
@@ -1188,7 +1155,7 @@ interface GenericChatProps {
 // )(
 export function GenericChat(props: GenericChatProps): JSX.Element {
   const { renderLog, sendCommand } = props;
-  const snapshots = M.useApp((s) => s.app.snapshots);
+  const snapshots = M.useState(s => s.app.snapshots);
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div
@@ -1227,7 +1194,7 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
 }
 
 export function GMChat(): JSX.Element {
-  const creatures = M.useApp(s => s.app.current_game.creatures);
+  const creatures = M.useState(s => s.getGame().creatures);
   const GMChatCmd = (message: string): T.GameCommand => ({ t: "ChatFromGM", message });
   return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
 

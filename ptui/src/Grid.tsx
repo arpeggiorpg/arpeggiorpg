@@ -23,9 +23,9 @@ export function SceneGrid(props: SceneGridProps) {
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
   const { scene } = props;
-  const grid = M.useGrid(s => s.grid); // This is bad, I think?
-  const focus = M.useGrid(s => s.focus);
-  const playerID = M.usePlayer(s => s.id);
+  const grid = M.useState(s => s.grid); // This is bad.
+  const focus = M.useState(s => s.gridFocus);
+  const playerID = M.useState(s => s.playerId);
 
   const menu = grid.active_objects.objects.length !== 0
     ? renderGridObjectMenu(grid.active_objects)
@@ -123,7 +123,7 @@ export function SceneGrid(props: SceneGridProps) {
           }
           default: return;
         }
-        M.useGrid.getState().setTerrain(terrain);
+        M.getState().setTerrain(terrain);
       }}
       onMouseUp={ev => {
         if (!layer || layer.t !== "Terrain" || painting === undefined) { return; }
@@ -131,12 +131,12 @@ export function SceneGrid(props: SceneGridProps) {
         switch (painting) {
           case "Opening": {
             if (layer.terrain.contains(pt)) { return; }
-            M.useGrid.getState().setTerrain(layer.terrain.add(pt));
+            M.getState().setTerrain(layer.terrain.add(pt));
             break;
           }
           case "Closing": {
             if (!layer.terrain.contains(pt)) { return; }
-            M.useGrid.getState().setTerrain(layer.terrain.remove(pt));
+            M.getState().setTerrain(layer.terrain.remove(pt));
             break;
           }
         }
@@ -147,7 +147,7 @@ export function SceneGrid(props: SceneGridProps) {
         ev.preventDefault();
         const pt = getPoint3AtMouse(ev);
         if (playerID === undefined) {
-          M.useGrid.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
+          M.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
         }
       }}
       shouldPan={ev => {
@@ -228,10 +228,10 @@ export function SceneGrid(props: SceneGridProps) {
     const color = grid.highlight_color;
     const vis = grid.object_visibility;
     function removeHighlight(pt: T.Point3) {
-      M.useGrid.getState().setHighlights(highlights.remove(pt));
+      M.getState().setHighlights(highlights.remove(pt));
     }
     function addHighlight(pt: T.Point3) {
-      M.useGrid.getState().setHighlights(highlights.set(pt, [color, vis]));
+      M.getState().setHighlights(highlights.set(pt, [color, vis]));
     }
     const highlighted_tiles = getHighlights(highlights, undefined, pt => removeHighlight(pt));
     const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
@@ -263,7 +263,7 @@ export function SceneGrid(props: SceneGridProps) {
   function getEditableVolumes(): Array<JSX.Element> | undefined {
     return getVolumeConditions(0.5, (vcid, _, me) => {
       const coords: [number, number] = [me.pageX, me.pageY];
-      M.useGrid.getState().activateObjects([{ t: "VolumeCondition", id: vcid }], coords);
+      M.getState().activateObjects([{ t: "VolumeCondition", id: vcid }], coords);
     }
     );
   }
@@ -288,7 +288,7 @@ export function SceneGrid(props: SceneGridProps) {
     if (!options) { return; }
     if (!targetingPoint) { return; }
     const ability_id = options.ability_id;
-    const ability = M.useAbility(ability_id);
+    const ability = M.useState(s => s.getAbility(ability_id));
     if (!ability) { return; }
     const action = ability.action;
 
@@ -316,7 +316,7 @@ export function SceneGrid(props: SceneGridProps) {
 
   async function targetClicked(point: T.Point3) {
     const options = grid.target_options!;
-    const ability = M.getAbility(options.ability_id);
+    const ability = M.getState().getAbility(options.ability_id);
     if (!ability) { return; }
     switch (ability.action.t) {
       case "Creature":
@@ -341,7 +341,7 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function contextMenu(pt: T.Point3, coords: [number, number]) {
-    const close = () => M.useGrid.getState().clearContextMenu();
+    const close = () => M.getState().clearContextMenu();
     return <PopupMenu coords={coords} onClose={close}>
       <ContextMenu scene={props.scene} pt={pt} onClose={close} />
     </PopupMenu>;
@@ -350,7 +350,7 @@ export function SceneGrid(props: SceneGridProps) {
   function renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
     const { objects, coords } = arg;
     const { scene, creatures } = props;
-    const close = () => M.useGrid.getState().clearContextMenu();
+    const close = () => M.getState().clearContextMenu();
     return <PopupMenu coords={coords} onClose={close}>
       <Menu vertical={true}>
         {objects.map(obj => {
@@ -456,12 +456,12 @@ export function SceneGrid(props: SceneGridProps) {
 
     if (grid.movement_options) {
       return <div>Select a destination or
-       <Button onClick={() => M.useGrid.getState().clearMovementOptions()}>Cancel</Button>
+       <Button onClick={() => M.getState().clearMovementOptions()}>Cancel</Button>
       </div>;
     }
     if (grid.target_options) {
       return <div>Select a target or
-      <Button onClick={() => M.useGrid.getState().clearPotentialTargets()}>Cancel</Button>
+      <Button onClick={() => M.getState().clearPotentialTargets()}>Cancel</Button>
       </div>;
     }
     return <div>Drag to pan, mousewheel to zoom, click objects for more options,
@@ -483,10 +483,10 @@ export function SceneGrid(props: SceneGridProps) {
 
 function SceneHotspotMenu(
   props: {closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3}) {
-  const linked_scene = M.useScene(props.target_scene_id);
+  const linked_scene = M.useState(s => s.getScene(props.target_scene_id));
   if (!linked_scene) { return; }
   const jumpScene = () => {
-    M.useGrid.getState().setFocus(linked_scene.id);
+    M.getState().setGridFocus(linked_scene.id);
     props.closeMenu();
   };
   const deleteHotspot = () => {
@@ -620,25 +620,22 @@ export interface MapCreature {
   visibility: T.Visibility;
 }
 
-const MovementTarget = M.connectRedux(
-  function MovementTarget(
-    props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean } & M.ReduxProps
-  ): JSX.Element {
-    const { cid, pt, teleport } = props;
-    const tprops = tile_props("cyan", pt);
-    function moveCreature() {
-      if (cid) {
-        if (teleport) {
-          M.setCreaturePos(cid, pt);
-        } else {
-          M.moveCreature(cid, pt);
-        }
+function MovementTarget(props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean }) {
+  const { cid, pt, teleport } = props;
+  const tprops = tile_props("cyan", pt);
+  function moveCreature() {
+    if (cid) {
+      if (teleport) {
+        M.setCreaturePos(cid, pt);
       } else {
-        M.moveCombatCreature(pt);
+        M.moveCreature(cid, pt);
       }
+    } else {
+      M.moveCombatCreature(pt);
     }
-    return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
-  });
+  }
+  return <rect {...tprops} fillOpacity="0.4" onClick={moveCreature} />;
+}
 
 interface AnnotationProps {
   pt: T.Point3;
@@ -682,7 +679,7 @@ function Annotation(props: AnnotationProps): JSX.Element | null {
 function activateGridObjects(event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement) {
   const objects = findPTObjects(event);
   const coords = screenCoordsForRect(element);
-  M.useGrid.getState().activateObjects(objects, coords);
+  M.getState().activateObjects(objects, coords);
 }
 
 function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
@@ -752,8 +749,9 @@ function findElementsAtPoint<R>(
 
 function GridCreature({ creature, highlight }: { creature: MapCreature; highlight?: string }) {
   const element = React.useRef<SVGImageElement | SVGRectElement>(null);
-  const combat = M.useApp(s => s.app.current_game.current_combat);
-  const targetOptions = M.useGrid(s => s.grid.target_options);
+  const combat = M.useState(s => s.getGame().current_combat);
+  const targetOptions = M.useState(s => s.grid.target_options);
+  const currentCreatureId = M.useState(s => s.getCurrentCombatCreatureID());
 
   const onClick = (event: React.MouseEvent<any>) => {
     if (element.current) {
@@ -763,7 +761,7 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
     }}
 
   const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
-  if (combat && M.getCurrentCombatCreatureID(combat) === creature.creature.id) {
+  if (combat && currentCreatureId === creature.creature.id) {
     highlightProps.stroke = "black";
     highlightProps.strokeWidth = 3;
   }
@@ -908,7 +906,7 @@ export function nearby_points(pos: T.Point3): Array<T.Point3> {
 export function requestTeleport(scene: T.Scene, cid: T.CreatureID) {
   const scene_creature = scene.creatures.get(cid);
   if (scene_creature) {
-    M.useGrid.getState().displayMovementOptions(nearby_points(scene_creature[0]), cid, true);
+    M.getState().displayMovementOptions(nearby_points(scene_creature[0]), cid, true);
   }
 }
 
