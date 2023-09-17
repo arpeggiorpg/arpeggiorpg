@@ -1,158 +1,271 @@
-import * as I from 'immutable';
-import * as LD from 'lodash';
-import * as React from 'react';
-import * as ReactRedux from 'react-redux';
-import * as RTK from '@reduxjs/toolkit';
-import * as JD from "type-safe-json-decoder";
+import LD from 'lodash';
+import I from 'immutable';
+import { createWithEqualityFn } from "zustand/traditional";
+import type { StateCreator } from "zustand";
+import { shallow } from 'zustand/shallow';
 
-import * as T from './PTTypes';
+import * as T from "./PTTypes";
 
+export type FetchStatus = "Unfetched" | "Ready" | "Error";
+export interface AppState {
+  app: T.App;
+  fetchStatus: FetchStatus;
+  setFetchStatus: (s: FetchStatus) => void;
+  refresh: (app: T.App) => void;
+  refreshGame: (game: T.Game) => void;
 
-export type PTAction =
-  | { type: "SetPTUI", ptui: PTUI }
-  | { type: "ResetState" }
-  | { type: "RefreshApp"; app: T.App }
-  | { type: "RefreshGame"; game: T.Game; logs: Array<T.GameLog> }
-  | { type: "DisplayError"; error: string }
-  | { type: "ClearError" }
+  // utility functions for fetching state
+  getItem: (iid: T.ItemID) => T.Item | undefined,
+  getItems: (iids: T.ItemID[]) => T.Item[],
+  getScenes: (sceneIds: T.SceneID[]) => T.Scene[],
+  getCurrentCombatCreatureID: () => T.CreatureID | undefined,
+  getNote: (path: T.FolderPath, name: string | undefined) => T.Note | undefined,
+  getFolderNode: (path: T.FolderPath) => T.FolderNode | undefined,
+  getFolder: (path: T.FolderPath) => T.Folder | undefined,
+  getScene: (sceneId: T.SceneID) => T.Scene | undefined,
 
-  | { type: "SetPlayerID"; pid: T.PlayerID }
+  creatureIsInCombat: (creatureId: T.CreatureID) => boolean,
+  getSceneCreatures: (scene: T.Scene) => T.Creature[],
+  getCreatures: (cids: T.CreatureID[]) => T.Creature[],
+  getCreature: (cid: T.CreatureID) => T.Creature | undefined,
+  getCombat: () => T.Combat | undefined,
+  getGame: () => T.Game,
 
-  | { type: "FocusGrid"; scene_id: T.SceneID; layer?: SceneLayerType }
-  | { type: "FocusSecondary"; focus: SecondaryFocus }
-
-  // Lots of grid-related actions!
-
-  | { type: "SetTerrain"; terrain: T.Terrain }
-  | { type: "SetHighlights"; highlights: T.Highlights }
-
-  | { type: "SetHighlightColor"; color: T.Color }
-  | { type: "SetObjectVisibility"; visibility: T.Visibility }
-
-  | { type: "ActivateGridObjects"; objects: Array<GridObject>; coords: [number, number] }
-  | { type: "ClearGridMenu" }
-  | { type: "ActivateGridContextMenu"; pt: T.Point3; coords: [number, number] }
-
-  | {
-    type: "DisplayMovementOptions"; cid?: T.CreatureID; options: Array<T.Point3>;
-    teleport?: boolean;
-  }
-  | { type: "ClearMovementOptions" }
-  | {
-    type: "DisplayPotentialTargets";
-    cid: T.CreatureID; ability_id: T.AbilityID; options: T.PotentialTargets;
-  }
-  | { type: "ClearPotentialTargets" };
-
-export function update(ptui: PTUI|undefined, action: PTAction): PTUI {
-  console.log("[Model.update]", action.type, action);
-  if (!ptui) ptui = initialState;
-  switch (action.type) {
-    case "SetPTUI":
-      return action.ptui;
-    case "ResetState":
-      return new PTUI(ptui.rpi_url, ptui.app);
-    case "RefreshApp":
-      return new PTUI(ptui.rpi_url, action.app, ptui.state);
-    case "RefreshGame":
-      return update(ptui, { type: "RefreshApp", app: { ...ptui.app, current_game: action.game } });
-    case "ActivateGridObjects":
-      return ptui.updateGridState(grid =>
-        ({ ...grid, active_objects: { objects: action.objects, coords: action.coords } }));
-    case "ActivateGridContextMenu":
-      return ptui.updateGridState(grid =>
-        ({ ...grid, context_menu: { pt: action.pt, coords: action.coords } }));
-    case "ClearGridMenu":
-      return ptui.updateGridState(
-        grid => ({
-          ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] },
-        }));
-    case "SetPlayerID":
-      return ptui.updateState(state => ({ ...state, player_id: action.pid }));
-
-    case "FocusGrid":
-      const scene = ptui.app.current_game.scenes.get(action.scene_id);
-      let layer: SceneLayer;
-      switch (action.layer) {
-        case "Terrain":
-          // When switching to the Terrain layer, create a copy of the terrain data for editing.
-          layer = { t: "Terrain", terrain: scene ? scene.terrain : I.Set() };
-          break;
-        case "Highlights":
-          layer = {
-            t: "Highlights",
-            highlights: scene ? scene.highlights : I.Map(),
-          };
-          break;
-        case "Volumes":
-          layer = { t: "Volumes" };
-          break;
-        case undefined:
-      }
-      return ptui.updateState(state =>
-        ({ ...state, grid_focus: { scene_id: action.scene_id, layer } }));
-    case "FocusSecondary":
-      return ptui.updateState(state => ({ ...state, secondary_focus: action.focus }));
-
-    // Grid-related
-
-    case "SetHighlightColor":
-      return ptui.updateGridState(grid => ({ ...grid, highlight_color: action.color }));
-    case "SetObjectVisibility":
-      return ptui.updateGridState(grid => ({ ...grid, object_visibility: action.visibility }));
-
-    case "SetTerrain":
-      return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer && state.grid_focus.layer.t === "Terrain") {
-          return {
-            ...state,
-            grid_focus: {
-              ...state.grid_focus,
-              layer: { ...state.grid_focus.layer, terrain: action.terrain },
-            },
-          };
-        } else { return state; }
-      });
-
-    case "SetHighlights":
-      return ptui.updateState(state => {
-        if (state.grid_focus && state.grid_focus.layer
-          && state.grid_focus.layer.t === "Highlights") {
-          return {
-            ...state,
-            grid_focus: {
-              ...state.grid_focus,
-              layer: { ...state.grid_focus.layer, highlights: action.highlights },
-            },
-          };
-        } else { return state; }
-      });
-
-    case "DisplayMovementOptions":
-      return ptui.updateGridState(
-        grid => ({
-          ...grid,
-          movement_options: {
-            cid: action.cid, options: action.options,
-            teleport: action.teleport ? true : false,
-          },
-        }));
-    case "DisplayPotentialTargets":
-      const { cid, ability_id, options } = action;
-      return ptui.updateGridState(
-        grid => ({ ...grid, target_options: { cid, ability_id, options } }));
-    case "ClearPotentialTargets":
-      return ptui.updateGridState(grid => ({ ...grid, target_options: undefined }));
-    case "ClearMovementOptions":
-      return ptui.updateGridState(grid => ({ ...grid, movement_options: undefined }));
-
-    case "DisplayError":
-      return ptui.updateState(state => ({ ...state, error: action.error }));
-    case "ClearError":
-      return ptui.updateState(state => ({ ...state, error: undefined }));
-  }
-  return ptui;
+  getAbility: (abid: T.AbilityID) => T.Ability | undefined;
+  getAbilities: (abids: T.AbilityID[]) => T.Ability[];
+  getClass: (classid: T.ClassID) => T.Class | undefined;
+  getClasses: (classids: T.ClassID[]) => T.Class[];
+  getSceneInventory: (scene: T.Scene) => I.List<[T.Item, number]>;
 }
+
+const appSlice: Slice<AppState> = (set, get) => ({
+  app: initialApp,
+  fetchStatus: "Unfetched",
+  setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
+  refresh: app => set(state => {
+    const pid = state.playerId;
+    if (pid) {
+      // we always want to force the focus on the players to whatever scene they're focused on
+      const playerScene = app.current_game.players.get(pid)?.scene;
+      if (playerScene) {
+        getState().setGridFocus(playerScene);
+      }
+    }
+    return { app, fetchStatus: "Ready" };
+  }),
+  refreshGame: game => set(state => {
+    state.refresh({ ...state.app, current_game: game });
+    return state;
+  }),
+
+  getItem: iid => get().getGame().items[iid],
+  getItems: iids => LD.sortBy(
+    filterMap(iids, iid => get().getItem(iid)),
+    i => i.name
+  ),
+
+  getScenes: (sceneIds) => LD.sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
+  getScene: (scene_id) => get().getGame().scenes.get(scene_id),
+
+  getCurrentCombatCreatureID: () => {
+    const combat = get().getCombat();
+    if (!combat) return;
+    const entry = idx(combat.creatures.data, combat.creatures.cursor);
+    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
+    return entry[0];
+  },
+
+  getNote: (path, name) => {
+    if (!name) return;
+    const fnode = get().getFolderNode(path);
+    if (fnode && fnode.notes.hasOwnProperty(name)) {
+      return fnode.notes[name];
+    }
+  },
+
+  getFolderNode: path => get().getFolder(path)?.data,
+
+  getFolder: path => {
+    let cur: T.Folder | undefined = get().getGame().campaign;
+    for (const seg of path) {
+      cur = cur.children.get(seg);
+      if (!cur) { return undefined; }
+    }
+    return cur;
+  },
+
+  creatureIsInCombat: creatureId =>
+    LD.find(
+      get().getCombat()?.creatures.data,
+      ([cid, _]) => cid === creatureId
+    ) !== undefined,
+  getSceneCreatures: scene => get().getCreatures(scene.creatures.keySeq().toArray()),
+  getCreatures: cids => LD.sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
+  getCreature: cid => get().getGame().creatures.get(cid),
+  getCombat: () => get().getGame().current_combat,
+  getGame: () => get().app.current_game,
+
+  getAbility: abid => get().getGame().abilities[abid],
+  getAbilities: abids => LD.sortBy( filterMap(abids, abid => get().getAbility(abid)), i => i.name),
+  getClass: classid => get().getGame().classes.get(classid),
+  getClasses: classids => LD.sortBy(
+      filterMap(classids, classid => get().getClass(classid)),
+      c => c.name,
+    ),
+
+  getSceneInventory: scene => {
+    const arr = filterMap(scene.inventory.entrySeq().toArray(),
+      ([iid, count]) => optMap(get().getItem(iid), (i): [T.Item, number] => [i, count]));
+    const list = I.List(arr);
+    return list.sortBy(([i, _]) => i.name);
+  }
+});
+
+const initialApp: T.App = {
+  snapshots: [],
+  current_game: {
+    players: I.Map(),
+    current_combat: undefined,
+    creatures: I.Map(),
+    classes: I.Map(),
+    items: {},
+    scenes: I.Map(),
+    abilities: {},
+    campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
+  }
+};
+
+
+interface SecondaryFocusState {
+  secondaryFocus?: SecondaryFocus;
+  setSecondaryFocus: (f: SecondaryFocus) => void;
+}
+
+const secondaryFocusSlice: Slice<SecondaryFocusState> = set => ({
+  secondaryFocus: undefined,
+  setSecondaryFocus: secondaryFocus => set(() => ({ secondaryFocus }))
+});
+
+interface GridState {
+  grid: GridModel;
+  gridFocus?: GridFocus;
+  // resetGrid is used in New Game
+  resetGrid: () => void;
+  setGridFocus: (s: T.SceneID, l?: SceneLayerType) => void;
+  activateObjects: (objects: GridObject[], coords: [number, number]) => void;
+  activateContextMenu: (pt: T.Point3, coords: [number, number]) => void;
+  clearContextMenu: () => void;
+  setHighlightColor: (color: T.Color) => void;
+  setObjectVisibility: (v: T.Visibility) => void;
+  setTerrain: (t: T.Terrain) => void;
+  setHighlights: (h: T.Highlights) => void;
+  displayMovementOptions: (options: T.Point3[], cid?: T.CreatureID, teleport?: boolean) => void;
+  displayPotentialTargets: (cid: T.CreatureID, ability_id: T.AbilityID, options: T.PotentialTargets) => void;
+  clearPotentialTargets: () => void;
+  clearMovementOptions: () => void;
+
+  // accessors
+  getFocusedScene: () => T.Scene | undefined;
+}
+
+export type AllStates = PlayerState & GridState & AppState & ErrorState & SecondaryFocusState;
+type Slice<T> = StateCreator<AllStates, [], [], T>;
+
+const gridSlice: Slice<GridState> = (set, get) => ({
+  grid: defaultGrid,
+  gridFocus: undefined,
+  resetGrid: () => set(() => ({ grid: defaultGrid })),
+  setGridFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
+    const scene = get().getGame().scenes.get(scene_id);
+    let layer: SceneLayer | undefined = undefined;
+    switch (t) {
+      case "Terrain":
+        // When switching to the Terrain layer, create a copy of the terrain data for editing.
+        layer = { t, terrain: scene ? scene.terrain : I.Set() };
+        break;
+      case "Highlights":
+        layer = { t, highlights: scene ? scene.highlights : I.Map() };
+        break;
+      case "Volumes":
+        layer = { t };
+        break;
+    }
+    return { gridFocus: { scene_id, layer } };
+  }),
+  activateObjects: (objects, coords) => set(({ grid }) => ({ grid: { ...grid, active_objects: { objects, coords } } })),
+  activateContextMenu: (pt, coords) => set(({ grid }) => ({ grid: { ...grid, context_menu: { pt, coords } } })),
+  clearContextMenu: () => set(({ grid }) => ({ grid: { ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] } } })),
+  setHighlightColor: highlight_color => set(({ grid }) => ({ grid: { ...grid, highlight_color } })),
+  setObjectVisibility: object_visibility => set(({ grid }) => ({ grid: { ...grid, object_visibility } })),
+  setTerrain: terrain => set(({ gridFocus }) => {
+    // TODO: do we really need to do this conditional?
+    if (gridFocus?.layer?.t === "Terrain") {
+      return { gridFocus: { ...gridFocus, layer: { ...gridFocus.layer, terrain } } }
+    }
+    return {};
+  }),
+  setHighlights: highlights => set(({ gridFocus }) => {
+    if (gridFocus?.layer?.t === "Highlights") {
+      return { gridFocus: { ...gridFocus, layer: { ...gridFocus.layer, highlights } } };
+    }
+    return {}
+  }),
+  displayMovementOptions: (options, cid, teleport) => set(({ grid }) => ({ grid: { ...grid, movement_options: { cid, options, teleport: !!teleport } } })),
+  displayPotentialTargets: (cid, ability_id, options) => set(({ grid }) => ({ grid: { ...grid, target_options: { cid, ability_id, options } } })),
+  clearPotentialTargets: () => set(({ grid }) => ({ grid: { ...grid, target_options: undefined } })),
+  clearMovementOptions: () => set(({ grid }) => ({ grid: { ...grid, movement_options: undefined } })),
+
+  getFocusedScene: () => {
+    const state = get();
+    if (!state.gridFocus) return;
+    return state.getGame().scenes.get(state.gridFocus.scene_id);
+  }
+});
+
+const defaultGrid = {
+  highlight_color: "#FF0000",
+  object_visibility: { t: "AllPlayers" } as T.Visibility,
+  active_objects: { objects: [], coords: [0, 0] as [number, number] },
+};
+
+interface PlayerState {
+  playerId: T.PlayerID | undefined;
+  setPlayerId: (id: T.PlayerID) => void;
+}
+const playerSlice: Slice<PlayerState> = set => ({
+  playerId: undefined,
+  setPlayerId: playerId => set(() => ({playerId}))
+});
+
+interface ErrorState {
+  error: string | undefined;
+  setError: (e: string) => void,
+  clearError: () => void,
+}
+
+const errorSlice: Slice<ErrorState> = set => ({
+  error: undefined,
+  setError: error => set(() => ({ error })),
+  clearError: () => set(() => ({ error: undefined }))
+});
+
+export const useState = createWithEqualityFn<AllStates>()((...a) => ({
+  ...errorSlice(...a),
+  ...playerSlice(...a),
+  ...gridSlice(...a),
+  ...appSlice(...a),
+  ...secondaryFocusSlice(...a),
+}),
+  // There may be an argument for *deep* comparison here. The app is 100%
+  // replaced on every refresh, and selectors will often return structures deeper than just 1 level.
+  shallow);
+
+export const getState = useState.getState;
+
+// Just for debugging
+(window as any).getState = getState;
+
+
 
 export interface GridModel {
   active_objects: {
@@ -177,14 +290,6 @@ export type GridObject =
   | { t: "SceneHotSpot"; scene_id: T.SceneID; pt: T.Point3 }
   ;
 
-export interface PTUIState {
-  grid: GridModel;
-  player_id?: T.PlayerID;
-  error?: string;
-  grid_focus?: GridFocus;
-  secondary_focus?: SecondaryFocus;
-}
-
 export type SceneLayer =
   | { t: "Terrain"; terrain: T.Terrain }
   | { t: "Highlights"; highlights: T.Highlights }
@@ -207,348 +312,6 @@ export type SecondaryFocus =
   | { t: "Item"; item_id: T.ItemID }
   ;
 
-export function decodeFetch<J>(
-  url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>): Promise<J> {
-  const p: Promise<Response> = fetch(url, init);
-  const p2: Promise<any> = p.then(response => response.json());
-  return p2.then(json => {
-    try {
-      return decoder.decodeAny(json);
-    } catch (e) {
-      throw { _pt_error: "JSON", original: e };
-    }
-  });
-}
-
-export function ptfetch<J, R>(
-  dispatch: typeof store.dispatch, url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>, then: (result: J) => R)
-  : Promise<R> {
-  const json_promise = decodeFetch(url, init, decoder);
-  const p4: Promise<R> = json_promise.then(then);
-  const p5: Promise<R> = p4.catch(
-    e => {
-      function extract_error_details(error: any): [string, string] {
-        if (error._pt_error) {
-          switch (error._pt_error) {
-            case "JSON": return ["Failed to decode JSON", error.original];
-            case "RPI": return ["Error received from server", error.message];
-            default: return ["Unknown error", error.toString()];
-          }
-        } else {
-          return ["Unknown error", error.toString()];
-        }
-      }
-
-      const [prefix, suffix] = extract_error_details(e);
-      dispatch({ type: "DisplayError", error: `${prefix}: ${suffix}` });
-      throw e;
-    });
-  return p5;
-}
-
-const default_state = {
-  grid: {
-    highlight_color: "#FF0000",
-    object_visibility: { t: "AllPlayers" } as T.Visibility,
-    active_objects: { objects: [], coords: [0, 0] as [number, number] },
-  },
-};
-
-export class PTUI {
-  readonly app: T.App;
-  readonly state: PTUIState;
-  readonly rpi_url: string;
-
-  constructor(rpi_url: string, app: T.App, state: PTUIState = default_state) {
-    this.app = app;
-    this.state = state;
-    this.rpi_url = rpi_url;
-  }
-
-  startPoll(dispatch: RTK.Dispatch) {
-    function poll(rpi_url: string, app: T.App) {
-      const num_snaps = app.snapshots.length;
-      const snaps = app.snapshots[num_snaps - 1];
-      const num_logs = snaps ? snaps.logs.length : 0;
-      const url = `${rpi_url}/poll/${num_snaps}/${num_logs}`;
-      return ptfetch(dispatch, url, undefined, T.decodeApp,
-        app => {
-          dispatch({ type: "RefreshApp", app });
-          poll(rpi_url, app);
-        }
-      );
-    }
-    poll(this.rpi_url, this.app);
-  }
-
-  updateState(updater: (state: PTUIState) => PTUIState): PTUI {
-    return new PTUI(this.rpi_url, this.app, updater(this.state));
-  }
-  updateGridState(updater: (state: GridModel) => GridModel): PTUI {
-    return this.updateState(state => ({ ...state, grid: updater(state.grid) }));
-  }
-
-  requestMove(dispatch: Dispatch, cid: T.CreatureID) {
-    const scene = this.focused_scene();
-    if (scene) {
-      return ptfetch(dispatch, this.rpi_url + "/movement_options/" + scene.id + "/" + cid,
-        undefined,
-        JD.array(T.decodePoint3),
-        options => dispatch({
-          type: "DisplayMovementOptions",
-          cid,
-          options,
-        }));
-    }
-  }
-
-  moveCreature(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
-    dispatch({ type: "ClearMovementOptions" });
-    const scene = this.focused_scene();
-    if (scene) {
-      this.sendCommand(dispatch, { t: "PathCreature", scene_id: scene.id, creature_id, dest });
-    } else {
-      throw new Error(`Tried moving when there is no scene`);
-    }
-  }
-
-  setCreaturePos(dispatch: Dispatch, creature_id: T.CreatureID, dest: T.Point3) {
-    dispatch({ type: 'ClearMovementOptions' });
-    const scene = this.focused_scene();
-    if (scene) {
-      this.sendCommand(dispatch, { t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
-    }
-  }
-
-  moveCombatCreature(dispatch: Dispatch, dest: T.Point3) {
-    dispatch({ type: "ClearMovementOptions" });
-    this.sendCommand(dispatch, { t: "PathCurrentCombatCreature", dest });
-  }
-
-  sendCommand(dispatch: Dispatch, cmd: T.GameCommand): void {
-    return sendCommand(cmd)(dispatch, () => this, undefined);
-  }
-
-  /// Send a Command and *don't* automatically handle errors, but instead return a future
-  /// representing the result. This is useful for code which wants to send a command and interpret
-  /// the resulting gamelogs.
-  sendCommandWithResult(cmd: T.GameCommand)
-    : Promise<T.RustResult<Array<T.GameLog>, string>> {
-    const json = T.encodeGameCommand(cmd);
-    console.log("[sendCommand:JSON]", json);
-    const rpi_result = decodeFetch(
-      this.rpi_url,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(
-        JD.map(
-          ([_, logs]) => logs,
-          T.decodeSendCommandResult),
-        JD.string())
-    );
-    return rpi_result;
-  }
-
-  fetchSavedGames(dispatch: Dispatch): Promise<[Array<string>, Array<string>]> {
-    return ptfetch(dispatch, this.rpi_url + '/saved_games', undefined,
-      JD.tuple(JD.array(JD.string()), JD.array(JD.string())),
-      x => x);
-  }
-
-  loadGame(dispatch: Dispatch, source: T.ModuleSource, name: string): Promise<void> {
-    const url = source === "SavedGame"
-      ? `${this.rpi_url}/saved_games/user/${name}/load`
-      : `${this.rpi_url}/saved_games/module/${name}/load`;
-
-    return ptfetch(dispatch, url, { method: 'POST' }, T.decodeApp, app => resetApp(dispatch, app));
-  }
-
-  saveGame(dispatch: Dispatch, game: string): Promise<undefined> {
-    return ptfetch(dispatch, `${this.rpi_url}/saved_games/user/${game}`, { method: 'POST' },
-      JD.succeed(undefined), x => x);
-  }
-
-  exportModule(dispatch: Dispatch, path: T.FolderPath, name: string): Promise<undefined> {
-    const url = `${this.rpi_url}/modules/${name}`;
-    const opts = {
-      method: 'POST',
-      body: JSON.stringify(T.encodeFolderPath(path)),
-      headers: { "content-type": "application/json" },
-    };
-    return ptfetch(dispatch, url, opts, JD.succeed(undefined), x => x);
-  }
-
-  focused_scene(): T.Scene | undefined {
-    // oh for Rust's "?" operator
-    const pid = this.state.player_id;
-    if (pid) {
-      const player = this.app.current_game.players.get(pid);
-      if (player && player.scene) {
-        return this.app.current_game.scenes.get(player.scene);
-      }
-    } else if (this.state.grid_focus) {
-      return this.app.current_game.scenes.get(this.state.grid_focus.scene_id);
-    }
-  }
-
-  requestCombatMovement(dispatch: Dispatch) {
-    return ptfetch(
-      dispatch, this.rpi_url + "/combat_movement_options", undefined,
-      JD.array(T.decodePoint3),
-      options => dispatch({ type: "DisplayMovementOptions", options }));
-  }
-
-
-  /* Execute an ability that has already been selected, with a target.
-   * This relies on the state being set up ahead of time: we must have a target_options already.
-   */
-  executeCombatAbility(dispatch: Dispatch, target_id: T.CreatureID) {
-    const opts = this.state.grid.target_options;
-    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
-    const { ability_id, options } = opts;
-    if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
-    const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
-    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
-    dispatch({ type: "ClearPotentialTargets" });
-  }
-
-  executeCombatPointTargetedAbility(dispatch: Dispatch, point: T.Point3) {
-    const opts = this.state.grid.target_options;
-    if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
-    const { ability_id, options } = opts;
-    if (options.t !== "Points") {
-      throw new Error(`This function only works for abilities that use Points`);
-    }
-    const target: T.DecidedTarget = { t: "Point", point };
-    this.sendCommand(dispatch, { t: "CombatAct", ability_id, target });
-    dispatch({ type: "ClearPotentialTargets" });
-  }
-
-  // Utility functions for interacting with the model
-  // TODO: Consider making Game, Combat, Folder classes and moving these methods to those classes.
-  // But I'm not sure it'd really matter -- if I find myself really needing to increase isolation
-  // then it would be a good way forward, but I'm not sure it will be necessary.
-  getCreature(cid: T.CreatureID): T.Creature | undefined {
-    return getCreature(this.app, cid);
-  }
-
-  getCreatures(cids: Array<T.CreatureID>): Array<T.Creature> {
-    return getCreatures(this.app, cids);
-  }
-
-  getItem(iid: T.ItemID): T.Item | undefined {
-    return get(this.app.current_game.items, iid);
-  }
-
-  getItems(iids: Array<T.ItemID>): Array<T.Item> {
-    return LD.sortBy(
-      filterMap(iids, iid => this.getItem(iid)),
-      i => i.name);
-  }
-
-  getAbility(abid: T.AbilityID): T.Ability | undefined {
-    return get(this.app.current_game.abilities, abid);
-  }
-  getAbilities(abids: Array<T.AbilityID>): Array<T.Ability> {
-    return LD.sortBy(
-      filterMap(abids, abid => this.getAbility(abid)),
-      i => i.name);
-  }
-
-  getClass(classid: T.ClassID): T.Class | undefined {
-    return this.app.current_game.classes.get(classid);
-  }
-  getClasses(classids: Array<T.ClassID>): Array<T.Class> {
-    return LD.sortBy(
-      filterMap(classids, classid => this.getClass(classid)),
-      c => c.name,
-    );
-  }
-
-  getScene(scene_id: T.SceneID): T.Scene | undefined {
-    return this.app.current_game.scenes.get(scene_id);
-  }
-  getScenes(scene_ids: Array<T.SceneID>): Array<T.Scene> {
-    return LD.sortBy(
-      filterMap(scene_ids, sid => this.getScene(sid)),
-      s => s.name);
-  }
-
-  getNote(path: T.FolderPath, name: string): T.Note | undefined {
-    const fnode = this.getFolderNode(path);
-    if (fnode && fnode.notes.hasOwnProperty(name)) {
-      return fnode.notes[name];
-    }
-  }
-
-  getFolderNode(path: T.FolderPath): T.FolderNode | undefined {
-    let cur: T.Folder | undefined = this.app.current_game.campaign;
-    for (const seg of path) {
-      cur = cur.children.get(seg);
-      if (!cur) { return undefined; }
-    }
-    return cur.data;
-  }
-
-  getCurrentCombatCreatureID(combat: T.Combat): T.CreatureID {
-    const entry = idx(combat.creatures.data, combat.creatures.cursor);
-    if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
-    return entry[0];
-  }
-
-  getCurrentCombatCreature(combat: T.Combat): T.Creature {
-    const cid = this.getCurrentCombatCreatureID(combat);
-    const creature = this.getCreature(cid);
-    if (!creature) { throw new Error(`Current combat creature does not exist: ${cid}`); }
-    return creature;
-  }
-
-  creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
-    return LD.find(
-      combat.creatures.data,
-      ([cid, _]) => cid === creature_id) !== undefined;
-  }
-
-  getSceneCreatures(scene: T.Scene): Array<T.Creature> {
-    return this.getCreatures(scene.creatures.keySeq().toArray());
-  }
-
-  getSceneInventory(scene: T.Scene): I.List<[T.Item, number]> {
-    const arr = filterMap(scene.inventory.entrySeq().toArray(),
-      ([iid, count]) => optMap(this.getItem(iid), (i): [T.Item, number] => [i, count]));
-    const list = I.List(arr);
-    return list.sortBy(([i, _]) => i.name);
-  }
-}
-
-
-const initialState: PTUI = new PTUI(
-  import.meta.env.VITE_RPI_URL,
-  {
-    snapshots: [],
-    current_game: {
-      players: I.Map(),
-      current_combat: undefined,
-      creatures: I.Map(),
-      classes: I.Map(),
-      items: {},
-      scenes: I.Map(),
-      abilities: {},
-      campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
-    }
-  })
-
-export const store = RTK.configureStore({ reducer: update, preloadedState: initialState});
-
-export type Dispatch = typeof store.dispatch;
-
-window.ptstore = store;
-
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   // I can't "naturally" convince TypeScript that this filter makes an
@@ -564,13 +327,6 @@ export function filterMapValues<T, R>
     if (new_val !== undefined) { result[key] = new_val; }
   }
   return result;
-}
-
-export function folderPathToString(path: T.FolderPath): string {
-  if (isEqual(path, [])) {
-    return "Campaign Root";
-  }
-  return T.encodeFolderPath(path);
 }
 
 export function get<T>(obj: { [index: string]: T }, key: string): T | undefined {
@@ -590,128 +346,4 @@ export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined 
   if (x !== undefined) {
     return f(x);
   }
-}
-
-export function creatureIsInCombat(combat: T.Combat, creature_id: T.CreatureID): boolean {
-  return LD.find(
-    combat.creatures.data,
-    ([cid, _]) => cid === creature_id) !== undefined;
-}
-
-export function getSceneCreatures(app: T.App, scene: T.Scene) {
-  return getCreatures(app, scene.creatures.keySeq().toArray());
-}
-
-export function getCreatures(app: T.App, cids: Array<T.CreatureID>): Array<T.Creature> {
-  return LD.sortBy(filterMap(cids, cid => getCreature(app, cid)), (c: T.Creature) => c.name);
-}
-
-export function getCreature(app: T.App, cid: T.CreatureID): T.Creature | undefined {
-  return app.current_game.creatures.get(cid);
-}
-
-
-export const sendCommand = (cmd: T.GameCommand): ThunkAction<void> =>
-  (dispatch, getState) => {
-    const ptui = getState();
-    const json = T.encodeGameCommand(cmd);
-    console.log("[sendCommand:JSON]", json);
-    ptfetch(
-      dispatch,
-      ptui.rpi_url,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(T.decodeSendCommandResult, JD.string()),
-      (x: T.RustResult<[T.Game, Array<T.GameLog>], string>) => {
-        switch (x.t) {
-          case "Ok":
-            dispatch({ type: "RefreshGame", game: x.result[0], logs: x.result[1] });
-            return;
-          case "Err":
-            throw { _pt_error: 'RPI', message: x.error };
-        }
-      });
-  };
-
-export const sendCommands = (cmds: Array<T.GameCommand>): ThunkAction<void> =>
-  (dispatch, getState) => {
-    for (const cmd of cmds) {
-      sendCommand(cmd)(dispatch, getState, undefined);
-    }
-  };
-
-export const newGame: ThunkAction<void> =
-  (dispatch, getState) => {
-    const ptui = getState();
-    return ptfetch(
-      dispatch, `${ptui.rpi_url}/new_game`, { method: "POST" }, T.decodeApp,
-      app => resetApp(dispatch, app));
-  };
-
-function resetApp(dispatch: Dispatch, app: T.App) {
-  dispatch({ type: "ResetState" });
-  dispatch({ type: "RefreshApp", app });
-  return;
-}
-
-function selectAbility(
-  scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID): ThunkAction<void> {
-  return (dispatch, getState) => {
-    const rpi_url = getState().rpi_url;
-    const url = `${rpi_url}/target_options/${scene_id}/${cid}/${ability_id}`;
-    ptfetch(dispatch, url, undefined, T.decodePotentialTargets,
-      options => dispatch({ type: "DisplayPotentialTargets", cid, ability_id, options }));
-  };
-}
-
-export function requestCombatAbility(
-  cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
-): ThunkAction<void> {
-  if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
-    return sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
-  } else {
-    return selectAbility(scene_id, cid, ability_id);
-  }
-}
-
-
-type ThunkAction<R> = (dispatch: Dispatch, getState: () => PTUI, extraArgument: undefined) => R;
-
-
-export interface DispatchProps { dispatch: Dispatch; }
-export interface ReduxProps extends DispatchProps { ptui: PTUI; }
-
-export function connectRedux<BaseProps extends {} & object>(
-  x: React.ComponentType<BaseProps & ReduxProps>)
-  : React.ComponentType<BaseProps> {
-  const connector = ReactRedux.connect((ptui, _) => ({ ptui }), dispatch => ({ dispatch }));
-  // Something in @types/react-redux between 4.4.43 and 4.4.44 changed, and so I needed to add this
-  // `as any`, when I didn't need it previously.
-  return (connector as any)(x);
-}
-
-export function fetchAbilityTargets(
-  dispatch: Dispatch, rpi_url: string, scene_id: T.SceneID, actor_id: T.CreatureID,
-  ability_id: T.AbilityID, point: T.Point3)
-  : Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const uri =
-    `${rpi_url}/preview_volume_targets/${scene_id}/${actor_id}/`
-    + `${ability_id}/${point.x}/${point.y}/${point.z}`;
-  return ptfetch(dispatch, uri, { method: 'POST' },
-    JD.map(([creatures, points]) => ({ points, creatures }),
-      JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
-    x => x
-  );
-}
-
-export function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | undefined {
-  return optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
-}
-
-export function getCreatureDetails(creature: T.Creature): T.CreatureCreation {
-  const { name, class_, portrait_url, note, bio, initiative, size, icon_url } = creature;
-  return { name, class_, portrait_url, note, bio, initiative, size, icon_url };
 }

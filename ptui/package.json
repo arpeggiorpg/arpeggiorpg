@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "fuse.js": "^3.2.0",
+    "fuse.js": "^6.6.2",
     "hammerjs": "^2.0.8",
     "immutable": "^4.0.0-rc.9",
     "lodash": "^4.17.13",
@@ -17,9 +17,7 @@
     "react": "^18.2.0",
     "react-color": "^2.13.8",
     "react-dom": "^18.2.0",
-    "react-redux": "^8.1.2",
-    "@reduxjs/toolkit": "^1.9.5",
-    "reselect": "^4.1.8",
+    "zustand": "^4.4.1",
     "semantic-ui-css": "^2.5.0",
     "semantic-ui-react": "^2.1.4",
     "styled-components": "6.0.0-beta.2",

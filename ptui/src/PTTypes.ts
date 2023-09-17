@@ -1,5 +1,5 @@
-import * as I from 'immutable';
-import * as LD from "lodash";
+import I from 'immutable';
+import LD from "lodash";
 import * as JD from "type-safe-json-decoder";
 import { Decoder } from "type-safe-json-decoder";
 
@@ -24,6 +24,12 @@ export type Terrain = I.Set<Point3>;
 export type Highlights = I.Map<Point3, [Color, Visibility]>;
 export type Annotations = I.Map<Point3, [string, Visibility]>;
 
+export function folderPathToString(path: FolderPath): string {
+  if (path.length === 0) {
+    return "Campaign Root";
+  }
+  return encodeFolderPath(path);
+}
 
 export class Point3 implements I.ValueObject {
   constructor(public x: number, public y: number, public z: number) { }

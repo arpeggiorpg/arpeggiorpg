@@ -1,27 +1,37 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import {createRoot} from "react-dom/client";
 
-import * as CV from './CommonView';
-import * as GMView from './GMView';
+import { Main } from "./Main";
+import * as GMView from "./GMView";
 import * as PlayerView from "./PlayerView";
 
 function getInnerComponent(component_name: string): JSX.Element {
   switch (component_name) {
-    case "GM": return <GMView.GMMain />;
-    case "Player": return <PlayerView.PlayerMain />;
-    default: throw new Error(`Unknown component ${component_name}`);
+    case "gm":
+      return <GMView.GMMain />;
+    case "player":
+      return <PlayerView.PlayerMain />;
+    default:
+      throw new Error(`Unknown component ${component_name}`);
   }
 }
 
-function PT_renderMain(rpi_url: string, component_name: string, id: string) {
+let root;
+
+function PT_renderMain(component_name: string, id: string) {
   const el = document.getElementById(id);
-  ReactDOM.render(
-    <CV.Main rpi_url={rpi_url}>
+  const comp = (
+    <Main>
       {getInnerComponent(component_name)}
-    </CV.Main>,
-    el);
+    </Main>
+  );
+  if (!el) {
+    console.error("where's the root!");
+    return;
+  }
+  root = createRoot(el);
+  root.render(comp);
 }
 
-const RPI_URL = import.meta.env.VITE_RPI_URL;
-
-PT_renderMain(RPI_URL, 'GM', 'react-main');
+const mode = new URLSearchParams(window.location.search).get("mode") || "player";
+PT_renderMain(mode.toLowerCase(), "react-main");

@@ -1,48 +1,32 @@
-import * as I from 'immutable';
+import * as I from "immutable";
 import * as React from "react";
-import * as ReactRedux from 'react-redux';
 
-import { Button, List, Table } from 'semantic-ui-react';
+import { Button, List, Table } from "semantic-ui-react";
 
-import * as Campaign from './Campaign';
-import * as CV from './CommonView';
-import * as Comp from './Component';
-import * as M from './Model';
-import * as T from './PTTypes';
+import * as Campaign from "./Campaign";
+import * as CV from "./CommonView";
+import * as M from "./Model";
+import * as A from "./Actions";
+import * as T from "./PTTypes";
 
 
-interface RuntimePlayerData {
-  player: T.Player;
-  id: T.PlayerID;
-  creatures: Array<T.Creature>;
-  scene_name: string;
-}
-
-interface PlayersDerivedProps { gm_scene?: T.Scene; player_creatures: Array<RuntimePlayerData>; }
-export const Players = ReactRedux.connect(
-  Comp.createDeepEqualSelector(
-    [(ptui: M.PTUI) => ptui.app,
-    ptui => ptui.app.current_game.players,
-    ptui => ptui.focused_scene(),
-    ],
-    (app, players, gm_scene) => ({
-      gm_scene,
-      player_creatures: players.valueSeq().toArray().map(
-        player => {
-          const scene = player.scene ? app.current_game.scenes.get(player.scene) : undefined;
-          return {
-            player, id: player.player_id,
-            creatures: M.filterMap(player.creatures, cid => M.getCreature(app, cid)),
-            scene_name: scene ? scene.name : "No scene",
-          };
-        }
-      ),
-    })),
-  (dispatch: M.Dispatch) => ({ dispatch }),
-)(
-  function Players(props: PlayersDerivedProps & M.DispatchProps): JSX.Element {
-    const { gm_scene, player_creatures, dispatch } = props;
-    return <Table celled={true}>
+export function Players() {
+  const players = M.useState((s) => s.getGame().players);
+  const gm_scene = M.useState((s) => s.getFocusedScene());
+  const player_creatures = M.useState((s) =>
+    players.valueSeq().toArray()
+      .map((player) => {
+        const scene = player.scene ? s.getScene(player.scene) : undefined;
+        return {
+          player,
+          id: player.player_id,
+          creatures: M.filterMap(player.creatures, s.getCreature),
+          scene_name: scene ? scene.name : "No scene",
+        };
+      })
+  );
+  return (
+    <Table celled={true}>
       <Table.Header>
         <Table.Row>
           <Table.HeaderCell>Player</Table.HeaderCell>
@@ -52,68 +36,91 @@ export const Players = ReactRedux.connect(
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {
-          player_creatures.map(playa => {
-            const sceneButtons = [];
-            if (playa.player.scene) {
-              sceneButtons.push(setSceneButton(playa.id, "Remove from Scene", undefined));
-            }
-            if (gm_scene && playa.player.scene !== gm_scene.id) {
-              sceneButtons.push(setSceneButton(playa.id, "Move to this scene", gm_scene.id));
-            }
+        {player_creatures.map((playa) => {
+          const sceneButtons = [];
+          if (playa.player.scene) {
+            sceneButtons.push(
+              setSceneButton(playa.id, "Remove from Scene", undefined)
+            );
+          }
+          if (gm_scene && playa.player.scene !== gm_scene.id) {
+            sceneButtons.push(
+              setSceneButton(playa.id, "Move to this scene", gm_scene.id)
+            );
+          }
 
-            return <Table.Row key={playa.id}>
+          return (
+            <Table.Row key={playa.id}>
               <Table.Cell>{playa.id}</Table.Cell>
               <Table.Cell>
                 <List>
-                  {playa.creatures.map(creature => {
-                    return <List.Item key={playa.id + "-" + creature.id}>
-                      {creature.name}
-                    </List.Item>;
+                  {playa.creatures.map((creature) => {
+                    return (
+                      <List.Item key={playa.id + "-" + creature.id}>
+                        {creature.name}
+                      </List.Item>
+                    );
                   })}
                 </List>
               </Table.Cell>
-              <Table.Cell>
-                {playa.scene_name}
-              </Table.Cell>
+              <Table.Cell>{playa.scene_name}</Table.Cell>
               <Table.Cell>
                 <Button.Group vertical={true}>
                   {sceneButtons}
                   <CV.ModalMaker
-                    button={open => <Button onClick={open}>Grant creatures</Button>}
+                    button={(open) => (
+                      <Button onClick={open}>Grant creatures</Button>
+                    )}
                     header={<span>Grant creatures to {playa.id}</span>}
-                    content={close =>
-                      <GrantCreaturesToPlayer player={playa.player} onDone={close} />}
+                    content={(close) => (
+                      <GrantCreaturesToPlayer
+                        player={playa.player}
+                        onDone={close}
+                      />
+                    )}
                   />
                 </Button.Group>
               </Table.Cell>
-            </Table.Row>;
-          })
-        }
+            </Table.Row>
+          );
+        })}
       </Table.Body>
-    </Table>;
+    </Table>
+  );
 
-    function setSceneButton(player_id: T.PlayerID, text: string, scene_id: T.SceneID | undefined)
-      : JSX.Element {
-      return <Button key={"set-" + player_id + scene_id}
-        onClick={() => dispatch(M.sendCommand({ t: "SetPlayerScene", player_id, scene_id }))} >
+  function setSceneButton(
+    player_id: T.PlayerID,
+    text: string,
+    scene_id: T.SceneID | undefined
+  ): JSX.Element {
+    return (
+      <Button
+        key={"set-" + player_id + scene_id}
+        onClick={() =>
+          A.sendCommand({ t: "SetPlayerScene", player_id, scene_id })
+        }
+      >
         {text}
-      </Button >;
-    }
-  });
+      </Button>
+    );
+  }
+}
 
-
-export const GrantCreaturesToPlayer = M.connectRedux(
-  function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void } & M.ReduxProps)
-    : JSX.Element {
-    const { player, onDone, ptui, dispatch } = props;
-    return <Campaign.MultiCreatureSelector
+export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void }) {
+  const { player, onDone } = props;
+  return (
+    <Campaign.MultiCreatureSelector
       already_selected={I.Set(player.creatures)}
       on_cancel={onDone}
       on_selected={cids => {
-        ptui.sendCommand(dispatch,
-          { t: 'GiveCreaturesToPlayer', player_id: player.player_id, creature_ids: cids.toArray() });
+        A.sendCommand({
+          t: "GiveCreaturesToPlayer",
+          player_id: player.player_id,
+          creature_ids: cids.toArray(),
+        });
         onDone();
       }}
-    />;
-  });
+    />
+  );
+}
+
