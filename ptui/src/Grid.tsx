@@ -166,7 +166,7 @@ export function SceneGrid(props: SceneGridProps) {
       <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
       <g id="targets" style={disable_style}>{target_els}</g>
       <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
-      <g id="targeted-volume" style={disable_style}>{drawTargetedVolume()}</g>
+      <g id="targeted-volume" style={disable_style}><DrawTargetedVolume /></g>
     </SPZ.SVGPanZoom>
   </div>;
 
@@ -282,7 +282,7 @@ export function SceneGrid(props: SceneGridProps) {
         })).toArray();
   }
 
-  function drawTargetedVolume(): JSX.Element | undefined {
+  function DrawTargetedVolume() {
     const { scene } = props;
     const options = grid.target_options;
     if (!options) { return; }

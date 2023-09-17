@@ -21,7 +21,7 @@ import {
 } from "semantic-ui-react";
 
 // import * as Comp from './Component';
-// import * as History from './History';
+import * as History from './History';
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as TextInput from "./TextInput";

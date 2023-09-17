@@ -6,7 +6,7 @@ import * as Campaign from './Campaign';
 import * as CV from './CommonView';
 import * as GM from './GMComponents';
 import * as Grid from './Grid';
-// import * as History from './History';
+import * as History from './History';
 import * as M from './Model';
 // import * as Players from './Players';
 import * as T from './PTTypes';
@@ -22,14 +22,14 @@ export function GMMain() {
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
     <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
   //   <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
-  //   <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
+    <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
   const combat = M.useState(s => s.getCombat());
   const currentCreatureInCombat = M.useState(s => s.getCurrentCombatCreatureID());
 
-  const bottom_bar = combat ?
+  const bottom_bar = combat && currentCreatureInCombat ?
     <CV.ActionBar creatureId={currentCreatureInCombat} combat={combat} />
     : undefined;
 
