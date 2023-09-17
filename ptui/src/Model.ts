@@ -436,7 +436,7 @@ export const useGrid = createWithEqualityFn<GridState>()(set => ({
     }
     return { focus: { scene_id, layer } };
   }),
-  activateObjects: (objects, coords) => set(({ grid }) => ({ grid: { ...grid, activate_objects: { objects, coords } } })),
+  activateObjects: (objects, coords) => set(({ grid }) => ({ grid: { ...grid, active_objects: { objects, coords } } })),
   activateContextMenu: (pt, coords) => set(({ grid }) => ({ grid: { ...grid, context_menu: { pt, coords } } })),
   clearContextMenu: () => set(({ grid }) => ({ grid: { ...grid, context_menu: undefined, active_objects: { ...grid.active_objects, objects: [] } } })),
   setHighlightColor: highlight_color => set(({ grid }) => ({ grid: { ...grid, highlight_color } })),
