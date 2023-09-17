@@ -2,15 +2,14 @@ import * as React from "react";
 import {createRoot} from "react-dom/client";
 
 import { Main } from "./Main";
-// import * as CV from "./CommonView";
 import * as GMView from "./GMView";
-// import * as PlayerView from "./PlayerView";
+import * as PlayerView from "./PlayerView";
 
 function getInnerComponent(component_name: string): JSX.Element {
   switch (component_name) {
-    case "GM":
+    case "gm":
       return <GMView.GMMain />;
-    case "Player":
+    case "player":
       return <PlayerView.PlayerMain />;
     default:
       throw new Error(`Unknown component ${component_name}`);
@@ -34,4 +33,5 @@ function PT_renderMain(component_name: string, id: string) {
   root.render(comp);
 }
 
-PT_renderMain("GM", "react-main");
+const mode = new URLSearchParams(window.location.search).get("mode") || "player";
+PT_renderMain(mode.toLowerCase(), "react-main");
