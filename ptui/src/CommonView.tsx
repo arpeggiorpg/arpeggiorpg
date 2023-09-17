@@ -148,7 +148,7 @@ interface CreatureInventoryProps {
 }
 export function CreatureInventory({ creature }: CreatureInventoryProps) {
   const inv = creature.inventory;
-  const items = ptui.getItems(inv.keySeq().toArray());
+  const items = M.useState(s => s.getItems(inv.keySeq().toArray()));
 
   return (
     <List relaxed={true}>
@@ -250,11 +250,11 @@ export class RemoveItem extends React.Component<
   }
 
   remove() {
-    const { creature, item, onClose, ptui, dispatch } = this.props;
+    const { creature, item, onClose } = this.props;
     if (!this.state.count) {
       return;
     }
-    ptui.sendCommand(dispatch, {
+    M.sendCommand({
       t: "RemoveItem",
       owner: { Creature: creature.id },
       item_id: item.id,
@@ -345,15 +345,18 @@ interface GiveItemProps {
   onClose: () => void;
 }
 export function GiveItem( props: GiveItemProps ) {
-  const { item, giver, onClose, ptui, dispatch } = props;
-  const scene = ptui.focused_scene();
+  // WARNING: I am playing with fire by putting hook usage after conditional
+  // returns. I *think* it is fine because the conditionals hopefully don't
+  // change for any given mounting of this component.
+  const { item, giver, onClose } = props;
+  const scene = M.useState(s => s.getFocusedScene());
   if (!scene) {
     return <div>You can only transfer items in a scene.</div>;
   }
   const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray())
     .delete(giver.id)
     .toArray();
-  const other_creatures = ptui.getCreatures(other_cids_in_scene);
+  const other_creatures = M.useState(s => s.getCreatures(other_cids_in_scene));
   if (!other_creatures) {
     return <div>There is nobody in this scene to give items to.</div>;
   }
@@ -367,7 +370,7 @@ export function GiveItem( props: GiveItemProps ) {
   }
 
   // If this is the Player UI, we don't want to show invisible creatures:
-  const available_recipients = ptui.state.player_id
+  const available_recipients = M.useState(s => s.playerId)
     ? I.List(other_creatures)
         .filter((c) => {
           const entry = scene.creatures.get(c.id);
@@ -386,7 +389,7 @@ export function GiveItem( props: GiveItemProps ) {
   );
 
   function give(recip: T.Creature, count: number) {
-    ptui.sendCommand(dispatch, {
+    M.sendCommand({
       t: "TransferItem",
       from: { Creature: giver.id },
       to: { Creature: recip.id },
@@ -550,21 +553,21 @@ interface CombatProps {
   card?: React.ComponentType<{ creature: T.Creature }>;
   initiative?: (creature: T.Creature, init: number) => JSX.Element;
 }
-export function Combat({ combat, card, ptui, initiative }: CombatProps): JSX.Element {
-  const creatures_with_init = M.filterMap(
+export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
+  const creaturesWithInit = M.useState(s => M.filterMap(
     combat.creatures.data,
     ([cid, init]) => {
-      const creature = ptui.getCreature(cid);
+      const creature = s.getCreature(cid);
       if (creature) {
         return [creature, init];
       }
     }
-  ) as Array<[T.Creature, number]>;
+  ) as Array<[T.Creature, number]>);
 
   const Card = card ? card : CreatureCard;
   return (
     <Segment.Group>
-      {creatures_with_init.map(([creature, init], index) => {
+      {creaturesWithInit.map(([creature, init], index) => {
         const show_init = initiative ? initiative(creature, init) : null;
         return (
           <Segment.Group key={creature.id} horizontal={true}>
@@ -675,7 +678,7 @@ function MoveButton(props: { creature: T.Creature; combat?: T.Combat }) {
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => props.ptui.requestCombatMovement(props.dispatch)}
+      onClick={() => M.requestCombatMovement()}
     >
       Move {suffix}
     </Button>
@@ -1188,7 +1191,7 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
   );
   function send(input: string) {
     const cmd = sendCommand(input);
-    dispatch(M.sendCommand(cmd));
+    M.sendCommand(cmd);
   }
 }
 
