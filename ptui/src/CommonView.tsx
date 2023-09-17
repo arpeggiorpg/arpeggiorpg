@@ -34,19 +34,19 @@ import { useWindowSize } from "./lib/hooks";
  */
 const NARROW_THRESHOLD = 500;
 
-export const CreatureCard = M.connectRedux(function CreatureCard(
+export function CreatureCard(
   props: {
     creature: T.Creature;
     children?: JSX.Element | Array<JSX.Element>;
     menu?: JSX.Element;
-  } & M.ReduxProps
-): JSX.Element {
+  }
+) {
   const creature = props.creature;
   return (
     <Segment style={{ width: "100%" }} raised={true}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <div style={{ display: "flex" }}>
-          <CreatureIcon app={props.ptui.app} creature={creature} size={80} />
+          <CreatureIcon creature={creature} size={80} />
           <div>
             <div style={{ display: "flex" }}>
               <Header>{creature.name}</Header>
@@ -65,7 +65,7 @@ export const CreatureCard = M.connectRedux(function CreatureCard(
       </div>
     </Segment>
   );
-});
+}
 
 interface ClassIconProps {
   class_id: T.ClassID;
@@ -111,20 +111,12 @@ export function square_style(size: number, color?: string) {
   };
 }
 
-export function CreatureIcon({
-  size = 50,
-  app,
-  creature,
-}: {
-  size?: number;
-  app: T.App;
-  creature: T.Creature;
-}): JSX.Element | null {
+export function CreatureIcon({ size = 50, creature, }: { size?: number; creature: T.Creature; }) {
+  const classColor = M.useApp(s => s.app.current_game.classes.get(creature.class_)?.color);
   if (creature.icon_url !== "") {
     return <SquareImageIcon size={size} url={creature.icon_url} />;
   } else {
-    const class_ = app.current_game.classes.get(creature.class_);
-    const color = class_ ? class_.color : "red";
+    const color = classColor ?? "red";
     return <div style={{ ...square_style(size, color) }}>{creature.name}</div>;
   }
 }
@@ -627,27 +619,25 @@ export const Combat = M.connectRedux(function Combat({
 export const ActionBar = M.connectRedux(function ActionBar(
   props: { creature: T.Creature; combat?: T.Combat } & M.ReduxProps
 ): JSX.Element {
-  let abilities = M.filterMap(
-    LD.values(props.creature.abilities),
-    (abstatus) => {
-      const ability = M.get(
-        props.ptui.app.current_game.abilities,
-        abstatus.ability_id
-      );
-      if (ability) {
-        return { ability_id: abstatus.ability_id, ability };
-      }
-    }
-  );
-  abilities = LD.sortBy(abilities, (abo) => abo.ability.name);
+  let abilities = M.useApp(s =>
+    LD.sortBy(
+      M.filterMap(
+        LD.values(props.creature.abilities),
+        (abstatus) => {
+          const ability = M.get(s.app.current_game.abilities, abstatus.ability_id);
+          if (ability) {
+            return { ability_id: abstatus.ability_id, ability };
+          }
+        }
+      ),
+    abo => abo.ability.name));
 
   let abilityButtons;
   if (props.combat) {
     const combat = props.combat;
-    abilityButtons = abilities.map((abinfo) => (
+    abilityButtons = abilities.map(abinfo => (
       <AbilityButton
         key={abinfo.ability_id}
-        dispatch={props.dispatch}
         creature={props.creature}
         abinfo={abinfo}
         scene_id={combat.scene}
@@ -658,20 +648,20 @@ export const ActionBar = M.connectRedux(function ActionBar(
   }
   return (
     <div style={{ display: "flex" }}>
-      <CreatureIcon app={props.ptui.app} creature={props.creature} />
-      {props.combat ? <DoneButton dispatch={props.dispatch} /> : <noscript />}
+      <CreatureIcon creature={props.creature} />
+      {props.combat ? <DoneButton /> : <noscript />}
       <MoveButton creature={props.creature} combat={props.combat} />
       {abilityButtons}
     </div>
   );
 });
 
-function DoneButton({ dispatch }: { dispatch: M.Dispatch }): JSX.Element {
+function DoneButton(): JSX.Element {
   const command: T.GameCommand = { t: "Done" };
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => dispatch(M.sendCommand(command))}
+      onClick={() => M.sendCommand(command)}
     >
       Done
     </Button>
@@ -682,20 +672,13 @@ interface AbilityButtonProps {
   creature: T.Creature;
   abinfo: { ability_id: T.AbilityID; ability: T.Ability };
   scene_id: T.SceneID;
-  dispatch: M.Dispatch;
 }
 
 function AbilityButton(props: AbilityButtonProps): JSX.Element {
-  const { abinfo, creature, scene_id, dispatch } = props;
-  const onClick = () =>
-    dispatch(
-      M.requestCombatAbility(
-        creature.id,
-        abinfo.ability_id,
-        abinfo.ability,
-        scene_id
-      )
-    );
+  const { abinfo, creature, scene_id } = props;
+  const onClick = () => M.requestCombatAbility(
+    creature.id, abinfo.ability_id, abinfo.ability, scene_id
+  );
   const disabled = creature.cur_energy < abinfo.ability.cost;
   return (
     <Button

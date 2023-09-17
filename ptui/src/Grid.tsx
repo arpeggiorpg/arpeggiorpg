@@ -555,7 +555,7 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
 }
 
 function svgVolume(
-  key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGGraphicsElement>
+  key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGCircleElement>
 ): JSX.Element {
   switch (volume.t) {
     case "Sphere":
