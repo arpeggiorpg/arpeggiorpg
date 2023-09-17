@@ -26,7 +26,6 @@ export function GMMain() {
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
-  const tertiary = <div>Tertiary!</div>; // renderTertiary();
   const bottom_bar = <div>Bottom!</div>;
   // const bottom_bar = combat ?
   //   <CV.ActionBar creature={ptui.getCurrentCombatCreature(combat)} combat={combat} />
@@ -34,7 +33,7 @@ export function GMMain() {
 
   return <CV.TheLayout map={grid} tabs={tabs}
     bottom_left={<Secondary />}
-    top_left={tertiary}
+    top_left={scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>}
     bottom_right={<CV.GMChat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 }
@@ -51,15 +50,7 @@ function Secondary() {
     case "Creature":
       return <GM.CreatureFocus creatureId={focus2.creature_id} />;
     case "Item":
-      const item = ptui.getItem(focus2.item_id);
-      return item ? <GM.GMViewItem item={item} /> : undefined;
-  }
-}
-
-function renderTertiary(ptui: M.PTUI): JSX.Element | undefined {
-  const scene = ptui.focused_scene();
-  if (scene) {
-    return <GM.GMScene scene={scene} />;
+      return <GM.GMViewItem itemId={focus2.item_id} />;
   }
 }
 
