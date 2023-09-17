@@ -950,12 +950,14 @@ function EditCreatureData(props: EditCreatureDataProps) {
 
   const { onClose } = props;
   const parsed_initiative = Dice.maybeParse(initiative_string);
-  const classes = ptui.app.current_game.classes.valueSeq().toArray().map(class_ =>
+  const classes = M.useState(s => s.getGame().classes.valueSeq().toArray().map(class_ =>
     ({
-      key: class_.id, text: <><CV.ClassIcon class_id={class_.id} />{class_.name}</>,
+      key: class_.id,
+      // it's probably not good to return elements from useState
+      text: <><CV.ClassIcon class_id={class_.id} />{class_.name}</>,
       value: class_.id,
-    }));
-  const form_ok = ( parsed_initiative.status && ptui.app.current_game.classes.has(class_) );
+    })));
+  const form_ok = parsed_initiative.status
   return (
     <Form error={!parsed_initiative.status}>
       <Form.Group>
