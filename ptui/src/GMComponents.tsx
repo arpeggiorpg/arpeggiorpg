@@ -642,7 +642,9 @@ interface GMSceneCreaturesDerivedProps {
 
 function GMSceneCreatures(props: { scene: T.Scene }) {
   const { scene } = props;
-  // TODO: get creatures and combat from ZUSTAND
+
+  const creatures = M.useState(s => s.getSceneCreatures(scene).map(c => ({creature: c, inCombat: s.creatureIsInCombat(c.id)})));
+  const isCombatScene = M.useState(s => s.getCombat()?.scene === scene.id);
 
   console.log('[EXPENSIVE:GMSceneCreatures]');
   return <List relaxed={true}>
@@ -672,7 +674,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
             } />} />
       </List.Content>
     </List.Item>
-    {creatures.map(creature => {
+    {creatures.map(({creature, inCombat}) => {
       const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
       const vis_desc = vis.t === 'GMOnly'
         ? 'Only visible to the GM' : 'Visible to all players';
@@ -682,11 +684,11 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
         <List.Content floated='right'>
           <Popup
             trigger={<Icon name='eye'
-              style={{ cursor: "pointer" }}
-              disabled={vis.t === 'GMOnly'}
+              style={{ cursor: "pointer", color: vis.t === 'GMOnly' ? 'grey' : 'black' }}
               onClick={() => {
                 const new_vis: T.Visibility =
                   vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
+                  console.log("CLICK", new_vis);
                 M.sendCommand({
                   t: "SetSceneCreatureVisibility", scene_id: scene.id, creature_id: creature.id,
                   visibility: new_vis,
@@ -697,9 +699,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
           <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
             <Dropdown.Menu>
               <Dropdown.Header content={creature.name} />
-              {combat
-                && combat.scene === scene.id
-                && !M.creatureIsInCombat(combat, creature.id)
+              {isCombatScene && inCombat
                 ? <Dropdown.Item content="Add to Combat" onClick={() => addToCombat(creature)} />
                 : null
               }
