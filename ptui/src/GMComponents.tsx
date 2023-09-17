@@ -817,7 +817,7 @@ function GMCombatHeader({ combat }: { combat: T.Combat }) {
       scene
         ?
         <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
-        <a href="#" onClick={() => M.getState().setFocus(scene.id)}>
+        <a href="#" onClick={() => M.getState().setGridFocus(scene.id)}>
             {scene.name}
           </a>
           <Button onClick={() => A.sendCommand( { t: "StopCombat" })}>
