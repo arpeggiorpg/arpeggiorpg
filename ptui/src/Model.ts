@@ -208,6 +208,10 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
 }
 
 
+export function getScenes(allScenes: I.Map<string, T.Scene>, sceneIds: T.SceneID[]): T.Scene[] {
+  return LD.sortBy(filterMap(sceneIds, s => allScenes.get(s)), s => s.name);
+}
+
 export class PTUI {
 
   getItem(iid: T.ItemID): T.Item | undefined {
