@@ -259,7 +259,7 @@ function resetApp(app: T.App) {
 
 async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
   const url = `${RPI_URL}/target_options/${scene_id}/${cid}/${ability_id}`;
-  const options = await ptfetchJD(url, undefined, T.decodePotentialTargets);
+  const options = await ptfetchZ(url, undefined, T.zecodePotentialTargets);
   getState().displayPotentialTargets(cid, ability_id, options);
 }
 
@@ -283,7 +283,5 @@ export function fetchAbilityTargets(
     uri,
     { method: 'POST' },
     Z.tuple([Z.array(Z.string()), Z.array(T.zecodePoint3)]).transform(([creatures, points]) => ({ points, creatures }))
-    // JD.map(,
-      // JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
   );
 }
