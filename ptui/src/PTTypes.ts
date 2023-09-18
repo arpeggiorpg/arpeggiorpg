@@ -1,6 +1,7 @@
 import I from 'immutable';
 import LD from "lodash";
 import * as JD from "type-safe-json-decoder";
+import * as Z from "zod";
 import { Decoder } from "type-safe-json-decoder";
 
 import type { AbilityID } from "./bindings/AbilityID";
@@ -440,6 +441,13 @@ export function parsePoint3(str: string): Point3 {
 }
 
 export const decodePoint3: Decoder<Point3> = JD.map(parsePoint3, JD.string());
+
+export const zecodePoint3 = Z.string().transform(parsePoint3);
+export const arrayOfPoint3 = Z.array(zecodePoint3);
+
+(window as any).zecodePoint3 = zecodePoint3;
+(window as any).arrayOfPoint3 = arrayOfPoint3;
+(window as any).Z = Z;
 
 export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", {}, {
   CreatureIDs: JD.map((cids): PotentialTargets =>
