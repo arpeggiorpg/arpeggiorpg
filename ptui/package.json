@@ -23,7 +23,8 @@
     "styled-components": "6.0.0-beta.2",
     "svg-pan-zoom": "^3.5.3",
     "type-safe-json-decoder": "^0.2.0",
-    "react-resizable-panels": "^0.0.54"
+    "react-resizable-panels": "^0.0.54",
+    "zod": "^3.22.2"
   },
   "devDependencies": {
     "@swc/cli": "0.1.62",

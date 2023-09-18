@@ -4,6 +4,7 @@
 // never while rendering components.
 
 import * as JD from "type-safe-json-decoder";
+import * as Z from "zod";
 
 import * as T from "./PTTypes";
 import {getState} from "./Model";
@@ -13,12 +14,12 @@ export const RPI_URL = import.meta.env.VITE_RPI_URL;
 
 export async function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
-  decoder: JD.Decoder<J>
+  decoder: (json: object) => J
 ): Promise<J> {
   const result = await fetch(url, init);
   const json = await result.json();
   try {
-    return decoder.decodeAny(json);
+    return decoder(json);
   } catch (e) {
     console.error(e);
     throw { _pt_error: "JSON", original: e };
@@ -28,7 +29,7 @@ export async function decodeFetch<J>(
 export async function ptfetch<J>(
   url: string,
   init: RequestInit | undefined,
-  decoder: JD.Decoder<J>
+  decoder: (json: object) => J
 ): Promise<J> {
   try {
     const json = await decodeFetch(url, init, decoder);
@@ -53,6 +54,15 @@ export async function ptfetch<J>(
   }
 }
 
+function ptfetchZ<J>(url: string, init: RequestInit | undefined, decoder: {parse: (json: object) => J}): Promise<J> {
+  return ptfetch(url, init, decoder.parse);
+}
+
+function ptfetchJD<J>(url: string, init: RequestInit | undefined, decoder: JD.Decoder<J>): Promise<J> {
+  return ptfetch(url, init, decoder.decodeAny.bind(decoder));
+
+}
+
 
 export async function startPoll() {
   // This is kinda dumb, but:
@@ -61,7 +71,7 @@ export async function startPoll() {
   //
   // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
   // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
-  const app = await ptfetch(RPI_URL, undefined, T.decodeApp);
+  const app = await ptfetchJD(RPI_URL, undefined, T.decodeApp);
   getState().refresh(app);
   await poll(app);
 
@@ -73,7 +83,7 @@ export async function startPoll() {
       const url = `${RPI_URL}/poll/${num_snaps}/${num_logs}`;
       try {
         console.log("gonna fetch");
-        app = await ptfetch(url, undefined, T.decodeApp);
+        app = await ptfetchJD(url, undefined, T.decodeApp);
         getState().refresh(app);
       } catch (e) {
         console.error("oops got an error", e);
@@ -86,10 +96,10 @@ export async function startPoll() {
 export async function requestMove(cid: T.CreatureID) {
   const scene = getState().getFocusedScene();
   if (scene) {
-    const result = await ptfetch(
+    const result = await ptfetchZ(
       `${RPI_URL}/movement_options/${scene.id}/${cid}`,
       undefined,
-      JD.array(T.decodePoint3)
+      T.arrayOfPoint3,
     );
     getState().displayMovementOptions(result, cid);
   }
@@ -119,9 +129,9 @@ export function moveCombatCreature(dest: T.Point3) {
 }
 
 export async function requestCombatMovement() {
-  const options = await ptfetch(
+  const options = await ptfetchZ(
     RPI_URL + "/combat_movement_options", undefined,
-    JD.array(T.decodePoint3));
+    T.arrayOfPoint3);
   getState().displayMovementOptions(options);
 }
 
@@ -156,12 +166,12 @@ export async function loadGame(source: T.ModuleSource, name: string): Promise<vo
     ? `${RPI_URL}/saved_games/user/${name}/load`
     : `${RPI_URL}/saved_games/module/${name}/load`;
 
-  const app = await ptfetch(url, { method: 'POST' }, T.decodeApp);
+  const app = await ptfetchJD(url, { method: 'POST' }, T.decodeApp);
   resetApp(app);
 }
 
 export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]> {
-  return ptfetch(
+  return ptfetchJD(
     RPI_URL + '/saved_games',
     undefined,
     JD.tuple(JD.array(JD.string()), JD.array(JD.string()))
@@ -169,7 +179,7 @@ export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]>
 }
 
 export async function saveGame(game: string): Promise<undefined> {
-  return ptfetch(
+  return ptfetchJD(
     `${RPI_URL}/saved_games/user/${game}`,
     { method: 'POST' },
     JD.succeed(undefined)
@@ -183,13 +193,13 @@ export function exportModule(path: T.FolderPath, name: string): Promise<undefine
     body: JSON.stringify(T.encodeFolderPath(path)),
     headers: { "content-type": "application/json" },
   };
-  return ptfetch(url, opts, JD.succeed(undefined));
+  return ptfetchJD(url, opts, JD.succeed(undefined));
 }
 
 export async function sendCommand(cmd: T.GameCommand) {
   const json = T.encodeGameCommand(cmd);
   console.log("[sendCommand:JSON]", json);
-  const result = await ptfetch(
+  const result = await ptfetchJD(
     RPI_URL,
     {
       method: "POST",
@@ -231,14 +241,14 @@ export async function sendCommandWithResult(cmd: T.GameCommand): Promise<T.RustR
       JD.map(
         ([_, logs]) => logs,
         T.decodeSendCommandResult),
-      JD.string())
+      JD.string()).decodeAny
   );
   return rpi_result;
 }
 
 
 export async function newGame() {
-  const app = await ptfetch(`${RPI_URL}/new_game`, { method: "POST" }, T.decodeApp);
+  const app = await ptfetchJD(`${RPI_URL}/new_game`, { method: "POST" }, T.decodeApp);
   resetApp(app);
 }
 
@@ -249,7 +259,7 @@ function resetApp(app: T.App) {
 
 async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
   const url = `${RPI_URL}/target_options/${scene_id}/${cid}/${ability_id}`;
-  const options = await ptfetch(url, undefined, T.decodePotentialTargets);
+  const options = await ptfetchJD(url, undefined, T.decodePotentialTargets);
   getState().displayPotentialTargets(cid, ability_id, options);
 }
 
@@ -269,10 +279,11 @@ export function fetchAbilityTargets(
   const uri =
     `${RPI_URL}/preview_volume_targets/${scene_id}/${actor_id}/`
     + `${ability_id}/${point.x}/${point.y}/${point.z}`;
-  return ptfetch(
+  return ptfetchZ(
     uri,
     { method: 'POST' },
-    JD.map(([creatures, points]) => ({ points, creatures }),
-      JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
+    Z.tuple([Z.array(Z.string()), Z.array(T.zecodePoint3)]).transform(([creatures, points]) => ({ points, creatures }))
+    // JD.map(,
+      // JD.tuple(JD.array(JD.string()), JD.array(T.decodePoint3))),
   );
 }
