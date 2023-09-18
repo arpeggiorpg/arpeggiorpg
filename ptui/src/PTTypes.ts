@@ -455,6 +455,12 @@ export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", 
   Points: JD.map((points): PotentialTargets => ({ t: "Points", points }), JD.array(decodePoint3)),
 });
 
+// Okay, I REALLY need to switch the rust code to using serde(tag = "kind") :-(
+export const zecodePotentialTargets: {parse: (obj: object) => PotentialTargets} = Z.union([
+  Z.object({CreatureIDs: Z.array(Z.string())}).transform((o): PotentialTargets => ({t: "CreatureIDs", cids: o.CreatureIDs})),
+  Z.object({Points: Z.array(zecodePoint3)}).transform((o): PotentialTargets => ({t: "Points", points: o.Points}))
+]);
+
 const decodeDiceLazy = JD.lazy(() => decodeDice);
 const decodeConditionLazy = JD.lazy(() => decodeCondition);
 const decodeEffectLazy = JD.lazy(() => decodeEffect);
