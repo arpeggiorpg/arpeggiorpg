@@ -1180,7 +1180,7 @@ function GameList(props: GameListProps) {
   // I have very few of these kinds of things so maybe this is fine.
   React.useEffect(() => {
     const fetch = async () => {
-      const [modules, games] = await A.fetchSavedGames();
+      const { modules, games } = await A.fetchSavedGames();
       setGames(games);
       setModules(modules);
       console.log("saved games:", games, modules);

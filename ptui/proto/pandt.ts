@@ -2,16 +2,21 @@
 // @generated from protobuf file "proto/pandt.proto" (package "pandt", syntax proto3)
 // tslint:disable
 import { ServiceType } from "@protobuf-ts/runtime-rpc";
+import { WireType } from "@protobuf-ts/runtime";
 import type { BinaryWriteOptions } from "@protobuf-ts/runtime";
 import type { IBinaryWriter } from "@protobuf-ts/runtime";
-import { WireType } from "@protobuf-ts/runtime";
+import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { BinaryReadOptions } from "@protobuf-ts/runtime";
 import type { IBinaryReader } from "@protobuf-ts/runtime";
-import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MESSAGE_TYPE } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
+/**
+ * @generated from protobuf message pandt.Empty
+ */
+export interface Empty {
+}
 /**
  * @generated from protobuf message pandt.SaveGameRequest
  */
@@ -22,9 +27,17 @@ export interface SaveGameRequest {
     name: string;
 }
 /**
- * @generated from protobuf message pandt.SaveGameReply
+ * @generated from protobuf message pandt.ListSavedGamesReply
  */
-export interface SaveGameReply {
+export interface ListSavedGamesReply {
+    /**
+     * @generated from protobuf field: repeated string games = 1;
+     */
+    games: string[];
+    /**
+     * @generated from protobuf field: repeated string modules = 2;
+     */
+    modules: string[];
 }
 /**
  * @generated from protobuf message pandt.HelloRequest
@@ -595,295 +608,59 @@ export interface MultipleCreatureIDs {
      */
     creatureId: string[];
 }
-/**
- * @generated from protobuf message pandt.GameError
- */
-export interface GameError {
-    /**
-     * @generated from protobuf oneof: error
-     */
-    error: {
-        oneofKind: "fileNotFound";
-        /**
-         * @generated from protobuf field: string file_not_found = 1;
-         */
-        fileNotFound: string;
-    } | {
-        oneofKind: "attributeNotFound";
-        /**
-         * @generated from protobuf field: pandt.AttributeNotFound attribute_not_found = 2;
-         */
-        attributeNotFound: AttributeNotFound;
-    } | {
-        oneofKind: "abilityAlreadyExists";
-        /**
-         * @generated from protobuf field: string ability_already_exists = 3;
-         */
-        abilityAlreadyExists: string;
-    } | {
-        oneofKind: "creatureAlreadyExists";
-        /**
-         * @generated from protobuf field: string creature_already_exists = 4;
-         */
-        creatureAlreadyExists: string;
-    } | {
-        oneofKind: "itemAlreadyExists";
-        /**
-         * @generated from protobuf field: string item_already_exists = 5;
-         */
-        itemAlreadyExists: string;
-    } | {
-        oneofKind: "itemNotFound";
-        /**
-         * @generated from protobuf field: string item_not_found = 6;
-         */
-        itemNotFound: string;
-    } | {
-        oneofKind: "sceneAlreadyExists";
-        /**
-         * @generated from protobuf field: string scene_already_exists = 7;
-         */
-        sceneAlreadyExists: string;
-    } | {
-        oneofKind: "sceneNotFound";
-        /**
-         * @generated from protobuf field: string scene_not_found = 8;
-         */
-        sceneNotFound: string;
-    } | {
-        oneofKind: "sceneInUse";
-        /**
-         * @generated from protobuf field: string scene_in_use = 9;
-         */
-        sceneInUse: string;
-    } | {
-        oneofKind: "idTooLong";
-        /**
-         * @generated from protobuf field: string id_too_long = 10;
-         */
-        idTooLong: string;
-    } | {
-        oneofKind: "conditionNotFound";
-        /**
-         * @generated from protobuf field: string condition_not_found = 11;
-         */
-        conditionNotFound: string;
-    } | {
-        oneofKind: "invalidCommand";
-        /**
-         * @generated from protobuf field: pandt.GameCommand invalid_command = 12;
-         */
-        invalidCommand: GameCommand;
-    } | {
-        oneofKind: "classAlreadyExists";
-        /**
-         * @generated from protobuf field: string class_already_exists = 13;
-         */
-        classAlreadyExists: string;
-    } | {
-        oneofKind: "classNotFound";
-        /**
-         * @generated from protobuf field: string class_not_found = 14;
-         */
-        classNotFound: string;
-    } | {
-        oneofKind: "noAbility";
-        /**
-         * @generated from protobuf field: string no_ability = 15;
-         */
-        noAbility: string;
-    } | {
-        oneofKind: "combatMustHaveCreatures";
-        /**
-         * what types should I use for these nullary variants?
-         *
-         * @generated from protobuf field: bool combat_must_have_creatures = 16;
-         */
-        combatMustHaveCreatures: boolean;
-    } | {
-        oneofKind: "mustRerollAtStartOfRound";
-        /**
-         * @generated from protobuf field: bool must_reroll_at_start_of_round = 17;
-         */
-        mustRerollAtStartOfRound: boolean;
-    } | {
-        oneofKind: "creatureLacksAbility";
-        /**
-         * @generated from protobuf field: pandt.CreatureLacksAbility creature_lacks_ability = 18;
-         */
-        creatureLacksAbility: CreatureLacksAbility;
-    } | {
-        oneofKind: "creatureNotFound";
-        /**
-         * @generated from protobuf field: string creature_not_found = 19;
-         */
-        creatureNotFound: string;
-    } | {
-        oneofKind: "invalidTarget";
-        /**
-         * @generated from protobuf field: string invalid_target = 20;
-         */
-        invalidTarget: string;
-    } | {
-        oneofKind: "invalidTargetForTargetSpec";
-        /**
-         * @generated from protobuf field: pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec = 21;
-         */
-        invalidTargetForTargetSpec: InvalidTargetForTargetSpec;
-    } | {
-        oneofKind: "invalidTargetForAction";
-        /**
-         * @generated from protobuf field: pandt.InvalidTargetForAction invalid_target_for_action = 22;
-         */
-        invalidTargetForAction: InvalidTargetForAction;
-    } | {
-        oneofKind: "creatureOutOfRange";
-        /**
-         * @generated from protobuf field: string creature_out_of_range = 23;
-         */
-        creatureOutOfRange: string;
-    } | {
-        oneofKind: "pointOutOfRange";
-        /**
-         * @generated from protobuf field: pandt.Point3 point_out_of_range = 24;
-         */
-        pointOutOfRange: Point3;
-    } | {
-        oneofKind: "buggyProgram";
-        /**
-         * @generated from protobuf field: string buggy_program = 25;
-         */
-        buggyProgram: string;
-    } | {
-        oneofKind: "notInCombat";
-        /**
-         * @generated from protobuf field: bool not_in_combat = 26;
-         */
-        notInCombat: boolean;
-    } | {
-        oneofKind: "alreadyInCombat";
-        /**
-         * @generated from protobuf field: string already_in_combat = 27;
-         */
-        alreadyInCombat: string;
-    } | {
-        oneofKind: "cannotMove";
-        /**
-         * @generated from protobuf field: string cannot_move = 28;
-         */
-        cannotMove: string;
-    } | {
-        oneofKind: "cannotAct";
-        /**
-         * @generated from protobuf field: string cannot_act = 29;
-         */
-        cannotAct: string;
-    } | {
-        oneofKind: "noPathFound";
-        /**
-         * @generated from protobuf field: bool no_path_found = 30;
-         */
-        noPathFound: boolean;
-    } | {
-        oneofKind: "folderAlreadyExists";
-        /**
-         * @generated from protobuf field: string folder_already_exists = 31;
-         */
-        folderAlreadyExists: string;
-    } | {
-        oneofKind: "stepTooBig";
-        /**
-         * @generated from protobuf field: pandt.LineSegment step_too_big = 32;
-         */
-        stepTooBig: LineSegment;
-    } | {
-        oneofKind: "notEnoughEnergy";
-        /**
-         * @generated from protobuf field: uint32 not_enough_energy = 33;
-         */
-        notEnoughEnergy: number;
-    } | {
-        oneofKind: "playerAlreadyExists";
-        /**
-         * @generated from protobuf field: string player_already_exists = 34;
-         */
-        playerAlreadyExists: string;
-    } | {
-        oneofKind: "playerNotFound";
-        /**
-         * @generated from protobuf field: string player_not_found = 35;
-         */
-        playerNotFound: string;
-    } | {
-        oneofKind: "playerDoesntControlCreature";
-        /**
-         * @generated from protobuf field: pandt.PlayerDoesntControlCreature player_doesnt_control_creature = 36;
-         */
-        playerDoesntControlCreature: PlayerDoesntControlCreature;
-    } | {
-        oneofKind: "historyNotFound";
-        /**
-         * @generated from protobuf field: pandt.HistoryPointer history_not_found = 37;
-         */
-        historyNotFound: HistoryPointer;
-    } | {
-        oneofKind: "initiativeOutOfBounds";
-        /**
-         * @generated from protobuf field: uint64 initiative_out_of_bounds = 38;
-         */
-        initiativeOutOfBounds: bigint;
-    } | {
-        oneofKind: "folderNotEmpty";
-        /**
-         * @generated from protobuf field: string folder_not_empty = 39;
-         */
-        folderNotEmpty: string;
-    } | {
-        oneofKind: "folderItemNotFound";
-        /**
-         * @generated from protobuf field: pandt.FolderItem folder_item_not_found = 40;
-         */
-        folderItemNotFound: FolderItem;
-    } | {
-        oneofKind: "cannotLinkNotes";
-        /**
-         * @generated from protobuf field: pandt.FolderItem cannot_link_notes = 42;
-         */
-        cannotLinkNotes: FolderItem;
-    } | {
-        oneofKind: "couldNotOpenAppFile";
-        /**
-         * @generated from protobuf field: string could_not_open_app_file = 43;
-         */
-        couldNotOpenAppFile: string;
-    } | {
-        oneofKind: "couldNotParseApp";
-        /**
-         * @generated from protobuf field: string could_not_parse_app = 44;
-         */
-        couldNotParseApp: string;
-    } | {
-        oneofKind: "noModuleSource";
-        /**
-         * @generated from protobuf field: bool no_module_source = 45;
-         */
-        noModuleSource: boolean;
-    } | {
-        oneofKind: "folderTreeError";
-        /**
-         * @generated from protobuf field: pandt.FolderTreeError folder_tree_error = 46;
-         */
-        folderTreeError: FolderTreeError;
-    } | {
-        oneofKind: "invalidId";
-        /**
-         * @generated from protobuf field: string invalid_id = 47;
-         */
-        invalidId: string;
-    } | {
-        oneofKind: undefined;
-    };
-}
+// message GameError {
+//     oneof error {
+//         string file_not_found = 1;
+//         AttributeNotFound attribute_not_found = 2;
+//         string ability_already_exists = 3;
+//         string creature_already_exists = 4;
+//         string item_already_exists = 5;
+//         string item_not_found = 6;
+//         string scene_already_exists = 7;
+//         string scene_not_found = 8;
+//         string scene_in_use = 9;
+//         string id_too_long = 10;
+//         string condition_not_found = 11;
+//         GameCommand invalid_command = 12;
+//         string class_already_exists = 13;
+//         string class_not_found = 14;
+//         string no_ability = 15;
+//         // what types should I use for these nullary variants?
+//         bool combat_must_have_creatures = 16;
+//         bool must_reroll_at_start_of_round = 17;
+//         CreatureLacksAbility creature_lacks_ability = 18;
+//         string creature_not_found = 19;
+//         string invalid_target = 20;
+//         InvalidTargetForTargetSpec invalid_target_for_target_spec = 21;
+//         InvalidTargetForAction invalid_target_for_action = 22;
+//         string creature_out_of_range = 23;
+//         Point3 point_out_of_range = 24;
+//         string buggy_program = 25;
+//         bool not_in_combat = 26;
+//         string already_in_combat = 27;
+//         string cannot_move = 28;
+//         string cannot_act = 29;
+//         bool no_path_found = 30;
+//         string folder_already_exists = 31;
+//         LineSegment step_too_big = 32;
+//         uint32 not_enough_energy = 33;
+//         string player_already_exists = 34;
+//         string player_not_found = 35;
+//         PlayerDoesntControlCreature player_doesnt_control_creature = 36;
+//         HistoryPointer history_not_found = 37;
+//         uint64 initiative_out_of_bounds = 38;
+//         string folder_not_empty = 39;
+//         FolderItem folder_item_not_found = 40;
+//         FolderItem cannot_link_notes = 42;
+//         string could_not_open_app_file = 43;
+//         string could_not_parse_app = 44;
+
+//         bool no_module_source = 45;
+//         FolderTreeError folder_tree_error = 46;
+//         string invalid_id = 47;
+//     }
+// }
+
 /**
  * @generated from protobuf message pandt.FolderTreeError
  */
@@ -1113,6 +890,32 @@ export interface FolderItemID {
     };
 }
 // @generated message type with reflection information, may provide speed optimized methods
+class Empty$Type extends MessageType<Empty> {
+    constructor() {
+        super("pandt.Empty", []);
+    }
+    create(value?: PartialMessage<Empty>): Empty {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Empty>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Empty): Empty {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: Empty, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Empty
+ */
+export const Empty = new Empty$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class SaveGameRequest$Type extends MessageType<SaveGameRequest> {
     constructor() {
         super("pandt.SaveGameRequest", [
@@ -1160,21 +963,49 @@ class SaveGameRequest$Type extends MessageType<SaveGameRequest> {
  */
 export const SaveGameRequest = new SaveGameRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
-class SaveGameReply$Type extends MessageType<SaveGameReply> {
+class ListSavedGamesReply$Type extends MessageType<ListSavedGamesReply> {
     constructor() {
-        super("pandt.SaveGameReply", []);
+        super("pandt.ListSavedGamesReply", [
+            { no: 1, name: "games", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "modules", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+        ]);
     }
-    create(value?: PartialMessage<SaveGameReply>): SaveGameReply {
-        const message = {};
+    create(value?: PartialMessage<ListSavedGamesReply>): ListSavedGamesReply {
+        const message = { games: [], modules: [] };
         globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
         if (value !== undefined)
-            reflectionMergePartial<SaveGameReply>(this, message, value);
+            reflectionMergePartial<ListSavedGamesReply>(this, message, value);
         return message;
     }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SaveGameReply): SaveGameReply {
-        return target ?? this.create();
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListSavedGamesReply): ListSavedGamesReply {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated string games */ 1:
+                    message.games.push(reader.string());
+                    break;
+                case /* repeated string modules */ 2:
+                    message.modules.push(reader.string());
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
     }
-    internalBinaryWrite(message: SaveGameReply, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+    internalBinaryWrite(message: ListSavedGamesReply, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated string games = 1; */
+        for (let i = 0; i < message.games.length; i++)
+            writer.tag(1, WireType.LengthDelimited).string(message.games[i]);
+        /* repeated string modules = 2; */
+        for (let i = 0; i < message.modules.length; i++)
+            writer.tag(2, WireType.LengthDelimited).string(message.modules[i]);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1182,9 +1013,9 @@ class SaveGameReply$Type extends MessageType<SaveGameReply> {
     }
 }
 /**
- * @generated MessageType for protobuf message pandt.SaveGameReply
+ * @generated MessageType for protobuf message pandt.ListSavedGamesReply
  */
-export const SaveGameReply = new SaveGameReply$Type();
+export const ListSavedGamesReply = new ListSavedGamesReply$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class HelloRequest$Type extends MessageType<HelloRequest> {
     constructor() {
@@ -2927,506 +2758,6 @@ class MultipleCreatureIDs$Type extends MessageType<MultipleCreatureIDs> {
  */
 export const MultipleCreatureIDs = new MultipleCreatureIDs$Type();
 // @generated message type with reflection information, may provide speed optimized methods
-class GameError$Type extends MessageType<GameError> {
-    constructor() {
-        super("pandt.GameError", [
-            { no: 1, name: "file_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 2, name: "attribute_not_found", kind: "message", oneof: "error", T: () => AttributeNotFound },
-            { no: 3, name: "ability_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 4, name: "creature_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 5, name: "item_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 6, name: "item_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 7, name: "scene_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 8, name: "scene_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 9, name: "scene_in_use", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 10, name: "id_too_long", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 11, name: "condition_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 12, name: "invalid_command", kind: "message", oneof: "error", T: () => GameCommand },
-            { no: 13, name: "class_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 14, name: "class_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 15, name: "no_ability", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 16, name: "combat_must_have_creatures", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
-            { no: 17, name: "must_reroll_at_start_of_round", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
-            { no: 18, name: "creature_lacks_ability", kind: "message", oneof: "error", T: () => CreatureLacksAbility },
-            { no: 19, name: "creature_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 20, name: "invalid_target", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 21, name: "invalid_target_for_target_spec", kind: "message", oneof: "error", T: () => InvalidTargetForTargetSpec },
-            { no: 22, name: "invalid_target_for_action", kind: "message", oneof: "error", T: () => InvalidTargetForAction },
-            { no: 23, name: "creature_out_of_range", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 24, name: "point_out_of_range", kind: "message", oneof: "error", T: () => Point3 },
-            { no: 25, name: "buggy_program", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 26, name: "not_in_combat", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
-            { no: 27, name: "already_in_combat", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 28, name: "cannot_move", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 29, name: "cannot_act", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 30, name: "no_path_found", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
-            { no: 31, name: "folder_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 32, name: "step_too_big", kind: "message", oneof: "error", T: () => LineSegment },
-            { no: 33, name: "not_enough_energy", kind: "scalar", oneof: "error", T: 13 /*ScalarType.UINT32*/ },
-            { no: 34, name: "player_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 35, name: "player_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 36, name: "player_doesnt_control_creature", kind: "message", oneof: "error", T: () => PlayerDoesntControlCreature },
-            { no: 37, name: "history_not_found", kind: "message", oneof: "error", T: () => HistoryPointer },
-            { no: 38, name: "initiative_out_of_bounds", kind: "scalar", oneof: "error", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
-            { no: 39, name: "folder_not_empty", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 40, name: "folder_item_not_found", kind: "message", oneof: "error", T: () => FolderItem },
-            { no: 42, name: "cannot_link_notes", kind: "message", oneof: "error", T: () => FolderItem },
-            { no: 43, name: "could_not_open_app_file", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 44, name: "could_not_parse_app", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
-            { no: 45, name: "no_module_source", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
-            { no: 46, name: "folder_tree_error", kind: "message", oneof: "error", T: () => FolderTreeError },
-            { no: 47, name: "invalid_id", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ }
-        ]);
-    }
-    create(value?: PartialMessage<GameError>): GameError {
-        const message = { error: { oneofKind: undefined } };
-        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
-        if (value !== undefined)
-            reflectionMergePartial<GameError>(this, message, value);
-        return message;
-    }
-    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GameError): GameError {
-        let message = target ?? this.create(), end = reader.pos + length;
-        while (reader.pos < end) {
-            let [fieldNo, wireType] = reader.tag();
-            switch (fieldNo) {
-                case /* string file_not_found */ 1:
-                    message.error = {
-                        oneofKind: "fileNotFound",
-                        fileNotFound: reader.string()
-                    };
-                    break;
-                case /* pandt.AttributeNotFound attribute_not_found */ 2:
-                    message.error = {
-                        oneofKind: "attributeNotFound",
-                        attributeNotFound: AttributeNotFound.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).attributeNotFound)
-                    };
-                    break;
-                case /* string ability_already_exists */ 3:
-                    message.error = {
-                        oneofKind: "abilityAlreadyExists",
-                        abilityAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string creature_already_exists */ 4:
-                    message.error = {
-                        oneofKind: "creatureAlreadyExists",
-                        creatureAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string item_already_exists */ 5:
-                    message.error = {
-                        oneofKind: "itemAlreadyExists",
-                        itemAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string item_not_found */ 6:
-                    message.error = {
-                        oneofKind: "itemNotFound",
-                        itemNotFound: reader.string()
-                    };
-                    break;
-                case /* string scene_already_exists */ 7:
-                    message.error = {
-                        oneofKind: "sceneAlreadyExists",
-                        sceneAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string scene_not_found */ 8:
-                    message.error = {
-                        oneofKind: "sceneNotFound",
-                        sceneNotFound: reader.string()
-                    };
-                    break;
-                case /* string scene_in_use */ 9:
-                    message.error = {
-                        oneofKind: "sceneInUse",
-                        sceneInUse: reader.string()
-                    };
-                    break;
-                case /* string id_too_long */ 10:
-                    message.error = {
-                        oneofKind: "idTooLong",
-                        idTooLong: reader.string()
-                    };
-                    break;
-                case /* string condition_not_found */ 11:
-                    message.error = {
-                        oneofKind: "conditionNotFound",
-                        conditionNotFound: reader.string()
-                    };
-                    break;
-                case /* pandt.GameCommand invalid_command */ 12:
-                    message.error = {
-                        oneofKind: "invalidCommand",
-                        invalidCommand: GameCommand.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidCommand)
-                    };
-                    break;
-                case /* string class_already_exists */ 13:
-                    message.error = {
-                        oneofKind: "classAlreadyExists",
-                        classAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string class_not_found */ 14:
-                    message.error = {
-                        oneofKind: "classNotFound",
-                        classNotFound: reader.string()
-                    };
-                    break;
-                case /* string no_ability */ 15:
-                    message.error = {
-                        oneofKind: "noAbility",
-                        noAbility: reader.string()
-                    };
-                    break;
-                case /* bool combat_must_have_creatures */ 16:
-                    message.error = {
-                        oneofKind: "combatMustHaveCreatures",
-                        combatMustHaveCreatures: reader.bool()
-                    };
-                    break;
-                case /* bool must_reroll_at_start_of_round */ 17:
-                    message.error = {
-                        oneofKind: "mustRerollAtStartOfRound",
-                        mustRerollAtStartOfRound: reader.bool()
-                    };
-                    break;
-                case /* pandt.CreatureLacksAbility creature_lacks_ability */ 18:
-                    message.error = {
-                        oneofKind: "creatureLacksAbility",
-                        creatureLacksAbility: CreatureLacksAbility.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).creatureLacksAbility)
-                    };
-                    break;
-                case /* string creature_not_found */ 19:
-                    message.error = {
-                        oneofKind: "creatureNotFound",
-                        creatureNotFound: reader.string()
-                    };
-                    break;
-                case /* string invalid_target */ 20:
-                    message.error = {
-                        oneofKind: "invalidTarget",
-                        invalidTarget: reader.string()
-                    };
-                    break;
-                case /* pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec */ 21:
-                    message.error = {
-                        oneofKind: "invalidTargetForTargetSpec",
-                        invalidTargetForTargetSpec: InvalidTargetForTargetSpec.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidTargetForTargetSpec)
-                    };
-                    break;
-                case /* pandt.InvalidTargetForAction invalid_target_for_action */ 22:
-                    message.error = {
-                        oneofKind: "invalidTargetForAction",
-                        invalidTargetForAction: InvalidTargetForAction.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidTargetForAction)
-                    };
-                    break;
-                case /* string creature_out_of_range */ 23:
-                    message.error = {
-                        oneofKind: "creatureOutOfRange",
-                        creatureOutOfRange: reader.string()
-                    };
-                    break;
-                case /* pandt.Point3 point_out_of_range */ 24:
-                    message.error = {
-                        oneofKind: "pointOutOfRange",
-                        pointOutOfRange: Point3.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).pointOutOfRange)
-                    };
-                    break;
-                case /* string buggy_program */ 25:
-                    message.error = {
-                        oneofKind: "buggyProgram",
-                        buggyProgram: reader.string()
-                    };
-                    break;
-                case /* bool not_in_combat */ 26:
-                    message.error = {
-                        oneofKind: "notInCombat",
-                        notInCombat: reader.bool()
-                    };
-                    break;
-                case /* string already_in_combat */ 27:
-                    message.error = {
-                        oneofKind: "alreadyInCombat",
-                        alreadyInCombat: reader.string()
-                    };
-                    break;
-                case /* string cannot_move */ 28:
-                    message.error = {
-                        oneofKind: "cannotMove",
-                        cannotMove: reader.string()
-                    };
-                    break;
-                case /* string cannot_act */ 29:
-                    message.error = {
-                        oneofKind: "cannotAct",
-                        cannotAct: reader.string()
-                    };
-                    break;
-                case /* bool no_path_found */ 30:
-                    message.error = {
-                        oneofKind: "noPathFound",
-                        noPathFound: reader.bool()
-                    };
-                    break;
-                case /* string folder_already_exists */ 31:
-                    message.error = {
-                        oneofKind: "folderAlreadyExists",
-                        folderAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* pandt.LineSegment step_too_big */ 32:
-                    message.error = {
-                        oneofKind: "stepTooBig",
-                        stepTooBig: LineSegment.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).stepTooBig)
-                    };
-                    break;
-                case /* uint32 not_enough_energy */ 33:
-                    message.error = {
-                        oneofKind: "notEnoughEnergy",
-                        notEnoughEnergy: reader.uint32()
-                    };
-                    break;
-                case /* string player_already_exists */ 34:
-                    message.error = {
-                        oneofKind: "playerAlreadyExists",
-                        playerAlreadyExists: reader.string()
-                    };
-                    break;
-                case /* string player_not_found */ 35:
-                    message.error = {
-                        oneofKind: "playerNotFound",
-                        playerNotFound: reader.string()
-                    };
-                    break;
-                case /* pandt.PlayerDoesntControlCreature player_doesnt_control_creature */ 36:
-                    message.error = {
-                        oneofKind: "playerDoesntControlCreature",
-                        playerDoesntControlCreature: PlayerDoesntControlCreature.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).playerDoesntControlCreature)
-                    };
-                    break;
-                case /* pandt.HistoryPointer history_not_found */ 37:
-                    message.error = {
-                        oneofKind: "historyNotFound",
-                        historyNotFound: HistoryPointer.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).historyNotFound)
-                    };
-                    break;
-                case /* uint64 initiative_out_of_bounds */ 38:
-                    message.error = {
-                        oneofKind: "initiativeOutOfBounds",
-                        initiativeOutOfBounds: reader.uint64().toBigInt()
-                    };
-                    break;
-                case /* string folder_not_empty */ 39:
-                    message.error = {
-                        oneofKind: "folderNotEmpty",
-                        folderNotEmpty: reader.string()
-                    };
-                    break;
-                case /* pandt.FolderItem folder_item_not_found */ 40:
-                    message.error = {
-                        oneofKind: "folderItemNotFound",
-                        folderItemNotFound: FolderItem.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).folderItemNotFound)
-                    };
-                    break;
-                case /* pandt.FolderItem cannot_link_notes */ 42:
-                    message.error = {
-                        oneofKind: "cannotLinkNotes",
-                        cannotLinkNotes: FolderItem.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).cannotLinkNotes)
-                    };
-                    break;
-                case /* string could_not_open_app_file */ 43:
-                    message.error = {
-                        oneofKind: "couldNotOpenAppFile",
-                        couldNotOpenAppFile: reader.string()
-                    };
-                    break;
-                case /* string could_not_parse_app */ 44:
-                    message.error = {
-                        oneofKind: "couldNotParseApp",
-                        couldNotParseApp: reader.string()
-                    };
-                    break;
-                case /* bool no_module_source */ 45:
-                    message.error = {
-                        oneofKind: "noModuleSource",
-                        noModuleSource: reader.bool()
-                    };
-                    break;
-                case /* pandt.FolderTreeError folder_tree_error */ 46:
-                    message.error = {
-                        oneofKind: "folderTreeError",
-                        folderTreeError: FolderTreeError.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).folderTreeError)
-                    };
-                    break;
-                case /* string invalid_id */ 47:
-                    message.error = {
-                        oneofKind: "invalidId",
-                        invalidId: reader.string()
-                    };
-                    break;
-                default:
-                    let u = options.readUnknownField;
-                    if (u === "throw")
-                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
-                    let d = reader.skip(wireType);
-                    if (u !== false)
-                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
-            }
-        }
-        return message;
-    }
-    internalBinaryWrite(message: GameError, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
-        /* string file_not_found = 1; */
-        if (message.error.oneofKind === "fileNotFound")
-            writer.tag(1, WireType.LengthDelimited).string(message.error.fileNotFound);
-        /* pandt.AttributeNotFound attribute_not_found = 2; */
-        if (message.error.oneofKind === "attributeNotFound")
-            AttributeNotFound.internalBinaryWrite(message.error.attributeNotFound, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
-        /* string ability_already_exists = 3; */
-        if (message.error.oneofKind === "abilityAlreadyExists")
-            writer.tag(3, WireType.LengthDelimited).string(message.error.abilityAlreadyExists);
-        /* string creature_already_exists = 4; */
-        if (message.error.oneofKind === "creatureAlreadyExists")
-            writer.tag(4, WireType.LengthDelimited).string(message.error.creatureAlreadyExists);
-        /* string item_already_exists = 5; */
-        if (message.error.oneofKind === "itemAlreadyExists")
-            writer.tag(5, WireType.LengthDelimited).string(message.error.itemAlreadyExists);
-        /* string item_not_found = 6; */
-        if (message.error.oneofKind === "itemNotFound")
-            writer.tag(6, WireType.LengthDelimited).string(message.error.itemNotFound);
-        /* string scene_already_exists = 7; */
-        if (message.error.oneofKind === "sceneAlreadyExists")
-            writer.tag(7, WireType.LengthDelimited).string(message.error.sceneAlreadyExists);
-        /* string scene_not_found = 8; */
-        if (message.error.oneofKind === "sceneNotFound")
-            writer.tag(8, WireType.LengthDelimited).string(message.error.sceneNotFound);
-        /* string scene_in_use = 9; */
-        if (message.error.oneofKind === "sceneInUse")
-            writer.tag(9, WireType.LengthDelimited).string(message.error.sceneInUse);
-        /* string id_too_long = 10; */
-        if (message.error.oneofKind === "idTooLong")
-            writer.tag(10, WireType.LengthDelimited).string(message.error.idTooLong);
-        /* string condition_not_found = 11; */
-        if (message.error.oneofKind === "conditionNotFound")
-            writer.tag(11, WireType.LengthDelimited).string(message.error.conditionNotFound);
-        /* pandt.GameCommand invalid_command = 12; */
-        if (message.error.oneofKind === "invalidCommand")
-            GameCommand.internalBinaryWrite(message.error.invalidCommand, writer.tag(12, WireType.LengthDelimited).fork(), options).join();
-        /* string class_already_exists = 13; */
-        if (message.error.oneofKind === "classAlreadyExists")
-            writer.tag(13, WireType.LengthDelimited).string(message.error.classAlreadyExists);
-        /* string class_not_found = 14; */
-        if (message.error.oneofKind === "classNotFound")
-            writer.tag(14, WireType.LengthDelimited).string(message.error.classNotFound);
-        /* string no_ability = 15; */
-        if (message.error.oneofKind === "noAbility")
-            writer.tag(15, WireType.LengthDelimited).string(message.error.noAbility);
-        /* bool combat_must_have_creatures = 16; */
-        if (message.error.oneofKind === "combatMustHaveCreatures")
-            writer.tag(16, WireType.Varint).bool(message.error.combatMustHaveCreatures);
-        /* bool must_reroll_at_start_of_round = 17; */
-        if (message.error.oneofKind === "mustRerollAtStartOfRound")
-            writer.tag(17, WireType.Varint).bool(message.error.mustRerollAtStartOfRound);
-        /* pandt.CreatureLacksAbility creature_lacks_ability = 18; */
-        if (message.error.oneofKind === "creatureLacksAbility")
-            CreatureLacksAbility.internalBinaryWrite(message.error.creatureLacksAbility, writer.tag(18, WireType.LengthDelimited).fork(), options).join();
-        /* string creature_not_found = 19; */
-        if (message.error.oneofKind === "creatureNotFound")
-            writer.tag(19, WireType.LengthDelimited).string(message.error.creatureNotFound);
-        /* string invalid_target = 20; */
-        if (message.error.oneofKind === "invalidTarget")
-            writer.tag(20, WireType.LengthDelimited).string(message.error.invalidTarget);
-        /* pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec = 21; */
-        if (message.error.oneofKind === "invalidTargetForTargetSpec")
-            InvalidTargetForTargetSpec.internalBinaryWrite(message.error.invalidTargetForTargetSpec, writer.tag(21, WireType.LengthDelimited).fork(), options).join();
-        /* pandt.InvalidTargetForAction invalid_target_for_action = 22; */
-        if (message.error.oneofKind === "invalidTargetForAction")
-            InvalidTargetForAction.internalBinaryWrite(message.error.invalidTargetForAction, writer.tag(22, WireType.LengthDelimited).fork(), options).join();
-        /* string creature_out_of_range = 23; */
-        if (message.error.oneofKind === "creatureOutOfRange")
-            writer.tag(23, WireType.LengthDelimited).string(message.error.creatureOutOfRange);
-        /* pandt.Point3 point_out_of_range = 24; */
-        if (message.error.oneofKind === "pointOutOfRange")
-            Point3.internalBinaryWrite(message.error.pointOutOfRange, writer.tag(24, WireType.LengthDelimited).fork(), options).join();
-        /* string buggy_program = 25; */
-        if (message.error.oneofKind === "buggyProgram")
-            writer.tag(25, WireType.LengthDelimited).string(message.error.buggyProgram);
-        /* bool not_in_combat = 26; */
-        if (message.error.oneofKind === "notInCombat")
-            writer.tag(26, WireType.Varint).bool(message.error.notInCombat);
-        /* string already_in_combat = 27; */
-        if (message.error.oneofKind === "alreadyInCombat")
-            writer.tag(27, WireType.LengthDelimited).string(message.error.alreadyInCombat);
-        /* string cannot_move = 28; */
-        if (message.error.oneofKind === "cannotMove")
-            writer.tag(28, WireType.LengthDelimited).string(message.error.cannotMove);
-        /* string cannot_act = 29; */
-        if (message.error.oneofKind === "cannotAct")
-            writer.tag(29, WireType.LengthDelimited).string(message.error.cannotAct);
-        /* bool no_path_found = 30; */
-        if (message.error.oneofKind === "noPathFound")
-            writer.tag(30, WireType.Varint).bool(message.error.noPathFound);
-        /* string folder_already_exists = 31; */
-        if (message.error.oneofKind === "folderAlreadyExists")
-            writer.tag(31, WireType.LengthDelimited).string(message.error.folderAlreadyExists);
-        /* pandt.LineSegment step_too_big = 32; */
-        if (message.error.oneofKind === "stepTooBig")
-            LineSegment.internalBinaryWrite(message.error.stepTooBig, writer.tag(32, WireType.LengthDelimited).fork(), options).join();
-        /* uint32 not_enough_energy = 33; */
-        if (message.error.oneofKind === "notEnoughEnergy")
-            writer.tag(33, WireType.Varint).uint32(message.error.notEnoughEnergy);
-        /* string player_already_exists = 34; */
-        if (message.error.oneofKind === "playerAlreadyExists")
-            writer.tag(34, WireType.LengthDelimited).string(message.error.playerAlreadyExists);
-        /* string player_not_found = 35; */
-        if (message.error.oneofKind === "playerNotFound")
-            writer.tag(35, WireType.LengthDelimited).string(message.error.playerNotFound);
-        /* pandt.PlayerDoesntControlCreature player_doesnt_control_creature = 36; */
-        if (message.error.oneofKind === "playerDoesntControlCreature")
-            PlayerDoesntControlCreature.internalBinaryWrite(message.error.playerDoesntControlCreature, writer.tag(36, WireType.LengthDelimited).fork(), options).join();
-        /* pandt.HistoryPointer history_not_found = 37; */
-        if (message.error.oneofKind === "historyNotFound")
-            HistoryPointer.internalBinaryWrite(message.error.historyNotFound, writer.tag(37, WireType.LengthDelimited).fork(), options).join();
-        /* uint64 initiative_out_of_bounds = 38; */
-        if (message.error.oneofKind === "initiativeOutOfBounds")
-            writer.tag(38, WireType.Varint).uint64(message.error.initiativeOutOfBounds);
-        /* string folder_not_empty = 39; */
-        if (message.error.oneofKind === "folderNotEmpty")
-            writer.tag(39, WireType.LengthDelimited).string(message.error.folderNotEmpty);
-        /* pandt.FolderItem folder_item_not_found = 40; */
-        if (message.error.oneofKind === "folderItemNotFound")
-            FolderItem.internalBinaryWrite(message.error.folderItemNotFound, writer.tag(40, WireType.LengthDelimited).fork(), options).join();
-        /* pandt.FolderItem cannot_link_notes = 42; */
-        if (message.error.oneofKind === "cannotLinkNotes")
-            FolderItem.internalBinaryWrite(message.error.cannotLinkNotes, writer.tag(42, WireType.LengthDelimited).fork(), options).join();
-        /* string could_not_open_app_file = 43; */
-        if (message.error.oneofKind === "couldNotOpenAppFile")
-            writer.tag(43, WireType.LengthDelimited).string(message.error.couldNotOpenAppFile);
-        /* string could_not_parse_app = 44; */
-        if (message.error.oneofKind === "couldNotParseApp")
-            writer.tag(44, WireType.LengthDelimited).string(message.error.couldNotParseApp);
-        /* bool no_module_source = 45; */
-        if (message.error.oneofKind === "noModuleSource")
-            writer.tag(45, WireType.Varint).bool(message.error.noModuleSource);
-        /* pandt.FolderTreeError folder_tree_error = 46; */
-        if (message.error.oneofKind === "folderTreeError")
-            FolderTreeError.internalBinaryWrite(message.error.folderTreeError, writer.tag(46, WireType.LengthDelimited).fork(), options).join();
-        /* string invalid_id = 47; */
-        if (message.error.oneofKind === "invalidId")
-            writer.tag(47, WireType.LengthDelimited).string(message.error.invalidId);
-        let u = options.writeUnknownFields;
-        if (u !== false)
-            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
-        return writer;
-    }
-}
-/**
- * @generated MessageType for protobuf message pandt.GameError
- */
-export const GameError = new GameError$Type();
-// @generated message type with reflection information, may provide speed optimized methods
 class FolderTreeError$Type extends MessageType<FolderTreeError> {
     constructor() {
         super("pandt.FolderTreeError", [
@@ -4113,5 +3444,6 @@ export const FolderItemID = new FolderItemID$Type();
  */
 export const PT = new ServiceType("pandt.PT", [
     { name: "SayHello", options: {}, I: HelloRequest, O: HelloReply },
-    { name: "SaveGame", options: {}, I: SaveGameRequest, O: SaveGameReply }
+    { name: "SaveGame", options: {}, I: SaveGameRequest, O: Empty },
+    { name: "ListSavedGames", options: {}, I: Empty, O: ListSavedGamesReply }
 ]);
