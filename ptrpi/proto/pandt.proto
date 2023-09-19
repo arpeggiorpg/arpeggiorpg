@@ -6,11 +6,18 @@ service PT {
     // Our SayHello rpc accepts HelloRequests and returns HelloReplies
     rpc SayHello (HelloRequest) returns (HelloReply);
 
-    rpc SaveGame (SaveGameRequest) returns (SaveGameReply);
+    rpc SaveGame (SaveGameRequest) returns (Empty);
+    rpc ListSavedGames (Empty) returns (ListSavedGamesReply);
 }
 
+message Empty {}
+
 message SaveGameRequest { string name = 1; }
-message SaveGameReply {}
+
+message ListSavedGamesReply {
+    repeated string games = 1;
+    repeated string modules = 2;
+}
 
 message HelloRequest {
     // Request message contains the name to be greeted
@@ -278,7 +285,6 @@ message TwoFolderPaths {
     string fp1 = 1;
     string fp2 = 2;
 }
-
 
 message AttributeNotFound {
     string creature_id = 1;

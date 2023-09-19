@@ -5,12 +5,21 @@
 
 import * as Z from "zod";
 
-import * as T from "./PTTypes";
-import {getState} from "./Model";
+import { RpcError } from "@protobuf-ts/runtime-rpc";
+import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
+import { PTClient } from "../proto/pandt.client";
+import * as T from "./PTTypes";
+import { getState } from "./Model";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
-if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!");}
+if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
+
+// TODO: I guess eventually this should just be the RPI_URL
+const transport = new GrpcWebFetchTransport({ baseUrl: "http://localhost:50051" });
+const ptclient = new PTClient(transport);
+
+
 
 export async function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
@@ -54,7 +63,7 @@ export async function ptfetch_<J>(
   }
 }
 
-function ptfetch<J>(url: string, init: RequestInit | undefined, decoder: {parse: (json: object) => J}): Promise<J> {
+function ptfetch<J>(url: string, init: RequestInit | undefined, decoder: { parse: (json: object) => J }): Promise<J> {
   return ptfetch_(url, init, decoder.parse);
 }
 
@@ -164,16 +173,26 @@ export async function loadGame(source: T.ModuleSource, name: string): Promise<vo
   resetApp(app);
 }
 
-export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]> {
-  return ptfetch(
-    RPI_URL + '/saved_games',
-    undefined,
-    Z.tuple([Z.array(Z.string()), Z.array(Z.string())])
-  );
+export async function fetchSavedGames(): Promise<{games: Array<string>, modules: Array<string>}> {
+  const games = await runRPC(() => ptclient.listSavedGames({}));
+  return games.response;
 }
 
 export async function saveGame(game: string): Promise<undefined> {
-  await ptclient.saveGame({name: game});
+  await runRPC(() => ptclient.saveGame({name: game}));
+}
+
+async function runRPC<T>(f: () => PromiseLike<T> | T): Promise<T> {
+  try {
+    const r = await f();
+    return r;
+  } catch (e) {
+    if (e instanceof RpcError) {
+      console.log("RPC ERROR", decodeURI(e.message));
+      getState().setError(decodeURI(e.message));
+    }
+    throw e;
+  }
 }
 
 export function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
@@ -275,16 +294,7 @@ export function fetchAbilityTargets(
   );
 }
 
-
-import {PTClient} from "../proto/pandt.client";
-import {GrpcWebFetchTransport} from "@protobuf-ts/grpcweb-transport";
-
-const transport = new GrpcWebFetchTransport({
-  baseUrl: "http://localhost:50051"
-});
-const ptclient = new PTClient(transport);
-
 export async function sayHello() {
-  const {response} = await ptclient.sayHello({name: "Radix"});
+  const { response } = await ptclient.sayHello({ name: "Radix" });
   console.log("said hello!", response);
 }

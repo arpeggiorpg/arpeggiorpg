@@ -1,3 +1,9 @@
+use std::path::Path;
+use std::fs;
+use log::error;
+
+use anyhow::{Error};
+
 use tonic::{Request, Response, Status};
 tonic::include_proto!("pandt");
 
@@ -34,8 +40,38 @@ impl Pt for Server {
     Ok(Response::new(reply)) // Send back our formatted greeting
   }
 
-  async fn save_game(&self, request: Request<SaveGameRequest>) -> Result<Response<SaveGameReply>, Status> {
-    self.actor.save_game(request.into_inner().name).await.map_err(|e| Status::unknown(e.to_string()))?;
-    return Ok(Response::new(SaveGameReply {}));
+
+  async fn list_saved_games(&self, _request: Request<Empty>) -> Result<Response<ListSavedGamesReply>, Status> {
+    // This does not require access to the app, so we don't dispatch to the actor.
+
+    fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
+      let mut result = vec![];
+      for mpath in fs::read_dir(path)? {
+        let path = mpath?;
+        if path.file_type()?.is_file() {
+          match path.file_name().into_string() {
+            Ok(s) => result.push(s),
+            Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
+          }
+        }
+      }
+      Ok(result)
+    }
+
+    let modules = match self.actor.module_path {
+      Some(ref path) => list_dir_into_strings(path.as_ref()).map_err(map_err)?,
+      None => vec![],
+    };
+    let games = list_dir_into_strings(&self.actor.saved_game_path).map_err(map_err)?;
+    return Ok(Response::new(ListSavedGamesReply { modules, games }));
   }
+
+  async fn save_game(&self, request: Request<SaveGameRequest>) -> Result<Response<Empty>, Status> {
+    self.actor.save_game(request.into_inner().name).await.map_err(map_err)?;
+    return Ok(Response::new(Empty {}));
+  }
+}
+
+fn map_err<T: ToString>(e: T) -> Status {
+  return Status::unknown(e.to_string());
 }

@@ -4,7 +4,8 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { PT } from "./pandt";
-import type { SaveGameReply } from "./pandt";
+import type { ListSavedGamesReply } from "./pandt";
+import type { Empty } from "./pandt";
 import type { SaveGameRequest } from "./pandt";
 import { stackIntercept } from "@protobuf-ts/runtime-rpc";
 import type { HelloReply } from "./pandt";
@@ -22,9 +23,13 @@ export interface IPTClient {
      */
     sayHello(input: HelloRequest, options?: RpcOptions): UnaryCall<HelloRequest, HelloReply>;
     /**
-     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.SaveGameReply);
+     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.Empty);
      */
-    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, SaveGameReply>;
+    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, Empty>;
+    /**
+     * @generated from protobuf rpc: ListSavedGames(pandt.Empty) returns (pandt.ListSavedGamesReply);
+     */
+    listSavedGames(input: Empty, options?: RpcOptions): UnaryCall<Empty, ListSavedGamesReply>;
 }
 /**
  * @generated from protobuf service pandt.PT
@@ -45,10 +50,17 @@ export class PTClient implements IPTClient, ServiceInfo {
         return stackIntercept<HelloRequest, HelloReply>("unary", this._transport, method, opt, input);
     }
     /**
-     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.SaveGameReply);
+     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.Empty);
      */
-    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, SaveGameReply> {
+    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, Empty> {
         const method = this.methods[1], opt = this._transport.mergeOptions(options);
-        return stackIntercept<SaveGameRequest, SaveGameReply>("unary", this._transport, method, opt, input);
+        return stackIntercept<SaveGameRequest, Empty>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: ListSavedGames(pandt.Empty) returns (pandt.ListSavedGamesReply);
+     */
+    listSavedGames(input: Empty, options?: RpcOptions): UnaryCall<Empty, ListSavedGamesReply> {
+        const method = this.methods[2], opt = this._transport.mergeOptions(options);
+        return stackIntercept<Empty, ListSavedGamesReply>("unary", this._transport, method, opt, input);
     }
 }
