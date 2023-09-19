@@ -280,9 +280,7 @@ export function fetchAbilityTargets(
 }
 
 
-import * as HW from "../proto/helloworld";
-
-import {GreeterClient} from "../proto/helloworld.client";
+import {PTClient} from "../proto/pandt.client";
 import {GrpcWebFetchTransport} from "@protobuf-ts/grpcweb-transport";
 
 export async function sayHello() {
@@ -291,17 +289,8 @@ export async function sayHello() {
     baseUrl: "http://localhost:50051"
   });
 
-  const client = new GreeterClient(transport);
+  const client = new PTClient(transport);
 
   const {response} = await client.sayHello({name: "Radix"});
   console.log("said hello!", response);
-
-  // const client = new GreeterClient('http://localhost:8080');
-
-  // const request = new HelloRequest();
-  // request.setName('World');
-
-  // client.sayHello(request, {}, (err, response) => {
-  //   console.log("They said hello!", response.getMessage());
-  // });
 }
