@@ -10,6 +10,7 @@ import {getState} from "./Model";
 
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
+if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!");}
 
 export async function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
@@ -276,4 +277,31 @@ export function fetchAbilityTargets(
     { method: 'POST' },
     Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]).transform(([creatures, points]) => ({ points, creatures }))
   );
+}
+
+
+import * as HW from "../proto/helloworld";
+
+import {GreeterClient} from "../proto/helloworld.client";
+import {GrpcWebFetchTransport} from "@protobuf-ts/grpcweb-transport";
+
+export async function sayHello() {
+
+  const transport = new GrpcWebFetchTransport({
+    baseUrl: "http://localhost:50051"
+  });
+
+  const client = new GreeterClient(transport);
+
+  const {response} = await client.sayHello({name: "Radix"});
+  console.log("said hello!", response);
+
+  // const client = new GreeterClient('http://localhost:8080');
+
+  // const request = new HelloRequest();
+  // request.setName('World');
+
+  // client.sayHello(request, {}, (err, response) => {
+  //   console.log("They said hello!", response.getMessage());
+  // });
 }

@@ -13,11 +13,44 @@ use actix_web::{middleware::Logger, App as WebApp};
 use log::info;
 use structopt::StructOpt;
 
+use tonic::transport::Server as TonicServer;
+
+
+
+pub mod hello_world {
+  use tonic::{Request, Response, Status};
+  tonic::include_proto!("helloworld");
+
+  pub use greeter_server::{Greeter, GreeterServer};
+
+  #[derive(Debug, Default)]
+  pub struct MyGreeter {}
+
+  #[tonic::async_trait]
+  impl Greeter for MyGreeter {
+    async fn say_hello(
+      &self,
+      request: Request<HelloRequest>, // Accept request of type HelloRequest
+    ) -> Result<Response<HelloReply>, Status> {
+      // Return an instance of type HelloReply
+      // We must use .into_inner() as the fields of gRPC requests and responses are private
+      let x = request.into_inner();
+      println!("Got a request: {:?}", x);
+
+      let reply = HelloReply {
+        message: format!("Hello {}!", x.name).into(),
+      };
+
+      Ok(Response::new(reply)) // Send back our formatted greeting
+    }
+  }
+}
+
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
   if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info");
   }
@@ -46,7 +79,16 @@ async fn main() -> std::io::Result<()> {
       .wrap(Cors::permissive())
       .configure(|c| web::router(actor.clone(), c))
   });
-  server.bind("0.0.0.0:1337")?.run().await
+  tokio::spawn(server.bind("0.0.0.0:1337")?.run());
+  println!("Started Actix Web server...");
+
+  let greeter = hello_world::GreeterServer::new(hello_world::MyGreeter::default());
+  TonicServer::builder()
+    .accept_http1(true)
+    .add_service(tonic_web::enable(greeter))
+    .serve("0.0.0.0:50051".parse().unwrap())
+    .await?;
+  Ok(())
 }
 
 #[derive(StructOpt)]
