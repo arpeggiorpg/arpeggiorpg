@@ -560,8 +560,9 @@ const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
   name: Z.string(),
   background_image_url: Z.string(),
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
-  background_image_offset: Z.tuple([Z.number(), Z.number()]).optional(),
+  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
 });
+(window as any).decodeSceneCreation = decodeSceneCreation;
 
 const decodeVolume: Decoder<Volume> = Z.union([
   Z.object({Sphere: Z.number()}).transform(({Sphere: radius}): Volume => ({t: "Sphere", radius})),
@@ -594,7 +595,7 @@ export const decodeScene: Decoder<Scene> = Z.object({
   attribute_checks: Z.record(decodeAttributeCheck).transform<Scene['attribute_checks']>(I.Map),
   inventory: Z.record(Z.number()).transform<Scene['inventory']>(I.Map),
   background_image_url: Z.string(),
-  background_image_offset: Z.tuple([Z.number(), Z.number()]).optional(),
+  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
   volume_conditions: Z.record(decodeVolumeCondition).transform<Scene['volume_conditions']>(I.Map),
   focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(I.List),
@@ -683,7 +684,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
   Z.object({RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}).transform(
     ({RemoveCreaturesFromPlayer: [player_id, creature_ids]}): GameLog =>
       ({ t: "RemoveCreaturesFromPlayer", player_id, creature_ids })),
-  Z.object({SetPlayerScene: Z.tuple([Z.string(), Z.string().optional()])}).transform(
+  Z.object({SetPlayerScene: Z.tuple([Z.string(), maybe(Z.string())])}).transform(
     ({SetPlayerScene: [player_id, scene_id]}): GameLog => ({ t: "SetPlayerScene", player_id, scene_id })),
   Z.object({ChatFromGM: Z.string()}).transform(({ChatFromGM: message}): GameLog => ({ t: "ChatFromGM", message })),
   Z.object({ChatFromPlayer: Z.tuple([Z.string(), Z.string()])}).transform(
@@ -821,7 +822,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
 
 const decodePlayer: Decoder<Player> = Z.object({
   player_id: Z.string(),
-  scene: Z.string().optional(),
+  scene: maybe(Z.string()),
   creatures: Z.array(Z.string()),
 });
 
@@ -905,7 +906,7 @@ const decodeAbility: Decoder<Ability> = Z.object({
 });
 
 const decodeGame: Decoder<Game> = Z.object({
-  current_combat: decodeCombat.optional(),
+  current_combat: maybe(decodeCombat),
   creatures: Z.record(decodeCreature).transform<Game["creatures"]>(I.Map),
   classes: Z.record(decodeClass).transform<Game["classes"]>(I.Map),
   items: Z.record(decodeItem),
@@ -1200,4 +1201,10 @@ function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Dec
 
 function decodeSet<T>(d: Decoder<T>): Decoder<I.Set<T>> {
   return Z.array(d).transform<I.Set<T>>(I.Set);
+}
+
+// We use undefined for missing data in our typescript types, not null. This way
+// we can *parse* null but *produce* undefined.
+function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
+  return d.nullish().transform((x: T|undefined|null): T | undefined => x ?? undefined);
 }
