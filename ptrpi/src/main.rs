@@ -16,7 +16,7 @@ use structopt::StructOpt;
 use pandt::game::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
-#[actix_rt::main]
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
   if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info");
