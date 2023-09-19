@@ -1,8 +1,6 @@
 import I from 'immutable';
 import LD from "lodash";
-import * as JD from "type-safe-json-decoder";
 import * as Z from "zod";
-import { Decoder } from "type-safe-json-decoder";
 
 import type { AbilityID } from "./bindings/AbilityID";
 import type { ClassID } from "./bindings/ClassID";
@@ -24,6 +22,7 @@ export type FolderPath = Array<string>;
 export type Terrain = I.Set<Point3>;
 export type Highlights = I.Map<Point3, [Color, Visibility]>;
 export type Annotations = I.Map<Point3, [string, Visibility]>;
+
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -62,7 +61,7 @@ export interface App {
 export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 
 export interface Game {
-  current_combat: Combat | undefined;
+  current_combat?: Combat | undefined;
   creatures: I.Map<CreatureID, Creature>;
   classes: I.Map<ClassID, Class>;
   items: { [index: string]: Item };
@@ -101,7 +100,8 @@ export type CreatureTarget =
   | { t: "LineFromActor"; distance: Distance }
   ;
 
-export interface SceneTarget { t: "RangedVolume"; volume: Volume; range: Distance; }
+export type SceneTarget =
+  | { t: "RangedVolume"; volume: Volume; range: Distance; }
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID }
@@ -135,7 +135,7 @@ export type InventoryOwner =
   ;
 
 export type GameCommand =
-  | { t: "SetActiveScene"; scene_id: SceneID | undefined }
+  | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
   | { t: "ChatFromGM"; message: string }
   | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
   | { t: "RegisterPlayer"; player_id: PlayerID }
@@ -181,7 +181,7 @@ export type GameCommand =
   | { t: "StopCombat" }
   | { t: "AddCreatureToCombat"; creature_id: CreatureID }
   | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck }
-  | { t: "SetPlayerScene"; player_id: PlayerID; scene_id: SceneID | undefined }
+  | { t: "SetPlayerScene"; player_id: PlayerID; scene_id?: SceneID | undefined }
   | { t: "Rollback"; snapshot_index: number; log_index: number }
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath }
   ;
@@ -213,12 +213,12 @@ export interface Player {
 }
 
 export type GameLog =
-  | { t: "SetActiveScene"; scene_id: SceneID | undefined }
+  | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
   | { t: "RegisterPlayer"; player_id: string }
   | { t: "UnregisterPlayer"; player_id: string }
   | { t: "GiveCreaturesToPlayer"; player_id: string; creature_ids: Array<CreatureID> }
   | { t: "RemoveCreaturesFromPlayer"; player_id: string; creature_ids: Array<CreatureID> }
-  | { t: "SetPlayerScene"; player_id: string; scene_id: SceneID | undefined }
+  | { t: "SetPlayerScene"; player_id: string; scene_id?: SceneID | undefined }
 
   | { t: "ChatFromGM"; message: string }
   | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
@@ -380,7 +380,7 @@ export const SKILL_LEVELS: Array<SkillLevel> =
 export interface SceneCreation {
   name: string;
   background_image_url: string;
-  background_image_offset: [number, number] | undefined;
+  background_image_offset?: [number, number] | undefined;
   background_image_scale: [number, number];
 }
 
@@ -396,7 +396,7 @@ export interface Scene {
   attribute_checks: I.Map<string, AttributeCheck>;
   inventory: I.Map<ItemID, number>;
   background_image_url: string;
-  background_image_offset: [number, number] | undefined;
+  background_image_offset?: [number, number] | undefined;
   background_image_scale: [number, number];
   volume_conditions: I.Map<ConditionID, VolumeCondition>;
   focused_creatures: I.List<CreatureID>;
@@ -431,6 +431,8 @@ export type RustResult<T, E> =
 
 // ** Decoders **
 
+type Decoder<T> = Z.ZodType<T, Z.ZodTypeDef, any>;
+
 export function parsePoint3(str: string): Point3 {
   const segments = str.split("/");
   if (segments.length !== 3) {
@@ -440,163 +442,91 @@ export function parsePoint3(str: string): Point3 {
   return new Point3(Number(xs), Number(ys), Number(zs));
 }
 
-export const decodePoint3: Decoder<Point3> = JD.map(parsePoint3, JD.string());
 
-export const zecodePoint3 = Z.string().transform(parsePoint3);
-export const arrayOfPoint3 = Z.array(zecodePoint3);
+export const decodePoint3 = Z.string().transform(parsePoint3);
+export const arrayOfPoint3 = Z.array(decodePoint3);
 
-(window as any).zecodePoint3 = zecodePoint3;
-(window as any).arrayOfPoint3 = arrayOfPoint3;
-(window as any).Z = Z;
-
-export const decodePotentialTargets = sum<PotentialTargets>("PotentialTargets", {}, {
-  CreatureIDs: JD.map((cids): PotentialTargets =>
-    ({ t: "CreatureIDs", cids }), JD.array(JD.string())),
-  Points: JD.map((points): PotentialTargets => ({ t: "Points", points }), JD.array(decodePoint3)),
-});
-
-// Okay, I REALLY need to switch the rust code to using serde(tag = "kind") :-(
-export const zecodePotentialTargets: {parse: (obj: object) => PotentialTargets} = Z.union([
-  Z.object({CreatureIDs: Z.array(Z.string())}).transform((o): PotentialTargets => ({t: "CreatureIDs", cids: o.CreatureIDs})),
-  Z.object({Points: Z.array(zecodePoint3)}).transform((o): PotentialTargets => ({t: "Points", points: o.Points}))
+export const decodePotentialTargets: Decoder<PotentialTargets> = Z.union([
+  Z.object({CreatureIDs: Z.array(Z.string())}).transform(({CreatureIDs: cids}): PotentialTargets => ({t: "CreatureIDs", cids})),
+  Z.object({Points: Z.array(decodePoint3)}).transform(({Points: points}): PotentialTargets => ({t: "Points", points}))
 ]);
 
-const decodeDiceLazy = JD.lazy(() => decodeDice);
-const decodeConditionLazy = JD.lazy(() => decodeCondition);
-const decodeEffectLazy = JD.lazy(() => decodeEffect);
+const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
+  Z.object({Flat: Z.number()}).transform((o): Dice => ({t: "Flat", val: o.Flat})),
+  Z.object({Expr: Z.object({num: Z.number(), size: Z.number()})}).transform(({Expr: {num, size}}): Dice => ({t: "Expr", num, size})),
+  Z.object({Plus: Z.tuple([decodeDice, decodeDice])}).transform(({Plus: [left, right]}): Dice => ({t: "Plus", left, right})),
+  Z.object({BestOf: Z.tuple([Z.number(), decodeDice])}).transform(({BestOf: [num, dice]}): Dice => ({t: "BestOf", num, dice})),
+]));
 
-const decodeDice: Decoder<Dice> = sum<Dice>("Dice", {}, {
-  BestOf: JD.map(
-    ([num, dice]): Dice => ({ t: "BestOf", num, dice }),
-    JD.tuple(JD.number(), decodeDiceLazy)),
-  Expr: JD.map(
-    ({ num, size }): Dice => ({ t: "Expr", num, size }),
-    JD.object(["num", JD.number()], ["size", JD.number()], (num, size) => ({ num, size }))),
-  Flat: JD.map((val): Dice => ({ t: "Flat", val }), JD.number()),
-  Plus: JD.map(
-    ([left, right]): Dice => ({ t: "Plus", left, right }),
-    JD.tuple(decodeDiceLazy, decodeDiceLazy)),
+const decodeDuration: Decoder<Duration> = Z.union([
+  Z.literal("Interminate").transform((): Duration => ({t: "Interminate"})),
+  Z.object({Rounds: Z.number()}).transform((o): Duration => ({t: "Rounds", duration: o.Rounds}))
+]);
+
+const decodeEffect: Decoder<CreatureEffect> = Z.union([
+  Z.object({ApplyCondition: Z.tuple([decodeDuration, Z.lazy(() => decodeCondition)])}).transform((o): CreatureEffect => ({ t: "ApplyCondition", duration: o.ApplyCondition[0], condition: o.ApplyCondition[1] })),
+  Z.object({Damage: decodeDice}).transform((o): CreatureEffect => ({ t: "Damage", dice: o.Damage })),
+  Z.object({GenerateEnergy: Z.number()}).transform(({GenerateEnergy}): CreatureEffect => ({ t: "GenerateEnergy", energy: GenerateEnergy})),
+  Z.object({Heal: decodeDice}).transform(({Heal: dice}): CreatureEffect => ({ t: "Heal", dice })),
+  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeEffect))}).transform(({MultiEffect: effects}): CreatureEffect => ({t: "MultiEffect", effects})),
+]);
+
+const decodeCondition: Decoder<Condition> = Z.union([
+  Z.literal("Dead").transform((): Condition => ({t: "Dead"})),
+  Z.literal("DoubleMaxMovement").transform((): Condition => ({ t: "DoubleMaxMovement" })),
+  Z.literal("Incapacitated").transform((): Condition => ({ t: "Incapacitated" })),
+  Z.object({ActivateAbility: Z.string()}).transform(({ActivateAbility: ability_id}): Condition => ({ t: "ActivateAbility", ability_id })),
+  Z.object({RecurringEffect: decodeEffect}).transform(({RecurringEffect: effect}): Condition => ({ t: "RecurringEffect", effect })),
+]);
+
+
+const decodeAppliedCondition: Decoder<AppliedCondition> = Z.object({ remaining: decodeDuration, condition: decodeCondition});
+
+export const decodeSkillLevel: Decoder<SkillLevel> = Z.union([
+  Z.literal("Inept"),
+  Z.literal("Unskilled"),
+  Z.literal("Skilled"),
+  Z.literal("Expert"),
+  Z.literal("Supernatural"),
+]);
+
+const decodeAbilityStatus: Decoder<AbilityStatus> = Z.object({
+  ability_id: Z.string(),
+  cooldown: Z.number(),
 });
 
-const decodeDuration: Decoder<Duration> =
-  sum<Duration>("Duration", { Interminate: { t: "Interminate" } },
-    {
-      Rounds: JD.map(
-        (duration): Duration => ({ t: "Rounds", duration }),
-        JD.number()),
-    });
+const decodeAABB: Decoder<AABB> = Z.object({
+  x: Z.number(),
+  y: Z.number(),
+  z: Z.number(),
+});
 
-const decodeEffect: Decoder<CreatureEffect> = sum<CreatureEffect>("CreatureEffect", {},
-  {
-    ApplyCondition: JD.map(
-      ([duration, condition]): CreatureEffect => ({ t: "ApplyCondition", duration, condition }),
-      JD.tuple(decodeDuration, decodeConditionLazy)),
-    Damage: JD.map((dice): CreatureEffect => ({ t: "Damage", dice }), decodeDice),
-    GenerateEffect: JD.map(
-      (energy): CreatureEffect => ({ t: "GenerateEnergy", energy }),
-      JD.number()),
-    Heal: JD.map((dice): CreatureEffect => ({ t: "Heal", dice }), decodeDice),
-    MultiEffect: JD.map(
-      (effects): CreatureEffect => ({ t: "MultiEffect", effects }),
-      JD.array(decodeEffectLazy)),
-  });
+export const decodeCreatureData: Decoder<CreatureData> = Z.object({name: Z.string()});
 
-const decodeCondition: Decoder<Condition> = sum<Condition>("Condition",
-  {
-    Dead: { t: "Dead" },
-    DoubleMaxMovement: { t: "DoubleMaxMovement" },
-    Incapacitated: { t: "Incapacitated" },
-  }, {
-  ActivateAbility: JD.map(
-    (ability_id): Condition => ({ t: "ActivateAbility", ability_id }),
-    JD.string()),
-  RecurringEffect: JD.map(
-    (effect): Condition => ({ t: "RecurringEffect", effect }),
-    decodeEffect),
-}
-);
-
-const decodeAppliedCondition: Decoder<AppliedCondition> = JD.object(
-  ["remaining", decodeDuration],
-  ["condition", decodeCondition],
-  (remaining, condition) => ({ remaining, condition })
-);
-
-export const decodeSkillLevel: Decoder<SkillLevel> =
-  JD.oneOf.apply(null, SKILL_LEVELS.map(JD.equal));
-
-const decodeAbilityStatus: Decoder<AbilityStatus> = JD.object(
-  ["ability_id", JD.string()],
-  ["cooldown", JD.number()],
-  (ability_id, cooldown) => ({ ability_id, cooldown })
-);
-
-const decodeAABB: Decoder<AABB> = JD.object(
-  ["x", JD.number()],
-  ["y", JD.number()],
-  ["z", JD.number()],
-  (x, y, z) => ({ x, y, z })
-);
-
-export const decodeCreatureData: Decoder<CreatureData> = JD.object(
-  ["name", JD.string()],
-  name => ({ name })
-);
-
-function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
-  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
-  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
-  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
-  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>,
-  _cons: (
-    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-  ) => T): Decoder<T>;
-function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
-  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
-  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
-  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
-  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
-  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>,
-  _cons: (
-    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P, q: Q, r: R) => T): Decoder<T>;
-function objectBig<T, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
-  _ad: JD.EntryDecoder<A>, _bd: JD.EntryDecoder<B>, _cd: JD.EntryDecoder<C>, _dd: JD.EntryDecoder<D>,
-  _ed: JD.EntryDecoder<E>, _fd: JD.EntryDecoder<F>, _gd: JD.EntryDecoder<G>, _hd: JD.EntryDecoder<H>,
-  _id: JD.EntryDecoder<I>, _jd: JD.EntryDecoder<J>, _kd: JD.EntryDecoder<K>, _ld: JD.EntryDecoder<L>,
-  _md: JD.EntryDecoder<M>, _nd: JD.EntryDecoder<N>, _od: JD.EntryDecoder<O>, _pd: JD.EntryDecoder<P>,
-  _qd: JD.EntryDecoder<Q>, _rd: JD.EntryDecoder<R>, _sd: JD.EntryDecoder<S>,
-  _cons: (
-    a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J, k: K, l: L, m: M, n: N, o: O,
-    p: P, q: Q, r: R, s: S) => T): Decoder<T>;
-function objectBig<T>(...args: Array<any>): Decoder<T> {
-  return JD.object.apply(undefined, args);
-}
-
-export const decodeCreature: Decoder<Creature> = objectBig(
-  ["id", JD.string()],
-  ["name", JD.string()],
-  ["speed", JD.number()],
-  ["max_energy", JD.number()],
-  ["cur_energy", JD.number()],
-  ["abilities", JD.dict(decodeAbilityStatus)],
-  ["class", JD.string()],
-  ["max_health", JD.number()],
-  ["cur_health", JD.number()],
-  ["own_conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
-  ["volume_conditions", JD.map(I.Map, JD.dict(decodeAppliedCondition))],
-  ["note", JD.string()],
-  ["bio", JD.string()],
-  ["portrait_url", JD.string()],
-  ["icon_url", JD.string()],
-  ["attributes", JD.map(I.Map, JD.dict(decodeSkillLevel))],
-  ["initiative", decodeDice],
-  ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
-  ["size", decodeAABB],
-  (
-    id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health,
+export const decodeCreature: Decoder<Creature> = Z.object({
+  id: Z.string(),
+  name: Z.string(),
+  speed: Z.number(),
+  max_energy: Z.number(),
+  cur_energy: Z.number(),
+  abilities: Z.record(decodeAbilityStatus),
+  class: Z.string(),
+  max_health: Z.number(),
+  cur_health: Z.number(),
+  own_conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(I.Map),
+  volume_conditions: Z.record(decodeAppliedCondition).transform<Creature['volume_conditions']>(I.Map),
+  note: Z.string(),
+  bio: Z.string(),
+  portrait_url: Z.string(),
+  icon_url: Z.string(),
+  attributes: Z.record(decodeSkillLevel).transform<Creature['attributes']>(I.Map),
+  initiative: decodeDice,
+  inventory: Z.record(Z.number()).transform<Creature['inventory']>(I.Map),
+  size: decodeAABB,
+}).transform(({
+    id, name, speed, max_energy, cur_energy, abilities, class: class_, max_health, cur_health,
     own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
-    inventory, size) =>
+    inventory, size}) =>
     new Creature(
       id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health,
       own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
@@ -604,489 +534,407 @@ export const decodeCreature: Decoder<Creature> = objectBig(
     )
 );
 
-const decodeCreatureCreation: Decoder<CreatureCreation> = JD.object(
-  ["name", JD.string()],
-  ["class", JD.string()],
-  ["portrait_url", JD.string()],
-  ["icon_url", JD.string()],
-  ["note", JD.string()],
-  ["bio", JD.string()],
-  ["initiative", decodeDice],
-  ["size", decodeAABB],
-  (name, class_, portrait_url, icon_url, note, bio, initiative, size) =>
-    ({ name, class_, portrait_url, icon_url, note, bio, initiative, size })
-);
+const decodeCreatureCreation: Decoder<CreatureCreation> = Z.object({
+  name: Z.string(),
+  class: Z.string(),
+  portrait_url: Z.string(),
+  icon_url: Z.string(),
+  note: Z.string(),
+  bio: Z.string(),
+  initiative: decodeDice,
+  size: decodeAABB,
+}).transform(({class: class_, ...o}): CreatureCreation => ({...o, class_}));
 
-export const decodeVisibility: Decoder<Visibility> = JD.map((x): Visibility => {
-  switch (x) {
-    case "GMOnly": return { t: "GMOnly" };
-    case "AllPlayers": return { t: "AllPlayers" };
-    default: throw new Error(`Not a Visibility: ${x}.`);
-  }
-}, JD.string());
+export const decodeVisibility: Decoder<Visibility> = Z.union([
+  Z.literal("GMOnly"),
+  Z.literal("AllPlayers")
+]).transform((s): Visibility => ({t: s}));
 
-export const decodeAttributeCheck: Decoder<AttributeCheck> =
-  JD.object(["reliable", JD.boolean()], ["attr", JD.string()], ["target", decodeSkillLevel],
-    (reliable, attr, target) => ({ reliable, attr, target }));
+export const decodeAttributeCheck: Decoder<AttributeCheck> = Z.object({
+  reliable: Z.boolean(),
+  attr: Z.string(),
+  target: decodeSkillLevel,
+});
 
-const decodeSceneCreation: Decoder<SceneCreation> = JD.object(
-  ["name", JD.string()],
-  ["background_image_url", JD.string()],
-  ["background_image_scale", JD.tuple(JD.number(), JD.number())],
-  ["background_image_offset", maybe(JD.tuple(JD.number(), JD.number()))],
-  (name, background_image_url, background_image_scale, background_image_offset) =>
-    ({ name, background_image_url, background_image_scale, background_image_offset })
-);
+const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
+  name: Z.string(),
+  background_image_url: Z.string(),
+  background_image_scale: Z.tuple([Z.number(), Z.number()]),
+  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
+});
+(window as any).decodeSceneCreation = decodeSceneCreation;
 
-const decodeVolume: Decoder<Volume> = sum("Volume", {},
-  {
-    Sphere: JD.map((radius): Volume => ({ t: "Sphere", radius }), JD.number()),
-    Line: JD.map((vector): Volume => ({ t: "Line", vector }), decodePoint3),
-    VerticalCylinder: JD.object(
-      ["radius", JD.number()],
-      ["height", JD.number()],
-      (radius, height): Volume => ({ t: "VerticalCylinder", radius, height })
-    ),
-    AABB: JD.map((aabb): Volume => ({ t: "AABB", aabb }), decodeAABB),
-  });
+const decodeVolume: Decoder<Volume> = Z.union([
+  Z.object({Sphere: Z.number()}).transform(({Sphere: radius}): Volume => ({t: "Sphere", radius})),
+  Z.object({Line: decodePoint3}).transform(({Line: vector}): Volume => ({ t: "Line", vector })),
+  Z.object({VerticalCylinder: Z.object({ radius: Z.number(), height: Z.number()})}).transform(({VerticalCylinder: {radius, height}}): Volume => ({t: "VerticalCylinder", radius, height})),
+  Z.object({AABB: decodeAABB}).transform(({AABB: aabb}): Volume => ({ t: "AABB", aabb })),
+]);
 
-export const decodeVolumeCondition: Decoder<VolumeCondition> = JD.object(
-  ["point", decodePoint3],
-  ["volume", decodeVolume],
-  ["remaining", decodeDuration],
-  ["condition", decodeCondition],
-  (point, volume, remaining, condition): VolumeCondition => ({ point, volume, remaining, condition })
-);
+export const decodeVolumeCondition: Decoder<VolumeCondition> = Z.object({
+  point: decodePoint3,
+  volume: decodeVolume,
+  remaining: decodeDuration,
+  condition: decodeCondition,
+});
 
 const decodeTerrain: Decoder<Terrain> = decodeSet(decodePoint3);
 const decodeHighlights: Decoder<Highlights> =
-  decodeIMap(decodePoint3, JD.tuple(JD.string(), decodeVisibility));
+  decodeIMap(decodePoint3, Z.tuple([Z.string(), decodeVisibility]));
 const decodeAnnotations: Decoder<Annotations> = decodeHighlights;
 
-function decodeSet<T>(d: Decoder<T>): Decoder<I.Set<T>> {
-  // In the upgrade to a latest typescript (and many other dependencies), for some reason
-  // I needed to explicitly cast the `I.Set` constructor in this way, when previously I did not.
-  return JD.map(I.Set as ((arr: Array<T>) => I.Set<T>), JD.array(d));
-}
-
-
-export const decodeScene: Decoder<Scene> =
-  objectBig(
-    ["id", JD.string()],
-    ["name", JD.string()],
-    ["terrain", decodeTerrain],
-    ["highlights", decodeHighlights],
-    ["annotations", decodeAnnotations],
-    ["scene_hotspots", decodeIMap(decodePoint3, JD.string())],
-    ["related_scenes", decodeSet(JD.string())],
-    ["creatures", JD.map(I.Map, JD.dict(JD.tuple(decodePoint3, decodeVisibility)))],
-    ["attribute_checks", JD.map(I.Map, JD.dict(decodeAttributeCheck))],
-    ["inventory", JD.map(I.Map, JD.dict(JD.number()))],
-    ["background_image_url", JD.string()],
-    ["background_image_offset", maybe(JD.tuple(JD.number(), JD.number()))],
-    ["background_image_scale", JD.tuple(JD.number(), JD.number())],
-    ["volume_conditions", JD.map(I.Map, JD.dict(decodeVolumeCondition))],
-    ["focused_creatures",
-      JD.map(I.List as ((arr: Array<string>) => I.List<CreatureID>), JD.array(JD.string()))],
-    (
-      id, name, terrain, highlights, annotations, scene_hotspots, related_scenes, creatures,
-      attribute_checks, inventory, background_image_url, background_image_offset,
-      background_image_scale, volume_conditions, focused_creatures): Scene => ({
-        id, name, terrain, highlights, annotations, scene_hotspots, related_scenes, creatures,
-        attribute_checks, inventory, background_image_url, background_image_offset,
-        background_image_scale, volume_conditions, focused_creatures,
-      }));
-
-function _mkFolderItem(t: string): Decoder<FolderItemID> {
-  return JD.map(id => ({ t, id } as FolderItemID), JD.string());
-}
-const decodeFolderItemID: Decoder<FolderItemID> =
-  sum<FolderItemID>("FolderItemID", {}, {
-    SceneID: _mkFolderItem("SceneID"),
-    MapID: _mkFolderItem("MapID"),
-    CreatureID: _mkFolderItem("CreatureID"),
-    NoteID: _mkFolderItem("NoteID"),
-    ItemID: _mkFolderItem("ItemID"),
-    AbilityID: _mkFolderItem("AbilityID"),
-    ClassID: _mkFolderItem("ClassID"),
-    SubfolderID: _mkFolderItem("SubfolderID"),
-  });
-
-const decodeFolderPath: Decoder<FolderPath> =
-  JD.map(strpath => {
-    if (strpath === "") {
-      return [];
-    } else if (LD.startsWith(strpath, "/")) {
-      return LD.slice(LD.split(strpath, "/"), 1);
-    } else {
-      throw new Error(`Not a path: ${strpath}.`);
-    }
-  }, JD.string());
-
-const decodeItem: Decoder<Item> =
-  JD.object(
-    ["id", JD.string()],
-    ["name", JD.string()],
-    (id, name) => ({ id, name })
-  );
-
-const decodeNote: Decoder<Note> =
-  JD.object(
-    ["name", JD.string()],
-    ["content", JD.string()],
-    (name, content) => ({ name, content })
-  );
-
-export const decodeInventoryOwner: Decoder<InventoryOwner> = sum<InventoryOwner>("InventoryOwner",
-  {},
-  {
-    Scene: JD.map(Scene => ({ Scene }), JD.string()),
-    Creature: JD.map(Creature => ({ Creature }), JD.string()),
-  });
-
-const decodeModuleSource: Decoder<ModuleSource> =
-  JD.oneOf(JD.equal('Module' as ModuleSource), JD.equal('SavedGame' as ModuleSource));
-
-const decodeCreatureLog: Decoder<CreatureLog> =
-  sum<CreatureLog>("CreatureLog", {}, {
-    Damage: JD.map(
-      ([hp, rolls]): CreatureLog => ({ t: "Damage", hp, rolls }),
-      JD.tuple(JD.number(), JD.array(JD.number()))),
-    Heal: JD.map(([hp, rolls]): CreatureLog => ({ t: "Heal", hp, rolls }),
-      JD.tuple(JD.number(), JD.array(JD.number()))),
-    GenerateEnergy: JD.map((energy): CreatureLog => ({ t: "GenerateEnergy", energy }),
-      JD.number()),
-    ReduceEnergy: JD.map((energy): CreatureLog => ({ t: "ReduceEnergy", energy }),
-      JD.number()),
-    ApplyCondition: JD.map(
-      ([condition_id, duration]): CreatureLog => ({ t: "ApplyCondition", condition_id, duration }),
-      JD.tuple(JD.string(), decodeDuration)),
-    DecrementConditionRemaining: JD.map(
-      (condition_id): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id }),
-      JD.string()),
-    RemoveCondition: JD.map((condition_id): CreatureLog => ({ t: "RemoveCondition", condition_id }),
-      JD.string()),
-  });
-
-const decodeCombatLog: Decoder<CombatLog> =
-  sum<CombatLog>("CombatLog",
-    {
-      ForceNextTurn: { t: "ForceNextTurn" },
-      ForcePrevTurn: { t: "ForcePrevTurn" },
-    },
-    {
-      ConsumeMovement: JD.map(
-        (distance): CombatLog => ({ t: "ConsumeMovement", distance }),
-        JD.number()),
-      ChangeCreatureInitiative: JD.map(
-        ([creature_id, init]): CombatLog => ({ t: "ChangeCreatureInitiative", creature_id, init }),
-        JD.tuple(JD.string(), JD.number())),
-      EndTurn: JD.map((creature_id): CombatLog => ({ t: "EndTurn", creature_id }), JD.string()),
-      RerollInitiative: JD.map((combatants): CombatLog => ({ t: "RerollInitiative", combatants }),
-        JD.array(JD.tuple(JD.string(), JD.number()))),
-    });
-
-export const decodeGameLog: Decoder<GameLog> =
-  sum<GameLog>("GameLog", { StopCombat: { t: "StopCombat" } }, {
-    SetActiveScene: JD.map((scene_id): GameLog => ({ t: "SetActiveScene", scene_id }), JD.string()),
-    RegisterPlayer: JD.map(
-      (player_id): GameLog => ({ t: "RegisterPlayer", player_id }),
-      JD.string()),
-    UnregisterPlayer: JD.map(
-      (player_id): GameLog => ({ t: "UnregisterPlayer", player_id }),
-      JD.string(),
-    ),
-    GiveCreaturesToPlayer: JD.map(
-      ([player_id, creature_ids]): GameLog =>
-        ({ t: "GiveCreaturesToPlayer", player_id, creature_ids }),
-      JD.tuple(JD.string(), JD.array(JD.string())),
-    ),
-    RemoveCreaturesFromPlayer: JD.map(
-      ([player_id, creature_ids]): GameLog =>
-        ({ t: "RemoveCreaturesFromPlayer", player_id, creature_ids }),
-      JD.tuple(JD.string(), JD.array(JD.string())),
-    ),
-    SetPlayerScene: JD.map(
-      ([player_id, scene_id]): GameLog => ({ t: "SetPlayerScene", player_id, scene_id }),
-      JD.tuple(JD.string(), maybe(JD.string())),
-    ),
-    ChatFromGM: JD.map((message): GameLog => ({ t: "ChatFromGM", message }), JD.string()),
-    ChatFromPlayer: JD.map(
-      ([player_id, message]): GameLog => ({ t: "ChatFromPlayer", player_id, message }),
-      JD.tuple(JD.string(), JD.string())),
-    StartCombat: JD.map(
-      ([scene, creatures]): GameLog => ({ t: "StartCombat", scene, creatures }),
-      JD.tuple(
-        JD.string(),
-        JD.array(JD.map(([cid, init]) => ({ cid, init }), JD.tuple(JD.string(), JD.number())))
-      )),
-    CreateFolder: JD.map((p): GameLog => ({ t: "CreateFolder", path: p }), decodeFolderPath),
-    RenameFolder: JD.map(
-      ([path, newName]): GameLog => ({ t: "RenameFolder", path, newName }),
-      JD.tuple(decodeFolderPath, JD.string())),
-    DeleteFolderItem: JD.map(([path, item]): GameLog => ({ t: "DeleteFolderItem", path, item }),
-      JD.tuple(decodeFolderPath, decodeFolderItemID)),
-    MoveFolderItem: JD.map(
-      ([path, item, newPath]): GameLog => ({ t: "MoveFolderItem", path, item, newPath }),
-      JD.tuple(decodeFolderPath, decodeFolderItemID, decodeFolderPath)),
-    CopyFolderItem: JD.object(
-      ["source", decodeFolderPath],
-      ["item_id", decodeFolderItemID],
-      ["dest", decodeFolderPath],
-      (source, item_id, dest): GameLog => ({ t: "CopyFolderItem", source, item_id, dest }),
-    ),
-    CreateItem: JD.map(
-      ([path, item]): GameLog => ({ t: "CreateItem", path, item }),
-      JD.tuple(decodeFolderPath, decodeItem)),
-    EditItem: JD.map((item): GameLog => ({ t: "EditItem", item }), decodeItem),
-    CreateNote: JD.map(
-      ([path, note]): GameLog => ({ t: "CreateNote", path, note }),
-      JD.tuple(decodeFolderPath, decodeNote)),
-    EditNote: JD.map(
-      ([path, name, newNote]): GameLog => ({ t: "EditNote", path, name, newNote }),
-      JD.tuple(decodeFolderPath, JD.string(), decodeNote)),
-    TransferItem: JD.object(
-      ["from", decodeInventoryOwner],
-      ["to", decodeInventoryOwner],
-      ["item_id", JD.string()],
-      ["count", JD.number()],
-      (from, to, item_id, count): GameLog => ({ t: "TransferItem", from, to, item_id, count })),
-    RemoveItem: JD.object(
-      ["owner", decodeInventoryOwner],
-      ["item_id", JD.string()],
-      ["count", JD.number()],
-      (owner, item_id, count): GameLog => ({ t: "RemoveItem", owner, item_id, count })),
-    SetItemCount: JD.object(
-      ["owner", decodeInventoryOwner],
-      ["item_id", JD.string()],
-      ["count", JD.number()],
-      (owner, item_id, count): GameLog => ({ t: "SetItemCount", owner, item_id, count })),
-    CreateScene: JD.map(
-      ([path, scene]): GameLog => ({ t: "CreateScene", path, scene }),
-      JD.tuple(decodeFolderPath, decodeScene)),
-    EditSceneDetails: JD.object(
-      ["scene_id", JD.string()], ["details", decodeSceneCreation],
-      (scene_id, details): GameLog => ({ t: "EditSceneDetails", scene_id, details })),
-    SetSceneCreatureVisibility: JD.object(
-      ["scene_id", JD.string()], ["creature_id", JD.string()], ["visibility", decodeVisibility],
-      (scene_id, creature_id, visibility): GameLog =>
-        ({ t: "SetSceneCreatureVisibility", scene_id, creature_id, visibility })
-    ),
-    AddCreatureToScene: JD.object(
-      ["scene_id", JD.string()], ["creature_id", JD.string()], ["visibility", decodeVisibility],
-      (scene_id, creature_id, visibility): GameLog =>
-        ({ t: "AddCreatureToScene", scene_id, creature_id, visibility })
-    ),
-    RemoveCreatureFromScene: JD.object(
-      ["scene_id", JD.string()], ["creature_id", JD.string()],
-      (scene_id, creature_id): GameLog => ({ t: "RemoveCreatureFromScene", scene_id, creature_id })
-    ),
-    AddSceneChallenge: JD.object(
-      ["scene_id", JD.string()], ["description", JD.string()], ["challenge", decodeAttributeCheck],
-      (scene_id, description, challenge): GameLog =>
-        ({ t: "AddSceneChallenge", scene_id, description, challenge })
-    ),
-    RemoveSceneChallenge: JD.object(
-      ["scene_id", JD.string()], ["description", JD.string()],
-      (scene_id, description): GameLog => ({ t: "RemoveSceneChallenge", scene_id, description })
-    ),
-    SetFocusedSceneCreatures: JD.object(
-      ["scene_id", JD.string()],
-      ["creatures", JD.map(I.List as ((arr: Array<string>) => I.List<CreatureID>),
-        JD.array(JD.string()))],
-      (scene_id, creatures): GameLog => ({ t: "SetFocusedSceneCreatures", scene_id, creatures })
-    ),
-    RemoveSceneVolumeCondition: JD.object(
-      ["scene_id", JD.string()],
-      ["condition_id", JD.string()],
-      (scene_id, condition_id): GameLog =>
-        ({ t: "RemoveSceneVolumeCondition", scene_id, condition_id })
-    ),
-    EditSceneTerrain: JD.object(
-      ["scene_id", JD.string()],
-      ["terrain", decodeTerrain],
-      (scene_id, terrain): GameLog => ({ t: "EditSceneTerrain", scene_id, terrain })),
-    EditSceneHighlights: JD.object(
-      ["scene_id", JD.string()],
-      ["highlights", decodeHighlights],
-      (scene_id, highlights): GameLog => ({ t: "EditSceneHighlights", scene_id, highlights })),
-    EditSceneAnnotations: JD.object(
-      ["scene_id", JD.string()],
-      ["annotations", decodeAnnotations],
-      (scene_id, annotations): GameLog => ({ t: "EditSceneAnnotations", scene_id, annotations })),
-    EditSceneRelatedScenes: JD.object(
-      ["scene_id", JD.string()],
-      ["related_scenes", decodeSet(JD.string())],
-      (scene_id, related_scenes): GameLog =>
-        ({ t: "EditSceneRelatedScenes", scene_id, related_scenes })),
-    EditSceneSceneHotspots: JD.object(
-      ["scene_id", JD.string()],
-      ["scene_hotspots", decodeIMap(decodePoint3, JD.string())],
-      (scene_id, scene_hotspots): GameLog =>
-        ({ t: "EditSceneSceneHotspots", scene_id, scene_hotspots })),
-    SetCreaturePos: JD.map(
-      ([scene_id, creature_id, pos]): GameLog =>
-        ({ t: "SetCreaturePos", scene_id, creature_id, pos }),
-      JD.tuple(JD.string(), JD.string(), decodePoint3)),
-    PathCreature: JD.map(
-      ([scene_id, creature_id, path]): GameLog =>
-        ({ t: "PathCreature", scene_id, creature_id, path }),
-      JD.tuple(JD.string(), JD.string(), JD.array(decodePoint3))),
-    CreateCreature: JD.map(
-      ([path, creature]): GameLog => ({ t: "CreateCreature", path, creature }),
-      JD.tuple(decodeFolderPath, decodeCreatureData)),
-    EditCreatureDetails: JD.object(["creature_id", JD.string()], ["details", decodeCreatureCreation],
-      (creature_id, details): GameLog => ({ t: "EditCreatureDetails", creature_id, details })),
-    AddCreatureToCombat: JD.map(
-      ([creature_id, init]): GameLog => ({ t: "AddCreatureToCombat", creature_id, init }),
-      JD.tuple(JD.string(), JD.number())),
-    RemoveCreatureFromCombat: JD.map(
-      (creature_id): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id }),
-      JD.string()),
-    CombatLog: JD.map((log): GameLog => ({ t: "CombatLog", log }), decodeCombatLog),
-    CreatureLog: JD.map(([creature_id, log]): GameLog => ({ t: "CreatureLog", creature_id, log }),
-      JD.tuple(JD.string(), decodeCreatureLog)),
-    AttributeCheckResult: JD.map(
-      ([cid, check, actual, success]): GameLog =>
-        ({ t: "AttributeCheckResult", cid, check, actual, success }),
-      JD.tuple(JD.string(), decodeAttributeCheck, JD.number(), JD.boolean())
-    ),
-    Rollback: JD.map(
-      ([snapshot_index, log_index]): GameLog => ({ t: "Rollback", snapshot_index, log_index }),
-      JD.tuple(JD.number(), JD.number())),
-    LoadModule: JD.object(
-      ["name", JD.string()], ["path", decodeFolderPath], ["source", decodeModuleSource],
-      (name, path, source): GameLog => ({ t: "LoadModule", name, path, source })),
-  });
-
-const decodePlayer: Decoder<Player> = JD.object(
-  ["player_id", JD.string()],
-  ["scene", maybe(JD.string())],
-  ["creatures", JD.array(JD.string())],
-  (player_id, scene, creatures) => ({ player_id, scene, creatures })
-);
-
-const decodeClass: Decoder<Class> = JD.object(
-  ["id", JD.string()],
-  ["name", JD.string()],
-  ["color", JD.string()],
-  (id, name, color) => ({ id, name, color })
-);
-
-function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
-  return JD.object(
-    ["cursor", JD.number()],
-    ["data", JD.array(valueDecoder)],
-    (cursor, data) => ({ cursor, data }));
-}
-
-const decodeCombat: Decoder<Combat> = JD.object(
-  ["scene", JD.string()],
-  ["creatures", decodeNonEmpty(JD.tuple(JD.string(), JD.number()))],
-  ["movement_used", JD.number()],
-  (scene, creatures, movement_used) => ({ scene, creatures, movement_used })
-);
-
-
-const decodeFolderNode: Decoder<FolderNode> = JD.object(
-  ["scenes", JD.array(JD.string())],
-  ["creatures", JD.array(JD.string())],
-  ["items", JD.array(JD.string())],
-  ["notes", JD.dict(decodeNote)],
-  ["abilities", JD.array(JD.string())],
-  ["classes", JD.array(JD.string())],
-  (scenes, creatures, items, notes, abilities, classes) =>
-    ({ scenes, creatures, items, notes, abilities, classes })
-);
-
-const decodeFolderLazy: Decoder<Folder> = JD.lazy(() => decodeFolder);
-
-const decodeFolder: Decoder<Folder> = JD.object(
-  ["data", decodeFolderNode],
-  ["children", JD.map(I.Map, JD.dict(decodeFolderLazy))],
-  (data, children) => ({ data, children })
-);
-
-const decodeCreatureTarget: Decoder<CreatureTarget> = sum<CreatureTarget>("TargetSpec",
-  {
-    Actor: { t: "Actor" },
-    Melee: { t: "Melee" },
-  },
-  // | { t: "Volume"; volume: Volume; range: Distance }
-
-  {
-    Range: JD.map((distance): CreatureTarget => ({ t: "Range", distance }), JD.number()),
-    SomeCreaturesInVolumeInRange: JD.object(
-      ["volume", decodeVolume], ["maximum", JD.number()], ["range", JD.number()],
-      (volume, maximum, range): CreatureTarget =>
-        ({ t: "SomeCreaturesInVolumeInRange", volume, maximum, range })),
-    AllCreaturesInVolumeInRange: JD.object(
-      ["volume", decodeVolume],
-      ["range", JD.number()],
-      (volume, range): CreatureTarget => ({ t: "AllCreaturesInVolumeInRange", volume, range })),
-    LineFromActor: JD.object(
-      ["distance", JD.number()],
-      (distance): CreatureTarget => ({ t: "LineFromActor", distance })),
-  });
-
-export const decodeSceneTarget: Decoder<SceneTarget> = sum<SceneTarget>("SceneTarget", {}, {
-  RangedVolume: JD.object(["volume", decodeVolume],
-    ["range", JD.number()],
-    (volume, range): SceneTarget => ({ t: "RangedVolume", volume, range })),
+export const decodeScene: Decoder<Scene> = Z.object({
+  id: Z.string(),
+  name: Z.string(),
+  terrain: decodeTerrain,
+  highlights: decodeHighlights,
+  annotations: decodeAnnotations,
+  scene_hotspots: decodeIMap(decodePoint3, Z.string()),
+  related_scenes: decodeSet(Z.string()),
+  creatures: Z.record(Z.tuple([decodePoint3, decodeVisibility])).transform<Scene['creatures']>(I.Map),
+  attribute_checks: Z.record(decodeAttributeCheck).transform<Scene['attribute_checks']>(I.Map),
+  inventory: Z.record(Z.number()).transform<Scene['inventory']>(I.Map),
+  background_image_url: Z.string(),
+  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
+  background_image_scale: Z.tuple([Z.number(), Z.number()]),
+  volume_conditions: Z.record(decodeVolumeCondition).transform<Scene['volume_conditions']>(I.Map),
+  focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(I.List),
 });
 
+function _mkFolderItem(t: FolderItemID['t']): Decoder<FolderItemID> {
+  return Z.object({[t]: Z.string()}).transform((o): FolderItemID => ({t, id: o[t]}))
+}
 
-export const decodeAction: Decoder<Action> = sum<Action>("Action", {},
-  {
-    Creature: JD.object(["target", decodeCreatureTarget],
-      (target): Action => ({ t: "Creature", target })),
-    SceneVolume: JD.object(["target", decodeSceneTarget],
-      (target): Action => ({ t: "SceneVolume", target })),
+const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
+  _mkFolderItem("SceneID"),
+  _mkFolderItem("CreatureID"),
+  _mkFolderItem("NoteID"),
+  _mkFolderItem("ItemID"),
+  _mkFolderItem("AbilityID"),
+  _mkFolderItem("ClassID"),
+  _mkFolderItem("SubfolderID"),
+]);
+
+const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
+  if (strpath === "") {
+    return [];
+  } else if (LD.startsWith(strpath, "/")) {
+    return LD.slice(LD.split(strpath, "/"), 1);
+  } else {
+    throw new Error(`Not a path: ${strpath}.`);
   }
-);
+});
 
-const decodeAbility: Decoder<Ability> = JD.object(
-  ["name", JD.string()],
-  ["id", JD.string()],
-  ["action", decodeAction],
-  ["cost", JD.number()],
-  ["usable_ooc", JD.boolean()],
-  (name, id, action, cost, usable_ooc) => ({ name, id, action, cost, usable_ooc })
-);
+const decodeItem: Decoder<Item> = Z.object({
+  id: Z.string(),
+  name: Z.string(),
+});
 
-const decodeGame: Decoder<Game> = JD.object(
-  ["current_combat", maybe(decodeCombat)],
-  ["creatures", JD.map(I.Map, JD.dict(decodeCreature))],
-  ["classes", JD.map(I.Map, JD.dict(decodeClass))],
-  ["items", JD.dict(decodeItem)],
-  ["scenes", JD.map(I.Map, JD.dict(decodeScene))],
-  ["abilities", JD.dict(decodeAbility)],
-  ["campaign", decodeFolder],
-  ["players", JD.map(I.Map, JD.dict(decodePlayer))],
-  (current_combat, creatures, classes, items, scenes, abilities, campaign, players) =>
-    ({ current_combat, creatures, classes, items, scenes, abilities, campaign, players })
-);
+const decodeNote: Decoder<Note> = Z.object({
+  name: Z.string(),
+  content: Z.string(),
+})
 
-export const decodeApp: Decoder<App> = JD.object(
-  ["snapshots", JD.array(JD.map(
-    ls => ({ snapshot: {}, logs: ls }),
-    JD.at([1], JD.array(decodeGameLog))))],
-  ["current_game", decodeGame],
-  (snapshots, current_game) => ({ snapshots, current_game })
-);
+export const decodeInventoryOwner: Decoder<InventoryOwner> = Z.union([
+  Z.object({Scene: Z.string()}),
+  Z.object({Creature: Z.string()}),
+]);
 
-export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = JD.tuple(
+const decodeModuleSource: Decoder<ModuleSource> = Z.union([Z.literal("Module"), Z.literal("SavedGame")]);
+
+const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
+  Z.object({Damage: Z.tuple([Z.number(), Z.array(Z.number())])}).transform(
+    ({Damage: [hp, rolls]}): CreatureLog => ({ t: "Damage", hp, rolls })),
+  Z.object({Heal: Z.tuple([Z.number(), Z.array(Z.number())])}).transform(
+    ({Heal: [hp, rolls]}): CreatureLog => ({ t: "Heal", hp, rolls })),
+  Z.object({GenerateEnergy: Z.number()}).transform(
+    ({GenerateEnergy: energy}): CreatureLog => ({ t: "GenerateEnergy", energy })),
+  Z.object({ReduceEnergy: Z.number()}).transform(({ReduceEnergy: energy}): CreatureLog => ({ t: "ReduceEnergy", energy })),
+  Z.object({ApplyCondition: Z.tuple([Z.string(), decodeDuration])}).transform(
+    ({ApplyCondition: [condition_id, duration]}): CreatureLog => ({ t: "ApplyCondition", condition_id, duration })),
+  Z.object({DecrementConditionRemaining: Z.string()}).transform(
+    ({DecrementConditionRemaining: condition_id}): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id })),
+  Z.object({RemoveCondition: Z.string()}).transform(
+    ({RemoveCondition: condition_id}): CreatureLog => ({ t: "RemoveCondition", condition_id })),
+]);
+
+const decodeCombatLog: Decoder<CombatLog> = Z.union([
+  Z.literal("ForceNextTurn").transform((): CombatLog => ({t: "ForceNextTurn"})),
+  Z.literal("ForcePrevTurn").transform((): CombatLog => ({t: "ForcePrevTurn"})),
+  Z.object({ConsumeMovement: Z.number()}).transform(
+    ({ConsumeMovement: distance}): CombatLog => ({ t: "ConsumeMovement", distance})),
+  Z.object({ChangeCreatureInitiative: Z.tuple([Z.string(), Z.number()])}).transform(
+    ({ChangeCreatureInitiative: [creature_id, init]}): CombatLog => ({ t: "ChangeCreatureInitiative", creature_id, init })),
+  Z.object({EndTurn: Z.string()}).transform(
+    ({EndTurn: creature_id}): CombatLog => ({ t: "EndTurn", creature_id })),
+  Z.object({RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()]))}).transform(
+    ({RerollInitiative: combatants}): CombatLog => ({ t: "RerollInitiative", combatants })),
+]);
+
+const decodeCreatureIDAndInit = Z.tuple([Z.string(), Z.number()]).transform(([cid, init]) => ({cid, init}));
+
+export const decodeGameLog: Decoder<GameLog> = Z.union([
+  Z.literal("StopCombat").transform((): GameLog => ({t: "StopCombat"})),
+  Z.object({SetActiveScene: Z.string()}).transform(({SetActiveScene: scene_id}): GameLog => ({ t: "SetActiveScene", scene_id })),
+  Z.object({RegisterPlayer: Z.string()}).transform(({RegisterPlayer: player_id}): GameLog => ({ t: "RegisterPlayer", player_id })),
+  Z.object({UnregisterPlayer: Z.string()}).transform(({UnregisterPlayer: player_id}): GameLog => ({ t: "UnregisterPlayer", player_id })),
+  Z.object({GiveCreaturesToPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}).transform(
+    ({GiveCreaturesToPlayer: [player_id, creature_ids]}): GameLog =>
+      ({ t: "GiveCreaturesToPlayer", player_id, creature_ids })),
+  Z.object({RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}).transform(
+    ({RemoveCreaturesFromPlayer: [player_id, creature_ids]}): GameLog =>
+      ({ t: "RemoveCreaturesFromPlayer", player_id, creature_ids })),
+  Z.object({SetPlayerScene: Z.tuple([Z.string(), maybe(Z.string())])}).transform(
+    ({SetPlayerScene: [player_id, scene_id]}): GameLog => ({ t: "SetPlayerScene", player_id, scene_id })),
+  Z.object({ChatFromGM: Z.string()}).transform(({ChatFromGM: message}): GameLog => ({ t: "ChatFromGM", message })),
+  Z.object({ChatFromPlayer: Z.tuple([Z.string(), Z.string()])}).transform(
+    ({ChatFromPlayer: [player_id, message]}): GameLog => ({ t: "ChatFromPlayer", player_id, message })),
+  Z.object({StartCombat: Z.tuple([ Z.string(), Z.array(decodeCreatureIDAndInit) ])}).transform(
+      ({StartCombat: [scene, creatures]}): GameLog => ({ t: "StartCombat", scene, creatures })),
+  Z.object({CreateFolder: decodeFolderPath}).transform(({CreateFolder: path}): GameLog => ({ t: "CreateFolder", path })),
+  Z.object({RenameFolder: Z.tuple([decodeFolderPath, Z.string()])}).transform(
+    ({RenameFolder: [path, newName]}): GameLog => ({ t: "RenameFolder", path, newName })),
+  Z.object({DeleteFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID])}).transform(
+    ({DeleteFolderItem: [path, item]}): GameLog => ({ t: "DeleteFolderItem", path, item })),
+  Z.object({MoveFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID, decodeFolderPath])}).transform(
+    ({MoveFolderItem: [path, item, newPath]}): GameLog => ({ t: "MoveFolderItem", path, item, newPath })),
+  Z.object({
+    CopyFolderItem: Z.object({
+      source: decodeFolderPath, item_id: decodeFolderItemID, dest: decodeFolderPath
+    })
+  }).transform(({CopyFolderItem: o}): GameLog => ({ t: "CopyFolderItem", ...o })),
+  Z.object({CreateItem: Z.tuple([decodeFolderPath, decodeItem])}).transform(
+    ({CreateItem: [path, item]}): GameLog => ({ t: "CreateItem", path, item })),
+  Z.object({EditItem: decodeItem}).transform(({EditItem: item}): GameLog => ({ t: "EditItem", item })),
+  Z.object({CreateNote: Z.tuple([decodeFolderPath, decodeNote])}).transform(
+    ({CreateNote: [path, note]}): GameLog => ({ t: "CreateNote", path, note })),
+  Z.object({EditNote: Z.tuple([decodeFolderPath, Z.string(), decodeNote])}).transform(
+    ({EditNote: [path, name, newNote]}): GameLog => ({ t: "EditNote", path, name, newNote })),
+  Z.object({TransferItem: Z.object({
+      from: decodeInventoryOwner,
+      to: decodeInventoryOwner,
+      item_id: Z.string(),
+      count: Z.number(),
+  })}).transform(({TransferItem: o}): GameLog => ({t: "TransferItem", ...o})),
+  Z.object({RemoveItem: Z.object({
+      owner: decodeInventoryOwner,
+      item_id: Z.string(),
+      count: Z.number(),
+  })}).transform(({RemoveItem: o}): GameLog => ({t: "RemoveItem", ...o})),
+  Z.object({SetItemCount: Z.object({
+      owner: decodeInventoryOwner,
+      item_id: Z.string(),
+      count: Z.number(),
+  })}).transform(({SetItemCount: o}): GameLog => ({t: "SetItemCount", ...o})),
+  Z.object({CreateScene: Z.tuple([decodeFolderPath, decodeScene])}).transform(
+      ({CreateScene: [path, scene]}): GameLog => ({ t: "CreateScene", path, scene })),
+  Z.object({EditSceneDetails: Z.object({ scene_id: Z.string(), details: decodeSceneCreation })}).transform(
+    ({EditSceneDetails: o}): GameLog => ({t: "EditSceneDetails", ...o})),
+  Z.object({SetSceneCreatureVisibility: Z.object({
+      scene_id: Z.string(),
+      creature_id: Z.string(),
+      visibility: decodeVisibility
+  })}).transform(
+      ({SetSceneCreatureVisibility: o}): GameLog => ({ t: "SetSceneCreatureVisibility", ...o })),
+  Z.object({AddCreatureToScene: Z.object({
+    scene_id: Z.string(),
+    creature_id: Z.string(),
+    visibility: decodeVisibility,
+  })}).transform(({AddCreatureToScene: o}): GameLog => ({t: "AddCreatureToScene", ...o})),
+  Z.object({RemoveCreatureFromScene: Z.object({
+    scene_id: Z.string(),
+    creature_id: Z.string(),
+  })}).transform(
+    ({RemoveCreatureFromScene: o}): GameLog => ({ t: "RemoveCreatureFromScene", ...o })
+  ),
+  Z.object({AddSceneChallenge: Z.object({
+    scene_id: Z.string(),
+    description: Z.string(),
+    challenge: decodeAttributeCheck,
+  })}).transform(
+    ({AddSceneChallenge: o}): GameLog => ({ t: "AddSceneChallenge", ...o })),
+  Z.object({RemoveSceneChallenge: Z.object({
+    scene_id: Z.string(),
+    description: Z.string(),
+  })}).transform(
+    ({RemoveSceneChallenge: o}): GameLog => ({ t: "RemoveSceneChallenge", ...o })),
+  Z.object({SetFocusedSceneCreatures: Z.object({
+    scene_id: Z.string(),
+    creatures: Z.array(Z.string()).transform(I.List),
+  })}).transform(
+    ({SetFocusedSceneCreatures: o}): GameLog => ({ t: "SetFocusedSceneCreatures", ...o })),
+  Z.object({RemoveSceneVolumeCondition: Z.object({
+    scene_id: Z.string(),
+    condition_id: Z.string(),
+  })}).transform(
+    ({RemoveSceneVolumeCondition: o}): GameLog => ({ t: "RemoveSceneVolumeCondition", ...o })),
+  Z.object({EditSceneTerrain: Z.object({
+    scene_id: Z.string(),
+    terrain: decodeTerrain,
+  })}).transform(
+    ({EditSceneTerrain: o}): GameLog => ({ t: "EditSceneTerrain", ...o})),
+  Z.object({EditSceneHighlights: Z.object({
+    scene_id: Z.string(),
+    highlights: decodeHighlights,
+  })}).transform(
+    ({EditSceneHighlights: o}): GameLog => ({ t: "EditSceneHighlights", ...o})),
+  Z.object({EditSceneAnnotations: Z.object({
+    scene_id: Z.string(),
+    annotations: decodeAnnotations,
+  })}).transform(
+    ({EditSceneAnnotations: o}): GameLog => ({ t: "EditSceneAnnotations", ...o})),
+  Z.object({EditSceneRelatedScenes: Z.object({
+    scene_id: Z.string(),
+    related_scenes: decodeSet(Z.string()),
+  })}).transform(
+    ({EditSceneRelatedScenes: o}): GameLog => ({ t: "EditSceneRelatedScenes", ...o})),
+  Z.object({EditSceneSceneHotspots: Z.object({
+    scene_id: Z.string(),
+    scene_hotspots: decodeIMap(decodePoint3, Z.string()),
+  })}).transform(
+    ({EditSceneSceneHotspots: o}): GameLog => ({ t: "EditSceneSceneHotspots", ...o})),
+
+  Z.object({SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3])}).transform(
+    ({SetCreaturePos: [scene_id, creature_id, pos]}): GameLog => ({ t: "SetCreaturePos", scene_id, creature_id, pos})),
+  Z.object({PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)])}).transform(
+    ({PathCreature: [scene_id, creature_id, path]}): GameLog => ({ t: "PathCreature", scene_id, creature_id, path })),
+
+  Z.object({CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData])}).transform(
+    ({CreateCreature: [path, creature]}): GameLog => ({ t: "CreateCreature", path, creature})),
+  Z.object({EditCreatureDetails: Z.object({creature_id: Z.string(), details: decodeCreatureCreation})}).transform(
+    ({EditCreatureDetails: o}): GameLog => ({ t: "EditCreatureDetails", ...o })),
+  Z.object({AddCreatureToCombat: Z.tuple([Z.string(), Z.number()])}).transform(
+    ({AddCreatureToCombat: [creature_id, init]}): GameLog => ({ t: "AddCreatureToCombat", creature_id, init})),
+  Z.object({RemoveCreatureFromCombat: Z.string()}).transform(
+    ({RemoveCreatureFromCombat: creature_id}): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id})),
+  Z.object({CombatLog: decodeCombatLog}).transform(
+    ({CombatLog: log}): GameLog => ({ t: "CombatLog", log})),
+  Z.object({CreatureLog: Z.tuple([Z.string(), decodeCreatureLog])}).transform(
+    ({CreatureLog: [creature_id, log]}): GameLog => ({ t: "CreatureLog", creature_id, log})),
+  Z.object({AttributeCheckResult: Z.tuple([Z.string(), decodeAttributeCheck, Z.number(), Z.boolean()])}).transform(
+    ({AttributeCheckResult: [cid, check, actual, success]}): GameLog => ({ t: "AttributeCheckResult", cid, check, actual, success})),
+  Z.object({Rollback: Z.tuple([Z.number(), Z.number()])}).transform(
+    ({Rollback: [snapshot_index, log_index]}): GameLog => ({ t: "Rollback", snapshot_index, log_index})),
+
+  Z.object({LoadModule: Z.object({name: Z.string(), path: decodeFolderPath, source: decodeModuleSource})}).transform(
+    ({LoadModule: o}): GameLog => ({ t: "LoadModule", ...o })),
+]);
+
+const decodePlayer: Decoder<Player> = Z.object({
+  player_id: Z.string(),
+  scene: maybe(Z.string()),
+  creatures: Z.array(Z.string()),
+});
+
+const decodeClass: Decoder<Class> = Z.object({
+  id: Z.string(),
+  name: Z.string(),
+  color: Z.string(),
+});
+
+function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
+  return Z.object({
+    cursor: Z.number(),
+    data: Z.array(valueDecoder),
+  });
+}
+
+const decodeCombat: Decoder<Combat> = Z.object({
+  scene: Z.string(),
+  creatures: decodeNonEmpty(Z.tuple([Z.string(), Z.number()])),
+  movement_used: Z.number(),
+});
+
+const decodeFolderNode: Decoder<FolderNode> = Z.object({
+  scenes: Z.array(Z.string()),
+  creatures: Z.array(Z.string()),
+  items: Z.array(Z.string()),
+  notes: Z.record(decodeNote),
+  abilities: Z.array(Z.string()),
+  classes: Z.array(Z.string()),
+});
+
+const decodeFolder: Decoder<Folder> = Z.object({
+  data: decodeFolderNode,
+  children: Z.record(Z.lazy(() => decodeFolder)).transform<Folder["children"]>(I.Map)
+});
+
+const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
+  Z.literal("Actor").transform((): CreatureTarget => ({t: "Actor"})),
+  Z.literal("Melee").transform((): CreatureTarget => ({t: "Melee"})),
+  // | { t: "Volume"; volume: Volume; range: Distance }
+
+  Z.object({Range: Z.number()}).transform(({Range: distance}): CreatureTarget => ({ t: "Range", distance })),
+
+  Z.object({SomeCreaturesInVolumeInRange: Z.object({
+      volume: decodeVolume,
+      maximum: Z.number(),
+      range: Z.number(),
+    })}).transform(
+      ({SomeCreaturesInVolumeInRange: o}): CreatureTarget => ({ t: "SomeCreaturesInVolumeInRange", ...o})),
+    Z.object({AllCreaturesInVolumeInRange: Z.object({
+      volume: decodeVolume,
+      range: Z.number(),
+    })}).transform(
+      ({AllCreaturesInVolumeInRange: o}): CreatureTarget => ({ t: "AllCreaturesInVolumeInRange", ...o })),
+    Z.object({LineFromActor: Z.object({
+      distance: Z.number(),
+    })}).transform(
+      ({LineFromActor: o}): CreatureTarget => ({ t: "LineFromActor", ...o })),
+]);
+
+export const decodeSceneTarget: Decoder<SceneTarget> =
+// Z.union([
+  Z.object({RangedVolume: Z.object({ volume: decodeVolume, range: Z.number()})}).transform(
+    ({RangedVolume: o}): SceneTarget => ({t: "RangedVolume", ...o}))
+// ]);
+
+
+export const decodeAction: Decoder<Action> = Z.union([
+  Z.object({Creature: Z.object({target: decodeCreatureTarget})}).transform(
+    ({Creature: o}): Action => ({ t: "Creature", ...o })),
+  Z.object({SceneVolume: Z.object({target: decodeSceneTarget})}).transform(
+    ({SceneVolume: o}): Action => ({ t: "SceneVolume", ...o }))
+]);
+
+const decodeAbility: Decoder<Ability> = Z.object({
+  name: Z.string(),
+  id: Z.string(),
+  action: decodeAction,
+  cost: Z.number(),
+  usable_ooc: Z.boolean(),
+});
+
+const decodeGame: Decoder<Game> = Z.object({
+  current_combat: maybe(decodeCombat),
+  creatures: Z.record(decodeCreature).transform<Game["creatures"]>(I.Map),
+  classes: Z.record(decodeClass).transform<Game["classes"]>(I.Map),
+  items: Z.record(decodeItem),
+  scenes: Z.record(decodeScene).transform<Game["scenes"]>(I.Map),
+  abilities: Z.record(decodeAbility),
+  campaign: decodeFolder,
+  players: Z.record(decodePlayer).transform<Game["players"]>(I.Map),
+});
+
+export const decodeApp: Decoder<App> = Z.object({
+  snapshots: Z.array(
+    Z.tuple([Z.any(), Z.array(decodeGameLog)]).transform(([g, logs]): Snapshot => ({snapshot: {}, logs}))
+  ),
+  current_game: decodeGame,
+});
+
+export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = Z.tuple([
   decodeGame,
-  JD.array(decodeGameLog));
+  Z.array(decodeGameLog)
+]);
 
 
-export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>
-): Decoder<RustResult<T, E>> {
-  return sum<RustResult<T, E>>("Result", {},
-    {
-      Ok: JD.map((result): RustResult<T, E> => ({ t: "Ok", result }), decode_ok),
-      Err: JD.map((error): RustResult<T, E> => ({ t: "Err", error }), decode_err),
-    });
+export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>): Decoder<RustResult<T, E>> {
+  return Z.union(
+    [
+      Z.object({Ok: decode_ok}).transform(({Ok}): RustResult<T, E> => ({ t: "Ok", result: Ok as T})),
+      Z.object({Err: decode_err}).transform(({Err}): RustResult<T, E> => ({ t: "Err", error: Err as E})),
+    ]);
 }
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
@@ -1347,40 +1195,16 @@ export function encodePoint3(pt: Point3): string {
 }
 
 // Utility Functions for Decoding
-
-export function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
-  return JD.oneOf(JD.map(_ => undefined, JD.equal(null)), d);
-}
-
-export function sum<T>(
-  name: string,
-  nullaryValues: { [index: string]: T },
-  decoders: { [index: string]: Decoder<T> }): Decoder<T> {
-  /// This decoder is specific to the Serde-serialized JSON format:
-  /// Nullary variants are just strings like "VariantName"
-  /// Unary variants are {"VariantName": value}
-  /// "tuple" variants are {"VariantName": [values, ...]}
-  /// record variants are {"VariantName": {...}}
-
-  function nullary(variant: string): T {
-    if (nullaryValues.hasOwnProperty(variant)) {
-      return nullaryValues[variant];
-    } else {
-      throw new Error(`Variant ${variant} is not a valid constructor for ${name}.`);
-    }
-  }
-
-  const variants = Object.keys(decoders);
-  const mapped_decoders: Array<Decoder<T>> =
-    variants.map(variant => JD.at([variant], decoders[variant]));
-
-  return JD.oneOf(
-    JD.map(nullary, JD.string()),
-    JD.oneOf.apply(null, mapped_decoders),
-  );
-}
-
 function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<I.Map<K, V>> {
-  return JD.map(obj => I.Map(obj).mapKeys(k => keyDecoder.decodeAny(k)),
-    JD.dict(valueDecoder));
+  return Z.record(valueDecoder).transform(o => I.Map(o).mapKeys(k => keyDecoder.parse(k)));
+}
+
+function decodeSet<T>(d: Decoder<T>): Decoder<I.Set<T>> {
+  return Z.array(d).transform<I.Set<T>>(I.Set);
+}
+
+// We use undefined for missing data in our typescript types, not null. This way
+// we can *parse* null but *produce* undefined.
+function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
+  return d.nullish().transform((x: T|undefined|null): T | undefined => x ?? undefined);
 }
