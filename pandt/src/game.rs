@@ -248,11 +248,7 @@ impl Game {
         self.change_with(GameLog::EditSceneDetails { scene_id, details })
       }
       SetSceneCreatureVisibility { scene_id, creature_id, visibility } => {
-        self.change_with(GameLog::SetSceneCreatureVisibility {
-          scene_id,
-          creature_id,
-          visibility,
-        })
+        self.change_with(GameLog::SetSceneCreatureVisibility { scene_id, creature_id, visibility })
       }
       AddCreatureToScene { scene_id, creature_id, ref visibility } => {
         self.change_with(GameLog::AddCreatureToScene {
@@ -533,12 +529,9 @@ impl Game {
       RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
       MoveFolderItem(ref src, ref item_id, ref dst) => match *item_id {
         FolderItemID::NoteID(ref name) => {
-          let note = self
-            .campaign
-            .get_mut(src)?
-            .notes
-            .remove(name)
-            .ok_or_else(|| GameError::NoteNotFound(src.clone(), name.clone()))?;
+          let note = self.campaign.get_mut(src)?.notes.remove(name).ok_or_else(|| {
+            GameError::FolderItemNotFound(src.clone(), FolderItemID::NoteID(name.clone()))
+          })?;
           self.campaign.get_mut(dst)?.notes.insert(note);
         }
         FolderItemID::SubfolderID(ref name) => {
@@ -764,10 +757,9 @@ impl Game {
       }
       EditNote(ref path, ref name, ref new_note) => {
         let node = self.campaign.get_mut(path)?;
-        node
-          .notes
-          .mutate(name, move |note| *note = new_note.clone())
-          .ok_or_else(|| GameError::NoteNotFound(path.clone(), name.to_string()))?;
+        node.notes.mutate(name, move |note| *note = new_note.clone()).ok_or_else(|| {
+          GameError::FolderItemNotFound(path.clone(), FolderItemID::NoteID(name.to_string()))
+        })?;
       }
 
       // ** Inventory Management **
@@ -1278,7 +1270,9 @@ impl Game {
     self.classes.get(&class).ok_or_else(|| GameError::ClassNotFound(class))
   }
 
-  pub fn change(&self) -> ChangedGame { ChangedGame { game: self.clone(), logs: vec![] } }
+  pub fn change(&self) -> ChangedGame {
+    ChangedGame { game: self.clone(), logs: vec![] }
+  }
 
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
@@ -1325,7 +1319,9 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
+  pub fn done(self) -> (Game, Vec<GameLog>) {
+    (self.game, self.logs)
+  }
 }
 
 fn bug<T>(msg: &str) -> Result<T, GameError> {
@@ -1402,7 +1398,9 @@ pub mod test {
   }
 
   #[test]
-  fn validate_test_game() { t_game().validate_campaign().expect("Test game must validate"); }
+  fn validate_test_game() {
+    t_game().validate_campaign().expect("Test game must validate");
+  }
 
   pub fn t_classes() -> IndexedHashMap<Class> {
     let rogue_abs = vec![abid_punch()];
@@ -1437,7 +1435,9 @@ pub mod test {
     game.perform_command(cmd, &PathBuf::from(""), None)
   }
 
-  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
+  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
+    perf(game, cmd).unwrap().game
+  }
 
   #[test]
   fn start_combat_not_found() {

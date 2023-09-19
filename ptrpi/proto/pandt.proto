@@ -5,7 +5,12 @@ package pandt;
 service PT {
     // Our SayHello rpc accepts HelloRequests and returns HelloReplies
     rpc SayHello (HelloRequest) returns (HelloReply);
+
+    rpc SaveGame (SaveGameRequest) returns (SaveGameReply);
 }
+
+message SaveGameRequest { string name = 1; }
+message SaveGameReply {}
 
 message HelloRequest {
     // Request message contains the name to be greeted
@@ -15,4 +20,309 @@ message HelloRequest {
 message HelloReply {
     // Reply contains the greeting message
     string message = 1;
+}
+
+message GameCommand {
+
+}
+
+message Point3 {
+    sint64 x = 1;
+    sint64 y = 2;
+    sint64 z = 3;
+}
+
+message LineSegment {
+    Point3 point1 = 1;
+    Point3 point2 = 2;
+}
+
+message CreatureTarget {
+    oneof target {
+        bool melee = 1;
+        uint32 range = 2;
+        bool actor = 3;
+        uint32 LineFromActor = 4;
+        SomeCreaturesInVolumeInRange some_creatures_in_volume_in_range = 5;
+        AllCreaturesInVolumeInRange all_creatures_in_volume_in_range = 6;
+    }
+}
+
+message SomeCreaturesInVolumeInRange {
+    Volume volume = 1;
+    uint32 maximum = 2;
+    uint32 range = 3;
+}
+
+message AllCreaturesInVolumeInRange {
+    Volume volume = 1;
+    uint32 range = 2;
+}
+
+message Volume {
+    oneof volume {
+        uint32 sphere = 1;
+        Point3 line = 2; // this Point3 is used as a relative offset, not from 0,0,0
+        VerticalCylinder vertical_cylinder = 3;
+        // An Axis-Aligned Bounding Box, origin at top-left,
+        // with x going east, y going south, and z going up.
+        AABB aabb = 4;
+
+    }
+}
+
+message VerticalCylinder  {
+    uint32 radius = 1;
+    uint32 height = 2;
+}
+
+message AABB {
+    uint32 x = 1;
+    uint32 y = 2;
+    uint32 z = 3;
+}
+
+
+message Action {
+    oneof action {
+        CreatureAction creature_action = 1;
+        SceneVolumeAction scene_volume = 2;
+        // Multi will require DecidedTarget::Multi
+        // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
+        // Multi(Vec<(String, Action)>),
+    }
+}
+
+message CreatureAction {
+    CreatureEffect effect = 1;
+    CreatureTarget target = 2;
+}
+
+message SceneVolumeAction {
+    SceneEffect effect = 1;
+    SceneTarget target = 2;
+}
+
+message CreatureEffect {
+    oneof creature_effect {
+        // Interrupt,
+        // Resurrect,
+        ConditionDuration apply_condition = 1;
+        Dice heal = 2;
+        Dice damage = 3;
+        MultiEffect multi_effect = 4;
+        uint64 generate_energy = 5;
+    }
+}
+
+message SceneEffect {
+    oneof scene_effect {
+        VolumeDuration create_volume_condition = 1;
+    }
+}
+
+message ConditionDuration {
+    Duration duration = 1;
+    Condition condition = 2;
+}
+
+message VolumeDuration {
+    Duration duration = 1;
+    Condition condition = 2;
+}
+
+message MultiEffect {
+    repeated CreatureEffect effect = 1;
+}
+
+message Condition {
+    oneof condition {
+        CreatureEffect recurring_effect = 1;
+        bool dead = 2;
+        bool incapacitated = 3;
+        uint64 add_damage_buff = 4;
+        bool double_max_movement = 5;
+        // Make an ability temporarily available to a creature.
+        string activate_ability = 6;
+    }
+}
+
+
+
+message Duration {
+    oneof duration {
+        bool interminate = 1;
+        uint64 rounds = 2;
+    }
+}
+
+message Dice {
+    oneof dice {
+        DiceExpr expr = 1;
+        DicePlus dice_plus = 2;
+        uint64 flat = 3;
+        BestOfDice best_of = 4;
+    }
+}
+
+message DiceExpr {
+    uint64 num = 1;
+    uint64 size = 2;
+}
+message BestOfDice {
+    uint64 count = 1;
+    Dice dice = 2;
+}
+
+message DicePlus {
+    Dice dice1 = 1;
+    Dice dice2 = 2;
+}
+
+
+
+message DecidedTarget {
+    oneof decided_target {
+        string creature = 1;
+        MultipleCreatureIDs creatures = 2;
+        bool actor = 3;
+        Point3 point = 4;
+    }
+}
+
+message SceneTarget {
+    oneof scene_target {
+        RangedVolume ranged_volume = 1;
+    }
+}
+
+message RangedVolume {
+    Volume volume = 1;
+    uint64 range = 2;
+}
+
+message MultipleCreatureIDs {
+    repeated string creature_id = 1;
+}
+
+
+// message GameError {
+//     oneof error {
+//         string file_not_found = 1;
+//         AttributeNotFound attribute_not_found = 2;
+//         string ability_already_exists = 3;
+//         string creature_already_exists = 4;
+//         string item_already_exists = 5;
+//         string item_not_found = 6;
+//         string scene_already_exists = 7;
+//         string scene_not_found = 8;
+//         string scene_in_use = 9;
+//         string id_too_long = 10;
+//         string condition_not_found = 11;
+//         GameCommand invalid_command = 12;
+//         string class_already_exists = 13;
+//         string class_not_found = 14;
+//         string no_ability = 15;
+//         // what types should I use for these nullary variants?
+//         bool combat_must_have_creatures = 16;
+//         bool must_reroll_at_start_of_round = 17;
+//         CreatureLacksAbility creature_lacks_ability = 18;
+//         string creature_not_found = 19;
+//         string invalid_target = 20;
+//         InvalidTargetForTargetSpec invalid_target_for_target_spec = 21;
+//         InvalidTargetForAction invalid_target_for_action = 22;
+//         string creature_out_of_range = 23;
+//         Point3 point_out_of_range = 24;
+//         string buggy_program = 25;
+//         bool not_in_combat = 26;
+//         string already_in_combat = 27;
+//         string cannot_move = 28;
+//         string cannot_act = 29;
+//         bool no_path_found = 30;
+//         string folder_already_exists = 31;
+//         LineSegment step_too_big = 32;
+//         uint32 not_enough_energy = 33;
+//         string player_already_exists = 34;
+//         string player_not_found = 35;
+//         PlayerDoesntControlCreature player_doesnt_control_creature = 36;
+//         HistoryPointer history_not_found = 37;
+//         uint64 initiative_out_of_bounds = 38;
+//         string folder_not_empty = 39;
+//         FolderItem folder_item_not_found = 40;
+//         FolderItem cannot_link_notes = 42;
+//         string could_not_open_app_file = 43;
+//         string could_not_parse_app = 44;
+
+//         bool no_module_source = 45;
+//         FolderTreeError folder_tree_error = 46;
+//         string invalid_id = 47;
+//     }
+// }
+
+message FolderTreeError {
+    oneof error {
+        string InvalidFolderPath = 1;
+        string FolderNotFound = 2;
+        string FolderExists = 3;
+        string FolderNotEmpty = 4;
+        bool CannotRenameRoot = 5;
+        bool CannotRemoveRoot = 6;
+        bool CannotMoveRoot = 7;
+        bool RootHasNoName = 8;
+        TwoFolderPaths impossible_move = 9;
+        TwoFolderPaths non_ancestor = 10;
+    }
+}
+
+message TwoFolderPaths {
+    string fp1 = 1;
+    string fp2 = 2;
+}
+
+
+message AttributeNotFound {
+    string creature_id = 1;
+    string attr_id = 2;
+}
+
+message CreatureLacksAbility {
+    string creature_id = 1;
+    string ability_id = 2;
+}
+
+message InvalidTargetForTargetSpec {
+    CreatureTarget creature_target = 1;
+    DecidedTarget decided_target = 2;
+}
+
+message InvalidTargetForAction {
+    Action action = 1;
+    DecidedTarget target = 2;
+}
+
+message PlayerDoesntControlCreature {
+    string player_id = 1;
+    string creature_id = 2;
+}
+
+message HistoryPointer {
+    uint64 snapshot_idx = 1;
+    uint64 log_idx = 2;
+}
+
+message FolderItem {
+    string path = 1;
+    FolderItemID id = 2;
+}
+
+message FolderItemID {
+    oneof folder_item_id {
+        string scene_id = 1;
+        string creature_id = 2;
+        string note_id = 3;
+        string item_id = 4;
+        string ability_id = 5;
+        string class_id = 6;
+        string subfolder_id = 7;
+    }
 }

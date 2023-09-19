@@ -3,8 +3,18 @@ tonic::include_proto!("pandt");
 
 pub use pt_server::{Pt, PtServer};
 
-#[derive(Debug, Default)]
-pub struct Server {}
+use crate::actor::AppActor;
+
+pub struct Server {
+  actor: AppActor
+}
+
+
+impl Server {
+  pub fn new(actor: AppActor) -> Server {
+    Server { actor }
+  }
+}
 
 #[tonic::async_trait]
 impl Pt for Server {
@@ -22,5 +32,10 @@ impl Pt for Server {
     };
 
     Ok(Response::new(reply)) // Send back our formatted greeting
+  }
+
+  async fn save_game(&self, request: Request<SaveGameRequest>) -> Result<Response<SaveGameReply>, Status> {
+    self.actor.save_game(request.into_inner().name).await.map_err(|e| Status::unknown(e.to_string()))?;
+    return Ok(Response::new(SaveGameReply {}));
   }
 }
