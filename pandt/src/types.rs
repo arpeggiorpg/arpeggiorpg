@@ -794,10 +794,8 @@ pub enum GameError {
   InitiativeOutOfBounds(usize),
   #[error("The folder {0} is not empty")]
   FolderNotEmpty(FolderPath),
-  #[error("The folder {0} does not contain item {1:?}")]
+  #[error("The folder {0} does not contain {1:?}")]
   FolderItemNotFound(FolderPath, FolderItemID),
-  #[error("The note in '{0}' named '{1}' could not be found.")]
-  NoteNotFound(FolderPath, String),
   #[error("Notes can't be linked or unlinked. '{0}' / '{1}'")]
   CannotLinkNotes(FolderPath, String),
   #[error("Failed to open a file containing an application: {0}")]

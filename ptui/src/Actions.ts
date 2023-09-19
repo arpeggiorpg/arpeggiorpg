@@ -173,11 +173,7 @@ export async function fetchSavedGames(): Promise<[Array<string>, Array<string>]>
 }
 
 export async function saveGame(game: string): Promise<undefined> {
-  return ptfetch(
-    `${RPI_URL}/saved_games/user/${game}`,
-    { method: 'POST' },
-    Z.any().transform(() => undefined)
-  );
+  await ptclient.saveGame({name: game});
 }
 
 export function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
@@ -283,14 +279,12 @@ export function fetchAbilityTargets(
 import {PTClient} from "../proto/pandt.client";
 import {GrpcWebFetchTransport} from "@protobuf-ts/grpcweb-transport";
 
+const transport = new GrpcWebFetchTransport({
+  baseUrl: "http://localhost:50051"
+});
+const ptclient = new PTClient(transport);
+
 export async function sayHello() {
-
-  const transport = new GrpcWebFetchTransport({
-    baseUrl: "http://localhost:50051"
-  });
-
-  const client = new PTClient(transport);
-
-  const {response} = await client.sayHello({name: "Radix"});
+  const {response} = await ptclient.sayHello({name: "Radix"});
   console.log("said hello!", response);
 }

@@ -4,6 +4,8 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { PT } from "./pandt";
+import type { SaveGameReply } from "./pandt";
+import type { SaveGameRequest } from "./pandt";
 import { stackIntercept } from "@protobuf-ts/runtime-rpc";
 import type { HelloReply } from "./pandt";
 import type { HelloRequest } from "./pandt";
@@ -19,6 +21,10 @@ export interface IPTClient {
      * @generated from protobuf rpc: SayHello(pandt.HelloRequest) returns (pandt.HelloReply);
      */
     sayHello(input: HelloRequest, options?: RpcOptions): UnaryCall<HelloRequest, HelloReply>;
+    /**
+     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.SaveGameReply);
+     */
+    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, SaveGameReply>;
 }
 /**
  * @generated from protobuf service pandt.PT
@@ -37,5 +43,12 @@ export class PTClient implements IPTClient, ServiceInfo {
     sayHello(input: HelloRequest, options?: RpcOptions): UnaryCall<HelloRequest, HelloReply> {
         const method = this.methods[0], opt = this._transport.mergeOptions(options);
         return stackIntercept<HelloRequest, HelloReply>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: SaveGame(pandt.SaveGameRequest) returns (pandt.SaveGameReply);
+     */
+    saveGame(input: SaveGameRequest, options?: RpcOptions): UnaryCall<SaveGameRequest, SaveGameReply> {
+        const method = this.methods[1], opt = this._transport.mergeOptions(options);
+        return stackIntercept<SaveGameRequest, SaveGameReply>("unary", this._transport, method, opt, input);
     }
 }

@@ -13,6 +13,20 @@ import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MESSAGE_TYPE } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
 /**
+ * @generated from protobuf message pandt.SaveGameRequest
+ */
+export interface SaveGameRequest {
+    /**
+     * @generated from protobuf field: string name = 1;
+     */
+    name: string;
+}
+/**
+ * @generated from protobuf message pandt.SaveGameReply
+ */
+export interface SaveGameReply {
+}
+/**
  * @generated from protobuf message pandt.HelloRequest
  */
 export interface HelloRequest {
@@ -34,6 +48,1143 @@ export interface HelloReply {
      */
     message: string;
 }
+/**
+ * @generated from protobuf message pandt.GameCommand
+ */
+export interface GameCommand {
+}
+/**
+ * @generated from protobuf message pandt.Point3
+ */
+export interface Point3 {
+    /**
+     * @generated from protobuf field: sint64 x = 1;
+     */
+    x: bigint;
+    /**
+     * @generated from protobuf field: sint64 y = 2;
+     */
+    y: bigint;
+    /**
+     * @generated from protobuf field: sint64 z = 3;
+     */
+    z: bigint;
+}
+/**
+ * @generated from protobuf message pandt.LineSegment
+ */
+export interface LineSegment {
+    /**
+     * @generated from protobuf field: pandt.Point3 point1 = 1;
+     */
+    point1?: Point3;
+    /**
+     * @generated from protobuf field: pandt.Point3 point2 = 2;
+     */
+    point2?: Point3;
+}
+/**
+ * @generated from protobuf message pandt.CreatureTarget
+ */
+export interface CreatureTarget {
+    /**
+     * @generated from protobuf oneof: target
+     */
+    target: {
+        oneofKind: "melee";
+        /**
+         * @generated from protobuf field: bool melee = 1;
+         */
+        melee: boolean;
+    } | {
+        oneofKind: "range";
+        /**
+         * @generated from protobuf field: uint32 range = 2;
+         */
+        range: number;
+    } | {
+        oneofKind: "actor";
+        /**
+         * @generated from protobuf field: bool actor = 3;
+         */
+        actor: boolean;
+    } | {
+        oneofKind: "lineFromActor";
+        /**
+         * @generated from protobuf field: uint32 LineFromActor = 4 [json_name = "LineFromActor"];
+         */
+        lineFromActor: number;
+    } | {
+        oneofKind: "someCreaturesInVolumeInRange";
+        /**
+         * @generated from protobuf field: pandt.SomeCreaturesInVolumeInRange some_creatures_in_volume_in_range = 5;
+         */
+        someCreaturesInVolumeInRange: SomeCreaturesInVolumeInRange;
+    } | {
+        oneofKind: "allCreaturesInVolumeInRange";
+        /**
+         * @generated from protobuf field: pandt.AllCreaturesInVolumeInRange all_creatures_in_volume_in_range = 6;
+         */
+        allCreaturesInVolumeInRange: AllCreaturesInVolumeInRange;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.SomeCreaturesInVolumeInRange
+ */
+export interface SomeCreaturesInVolumeInRange {
+    /**
+     * @generated from protobuf field: pandt.Volume volume = 1;
+     */
+    volume?: Volume;
+    /**
+     * @generated from protobuf field: uint32 maximum = 2;
+     */
+    maximum: number;
+    /**
+     * @generated from protobuf field: uint32 range = 3;
+     */
+    range: number;
+}
+/**
+ * @generated from protobuf message pandt.AllCreaturesInVolumeInRange
+ */
+export interface AllCreaturesInVolumeInRange {
+    /**
+     * @generated from protobuf field: pandt.Volume volume = 1;
+     */
+    volume?: Volume;
+    /**
+     * @generated from protobuf field: uint32 range = 2;
+     */
+    range: number;
+}
+/**
+ * @generated from protobuf message pandt.Volume
+ */
+export interface Volume {
+    /**
+     * @generated from protobuf oneof: volume
+     */
+    volume: {
+        oneofKind: "sphere";
+        /**
+         * @generated from protobuf field: uint32 sphere = 1;
+         */
+        sphere: number;
+    } | {
+        oneofKind: "line";
+        /**
+         * @generated from protobuf field: pandt.Point3 line = 2;
+         */
+        line: Point3; // this Point3 is used as a relative offset, not from 0,0,0
+    } | {
+        oneofKind: "verticalCylinder";
+        /**
+         * @generated from protobuf field: pandt.VerticalCylinder vertical_cylinder = 3;
+         */
+        verticalCylinder: VerticalCylinder;
+    } | {
+        oneofKind: "aabb";
+        /**
+         * An Axis-Aligned Bounding Box, origin at top-left,
+         * with x going east, y going south, and z going up.
+         *
+         * @generated from protobuf field: pandt.AABB aabb = 4;
+         */
+        aabb: AABB;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.VerticalCylinder
+ */
+export interface VerticalCylinder {
+    /**
+     * @generated from protobuf field: uint32 radius = 1;
+     */
+    radius: number;
+    /**
+     * @generated from protobuf field: uint32 height = 2;
+     */
+    height: number;
+}
+/**
+ * @generated from protobuf message pandt.AABB
+ */
+export interface AABB {
+    /**
+     * @generated from protobuf field: uint32 x = 1;
+     */
+    x: number;
+    /**
+     * @generated from protobuf field: uint32 y = 2;
+     */
+    y: number;
+    /**
+     * @generated from protobuf field: uint32 z = 3;
+     */
+    z: number;
+}
+/**
+ * @generated from protobuf message pandt.Action
+ */
+export interface Action {
+    /**
+     * @generated from protobuf oneof: action
+     */
+    action: {
+        oneofKind: "creatureAction";
+        /**
+         * @generated from protobuf field: pandt.CreatureAction creature_action = 1;
+         */
+        creatureAction: CreatureAction;
+    } | {
+        oneofKind: "sceneVolume";
+        /**
+         * @generated from protobuf field: pandt.SceneVolumeAction scene_volume = 2;
+         */
+        sceneVolume: SceneVolumeAction; // Multi will require DecidedTarget::Multi
+        // also PotentialTargets::Multi(Vec<(String, PotentialTarget)>)
+        // Multi(Vec<(String, Action)>),
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.CreatureAction
+ */
+export interface CreatureAction {
+    /**
+     * @generated from protobuf field: pandt.CreatureEffect effect = 1;
+     */
+    effect?: CreatureEffect;
+    /**
+     * @generated from protobuf field: pandt.CreatureTarget target = 2;
+     */
+    target?: CreatureTarget;
+}
+/**
+ * @generated from protobuf message pandt.SceneVolumeAction
+ */
+export interface SceneVolumeAction {
+    /**
+     * @generated from protobuf field: pandt.SceneEffect effect = 1;
+     */
+    effect?: SceneEffect;
+    /**
+     * @generated from protobuf field: pandt.SceneTarget target = 2;
+     */
+    target?: SceneTarget;
+}
+/**
+ * @generated from protobuf message pandt.CreatureEffect
+ */
+export interface CreatureEffect {
+    /**
+     * @generated from protobuf oneof: creature_effect
+     */
+    creatureEffect: {
+        oneofKind: "applyCondition";
+        /**
+         * Interrupt,
+         * Resurrect,
+         *
+         * @generated from protobuf field: pandt.ConditionDuration apply_condition = 1;
+         */
+        applyCondition: ConditionDuration;
+    } | {
+        oneofKind: "heal";
+        /**
+         * @generated from protobuf field: pandt.Dice heal = 2;
+         */
+        heal: Dice;
+    } | {
+        oneofKind: "damage";
+        /**
+         * @generated from protobuf field: pandt.Dice damage = 3;
+         */
+        damage: Dice;
+    } | {
+        oneofKind: "multiEffect";
+        /**
+         * @generated from protobuf field: pandt.MultiEffect multi_effect = 4;
+         */
+        multiEffect: MultiEffect;
+    } | {
+        oneofKind: "generateEnergy";
+        /**
+         * @generated from protobuf field: uint64 generate_energy = 5;
+         */
+        generateEnergy: bigint;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.SceneEffect
+ */
+export interface SceneEffect {
+    /**
+     * @generated from protobuf oneof: scene_effect
+     */
+    sceneEffect: {
+        oneofKind: "createVolumeCondition";
+        /**
+         * @generated from protobuf field: pandt.VolumeDuration create_volume_condition = 1;
+         */
+        createVolumeCondition: VolumeDuration;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.ConditionDuration
+ */
+export interface ConditionDuration {
+    /**
+     * @generated from protobuf field: pandt.Duration duration = 1;
+     */
+    duration?: Duration;
+    /**
+     * @generated from protobuf field: pandt.Condition condition = 2;
+     */
+    condition?: Condition;
+}
+/**
+ * @generated from protobuf message pandt.VolumeDuration
+ */
+export interface VolumeDuration {
+    /**
+     * @generated from protobuf field: pandt.Duration duration = 1;
+     */
+    duration?: Duration;
+    /**
+     * @generated from protobuf field: pandt.Condition condition = 2;
+     */
+    condition?: Condition;
+}
+/**
+ * @generated from protobuf message pandt.MultiEffect
+ */
+export interface MultiEffect {
+    /**
+     * @generated from protobuf field: repeated pandt.CreatureEffect effect = 1;
+     */
+    effect: CreatureEffect[];
+}
+/**
+ * @generated from protobuf message pandt.Condition
+ */
+export interface Condition {
+    /**
+     * @generated from protobuf oneof: condition
+     */
+    condition: {
+        oneofKind: "recurringEffect";
+        /**
+         * @generated from protobuf field: pandt.CreatureEffect recurring_effect = 1;
+         */
+        recurringEffect: CreatureEffect;
+    } | {
+        oneofKind: "dead";
+        /**
+         * @generated from protobuf field: bool dead = 2;
+         */
+        dead: boolean;
+    } | {
+        oneofKind: "incapacitated";
+        /**
+         * @generated from protobuf field: bool incapacitated = 3;
+         */
+        incapacitated: boolean;
+    } | {
+        oneofKind: "addDamageBuff";
+        /**
+         * @generated from protobuf field: uint64 add_damage_buff = 4;
+         */
+        addDamageBuff: bigint;
+    } | {
+        oneofKind: "doubleMaxMovement";
+        /**
+         * @generated from protobuf field: bool double_max_movement = 5;
+         */
+        doubleMaxMovement: boolean;
+    } | {
+        oneofKind: "activateAbility";
+        /**
+         * Make an ability temporarily available to a creature.
+         *
+         * @generated from protobuf field: string activate_ability = 6;
+         */
+        activateAbility: string;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.Duration
+ */
+export interface Duration {
+    /**
+     * @generated from protobuf oneof: duration
+     */
+    duration: {
+        oneofKind: "interminate";
+        /**
+         * @generated from protobuf field: bool interminate = 1;
+         */
+        interminate: boolean;
+    } | {
+        oneofKind: "rounds";
+        /**
+         * @generated from protobuf field: uint64 rounds = 2;
+         */
+        rounds: bigint;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.Dice
+ */
+export interface Dice {
+    /**
+     * @generated from protobuf oneof: dice
+     */
+    dice: {
+        oneofKind: "expr";
+        /**
+         * @generated from protobuf field: pandt.DiceExpr expr = 1;
+         */
+        expr: DiceExpr;
+    } | {
+        oneofKind: "dicePlus";
+        /**
+         * @generated from protobuf field: pandt.DicePlus dice_plus = 2;
+         */
+        dicePlus: DicePlus;
+    } | {
+        oneofKind: "flat";
+        /**
+         * @generated from protobuf field: uint64 flat = 3;
+         */
+        flat: bigint;
+    } | {
+        oneofKind: "bestOf";
+        /**
+         * @generated from protobuf field: pandt.BestOfDice best_of = 4;
+         */
+        bestOf: BestOfDice;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.DiceExpr
+ */
+export interface DiceExpr {
+    /**
+     * @generated from protobuf field: uint64 num = 1;
+     */
+    num: bigint;
+    /**
+     * @generated from protobuf field: uint64 size = 2;
+     */
+    size: bigint;
+}
+/**
+ * @generated from protobuf message pandt.BestOfDice
+ */
+export interface BestOfDice {
+    /**
+     * @generated from protobuf field: uint64 count = 1;
+     */
+    count: bigint;
+    /**
+     * @generated from protobuf field: pandt.Dice dice = 2;
+     */
+    dice?: Dice;
+}
+/**
+ * @generated from protobuf message pandt.DicePlus
+ */
+export interface DicePlus {
+    /**
+     * @generated from protobuf field: pandt.Dice dice1 = 1;
+     */
+    dice1?: Dice;
+    /**
+     * @generated from protobuf field: pandt.Dice dice2 = 2;
+     */
+    dice2?: Dice;
+}
+/**
+ * @generated from protobuf message pandt.DecidedTarget
+ */
+export interface DecidedTarget {
+    /**
+     * @generated from protobuf oneof: decided_target
+     */
+    decidedTarget: {
+        oneofKind: "creature";
+        /**
+         * @generated from protobuf field: string creature = 1;
+         */
+        creature: string;
+    } | {
+        oneofKind: "creatures";
+        /**
+         * @generated from protobuf field: pandt.MultipleCreatureIDs creatures = 2;
+         */
+        creatures: MultipleCreatureIDs;
+    } | {
+        oneofKind: "actor";
+        /**
+         * @generated from protobuf field: bool actor = 3;
+         */
+        actor: boolean;
+    } | {
+        oneofKind: "point";
+        /**
+         * @generated from protobuf field: pandt.Point3 point = 4;
+         */
+        point: Point3;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.SceneTarget
+ */
+export interface SceneTarget {
+    /**
+     * @generated from protobuf oneof: scene_target
+     */
+    sceneTarget: {
+        oneofKind: "rangedVolume";
+        /**
+         * @generated from protobuf field: pandt.RangedVolume ranged_volume = 1;
+         */
+        rangedVolume: RangedVolume;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.RangedVolume
+ */
+export interface RangedVolume {
+    /**
+     * @generated from protobuf field: pandt.Volume volume = 1;
+     */
+    volume?: Volume;
+    /**
+     * @generated from protobuf field: uint64 range = 2;
+     */
+    range: bigint;
+}
+/**
+ * @generated from protobuf message pandt.MultipleCreatureIDs
+ */
+export interface MultipleCreatureIDs {
+    /**
+     * @generated from protobuf field: repeated string creature_id = 1;
+     */
+    creatureId: string[];
+}
+/**
+ * @generated from protobuf message pandt.GameError
+ */
+export interface GameError {
+    /**
+     * @generated from protobuf oneof: error
+     */
+    error: {
+        oneofKind: "fileNotFound";
+        /**
+         * @generated from protobuf field: string file_not_found = 1;
+         */
+        fileNotFound: string;
+    } | {
+        oneofKind: "attributeNotFound";
+        /**
+         * @generated from protobuf field: pandt.AttributeNotFound attribute_not_found = 2;
+         */
+        attributeNotFound: AttributeNotFound;
+    } | {
+        oneofKind: "abilityAlreadyExists";
+        /**
+         * @generated from protobuf field: string ability_already_exists = 3;
+         */
+        abilityAlreadyExists: string;
+    } | {
+        oneofKind: "creatureAlreadyExists";
+        /**
+         * @generated from protobuf field: string creature_already_exists = 4;
+         */
+        creatureAlreadyExists: string;
+    } | {
+        oneofKind: "itemAlreadyExists";
+        /**
+         * @generated from protobuf field: string item_already_exists = 5;
+         */
+        itemAlreadyExists: string;
+    } | {
+        oneofKind: "itemNotFound";
+        /**
+         * @generated from protobuf field: string item_not_found = 6;
+         */
+        itemNotFound: string;
+    } | {
+        oneofKind: "sceneAlreadyExists";
+        /**
+         * @generated from protobuf field: string scene_already_exists = 7;
+         */
+        sceneAlreadyExists: string;
+    } | {
+        oneofKind: "sceneNotFound";
+        /**
+         * @generated from protobuf field: string scene_not_found = 8;
+         */
+        sceneNotFound: string;
+    } | {
+        oneofKind: "sceneInUse";
+        /**
+         * @generated from protobuf field: string scene_in_use = 9;
+         */
+        sceneInUse: string;
+    } | {
+        oneofKind: "idTooLong";
+        /**
+         * @generated from protobuf field: string id_too_long = 10;
+         */
+        idTooLong: string;
+    } | {
+        oneofKind: "conditionNotFound";
+        /**
+         * @generated from protobuf field: string condition_not_found = 11;
+         */
+        conditionNotFound: string;
+    } | {
+        oneofKind: "invalidCommand";
+        /**
+         * @generated from protobuf field: pandt.GameCommand invalid_command = 12;
+         */
+        invalidCommand: GameCommand;
+    } | {
+        oneofKind: "classAlreadyExists";
+        /**
+         * @generated from protobuf field: string class_already_exists = 13;
+         */
+        classAlreadyExists: string;
+    } | {
+        oneofKind: "classNotFound";
+        /**
+         * @generated from protobuf field: string class_not_found = 14;
+         */
+        classNotFound: string;
+    } | {
+        oneofKind: "noAbility";
+        /**
+         * @generated from protobuf field: string no_ability = 15;
+         */
+        noAbility: string;
+    } | {
+        oneofKind: "combatMustHaveCreatures";
+        /**
+         * what types should I use for these nullary variants?
+         *
+         * @generated from protobuf field: bool combat_must_have_creatures = 16;
+         */
+        combatMustHaveCreatures: boolean;
+    } | {
+        oneofKind: "mustRerollAtStartOfRound";
+        /**
+         * @generated from protobuf field: bool must_reroll_at_start_of_round = 17;
+         */
+        mustRerollAtStartOfRound: boolean;
+    } | {
+        oneofKind: "creatureLacksAbility";
+        /**
+         * @generated from protobuf field: pandt.CreatureLacksAbility creature_lacks_ability = 18;
+         */
+        creatureLacksAbility: CreatureLacksAbility;
+    } | {
+        oneofKind: "creatureNotFound";
+        /**
+         * @generated from protobuf field: string creature_not_found = 19;
+         */
+        creatureNotFound: string;
+    } | {
+        oneofKind: "invalidTarget";
+        /**
+         * @generated from protobuf field: string invalid_target = 20;
+         */
+        invalidTarget: string;
+    } | {
+        oneofKind: "invalidTargetForTargetSpec";
+        /**
+         * @generated from protobuf field: pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec = 21;
+         */
+        invalidTargetForTargetSpec: InvalidTargetForTargetSpec;
+    } | {
+        oneofKind: "invalidTargetForAction";
+        /**
+         * @generated from protobuf field: pandt.InvalidTargetForAction invalid_target_for_action = 22;
+         */
+        invalidTargetForAction: InvalidTargetForAction;
+    } | {
+        oneofKind: "creatureOutOfRange";
+        /**
+         * @generated from protobuf field: string creature_out_of_range = 23;
+         */
+        creatureOutOfRange: string;
+    } | {
+        oneofKind: "pointOutOfRange";
+        /**
+         * @generated from protobuf field: pandt.Point3 point_out_of_range = 24;
+         */
+        pointOutOfRange: Point3;
+    } | {
+        oneofKind: "buggyProgram";
+        /**
+         * @generated from protobuf field: string buggy_program = 25;
+         */
+        buggyProgram: string;
+    } | {
+        oneofKind: "notInCombat";
+        /**
+         * @generated from protobuf field: bool not_in_combat = 26;
+         */
+        notInCombat: boolean;
+    } | {
+        oneofKind: "alreadyInCombat";
+        /**
+         * @generated from protobuf field: string already_in_combat = 27;
+         */
+        alreadyInCombat: string;
+    } | {
+        oneofKind: "cannotMove";
+        /**
+         * @generated from protobuf field: string cannot_move = 28;
+         */
+        cannotMove: string;
+    } | {
+        oneofKind: "cannotAct";
+        /**
+         * @generated from protobuf field: string cannot_act = 29;
+         */
+        cannotAct: string;
+    } | {
+        oneofKind: "noPathFound";
+        /**
+         * @generated from protobuf field: bool no_path_found = 30;
+         */
+        noPathFound: boolean;
+    } | {
+        oneofKind: "folderAlreadyExists";
+        /**
+         * @generated from protobuf field: string folder_already_exists = 31;
+         */
+        folderAlreadyExists: string;
+    } | {
+        oneofKind: "stepTooBig";
+        /**
+         * @generated from protobuf field: pandt.LineSegment step_too_big = 32;
+         */
+        stepTooBig: LineSegment;
+    } | {
+        oneofKind: "notEnoughEnergy";
+        /**
+         * @generated from protobuf field: uint32 not_enough_energy = 33;
+         */
+        notEnoughEnergy: number;
+    } | {
+        oneofKind: "playerAlreadyExists";
+        /**
+         * @generated from protobuf field: string player_already_exists = 34;
+         */
+        playerAlreadyExists: string;
+    } | {
+        oneofKind: "playerNotFound";
+        /**
+         * @generated from protobuf field: string player_not_found = 35;
+         */
+        playerNotFound: string;
+    } | {
+        oneofKind: "playerDoesntControlCreature";
+        /**
+         * @generated from protobuf field: pandt.PlayerDoesntControlCreature player_doesnt_control_creature = 36;
+         */
+        playerDoesntControlCreature: PlayerDoesntControlCreature;
+    } | {
+        oneofKind: "historyNotFound";
+        /**
+         * @generated from protobuf field: pandt.HistoryPointer history_not_found = 37;
+         */
+        historyNotFound: HistoryPointer;
+    } | {
+        oneofKind: "initiativeOutOfBounds";
+        /**
+         * @generated from protobuf field: uint64 initiative_out_of_bounds = 38;
+         */
+        initiativeOutOfBounds: bigint;
+    } | {
+        oneofKind: "folderNotEmpty";
+        /**
+         * @generated from protobuf field: string folder_not_empty = 39;
+         */
+        folderNotEmpty: string;
+    } | {
+        oneofKind: "folderItemNotFound";
+        /**
+         * @generated from protobuf field: pandt.FolderItem folder_item_not_found = 40;
+         */
+        folderItemNotFound: FolderItem;
+    } | {
+        oneofKind: "cannotLinkNotes";
+        /**
+         * @generated from protobuf field: pandt.FolderItem cannot_link_notes = 42;
+         */
+        cannotLinkNotes: FolderItem;
+    } | {
+        oneofKind: "couldNotOpenAppFile";
+        /**
+         * @generated from protobuf field: string could_not_open_app_file = 43;
+         */
+        couldNotOpenAppFile: string;
+    } | {
+        oneofKind: "couldNotParseApp";
+        /**
+         * @generated from protobuf field: string could_not_parse_app = 44;
+         */
+        couldNotParseApp: string;
+    } | {
+        oneofKind: "noModuleSource";
+        /**
+         * @generated from protobuf field: bool no_module_source = 45;
+         */
+        noModuleSource: boolean;
+    } | {
+        oneofKind: "folderTreeError";
+        /**
+         * @generated from protobuf field: pandt.FolderTreeError folder_tree_error = 46;
+         */
+        folderTreeError: FolderTreeError;
+    } | {
+        oneofKind: "invalidId";
+        /**
+         * @generated from protobuf field: string invalid_id = 47;
+         */
+        invalidId: string;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.FolderTreeError
+ */
+export interface FolderTreeError {
+    /**
+     * @generated from protobuf oneof: error
+     */
+    error: {
+        oneofKind: "invalidFolderPath";
+        /**
+         * @generated from protobuf field: string InvalidFolderPath = 1 [json_name = "InvalidFolderPath"];
+         */
+        invalidFolderPath: string;
+    } | {
+        oneofKind: "folderNotFound";
+        /**
+         * @generated from protobuf field: string FolderNotFound = 2 [json_name = "FolderNotFound"];
+         */
+        folderNotFound: string;
+    } | {
+        oneofKind: "folderExists";
+        /**
+         * @generated from protobuf field: string FolderExists = 3 [json_name = "FolderExists"];
+         */
+        folderExists: string;
+    } | {
+        oneofKind: "folderNotEmpty";
+        /**
+         * @generated from protobuf field: string FolderNotEmpty = 4 [json_name = "FolderNotEmpty"];
+         */
+        folderNotEmpty: string;
+    } | {
+        oneofKind: "cannotRenameRoot";
+        /**
+         * @generated from protobuf field: bool CannotRenameRoot = 5 [json_name = "CannotRenameRoot"];
+         */
+        cannotRenameRoot: boolean;
+    } | {
+        oneofKind: "cannotRemoveRoot";
+        /**
+         * @generated from protobuf field: bool CannotRemoveRoot = 6 [json_name = "CannotRemoveRoot"];
+         */
+        cannotRemoveRoot: boolean;
+    } | {
+        oneofKind: "cannotMoveRoot";
+        /**
+         * @generated from protobuf field: bool CannotMoveRoot = 7 [json_name = "CannotMoveRoot"];
+         */
+        cannotMoveRoot: boolean;
+    } | {
+        oneofKind: "rootHasNoName";
+        /**
+         * @generated from protobuf field: bool RootHasNoName = 8 [json_name = "RootHasNoName"];
+         */
+        rootHasNoName: boolean;
+    } | {
+        oneofKind: "impossibleMove";
+        /**
+         * @generated from protobuf field: pandt.TwoFolderPaths impossible_move = 9;
+         */
+        impossibleMove: TwoFolderPaths;
+    } | {
+        oneofKind: "nonAncestor";
+        /**
+         * @generated from protobuf field: pandt.TwoFolderPaths non_ancestor = 10;
+         */
+        nonAncestor: TwoFolderPaths;
+    } | {
+        oneofKind: undefined;
+    };
+}
+/**
+ * @generated from protobuf message pandt.TwoFolderPaths
+ */
+export interface TwoFolderPaths {
+    /**
+     * @generated from protobuf field: string fp1 = 1;
+     */
+    fp1: string;
+    /**
+     * @generated from protobuf field: string fp2 = 2;
+     */
+    fp2: string;
+}
+/**
+ * @generated from protobuf message pandt.AttributeNotFound
+ */
+export interface AttributeNotFound {
+    /**
+     * @generated from protobuf field: string creature_id = 1;
+     */
+    creatureId: string;
+    /**
+     * @generated from protobuf field: string attr_id = 2;
+     */
+    attrId: string;
+}
+/**
+ * @generated from protobuf message pandt.CreatureLacksAbility
+ */
+export interface CreatureLacksAbility {
+    /**
+     * @generated from protobuf field: string creature_id = 1;
+     */
+    creatureId: string;
+    /**
+     * @generated from protobuf field: string ability_id = 2;
+     */
+    abilityId: string;
+}
+/**
+ * @generated from protobuf message pandt.InvalidTargetForTargetSpec
+ */
+export interface InvalidTargetForTargetSpec {
+    /**
+     * @generated from protobuf field: pandt.CreatureTarget creature_target = 1;
+     */
+    creatureTarget?: CreatureTarget;
+    /**
+     * @generated from protobuf field: pandt.DecidedTarget decided_target = 2;
+     */
+    decidedTarget?: DecidedTarget;
+}
+/**
+ * @generated from protobuf message pandt.InvalidTargetForAction
+ */
+export interface InvalidTargetForAction {
+    /**
+     * @generated from protobuf field: pandt.Action action = 1;
+     */
+    action?: Action;
+    /**
+     * @generated from protobuf field: pandt.DecidedTarget target = 2;
+     */
+    target?: DecidedTarget;
+}
+/**
+ * @generated from protobuf message pandt.PlayerDoesntControlCreature
+ */
+export interface PlayerDoesntControlCreature {
+    /**
+     * @generated from protobuf field: string player_id = 1;
+     */
+    playerId: string;
+    /**
+     * @generated from protobuf field: string creature_id = 2;
+     */
+    creatureId: string;
+}
+/**
+ * @generated from protobuf message pandt.HistoryPointer
+ */
+export interface HistoryPointer {
+    /**
+     * @generated from protobuf field: uint64 snapshot_idx = 1;
+     */
+    snapshotIdx: bigint;
+    /**
+     * @generated from protobuf field: uint64 log_idx = 2;
+     */
+    logIdx: bigint;
+}
+/**
+ * @generated from protobuf message pandt.FolderItem
+ */
+export interface FolderItem {
+    /**
+     * @generated from protobuf field: string path = 1;
+     */
+    path: string;
+    /**
+     * @generated from protobuf field: pandt.FolderItemID id = 2;
+     */
+    id?: FolderItemID;
+}
+/**
+ * @generated from protobuf message pandt.FolderItemID
+ */
+export interface FolderItemID {
+    /**
+     * @generated from protobuf oneof: folder_item_id
+     */
+    folderItemId: {
+        oneofKind: "sceneId";
+        /**
+         * @generated from protobuf field: string scene_id = 1;
+         */
+        sceneId: string;
+    } | {
+        oneofKind: "creatureId";
+        /**
+         * @generated from protobuf field: string creature_id = 2;
+         */
+        creatureId: string;
+    } | {
+        oneofKind: "noteId";
+        /**
+         * @generated from protobuf field: string note_id = 3;
+         */
+        noteId: string;
+    } | {
+        oneofKind: "itemId";
+        /**
+         * @generated from protobuf field: string item_id = 4;
+         */
+        itemId: string;
+    } | {
+        oneofKind: "abilityId";
+        /**
+         * @generated from protobuf field: string ability_id = 5;
+         */
+        abilityId: string;
+    } | {
+        oneofKind: "classId";
+        /**
+         * @generated from protobuf field: string class_id = 6;
+         */
+        classId: string;
+    } | {
+        oneofKind: "subfolderId";
+        /**
+         * @generated from protobuf field: string subfolder_id = 7;
+         */
+        subfolderId: string;
+    } | {
+        oneofKind: undefined;
+    };
+}
+// @generated message type with reflection information, may provide speed optimized methods
+class SaveGameRequest$Type extends MessageType<SaveGameRequest> {
+    constructor() {
+        super("pandt.SaveGameRequest", [
+            { no: 1, name: "name", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SaveGameRequest>): SaveGameRequest {
+        const message = { name: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SaveGameRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SaveGameRequest): SaveGameRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string name */ 1:
+                    message.name = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SaveGameRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string name = 1; */
+        if (message.name !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.name);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SaveGameRequest
+ */
+export const SaveGameRequest = new SaveGameRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SaveGameReply$Type extends MessageType<SaveGameReply> {
+    constructor() {
+        super("pandt.SaveGameReply", []);
+    }
+    create(value?: PartialMessage<SaveGameReply>): SaveGameReply {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SaveGameReply>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SaveGameReply): SaveGameReply {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: SaveGameReply, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SaveGameReply
+ */
+export const SaveGameReply = new SaveGameReply$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class HelloRequest$Type extends MessageType<HelloRequest> {
     constructor() {
@@ -128,9 +1279,2839 @@ class HelloReply$Type extends MessageType<HelloReply> {
  * @generated MessageType for protobuf message pandt.HelloReply
  */
 export const HelloReply = new HelloReply$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GameCommand$Type extends MessageType<GameCommand> {
+    constructor() {
+        super("pandt.GameCommand", []);
+    }
+    create(value?: PartialMessage<GameCommand>): GameCommand {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<GameCommand>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GameCommand): GameCommand {
+        return target ?? this.create();
+    }
+    internalBinaryWrite(message: GameCommand, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.GameCommand
+ */
+export const GameCommand = new GameCommand$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Point3$Type extends MessageType<Point3> {
+    constructor() {
+        super("pandt.Point3", [
+            { no: 1, name: "x", kind: "scalar", T: 18 /*ScalarType.SINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 2, name: "y", kind: "scalar", T: 18 /*ScalarType.SINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 3, name: "z", kind: "scalar", T: 18 /*ScalarType.SINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Point3>): Point3 {
+        const message = { x: 0n, y: 0n, z: 0n };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Point3>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Point3): Point3 {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* sint64 x */ 1:
+                    message.x = reader.sint64().toBigInt();
+                    break;
+                case /* sint64 y */ 2:
+                    message.y = reader.sint64().toBigInt();
+                    break;
+                case /* sint64 z */ 3:
+                    message.z = reader.sint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Point3, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* sint64 x = 1; */
+        if (message.x !== 0n)
+            writer.tag(1, WireType.Varint).sint64(message.x);
+        /* sint64 y = 2; */
+        if (message.y !== 0n)
+            writer.tag(2, WireType.Varint).sint64(message.y);
+        /* sint64 z = 3; */
+        if (message.z !== 0n)
+            writer.tag(3, WireType.Varint).sint64(message.z);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Point3
+ */
+export const Point3 = new Point3$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class LineSegment$Type extends MessageType<LineSegment> {
+    constructor() {
+        super("pandt.LineSegment", [
+            { no: 1, name: "point1", kind: "message", T: () => Point3 },
+            { no: 2, name: "point2", kind: "message", T: () => Point3 }
+        ]);
+    }
+    create(value?: PartialMessage<LineSegment>): LineSegment {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<LineSegment>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: LineSegment): LineSegment {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Point3 point1 */ 1:
+                    message.point1 = Point3.internalBinaryRead(reader, reader.uint32(), options, message.point1);
+                    break;
+                case /* pandt.Point3 point2 */ 2:
+                    message.point2 = Point3.internalBinaryRead(reader, reader.uint32(), options, message.point2);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: LineSegment, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Point3 point1 = 1; */
+        if (message.point1)
+            Point3.internalBinaryWrite(message.point1, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Point3 point2 = 2; */
+        if (message.point2)
+            Point3.internalBinaryWrite(message.point2, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.LineSegment
+ */
+export const LineSegment = new LineSegment$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreatureTarget$Type extends MessageType<CreatureTarget> {
+    constructor() {
+        super("pandt.CreatureTarget", [
+            { no: 1, name: "melee", kind: "scalar", oneof: "target", T: 8 /*ScalarType.BOOL*/ },
+            { no: 2, name: "range", kind: "scalar", oneof: "target", T: 13 /*ScalarType.UINT32*/ },
+            { no: 3, name: "actor", kind: "scalar", oneof: "target", T: 8 /*ScalarType.BOOL*/ },
+            { no: 4, name: "LineFromActor", kind: "scalar", jsonName: "LineFromActor", oneof: "target", T: 13 /*ScalarType.UINT32*/ },
+            { no: 5, name: "some_creatures_in_volume_in_range", kind: "message", oneof: "target", T: () => SomeCreaturesInVolumeInRange },
+            { no: 6, name: "all_creatures_in_volume_in_range", kind: "message", oneof: "target", T: () => AllCreaturesInVolumeInRange }
+        ]);
+    }
+    create(value?: PartialMessage<CreatureTarget>): CreatureTarget {
+        const message = { target: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<CreatureTarget>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreatureTarget): CreatureTarget {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* bool melee */ 1:
+                    message.target = {
+                        oneofKind: "melee",
+                        melee: reader.bool()
+                    };
+                    break;
+                case /* uint32 range */ 2:
+                    message.target = {
+                        oneofKind: "range",
+                        range: reader.uint32()
+                    };
+                    break;
+                case /* bool actor */ 3:
+                    message.target = {
+                        oneofKind: "actor",
+                        actor: reader.bool()
+                    };
+                    break;
+                case /* uint32 LineFromActor = 4 [json_name = "LineFromActor"];*/ 4:
+                    message.target = {
+                        oneofKind: "lineFromActor",
+                        lineFromActor: reader.uint32()
+                    };
+                    break;
+                case /* pandt.SomeCreaturesInVolumeInRange some_creatures_in_volume_in_range */ 5:
+                    message.target = {
+                        oneofKind: "someCreaturesInVolumeInRange",
+                        someCreaturesInVolumeInRange: SomeCreaturesInVolumeInRange.internalBinaryRead(reader, reader.uint32(), options, (message.target as any).someCreaturesInVolumeInRange)
+                    };
+                    break;
+                case /* pandt.AllCreaturesInVolumeInRange all_creatures_in_volume_in_range */ 6:
+                    message.target = {
+                        oneofKind: "allCreaturesInVolumeInRange",
+                        allCreaturesInVolumeInRange: AllCreaturesInVolumeInRange.internalBinaryRead(reader, reader.uint32(), options, (message.target as any).allCreaturesInVolumeInRange)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreatureTarget, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* bool melee = 1; */
+        if (message.target.oneofKind === "melee")
+            writer.tag(1, WireType.Varint).bool(message.target.melee);
+        /* uint32 range = 2; */
+        if (message.target.oneofKind === "range")
+            writer.tag(2, WireType.Varint).uint32(message.target.range);
+        /* bool actor = 3; */
+        if (message.target.oneofKind === "actor")
+            writer.tag(3, WireType.Varint).bool(message.target.actor);
+        /* uint32 LineFromActor = 4 [json_name = "LineFromActor"]; */
+        if (message.target.oneofKind === "lineFromActor")
+            writer.tag(4, WireType.Varint).uint32(message.target.lineFromActor);
+        /* pandt.SomeCreaturesInVolumeInRange some_creatures_in_volume_in_range = 5; */
+        if (message.target.oneofKind === "someCreaturesInVolumeInRange")
+            SomeCreaturesInVolumeInRange.internalBinaryWrite(message.target.someCreaturesInVolumeInRange, writer.tag(5, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.AllCreaturesInVolumeInRange all_creatures_in_volume_in_range = 6; */
+        if (message.target.oneofKind === "allCreaturesInVolumeInRange")
+            AllCreaturesInVolumeInRange.internalBinaryWrite(message.target.allCreaturesInVolumeInRange, writer.tag(6, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.CreatureTarget
+ */
+export const CreatureTarget = new CreatureTarget$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SomeCreaturesInVolumeInRange$Type extends MessageType<SomeCreaturesInVolumeInRange> {
+    constructor() {
+        super("pandt.SomeCreaturesInVolumeInRange", [
+            { no: 1, name: "volume", kind: "message", T: () => Volume },
+            { no: 2, name: "maximum", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 3, name: "range", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SomeCreaturesInVolumeInRange>): SomeCreaturesInVolumeInRange {
+        const message = { maximum: 0, range: 0 };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SomeCreaturesInVolumeInRange>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SomeCreaturesInVolumeInRange): SomeCreaturesInVolumeInRange {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Volume volume */ 1:
+                    message.volume = Volume.internalBinaryRead(reader, reader.uint32(), options, message.volume);
+                    break;
+                case /* uint32 maximum */ 2:
+                    message.maximum = reader.uint32();
+                    break;
+                case /* uint32 range */ 3:
+                    message.range = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SomeCreaturesInVolumeInRange, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Volume volume = 1; */
+        if (message.volume)
+            Volume.internalBinaryWrite(message.volume, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 maximum = 2; */
+        if (message.maximum !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.maximum);
+        /* uint32 range = 3; */
+        if (message.range !== 0)
+            writer.tag(3, WireType.Varint).uint32(message.range);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SomeCreaturesInVolumeInRange
+ */
+export const SomeCreaturesInVolumeInRange = new SomeCreaturesInVolumeInRange$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AllCreaturesInVolumeInRange$Type extends MessageType<AllCreaturesInVolumeInRange> {
+    constructor() {
+        super("pandt.AllCreaturesInVolumeInRange", [
+            { no: 1, name: "volume", kind: "message", T: () => Volume },
+            { no: 2, name: "range", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AllCreaturesInVolumeInRange>): AllCreaturesInVolumeInRange {
+        const message = { range: 0 };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<AllCreaturesInVolumeInRange>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AllCreaturesInVolumeInRange): AllCreaturesInVolumeInRange {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Volume volume */ 1:
+                    message.volume = Volume.internalBinaryRead(reader, reader.uint32(), options, message.volume);
+                    break;
+                case /* uint32 range */ 2:
+                    message.range = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AllCreaturesInVolumeInRange, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Volume volume = 1; */
+        if (message.volume)
+            Volume.internalBinaryWrite(message.volume, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 range = 2; */
+        if (message.range !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.range);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.AllCreaturesInVolumeInRange
+ */
+export const AllCreaturesInVolumeInRange = new AllCreaturesInVolumeInRange$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Volume$Type extends MessageType<Volume> {
+    constructor() {
+        super("pandt.Volume", [
+            { no: 1, name: "sphere", kind: "scalar", oneof: "volume", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "line", kind: "message", oneof: "volume", T: () => Point3 },
+            { no: 3, name: "vertical_cylinder", kind: "message", oneof: "volume", T: () => VerticalCylinder },
+            { no: 4, name: "aabb", kind: "message", oneof: "volume", T: () => AABB }
+        ]);
+    }
+    create(value?: PartialMessage<Volume>): Volume {
+        const message = { volume: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Volume>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Volume): Volume {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 sphere */ 1:
+                    message.volume = {
+                        oneofKind: "sphere",
+                        sphere: reader.uint32()
+                    };
+                    break;
+                case /* pandt.Point3 line */ 2:
+                    message.volume = {
+                        oneofKind: "line",
+                        line: Point3.internalBinaryRead(reader, reader.uint32(), options, (message.volume as any).line)
+                    };
+                    break;
+                case /* pandt.VerticalCylinder vertical_cylinder */ 3:
+                    message.volume = {
+                        oneofKind: "verticalCylinder",
+                        verticalCylinder: VerticalCylinder.internalBinaryRead(reader, reader.uint32(), options, (message.volume as any).verticalCylinder)
+                    };
+                    break;
+                case /* pandt.AABB aabb */ 4:
+                    message.volume = {
+                        oneofKind: "aabb",
+                        aabb: AABB.internalBinaryRead(reader, reader.uint32(), options, (message.volume as any).aabb)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Volume, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 sphere = 1; */
+        if (message.volume.oneofKind === "sphere")
+            writer.tag(1, WireType.Varint).uint32(message.volume.sphere);
+        /* pandt.Point3 line = 2; */
+        if (message.volume.oneofKind === "line")
+            Point3.internalBinaryWrite(message.volume.line, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.VerticalCylinder vertical_cylinder = 3; */
+        if (message.volume.oneofKind === "verticalCylinder")
+            VerticalCylinder.internalBinaryWrite(message.volume.verticalCylinder, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.AABB aabb = 4; */
+        if (message.volume.oneofKind === "aabb")
+            AABB.internalBinaryWrite(message.volume.aabb, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Volume
+ */
+export const Volume = new Volume$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class VerticalCylinder$Type extends MessageType<VerticalCylinder> {
+    constructor() {
+        super("pandt.VerticalCylinder", [
+            { no: 1, name: "radius", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "height", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<VerticalCylinder>): VerticalCylinder {
+        const message = { radius: 0, height: 0 };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<VerticalCylinder>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: VerticalCylinder): VerticalCylinder {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 radius */ 1:
+                    message.radius = reader.uint32();
+                    break;
+                case /* uint32 height */ 2:
+                    message.height = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: VerticalCylinder, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 radius = 1; */
+        if (message.radius !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.radius);
+        /* uint32 height = 2; */
+        if (message.height !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.height);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.VerticalCylinder
+ */
+export const VerticalCylinder = new VerticalCylinder$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AABB$Type extends MessageType<AABB> {
+    constructor() {
+        super("pandt.AABB", [
+            { no: 1, name: "x", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 2, name: "y", kind: "scalar", T: 13 /*ScalarType.UINT32*/ },
+            { no: 3, name: "z", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AABB>): AABB {
+        const message = { x: 0, y: 0, z: 0 };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<AABB>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AABB): AABB {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint32 x */ 1:
+                    message.x = reader.uint32();
+                    break;
+                case /* uint32 y */ 2:
+                    message.y = reader.uint32();
+                    break;
+                case /* uint32 z */ 3:
+                    message.z = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AABB, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint32 x = 1; */
+        if (message.x !== 0)
+            writer.tag(1, WireType.Varint).uint32(message.x);
+        /* uint32 y = 2; */
+        if (message.y !== 0)
+            writer.tag(2, WireType.Varint).uint32(message.y);
+        /* uint32 z = 3; */
+        if (message.z !== 0)
+            writer.tag(3, WireType.Varint).uint32(message.z);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.AABB
+ */
+export const AABB = new AABB$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Action$Type extends MessageType<Action> {
+    constructor() {
+        super("pandt.Action", [
+            { no: 1, name: "creature_action", kind: "message", oneof: "action", T: () => CreatureAction },
+            { no: 2, name: "scene_volume", kind: "message", oneof: "action", T: () => SceneVolumeAction }
+        ]);
+    }
+    create(value?: PartialMessage<Action>): Action {
+        const message = { action: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Action>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Action): Action {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.CreatureAction creature_action */ 1:
+                    message.action = {
+                        oneofKind: "creatureAction",
+                        creatureAction: CreatureAction.internalBinaryRead(reader, reader.uint32(), options, (message.action as any).creatureAction)
+                    };
+                    break;
+                case /* pandt.SceneVolumeAction scene_volume */ 2:
+                    message.action = {
+                        oneofKind: "sceneVolume",
+                        sceneVolume: SceneVolumeAction.internalBinaryRead(reader, reader.uint32(), options, (message.action as any).sceneVolume)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Action, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.CreatureAction creature_action = 1; */
+        if (message.action.oneofKind === "creatureAction")
+            CreatureAction.internalBinaryWrite(message.action.creatureAction, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.SceneVolumeAction scene_volume = 2; */
+        if (message.action.oneofKind === "sceneVolume")
+            SceneVolumeAction.internalBinaryWrite(message.action.sceneVolume, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Action
+ */
+export const Action = new Action$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreatureAction$Type extends MessageType<CreatureAction> {
+    constructor() {
+        super("pandt.CreatureAction", [
+            { no: 1, name: "effect", kind: "message", T: () => CreatureEffect },
+            { no: 2, name: "target", kind: "message", T: () => CreatureTarget }
+        ]);
+    }
+    create(value?: PartialMessage<CreatureAction>): CreatureAction {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<CreatureAction>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreatureAction): CreatureAction {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.CreatureEffect effect */ 1:
+                    message.effect = CreatureEffect.internalBinaryRead(reader, reader.uint32(), options, message.effect);
+                    break;
+                case /* pandt.CreatureTarget target */ 2:
+                    message.target = CreatureTarget.internalBinaryRead(reader, reader.uint32(), options, message.target);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreatureAction, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.CreatureEffect effect = 1; */
+        if (message.effect)
+            CreatureEffect.internalBinaryWrite(message.effect, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.CreatureTarget target = 2; */
+        if (message.target)
+            CreatureTarget.internalBinaryWrite(message.target, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.CreatureAction
+ */
+export const CreatureAction = new CreatureAction$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SceneVolumeAction$Type extends MessageType<SceneVolumeAction> {
+    constructor() {
+        super("pandt.SceneVolumeAction", [
+            { no: 1, name: "effect", kind: "message", T: () => SceneEffect },
+            { no: 2, name: "target", kind: "message", T: () => SceneTarget }
+        ]);
+    }
+    create(value?: PartialMessage<SceneVolumeAction>): SceneVolumeAction {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SceneVolumeAction>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SceneVolumeAction): SceneVolumeAction {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.SceneEffect effect */ 1:
+                    message.effect = SceneEffect.internalBinaryRead(reader, reader.uint32(), options, message.effect);
+                    break;
+                case /* pandt.SceneTarget target */ 2:
+                    message.target = SceneTarget.internalBinaryRead(reader, reader.uint32(), options, message.target);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SceneVolumeAction, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.SceneEffect effect = 1; */
+        if (message.effect)
+            SceneEffect.internalBinaryWrite(message.effect, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.SceneTarget target = 2; */
+        if (message.target)
+            SceneTarget.internalBinaryWrite(message.target, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SceneVolumeAction
+ */
+export const SceneVolumeAction = new SceneVolumeAction$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreatureEffect$Type extends MessageType<CreatureEffect> {
+    constructor() {
+        super("pandt.CreatureEffect", [
+            { no: 1, name: "apply_condition", kind: "message", oneof: "creatureEffect", T: () => ConditionDuration },
+            { no: 2, name: "heal", kind: "message", oneof: "creatureEffect", T: () => Dice },
+            { no: 3, name: "damage", kind: "message", oneof: "creatureEffect", T: () => Dice },
+            { no: 4, name: "multi_effect", kind: "message", oneof: "creatureEffect", T: () => MultiEffect },
+            { no: 5, name: "generate_energy", kind: "scalar", oneof: "creatureEffect", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CreatureEffect>): CreatureEffect {
+        const message = { creatureEffect: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<CreatureEffect>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreatureEffect): CreatureEffect {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.ConditionDuration apply_condition */ 1:
+                    message.creatureEffect = {
+                        oneofKind: "applyCondition",
+                        applyCondition: ConditionDuration.internalBinaryRead(reader, reader.uint32(), options, (message.creatureEffect as any).applyCondition)
+                    };
+                    break;
+                case /* pandt.Dice heal */ 2:
+                    message.creatureEffect = {
+                        oneofKind: "heal",
+                        heal: Dice.internalBinaryRead(reader, reader.uint32(), options, (message.creatureEffect as any).heal)
+                    };
+                    break;
+                case /* pandt.Dice damage */ 3:
+                    message.creatureEffect = {
+                        oneofKind: "damage",
+                        damage: Dice.internalBinaryRead(reader, reader.uint32(), options, (message.creatureEffect as any).damage)
+                    };
+                    break;
+                case /* pandt.MultiEffect multi_effect */ 4:
+                    message.creatureEffect = {
+                        oneofKind: "multiEffect",
+                        multiEffect: MultiEffect.internalBinaryRead(reader, reader.uint32(), options, (message.creatureEffect as any).multiEffect)
+                    };
+                    break;
+                case /* uint64 generate_energy */ 5:
+                    message.creatureEffect = {
+                        oneofKind: "generateEnergy",
+                        generateEnergy: reader.uint64().toBigInt()
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreatureEffect, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.ConditionDuration apply_condition = 1; */
+        if (message.creatureEffect.oneofKind === "applyCondition")
+            ConditionDuration.internalBinaryWrite(message.creatureEffect.applyCondition, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Dice heal = 2; */
+        if (message.creatureEffect.oneofKind === "heal")
+            Dice.internalBinaryWrite(message.creatureEffect.heal, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Dice damage = 3; */
+        if (message.creatureEffect.oneofKind === "damage")
+            Dice.internalBinaryWrite(message.creatureEffect.damage, writer.tag(3, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.MultiEffect multi_effect = 4; */
+        if (message.creatureEffect.oneofKind === "multiEffect")
+            MultiEffect.internalBinaryWrite(message.creatureEffect.multiEffect, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* uint64 generate_energy = 5; */
+        if (message.creatureEffect.oneofKind === "generateEnergy")
+            writer.tag(5, WireType.Varint).uint64(message.creatureEffect.generateEnergy);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.CreatureEffect
+ */
+export const CreatureEffect = new CreatureEffect$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SceneEffect$Type extends MessageType<SceneEffect> {
+    constructor() {
+        super("pandt.SceneEffect", [
+            { no: 1, name: "create_volume_condition", kind: "message", oneof: "sceneEffect", T: () => VolumeDuration }
+        ]);
+    }
+    create(value?: PartialMessage<SceneEffect>): SceneEffect {
+        const message = { sceneEffect: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SceneEffect>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SceneEffect): SceneEffect {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.VolumeDuration create_volume_condition */ 1:
+                    message.sceneEffect = {
+                        oneofKind: "createVolumeCondition",
+                        createVolumeCondition: VolumeDuration.internalBinaryRead(reader, reader.uint32(), options, (message.sceneEffect as any).createVolumeCondition)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SceneEffect, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.VolumeDuration create_volume_condition = 1; */
+        if (message.sceneEffect.oneofKind === "createVolumeCondition")
+            VolumeDuration.internalBinaryWrite(message.sceneEffect.createVolumeCondition, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SceneEffect
+ */
+export const SceneEffect = new SceneEffect$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ConditionDuration$Type extends MessageType<ConditionDuration> {
+    constructor() {
+        super("pandt.ConditionDuration", [
+            { no: 1, name: "duration", kind: "message", T: () => Duration },
+            { no: 2, name: "condition", kind: "message", T: () => Condition }
+        ]);
+    }
+    create(value?: PartialMessage<ConditionDuration>): ConditionDuration {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<ConditionDuration>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ConditionDuration): ConditionDuration {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Duration duration */ 1:
+                    message.duration = Duration.internalBinaryRead(reader, reader.uint32(), options, message.duration);
+                    break;
+                case /* pandt.Condition condition */ 2:
+                    message.condition = Condition.internalBinaryRead(reader, reader.uint32(), options, message.condition);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ConditionDuration, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Duration duration = 1; */
+        if (message.duration)
+            Duration.internalBinaryWrite(message.duration, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Condition condition = 2; */
+        if (message.condition)
+            Condition.internalBinaryWrite(message.condition, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.ConditionDuration
+ */
+export const ConditionDuration = new ConditionDuration$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class VolumeDuration$Type extends MessageType<VolumeDuration> {
+    constructor() {
+        super("pandt.VolumeDuration", [
+            { no: 1, name: "duration", kind: "message", T: () => Duration },
+            { no: 2, name: "condition", kind: "message", T: () => Condition }
+        ]);
+    }
+    create(value?: PartialMessage<VolumeDuration>): VolumeDuration {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<VolumeDuration>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: VolumeDuration): VolumeDuration {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Duration duration */ 1:
+                    message.duration = Duration.internalBinaryRead(reader, reader.uint32(), options, message.duration);
+                    break;
+                case /* pandt.Condition condition */ 2:
+                    message.condition = Condition.internalBinaryRead(reader, reader.uint32(), options, message.condition);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: VolumeDuration, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Duration duration = 1; */
+        if (message.duration)
+            Duration.internalBinaryWrite(message.duration, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Condition condition = 2; */
+        if (message.condition)
+            Condition.internalBinaryWrite(message.condition, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.VolumeDuration
+ */
+export const VolumeDuration = new VolumeDuration$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class MultiEffect$Type extends MessageType<MultiEffect> {
+    constructor() {
+        super("pandt.MultiEffect", [
+            { no: 1, name: "effect", kind: "message", repeat: 1 /*RepeatType.PACKED*/, T: () => CreatureEffect }
+        ]);
+    }
+    create(value?: PartialMessage<MultiEffect>): MultiEffect {
+        const message = { effect: [] };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<MultiEffect>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: MultiEffect): MultiEffect {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated pandt.CreatureEffect effect */ 1:
+                    message.effect.push(CreatureEffect.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: MultiEffect, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated pandt.CreatureEffect effect = 1; */
+        for (let i = 0; i < message.effect.length; i++)
+            CreatureEffect.internalBinaryWrite(message.effect[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.MultiEffect
+ */
+export const MultiEffect = new MultiEffect$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Condition$Type extends MessageType<Condition> {
+    constructor() {
+        super("pandt.Condition", [
+            { no: 1, name: "recurring_effect", kind: "message", oneof: "condition", T: () => CreatureEffect },
+            { no: 2, name: "dead", kind: "scalar", oneof: "condition", T: 8 /*ScalarType.BOOL*/ },
+            { no: 3, name: "incapacitated", kind: "scalar", oneof: "condition", T: 8 /*ScalarType.BOOL*/ },
+            { no: 4, name: "add_damage_buff", kind: "scalar", oneof: "condition", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 5, name: "double_max_movement", kind: "scalar", oneof: "condition", T: 8 /*ScalarType.BOOL*/ },
+            { no: 6, name: "activate_ability", kind: "scalar", oneof: "condition", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Condition>): Condition {
+        const message = { condition: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Condition>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Condition): Condition {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.CreatureEffect recurring_effect */ 1:
+                    message.condition = {
+                        oneofKind: "recurringEffect",
+                        recurringEffect: CreatureEffect.internalBinaryRead(reader, reader.uint32(), options, (message.condition as any).recurringEffect)
+                    };
+                    break;
+                case /* bool dead */ 2:
+                    message.condition = {
+                        oneofKind: "dead",
+                        dead: reader.bool()
+                    };
+                    break;
+                case /* bool incapacitated */ 3:
+                    message.condition = {
+                        oneofKind: "incapacitated",
+                        incapacitated: reader.bool()
+                    };
+                    break;
+                case /* uint64 add_damage_buff */ 4:
+                    message.condition = {
+                        oneofKind: "addDamageBuff",
+                        addDamageBuff: reader.uint64().toBigInt()
+                    };
+                    break;
+                case /* bool double_max_movement */ 5:
+                    message.condition = {
+                        oneofKind: "doubleMaxMovement",
+                        doubleMaxMovement: reader.bool()
+                    };
+                    break;
+                case /* string activate_ability */ 6:
+                    message.condition = {
+                        oneofKind: "activateAbility",
+                        activateAbility: reader.string()
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Condition, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.CreatureEffect recurring_effect = 1; */
+        if (message.condition.oneofKind === "recurringEffect")
+            CreatureEffect.internalBinaryWrite(message.condition.recurringEffect, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* bool dead = 2; */
+        if (message.condition.oneofKind === "dead")
+            writer.tag(2, WireType.Varint).bool(message.condition.dead);
+        /* bool incapacitated = 3; */
+        if (message.condition.oneofKind === "incapacitated")
+            writer.tag(3, WireType.Varint).bool(message.condition.incapacitated);
+        /* uint64 add_damage_buff = 4; */
+        if (message.condition.oneofKind === "addDamageBuff")
+            writer.tag(4, WireType.Varint).uint64(message.condition.addDamageBuff);
+        /* bool double_max_movement = 5; */
+        if (message.condition.oneofKind === "doubleMaxMovement")
+            writer.tag(5, WireType.Varint).bool(message.condition.doubleMaxMovement);
+        /* string activate_ability = 6; */
+        if (message.condition.oneofKind === "activateAbility")
+            writer.tag(6, WireType.LengthDelimited).string(message.condition.activateAbility);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Condition
+ */
+export const Condition = new Condition$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Duration$Type extends MessageType<Duration> {
+    constructor() {
+        super("pandt.Duration", [
+            { no: 1, name: "interminate", kind: "scalar", oneof: "duration", T: 8 /*ScalarType.BOOL*/ },
+            { no: 2, name: "rounds", kind: "scalar", oneof: "duration", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<Duration>): Duration {
+        const message = { duration: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Duration>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Duration): Duration {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* bool interminate */ 1:
+                    message.duration = {
+                        oneofKind: "interminate",
+                        interminate: reader.bool()
+                    };
+                    break;
+                case /* uint64 rounds */ 2:
+                    message.duration = {
+                        oneofKind: "rounds",
+                        rounds: reader.uint64().toBigInt()
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Duration, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* bool interminate = 1; */
+        if (message.duration.oneofKind === "interminate")
+            writer.tag(1, WireType.Varint).bool(message.duration.interminate);
+        /* uint64 rounds = 2; */
+        if (message.duration.oneofKind === "rounds")
+            writer.tag(2, WireType.Varint).uint64(message.duration.rounds);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Duration
+ */
+export const Duration = new Duration$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class Dice$Type extends MessageType<Dice> {
+    constructor() {
+        super("pandt.Dice", [
+            { no: 1, name: "expr", kind: "message", oneof: "dice", T: () => DiceExpr },
+            { no: 2, name: "dice_plus", kind: "message", oneof: "dice", T: () => DicePlus },
+            { no: 3, name: "flat", kind: "scalar", oneof: "dice", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 4, name: "best_of", kind: "message", oneof: "dice", T: () => BestOfDice }
+        ]);
+    }
+    create(value?: PartialMessage<Dice>): Dice {
+        const message = { dice: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<Dice>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: Dice): Dice {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.DiceExpr expr */ 1:
+                    message.dice = {
+                        oneofKind: "expr",
+                        expr: DiceExpr.internalBinaryRead(reader, reader.uint32(), options, (message.dice as any).expr)
+                    };
+                    break;
+                case /* pandt.DicePlus dice_plus */ 2:
+                    message.dice = {
+                        oneofKind: "dicePlus",
+                        dicePlus: DicePlus.internalBinaryRead(reader, reader.uint32(), options, (message.dice as any).dicePlus)
+                    };
+                    break;
+                case /* uint64 flat */ 3:
+                    message.dice = {
+                        oneofKind: "flat",
+                        flat: reader.uint64().toBigInt()
+                    };
+                    break;
+                case /* pandt.BestOfDice best_of */ 4:
+                    message.dice = {
+                        oneofKind: "bestOf",
+                        bestOf: BestOfDice.internalBinaryRead(reader, reader.uint32(), options, (message.dice as any).bestOf)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: Dice, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.DiceExpr expr = 1; */
+        if (message.dice.oneofKind === "expr")
+            DiceExpr.internalBinaryWrite(message.dice.expr, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.DicePlus dice_plus = 2; */
+        if (message.dice.oneofKind === "dicePlus")
+            DicePlus.internalBinaryWrite(message.dice.dicePlus, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* uint64 flat = 3; */
+        if (message.dice.oneofKind === "flat")
+            writer.tag(3, WireType.Varint).uint64(message.dice.flat);
+        /* pandt.BestOfDice best_of = 4; */
+        if (message.dice.oneofKind === "bestOf")
+            BestOfDice.internalBinaryWrite(message.dice.bestOf, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.Dice
+ */
+export const Dice = new Dice$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class DiceExpr$Type extends MessageType<DiceExpr> {
+    constructor() {
+        super("pandt.DiceExpr", [
+            { no: 1, name: "num", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 2, name: "size", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<DiceExpr>): DiceExpr {
+        const message = { num: 0n, size: 0n };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<DiceExpr>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: DiceExpr): DiceExpr {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint64 num */ 1:
+                    message.num = reader.uint64().toBigInt();
+                    break;
+                case /* uint64 size */ 2:
+                    message.size = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: DiceExpr, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint64 num = 1; */
+        if (message.num !== 0n)
+            writer.tag(1, WireType.Varint).uint64(message.num);
+        /* uint64 size = 2; */
+        if (message.size !== 0n)
+            writer.tag(2, WireType.Varint).uint64(message.size);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.DiceExpr
+ */
+export const DiceExpr = new DiceExpr$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class BestOfDice$Type extends MessageType<BestOfDice> {
+    constructor() {
+        super("pandt.BestOfDice", [
+            { no: 1, name: "count", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 2, name: "dice", kind: "message", T: () => Dice }
+        ]);
+    }
+    create(value?: PartialMessage<BestOfDice>): BestOfDice {
+        const message = { count: 0n };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<BestOfDice>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: BestOfDice): BestOfDice {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint64 count */ 1:
+                    message.count = reader.uint64().toBigInt();
+                    break;
+                case /* pandt.Dice dice */ 2:
+                    message.dice = Dice.internalBinaryRead(reader, reader.uint32(), options, message.dice);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: BestOfDice, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint64 count = 1; */
+        if (message.count !== 0n)
+            writer.tag(1, WireType.Varint).uint64(message.count);
+        /* pandt.Dice dice = 2; */
+        if (message.dice)
+            Dice.internalBinaryWrite(message.dice, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.BestOfDice
+ */
+export const BestOfDice = new BestOfDice$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class DicePlus$Type extends MessageType<DicePlus> {
+    constructor() {
+        super("pandt.DicePlus", [
+            { no: 1, name: "dice1", kind: "message", T: () => Dice },
+            { no: 2, name: "dice2", kind: "message", T: () => Dice }
+        ]);
+    }
+    create(value?: PartialMessage<DicePlus>): DicePlus {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<DicePlus>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: DicePlus): DicePlus {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Dice dice1 */ 1:
+                    message.dice1 = Dice.internalBinaryRead(reader, reader.uint32(), options, message.dice1);
+                    break;
+                case /* pandt.Dice dice2 */ 2:
+                    message.dice2 = Dice.internalBinaryRead(reader, reader.uint32(), options, message.dice2);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: DicePlus, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Dice dice1 = 1; */
+        if (message.dice1)
+            Dice.internalBinaryWrite(message.dice1, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.Dice dice2 = 2; */
+        if (message.dice2)
+            Dice.internalBinaryWrite(message.dice2, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.DicePlus
+ */
+export const DicePlus = new DicePlus$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class DecidedTarget$Type extends MessageType<DecidedTarget> {
+    constructor() {
+        super("pandt.DecidedTarget", [
+            { no: 1, name: "creature", kind: "scalar", oneof: "decidedTarget", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "creatures", kind: "message", oneof: "decidedTarget", T: () => MultipleCreatureIDs },
+            { no: 3, name: "actor", kind: "scalar", oneof: "decidedTarget", T: 8 /*ScalarType.BOOL*/ },
+            { no: 4, name: "point", kind: "message", oneof: "decidedTarget", T: () => Point3 }
+        ]);
+    }
+    create(value?: PartialMessage<DecidedTarget>): DecidedTarget {
+        const message = { decidedTarget: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<DecidedTarget>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: DecidedTarget): DecidedTarget {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string creature */ 1:
+                    message.decidedTarget = {
+                        oneofKind: "creature",
+                        creature: reader.string()
+                    };
+                    break;
+                case /* pandt.MultipleCreatureIDs creatures */ 2:
+                    message.decidedTarget = {
+                        oneofKind: "creatures",
+                        creatures: MultipleCreatureIDs.internalBinaryRead(reader, reader.uint32(), options, (message.decidedTarget as any).creatures)
+                    };
+                    break;
+                case /* bool actor */ 3:
+                    message.decidedTarget = {
+                        oneofKind: "actor",
+                        actor: reader.bool()
+                    };
+                    break;
+                case /* pandt.Point3 point */ 4:
+                    message.decidedTarget = {
+                        oneofKind: "point",
+                        point: Point3.internalBinaryRead(reader, reader.uint32(), options, (message.decidedTarget as any).point)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: DecidedTarget, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string creature = 1; */
+        if (message.decidedTarget.oneofKind === "creature")
+            writer.tag(1, WireType.LengthDelimited).string(message.decidedTarget.creature);
+        /* pandt.MultipleCreatureIDs creatures = 2; */
+        if (message.decidedTarget.oneofKind === "creatures")
+            MultipleCreatureIDs.internalBinaryWrite(message.decidedTarget.creatures, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* bool actor = 3; */
+        if (message.decidedTarget.oneofKind === "actor")
+            writer.tag(3, WireType.Varint).bool(message.decidedTarget.actor);
+        /* pandt.Point3 point = 4; */
+        if (message.decidedTarget.oneofKind === "point")
+            Point3.internalBinaryWrite(message.decidedTarget.point, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.DecidedTarget
+ */
+export const DecidedTarget = new DecidedTarget$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SceneTarget$Type extends MessageType<SceneTarget> {
+    constructor() {
+        super("pandt.SceneTarget", [
+            { no: 1, name: "ranged_volume", kind: "message", oneof: "sceneTarget", T: () => RangedVolume }
+        ]);
+    }
+    create(value?: PartialMessage<SceneTarget>): SceneTarget {
+        const message = { sceneTarget: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<SceneTarget>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SceneTarget): SceneTarget {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.RangedVolume ranged_volume */ 1:
+                    message.sceneTarget = {
+                        oneofKind: "rangedVolume",
+                        rangedVolume: RangedVolume.internalBinaryRead(reader, reader.uint32(), options, (message.sceneTarget as any).rangedVolume)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SceneTarget, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.RangedVolume ranged_volume = 1; */
+        if (message.sceneTarget.oneofKind === "rangedVolume")
+            RangedVolume.internalBinaryWrite(message.sceneTarget.rangedVolume, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.SceneTarget
+ */
+export const SceneTarget = new SceneTarget$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class RangedVolume$Type extends MessageType<RangedVolume> {
+    constructor() {
+        super("pandt.RangedVolume", [
+            { no: 1, name: "volume", kind: "message", T: () => Volume },
+            { no: 2, name: "range", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<RangedVolume>): RangedVolume {
+        const message = { range: 0n };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<RangedVolume>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: RangedVolume): RangedVolume {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Volume volume */ 1:
+                    message.volume = Volume.internalBinaryRead(reader, reader.uint32(), options, message.volume);
+                    break;
+                case /* uint64 range */ 2:
+                    message.range = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: RangedVolume, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Volume volume = 1; */
+        if (message.volume)
+            Volume.internalBinaryWrite(message.volume, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* uint64 range = 2; */
+        if (message.range !== 0n)
+            writer.tag(2, WireType.Varint).uint64(message.range);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.RangedVolume
+ */
+export const RangedVolume = new RangedVolume$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class MultipleCreatureIDs$Type extends MessageType<MultipleCreatureIDs> {
+    constructor() {
+        super("pandt.MultipleCreatureIDs", [
+            { no: 1, name: "creature_id", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<MultipleCreatureIDs>): MultipleCreatureIDs {
+        const message = { creatureId: [] };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<MultipleCreatureIDs>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: MultipleCreatureIDs): MultipleCreatureIDs {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated string creature_id */ 1:
+                    message.creatureId.push(reader.string());
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: MultipleCreatureIDs, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated string creature_id = 1; */
+        for (let i = 0; i < message.creatureId.length; i++)
+            writer.tag(1, WireType.LengthDelimited).string(message.creatureId[i]);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.MultipleCreatureIDs
+ */
+export const MultipleCreatureIDs = new MultipleCreatureIDs$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class GameError$Type extends MessageType<GameError> {
+    constructor() {
+        super("pandt.GameError", [
+            { no: 1, name: "file_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "attribute_not_found", kind: "message", oneof: "error", T: () => AttributeNotFound },
+            { no: 3, name: "ability_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "creature_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "item_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "item_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "scene_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "scene_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "scene_in_use", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "id_too_long", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "condition_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "invalid_command", kind: "message", oneof: "error", T: () => GameCommand },
+            { no: 13, name: "class_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 14, name: "class_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 15, name: "no_ability", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 16, name: "combat_must_have_creatures", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 17, name: "must_reroll_at_start_of_round", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 18, name: "creature_lacks_ability", kind: "message", oneof: "error", T: () => CreatureLacksAbility },
+            { no: 19, name: "creature_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 20, name: "invalid_target", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 21, name: "invalid_target_for_target_spec", kind: "message", oneof: "error", T: () => InvalidTargetForTargetSpec },
+            { no: 22, name: "invalid_target_for_action", kind: "message", oneof: "error", T: () => InvalidTargetForAction },
+            { no: 23, name: "creature_out_of_range", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 24, name: "point_out_of_range", kind: "message", oneof: "error", T: () => Point3 },
+            { no: 25, name: "buggy_program", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 26, name: "not_in_combat", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 27, name: "already_in_combat", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 28, name: "cannot_move", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 29, name: "cannot_act", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 30, name: "no_path_found", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 31, name: "folder_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 32, name: "step_too_big", kind: "message", oneof: "error", T: () => LineSegment },
+            { no: 33, name: "not_enough_energy", kind: "scalar", oneof: "error", T: 13 /*ScalarType.UINT32*/ },
+            { no: 34, name: "player_already_exists", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 35, name: "player_not_found", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 36, name: "player_doesnt_control_creature", kind: "message", oneof: "error", T: () => PlayerDoesntControlCreature },
+            { no: 37, name: "history_not_found", kind: "message", oneof: "error", T: () => HistoryPointer },
+            { no: 38, name: "initiative_out_of_bounds", kind: "scalar", oneof: "error", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 39, name: "folder_not_empty", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 40, name: "folder_item_not_found", kind: "message", oneof: "error", T: () => FolderItem },
+            { no: 42, name: "cannot_link_notes", kind: "message", oneof: "error", T: () => FolderItem },
+            { no: 43, name: "could_not_open_app_file", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 44, name: "could_not_parse_app", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 45, name: "no_module_source", kind: "scalar", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 46, name: "folder_tree_error", kind: "message", oneof: "error", T: () => FolderTreeError },
+            { no: 47, name: "invalid_id", kind: "scalar", oneof: "error", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<GameError>): GameError {
+        const message = { error: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<GameError>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: GameError): GameError {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string file_not_found */ 1:
+                    message.error = {
+                        oneofKind: "fileNotFound",
+                        fileNotFound: reader.string()
+                    };
+                    break;
+                case /* pandt.AttributeNotFound attribute_not_found */ 2:
+                    message.error = {
+                        oneofKind: "attributeNotFound",
+                        attributeNotFound: AttributeNotFound.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).attributeNotFound)
+                    };
+                    break;
+                case /* string ability_already_exists */ 3:
+                    message.error = {
+                        oneofKind: "abilityAlreadyExists",
+                        abilityAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string creature_already_exists */ 4:
+                    message.error = {
+                        oneofKind: "creatureAlreadyExists",
+                        creatureAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string item_already_exists */ 5:
+                    message.error = {
+                        oneofKind: "itemAlreadyExists",
+                        itemAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string item_not_found */ 6:
+                    message.error = {
+                        oneofKind: "itemNotFound",
+                        itemNotFound: reader.string()
+                    };
+                    break;
+                case /* string scene_already_exists */ 7:
+                    message.error = {
+                        oneofKind: "sceneAlreadyExists",
+                        sceneAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string scene_not_found */ 8:
+                    message.error = {
+                        oneofKind: "sceneNotFound",
+                        sceneNotFound: reader.string()
+                    };
+                    break;
+                case /* string scene_in_use */ 9:
+                    message.error = {
+                        oneofKind: "sceneInUse",
+                        sceneInUse: reader.string()
+                    };
+                    break;
+                case /* string id_too_long */ 10:
+                    message.error = {
+                        oneofKind: "idTooLong",
+                        idTooLong: reader.string()
+                    };
+                    break;
+                case /* string condition_not_found */ 11:
+                    message.error = {
+                        oneofKind: "conditionNotFound",
+                        conditionNotFound: reader.string()
+                    };
+                    break;
+                case /* pandt.GameCommand invalid_command */ 12:
+                    message.error = {
+                        oneofKind: "invalidCommand",
+                        invalidCommand: GameCommand.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidCommand)
+                    };
+                    break;
+                case /* string class_already_exists */ 13:
+                    message.error = {
+                        oneofKind: "classAlreadyExists",
+                        classAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string class_not_found */ 14:
+                    message.error = {
+                        oneofKind: "classNotFound",
+                        classNotFound: reader.string()
+                    };
+                    break;
+                case /* string no_ability */ 15:
+                    message.error = {
+                        oneofKind: "noAbility",
+                        noAbility: reader.string()
+                    };
+                    break;
+                case /* bool combat_must_have_creatures */ 16:
+                    message.error = {
+                        oneofKind: "combatMustHaveCreatures",
+                        combatMustHaveCreatures: reader.bool()
+                    };
+                    break;
+                case /* bool must_reroll_at_start_of_round */ 17:
+                    message.error = {
+                        oneofKind: "mustRerollAtStartOfRound",
+                        mustRerollAtStartOfRound: reader.bool()
+                    };
+                    break;
+                case /* pandt.CreatureLacksAbility creature_lacks_ability */ 18:
+                    message.error = {
+                        oneofKind: "creatureLacksAbility",
+                        creatureLacksAbility: CreatureLacksAbility.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).creatureLacksAbility)
+                    };
+                    break;
+                case /* string creature_not_found */ 19:
+                    message.error = {
+                        oneofKind: "creatureNotFound",
+                        creatureNotFound: reader.string()
+                    };
+                    break;
+                case /* string invalid_target */ 20:
+                    message.error = {
+                        oneofKind: "invalidTarget",
+                        invalidTarget: reader.string()
+                    };
+                    break;
+                case /* pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec */ 21:
+                    message.error = {
+                        oneofKind: "invalidTargetForTargetSpec",
+                        invalidTargetForTargetSpec: InvalidTargetForTargetSpec.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidTargetForTargetSpec)
+                    };
+                    break;
+                case /* pandt.InvalidTargetForAction invalid_target_for_action */ 22:
+                    message.error = {
+                        oneofKind: "invalidTargetForAction",
+                        invalidTargetForAction: InvalidTargetForAction.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).invalidTargetForAction)
+                    };
+                    break;
+                case /* string creature_out_of_range */ 23:
+                    message.error = {
+                        oneofKind: "creatureOutOfRange",
+                        creatureOutOfRange: reader.string()
+                    };
+                    break;
+                case /* pandt.Point3 point_out_of_range */ 24:
+                    message.error = {
+                        oneofKind: "pointOutOfRange",
+                        pointOutOfRange: Point3.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).pointOutOfRange)
+                    };
+                    break;
+                case /* string buggy_program */ 25:
+                    message.error = {
+                        oneofKind: "buggyProgram",
+                        buggyProgram: reader.string()
+                    };
+                    break;
+                case /* bool not_in_combat */ 26:
+                    message.error = {
+                        oneofKind: "notInCombat",
+                        notInCombat: reader.bool()
+                    };
+                    break;
+                case /* string already_in_combat */ 27:
+                    message.error = {
+                        oneofKind: "alreadyInCombat",
+                        alreadyInCombat: reader.string()
+                    };
+                    break;
+                case /* string cannot_move */ 28:
+                    message.error = {
+                        oneofKind: "cannotMove",
+                        cannotMove: reader.string()
+                    };
+                    break;
+                case /* string cannot_act */ 29:
+                    message.error = {
+                        oneofKind: "cannotAct",
+                        cannotAct: reader.string()
+                    };
+                    break;
+                case /* bool no_path_found */ 30:
+                    message.error = {
+                        oneofKind: "noPathFound",
+                        noPathFound: reader.bool()
+                    };
+                    break;
+                case /* string folder_already_exists */ 31:
+                    message.error = {
+                        oneofKind: "folderAlreadyExists",
+                        folderAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* pandt.LineSegment step_too_big */ 32:
+                    message.error = {
+                        oneofKind: "stepTooBig",
+                        stepTooBig: LineSegment.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).stepTooBig)
+                    };
+                    break;
+                case /* uint32 not_enough_energy */ 33:
+                    message.error = {
+                        oneofKind: "notEnoughEnergy",
+                        notEnoughEnergy: reader.uint32()
+                    };
+                    break;
+                case /* string player_already_exists */ 34:
+                    message.error = {
+                        oneofKind: "playerAlreadyExists",
+                        playerAlreadyExists: reader.string()
+                    };
+                    break;
+                case /* string player_not_found */ 35:
+                    message.error = {
+                        oneofKind: "playerNotFound",
+                        playerNotFound: reader.string()
+                    };
+                    break;
+                case /* pandt.PlayerDoesntControlCreature player_doesnt_control_creature */ 36:
+                    message.error = {
+                        oneofKind: "playerDoesntControlCreature",
+                        playerDoesntControlCreature: PlayerDoesntControlCreature.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).playerDoesntControlCreature)
+                    };
+                    break;
+                case /* pandt.HistoryPointer history_not_found */ 37:
+                    message.error = {
+                        oneofKind: "historyNotFound",
+                        historyNotFound: HistoryPointer.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).historyNotFound)
+                    };
+                    break;
+                case /* uint64 initiative_out_of_bounds */ 38:
+                    message.error = {
+                        oneofKind: "initiativeOutOfBounds",
+                        initiativeOutOfBounds: reader.uint64().toBigInt()
+                    };
+                    break;
+                case /* string folder_not_empty */ 39:
+                    message.error = {
+                        oneofKind: "folderNotEmpty",
+                        folderNotEmpty: reader.string()
+                    };
+                    break;
+                case /* pandt.FolderItem folder_item_not_found */ 40:
+                    message.error = {
+                        oneofKind: "folderItemNotFound",
+                        folderItemNotFound: FolderItem.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).folderItemNotFound)
+                    };
+                    break;
+                case /* pandt.FolderItem cannot_link_notes */ 42:
+                    message.error = {
+                        oneofKind: "cannotLinkNotes",
+                        cannotLinkNotes: FolderItem.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).cannotLinkNotes)
+                    };
+                    break;
+                case /* string could_not_open_app_file */ 43:
+                    message.error = {
+                        oneofKind: "couldNotOpenAppFile",
+                        couldNotOpenAppFile: reader.string()
+                    };
+                    break;
+                case /* string could_not_parse_app */ 44:
+                    message.error = {
+                        oneofKind: "couldNotParseApp",
+                        couldNotParseApp: reader.string()
+                    };
+                    break;
+                case /* bool no_module_source */ 45:
+                    message.error = {
+                        oneofKind: "noModuleSource",
+                        noModuleSource: reader.bool()
+                    };
+                    break;
+                case /* pandt.FolderTreeError folder_tree_error */ 46:
+                    message.error = {
+                        oneofKind: "folderTreeError",
+                        folderTreeError: FolderTreeError.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).folderTreeError)
+                    };
+                    break;
+                case /* string invalid_id */ 47:
+                    message.error = {
+                        oneofKind: "invalidId",
+                        invalidId: reader.string()
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: GameError, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string file_not_found = 1; */
+        if (message.error.oneofKind === "fileNotFound")
+            writer.tag(1, WireType.LengthDelimited).string(message.error.fileNotFound);
+        /* pandt.AttributeNotFound attribute_not_found = 2; */
+        if (message.error.oneofKind === "attributeNotFound")
+            AttributeNotFound.internalBinaryWrite(message.error.attributeNotFound, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        /* string ability_already_exists = 3; */
+        if (message.error.oneofKind === "abilityAlreadyExists")
+            writer.tag(3, WireType.LengthDelimited).string(message.error.abilityAlreadyExists);
+        /* string creature_already_exists = 4; */
+        if (message.error.oneofKind === "creatureAlreadyExists")
+            writer.tag(4, WireType.LengthDelimited).string(message.error.creatureAlreadyExists);
+        /* string item_already_exists = 5; */
+        if (message.error.oneofKind === "itemAlreadyExists")
+            writer.tag(5, WireType.LengthDelimited).string(message.error.itemAlreadyExists);
+        /* string item_not_found = 6; */
+        if (message.error.oneofKind === "itemNotFound")
+            writer.tag(6, WireType.LengthDelimited).string(message.error.itemNotFound);
+        /* string scene_already_exists = 7; */
+        if (message.error.oneofKind === "sceneAlreadyExists")
+            writer.tag(7, WireType.LengthDelimited).string(message.error.sceneAlreadyExists);
+        /* string scene_not_found = 8; */
+        if (message.error.oneofKind === "sceneNotFound")
+            writer.tag(8, WireType.LengthDelimited).string(message.error.sceneNotFound);
+        /* string scene_in_use = 9; */
+        if (message.error.oneofKind === "sceneInUse")
+            writer.tag(9, WireType.LengthDelimited).string(message.error.sceneInUse);
+        /* string id_too_long = 10; */
+        if (message.error.oneofKind === "idTooLong")
+            writer.tag(10, WireType.LengthDelimited).string(message.error.idTooLong);
+        /* string condition_not_found = 11; */
+        if (message.error.oneofKind === "conditionNotFound")
+            writer.tag(11, WireType.LengthDelimited).string(message.error.conditionNotFound);
+        /* pandt.GameCommand invalid_command = 12; */
+        if (message.error.oneofKind === "invalidCommand")
+            GameCommand.internalBinaryWrite(message.error.invalidCommand, writer.tag(12, WireType.LengthDelimited).fork(), options).join();
+        /* string class_already_exists = 13; */
+        if (message.error.oneofKind === "classAlreadyExists")
+            writer.tag(13, WireType.LengthDelimited).string(message.error.classAlreadyExists);
+        /* string class_not_found = 14; */
+        if (message.error.oneofKind === "classNotFound")
+            writer.tag(14, WireType.LengthDelimited).string(message.error.classNotFound);
+        /* string no_ability = 15; */
+        if (message.error.oneofKind === "noAbility")
+            writer.tag(15, WireType.LengthDelimited).string(message.error.noAbility);
+        /* bool combat_must_have_creatures = 16; */
+        if (message.error.oneofKind === "combatMustHaveCreatures")
+            writer.tag(16, WireType.Varint).bool(message.error.combatMustHaveCreatures);
+        /* bool must_reroll_at_start_of_round = 17; */
+        if (message.error.oneofKind === "mustRerollAtStartOfRound")
+            writer.tag(17, WireType.Varint).bool(message.error.mustRerollAtStartOfRound);
+        /* pandt.CreatureLacksAbility creature_lacks_ability = 18; */
+        if (message.error.oneofKind === "creatureLacksAbility")
+            CreatureLacksAbility.internalBinaryWrite(message.error.creatureLacksAbility, writer.tag(18, WireType.LengthDelimited).fork(), options).join();
+        /* string creature_not_found = 19; */
+        if (message.error.oneofKind === "creatureNotFound")
+            writer.tag(19, WireType.LengthDelimited).string(message.error.creatureNotFound);
+        /* string invalid_target = 20; */
+        if (message.error.oneofKind === "invalidTarget")
+            writer.tag(20, WireType.LengthDelimited).string(message.error.invalidTarget);
+        /* pandt.InvalidTargetForTargetSpec invalid_target_for_target_spec = 21; */
+        if (message.error.oneofKind === "invalidTargetForTargetSpec")
+            InvalidTargetForTargetSpec.internalBinaryWrite(message.error.invalidTargetForTargetSpec, writer.tag(21, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.InvalidTargetForAction invalid_target_for_action = 22; */
+        if (message.error.oneofKind === "invalidTargetForAction")
+            InvalidTargetForAction.internalBinaryWrite(message.error.invalidTargetForAction, writer.tag(22, WireType.LengthDelimited).fork(), options).join();
+        /* string creature_out_of_range = 23; */
+        if (message.error.oneofKind === "creatureOutOfRange")
+            writer.tag(23, WireType.LengthDelimited).string(message.error.creatureOutOfRange);
+        /* pandt.Point3 point_out_of_range = 24; */
+        if (message.error.oneofKind === "pointOutOfRange")
+            Point3.internalBinaryWrite(message.error.pointOutOfRange, writer.tag(24, WireType.LengthDelimited).fork(), options).join();
+        /* string buggy_program = 25; */
+        if (message.error.oneofKind === "buggyProgram")
+            writer.tag(25, WireType.LengthDelimited).string(message.error.buggyProgram);
+        /* bool not_in_combat = 26; */
+        if (message.error.oneofKind === "notInCombat")
+            writer.tag(26, WireType.Varint).bool(message.error.notInCombat);
+        /* string already_in_combat = 27; */
+        if (message.error.oneofKind === "alreadyInCombat")
+            writer.tag(27, WireType.LengthDelimited).string(message.error.alreadyInCombat);
+        /* string cannot_move = 28; */
+        if (message.error.oneofKind === "cannotMove")
+            writer.tag(28, WireType.LengthDelimited).string(message.error.cannotMove);
+        /* string cannot_act = 29; */
+        if (message.error.oneofKind === "cannotAct")
+            writer.tag(29, WireType.LengthDelimited).string(message.error.cannotAct);
+        /* bool no_path_found = 30; */
+        if (message.error.oneofKind === "noPathFound")
+            writer.tag(30, WireType.Varint).bool(message.error.noPathFound);
+        /* string folder_already_exists = 31; */
+        if (message.error.oneofKind === "folderAlreadyExists")
+            writer.tag(31, WireType.LengthDelimited).string(message.error.folderAlreadyExists);
+        /* pandt.LineSegment step_too_big = 32; */
+        if (message.error.oneofKind === "stepTooBig")
+            LineSegment.internalBinaryWrite(message.error.stepTooBig, writer.tag(32, WireType.LengthDelimited).fork(), options).join();
+        /* uint32 not_enough_energy = 33; */
+        if (message.error.oneofKind === "notEnoughEnergy")
+            writer.tag(33, WireType.Varint).uint32(message.error.notEnoughEnergy);
+        /* string player_already_exists = 34; */
+        if (message.error.oneofKind === "playerAlreadyExists")
+            writer.tag(34, WireType.LengthDelimited).string(message.error.playerAlreadyExists);
+        /* string player_not_found = 35; */
+        if (message.error.oneofKind === "playerNotFound")
+            writer.tag(35, WireType.LengthDelimited).string(message.error.playerNotFound);
+        /* pandt.PlayerDoesntControlCreature player_doesnt_control_creature = 36; */
+        if (message.error.oneofKind === "playerDoesntControlCreature")
+            PlayerDoesntControlCreature.internalBinaryWrite(message.error.playerDoesntControlCreature, writer.tag(36, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.HistoryPointer history_not_found = 37; */
+        if (message.error.oneofKind === "historyNotFound")
+            HistoryPointer.internalBinaryWrite(message.error.historyNotFound, writer.tag(37, WireType.LengthDelimited).fork(), options).join();
+        /* uint64 initiative_out_of_bounds = 38; */
+        if (message.error.oneofKind === "initiativeOutOfBounds")
+            writer.tag(38, WireType.Varint).uint64(message.error.initiativeOutOfBounds);
+        /* string folder_not_empty = 39; */
+        if (message.error.oneofKind === "folderNotEmpty")
+            writer.tag(39, WireType.LengthDelimited).string(message.error.folderNotEmpty);
+        /* pandt.FolderItem folder_item_not_found = 40; */
+        if (message.error.oneofKind === "folderItemNotFound")
+            FolderItem.internalBinaryWrite(message.error.folderItemNotFound, writer.tag(40, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.FolderItem cannot_link_notes = 42; */
+        if (message.error.oneofKind === "cannotLinkNotes")
+            FolderItem.internalBinaryWrite(message.error.cannotLinkNotes, writer.tag(42, WireType.LengthDelimited).fork(), options).join();
+        /* string could_not_open_app_file = 43; */
+        if (message.error.oneofKind === "couldNotOpenAppFile")
+            writer.tag(43, WireType.LengthDelimited).string(message.error.couldNotOpenAppFile);
+        /* string could_not_parse_app = 44; */
+        if (message.error.oneofKind === "couldNotParseApp")
+            writer.tag(44, WireType.LengthDelimited).string(message.error.couldNotParseApp);
+        /* bool no_module_source = 45; */
+        if (message.error.oneofKind === "noModuleSource")
+            writer.tag(45, WireType.Varint).bool(message.error.noModuleSource);
+        /* pandt.FolderTreeError folder_tree_error = 46; */
+        if (message.error.oneofKind === "folderTreeError")
+            FolderTreeError.internalBinaryWrite(message.error.folderTreeError, writer.tag(46, WireType.LengthDelimited).fork(), options).join();
+        /* string invalid_id = 47; */
+        if (message.error.oneofKind === "invalidId")
+            writer.tag(47, WireType.LengthDelimited).string(message.error.invalidId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.GameError
+ */
+export const GameError = new GameError$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FolderTreeError$Type extends MessageType<FolderTreeError> {
+    constructor() {
+        super("pandt.FolderTreeError", [
+            { no: 1, name: "InvalidFolderPath", kind: "scalar", jsonName: "InvalidFolderPath", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "FolderNotFound", kind: "scalar", jsonName: "FolderNotFound", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "FolderExists", kind: "scalar", jsonName: "FolderExists", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "FolderNotEmpty", kind: "scalar", jsonName: "FolderNotEmpty", oneof: "error", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "CannotRenameRoot", kind: "scalar", jsonName: "CannotRenameRoot", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 6, name: "CannotRemoveRoot", kind: "scalar", jsonName: "CannotRemoveRoot", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 7, name: "CannotMoveRoot", kind: "scalar", jsonName: "CannotMoveRoot", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 8, name: "RootHasNoName", kind: "scalar", jsonName: "RootHasNoName", oneof: "error", T: 8 /*ScalarType.BOOL*/ },
+            { no: 9, name: "impossible_move", kind: "message", oneof: "error", T: () => TwoFolderPaths },
+            { no: 10, name: "non_ancestor", kind: "message", oneof: "error", T: () => TwoFolderPaths }
+        ]);
+    }
+    create(value?: PartialMessage<FolderTreeError>): FolderTreeError {
+        const message = { error: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<FolderTreeError>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FolderTreeError): FolderTreeError {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string InvalidFolderPath = 1 [json_name = "InvalidFolderPath"];*/ 1:
+                    message.error = {
+                        oneofKind: "invalidFolderPath",
+                        invalidFolderPath: reader.string()
+                    };
+                    break;
+                case /* string FolderNotFound = 2 [json_name = "FolderNotFound"];*/ 2:
+                    message.error = {
+                        oneofKind: "folderNotFound",
+                        folderNotFound: reader.string()
+                    };
+                    break;
+                case /* string FolderExists = 3 [json_name = "FolderExists"];*/ 3:
+                    message.error = {
+                        oneofKind: "folderExists",
+                        folderExists: reader.string()
+                    };
+                    break;
+                case /* string FolderNotEmpty = 4 [json_name = "FolderNotEmpty"];*/ 4:
+                    message.error = {
+                        oneofKind: "folderNotEmpty",
+                        folderNotEmpty: reader.string()
+                    };
+                    break;
+                case /* bool CannotRenameRoot = 5 [json_name = "CannotRenameRoot"];*/ 5:
+                    message.error = {
+                        oneofKind: "cannotRenameRoot",
+                        cannotRenameRoot: reader.bool()
+                    };
+                    break;
+                case /* bool CannotRemoveRoot = 6 [json_name = "CannotRemoveRoot"];*/ 6:
+                    message.error = {
+                        oneofKind: "cannotRemoveRoot",
+                        cannotRemoveRoot: reader.bool()
+                    };
+                    break;
+                case /* bool CannotMoveRoot = 7 [json_name = "CannotMoveRoot"];*/ 7:
+                    message.error = {
+                        oneofKind: "cannotMoveRoot",
+                        cannotMoveRoot: reader.bool()
+                    };
+                    break;
+                case /* bool RootHasNoName = 8 [json_name = "RootHasNoName"];*/ 8:
+                    message.error = {
+                        oneofKind: "rootHasNoName",
+                        rootHasNoName: reader.bool()
+                    };
+                    break;
+                case /* pandt.TwoFolderPaths impossible_move */ 9:
+                    message.error = {
+                        oneofKind: "impossibleMove",
+                        impossibleMove: TwoFolderPaths.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).impossibleMove)
+                    };
+                    break;
+                case /* pandt.TwoFolderPaths non_ancestor */ 10:
+                    message.error = {
+                        oneofKind: "nonAncestor",
+                        nonAncestor: TwoFolderPaths.internalBinaryRead(reader, reader.uint32(), options, (message.error as any).nonAncestor)
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FolderTreeError, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string InvalidFolderPath = 1 [json_name = "InvalidFolderPath"]; */
+        if (message.error.oneofKind === "invalidFolderPath")
+            writer.tag(1, WireType.LengthDelimited).string(message.error.invalidFolderPath);
+        /* string FolderNotFound = 2 [json_name = "FolderNotFound"]; */
+        if (message.error.oneofKind === "folderNotFound")
+            writer.tag(2, WireType.LengthDelimited).string(message.error.folderNotFound);
+        /* string FolderExists = 3 [json_name = "FolderExists"]; */
+        if (message.error.oneofKind === "folderExists")
+            writer.tag(3, WireType.LengthDelimited).string(message.error.folderExists);
+        /* string FolderNotEmpty = 4 [json_name = "FolderNotEmpty"]; */
+        if (message.error.oneofKind === "folderNotEmpty")
+            writer.tag(4, WireType.LengthDelimited).string(message.error.folderNotEmpty);
+        /* bool CannotRenameRoot = 5 [json_name = "CannotRenameRoot"]; */
+        if (message.error.oneofKind === "cannotRenameRoot")
+            writer.tag(5, WireType.Varint).bool(message.error.cannotRenameRoot);
+        /* bool CannotRemoveRoot = 6 [json_name = "CannotRemoveRoot"]; */
+        if (message.error.oneofKind === "cannotRemoveRoot")
+            writer.tag(6, WireType.Varint).bool(message.error.cannotRemoveRoot);
+        /* bool CannotMoveRoot = 7 [json_name = "CannotMoveRoot"]; */
+        if (message.error.oneofKind === "cannotMoveRoot")
+            writer.tag(7, WireType.Varint).bool(message.error.cannotMoveRoot);
+        /* bool RootHasNoName = 8 [json_name = "RootHasNoName"]; */
+        if (message.error.oneofKind === "rootHasNoName")
+            writer.tag(8, WireType.Varint).bool(message.error.rootHasNoName);
+        /* pandt.TwoFolderPaths impossible_move = 9; */
+        if (message.error.oneofKind === "impossibleMove")
+            TwoFolderPaths.internalBinaryWrite(message.error.impossibleMove, writer.tag(9, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.TwoFolderPaths non_ancestor = 10; */
+        if (message.error.oneofKind === "nonAncestor")
+            TwoFolderPaths.internalBinaryWrite(message.error.nonAncestor, writer.tag(10, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.FolderTreeError
+ */
+export const FolderTreeError = new FolderTreeError$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class TwoFolderPaths$Type extends MessageType<TwoFolderPaths> {
+    constructor() {
+        super("pandt.TwoFolderPaths", [
+            { no: 1, name: "fp1", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "fp2", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<TwoFolderPaths>): TwoFolderPaths {
+        const message = { fp1: "", fp2: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<TwoFolderPaths>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: TwoFolderPaths): TwoFolderPaths {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string fp1 */ 1:
+                    message.fp1 = reader.string();
+                    break;
+                case /* string fp2 */ 2:
+                    message.fp2 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: TwoFolderPaths, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string fp1 = 1; */
+        if (message.fp1 !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.fp1);
+        /* string fp2 = 2; */
+        if (message.fp2 !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.fp2);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.TwoFolderPaths
+ */
+export const TwoFolderPaths = new TwoFolderPaths$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AttributeNotFound$Type extends MessageType<AttributeNotFound> {
+    constructor() {
+        super("pandt.AttributeNotFound", [
+            { no: 1, name: "creature_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "attr_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AttributeNotFound>): AttributeNotFound {
+        const message = { creatureId: "", attrId: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<AttributeNotFound>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AttributeNotFound): AttributeNotFound {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string creature_id */ 1:
+                    message.creatureId = reader.string();
+                    break;
+                case /* string attr_id */ 2:
+                    message.attrId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AttributeNotFound, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string creature_id = 1; */
+        if (message.creatureId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.creatureId);
+        /* string attr_id = 2; */
+        if (message.attrId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.attrId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.AttributeNotFound
+ */
+export const AttributeNotFound = new AttributeNotFound$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CreatureLacksAbility$Type extends MessageType<CreatureLacksAbility> {
+    constructor() {
+        super("pandt.CreatureLacksAbility", [
+            { no: 1, name: "creature_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "ability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CreatureLacksAbility>): CreatureLacksAbility {
+        const message = { creatureId: "", abilityId: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<CreatureLacksAbility>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreatureLacksAbility): CreatureLacksAbility {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string creature_id */ 1:
+                    message.creatureId = reader.string();
+                    break;
+                case /* string ability_id */ 2:
+                    message.abilityId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreatureLacksAbility, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string creature_id = 1; */
+        if (message.creatureId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.creatureId);
+        /* string ability_id = 2; */
+        if (message.abilityId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.abilityId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.CreatureLacksAbility
+ */
+export const CreatureLacksAbility = new CreatureLacksAbility$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class InvalidTargetForTargetSpec$Type extends MessageType<InvalidTargetForTargetSpec> {
+    constructor() {
+        super("pandt.InvalidTargetForTargetSpec", [
+            { no: 1, name: "creature_target", kind: "message", T: () => CreatureTarget },
+            { no: 2, name: "decided_target", kind: "message", T: () => DecidedTarget }
+        ]);
+    }
+    create(value?: PartialMessage<InvalidTargetForTargetSpec>): InvalidTargetForTargetSpec {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<InvalidTargetForTargetSpec>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: InvalidTargetForTargetSpec): InvalidTargetForTargetSpec {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.CreatureTarget creature_target */ 1:
+                    message.creatureTarget = CreatureTarget.internalBinaryRead(reader, reader.uint32(), options, message.creatureTarget);
+                    break;
+                case /* pandt.DecidedTarget decided_target */ 2:
+                    message.decidedTarget = DecidedTarget.internalBinaryRead(reader, reader.uint32(), options, message.decidedTarget);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: InvalidTargetForTargetSpec, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.CreatureTarget creature_target = 1; */
+        if (message.creatureTarget)
+            CreatureTarget.internalBinaryWrite(message.creatureTarget, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.DecidedTarget decided_target = 2; */
+        if (message.decidedTarget)
+            DecidedTarget.internalBinaryWrite(message.decidedTarget, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.InvalidTargetForTargetSpec
+ */
+export const InvalidTargetForTargetSpec = new InvalidTargetForTargetSpec$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class InvalidTargetForAction$Type extends MessageType<InvalidTargetForAction> {
+    constructor() {
+        super("pandt.InvalidTargetForAction", [
+            { no: 1, name: "action", kind: "message", T: () => Action },
+            { no: 2, name: "target", kind: "message", T: () => DecidedTarget }
+        ]);
+    }
+    create(value?: PartialMessage<InvalidTargetForAction>): InvalidTargetForAction {
+        const message = {};
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<InvalidTargetForAction>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: InvalidTargetForAction): InvalidTargetForAction {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* pandt.Action action */ 1:
+                    message.action = Action.internalBinaryRead(reader, reader.uint32(), options, message.action);
+                    break;
+                case /* pandt.DecidedTarget target */ 2:
+                    message.target = DecidedTarget.internalBinaryRead(reader, reader.uint32(), options, message.target);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: InvalidTargetForAction, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* pandt.Action action = 1; */
+        if (message.action)
+            Action.internalBinaryWrite(message.action, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* pandt.DecidedTarget target = 2; */
+        if (message.target)
+            DecidedTarget.internalBinaryWrite(message.target, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.InvalidTargetForAction
+ */
+export const InvalidTargetForAction = new InvalidTargetForAction$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class PlayerDoesntControlCreature$Type extends MessageType<PlayerDoesntControlCreature> {
+    constructor() {
+        super("pandt.PlayerDoesntControlCreature", [
+            { no: 1, name: "player_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "creature_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<PlayerDoesntControlCreature>): PlayerDoesntControlCreature {
+        const message = { playerId: "", creatureId: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<PlayerDoesntControlCreature>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: PlayerDoesntControlCreature): PlayerDoesntControlCreature {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string player_id */ 1:
+                    message.playerId = reader.string();
+                    break;
+                case /* string creature_id */ 2:
+                    message.creatureId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: PlayerDoesntControlCreature, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string player_id = 1; */
+        if (message.playerId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.playerId);
+        /* string creature_id = 2; */
+        if (message.creatureId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.creatureId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.PlayerDoesntControlCreature
+ */
+export const PlayerDoesntControlCreature = new PlayerDoesntControlCreature$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class HistoryPointer$Type extends MessageType<HistoryPointer> {
+    constructor() {
+        super("pandt.HistoryPointer", [
+            { no: 1, name: "snapshot_idx", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 2, name: "log_idx", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<HistoryPointer>): HistoryPointer {
+        const message = { snapshotIdx: 0n, logIdx: 0n };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<HistoryPointer>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: HistoryPointer): HistoryPointer {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* uint64 snapshot_idx */ 1:
+                    message.snapshotIdx = reader.uint64().toBigInt();
+                    break;
+                case /* uint64 log_idx */ 2:
+                    message.logIdx = reader.uint64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: HistoryPointer, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* uint64 snapshot_idx = 1; */
+        if (message.snapshotIdx !== 0n)
+            writer.tag(1, WireType.Varint).uint64(message.snapshotIdx);
+        /* uint64 log_idx = 2; */
+        if (message.logIdx !== 0n)
+            writer.tag(2, WireType.Varint).uint64(message.logIdx);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.HistoryPointer
+ */
+export const HistoryPointer = new HistoryPointer$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FolderItem$Type extends MessageType<FolderItem> {
+    constructor() {
+        super("pandt.FolderItem", [
+            { no: 1, name: "path", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "id", kind: "message", T: () => FolderItemID }
+        ]);
+    }
+    create(value?: PartialMessage<FolderItem>): FolderItem {
+        const message = { path: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<FolderItem>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FolderItem): FolderItem {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string path */ 1:
+                    message.path = reader.string();
+                    break;
+                case /* pandt.FolderItemID id */ 2:
+                    message.id = FolderItemID.internalBinaryRead(reader, reader.uint32(), options, message.id);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FolderItem, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string path = 1; */
+        if (message.path !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.path);
+        /* pandt.FolderItemID id = 2; */
+        if (message.id)
+            FolderItemID.internalBinaryWrite(message.id, writer.tag(2, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.FolderItem
+ */
+export const FolderItem = new FolderItem$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class FolderItemID$Type extends MessageType<FolderItemID> {
+    constructor() {
+        super("pandt.FolderItemID", [
+            { no: 1, name: "scene_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "creature_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "note_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "item_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "ability_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "class_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "subfolder_id", kind: "scalar", oneof: "folderItemId", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<FolderItemID>): FolderItemID {
+        const message = { folderItemId: { oneofKind: undefined } };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<FolderItemID>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: FolderItemID): FolderItemID {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string scene_id */ 1:
+                    message.folderItemId = {
+                        oneofKind: "sceneId",
+                        sceneId: reader.string()
+                    };
+                    break;
+                case /* string creature_id */ 2:
+                    message.folderItemId = {
+                        oneofKind: "creatureId",
+                        creatureId: reader.string()
+                    };
+                    break;
+                case /* string note_id */ 3:
+                    message.folderItemId = {
+                        oneofKind: "noteId",
+                        noteId: reader.string()
+                    };
+                    break;
+                case /* string item_id */ 4:
+                    message.folderItemId = {
+                        oneofKind: "itemId",
+                        itemId: reader.string()
+                    };
+                    break;
+                case /* string ability_id */ 5:
+                    message.folderItemId = {
+                        oneofKind: "abilityId",
+                        abilityId: reader.string()
+                    };
+                    break;
+                case /* string class_id */ 6:
+                    message.folderItemId = {
+                        oneofKind: "classId",
+                        classId: reader.string()
+                    };
+                    break;
+                case /* string subfolder_id */ 7:
+                    message.folderItemId = {
+                        oneofKind: "subfolderId",
+                        subfolderId: reader.string()
+                    };
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: FolderItemID, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string scene_id = 1; */
+        if (message.folderItemId.oneofKind === "sceneId")
+            writer.tag(1, WireType.LengthDelimited).string(message.folderItemId.sceneId);
+        /* string creature_id = 2; */
+        if (message.folderItemId.oneofKind === "creatureId")
+            writer.tag(2, WireType.LengthDelimited).string(message.folderItemId.creatureId);
+        /* string note_id = 3; */
+        if (message.folderItemId.oneofKind === "noteId")
+            writer.tag(3, WireType.LengthDelimited).string(message.folderItemId.noteId);
+        /* string item_id = 4; */
+        if (message.folderItemId.oneofKind === "itemId")
+            writer.tag(4, WireType.LengthDelimited).string(message.folderItemId.itemId);
+        /* string ability_id = 5; */
+        if (message.folderItemId.oneofKind === "abilityId")
+            writer.tag(5, WireType.LengthDelimited).string(message.folderItemId.abilityId);
+        /* string class_id = 6; */
+        if (message.folderItemId.oneofKind === "classId")
+            writer.tag(6, WireType.LengthDelimited).string(message.folderItemId.classId);
+        /* string subfolder_id = 7; */
+        if (message.folderItemId.oneofKind === "subfolderId")
+            writer.tag(7, WireType.LengthDelimited).string(message.folderItemId.subfolderId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.FolderItemID
+ */
+export const FolderItemID = new FolderItemID$Type();
 /**
  * @generated ServiceType for protobuf service pandt.PT
  */
 export const PT = new ServiceType("pandt.PT", [
-    { name: "SayHello", options: {}, I: HelloRequest, O: HelloReply }
+    { name: "SayHello", options: {}, I: HelloRequest, O: HelloReply },
+    { name: "SaveGame", options: {}, I: SaveGameRequest, O: SaveGameReply }
 ]);

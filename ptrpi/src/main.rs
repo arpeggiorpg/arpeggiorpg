@@ -43,16 +43,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   };
 
   let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
+  let webactor = actor.clone();
   let server = actix_web::HttpServer::new(move || {
     WebApp::new()
       .wrap(Logger::default())
       .wrap(Cors::permissive())
-      .configure(|c| web::router(actor.clone(), c))
+      .configure(|c| web::router(webactor.clone(), c))
   });
   tokio::spawn(server.bind("0.0.0.0:1337")?.run());
   println!("Started Actix Web server...");
 
-  let greeter = grpc::PtServer::new(grpc::Server::default());
+  let greeter = grpc::PtServer::new(grpc::Server::new(actor));
   TonicServer::builder()
     .accept_http1(true)
     .add_service(tonic_web::enable(greeter))
