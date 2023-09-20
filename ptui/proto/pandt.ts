@@ -40,6 +40,40 @@ export interface ListSavedGamesReply {
     modules: string[];
 }
 /**
+ * @generated from protobuf message pandt.PreviewVolumeTargetsRequest
+ */
+export interface PreviewVolumeTargetsRequest {
+    /**
+     * @generated from protobuf field: string scene_id = 1;
+     */
+    sceneId: string;
+    /**
+     * @generated from protobuf field: string actor_id = 2;
+     */
+    actorId: string;
+    /**
+     * @generated from protobuf field: string ability_id = 3;
+     */
+    abilityId: string;
+    /**
+     * @generated from protobuf field: pandt.Point3 point = 4;
+     */
+    point?: Point3;
+}
+/**
+ * @generated from protobuf message pandt.PreviewVolumeTargetsReply
+ */
+export interface PreviewVolumeTargetsReply {
+    /**
+     * @generated from protobuf field: repeated pandt.Point3 points = 1;
+     */
+    points: Point3[];
+    /**
+     * @generated from protobuf field: repeated string creatures = 2;
+     */
+    creatures: string[];
+}
+/**
  * @generated from protobuf message pandt.HelloRequest
  */
 export interface HelloRequest {
@@ -1016,6 +1050,128 @@ class ListSavedGamesReply$Type extends MessageType<ListSavedGamesReply> {
  * @generated MessageType for protobuf message pandt.ListSavedGamesReply
  */
 export const ListSavedGamesReply = new ListSavedGamesReply$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class PreviewVolumeTargetsRequest$Type extends MessageType<PreviewVolumeTargetsRequest> {
+    constructor() {
+        super("pandt.PreviewVolumeTargetsRequest", [
+            { no: 1, name: "scene_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "actor_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "ability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "point", kind: "message", T: () => Point3 }
+        ]);
+    }
+    create(value?: PartialMessage<PreviewVolumeTargetsRequest>): PreviewVolumeTargetsRequest {
+        const message = { sceneId: "", actorId: "", abilityId: "" };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<PreviewVolumeTargetsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: PreviewVolumeTargetsRequest): PreviewVolumeTargetsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string scene_id */ 1:
+                    message.sceneId = reader.string();
+                    break;
+                case /* string actor_id */ 2:
+                    message.actorId = reader.string();
+                    break;
+                case /* string ability_id */ 3:
+                    message.abilityId = reader.string();
+                    break;
+                case /* pandt.Point3 point */ 4:
+                    message.point = Point3.internalBinaryRead(reader, reader.uint32(), options, message.point);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: PreviewVolumeTargetsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string scene_id = 1; */
+        if (message.sceneId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.sceneId);
+        /* string actor_id = 2; */
+        if (message.actorId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.actorId);
+        /* string ability_id = 3; */
+        if (message.abilityId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.abilityId);
+        /* pandt.Point3 point = 4; */
+        if (message.point)
+            Point3.internalBinaryWrite(message.point, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.PreviewVolumeTargetsRequest
+ */
+export const PreviewVolumeTargetsRequest = new PreviewVolumeTargetsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class PreviewVolumeTargetsReply$Type extends MessageType<PreviewVolumeTargetsReply> {
+    constructor() {
+        super("pandt.PreviewVolumeTargetsReply", [
+            { no: 1, name: "points", kind: "message", repeat: 1 /*RepeatType.PACKED*/, T: () => Point3 },
+            { no: 2, name: "creatures", kind: "scalar", repeat: 2 /*RepeatType.UNPACKED*/, T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<PreviewVolumeTargetsReply>): PreviewVolumeTargetsReply {
+        const message = { points: [], creatures: [] };
+        globalThis.Object.defineProperty(message, MESSAGE_TYPE, { enumerable: false, value: this });
+        if (value !== undefined)
+            reflectionMergePartial<PreviewVolumeTargetsReply>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: PreviewVolumeTargetsReply): PreviewVolumeTargetsReply {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated pandt.Point3 points */ 1:
+                    message.points.push(Point3.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* repeated string creatures */ 2:
+                    message.creatures.push(reader.string());
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: PreviewVolumeTargetsReply, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated pandt.Point3 points = 1; */
+        for (let i = 0; i < message.points.length; i++)
+            Point3.internalBinaryWrite(message.points[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* repeated string creatures = 2; */
+        for (let i = 0; i < message.creatures.length; i++)
+            writer.tag(2, WireType.LengthDelimited).string(message.creatures[i]);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message pandt.PreviewVolumeTargetsReply
+ */
+export const PreviewVolumeTargetsReply = new PreviewVolumeTargetsReply$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class HelloRequest$Type extends MessageType<HelloRequest> {
     constructor() {
@@ -3445,5 +3601,6 @@ export const FolderItemID = new FolderItemID$Type();
 export const PT = new ServiceType("pandt.PT", [
     { name: "SayHello", options: {}, I: HelloRequest, O: HelloReply },
     { name: "SaveGame", options: {}, I: SaveGameRequest, O: Empty },
-    { name: "ListSavedGames", options: {}, I: Empty, O: ListSavedGamesReply }
+    { name: "ListSavedGames", options: {}, I: Empty, O: ListSavedGamesReply },
+    { name: "PreviewVolumeTargets", options: {}, I: PreviewVolumeTargetsRequest, O: PreviewVolumeTargetsReply }
 ]);

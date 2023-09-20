@@ -25,6 +25,7 @@ tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi
 tonic = "0.10"
 tonic-web = "0.10"
 prost = "0.12.1"
+uom = {version = "0.35", default_features = false}
 
 [build-dependencies]
 tonic-build = "0.10"

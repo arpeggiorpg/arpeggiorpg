@@ -8,6 +8,7 @@ service PT {
 
     rpc SaveGame (SaveGameRequest) returns (Empty);
     rpc ListSavedGames (Empty) returns (ListSavedGamesReply);
+    rpc PreviewVolumeTargets(PreviewVolumeTargetsRequest) returns (PreviewVolumeTargetsReply);
 }
 
 message Empty {}
@@ -18,6 +19,19 @@ message ListSavedGamesReply {
     repeated string games = 1;
     repeated string modules = 2;
 }
+
+message PreviewVolumeTargetsRequest {
+    string scene_id = 1;
+    string actor_id = 2;
+    string ability_id = 3;
+    Point3 point = 4;
+}
+
+message PreviewVolumeTargetsReply {
+    repeated Point3 points = 1;
+    repeated string creatures = 2;
+}
+
 
 message HelloRequest {
     // Request message contains the name to be greeted

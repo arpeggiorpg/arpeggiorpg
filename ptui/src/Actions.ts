@@ -9,6 +9,7 @@ import { RpcError } from "@protobuf-ts/runtime-rpc";
 import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
 
 import { PTClient } from "../proto/pandt.client";
+import * as RPC from "../proto/pandt";
 import * as T from "./PTTypes";
 import { getState } from "./Model";
 
@@ -173,26 +174,13 @@ export async function loadGame(source: T.ModuleSource, name: string): Promise<vo
   resetApp(app);
 }
 
-export async function fetchSavedGames(): Promise<{games: Array<string>, modules: Array<string>}> {
+export async function fetchSavedGames(): Promise<{ games: Array<string>, modules: Array<string> }> {
   const games = await runRPC(() => ptclient.listSavedGames({}));
   return games.response;
 }
 
 export async function saveGame(game: string): Promise<undefined> {
-  await runRPC(() => ptclient.saveGame({name: game}));
-}
-
-async function runRPC<T>(f: () => PromiseLike<T> | T): Promise<T> {
-  try {
-    const r = await f();
-    return r;
-  } catch (e) {
-    if (e instanceof RpcError) {
-      console.log("RPC ERROR", decodeURI(e.message));
-      getState().setError(decodeURI(e.message));
-    }
-    throw e;
-  }
+  await runRPC(() => ptclient.saveGame({ name: game }));
 }
 
 export function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
@@ -281,17 +269,37 @@ export function requestCombatAbility(
   }
 }
 
-export function fetchAbilityTargets(
-  scene_id: T.SceneID, actor_id: T.CreatureID, ability_id: T.AbilityID, point: T.Point3
+function pt2rpc(p: T.Point3): RPC.Point3 {
+  return { x: BigInt(p.x), y: BigInt(p.y), z: BigInt(p.z) };
+}
+
+function rpc2pt(p: RPC.Point3): T.Point3 {
+  return new T.Point3(Number(p.x), Number(p.y), Number(p.z));
+}
+
+export async function fetchAbilityTargets(
+  sceneId: T.SceneID, actorId: T.CreatureID, abilityId: T.AbilityID, point: T.Point3
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const uri =
-    `${RPI_URL}/preview_volume_targets/${scene_id}/${actor_id}/`
-    + `${ability_id}/${point.x}/${point.y}/${point.z}`;
-  return ptfetch(
-    uri,
-    { method: 'POST' },
-    Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]).transform(([creatures, points]) => ({ points, creatures }))
-  );
+  const result = await runRPC(() => ptclient.previewVolumeTargets({
+    sceneId, actorId, abilityId, point: pt2rpc(point)
+  }));
+  return {
+    points: result.response.points.map(rpc2pt),
+    creatures: result.response.creatures
+  };
+}
+
+async function runRPC<T>(f: () => PromiseLike<T> | T): Promise<T> {
+  try {
+    const r = await f();
+    return r;
+  } catch (e) {
+    if (e instanceof RpcError) {
+      console.log("RPC ERROR", decodeURI(e.message));
+      getState().setError(decodeURI(e.message));
+    }
+    throw e;
+  }
 }
 
 export async function sayHello() {
