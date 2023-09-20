@@ -1742,6 +1742,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tonic-web",
+ "uom",
 ]
 
 [[package]]

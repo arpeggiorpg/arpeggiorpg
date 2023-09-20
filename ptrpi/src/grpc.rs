@@ -1,20 +1,22 @@
-use std::path::Path;
-use std::fs;
 use log::error;
+use std::fs;
+use std::path::Path;
 
-use anyhow::{Error};
+use anyhow::Error;
 
 use tonic::{Request, Response, Status};
-tonic::include_proto!("pandt");
-
-pub use pt_server::{Pt, PtServer};
-
-use crate::actor::AppActor;
-
-pub struct Server {
-  actor: AppActor
+mod rpc {
+  tonic::include_proto!("pandt");
 }
 
+pub use rpc::pt_server::{Pt, PtServer};
+
+use crate::actor::AppActor;
+use pandt::types as T;
+
+pub struct Server {
+  actor: AppActor,
+}
 
 impl Server {
   pub fn new(actor: AppActor) -> Server {
@@ -22,26 +24,54 @@ impl Server {
   }
 }
 
+type RPCResult<T> = Result<Response<T>, Status>;
+
+fn point2rpc(p: T::Point3) -> rpc::Point3 {
+  use uom::si::length::meter;
+  return rpc::Point3 { x: p.x.get::<meter>(), y: p.y.get::<meter>(), z: p.z.get::<meter>() };
+}
+
+fn rpc2point(p: rpc::Point3) -> T::Point3 {
+  return T::Point3::new(p.x, p.y, p.z);
+}
+
 #[tonic::async_trait]
 impl Pt for Server {
+  async fn preview_volume_targets(
+    &self, request: Request<rpc::PreviewVolumeTargetsRequest>,
+  ) -> RPCResult<rpc::PreviewVolumeTargetsReply> {
+    let request = request.into_inner();
+    let (creatures, points) = self
+      .actor
+      .preview_volume_targets(
+        T::SceneID(request.scene_id.parse().unwrap()),
+        T::CreatureID(request.actor_id.parse().unwrap()),
+        T::AbilityID(request.ability_id.parse().unwrap()),
+        rpc2point(request.point.unwrap()),
+      ).await
+      .map_err(map_err)?;
+    let points = points.into_iter().map(point2rpc).collect();
+    let creatures = creatures.into_iter().map(|cid| cid.0.to_string()).collect();
+    Ok(Response::new(rpc::PreviewVolumeTargetsReply { creatures, points }))
+  }
+
   async fn say_hello(
     &self,
-    request: Request<HelloRequest>, // Accept request of type HelloRequest
-  ) -> Result<Response<HelloReply>, Status> {
+    request: Request<rpc::HelloRequest>, // Accept request of type HelloRequest
+  ) -> RPCResult<rpc::HelloReply> {
     // Return an instance of type HelloReply
     // We must use .into_inner() as the fields of gRPC requests and responses are private
     let x = request.into_inner();
     println!("Got a request: {:?}", x);
 
-    let reply = HelloReply {
-      message: format!("Hello {}!", x.name).into(),
-    };
+    let reply = rpc::HelloReply { message: format!("Hello {}!", x.name).into() };
 
     Ok(Response::new(reply)) // Send back our formatted greeting
   }
 
-
-  async fn list_saved_games(&self, _request: Request<Empty>) -> Result<Response<ListSavedGamesReply>, Status> {
+  async fn list_saved_games(
+    &self, _request: Request<rpc::Empty>,
+  ) -> RPCResult<rpc::ListSavedGamesReply> {
     // This does not require access to the app, so we don't dispatch to the actor.
 
     fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
@@ -63,12 +93,12 @@ impl Pt for Server {
       None => vec![],
     };
     let games = list_dir_into_strings(&self.actor.saved_game_path).map_err(map_err)?;
-    return Ok(Response::new(ListSavedGamesReply { modules, games }));
+    return Ok(Response::new(rpc::ListSavedGamesReply { modules, games }));
   }
 
-  async fn save_game(&self, request: Request<SaveGameRequest>) -> Result<Response<Empty>, Status> {
+  async fn save_game(&self, request: Request<rpc::SaveGameRequest>) -> RPCResult<rpc::Empty> {
     self.actor.save_game(request.into_inner().name).await.map_err(map_err)?;
-    return Ok(Response::new(Empty {}));
+    return Ok(Response::new(rpc::Empty {}));
   }
 }
 

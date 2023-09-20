@@ -4,6 +4,8 @@
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import type { ServiceInfo } from "@protobuf-ts/runtime-rpc";
 import { PT } from "./pandt";
+import type { PreviewVolumeTargetsReply } from "./pandt";
+import type { PreviewVolumeTargetsRequest } from "./pandt";
 import type { ListSavedGamesReply } from "./pandt";
 import type { Empty } from "./pandt";
 import type { SaveGameRequest } from "./pandt";
@@ -30,6 +32,10 @@ export interface IPTClient {
      * @generated from protobuf rpc: ListSavedGames(pandt.Empty) returns (pandt.ListSavedGamesReply);
      */
     listSavedGames(input: Empty, options?: RpcOptions): UnaryCall<Empty, ListSavedGamesReply>;
+    /**
+     * @generated from protobuf rpc: PreviewVolumeTargets(pandt.PreviewVolumeTargetsRequest) returns (pandt.PreviewVolumeTargetsReply);
+     */
+    previewVolumeTargets(input: PreviewVolumeTargetsRequest, options?: RpcOptions): UnaryCall<PreviewVolumeTargetsRequest, PreviewVolumeTargetsReply>;
 }
 /**
  * @generated from protobuf service pandt.PT
@@ -62,5 +68,12 @@ export class PTClient implements IPTClient, ServiceInfo {
     listSavedGames(input: Empty, options?: RpcOptions): UnaryCall<Empty, ListSavedGamesReply> {
         const method = this.methods[2], opt = this._transport.mergeOptions(options);
         return stackIntercept<Empty, ListSavedGamesReply>("unary", this._transport, method, opt, input);
+    }
+    /**
+     * @generated from protobuf rpc: PreviewVolumeTargets(pandt.PreviewVolumeTargetsRequest) returns (pandt.PreviewVolumeTargetsReply);
+     */
+    previewVolumeTargets(input: PreviewVolumeTargetsRequest, options?: RpcOptions): UnaryCall<PreviewVolumeTargetsRequest, PreviewVolumeTargetsReply> {
+        const method = this.methods[3], opt = this._transport.mergeOptions(options);
+        return stackIntercept<PreviewVolumeTargetsRequest, PreviewVolumeTargetsReply>("unary", this._transport, method, opt, input);
     }
 }

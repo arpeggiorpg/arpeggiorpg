@@ -117,10 +117,10 @@ impl AppActor {
   pub async fn preview_volume_targets(
     &self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID,
     point: types::Point3,
-  ) -> Result<String, Error> {
+  ) -> Result<(Vec<types::CreatureID>, Vec<types::Point3>), Error> {
     let app = self.app.lock().await;
     let targets = app.preview_volume_targets(scene_id, actor_id, ability_id, point)?;
-    Ok(serde_json::to_string(&targets)?)
+    Ok(targets)
   }
 
   pub async fn load_saved_game(&self, name: String, source: types::ModuleSource) -> Result<String, Error> {
