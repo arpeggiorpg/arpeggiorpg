@@ -138,14 +138,14 @@ impl AABB {
 pub enum Dice {
   Expr { num: u8, size: u8 },
   Plus(Box<Dice>, Box<Dice>),
-  Flat(i8),
+  Flat { value: i8 },
   BestOf(u8, Box<Dice>),
 }
 
 impl Dice {
   pub fn expr(n: u8, d: u8) -> Dice { Dice::Expr { num: n, size: d } }
 
-  pub fn flat(val: i8) -> Dice { Dice::Flat(val) }
+  pub fn flat(value: i8) -> Dice { Dice::Flat { value } }
 
   pub fn plus(&self, d: Dice) -> Dice { Dice::Plus(Box::new(self.clone()), Box::new(d)) }
 
@@ -165,7 +165,7 @@ impl Dice {
         }
         (intermediate, result)
       }
-      Dice::Flat(val) => (vec![i16::from(val)], i32::from(val)),
+      Dice::Flat { value } => (vec![i16::from(value)], i32::from(value)),
       Dice::Plus(ref l, ref r) => {
         let (mut intermediate, left_result) = l.roll();
         let (right_intermediate, right_result) = r.roll();

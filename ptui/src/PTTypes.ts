@@ -446,7 +446,7 @@ export const decodePotentialTargets: Decoder<PotentialTargets> = Z.union([
 ]);
 
 const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
-  Z.object({Flat: Z.number()}),
+  Z.object({Flat: Z.object({value: Z.number()})}),
   Z.object({Expr: Z.object({num: Z.number(), size: Z.number()})}),
   Z.object({Plus: Z.tuple([decodeDice, decodeDice])}),
   Z.object({BestOf: Z.tuple([Z.number(), decodeDice])}),
