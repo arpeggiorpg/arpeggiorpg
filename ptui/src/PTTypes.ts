@@ -556,7 +556,6 @@ const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
   background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
 });
-(window as any).decodeSceneCreation = decodeSceneCreation;
 
 const decodeVolume: Decoder<Volume> = Z.union([
   Z.object({Sphere: Z.number()}).transform(({Sphere: radius}): Volume => ({t: "Sphere", radius})),

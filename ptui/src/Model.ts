@@ -263,7 +263,7 @@ export const useState = createWithEqualityFn<AllStates>()((...a) => ({
 export const getState = useState.getState;
 
 // Just for debugging
-(window as any).getState = getState;
+if (typeof window !== 'undefined') (window as any).getState = getState;
 
 
 
