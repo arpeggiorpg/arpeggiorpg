@@ -907,7 +907,7 @@ interface GMCreateCreatureProps {
 }
 export function CreateCreature(props: GMCreateCreatureProps) {
   const { path } = props;
-  const init: T.Dice = { t: "Expr", num: 1, size: 20 };
+  const init: T.Dice = { Expr: {num: 1, size: 20 }};
   const creature_data = {
     name: "", note: "", bio: "", portrait_url: "", initiative: init, class_: "",
     size: { x: 1, y: 1, z: 1 }, icon_url: "",
