@@ -59,12 +59,12 @@ export function maybeParse(input: string): P.Result<T.Dice> {
 }
 
 export function format(d: T.Dice): string {
-  if ("Flat" in d) return d.Flat.toString();
+  if ("Flat" in d) return d.Flat.value.toString();
   if ("Expr" in d) return (d.Expr.num.toString() + "d" + d.Expr.size.toString());
   if ("Plus" in d) {
     const [left, right] = d.Plus;
     if ("Flat" in right && right.Flat.value < 0) {
-      return (format(left) + "-" + (-right.Flat));
+      return (format(left) + "-" + (-right.Flat.value));
     } else {
       return format(d.Plus[0]) + "+" + format(d.Plus[1]);;
     }

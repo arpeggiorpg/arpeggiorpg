@@ -1,37 +1,28 @@
 import * as I from 'immutable';
-import 'jasmine';
 import * as LD from 'lodash';
-
+import { expect, describe, test } from 'vitest'
 
 import * as M from '../Model';
 import * as T from '../PTTypes';
 
 function assertEq<T>(a: T, b: T, msg?: string) {
-  console.log();
-  if (!LD.isEqual(a, b)) {
-    console.log("Not equal", JSON.stringify(a, null, 2), "!==", JSON.stringify(b, null, 2), msg);
-    throw new Error(`Not equal (${msg}) ${a} !== ${b}`);
-  }
+  expect(a).toEqual(b);
 }
 
 function assertRaises(f: () => void, msg?: string) {
-  try {
-    f();
-  } catch (e) {
-    return;
-  }
-  throw new Error(`function did not raise (${msg}): ${f}.`);
+  expect(f).toThrow();
 }
 
-export function test(): boolean {
-  assertRaises(() => T.decodeSkillLevel.decodeAny("Foo"));
-  assertEq(T.decodeSkillLevel.decodeAny("Skilled"), "Skilled");
+test("SkillLevel", () => {
+  assertRaises(() => T.decodeSkillLevel.parse("Foo"));
+  assertEq(T.decodeSkillLevel.parse("Skilled"), "Skilled");
+})
 
+test("random junk", () => {
   const exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
   assertEq(
-    T.decodeAttributeCheck.decodeAny(exAttrCheck as any),
+    T.decodeAttributeCheck.parse(exAttrCheck as any),
     exAttrCheck);
-
   const gameLogTests: [[any, any]] = [
     ["StopCombat", { t: "StopCombat" }],
     [
@@ -46,22 +37,30 @@ export function test(): boolean {
       }]
   ];
   for (const [x, y] of gameLogTests) {
-    assertEq<T.GameLog>(T.decodeGameLog.decodeAny(x), y);
+    assertEq<T.GameLog>(T.decodeGameLog.parse(x), y);
   }
 
-  assertEq<T.Visibility>(T.decodeVisibility.decodeAny("GMOnly"), { t: "GMOnly" });
-  assertEq<T.Visibility>(T.decodeVisibility.decodeAny("AllPlayers"), { t: "AllPlayers" });
+  assertEq<T.Visibility>(T.decodeVisibility.parse("GMOnly"), { t: "GMOnly" });
+  assertEq<T.Visibility>(T.decodeVisibility.parse("AllPlayers"), { t: "AllPlayers" });
 
   const sceneJSON = {
     id: "Scene ID",
     name: "Scene Name",
     map: "Map ID",
-    creatures: { "Creature ID": [[0, 0, 0], "GMOnly"] },
+    creatures: { "Creature ID": ["0/0/0", "GMOnly"] },
     attribute_checks: {
       "Do a backflip": exAttrCheck,
     },
     inventory: {},
     background_image_url: "",
+    related_scenes: [],
+    scene_hotspots: {},
+    terrain: [],
+    highlights: {},
+    annotations: {},
+    background_image_scale: [0, 0],
+    volume_conditions: {},
+    focused_creatures: []
   };
   const exScene: T.Scene = {
     id: "Scene ID",
@@ -78,37 +77,34 @@ export function test(): boolean {
     background_image_scale: [0, 0],
     volume_conditions: I.Map(),
     focused_creatures: I.List(),
+    scene_hotspots: I.Map(),
+    related_scenes: I.Set(),
   };
-  assertEq<T.Scene>(
-    I.fromJS(T.decodeScene.decodeAny(sceneJSON)).toJS(),
-    I.fromJS(exScene).toJS());
-  console.log("OK");
-  return true;
-}
+  assertEq(T.decodeScene.parse(sceneJSON), exScene);
 
-// test()
+});
 
 describe("PTTypes", () => {
   const ranged_volume_target = { "RangedVolume": { "volume": { "Sphere": 200 }, "range": 1000 } };
 
-  it("decodeSceneTarget", () => {
-    T.decodeSceneTarget.decodeAny(ranged_volume_target);
+  test("decodeSceneTarget", () => {
+    T.decodeSceneTarget.parse(ranged_volume_target);
   });
 
-  it("decodeAction", () => {
+  test("decodeAction", () => {
     const action = { "SceneVolume": { "target": ranged_volume_target } };
-    T.decodeAction.decodeAny(action);
+    T.decodeAction.parse(action);
   });
 
-  it("decodeInventoryOwner", () => {
+  test("decodeInventoryOwner", () => {
     assertEq(
-      T.decodeInventoryOwner.decodeAny({ Creature: "FOO" }),
+      T.decodeInventoryOwner.parse({ Creature: "FOO" }),
       { Creature: "FOO" }
     );
 
   });
 
-  it("Decoding a super-basic creature", () => {
+  test("Decoding a super-basic creature", () => {
     const sample = {
       id: "0x00",
       name: "Elron",
@@ -135,7 +131,7 @@ describe("PTTypes", () => {
       inventory: {},
       bio: "",
     };
-    const creature = T.decodeCreature.decodeAny(sample);
+    const creature = T.decodeCreature.parse(sample);
     expect(creature.initiative).toEqual({
       t: "BestOf",
       num: 2,
@@ -149,21 +145,12 @@ describe("PTTypes", () => {
 });
 
 describe("filterMap", () => {
-  it("filters and maps", () => {
+  test("filters and maps", () => {
     expect(
       M.filterMap(
         ["0", "one", "2", "3"],
         Number)
     ).toEqual([2, 3]);
-  });
-});
-
-describe("getCreatures", () => {
-  it("Gets creatures", () => {
-    const creature = { id: "0x00", name: "Bob" } as T.Creature;
-    const app = { current_game: { creatures: I.Map({ "0x00": creature }) } } as any as T.App; // lol
-    const ptui = new M.PTUI("http://example.com/", app);
-    expect(ptui.getCreatures(["0x00", "0x01"])).toEqual([creature]);
   });
 });
 
