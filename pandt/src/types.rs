@@ -133,7 +133,8 @@ impl AABB {
   }
 }
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum Dice {
   Expr { num: u8, size: u8 },
   Plus(Box<Dice>, Box<Dice>),

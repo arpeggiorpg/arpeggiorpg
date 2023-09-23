@@ -13,8 +13,9 @@ import type { ConditionID } from "./bindings/ConditionID";
 import type { HP } from "./bindings/HP";
 import type { Energy } from "./bindings/Energy";
 import type { Note } from "./bindings/Note";
+import type { Dice } from "./bindings/Dice";
 
-export { AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note};
+export { AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note, Dice};
 
 export type Color = string;
 export type Distance = number;
@@ -22,7 +23,6 @@ export type FolderPath = Array<string>;
 export type Terrain = I.Set<Point3>;
 export type Highlights = I.Map<Point3, [Color, Visibility]>;
 export type Annotations = I.Map<Point3, [string, Visibility]>;
-
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -413,12 +413,6 @@ export type Visibility =
   | { t: "GMOnly" }
   | { t: "AllPlayers" };
 
-export type Dice =
-  | { t: "Flat"; val: number }
-  | { t: "Expr"; num: number; size: number }
-  | { t: "Plus"; left: Dice; right: Dice }
-  | { t: "BestOf"; num: number; dice: Dice };
-
 export type PotentialTargets =
   | { t: "CreatureIDs"; cids: Array<CreatureID> }
   | { t: "Points"; points: Array<Point3> }
@@ -452,10 +446,10 @@ export const decodePotentialTargets: Decoder<PotentialTargets> = Z.union([
 ]);
 
 const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
-  Z.object({Flat: Z.number()}).transform((o): Dice => ({t: "Flat", val: o.Flat})),
-  Z.object({Expr: Z.object({num: Z.number(), size: Z.number()})}).transform(({Expr: {num, size}}): Dice => ({t: "Expr", num, size})),
-  Z.object({Plus: Z.tuple([decodeDice, decodeDice])}).transform(({Plus: [left, right]}): Dice => ({t: "Plus", left, right})),
-  Z.object({BestOf: Z.tuple([Z.number(), decodeDice])}).transform(({BestOf: [num, dice]}): Dice => ({t: "BestOf", num, dice})),
+  Z.object({Flat: Z.number()}),
+  Z.object({Expr: Z.object({num: Z.number(), size: Z.number()})}),
+  Z.object({Plus: Z.tuple([decodeDice, decodeDice])}),
+  Z.object({BestOf: Z.tuple([Z.number(), decodeDice])}),
 ]));
 
 const decodeDuration: Decoder<Duration> = Z.union([
@@ -1173,12 +1167,7 @@ function encodeNote(note: Note): object {
 }
 
 function encodeDice(d: Dice): object {
-  switch (d.t) {
-    case "Flat": return { Flat: d.val };
-    case "Expr": return { Expr: { num: d.num, size: d.size } };
-    case "Plus": return { Plus: [encodeDice(d.left), encodeDice(d.right)] };
-    case "BestOf": return { BestOf: [d.num, encodeDice(d.dice)] };
-  }
+  return d;
 }
 
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
