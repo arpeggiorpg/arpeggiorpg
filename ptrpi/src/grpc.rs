@@ -26,14 +26,7 @@ impl Server {
 
 type RPCResult<T> = Result<Response<T>, Status>;
 
-fn point2rpc(p: T::Point3) -> rpc::Point3 {
-  use uom::si::length::meter;
-  return rpc::Point3 { x: p.x.get::<meter>(), y: p.y.get::<meter>(), z: p.z.get::<meter>() };
-}
 
-fn rpc2point(p: rpc::Point3) -> T::Point3 {
-  return T::Point3::new(p.x, p.y, p.z);
-}
 
 #[tonic::async_trait]
 impl Pt for Server {
@@ -47,10 +40,10 @@ impl Pt for Server {
         T::SceneID(request.scene_id.parse().unwrap()),
         T::CreatureID(request.actor_id.parse().unwrap()),
         T::AbilityID(request.ability_id.parse().unwrap()),
-        rpc2point(request.point.unwrap()),
+        request.point.unwrap().into(),
       ).await
       .map_err(map_err)?;
-    let points = points.into_iter().map(point2rpc).collect();
+    let points = points.into_iter().map(Into::into).collect();
     let creatures = creatures.into_iter().map(|cid| cid.0.to_string()).collect();
     Ok(Response::new(rpc::PreviewVolumeTargetsReply { creatures, points }))
   }
@@ -104,4 +97,21 @@ impl Pt for Server {
 
 fn map_err<T: ToString>(e: T) -> Status {
   return Status::unknown(e.to_string());
+}
+
+
+
+// Conversions!
+
+impl From<T::Point3> for rpc::Point3 {
+  fn from(p: T::Point3) -> rpc::Point3 {
+    use uom::si::length::meter;
+    return rpc::Point3 { x: p.x.get::<meter>(), y: p.y.get::<meter>(), z: p.z.get::<meter>() };
+  }
+}
+
+impl From<rpc::Point3> for T::Point3 {
+  fn from(p: rpc::Point3) -> T::Point3 {
+    return T::Point3::new(p.x, p.y, p.z);
+  }
 }
