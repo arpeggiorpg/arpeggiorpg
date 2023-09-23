@@ -15,7 +15,7 @@ const digits: P.Parser<number> =
 const flat: P.Parser<T.Dice> =
   spaced(
     digits
-      .map(num => ({ Flat: num}))
+      .map(value => ({ Flat: { value } }))
       .desc('Flat'));
 const expr: P.Parser<T.Dice> =
   spaced(
@@ -34,7 +34,7 @@ const minus: P.Parser<T.Dice> =
   // i.e. 1d20-1d8 is not representable, but we can support 1d20-2 at least.
   spaced(
     P.seq(spaced(expr).skip(spaced(P.string('-'))), spaced(digits))
-      .map(([left, num]): T.Dice => ({ Plus: [left, { Flat: -num }] }))
+      .map(([left, num]): T.Dice => ({ Plus: [left, { Flat: { value: -num } }] }))
       .desc('Minus'));
 
 const sum = P.alt(plus, minus);
@@ -63,7 +63,7 @@ export function format(d: T.Dice): string {
   if ("Expr" in d) return (d.Expr.num.toString() + "d" + d.Expr.size.toString());
   if ("Plus" in d) {
     const [left, right] = d.Plus;
-    if ("Flat" in right && right.Flat < 0) {
+    if ("Flat" in right && right.Flat.value < 0) {
       return (format(left) + "-" + (-right.Flat));
     } else {
       return format(d.Plus[0]) + "+" + format(d.Plus[1]);;
