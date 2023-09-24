@@ -1,6 +1,6 @@
 /// A component which handles svg-pan-zoom and Hammer.js integration to pan and zoom.
 
-import * as Hammer from 'hammerjs';
+import Hammer from 'hammerjs';
 import * as React from 'react';
 import svgPanZoom from 'svg-pan-zoom';
 
