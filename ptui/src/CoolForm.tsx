@@ -29,7 +29,7 @@ export class Submit extends React.Component<CoolSubmitProps> { }
 
 interface CoolFormState { data: { [index: string]: { type: string; value: any; extra: any } }; }
 
-export class CoolForm extends React.Component<{}, CoolFormState> {
+export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
     const data: { [index: string]: { type: string; value: any; extra: any } } = {};

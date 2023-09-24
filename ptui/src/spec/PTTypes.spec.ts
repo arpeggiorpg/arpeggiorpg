@@ -1,4 +1,4 @@
-import * as I from 'immutable';
+import I from 'immutable';
 import { expect, describe, test } from 'vitest'
 
 import * as M from '../Model';
