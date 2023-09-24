@@ -126,20 +126,14 @@ describe("PTTypes", () => {
       portrait_url: "",
       icon_url: "",
       attributes: {},
-      initiative: { "BestOf": [2, { "Plus": [{ "Expr": { num: 1, size: 20 } }, { "Flat": 4 }] }] },
+      initiative: { BestOf: [2, { Plus: [{ Expr: { num: 1, size: 20 } }, { Flat: { value: 4 } }] }] },
       size: { x: 1, y: 1, z: 1 },
       inventory: {},
       bio: "",
     };
     const creature = T.decodeCreature.parse(sample);
     expect(creature.initiative).toEqual({
-      t: "BestOf",
-      num: 2,
-      dice: {
-        t: "Plus",
-        left: { t: "Expr", num: 1, size: 20 },
-        right: { t: "Flat", val: 4 },
-      },
+      BestOf: [2, { Plus: [{ Expr: { num: 1, size: 20 } }, { Flat: { value: 4 } }] }],
     });
   });
 });
