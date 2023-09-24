@@ -8,6 +8,9 @@ export function Main(props: React.PropsWithChildren) {
   // kick off a fetch of the app
   React.useEffect(() => { startPoll(); }, []);
   React.useEffect(() => { sayHello(); }, []);
+  if (!RPI_URL) {
+    return <h1 style={{color: "red"}}>VITE_RPI_URL is not set</h1>
+  }
 
   if (fetchStatus === "Unfetched") {
     return <div>Waiting for initial data from server.</div>;
