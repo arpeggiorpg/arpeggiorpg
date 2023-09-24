@@ -1,4 +1,4 @@
-import * as I from "immutable";
+import { Set } from "immutable";
 import * as React from "react";
 
 import { Button, List, Table } from "semantic-ui-react";
@@ -110,7 +110,7 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
   const { player, onDone } = props;
   return (
     <Campaign.MultiCreatureSelector
-      already_selected={I.Set(player.creatures)}
+      already_selected={Set(player.creatures)}
       on_cancel={onDone}
       on_selected={cids => {
         A.sendCommand({

@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Map } from 'immutable';
 import mapValues from 'lodash/mapValues';
 import * as React from 'react';
 
@@ -70,8 +70,8 @@ function mapCreatures(state: M.AllStates): { [index: string]: Grid.MapCreature }
     }));
 }
 
-function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): I.Map<string, (cid: T.CreatureID) => void> {
-  let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map({
+function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): Map<string, (cid: T.CreatureID) => void> {
+  let actions: Map<string, (cid: T.CreatureID) => void> = Map({
     "Walk": (cid: T.CreatureID) => A.requestMove(cid),
     "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),
   });

@@ -1,14 +1,14 @@
 import Fuse from 'fuse.js';
 import escape from 'lodash/escape';
 import sortBy from 'lodash/sortBy';
-import I from 'immutable';
+import { Set } from 'immutable';
 import * as React from "react";
 
 import {
   Button, Checkbox, Divider, Dropdown, Icon, Input, Label, List, Menu,
 } from 'semantic-ui-react';
 
-import * as SUI from 'semantic-ui-react';
+import { SemanticICONS, CheckboxProps } from 'semantic-ui-react';
 
 import * as CV from './CommonView';
 import * as CF from './CoolForm';
@@ -22,12 +22,12 @@ export function Campaign() {
 }
 
 interface MultiItemSelectorProps {
-  require_selected: I.Set<T.ItemID>;
-  on_selected: (cs: I.Set<T.ItemID>) => void;
+  require_selected: Set<T.ItemID>;
+  on_selected: (cs: Set<T.ItemID>) => void;
   on_cancel: () => void;
 }
 export function MultiItemSelector(props: MultiItemSelectorProps) {
-  const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.require_selected);
+  const [selections, setSelections] = React.useState<Set<T.ItemID>>(props.require_selected);
   const items = M.useState(s =>
     collectAllItems(s).map(([path, {id, name}]) => ({path, id, name}))
   );
@@ -69,12 +69,12 @@ export function SceneSelector(props: SceneSelectorProps) {
 }
 
 interface MultiSceneSelectorProps {
-  already_selected: I.Set<T.SceneID>;
-  on_selected: (cs: I.Set<T.SceneID>) => void;
+  already_selected: Set<T.SceneID>;
+  on_selected: (cs: Set<T.SceneID>) => void;
   on_cancel: () => void;
 }
 export function MultiSceneSelector(props: MultiSceneSelectorProps) {
-  const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.already_selected);
+  const [selections, setSelections] = React.useState<Set<T.ItemID>>(props.already_selected);
   const scenes = M.useState(s => collectAllScenes(s)).map(([path, {id, name}]) => ({path, id, name}));
   const selectedScenes = M.useState(s => s.getScenes(selections.toArray()).map(({id, name}) => ({id, name})));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
@@ -100,11 +100,11 @@ export function MultiSceneSelector(props: MultiSceneSelectorProps) {
 }
 
 interface MultiCreatureSelectorProps {
-  already_selected: I.Set<T.CreatureID>;
-  on_selected: (cs: I.Set<T.CreatureID>) => void;
+  already_selected: Set<T.CreatureID>;
+  on_selected: (cs: Set<T.CreatureID>) => void;
   on_cancel: () => void;
 }
-export class MultiCreatureSelector extends React.Component< MultiCreatureSelectorProps, { selections: I.Set<T.CreatureID> }> {
+export class MultiCreatureSelector extends React.Component< MultiCreatureSelectorProps, { selections: Set<T.CreatureID> }> {
   constructor(props: MultiCreatureSelectorProps) {
     super(props);
     this.state = { selections: this.props.already_selected };
@@ -340,7 +340,7 @@ function useFolderTreeData(state: M.AllStates, path: T.FolderPath, folder: T.Fol
 }
 
 
-function object_icon(name: FolderContentType): SUI.SemanticICONS {
+function object_icon(name: FolderContentType): SemanticICONS {
   switch (name) {
     case "Scene": return "object group";
     case "Creature": return "user";
@@ -438,7 +438,7 @@ function TreeObject({ object, selecting }: TreeObjectProps) {
     return activate_object(object);
   }
 
-  function onCheck(_: any, data: SUI.CheckboxProps) {
+  function onCheck(_: any, data: CheckboxProps) {
     if (selecting && selecting.on_select_object && data.checked !== undefined) {
       return selecting.on_select_object(data.checked, object.path, object_to_item_id(object));
     }

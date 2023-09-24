@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
 import type { AbilityID } from "./bindings/AbilityID";
@@ -19,9 +19,9 @@ export { AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, Cond
 export type Color = string;
 export type Distance = number;
 export type FolderPath = Array<string>;
-export type Terrain = I.Set<Point3>;
-export type Highlights = I.Map<Point3, [Color, Visibility]>;
-export type Annotations = I.Map<Point3, [string, Visibility]>;
+export type Terrain = Set<Point3>;
+export type Highlights = Map<Point3, [Color, Visibility]>;
+export type Annotations = Map<Point3, [string, Visibility]>;
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -30,7 +30,7 @@ export function folderPathToString(path: FolderPath): string {
   return encodeFolderPath(path);
 }
 
-export class Point3 implements I.ValueObject {
+export class Point3 implements ValueObject {
   constructor(public x: number, public y: number, public z: number) { }
 
   equals(other: Point3): boolean {
@@ -38,7 +38,7 @@ export class Point3 implements I.ValueObject {
   }
 
   hashCode(): number {
-    return I.List([this.x, this.y, this.z]).hashCode();
+    return List([this.x, this.y, this.z]).hashCode();
   }
 
   toString(): string {
@@ -61,13 +61,13 @@ export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 
 export interface Game {
   current_combat?: Combat | undefined;
-  creatures: I.Map<CreatureID, Creature>;
-  classes: I.Map<ClassID, Class>;
+  creatures: Map<CreatureID, Creature>;
+  classes: Map<ClassID, Class>;
   items: { [index: string]: Item };
-  scenes: I.Map<SceneID, Scene>;
+  scenes: Map<SceneID, Scene>;
   abilities: { [index: string]: Ability };
   campaign: Folder;
-  players: I.Map<PlayerID, Player>;
+  players: Map<PlayerID, Player>;
 }
 
 export interface Combat {
@@ -116,7 +116,7 @@ export type Volume =
 
 export interface Folder {
   data: FolderNode;
-  children: I.Map<string, Folder>;
+  children: Map<string, Folder>;
 }
 
 export interface FolderNode {
@@ -162,13 +162,13 @@ export type GameCommand =
   | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: List<CreatureID> }
   | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
-  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
-  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: I.Map<Point3, SceneID> }
+  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: Set<SceneID> }
+  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: Map<Point3, SceneID> }
   | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
   | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
@@ -250,13 +250,13 @@ export type GameLog =
   | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
   | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
   | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: I.List<CreatureID> }
+  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: List<CreatureID> }
   | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
   | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
   | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
   | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
-  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: I.Set<SceneID> }
-  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: I.Map<Point3, SceneID> }
+  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: Set<SceneID> }
+  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: Map<Point3, SceneID> }
   | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
   | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
   | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
@@ -333,19 +333,19 @@ export class Creature {
     public class_: string,
     public max_health: HP,
     public cur_health: HP,
-    public own_conditions: I.Map<ConditionID, AppliedCondition>,
-    public volume_conditions: I.Map<ConditionID, AppliedCondition>,
+    public own_conditions: Map<ConditionID, AppliedCondition>,
+    public volume_conditions: Map<ConditionID, AppliedCondition>,
     public note: string,
     public bio: string,
     public portrait_url: string,
     public icon_url: string,
-    public attributes: I.Map<AttrID, SkillLevel>,
+    public attributes: Map<AttrID, SkillLevel>,
     public initiative: Dice,
-    public inventory: I.Map<ItemID, number>,
+    public inventory: Map<ItemID, number>,
     public size: AABB,
   ) { }
 
-  dynamic_conditions(): I.Map<ConditionID, AppliedCondition> {
+  dynamic_conditions(): Map<ConditionID, AppliedCondition> {
     return this.own_conditions.merge(this.volume_conditions);
   }
 }
@@ -389,16 +389,16 @@ export interface Scene {
   terrain: Terrain;
   highlights: Highlights;
   annotations: Annotations;
-  scene_hotspots: I.Map<Point3, SceneID>;
-  related_scenes: I.Set<SceneID>;
-  creatures: I.Map<CreatureID, [Point3, Visibility]>;
-  attribute_checks: I.Map<string, AttributeCheck>;
-  inventory: I.Map<ItemID, number>;
+  scene_hotspots: Map<Point3, SceneID>;
+  related_scenes: Set<SceneID>;
+  creatures: Map<CreatureID, [Point3, Visibility]>;
+  attribute_checks: Map<string, AttributeCheck>;
+  inventory: Map<ItemID, number>;
   background_image_url: string;
   background_image_offset?: [number, number] | undefined;
   background_image_scale: [number, number];
-  volume_conditions: I.Map<ConditionID, VolumeCondition>;
-  focused_creatures: I.List<CreatureID>;
+  volume_conditions: Map<ConditionID, VolumeCondition>;
+  focused_creatures: List<CreatureID>;
 }
 
 export interface VolumeCondition {
@@ -506,15 +506,15 @@ export const decodeCreature: Decoder<Creature> = Z.object({
   class: Z.string(),
   max_health: Z.number(),
   cur_health: Z.number(),
-  own_conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(I.Map),
-  volume_conditions: Z.record(decodeAppliedCondition).transform<Creature['volume_conditions']>(I.Map),
+  own_conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(Map),
+  volume_conditions: Z.record(decodeAppliedCondition).transform<Creature['volume_conditions']>(Map),
   note: Z.string(),
   bio: Z.string(),
   portrait_url: Z.string(),
   icon_url: Z.string(),
-  attributes: Z.record(decodeSkillLevel).transform<Creature['attributes']>(I.Map),
+  attributes: Z.record(decodeSkillLevel).transform<Creature['attributes']>(Map),
   initiative: decodeDice,
-  inventory: Z.record(Z.number()).transform<Creature['inventory']>(I.Map),
+  inventory: Z.record(Z.number()).transform<Creature['inventory']>(Map),
   size: decodeAABB,
 }).transform(({
     id, name, speed, max_energy, cur_energy, abilities, class: class_, max_health, cur_health,
@@ -583,14 +583,14 @@ export const decodeScene: Decoder<Scene> = Z.object({
   annotations: decodeAnnotations,
   scene_hotspots: decodeIMap(decodePoint3, Z.string()),
   related_scenes: decodeSet(Z.string()),
-  creatures: Z.record(Z.tuple([decodePoint3, decodeVisibility])).transform<Scene['creatures']>(I.Map),
-  attribute_checks: Z.record(decodeAttributeCheck).transform<Scene['attribute_checks']>(I.Map),
-  inventory: Z.record(Z.number()).transform<Scene['inventory']>(I.Map),
+  creatures: Z.record(Z.tuple([decodePoint3, decodeVisibility])).transform<Scene['creatures']>(Map),
+  attribute_checks: Z.record(decodeAttributeCheck).transform<Scene['attribute_checks']>(Map),
+  inventory: Z.record(Z.number()).transform<Scene['inventory']>(Map),
   background_image_url: Z.string(),
   background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
-  volume_conditions: Z.record(decodeVolumeCondition).transform<Scene['volume_conditions']>(I.Map),
-  focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(I.List),
+  volume_conditions: Z.record(decodeVolumeCondition).transform<Scene['volume_conditions']>(Map),
+  focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(List),
 });
 
 function _mkFolderItem(t: FolderItemID['t']): Decoder<FolderItemID> {
@@ -755,7 +755,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
     ({RemoveSceneChallenge: o}): GameLog => ({ t: "RemoveSceneChallenge", ...o })),
   Z.object({SetFocusedSceneCreatures: Z.object({
     scene_id: Z.string(),
-    creatures: Z.array(Z.string()).transform(I.List),
+    creatures: Z.array(Z.string()).transform(List),
   })}).transform(
     ({SetFocusedSceneCreatures: o}): GameLog => ({ t: "SetFocusedSceneCreatures", ...o })),
   Z.object({RemoveSceneVolumeCondition: Z.object({
@@ -851,7 +851,7 @@ const decodeFolderNode: Decoder<FolderNode> = Z.object({
 
 const decodeFolder: Decoder<Folder> = Z.object({
   data: decodeFolderNode,
-  children: Z.record(Z.lazy(() => decodeFolder)).transform<Folder["children"]>(I.Map)
+  children: Z.record(Z.lazy(() => decodeFolder)).transform<Folder["children"]>(Map)
 });
 
 const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
@@ -902,13 +902,13 @@ const decodeAbility: Decoder<Ability> = Z.object({
 
 const decodeGame: Decoder<Game> = Z.object({
   current_combat: maybe(decodeCombat),
-  creatures: Z.record(decodeCreature).transform<Game["creatures"]>(I.Map),
-  classes: Z.record(decodeClass).transform<Game["classes"]>(I.Map),
+  creatures: Z.record(decodeCreature).transform<Game["creatures"]>(Map),
+  classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
   items: Z.record(decodeItem),
-  scenes: Z.record(decodeScene).transform<Game["scenes"]>(I.Map),
+  scenes: Z.record(decodeScene).transform<Game["scenes"]>(Map),
   abilities: Z.record(decodeAbility),
   campaign: decodeFolder,
-  players: Z.record(decodePlayer).transform<Game["players"]>(I.Map),
+  players: Z.record(decodePlayer).transform<Game["players"]>(Map),
 });
 
 export const decodeApp: Decoder<App> = Z.object({
@@ -1185,12 +1185,12 @@ export function encodePoint3(pt: Point3): string {
 }
 
 // Utility Functions for Decoding
-function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<I.Map<K, V>> {
-  return Z.record(valueDecoder).transform(o => I.Map(o).mapKeys(k => keyDecoder.parse(k)));
+function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Decoder<Map<K, V>> {
+  return Z.record(valueDecoder).transform(o => Map(o).mapKeys(k => keyDecoder.parse(k)));
 }
 
-function decodeSet<T>(d: Decoder<T>): Decoder<I.Set<T>> {
-  return Z.array(d).transform<I.Set<T>>(I.Set);
+function decodeSet<T>(d: Decoder<T>): Decoder<Set<T>> {
+  return Z.array(d).transform<Set<T>>(Set);
 }
 
 // We use undefined for missing data in our typescript types, not null. This way

@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Map } from 'immutable';
 import sortBy from "lodash/sortBy";
 import range from "lodash/range";
 import * as React from "react";
@@ -633,7 +633,7 @@ export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
   class_: T.Class;
-  actions: I.Map<string, (cid: T.CreatureID) => void>;
+  actions: Map<string, (cid: T.CreatureID) => void>;
   visibility: T.Visibility;
 }
 
@@ -895,7 +895,7 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
       const class_ = state.getClass(creature.class_);
       if (class_) {
-        let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
+        let actions: Map<string, (cid: T.CreatureID) => void> = Map();
         const target = targetAction(creature);
         if (target) {
           actions = actions.set(target.name, target.action);
