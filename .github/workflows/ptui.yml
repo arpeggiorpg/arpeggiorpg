@@ -1,0 +1,20 @@
+name: PTUI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: NPM install
+      working-directory: ./ptui
+      run: npm install
+    - name: TypeScript Compiler
+      working-directory: ./ptui
+      run: npm run typecheck
+    - name: PTUI Unit Tests
+      working-directory: ./ptui
+      run: npm run test run
