@@ -95,10 +95,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
   },
 
   creatureIsInCombat: creatureId =>
-    LD.find(
-      get().getCombat()?.creatures.data,
-      ([cid, _]) => cid === creatureId
-    ) !== undefined,
+    get().getCombat()?.creatures.data.find(([cid, _]) => cid === creatureId) !== undefined,
   getSceneCreatures: scene => get().getCreatures(scene.creatures.keySeq().toArray()),
   getCreatures: cids => LD.sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
   getCreature: cid => get().getGame().creatures.get(cid),
