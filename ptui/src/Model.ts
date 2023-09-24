@@ -312,7 +312,7 @@ export type SecondaryFocus =
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
   return coll.flatMap(el => {
     const newEl = f(el);
-    return newEl !== undefined ? [newEl] : []
+    return newEl ? [newEl] : []
   })
 }
 
