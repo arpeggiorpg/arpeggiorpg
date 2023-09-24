@@ -1,5 +1,4 @@
 import * as React from "react";
-import { render } from "react-dom";
 
 interface TextInputProps {
   defaultValue: string;
@@ -58,20 +57,4 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
       style={this.props.style}
     />;
   }
-}
-
-export function renderTextInput(
-  app: any,
-  [id, defaultValue, style, numbersOnly]: [string, string, object, boolean]) {
-  const onSubmit = (content: string) => {
-    app.ports.textInputSubmit.send([id, content]);
-  };
-  const onCancel = (content: string) => {
-    app.ports.textInputCancel.send([id, content]);
-  };
-  render(
-    <TextInput defaultValue={defaultValue} style={style} onSubmit={onSubmit} onCancel={onCancel}
-      numbersOnly={numbersOnly} />,
-    document.getElementById(id)
-  );
 }

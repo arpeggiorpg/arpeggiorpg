@@ -2,15 +2,17 @@ import * as React from "react";
 import {createRoot} from "react-dom/client";
 
 import { Main } from "./Main";
-import * as GMView from "./GMView";
-import * as PlayerView from "./PlayerView";
 
-function getInnerComponent(component_name: string): JSX.Element {
+async function getInnerComponent(component_name: string): Promise<JSX.Element> {
   switch (component_name) {
-    case "gm":
+    case "gm": {
+      const GMView = await import("./GMView")
       return <GMView.GMMain />;
-    case "player":
+    }
+    case "player": {
+      const PlayerView = await import("./PlayerView");
       return <PlayerView.PlayerMain />;
+    }
     default:
       throw new Error(`Unknown component ${component_name}`);
   }
@@ -18,11 +20,12 @@ function getInnerComponent(component_name: string): JSX.Element {
 
 let root;
 
-function PT_renderMain(component_name: string, id: string) {
+async function PT_renderMain(component_name: string, id: string) {
   const el = document.getElementById(id);
+  const component = await getInnerComponent(component_name);
   const comp = (
     <Main>
-      {getInnerComponent(component_name)}
+      {component}
     </Main>
   );
   if (!el) {
