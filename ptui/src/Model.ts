@@ -322,8 +322,8 @@ export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Arr
 export function filterMapValues<T, R>
   (obj: { [index: string]: T }, f: (val: T) => R | undefined): { [index: string]: R } {
   const result: { [index: string]: R } = {};
-  for (const key of LD.keys(obj)) {
-    const new_val = f(obj[key]);
+  for (const [key, value] of Object.entries(obj)) {
+    const new_val = f(value);
     if (new_val !== undefined) { result[key] = new_val; }
   }
   return result;
@@ -346,4 +346,24 @@ export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined 
   if (x !== undefined) {
     return f(x);
   }
+}
+
+
+// hasAtLeast is from https://stackoverflow.com/a/69370003/4930992
+
+type Indices<L extends number, T extends number[] = []> =
+    T['length'] extends L ? T[number] : Indices<L, [T['length'], ...T]>;
+
+type LengthAtLeast<T extends readonly any[], L extends number> =
+  Pick<Required<T>, Indices<L>>
+
+/** Check if the length of an array is at least some number long.
+ *
+ * This is a workaround for the fact that typescript doesn't do type-narrowing on manual length
+ * checks in the face of noUncheckedIndexAccess.
+ */
+export function hasAtLeast<T extends readonly any[], L extends number>(
+    arr: T, len: L
+): arr is T & LengthAtLeast<T, L> {
+    return arr.length >= len;
 }

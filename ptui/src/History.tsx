@@ -108,10 +108,9 @@ export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, 
     case "SetCreaturePos":
       return <div>Set a creature position to {log.pos.toString()}</div>;
     case "PathCreature":
-      const last = log.path.length > 0
-        ? log.path[log.path.length - 1].toString()
-        : "Nowhere";
-      return <div>Creature followed a path to {last}</div>;
+      let last = log.path.at(-1);
+      const msg = last ? last.toString() : "Nowhere";
+      return <div>Creature followed a path to {msg}</div>;
     case "CreateCreature":
       return <div>Created a creature {log.creature.name}</div>;
     case "EditCreatureDetails":

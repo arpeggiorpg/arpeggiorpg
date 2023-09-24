@@ -509,6 +509,7 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
     <Menu vertical={true} fluid={true} style={{ height: "400px", overflowY: "auto" }}>
       {optionsToDisplay.map((result, i) => {
         const matchedValue = values[result.refIndex];
+        if (!matchedValue) { return; }
         return <Menu.Item active={i === currentSelection}
           onClick={() => props.onSelect(matchedValue)}
           key={props.display(matchedValue)}>
@@ -538,8 +539,11 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
     } else if (event.key === "ArrowDown") {
       setCurrentSelection(Math.min(currentSelection + 1, results.length - 1));
     } else if (event.key === "Enter") {
-      if (results.length > currentSelection) {
-        props.onSelect(values[results[currentSelection].refIndex]);
+      const result = results[currentSelection];
+      if (result) {
+        const value = values[result.refIndex];
+        if (value)
+          props.onSelect(value);
       }
     }
   }

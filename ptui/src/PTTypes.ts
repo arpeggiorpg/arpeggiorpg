@@ -595,7 +595,10 @@ export const decodeScene: Decoder<Scene> = Z.object({
 });
 
 function _mkFolderItem(t: FolderItemID['t']): Decoder<FolderItemID> {
-  return Z.object({[t]: Z.string()}).transform((o): FolderItemID => ({t, id: o[t]}))
+  // "!": the type of `o` in the transform is only {[key: string]: string}, which means typescript
+  // cannot know that o[t] exists in the face of noUncheckedIndexAccess. There may be a way to type
+  // `o` better but that might also require a type ascription.
+  return Z.object({[t]: Z.string()}).transform((o): FolderItemID => ({t, id: o[t]!}))
 }
 
 const decodeFolderItemID: Decoder<FolderItemID> = Z.union([

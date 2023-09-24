@@ -1,11 +1,10 @@
 /**
  * Cool Forms
  *
- * This code is a piece of shit. I use `any` all over the place. And it doesn't even expose a
- * typesafe API.
+ * TODO: Delete this code and probably replace with Formik or something.
  */
 
-import * as LD from 'lodash';
+import LD from 'lodash';
 import * as React from 'react';
 import { Button, Form, Input, Message } from 'semantic-ui-react';
 
@@ -89,12 +88,12 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
         const error = errors[el.props.name];
         return <Form.Field style={el.props.style} error={error !== undefined}>
           <label>{el.props.label}</label>
-          <Input value={this.state.data[el.props.name].value}
+          <Input value={this.state.data[el.props.name]!.value}
             style={el.props.style}
             onChange={(_, d) => this.setState({
               data: {
                 ...this.state.data, [el.props.name]: {
-                  ...this.state.data[el.props.name],
+                  ...this.state.data[el.props.name]!,
                   value: d.value,
                 },
               },
@@ -114,7 +113,7 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
     const data: any = {};
     for (const key in this.state.data) {
       if (this.state.data.hasOwnProperty(key)) {
-        const { type, value } = this.state.data[key];
+        const { type, value } = this.state.data[key]!;
         data[key] = type === "numeric" ? Number(value) : value;
       }
     }
@@ -125,7 +124,7 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
     const errors: { [index: string]: string } = {};
     for (const key in this.state.data) {
       if (this.state.data.hasOwnProperty(key)) {
-        const { type, value, extra } = this.state.data[key];
+        const { type, value, extra } = this.state.data[key]!;
         switch (type) {
           case "text":
             if (extra.nonEmpty && value === "") {
