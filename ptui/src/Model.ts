@@ -1,4 +1,5 @@
-import LD from 'lodash';
+import sortBy from 'lodash/sortBy';
+import deepEqual from 'lodash/isEqual';
 import I from 'immutable';
 import { createWithEqualityFn } from "zustand/traditional";
 import type { StateCreator } from "zustand";
@@ -59,12 +60,12 @@ const appSlice: Slice<AppState> = (set, get) => ({
   }),
 
   getItem: iid => get().getGame().items[iid],
-  getItems: iids => LD.sortBy(
+  getItems: iids => sortBy(
     filterMap(iids, iid => get().getItem(iid)),
     i => i.name
   ),
 
-  getScenes: (sceneIds) => LD.sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
+  getScenes: (sceneIds) => sortBy(filterMap(sceneIds, s => get().getGame().scenes.get(s)), s => s.name),
   getScene: (scene_id) => get().getGame().scenes.get(scene_id),
 
   getCurrentCombatCreatureID: () => {
@@ -97,15 +98,15 @@ const appSlice: Slice<AppState> = (set, get) => ({
   creatureIsInCombat: creatureId =>
     get().getCombat()?.creatures.data.find(([cid, _]) => cid === creatureId) !== undefined,
   getSceneCreatures: scene => get().getCreatures(scene.creatures.keySeq().toArray()),
-  getCreatures: cids => LD.sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
+  getCreatures: cids => sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
   getCreature: cid => get().getGame().creatures.get(cid),
   getCombat: () => get().getGame().current_combat,
   getGame: () => get().app.current_game,
 
   getAbility: abid => get().getGame().abilities[abid],
-  getAbilities: abids => LD.sortBy(filterMap(abids, abid => get().getAbility(abid)), i => i.name),
+  getAbilities: abids => sortBy(filterMap(abids, abid => get().getAbility(abid)), i => i.name),
   getClass: classid => get().getGame().classes.get(classid),
-  getClasses: classids => LD.sortBy(
+  getClasses: classids => sortBy(
     filterMap(classids, classid => get().getClass(classid)),
     c => c.name,
   ),
@@ -328,7 +329,7 @@ export function filterMapValues<T, R>
 
 /// A version of isEqual that requires both arguments to be the same type.
 export function isEqual<T>(l: T, r: T): boolean {
-  return LD.isEqual(l, r);
+  return deepEqual(l, r);
 }
 
 export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined {

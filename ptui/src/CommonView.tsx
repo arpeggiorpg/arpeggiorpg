@@ -1,5 +1,6 @@
-import * as I from "immutable";
-import * as LD from "lodash";
+import I from "immutable";
+import sortBy from "lodash/sortBy";
+import capitalize from "lodash/capitalize";
 import * as React from "react";
 import * as Panels from "react-resizable-panels";
 
@@ -592,9 +593,9 @@ export function ActionBar(props: { creatureId: T.CreatureID; combat?: T.Combat }
   const creature = M.useState(s => s.getCreature(props.creatureId));
   if (!creature) return <div>Can't find creature {props.creatureId}.</div>
   let abilities = M.useState(s =>
-    LD.sortBy(
+    sortBy(
       M.filterMap(
-        LD.values(creature.abilities),
+        Object.values(creature.abilities),
         (abstatus) => {
           const ability = s.getAbility(abstatus.ability_id);
           if (ability) {
@@ -860,8 +861,7 @@ export function TheLayout(props: TheLayoutProps) {
   }
 
   function narrowView(width: number) {
-    const amended_tabs = LD.concat(
-      tabs,
+    const amended_tabs = tabs.concat(
       <Tab key="Map" name="Map" always_render={true}>
         {middle}
       </Tab>
@@ -1088,7 +1088,7 @@ export function ModalMaker({
 }
 
 export function describeChallenge(challenge: T.AttributeCheck) {
-  return `${challenge.target} ${LD.capitalize(challenge.attr)}
+  return `${challenge.target} ${capitalize(challenge.attr)}
    ${challenge.reliable ? "(reliable)" : ""}`;
 }
 

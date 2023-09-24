@@ -1,5 +1,4 @@
-import * as I from 'immutable';
-import * as LD from "lodash";
+import I from 'immutable';
 import * as React from "react";
 
 import * as CV from "./CommonView";
@@ -106,7 +105,7 @@ function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.C
   return actions;
 
   function moveAction(): ((cid: T.CreatureID) => void) | undefined {
-    if (!LD.includes(player.creatures, creature.id)) { return undefined; }
+    if (!player.creatures.includes(creature.id)) { return undefined; }
     if (combat) {
       if (state.getCurrentCombatCreatureID() === creature.id) {
         return _ => A.requestCombatMovement();
@@ -149,11 +148,13 @@ function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
 }
 
 function PlayerActionBar(props: { player: T.Player; combat: T.Combat | undefined }) {
-  const cid = M.useState(s => s.getCurrentCombatCreatureID());
-  const creature = M.useState(s => cid ? s.getCreature(cid) : undefined);
+  const creature = M.useState(s => {
+    const cid = s.getCurrentCombatCreatureID();
+    if (cid) return s.getCreature(cid);
+  });
   if (props.combat) {
     if (creature) {
-      if (LD.includes(props.player.creatures, cid)) {
+      if (props.player.creatures.includes(creature.id)) {
         return <CV.ActionBar combat={props.combat} creatureId={creature.id} />;
       } else {
         return <div>{creature.name} is acting</div>;

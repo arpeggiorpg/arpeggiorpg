@@ -1,5 +1,5 @@
 import I from 'immutable';
-import LD from 'lodash';
+import mapValues from 'lodash/mapValues';
 import * as React from 'react';
 
 import * as Campaign from './Campaign';
@@ -62,7 +62,8 @@ function Secondary() {
 function mapCreatures(state: M.AllStates): { [index: string]: Grid.MapCreature } {
   const scene = state.getFocusedScene();
   if (!scene) return {};
-  return LD.mapValues(Grid.mapCreatures(state, scene),
+
+  return mapValues(Grid.mapCreatures(state, scene),
     mapc => ({
       ...mapc,
       actions: mapc.actions.merge(creatureMenuActions(state, scene, state.getGame().current_combat, mapc.creature)),

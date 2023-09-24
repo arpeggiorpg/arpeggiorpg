@@ -1,6 +1,7 @@
 import Fuse from 'fuse.js';
+import escape from 'lodash/escape';
+import sortBy from 'lodash/sortBy';
 import I from 'immutable';
-import LD from 'lodash';
 import * as React from "react";
 
 import {
@@ -325,7 +326,7 @@ function useFolderTreeData(state: M.AllStates, path: T.FolderPath, folder: T.Fol
       (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
 
   const note_objects = dont_show("Note") ? [] :
-    LD.sortBy(Object.keys(folder.data.notes), n => n).map(
+    sortBy(Object.keys(folder.data.notes), n => n).map(
       (name): FolderObject => ({ t: "Note", path, name }));
 
   return {
@@ -556,7 +557,7 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
       if (pair && i === pair[0]) {
         result.push('<span style="color: black; font-weight: bold;">');
       }
-      result.push(LD.escape(char));
+      result.push(escape(char));
       if (pair && i === pair[1]) {
         result.push('</span>');
         pair = pairs.shift();
