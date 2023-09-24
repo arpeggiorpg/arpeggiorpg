@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: install protoc
-      run: apt install -y protobuf-compiler libprotobuf-dev
+      run: sudo apt install -y protobuf-compiler libprotobuf-dev
     - name: Build
       run: cargo build --verbose
     - name: Run tests
