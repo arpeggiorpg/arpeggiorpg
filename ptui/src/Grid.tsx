@@ -1,5 +1,6 @@
 import I from 'immutable';
-import LD from "lodash";
+import sortBy from "lodash/sortBy";
+import range from "lodash/range";
 import * as React from "react";
 
 import { Button, Menu } from 'semantic-ui-react';
@@ -188,9 +189,9 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function getCreatures() {
-    const creatures = LD.sortBy(props.creatures, c => -c.creature.size.x);
-    return LD.values(creatures).map(c => {
-      const highlight = LD.includes(affectedCreatures, c.creature.id)
+    const creatures = sortBy(props.creatures, c => -c.creature.size.x);
+    return Object.values(creatures).map(c => {
+      const highlight = affectedCreatures?.includes(c.creature.id)
         ? "red" : undefined;
       return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
     });
@@ -785,7 +786,7 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
     highlightProps.strokeWidth = 3;
   }
   if (targetOptions?.options.t === "CreatureIDs") {
-    if (LD.includes(targetOptions.options.cids, creature.creature.id)) {
+    if (targetOptions.options.cids.includes(creature.creature.id)) {
       highlightProps.stroke = "red";
       highlightProps.strokeWidth = 3;
     }
@@ -914,7 +915,7 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
       const { ability_id, options } = targetOptions;
       if (options.t !== "CreatureIDs") { return undefined; }
       // this is quadratic (TODO: switch options.cids to a hashmap)
-      if (LD.includes(options.cids, creature.id)) {
+      if (options.cids.includes(creature.id)) {
         const ability = state.getAbility(ability_id);
         if (ability) {
           return {
@@ -929,8 +930,8 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
 
 export function nearby_points(pos: T.Point3): Array<T.Point3> {
   const result = [];
-  for (const x of LD.range(pos.x - 2000, pos.x + 2000, 100)) {
-    for (const y of LD.range(pos.y - 2000, pos.y + 2000, 100)) {
+  for (const x of range(pos.x - 2000, pos.x + 2000, 100)) {
+    for (const y of range(pos.y - 2000, pos.y + 2000, 100)) {
       result.push(new T.Point3(x, y, pos.z));
     }
   }

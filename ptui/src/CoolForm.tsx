@@ -148,6 +148,6 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
   }
 
   validate(): boolean {
-    return LD.isEmpty(this.getErrors());
+    return Object.keys(this.getErrors()).length === 0;
   }
 }

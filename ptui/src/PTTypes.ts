@@ -1,5 +1,4 @@
 import I from 'immutable';
-import LD from "lodash";
 import * as Z from "zod";
 
 import type { AbilityID } from "./bindings/AbilityID";
@@ -614,8 +613,8 @@ const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
 const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
   if (strpath === "") {
     return [];
-  } else if (LD.startsWith(strpath, "/")) {
-    return LD.slice(LD.split(strpath, "/"), 1);
+  } else if (strpath.startsWith("/")) {
+    return strpath.split("/").slice(1);
   } else {
     throw new Error(`Not a path: ${strpath}.`);
   }
@@ -1160,7 +1159,7 @@ export function encodeFolderPath(path: FolderPath): string {
   if (path.length === 0) {
     return "";
   } else {
-    return "/" + LD.join(path, "/");
+    return "/" + path.join("/");
   }
 }
 

@@ -1,6 +1,7 @@
 /// GM-only components
 import I from 'immutable';
-import LD from 'lodash';
+import sortBy from 'lodash/sortBy';
+import capitalize from 'lodash/capitalize';
 import * as React from 'react';
 import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
 
@@ -255,7 +256,7 @@ function LinkedScenes(props: LinkedScenesProps) {
   const relatedScenes = M.useState(s => s.getScenes(scene.related_scenes.toArray()));
   // TODO: this is inefficient without deep-equality on scenes (I don't *think* zustand "shallow" equality will work)
   const scenes = M.useState(s => s.getGame().scenes);
-  const hotspotScenes = LD.sortBy(
+  const hotspotScenes = sortBy(
     M.filterMap(scene.scene_hotspots.entrySeq().toArray(),
       ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
         const hsScene = scenes.get(scene_id);
@@ -440,7 +441,7 @@ function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   const { onClose } = props;
   // TODO: Store attributes on the Game and stop hardcoding them here
   const attr_options = ['strength', 'finesse', 'magic', 'perception'].map(attr =>
-    ({ key: attr, text: LD.capitalize(attr), value: attr }));
+    ({ key: attr, text: capitalize(attr), value: attr }));
   const skill_level_options = T.SKILL_LEVELS.map(level =>
     ({ key: level, text: level, value: level }));
   return <Form>
@@ -673,7 +674,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
               const rem_commands = removed_cids.map(
                 (creature_id): T.GameCommand =>
                   ({ t: "RemoveCreatureFromScene", scene_id: scene.id, creature_id }));
-              A.sendCommands(LD.concat(add_commands, rem_commands));
+              A.sendCommands(add_commands.concat(rem_commands));
               toggler();
             }
             } />} />
