@@ -39,7 +39,7 @@ export function SceneGrid(props: SceneGridProps) {
     : [];
 
   const layer = focus?.layer;
-  const disable_style = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
+  const disable_style: React.CSSProperties = layer ? { pointerEvents: "none", opacity: 0.3 } : {};
 
   const [bg_width, bg_height] = scene.background_image_scale;
   const background_image = scene.background_image_url && scene.background_image_offset
@@ -200,7 +200,7 @@ export function SceneGrid(props: SceneGridProps) {
     const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (terrain.contains(pt)) { return; }
-        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.5);
+        const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
         return <rect {...tprops} style={{ cursor: 'pointer' }}
           key={pointKey("closed", pt)} />;
       });
@@ -213,10 +213,15 @@ export function SceneGrid(props: SceneGridProps) {
       if (gmonly && player_id) {
         return null;
       }
-      const tprops = tile_props(color, pt, { x: 1, y: 1 }, 0.5);
-      const style = onClick === undefined ? { pointerEvents: "none" } : undefined;
+      const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5);
       const clicker = onClick !== undefined ? () => onClick(pt) : undefined;
-      return <g key={pointKey("highlight", pt)} style={style} onClick={clicker}>
+      return <g
+        key={pointKey("highlight", pt)}
+        style={{
+          pointerEvents: onClick ? undefined : "none"
+        }}
+        onClick={clicker}
+      >
         <rect {...tprops} />
         {gmonly
           ? eyeball(pt)
@@ -238,7 +243,7 @@ export function SceneGrid(props: SceneGridProps) {
     const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
       pt => {
         if (highlights.has(pt)) { return; }
-        const tprops = tile_props("black", pt, { x: 1, y: 1 }, 0.0);
+        const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.0);
         return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
       });
 
@@ -425,7 +430,7 @@ export function SceneGrid(props: SceneGridProps) {
       case "CreatureIDs": return undefined;
       case "Points":
         return options.points.map(pt => {
-          const rprops = tile_props("pink", pt, { x: 1, y: 1 }, 0.3);
+          const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
           function clickTile() {
             onClick(pt);
           }
@@ -438,7 +443,7 @@ export function SceneGrid(props: SceneGridProps) {
     if (!affectedPoints) { return; }
     return affectedPoints.map(
       pt => {
-        const rprops = tile_props("red", pt, { x: 1, y: 1 }, 0.5);
+        const rprops = tile_props<SVGRectElement>("red", pt, { x: 1, y: 1 }, 0.5);
         return <rect key={pointKey("affected", pt)}
           style={{ pointerEvents: "none" }}
           {...rprops} />;
@@ -512,6 +517,7 @@ function SceneHotspotMenu(
 }
 
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
+  // "as": getElementById has no typed version, so we unfortunately have to assert here.
   const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
   const g = document.getElementById("svg-pan-zoom-viewport") as any as SVGGElement;
   const pt = svg.createSVGPoint();
@@ -519,7 +525,11 @@ function getPoint3AtMouse(event: React.MouseEvent<any>) {
   pt.y = event.clientY;
 
   // The cursor point, translated into svg coordinates
-  const cursorpt = pt.matrixTransform(g.getScreenCTM().inverse());
+  const ctm = g.getScreenCTM();
+  if (!ctm) {
+    throw new Error()
+  }
+  const cursorpt = pt.matrixTransform(ctm.inverse());
   const x = Math.floor(cursorpt.x / 100) * 100;
   const y = Math.floor(cursorpt.y / 100) * 100;
   return new T.Point3(x, y, 0);
@@ -628,7 +638,7 @@ export interface MapCreature {
 
 function MovementTarget(props: { cid?: T.CreatureID; pt: T.Point3; teleport: boolean }) {
   const { cid, pt, teleport } = props;
-  const tprops = tile_props("cyan", pt);
+  const tprops = tile_props<SVGRectElement>("cyan", pt);
   function moveCreature() {
     if (cid) {
       if (teleport) {
@@ -682,7 +692,7 @@ function Annotation(props: AnnotationProps): JSX.Element | null {
   </g>;
 }
 
-function activateGridObjects(event: React.MouseEvent<any>, element: SVGRectElement | SVGImageElement) {
+function activateGridObjects(event: React.MouseEvent<any>, element: MySVGElement) {
   const objects = findPTObjects(event);
   const coords = screenCoordsForRect(element);
   M.getState().activateObjects(objects, coords);
@@ -721,17 +731,20 @@ function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
  * Find all elements under a specific coordinate.
  */
 function findElementsAtPoint<R>(
-  x: number, y: number, filterNode: (el: HTMLElement) => (R | undefined), stopAt: string = 'html'
+  x: number, y: number, filterNode: (el: SVGElement) => (R | undefined), stopAt: string = 'html'
 ): Array<R> {
   const results: Array<R> = [];
-  const dirtied: Array<{ el: HTMLElement; oldPE: string | null }> = [];
-  let el: HTMLElement | null;
+  const dirtied: Array<{ el: SVGElement; oldPE: string | null }> = [];
+  let el: SVGElement | null;
   while (true) {
     if (dirtied.length > 100) {
       console.log("[findElementsAtPoint] giving up on determining creatures under click");
       return results;
     }
-    el = document.elementFromPoint(x, y) as HTMLElement | null;
+    // "as": elementFromPoint returns *Element*, which doesn't have a `style`
+    // attribute, and unfortunately there is no generic version of
+    // elementFromPoint that does a type-check.
+    el = document.elementFromPoint(x, y) as SVGElement | null;
     if (!el) { break; }
     if (el.tagName === stopAt) { break; }
     const result = filterNode(el);
@@ -754,7 +767,7 @@ function findElementsAtPoint<R>(
 }
 
 function GridCreature({ creature, highlight }: { creature: MapCreature; highlight?: string }) {
-  const element = React.useRef<SVGImageElement | SVGRectElement>(null);
+  const element = React.useRef<MySVGElement | null>(null);
   const combat = M.useState(s => s.getGame().current_combat);
   const targetOptions = M.useState(s => s.grid.target_options);
   const currentCreatureId = M.useState(s => s.getCurrentCombatCreatureID());
@@ -792,16 +805,18 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
 
   function contents() {
     if (creature.creature.icon_url !== "") {
-      const props = tile_props("white", creature.pos, creature.creature.size);
-      const bare_props = bare_tile_props(creature.pos, creature.creature.size);
+      const props = tile_props<SVGImageElement>("white", creature.pos, creature.creature.size);
+      const bare_props = bare_tile_props<SVGRectElement>(creature.pos, creature.creature.size);
+      // we need to use the old-fashioned ref callback syntax here to avoid some
+      // type errors. This is a workaround that is still type-safe.
       return <>
-        <image key="image" ref={element} xlinkHref={creature.creature.icon_url} {...props} />
+        <image key="image" ref={e => {element.current = e}} xlinkHref={creature.creature.icon_url} {...props} />
         <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps} fillOpacity="0" />
       </>;
     } else {
-      const props = tile_props(creature.class_.color, creature.pos, creature.creature.size);
+      const props = tile_props<SVGRectElement>(creature.class_.color, creature.pos, creature.creature.size);
       return <>
-        <rect ref={element} {...props}
+        <rect ref={e => {element.current = e}} {...props}
           {...reflection_props}
           {...highlightProps} />
         <text style={{ pointerEvents: "none" }} fontSize="50"
@@ -817,11 +832,11 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
 
 function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number; y: number })
   : JSX.Element {
-  const props = tile_props(color, pos, size);
+  const props = tile_props<SVGRectElement>(color, pos, size);
   return <rect key={pointKey(keyPrefix, pos)} {...props} />;
 }
 
-function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SVGElement> {
+function bare_tile_props<T>(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<T> {
   return {
     width: 100 * size.x, height: 100 * size.y,
     rx: 5, ry: 5,
@@ -829,16 +844,31 @@ function bare_tile_props(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<SV
   };
 }
 
-function tile_props(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity: number = 1):
-  React.SVGProps<SVGElement> {
+function tile_props<T>(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity: number = 1):
+  React.SVGProps<T> {
   return {
-    ...bare_tile_props(pt, size), stroke: "black", strokeWidth: 1, fill: color,
+    ...bare_tile_props<T>(pt, size), stroke: "black", strokeWidth: 1, fill: color,
     fillOpacity: opacity,
   };
 }
 
-function screenCoordsForRect(rect: SVGRectElement | SVGImageElement): [number, number] {
-  const svg = document.getElementById("pt-grid") as any as SVGSVGElement;
+// For some reason, even though SVGImageElement and SVGRectElement share all of
+// these fields, they are not factored out into their own interface in
+// lib.dom.d.ts.
+interface MySVGElement {
+  x: SVGAnimatedLength;
+  y: SVGAnimatedLength;
+  height: SVGAnimatedLength;
+  width: SVGAnimatedLength;
+  getScreenCTM: () => DOMMatrix | null;
+}
+
+function screenCoordsForRect(rect: MySVGElement): [number, number] {
+  // "as": getElementById has no type checking. it sure would be cool to have getElementByIdOfType<T>
+  const svg = document.getElementById("pt-grid") as any as SVGSVGElement | null;
+  if (!svg) {
+    throw new Error("Couldn't find pt-grid in screenCoordsForRect; this should be impossible");
+  }
   const matrix = rect.getScreenCTM();
   if (!matrix) {
     throw new Error("Couldn't get screen CTM");
