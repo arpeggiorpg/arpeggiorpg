@@ -1,5 +1,4 @@
 import * as I from 'immutable';
-import * as LD from 'lodash';
 import { expect, describe, test } from 'vitest'
 
 import * as M from '../Model';
@@ -21,9 +20,9 @@ test("SkillLevel", () => {
 test("random junk", () => {
   const exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
   assertEq(
-    T.decodeAttributeCheck.parse(exAttrCheck as any),
+    T.decodeAttributeCheck.parse(exAttrCheck),
     exAttrCheck);
-  const gameLogTests: [[any, any]] = [
+  const gameLogTests: [any, T.GameLog][] = [
     ["StopCombat", { t: "StopCombat" }],
     [
       { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
@@ -69,7 +68,7 @@ test("random junk", () => {
     highlights: I.Map(),
     annotations: I.Map(),
     creatures: I.Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
-      "Creature ID" as T.CreatureID, [new T.Point3(0, 0, 0), { t: "GMOnly" }]),
+      "Creature ID", [new T.Point3(0, 0, 0), { t: "GMOnly" }]),
     attribute_checks: I.Map({ "Do a backflip": exAttrCheck }),
     inventory: I.Map(),
     background_image_url: "",
