@@ -1,5 +1,5 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import { render } from "react-dom";
 
 interface TextInputProps {
   defaultValue: string;
@@ -69,7 +69,7 @@ export function renderTextInput(
   const onCancel = (content: string) => {
     app.ports.textInputCancel.send([id, content]);
   };
-  ReactDOM.render(
+  render(
     <TextInput defaultValue={defaultValue} style={style} onSubmit={onSubmit} onCancel={onCancel}
       numbersOnly={numbersOnly} />,
     document.getElementById(id)
