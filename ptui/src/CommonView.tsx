@@ -20,7 +20,6 @@ import {
   Segment,
 } from "semantic-ui-react";
 
-// import * as Comp from './Component';
 import * as History from './History';
 import * as M from "./Model";
 import * as A from "./Actions";
@@ -407,9 +406,7 @@ interface PositiveIntegerInputProps {
   label?: string;
   onChange: (num: number | undefined) => void;
 }
-export class PositiveIntegerInput extends React.Component<
-  PositiveIntegerInputProps & { [index: string]: any }
-> {
+export class PositiveIntegerInput extends React.Component<PositiveIntegerInputProps> {
   render(): JSX.Element {
     return (
       <Form.Input
@@ -452,10 +449,10 @@ export function conditionIcon(cond: T.Condition): string {
 type MenuSize = React.ComponentProps<typeof Menu>["size"];
 
 interface TabbedViewProps {
-  children: Array<JSX.Element | null>;
   // selected_tab allows forcing a specific tab to be focused.
   selected_tab?: string;
   menu_size: MenuSize;
+  tabs: React.ReactElement<TabProps>[];
 }
 export class TabbedView extends React.Component<
   TabbedViewProps,
@@ -466,20 +463,15 @@ export class TabbedView extends React.Component<
     this.state = { selected: 0 };
   }
 
-  render(): JSX.Element {
+  render() {
     let selected = this.state.selected;
-    const children_ = React.Children.map(this.props.children, (c) => c) ?? [];
-    const children: Array<Tab> = M.filterMap(children_, (c: any) => {
-      if (c && c.type === Tab) {
-        return c;
-      }
-    });
-    children.forEach((item, index) => {
+    const {tabs} = this.props
+    tabs.forEach((item, index) => {
       if (item.props.name === this.props.selected_tab) {
         selected = index;
       }
     });
-    if (!M.idx<JSX.Element | null>(this.props.children, selected)) {
+    if (!tabs[selected]) {
       return <div>woops</div>;
     }
     return (
@@ -497,7 +489,7 @@ export class TabbedView extends React.Component<
           size={this.props.menu_size}
           secondary={true}
         >
-          {children.map((child, index) => (
+          {tabs.map((child, index) => (
             <Menu.Item
               key={child.props.name}
               name={child.props.name}
@@ -507,7 +499,7 @@ export class TabbedView extends React.Component<
           ))}
         </Menu>
         <div style={{ position: "relative", height: "100%" }}>
-          {children.map((child, index) => {
+          {tabs.map((child, index) => {
             const style: React.CSSProperties =
               index === selected
                 ? {}
@@ -809,15 +801,13 @@ export function TheLayout(props: TheLayoutProps) {
   );
 
   function right_bar(
-    tabs_: Array<JSX.Element>,
+    tabs: Array<JSX.Element>,
     extra?: JSX.Element,
     force_map: boolean = false
   ) {
     const selected_tab = force_map ? "Map" : undefined;
     const tabbed_view = (
-      <TabbedView menu_size={menu_size} selected_tab={selected_tab}>
-        {tabs_}
-      </TabbedView>
+      <TabbedView menu_size={menu_size} selected_tab={selected_tab} tabs={tabs} />
     );
     return extra !== undefined ? (
       <Panels.PanelGroup direction="vertical">
@@ -893,7 +883,7 @@ export function TheLayout(props: TheLayoutProps) {
   }
 }
 
-export function MaterialIcon(props: { children: Array<any> | any }) {
+export function MaterialIcon(props: React.PropsWithChildren) {
   return (
     <i
       className="material-icons"
