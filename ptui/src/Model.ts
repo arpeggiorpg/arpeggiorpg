@@ -70,7 +70,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getCurrentCombatCreatureID: () => {
     const combat = get().getCombat();
     if (!combat) return;
-    const entry = idx(combat.creatures.data, combat.creatures.cursor);
+    const entry = combat.creatures.data[combat.creatures.cursor];
     if (!entry) { throw new Error(`No combat creature at ${combat.creatures.cursor}`); }
     return entry[0];
   },
@@ -106,12 +106,12 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getGame: () => get().app.current_game,
 
   getAbility: abid => get().getGame().abilities[abid],
-  getAbilities: abids => LD.sortBy( filterMap(abids, abid => get().getAbility(abid)), i => i.name),
+  getAbilities: abids => LD.sortBy(filterMap(abids, abid => get().getAbility(abid)), i => i.name),
   getClass: classid => get().getGame().classes.get(classid),
   getClasses: classids => LD.sortBy(
-      filterMap(classids, classid => get().getClass(classid)),
-      c => c.name,
-    ),
+    filterMap(classids, classid => get().getClass(classid)),
+    c => c.name,
+  ),
 
   getSceneInventory: scene => {
     const arr = filterMap(scene.inventory.entrySeq().toArray(),
@@ -234,7 +234,7 @@ interface PlayerState {
 }
 const playerSlice: Slice<PlayerState> = set => ({
   playerId: undefined,
-  setPlayerId: playerId => set(() => ({playerId}))
+  setPlayerId: playerId => set(() => ({ playerId }))
 });
 
 interface ErrorState {
@@ -264,7 +264,6 @@ export const getState = useState.getState;
 
 // Just for debugging
 if (typeof window !== 'undefined') (window as any).getState = getState;
-
 
 
 export interface GridModel {
@@ -314,9 +313,10 @@ export type SecondaryFocus =
 
 
 export function filterMap<T, R>(coll: Array<T>, f: (t: T) => R | undefined): Array<R> {
-  // I can't "naturally" convince TypeScript that this filter makes an
-  // Array<R> instead of Array<R|undefined>, hence the assertion
-  return coll.map(f).filter(el => el) as Array<R>;
+  return coll.flatMap(el => {
+    const newEl = f(el);
+    return newEl !== undefined ? [newEl] : []
+  })
 }
 
 export function filterMapValues<T, R>
@@ -327,14 +327,6 @@ export function filterMapValues<T, R>
     if (new_val !== undefined) { result[key] = new_val; }
   }
   return result;
-}
-
-export function get<T>(obj: { [index: string]: T }, key: string): T | undefined {
-  return obj[key];
-}
-
-export function idx<T>(arr: Array<T>, index: number): T | undefined {
-  return arr[index];
 }
 
 /// A version of isEqual that requires both arguments to be the same type.
@@ -352,7 +344,7 @@ export function optMap<T, R>(x: T | undefined, f: ((t: T) => R)): R | undefined 
 // hasAtLeast is from https://stackoverflow.com/a/69370003/4930992
 
 type Indices<L extends number, T extends number[] = []> =
-    T['length'] extends L ? T[number] : Indices<L, [T['length'], ...T]>;
+  T['length'] extends L ? T[number] : Indices<L, [T['length'], ...T]>;
 
 type LengthAtLeast<T extends readonly any[], L extends number> =
   Pick<Required<T>, Indices<L>>
@@ -363,7 +355,7 @@ type LengthAtLeast<T extends readonly any[], L extends number> =
  * checks in the face of noUncheckedIndexAccess.
  */
 export function hasAtLeast<T extends readonly any[], L extends number>(
-    arr: T, len: L
+  arr: T, len: L
 ): arr is T & LengthAtLeast<T, L> {
-    return arr.length >= len;
+  return arr.length >= len;
 }

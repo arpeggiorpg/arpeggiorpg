@@ -392,7 +392,7 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
-    const creature = M.get(creatures, creature_id);
+    const creature = creatures[creature_id];
     if (creature) {
       return <React.Fragment key={`creature-menu-${creature.creature.id}`}>
         <Menu.Item key={creature.creature.id} header={true}>
