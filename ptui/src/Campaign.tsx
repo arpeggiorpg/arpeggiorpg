@@ -28,7 +28,7 @@ interface MultiItemSelectorProps {
 export function MultiItemSelector(props: MultiItemSelectorProps) {
   const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.require_selected);
   const items = M.useState(s =>
-    collectAllItems(s).map(([path, item]) => ({path, ...LD.pick(item, ['id', 'name'])}))
+    collectAllItems(s).map(([path, {id, name}]) => ({path, id, name}))
   );
   const selectedItems = M.useState(s => s.getItems(selections.toArray()));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
@@ -54,7 +54,7 @@ export function SceneSelector(props: SceneSelectorProps) {
   // sufficient to get this? I kinda doubt it! scenes is an array of objects, and those objects are
   // created fresh on every render. I suspect we probably need deep equality.
   const scenes: {id: string, name: string, path: T.FolderPath}[] = M.useState(s => {
-    return collectAllScenes(s).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
+    return collectAllScenes(s).map(([path, {id, name}]) => ({path, id, name}));
   });
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
     `${T.folderPathToString(path)}/${name}`;
@@ -74,8 +74,8 @@ interface MultiSceneSelectorProps {
 }
 export function MultiSceneSelector(props: MultiSceneSelectorProps) {
   const [selections, setSelections] = React.useState<I.Set<T.ItemID>>(props.already_selected);
-  const scenes = M.useState(s => collectAllScenes(s)).map(([path, scene]) => ({path, ...LD.pick(scene, ['id', 'name'])}));
-  const selectedScenes = M.useState(s => s.getScenes(selections.toArray()).map(s => LD.pick(s, ['name', 'id'])));
+  const scenes = M.useState(s => collectAllScenes(s)).map(([path, {id, name}]) => ({path, id, name}));
+  const selectedScenes = M.useState(s => s.getScenes(selections.toArray()).map(({id, name}) => ({id, name})));
   const display = ({path, name}: {name: string, path: T.FolderPath}) =>
     `${T.folderPathToString(path)}/${name}`;
   return <div>
@@ -199,8 +199,7 @@ function FolderTree(props: FTProps) {
 
   const subfolders = Array.from(folder.children.keys()).sort().map(
     name =>
-      <FolderTree key={name} name={name}
-        path={LD.concat(props.path, name)} selecting={selecting} />
+      <FolderTree key={name} name={name} path={[...props.path, name]} selecting={selecting} />
   );
   const folder_menu = <Dropdown icon='ellipsis horizontal'>
     <Dropdown.Menu>
@@ -233,20 +232,20 @@ function FolderTree(props: FTProps) {
 
       <Dropdown.Divider />
 
-      {!M.isEqual(path, [])
+      {path.length > 0
         ? <>
           <Dropdown.Item text="Delete this folder" icon="delete"
             onClick={() => A.sendCommand(
               {
-                t: "DeleteFolderItem", location: LD.slice(path, 0, -1),
-                // ! because we KNOW this isn't [] (see conditional above)
-                item_id: { t: "SubfolderID", id: LD.nth(path, -1)! },
+                t: "DeleteFolderItem", location: path.slice(0, -1),
+                // "!": we KNOW this isn't [] (see conditional above)
+                item_id: { t: "SubfolderID", id: path.at(-1)! },
               })} />
           <CV.ModalMaker
             button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
             header={<span>Rename {T.folderPathToString(path)}</span>}
             content={close => <MoveFolderItem
-              source={LD.slice(path, 0, -1)} item_id={{ t: "SubfolderID", id: LD.nth(path, -1)! }}
+              source={path.slice(0, -1)} item_id={{ t: "SubfolderID", id: path.at(-1)! }}
               onDone={close} />}
           />
           <Dropdown.Divider />
@@ -283,7 +282,7 @@ function FolderTree(props: FTProps) {
     </List.Content>
   </List.Item>;
 
-  if (M.isEqual(path, [])) {
+  if (path.length === 0) {
     return <List size="large">{list_item}</List>;
   } else {
     return list_item;
@@ -326,7 +325,7 @@ function useFolderTreeData(state: M.AllStates, path: T.FolderPath, folder: T.Fol
       (item): FolderObject => ({ t: "Class", path, id: item.id, name: item.name }));
 
   const note_objects = dont_show("Note") ? [] :
-    LD.sortBy(LD.keys(folder.data.notes), n => n).map(
+    LD.sortBy(Object.keys(folder.data.notes), n => n).map(
       (name): FolderObject => ({ t: "Note", path, name }));
 
   return {
@@ -464,7 +463,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
 
 function copy({ copies }: { copies: number }) {
     const { source, item_id, onDone } = props;
-    for (const _ of LD.range(copies)) {
+    for (const _ of Array(5).keys()) {
       A.sendCommand({ t: "CopyFolderItem", source, item_id, dest: dest });
     }
     onDone();
@@ -550,7 +549,7 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
 
   function highlight(s: string, matches: readonly Fuse.FuseResultMatch[]): string {
     const result = ['<span style="color: gray;">'];
-    const pairs = LD.flatMap(matches, m => m.indices);
+    const pairs = matches.flatMap(m => m.indices);
     let pair = pairs.shift();
     for (let i = 0; i < s.length; i++) {
       const char = s.charAt(i);
@@ -569,7 +568,7 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
 }
 
 function collectAllFolders(path: T.FolderPath, folder: T.Folder): Array<T.FolderPath> {
-  return LD.flatMap(folder.children.keySeq().toArray(),
+  return folder.children.keySeq().toArray().flatMap(
     name => {
       const subfolder = path.concat(name);
       return [subfolder].concat(collectAllFolders(path.concat(name), folder.children.get(name)!));
@@ -581,12 +580,11 @@ function collectFolderObjects<T>(
 ): Array<[T.FolderPath, T]> {
   const objs = getObjects(folder.data);
   const this_folder_results = objs.map((obj): [T.FolderPath, T] => [path, obj]);
-  return LD.concat(
-    this_folder_results,
-    LD.flatMap(
-      folder.children.entrySeq().toArray(),
-      ([subname, subfolder]) =>
-        collectFolderObjects(path.concat(subname), subfolder, getObjects)));
+  return this_folder_results.concat(
+      folder.children.entrySeq().toArray().flatMap(
+        ([subname, subfolder]) => collectFolderObjects(path.concat(subname), subfolder, getObjects)
+      )
+  );
 }
 
 function collectAllItems(state: M.AppState): Array<[T.FolderPath, T.Item]> {
