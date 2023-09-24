@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Map } from 'immutable';
 import * as React from "react";
 
 import * as CV from "./CommonView";
@@ -96,7 +96,7 @@ function selectMapCreatures(state: M.AllStates, player: T.Player, scene: T.Scene
 }
 
 function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.Creature) {
-  let actions: I.Map<string, (cid: T.CreatureID) => void> = I.Map();
+  let actions: Map<string, (cid: T.CreatureID) => void> = Map();
   const combat = state.getCombat();
   const move = moveAction();
   if (move) {

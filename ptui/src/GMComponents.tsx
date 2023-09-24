@@ -1,5 +1,5 @@
 /// GM-only components
-import I from 'immutable';
+import {Map, Set} from 'immutable';
 import sortBy from 'lodash/sortBy';
 import capitalize from 'lodash/capitalize';
 import * as React from 'react';
@@ -343,13 +343,9 @@ interface GMChallengeProps {
   challenge: T.AttributeCheck;
   onClose: () => void;
 }
-// interface GMChallengeState {
-//   creatures: I.Set<T.CreatureID>;
-//   results: I.Map<T.CreatureID, T.GameLog | string> | undefined;
-// }
 function GMChallenge(props: GMChallengeProps) {
-  const [creatureIds, setCreatureIds] = React.useState<I.Set<T.CreatureID>>(I.Set());
-  const [results, setResults] = React.useState<I.Map<T.CreatureID, T.GameLog | string> | undefined>(undefined);
+  const [creatureIds, setCreatureIds] = React.useState<Set<T.CreatureID>>(Set());
+  const [results, setResults] = React.useState<Map<T.CreatureID, T.GameLog | string> | undefined>(undefined);
   const { scene, description, challenge, onClose } = props;
   const creatureResults = M.useState(s => results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result })));
   return <div>
@@ -427,9 +423,9 @@ function GMChallenge(props: GMChallengeProps) {
               }
             }
           ));
-    setResults(I.Map());
+    setResults(Map());
     const gathered: Array<[T.CreatureID, T.GameLog | string]> = await Promise.all(promises);
-    setResults(I.Map(gathered));
+    setResults(Map(gathered));
   }
 }
 
@@ -663,7 +659,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
             already_selected={scene.creatures.keySeq().toSet()}
             on_cancel={toggler}
             on_selected={cids => {
-              const existing_cids = I.Set(scene.creatures.keySeq());
+              const existing_cids = Set(scene.creatures.keySeq());
               const new_cids = cids.subtract(existing_cids).toArray();
               const removed_cids = existing_cids.subtract(cids).toArray();
               const add_commands = new_cids.map(
@@ -766,7 +762,7 @@ export function GMCombat() {
 function StartCombat(props: { scene: T.Scene }) {
   const sceneCreatureIDs = M.useState(s => s.getSceneCreatures(props.scene).map(c => c.id));
   // TODO: clean up this mess. Should this be a useEffect? I hate useEffect!
-  const [selected, setSelected] = React.useState<I.Set<T.CreatureID>>(I.Set(sceneCreatureIDs));
+  const [selected, setSelected] = React.useState<Set<T.CreatureID>>(Set(sceneCreatureIDs));
 
 
   // componentWillReceiveProps(nextProps: { scene: T.Scene } & M.ReduxProps) {
@@ -792,7 +788,7 @@ interface SelectSceneCreaturesProps {
   scene: T.Scene;
   add: (cid: T.CreatureID) => void;
   remove: (cid: T.CreatureID) => void;
-  selections: I.Set<T.CreatureID>;
+  selections: Set<T.CreatureID>;
 }
 function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
   const { scene, add, remove, selections } = props;

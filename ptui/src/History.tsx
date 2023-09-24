@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Map } from 'immutable';
 import * as React from "react";
 
 import * as M from './Model';
@@ -26,7 +26,7 @@ export function History(): JSX.Element {
 }
 
 
-export function GameLog(props: { log: T.GameLog; creatures: I.Map<T.CreatureID, T.Creature> }):
+export function GameLog(props: { log: T.GameLog; creatures: Map<T.CreatureID, T.Creature> }):
   JSX.Element | null {
   const { log, creatures } = props;
   switch (log.t) {
@@ -153,7 +153,7 @@ function combat_log(log: T.CombatLog): JSX.Element | null {
 }
 
 export function creature_log(
-  creatures: I.Map<T.CreatureID, T.Creature>,
+  creatures: Map<T.CreatureID, T.Creature>,
   creature_id: T.CreatureID,
   log: T.CreatureLog): JSX.Element {
   const creature = creatures.get(creature_id);

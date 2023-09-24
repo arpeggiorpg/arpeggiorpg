@@ -1,4 +1,4 @@
-import I from "immutable";
+import { Set } from "immutable";
 import sortBy from "lodash/sortBy";
 import capitalize from "lodash/capitalize";
 import * as React from "react";
@@ -354,7 +354,7 @@ export function GiveItem( props: GiveItemProps ) {
   if (!scene) {
     return <div>You can only transfer items in a scene.</div>;
   }
-  const other_cids_in_scene = I.Set(scene.creatures.keySeq().toArray())
+  const other_cids_in_scene = Set(scene.creatures.keySeq().toArray())
     .delete(giver.id)
     .toArray();
   const other_creatures = M.useState(s => s.getCreatures(other_cids_in_scene));
@@ -372,12 +372,10 @@ export function GiveItem( props: GiveItemProps ) {
 
   // If this is the Player UI, we don't want to show invisible creatures:
   const available_recipients = M.useState(s => s.playerId)
-    ? I.List(other_creatures)
-        .filter((c) => {
+    ? other_creatures.filter((c) => {
           const entry = scene.creatures.get(c.id);
           return entry && entry[1].t === "AllPlayers";
         })
-        .toArray()
     : other_creatures;
 
   return (

@@ -1,4 +1,4 @@
-import I from 'immutable';
+import { Map, Set, List } from 'immutable';
 import { expect, describe, test } from 'vitest'
 
 import * as M from '../Model';
@@ -64,20 +64,20 @@ test("random junk", () => {
   const exScene: T.Scene = {
     id: "Scene ID",
     name: "Scene Name",
-    terrain: I.Set(),
-    highlights: I.Map(),
-    annotations: I.Map(),
-    creatures: I.Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
+    terrain: Set(),
+    highlights: Map(),
+    annotations: Map(),
+    creatures: Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
       "Creature ID", [new T.Point3(0, 0, 0), { t: "GMOnly" }]),
-    attribute_checks: I.Map({ "Do a backflip": exAttrCheck }),
-    inventory: I.Map(),
+    attribute_checks: Map({ "Do a backflip": exAttrCheck }),
+    inventory: Map(),
     background_image_url: "",
     background_image_offset: undefined,
     background_image_scale: [0, 0],
-    volume_conditions: I.Map(),
-    focused_creatures: I.List(),
-    scene_hotspots: I.Map(),
-    related_scenes: I.Set(),
+    volume_conditions: Map(),
+    focused_creatures: List(),
+    scene_hotspots: Map(),
+    related_scenes: Set(),
   };
   assertEq(T.decodeScene.parse(sceneJSON), exScene);
 

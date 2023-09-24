@@ -1,6 +1,6 @@
 import sortBy from 'lodash/sortBy';
 import deepEqual from 'lodash/isEqual';
-import I from 'immutable';
+import { Set, Map } from 'immutable';
 import { createWithEqualityFn } from "zustand/traditional";
 import type { StateCreator } from "zustand";
 import { shallow } from 'zustand/shallow';
@@ -36,7 +36,7 @@ export interface AppState {
   getAbilities: (abids: T.AbilityID[]) => T.Ability[];
   getClass: (classid: T.ClassID) => T.Class | undefined;
   getClasses: (classids: T.ClassID[]) => T.Class[];
-  getSceneInventory: (scene: T.Scene) => I.List<[T.Item, number]>;
+  getSceneInventory: (scene: T.Scene) => [T.Item, number][];
 }
 
 const appSlice: Slice<AppState> = (set, get) => ({
@@ -114,22 +114,21 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getSceneInventory: scene => {
     const arr = filterMap(scene.inventory.entrySeq().toArray(),
       ([iid, count]) => optMap(get().getItem(iid), (i): [T.Item, number] => [i, count]));
-    const list = I.List(arr);
-    return list.sortBy(([i, _]) => i.name);
+    return sortBy(arr, ([i, _]) => i.name);
   }
 });
 
 const initialApp: T.App = {
   snapshots: [],
   current_game: {
-    players: I.Map(),
+    players: Map(),
     current_combat: undefined,
-    creatures: I.Map(),
-    classes: I.Map(),
+    creatures: Map(),
+    classes: Map(),
     items: {},
-    scenes: I.Map(),
+    scenes: Map(),
     abilities: {},
-    campaign: { children: I.Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
+    campaign: { children: Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
   }
 };
 
@@ -179,10 +178,10 @@ const gridSlice: Slice<GridState> = (set, get) => ({
     switch (t) {
       case "Terrain":
         // When switching to the Terrain layer, create a copy of the terrain data for editing.
-        layer = { t, terrain: scene ? scene.terrain : I.Set() };
+        layer = { t, terrain: scene ? scene.terrain : Set() };
         break;
       case "Highlights":
-        layer = { t, highlights: scene ? scene.highlights : I.Map() };
+        layer = { t, highlights: scene ? scene.highlights : Map() };
         break;
       case "Volumes":
         layer = { t };
