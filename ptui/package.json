@@ -8,7 +8,7 @@
     "test": "vitest",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "proto": "protoc -I../ptrpi ../ptrpi/proto/pandt.proto --ts_out=.",
+    "proto": "protoc -I../ptrpi ../ptrpi/proto/pandt.proto --ts_out=. --ts_opt=ts_nocheck",
     "typecheck": "tsc"
   },
   "dependencies": {

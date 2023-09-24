@@ -418,10 +418,10 @@ function GMChallenge(props: GMChallengeProps) {
               if (result.t !== 'Ok') {
                 return [creatureId, result.error];
               } else {
-                if (result.result.length !== 1) {
-                  return [creatureId, "Got unexpected results"];
-                } else {
+                if (M.hasAtLeast(result.result, 1)) {
                   return [creatureId, result.result[0]];
+                } else {
+                  return [creatureId, "Got unexpected results"];
                 }
               }
             }
