@@ -40,6 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::Note as TS>::decl(),
         <T::Player as TS>::decl(),
         <T::PlayerID as TS>::decl(),
+        <T::PotentialTargets as TS>::decl(),
         <T::Scene as TS>::decl(),
         <T::SceneCreation as TS>::decl(),
         <T::SceneEffect as TS>::decl(),

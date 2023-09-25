@@ -435,16 +435,16 @@ export function SceneGrid(props: SceneGridProps) {
   function getTargetTiles(
     options: T.PotentialTargets,
     onClick: (pt: T.Point3) => void): JSX.Element[] | undefined {
-    switch (options.t) {
-      case "CreatureIDs": return undefined;
-      case "Points":
-        return options.points.map(pt => {
-          const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
-          function clickTile() {
-            onClick(pt);
-          }
-          return <rect key={pointKey("target", pt)} {...rprops} onClick={clickTile} />;
-        });
+    if ("CreatureIDs" in options) {
+      return undefined
+    } else if ("Points" in options) {
+      return options.Points.map(pt => {
+        const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
+        function clickTile() {
+          onClick(pt);
+        }
+        return <rect key={pointKey("target", pt)} {...rprops} onClick={clickTile} />;
+      });
     }
   }
 
@@ -791,11 +791,13 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
     highlightProps.stroke = "black";
     highlightProps.strokeWidth = 3;
   }
-  if (targetOptions?.options.t === "CreatureIDs") {
-    if (targetOptions.options.cids.includes(creature.creature.id)) {
-      highlightProps.stroke = "red";
-      highlightProps.strokeWidth = 3;
-    }
+  if (
+    targetOptions?.options
+    && "CreatureIDs" in targetOptions.options
+    && targetOptions.options.CreatureIDs.includes(creature.creature.id)
+  ) {
+    highlightProps.stroke = "red";
+    highlightProps.strokeWidth = 3;
   }
   if (highlight) {
     highlightProps.stroke = highlight;
@@ -919,9 +921,9 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
     : { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
     if (targetOptions) {
       const { ability_id, options } = targetOptions;
-      if (options.t !== "CreatureIDs") { return undefined; }
+      if (!("CreatureIDs" in options)) { return undefined; }
       // this is quadratic (TODO: switch options.cids to a hashmap)
-      if (options.cids.includes(creature.id)) {
+      if (options.CreatureIDs.includes(creature.id)) {
         const ability = state.getAbility(ability_id);
         if (ability) {
           return {
