@@ -4,21 +4,21 @@ import * as Z from "zod";
 import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
-  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureLog, CreatureTarget,
+  DecidedTarget, Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP,
+  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
+  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
-  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureLog, CreatureTarget,
+  DecidedTarget, Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP,
+  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
+  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -205,15 +205,6 @@ export type CombatLog =
   | { t: "ForceNextTurn" }
   | { t: "ForcePrevTurn" }
   | { t: "RerollInitiative"; combatants: Array<[CreatureID, number]> };
-
-export type CreatureLog =
-  | { t: "Damage"; hp: HP; rolls: Array<number> }
-  | { t: "Heal"; hp: HP; rolls: Array<number> }
-  | { t: "GenerateEnergy"; energy: Energy }
-  | { t: "ReduceEnergy"; energy: Energy }
-  | { t: "ApplyCondition"; condition_id: ConditionID; duration: Duration }
-  | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
-  | { t: "RemoveCondition"; condition_id: ConditionID };
 
 export class Creature {
   constructor(
@@ -470,19 +461,13 @@ export const decodeInventoryOwner: Decoder<InventoryOwner> = Z.union([
 const decodeModuleSource: Decoder<ModuleSource> = Z.union([Z.literal("Module"), Z.literal("SavedGame")]);
 
 const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
-  Z.object({Damage: Z.tuple([Z.number(), Z.array(Z.number())])}).transform(
-    ({Damage: [hp, rolls]}): CreatureLog => ({ t: "Damage", hp, rolls })),
-  Z.object({Heal: Z.tuple([Z.number(), Z.array(Z.number())])}).transform(
-    ({Heal: [hp, rolls]}): CreatureLog => ({ t: "Heal", hp, rolls })),
-  Z.object({GenerateEnergy: Z.number()}).transform(
-    ({GenerateEnergy: energy}): CreatureLog => ({ t: "GenerateEnergy", energy })),
-  Z.object({ReduceEnergy: Z.number()}).transform(({ReduceEnergy: energy}): CreatureLog => ({ t: "ReduceEnergy", energy })),
-  Z.object({ApplyCondition: Z.tuple([Z.string(), decodeDuration])}).transform(
-    ({ApplyCondition: [condition_id, duration]}): CreatureLog => ({ t: "ApplyCondition", condition_id, duration })),
-  Z.object({DecrementConditionRemaining: Z.string()}).transform(
-    ({DecrementConditionRemaining: condition_id}): CreatureLog => ({ t: "DecrementConditionRemaining", condition_id })),
-  Z.object({RemoveCondition: Z.string()}).transform(
-    ({RemoveCondition: condition_id}): CreatureLog => ({ t: "RemoveCondition", condition_id })),
+  Z.object({Damage: Z.object({hp: Z.number(), rolls: Z.array(Z.number())})}),
+  Z.object({Heal: Z.object({hp: Z.number(), rolls: Z.array(Z.number())})}),
+  Z.object({GenerateEnergy: Z.number()}),
+  Z.object({ReduceEnergy: Z.number()}),
+  Z.object({ApplyCondition: Z.object({id: Z.string(), duration: decodeDuration, condition: decodeCondition})}),
+  Z.object({DecrementConditionRemaining: Z.string()}),
+  Z.object({RemoveCondition: Z.string()}),
 ]);
 
 const decodeCombatLog: Decoder<CombatLog> = Z.union([

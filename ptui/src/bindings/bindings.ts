@@ -33,6 +33,8 @@ export type CreatureEffect = { ApplyCondition: [Duration, Condition] } | { Heal:
 
 export type CreatureID = string;
 
+export type CreatureLog = { Damage: { hp: HP, rolls: Array<number>, } } | { Heal: { hp: HP, rolls: Array<number>, } } | { GenerateEnergy: Energy } | { ReduceEnergy: Energy } | { ApplyCondition: { id: ConditionID, duration: Duration, condition: Condition, } } | { DecrementConditionRemaining: ConditionID } | { RemoveCondition: ConditionID };
+
 export type CreatureTarget = "Melee" | { Range: number } | "Actor" | { LineFromActor: { distance: number, } } | { SomeCreaturesInVolumeInRange: { volume: Volume, maximum: number, range: number, } } | { AllCreaturesInVolumeInRange: { volume: Volume, range: number, } };
 
 export type DecidedTarget = { Creature: CreatureID } | { Creatures: Array<CreatureID> } | "Actor" | { Point: Point3 };
