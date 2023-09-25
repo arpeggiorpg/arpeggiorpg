@@ -148,7 +148,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
   const { ability_id, options } = opts;
   if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
-  const target: T.DecidedTarget = { t: "Creature", creature_id: target_id };
+  const target: T.DecidedTarget = { Creature: target_id };
   sendCommand({ t: "CombatAct", ability_id, target });
   getState().clearPotentialTargets();
 }
@@ -160,7 +160,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
   if (options.t !== "Points") {
     throw new Error(`This function only works for abilities that use Points`);
   }
-  const target: T.DecidedTarget = { t: "Point", point };
+  const target: T.DecidedTarget = { Point: point };
   sendCommand({ t: "CombatAct", ability_id, target });
   getState().clearPotentialTargets();
 }
@@ -263,7 +263,7 @@ export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
-    return sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
+    return sendCommand({ t: "CombatAct", ability_id, target: "Actor" });
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }

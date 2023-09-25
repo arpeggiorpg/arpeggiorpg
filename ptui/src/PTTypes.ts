@@ -4,19 +4,21 @@ import * as Z from "zod";
 import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
+  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
+  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  VolumeCondition,
 };
 
 export type Color = string;
@@ -77,12 +79,6 @@ export interface App {
 }
 
 export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
-
-export type DecidedTarget =
-  | { t: "Creature"; creature_id: CreatureID }
-  | { t: "Creatures"; creature_ids: Array<CreatureID> }
-  | { t: "Actor" }
-  | { t: "Point"; point: Point3 };
 
 export interface Folder {
   data: FolderNode;
@@ -1026,12 +1022,10 @@ function encodeDice(d: Dice): object {
 }
 
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
-  switch (dt.t) {
-    case "Actor": return "Actor";
-    case "Creature": return { Creature: dt.creature_id };
-    case "Creatures": return { Creatures: dt.creature_ids };
-    case "Point": return { Point: encodePoint3(dt.point) };
+  if (typeof dt !== "string" && "Point" in dt) {
+    return {Point: encodePoint3(dt.Point)};
   }
+  return dt;
 }
 
 export function encodePoint3(pt: Point3): string {
