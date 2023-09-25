@@ -63,3 +63,5 @@ export interface Ability { id: AbilityID, name: string, cost: Energy, action: Ac
 
 export type Action = { Creature: { effect: CreatureEffect, target: CreatureTarget, } } | { SceneVolume: { effect: SceneEffect, target: SceneTarget, } };
 
+export interface SceneCreation { name: string, background_image_url: string, background_image_offset: [number, number] | null, background_image_scale: [number, number], }
+

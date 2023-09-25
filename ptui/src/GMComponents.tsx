@@ -96,7 +96,7 @@ export function CreateScene({path, onDone}: CreateSceneProps) {
     // since we don't have a visual response to setting image url/offset/scale, I'll just leave
     // default values here and the user can edit the map after creation
     const spec = {
-      name, background_image_url, background_image_offset: undefined,
+      name, background_image_url, background_image_offset: null,
       background_image_scale: [0, 0] as [number, number],
     };
     A.sendCommand({ t: "CreateScene", path, spec });
@@ -155,8 +155,8 @@ function EditSceneBackground({scene, onDone}: { scene: T.Scene; onDone: () => vo
   function save(data: any) {
     const { background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
     const background_image_scale: [number, number] = [scale_x, scale_y];
-    const background_image_offset: [number, number] | undefined = pinned
-      ? [offset_x, offset_y] : undefined;
+    const background_image_offset: [number, number] | null = pinned
+      ? [offset_x, offset_y] : null;
     const details = {
       name: scene.name, background_image_url, background_image_scale, background_image_offset,
     };

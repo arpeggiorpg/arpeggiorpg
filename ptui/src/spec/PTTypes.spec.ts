@@ -72,7 +72,7 @@ test("random junk", () => {
     attribute_checks: Map({ "Do a backflip": exAttrCheck }),
     inventory: Map(),
     background_image_url: "",
-    background_image_offset: undefined,
+    background_image_offset: null,
     background_image_scale: [0, 0],
     volume_conditions: Map(),
     focused_creatures: List(),
