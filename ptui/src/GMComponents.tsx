@@ -876,13 +876,8 @@ function CreatureNote({ creature }: { creature: T.Creature }) {
   return <CV.Toggler a={view} b={edit} />;
 
   function submitNote(note: string) {
-    const details = { ...getCreatureDetails(creature), note };
+    const details = { ...creature.toCreation(), note };
     A.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });
-  }
-
-  function getCreatureDetails(creature: T.Creature): T.CreatureCreation {
-    const { name, class_, portrait_url, note, bio, initiative, size, icon_url } = creature;
-    return { name, class_, portrait_url, note, bio, initiative, size, icon_url };
   }
 }
 
@@ -906,7 +901,7 @@ export function CreateCreature(props: GMCreateCreatureProps) {
   const { path } = props;
   const init: T.Dice = { Expr: {num: 1, size: 20 }};
   const creature_data = {
-    name: "", note: "", bio: "", portrait_url: "", initiative: init, class_: "",
+    name: "", note: "", bio: "", portrait_url: "", initiative: init, class: "",
     size: { x: 1, y: 1, z: 1 }, icon_url: "",
   };
   return <EditCreatureData creature={creature_data}
@@ -923,17 +918,9 @@ interface GMEditCreatureProps {
 }
 function GMEditCreature(props: GMEditCreatureProps) {
   const { creature, onClose } = props;
-  return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
+  return <EditCreatureData creature={creature.toCreation()} onSave={c => save(c)} onClose={onClose} />;
 
-  function save(creature_data: T.CreatureCreation) {
-    const details = {
-      name: creature_data.name, class_: creature_data.class_,
-      note: creature_data.note, bio: creature_data.bio,
-      portrait_url: creature_data.portrait_url,
-      icon_url: creature_data.icon_url,
-      initiative: creature_data.initiative,
-      size: creature_data.size,
-    };
+  function save(details: T.CreatureCreation) {
     A.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });
     onClose();
   }
@@ -951,7 +938,7 @@ function EditCreatureData(props: EditCreatureDataProps) {
   const [note, set_note] = React.useState(props.creature.note);
   const [bio, set_bio] = React.useState(props.creature.bio);
   const [initiative_string, set_initiative_string] = React.useState(Dice.format(props.creature.initiative));
-  const [class_, set_class] = React.useState(props.creature.class_);
+  const [class_, set_class] = React.useState(props.creature.class);
   const [size, set_size] = React.useState<number>(props.creature.size.x);
   const [icon_url, set_icon_url] = React.useState(props.creature.icon_url);
 
@@ -1042,12 +1029,12 @@ function EditCreatureData(props: EditCreatureDataProps) {
 
   function save() {
     const creature = {
-      name: name, class_: class_,
-      portrait_url: portrait_url,
-      note: note, bio: bio,
+      name, class: class_,
+      portrait_url,
+      note, bio,
       initiative: Dice.parse(initiative_string),
       size: { x: size, y: size, z: size },
-      icon_url: icon_url,
+      icon_url,
     };
     props.onSave(creature);
     props.onClose();

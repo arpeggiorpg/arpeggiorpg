@@ -2,31 +2,17 @@ import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
 import type {
-  AbilityID,
-  ClassID,
-  Combat,
-  CreatureID,
-  PlayerID,
-  SceneID,
-  ItemID,
-  AttrID,
-  ConditionID,
-  HP,
-  Energy,
-  Note,
-  Dice,
-  AABB,
-  AttributeCheck,
-  Duration,
-  Condition,
-  CreatureEffect,
-  SkillLevel,
-  Volume
+  AABB, AbilityID, AbilityStatus, AppliedCondition, AttributeCheck, AttrID,
+  Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
+  CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
+  Player, PlayerID, SceneID, SkillLevel, Volume,
 } from "./bindings/bindings";
 
 export {
-  AABB, AbilityID, AttributeCheck, AttrID, ClassID, Combat, Condition, ConditionID, CreatureEffect,
-  CreatureID, Dice, Duration, HP, ItemID, Note, PlayerID, SceneID, SkillLevel, Volume
+  AABB, AbilityID, AbilityStatus, AppliedCondition, AttributeCheck, AttrID,
+  Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
+  CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
+  Player, PlayerID, SceneID, SkillLevel, Volume,
 };
 
 export type Color = string;
@@ -188,29 +174,6 @@ export type GameCommand =
 
 export type ModuleSource = 'Module' | 'SavedGame';
 
-export interface CreatureCreation {
-  name: string;
-  class_: string;
-  portrait_url: string;
-  icon_url: string;
-  note: string;
-  bio: string;
-  initiative: Dice;
-  size: AABB;
-}
-
-export interface Class {
-  id: ClassID;
-  name: string;
-  // abilities, conditions
-  color: string;
-}
-
-export interface Player {
-  player_id: PlayerID;
-  scene?: SceneID;
-  creatures: Array<CreatureID>;
-}
 
 export type GameLog =
   | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
@@ -289,21 +252,6 @@ export type CreatureLog =
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID };
 
-export interface Item {
-  id: ItemID;
-  name: string;
-}
-
-export interface AppliedCondition {
-  remaining: Duration;
-  condition: Condition;
-}
-
-export interface AbilityStatus {
-  ability_id: AbilityID;
-  cooldown: number;
-}
-
 export class Creature {
   constructor(
     public id: CreatureID,
@@ -329,6 +277,11 @@ export class Creature {
 
   dynamic_conditions(): Map<ConditionID, AppliedCondition> {
     return this.own_conditions.merge(this.volume_conditions);
+  }
+  toCreation(): CreatureCreation {
+    const {class_, ...rest} = this;
+    const cc = {class: class_, ...rest};
+    return cc;
   }
 }
 
@@ -509,7 +462,7 @@ const decodeCreatureCreation: Decoder<CreatureCreation> = Z.object({
   bio: Z.string(),
   initiative: decodeDice,
   size: decodeAABB,
-}).transform(({class: class_, ...o}): CreatureCreation => ({...o, class_}));
+});
 
 export const decodeVisibility: Decoder<Visibility> = Z.union([
   Z.literal("GMOnly"),
@@ -790,7 +743,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
 
 const decodePlayer: Decoder<Player> = Z.object({
   player_id: Z.string(),
-  scene: maybe(Z.string()),
+  scene: Z.string().nullable(),
   creatures: Z.array(Z.string()),
 });
 
@@ -798,6 +751,8 @@ const decodeClass: Decoder<Class> = Z.object({
   id: Z.string(),
   name: Z.string(),
   color: Z.string(),
+  abilities: Z.array(Z.string()),
+  conditions: Z.array(decodeCondition)
 });
 
 function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
@@ -1083,12 +1038,7 @@ function encodeInventoryOwner(owner: InventoryOwner): object {
 
 function encodeCreatureCreation(cc: CreatureCreation): object {
   return {
-    name: cc.name,
-    class: cc.class_,
-    portrait_url: cc.portrait_url,
-    icon_url: cc.icon_url,
-    note: cc.note,
-    bio: cc.bio,
+    ...cc,
     initiative: encodeDice(cc.initiative),
     size: encodeAABB(cc.size),
   };

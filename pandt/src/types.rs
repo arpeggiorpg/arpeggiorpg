@@ -937,7 +937,7 @@ pub enum Duration {
   Rounds(u8),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct AppliedCondition {
   pub remaining: Duration,
   pub condition: Condition,
@@ -964,7 +964,7 @@ pub enum Volume {
   AABB(AABB),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct AbilityStatus {
   pub ability_id: AbilityID,
   pub cooldown: u8,
@@ -976,7 +976,7 @@ impl DeriveKey for AbilityStatus {
 }
 
 /// A creature class, e.g. rogue, mage, warrior
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct Class {
   pub id: ClassID,
   pub name: String,
@@ -994,7 +994,7 @@ impl DeriveKey for Class {
 }
 
 /// A specification for creating a new creature.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct CreatureCreation {
   pub name: String,
   pub class: ClassID,
@@ -1100,7 +1100,7 @@ pub struct App {
   pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Player {
   pub player_id: PlayerID,
   pub scene: Option<SceneID>,
