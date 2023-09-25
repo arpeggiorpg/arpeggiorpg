@@ -28,6 +28,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::Condition as TS>::decl(),
         <T::CreatureEffect as TS>::decl(),
         <T::SkillLevel as TS>::decl(),
+        <T::Combat as TS>::decl(),
+
     ];
     file.write_all(b"import type { Point3 } from '../PTTypes';\n\n\n")?;
     for decl in decls.iter() {
