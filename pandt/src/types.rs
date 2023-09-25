@@ -115,10 +115,14 @@ impl<'de> Deserialize<'de> for Point3 {
 }
 
 /// An axis-aligned bounding box.
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AABB {
+  #[ts(type = "number")]
   pub x: u32units::Length,
+  #[ts(type = "number")]
   pub y: u32units::Length,
+  #[ts(type = "number")]
   pub z: u32units::Length,
 }
 
@@ -1176,7 +1180,8 @@ pub struct VolumeCondition {
   pub condition: Condition,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AttributeCheck {
   pub reliable: bool,
   pub attr: AttrID,
