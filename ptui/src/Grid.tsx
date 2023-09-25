@@ -298,25 +298,26 @@ export function SceneGrid(props: SceneGridProps) {
     if (!ability) { return; }
     const action = ability.action;
 
-    switch (action.t) {
-      case "Creature":
-        switch (action.target.t) {
-          case "AllCreaturesInVolumeInRange":
-            return svgVolume("target-volume", action.target.volume, targetingPoint);
-          case "LineFromActor":
-            const caster_pos = getCreaturePos(scene, options.cid);
-            if (!caster_pos) { return; }
-            return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
-              x2={targetingPoint.x + 50} y2={targetingPoint.y + 50}
-              style={{ pointerEvents: "none" }}
-              strokeWidth="3" stroke="black" />;
-        }
-        return;
-      case "SceneVolume":
-        switch (action.target.t) {
-          case "RangedVolume":
-            return svgVolume("target-volume", action.target.volume, targetingPoint);
-        }
+    if ("Creature" in action) {
+      if (typeof action.Creature.target === "string") return;
+      if ("AllCreaturesInVolumeInRange" in action.Creature.target) {
+        return svgVolume("target-volume", action.Creature.target.AllCreaturesInVolumeInRange.volume, targetingPoint);
+      }
+      if ("LineFromActor" in action.Creature.target) {
+        // TODO: do we need to do something with LineFromActor.distance?
+        const caster_pos = getCreaturePos(scene, options.cid);
+        if (!caster_pos) { return; }
+        return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
+          x2={targetingPoint.x + 50} y2={targetingPoint.y + 50}
+          style={{ pointerEvents: "none" }}
+          strokeWidth="3" stroke="black" />;
+      }
+    } else if ("SceneVolume" in action) {
+      return svgVolume(
+        "target-volume",
+        action.SceneVolume.target.RangedVolume.volume,
+        targetingPoint
+      );
     }
   }
 
@@ -324,21 +325,28 @@ export function SceneGrid(props: SceneGridProps) {
     const options = grid.target_options!;
     const ability = M.getState().getAbility(options.ability_id);
     if (!ability) { return; }
-    switch (ability.action.t) {
-      case "Creature":
-        switch (ability.action.target.t) {
-          case "SomeCreaturesInVolumeInRange":
-          case "AllCreaturesInVolumeInRange":
-          case "LineFromActor":
-            break;
-          default: return;
-        }
-        break;
-      case "SceneVolume":
-        switch (ability.action.target.t) {
-          case "RangedVolume": break;
-          default: return;
-        }
+
+    if ("Creature" in ability.action) {
+      const creatureTarget = ability.action.Creature.target;
+      if (
+        // This enum representation is so horrible :-(
+        typeof creatureTarget !== "string" && (
+          "SomeCreaturesInVolumeInRange" in creatureTarget
+          || "AllCreaturesInVolumeInRange" in creatureTarget
+          || "LineFromActor" in creatureTarget
+        )
+      ) {
+        // we good
+      } else {
+        return;
+      }
+    }
+    if ("SceneVolume" in ability.action) {
+      if ("RangedVolume" in ability.action.SceneVolume.target) {
+        // we good
+      } else {
+        return;
+      }
     }
     setTargetingPoint(point);
     const {points, creatures} = await A.fetchAbilityTargets(props.scene.id, options.cid, options.ability_id, point);

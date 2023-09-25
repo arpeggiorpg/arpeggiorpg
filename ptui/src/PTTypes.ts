@@ -6,6 +6,7 @@ import type {
   Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
   CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
   Player, PlayerID, SceneID, SkillLevel, Volume,
+  CreatureTarget, SceneTarget, Ability, Action
 } from "./bindings/bindings";
 
 export {
@@ -13,6 +14,7 @@ export {
   Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
   CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
   Player, PlayerID, SceneID, SkillLevel, Volume,
+  CreatureTarget, SceneTarget, Ability, Action
 };
 
 export type Color = string;
@@ -68,32 +70,6 @@ export interface Game {
   campaign: Folder;
   players: Map<PlayerID, Player>;
 }
-
-export interface Ability {
-  name: string;
-  id: AbilityID;
-  action: Action;
-  cost: Energy;
-  usable_ooc: boolean;
-}
-
-export type Action =
-  // these variants also have an `effect` field but we don't use it in the client
-  | { t: "Creature"; target: CreatureTarget }
-  | { t: "SceneVolume"; target: SceneTarget }
-  ;
-
-export type CreatureTarget =
-  | { t: "Melee" }
-  | { t: "Range"; distance: Distance }
-  | { t: "Actor" }
-  | { t: "SomeCreaturesInVolumeInRange"; volume: Volume; maximum: number; range: Distance }
-  | { t: "AllCreaturesInVolumeInRange"; volume: Volume; range: Distance }
-  | { t: "LineFromActor"; distance: Distance }
-  ;
-
-export type SceneTarget =
-  | { t: "RangedVolume"; volume: Volume; range: Distance; }
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID }
@@ -783,42 +759,43 @@ const decodeFolder: Decoder<Folder> = Z.object({
 });
 
 const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
-  Z.literal("Actor").transform((): CreatureTarget => ({t: "Actor"})),
-  Z.literal("Melee").transform((): CreatureTarget => ({t: "Melee"})),
-  // | { t: "Volume"; volume: Volume; range: Distance }
-
-  Z.object({Range: Z.number()}).transform(({Range: distance}): CreatureTarget => ({ t: "Range", distance })),
-
+  Z.literal("Actor"),
+  Z.literal("Melee"),
+  Z.object({Range: Z.number()}),
   Z.object({SomeCreaturesInVolumeInRange: Z.object({
       volume: decodeVolume,
       maximum: Z.number(),
       range: Z.number(),
-    })}).transform(
-      ({SomeCreaturesInVolumeInRange: o}): CreatureTarget => ({ t: "SomeCreaturesInVolumeInRange", ...o})),
+    })}),
     Z.object({AllCreaturesInVolumeInRange: Z.object({
       volume: decodeVolume,
       range: Z.number(),
-    })}).transform(
-      ({AllCreaturesInVolumeInRange: o}): CreatureTarget => ({ t: "AllCreaturesInVolumeInRange", ...o })),
-    Z.object({LineFromActor: Z.object({
-      distance: Z.number(),
-    })}).transform(
-      ({LineFromActor: o}): CreatureTarget => ({ t: "LineFromActor", ...o })),
+    })}),
+    Z.object({LineFromActor: Z.object({ distance: Z.number() })})
 ]);
 
 export const decodeSceneTarget: Decoder<SceneTarget> =
 // Z.union([
-  Z.object({RangedVolume: Z.object({ volume: decodeVolume, range: Z.number()})}).transform(
-    ({RangedVolume: o}): SceneTarget => ({t: "RangedVolume", ...o}))
+  Z.object({RangedVolume: Z.object({ volume: decodeVolume, range: Z.number()})});
 // ]);
 
+const decodeCreatureEffect: Decoder<CreatureEffect> = Z.union([
+  Z.object({ApplyCondition: Z.tuple([decodeDuration, decodeCondition])}),
+  Z.object({Heal: decodeDice}),
+  Z.object({Damage: decodeDice}),
+  // GenerateEnergy should be dice, not number...
+  Z.object({GenerateEnergy: Z.number()}),
+  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect))}),
+]);
+const decodeSceneEffect = // Z.union([
+  Z.object({CreateVolumeCondition: Z.object({duration: decodeDuration, condition: decodeCondition})});
+// ]);
 
 export const decodeAction: Decoder<Action> = Z.union([
-  Z.object({Creature: Z.object({target: decodeCreatureTarget})}).transform(
-    ({Creature: o}): Action => ({ t: "Creature", ...o })),
-  Z.object({SceneVolume: Z.object({target: decodeSceneTarget})}).transform(
-    ({SceneVolume: o}): Action => ({ t: "SceneVolume", ...o }))
+  Z.object({Creature: Z.object({effect: decodeCreatureEffect, target: decodeCreatureTarget})}),
+  Z.object({SceneVolume: Z.object({effect: decodeSceneEffect, target: decodeSceneTarget})}),
 ]);
+
 
 const decodeAbility: Decoder<Ability> = Z.object({
   name: Z.string(),

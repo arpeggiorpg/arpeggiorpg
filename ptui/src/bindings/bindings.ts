@@ -53,3 +53,13 @@ export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Superna
 
 export type Volume = { Sphere: number } | { Line: { vector: Point3, } } | { VerticalCylinder: { radius: number, height: number, } } | { AABB: AABB };
 
+export type CreatureTarget = "Melee" | { Range: number } | "Actor" | { LineFromActor: { distance: number, } } | { SomeCreaturesInVolumeInRange: { volume: Volume, maximum: number, range: number, } } | { AllCreaturesInVolumeInRange: { volume: Volume, range: number, } };
+
+export type SceneTarget = { RangedVolume: { volume: Volume, range: number, } };
+
+export type SceneEffect = { CreateVolumeCondition: { duration: Duration, condition: Condition, } };
+
+export interface Ability { id: AbilityID, name: string, cost: Energy, action: Action, usable_ooc: boolean, }
+
+export type Action = { Creature: { effect: CreatureEffect, target: CreatureTarget, } } | { SceneVolume: { effect: SceneEffect, target: SceneTarget, } };
+

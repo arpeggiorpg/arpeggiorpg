@@ -824,7 +824,7 @@ pub enum PotentialTargets {
   Points(Vec<Point3>),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct Ability {
   pub id: AbilityID,
   pub name: String,
@@ -838,7 +838,7 @@ impl DeriveKey for Ability {
   fn derive_key(&self) -> AbilityID { self.id }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum Action {
   Creature { effect: CreatureEffect, target: CreatureTarget },
   SceneVolume { effect: SceneEffect, target: SceneTarget },
@@ -852,15 +852,19 @@ pub enum Action {
 /// ultimately the target is resolved into one or more creatures which `CreatureEffect`s will be
 /// applied to. For example, `LineFromActor` is specified by the client as a Point, but will
 /// affect the creatures in that line.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum CreatureTarget {
   Melee,
-  Range(u32units::Length),
+  Range(
+    #[ts(type = "number")]
+    u32units::Length
+  ),
   Actor,
   /// A *piercing* line, from an actor, which is always a fixed length.
   /// When targeted at a point, it will continue through any creatures up to *and past* that point,
   /// up to the maximum distance.
   LineFromActor {
+    #[ts(type = "number")]
     distance: u32units::Length,
   },
   // LineFromActorToCreature{ distance: u32units::Length },
@@ -868,23 +872,29 @@ pub enum CreatureTarget {
     volume: Volume,
     /// maximum number of creatures that can be hit
     maximum: u8,
+    #[ts(type = "number")]
     range: u32units::Length,
   },
   AllCreaturesInVolumeInRange {
     volume: Volume,
+    #[ts(type = "number")]
     range: u32units::Length,
   },
 }
 
 /// A target specifier for actions that ultimately affect the scene by way of `SceneEffect`.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum SceneTarget {
   /// RangedVolume is for applying an effect to the terrain, instead of to a creature.
   /// e.g., setting it on fire, or putting down a patch of oil, or filling a space with fog.
-  RangedVolume { volume: Volume, range: u32units::Length },
+  RangedVolume {
+    volume: Volume,
+    #[ts(type = "number")]
+    range: u32units::Length
+  },
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum SceneEffect {
   CreateVolumeCondition { duration: Duration, condition: Condition },
   // Another example of a SceneEffect would be DestroyTerrain or BuildTerrain

@@ -262,7 +262,7 @@ async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id:
 export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
 ) {
-  if (ability.action.t === "Creature" && ability.action.target.t === "Actor") {
+  if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
     return sendCommand({ t: "CombatAct", ability_id, target: { t: "Actor" } });
   } else {
     return selectAbility(scene_id, cid, ability_id);
