@@ -1054,10 +1054,12 @@ impl DeriveKey for Item {
 #[derive(Clone, Hash, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct AttrID(pub String);
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Combat {
   pub scene: SceneID,
+  #[ts(type = "{ cursor: number; data: Array<[CreatureID, number]> }")]
   pub creatures: nonempty::NonEmptyWithCursor<(CreatureID, i16)>,
+  #[ts(type = "number")]
   pub movement_used: u32units::Length,
 }
 

@@ -41,3 +41,5 @@ export type CreatureEffect = { ApplyCondition: [Duration, Condition] } | { Heal:
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
 
+export interface Combat { scene: SceneID, creatures: { cursor: number; data: Array<[CreatureID, number]> }, movement_used: number, }
+

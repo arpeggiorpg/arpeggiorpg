@@ -4,6 +4,7 @@ import * as Z from "zod";
 import type {
   AbilityID,
   ClassID,
+  Combat,
   CreatureID,
   PlayerID,
   SceneID,
@@ -24,7 +25,7 @@ import type {
 } from "./bindings/bindings";
 
 export {
-  AABB, AbilityID, AttributeCheck, AttrID, ClassID, Condition, ConditionID, CreatureEffect,
+  AABB, AbilityID, AttributeCheck, AttrID, ClassID, Combat, Condition, ConditionID, CreatureEffect,
   CreatureID, Dice, Duration, HP, ItemID, Note, PlayerID, SceneID, SkillLevel, Volume
 };
 
@@ -80,12 +81,6 @@ export interface Game {
   abilities: { [index: string]: Ability };
   campaign: Folder;
   players: Map<PlayerID, Player>;
-}
-
-export interface Combat {
-  scene: SceneID;
-  creatures: { cursor: number; data: Array<[CreatureID, number]> };
-  movement_used: number;
 }
 
 export interface Ability {
