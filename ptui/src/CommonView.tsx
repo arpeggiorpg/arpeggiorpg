@@ -429,20 +429,13 @@ export class PositiveIntegerInput extends React.Component<PositiveIntegerInputPr
 }
 
 export function conditionIcon(cond: T.Condition): string {
-  switch (cond.t) {
-    case "RecurringEffect":
-      return "🔁";
-    case "Dead":
-      return "💀";
-    case "Incapacitated":
-      return "😞";
-    case "AddDamageBuff":
-      return "😈";
-    case "DoubleMaxMovement":
-      return "🏃";
-    case "ActivateAbility":
-      return "Ability Activated: " + cond.ability_id;
-  }
+  if (cond === "Dead") return "💀";
+  if (cond === "Incapacitated") return "😞";
+  if (cond === "DoubleMaxMovement") return "🏃";
+  if ("RecurringEffect" in cond) return "🔁";
+  if ("AddDamageBuff" in cond) return "😈";
+  if ("ActivateAbility" in cond) return "Ability Activated: " + cond.ActivateAbility;
+  M.assertNever(cond);
 }
 
 type MenuSize = React.ComponentProps<typeof Menu>["size"];
