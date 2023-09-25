@@ -1067,7 +1067,7 @@ pub struct AttrID(pub String);
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Combat {
   pub scene: SceneID,
-  #[ts(type = "{ cursor: number; data: Array<[CreatureID, number]> }")]
+  #[ts(type = "NonEmpty")]
   pub creatures: nonempty::NonEmptyWithCursor<(CreatureID, i16)>,
   #[ts(type = "number")]
   pub movement_used: u32units::Length,
@@ -1136,17 +1136,22 @@ pub struct SceneCreation {
   pub background_image_scale: (i32, i32),
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Scene {
   pub id: SceneID,
   pub name: String,
+  #[ts(type = "Terrain")]
   pub terrain: Vec<Point3>,
+  #[ts(type = "Highlights")]
   pub highlights: HashMap<Point3, (Color, Visibility)>,
+  #[ts(type = "Annotations")]
   pub annotations: HashMap<Point3, (String, Visibility)>,
 
   #[serde(default)]
+  #[ts(type = "SceneHotspots")]
   pub scene_hotspots: HashMap<Point3, SceneID>,
   #[serde(default)]
+  #[ts(type = "RelatedScenes")]
   pub related_scenes: HashSet<SceneID>,
 
   #[serde(default)]
@@ -1156,16 +1161,21 @@ pub struct Scene {
   pub background_image_offset: Option<(i32, i32)>,
   pub background_image_scale: (i32, i32),
 
+  #[ts(type = "SceneCreatures")]
   pub creatures: HashMap<CreatureID, (Point3, Visibility)>,
+  #[ts(type = "SceneAttributeChecks")]
   pub attribute_checks: HashMap<String, AttributeCheck>,
   #[serde(default)]
+  #[ts(type = "SceneInventory")]
   pub inventory: Inventory,
   #[serde(default)]
+  #[ts(type = "SceneVolumeConditions")]
   pub volume_conditions: HashMap<ConditionID, VolumeCondition>,
 
   /// "Focused" creatures are those which have their portraits rendered over the scene
   /// background
   #[serde(default)]
+  #[ts(type = "SceneFocusedCreatures")]
   pub focused_creatures: Vec<CreatureID>,
 }
 
@@ -1178,7 +1188,7 @@ pub enum CollisionData {
   // BlockedTerrain ????
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct VolumeCondition {
   pub point: Point3,
   pub volume: Volume,
@@ -1198,7 +1208,7 @@ impl DeriveKey for Scene {
   fn derive_key(&self) -> SceneID { self.id }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub enum Visibility {
   GMOnly,
   AllPlayers,

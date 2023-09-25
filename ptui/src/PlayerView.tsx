@@ -87,7 +87,7 @@ function selectMapCreatures(state: M.AllStates, player: T.Player, scene: T.Scene
   return M.filterMapValues(Grid.mapCreatures(state, scene),
     mapc => {
       // !: must exist in filterMapValues()
-      if (scene.creatures.get(mapc.creature.id)![1].t === "AllPlayers") {
+      if (scene.creatures.get(mapc.creature.id)![1] === "AllPlayers") {
         const actions = creatureMenuActions(state, player, mapc.creature);
         return { ...mapc, actions: mapc.actions.merge(actions) };
       }

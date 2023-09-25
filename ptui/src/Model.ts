@@ -221,7 +221,7 @@ const gridSlice: Slice<GridState> = (set, get) => ({
 
 const defaultGrid = {
   highlight_color: "#FF0000",
-  object_visibility: { t: "AllPlayers" } as T.Visibility,
+  object_visibility: "AllPlayers" as T.Visibility,
   active_objects: { objects: [], coords: [0, 0] as [number, number] },
 };
 
