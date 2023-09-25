@@ -39,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::SceneEffect as TS>::decl(),
         <T::Ability as TS>::decl(),
         <T::Action as TS>::decl(),
+        <T::SceneCreation as TS>::decl(),
     ];
     file.write_all(b"import type { Point3 } from '../PTTypes';\n\n\n")?;
     for decl in decls.iter() {

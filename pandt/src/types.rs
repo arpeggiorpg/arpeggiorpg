@@ -1128,7 +1128,7 @@ impl Player {
   }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct SceneCreation {
   pub name: String,
   pub background_image_url: String,

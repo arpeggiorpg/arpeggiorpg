@@ -6,7 +6,7 @@ import type {
   Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
   CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
   Player, PlayerID, SceneID, SkillLevel, Volume,
-  CreatureTarget, SceneTarget, Ability, Action
+  CreatureTarget, SceneTarget, Ability, Action, SceneCreation
 } from "./bindings/bindings";
 
 export {
@@ -14,7 +14,7 @@ export {
   Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
   CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
   Player, PlayerID, SceneID, SkillLevel, Volume,
-  CreatureTarget, SceneTarget, Ability, Action
+  CreatureTarget, SceneTarget, Ability, Action, SceneCreation
 };
 
 export type Color = string;
@@ -278,13 +278,6 @@ export type FolderItemID =
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
-export interface SceneCreation {
-  name: string;
-  background_image_url: string;
-  background_image_offset?: [number, number] | undefined;
-  background_image_scale: [number, number];
-}
-
 export interface Scene {
   id: SceneID;
   name: string;
@@ -297,7 +290,7 @@ export interface Scene {
   attribute_checks: Map<string, AttributeCheck>;
   inventory: Map<ItemID, number>;
   background_image_url: string;
-  background_image_offset?: [number, number] | undefined;
+  background_image_offset: [number, number] | null;
   background_image_scale: [number, number];
   volume_conditions: Map<ConditionID, VolumeCondition>;
   focused_creatures: List<CreatureID>;
@@ -455,7 +448,7 @@ const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
   name: Z.string(),
   background_image_url: Z.string(),
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
-  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
+  background_image_offset: Z.tuple([Z.number(), Z.number()]).nullable(),
 });
 
 const decodeVolume: Decoder<Volume> = Z.union([
@@ -489,7 +482,7 @@ export const decodeScene: Decoder<Scene> = Z.object({
   attribute_checks: Z.record(decodeAttributeCheck).transform<Scene['attribute_checks']>(Map),
   inventory: Z.record(Z.number()).transform<Scene['inventory']>(Map),
   background_image_url: Z.string(),
-  background_image_offset: maybe(Z.tuple([Z.number(), Z.number()])),
+  background_image_offset: Z.tuple([Z.number(), Z.number()]).nullable(),
   background_image_scale: Z.tuple([Z.number(), Z.number()]),
   volume_conditions: Z.record(decodeVolumeCondition).transform<Scene['volume_conditions']>(Map),
   focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(List),
