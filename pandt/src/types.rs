@@ -1319,10 +1319,12 @@ impl DeriveKey for Note {
   fn derive_key(&self) -> String { self.name.clone() }
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
+#[ts(rename = "FolderNode")]
 pub struct Folder {
   pub scenes: HashSet<SceneID>,
   pub creatures: HashSet<CreatureID>,
+  #[ts(type = "Record<string, Note>")]
   pub notes: IndexedHashMap<Note>,
   #[serde(default)]
   pub items: HashSet<ItemID>,

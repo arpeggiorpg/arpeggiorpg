@@ -41,6 +41,8 @@ export type Duration = "Interminate" | { Rounds: number };
 
 export type Energy = number;
 
+export interface FolderNode { scenes: Array<SceneID>, creatures: Array<CreatureID>, notes: Record<string, Note>, items: Array<ItemID>, abilities: Array<AbilityID>, classes: Array<ClassID>, }
+
 export type HP = number;
 
 export interface Item { id: ItemID, name: string, }

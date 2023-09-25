@@ -28,6 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::Dice as TS>::decl(),
         <T::Duration as TS>::decl(),
         <T::Energy as TS>::decl(),
+        <T::Folder as TS>::decl(),
         <T::HP as TS>::decl(),
         <T::Item as TS>::decl(),
         <T::ItemID as TS>::decl(),

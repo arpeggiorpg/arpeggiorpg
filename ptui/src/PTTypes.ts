@@ -5,24 +5,23 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, HP, Item, ItemID, Note, Player, PlayerID, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility, Volume,
-  VolumeCondition,
+  Energy, FolderNode, HP, Item, ItemID, Note, Player, PlayerID, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility,
+  Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, HP, Item, ItemID, Note, Player, PlayerID, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility, Volume,
-  VolumeCondition,
+  Energy, FolderNode, HP, Item, ItemID, Note, Player, PlayerID, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility,
+  Volume, VolumeCondition,
 };
 
 export type Color = string;
 export type Distance = number;
 export type FolderPath = Array<string>;
-
 
 // Various types that aren't the obvious types that ts-rs would generate for a
 // Rust type, mostly because we use immutablejs for a bunch of stuff.
@@ -93,15 +92,6 @@ export type DecidedTarget =
 export interface Folder {
   data: FolderNode;
   children: Map<string, Folder>;
-}
-
-export interface FolderNode {
-  scenes: Array<SceneID>;
-  creatures: Array<CreatureID>;
-  notes: { [index: string]: Note };
-  items: Array<ItemID>;
-  abilities: Array<AbilityID>;
-  classes: Array<ClassID>;
 }
 
 export type InventoryOwner =
