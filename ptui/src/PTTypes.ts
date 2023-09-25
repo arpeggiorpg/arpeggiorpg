@@ -13,8 +13,10 @@ import type { HP } from "./bindings/HP";
 import type { Energy } from "./bindings/Energy";
 import type { Note } from "./bindings/Note";
 import type { Dice } from "./bindings/Dice";
+import type { AABB } from "./bindings/AABB";
+import type { AttributeCheck } from "./bindings/AttributeCheck";
 
-export { AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note, Dice};
+export { AABB, AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note, Dice};
 
 export type Color = string;
 export type Distance = number;
@@ -354,8 +356,6 @@ export interface CreatureData {
   name: string;
 }
 
-export interface AABB { x: number; y: number; z: number; }
-
 export type FolderItemID =
   | { t: "SceneID"; id: SceneID }
   | { t: "CreatureID"; id: CreatureID }
@@ -365,12 +365,6 @@ export type FolderItemID =
   | { t: "AbilityID"; id: AbilityID }
   | { t: "ClassID"; id: ClassID }
   ;
-
-export interface AttributeCheck {
-  reliable: boolean;
-  attr: AttrID;
-  target: SkillLevel;
-}
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
 export const SKILL_LEVELS: Array<SkillLevel> =
