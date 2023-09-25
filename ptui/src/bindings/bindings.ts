@@ -65,6 +65,8 @@ export interface Player { player_id: PlayerID, scene: SceneID | null, creatures:
 
 export type PlayerID = string;
 
+export type PotentialTargets = { CreatureIDs: Array<CreatureID> } | { Points: Array<Point3> };
+
 export interface Scene { id: SceneID, name: string, terrain: Terrain, highlights: Highlights, annotations: Annotations, scene_hotspots: SceneHotspots, related_scenes: RelatedScenes, background_image_url: string, background_image_offset: [number, number] | null, background_image_scale: [number, number], creatures: SceneCreatures, attribute_checks: SceneAttributeChecks, inventory: SceneInventory, volume_conditions: SceneVolumeConditions, focused_creatures: SceneFocusedCreatures, }
 
 export interface SceneCreation { name: string, background_image_url: string, background_image_offset: [number, number] | null, background_image_scale: [number, number], }

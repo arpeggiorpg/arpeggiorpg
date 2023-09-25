@@ -147,7 +147,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   const opts = getState().grid.target_options;
   if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
   const { ability_id, options } = opts;
-  if (options.t !== "CreatureIDs") { throw new Error(`Only support CreatureIDs for now`); }
+  if ("CreatureIDs" in options) { throw new Error(`Only support CreatureIDs for now`); }
   const target: T.DecidedTarget = { Creature: target_id };
   sendCommand({ t: "CombatAct", ability_id, target });
   getState().clearPotentialTargets();
@@ -157,7 +157,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
   const opts = getState().grid.target_options;
   if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
   const { ability_id, options } = opts;
-  if (options.t !== "Points") {
+  if (!("Points" in options)) {
     throw new Error(`This function only works for abilities that use Points`);
   }
   const target: T.DecidedTarget = { Point: point };

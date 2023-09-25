@@ -818,7 +818,7 @@ impl<'a> From<&'a str> for GameError {
 }
 
 /// Potential targets for an ability.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum PotentialTargets {
   CreatureIDs(Vec<CreatureID>),
   Points(Vec<Point3>),

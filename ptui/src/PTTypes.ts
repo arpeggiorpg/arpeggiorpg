@@ -6,9 +6,9 @@ import type {
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
   Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
-  VolumeCondition,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
@@ -16,9 +16,9 @@ export {
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
   Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
-  VolumeCondition,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -255,10 +255,6 @@ export interface CreatureData {
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
-export type PotentialTargets =
-  | { t: "CreatureIDs"; cids: Array<CreatureID> }
-  | { t: "Points"; points: Array<Point3> }
-  ;
 
 export type RustResult<T, E> =
   | { t: "Ok"; result: T }
@@ -283,8 +279,8 @@ export const decodePoint3 = Z.string().transform(parsePoint3);
 export const arrayOfPoint3 = Z.array(decodePoint3);
 
 export const decodePotentialTargets: Decoder<PotentialTargets> = Z.union([
-  Z.object({CreatureIDs: Z.array(Z.string())}).transform(({CreatureIDs: cids}): PotentialTargets => ({t: "CreatureIDs", cids})),
-  Z.object({Points: Z.array(decodePoint3)}).transform(({Points: points}): PotentialTargets => ({t: "Points", points}))
+  Z.object({CreatureIDs: Z.array(Z.string())}),
+  Z.object({Points: Z.array(decodePoint3)})
 ]);
 
 const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
