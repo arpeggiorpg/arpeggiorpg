@@ -791,67 +791,67 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return {
         MoveFolderItem:
           [encodeFolderPath(cmd.source),
-          encodeFolderItemID(cmd.item_id),
+          cmd.item_id,
           encodeFolderPath(cmd.dest)],
       };
     case "CopyFolderItem":
       return {
         CopyFolderItem: {
           source: encodeFolderPath(cmd.source),
-          item_id: encodeFolderItemID(cmd.item_id),
+          item_id: cmd.item_id,
           dest: encodeFolderPath(cmd.dest),
         },
       };
     case "DeleteFolderItem":
-      return { DeleteFolderItem: [encodeFolderPath(cmd.location), encodeFolderItemID(cmd.item_id)] };
+      return { DeleteFolderItem: [encodeFolderPath(cmd.location), cmd.item_id] };
     case "EditCreatureDetails":
       return {
         EditCreatureDetails:
-          { creature_id: cmd.creature_id, details: encodeCreatureCreation(cmd.details) },
+          { creature_id: cmd.creature_id, details: cmd.details },
       };
     case "CreateCreature":
-      return { CreateCreature: [encodeFolderPath(cmd.path), encodeCreatureCreation(cmd.spec)] };
+      return { CreateCreature: [encodeFolderPath(cmd.path), cmd.spec] };
     case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };
-    case "EditItem": return { EditItem: encodeItem(cmd.item) };
-    case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), encodeNote(cmd.note)] };
+    case "EditItem": return { EditItem: cmd.item };
+    case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), cmd.note] };
     case "EditNote":
-      return { EditNote: [encodeFolderPath(cmd.path), cmd.name, encodeNote(cmd.note)] };
+      return { EditNote: [encodeFolderPath(cmd.path), cmd.name, cmd.note] };
     case "TransferItem":
       return {
         TransferItem: {
-          from: encodeInventoryOwner(cmd.from),
-          to: encodeInventoryOwner(cmd.to),
+          from: cmd.from,
+          to: cmd.to,
           item_id: cmd.item_id, count: cmd.count,
         },
       };
     case "RemoveItem":
       return {
         RemoveItem:
-          { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
+          { owner: cmd.owner, item_id: cmd.item_id, count: cmd.count },
       };
     case "SetItemCount":
       return {
         SetItemCount:
-          { owner: encodeInventoryOwner(cmd.owner), item_id: cmd.item_id, count: cmd.count },
+          { owner: cmd.owner, item_id: cmd.item_id, count: cmd.count },
       };
     case "CreateScene":
-      return { CreateScene: [encodeFolderPath(cmd.path), encodeSceneCreation(cmd.spec)] };
+      return { CreateScene: [encodeFolderPath(cmd.path), cmd.spec] };
     case "EditSceneDetails":
       return {
-        EditSceneDetails: { scene_id: cmd.scene_id, details: encodeSceneCreation(cmd.details) },
+        EditSceneDetails: { scene_id: cmd.scene_id, details: cmd.details },
       };
     case "SetSceneCreatureVisibility":
       return {
         SetSceneCreatureVisibility: {
           scene_id: cmd.scene_id, creature_id: cmd.creature_id,
-          visibility: encodeVisibility(cmd.visibility),
+          visibility: cmd.visibility,
         },
       };
     case "AddCreatureToScene":
       return {
         AddCreatureToScene: {
           scene_id: cmd.scene_id, creature_id: cmd.creature_id,
-          visibility: encodeVisibility(cmd.visibility),
+          visibility: cmd.visibility,
         },
       };
     case "RemoveCreatureFromScene":
@@ -860,7 +860,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return {
         AddSceneChallenge: {
           scene_id: cmd.scene_id, description: cmd.description,
-          challenge: encodeAttributeCheck(cmd.challenge),
+          challenge: cmd.challenge,
         },
       };
     case "RemoveSceneChallenge":
@@ -882,7 +882,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
         EditSceneHighlights: {
           scene_id: cmd.scene_id,
           highlights: cmd.highlights.mapEntries(
-            ([point, [color, vis]]) => [encodePoint3(point), [color, encodeVisibility(vis)]]).toJS(),
+            ([point, [color, vis]]) => [encodePoint3(point), [color, vis]]).toJS(),
         },
       };
     case "EditSceneAnnotations":
@@ -891,7 +891,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
           scene_id: cmd.scene_id,
           annotations: cmd.annotations.mapEntries(
             ([point, [annotation, vis]]) =>
-              [encodePoint3(point), [annotation, encodeVisibility(vis)]]
+              [encodePoint3(point), [annotation, vis]]
           ).toJS(),
         },
       };
@@ -927,7 +927,7 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
     case "AddCreatureToCombat":
       return { AddCreatureToCombat: cmd.creature_id };
     case "AttributeCheck":
-      return { AttributeCheck: [cmd.creature_id, encodeAttributeCheck(cmd.check)] };
+      return { AttributeCheck: [cmd.creature_id, cmd.check] };
     case "SetPlayerScene":
       return { SetPlayerScene: [cmd.player_id, cmd.scene_id] };
     case "Rollback":
@@ -936,65 +936,11 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       return {
         LoadModule: {
           name: cmd.name, path: encodeFolderPath(cmd.path),
-          source: encodeModuleSource(cmd.source),
+          source: cmd.source,
         },
       };
   }
 }
-
-function encodeModuleSource(s: ModuleSource): string {
-  return s;
-}
-
-function encodeFolderItemID(fid: FolderItemID): object {
-  return fid;
-}
-
-function encodeInventoryOwner(owner: InventoryOwner): object {
-  return owner;
-}
-
-function encodeCreatureCreation(cc: CreatureCreation): object {
-  return {
-    ...cc,
-    initiative: encodeDice(cc.initiative),
-    size: encodeAABB(cc.size),
-  };
-}
-
-function encodeAABB(box: AABB): object {
-  return box;
-}
-
-function encodeItem(item: Item): object {
-  return { id: item.id, name: item.name };
-}
-
-function encodeSceneCreation(sc: SceneCreation): object {
-  return {
-    name: sc.name,
-    background_image_url: sc.background_image_url,
-    background_image_offset: sc.background_image_offset,
-    background_image_scale: sc.background_image_scale,
-  };
-}
-
-function encodeVisibility(vis: Visibility): string {
-  return vis;
-}
-
-function encodeAttributeCheck(check: AttributeCheck): object {
-  return {
-    reliable: check.reliable,
-    attr: check.attr,
-    target: encodeSkillLevel(check.target),
-  };
-}
-
-function encodeSkillLevel(sl: SkillLevel): string {
-  return sl;
-}
-
 
 export function encodeFolderPath(path: FolderPath): string {
   if (path.length === 0) {
@@ -1002,14 +948,6 @@ export function encodeFolderPath(path: FolderPath): string {
   } else {
     return "/" + path.join("/");
   }
-}
-
-function encodeNote(note: Note): object {
-  return note;
-}
-
-function encodeDice(d: Dice): object {
-  return d;
 }
 
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
