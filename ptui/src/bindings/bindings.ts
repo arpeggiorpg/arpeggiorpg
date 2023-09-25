@@ -43,6 +43,8 @@ export type Energy = number;
 
 export interface FolderNode { scenes: Array<SceneID>, creatures: Array<CreatureID>, notes: Record<string, Note>, items: Array<ItemID>, abilities: Array<AbilityID>, classes: Array<ClassID>, }
 
+export type FolderItemID = { SceneID: SceneID } | { CreatureID: CreatureID } | { NoteID: string } | { ItemID: ItemID } | { AbilityID: AbilityID } | { ClassID: ClassID } | { SubfolderID: string };
+
 export interface Game { current_combat: Combat | null, abilities: GameAbilities, creatures: GameCreatures, classes: GameClasses, tile_system: TileSystem, scenes: GameScenes, items: GameItems, campaign: Folder, players: GamePlayers, active_scene: SceneID | null, }
 
 export type HP = number;

@@ -111,22 +111,20 @@ export class MultiCreatureSelector extends React.Component< MultiCreatureSelecto
   }
   render(): JSX.Element {
     const on_check = (checked: boolean, _: T.FolderPath, folder_item: T.FolderItemID) => {
-      switch (folder_item.t) {
-        case "CreatureID":
+      if ("CreatureID" in folder_item) {
           const new_selected = checked
-            ? this.state.selections.add(folder_item.id)
-            : this.state.selections.remove(folder_item.id);
+            ? this.state.selections.add(folder_item.CreatureID)
+            : this.state.selections.remove(folder_item.CreatureID);
           this.setState({ selections: new_selected });
           return;
-        default:
-          console.log("Got a non-creature selection in a creature-only campaign selector:",
-            folder_item);
+      } else {
+        console.log("Got a non-creature selection in a creature-only campaign selector:", folder_item);
       }
     };
     const selecting: SelectableProps = {
       item_type: 'Creature', allow_multiple: true, on_select_object: on_check,
       is_selected: (_, item_id) =>
-        item_id.t === "CreatureID" && this.state.selections.includes(item_id.id),
+        "CreatureID" in item_id && this.state.selections.includes(item_id.CreatureID),
     };
     return <div>
       <FolderTree name="Campaign" path={[]} start_open={true}
@@ -193,7 +191,9 @@ function FolderTree(props: FTProps) {
     return [divider(name)].concat(
       objects.map(obj => {
         const iid = object_to_item_id(obj);
-        return <TreeObject key={`${iid.t}/${iid.id}`} object={obj} selecting={selecting}
+        const variant = Object.keys(iid)[0] ?? "unknown";
+        const iidvalue = Object.values(iid)[0] ?? "unknown";
+        return <TreeObject key={`${variant}/${iidvalue}`} object={obj} selecting={selecting}
           />;
       }));
   }
@@ -240,13 +240,13 @@ function FolderTree(props: FTProps) {
               {
                 t: "DeleteFolderItem", location: path.slice(0, -1),
                 // "!": we KNOW this isn't [] (see conditional above)
-                item_id: { t: "SubfolderID", id: path.at(-1)! },
+                item_id: { SubfolderID: path.at(-1)! },
               })} />
           <CV.ModalMaker
             button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
             header={<span>Rename {T.folderPathToString(path)}</span>}
             content={close => <MoveFolderItem
-              source={path.slice(0, -1)} item_id={{ t: "SubfolderID", id: path.at(-1)! }}
+              source={path.slice(0, -1)} item_id={{ SubfolderID: path.at(-1)! }}
               onDone={close} />}
           />
           <Dropdown.Divider />
@@ -354,12 +354,12 @@ function object_icon(name: FolderContentType): SemanticICONS {
 
 function object_to_item_id(obj: FolderObject): T.FolderItemID {
   switch (obj.t) {
-    case "Note": return { t: "NoteID", id: obj.name };
-    case "Scene": return { t: "SceneID", id: obj.id };
-    case "Creature": return { t: "CreatureID", id: obj.id };
-    case "Item": return { t: "ItemID", id: obj.id };
-    case "Ability": return { t: "AbilityID", id: obj.id };
-    case "Class": return { t: "ClassID", id: obj.id };
+    case "Note": return { NoteID: obj.name };
+    case "Scene": return { SceneID: obj.id };
+    case "Creature": return { CreatureID: obj.id };
+    case "Item": return { ItemID: obj.id };
+    case "Ability": return { AbilityID: obj.id };
+    case "Class": return { ClassID: obj.id };
   }
 }
 
