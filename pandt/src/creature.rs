@@ -129,11 +129,11 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let amt = HP(amt as u8);
     if amt >= self.creature.cur_health {
       vec![
-        CreatureLog::Damage(self.creature.cur_health, rolls),
+        CreatureLog::Damage { hp: self.creature.cur_health, rolls },
         Self::apply_condition_log(Duration::Interminate, Condition::Dead),
       ]
     } else {
-      vec![CreatureLog::Damage(amt, rolls)]
+      vec![CreatureLog::Damage { hp: amt, rolls }]
     }
   }
 
@@ -141,7 +141,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
     let (dice, amt) = expr.roll();
     let amt = HP(amt as u8);
     let missing = self.creature.max_health - self.creature.cur_health;
-    vec![CreatureLog::Heal(cmp::min(missing, amt), dice)]
+    vec![CreatureLog::Heal { hp: cmp::min(missing, amt), rolls: dice }]
   }
 
   fn eff2log(&self, effect: &CreatureEffect) -> Vec<CreatureLog> {
@@ -168,7 +168,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   }
 
   fn apply_condition_log(duration: Duration, condition: Condition) -> CreatureLog {
-    CreatureLog::ApplyCondition(ConditionID::gen(), duration, condition)
+    CreatureLog::ApplyCondition { id: ConditionID::gen(), duration, condition }
   }
 
   pub fn ability_statuses(&self) -> IndexedHashMap<AbilityStatus> {
@@ -219,9 +219,9 @@ impl Creature {
   pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
     let mut new = self.clone();
     match *item {
-      CreatureLog::Damage(ref dmg, ..) => new.cur_health = new.cur_health.saturating_sub(*dmg),
-      CreatureLog::Heal(ref dmg, ..) => {
-        new.cur_health = cmp::min(new.cur_health.saturating_add(*dmg), new.max_health)
+      CreatureLog::Damage {ref hp, ..} => new.cur_health = new.cur_health.saturating_sub(*hp),
+      CreatureLog::Heal {ref hp, ..} => {
+        new.cur_health = cmp::min(new.cur_health.saturating_add(*hp), new.max_health)
       }
       CreatureLog::GenerateEnergy(ref nrg) => {
         new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
@@ -233,8 +233,8 @@ impl Creature {
           new.cur_energy = new.cur_energy - *nrg;
         }
       }
-      CreatureLog::ApplyCondition(ref id, ref dur, ref con) => {
-        new.conditions.insert(*id, con.apply(*dur));
+      CreatureLog::ApplyCondition { ref id, ref duration, ref condition } => {
+        new.conditions.insert(*id, condition.apply(*duration));
       }
       CreatureLog::DecrementConditionRemaining(ref id) => {
         let cond = new.conditions.get_mut(id).ok_or_else(|| GameError::ConditionNotFound(*id))?;

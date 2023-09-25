@@ -158,22 +158,21 @@ export function creature_log(
   log: T.CreatureLog): JSX.Element {
   const creature = creatures.get(creature_id);
   const creature_name = <strong>{creature ? creature.name : "a creature"}</strong>;
-  switch (log.t) {
-    case "Damage":
-      return <div>{creature_name} took {log.hp} damage. Rolls: {JSON.stringify(log.rolls)}</div>;
-    case "Heal":
+  if ("Damage" in log)
+      return <div>{creature_name} took {log.Damage.hp} damage. Rolls: {JSON.stringify(log.Damage.rolls)}</div>;
+  if ("Heal" in log)
       return <div>
-        {creature_name} was healed for {log.hp}. Rolls: {JSON.stringify(log.rolls)}
+        {creature_name} was healed for {log.Heal.hp}. Rolls: {JSON.stringify(log.Heal.rolls)}
       </div>;
-    case "GenerateEnergy":
-      return <div>{creature_name} received {log.energy} energy.</div>;
-    case "ReduceEnergy":
-      return <div>{creature_name} lost {log.energy} energy.</div>;
-    case "ApplyCondition":
+  if ("GenerateEnergy" in log)
+      return <div>{creature_name} received {log.GenerateEnergy} energy.</div>;
+  if ("ReduceEnergy" in log)
+      return <div>{creature_name} lost {log.ReduceEnergy} energy.</div>;
+  if ("ApplyCondition" in log)
       return <div>{creature_name} gained a condition</div>;
-    case "DecrementConditionRemaining":
+  if ("DecrementConditionRemaining" in log)
       return <div>{creature_name} ticked a condition.</div>;
-    case "RemoveCondition":
+  if ("RemoveCondition" in log)
       return <div>{creature_name} lost a condition.</div>;
-  }
+  M.assertNever(log);
 }

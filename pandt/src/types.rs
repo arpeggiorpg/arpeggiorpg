@@ -529,13 +529,13 @@ pub enum GameCommand {
 }
 
 /// A representation of state change in a Creature. See `GameLog`.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum CreatureLog {
-  Damage(HP, Vec<i16>),
-  Heal(HP, Vec<i16>),
+  Damage { hp: HP, rolls: Vec<i16> },
+  Heal { hp: HP, rolls: Vec<i16> },
   GenerateEnergy(Energy),
   ReduceEnergy(Energy),
-  ApplyCondition(ConditionID, Duration, Condition),
+  ApplyCondition { id: ConditionID, duration: Duration, condition: Condition },
   DecrementConditionRemaining(ConditionID),
   RemoveCondition(ConditionID),
 }
