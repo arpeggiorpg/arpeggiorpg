@@ -147,7 +147,7 @@ function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
   return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
 }
 
-function PlayerActionBar(props: { player: T.Player; combat: T.Combat | undefined }) {
+function PlayerActionBar(props: { player: T.Player; combat: T.Combat | null }) {
   const creature = M.useState(s => {
     const cid = s.getCurrentCombatCreatureID();
     if (cid) return s.getCreature(cid);

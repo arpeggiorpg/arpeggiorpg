@@ -70,7 +70,7 @@ function mapCreatures(state: M.AllStates): { [index: string]: Grid.MapCreature }
     }));
 }
 
-function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | undefined, creature: T.Creature): Map<string, (cid: T.CreatureID) => void> {
+function creatureMenuActions(state: M.AllStates, scene: T.Scene, combat: T.Combat | null, creature: T.Creature): Map<string, (cid: T.CreatureID) => void> {
   let actions: Map<string, (cid: T.CreatureID) => void> = Map({
     "Walk": (cid: T.CreatureID) => A.requestMove(cid),
     "Teleport": (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),

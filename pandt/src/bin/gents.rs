@@ -29,6 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::Duration as TS>::decl(),
         <T::Energy as TS>::decl(),
         <T::Folder as TS>::decl(),
+        <T::Game as TS>::decl(),
         <T::HP as TS>::decl(),
         <T::Item as TS>::decl(),
         <T::ItemID as TS>::decl(),
@@ -41,11 +42,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::SceneID as TS>::decl(),
         <T::SceneTarget as TS>::decl(),
         <T::SkillLevel as TS>::decl(),
+        <T::TileSystem as TS>::decl(),
         <T::Visibility as TS>::decl(),
         <T::Volume as TS>::decl(),
         <T::VolumeCondition as TS>::decl(),
     ];
-    file.write_all(b"import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures } from '../PTTypes';\n\n\n")?;
+    file.write_all(b"import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, Folder, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers, } from '../PTTypes';\n\n\n")?;
     for decl in decls.iter() {
         file.write_all(b"export ")?;
         file.write_all(decl.as_bytes())?;

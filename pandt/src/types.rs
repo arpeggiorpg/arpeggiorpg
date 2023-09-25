@@ -1078,18 +1078,25 @@ impl DeriveKey for Creature {
   fn derive_key(&self) -> CreatureID { self.id }
 }
 
-#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Game {
   pub current_combat: Option<Combat>,
+  #[ts(type = "GameAbilities")]
   pub abilities: IndexedHashMap<Ability>,
+  #[ts(type = "GameCreatures")]
   pub creatures: IndexedHashMap<Creature>,
+  #[ts(type = "GameClasses")]
   pub classes: IndexedHashMap<Class>,
   pub tile_system: TileSystem,
+  #[ts(type = "GameScenes")]
   pub scenes: IndexedHashMap<Scene>,
   #[serde(default)]
+  #[ts(type = "GameItems")]
   pub items: IndexedHashMap<Item>,
+  #[ts(type = "Folder")]
   pub campaign: FolderTree<Folder>,
   #[serde(default)]
+  #[ts(type = "GamePlayers")]
   pub players: IndexedHashMap<Player>,
   // The "active scene" determines which scene has mechanical effect as far as game simulation
   // goes.
@@ -1296,7 +1303,7 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
   }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS)]
 #[derive(Default)]
 pub enum TileSystem {
   /// Square grid with diagonal movement costing 1.41
