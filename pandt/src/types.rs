@@ -332,7 +332,7 @@ impl InventoryOwner {
   }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum ModuleSource {
   Module,
   SavedGame,

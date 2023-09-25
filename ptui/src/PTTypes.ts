@@ -5,18 +5,18 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, Game, HP, Item, ItemID, Note, Player, PlayerID, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  Energy, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, Game, HP, Item, ItemID, Note, Player, PlayerID, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  Energy, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -145,8 +145,6 @@ export type GameCommand =
   | { t: "Rollback"; snapshot_index: number; log_index: number }
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath }
   ;
-
-export type ModuleSource = 'Module' | 'SavedGame';
 
 
 export type GameLog =
