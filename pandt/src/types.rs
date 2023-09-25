@@ -318,7 +318,7 @@ impl SkillLevel {
 }
 
 // maybe make this a trait in the future
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum InventoryOwner {
   Scene(SceneID),
   Creature(CreatureID),

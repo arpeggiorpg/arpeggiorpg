@@ -5,9 +5,9 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
-  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
 } from "./bindings/bindings";
 
@@ -15,9 +15,9 @@ export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, DecidedTarget,
-  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP, InventoryOwner,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
 };
 
@@ -84,11 +84,6 @@ export interface Folder {
   data: FolderNode;
   children: Map<string, Folder>;
 }
-
-export type InventoryOwner =
-  | { Creature: CreatureID }
-  | { Scene: SceneID }
-  ;
 
 export type GameCommand =
   | { t: "SetActiveScene"; scene_id?: SceneID | undefined }

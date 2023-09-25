@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::FolderItemID as TS>::decl(),
         <T::Game as TS>::decl(),
         <T::HP as TS>::decl(),
+        <T::InventoryOwner as TS>::decl(),
         <T::Item as TS>::decl(),
         <T::ItemID as TS>::decl(),
         <T::ModuleSource as TS>::decl(),

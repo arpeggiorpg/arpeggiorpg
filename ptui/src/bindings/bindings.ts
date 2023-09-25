@@ -51,6 +51,8 @@ export interface Game { current_combat: Combat | null, abilities: GameAbilities,
 
 export type HP = number;
 
+export type InventoryOwner = { Scene: SceneID } | { Creature: CreatureID };
+
 export interface Item { id: ItemID, name: string, }
 
 export type ItemID = string;
