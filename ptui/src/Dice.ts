@@ -1,5 +1,6 @@
 import P from 'parsimmon';
 import * as T from './PTTypes';
+import * as M from "./Model";
 
 function spaced<X>(parser: P.Parser<X>): P.Parser<X> {
   return P.optWhitespace.then(parser).skip(P.optWhitespace);
@@ -73,7 +74,5 @@ export function format(d: T.Dice): string {
     const [num, dice] = d.BestOf;
     return "BestOf(" + num.toString() + ", " + format(dice) + ")";
   }
-  // Typescript is insufficiently smart to know that I've already exhaustively
-  // matched all variants of `d` above
-  return `Unknown Dice ${JSON.stringify(d)}`;
+  M.assertNever(d);
 }

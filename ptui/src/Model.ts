@@ -356,3 +356,8 @@ export function hasAtLeast<T extends readonly any[], L extends number>(
 ): arr is T & LengthAtLeast<T, L> {
   return arr.length >= len;
 }
+
+// this is a workaround for https://stackoverflow.com/questions/60834196/union-types-typescript-complains-function-lacks-ending-return-statement-and-re
+export function assertNever(x: never): never {
+  throw new Error("Unexpected object: " + x);
+}

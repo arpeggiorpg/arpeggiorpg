@@ -911,7 +911,8 @@ pub enum DecidedTarget {
   Point(Point3),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum CreatureEffect {
   // Interrupt,
   // Resurrect,
@@ -922,7 +923,8 @@ pub enum CreatureEffect {
   GenerateEnergy(Energy),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum Condition {
   RecurringEffect(Box<CreatureEffect>),
   Dead,
@@ -940,7 +942,8 @@ impl Condition {
 }
 
 /// Serializes as either "Interminate" or {"Duration": 0}
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum Duration {
   Interminate,
   Rounds(u8),
@@ -953,14 +956,20 @@ pub struct AppliedCondition {
 }
 
 /// Volume describes a volume in 3d space at an implied origin point.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum Volume {
-  Sphere(u32units::Length),
+  Sphere(
+    #[ts(type = "number")]
+    u32units::Length
+  ),
   Line {
     vector: Point3, // this Point3 is used as a relative offset, not from 0,0,0
   },
   VerticalCylinder {
+    #[ts(type = "number")]
     radius: u32units::Length,
+    #[ts(type = "number")]
     height: u32units::Length,
   },
   // An Axis-Aligned Bounding Box, origin at top-left,

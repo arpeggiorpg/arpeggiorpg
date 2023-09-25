@@ -574,15 +574,13 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
 function svgVolume(
   key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGCircleElement>
 ): JSX.Element {
-  switch (volume.t) {
-    case "Sphere":
-      return <circle key={key} cx={pt.x + 50} cy={pt.y + 50} r={volume.radius}
+  if ("Sphere" in volume) {
+    return <circle key={key} cx={pt.x + 50} cy={pt.y + 50} r={volume.Sphere}
         style={{ pointerEvents: "none" }}
         strokeWidth={3} stroke="black" fill="none" {...props} />;
-    default:
-      console.log("unimplemented! svgvolume for", volume);
-      return <g key={key} />;
   }
+  console.log("unimplemented! svgvolume for", volume);
+  return <g key={key} />;
 }
 
 function eyeball(pt: T.Point3): JSX.Element {

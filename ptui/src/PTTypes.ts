@@ -1,22 +1,32 @@
 import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
-import type { AbilityID } from "./bindings/AbilityID";
-import type { ClassID } from "./bindings/ClassID";
-import type { CreatureID } from "./bindings/CreatureID";
-import type { PlayerID } from "./bindings/PlayerID";
-import type { SceneID } from "./bindings/SceneID";
-import type { ItemID } from "./bindings/ItemID";
-import type { AttrID } from "./bindings/AttrID";
-import type { ConditionID } from "./bindings/ConditionID";
-import type { HP } from "./bindings/HP";
-import type { Energy } from "./bindings/Energy";
-import type { Note } from "./bindings/Note";
-import type { Dice } from "./bindings/Dice";
-import type { AABB } from "./bindings/AABB";
-import type { AttributeCheck } from "./bindings/AttributeCheck";
+import type {
+  AbilityID,
+  ClassID,
+  CreatureID,
+  PlayerID,
+  SceneID,
+  ItemID,
+  AttrID,
+  ConditionID,
+  HP,
+  Energy,
+  Note,
+  Dice,
+  AABB,
+  AttributeCheck,
+  Duration,
+  Condition,
+  CreatureEffect,
+  SkillLevel,
+  Volume
+} from "./bindings/bindings";
 
-export { AABB, AbilityID, ClassID, CreatureID, PlayerID, SceneID, ItemID, AttrID, ConditionID, HP, Note, Dice};
+export {
+  AABB, AbilityID, AttributeCheck, AttrID, ClassID, Condition, ConditionID, CreatureEffect,
+  CreatureID, Dice, Duration, HP, ItemID, Note, PlayerID, SceneID, SkillLevel, Volume
+};
 
 export type Color = string;
 export type Distance = number;
@@ -109,12 +119,6 @@ export type DecidedTarget =
   | { t: "Creatures"; creature_ids: Array<CreatureID> }
   | { t: "Actor" }
   | { t: "Point"; point: Point3 };
-
-export type Volume =
-  | { t: "Sphere"; radius: Distance }
-  | { t: "Line"; vector: Point3 }
-  | { t: "VerticalCylinder"; radius: Distance; height: Distance }
-  | { t: "AABB"; aabb: AABB };
 
 export interface Folder {
   data: FolderNode;
@@ -286,7 +290,7 @@ export type CreatureLog =
   | { t: "Heal"; hp: HP; rolls: Array<number> }
   | { t: "GenerateEnergy"; energy: Energy }
   | { t: "ReduceEnergy"; energy: Energy }
-  | { t: "ApplyCondition"; condition_id: ConditionID; duration: Duration } // TODO Condition
+  | { t: "ApplyCondition"; condition_id: ConditionID; duration: Duration }
   | { t: "DecrementConditionRemaining"; condition_id: ConditionID }
   | { t: "RemoveCondition"; condition_id: ConditionID };
 
@@ -294,25 +298,6 @@ export interface Item {
   id: ItemID;
   name: string;
 }
-
-export type CreatureEffect =
-  | { t: "ApplyCondition"; duration: Duration; condition: Condition }
-  | { t: "Heal"; dice: Dice }
-  | { t: "Damage"; dice: Dice }
-  | { t: "MultiEffect"; effects: Array<CreatureEffect> }
-  | { t: "GenerateEnergy"; energy: Energy };
-
-export type Duration =
-  | { t: "Interminate" }
-  | { t: "Rounds"; duration: number };
-
-export type Condition =
-  | { t: "RecurringEffect"; effect: CreatureEffect }
-  | { t: "Dead" }
-  | { t: "Incapacitated" }
-  | { t: "AddDamageBuff"; hp: HP }
-  | { t: "DoubleMaxMovement" }
-  | { t: "ActivateAbility"; ability_id: AbilityID };
 
 export interface AppliedCondition {
   remaining: Duration;
@@ -366,7 +351,6 @@ export type FolderItemID =
   | { t: "ClassID"; id: ClassID }
   ;
 
-export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
@@ -446,24 +430,24 @@ const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
 ]));
 
 const decodeDuration: Decoder<Duration> = Z.union([
-  Z.literal("Interminate").transform((): Duration => ({t: "Interminate"})),
-  Z.object({Rounds: Z.number()}).transform((o): Duration => ({t: "Rounds", duration: o.Rounds}))
+  Z.literal("Interminate"),
+  Z.object({Rounds: Z.number()}),
 ]);
 
 const decodeEffect: Decoder<CreatureEffect> = Z.union([
-  Z.object({ApplyCondition: Z.tuple([decodeDuration, Z.lazy(() => decodeCondition)])}).transform((o): CreatureEffect => ({ t: "ApplyCondition", duration: o.ApplyCondition[0], condition: o.ApplyCondition[1] })),
-  Z.object({Damage: decodeDice}).transform((o): CreatureEffect => ({ t: "Damage", dice: o.Damage })),
-  Z.object({GenerateEnergy: Z.number()}).transform(({GenerateEnergy}): CreatureEffect => ({ t: "GenerateEnergy", energy: GenerateEnergy})),
-  Z.object({Heal: decodeDice}).transform(({Heal: dice}): CreatureEffect => ({ t: "Heal", dice })),
-  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeEffect))}).transform(({MultiEffect: effects}): CreatureEffect => ({t: "MultiEffect", effects})),
+  Z.object({ApplyCondition: Z.tuple([decodeDuration, Z.lazy(() => decodeCondition)])}),
+  Z.object({Damage: decodeDice}),
+  Z.object({GenerateEnergy: Z.number()}),
+  Z.object({Heal: decodeDice}),
+  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeEffect))}),
 ]);
 
 const decodeCondition: Decoder<Condition> = Z.union([
-  Z.literal("Dead").transform((): Condition => ({t: "Dead"})),
-  Z.literal("DoubleMaxMovement").transform((): Condition => ({ t: "DoubleMaxMovement" })),
-  Z.literal("Incapacitated").transform((): Condition => ({ t: "Incapacitated" })),
-  Z.object({ActivateAbility: Z.string()}).transform(({ActivateAbility: ability_id}): Condition => ({ t: "ActivateAbility", ability_id })),
-  Z.object({RecurringEffect: decodeEffect}).transform(({RecurringEffect: effect}): Condition => ({ t: "RecurringEffect", effect })),
+  Z.literal("Dead"),
+  Z.literal("DoubleMaxMovement"),
+  Z.literal("Incapacitated"),
+  Z.object({ActivateAbility: Z.string()}),
+  Z.object({RecurringEffect: decodeEffect}),
 ]);
 
 
@@ -551,10 +535,10 @@ const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
 });
 
 const decodeVolume: Decoder<Volume> = Z.union([
-  Z.object({Sphere: Z.number()}).transform(({Sphere: radius}): Volume => ({t: "Sphere", radius})),
-  Z.object({Line: decodePoint3}).transform(({Line: vector}): Volume => ({ t: "Line", vector })),
-  Z.object({VerticalCylinder: Z.object({ radius: Z.number(), height: Z.number()})}).transform(({VerticalCylinder: {radius, height}}): Volume => ({t: "VerticalCylinder", radius, height})),
-  Z.object({AABB: decodeAABB}).transform(({AABB: aabb}): Volume => ({ t: "AABB", aabb })),
+  Z.object({Sphere: Z.number()}),
+  Z.object({Line: Z.object({vector: decodePoint3})}),
+  Z.object({VerticalCylinder: Z.object({ radius: Z.number(), height: Z.number()})}),
+  Z.object({AABB: decodeAABB}),
 ]);
 
 export const decodeVolumeCondition: Decoder<VolumeCondition> = Z.object({
