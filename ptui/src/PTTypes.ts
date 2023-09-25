@@ -2,27 +2,40 @@ import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
 import type {
-  AABB, AbilityID, AbilityStatus, AppliedCondition, AttributeCheck, AttrID,
-  Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
-  CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
-  Player, PlayerID, SceneID, SkillLevel, Volume,
-  CreatureTarget, SceneTarget, Ability, Action, SceneCreation
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
+  AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
+  Energy, HP, Item, ItemID, Note, Player, PlayerID, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility, Volume,
+  VolumeCondition,
 } from "./bindings/bindings";
 
 export {
-  AABB, AbilityID, AbilityStatus, AppliedCondition, AttributeCheck, AttrID,
-  Class, ClassID, Combat, Condition, ConditionID, CreatureCreation,
-  CreatureEffect, CreatureID, Dice, Duration, Energy, HP, Item, ItemID, Note,
-  Player, PlayerID, SceneID, SkillLevel, Volume,
-  CreatureTarget, SceneTarget, Ability, Action, SceneCreation
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
+  AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
+  CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
+  Energy, HP, Item, ItemID, Note, Player, PlayerID, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility, Volume,
+  VolumeCondition,
 };
 
 export type Color = string;
 export type Distance = number;
 export type FolderPath = Array<string>;
+
+
+// Various types that aren't the obvious types that ts-rs would generate for a
+// Rust type, mostly because we use immutablejs for a bunch of stuff.
 export type Terrain = Set<Point3>;
+export type SceneHotspots = Map<Point3, SceneID>;
 export type Highlights = Map<Point3, [Color, Visibility]>;
 export type Annotations = Map<Point3, [string, Visibility]>;
+export type RelatedScenes = Set<SceneID>;
+export type SceneCreatures = Map<CreatureID, [Point3, Visibility]>;
+export type SceneInventory = Map<ItemID, number>;
+export type SceneVolumeConditions = Map<ConditionID, VolumeCondition>;
+export type SceneAttributeChecks = Map<string, AttributeCheck>;
+export type SceneFocusedCreatures = List<CreatureID>;
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -278,35 +291,6 @@ export type FolderItemID =
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
-export interface Scene {
-  id: SceneID;
-  name: string;
-  terrain: Terrain;
-  highlights: Highlights;
-  annotations: Annotations;
-  scene_hotspots: Map<Point3, SceneID>;
-  related_scenes: Set<SceneID>;
-  creatures: Map<CreatureID, [Point3, Visibility]>;
-  attribute_checks: Map<string, AttributeCheck>;
-  inventory: Map<ItemID, number>;
-  background_image_url: string;
-  background_image_offset: [number, number] | null;
-  background_image_scale: [number, number];
-  volume_conditions: Map<ConditionID, VolumeCondition>;
-  focused_creatures: List<CreatureID>;
-}
-
-export interface VolumeCondition {
-  point: Point3;
-  volume: Volume;
-  remaining: Duration;
-  condition: Condition;
-}
-
-export type Visibility =
-  | { t: "GMOnly" }
-  | { t: "AllPlayers" };
-
 export type PotentialTargets =
   | { t: "CreatureIDs"; cids: Array<CreatureID> }
   | { t: "Points"; points: Array<Point3> }
@@ -436,7 +420,7 @@ const decodeCreatureCreation: Decoder<CreatureCreation> = Z.object({
 export const decodeVisibility: Decoder<Visibility> = Z.union([
   Z.literal("GMOnly"),
   Z.literal("AllPlayers")
-]).transform((s): Visibility => ({t: s}));
+]);
 
 export const decodeAttributeCheck: Decoder<AttributeCheck> = Z.object({
   reliable: Z.boolean(),
@@ -724,6 +708,10 @@ const decodeClass: Decoder<Class> = Z.object({
   conditions: Z.array(decodeCondition)
 });
 
+export interface NonEmpty {
+  cursor: number;
+  data: Array<[CreatureID, number]>
+}
 function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
   return Z.object({
     cursor: Z.number(),
@@ -1032,7 +1020,7 @@ function encodeSceneCreation(sc: SceneCreation): object {
 }
 
 function encodeVisibility(vis: Visibility): string {
-  return vis.t;
+  return vis;
 }
 
 function encodeAttributeCheck(check: AttributeCheck): object {

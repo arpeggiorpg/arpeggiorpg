@@ -374,7 +374,7 @@ export function GiveItem( props: GiveItemProps ) {
   const available_recipients = M.useState(s => s.playerId)
     ? other_creatures.filter((c) => {
           const entry = scene.creatures.get(c.id);
-          return entry && entry[1].t === "AllPlayers";
+          return entry && entry[1] === "AllPlayers";
         })
     : other_creatures;
 

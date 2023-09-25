@@ -210,7 +210,7 @@ export function SceneGrid(props: SceneGridProps) {
 
   function getHighlights(highlights: T.Highlights, player_id?: T.PlayerID, onClick?: (pt: T.Point3) => void) {
     return highlights.entrySeq().map(([pt, [color, vis]]) => {
-      const gmonly = vis.t === "GMOnly";
+      const gmonly = vis === "GMOnly";
       if (gmonly && player_id) {
         return null;
       }
@@ -668,7 +668,7 @@ interface AnnotationProps {
 }
 function Annotation(props: AnnotationProps): JSX.Element | null {
   const { pt, vis, player_id, specialClick } = props;
-  if (M.isEqual(vis, { t: "GMOnly" }) && player_id) {
+  if (M.isEqual(vis, "GMOnly") && player_id) {
     return null;
   }
 
@@ -695,7 +695,7 @@ function Annotation(props: AnnotationProps): JSX.Element | null {
       textAnchor="middle"
       x={pt.x + 50} y={pt.y}
       fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
-    {vis.t === "GMOnly" ? eyeball(pt) : null}
+    {vis === "GMOnly" ? eyeball(pt) : null}
   </g>;
 }
 
@@ -802,7 +802,7 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
     highlightProps.strokeWidth = 15;
   }
 
-  const opacity = (creature.visibility.t === "GMOnly") ? "0.4" : "1.0";
+  const opacity = (creature.visibility === "GMOnly") ? "0.4" : "1.0";
   const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
 
   return <g key={creature.creature.id} opacity={opacity} onClick={onClick}

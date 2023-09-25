@@ -188,12 +188,12 @@ function SceneTerrain(props: { scene: T.Scene }) {
 
 function SceneHighlights(props: { scene: T.Scene }) {
   const { scene } = props;
-  const allPlayers = M.useState(s => s.grid.object_visibility.t === "AllPlayers");
+  const allPlayers = M.useState(s => s.grid.object_visibility === "AllPlayers");
   const highlightColor = M.useState(s => s.grid.highlight_color);
 
   const vis_checkbox = <Checkbox label="Visible to all players?" checked={allPlayers}
     onChange={
-      (_, d) => M.getState().setObjectVisibility({ t: d.checked ? "AllPlayers" : "GMOnly" })
+      (_, d) => M.getState().setObjectVisibility(d.checked ? "AllPlayers" : "GMOnly")
     } />;
 
   return <div>
@@ -665,7 +665,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
               const add_commands = new_cids.map(
                 (creature_id): T.GameCommand => ({
                   t: "AddCreatureToScene", scene_id: scene.id, creature_id,
-                  visibility: { t: "AllPlayers" },
+                  visibility: "AllPlayers",
                 }));
               const rem_commands = removed_cids.map(
                 (creature_id): T.GameCommand =>
@@ -678,7 +678,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
     </List.Item>
     {creatures.map(({creature, inCombat}) => {
       const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
-      const vis_desc = vis.t === 'GMOnly'
+      const vis_desc = vis === 'GMOnly'
         ? 'Only visible to the GM' : 'Visible to all players';
       return <List.Item key={`cid:${creature.id}`}>
         <List.Content floated='left'><CV.ClassIcon class_id={creature.class_} /></List.Content>
@@ -686,10 +686,10 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
         <List.Content floated='right'>
           <Popup
             trigger={<Icon name='eye'
-              style={{ cursor: "pointer", color: vis.t === 'GMOnly' ? 'grey' : 'black' }}
+              style={{ cursor: "pointer", color: vis === 'GMOnly' ? 'grey' : 'black' }}
               onClick={() => {
                 const new_vis: T.Visibility =
-                  vis.t === "GMOnly" ? { t: "AllPlayers" } : { t: "GMOnly" };
+                  vis === "GMOnly" ? "AllPlayers" : "GMOnly";
                   console.log("CLICK", new_vis);
                 A.sendCommand({
                   t: "SetSceneCreatureVisibility", scene_id: scene.id, creature_id: creature.id,
@@ -1258,7 +1258,7 @@ export function AddAnnotation(props: AddAnnotationProps) {
   const [allPlayers, setAllPlayers] = React.useState(false);
   const { pt, onClose, scene } = props;
   const annotate = (text: string) => {
-    const vis: T.Visibility = allPlayers ? { t: "AllPlayers" } : { t: "GMOnly" };
+    const vis: T.Visibility = allPlayers ?  "AllPlayers" : "GMOnly";
     const annotations = scene.annotations.set(pt, [text, vis]);
     A.sendCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
     onClose();

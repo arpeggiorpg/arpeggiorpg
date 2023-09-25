@@ -39,8 +39,8 @@ test("random junk", () => {
     assertEq<T.GameLog>(T.decodeGameLog.parse(x), y);
   }
 
-  assertEq<T.Visibility>(T.decodeVisibility.parse("GMOnly"), { t: "GMOnly" });
-  assertEq<T.Visibility>(T.decodeVisibility.parse("AllPlayers"), { t: "AllPlayers" });
+  assertEq<T.Visibility>(T.decodeVisibility.parse("GMOnly"), "GMOnly");
+  assertEq<T.Visibility>(T.decodeVisibility.parse("AllPlayers"), "AllPlayers");
 
   const sceneJSON = {
     id: "Scene ID",
@@ -52,6 +52,7 @@ test("random junk", () => {
     },
     inventory: {},
     background_image_url: "",
+    background_image_offset: null,
     related_scenes: [],
     scene_hotspots: {},
     terrain: [],
@@ -59,7 +60,7 @@ test("random junk", () => {
     annotations: {},
     background_image_scale: [0, 0],
     volume_conditions: {},
-    focused_creatures: []
+    focused_creatures: [],
   };
   const exScene: T.Scene = {
     id: "Scene ID",
@@ -68,7 +69,7 @@ test("random junk", () => {
     highlights: Map(),
     annotations: Map(),
     creatures: Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
-      "Creature ID", [new T.Point3(0, 0, 0), { t: "GMOnly" }]),
+      "Creature ID", [new T.Point3(0, 0, 0), "GMOnly"]),
     attribute_checks: Map({ "Do a backflip": exAttrCheck }),
     inventory: Map(),
     background_image_url: "",
@@ -91,7 +92,7 @@ describe("PTTypes", () => {
   });
 
   test("decodeAction", () => {
-    const action = { "SceneVolume": { "target": ranged_volume_target } };
+    const action = { "SceneVolume": { "effect": {CreateVolumeCondition: {duration: "Interminate", condition: "DoubleMaxMovement" }}, "target": ranged_volume_target } };
     T.decodeAction.parse(action);
   });
 

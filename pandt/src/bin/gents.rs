@@ -9,8 +9,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut file = File::create("bindings/bindings.ts")?;
     let decls = vec![
         <T::AABB as TS>::decl(),
+        <T::Ability as TS>::decl(),
         <T::AbilityID as TS>::decl(),
         <T::AbilityStatus as TS>::decl(),
+        <T::Action as TS>::decl(),
         <T::AppliedCondition as TS>::decl(),
         <T::AttributeCheck as TS>::decl(),
         <T::AttrID as TS>::decl(),
@@ -22,6 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::CreatureCreation as TS>::decl(),
         <T::CreatureEffect as TS>::decl(),
         <T::CreatureID as TS>::decl(),
+        <T::CreatureTarget as TS>::decl(),
         <T::Dice as TS>::decl(),
         <T::Duration as TS>::decl(),
         <T::Energy as TS>::decl(),
@@ -31,17 +34,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::Note as TS>::decl(),
         <T::Player as TS>::decl(),
         <T::PlayerID as TS>::decl(),
-        <T::SceneID as TS>::decl(),
-        <T::SkillLevel as TS>::decl(),
-        <T::Volume as TS>::decl(),
-        <T::CreatureTarget as TS>::decl(),
-        <T::SceneTarget as TS>::decl(),
-        <T::SceneEffect as TS>::decl(),
-        <T::Ability as TS>::decl(),
-        <T::Action as TS>::decl(),
+        <T::Scene as TS>::decl(),
         <T::SceneCreation as TS>::decl(),
+        <T::SceneEffect as TS>::decl(),
+        <T::SceneID as TS>::decl(),
+        <T::SceneTarget as TS>::decl(),
+        <T::SkillLevel as TS>::decl(),
+        <T::Visibility as TS>::decl(),
+        <T::Volume as TS>::decl(),
+        <T::VolumeCondition as TS>::decl(),
     ];
-    file.write_all(b"import type { Point3 } from '../PTTypes';\n\n\n")?;
+    file.write_all(b"import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures } from '../PTTypes';\n\n\n")?;
     for decl in decls.iter() {
         file.write_all(b"export ")?;
         file.write_all(decl.as_bytes())?;
