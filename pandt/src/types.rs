@@ -904,7 +904,7 @@ pub enum SceneEffect {
 /// "specific creature" targeting (`Melee` and `Range`) and "aoe" targeting (the others). The
 /// parameters of these variants indicate the specific target creature or point that is being
 /// targeted by the player.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum DecidedTarget {
   Creature(CreatureID),
   Creatures(Vec<CreatureID>),

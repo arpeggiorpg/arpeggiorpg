@@ -25,6 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         <T::CreatureEffect as TS>::decl(),
         <T::CreatureID as TS>::decl(),
         <T::CreatureTarget as TS>::decl(),
+        <T::DecidedTarget as TS>::decl(),
         <T::Dice as TS>::decl(),
         <T::Duration as TS>::decl(),
         <T::Energy as TS>::decl(),

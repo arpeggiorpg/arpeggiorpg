@@ -35,6 +35,8 @@ export type CreatureID = string;
 
 export type CreatureTarget = "Melee" | { Range: number } | "Actor" | { LineFromActor: { distance: number, } } | { SomeCreaturesInVolumeInRange: { volume: Volume, maximum: number, range: number, } } | { AllCreaturesInVolumeInRange: { volume: Volume, range: number, } };
 
+export type DecidedTarget = { Creature: CreatureID } | { Creatures: Array<CreatureID> } | "Actor" | { Point: Point3 };
+
 export type Dice = { Expr: { num: number, size: number, } } | { Plus: [Dice, Dice] } | { Flat: { value: number, } } | { BestOf: [number, Dice] };
 
 export type Duration = "Interminate" | { Rounds: number };
