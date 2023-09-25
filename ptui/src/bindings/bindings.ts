@@ -51,6 +51,8 @@ export interface Item { id: ItemID, name: string, }
 
 export type ItemID = string;
 
+export type ModuleSource = "Module" | "SavedGame";
+
 export interface Note { name: string, content: string, }
 
 export interface Player { player_id: PlayerID, scene: SceneID | null, creatures: Array<CreatureID>, }
