@@ -5,18 +5,18 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note, Player,
-  PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
-  TileSystem, Visibility, Volume, VolumeCondition,
+  Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note,
+  Player, PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note, Player,
-  PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
-  TileSystem, Visibility, Volume, VolumeCondition,
+  Energy, FolderItemID, FolderNode, Game, HP, Item, ItemID, ModuleSource, Note,
+  Player, PlayerID, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -261,16 +261,6 @@ export interface CreatureData {
   name: string;
 }
 
-export type FolderItemID =
-  | { t: "SceneID"; id: SceneID }
-  | { t: "CreatureID"; id: CreatureID }
-  | { t: "NoteID"; id: string }
-  | { t: "SubfolderID"; id: string }
-  | { t: "ItemID"; id: ItemID }
-  | { t: "AbilityID"; id: AbilityID }
-  | { t: "ClassID"; id: ClassID }
-  ;
-
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
@@ -455,21 +445,14 @@ export const decodeScene: Decoder<Scene> = Z.object({
   focused_creatures: Z.array(Z.string()).transform<Scene['focused_creatures']>(List),
 });
 
-function _mkFolderItem(t: FolderItemID['t']): Decoder<FolderItemID> {
-  // "!": the type of `o` in the transform is only {[key: string]: string}, which means typescript
-  // cannot know that o[t] exists in the face of noUncheckedIndexAccess. There may be a way to type
-  // `o` better but that might also require a type ascription.
-  return Z.object({[t]: Z.string()}).transform((o): FolderItemID => ({t, id: o[t]!}))
-}
-
 const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
-  _mkFolderItem("SceneID"),
-  _mkFolderItem("CreatureID"),
-  _mkFolderItem("NoteID"),
-  _mkFolderItem("ItemID"),
-  _mkFolderItem("AbilityID"),
-  _mkFolderItem("ClassID"),
-  _mkFolderItem("SubfolderID"),
+  Z.object({"SceneID": Z.string()}),
+  Z.object({"CreatureID": Z.string()}),
+  Z.object({"NoteID": Z.string()}),
+  Z.object({"ItemID": Z.string()}),
+  Z.object({"AbilityID": Z.string()}),
+  Z.object({"ClassID": Z.string()}),
+  Z.object({"SubfolderID": Z.string()}),
 ]);
 
 const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
@@ -977,7 +960,7 @@ function encodeModuleSource(s: ModuleSource): string {
 }
 
 function encodeFolderItemID(fid: FolderItemID): object {
-  return { [fid.t]: fid.id };
+  return fid;
 }
 
 function encodeInventoryOwner(owner: InventoryOwner): object {
