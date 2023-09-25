@@ -29,7 +29,7 @@ export interface AppState {
   getSceneCreatures: (scene: T.Scene) => T.Creature[],
   getCreatures: (cids: T.CreatureID[]) => T.Creature[],
   getCreature: (cid: T.CreatureID) => T.Creature | undefined,
-  getCombat: () => T.Combat | undefined,
+  getCombat: () => T.Combat | null,
   getGame: () => T.Game,
 
   getAbility: (abid: T.AbilityID) => T.Ability | undefined;
@@ -122,13 +122,15 @@ const initialApp: T.App = {
   snapshots: [],
   current_game: {
     players: Map(),
-    current_combat: undefined,
+    current_combat: null,
     creatures: Map(),
     classes: Map(),
     items: {},
     scenes: Map(),
     abilities: {},
-    campaign: { children: Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } }
+    campaign: { children: Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } },
+    tile_system: "DnD",
+    active_scene: null
   }
 };
 

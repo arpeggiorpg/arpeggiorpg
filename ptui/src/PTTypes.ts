@@ -5,18 +5,18 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, HP, Item, ItemID, Note, Player, PlayerID, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility,
-  Volume, VolumeCondition,
+  Energy, FolderNode, Game, HP, Item, ItemID, Note, Player, PlayerID, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
   CreatureCreation, CreatureEffect, CreatureID, CreatureTarget, Dice, Duration,
-  Energy, FolderNode, HP, Item, ItemID, Note, Player, PlayerID, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, Visibility,
-  Volume, VolumeCondition,
+  Energy, FolderNode, Game, HP, Item, ItemID, Note, Player, PlayerID, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -35,6 +35,12 @@ export type SceneInventory = Map<ItemID, number>;
 export type SceneVolumeConditions = Map<ConditionID, VolumeCondition>;
 export type SceneAttributeChecks = Map<string, AttributeCheck>;
 export type SceneFocusedCreatures = List<CreatureID>;
+export type GameAbilities = Record<AbilityID, Ability>;
+export type GameCreatures = Map<CreatureID, Creature>;
+export type GameClasses = Map<ClassID, Class>;
+export type GameScenes = Map<SceneID, Scene>;
+export type GameItems = Record<ItemID, Item>;
+export type GamePlayers = Map<PlayerID, Player>;
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -71,17 +77,6 @@ export interface App {
 }
 
 export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
-
-export interface Game {
-  current_combat?: Combat | undefined;
-  creatures: Map<CreatureID, Creature>;
-  classes: Map<ClassID, Class>;
-  items: { [index: string]: Item };
-  scenes: Map<SceneID, Scene>;
-  abilities: { [index: string]: Ability };
-  campaign: Folder;
-  players: Map<PlayerID, Player>;
-}
 
 export type DecidedTarget =
   | { t: "Creature"; creature_id: CreatureID }
@@ -776,8 +771,13 @@ const decodeAbility: Decoder<Ability> = Z.object({
   usable_ooc: Z.boolean(),
 });
 
+const decodeTileSystem: Decoder<TileSystem> = Z.union([
+  Z.literal("Realistic"),
+  Z.literal("DnD")
+]);
+
 const decodeGame: Decoder<Game> = Z.object({
-  current_combat: maybe(decodeCombat),
+  current_combat: decodeCombat.nullable(),
   creatures: Z.record(decodeCreature).transform<Game["creatures"]>(Map),
   classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
   items: Z.record(decodeItem),
@@ -785,6 +785,8 @@ const decodeGame: Decoder<Game> = Z.object({
   abilities: Z.record(decodeAbility),
   campaign: decodeFolder,
   players: Z.record(decodePlayer).transform<Game["players"]>(Map),
+  tile_system: decodeTileSystem,
+  active_scene: Z.string().nullable(),
 });
 
 export const decodeApp: Decoder<App> = Z.object({

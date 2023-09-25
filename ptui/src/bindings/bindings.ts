@@ -1,4 +1,4 @@
-import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures } from '../PTTypes';
+import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, Folder, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers, } from '../PTTypes';
 
 
 export interface AABB { x: number, y: number, z: number, }
@@ -43,6 +43,8 @@ export type Energy = number;
 
 export interface FolderNode { scenes: Array<SceneID>, creatures: Array<CreatureID>, notes: Record<string, Note>, items: Array<ItemID>, abilities: Array<AbilityID>, classes: Array<ClassID>, }
 
+export interface Game { current_combat: Combat | null, abilities: GameAbilities, creatures: GameCreatures, classes: GameClasses, tile_system: TileSystem, scenes: GameScenes, items: GameItems, campaign: Folder, players: GamePlayers, active_scene: SceneID | null, }
+
 export type HP = number;
 
 export interface Item { id: ItemID, name: string, }
@@ -66,6 +68,8 @@ export type SceneID = string;
 export type SceneTarget = { RangedVolume: { volume: Volume, range: number, } };
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
+
+export type TileSystem = "Realistic" | "DnD";
 
 export type Visibility = "GMOnly" | "AllPlayers";
 
