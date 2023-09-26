@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <T::Dice as TS>::decl(),
     <T::Duration as TS>::decl(),
     <T::Energy as TS>::decl(),
+    <foldertree::FolderTree<T::Folder> as TS>::decl(),
     <T::Folder as TS>::decl(),
     <T::FolderItemID as TS>::decl(),
     <T::Game as TS>::decl(),
@@ -53,7 +54,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <T::Volume as TS>::decl(),
     <T::VolumeCondition as TS>::decl(),
   ];
-  file.write_all(b"import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, Folder, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers, } from '../PTTypes';\n\n\n")?;
+  file.write_all(b"\
+  import type { Map } from 'immutable';
+  import type {
+     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers
+  } from '../PTTypes';
+
+  ")?;
   for decl in decls.iter() {
     file.write_all(b"export ")?;
     file.write_all(decl.as_bytes())?;

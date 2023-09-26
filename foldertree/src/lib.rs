@@ -435,6 +435,25 @@ impl<'de, T: de::Deserialize<'de>> de::Deserialize<'de> for FolderTree<T> {
   }
 }
 
+use ts_rs::TS;
+impl<T: TS> TS for FolderTree<T> {
+  fn name() -> String { "FolderTree".to_owned() }
+
+  fn decl() -> String {
+    let name = Self::name();
+    format!(
+      "interface {name}<T> {{
+        data: T;
+        children: Map<string, {name}<T>>;
+      }}"
+    )
+  }
+
+  fn transparent() -> bool { false }
+
+  fn dependencies() -> Vec<ts_rs::Dependency> { vec![] }
+}
+
 #[cfg(feature = "serde")]
 #[cfg(test)]
 #[macro_use]

@@ -1096,7 +1096,6 @@ pub struct Game {
   #[serde(default)]
   #[ts(type = "GameItems")]
   pub items: IndexedHashMap<Item>,
-  #[ts(type = "Folder")]
   pub campaign: FolderTree<Folder>,
   #[serde(default)]
   #[ts(type = "GamePlayers")]
