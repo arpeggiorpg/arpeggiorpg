@@ -544,10 +544,17 @@ pub enum CreatureLog {
 
 // TODO: get rid of CombatLog, it's dumb... unless we ever support multiple Combats?
 /// Representation of state changes in a Combat. See `GameLog`.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum CombatLog {
-  ConsumeMovement(u32units::Length),
-  ChangeCreatureInitiative(CreatureID, i16),
+  // Consume some of the movement from the current combat-creatur
+  ConsumeMovement(
+    #[ts(type = "number")]
+    u32units::Length
+  ),
+  ChangeCreatureInitiative{
+    creature_id: CreatureID,
+    new_initiative: i16
+  },
   EndTurn(CreatureID), // the end of this creature's turn
   ForceNextTurn,
   ForcePrevTurn,

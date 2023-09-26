@@ -35,9 +35,9 @@ impl<'game> DynamicCombat<'game> {
         }
         new.creatures = sort_combatants(combatants.clone())?;
       }
-      CombatLog::ChangeCreatureInitiative(cid, new_init) => {
+      CombatLog::ChangeCreatureInitiative { creature_id, new_initiative } => {
         let cursor = new.creatures.get_cursor();
-        let update_init = |&(c, i)| if c == cid { (c, new_init) } else { (c, i) };
+        let update_init = |&(c, i)| if c == creature_id { (c, new_initiative) } else { (c, i) };
         let creatures_with_inits =
           sort_combatants(new.creatures.iter().map(update_init).collect())?;
         new.creatures = creatures_with_inits;

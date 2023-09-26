@@ -312,8 +312,11 @@ impl Game {
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
       RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
       RerollCombatInitiative => self.change().apply_combat(|c| c.reroll_initiative()),
-      ChangeCreatureInitiative(cid, new_pos) => {
-        self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative(cid, new_pos)))
+      ChangeCreatureInitiative(creature_id, new_initiative) => {
+        self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative {
+          creature_id,
+          new_initiative,
+        }))
       }
       ForceNextTurn => self.change_with(GameLog::CombatLog(CombatLog::ForceNextTurn)),
       ForcePrevTurn => self.change_with(GameLog::CombatLog(CombatLog::ForcePrevTurn)),

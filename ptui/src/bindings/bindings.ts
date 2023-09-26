@@ -23,6 +23,8 @@ export type ClassID = string;
 
 export interface Combat { scene: SceneID, creatures: NonEmpty, movement_used: number, }
 
+export type CombatLog = { ConsumeMovement: number } | { ChangeCreatureInitiative: { creature_id: CreatureID, new_initiative: number, } } | { EndTurn: CreatureID } | "ForceNextTurn" | "ForcePrevTurn" | { RerollInitiative: Array<[CreatureID, number]> };
+
 export type Condition = { RecurringEffect: CreatureEffect } | "Dead" | "Incapacitated" | { AddDamageBuff: HP } | "DoubleMaxMovement" | { ActivateAbility: AbilityID };
 
 export type ConditionID = string;

@@ -18,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <T::Class as TS>::decl(),
     <T::ClassID as TS>::decl(),
     <T::Combat as TS>::decl(),
+    <T::CombatLog as TS>::decl(),
     <T::Condition as TS>::decl(),
     <T::ConditionID as TS>::decl(),
     <T::CreatureCreation as TS>::decl(),
