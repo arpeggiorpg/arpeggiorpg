@@ -239,7 +239,7 @@ impl<T> FolderTree<T> {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TS)]
 pub struct FolderPath(Vec<String>);
 
 impl FolderPath {

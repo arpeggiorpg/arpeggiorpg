@@ -6,9 +6,9 @@ import type {
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
   CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
 } from "./bindings/bindings";
 
@@ -17,15 +17,14 @@ export {
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
   CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation,
+  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
 };
 
 export type Color = string;
 export type Distance = number;
-export type FolderPath = Array<string>;
 
 // Various types that aren't the obvious types that ts-rs would generate for a
 // Rust type, mostly because we use immutablejs for a bunch of stuff.
