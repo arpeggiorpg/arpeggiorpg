@@ -1026,8 +1026,18 @@ pub struct CreatureCreation {
 /// A very important thing about how we deal with creatures is that whenever we change
 /// a creature, we get back both a new creature *and* a log of all things that happened to that
 /// creature. That log is deterministic and complete enough for us to replay it on a snapshot of a
-/// creature and get an identical creature.
+/// creature and get an identical creature. See `Creature::change` and `Creature::change_with`.
+///
+/// Random note: Serialize and Deserialize on Creature are only for "secondary" representations of
+/// Creatures like in GameLog::CreateCreature. See DynamicCreature and its Serialize impl for the
+/// good stuff.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+// RADIX: I think it can be reasonable to derive TS for Creature, but note that that's *NOT* the
+// main Creature object that we serialize; it's only for GameLog::CreateCreature (this is called
+// `CreatureData` in the frontend). The *main* Creature is actually serialized from
+// `DynamicCreature`, but since that's a manual Serialize impl that will be a pain to impl TS for. I
+// think the better factoring here would be to create a struct SerializedCreature and use the
+// "serializer helper" pattern. That way we can derive serialize and TS on SerializedCreature.
 pub struct Creature {
   pub id: CreatureID,
   pub name: String,
@@ -1255,7 +1265,7 @@ impl<'a> Serialize for RPIApp<'a> {
 
 impl<'a> Serialize for RPIGame<'a> {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 10)?;
+    let mut str = serializer.serialize_struct("Game", 11)?;
     let game = self.0;
 
     str.serialize_field("current_combat", &game.current_combat)?;
@@ -1272,37 +1282,77 @@ impl<'a> Serialize for RPIGame<'a> {
     str.serialize_field("campaign", &game.campaign)?;
     str.serialize_field("items", &game.items)?;
     str.serialize_field("players", &game.players)?;
+    str.serialize_field("active_scene", &game.active_scene)?;
     str.end()
   }
 }
 
 impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game> {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Creature", 21)?;
-    let creat = &self.creature;
-    str.serialize_field("id", &creat.id)?;
-    str.serialize_field("name", &creat.name)?;
-    str.serialize_field("note", &creat.note)?;
-    str.serialize_field("bio", &creat.bio)?;
-    str.serialize_field("portrait_url", &creat.portrait_url)?;
-    str.serialize_field("icon_url", &creat.icon_url)?;
-    str.serialize_field("speed", &self.speed())?;
-    str.serialize_field("max_energy", &creat.max_energy)?;
-    str.serialize_field("cur_energy", &creat.cur_energy)?;
-    str.serialize_field("abilities", &self.ability_statuses())?;
-    str.serialize_field("class", &creat.class)?;
-    str.serialize_field("max_health", &creat.max_health)?;
-    str.serialize_field("cur_health", &creat.cur_health)?;
-    str.serialize_field("own_conditions", self.own_conditions())?;
-    str.serialize_field("volume_conditions", &self.volume_conditions())?;
-    str.serialize_field("attributes", &creat.attributes)?;
-    str.serialize_field("can_act", &self.can_act())?;
-    str.serialize_field("can_move", &self.can_move())?;
-    str.serialize_field("initiative", &creat.initiative)?;
-    str.serialize_field("size", &creat.size)?;
-    str.serialize_field("inventory", &creat.inventory)?;
-    str.end()
+    let screature = SerializedCreature {
+      id: self.creature.id,
+      name: self.creature.name.clone(),
+      max_energy: self.creature.max_energy,
+      cur_energy: self.creature.cur_energy,
+      class: self.creature.class,
+      max_health: self.creature.max_health,
+      cur_health: self.creature.cur_health,
+      note: self.creature.note.clone(),
+      bio: self.creature.bio.clone(),
+      portrait_url: self.creature.portrait_url.clone(),
+      icon_url: self.creature.icon_url.clone(),
+      attributes: self.creature.attributes.clone(),
+      initiative: self.creature.initiative.clone(),
+      size: self.creature.size,
+      inventory: self.creature.inventory.clone(),
+      // overriden fields:
+      speed: self.speed(),
+      abilities: self.ability_statuses(),
+
+      // synthesized fields:
+      own_conditions: self.own_conditions().clone(),
+      volume_conditions: self.volume_conditions(),
+      can_act: self.can_act(),
+      can_move: self.can_move(),
+
+    };
+    return SerializedCreature::serialize(&screature, serializer);
   }
+}
+
+/// A Serde Serializer helper. This could probably store references instead of owned objects for
+/// some more efficiency.
+#[derive(Serialize)]
+struct SerializedCreature {
+  pub id: CreatureID,
+  pub name: String,
+  pub max_energy: Energy,
+  pub cur_energy: Energy,
+  pub class: ClassID,
+  pub max_health: HP,
+  pub cur_health: HP,
+  pub note: String,
+  #[serde(default)]
+  pub bio: String,
+  pub portrait_url: String,
+  #[serde(default)]
+  pub icon_url: String,
+  pub attributes: HashMap<AttrID, SkillLevel>,
+  pub initiative: Dice,
+  pub size: AABB,
+  #[serde(default)]
+  pub inventory: Inventory,
+
+  // overridden field
+  pub abilities: IndexedHashMap<AbilityStatus>,
+  pub speed: u32units::Length,
+
+  // synthesized fields
+  pub own_conditions: HashMap<ConditionID, AppliedCondition>,
+  pub volume_conditions: HashMap<ConditionID, AppliedCondition>,
+  pub can_act: bool,
+  pub can_move: bool,
+
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS, Default)]
