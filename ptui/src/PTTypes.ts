@@ -3,22 +3,24 @@ import * as Z from "zod";
 
 import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
-  AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureLog, CreatureTarget,
-  DecidedTarget, Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP,
-  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
-  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
+  ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
+  CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
+  FolderNode, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
+  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
-  AttributeCheck, AttrID, Class, ClassID, Combat, Condition, ConditionID,
-  CreatureCreation, CreatureEffect, CreatureID, CreatureLog, CreatureTarget,
-  DecidedTarget, Dice, Duration, Energy, FolderItemID, FolderNode, Game, HP,
-  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
-  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
+  ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
+  CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
+  FolderNode, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
+  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
+  VolumeCondition,
 };
 
 export type Color = string;
@@ -197,14 +199,6 @@ export type GameLog =
   | { t: "Rollback"; snapshot_index: number; log_index: number }
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath } // `module` is left out
   ;
-
-export type CombatLog =
-  | { t: "ConsumeMovement"; distance: Distance }
-  | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
-  | { t: "EndTurn"; creature_id: CreatureID }
-  | { t: "ForceNextTurn" }
-  | { t: "ForcePrevTurn" }
-  | { t: "RerollInitiative"; combatants: Array<[CreatureID, number]> };
 
 export class Creature {
   constructor(
@@ -471,16 +465,12 @@ const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
 ]);
 
 const decodeCombatLog: Decoder<CombatLog> = Z.union([
-  Z.literal("ForceNextTurn").transform((): CombatLog => ({t: "ForceNextTurn"})),
-  Z.literal("ForcePrevTurn").transform((): CombatLog => ({t: "ForcePrevTurn"})),
-  Z.object({ConsumeMovement: Z.number()}).transform(
-    ({ConsumeMovement: distance}): CombatLog => ({ t: "ConsumeMovement", distance})),
-  Z.object({ChangeCreatureInitiative: Z.tuple([Z.string(), Z.number()])}).transform(
-    ({ChangeCreatureInitiative: [creature_id, init]}): CombatLog => ({ t: "ChangeCreatureInitiative", creature_id, init })),
-  Z.object({EndTurn: Z.string()}).transform(
-    ({EndTurn: creature_id}): CombatLog => ({ t: "EndTurn", creature_id })),
-  Z.object({RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()]))}).transform(
-    ({RerollInitiative: combatants}): CombatLog => ({ t: "RerollInitiative", combatants })),
+  Z.literal("ForceNextTurn"),
+  Z.literal("ForcePrevTurn"),
+  Z.object({ConsumeMovement: Z.number()}),
+  Z.object({ChangeCreatureInitiative: Z.object({creature_id: Z.string(), new_initiative: Z.number()})}),
+  Z.object({EndTurn: Z.string()}),
+  Z.object({RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()]))}),
 ]);
 
 const decodeCreatureIDAndInit = Z.tuple([Z.string(), Z.number()]).transform(([cid, init]) => ({cid, init}));

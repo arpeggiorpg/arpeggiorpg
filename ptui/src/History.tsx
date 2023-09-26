@@ -135,21 +135,20 @@ export function GameLog(props: { log: T.GameLog; creatures: Map<T.CreatureID, T.
 }
 
 
-function combat_log(log: T.CombatLog): JSX.Element | null {
-  switch (log.t) {
-    case "ConsumeMovement":
-      return null;
-    case "ChangeCreatureInitiative":
-      return <div>Creature initiative changed</div>;
-    case "EndTurn":
-      return <div>Turn ended.</div>;
-    case "ForceNextTurn":
-      return <div>Forced move to next creature in combat</div>;
-    case "ForcePrevTurn":
-      return <div>Forced move to previous creature in combat</div>;
-    case "RerollInitiative":
-      return <div>Rerolled initiative for all creatures</div>;
-  }
+function combat_log(log: T.CombatLog) {
+  if (log === "ForceNextTurn")
+    return <div>Forced move to next creature in combat</div>;
+  if (log === "ForcePrevTurn")
+    return <div>Forced move to previous creature in combat</div>;
+  if ("ConsumeMovement" in log)
+    return null;
+  if ("ChangeCreatureInitiative" in log)
+    return <div>Creature initiative changed</div>;
+  if ("EndTurn" in log)
+    return <div>Turn ended.</div>;
+  if ("RerollInitiative" in log)
+    return <div>Rerolled initiative for all creatures</div>;
+  M.assertNever(log);
 }
 
 export function creature_log(
