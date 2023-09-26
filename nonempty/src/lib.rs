@@ -404,9 +404,7 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
-  fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result {
-    write!(fmter, "{:?}", self)
-  }
+  fn fmt(&self, fmter: &mut fmt::Formatter) -> fmt::Result { write!(fmter, "{:?}", self) }
 }
 
 impl error::Error for Error {

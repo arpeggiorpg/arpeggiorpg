@@ -117,11 +117,7 @@ fn sort_combatants(
 
 impl Combat {
   pub fn new(scene: SceneID, combatants: Vec<(CreatureID, i16)>) -> Result<Combat, GameError> {
-    Ok(Combat {
-      scene,
-      movement_used: Zero::zero(),
-      creatures: sort_combatants(combatants)?,
-    })
+    Ok(Combat { scene, movement_used: Zero::zero(), creatures: sort_combatants(combatants)? })
   }
 
   pub fn creature_ids(&self) -> Vec<CreatureID> { self.creatures.iter().map(|&(c, _)| c).collect() }
@@ -153,11 +149,9 @@ impl Combat {
       .position(|&(c, _)| c == cid)
       .ok_or_else(|| GameError::CreatureNotFound(cid.to_string()))?;
     match combat.creatures.remove(idx) {
-      Err(nonempty::Error::OutOfBounds { .. }) => Err(
-        GameError::BuggyProgram(
-          "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
-        ),
-      ),
+      Err(nonempty::Error::OutOfBounds { .. }) => Err(GameError::BuggyProgram(
+        "can't remove index THAT WE FOUND in remove_from_combat".to_string(),
+      )),
       Err(nonempty::Error::RemoveLastElement) => Ok(None),
       Ok(_) => Ok(Some(combat)),
     }

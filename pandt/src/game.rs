@@ -1270,9 +1270,7 @@ impl Game {
     self.classes.get(&class).ok_or_else(|| GameError::ClassNotFound(class))
   }
 
-  pub fn change(&self) -> ChangedGame {
-    ChangedGame { game: self.clone(), logs: vec![] }
-  }
+  pub fn change(&self) -> ChangedGame { ChangedGame { game: self.clone(), logs: vec![] } }
 
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
@@ -1319,14 +1317,10 @@ impl ChangedGame {
     Ok(new)
   }
 
-  pub fn done(self) -> (Game, Vec<GameLog>) {
-    (self.game, self.logs)
-  }
+  pub fn done(self) -> (Game, Vec<GameLog>) { (self.game, self.logs) }
 }
 
-fn bug<T>(msg: &str) -> Result<T, GameError> {
-  Err(GameError::BuggyProgram(msg.to_string()))
-}
+fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.to_string())) }
 
 pub fn load_app_from_path(
   saved_game_path: &Path, module_path: Option<&Path>, source: ModuleSource, filename: &str,
@@ -1398,9 +1392,7 @@ pub mod test {
   }
 
   #[test]
-  fn validate_test_game() {
-    t_game().validate_campaign().expect("Test game must validate");
-  }
+  fn validate_test_game() { t_game().validate_campaign().expect("Test game must validate"); }
 
   pub fn t_classes() -> IndexedHashMap<Class> {
     let rogue_abs = vec![abid_punch()];
@@ -1435,9 +1427,7 @@ pub mod test {
     game.perform_command(cmd, &PathBuf::from(""), None)
   }
 
-  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game {
-    perf(game, cmd).unwrap().game
-  }
+  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
 
   #[test]
   fn start_combat_not_found() {

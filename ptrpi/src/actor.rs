@@ -5,14 +5,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Error;
-use thiserror;
 use futures::channel::oneshot;
 use log::{debug, error, info};
-
+use thiserror;
 
 use tokio::sync::Mutex;
 use tokio::time::timeout;
-
 
 use pandt::game::load_app_from_path;
 use pandt::types;
@@ -36,9 +34,9 @@ impl AppActor {
     }
   }
 
-/// The methods on this type return Strings containing JSON data.
-/// That's because these responses are generated while a mutex is locked,
-/// and we can't return a reference to the locked data outside of the guarded code.
+  /// The methods on this type return Strings containing JSON data.
+  /// That's because these responses are generated while a mutex is locked,
+  /// and we can't return a reference to the locked data outside of the guarded code.
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
     app_to_string(&app)
@@ -123,7 +121,9 @@ impl AppActor {
     Ok(targets)
   }
 
-  pub async fn load_saved_game(&self, name: String, source: types::ModuleSource) -> Result<String, Error> {
+  pub async fn load_saved_game(
+    &self, name: String, source: types::ModuleSource,
+  ) -> Result<String, Error> {
     let module_path = self.module_path.as_deref();
     let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
     let result = app_to_string(&app);
@@ -137,7 +137,9 @@ impl AppActor {
     Ok("{}".to_string())
   }
 
-  pub async fn save_module(&self, name: String, folder_path: foldertree::FolderPath) -> Result<String, Error> {
+  pub async fn save_module(
+    &self, name: String, folder_path: foldertree::FolderPath,
+  ) -> Result<String, Error> {
     let new_game = self.app.lock().await.current_game.export_module(&folder_path)?;
     let new_app = types::App::new(new_game);
     save_app(&new_app, &name, &self.saved_game_path)?;

@@ -19,14 +19,10 @@ pub struct Server {
 }
 
 impl Server {
-  pub fn new(actor: AppActor) -> Server {
-    Server { actor }
-  }
+  pub fn new(actor: AppActor) -> Server { Server { actor } }
 }
 
 type RPCResult<T> = Result<Response<T>, Status>;
-
-
 
 #[tonic::async_trait]
 impl Pt for Server {
@@ -41,7 +37,8 @@ impl Pt for Server {
         T::CreatureID(request.actor_id.parse().unwrap()),
         T::AbilityID(request.ability_id.parse().unwrap()),
         request.point.unwrap().into(),
-      ).await
+      )
+      .await
       .map_err(map_err)?;
     let points = points.into_iter().map(Into::into).collect();
     let creatures = creatures.into_iter().map(|cid| cid.0.to_string()).collect();
@@ -95,11 +92,7 @@ impl Pt for Server {
   }
 }
 
-fn map_err<T: ToString>(e: T) -> Status {
-  return Status::unknown(e.to_string());
-}
-
-
+fn map_err<T: ToString>(e: T) -> Status { return Status::unknown(e.to_string()); }
 
 // Conversions!
 
@@ -111,7 +104,5 @@ impl From<T::Point3> for rpc::Point3 {
 }
 
 impl From<rpc::Point3> for T::Point3 {
-  fn from(p: rpc::Point3) -> T::Point3 {
-    return T::Point3::new(p.x, p.y, p.z);
-  }
+  fn from(p: rpc::Point3) -> T::Point3 { return T::Point3::new(p.x, p.y, p.z); }
 }
