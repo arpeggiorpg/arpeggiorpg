@@ -7,11 +7,11 @@ extern crate serde;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use thiserror::Error;
 #[cfg(feature = "serde")]
 use serde::de;
 #[cfg(feature = "serde")]
 use serde::ser::{Error, Serialize, SerializeMap, Serializer};
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum FolderTreeError {
@@ -243,7 +243,6 @@ impl<T> FolderTree<T> {
 pub struct FolderPath(Vec<String>);
 
 impl FolderPath {
-
   pub fn up(&self) -> Option<(FolderPath, String)> {
     self.0.split_last().map(|(last, trunk)| (FolderPath::from_vec(trunk.to_vec()), last.clone()))
   }

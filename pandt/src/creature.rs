@@ -219,8 +219,8 @@ impl Creature {
   pub fn apply_log(&self, item: &CreatureLog) -> Result<Creature, GameError> {
     let mut new = self.clone();
     match *item {
-      CreatureLog::Damage {ref hp, ..} => new.cur_health = new.cur_health.saturating_sub(*hp),
-      CreatureLog::Heal {ref hp, ..} => {
+      CreatureLog::Damage { ref hp, .. } => new.cur_health = new.cur_health.saturating_sub(*hp),
+      CreatureLog::Heal { ref hp, .. } => {
         new.cur_health = cmp::min(new.cur_health.saturating_add(*hp), new.max_health)
       }
       CreatureLog::GenerateEnergy(ref nrg) => {

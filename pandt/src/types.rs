@@ -8,7 +8,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use derive_more::{Add, Div, Mul, Sub};
 use error_chain::bail;
-use thiserror::Error;
 use num::Saturating;
 use rand::Rng;
 use serde::{
@@ -17,6 +16,7 @@ use serde::{
   Deserialize, Deserializer, Serialize, Serializer,
 };
 use serde_yaml;
+use thiserror::Error;
 use ts_rs::TS;
 use uom::si::length::{centimeter, meter};
 use uuid::{Error as UuidParseError, Uuid};
@@ -50,11 +50,11 @@ pub type Terrain = Vec<Point3>;
 /// Point3 holds a position in 3d space in meters (FOR NOW --radix)
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, TS)]
 pub struct Point3 {
-  #[ts(type="number")]
+  #[ts(type = "number")]
   pub x: i64units::Length,
-  #[ts(type="number")]
+  #[ts(type = "number")]
   pub y: i64units::Length,
-  #[ts(type="number")]
+  #[ts(type = "number")]
   pub z: i64units::Length,
 }
 
@@ -206,7 +206,7 @@ impl Dice {
   Hash,
   Serialize,
   Deserialize,
-  TS
+  TS,
 )]
 pub struct HP(pub u8);
 impl Saturating for HP {
@@ -229,7 +229,7 @@ impl Saturating for HP {
   Hash,
   Serialize,
   Deserialize,
-  TS
+  TS,
 )]
 pub struct Energy(pub u8);
 impl Saturating for Energy {
@@ -242,7 +242,9 @@ pub struct PlayerID(pub String);
 
 macro_rules! uuid_id {
   ($type: ident) => {
-    #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
+    #[derive(
+      Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS,
+    )]
     pub struct $type(pub Uuid);
     impl $type {
       pub fn gen() -> $type { $type(Uuid::new_v4()) }
@@ -855,10 +857,7 @@ pub enum Action {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum CreatureTarget {
   Melee,
-  Range(
-    #[ts(type = "number")]
-    u32units::Length
-  ),
+  Range(#[ts(type = "number")] u32units::Length),
   Actor,
   /// A *piercing* line, from an actor, which is always a fixed length.
   /// When targeted at a point, it will continue through any creatures up to *and past* that point,
@@ -890,7 +889,7 @@ pub enum SceneTarget {
   RangedVolume {
     volume: Volume,
     #[ts(type = "number")]
-    range: u32units::Length
+    range: u32units::Length,
   },
 }
 
@@ -956,10 +955,7 @@ pub struct AppliedCondition {
 /// Volume describes a volume in 3d space at an implied origin point.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum Volume {
-  Sphere(
-    #[ts(type = "number")]
-    u32units::Length
-  ),
+  Sphere(#[ts(type = "number")] u32units::Length),
   Line {
     vector: Point3, // this Point3 is used as a relative offset, not from 0,0,0
   },
@@ -1303,8 +1299,7 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
   }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS, Default)]
 pub enum TileSystem {
   /// Square grid with diagonal movement costing 1.41
   #[default]
@@ -1312,8 +1307,6 @@ pub enum TileSystem {
   /// Square grid with diagonal movement costing 1
   DnD,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, TS)]
 pub struct Note {
@@ -1535,8 +1528,7 @@ pub mod test {
     let id = abid_heal();
     let serialized = serde_yaml::to_string(&id).unwrap();
     assert_eq!(serialized, "---\n00000000-0000-0000-0000-000000000002\n");
-    let deserialized =
-      serde_yaml::from_str::<AbilityID>(&serialized).unwrap();
+    let deserialized = serde_yaml::from_str::<AbilityID>(&serialized).unwrap();
     assert_eq!(deserialized, id);
   }
 

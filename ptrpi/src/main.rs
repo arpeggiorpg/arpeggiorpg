@@ -2,8 +2,8 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 
 mod actor;
-mod web;
 mod grpc;
+mod web;
 
 use std::env;
 use std::fs;

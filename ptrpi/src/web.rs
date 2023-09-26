@@ -61,7 +61,6 @@ async fn target_options(
   string_json_response(actor.target_options(path.0, path.1, path.2).await?)
 }
 
-
 async fn list_saved_games(
   actor: web::Data<AppActor>,
 ) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {
