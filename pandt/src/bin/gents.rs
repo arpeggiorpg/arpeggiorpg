@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <foldertree::FolderTree<T::Folder> as TS>::decl(),
     <T::Folder as TS>::decl(),
     <T::FolderItemID as TS>::decl(),
+    <foldertree::FolderPath as TS>::decl(),
     <T::Game as TS>::decl(),
     <T::HP as TS>::decl(),
     <T::InventoryOwner as TS>::decl(),

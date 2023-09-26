@@ -58,6 +58,8 @@ export interface FolderNode { scenes: Array<SceneID>, creatures: Array<CreatureI
 
 export type FolderItemID = { SceneID: SceneID } | { CreatureID: CreatureID } | { NoteID: string } | { ItemID: ItemID } | { AbilityID: AbilityID } | { ClassID: ClassID } | { SubfolderID: string };
 
+export type FolderPath = Array<string>;
+
 export interface Game { current_combat: Combat | null, abilities: GameAbilities, creatures: GameCreatures, classes: GameClasses, tile_system: TileSystem, scenes: GameScenes, items: GameItems, campaign: FolderTree<FolderNode>, players: GamePlayers, active_scene: SceneID | null, }
 
 export type HP = number;
