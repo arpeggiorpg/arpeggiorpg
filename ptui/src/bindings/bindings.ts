@@ -1,7 +1,9 @@
-import type { Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, Folder, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers, } from '../PTTypes';
+import type { Map } from 'immutable';
+  import type {
+     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers
+  } from '../PTTypes';
 
-
-export interface AABB { x: number, y: number, z: number, }
+  export interface AABB { x: number, y: number, z: number, }
 
 export interface Ability { id: AbilityID, name: string, cost: Energy, action: Action, usable_ooc: boolean, }
 
@@ -47,11 +49,16 @@ export type Duration = "Interminate" | { Rounds: number };
 
 export type Energy = number;
 
+export interface FolderTree<T> {
+        data: T;
+        children: Map<string, FolderTree<T>>;
+      }
+
 export interface FolderNode { scenes: Array<SceneID>, creatures: Array<CreatureID>, notes: Record<string, Note>, items: Array<ItemID>, abilities: Array<AbilityID>, classes: Array<ClassID>, }
 
 export type FolderItemID = { SceneID: SceneID } | { CreatureID: CreatureID } | { NoteID: string } | { ItemID: ItemID } | { AbilityID: AbilityID } | { ClassID: ClassID } | { SubfolderID: string };
 
-export interface Game { current_combat: Combat | null, abilities: GameAbilities, creatures: GameCreatures, classes: GameClasses, tile_system: TileSystem, scenes: GameScenes, items: GameItems, campaign: Folder, players: GamePlayers, active_scene: SceneID | null, }
+export interface Game { current_combat: Combat | null, abilities: GameAbilities, creatures: GameCreatures, classes: GameClasses, tile_system: TileSystem, scenes: GameScenes, items: GameItems, campaign: FolderTree<FolderNode>, players: GamePlayers, active_scene: SceneID | null, }
 
 export type HP = number;
 

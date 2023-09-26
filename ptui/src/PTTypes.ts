@@ -6,7 +6,7 @@ import type {
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
   CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
+  FolderNode, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
   Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
   SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
@@ -17,7 +17,7 @@ export {
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
   CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
+  FolderNode, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
   Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
   SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
   VolumeCondition,
@@ -82,10 +82,7 @@ export interface App {
 
 export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 
-export interface Folder {
-  data: FolderNode;
-  children: Map<string, Folder>;
-}
+export type Folder = FolderTree<FolderNode>;
 
 export type GameCommand =
   | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
