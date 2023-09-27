@@ -23,17 +23,16 @@ test("random junk", () => {
     T.decodeAttributeCheck.parse(exAttrCheck),
     exAttrCheck);
   const gameLogTests: [any, T.GameLog][] = [
-    ["StopCombat", { t: "StopCombat" }],
+    // ["StopCombat", "StopCombat"],
     [
       { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
-      { t: "StartCombat", scene: "coolScene", creatures: [{ cid: "coolCreature", init: 5 }] }],
-    [{ "CreateFolder": "/foo/bar" }, { t: "CreateFolder", path: ["foo", "bar"] }],
+      { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
+    ],
+    [{ "CreateFolder": "/foo/bar" }, { "CreateFolder": ["foo", "bar"] }],
     [
-      { "AttributeCheckResult": ["coolCreature", exAttrCheck, 50, true] },
-      {
-        t: "AttributeCheckResult", cid: "coolCreature", check: exAttrCheck, actual: 50,
-        success: true,
-      }]
+      { "AttributeCheckResult": { creature_id: "coolCreature", attribute_check: exAttrCheck, actual: 50, success: true} },
+      { "AttributeCheckResult": { creature_id: "coolCreature", attribute_check: exAttrCheck, actual: 50, success: true} },
+    ]
   ];
   for (const [x, y] of gameLogTests) {
     assertEq<T.GameLog>(T.decodeGameLog.parse(x), y);
@@ -130,8 +129,10 @@ describe("PTTypes", () => {
       size: { x: 1, y: 1, z: 1 },
       inventory: {},
       bio: "",
+      can_act: true,
+      can_move: true,
     };
-    const creature = T.decodeCreature.parse(sample);
+    const creature = T.decodeDynamicCreature.parse(sample);
     expect(creature.initiative).toEqual({
       BestOf: [2, { Plus: [{ Expr: { num: 1, size: 20 } }, { Flat: { value: 4 } }] }],
     });

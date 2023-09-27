@@ -342,11 +342,11 @@ impl Game {
   }
 
   fn attribute_check(
-    &self, cid: CreatureID, check: &AttributeCheck,
+    &self, creature_id: CreatureID, check: &AttributeCheck,
   ) -> Result<ChangedGame, GameError> {
-    let creature = self.get_creature(cid)?;
-    let (rolled, success) = creature.creature.attribute_check(check)?;
-    self.change_with(GameLog::AttributeCheckResult(cid, check.clone(), rolled, success))
+    let creature = self.get_creature(creature_id)?;
+    let (actual, success) = creature.creature.attribute_check(check)?;
+    self.change_with(GameLog::AttributeCheckResult { creature_id, attribute_check: check.clone(), actual, success})
   }
 
   pub fn path_creature(
@@ -525,7 +525,7 @@ impl Game {
       }
 
       // purely informational
-      ChatFromGM(..) | ChatFromPlayer(..) | AttributeCheckResult(..) => {}
+      ChatFromGM(..) | ChatFromPlayer(..) | AttributeCheckResult { .. } => {}
 
       // purely informational
       CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
