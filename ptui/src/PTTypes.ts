@@ -2,25 +2,23 @@ import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
 import type {
-  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
-  AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
-  ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
-  CreatureTarget, DecidedTarget, Dice, Duration, DynamicCreature as Creature, Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureEffect, CreatureID,
+  CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID, FolderNode,
+  FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
+import { CreatureData as CreatureData_, DynamicCreature as Creature } from "./bindings/bindings";
+
 export {
-  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
-  AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
-  ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
-  CreatureTarget, DecidedTarget, Dice, Duration, Creature, Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner,
-  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  Visibility, Volume, VolumeCondition,
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureEffect, CreatureID,
+  CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID, FolderNode,
+  FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -200,9 +198,8 @@ export type GameLog =
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath } // `module` is left out
   ;
 
-export interface CreatureData {
-  name: string;
-}
+// We don't really care about most of CreatureData yet
+type CreatureData = Pick<CreatureData_, 'name'>;
 
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
