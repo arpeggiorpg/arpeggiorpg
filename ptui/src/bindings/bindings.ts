@@ -34,6 +34,8 @@ export type Condition = { RecurringEffect: CreatureEffect } | "Dead" | "Incapaci
 
 export type ConditionID = string;
 
+export interface CreatureData { id: CreatureID, name: string, speed: number, max_energy: Energy, cur_energy: Energy, abilities: Record<AbilityID, AbilityStatus>, class: ClassID, max_health: HP, cur_health: HP, conditions: CreatureConditions, note: string, bio: string, portrait_url: string, icon_url: string, attributes: CreatureAttributes, initiative: Dice, size: AABB, inventory: CreatureInventory, }
+
 export interface CreatureCreation { name: string, class: ClassID, portrait_url: string, icon_url: string, note: string, bio: string, initiative: Dice, size: AABB, }
 
 export type CreatureEffect = { ApplyCondition: [Duration, Condition] } | { Heal: Dice } | { Damage: Dice } | { MultiEffect: Array<CreatureEffect> } | { GenerateEnergy: Energy };

@@ -569,7 +569,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 /// Note that these represent *concrete* changes to the game, which will have deterministic results.
 /// i.e., randomness happens when processing `GameCommand`s, which then result in specific
 /// `GameLog`s.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum GameLog {
   LoadModule {
     name: String,
@@ -1031,17 +1031,23 @@ pub struct CreatureCreation {
 /// Random note: Serialize and Deserialize on Creature are only for "secondary" representations of
 /// Creatures like in GameLog::CreateCreature. See DynamicCreature and its Serialize impl for the
 /// good stuff.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
+// I'm not calling this "Creature" in typescript just to emphasize that DynamicCreature is usually
+// what you want; this is only serialized directly in GameLog
+#[ts(rename="CreatureData")]
 pub struct Creature {
   pub id: CreatureID,
   pub name: String,
+  #[ts(type = "number")]
   pub speed: u32units::Length,
   pub max_energy: Energy,
   pub cur_energy: Energy,
+  #[ts(type = "Record<AbilityID, AbilityStatus>")]
   pub abilities: IndexedHashMap<AbilityStatus>,
   pub class: ClassID,
   pub max_health: HP,
   pub cur_health: HP,
+  #[ts(type = "CreatureConditions")]
   pub conditions: HashMap<ConditionID, AppliedCondition>,
   pub note: String,
   #[serde(default)]
@@ -1049,10 +1055,12 @@ pub struct Creature {
   pub portrait_url: String,
   #[serde(default)]
   pub icon_url: String,
+  #[ts(type = "CreatureAttributes")]
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
   pub size: AABB,
   #[serde(default)]
+  #[ts(type = "CreatureInventory")]
   pub inventory: Inventory,
 }
 
