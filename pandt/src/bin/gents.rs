@@ -49,6 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <T::SceneEffect as TS>::decl(),
     <T::SceneID as TS>::decl(),
     <T::SceneTarget as TS>::decl(),
+    <T::SerializedCreature as TS>::decl(),
     <T::SkillLevel as TS>::decl(),
     <T::TileSystem as TS>::decl(),
     <T::Visibility as TS>::decl(),
@@ -58,7 +59,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   file.write_all(b"\
   import type { Map } from 'immutable';
   import type {
-     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers
+     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures,
+     GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers,
+     CreatureAttributes, CreatureConditions, CreatureInventory
+
   } from '../PTTypes';
 
   ")?;

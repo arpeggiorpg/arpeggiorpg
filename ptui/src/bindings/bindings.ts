@@ -1,6 +1,9 @@
 import type { Map } from 'immutable';
   import type {
-     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures, GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers
+     Point3, Highlights, NonEmpty, Annotations, SceneHotspots, RelatedScenes, SceneAttributeChecks, SceneCreatures, SceneInventory, SceneVolumeConditions, Terrain, SceneFocusedCreatures,
+     GameAbilities, GameCreatures, GameClasses, GameScenes, GameItems, GamePlayers,
+     CreatureAttributes, CreatureConditions, CreatureInventory
+
   } from '../PTTypes';
 
   export interface AABB { x: number, y: number, z: number, }
@@ -89,6 +92,8 @@ export type SceneEffect = { CreateVolumeCondition: { duration: Duration, conditi
 export type SceneID = string;
 
 export type SceneTarget = { RangedVolume: { volume: Volume, range: number, } };
+
+export interface DynamicCreature { id: CreatureID, name: string, max_energy: Energy, cur_energy: Energy, class: ClassID, max_health: HP, cur_health: HP, note: string, bio: string, portrait_url: string, icon_url: string, attributes: CreatureAttributes, initiative: Dice, size: AABB, inventory: CreatureInventory, abilities: Record<AbilityID, AbilityStatus>, speed: number, own_conditions: CreatureConditions, volume_conditions: CreatureConditions, can_act: boolean, can_move: boolean, }
 
 export type SkillLevel = "Inept" | "Unskilled" | "Skilled" | "Expert" | "Supernatural";
 

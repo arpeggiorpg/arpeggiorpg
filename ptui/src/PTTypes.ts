@@ -5,22 +5,22 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
-  CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
-  VolumeCondition,
+  CreatureTarget, DecidedTarget, Dice, Duration, DynamicCreature as Creature, Energy,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition,
   AttributeCheck, AttrID, Class, ClassID, Combat, CombatLog, Condition,
   ConditionID, CreatureCreation, CreatureEffect, CreatureID, CreatureLog,
-  CreatureTarget, DecidedTarget, Dice, Duration, Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation,
-  SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume,
-  VolumeCondition,
+  CreatureTarget, DecidedTarget, Dice, Duration, Creature, Energy,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, HP, InventoryOwner,
+  Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  Visibility, Volume, VolumeCondition,
 };
 
 export type Color = string;
@@ -44,6 +44,10 @@ export type GameClasses = Map<ClassID, Class>;
 export type GameScenes = Map<SceneID, Scene>;
 export type GameItems = Record<ItemID, Item>;
 export type GamePlayers = Map<PlayerID, Player>;
+
+export type CreatureAttributes = Map<AttrID, SkillLevel>;
+export type CreatureInventory = Map<ItemID, number>;
+export type CreatureConditions = Map<ConditionID, AppliedCondition>;
 
 export function folderPathToString(path: FolderPath): string {
   if (path.length === 0) {
@@ -196,39 +200,6 @@ export type GameLog =
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath } // `module` is left out
   ;
 
-export class Creature {
-  constructor(
-    public id: CreatureID,
-    public name: string,
-    public speed: Distance,
-    public max_energy: Energy,
-    public cur_energy: Energy,
-    public abilities: { [index: string]: AbilityStatus },
-    public class_: string,
-    public max_health: HP,
-    public cur_health: HP,
-    public own_conditions: Map<ConditionID, AppliedCondition>,
-    public volume_conditions: Map<ConditionID, AppliedCondition>,
-    public note: string,
-    public bio: string,
-    public portrait_url: string,
-    public icon_url: string,
-    public attributes: Map<AttrID, SkillLevel>,
-    public initiative: Dice,
-    public inventory: Map<ItemID, number>,
-    public size: AABB,
-  ) { }
-
-  dynamic_conditions(): Map<ConditionID, AppliedCondition> {
-    return this.own_conditions.merge(this.volume_conditions);
-  }
-  toCreation(): CreatureCreation {
-    const {class_, ...rest} = this;
-    const cc = {class: class_, ...rest};
-    return cc;
-  }
-}
-
 export interface CreatureData {
   name: string;
 }
@@ -336,16 +307,9 @@ export const decodeCreature: Decoder<Creature> = Z.object({
   initiative: decodeDice,
   inventory: Z.record(Z.number()).transform<Creature['inventory']>(Map),
   size: decodeAABB,
-}).transform(({
-    id, name, speed, max_energy, cur_energy, abilities, class: class_, max_health, cur_health,
-    own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
-    inventory, size}) =>
-    new Creature(
-      id, name, speed, max_energy, cur_energy, abilities, class_, max_health, cur_health,
-      own_conditions, volume_conditions, note, bio, portrait_url, icon_url, attributes, initiative,
-      inventory, size
-    )
-);
+  can_act: Z.boolean(),
+  can_move: Z.boolean()
+});
 
 const decodeCreatureCreation: Decoder<CreatureCreation> = Z.object({
   name: Z.string(),

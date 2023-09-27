@@ -681,7 +681,7 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
       const vis_desc = vis === 'GMOnly'
         ? 'Only visible to the GM' : 'Visible to all players';
       return <List.Item key={`cid:${creature.id}`}>
-        <List.Content floated='left'><CV.ClassIcon class_id={creature.class_} /></List.Content>
+        <List.Content floated='left'><CV.ClassIcon class_id={creature.class} /></List.Content>
         {creature.name}
         <List.Content floated='right'>
           <Popup
@@ -799,7 +799,7 @@ function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
         <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
           <input type="checkbox" checked={selections.includes(creature.id)}
             onChange={nv => nv.currentTarget.checked ? add(creature.id) : remove(creature.id)} />
-          <CV.ClassIcon class_id={creature.class_} />
+          <CV.ClassIcon class_id={creature.class} />
           {creature.name}
         </List.Item>)
     }</List>;
@@ -876,7 +876,7 @@ function CreatureNote({ creature }: { creature: T.Creature }) {
   return <CV.Toggler a={view} b={edit} />;
 
   function submitNote(note: string) {
-    const details = { ...creature.toCreation(), note };
+    const details = { ...creature, note };
     A.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });
   }
 }
@@ -918,7 +918,7 @@ interface GMEditCreatureProps {
 }
 function GMEditCreature(props: GMEditCreatureProps) {
   const { creature, onClose } = props;
-  return <EditCreatureData creature={creature.toCreation()} onSave={c => save(c)} onClose={onClose} />;
+  return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
 
   function save(details: T.CreatureCreation) {
     A.sendCommand( { t: "EditCreatureDetails", creature_id: creature.id, details });

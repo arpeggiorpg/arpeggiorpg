@@ -1032,12 +1032,6 @@ pub struct CreatureCreation {
 /// Creatures like in GameLog::CreateCreature. See DynamicCreature and its Serialize impl for the
 /// good stuff.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
-// RADIX: I think it can be reasonable to derive TS for Creature, but note that that's *NOT* the
-// main Creature object that we serialize; it's only for GameLog::CreateCreature (this is called
-// `CreatureData` in the frontend). The *main* Creature is actually serialized from
-// `DynamicCreature`, but since that's a manual Serialize impl that will be a pain to impl TS for. I
-// think the better factoring here would be to create a struct SerializedCreature and use the
-// "serializer helper" pattern. That way we can derive serialize and TS on SerializedCreature.
 pub struct Creature {
   pub id: CreatureID,
   pub name: String,
@@ -1320,10 +1314,13 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
   }
 }
 
-/// A Serde Serializer helper. This could probably store references instead of owned objects for
-/// some more efficiency.
-#[derive(Serialize)]
-struct SerializedCreature {
+/// A Serde Serializer helper
+// This could probably store references instead of owned objects for
+// some more efficiency.
+#[derive(Serialize, TS)]
+#[ts(rename = "DynamicCreature")]
+// I don't really want to make this pub, but I have to since it's used in src/bin/gents.rs
+pub struct SerializedCreature {
   pub id: CreatureID,
   pub name: String,
   pub max_energy: Energy,
@@ -1337,18 +1334,24 @@ struct SerializedCreature {
   pub portrait_url: String,
   #[serde(default)]
   pub icon_url: String,
+  #[ts(type = "CreatureAttributes")]
   pub attributes: HashMap<AttrID, SkillLevel>,
   pub initiative: Dice,
   pub size: AABB,
   #[serde(default)]
+  #[ts(type = "CreatureInventory")]
   pub inventory: Inventory,
 
   // overridden field
+  #[ts(type = "Record<AbilityID, AbilityStatus>")]
   pub abilities: IndexedHashMap<AbilityStatus>,
+  #[ts(type = "number")]
   pub speed: u32units::Length,
 
   // synthesized fields
+  #[ts(type = "CreatureConditions")]
   pub own_conditions: HashMap<ConditionID, AppliedCondition>,
+  #[ts(type = "CreatureConditions")]
   pub volume_conditions: HashMap<ConditionID, AppliedCondition>,
   pub can_act: bool,
   pub can_move: bool,
