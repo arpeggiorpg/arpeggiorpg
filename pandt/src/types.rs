@@ -590,7 +590,7 @@ pub enum GameLog {
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
 
-  AttributeCheckResult(CreatureID, AttributeCheck, u8, bool),
+  AttributeCheckResult { creature_id: CreatureID, attribute_check: AttributeCheck, actual: u8, success: bool },
 
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
@@ -668,22 +668,27 @@ pub enum GameLog {
 
   EditSceneTerrain {
     scene_id: SceneID,
+    #[ts(type = "Terrain")]
     terrain: Vec<Point3>,
   },
   EditSceneHighlights {
     scene_id: SceneID,
+    #[ts(type = "Highlights")]
     highlights: HashMap<Point3, (Color, Visibility)>,
   },
   EditSceneAnnotations {
     scene_id: SceneID,
+    #[ts(type = "Annotations")]
     annotations: HashMap<Point3, (String, Visibility)>,
   },
   EditSceneRelatedScenes {
     scene_id: SceneID,
+    #[ts(type = "RelatedScenes")]
     related_scenes: HashSet<SceneID>,
   },
   EditSceneSceneHotspots {
     scene_id: SceneID,
+    #[ts(type = "SceneHotspots")]
     scene_hotspots: HashMap<Point3, SceneID>,
   },
 

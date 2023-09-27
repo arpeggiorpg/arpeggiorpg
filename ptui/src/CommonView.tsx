@@ -1193,9 +1193,8 @@ export function GMChat(): JSX.Element {
     if (chatmsg) {
       return chatmsg;
     }
-    switch (log.t) {
-      case "CreatureLog":
-        return History.creature_log(creatures, log.creature_id, log.log);
+    if (typeof log !== "string" && "CreatureLog" in log) {
+      return History.creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
     }
   }
 }
@@ -1218,15 +1217,17 @@ export function PlayerChat(props: PlayerChatProps): JSX.Element {
 }
 
 function renderChat(log: T.GameLog): JSX.Element | undefined {
-  switch (log.t) {
-    case "ChatFromPlayer":
-    case "ChatFromGM":
+  if (typeof log !== "string") {
+    if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
+      const sender = "ChatFromPlayer" in log ? log.ChatFromPlayer[0] : "GM";
+      const message = "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
       return (
         <span>
           &lt;
-          <strong>{log.t === "ChatFromPlayer" ? log.player_id : "GM"}</strong>
-          &gt; {log.message}
+          <strong>{sender}</strong>
+          &gt; {message}
         </span>
       );
+    }
   }
 }

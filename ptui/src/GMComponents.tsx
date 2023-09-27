@@ -345,7 +345,7 @@ interface GMChallengeProps {
 }
 function GMChallenge(props: GMChallengeProps) {
   const [creatureIds, setCreatureIds] = React.useState<Set<T.CreatureID>>(Set());
-  const [results, setResults] = React.useState<Map<T.CreatureID, T.GameLog | string> | undefined>(undefined);
+  const [results, setResults] = React.useState<Map<T.CreatureID, GameChallengeResult> | undefined>(undefined);
   const { scene, description, challenge, onClose } = props;
   const creatureResults = M.useState(s => results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result })));
   return <div>
@@ -389,14 +389,7 @@ function GMChallenge(props: GMChallengeProps) {
               return <Table.Row key={creature?.id}>
                 <Table.Cell>{creature_name}</Table.Cell>
                 <Table.Cell>{creature_skill_level}</Table.Cell>
-                {typeof result === 'string'
-                  ? <Table.Cell colSpan={2}>{result}</Table.Cell>
-                  : result.t !== 'AttributeCheckResult'
-                    ? <Table.Cell colSpan={2}>BUG: Unexpected GameLog result</Table.Cell>
-                    : [
-                      <Table.Cell key='roll'>{result.actual}</Table.Cell>,
-                      <Table.Cell key='success'>{result.success ? '😃' : '😡'}</Table.Cell>]
-                }
+                <ChallengeResponse result={result} />
               </Table.Row>;
             }
             )}
@@ -406,28 +399,40 @@ function GMChallenge(props: GMChallengeProps) {
   </div>;
 
   async function performChallenge() {
-    const promises: Array<Promise<[T.CreatureID, T.GameLog | string]>> =
+    const promises =
       creatureIds.toArray().map(
-        creatureId => A.sendCommandWithResult(
-          { t: 'AttributeCheck', creature_id: creatureId, check: challenge }
-        ).then(
-            (result): [T.CreatureID, T.GameLog | string] => {
-              if (result.t !== 'Ok') {
-                return [creatureId, result.error];
-              } else {
-                if (M.hasAtLeast(result.result, 1)) {
-                  return [creatureId, result.result[0]];
-                } else {
-                  return [creatureId, "Got unexpected results"];
-                }
-              }
-            }
-          ));
+        async (creatureId): Promise<[string, GameChallengeResult]> => {
+          const result = await A.sendCommandWithResult({ t: 'AttributeCheck', creature_id: creatureId, check: challenge });
+          const creatureResponse: GameChallengeResult =
+            (result.t !== "Ok")
+              ? {t: "ChallengeResponseError", msg: result.error}
+              : M.hasAtLeast(result.result, 1)
+                ? {t: "ChallengeResponse", log: result.result[0]}
+                : {t: "ChallengeResponseError", msg: `Got unexpected results: ${results}`};
+          return [creatureId, creatureResponse];
+        });
+
     setResults(Map());
-    const gathered: Array<[T.CreatureID, T.GameLog | string]> = await Promise.all(promises);
+    const gathered = await Promise.all(promises);
     setResults(Map(gathered));
   }
 }
+
+function ChallengeResponse({result}: {result: GameChallengeResult}) {
+  if (result.t === "ChallengeResponseError")
+    return <Table.Cell colSpan={2}>{result.msg}</Table.Cell>;
+  const { log } = result;
+  if (typeof log === "string" || !("AttributeCheckResult" in log))
+    return <Table.Cell colSpan={2}>BUG: Got weird GameLog {JSON.stringify(log)}</Table.Cell>;
+
+  const { AttributeCheckResult } = log;
+  return [
+    <Table.Cell key='roll'>{AttributeCheckResult.actual}</Table.Cell>,
+    <Table.Cell key='success'>{AttributeCheckResult.success ? '😃' : '😡'}</Table.Cell>
+  ];
+}
+
+type GameChallengeResult = {t: "ChallengeResponseError", msg: string} | {t: "ChallengeResponse", log: T.GameLog};
 
 function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
   const [description, setDescription] = React.useState('');

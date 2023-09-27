@@ -3,23 +3,22 @@ import * as Z from "zod";
 
 import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureEffect, CreatureID,
-  CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID, FolderNode,
-  FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
-  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
-  TileSystem, Visibility, Volume, VolumeCondition,
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
+  CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
+  FolderNode, FolderPath, FolderTree, Game, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource,
+  Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
-
-import { CreatureData as CreatureData_, DynamicCreature as Creature } from "./bindings/bindings";
-
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureEffect, CreatureID,
-  CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID, FolderNode,
-  FolderPath, FolderTree, Game, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
-  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
-  TileSystem, Visibility, Volume, VolumeCondition,
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
+  CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
+  FolderNode, FolderPath, FolderTree, Game, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource,
+  Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
+  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 };
+import { DynamicCreature as Creature } from "./bindings/bindings";
+export type { Creature };
 
 export type Color = string;
 export type Distance = number;
@@ -137,70 +136,6 @@ export type GameCommand =
   | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath }
   ;
 
-
-export type GameLog =
-  | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
-  | { t: "RegisterPlayer"; player_id: string }
-  | { t: "UnregisterPlayer"; player_id: string }
-  | { t: "GiveCreaturesToPlayer"; player_id: string; creature_ids: Array<CreatureID> }
-  | { t: "RemoveCreaturesFromPlayer"; player_id: string; creature_ids: Array<CreatureID> }
-  | { t: "SetPlayerScene"; player_id: string; scene_id?: SceneID | undefined }
-
-  | { t: "ChatFromGM"; message: string }
-  | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
-  | {
-    t: "AttributeCheckResult";
-    cid: CreatureID;
-    check: AttributeCheck;
-    actual: number;
-    success: boolean;
-  }
-  | { t: "CreateFolder"; path: FolderPath }
-  | { t: "RenameFolder"; path: FolderPath; newName: string }
-  | { t: "DeleteFolderItem"; path: FolderPath; item: FolderItemID }
-  | { t: "MoveFolderItem"; path: FolderPath; item: FolderItemID; newPath: FolderPath }
-  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
-  | { t: "CreateItem"; path: FolderPath; item: Item }
-  | { t: "EditItem"; item: Item }
-  | { t: "CreateNote"; path: FolderPath; note: Note }
-  | { t: "EditNote"; path: FolderPath; name: string; newNote: Note }
-  | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "CreateScene"; path: FolderPath; scene: Scene }
-  | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
-  | {
-    t: "SetSceneCreatureVisibility";
-    scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
-  }
-  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility }
-  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
-  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
-  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: List<CreatureID> }
-  | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
-  | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
-  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
-  | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
-  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: Set<SceneID> }
-  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: Map<Point3, SceneID> }
-  | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; pos: Point3 }
-  | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; path: Array<Point3> }
-  | { t: "CreateCreature"; path: FolderPath; creature: CreatureData }
-  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation }
-  | { t: "StartCombat"; scene: SceneID; creatures: Array<{ cid: CreatureID; init: number }> }
-  | { t: "AddCreatureToCombat"; creature_id: CreatureID; init: number }
-  | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
-  | { t: "CombatLog"; log: CombatLog }
-  | { t: "CreatureLog"; creature_id: CreatureID; log: CreatureLog }
-  | { t: "StopCombat" }
-  | { t: "Rollback"; snapshot_index: number; log_index: number }
-  | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath } // `module` is left out
-  ;
-
-// We don't really care about most of CreatureData yet
-type CreatureData = Pick<CreatureData_, 'name'>;
-
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
 
@@ -282,9 +217,7 @@ const decodeAABB: Decoder<AABB> = Z.object({
   z: Z.number(),
 });
 
-export const decodeCreatureData: Decoder<CreatureData> = Z.object({name: Z.string()});
-
-export const decodeCreature: Decoder<Creature> = Z.object({
+const decodeCommonCreatureData = {
   id: Z.string(),
   name: Z.string(),
   speed: Z.number(),
@@ -294,8 +227,6 @@ export const decodeCreature: Decoder<Creature> = Z.object({
   class: Z.string(),
   max_health: Z.number(),
   cur_health: Z.number(),
-  own_conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(Map),
-  volume_conditions: Z.record(decodeAppliedCondition).transform<Creature['volume_conditions']>(Map),
   note: Z.string(),
   bio: Z.string(),
   portrait_url: Z.string(),
@@ -304,8 +235,19 @@ export const decodeCreature: Decoder<Creature> = Z.object({
   initiative: decodeDice,
   inventory: Z.record(Z.number()).transform<Creature['inventory']>(Map),
   size: decodeAABB,
+};
+
+export const decodeCreatureData: Decoder<CreatureData> = Z.object({
+  ...decodeCommonCreatureData,
+  conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(Map),
+});
+
+export const decodeDynamicCreature: Decoder<Creature> = Z.object({
+  ...decodeCommonCreatureData,
   can_act: Z.boolean(),
-  can_move: Z.boolean()
+  can_move: Z.boolean(),
+  own_conditions: Z.record(decodeAppliedCondition).transform<Creature['own_conditions']>(Map),
+  volume_conditions: Z.record(decodeAppliedCondition).transform<Creature['volume_conditions']>(Map),
 });
 
 const decodeCreatureCreation: Decoder<CreatureCreation> = Z.object({
@@ -430,154 +372,119 @@ const decodeCombatLog: Decoder<CombatLog> = Z.union([
   Z.object({RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()]))}),
 ]);
 
-const decodeCreatureIDAndInit = Z.tuple([Z.string(), Z.number()]).transform(([cid, init]) => ({cid, init}));
-
 export const decodeGameLog: Decoder<GameLog> = Z.union([
-  Z.literal("StopCombat").transform((): GameLog => ({t: "StopCombat"})),
-  Z.object({SetActiveScene: Z.string()}).transform(({SetActiveScene: scene_id}): GameLog => ({ t: "SetActiveScene", scene_id })),
-  Z.object({RegisterPlayer: Z.string()}).transform(({RegisterPlayer: player_id}): GameLog => ({ t: "RegisterPlayer", player_id })),
-  Z.object({UnregisterPlayer: Z.string()}).transform(({UnregisterPlayer: player_id}): GameLog => ({ t: "UnregisterPlayer", player_id })),
-  Z.object({GiveCreaturesToPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}).transform(
-    ({GiveCreaturesToPlayer: [player_id, creature_ids]}): GameLog =>
-      ({ t: "GiveCreaturesToPlayer", player_id, creature_ids })),
-  Z.object({RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}).transform(
-    ({RemoveCreaturesFromPlayer: [player_id, creature_ids]}): GameLog =>
-      ({ t: "RemoveCreaturesFromPlayer", player_id, creature_ids })),
-  Z.object({SetPlayerScene: Z.tuple([Z.string(), maybe(Z.string())])}).transform(
-    ({SetPlayerScene: [player_id, scene_id]}): GameLog => ({ t: "SetPlayerScene", player_id, scene_id })),
-  Z.object({ChatFromGM: Z.string()}).transform(({ChatFromGM: message}): GameLog => ({ t: "ChatFromGM", message })),
-  Z.object({ChatFromPlayer: Z.tuple([Z.string(), Z.string()])}).transform(
-    ({ChatFromPlayer: [player_id, message]}): GameLog => ({ t: "ChatFromPlayer", player_id, message })),
-  Z.object({StartCombat: Z.tuple([ Z.string(), Z.array(decodeCreatureIDAndInit) ])}).transform(
-      ({StartCombat: [scene, creatures]}): GameLog => ({ t: "StartCombat", scene, creatures })),
-  Z.object({CreateFolder: decodeFolderPath}).transform(({CreateFolder: path}): GameLog => ({ t: "CreateFolder", path })),
-  Z.object({RenameFolder: Z.tuple([decodeFolderPath, Z.string()])}).transform(
-    ({RenameFolder: [path, newName]}): GameLog => ({ t: "RenameFolder", path, newName })),
-  Z.object({DeleteFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID])}).transform(
-    ({DeleteFolderItem: [path, item]}): GameLog => ({ t: "DeleteFolderItem", path, item })),
-  Z.object({MoveFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID, decodeFolderPath])}).transform(
-    ({MoveFolderItem: [path, item, newPath]}): GameLog => ({ t: "MoveFolderItem", path, item, newPath })),
+  Z.literal("StopCombat"),
+  Z.object({SetActiveScene: Z.string()}),
+  Z.object({RegisterPlayer: Z.string()}),
+  Z.object({UnregisterPlayer: Z.string()}),
+  Z.object({GiveCreaturesToPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}),
+  Z.object({RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}),
+  Z.object({SetPlayerScene: Z.tuple([Z.string(), Z.string().nullable()])}),
+  Z.object({ChatFromGM: Z.string()}),
+  Z.object({ChatFromPlayer: Z.tuple([Z.string(), Z.string()])}),
+  Z.object({StartCombat: Z.tuple([ Z.string(), Z.array(Z.tuple([Z.string(), Z.number()]))])}),
+  Z.object({CreateFolder: decodeFolderPath}),
+  Z.object({RenameFolder: Z.tuple([decodeFolderPath, Z.string()])}),
+  Z.object({DeleteFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID])}),
+  Z.object({MoveFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID, decodeFolderPath])}),
   Z.object({
     CopyFolderItem: Z.object({
-      source: decodeFolderPath, item_id: decodeFolderItemID, dest: decodeFolderPath
+      source: decodeFolderPath,
+      item_id: decodeFolderItemID,
+      dest: decodeFolderPath,
+      new_item_id: decodeFolderItemID,
     })
-  }).transform(({CopyFolderItem: o}): GameLog => ({ t: "CopyFolderItem", ...o })),
-  Z.object({CreateItem: Z.tuple([decodeFolderPath, decodeItem])}).transform(
-    ({CreateItem: [path, item]}): GameLog => ({ t: "CreateItem", path, item })),
-  Z.object({EditItem: decodeItem}).transform(({EditItem: item}): GameLog => ({ t: "EditItem", item })),
-  Z.object({CreateNote: Z.tuple([decodeFolderPath, decodeNote])}).transform(
-    ({CreateNote: [path, note]}): GameLog => ({ t: "CreateNote", path, note })),
-  Z.object({EditNote: Z.tuple([decodeFolderPath, Z.string(), decodeNote])}).transform(
-    ({EditNote: [path, name, newNote]}): GameLog => ({ t: "EditNote", path, name, newNote })),
+  }),
+  Z.object({CreateItem: Z.tuple([decodeFolderPath, decodeItem])}),
+  Z.object({EditItem: decodeItem}),
+  Z.object({CreateNote: Z.tuple([decodeFolderPath, decodeNote])}),
+  Z.object({EditNote: Z.tuple([decodeFolderPath, Z.string(), decodeNote])}),
   Z.object({TransferItem: Z.object({
       from: decodeInventoryOwner,
       to: decodeInventoryOwner,
       item_id: Z.string(),
-      count: Z.number(),
-  })}).transform(({TransferItem: o}): GameLog => ({t: "TransferItem", ...o})),
+      count: Z.bigint(),
+  })}),
   Z.object({RemoveItem: Z.object({
       owner: decodeInventoryOwner,
       item_id: Z.string(),
-      count: Z.number(),
-  })}).transform(({RemoveItem: o}): GameLog => ({t: "RemoveItem", ...o})),
+      count: Z.bigint(),
+  })}),
   Z.object({SetItemCount: Z.object({
       owner: decodeInventoryOwner,
       item_id: Z.string(),
-      count: Z.number(),
-  })}).transform(({SetItemCount: o}): GameLog => ({t: "SetItemCount", ...o})),
-  Z.object({CreateScene: Z.tuple([decodeFolderPath, decodeScene])}).transform(
-      ({CreateScene: [path, scene]}): GameLog => ({ t: "CreateScene", path, scene })),
-  Z.object({EditSceneDetails: Z.object({ scene_id: Z.string(), details: decodeSceneCreation })}).transform(
-    ({EditSceneDetails: o}): GameLog => ({t: "EditSceneDetails", ...o})),
+      count: Z.bigint(),
+  })}),
+  Z.object({CreateScene: Z.tuple([decodeFolderPath, decodeScene])}),
+  Z.object({EditSceneDetails: Z.object({ scene_id: Z.string(), details: decodeSceneCreation })}),
   Z.object({SetSceneCreatureVisibility: Z.object({
       scene_id: Z.string(),
       creature_id: Z.string(),
       visibility: decodeVisibility
-  })}).transform(
-      ({SetSceneCreatureVisibility: o}): GameLog => ({ t: "SetSceneCreatureVisibility", ...o })),
+  })}),
   Z.object({AddCreatureToScene: Z.object({
     scene_id: Z.string(),
     creature_id: Z.string(),
     visibility: decodeVisibility,
-  })}).transform(({AddCreatureToScene: o}): GameLog => ({t: "AddCreatureToScene", ...o})),
+  })}),
   Z.object({RemoveCreatureFromScene: Z.object({
     scene_id: Z.string(),
     creature_id: Z.string(),
-  })}).transform(
-    ({RemoveCreatureFromScene: o}): GameLog => ({ t: "RemoveCreatureFromScene", ...o })
-  ),
+  })}),
   Z.object({AddSceneChallenge: Z.object({
     scene_id: Z.string(),
     description: Z.string(),
     challenge: decodeAttributeCheck,
-  })}).transform(
-    ({AddSceneChallenge: o}): GameLog => ({ t: "AddSceneChallenge", ...o })),
+  })}),
   Z.object({RemoveSceneChallenge: Z.object({
     scene_id: Z.string(),
     description: Z.string(),
-  })}).transform(
-    ({RemoveSceneChallenge: o}): GameLog => ({ t: "RemoveSceneChallenge", ...o })),
+  })}),
   Z.object({SetFocusedSceneCreatures: Z.object({
     scene_id: Z.string(),
-    creatures: Z.array(Z.string()).transform(List),
-  })}).transform(
-    ({SetFocusedSceneCreatures: o}): GameLog => ({ t: "SetFocusedSceneCreatures", ...o })),
+    creatures: Z.array(Z.string()),
+  })}),
   Z.object({RemoveSceneVolumeCondition: Z.object({
     scene_id: Z.string(),
     condition_id: Z.string(),
-  })}).transform(
-    ({RemoveSceneVolumeCondition: o}): GameLog => ({ t: "RemoveSceneVolumeCondition", ...o })),
+  })}),
   Z.object({EditSceneTerrain: Z.object({
     scene_id: Z.string(),
     terrain: decodeTerrain,
-  })}).transform(
-    ({EditSceneTerrain: o}): GameLog => ({ t: "EditSceneTerrain", ...o})),
+  })}),
   Z.object({EditSceneHighlights: Z.object({
     scene_id: Z.string(),
     highlights: decodeHighlights,
-  })}).transform(
-    ({EditSceneHighlights: o}): GameLog => ({ t: "EditSceneHighlights", ...o})),
+  })}),
   Z.object({EditSceneAnnotations: Z.object({
     scene_id: Z.string(),
     annotations: decodeAnnotations,
-  })}).transform(
-    ({EditSceneAnnotations: o}): GameLog => ({ t: "EditSceneAnnotations", ...o})),
+  })}),
   Z.object({EditSceneRelatedScenes: Z.object({
     scene_id: Z.string(),
     related_scenes: decodeSet(Z.string()),
-  })}).transform(
-    ({EditSceneRelatedScenes: o}): GameLog => ({ t: "EditSceneRelatedScenes", ...o})),
+  })}),
   Z.object({EditSceneSceneHotspots: Z.object({
     scene_id: Z.string(),
     scene_hotspots: decodeIMap(decodePoint3, Z.string()),
-  })}).transform(
-    ({EditSceneSceneHotspots: o}): GameLog => ({ t: "EditSceneSceneHotspots", ...o})),
+  })}),
 
-  Z.object({SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3])}).transform(
-    ({SetCreaturePos: [scene_id, creature_id, pos]}): GameLog => ({ t: "SetCreaturePos", scene_id, creature_id, pos})),
-  Z.object({PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)])}).transform(
-    ({PathCreature: [scene_id, creature_id, path]}): GameLog => ({ t: "PathCreature", scene_id, creature_id, path })),
+  Z.object({SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3])}),
+  Z.object({PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)])}),
 
-  Z.object({CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData])}).transform(
-    ({CreateCreature: [path, creature]}): GameLog => ({ t: "CreateCreature", path, creature})),
-  Z.object({EditCreatureDetails: Z.object({creature_id: Z.string(), details: decodeCreatureCreation})}).transform(
-    ({EditCreatureDetails: o}): GameLog => ({ t: "EditCreatureDetails", ...o })),
-  Z.object({AddCreatureToCombat: Z.tuple([Z.string(), Z.number()])}).transform(
-    ({AddCreatureToCombat: [creature_id, init]}): GameLog => ({ t: "AddCreatureToCombat", creature_id, init})),
-  Z.object({RemoveCreatureFromCombat: Z.string()}).transform(
-    ({RemoveCreatureFromCombat: creature_id}): GameLog => ({ t: "RemoveCreatureFromCombat", creature_id})),
-  Z.object({CombatLog: decodeCombatLog}).transform(
-    ({CombatLog: log}): GameLog => ({ t: "CombatLog", log})),
-  Z.object({CreatureLog: Z.tuple([Z.string(), decodeCreatureLog])}).transform(
-    ({CreatureLog: [creature_id, log]}): GameLog => ({ t: "CreatureLog", creature_id, log})),
-  Z.object({AttributeCheckResult: Z.tuple([Z.string(), decodeAttributeCheck, Z.number(), Z.boolean()])}).transform(
-    ({AttributeCheckResult: [cid, check, actual, success]}): GameLog => ({ t: "AttributeCheckResult", cid, check, actual, success})),
-  Z.object({Rollback: Z.tuple([Z.number(), Z.number()])}).transform(
-    ({Rollback: [snapshot_index, log_index]}): GameLog => ({ t: "Rollback", snapshot_index, log_index})),
+  Z.object({CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData])}),
+  Z.object({EditCreatureDetails: Z.object({creature_id: Z.string(), details: decodeCreatureCreation})}),
+  Z.object({AddCreatureToCombat: Z.tuple([Z.string(), Z.number()])}),
+  Z.object({RemoveCreatureFromCombat: Z.string()}),
+  Z.object({CombatLog: decodeCombatLog}),
+  Z.object({CreatureLog: Z.tuple([Z.string(), decodeCreatureLog])}),
+  Z.object({AttributeCheckResult: Z.object({creature_id: Z.string(), attribute_check: decodeAttributeCheck, actual: Z.number(), success: Z.boolean()})}),
+  Z.object({Rollback: Z.tuple([Z.number(), Z.number()])}),
 
-  Z.object({LoadModule: Z.object({name: Z.string(), path: decodeFolderPath, source: decodeModuleSource})}).transform(
-    ({LoadModule: o}): GameLog => ({ t: "LoadModule", ...o })),
+  Z.object({LoadModule: Z.object({name: Z.string(), path: decodeFolderPath, source: decodeModuleSource, module: Z.lazy(() => decodeGame) })}),
 ]);
+
+if (typeof window !== 'undefined') { (window as any).decodeGameLog = decodeGameLog;}
 
 const decodePlayer: Decoder<Player> = Z.object({
   player_id: Z.string(),
@@ -678,7 +585,7 @@ const decodeTileSystem: Decoder<TileSystem> = Z.union([
 
 const decodeGame: Decoder<Game> = Z.object({
   current_combat: decodeCombat.nullable(),
-  creatures: Z.record(decodeCreature).transform<Game["creatures"]>(Map),
+  creatures: Z.record(decodeDynamicCreature).transform<Game["creatures"]>(Map),
   classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
   items: Z.record(decodeItem),
   scenes: Z.record(decodeScene).transform<Game["scenes"]>(Map),
@@ -900,10 +807,4 @@ function decodeIMap<K, V>(keyDecoder: Decoder<K>, valueDecoder: Decoder<V>): Dec
 
 function decodeSet<T>(d: Decoder<T>): Decoder<Set<T>> {
   return Z.array(d).transform<Set<T>>(Set);
-}
-
-// We use undefined for missing data in our typescript types, not null. This way
-// we can *parse* null but *produce* undefined.
-function maybe<T>(d: Decoder<T>): Decoder<T | undefined> {
-  return d.nullish().transform((x: T|undefined|null): T | undefined => x ?? undefined);
 }
