@@ -1,4 +1,4 @@
-import { Set } from "immutable";
+import { Map, Set } from "immutable";
 import sortBy from "lodash/sortBy";
 import capitalize from "lodash/capitalize";
 import * as React from "react";
@@ -51,11 +51,10 @@ export function CreatureCard(
           <div>
             <div style={{ display: "flex" }}>
               <Header>{creature.name}</Header>
-              <ClassIcon class_id={creature.class_} />
+              <ClassIcon class_id={creature.class} />
             </div>
             <div>
-              {creature
-                .dynamic_conditions()
+              {dynamicConditions(creature)
                 .valueSeq()
                 .map((ac) => conditionIcon(ac.condition))}
             </div>
@@ -67,6 +66,11 @@ export function CreatureCard(
     </Segment>
   );
 }
+
+function dynamicConditions(creature: T.Creature): Map<T.ConditionID, T.AppliedCondition> {
+  return creature.own_conditions.merge(creature.volume_conditions);
+}
+
 
 interface ClassIconProps {
   class_id: T.ClassID;
@@ -111,7 +115,7 @@ export function square_style(size: number, color?: string) {
 }
 
 export function CreatureIcon({ size = 50, creature, }: { size?: number; creature: T.Creature; }) {
-  const classColor = M.useState(s => s.getClass(creature.class_)?.color);
+  const classColor = M.useState(s => s.getClass(creature.class)?.color);
   if (creature.icon_url !== "") {
     return <SquareImageIcon size={size} url={creature.icon_url} />;
   } else {

@@ -405,7 +405,7 @@ export function SceneGrid(props: SceneGridProps) {
     if (creature) {
       return <React.Fragment key={`creature-menu-${creature.creature.id}`}>
         <Menu.Item key={creature.creature.id} header={true}>
-          <CV.ClassIcon class_id={creature.creature.class_} /> {creature.creature.name}
+          <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
         </Menu.Item>
         {creature.actions.entrySeq().toArray().map(
           ([actionName, action]) => {
@@ -638,7 +638,7 @@ function PopupMenu(props: PopupMenuProps): JSX.Element {
 export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
-  class_: T.Class;
+  class: T.Class;
   actions: Map<string, (cid: T.CreatureID) => void>;
   visibility: T.Visibility;
 }
@@ -823,7 +823,7 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
         <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps} fillOpacity="0" />
       </>;
     } else {
-      const props = tile_props<SVGRectElement>(creature.class_.color, creature.pos, creature.creature.size);
+      const props = tile_props<SVGRectElement>(creature.class.color, creature.pos, creature.creature.size);
       return <>
         <rect ref={e => {element.current = e}} {...props}
           {...reflection_props}
@@ -901,14 +901,14 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
     sceneCreatures,
     creature => {
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
-      const class_ = state.getClass(creature.class_);
+      const class_ = state.getClass(creature.class);
       if (class_) {
         let actions: Map<string, (cid: T.CreatureID) => void> = Map();
         const target = targetAction(creature);
         if (target) {
           actions = actions.set(target.name, target.action);
         }
-        return { creature, pos, class_, actions, visibility: vis };
+        return { creature, pos, class: class_, actions, visibility: vis };
       }
     });
   const result: { [index: string]: MapCreature } = {};
