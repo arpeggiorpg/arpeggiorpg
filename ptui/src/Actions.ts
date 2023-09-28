@@ -113,7 +113,7 @@ export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
   getState().clearMovementOptions();
   const scene = getState().getFocusedScene();
   if (scene) {
-    sendCommand({ t: "PathCreature", scene_id: scene.id, creature_id, dest });
+    sendCommand({ PathCreature: [scene.id, creature_id, dest] });
   } else {
     throw new Error(`Tried moving when there is no scene`);
   }
@@ -123,13 +123,13 @@ export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
   getState().clearMovementOptions();
   const scene = getState().getFocusedScene();
   if (scene) {
-    sendCommand({ t: 'SetCreaturePos', scene_id: scene.id, creature_id, dest });
+    sendCommand({ SetCreaturePos: [scene.id, creature_id, dest] });
   }
 }
 
 export function moveCombatCreature(dest: T.Point3) {
   getState().clearMovementOptions();
-  sendCommand({ t: "PathCurrentCombatCreature", dest });
+  sendCommand({ PathCurrentCombatCreature: dest });
 }
 
 export async function requestCombatMovement() {
@@ -149,7 +149,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   const { ability_id, options } = opts;
   if (!("CreatureIDs" in options)) { throw new Error(`Only support CreatureIDs for now`); }
   const target: T.DecidedTarget = { Creature: target_id };
-  sendCommand({ t: "CombatAct", ability_id, target });
+  sendCommand({ CombatAct: [ability_id, target] });
   getState().clearPotentialTargets();
 }
 
@@ -161,7 +161,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
     throw new Error(`This function only works for abilities that use Points`);
   }
   const target: T.DecidedTarget = { Point: point };
-  sendCommand({ t: "CombatAct", ability_id, target });
+  sendCommand({ CombatAct: [ability_id, target] });
   getState().clearPotentialTargets();
 }
 
@@ -263,7 +263,7 @@ export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
-    return sendCommand({ t: "CombatAct", ability_id, target: "Actor" });
+    return sendCommand({ CombatAct: [ability_id, "Actor"] });
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }

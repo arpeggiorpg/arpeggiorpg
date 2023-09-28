@@ -44,7 +44,7 @@ function PlayerLogin() {
   </div>;
 
   function registerPlayer(name: string) {
-    A.sendCommand({ t: "RegisterPlayer", player_id: name });
+    A.sendCommand({ RegisterPlayer: name });
     M.getState().setPlayerId(name);
   }
 }
@@ -141,7 +141,7 @@ function PlayerNote({ player_id }: { player_id: T.PlayerID }): JSX.Element {
   const folder = M.useState(s => s.getFolder(path));
   React.useEffect(() => {
     if (!folder) {
-      A.sendCommand({t: "CreateFolder", path});
+      A.sendCommand({CreateFolder: path});
     }
   }, []);
   return <CV.NoteEditor path={path} name="Scratch" disallow_rename={true} />;
