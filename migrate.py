@@ -25,18 +25,33 @@ def fix_game(game):
     fix_maps(game)
     fix_points(game)
     fix_add_scene_missing(game)
-
-    for (path, folder) in walk_folders(game["campaign"]):
-        print(path)
+    fix_missing_campaign_objects(game)
 
 def walk_folders(folder, path="/"):
     yield path, folder
     for subname in folder["children"]:
         yield from walk_folders(folder["children"][subname], path=path + subname + "/")
 
-## RADIX TODO:
-# P&T now requires all classes, abilities, creatures etc to be defined in the
-# *campaign folder* somewhere. So we need to create a "/Missing" folder that contains all of those things.
+def fix_missing_campaign_objects(game):
+    """Make sure all objects are in folders"""
+    CATEGORIES = ["abilities", "creatures", "scenes", "items", "classes"]
+    found = {cat: set() for cat in CATEGORIES}
+
+    for (path, folder) in walk_folders(game["campaign"]):
+        for cat in CATEGORIES:
+            found[cat].update(folder["data"].get(cat, []))
+
+    missing = {cat: set(game[cat].keys()) - found[cat] for cat in CATEGORIES}
+
+    if not any(missing.values()):
+        return
+
+    missing_folder = game["campaign"]["children"].setdefault("Missing", {"data": {"notes": {}}, "children": {}})
+    missing_data = missing_folder["data"]
+
+    for cat in CATEGORIES:
+        missing_data[cat] = list(missing[cat].union(missing_data.get(cat, [])))
+
 
 
 def fix_add_scene_missing(game):
@@ -65,7 +80,7 @@ def fix_points(game):
         scene["terrain"] = list(map(strpt, scene["terrain"]))
 
 def strpt(pt):
-    return f"{pt[0]}/{pt[1]}/{pt[2]}"
+    return f"{pt[0] * 100}/{pt[1] * 100}/{pt[2] * 100}"
 
 def fix_class_ids(game):
     new_names = {} # old class name to new class ID

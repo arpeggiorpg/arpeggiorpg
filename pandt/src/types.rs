@@ -47,7 +47,7 @@ pub type Color = String;
 pub type Inventory = HashMap<ItemID, u64>;
 pub type Terrain = Vec<Point3>;
 
-/// Point3 holds a position in 3d space in meters (FOR NOW --radix)
+/// Point3 holds a position in 3d space in decimeters
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, TS)]
 pub struct Point3 {
   #[ts(type = "number")]
