@@ -139,16 +139,6 @@ impl Game {
     Ok(())
   }
 
-  pub fn get_world(&self) -> Result<Option<CollisionWorld>, GameError> {
-    match self.active_scene {
-      Some(scene_id) => {
-        let scene = self.get_scene(scene_id)?;
-        scene.get_world(self).map(Some)
-      }
-      None => Ok(None),
-    }
-  }
-
   pub fn creatures(&self) -> Result<HashMap<CreatureID, DynamicCreature>, GameError> {
     let mut map = HashMap::new();
     for creature in self.creatures.values() {
