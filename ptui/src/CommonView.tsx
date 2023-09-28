@@ -805,9 +805,9 @@ export function TheLayout(props: TheLayoutProps) {
     force_map: boolean = false
   ) {
     const selected_tab = force_map ? "Map" : undefined;
-    const tabbed_view = (
+    const tabbed_view = <div style={{overflowY: "scroll"}}>
       <TabbedView menu_size={menu_size} selected_tab={selected_tab} tabs={tabs} />
-    );
+      </div>;
     return extra !== undefined ? (
       <Panels.PanelGroup direction="vertical">
         <Panels.Panel>{tabbed_view}</Panels.Panel>
