@@ -16,23 +16,23 @@ MIT-licensed: http://opensource.org/licenses/MIT
 To start the backend (this defaults to serving on all network interfaces on port 1337):
 
 WARNING: the "--saved-games" argument specifies a directory that users of the web endpoint will
-be able to write arbitrary files to.
+be able to write arbitrary files to (for now).
 
 ```shell
-cd ptrpi; cargo run -- --saved-games sample_games --init testgame.yaml
+cd ptrpi
+cargo run -- --saved-games ./sample_games/ --load-game testgame.yaml --modules ./modules/
 ```
 
 This will start an RPI server which will load & save games to the `sample_games` directory, and
 automatically load up the `testgame.yaml` file as the initial state.
 
-To build the UI, you must have npm installed (ideally npm 5).
+To build the UI, you must have npm installed (ideally npm >=5).
 
-```
-cd ptui;
-npm install;
-./node_modules/.bin/webpack --config ./webpack.vendor.js
-./node_modules/.bin/webpack --env.rpi_url=http://localhost:1337 # NOTE: do NOT put a / at the end of this URL
+```shell
+cd ptui
+npm install
+npm run dev
 ```
 
-That will generate the UI in the `ptui/build` directory -- now host that on a static web server and
-hit the "GM.html" or "Player.html" files in it.
+That will start the frontend server. Hit it at http://localhost:5173/, and add `?mode=GM` to see the
+Game Master UI.
