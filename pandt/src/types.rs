@@ -815,8 +815,10 @@ pub enum GameError {
   CannotLinkNotes(FolderPath, String),
   #[error("Failed to open a file containing an application: {0}")]
   CouldNotOpenAppFile(String, #[source] ::std::io::Error),
-  #[error("Failed to parse a serialized application: {0}")]
-  CouldNotParseApp(#[source] serde_yaml::Error),
+  #[error("Failed to parse a serialized application YAML: {0}")]
+  CouldNotParseAppYAML(#[source] serde_yaml::Error),
+  #[error("Failed to parse a serialized application JSON: {0}")]
+  CouldNotParseAppJSON(#[source] serde_json::Error),
 
   #[error("No module source found")]
   NoModuleSource,
@@ -956,7 +958,7 @@ impl Condition {
   }
 }
 
-/// Serializes as either "Interminate" or {"Duration": 0}
+/// Serializes as either "Interminate" or {"Rounds": 0}
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum Duration {
   Interminate,

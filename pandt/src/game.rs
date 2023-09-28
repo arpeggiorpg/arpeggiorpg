@@ -129,8 +129,9 @@ impl Game {
     if all_items != HashSet::from_iter(self.items.keys().cloned()) {
       bail!("Not all items were in the campaign!");
     }
-    if all_abilities != HashSet::from_iter(self.abilities.keys().cloned()) {
-      bail!("Not all abilities were in the campaign!");
+    let game_abilities = HashSet::from_iter(self.abilities.keys().cloned());
+    if all_abilities != game_abilities {
+      bail!(GameError::BuggyProgram(format!("Not all abilities were in the campaign! {all_abilities:?} VS {game_abilities:?}")));
     }
     if all_classes != HashSet::from_iter(self.classes.keys().cloned()) {
       bail!("Not all classes were in the campaign!");
@@ -1333,11 +1334,21 @@ pub fn load_app_from_path(
     (ModuleSource::Module, None) => return Err(GameError::NoModuleSource),
     (ModuleSource::SavedGame, _) => saved_game_path.join(filename),
   };
-  let mut appf = File::open(filename.clone())
-    .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
-  let mut apps = String::new();
-  appf.read_to_string(&mut apps).unwrap();
-  let app: App = serde_yaml::from_str(&apps).map_err(GameError::CouldNotParseApp)?;
+  let app_string = {
+    let mut appf = File::open(filename.clone())
+      .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
+    let mut apps = String::new();
+    appf.read_to_string(&mut apps).unwrap();
+    apps
+  };
+  let app: App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
+    println!("{filename:?} is JSON");
+    serde_json::from_str(&app_string).map_err(GameError::CouldNotParseAppJSON)?
+  } else {
+    println!("{filename:?} is YAML");
+    serde_yaml::from_str(&app_string).map_err(GameError::CouldNotParseAppYAML)?
+  };
+
   app.current_game.validate_campaign()?;
   Ok(app)
 }
