@@ -61,7 +61,16 @@ impl AppActor {
       waiters.push(sender);
     }
     let event = timeout(Duration::from_secs(30), receiver).await;
-    event.expect("timing out failed?").expect("receiving an event failed?");
+    match event {
+      Ok(x) => {
+        // propagate whatever error may have occurred from receiving the event... not sure what
+        // would cause this.
+        x?
+      }
+      Err(_) => {
+        // Timeout; just return the state of the app
+      }
+    }
     self.get_app().await
   }
 
