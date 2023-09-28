@@ -238,9 +238,11 @@ function FolderTree(props: FTProps) {
           <Dropdown.Item text="Delete this folder" icon="delete"
             onClick={() => A.sendCommand(
               {
-                t: "DeleteFolderItem", location: path.slice(0, -1),
-                // "!": we KNOW this isn't [] (see conditional above)
-                item_id: { SubfolderID: path.at(-1)! },
+                DeleteFolderItem: [
+                  path.slice(0, -1),
+                  // "!": we KNOW this isn't [] (see conditional above)
+                  { SubfolderID: path.at(-1)! },
+                ]
               })} />
           <CV.ModalMaker
             button={open => <Dropdown.Item text="Move this folder" icon="font" onClick={open} />}
@@ -465,7 +467,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
 function copy({ copies }: { copies: number }) {
     const { source, item_id, onDone } = props;
     for (const _ of Array(5).keys()) {
-      A.sendCommand({ t: "CopyFolderItem", source, item_id, dest: dest });
+      A.sendCommand({ CopyFolderItem: {source, item_id, dest} });
     }
     onDone();
   }
@@ -479,7 +481,7 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   return <Button onClick={deleteIt}>Yes, really!</Button>;
 
   function deleteIt() {
-    A.sendCommand({ t: "DeleteFolderItem", location, item_id });
+    A.sendCommand({ DeleteFolderItem: [location, item_id] });
     onDone();
   }
 }
@@ -613,7 +615,7 @@ function MoveFolderItem(props: MoveFolderItemProps) {
   </div>;
 
   function move(dest: T.FolderPath) {
-    A.sendCommand({ t: "MoveFolderItem", source, item_id, dest });
+    A.sendCommand({ MoveFolderItem: [source, item_id, dest] });
     onDone();
   }
 }

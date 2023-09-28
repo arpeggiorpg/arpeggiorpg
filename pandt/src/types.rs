@@ -341,7 +341,7 @@ pub enum ModuleSource {
 }
 
 /// Top-level commands that can be sent from a client to affect the state of the app.
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum GameCommand {
   LoadModule {
     source: ModuleSource,
@@ -445,22 +445,27 @@ pub enum GameCommand {
   },
   EditSceneTerrain {
     scene_id: SceneID,
+    #[ts(type = "Terrain")]
     terrain: Vec<Point3>,
   },
   EditSceneHighlights {
     scene_id: SceneID,
+    #[ts(type = "Highlights")]
     highlights: HashMap<Point3, (Color, Visibility)>,
   },
   EditSceneAnnotations {
     scene_id: SceneID,
+    #[ts(type = "Annotations")]
     annotations: HashMap<Point3, (String, Visibility)>,
   },
   EditSceneRelatedScenes {
     scene_id: SceneID,
+    #[ts(type = "RelatedScenes")]
     related_scenes: HashSet<SceneID>,
   },
   EditSceneSceneHotspots {
     scene_id: SceneID,
+    #[ts(type = "SceneHotspots")]
     scene_hotspots: HashMap<Point3, SceneID>,
   },
 
@@ -1123,13 +1128,14 @@ pub struct Game {
   pub active_scene: Option<SceneID>,
 }
 
+/// The non-persistent data involved in running a game.
 pub struct Runtime {
   pub app: App,
   pub world: Option<CollisionWorld>,
 }
 
-/// A data structure maintaining state for the whole app. It keeps track of the history of the
-/// whole game, and exposes the top-level methods that run simulations on the game.
+/// A persistent data structure maintaining state for the whole app. It keeps track of the history
+/// of the whole game, and exposes the top-level methods that run simulations on the game.
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct App {
   pub current_game: Game,

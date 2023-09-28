@@ -40,7 +40,7 @@ export function Players() {
           const sceneButtons = [];
           if (playa.player.scene) {
             sceneButtons.push(
-              setSceneButton(playa.id, "Remove from Scene", undefined)
+              setSceneButton(playa.id, "Remove from Scene", null)
             );
           }
           if (gm_scene && playa.player.scene !== gm_scene.id) {
@@ -91,13 +91,13 @@ export function Players() {
   function setSceneButton(
     player_id: T.PlayerID,
     text: string,
-    scene_id: T.SceneID | undefined
+    scene_id: T.SceneID | null
   ): JSX.Element {
     return (
       <Button
         key={"set-" + player_id + scene_id}
         onClick={() =>
-          A.sendCommand({ t: "SetPlayerScene", player_id, scene_id })
+          A.sendCommand({ SetPlayerScene: [player_id, scene_id] })
         }
       >
         {text}
@@ -114,9 +114,7 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
       on_cancel={onDone}
       on_selected={cids => {
         A.sendCommand({
-          t: "GiveCreaturesToPlayer",
-          player_id: player.player_id,
-          creature_ids: cids.toArray(),
+          GiveCreaturesToPlayer: [player.player_id, cids.toArray()]
         });
         onDone();
       }}

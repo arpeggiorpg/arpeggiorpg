@@ -5,17 +5,18 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
   ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
   CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource,
-  Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  FolderNode, FolderPath, FolderTree, Game, GameCommand, GameLog, HP, InventoryOwner, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
   ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
   CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource,
-  Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  FolderNode, FolderPath, FolderTree, Game, GameCommand, GameLog, HP, InventoryOwner, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -83,58 +84,6 @@ export interface App {
 export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
 
 export type Folder = FolderTree<FolderNode>;
-
-export type GameCommand =
-  | { t: "SetActiveScene"; scene_id?: SceneID | undefined }
-  | { t: "ChatFromGM"; message: string }
-  | { t: "ChatFromPlayer"; player_id: PlayerID; message: string }
-  | { t: "RegisterPlayer"; player_id: PlayerID }
-  | { t: "GiveCreaturesToPlayer"; player_id: PlayerID; creature_ids: Array<CreatureID> }
-  | { t: "CreateFolder"; path: FolderPath }
-  | { t: "MoveFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
-  | { t: "CopyFolderItem"; source: FolderPath; item_id: FolderItemID; dest: FolderPath }
-  | { t: "DeleteFolderItem"; location: FolderPath; item_id: FolderItemID }
-  | { t: "CreateCreature"; path: FolderPath; spec: CreatureCreation }
-  | { t: "EditCreatureDetails"; creature_id: CreatureID; details: CreatureCreation }
-  | { t: "CreateItem"; path: FolderPath; name: string }
-  | { t: "EditItem"; item: Item }
-  | { t: "CreateNote"; path: FolderPath; note: Note }
-  | { t: "EditNote"; path: FolderPath; name: string; note: Note }
-  | { t: "TransferItem"; from: InventoryOwner; to: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "RemoveItem"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "SetItemCount"; owner: InventoryOwner; item_id: ItemID; count: number }
-  | { t: "CreateScene"; path: FolderPath; spec: SceneCreation }
-  | { t: "EditSceneDetails"; scene_id: SceneID; details: SceneCreation }
-  | {
-    t: "SetSceneCreatureVisibility";
-    scene_id: SceneID; creature_id: CreatureID; visibility: Visibility;
-  }
-  | { t: "AddCreatureToScene"; scene_id: SceneID; creature_id: CreatureID; visibility: Visibility }
-  | { t: "RemoveCreatureFromScene"; scene_id: SceneID; creature_id: CreatureID }
-  | { t: "AddSceneChallenge"; scene_id: SceneID; description: string; challenge: AttributeCheck }
-  | { t: "RemoveSceneChallenge"; scene_id: SceneID; description: string }
-  | { t: "SetFocusedSceneCreatures"; scene_id: SceneID; creatures: List<CreatureID> }
-  | { t: "RemoveSceneVolumeCondition"; scene_id: SceneID; condition_id: ConditionID }
-  | { t: "EditSceneTerrain"; scene_id: SceneID; terrain: Terrain }
-  | { t: "EditSceneHighlights"; scene_id: SceneID; highlights: Highlights }
-  | { t: "EditSceneAnnotations"; scene_id: SceneID; annotations: Annotations }
-  | { t: "EditSceneRelatedScenes"; scene_id: SceneID; related_scenes: Set<SceneID> }
-  | { t: "EditSceneSceneHotspots"; scene_id: SceneID; scene_hotspots: Map<Point3, SceneID> }
-  | { t: "RemoveCreatureFromCombat"; creature_id: CreatureID }
-  | { t: "CombatAct"; ability_id: AbilityID; target: DecidedTarget }
-  | { t: "PathCreature"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
-  | { t: "SetCreaturePos"; scene_id: SceneID; creature_id: CreatureID; dest: Point3 }
-  | { t: "PathCurrentCombatCreature"; dest: Point3 }
-  | { t: "Done" }
-  | { t: "ChangeCreatureInitiative"; creature_id: CreatureID; init: number }
-  | { t: "StartCombat"; scene_id: SceneID; creature_ids: Array<CreatureID> }
-  | { t: "StopCombat" }
-  | { t: "AddCreatureToCombat"; creature_id: CreatureID }
-  | { t: "AttributeCheck"; creature_id: CreatureID; check: AttributeCheck }
-  | { t: "SetPlayerScene"; player_id: PlayerID; scene_id?: SceneID | undefined }
-  | { t: "Rollback"; snapshot_index: number; log_index: number }
-  | { t: "LoadModule"; source: ModuleSource; name: string; path: FolderPath }
-  ;
 
 export const SKILL_LEVELS: Array<SkillLevel> =
   ["Inept", "Unskilled", "Skilled", "Expert", "Supernatural"];
@@ -618,167 +567,89 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
 }
 
 export function encodeGameCommand(cmd: GameCommand): object | string {
-  switch (cmd.t) {
-    case "SetActiveScene": return { SetActiveScene: cmd.scene_id };
-    case "ChatFromGM": return { ChatFromGM: cmd.message };
-    case "ChatFromPlayer": return { ChatFromPlayer: [cmd.player_id, cmd.message] };
-    case "RegisterPlayer": return { RegisterPlayer: cmd.player_id };
-    case "GiveCreaturesToPlayer":
-      return { GiveCreaturesToPlayer: [cmd.player_id, cmd.creature_ids] };
-    case "CreateFolder": return { CreateFolder: encodeFolderPath(cmd.path) };
-    case "MoveFolderItem":
-      return {
-        MoveFolderItem:
-          [encodeFolderPath(cmd.source),
-          cmd.item_id,
-          encodeFolderPath(cmd.dest)],
-      };
-    case "CopyFolderItem":
-      return {
-        CopyFolderItem: {
-          source: encodeFolderPath(cmd.source),
-          item_id: cmd.item_id,
-          dest: encodeFolderPath(cmd.dest),
-        },
-      };
-    case "DeleteFolderItem":
-      return { DeleteFolderItem: [encodeFolderPath(cmd.location), cmd.item_id] };
-    case "EditCreatureDetails":
-      return {
-        EditCreatureDetails:
-          { creature_id: cmd.creature_id, details: cmd.details },
-      };
-    case "CreateCreature":
-      return { CreateCreature: [encodeFolderPath(cmd.path), cmd.spec] };
-    case "CreateItem": return { CreateItem: [encodeFolderPath(cmd.path), cmd.name] };
-    case "EditItem": return { EditItem: cmd.item };
-    case "CreateNote": return { CreateNote: [encodeFolderPath(cmd.path), cmd.note] };
-    case "EditNote":
-      return { EditNote: [encodeFolderPath(cmd.path), cmd.name, cmd.note] };
-    case "TransferItem":
-      return {
-        TransferItem: {
-          from: cmd.from,
-          to: cmd.to,
-          item_id: cmd.item_id, count: cmd.count,
-        },
-      };
-    case "RemoveItem":
-      return {
-        RemoveItem:
-          { owner: cmd.owner, item_id: cmd.item_id, count: cmd.count },
-      };
-    case "SetItemCount":
-      return {
-        SetItemCount:
-          { owner: cmd.owner, item_id: cmd.item_id, count: cmd.count },
-      };
-    case "CreateScene":
-      return { CreateScene: [encodeFolderPath(cmd.path), cmd.spec] };
-    case "EditSceneDetails":
-      return {
-        EditSceneDetails: { scene_id: cmd.scene_id, details: cmd.details },
-      };
-    case "SetSceneCreatureVisibility":
-      return {
-        SetSceneCreatureVisibility: {
-          scene_id: cmd.scene_id, creature_id: cmd.creature_id,
-          visibility: cmd.visibility,
-        },
-      };
-    case "AddCreatureToScene":
-      return {
-        AddCreatureToScene: {
-          scene_id: cmd.scene_id, creature_id: cmd.creature_id,
-          visibility: cmd.visibility,
-        },
-      };
-    case "RemoveCreatureFromScene":
-      return { RemoveCreatureFromScene: { scene_id: cmd.scene_id, creature_id: cmd.creature_id } };
-    case "AddSceneChallenge":
-      return {
-        AddSceneChallenge: {
-          scene_id: cmd.scene_id, description: cmd.description,
-          challenge: cmd.challenge,
-        },
-      };
-    case "RemoveSceneChallenge":
-      return { RemoveSceneChallenge: { scene_id: cmd.scene_id, description: cmd.description } };
-    case "SetFocusedSceneCreatures":
-      return {
-        SetFocusedSceneCreatures: { scene_id: cmd.scene_id, creatures: cmd.creatures.toArray() },
-      };
-    case "RemoveSceneVolumeCondition":
-      return {
-        RemoveSceneVolumeCondition: { scene_id: cmd.scene_id, condition_id: cmd.condition_id },
-      };
-    case "EditSceneTerrain":
-      return {
-        EditSceneTerrain: { scene_id: cmd.scene_id, terrain: cmd.terrain.map(encodePoint3) },
-      };
-    case "EditSceneHighlights":
-      return {
-        EditSceneHighlights: {
-          scene_id: cmd.scene_id,
-          highlights: cmd.highlights.mapEntries(
-            ([point, [color, vis]]) => [encodePoint3(point), [color, vis]]).toJS(),
-        },
-      };
-    case "EditSceneAnnotations":
-      return {
-        EditSceneAnnotations: {
-          scene_id: cmd.scene_id,
-          annotations: cmd.annotations.mapEntries(
-            ([point, [annotation, vis]]) =>
-              [encodePoint3(point), [annotation, vis]]
-          ).toJS(),
-        },
-      };
-    case "EditSceneRelatedScenes":
-      return {
-        EditSceneRelatedScenes: {
-          scene_id: cmd.scene_id,
-          related_scenes: cmd.related_scenes.toArray(),
-        },
-      };
-    case "EditSceneSceneHotspots":
-      return {
-        EditSceneSceneHotspots: {
-          scene_id: cmd.scene_id, scene_hotspots: cmd.scene_hotspots.mapKeys(encodePoint3).toJS(),
-        },
-      };
-    case "RemoveCreatureFromCombat":
-      return { RemoveCreatureFromCombat: cmd.creature_id };
-    case "CombatAct": return { CombatAct: [cmd.ability_id, encodeDecidedTarget(cmd.target)] };
-    case "PathCreature":
-      return { PathCreature: [cmd.scene_id, cmd.creature_id, encodePoint3(cmd.dest)] };
-    case "SetCreaturePos":
-      return { SetCreaturePos: [cmd.scene_id, cmd.creature_id, encodePoint3(cmd.dest)] };
-    case "PathCurrentCombatCreature":
-      return { PathCurrentCombatCreature: encodePoint3(cmd.dest) };
-    case "Done": return "Done";
-    case "ChangeCreatureInitiative":
-      return { ChangeCreatureInitiative: [cmd.creature_id, cmd.init] };
-    case "StartCombat":
-      return { StartCombat: [cmd.scene_id, cmd.creature_ids] };
-    case "StopCombat":
-      return "StopCombat";
-    case "AddCreatureToCombat":
-      return { AddCreatureToCombat: cmd.creature_id };
-    case "AttributeCheck":
-      return { AttributeCheck: [cmd.creature_id, cmd.check] };
-    case "SetPlayerScene":
-      return { SetPlayerScene: [cmd.player_id, cmd.scene_id] };
-    case "Rollback":
-      return { Rollback: [cmd.snapshot_index, cmd.log_index] };
-    case "LoadModule":
-      return {
-        LoadModule: {
-          name: cmd.name, path: encodeFolderPath(cmd.path),
-          source: cmd.source,
-        },
-      };
-  }
+  if (typeof cmd === "string") return cmd;
+  // Any commands which contain data that needs encoded needs to be handled explicitly.
+  // Unfortunately this is not type-checked.
+
+  if ("CreateFolder" in cmd)
+    return { CreateFolder: encodeFolderPath(cmd.CreateFolder) };
+  if ("MoveFolderItem" in cmd)
+    return {
+      MoveFolderItem: [
+        encodeFolderPath(cmd.MoveFolderItem[0]),
+        cmd.MoveFolderItem[1],
+        encodeFolderPath(cmd.MoveFolderItem[2])
+      ],
+    };
+  if ("CopyFolderItem" in cmd)
+    return {
+      CopyFolderItem: {
+        ...cmd.CopyFolderItem,
+        source: encodeFolderPath(cmd.CopyFolderItem.source),
+        dest: encodeFolderPath(cmd.CopyFolderItem.dest),
+      },
+    };
+  if ("DeleteFolderItem" in cmd)
+    return { DeleteFolderItem: [encodeFolderPath(cmd.DeleteFolderItem[0]), cmd.DeleteFolderItem[1]] };
+  if ("CreateCreature" in cmd)
+    return { CreateCreature: [encodeFolderPath(cmd.CreateCreature[0]), cmd.CreateCreature[1]] };
+  if ("CreateItem" in cmd) return { CreateItem: [encodeFolderPath(cmd.CreateItem[0]), cmd.CreateItem[1]] };
+  if ("CreateNote" in cmd) return { CreateNote: [encodeFolderPath(cmd.CreateNote[0]), cmd.CreateNote[1]] };
+  if ("EditNote" in cmd)
+    return { EditNote: [encodeFolderPath(cmd.EditNote[0]), cmd.EditNote[1], cmd.EditNote[2]] };
+  if ("CreateScene" in cmd)
+    return { CreateScene: [encodeFolderPath(cmd.CreateScene[0]), cmd.CreateScene[1]] };
+  if ("EditSceneTerrain" in cmd)
+    return {
+      EditSceneTerrain: { ...cmd.EditSceneTerrain, terrain: cmd.EditSceneTerrain.terrain.map(encodePoint3) },
+    };
+  if ("EditSceneHighlights" in cmd)
+    return {
+      EditSceneHighlights: {
+        ...cmd.EditSceneHighlights,
+        highlights: cmd.EditSceneHighlights.highlights.mapEntries(
+          ([point, [color, vis]]) => [encodePoint3(point), [color, vis]]).toJS(),
+      },
+    };
+  if ("EditSceneAnnotations" in cmd)
+    return {
+      EditSceneAnnotations: {
+        ...cmd.EditSceneAnnotations,
+        annotations: cmd.EditSceneAnnotations.annotations.mapEntries(
+          ([point, [annotation, vis]]) => [encodePoint3(point), [annotation, vis]]
+        ).toJS(),
+      },
+    };
+  if ("EditSceneRelatedScenes" in cmd)
+    return {
+      EditSceneRelatedScenes: {
+        ...cmd.EditSceneRelatedScenes,
+        related_scenes: cmd.EditSceneRelatedScenes.related_scenes.toArray(),
+      },
+    };
+  if ("EditSceneSceneHotspots" in cmd)
+    return {
+      EditSceneSceneHotspots: {
+        ...cmd.EditSceneSceneHotspots,
+        scene_hotspots: cmd.EditSceneSceneHotspots.scene_hotspots.mapKeys(encodePoint3).toJS(),
+      },
+    };
+  if ("CombatAct" in cmd)
+    return { CombatAct: [cmd.CombatAct[0], encodeDecidedTarget(cmd.CombatAct[1])] };
+  if ("PathCreature" in cmd)
+    return { PathCreature: [cmd.PathCreature[0], cmd.PathCreature[1], encodePoint3(cmd.PathCreature[2])] };
+  if ("SetCreaturePos" in cmd)
+    return { SetCreaturePos: [cmd.SetCreaturePos[0], cmd.SetCreaturePos[1], encodePoint3(cmd.SetCreaturePos[2])] };
+  if ("PathCurrentCombatCreature" in cmd)
+    return { PathCurrentCombatCreature: encodePoint3(cmd.PathCurrentCombatCreature) };
+  if ("LoadModule" in cmd)
+    return {
+      LoadModule: {
+        ...cmd.LoadModule,
+        path: encodeFolderPath(cmd.LoadModule.path),
+      },
+    };
+  return cmd;
 }
 
 export function encodeFolderPath(path: FolderPath): string {

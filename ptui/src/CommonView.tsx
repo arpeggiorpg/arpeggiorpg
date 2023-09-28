@@ -260,10 +260,12 @@ export class RemoveItem extends React.Component<
       return;
     }
     A.sendCommand({
-      t: "RemoveItem",
-      owner: { Creature: creature.id },
-      item_id: item.id,
-      count: this.state.count,
+      RemoveItem: {
+        owner: { Creature: creature.id },
+        item_id: item.id,
+        // RADIX FIXME
+        count: BigInt(this.state.count),
+      }
     });
     onClose();
   }
@@ -393,11 +395,12 @@ export function GiveItem( props: GiveItemProps ) {
 
   function give(recip: T.Creature, count: number) {
     A.sendCommand({
-      t: "TransferItem",
-      from: { Creature: giver.id },
-      to: { Creature: recip.id },
-      item_id: item.id,
-      count,
+      TransferItem: {
+        from: { Creature: giver.id },
+        to: { Creature: recip.id },
+        item_id: item.id,
+        count: BigInt(count),
+      }
     });
     onClose();
   }
@@ -625,7 +628,7 @@ export function ActionBar(props: { creatureId: T.CreatureID; combat?: T.Combat }
 }
 
 function DoneButton(): JSX.Element {
-  const command: T.GameCommand = { t: "Done" };
+  const command: T.GameCommand = "Done";
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
@@ -1005,8 +1008,8 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
     }
     const newNote = { name: draftName, content };
     const cmd: T.GameCommand = originalNote
-      ? { t: "EditNote", path, name: originalNote.name, note: newNote }
-      : { t: "CreateNote", path, note: newNote };
+      ? { EditNote: [path, originalNote.name, newNote]}
+      : {CreateNote: [path, newNote]};
     A.sendCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);
@@ -1185,7 +1188,7 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
 
 export function GMChat(): JSX.Element {
   const creatures = M.useState(s => s.getGame().creatures);
-  const GMChatCmd = (message: string): T.GameCommand => ({ t: "ChatFromGM", message });
+  const GMChatCmd = (message: string): T.GameCommand => ({ ChatFromGM: message });
   return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
 
   function get_chat_line(log: T.GameLog) {
@@ -1205,9 +1208,7 @@ interface PlayerChatProps {
 export function PlayerChat(props: PlayerChatProps): JSX.Element {
   const { player_id } = props;
   const chatCmd = (message: string): T.GameCommand => ({
-    t: "ChatFromPlayer",
-    player_id,
-    message,
+    ChatFromPlayer: [player_id, message],
   });
   return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
 

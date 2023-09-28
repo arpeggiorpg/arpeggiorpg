@@ -18,7 +18,7 @@ export function History(): JSX.Element {
             key={snapshot_index.toString() + "-" + log_index.toString()}>
             <GameLog log={log} creatures={creatures} />
             <button className="material-icons"
-              onClick={() => A.sendCommand({ t: "Rollback", snapshot_index, log_index })}
+              onClick={() => A.sendCommand({ Rollback: [snapshot_index, log_index] })}
             >history</button>
           </div>)
     )
