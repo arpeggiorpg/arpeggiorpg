@@ -151,6 +151,7 @@ impl AppActor {
   ) -> Result<String, Error> {
     let new_game = self.app.lock().await.current_game.export_module(&folder_path)?;
     let new_app = types::App::new(new_game);
+    // FIXME: save a module to a separate directory? Or at least with a different extension?
     save_app(&new_app, &name, &self.saved_game_path)?;
     Ok("{}".to_string())
   }
