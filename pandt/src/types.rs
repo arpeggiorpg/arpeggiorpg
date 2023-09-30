@@ -15,7 +15,6 @@ use serde::{
   ser::{Error as SerError, SerializeStruct},
   Deserialize, Deserializer, Serialize, Serializer,
 };
-use serde_yaml;
 use thiserror::Error;
 use ts_rs::TS;
 use uom::si::length::{centimeter, meter};
@@ -344,8 +343,9 @@ pub enum ModuleSource {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum GameCommand {
   LoadModule {
-    source: ModuleSource,
     name: String,
+    source: ModuleSource,
+    game: Game,
     path: FolderPath,
   },
 
@@ -813,12 +813,6 @@ pub enum GameError {
   FolderItemNotFound(FolderPath, FolderItemID),
   #[error("Notes can't be linked or unlinked. '{0}' / '{1}'")]
   CannotLinkNotes(FolderPath, String),
-  #[error("Failed to open a file containing an application: {0}")]
-  CouldNotOpenAppFile(String, #[source] ::std::io::Error),
-  #[error("Failed to parse a serialized application YAML: {0}")]
-  CouldNotParseAppYAML(#[source] serde_yaml::Error),
-  #[error("Failed to parse a serialized application JSON: {0}")]
-  CouldNotParseAppJSON(#[source] serde_json::Error),
 
   #[error("No module source found")]
   NoModuleSource,

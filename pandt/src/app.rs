@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::path::Path;
 
 use error_chain::bail;
 
@@ -42,9 +41,7 @@ impl App {
     let snapshots = VecDeque::with_capacity(SNAPSHOTS);
     App { current_game: g, snapshots }
   }
-  pub fn perform_command(
-    &mut self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>,
-  ) -> Result<(&Game, Vec<GameLog>), GameError> {
+  pub fn perform_command(&mut self, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
         let newgame = self.rollback_to(*snapshot_idx, *log_idx)?;
@@ -55,7 +52,7 @@ impl App {
       }
       _ => {
         let (game, logs) =
-          self.current_game.perform_command(cmd, saved_game_path, module_path)?.done();
+          self.current_game.perform_command(cmd)?.done();
 
         if self.snapshots.is_empty()
           || self.snapshots.back().unwrap().1.len() + logs.len() > LOGS_PER_SNAP
@@ -143,7 +140,7 @@ mod test {
   pub fn t_app() -> App { App::new(t_game()) }
 
   pub fn perf(app: &mut App, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
-    app.perform_command(cmd, &PathBuf::from(""), None)
+    app.perform_command(cmd)
   }
 
   // pub fn t_app_act(app: &mut App, ab: AbilityID, dtarget: DecidedTarget) -> Result<(), GameError> {

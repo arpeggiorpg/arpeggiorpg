@@ -1,12 +1,8 @@
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use std::io::Read;
 use std::iter::FromIterator;
-use std::path::Path;
 
 use error_chain::bail;
-use serde_yaml;
 
 use crate::combat::*;
 use crate::creature::ChangedCreature;
@@ -156,17 +152,13 @@ impl Game {
   }
 
   /// Perform a GameCommand on the current Game.
-  pub fn perform_command(
-    &self, cmd: GameCommand, saved_game_path: &Path, module_path: Option<&Path>,
-  ) -> Result<ChangedGame, GameError> {
+  pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
-      LoadModule { ref name, ref path, source } => {
-        let app = load_app_from_path(saved_game_path, module_path, source, name)?;
-        let module = app.current_game;
+      LoadModule { ref name, ref path, source, game } => {
         self.change_with(GameLog::LoadModule {
           name: name.clone(),
-          module,
+          module: game,
           path: path.clone(),
           source,
         })
@@ -1316,33 +1308,6 @@ impl ChangedGame {
 
 fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.to_string())) }
 
-pub fn load_app_from_path(
-  saved_game_path: &Path, module_path: Option<&Path>, source: ModuleSource, filename: &str,
-) -> Result<App, GameError> {
-  let filename = match (source, module_path) {
-    (ModuleSource::Module, Some(module_path)) => module_path.join(filename),
-    (ModuleSource::Module, None) => return Err(GameError::NoModuleSource),
-    (ModuleSource::SavedGame, _) => saved_game_path.join(filename),
-  };
-  let app_string = {
-    let mut appf = File::open(filename.clone())
-      .map_err(|e| GameError::CouldNotOpenAppFile(filename.to_string_lossy().into(), e))?;
-    let mut apps = String::new();
-    appf.read_to_string(&mut apps).unwrap();
-    apps
-  };
-  let app: App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
-    println!("{filename:?} is JSON");
-    serde_json::from_str(&app_string).map_err(GameError::CouldNotParseAppJSON)?
-  } else {
-    println!("{filename:?} is YAML");
-    serde_yaml::from_str(&app_string).map_err(GameError::CouldNotParseAppYAML)?
-  };
-
-  app.current_game.validate_campaign()?;
-  Ok(app)
-}
-
 #[cfg(test)]
 pub mod test {
   use std::collections::HashSet;
@@ -1428,7 +1393,7 @@ pub mod test {
   }
 
   pub fn perf(game: &Game, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    game.perform_command(cmd, &PathBuf::from(""), None)
+    game.perform_command(cmd)
   }
 
   pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
@@ -1439,8 +1404,6 @@ pub mod test {
     let non = CreatureID::gen();
     let result = game.perform_command(
       GameCommand::StartCombat(t_scene_id(), vec![non]),
-      &PathBuf::from(""),
-      None,
     );
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
@@ -1453,8 +1416,6 @@ pub mod test {
     let game = t_game();
     let result = game.perform_command(
       GameCommand::StartCombat(t_scene_id(), vec![]),
-      &PathBuf::from(""),
-      None,
     );
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
