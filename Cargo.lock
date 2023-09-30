@@ -1496,8 +1496,6 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_derive",
- "serde_json",
- "serde_yaml",
  "thiserror",
  "ts-rs",
  "uom",

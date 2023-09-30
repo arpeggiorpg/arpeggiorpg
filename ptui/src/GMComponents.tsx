@@ -1229,7 +1229,7 @@ export function ImportModule(props: { path: T.FolderPath; onDone: () => void }) 
   return <Form>
     <GameList onSelect={(source, name) => {
       const suffixed_path = path.concat(name);
-      A.sendCommand({ LoadModule: {path: suffixed_path, name, source }});
+      A.loadModule({path: suffixed_path, name, source});
       onDone();
     }} />
     <Form.Button onClick={onDone}>Cancel</Form.Button>

@@ -27,6 +27,7 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
     )
     .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
     .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
+    .service(web::resource("saved_games/{source}/{name}/load_into").route(web::post().to(load_into_folder)))
     .service(web::resource("modules/{name}").route(web::post().to(save_module)))
     .service(web::resource("new_game").route(web::post().to(new_game)));
 }
@@ -90,6 +91,27 @@ async fn list_saved_games(
 
 async fn load_saved_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
   string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::SavedGame).await?)
+}
+
+
+#[derive(serde::Deserialize)]
+struct LoadIntoFolderPath {
+
+  path: String
+}
+
+async fn load_into_folder(actor: web::Data<AppActor>, route: web::Path<(String, String)>, query: web::Query<LoadIntoFolderPath>) -> impl Responder {
+  let source_string = route.0.as_ref();
+  let source = match source_string {
+    "saved_game" => ModuleSource::SavedGame,
+    "module" => ModuleSource::Module,
+    _ => return string_json_response(format!("{{'error': 'bad source {source_string}'}}"))
+  };
+  let name = route.1.clone();
+  println!("Trying to parse {}: {:?}", &query.path, query.path.parse::<foldertree::FolderPath>());
+  let path: foldertree::FolderPath = query.path.parse::<foldertree::FolderPath>()?;
+  println!("Loading {source:?} {name} at {path}");
+  string_json_response(actor.load_into_folder(source, name, path).await?)
 }
 
 async fn load_module_as_game(

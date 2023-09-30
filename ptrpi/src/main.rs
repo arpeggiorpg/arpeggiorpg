@@ -16,7 +16,7 @@ use structopt::StructOpt;
 
 use tonic::transport::Server as TonicServer;
 
-use pandt::game::load_app_from_path;
+use actor::load_app_from_path;
 use pandt::types::{App, ModuleSource};
 
 #[tokio::main]

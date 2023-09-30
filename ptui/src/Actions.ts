@@ -174,6 +174,12 @@ export async function loadGame(source: T.ModuleSource, name: string): Promise<vo
   resetApp(app);
 }
 
+export async function loadModule(opts: { path: T.FolderPath, name: string, source: T.ModuleSource }): Promise<void> {
+  const source = {"Module": "module", "SavedGame": "user"}[opts.source];
+  const url = `${RPI_URL}/saved_games/${source}/${opts.name}/load_into?path=${T.encodeFolderPath(opts.path)}`;
+  await ptfetch(url, {method: "POST"}, Z.any());
+}
+
 export async function fetchSavedGames(): Promise<{ games: Array<string>, modules: Array<string> }> {
   const games = await runRPC(() => ptclient.listSavedGames({}));
   return games.response;
@@ -183,14 +189,14 @@ export async function saveGame(game: string): Promise<undefined> {
   await runRPC(() => ptclient.saveGame({ name: game }));
 }
 
-export function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
+export async function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
   const url = `${RPI_URL}/modules/${name}`;
   const opts = {
     method: 'POST',
     body: JSON.stringify(T.encodeFolderPath(path)),
     headers: { "content-type": "application/json" },
   };
-  return ptfetch(url, opts, Z.any().transform(() => undefined));
+  await ptfetch(url, opts, Z.any());
 }
 
 export async function sendCommand(cmd: T.GameCommand) {

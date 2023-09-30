@@ -1,10 +1,10 @@
 use std::fs;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Error;
+use anyhow::{Error, anyhow};
 use futures::channel::oneshot;
 use log::{debug, error, info};
 use thiserror;
@@ -12,7 +12,6 @@ use thiserror;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-use pandt::game::load_app_from_path;
 use pandt::types;
 
 /// Not really an actor for now, we're just pretending.
@@ -83,12 +82,11 @@ impl AppActor {
   }
 
   pub async fn perform_command(&self, command: types::GameCommand) -> Result<String, Error> {
-    let module_path = self.module_path.as_deref();
     let log_cmd = command.clone();
     info!("perform_command:start: {:?}", &log_cmd);
     let result = {
       let mut app = self.app.lock().await;
-      let result = app.perform_command(command, &self.saved_game_path, module_path);
+      let result = app.perform_command(command);
       // Convert the rich error into a generic string error to serialize back to the client
       let result = result.map_err(|e| format!("Error: {}", e));
       let result = result.map(|(g, l)| (types::RPIGame(g), l));
@@ -139,6 +137,14 @@ impl AppActor {
     *self.app.lock().await = app;
     self.ping_waiters().await;
     result
+  }
+
+  pub async fn load_into_folder(
+    &self, source: types::ModuleSource, name: String, folder_path: foldertree::FolderPath
+  ) -> Result<String, Error> {
+    let app = load_app_from_path(&self.saved_game_path, self.module_path.as_deref(), source, &name)?;
+    let command = types::GameCommand::LoadModule { name: name, source: source, game: app.current_game, path: folder_path };
+    self.perform_command(command).await
   }
 
   pub async fn save_game(&self, name: String) -> Result<String, Error> {
@@ -195,4 +201,32 @@ fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
     }
   }
   Ok(new_path)
+}
+
+
+pub fn load_app_from_path(
+  saved_game_path: &Path, module_path: Option<&Path>, source: types::ModuleSource, filename: &str,
+) -> Result<types::App, Error> {
+  let filename = match (source, module_path) {
+    (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
+    (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
+    (types::ModuleSource::SavedGame, _) => saved_game_path.join(filename),
+  };
+  let app_string = {
+    let mut appf = fs::File::open(filename.clone())
+      .map_err(|_e| anyhow!("Could not open game file {filename:?}"))?;
+    let mut apps = String::new();
+    appf.read_to_string(&mut apps).unwrap();
+    apps
+  };
+  let app: types::App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
+    println!("{filename:?} is JSON");
+    serde_json::from_str(&app_string).map_err(|_e| anyhow!("Could not parse JSON"))?
+  } else {
+    println!("{filename:?} is YAML");
+    serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
+  };
+
+  app.current_game.validate_campaign()?;
+  Ok(app)
 }
