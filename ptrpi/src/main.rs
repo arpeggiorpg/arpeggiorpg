@@ -81,7 +81,7 @@ mod test {
 
   #[tokio::test]
   async fn load_samplegame_yaml() {
-    let actor = actor::AppActor::new(Default::default(), Path::new("sample_games").to_path_buf(), None, None);
+    let actor = actor::AppActor::new(Default::default(), Some(Path::new("sample_games").to_path_buf()), None, None);
     actor.load_saved_game("samplegame.yaml", ModuleSource::SavedGame).await.unwrap();
   }
 }
