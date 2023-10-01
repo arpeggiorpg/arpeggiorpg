@@ -1,21 +1,26 @@
-use std::fs;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+  fs,
+  io::{Read, Write},
+  path::{Path, PathBuf},
+  sync::Arc,
+  time::Duration,
+};
 
 use anyhow::{anyhow, Error};
 use futures::channel::oneshot;
-use google_cloud_storage::http::objects::list::ListObjectsRequest;
 use google_cloud_storage::{
   client::Client as StorageClient,
-  http::objects::upload::{Media, UploadObjectRequest, UploadType},
+  http::objects::{
+    download::Range,
+    get::GetObjectRequest,
+    list::ListObjectsRequest,
+    upload::{Media, UploadObjectRequest, UploadType},
+  },
 };
 use log::{debug, error, info};
 use thiserror;
 
-use tokio::sync::Mutex;
-use tokio::time::timeout;
+use tokio::{sync::Mutex, time::timeout};
 
 use pandt::types;
 
@@ -196,8 +201,10 @@ impl AppActor {
     Ok(result)
   }
 
-  pub async fn load_saved_game(&self, name: &str, source: types::ModuleSource) -> Result<String, Error> {
-    let app = self.load_app_from_path(source, name)?;
+  pub async fn load_saved_game(
+    &self, name: &str, source: types::ModuleSource,
+  ) -> Result<String, Error> {
+    let app = self.load_app_from_path(source, name).await?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
     self.ping_waiters().await;
@@ -207,8 +214,7 @@ impl AppActor {
   pub async fn load_into_folder(
     &self, source: types::ModuleSource, name: String, folder_path: foldertree::FolderPath,
   ) -> Result<String, Error> {
-    let app =
-      self.load_app_from_path(source, &name)?;
+    let app = self.load_app_from_path(source, &name).await?;
     let command = types::GameCommand::LoadModule {
       name: name,
       source: source,
@@ -266,31 +272,46 @@ impl AppActor {
     Ok(())
   }
 
-  pub fn load_app_from_path(&self, source: types::ModuleSource, filename: &str) -> Result<types::App, Error> {
-    let filename = match (source, &self.module_path) {
-      (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
-      (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
-      (types::ModuleSource::SavedGame, _) => self.saved_game_path.join(filename),
-    };
-    let app_string = {
-      let mut appf = fs::File::open(filename.clone())
-        .map_err(|_e| anyhow!("Could not open game file {filename:?}"))?;
-      let mut apps = String::new();
-      appf.read_to_string(&mut apps).unwrap();
-      apps
-    };
-    let app: types::App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
-      println!("{filename:?} is JSON");
-      serde_json::from_str(&app_string).map_err(|_e| anyhow!("Could not parse JSON"))?
+  pub async fn load_app_from_path(
+    &self, source: types::ModuleSource, filename: &str,
+  ) -> Result<types::App, Error> {
+    let app: types::App = if let Some((bucket, sclient)) = &self.storage_client {
+      let sclient = sclient.lock().await;
+      let filename = match source {
+        types::ModuleSource::Module => format!("modules/{filename}"),
+        types::ModuleSource::SavedGame => format!("games/public/{filename}"),
+      };
+      let data = sclient
+        .download_object(
+          &GetObjectRequest { object: filename, bucket: bucket.to_string(), ..Default::default() },
+          &Range::default(),
+        )
+        .await?;
+      serde_yaml::from_slice(&data)?
     } else {
-      println!("{filename:?} is YAML");
-      serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
+      let filename = match (source, &self.module_path) {
+        (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
+        (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
+        (types::ModuleSource::SavedGame, _) => self.saved_game_path.join(filename),
+      };
+      let app_string = {
+        let mut appf = fs::File::open(filename.clone())
+          .map_err(|_e| anyhow!("Could not open game file {filename:?}"))?;
+        let mut apps = String::new();
+        appf.read_to_string(&mut apps).unwrap();
+        apps
+      };
+      if filename.extension() == Some(std::ffi::OsStr::new("json")) {
+        println!("{filename:?} is JSON");
+        serde_json::from_str(&app_string).map_err(|_e| anyhow!("Could not parse JSON"))?
+      } else {
+        println!("{filename:?} is YAML");
+        serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
+      }
     };
-
     app.current_game.validate_campaign()?;
     Ok(app)
   }
-
 }
 
 fn app_to_string(app: &types::App) -> Result<String, Error> {
@@ -315,4 +336,3 @@ fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
   }
   Ok(new_path)
 }
-
