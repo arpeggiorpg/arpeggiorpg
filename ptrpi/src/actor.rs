@@ -1,19 +1,17 @@
 use std::fs;
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Error, anyhow};
+use anyhow::{anyhow, Error};
 use futures::channel::oneshot;
+use google_cloud_storage::{
+  client::Client as StorageClient,
+  http::objects::upload::{Media, UploadObjectRequest, UploadType},
+};
 use log::{debug, error, info};
 use thiserror;
-use google_cloud_storage::{
-  client::{Client as StorageClient},
-  http::{
-    objects::{
-      upload::{Media, UploadObjectRequest, UploadType}}}};
-
 
 use tokio::sync::Mutex;
 use tokio::time::timeout;
@@ -31,11 +29,15 @@ pub struct AppActor {
 }
 
 impl AppActor {
-  pub fn new(app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>, storage_client: Option<(String, StorageClient)>) -> AppActor {
+  pub fn new(
+    app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>,
+    storage_client: Option<(String, StorageClient)>,
+  ) -> AppActor {
     AppActor {
       app: Arc::new(Mutex::new(app)),
       // TODO: this probably needs to move inside the same Mutex that protects app.
-      storage_client: storage_client.map(|(bucket, sclient)| (bucket, Arc::new(Mutex::new(sclient)))),
+      storage_client: storage_client
+        .map(|(bucket, sclient)| (bucket, Arc::new(Mutex::new(sclient)))),
       saved_game_path,
       module_path,
       waiters: Arc::new(Mutex::new(vec![])),
@@ -149,10 +151,16 @@ impl AppActor {
   }
 
   pub async fn load_into_folder(
-    &self, source: types::ModuleSource, name: String, folder_path: foldertree::FolderPath
+    &self, source: types::ModuleSource, name: String, folder_path: foldertree::FolderPath,
   ) -> Result<String, Error> {
-    let app = load_app_from_path(&self.saved_game_path, self.module_path.as_deref(), source, &name)?;
-    let command = types::GameCommand::LoadModule { name: name, source: source, game: app.current_game, path: folder_path };
+    let app =
+      load_app_from_path(&self.saved_game_path, self.module_path.as_deref(), source, &name)?;
+    let command = types::GameCommand::LoadModule {
+      name: name,
+      source: source,
+      game: app.current_game,
+      path: folder_path,
+    };
     self.perform_command(command).await
   }
 
@@ -187,16 +195,22 @@ impl AppActor {
     fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
     if let Some((bucket, sclient)) = &self.storage_client {
       let sclient = sclient.lock().await;
-      let upload_type = UploadType::Simple(Media::new(name.to_string()));
-      sclient.upload_object(
-        &UploadObjectRequest {
-          bucket: bucket.clone(),
-          ..Default::default()
-      }, yaml, &upload_type).await?;
+      // TODO: this will need to scope saved games per-user in the future
+      let upload_type = UploadType::Simple(Media {
+        name: format!("games/public/{name}").into(),
+        content_type: "text/vnd.yaml".to_string().into(),
+        content_length: None,
+      });
+      sclient
+        .upload_object(
+          &UploadObjectRequest { bucket: bucket.clone(), ..Default::default() },
+          yaml,
+          &upload_type,
+        )
+        .await?;
     }
     Ok(())
   }
-
 }
 
 fn app_to_string(app: &types::App) -> Result<String, Error> {
@@ -221,7 +235,6 @@ fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
   }
   Ok(new_path)
 }
-
 
 pub fn load_app_from_path(
   saved_game_path: &Path, module_path: Option<&Path>, source: types::ModuleSource, filename: &str,
