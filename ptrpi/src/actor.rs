@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Error};
 use futures::channel::oneshot;
+use google_cloud_storage::http::objects::list::ListObjectsRequest;
 use google_cloud_storage::{
   client::Client as StorageClient,
   http::objects::upload::{Media, UploadObjectRequest, UploadType},
@@ -139,26 +140,59 @@ impl AppActor {
     Ok(targets)
   }
 
+  /// List the items in a particular prefix, returning a Vec<String> that *don't* contain the prefix
+  async fn list_bucket_items(
+    &self, bucket: &str, sclient: &StorageClient, prefix: &str,
+  ) -> Result<Vec<String>, Error> {
+    let list_response = sclient
+      .list_objects(&ListObjectsRequest {
+        bucket: bucket.to_string(),
+        prefix: Some(prefix.to_string()),
+        ..ListObjectsRequest::default()
+      })
+      .await?;
+    let items = list_response
+      .items
+      .unwrap_or(vec![])
+      .into_iter()
+      .map(|item| {
+        item
+          .name
+          .strip_prefix(prefix)
+          .expect("google cloud storage should only return objects with the given prefix")
+          .to_string()
+      })
+      .collect();
+    Ok(items)
+  }
+
   pub async fn list_saved_games(&self) -> Result<(Vec<String>, Vec<String>), Error> {
-    fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
-      let mut result = vec![];
-      for mpath in fs::read_dir(path)? {
-        let path = mpath?;
-        if path.file_type()?.is_file() {
-          match path.file_name().into_string() {
-            Ok(s) => result.push(s),
-            Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
+    let result = if let Some((bucket, sclient)) = &self.storage_client {
+      let sclient = sclient.lock().await;
+      let modules = self.list_bucket_items(bucket, &sclient, "modules/").await?;
+      let games = self.list_bucket_items(bucket, &sclient, "games/public/").await?;
+      (modules, games)
+    } else {
+      fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
+        let mut result = vec![];
+        for mpath in fs::read_dir(path)? {
+          let path = mpath?;
+          if path.file_type()?.is_file() {
+            match path.file_name().into_string() {
+              Ok(s) => result.push(s),
+              Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
+            }
           }
         }
+        Ok(result)
       }
-      Ok(result)
-    }
 
-    let modules = match self.module_path {
-      Some(ref path) => list_dir_into_strings(path.as_ref())?,
-      None => vec![],
+      let modules = match self.module_path {
+        Some(ref path) => list_dir_into_strings(path.as_ref())?,
+        None => vec![],
+      };
+      (modules, list_dir_into_strings(&self.saved_game_path)?)
     };
-    let result = (modules, list_dir_into_strings(&self.saved_game_path)?);
     Ok(result)
   }
 
