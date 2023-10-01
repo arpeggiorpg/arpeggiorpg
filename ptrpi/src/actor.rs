@@ -216,8 +216,8 @@ impl AppActor {
   ) -> Result<String, Error> {
     let app = self.load_app_from_path(source, &name).await?;
     let command = types::GameCommand::LoadModule {
-      name: name,
-      source: source,
+      name,
+      source,
       game: app.current_game,
       path: folder_path,
     };
@@ -225,7 +225,7 @@ impl AppActor {
   }
 
   pub async fn save_game(&self, name: String) -> Result<String, Error> {
-    self.save_app(&*self.app.lock().await, &name).await?;
+    self.save_app(&*self.app.lock().await, &name, types::ModuleSource::SavedGame).await?;
     Ok("{}".to_string())
   }
 
@@ -234,8 +234,7 @@ impl AppActor {
   ) -> Result<String, Error> {
     let new_game = self.app.lock().await.current_game.export_module(&folder_path)?;
     let new_app = types::App::new(new_game);
-    // FIXME: save a module to a separate directory? Or at least with a different extension?
-    self.save_app(&new_app, &name).await?;
+    self.save_app(&new_app, &name, types::ModuleSource::Module).await?;
     Ok("{}".to_string())
   }
 
@@ -247,17 +246,29 @@ impl AppActor {
     app_to_string(&app)
   }
 
-  async fn save_app(&self, app: &types::App, name: &str) -> Result<(), Error> {
-    let new_path = child_path(&self.saved_game_path, name)?;
+  async fn save_app(
+    &self, app: &types::App, name: &str, target: types::ModuleSource,
+  ) -> Result<(), Error> {
+    let new_path = match (target, self.module_path.as_deref()) {
+      (types::ModuleSource::SavedGame, _) => child_path(&self.saved_game_path, name)?,
+      (types::ModuleSource::Module, Some(module_path)) => child_path(module_path, name)?,
+      // this is dumb
+      (types::ModuleSource::Module, None) => child_path(&self.saved_game_path, name)?,
+    };
     // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the
     // app, without the extra magic that decorates the data with dynamic data for clients.
     let yaml = serde_yaml::to_string(app)?;
     fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+
     if let Some((bucket, sclient)) = &self.storage_client {
       let sclient = sclient.lock().await;
       // TODO: this will need to scope saved games per-user in the future
+      let prefix = match target {
+        types::ModuleSource::SavedGame => "games/public",
+        types::ModuleSource::Module => "modules",
+      };
       let upload_type = UploadType::Simple(Media {
-        name: format!("games/public/{name}").into(),
+        name: format!("{prefix}/{name}").into(),
         content_type: "text/vnd.yaml".to_string().into(),
         content_length: None,
       });

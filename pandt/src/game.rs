@@ -36,6 +36,15 @@ impl Game {
         new_game.scenes.insert(self.get_scene(*sid)?.clone());
       }
     }
+
+    // TODO FIXME RADIX: There are *other* references to game objects that we need to consider. This
+    // may be something we should actually surface to the user as a warning when exporting a folder
+    // as a module. At the very least, it would be better to fail during export rather than
+    // exporting a module that can't be loaded (or which can be loaded and then breaks
+    // serialization).
+    // - Creatures inside the module may have classes outside of the module.
+    // - Scenes inside the module may have hotspots to other scenes outside of the module.
+
     new_game.validate_campaign()?;
     Ok(new_game)
   }
