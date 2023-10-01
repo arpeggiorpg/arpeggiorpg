@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
   let opts = Opts::from_args();
   let saved_game_path =
-    fs::canonicalize(opts.saved_game_path).expect("Couldn't canonicalize game dir");
+    opts.saved_game_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize game dir"));
   let module_path =
     opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
 
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 struct Opts {
   /// The directory where saved games should be stored
   #[structopt(long = "saved-games", parse(from_os_str))]
-  saved_game_path: PathBuf,
+  saved_game_path: Option<PathBuf>,
 
   /// The directory where read-only modules should be loaded from
   #[structopt(long = "modules", parse(from_os_str))]
@@ -84,7 +84,7 @@ struct Opts {
 
 #[cfg(test)]
 mod test {
-  use std::path::{Path};
+  use std::path::Path;
 
   use pandt::types::ModuleSource;
   use crate::actor;

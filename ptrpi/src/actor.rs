@@ -30,13 +30,13 @@ pub struct AppActor {
   pub app: Arc<Mutex<types::App>>,
   pub storage_client: Option<(String, Arc<Mutex<StorageClient>>)>,
   pub waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
-  pub saved_game_path: PathBuf,
+  pub saved_game_path: Option<PathBuf>,
   pub module_path: Option<PathBuf>,
 }
 
 impl AppActor {
   pub fn new(
-    app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>,
+    app: types::App, saved_game_path: Option<PathBuf>, module_path: Option<PathBuf>,
     storage_client: Option<(String, StorageClient)>,
   ) -> AppActor {
     AppActor {
@@ -177,7 +177,7 @@ impl AppActor {
       let modules = self.list_bucket_items(bucket, &sclient, "modules/").await?;
       let games = self.list_bucket_items(bucket, &sclient, "games/public/").await?;
       (modules, games)
-    } else {
+    } else if let Some(saved_game_path) = &self.saved_game_path {
       fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
         let mut result = vec![];
         for mpath in fs::read_dir(path)? {
@@ -196,7 +196,9 @@ impl AppActor {
         Some(ref path) => list_dir_into_strings(path.as_ref())?,
         None => vec![],
       };
-      (modules, list_dir_into_strings(&self.saved_game_path)?)
+      (modules, list_dir_into_strings(&saved_game_path)?)
+    } else {
+      return Err(anyhow!("No saved game path or google storage configured"));
     };
     Ok(result)
   }
@@ -249,16 +251,20 @@ impl AppActor {
   async fn save_app(
     &self, app: &types::App, name: &str, target: types::ModuleSource,
   ) -> Result<(), Error> {
-    let new_path = match (target, self.module_path.as_deref()) {
-      (types::ModuleSource::SavedGame, _) => child_path(&self.saved_game_path, name)?,
-      (types::ModuleSource::Module, Some(module_path)) => child_path(module_path, name)?,
-      // this is dumb
-      (types::ModuleSource::Module, None) => child_path(&self.saved_game_path, name)?,
-    };
-    // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the
-    // app, without the extra magic that decorates the data with dynamic data for clients.
+
     let yaml = serde_yaml::to_string(app)?;
-    fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+
+    if let Some(saved_game_path) = &self.saved_game_path {
+      let new_path = match (target, self.module_path.as_deref()) {
+        (types::ModuleSource::SavedGame, _) => child_path(saved_game_path, name)?,
+        (types::ModuleSource::Module, Some(module_path)) => child_path(module_path, name)?,
+        // this is dumb
+        (types::ModuleSource::Module, None) => child_path(saved_game_path, name)?,
+      };
+      // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the
+      // app, without the extra magic that decorates the data with dynamic data for clients.
+      fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+    }
 
     if let Some((bucket, sclient)) = &self.storage_client {
       let sclient = sclient.lock().await;
@@ -299,11 +305,11 @@ impl AppActor {
         )
         .await?;
       serde_yaml::from_slice(&data)?
-    } else {
+    } else if let Some(saved_game_path) = &self.saved_game_path {
       let filename = match (source, &self.module_path) {
         (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
         (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
-        (types::ModuleSource::SavedGame, _) => self.saved_game_path.join(filename),
+        (types::ModuleSource::SavedGame, _) => saved_game_path.join(filename),
       };
       let app_string = {
         let mut appf = fs::File::open(filename.clone())
@@ -319,6 +325,8 @@ impl AppActor {
         println!("{filename:?} is YAML");
         serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
       }
+    } else {
+      return Err(anyhow!("No saved_game_path or google cloud configured"));
     };
     app.current_game.validate_campaign()?;
     Ok(app)
