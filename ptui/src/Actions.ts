@@ -181,8 +181,9 @@ export async function loadModule(opts: { path: T.FolderPath, name: string, sourc
 }
 
 export async function fetchSavedGames(): Promise<{ games: Array<string>, modules: Array<string> }> {
-  const games = await runRPC(() => ptclient.listSavedGames({}));
-  return games.response;
+  const url = `${RPI_URL}/saved_games`;
+  const [modules, games] = await ptfetch(url, {}, Z.tuple([Z.array(Z.string()), Z.array(Z.string())]));
+  return {games, modules};
 }
 
 export async function saveGame(game: string): Promise<undefined> {
