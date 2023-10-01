@@ -571,11 +571,10 @@ function SearchSelect<T>(props: SearchSelectProps<T>) {
 }
 
 function collectAllFolders(path: T.FolderPath, folder: T.Folder): Array<T.FolderPath> {
-  return folder.children.keySeq().toArray().flatMap(
-    name => {
-      const subfolder = path.concat(name);
-      return [subfolder].concat(collectAllFolders(path.concat(name), folder.children.get(name)!));
-    });
+  return [path].concat(folder.children.keySeq().toArray().flatMap(
+    name =>
+       collectAllFolders(path.concat(name), folder.children.get(name)!)
+    ));
 }
 
 function collectFolderObjects<T>(
