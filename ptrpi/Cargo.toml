@@ -22,11 +22,5 @@ serde_json = "1.0"
 serde_yaml = "0.8"
 structopt = "0.3"
 tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi-thread"]}
-tonic = "0.10"
-tonic-web = "0.10"
-prost = "0.12.1"
 uom = {version = "0.35", default_features = false}
 google-cloud-storage = "0.13.1"
-
-[build-dependencies]
-tonic-build = "0.10"

@@ -5,21 +5,11 @@
 
 import * as Z from "zod";
 
-import { RpcError } from "@protobuf-ts/runtime-rpc";
-import { GrpcWebFetchTransport } from "@protobuf-ts/grpcweb-transport";
-
-import { PTClient } from "../proto/pandt.client";
-import * as RPC from "../proto/pandt";
 import * as T from "./PTTypes";
 import { getState } from "./Model";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
-
-// TODO: I guess eventually this should just be the RPI_URL
-const transport = new GrpcWebFetchTransport({ baseUrl: "http://localhost:50051" });
-const ptclient = new PTClient(transport);
-
 
 
 export async function decodeFetch<J>(
@@ -187,7 +177,8 @@ export async function fetchSavedGames(): Promise<{ games: Array<string>, modules
 }
 
 export async function saveGame(game: string): Promise<undefined> {
-  await runRPC(() => ptclient.saveGame({ name: game }));
+  const url = `${RPI_URL}/saved_games/user/${game}`;
+  await ptfetch(url, {method: 'POST'}, Z.any());
 }
 
 export async function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
@@ -276,40 +267,13 @@ export function requestCombatAbility(
   }
 }
 
-function pt2rpc(p: T.Point3): RPC.Point3 {
-  return { x: BigInt(p.x), y: BigInt(p.y), z: BigInt(p.z) };
-}
-
-function rpc2pt(p: RPC.Point3): T.Point3 {
-  return new T.Point3(Number(p.x), Number(p.y), Number(p.z));
-}
-
 export async function fetchAbilityTargets(
   sceneId: T.SceneID, actorId: T.CreatureID, abilityId: T.AbilityID, point: T.Point3
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const result = await runRPC(() => ptclient.previewVolumeTargets({
-    sceneId, actorId, abilityId, point: pt2rpc(point)
-  }));
+  const url = `${RPI_URL}/preview_volume_targets/${sceneId}/${actorId}/${abilityId}/${point.x}/${point.y}/${point.z}`;
+  const result = await ptfetch(url, {method: 'POST'}, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
   return {
-    points: result.response.points.map(rpc2pt),
-    creatures: result.response.creatures
+    creatures: result[0],
+    points: result[1],
   };
-}
-
-async function runRPC<T>(f: () => PromiseLike<T> | T): Promise<T> {
-  try {
-    const r = await f();
-    return r;
-  } catch (e) {
-    if (e instanceof RpcError) {
-      console.log("RPC ERROR", decodeURI(e.message));
-      getState().setError(decodeURI(e.message));
-    }
-    throw e;
-  }
-}
-
-export async function sayHello() {
-  const { response } = await ptclient.sayHello({ name: "Radix" });
-  console.log("said hello!", response);
 }
