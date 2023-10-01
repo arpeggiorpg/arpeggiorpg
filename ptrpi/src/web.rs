@@ -1,9 +1,4 @@
-use std::fs;
-use std::path::Path;
-
 use actix_web::{web, HttpResponse, Responder};
-use anyhow::Error;
-use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, SceneID};
 
@@ -62,31 +57,8 @@ async fn target_options(
   string_json_response(actor.target_options(path.0, path.1, path.2).await?)
 }
 
-async fn list_saved_games(
-  actor: web::Data<AppActor>,
-) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {
-  // This does not require access to the app, so we don't dispatch to the actor.
-
-  fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
-    let mut result = vec![];
-    for mpath in fs::read_dir(path)? {
-      let path = mpath?;
-      if path.file_type()?.is_file() {
-        match path.file_name().into_string() {
-          Ok(s) => result.push(s),
-          Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
-        }
-      }
-    }
-    Ok(result)
-  }
-
-  let modules = match actor.module_path {
-    Some(ref path) => list_dir_into_strings(path.as_ref())?,
-    None => vec![],
-  };
-  let result = (modules, list_dir_into_strings(&actor.saved_game_path)?);
-  Ok(web::Json(result))
+async fn list_saved_games(actor: web::Data<AppActor>) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {
+  Ok(web::Json(actor.list_saved_games().await?))
 }
 
 async fn load_saved_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
