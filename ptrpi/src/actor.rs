@@ -196,11 +196,8 @@ impl AppActor {
     Ok(result)
   }
 
-  pub async fn load_saved_game(
-    &self, name: String, source: types::ModuleSource,
-  ) -> Result<String, Error> {
-    let module_path = self.module_path.as_deref();
-    let app = load_app_from_path(&self.saved_game_path, module_path, source, &name)?;
+  pub async fn load_saved_game(&self, name: &str, source: types::ModuleSource) -> Result<String, Error> {
+    let app = self.load_app_from_path(source, name)?;
     let result = app_to_string(&app);
     *self.app.lock().await = app;
     self.ping_waiters().await;
@@ -211,7 +208,7 @@ impl AppActor {
     &self, source: types::ModuleSource, name: String, folder_path: foldertree::FolderPath,
   ) -> Result<String, Error> {
     let app =
-      load_app_from_path(&self.saved_game_path, self.module_path.as_deref(), source, &name)?;
+      self.load_app_from_path(source, &name)?;
     let command = types::GameCommand::LoadModule {
       name: name,
       source: source,
@@ -268,6 +265,32 @@ impl AppActor {
     }
     Ok(())
   }
+
+  pub fn load_app_from_path(&self, source: types::ModuleSource, filename: &str) -> Result<types::App, Error> {
+    let filename = match (source, &self.module_path) {
+      (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
+      (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
+      (types::ModuleSource::SavedGame, _) => self.saved_game_path.join(filename),
+    };
+    let app_string = {
+      let mut appf = fs::File::open(filename.clone())
+        .map_err(|_e| anyhow!("Could not open game file {filename:?}"))?;
+      let mut apps = String::new();
+      appf.read_to_string(&mut apps).unwrap();
+      apps
+    };
+    let app: types::App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
+      println!("{filename:?} is JSON");
+      serde_json::from_str(&app_string).map_err(|_e| anyhow!("Could not parse JSON"))?
+    } else {
+      println!("{filename:?} is YAML");
+      serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
+    };
+
+    app.current_game.validate_campaign()?;
+    Ok(app)
+  }
+
 }
 
 fn app_to_string(app: &types::App) -> Result<String, Error> {
@@ -293,29 +316,3 @@ fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
   Ok(new_path)
 }
 
-pub fn load_app_from_path(
-  saved_game_path: &Path, module_path: Option<&Path>, source: types::ModuleSource, filename: &str,
-) -> Result<types::App, Error> {
-  let filename = match (source, module_path) {
-    (types::ModuleSource::Module, Some(module_path)) => module_path.join(filename),
-    (types::ModuleSource::Module, None) => return Err(anyhow!("No module source")),
-    (types::ModuleSource::SavedGame, _) => saved_game_path.join(filename),
-  };
-  let app_string = {
-    let mut appf = fs::File::open(filename.clone())
-      .map_err(|_e| anyhow!("Could not open game file {filename:?}"))?;
-    let mut apps = String::new();
-    appf.read_to_string(&mut apps).unwrap();
-    apps
-  };
-  let app: types::App = if filename.extension() == Some(std::ffi::OsStr::new("json")) {
-    println!("{filename:?} is JSON");
-    serde_json::from_str(&app_string).map_err(|_e| anyhow!("Could not parse JSON"))?
-  } else {
-    println!("{filename:?} is YAML");
-    serde_yaml::from_str(&app_string).map_err(|_e| anyhow!("Could not parse YAML"))?
-  };
-
-  app.current_game.validate_campaign()?;
-  Ok(app)
-}

@@ -62,7 +62,7 @@ async fn list_saved_games(actor: web::Data<AppActor>) -> Result<web::Json<(Vec<S
 }
 
 async fn load_saved_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
-  string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::SavedGame).await?)
+  string_json_response(actor.load_saved_game(&path.into_inner(), ModuleSource::SavedGame).await?)
 }
 
 
@@ -89,7 +89,7 @@ async fn load_into_folder(actor: web::Data<AppActor>, route: web::Path<(String, 
 async fn load_module_as_game(
   actor: web::Data<AppActor>, path: web::Path<String>,
 ) -> impl Responder {
-  string_json_response(actor.load_saved_game(path.into_inner(), ModuleSource::Module).await?)
+  string_json_response(actor.load_saved_game(&path.into_inner(), ModuleSource::Module).await?)
 }
 
 async fn save_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {

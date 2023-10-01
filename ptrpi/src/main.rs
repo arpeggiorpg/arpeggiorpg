@@ -16,8 +16,7 @@ use structopt::StructOpt;
 
 use tonic::transport::Server as TonicServer;
 
-use actor::load_app_from_path;
-use pandt::types::{App, ModuleSource};
+use pandt::types::ModuleSource;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,14 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let module_path =
     opts.module_path.map(|p| fs::canonicalize(p).expect("Couldn't canonicalize module dir"));
 
-  let app = match opts.load_game {
-    Some(initial_file) => {
-      load_app_from_path(&saved_game_path, None, ModuleSource::SavedGame, &initial_file)
-        .expect("Couldn't load app from file")
-    }
-    None => App::new(Default::default()),
-  };
-
   let cloud_storage = if let Some(bucket) = opts.google_bucket {
     let config = google_cloud_storage::client::ClientConfig::default().with_auth().await?;
     Some((bucket, google_cloud_storage::client::Client::new(config)))
@@ -49,7 +40,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     None
   };
 
-  let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone(), cloud_storage);
+  let actor = actor::AppActor::new(Default::default(), saved_game_path.clone(), module_path.clone(), cloud_storage);
+  if let Some(initial_file) = opts.load_game {
+    actor.load_saved_game(&initial_file, ModuleSource::SavedGame).await?;
+  }
+
   let webactor = actor.clone();
   let server = actix_web::HttpServer::new(move || {
     WebApp::new()
@@ -89,18 +84,14 @@ struct Opts {
 
 #[cfg(test)]
 mod test {
-  use std::path::Path;
+  use std::path::{Path};
 
   use pandt::types::ModuleSource;
+  use crate::actor;
 
-  #[test]
-  fn load_samplegame_yaml() {
-    crate::load_app_from_path(
-      Path::new("sample_games"),
-      None,
-      ModuleSource::SavedGame,
-      "samplegame.yaml",
-    )
-    .unwrap();
+  #[tokio::test]
+  async fn load_samplegame_yaml() {
+    let actor = actor::AppActor::new(Default::default(), Path::new("sample_games").to_path_buf(), None, None);
+    actor.load_saved_game("samplegame.yaml", ModuleSource::SavedGame).await.unwrap();
   }
 }

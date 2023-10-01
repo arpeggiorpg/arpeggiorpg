@@ -1132,7 +1132,7 @@ pub struct Runtime {
 
 /// A persistent data structure maintaining state for the whole app. It keeps track of the history
 /// of the whole game, and exposes the top-level methods that run simulations on the game.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, Default)]
 pub struct App {
   pub current_game: Game,
   pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
