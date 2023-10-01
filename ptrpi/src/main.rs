@@ -42,7 +42,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     None => App::new(Default::default()),
   };
 
-  let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone());
+  let cloud_storage = if let Some(bucket) = opts.google_bucket {
+    let config = google_cloud_storage::client::ClientConfig::default().with_auth().await?;
+    Some((bucket, google_cloud_storage::client::Client::new(config)))
+  } else {
+    None
+  };
+
+  let actor = actor::AppActor::new(app, saved_game_path.clone(), module_path.clone(), cloud_storage);
   let webactor = actor.clone();
   let server = actix_web::HttpServer::new(move || {
     WebApp::new()
@@ -75,6 +82,9 @@ struct Opts {
 
   #[structopt(long = "load-game")]
   load_game: Option<String>,
+
+  #[structopt(long = "google-bucket")]
+  google_bucket: Option<String>
 }
 
 #[cfg(test)]

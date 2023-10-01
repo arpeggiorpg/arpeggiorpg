@@ -8,6 +8,12 @@ use anyhow::{Error, anyhow};
 use futures::channel::oneshot;
 use log::{debug, error, info};
 use thiserror;
+use google_cloud_storage::{
+  client::{Client as StorageClient},
+  http::{
+    objects::{
+      upload::{Media, UploadObjectRequest, UploadType}}}};
+
 
 use tokio::sync::Mutex;
 use tokio::time::timeout;
@@ -18,15 +24,18 @@ use pandt::types;
 #[derive(Clone)]
 pub struct AppActor {
   pub app: Arc<Mutex<types::App>>,
+  pub storage_client: Option<(String, Arc<Mutex<StorageClient>>)>,
   pub waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
   pub saved_game_path: PathBuf,
   pub module_path: Option<PathBuf>,
 }
 
 impl AppActor {
-  pub fn new(app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>) -> AppActor {
+  pub fn new(app: types::App, saved_game_path: PathBuf, module_path: Option<PathBuf>, storage_client: Option<(String, StorageClient)>) -> AppActor {
     AppActor {
       app: Arc::new(Mutex::new(app)),
+      // TODO: this probably needs to move inside the same Mutex that protects app.
+      storage_client: storage_client.map(|(bucket, sclient)| (bucket, Arc::new(Mutex::new(sclient)))),
       saved_game_path,
       module_path,
       waiters: Arc::new(Mutex::new(vec![])),
@@ -148,7 +157,7 @@ impl AppActor {
   }
 
   pub async fn save_game(&self, name: String) -> Result<String, Error> {
-    save_app(&*self.app.lock().await, &name, &self.saved_game_path)?;
+    self.save_app(&*self.app.lock().await, &name).await?;
     Ok("{}".to_string())
   }
 
@@ -158,7 +167,7 @@ impl AppActor {
     let new_game = self.app.lock().await.current_game.export_module(&folder_path)?;
     let new_app = types::App::new(new_game);
     // FIXME: save a module to a separate directory? Or at least with a different extension?
-    save_app(&new_app, &name, &self.saved_game_path)?;
+    self.save_app(&new_app, &name).await?;
     Ok("{}".to_string())
   }
 
@@ -169,19 +178,29 @@ impl AppActor {
     self.ping_waiters().await;
     app_to_string(&app)
   }
+
+  async fn save_app(&self, app: &types::App, name: &str) -> Result<(), Error> {
+    let new_path = child_path(&self.saved_game_path, name)?;
+    // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the
+    // app, without the extra magic that decorates the data with dynamic data for clients.
+    let yaml = serde_yaml::to_string(app)?;
+    fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
+    if let Some((bucket, sclient)) = &self.storage_client {
+      let sclient = sclient.lock().await;
+      let upload_type = UploadType::Simple(Media::new(name.to_string()));
+      sclient.upload_object(
+        &UploadObjectRequest {
+          bucket: bucket.clone(),
+          ..Default::default()
+      }, yaml, &upload_type).await?;
+    }
+    Ok(())
+  }
+
 }
 
 fn app_to_string(app: &types::App) -> Result<String, Error> {
   Ok(serde_json::to_string(&types::RPIApp(app))?)
-}
-
-fn save_app(app: &types::App, name: &str, file_path: &PathBuf) -> Result<(), Error> {
-  let new_path = child_path(file_path, name)?;
-  // Note that we *don't* use RPIApp here, so we're getting plain-old-data serialization of the app,
-  // without the extra magic that decorates the data with dynamic data for clients.
-  let yaml = serde_yaml::to_string(app)?;
-  fs::File::create(new_path)?.write_all(yaml.as_bytes())?;
-  Ok(())
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, thiserror::Error, Debug)]

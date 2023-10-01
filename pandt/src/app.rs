@@ -140,7 +140,6 @@ mod test {
   use crate::app::*;
   use crate::game::test::*;
   use crate::types::test::*;
-  use std::path::PathBuf;
 
   pub fn t_app() -> App { App::new(t_game()) }
 
