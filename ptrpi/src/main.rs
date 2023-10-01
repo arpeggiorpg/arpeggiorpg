@@ -2,7 +2,6 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 
 mod actor;
-mod grpc;
 mod web;
 
 use std::env;
@@ -13,8 +12,6 @@ use actix_cors::Cors;
 use actix_web::{middleware::Logger, App as WebApp};
 use log::info;
 use structopt::StructOpt;
-
-use tonic::transport::Server as TonicServer;
 
 use pandt::types::ModuleSource;
 
@@ -52,15 +49,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       .wrap(Cors::permissive())
       .configure(|c| web::router(webactor.clone(), c))
   });
-  tokio::spawn(server.bind("0.0.0.0:1337")?.run());
-  println!("Started Actix Web server...");
-
-  let greeter = grpc::PtServer::new(grpc::Server::new(actor));
-  TonicServer::builder()
-    .accept_http1(true)
-    .add_service(tonic_web::enable(greeter))
-    .serve("0.0.0.0:50051".parse().unwrap())
-    .await?;
+  println!("Starting Actix Web server on port 1337.");
+  let _ = server.bind("0.0.0.0:1337")?.run().await;
   Ok(())
 }
 

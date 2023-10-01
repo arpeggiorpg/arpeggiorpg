@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, SceneID};
+use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
 use crate::actor::AppActor;
 
@@ -15,6 +15,10 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
     .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
     .service(
       web::resource("target_options/{scene_id}/{cid}/{abid}").route(web::get().to(target_options)),
+    )
+    .service(
+      web::resource("preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}")
+        .route(web::post().to(preview_volume_targets)),
     )
     .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
     .service(
@@ -55,6 +59,14 @@ async fn target_options(
   actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
 ) -> impl Responder {
   string_json_response(actor.target_options(path.0, path.1, path.2).await?)
+}
+
+async fn preview_volume_targets(
+  actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+) -> impl Responder {
+  let point = Point3::new(path.3, path.4, path.5);
+  let targets = actor.preview_volume_targets(path.0, path.1, path.2, point).await?;
+  string_json_response(serde_json::to_string(&targets)?)
 }
 
 async fn list_saved_games(actor: web::Data<AppActor>) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {

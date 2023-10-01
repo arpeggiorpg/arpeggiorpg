@@ -1,13 +1,12 @@
 import * as React from "react";
 
 import * as M from "./Model";
-import {startPoll, RPI_URL, sayHello} from "./Actions";
+import {startPoll, RPI_URL} from "./Actions";
 
 export function Main(props: React.PropsWithChildren) {
   const fetchStatus = M.useState(s => s.fetchStatus);
   // kick off a fetch of the app
   React.useEffect(() => { startPoll(); }, []);
-  React.useEffect(() => { sayHello(); }, []);
   if (!RPI_URL) {
     return <h1 style={{color: "red"}}>VITE_RPI_URL is not set</h1>
   }
