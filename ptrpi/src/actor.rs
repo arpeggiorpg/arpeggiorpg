@@ -139,6 +139,29 @@ impl AppActor {
     Ok(targets)
   }
 
+  pub async fn list_saved_games(&self) -> Result<(Vec<String>, Vec<String>), Error> {
+    fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
+      let mut result = vec![];
+      for mpath in fs::read_dir(path)? {
+        let path = mpath?;
+        if path.file_type()?.is_file() {
+          match path.file_name().into_string() {
+            Ok(s) => result.push(s),
+            Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
+          }
+        }
+      }
+      Ok(result)
+    }
+
+    let modules = match self.module_path {
+      Some(ref path) => list_dir_into_strings(path.as_ref())?,
+      None => vec![],
+    };
+    let result = (modules, list_dir_into_strings(&self.saved_game_path)?);
+    Ok(result)
+  }
+
   pub async fn load_saved_game(
     &self, name: String, source: types::ModuleSource,
   ) -> Result<String, Error> {
