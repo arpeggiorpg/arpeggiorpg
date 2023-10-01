@@ -26,6 +26,7 @@ tonic = "0.10"
 tonic-web = "0.10"
 prost = "0.12.1"
 uom = {version = "0.35", default_features = false}
+google-cloud-storage = "0.13.1"
 
 [build-dependencies]
 tonic-build = "0.10"
