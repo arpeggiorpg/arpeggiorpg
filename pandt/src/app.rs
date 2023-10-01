@@ -41,6 +41,11 @@ impl App {
     let snapshots = VecDeque::with_capacity(SNAPSHOTS);
     App { current_game: g, snapshots }
   }
+
+  /// See Game::perform_command
+  // RADIX: I think I want to move this to PTRPI, and completely get rid of App's in-memory
+  // maintenance of snapshots + GameLogs. The storage layer should manage snapshots and gamelogs in
+  // an append-only data store.
   pub fn perform_command(&mut self, cmd: GameCommand) -> Result<(&Game, Vec<GameLog>), GameError> {
     match cmd {
       GameCommand::Rollback(ref snapshot_idx, ref log_idx) => {
