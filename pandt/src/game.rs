@@ -152,6 +152,11 @@ impl Game {
   }
 
   /// Perform a GameCommand on the current Game.
+  ///
+  /// The result includes a new Game instance and a Vec of GameLogs. These GameLogs should be a
+  /// deterministic representation of the changes made to the Game, so they can be used to replay
+  /// history and get the same exact result. An Undo operation can be implemented by rolling back to
+  /// a previous game Snapshot and replaying until the desired GameLog.
   pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
@@ -1312,7 +1317,6 @@ fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.t
 pub mod test {
   use std::collections::HashSet;
   use std::iter::FromIterator;
-  use std::path::PathBuf;
 
   use maplit::hashset;
 
