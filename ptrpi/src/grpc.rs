@@ -1,9 +1,3 @@
-use log::error;
-use std::fs;
-use std::path::Path;
-
-use anyhow::Error;
-
 use tonic::{Request, Response, Status};
 mod rpc {
   tonic::include_proto!("pandt");
@@ -62,27 +56,7 @@ impl Pt for Server {
   async fn list_saved_games(
     &self, _request: Request<rpc::Empty>,
   ) -> RPCResult<rpc::ListSavedGamesReply> {
-    // This does not require access to the app, so we don't dispatch to the actor.
-
-    fn list_dir_into_strings(path: &Path) -> Result<Vec<String>, Error> {
-      let mut result = vec![];
-      for mpath in fs::read_dir(path)? {
-        let path = mpath?;
-        if path.file_type()?.is_file() {
-          match path.file_name().into_string() {
-            Ok(s) => result.push(s),
-            Err(x) => error!("Couldn't parse filename as unicode: {:?}", x),
-          }
-        }
-      }
-      Ok(result)
-    }
-
-    let modules = match self.actor.module_path {
-      Some(ref path) => list_dir_into_strings(path.as_ref()).map_err(map_err)?,
-      None => vec![],
-    };
-    let games = list_dir_into_strings(&self.actor.saved_game_path).map_err(map_err)?;
+    let (modules, games) = self.actor.list_saved_games().await.map_err(map_err)?;
     return Ok(Response::new(rpc::ListSavedGamesReply { modules, games }));
   }
 
