@@ -6,7 +6,7 @@ use std::{
   time::Duration,
 };
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Error, Context};
 use futures::channel::oneshot;
 use google_cloud_storage::{
   client::Client as StorageClient,
@@ -28,16 +28,18 @@ use pandt::types;
 #[derive(Clone)]
 pub struct AppActor {
   pub app: Arc<Mutex<types::App>>,
-  pub storage_client: Option<(String, Arc<Mutex<StorageClient>>)>,
   pub waiters: Arc<Mutex<Vec<oneshot::Sender<()>>>>,
+  pub storage_client: Option<(String, Arc<Mutex<StorageClient>>)>,
   pub saved_game_path: Option<PathBuf>,
   pub module_path: Option<PathBuf>,
+  pub google_client: Option<(String, String)>,
+  pub cached_certs: Arc<Mutex<google_signin::CachedCerts>>,
 }
 
 impl AppActor {
   pub fn new(
     app: types::App, saved_game_path: Option<PathBuf>, module_path: Option<PathBuf>,
-    storage_client: Option<(String, StorageClient)>,
+    storage_client: Option<(String, StorageClient)>, google_client: Option<(String, String)>
   ) -> AppActor {
     AppActor {
       app: Arc::new(Mutex::new(app)),
@@ -47,12 +49,29 @@ impl AppActor {
       saved_game_path,
       module_path,
       waiters: Arc::new(Mutex::new(vec![])),
+      google_client,
+      cached_certs: Arc::new(Mutex::new(google_signin::CachedCerts::new()))
     }
   }
 
-  /// The methods on this type return Strings containing JSON data.
-  /// That's because these responses are generated while a mutex is locked,
-  /// and we can't return a reference to the locked data outside of the guarded code.
+  // The methods on this type return Strings containing JSON data.
+  // That's because these responses are generated while a mutex is locked,
+  // and we can't return a reference to the locked data outside of the guarded code.
+
+
+  /// I'm not sure if there's really a use for this now; ALL endpoints need to
+  /// be validating the google token.
+  pub async fn validate_google_token(&self, id_token: String) -> Result<(), Error> {
+    let client_id = self.google_client.clone().ok_or(anyhow!("Need google client ID configured"))?.0;
+    let mut certs = self.cached_certs.lock().await;
+    certs.refresh_if_needed().await?;
+    let mut client = google_signin::Client::new();
+    client.audiences.push(client_id.to_string());
+    let id_info = client.verify(&id_token, &certs).await?;
+    println!("**** What've we got here? {:?} {:?} {:?}", id_info.email, id_info.email_verified, id_info.name);
+    Ok(())
+  }
+
   pub async fn get_app(&self) -> Result<String, Error> {
     let app = self.app.lock().await;
     app_to_string(&app)

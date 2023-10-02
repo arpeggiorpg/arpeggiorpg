@@ -2,19 +2,20 @@ import * as React from "react";
 import {createRoot} from "react-dom/client";
 
 import { Main } from "./Main";
+import { SignIn } from "./SignIn";
 
 async function getInnerComponent(component_name: string): Promise<JSX.Element> {
   switch (component_name) {
     case "gm": {
       const GMView = await import("./GMView")
-      return <GMView.GMMain />;
+      return <Main><GMView.GMMain /></Main>;
     }
     case "player": {
       const PlayerView = await import("./PlayerView");
-      return <PlayerView.PlayerMain />;
+      return <Main><PlayerView.PlayerMain /></Main>;
     }
     default:
-      throw new Error(`Unknown component ${component_name}`);
+      return <SignIn />;
   }
 }
 
@@ -23,18 +24,13 @@ let root;
 async function PT_renderMain(component_name: string, id: string) {
   const el = document.getElementById(id);
   const component = await getInnerComponent(component_name);
-  const comp = (
-    <Main>
-      {component}
-    </Main>
-  );
   if (!el) {
     console.error("where's the root!");
     return;
   }
   root = createRoot(el);
-  root.render(comp);
+  root.render(component);
 }
 
-const mode = new URLSearchParams(window.location.search).get("mode") || "player";
+const mode = new URLSearchParams(window.location.search).get("mode") || "unset";
 PT_renderMain(mode.toLowerCase(), "react-main");

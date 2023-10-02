@@ -1,4 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
+use anyhow::Error;
+use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
@@ -28,7 +30,18 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
     .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
     .service(web::resource("saved_games/{source}/{name}/load_into").route(web::post().to(load_into_folder)))
     .service(web::resource("modules/{name}").route(web::post().to(save_module)))
-    .service(web::resource("new_game").route(web::post().to(new_game)));
+    .service(web::resource("new_game").route(web::post().to(new_game)))
+    .service(web::resource("validate_google_token").route(web::post().to(validate_google_token)));
+}
+
+async fn validate_google_token(actor: web::Data<AppActor>, body: web::Bytes) -> impl Responder {
+  async fn result(actor: web::Data<AppActor>, body: &[u8]) -> Result<String, Error> {
+    let idtoken = std::str::from_utf8(body)?.to_string();
+    actor.validate_google_token(idtoken).await?;
+    Ok("{}".to_string())
+  }
+
+  response(result(actor, &*body).await)
 }
 
 async fn get_app(actor: web::Data<AppActor>) -> impl Responder {
@@ -121,4 +134,18 @@ async fn new_game(actor: web::Data<AppActor>) -> impl Responder {
 
 fn string_json_response(body: String) -> Result<HttpResponse, Box<dyn ::std::error::Error>> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))
+}
+
+
+fn response(response: Result<String, Error>) -> impl Responder {
+  match response {
+    Ok(s) => string_json_response(s),
+    Err(e) => {
+      let mut obj = std::collections::HashMap::new();
+      obj.insert("error", format!("{e:?}"));
+      let json = serde_json::to_string(&obj).expect("this had better not fail");
+      error!("Web Error: {e:?}");
+      Ok(HttpResponse::InternalServerError().content_type("application/json").body(json))
+    },
+  }
 }
