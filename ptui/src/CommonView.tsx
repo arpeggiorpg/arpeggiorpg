@@ -263,7 +263,7 @@ export class RemoveItem extends React.Component<
       RemoveItem: {
         owner: { Creature: creature.id },
         item_id: item.id,
-        // RADIX FIXME
+        // RADIX FIXME this count should be bigint from the beginning
         count: BigInt(this.state.count),
       }
     });

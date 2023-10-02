@@ -10,7 +10,7 @@ actix-web = "4.4.0"
 env_logger = "0.7"
 error-chain = "0.12.1"
 foldertree = {version = "*", path = "../foldertree"}
-anyhow = "1.0.75"
+anyhow = {version = "1.0.75", features = ["backtrace"]}
 thiserror = "1.0.48"
 futures = "0.3.1"
 http = "0.2.0"
@@ -24,3 +24,5 @@ structopt = "0.3"
 tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi-thread"]}
 uom = {version = "0.35", default_features = false}
 google-cloud-storage = "0.13.1"
+# Unfortunately this google-signin package seems pretty unmaintained.
+google-signin = { git = "https://github.com/wyyerd/google-signin-rs" }

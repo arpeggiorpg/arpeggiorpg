@@ -37,7 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     None
   };
 
-  let actor = actor::AppActor::new(Default::default(), saved_game_path.clone(), module_path.clone(), cloud_storage);
+  let google_oauth_details = opts.google_client.map(|s| {
+    let parts = s.split_once(":").expect("google-client should be of format {client_id}:{client_secret}");
+    return (parts.0.to_string(), parts.1.to_string())
+  });
+  let actor = actor::AppActor::new(Default::default(), saved_game_path.clone(), module_path.clone(), cloud_storage, google_oauth_details);
   if let Some(initial_file) = opts.load_game {
     actor.load_saved_game(&initial_file, ModuleSource::SavedGame).await?;
   }
@@ -69,7 +73,10 @@ struct Opts {
   load_game: Option<String>,
 
   #[structopt(long = "google-bucket")]
-  google_bucket: Option<String>
+  google_bucket: Option<String>,
+
+  #[structopt(long = "google-client")]
+  google_client: Option<String>,
 }
 
 #[cfg(test)]
@@ -81,7 +88,7 @@ mod test {
 
   #[tokio::test]
   async fn load_samplegame_yaml() {
-    let actor = actor::AppActor::new(Default::default(), Some(Path::new("sample_games").to_path_buf()), None, None);
+    let actor = actor::AppActor::new(Default::default(), Some(Path::new("sample_games").to_path_buf()), None, None, None);
     actor.load_saved_game("samplegame.yaml", ModuleSource::SavedGame).await.unwrap();
   }
 }

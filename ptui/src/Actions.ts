@@ -165,20 +165,20 @@ export async function loadGame(source: T.ModuleSource, name: string): Promise<vo
 }
 
 export async function loadModule(opts: { path: T.FolderPath, name: string, source: T.ModuleSource }): Promise<void> {
-  const source = {"Module": "module", "SavedGame": "user"}[opts.source];
+  const source = { "Module": "module", "SavedGame": "user" }[opts.source];
   const url = `${RPI_URL}/saved_games/${source}/${opts.name}/load_into?path=${T.encodeFolderPath(opts.path)}`;
-  await ptfetch(url, {method: "POST"}, Z.any());
+  await ptfetch(url, { method: "POST" }, Z.any());
 }
 
 export async function fetchSavedGames(): Promise<{ games: Array<string>, modules: Array<string> }> {
   const url = `${RPI_URL}/saved_games`;
   const [modules, games] = await ptfetch(url, {}, Z.tuple([Z.array(Z.string()), Z.array(Z.string())]));
-  return {games, modules};
+  return { games, modules };
 }
 
 export async function saveGame(game: string): Promise<undefined> {
   const url = `${RPI_URL}/saved_games/user/${game}`;
-  await ptfetch(url, {method: 'POST'}, Z.any());
+  await ptfetch(url, { method: 'POST' }, Z.any());
 }
 
 export async function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
@@ -271,9 +271,15 @@ export async function fetchAbilityTargets(
   sceneId: T.SceneID, actorId: T.CreatureID, abilityId: T.AbilityID, point: T.Point3
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
   const url = `${RPI_URL}/preview_volume_targets/${sceneId}/${actorId}/${abilityId}/${point.x}/${point.y}/${point.z}`;
-  const result = await ptfetch(url, {method: 'POST'}, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
+  const result = await ptfetch(url, { method: 'POST' }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
   return {
     creatures: result[0],
     points: result[1],
   };
+}
+
+export async function validateGoogleToken(idToken: string) {
+  const url = `${RPI_URL}/validate_google_token`;
+  const result = await ptfetch(url, { method: 'POST', body: idToken }, Z.any());
+  return result.token;
 }
