@@ -2010,6 +2010,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "anyhow",
+ "async-trait",
  "env_logger",
  "error-chain",
  "foldertree",
@@ -2027,6 +2028,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "uom",
+ "uuid",
 ]
 
 [[package]]
