@@ -5,6 +5,7 @@ authors = ["Christopher Armstrong"]
 edition = "2021"
 
 [dependencies]
+async-trait = "0.1.73"
 actix-cors = "0.6.4"
 actix-web = "4.4.0"
 env_logger = "0.7"
@@ -23,6 +24,7 @@ serde_yaml = "0.8"
 structopt = "0.3"
 tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi-thread"]}
 uom = {version = "0.35", default_features = false}
+uuid = { version = "0.8.1", features = ["v4", "serde"] }
 google-cloud-storage = "0.13.1"
 # Unfortunately this google-signin package seems pretty unmaintained.
 google-signin = { git = "https://github.com/wyyerd/google-signin-rs" }

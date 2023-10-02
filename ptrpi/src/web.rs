@@ -22,15 +22,7 @@ pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
       web::resource("preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}")
         .route(web::post().to(preview_volume_targets)),
     )
-    .service(web::resource("saved_games").route(web::get().to(list_saved_games)))
-    .service(
-      web::resource("saved_games/module/{name}/load").route(web::post().to(load_module_as_game)),
-    )
-    .service(web::resource("saved_games/user/{name}/load").route(web::post().to(load_saved_game)))
-    .service(web::resource("saved_games/user/{name}").route(web::post().to(save_game)))
     .service(web::resource("saved_games/{source}/{name}/load_into").route(web::post().to(load_into_folder)))
-    .service(web::resource("modules/{name}").route(web::post().to(save_module)))
-    .service(web::resource("new_game").route(web::post().to(new_game)))
     .service(web::resource("validate_google_token").route(web::post().to(validate_google_token)));
 }
 
@@ -82,15 +74,6 @@ async fn preview_volume_targets(
   string_json_response(serde_json::to_string(&targets)?)
 }
 
-async fn list_saved_games(actor: web::Data<AppActor>) -> Result<web::Json<(Vec<String>, Vec<String>)>, Box<dyn ::std::error::Error>> {
-  Ok(web::Json(actor.list_saved_games().await?))
-}
-
-async fn load_saved_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
-  string_json_response(actor.load_saved_game(&path.into_inner(), ModuleSource::SavedGame).await?)
-}
-
-
 #[derive(serde::Deserialize)]
 struct LoadIntoFolderPath {
 
@@ -117,19 +100,11 @@ async fn load_module_as_game(
   string_json_response(actor.load_saved_game(&path.into_inner(), ModuleSource::Module).await?)
 }
 
-async fn save_game(actor: web::Data<AppActor>, path: web::Path<String>) -> impl Responder {
-  string_json_response(actor.save_game(path.into_inner()).await?)
-}
-
 async fn save_module(
   actor: web::Data<AppActor>, path: web::Path<String>,
   folder_path: web::Json<::foldertree::FolderPath>,
 ) -> impl Responder {
   string_json_response(actor.save_module(path.into_inner(), folder_path.into_inner()).await?)
-}
-
-async fn new_game(actor: web::Data<AppActor>) -> impl Responder {
-  string_json_response(actor.new_game().await?)
 }
 
 fn string_json_response(body: String) -> Result<HttpResponse, Box<dyn ::std::error::Error>> {
