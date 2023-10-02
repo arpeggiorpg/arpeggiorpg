@@ -24,6 +24,87 @@ use tokio::{sync::Mutex, time::timeout};
 
 use pandt::types;
 
+
+/*
+
+## Multi-Tenancy
+
+What do we need to do to make this a proper multi-tenant service?
+(for now, let's still assume that everything is running on one server...)
+
+firestore
+/users/{id_info.sub} = {gm_of: GameID[], player_of: GameID[]}
+/gamelogs/{game_id}/{game_snapshot_idx} = GameLog[]
+
+pandt bucket:
+
+/games/{game_id}/{game_snapshot_idx}
+
+Game-specific stuff lives under https://ptui.com/g/{game_id}/
+
+When you hit the front page, you log in. You then see a list of your GM games and a list of your
+Player games. Click one to go to https://ptui.com/g/{game_id}?mode=GM or ?mode=Player.
+
+Considerations:
+- using id_info.sub from google oauth kind of locks us in to google, but when we want to get our own
+  user DB and support other authentication mechanisms, we can migrate to our own user IDs.
+
+What do we need to do as a part of EVERY request to a /g/{game_id} URL?
+
+- validate the id_token that is passed down (probably in a cookie); fortunately this is local-only
+  99% of the time.
+- validate that your user has access to {game_id}! This implies a hit to firestore, but a local
+  cache would also be very effective (invalidating cache on removal is probably something I don't
+  need to worry about that much).
+
+
+## Refactor AppActor:
+
+We're keeping Games in memory, but loading them on-demand.
+
+struct Service {
+  games: HashMap<GameID, Arc<Mutex<RuntimeGame>>>,
+  storage_client, cached_certs, etc.
+}
+
+struct RuntimeGame {
+  game: Game, // this is the fully up-to-date Game object
+  waiters: Vec<oneshot::Sender<()>,
+  game_idx: usize
+}
+
+When a user initially logs in and loads a game (assuming it's not in-memory yet):
+- load /games/{game_id}/{largest_game_idx} (this implies listing the game_id prefix)
+- look up /gamelogs/{game_id}/{largest_game_idx} in Firestore, load all of those logs, and replay them locally.
+
+every perform_command writes a new log to Firestore /gamelogs/{game_id}/{largest_game_idx}.
+
+
+## Storage
+
+How about a Storage API that abstracts *all* persistent storage (both buckets and firestore).
+It would be really nice to have a local-filesystem implementation of Storage for testing and for
+new devs to experiment with the code without having to set up a bunch of Google Cloud resources.
+
+impl Storage {
+
+  // Firestore operations:
+  fn get_user_games(u: UserID) -> {gm_games: Vec<GameID>, player_games: Vec<GameID>}; // this should cache!
+  fn add_user_gm_game(u: UserID, g: GameID);
+  fn add_user_player_game(u: UserID, g: GameID);
+  fn record_game_log(g: GameID, log: GameLog) -> usize;
+
+  // Bucket operations
+  fn get_latest_snapshot(g: GameID) -> usize;
+  fn save_new_snapshot(g: GameID, idx: usize);
+
+  // Firestore *and* Bucket operations:
+  fn load_game(g: GameID) -> Game; // this loads the snapshot from bucket and applies extra gamelogs from Firestore
+
+}
+
+*/
+
 /// Not really an actor for now, we're just pretending.
 #[derive(Clone)]
 pub struct AppActor {
@@ -68,7 +149,7 @@ impl AppActor {
     let mut client = google_signin::Client::new();
     client.audiences.push(client_id.to_string());
     let id_info = client.verify(&id_token, &certs).await?;
-    println!("**** What've we got here? {:?} {:?} {:?}", id_info.email, id_info.email_verified, id_info.name);
+    println!("**** What've we got here? {:?} {:?} {:?} {:?}", id_info.email, id_info.email_verified, id_info.name, id_info.sub);
     Ok(())
   }
 
