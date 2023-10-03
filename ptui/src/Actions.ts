@@ -7,6 +7,7 @@ import * as Z from "zod";
 
 import * as T from "./PTTypes";
 import { getState } from "./Model";
+import { getCookie } from "./lib/cookie";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
@@ -31,6 +32,13 @@ export async function ptfetch_<J>(
   init: RequestInit | undefined,
   decoder: (json: object) => J
 ): Promise<J> {
+  if (!init) {
+    init = {};
+  }
+  init.credentials = 'include';
+  const ptIdToken = getCookie("pt-id-token");
+  if (ptIdToken)
+    init.headers = {'authorization': ptIdToken};
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
@@ -280,5 +288,5 @@ export async function fetchAbilityTargets(
 
 export async function newGetGame(gameId: string): Promise<T.Game> {
   const url = `${RPI_URL}/g/${gameId}/gm/`;
-  return await ptfetch(url, {method: 'GET', credentials: 'include'}, T.decodeGame);
+  return await ptfetch(url, {method: 'GET'}, T.decodeGame);
 }
