@@ -38,14 +38,14 @@ async fn main() -> Result<(), anyhow::Error> {
     return Err(anyhow!("Need to pass one of storage-path or google-bucket"));
   };
 
-  let actor = actor::AuthenticatableService::new(storage, opts.google_client_id);
+  let service = actor::AuthenticatableService::new(storage, opts.google_client_id);
 
-  let webactor = actor.clone();
+  let webservice = service.clone();
   let server = actix_web::HttpServer::new(move || {
     WebApp::new()
       .wrap(Logger::default())
       .wrap(Cors::permissive())
-      .configure(|c| web::router(webactor.clone(), c))
+      .configure(|c| web::router(service.clone(), c))
   });
   println!("Starting Actix Web server on port 1337.");
   let _ = server.bind("0.0.0.0:1337")?.run().await;

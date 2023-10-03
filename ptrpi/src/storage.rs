@@ -1,7 +1,7 @@
 use std::{fs, io::Read, path::{PathBuf, Path}};
 
 use async_trait::async_trait;
-use anyhow::Result as AEResult;
+use anyhow::{Result as AEResult, Context};
 use google_cloud_storage::{
     client::{ClientConfig as StorageClientConfig, Client as StorageClient},
     http::objects::{
@@ -19,11 +19,11 @@ use pandt::types::{Game, GameLog};
 
 
 #[async_trait]
-pub trait PTStorage {
+pub trait PTStorage: Send + Sync {
 
   // User management
 
-  // we might not need create_user; we can just have get_user_games or the others create it if it
+  // We might not need create_user; we can just have get_user_games or the others create it if it
   // doesn't exist.
   // async fn create_user(&self, u: UserID, name: String) -> AEResult<()>;
   async fn get_user_games(&self, u: &UserID) -> AEResult<UserGames>;
@@ -93,11 +93,15 @@ impl FSStorage {
     self.path.join("users").join(format!("{user_id}.json"))
   }
 
+  fn game_path(&self, game_id: &GameID) -> PathBuf {
+    self.path.join("games").join(&game_id.to_string())
+  }
+
   fn get_game_index(&self, game_id: &GameID) -> AEResult<GameIndex> {
-    let game_path = self.path.join(&game_id.to_string());
+    let game_path = self.game_path(game_id);
 
     // First, figure out what the latest snapshot index is in path/games/{game_id}/*
-    let mut snapshot_paths = fs::read_dir(game_path)?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
+    let snapshot_paths = fs::read_dir(&game_path).context(format!("Listing game path at {game_path:?}"))?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
     let mut snapshot_indices: Vec<usize> = snapshot_paths.iter().filter_map(|path| {
       path.file_name()?.to_str()?.parse::<usize>().ok()
     }).collect();
@@ -111,7 +115,7 @@ impl FSStorage {
   }
 
   fn get_log_indices(&self, game_id: &GameID, snapshot_idx: usize) -> AEResult<Vec<usize>> {
-    let snapshot_path = self.path.join(&game_id.to_string()).join(&snapshot_idx.to_string());
+    let snapshot_path = self.game_path(game_id).join(&snapshot_idx.to_string());
     let log_paths = fs::read_dir(snapshot_path)?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
     let mut log_indices: Vec<usize> = log_paths.iter().filter_map(|path| {
       path.file_name()?.to_str()?.strip_prefix("log-")?.strip_suffix(".json")?.parse::<usize>().ok()
@@ -147,7 +151,7 @@ impl PTStorage for FSStorage {
 
   async fn get_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     let json_file_path = self.user_game_path(user_id);
-    let file = fs::File::open(json_file_path);
+    let file = fs::File::open(json_file_path.clone());
     let user_games = match file {
       Ok(file) => serde_json::from_reader(file)?,
       Err(err) => {
@@ -159,14 +163,14 @@ impl PTStorage for FSStorage {
   }
 
   async fn add_user_gm_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-    let user_games = self.get_user_games(user_id).await?;
+    let mut user_games = self.get_user_games(user_id).await?;
     user_games.gm_games.push(*game_id);
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
   }
   async fn add_user_player_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-    let user_games = self.get_user_games(user_id).await?;
+    let mut user_games = self.get_user_games(user_id).await?;
     user_games.player_games.push(*game_id);
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
@@ -176,8 +180,8 @@ impl PTStorage for FSStorage {
   // Game management
   async fn create_game(&self, game: &Game) -> AEResult<GameID> {
     let game_id = uuid::Uuid::new_v4();
-    let games_path = self.path.join("games").join(&game_id.to_string()).join("0");
-    fs::create_dir_all(games_path);
+    let games_path = self.game_path(&game_id).join("0");
+    fs::create_dir_all(games_path.clone())?;
     let game_file = fs::File::create(games_path.join("game.json"))?;
     serde_json::to_writer(game_file, game)?;
 
@@ -188,7 +192,7 @@ impl PTStorage for FSStorage {
   async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
 
     let game_index = self.get_game_index(game_id)?;
-    let game_path = self.path.join("games").join(&game_id.to_string());
+    let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&game_index.game_idx.to_string());
 
     let file = fs::File::open(snapshot_path.join("game.json"))?;
@@ -204,7 +208,7 @@ impl PTStorage for FSStorage {
 
   async fn apply_game_logs(&self, game_id: &GameID, logs: &[GameLog]) -> AEResult<GameIndex> {
     let game_index = self.get_game_index(game_id)?;
-    let snapshot_path = self.path.join("games").join(&game_id.to_string()).join(&game_index.game_idx.to_string());
+    let snapshot_path = self.game_path(game_id).join(&game_index.game_idx.to_string());
 
     // TODO: Actually implement snapshotting when we hit a limit on logs!
     let mut log_idx = game_index.log_idx;
