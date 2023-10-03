@@ -34,8 +34,8 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
 
 async fn add_game_to_req_anyhow(request: &ServiceRequest, game_id: String) -> anyhow::Result<()> {
   let service = request.app_data::<web::Data<AuthenticatableService>>().expect("app_data should always be available");
-  let cookie = request.cookie("pt-id-token").ok_or(anyhow!("Need a pt-id-token cookie"))?;
-  let id_token = cookie.value();
+  let header = request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
+  let id_token = header.to_str()?;
   let authenticated = service.authenticate(id_token.to_string()).await?;
   let game_id = game_id.parse().context("Parsing game_id as UUID")?;
   let gm = authenticated.gm(&game_id).await?;
