@@ -21,7 +21,7 @@ use pandt::types::{self, Game, GameCommand};
 pub struct AuthenticatableService {
   pub storage: Arc<dyn PTStorage>,
 
-  pub ping_service: Arc<PingService>,
+  ping_service: Arc<PingService>,
 
   /// This is google client ID
   pub google_client_id: String,
@@ -40,18 +40,20 @@ impl AuthenticatableService {
   }
 
   /// Verify a google ID token and return an AuthenticatedService if it's valid.
-  async fn authenticate(&mut self, google_id_token: String) -> AEResult<AuthenticatedService> {
-    let user_id = self.validate_google_token(google_id_token).await.context("Validating Google ID Token")?;
+  pub async fn authenticate(&self, google_id_token: String) -> AEResult<AuthenticatedService> {
+    let user_id = self.validate_google_token(&google_id_token).await.context(format!("Validating Google ID Token: {google_id_token:?}"))?;
     return Ok(AuthenticatedService { user_id, storage: self.storage.clone(), ping_service: self.ping_service.clone() });
   }
 
-  async fn validate_google_token(&self, id_token: String) -> AEResult<UserID> {
+  async fn validate_google_token(&self, id_token: &str) -> AEResult<UserID> {
     let mut certs = self.cached_certs.lock().await;
     certs.refresh_if_needed().await?;
     let mut client = google_signin::Client::new();
     client.audiences.push(self.google_client_id.clone());
-    let id_info = client.verify(&id_token, &certs).await?;
-    println!("**** What've we got here? {:?} {:?} {:?} {:?}", id_info.email, id_info.email_verified, id_info.name, id_info.sub);
+    let id_info = client.verify(id_token, &certs).await?;
+    let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
+    let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
+    println!("**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}", id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry);
     Ok(id_info.sub)
   }
 }
@@ -63,7 +65,7 @@ impl AuthenticatableService {
 pub struct AuthenticatedService {
   pub user_id: UserID,
   pub storage: Arc<dyn PTStorage>,
-  pub ping_service: Arc<PingService>,
+  ping_service: Arc<PingService>,
 }
 
 impl AuthenticatedService {
@@ -79,7 +81,7 @@ impl AuthenticatedService {
     if !games.gm_games.contains(game_id) {
       return Err(anyhow!(format!("User {} is not a GM of game {}", self.user_id, game_id)));
     }
-    let (game, game_index) = self.storage.load_game(game_id).await?;
+    let (game, game_index) = self.storage.load_game(game_id).await.context(format!("Loading game {game_id:?}"))?;
     // TODO Actually return a GMService!!!
     Ok(GameService {storage: self.storage.clone(), game_id: game_id.clone(), game, game_index, ping_service: self.ping_service.clone()})
   }
@@ -96,11 +98,11 @@ impl AuthenticatedService {
 }
 
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.
-struct GameService {
+pub struct GameService {
   storage: Arc<dyn PTStorage>,
   game: Game,
   game_index: GameIndex,
-  game_id: GameID,
+  pub game_id: GameID,
   ping_service: Arc<PingService>
 }
 
@@ -123,7 +125,7 @@ impl GameService {
     }
     // Now, we wait.
     let (sender, receiver) = oneshot::channel();
-    self.ping_service.register_waiter(&self.game_id, sender);
+    self.ping_service.register_waiter(&self.game_id, sender).await;
     let event = timeout(Duration::from_secs(30), receiver).await;
     match event {
       Ok(x) => {
@@ -146,7 +148,7 @@ impl GameService {
     info!("perform_command:start: {:?}", &log_cmd);
     let pandt::game::ChangedGame { game, logs } = self.game.perform_command(command)?;
     self.storage.apply_game_logs(&self.game_id, &logs).await?;
-    self.ping_service.ping(&self.game_id).await;
+    self.ping_service.ping(&self.game_id).await?;
     debug!("perform_command:done: {:?}", &log_cmd);
     game_to_string(&game)
   }

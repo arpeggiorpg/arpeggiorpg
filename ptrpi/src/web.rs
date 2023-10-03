@@ -1,126 +1,169 @@
-use actix_web::{web, HttpResponse, Responder};
-use anyhow::Error;
+use std::sync::Arc;
+
+use actix_web::{web, HttpMessage, HttpResponse, Responder, HttpRequest, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError};
+use actix_web_lab::middleware::{Next, from_fn};
+use anyhow::{anyhow, Error, Context};
+use http::StatusCode;
 use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
-use crate::actor::AppActor;
+use crate::{actor::{AuthenticatableService, GameService}, types::{GameID}};
 
-pub fn router(actor: AppActor, config: &mut web::ServiceConfig) {
+pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
   config
-    .app_data(web::Data::new(actor))
-    .service(web::resource("/").route(web::get().to(get_app)).route(web::post().to(post_command)))
-    .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
+    .app_data(web::Data::new(service))
     .service(
-      web::resource("movement_options/{scene_id}/{cid}").route(web::get().to(movement_options)),
+      web::scope("g/{game_id}").wrap(from_fn(add_game_to_req))
+      .service(
+        web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
+        .service(get_game)
+      )
+      .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
     )
-    .service(web::resource("combat_movement_options").route(web::get().to(combat_movement_options)))
-    .service(
-      web::resource("target_options/{scene_id}/{cid}/{abid}").route(web::get().to(target_options)),
-    )
-    .service(
-      web::resource("preview_volume_targets/{scene_id}/{actor_id}/{ability_id}/{x}/{y}/{z}")
-        .route(web::post().to(preview_volume_targets)),
-    )
-    .service(web::resource("saved_games/{source}/{name}/load_into").route(web::post().to(load_into_folder)))
-    .service(web::resource("validate_google_token").route(web::post().to(validate_google_token)));
+    // .service(web::resource("/").route(web::get().to(get_app)).route(web::post().to(post_command)))
+    // .route("games/{game_id}", web::get().to(get_game))
+    // .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
+    // .route("movement_options/{scene_id}/{cid}", web::get().to(movement_options))
+    // .route("combat_movement_options", web::get().to(combat_movement_options))
+    // .route("target_options/{scene_id}/{cid}/{abid}", web::get().to(target_options))
+    // .route("preview_volume_targets/{scene_id}/{service_id}/{ability_id}/{x}/{y}/{z}",
+    //        web::post().to(preview_volume_targets))
+    // .route("saved_games/{source}/{name}/load_into", web::post().to(load_into_folder))
+    ;
 }
 
-async fn validate_google_token(actor: web::Data<AppActor>, body: web::Bytes) -> impl Responder {
-  async fn result(actor: web::Data<AppActor>, body: &[u8]) -> Result<String, Error> {
-    let idtoken = std::str::from_utf8(body)?.to_string();
-    actor.validate_google_token(idtoken).await?;
-    Ok("{}".to_string())
+
+#[derive(thiserror::Error, Debug)]
+pub enum MyError {
+    #[error("an unspecified internal error occurred: {0}")]
+    AnyhowError(#[from] anyhow::Error),
+    #[error("actix_web::Error: {0}")]
+    ActixWebError(#[from] actix_web::Error),
+}
+
+impl ResponseError for MyError {
+
+  fn status_code(&self) -> StatusCode {
+    match &self {
+        Self::AnyhowError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        Self::ActixWebError(e) => e.as_response_error().status_code(),
+    }
   }
 
-  response(result(actor, &*body).await)
+  fn error_response(&self) -> HttpResponse {
+    match &self {
+      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).body(format!("{:?}", e)),
+      Self::ActixWebError(e) => e.error_response()
+    }
+  }
+
 }
 
-async fn get_app(actor: web::Data<AppActor>) -> impl Responder {
-  string_json_response(actor.get_app().await?)
+async fn add_game_to_req_anyhow(request: &ServiceRequest, game_id: String) -> anyhow::Result<()> {
+  let service = request.app_data::<web::Data<AuthenticatableService>>().expect("app_data should always be available");
+  let cookie = request.cookie("pt-id-token").ok_or(anyhow!("Need a pt-id-token cookie"))?;
+  let id_token = cookie.value();
+  let authenticated = service.authenticate(id_token.to_string()).await?;
+  let game_id = game_id.parse().context("Parsing game_id as UUID")?;
+  let gm = authenticated.gm(&game_id).await?;
+  request.extensions_mut().insert(Arc::new(gm));
+  Ok(())
 }
 
-async fn poll_app(actor: web::Data<AppActor>, path: web::Path<(usize, usize)>) -> impl Responder {
-  string_json_response(actor.poll_app(path.0, path.1).await?)
+async fn add_game_to_req(path: web::Path<String>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+  add_game_to_req_anyhow(&request, path.into_inner()).await.map_err(|e| MyError::AnyhowError(e))?;
+  Ok(next.call(request).await?)
 }
 
-async fn post_command(
-  actor: web::Data<AppActor>, command: web::Json<GameCommand>,
-) -> impl Responder {
-  string_json_response(actor.perform_command(command.into_inner()).await?)
+
+// ok I probably need a friggin' middleware.
+#[get("/")]
+async fn get_game(game: web::ReqData<Arc<GameService>>) -> impl Responder {
+  string_json_response(game.get_game().await?)
 }
 
-async fn movement_options(
-  actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID)>,
-) -> impl Responder {
-  string_json_response(actor.movement_options(path.0, path.1).await?)
-}
+// async fn poll_app(service: web::Data<AuthenticatableService>, path: web::Path<(usize, usize)>) -> impl Responder {
+//   string_json_response(service.poll_app(path.0, path.1).await?)
+// }
 
-async fn combat_movement_options(actor: web::Data<AppActor>) -> impl Responder {
-  string_json_response(actor.combat_movement_options().await?)
-}
+// async fn post_command(
+//   service: web::Data<AuthenticatableService>, command: web::Json<GameCommand>,
+// ) -> impl Responder {
+//   string_json_response(service.perform_command(command.into_inner()).await?)
+// }
 
-async fn target_options(
-  actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
-) -> impl Responder {
-  string_json_response(actor.target_options(path.0, path.1, path.2).await?)
-}
+// async fn movement_options(
+//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID)>,
+// ) -> impl Responder {
+//   string_json_response(service.movement_options(path.0, path.1).await?)
+// }
 
-async fn preview_volume_targets(
-  actor: web::Data<AppActor>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
-) -> impl Responder {
-  let point = Point3::new(path.3, path.4, path.5);
-  let targets = actor.preview_volume_targets(path.0, path.1, path.2, point).await?;
-  string_json_response(serde_json::to_string(&targets)?)
-}
+// async fn combat_movement_options(service: web::Data<AuthenticatableService>) -> impl Responder {
+//   string_json_response(service.combat_movement_options().await?)
+// }
 
-#[derive(serde::Deserialize)]
-struct LoadIntoFolderPath {
+// async fn target_options(
+//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
+// ) -> impl Responder {
+//   string_json_response(service.target_options(path.0, path.1, path.2).await?)
+// }
 
-  path: String
-}
+// async fn preview_volume_targets(
+//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+// ) -> impl Responder {
+//   let point = Point3::new(path.3, path.4, path.5);
+//   let targets = service.preview_volume_targets(path.0, path.1, path.2, point).await?;
+//   string_json_response(serde_json::to_string(&targets)?)
+// }
 
-async fn load_into_folder(actor: web::Data<AppActor>, route: web::Path<(String, String)>, query: web::Query<LoadIntoFolderPath>) -> impl Responder {
-  let source_string = route.0.as_ref();
-  let source = match source_string {
-    "saved_game" => ModuleSource::SavedGame,
-    "module" => ModuleSource::Module,
-    _ => return string_json_response(format!("{{'error': 'bad source {source_string}'}}"))
-  };
-  let name = route.1.clone();
-  println!("Trying to parse {}: {:?}", &query.path, query.path.parse::<foldertree::FolderPath>());
-  let path: foldertree::FolderPath = query.path.parse::<foldertree::FolderPath>()?;
-  println!("Loading {source:?} {name} at {path}");
-  string_json_response(actor.load_into_folder(source, name, path).await?)
-}
+// #[derive(serde::Deserialize)]
+// struct LoadIntoFolderPath {
 
-async fn load_module_as_game(
-  actor: web::Data<AppActor>, path: web::Path<String>,
-) -> impl Responder {
-  string_json_response(actor.load_saved_game(&path.into_inner(), ModuleSource::Module).await?)
-}
+//   path: String
+// }
 
-async fn save_module(
-  actor: web::Data<AppActor>, path: web::Path<String>,
-  folder_path: web::Json<::foldertree::FolderPath>,
-) -> impl Responder {
-  string_json_response(actor.save_module(path.into_inner(), folder_path.into_inner()).await?)
-}
+// async fn load_into_folder(service: web::Data<AuthenticatableService>, route: web::Path<(String, String)>, query: web::Query<LoadIntoFolderPath>) -> impl Responder {
+//   let source_string = route.0.as_ref();
+//   let source = match source_string {
+//     "saved_game" => ModuleSource::SavedGame,
+//     "module" => ModuleSource::Module,
+//     _ => return string_json_response(format!("{{'error': 'bad source {source_string}'}}"))
+//   };
+//   let name = route.1.clone();
+//   println!("Trying to parse {}: {:?}", &query.path, query.path.parse::<foldertree::FolderPath>());
+//   let path: foldertree::FolderPath = query.path.parse::<foldertree::FolderPath>()?;
+//   println!("Loading {source:?} {name} at {path}");
+//   string_json_response(service.load_into_folder(source, name, path).await?)
+// }
+
+// async fn load_module_as_game(
+//   service: web::Data<AuthenticatableService>, path: web::Path<String>,
+// ) -> impl Responder {
+//   string_json_response(service.load_saved_game(&path.into_inner(), ModuleSource::Module).await?)
+// }
+
+// async fn save_module(
+//   service: web::Data<AuthenticatableService>, path: web::Path<String>,
+//   folder_path: web::Json<::foldertree::FolderPath>,
+// ) -> impl Responder {
+//   string_json_response(service.save_module(path.into_inner(), folder_path.into_inner()).await?)
+// }
 
 fn string_json_response(body: String) -> Result<HttpResponse, Box<dyn ::std::error::Error>> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))
 }
 
 
-fn response(response: Result<String, Error>) -> impl Responder {
-  match response {
-    Ok(s) => string_json_response(s),
-    Err(e) => {
-      let mut obj = std::collections::HashMap::new();
-      obj.insert("error", format!("{e:?}"));
-      let json = serde_json::to_string(&obj).expect("this had better not fail");
-      error!("Web Error: {e:?}");
-      Ok(HttpResponse::InternalServerError().content_type("application/json").body(json))
-    },
-  }
-}
+// fn response(response: Result<String, Error>) -> impl Responder {
+//   match response {
+//     Ok(s) => string_json_response(s),
+//     Err(e) => {
+//       let mut obj = std::collections::HashMap::new();
+//       obj.insert("error", format!("{e:?}"));
+//       let json = serde_json::to_string(&obj).expect("this had better not fail");
+//       error!("Web Error: {e:?}");
+//       Ok(HttpResponse::InternalServerError().content_type("application/json").body(json))
+//     },
+//   }
+// }
