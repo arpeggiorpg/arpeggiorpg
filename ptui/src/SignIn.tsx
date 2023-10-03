@@ -25,7 +25,8 @@ export function SignIn() {
     // 1. all requests to the backend need to have this credential passed down. So, should we put it in a cookie?
     console.log("credential response!", credentialResponse);
     if (credentialResponse.credential) {
-      A.validateGoogleToken(credentialResponse.credential);
+      document.cookie = `pt-id-token=${credentialResponse.credential}`;
+      A.newGetGame("6f347d4c-0bbe-4381-a7b0-e2df22e08144");
     } else {
       console.error("didn't get credentials???", credentialResponse);
     }
