@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use actix_web::{web, HttpMessage, HttpResponse, Responder, HttpRequest, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError};
+use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError};
 use actix_web_lab::middleware::{Next, from_fn};
-use anyhow::{anyhow, Error, Context};
+use anyhow::{anyhow, Context};
 use http::StatusCode;
 use log::error;
 
@@ -21,7 +21,6 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
       )
       .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
     )
-    // .service(web::resource("/").route(web::get().to(get_app)).route(web::post().to(post_command)))
     // .route("games/{game_id}", web::get().to(get_game))
     // .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
     // .route("movement_options/{scene_id}/{cid}", web::get().to(movement_options))
@@ -31,33 +30,6 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
     //        web::post().to(preview_volume_targets))
     // .route("saved_games/{source}/{name}/load_into", web::post().to(load_into_folder))
     ;
-}
-
-
-#[derive(thiserror::Error, Debug)]
-pub enum MyError {
-    #[error("an unspecified internal error occurred: {0}")]
-    AnyhowError(#[from] anyhow::Error),
-    #[error("actix_web::Error: {0}")]
-    ActixWebError(#[from] actix_web::Error),
-}
-
-impl ResponseError for MyError {
-
-  fn status_code(&self) -> StatusCode {
-    match &self {
-        Self::AnyhowError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        Self::ActixWebError(e) => e.as_response_error().status_code(),
-    }
-  }
-
-  fn error_response(&self) -> HttpResponse {
-    match &self {
-      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).body(format!("{:?}", e)),
-      Self::ActixWebError(e) => e.error_response()
-    }
-  }
-
 }
 
 async fn add_game_to_req_anyhow(request: &ServiceRequest, game_id: String) -> anyhow::Result<()> {
@@ -77,7 +49,6 @@ async fn add_game_to_req(path: web::Path<String>, request: ServiceRequest, next:
 }
 
 
-// ok I probably need a friggin' middleware.
 #[get("/")]
 async fn get_game(game: web::ReqData<Arc<GameService>>) -> impl Responder {
   string_json_response(game.get_game().await?)
@@ -150,20 +121,34 @@ async fn get_game(game: web::ReqData<Arc<GameService>>) -> impl Responder {
 //   string_json_response(service.save_module(path.into_inner(), folder_path.into_inner()).await?)
 // }
 
-fn string_json_response(body: String) -> Result<HttpResponse, Box<dyn ::std::error::Error>> {
+fn string_json_response(body: String) -> Result<HttpResponse, MyError> {
   Ok(HttpResponse::Ok().content_type("application/json").body(body))
 }
 
 
-// fn response(response: Result<String, Error>) -> impl Responder {
-//   match response {
-//     Ok(s) => string_json_response(s),
-//     Err(e) => {
-//       let mut obj = std::collections::HashMap::new();
-//       obj.insert("error", format!("{e:?}"));
-//       let json = serde_json::to_string(&obj).expect("this had better not fail");
-//       error!("Web Error: {e:?}");
-//       Ok(HttpResponse::InternalServerError().content_type("application/json").body(json))
-//     },
-//   }
-// }
+
+#[derive(thiserror::Error, Debug)]
+pub enum MyError {
+    #[error("an unspecified internal error occurred: {0}")]
+    AnyhowError(#[from] anyhow::Error),
+    #[error("actix_web::Error: {0}")]
+    ActixWebError(#[from] actix_web::Error),
+}
+
+impl ResponseError for MyError {
+
+  fn status_code(&self) -> StatusCode {
+    match &self {
+        Self::AnyhowError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        Self::ActixWebError(e) => e.as_response_error().status_code(),
+    }
+  }
+
+  fn error_response(&self) -> HttpResponse {
+    match &self {
+      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).body(format!("{:?}", e)),
+      Self::ActixWebError(e) => e.error_response()
+    }
+  }
+
+}
