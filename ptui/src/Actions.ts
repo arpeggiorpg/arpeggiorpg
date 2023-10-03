@@ -278,8 +278,7 @@ export async function fetchAbilityTargets(
   };
 }
 
-export async function validateGoogleToken(idToken: string) {
-  const url = `${RPI_URL}/validate_google_token`;
-  const result = await ptfetch(url, { method: 'POST', body: idToken }, Z.any());
-  return result.token;
+export async function newGetGame(gameId: string): Promise<T.Game> {
+  const url = `${RPI_URL}/g/${gameId}/gm/`;
+  return await ptfetch(url, {method: 'GET', credentials: 'include'}, T.decodeGame);
 }

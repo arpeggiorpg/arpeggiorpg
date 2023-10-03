@@ -532,7 +532,7 @@ const decodeTileSystem: Decoder<TileSystem> = Z.union([
   Z.literal("DnD")
 ]);
 
-const decodeGame: Decoder<Game> = Z.object({
+export const decodeGame: Decoder<Game> = Z.object({
   current_combat: decodeCombat.nullable(),
   creatures: Z.record(decodeDynamicCreature).transform<Game["creatures"]>(Map),
   classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
