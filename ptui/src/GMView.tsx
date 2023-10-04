@@ -24,7 +24,6 @@ export function GMMain() {
     <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
     <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
     // <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
-    <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
   const combat = M.useState(s => s.getCombat());

@@ -237,7 +237,7 @@ function GMScenePlayers(props: { scene: T.Scene }) {
   </List>;
 
   function moveAll() {
-    const pids = M.getState().app.current_game.players.keySeq().toArray();
+    const pids = M.getState().game.players.keySeq().toArray();
     const commands: T.GameCommand[] = pids.map(
       player_id => ({ SetPlayerScene: [player_id, scene.id] }));
     commands.push({ SetActiveScene: scene.id });
@@ -637,18 +637,6 @@ interface GMSceneCreaturesDerivedProps {
   creatures: Array<T.Creature>;
   combat: T.Combat | undefined;
 }
-
-// const GMSceneCreaturesSelector = Comp.createDeepEqualSelector(
-//   [
-//     (ptui: M.PTUI): T.App => ptui.app,
-//     (_: any, props: { scene: T.Scene }) => props.scene
-//   ],
-//   (app: T.App, scene: T.Scene) => ({
-//     creatures: M.getSceneCreatures(app, scene),
-//     combat: app.current_game.current_combat,
-//   })
-// );
-
 function GMSceneCreatures(props: { scene: T.Scene }) {
   const { scene } = props;
 
@@ -1084,123 +1072,6 @@ export function GMViewItem({ itemId }: { itemId: T.ItemID }) {
   </Card>;
 }
 
-export function SavedGames(): JSX.Element {
-  return <Button.Group>
-    <CV.ModalMaker
-      button={open => <Button onClick={open}>Load Game</Button>}
-      header={<span>Load a Game</span>}
-      content={close => <LoadGameForm onClose={close} />} />
-    <CV.ModalMaker
-      button={open => <Button onClick={open}>Save Game</Button>}
-      header={<span>Save Game</span>}
-      content={close => <SaveGameForm onClose={close} />} />
-    <CV.ModalMaker
-      button={open => <Button onClick={open}>New Game</Button>}
-      header={<span>New Game</span>}
-      content={close => <NewGame onClose={close} />}
-    />
-  </Button.Group>;
-}
-
-function NewGame(props: { onClose: () => void }) {
-  const { onClose } = props;
-  return <>
-    <div>Are you sure? Your unsaved data will be lost.</div>
-    <Button onClick={() => onClick()}>Do it!</Button>
-  </>;
-
-  async function onClick() {
-    // TODO: spinner
-    await A.newGame();
-    onClose();
-  }
-}
-
-function LoadGameForm(props: { onClose: () => void }) {
-  const { onClose } = props;
-  return <Form>
-    <GameList onSelect={load} />
-    <Form.Button onClick={onClose}>Cancel</Form.Button>
-  </Form>;
-
-  async function load(source: T.ModuleSource, name: string) {
-    // TODO: spinner
-    await A.loadGame(source, name);
-    onClose();
-  }
-}
-
-function SaveGameForm(props: { onClose: () => void }) {
-  const { onClose } = props;
-  return <SaveGameishForm onClose={onClose} save={save} />;
-
-  async function save(name: string) {
-    // TODO: spinner
-    await A.saveGame(name);
-    onClose();
-  }
-}
-
-interface SaveGameishFormProps { onClose: () => void; save: (name: string) => void; }
-function SaveGameishForm(props: SaveGameishFormProps) {
-  const [name, setName] = React.useState("");
-  const { onClose, save } = props;
-  return <Form>
-    <Form.Input label="Name" value={name}
-      onChange={(_, d) => setName(d.value)} />
-    <GameList gamesOnly={true} onSelect={(_, game) => setName(game)} />
-    <Form.Group>
-      <Form.Button disabled={name === ""}
-        onClick={() => { save(name); onClose(); }}>Save</Form.Button>
-      <Form.Button onClick={onClose}>Cancel</Form.Button>
-    </Form.Group>
-  </Form>;
-}
-
-interface GameListProps {
-  onSelect: (type: T.ModuleSource, name: string) => void;
-  gamesOnly?: boolean;
-}
-
-function GameList(props: GameListProps) {
-  const [modules, setModules] = React.useState<string[] | undefined>(undefined);
-  const [games, setGames] = React.useState<string[] | undefined>(undefined);
-
-  // Gross :-( Should I use something like SWC or react-query?
-  // I have very few of these kinds of things so maybe this is fine.
-  React.useEffect(() => {
-    const fetch = async () => {
-      const { modules, games } = await A.fetchSavedGames();
-      setGames(games);
-      setModules(modules);
-      console.log("saved games:", games, modules);
-    };
-    fetch();
-  }, []);
-
-  const { onSelect } = props;
-  if (games === undefined || modules === undefined) {
-    return <Dimmer active={true} inverted={true}>
-      <Loader inverted={true}>Loading games...</Loader>
-    </Dimmer>;
-  } else {
-    return <Menu vertical={true}>
-      {!props.gamesOnly
-        ?
-        <>
-          <Menu.Header>Modules</Menu.Header>
-          {modules.map(name =>
-            <Menu.Item key={name} onClick={() => onSelect('Module', name)}>{name}</Menu.Item>)}
-        </>
-        : null}
-      <Menu.Header>Saved Games</Menu.Header>
-      {games.map(name => <Menu.Item key={name}
-        onClick={() => onSelect('SavedGame', name)}>
-        {name}
-      </Menu.Item>)}
-    </Menu>;
-  }
-}
 
 export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
   const creature = M.useState(s => s.getCreature(creatureId));
@@ -1214,27 +1085,27 @@ export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
   </div>;
 }
 
-export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {
-  const { path, onDone } = props;
-  return <div>
-    <SaveGameishForm onClose={onDone} save={save} />
-  </div>;
-  function save(game: string) {
-    A.exportModule(path, game);
-  }
-}
+// export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {
+//   const { path, onDone } = props;
+//   return <div>
+//     <SaveGameishForm onClose={onDone} save={save} />
+//   </div>;
+//   function save(game: string) {
+//     A.exportModule(path, game);
+//   }
+// }
 
-export function ImportModule(props: { path: T.FolderPath; onDone: () => void }) {
-  const { path, onDone } = props;
-  return <Form>
-    <GameList onSelect={(source, name) => {
-      const suffixed_path = path.concat(name);
-      A.loadModule({path: suffixed_path, name, source});
-      onDone();
-    }} />
-    <Form.Button onClick={onDone}>Cancel</Form.Button>
-  </Form>;
-}
+// export function ImportModule(props: { path: T.FolderPath; onDone: () => void }) {
+//   const { path, onDone } = props;
+//   return <Form>
+//     <GameList onSelect={(source, name) => {
+//       const suffixed_path = path.concat(name);
+//       A.loadModule({path: suffixed_path, name, source});
+//       onDone();
+//     }} />
+//     <Form.Button onClick={onDone}>Cancel</Form.Button>
+//   </Form>;
+// }
 
 
 interface AddSceneHotspotProps {
