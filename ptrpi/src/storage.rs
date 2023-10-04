@@ -23,10 +23,10 @@ pub trait PTStorage: Send + Sync {
 
   // User management
 
-  // We might not need create_user; we can just have get_user_games or the others create it if it
+  // We might not need create_user; we can just have list_user_games or the others create it if it
   // doesn't exist.
   // async fn create_user(&self, u: UserID, name: String) -> AEResult<()>;
-  async fn get_user_games(&self, u: &UserID) -> AEResult<UserGames>;
+  async fn list_user_games(&self, u: &UserID) -> AEResult<UserGames>;
   async fn add_user_gm_game(&self, u: &UserID, g: &GameID) -> AEResult<()>;
   async fn add_user_player_game(&self, u: &UserID, g: &GameID) -> AEResult<()>;
 
@@ -149,7 +149,7 @@ root/
 #[async_trait]
 impl PTStorage for FSStorage {
 
-  async fn get_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
+  async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     let json_file_path = self.user_game_path(user_id);
     let file = fs::File::open(json_file_path.clone());
     let user_games = match file {
@@ -163,14 +163,14 @@ impl PTStorage for FSStorage {
   }
 
   async fn add_user_gm_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-    let mut user_games = self.get_user_games(user_id).await?;
+    let mut user_games = self.list_user_games(user_id).await?;
     user_games.gm_games.push(*game_id);
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
   }
   async fn add_user_player_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-    let mut user_games = self.get_user_games(user_id).await?;
+    let mut user_games = self.list_user_games(user_id).await?;
     user_games.player_games.push(*game_id);
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;

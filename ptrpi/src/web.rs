@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
-use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError};
+use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError, http::header};
 use actix_web_lab::middleware::{Next, from_fn};
 use anyhow::{anyhow, Context};
 use http::StatusCode;
@@ -8,18 +8,21 @@ use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
-use crate::{actor::{AuthenticatableService, GameService}, types::{GameID}};
+use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID}};
 
 pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
   config
     .app_data(web::Data::new(service))
     .service(
-      web::scope("g/{game_id}").wrap(from_fn(add_game_to_req))
+      web::scope("g").wrap(from_fn(add_authenticated_to_req)).service(list_games)
       .service(
-        web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
-        .service(get_game)
+        web::scope("{game_id}").wrap(from_fn(add_game_to_req))
+        .service(
+          web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
+          .service(get_game)
+        )
+        .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
       )
-      .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
     )
     // .route("games/{game_id}", web::get().to(get_game))
     // .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
@@ -32,26 +35,46 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
     ;
 }
 
-async fn add_game_to_req_anyhow(request: &ServiceRequest, game_id: String) -> anyhow::Result<()> {
-  let service = request.app_data::<web::Data<AuthenticatableService>>().expect("app_data should always be available");
-  let header = request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
-  let id_token = header.to_str()?;
-  let authenticated = service.authenticate(id_token.to_string()).await?;
-  let game_id = game_id.parse().context("Parsing game_id as UUID")?;
-  let gm = authenticated.gm(&game_id).await?;
-  request.extensions_mut().insert(Arc::new(gm));
-  Ok(())
+async fn add_authenticated_to_req(service: web::Data<AuthenticatableService>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+
+  async fn bettererror(service: Arc<AuthenticatableService>, request: &ServiceRequest) -> anyhow::Result<()> {
+    let header = request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
+    let id_token = header.to_str()?;
+    let authenticated = service.authenticate(id_token.to_string()).await?;
+    request.extensions_mut().insert(Arc::new(authenticated));
+    Ok(())
+  }
+  bettererror(service.into_inner(), &request).await.map_err(MyError::AnyhowError)?;
+  Ok(next.call(request).await?)
 }
 
-async fn add_game_to_req(path: web::Path<String>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-  add_game_to_req_anyhow(&request, path.into_inner()).await.map_err(|e| MyError::AnyhowError(e))?;
+async fn add_game_to_req(path: web::Path<String>, authenticated: web::ReqData<Arc<AuthenticatedService>>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+
+  async fn bettererror(request: &ServiceRequest, authenticated: Arc<AuthenticatedService>, game_id: String) -> anyhow::Result<()> {
+    let game_id = game_id.parse().context("Parsing game_id as UUID")?;
+    let gm = authenticated.gm(&game_id).await?;
+    request.extensions_mut().insert(Arc::new(gm));
+    Ok(())
+  }
+  bettererror(&request, authenticated.into_inner(), path.into_inner()).await.map_err(MyError::AnyhowError)?;
   Ok(next.call(request).await?)
+}
+
+#[get("/list")]
+async fn list_games(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Responder {
+  let games = service.list_games().await?;
+  let s = serde_json::to_string(&games)?;
+  string_json_response(s)
 }
 
 
 #[get("/")]
-async fn get_game(game: web::ReqData<Arc<GameService>>) -> impl Responder {
-  string_json_response(game.get_game().await?)
+async fn get_game(service: web::ReqData<Arc<GameService>>) -> impl Responder {
+  let response = serde_json::json!({
+    "game": service.game,
+    "index": service.game_index,
+  });
+  string_json_response(serde_json::to_string(&response)?)
 }
 
 // async fn poll_app(service: web::Data<AuthenticatableService>, path: web::Path<(usize, usize)>) -> impl Responder {
@@ -133,21 +156,24 @@ pub enum MyError {
     AnyhowError(#[from] anyhow::Error),
     #[error("actix_web::Error: {0}")]
     ActixWebError(#[from] actix_web::Error),
+    #[error("serde_json::Error: {0}")]
+    SerdeJsonError(#[from] serde_json::Error)
 }
 
 impl ResponseError for MyError {
 
   fn status_code(&self) -> StatusCode {
     match &self {
-        Self::AnyhowError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         Self::ActixWebError(e) => e.as_response_error().status_code(),
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
     }
   }
 
   fn error_response(&self) -> HttpResponse {
     match &self {
-      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).body(format!("{:?}", e)),
-      Self::ActixWebError(e) => e.error_response()
+      Self::ActixWebError(e) => e.error_response(),
+      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
+      Self::SerdeJsonError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
     }
   }
 

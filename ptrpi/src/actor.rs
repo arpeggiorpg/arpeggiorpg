@@ -11,7 +11,7 @@ use thiserror;
 
 use tokio::{sync::Mutex, time::timeout};
 
-use crate::{types::{UserID, GameID, GameIndex}, storage::PTStorage};
+use crate::{types::{UserID, GameID, GameIndex, UserGames}, storage::PTStorage};
 
 use pandt::types::{self, Game, GameCommand};
 
@@ -76,8 +76,12 @@ impl AuthenticatedService {
     game_to_string(&game)
   }
 
+  pub async fn list_games(&self) -> AEResult<UserGames> {
+    self.storage.list_user_games(&self.user_id).await
+  }
+
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GameService> {
-    let games = self.storage.get_user_games(&self.user_id).await?;
+    let games = self.storage.list_user_games(&self.user_id).await?;
     if !games.gm_games.contains(game_id) {
       return Err(anyhow!(format!("User {} is not a GM of game {}", self.user_id, game_id)));
     }
@@ -87,7 +91,7 @@ impl AuthenticatedService {
   }
 
   pub async fn player(&self, game_id: &GameID) -> AEResult<GameService> {
-    let games = self.storage.get_user_games(&self.user_id).await?;
+    let games = self.storage.list_user_games(&self.user_id).await?;
     if !games.player_games.contains(game_id) {
       return Err(anyhow!(format!("User {} is not a Player of game {}", self.user_id, game_id)));
     }
@@ -100,8 +104,8 @@ impl AuthenticatedService {
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.
 pub struct GameService {
   storage: Arc<dyn PTStorage>,
-  game: Game,
-  game_index: GameIndex,
+  pub game: Game,
+  pub game_index: GameIndex,
   pub game_id: GameID,
   ping_service: Arc<PingService>
 }
@@ -111,10 +115,6 @@ impl GameService {
   // return references to live objects, but I have not been able to figure out how to do this. I am
   // pretty sure the answer involves MappedMutexGuard, but combining that with RPIGame has been very
   // difficult for me.
-
-  pub async fn get_game<'a>(&self) -> AEResult<String> {
-    return game_to_string(&self.game);
-  }
 
   /// Wait for a Game to change and then return it.
   pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<String> {

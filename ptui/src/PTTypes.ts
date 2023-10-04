@@ -566,6 +566,36 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
     ]);
 }
 
+export interface UserGames { // RADIX BIND THIS!
+  gm_games: string[];
+  player_games: string[];
+}
+
+export const decodeUserGames: Decoder<UserGames> = Z.object({
+  gm_games: Z.array(Z.string()),
+  player_games: Z.array(Z.string()),
+});
+
+export interface GameIndex { // RADIX BIND THIS!
+  game_idx: number;
+  log_idx: number;
+}
+
+export const decodeGameIndex: Decoder<GameIndex> = Z.object({
+  game_idx: Z.number(),
+  log_idx: Z.number(),
+});
+
+export interface GameWithIndex {
+  game: Game;
+  index: GameIndex;
+}
+
+export const decodeGameWithIndex: Decoder<GameWithIndex> = Z.object({
+  game: decodeGame,
+  index: decodeGameIndex,
+});
+
 export function encodeGameCommand(cmd: GameCommand): object | string {
   if (typeof cmd === "string") return cmd;
   // Any commands which contain data that needs encoded needs to be handled explicitly.
