@@ -10,8 +10,10 @@ import * as T from "./PTTypes";
 export type FetchStatus = "Unfetched" | "Ready" | "Error";
 export interface AppState {
   game: T.Game;
+  gameId: T.GameID | undefined;
   fetchStatus: FetchStatus;
   setFetchStatus: (s: FetchStatus) => void;
+  setGameId: (s: T.GameID) => void;
   refresh: (g: T.Game) => void;
 
   // utility functions for fetching state
@@ -40,8 +42,10 @@ export interface AppState {
 
 const appSlice: Slice<AppState> = (set, get) => ({
   game: initialGame,
+  gameId: undefined,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
+  setGameId: (gameId: T.GameID) => set(() => ({gameId})),
   refresh: game => set(state => {
     const pid = state.playerId;
     if (pid) {

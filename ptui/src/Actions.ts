@@ -39,7 +39,7 @@ async function ptfetch_<J>(
   init.credentials = 'include';
   const ptIdToken = getCookie("pt-id-token");
   if (ptIdToken)
-    init.headers = {'authorization': ptIdToken};
+    init.headers = {...init.headers, 'authorization': ptIdToken};
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
@@ -74,9 +74,13 @@ export async function startPoll(mode: "gm" | "player", gameId: string) {
   //
   // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
   // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
+
+  // TODO: we need a way to cancel startPoll so that if the user navigates away from their current
+  // game, we stop polling it.
   const gameUrl = `/g/${gameId}/${mode}/`;
   let result = await ptfetch(gameUrl, undefined, T.decodeGameWithIndex);
   getState().refresh(result.game);
+  getState().setGameId(gameId);
 
   let {index} = result;
 
@@ -191,8 +195,9 @@ export async function exportModule(path: T.FolderPath, name: string): Promise<un
 export async function sendCommand(cmd: T.GameCommand) {
   const json = T.encodeGameCommand(cmd);
   console.log("[sendCommand:JSON]", json);
+  let {gameId} = getState();
   const result = await ptfetch(
-    "/",
+    `/g/${gameId}/gm/execute`,
     {
       method: "POST",
       body: JSON.stringify(json),
