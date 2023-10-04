@@ -7,7 +7,7 @@ import * as Z from "zod";
 
 import * as T from "./PTTypes";
 import { getState } from "./Model";
-import { getCookie } from "./lib/cookie";
+import { getCookie } from "react-use-cookie";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
