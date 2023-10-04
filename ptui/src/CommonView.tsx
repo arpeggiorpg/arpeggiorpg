@@ -1133,83 +1133,80 @@ export class SingleInputForm extends React.Component<
   }
 }
 
-interface ChatDerivedProps {
-  snapshots: Array<T.Snapshot>;
-}
-interface GenericChatProps {
-  renderLog: (input: T.GameLog) => JSX.Element | undefined;
-  sendCommand: (input: string) => T.GameCommand;
-}
-export function GenericChat(props: GenericChatProps): JSX.Element {
-  const { renderLog, sendCommand } = props;
-  const snapshots = M.useState(s => s.app.snapshots);
-  return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div
-        ref={(el) => {
-          if (el) {
-            el.scrollTop = el.scrollHeight;
-          }
-        }}
-        style={{ flex: "1", overflowY: "auto" }}
-      >
-        {snapshots.map(({ logs }, snapshot_index) =>
-          logs.map((log: T.GameLog, log_index): JSX.Element | undefined => {
-            const chat_line = renderLog(log);
-            return (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                }}
-                key={snapshot_index.toString() + "-" + log_index.toString()}
-              >
-                {chat_line}
-              </div>
-            );
-          })
-        )}
-      </div>
-      <SingleInputForm onSubmit={send} buttonText="Send" />
-    </div>
-  );
-  function send(input: string) {
-    const cmd = sendCommand(input);
-    A.sendCommand(cmd);
-  }
-}
+// interface GenericChatProps {
+//   renderLog: (input: T.GameLog) => JSX.Element | undefined;
+//   sendCommand: (input: string) => T.GameCommand;
+// }
+// export function GenericChat(props: GenericChatProps): JSX.Element {
+//   const { renderLog, sendCommand } = props;
+//   const snapshots = M.useState(s => s.app.snapshots);
+//   return (
+//     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+//       <div
+//         ref={(el) => {
+//           if (el) {
+//             el.scrollTop = el.scrollHeight;
+//           }
+//         }}
+//         style={{ flex: "1", overflowY: "auto" }}
+//       >
+//         {snapshots.map(({ logs }, snapshot_index) =>
+//           logs.map((log: T.GameLog, log_index): JSX.Element | undefined => {
+//             const chat_line = renderLog(log);
+//             return (
+//               <div
+//                 style={{
+//                   display: "flex",
+//                   flexDirection: "row",
+//                   justifyContent: "space-between",
+//                 }}
+//                 key={snapshot_index.toString() + "-" + log_index.toString()}
+//               >
+//                 {chat_line}
+//               </div>
+//             );
+//           })
+//         )}
+//       </div>
+//       <SingleInputForm onSubmit={send} buttonText="Send" />
+//     </div>
+//   );
+//   function send(input: string) {
+//     const cmd = sendCommand(input);
+//     A.sendCommand(cmd);
+//   }
+// }
 
-export function GMChat(): JSX.Element {
-  const creatures = M.useState(s => s.getGame().creatures);
-  const GMChatCmd = (message: string): T.GameCommand => ({ ChatFromGM: message });
-  return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
+// export function GMChat(): JSX.Element {
+//   const creatures = M.useState(s => s.getGame().creatures);
+//   const GMChatCmd = (message: string): T.GameCommand => ({ ChatFromGM: message });
+//   return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
 
-  function get_chat_line(log: T.GameLog) {
-    const chatmsg = renderChat(log);
-    if (chatmsg) {
-      return chatmsg;
-    }
-    if (typeof log !== "string" && "CreatureLog" in log) {
-      return History.creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
-    }
-  }
-}
+//   function get_chat_line(log: T.GameLog) {
+//     const chatmsg = renderChat(log);
+//     if (chatmsg) {
+//       return chatmsg;
+//     }
+//     if (typeof log !== "string" && "CreatureLog" in log) {
+//       return History.creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
+//     }
+//   }
+// }
 
-interface PlayerChatProps {
-  player_id: T.PlayerID;
-}
-export function PlayerChat(props: PlayerChatProps): JSX.Element {
-  const { player_id } = props;
-  const chatCmd = (message: string): T.GameCommand => ({
-    ChatFromPlayer: [player_id, message],
-  });
-  return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
+// interface PlayerChatProps {
+//   player_id: T.PlayerID;
+// }
+// export function PlayerChat(props: PlayerChatProps): JSX.Element {
+//   const { player_id } = props;
+//   const chatCmd = (message: string): T.GameCommand => ({
+//     ChatFromPlayer: [player_id, message],
+//   });
+//   return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
 
-  function get_chat_line(log: T.GameLog) {
-    return renderChat(log);
-  }
-}
+//   function get_chat_line(log: T.GameLog) {
+//     return renderChat(log);
+//   }
+// }
 
 function renderChat(log: T.GameLog): JSX.Element | undefined {
   if (typeof log !== "string") {

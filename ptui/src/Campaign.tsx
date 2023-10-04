@@ -255,7 +255,7 @@ function FolderTree(props: FTProps) {
         </>
         : null}
 
-      <CV.ModalMaker
+      {/* <CV.ModalMaker
         button={open =>
           <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
         header={<span>Export folder</span>}
@@ -264,7 +264,7 @@ function FolderTree(props: FTProps) {
         button={open =>
           <Dropdown.Item text="Import module here" icon="download" onClick={open} />}
         header={<span>Import Module</span>}
-        content={close => <GM.ImportModule path={path} onDone={close} />} />
+        content={close => <GM.ImportModule path={path} onDone={close} />} /> */}
     </Dropdown.Menu>
   </Dropdown>;
   const list_item = <List.Item>

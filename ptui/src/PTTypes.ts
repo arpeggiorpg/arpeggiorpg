@@ -71,19 +71,6 @@ export class Point3 implements ValueObject {
   }
 }
 
-// Idea for a nicer constructor syntax, if I ever implement auto-generating this file:
-//     const target = T.MkDecidedTarget.Creature({creature_id});
-// as equivalent to
-//     const target = {t: "DecidedTarget", creature_id};
-
-
-export interface App {
-  snapshots: Array<Snapshot>;
-  current_game: Game;
-}
-
-export interface Snapshot { snapshot: {}; logs: Array<GameLog>; }
-
 export type Folder = FolderTree<FolderNode>;
 
 export const SKILL_LEVELS: Array<SkillLevel> =
@@ -544,13 +531,6 @@ export const decodeGame: Decoder<Game> = Z.object({
   players: Z.record(decodePlayer).transform<Game["players"]>(Map),
   tile_system: decodeTileSystem,
   active_scene: Z.string().nullable(),
-});
-
-export const decodeApp: Decoder<App> = Z.object({
-  snapshots: Z.array(
-    Z.tuple([Z.any(), Z.array(decodeGameLog)]).transform(([g, logs]): Snapshot => ({snapshot: {}, logs}))
-  ),
-  current_game: decodeGame,
 });
 
 export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = Z.tuple([
