@@ -23,7 +23,7 @@ export function GMMain() {
     <CV.Tab key="Campaign" name="Campaign"><Campaign.Campaign /></CV.Tab>,
     <CV.Tab key="Combat" name="Combat"><GM.GMCombat /></CV.Tab>,
     <CV.Tab key="Players" name="Players"><Players.Players /></CV.Tab>,
-    <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
+    // <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
     <CV.Tab key="SavedGames" name="Saved Games"><GM.SavedGames /></CV.Tab>,
   ];
 
@@ -37,7 +37,7 @@ export function GMMain() {
   return <CV.TheLayout map={grid} tabs={tabs}
     bottom_left={<Secondary />}
     top_left={scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>}
-    bottom_right={<CV.GMChat />}
+    bottom_right={<></>}//<CV.GMChat />}
     bar_width={450} menu_size='tiny' bottom_bar={bottom_bar} />;
 }
 

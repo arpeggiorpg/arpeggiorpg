@@ -1140,12 +1140,6 @@ interface GenericChatProps {
   renderLog: (input: T.GameLog) => JSX.Element | undefined;
   sendCommand: (input: string) => T.GameCommand;
 }
-// export const GenericChat = ReactRedux.connect(
-//   Comp.createDeepEqualSelector(
-//     [(ptui: M.PTUI) => ptui.app.snapshots],
-//     (snapshots) => ({ snapshots })
-//   )
-// )(
 export function GenericChat(props: GenericChatProps): JSX.Element {
   const { renderLog, sendCommand } = props;
   const snapshots = M.useState(s => s.app.snapshots);

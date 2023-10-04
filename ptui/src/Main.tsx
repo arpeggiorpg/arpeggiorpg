@@ -13,6 +13,7 @@ import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
 import { Campaign } from "./Campaign";
 import { useState } from "./Model";
+import { GMMain } from "./GMView";
 
 export const router = createHashRouter([
   {
@@ -129,5 +130,5 @@ function GMGame() {
   let game = useState(s => s.game);
 
   console.log("game", game);
-  return <Campaign />;
+  return <GMMain />;
 }
