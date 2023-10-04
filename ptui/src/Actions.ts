@@ -74,24 +74,23 @@ export async function startPoll(mode: "gm" | "player", gameId: string) {
   //
   // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
   // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
-  const getGame = async () => {
-    let result = await ptfetch(`/g/${gameId}/${mode}`, undefined, T.decodeGameWithIndex);
-    getState().refresh(result.game);
-    return result;
-  };
+  const gameUrl = `/g/${gameId}/${mode}/`;
+  let result = await ptfetch(gameUrl, undefined, T.decodeGameWithIndex);
+  getState().refresh(result.game);
 
-  let {game, index} = await getGame();
+  let {index} = result;
 
   while (true) {
-    const url = `/poll/${index.game_idx}/${index.log_idx}`;
+    const url = `${gameUrl}poll/${index.game_idx}/${index.log_idx}`;
     try {
       console.log("gonna fetch");
-      let result = await getGame();
-      game = result.game;
+      let result = await ptfetch(url, {}, T.decodeGameWithIndex);
       index = result.index;
+      getState().refresh(result.game);
     } catch (e) {
       console.error("oops got an error", e);
       getState().setFetchStatus("Error");
+      await new Promise(res => setTimeout(res, 5000));
     }
   }
 }

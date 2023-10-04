@@ -8,7 +8,7 @@ use log::error;
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
 
-use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID}};
+use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID, GameIndex}};
 
 pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
   config
@@ -22,18 +22,16 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
         .service(
           web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
           .service(get_game)
+          .service(poll_game)
         )
         .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
       )
     )
-    // .route("games/{game_id}", web::get().to(get_game))
-    // .route("poll/{snapshot_len}/{log_len}", web::get().to(poll_app))
     // .route("movement_options/{scene_id}/{cid}", web::get().to(movement_options))
     // .route("combat_movement_options", web::get().to(combat_movement_options))
     // .route("target_options/{scene_id}/{cid}/{abid}", web::get().to(target_options))
     // .route("preview_volume_targets/{scene_id}/{service_id}/{ability_id}/{x}/{y}/{z}",
     //        web::post().to(preview_volume_targets))
-    // .route("saved_games/{source}/{name}/load_into", web::post().to(load_into_folder))
     ;
 }
 
@@ -86,9 +84,12 @@ async fn get_game(service: web::ReqData<Arc<GameService>>) -> impl Responder {
   string_json_response(serde_json::to_string(&response)?)
 }
 
-// async fn poll_app(service: web::Data<AuthenticatableService>, path: web::Path<(usize, usize)>) -> impl Responder {
-//   string_json_response(service.poll_app(path.0, path.1).await?)
-// }
+#[get("/poll/{game_idx}/{log_idx}")]
+async fn poll_game(service: web::ReqData<Arc<GameService>>, path: web::Path<(String, usize, usize)>) -> impl Responder {
+  let (game, game_index) = service.poll_game(GameIndex {game_idx: path.1, log_idx: path.2}).await?;
+  let json = serde_json::json!({"game": game, "index": game_index});
+  string_json_response(serde_json::to_string(&json)?)
+}
 
 // async fn post_command(
 //   service: web::Data<AuthenticatableService>, command: web::Json<GameCommand>,
