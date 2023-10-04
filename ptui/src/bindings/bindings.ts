@@ -8,7 +8,11 @@ import type { Map } from 'immutable';
 
   export interface GameIndex { game_idx: number, log_idx: number, }
 
-export interface UserGames { gm_games: Array<string>, player_games: Array<string>, }
+export interface UserGames { gm_games: Array<GameID>, player_games: Array<GameID>, }
+
+export type GameID = string;
+
+export type UserID = string;
 
 export interface AABB { x: number, y: number, z: number, }
 

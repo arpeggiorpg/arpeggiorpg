@@ -265,7 +265,7 @@ export async function fetchAbilityTargets(
   };
 }
 
-export async function newGetGame(gameId: string): Promise<T.GameWithIndex> {
-  const url = `/g/${gameId}/gm/`;
-  return await ptfetch(url, {method: 'GET'}, T.decodeGameWithIndex);
+export async function createGame(): Promise<T.GameID> {
+  const result = await ptfetch('/g/create', {method: "POST"}, Z.object({game_id: Z.string()}));
+  return result.game_id;
 }

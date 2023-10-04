@@ -54,7 +54,7 @@ impl AuthenticatableService {
     let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
     let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
     println!("**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}", id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry);
-    Ok(id_info.sub)
+    Ok(UserID(format!("google:{}", id_info.sub)))
   }
 }
 
@@ -69,11 +69,11 @@ pub struct AuthenticatedService {
 }
 
 impl AuthenticatedService {
-  pub async fn new_game(&self) -> AEResult<String> {
+  pub async fn new_game(&self) -> AEResult<GameID> {
     let game: Game = Default::default();
     let game_id = self.storage.create_game(&game).await?;
     self.storage.add_user_gm_game(&self.user_id, &game_id).await?;
-    game_to_string(&game)
+    Ok(game_id.clone())
   }
 
   pub async fn list_games(&self) -> AEResult<UserGames> {
@@ -83,7 +83,7 @@ impl AuthenticatedService {
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GameService> {
     let games = self.storage.list_user_games(&self.user_id).await?;
     if !games.gm_games.contains(game_id) {
-      return Err(anyhow!(format!("User {} is not a GM of game {}", self.user_id, game_id)));
+      return Err(anyhow!(format!("User {:?} is not a GM of game {:?}", self.user_id, game_id)));
     }
     let (game, game_index) = self.storage.load_game(game_id).await.context(format!("Loading game {game_id:?}"))?;
     // TODO Actually return a GMService!!!
@@ -93,7 +93,7 @@ impl AuthenticatedService {
   pub async fn player(&self, game_id: &GameID) -> AEResult<GameService> {
     let games = self.storage.list_user_games(&self.user_id).await?;
     if !games.player_games.contains(game_id) {
-      return Err(anyhow!(format!("User {} is not a Player of game {}", self.user_id, game_id)));
+      return Err(anyhow!(format!("User {:?} is not a Player of game {:?}", self.user_id, game_id)));
     }
     let (game, game_index) = self.storage.load_game(game_id).await?;
     // TODO Actually return a PlayerService!
@@ -210,7 +210,7 @@ impl PingService {
 
   pub async fn register_waiter(&self, game_id: &GameID, sender: oneshot::Sender<()>) {
     let mut waiters = self.waiters.lock().await;
-    let game_waiters = waiters.entry(*game_id);
+    let game_waiters = waiters.entry(game_id.clone());
     game_waiters.and_modify(|v| v.push(sender)).or_insert(vec![]);
   }
 

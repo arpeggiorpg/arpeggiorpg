@@ -90,7 +90,7 @@ impl FSStorage {
   }
 
   fn user_game_path(&self, user_id: &UserID) -> PathBuf {
-    self.path.join("users").join(format!("{user_id}.json"))
+    self.path.join("users").join(format!("{}.json", user_id.0))
   }
 
   fn game_path(&self, game_id: &GameID) -> PathBuf {
@@ -164,14 +164,14 @@ impl PTStorage for FSStorage {
 
   async fn add_user_gm_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
     let mut user_games = self.list_user_games(user_id).await?;
-    user_games.gm_games.push(*game_id);
+    user_games.gm_games.push(game_id.clone());
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
   }
   async fn add_user_player_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
     let mut user_games = self.list_user_games(user_id).await?;
-    user_games.player_games.push(*game_id);
+    user_games.player_games.push(game_id.clone());
     let json_file_path = self.user_game_path(user_id);
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
@@ -179,7 +179,7 @@ impl PTStorage for FSStorage {
 
   // Game management
   async fn create_game(&self, game: &Game) -> AEResult<GameID> {
-    let game_id = uuid::Uuid::new_v4();
+    let game_id = GameID::gen();
     let games_path = self.game_path(&game_id).join("0");
     fs::create_dir_all(games_path.clone())?;
     let game_file = fs::File::create(games_path.join("game.json"))?;

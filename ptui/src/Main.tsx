@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { createHashRouter, RouterProvider, Link, useLoaderData, useParams } from "react-router-dom";
+import { createHashRouter, RouterProvider, Link, useLoaderData, useParams, redirect, useNavigate } from "react-router-dom";
 
 // import * as M from "./Model";
 import * as A from "./Actions";
@@ -48,36 +48,6 @@ export function Main() {
   }
 }
 
-// React.useEffect(() => { startPoll(); }, []);
-
-// if (fetchStatus === "Unfetched") {
-//   return <div>Waiting for initial data from server.</div>;
-// } else if (fetchStatus === "Error") {
-//   return (
-//     <div>
-//       There was an error fetching the application state from {RPI_URL}.
-//       Trying again...
-//     </div>
-//   );
-// } else {
-//   return props.children;
-// }
-
-// async function getInnerComponent(component_name: string): Promise<JSX.Element> {
-//   switch (component_name) {
-//     case "gm": {
-//       const GMView = await import("./GMView")
-//       return <GMView.GMMain />;
-//     }
-//     case "player": {
-//       const PlayerView = await import("./PlayerView");
-//       return <Main><PlayerView.PlayerMain /></Main>;
-//     }
-//     default:
-//       return <SignIn />;
-//   }
-// }
-
 function GameList() {
   let [games, setGames] = React.useState<T.UserGames | null>(null);
   React.useEffect(() => {
@@ -86,26 +56,34 @@ function GameList() {
     }
     getGames();
   }, []);
+
+  let navigate = useNavigate();
   return (
     <>
       <h1>You are GM of these games</h1>
       <ul>
-        {games?.gm_games.map((game) => (
-          <li>
-            <Link to={`gm/${game}`}>{game}</Link>
+        {games?.gm_games.map(gameId => (
+          <li key={gameId}>
+            <Link to={`gm/${gameId}`}>{gameId}</Link>
           </li>
         ))}
+        <li><button onClick={createGame}>Create New</button></li>
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
-        {games?.player_games.map((game) => (
-          <li>
-            <Link to={`gm/${game}`}>{game}</Link>
+        {games?.player_games.map(gameId => (
+          <li key={gameId}>
+            <Link to={`gm/${gameId}`}>{gameId}</Link>
           </li>
         ))}
       </ul>
     </>
   );
+
+  async function createGame() {
+    let game_id = await A.createGame();
+    navigate(`/gm/${game_id}`);
+  }
 }
 
 type ErrorBoundaryProps = {

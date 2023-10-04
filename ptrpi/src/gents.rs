@@ -10,6 +10,8 @@ pub fn main() -> Result<(), anyhow::Error> {
   let decls = vec![
     <RT::GameIndex as TS>::decl(),
     <RT::UserGames as TS>::decl(),
+    <RT::GameID as TS>::decl(),
+    <RT::UserID as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),
     <T::AbilityID as TS>::decl(),

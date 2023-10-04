@@ -14,7 +14,9 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
   config
     .app_data(web::Data::new(service))
     .service(
-      web::scope("g").wrap(from_fn(add_authenticated_to_req)).service(list_games)
+      web::scope("g").wrap(from_fn(add_authenticated_to_req))
+      .service(list_games)
+      .service(create_game)
       .service(
         web::scope("{game_id}").wrap(from_fn(add_game_to_req))
         .service(
@@ -65,6 +67,13 @@ async fn list_games(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Re
   let games = service.list_games().await?;
   let s = serde_json::to_string(&games)?;
   string_json_response(s)
+}
+
+#[post("/create")]
+async fn create_game(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Responder {
+  let game_id = service.new_game().await?;
+  let json = serde_json::json!({"game_id": game_id});
+  string_json_response(serde_json::to_string(&json)?)
 }
 
 
