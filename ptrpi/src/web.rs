@@ -23,6 +23,7 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
           web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
           .service(get_game)
           .service(poll_game)
+          .service(execute)
         )
         .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
       )
@@ -91,11 +92,13 @@ async fn poll_game(service: web::ReqData<Arc<GameService>>, path: web::Path<(Str
   string_json_response(serde_json::to_string(&json)?)
 }
 
-// async fn post_command(
-//   service: web::Data<AuthenticatableService>, command: web::Json<GameCommand>,
-// ) -> impl Responder {
-//   string_json_response(service.perform_command(command.into_inner()).await?)
-// }
+#[post("/execute")]
+async fn execute(
+  service: web::ReqData<Arc<GameService>>, command: web::Json<GameCommand>,
+) -> impl Responder {
+  let x = service.perform_command(command.into_inner()).await?;
+  string_json_response(x)
+}
 
 // async fn movement_options(
 //   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID)>,
@@ -180,11 +183,13 @@ impl ResponseError for MyError {
   }
 
   fn error_response(&self) -> HttpResponse {
-    match &self {
+    let response = match &self {
       Self::ActixWebError(e) => e.error_response(),
       Self::AnyhowError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
       Self::SerdeJsonError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
-    }
+    };
+    error!("[RADIX] {response:?}");
+    response
   }
 
 }
