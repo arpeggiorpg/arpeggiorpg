@@ -117,11 +117,11 @@ impl GameService {
   // difficult for me.
 
   /// Wait for a Game to change and then return it.
-  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<String> {
+  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<(Game, GameIndex)> {
     // First, if the app has already changed, return it immediately.
     debug!("poll_game:start");
     if self.game_index != game_index {
-      return game_to_string(&self.game);
+      return Ok((self.game.clone(), self.game_index));
     }
     // Now, we wait.
     let (sender, receiver) = oneshot::channel();
@@ -139,8 +139,8 @@ impl GameService {
     }
     // When this receiver gets pinged, we don't just want to return self.game -- we have to get the
     // latest state.
-    let (game, _) = self.storage.load_game(&self.game_id).await?;
-    game_to_string(&game)
+    let (game, game_index) = self.storage.load_game(&self.game_id).await?;
+    Ok((game, game_index))
   }
 
   pub async fn perform_command(&self, command: GameCommand) -> AEResult<String> {
