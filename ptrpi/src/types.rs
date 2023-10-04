@@ -2,18 +2,34 @@ use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
-pub type GameID = Uuid;
-/// This will be be based on the google JWT `sub` for now.
-pub type UserID = String;
+// maybe we should move GameID into pandt
+#[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize, Debug, Default, TS)]
+pub struct GameID(pub Uuid);
+impl GameID {
+  pub fn gen() -> GameID { GameID(Uuid::new_v4()) }
+  pub fn to_string(&self) -> String { self.0.to_hyphenated().to_string() }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default, TS)]
+}
+impl std::str::FromStr for GameID {
+  type Err = anyhow::Error;
+  fn from_str(s: &str) -> Result<GameID, anyhow::Error> {
+    Ok(GameID(Uuid::parse_str(s)?))
+  }
+}
+
+
+/// This will be be based on the google JWT `sub` for now.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
+pub struct UserID(pub String);
+
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameIndex {
   pub game_idx: usize,
   pub log_idx: usize,
 }
 
 
-#[derive(Clone, Serialize, Deserialize, TS)]
+#[derive(Clone, Serialize, Deserialize, Debug, TS)]
 pub struct UserGames {
   pub gm_games: Vec<GameID>,
   pub player_games: Vec<GameID>,

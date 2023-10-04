@@ -5,19 +5,19 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
   ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
   CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameIndex, GameLog, HP,
-  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames, Visibility,
-  Volume, VolumeCondition,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID, GameIndex,
+  GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets,
+  Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames,
+  UserID, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
   ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
   CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameIndex, GameLog, HP,
-  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames, Visibility,
-  Volume, VolumeCondition,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID, GameIndex,
+  GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets,
+  Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames,
+  UserID, Visibility, Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };

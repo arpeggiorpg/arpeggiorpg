@@ -20,7 +20,7 @@ be able to write arbitrary files to (for now).
 
 ```shell
 cd ptrpi
-cargo run -- --saved-games ./sample_games/ --load-game testgame.yaml --modules ./modules/
+cargo run -- --storage ./storage/
 ```
 
 This will start an RPI server which will load & save games to the `sample_games` directory, and
@@ -34,5 +34,4 @@ npm install
 npm run dev
 ```
 
-That will start the frontend server. Hit it at http://localhost:5173/, and add `?mode=GM` to see the
-Game Master UI.
+That will start the frontend server. Hit it at http://localhost:5173/
