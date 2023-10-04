@@ -3,20 +3,21 @@ import * as Z from "zod";
 
 import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
-  CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, GameCommand, GameLog, HP, InventoryOwner, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
+  CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameIndex, GameLog, HP,
+  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames, Visibility,
+  Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData, CreatureEffect,
-  CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy, FolderItemID,
-  FolderNode, FolderPath, FolderTree, Game, GameCommand, GameLog, HP, InventoryOwner, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, Visibility, Volume, VolumeCondition,
-
+  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
+  CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
+  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameIndex, GameLog, HP,
+  InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames, Visibility,
+  Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -509,7 +510,7 @@ const decodeCreatureEffect: Decoder<CreatureEffect> = Z.union([
   Z.object({GenerateEnergy: Z.number()}),
   Z.object({MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect))}),
 ]);
-const decodeSceneEffect = // Z.union([
+const decodeSceneEffect: Decoder<SceneEffect> = // Z.union([
   Z.object({CreateVolumeCondition: Z.object({duration: decodeDuration, condition: decodeCondition})});
 // ]);
 
@@ -566,20 +567,10 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
     ]);
 }
 
-export interface UserGames { // RADIX BIND THIS!
-  gm_games: string[];
-  player_games: string[];
-}
-
 export const decodeUserGames: Decoder<UserGames> = Z.object({
   gm_games: Z.array(Z.string()),
   player_games: Z.array(Z.string()),
 });
-
-export interface GameIndex { // RADIX BIND THIS!
-  game_idx: number;
-  log_idx: number;
-}
 
 export const decodeGameIndex: Decoder<GameIndex> = Z.object({
   game_idx: Z.number(),
