@@ -3,10 +3,13 @@ use std::io::prelude::*;
 use ts_rs::TS;
 
 use pandt::types as T;
+use crate::types as RT;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let mut file = File::create("bindings/bindings.ts")?;
+pub fn main() -> Result<(), anyhow::Error> {
+  let mut file = File::create("../ptui/src/bindings/bindings.ts")?;
   let decls = vec![
+    <RT::GameIndex as TS>::decl(),
+    <RT::UserGames as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),
     <T::AbilityID as TS>::decl(),

@@ -5,19 +5,19 @@ mod actor;
 mod web;
 mod types;
 mod storage;
+mod gents;
 
 use std::env;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, App as WebApp};
+use clap::{Parser, Subcommand};
 use log::info;
-use structopt::StructOpt;
 
-use crate::storage::{PTStorage, FSStorage, CloudStorage};
+use crate::{storage::{PTStorage, FSStorage, CloudStorage}};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -27,10 +27,28 @@ async fn main() -> Result<(), anyhow::Error> {
   let env = env_logger::Env::new().filter("PANDT_LOG").write_style("PANDT_LOG_STYLE");
   env_logger::init_from_env(env);
 
+  let opts = Opts::parse();
+
+  return match &opts.command {
+    Some(Commands::GenTS) => {
+      gents::main()?;
+      Ok(())
+    }
+    Some(Commands::Serve{storage_path, google_bucket, google_client_id}) =>
+      serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await,
+
+    None => {
+      log::error!("Please provide a subcommand.");
+      Ok(())
+    }
+  };
+}
+
+async fn serve(storage_path: Option<PathBuf>, google_bucket: Option<String>, google_client_id: String) -> anyhow::Result<()> {
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
-  let opts = Opts::from_args();
+
   let storage: Arc<dyn PTStorage> =
-  if let Some(storage_path) = opts.storage_path {
+  if let Some(storage_path) = storage_path {
     Arc::new(FSStorage::new(storage_path))
   // } else if let Some(bucket) = opts.google_bucket {
   //   Arc::new(CloudStorage::new(bucket).await?)
@@ -38,7 +56,7 @@ async fn main() -> Result<(), anyhow::Error> {
     return Err(anyhow!("Need to pass one of storage-path or google-bucket"));
   };
 
-  let service = actor::AuthenticatableService::new(storage, opts.google_client_id);
+  let service = actor::AuthenticatableService::new(storage, google_client_id);
 
   let webservice = service.clone();
   let server = actix_web::HttpServer::new(move || {
@@ -52,15 +70,27 @@ async fn main() -> Result<(), anyhow::Error> {
   Ok(())
 }
 
-#[derive(StructOpt)]
-#[structopt(name = "basic")]
+#[derive(Parser)]
+#[command()]
 struct Opts {
-  #[structopt(long = "storage-path", parse(from_os_str))]
-  storage_path: Option<PathBuf>,
+  #[command(subcommand)]
+  command: Option<Commands>,
+}
 
-  #[structopt(long = "google-bucket")]
-  google_bucket: Option<String>,
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate typescript bindings
+    GenTS,
 
-  #[structopt(long = "google-client-id")]
-  google_client_id: String
+    /// Run the PTRPI server
+    Serve {
+      #[arg(long, value_name = "FILE")]
+      storage_path: Option<PathBuf>,
+
+      #[arg(long)]
+      google_bucket: Option<String>,
+
+      #[arg(long)]
+      google_client_id: String,
+    }
 }
