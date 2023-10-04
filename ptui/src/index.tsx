@@ -1,10 +1,12 @@
 import * as React from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, Root } from "react-dom/client";
 
-import { Main } from "./Main";
+import { router } from "./Main";
 
 import { RPI_URL } from "./Actions";
-let root;
+import { RouterProvider } from "react-router-dom";
+
+let root: Root | undefined;
 
 async function PT_renderMain(id: string) {
   const el = document.getElementById(id);
@@ -12,11 +14,12 @@ async function PT_renderMain(id: string) {
     console.error("where's the root!");
     return;
   }
-  root = createRoot(el);
+  if (!root)
+    root = createRoot(el);
   if (!RPI_URL) {
     return <h1 style={{color: "red"}}>DEPLOYMENT FAILED: VITE_RPI_URL is not set</h1>
   }
-  root.render(<Main />);
+  root.render(<RouterProvider router={router} />);
 }
 
 PT_renderMain("react-main");

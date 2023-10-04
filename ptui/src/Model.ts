@@ -9,11 +9,10 @@ import * as T from "./PTTypes";
 
 export type FetchStatus = "Unfetched" | "Ready" | "Error";
 export interface AppState {
-  app: T.App;
+  game: T.Game;
   fetchStatus: FetchStatus;
   setFetchStatus: (s: FetchStatus) => void;
-  refresh: (app: T.App) => void;
-  refreshGame: (game: T.Game) => void;
+  refresh: (g: T.Game) => void;
 
   // utility functions for fetching state
   getItem: (iid: T.ItemID) => T.Item | undefined,
@@ -40,23 +39,19 @@ export interface AppState {
 }
 
 const appSlice: Slice<AppState> = (set, get) => ({
-  app: initialApp,
+  game: initialGame,
   fetchStatus: "Unfetched",
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
-  refresh: app => set(state => {
+  refresh: game => set(state => {
     const pid = state.playerId;
     if (pid) {
       // we always want to force the focus on the players to whatever scene they're focused on
-      const playerScene = app.current_game.players.get(pid)?.scene;
+      const playerScene = game.players.get(pid)?.scene;
       if (playerScene) {
         getState().setGridFocus(playerScene);
       }
     }
-    return { app, fetchStatus: "Ready" };
-  }),
-  refreshGame: game => set(state => {
-    state.refresh({ ...state.app, current_game: game });
-    return state;
+    return { game, fetchStatus: "Ready" };
   }),
 
   getItem: iid => get().getGame().items[iid],
@@ -101,7 +96,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
   getCreatures: cids => sortBy(filterMap(cids, cid => get().getCreature(cid)), (c: T.Creature) => c.name),
   getCreature: cid => get().getGame().creatures.get(cid),
   getCombat: () => get().getGame().current_combat,
-  getGame: () => get().app.current_game,
+  getGame: () => get().game,
 
   getAbility: abid => get().getGame().abilities[abid],
   getAbilities: abids => sortBy(filterMap(abids, abid => get().getAbility(abid)), i => i.name),
@@ -118,20 +113,17 @@ const appSlice: Slice<AppState> = (set, get) => ({
   }
 });
 
-const initialApp: T.App = {
-  snapshots: [],
-  current_game: {
-    players: Map(),
-    current_combat: null,
-    creatures: Map(),
-    classes: Map(),
-    items: {},
-    scenes: Map(),
-    abilities: {},
-    campaign: { children: Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } },
-    tile_system: "DnD",
-    active_scene: null
-  }
+const initialGame: T.Game = {
+  players: Map(),
+  current_combat: null,
+  creatures: Map(),
+  classes: Map(),
+  items: {},
+  scenes: Map(),
+  abilities: {},
+  campaign: { children: Map(), data: { scenes: [], creatures: [], notes: {}, items: [], abilities: [], classes: [] } },
+  tile_system: "DnD",
+  active_scene: null
 };
 
 
