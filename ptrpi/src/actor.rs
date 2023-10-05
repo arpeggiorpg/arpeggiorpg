@@ -52,7 +52,7 @@ impl AuthenticatableService {
     let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
     let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
     println!("**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}", id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry);
-    Ok(UserID(format!("google:{}", id_info.sub)))
+    Ok(UserID(format!("google_{}", id_info.sub)))
   }
 }
 
@@ -67,9 +67,9 @@ pub struct AuthenticatedService {
 }
 
 impl AuthenticatedService {
-  pub async fn new_game(&self) -> AEResult<GameID> {
+  pub async fn new_game(&self, name: String) -> AEResult<GameID> {
     let game: Game = Default::default();
-    let game_id = self.storage.create_game(&game).await?;
+    let game_id = self.storage.create_game(&game, &name).await?;
     self.storage.add_user_gm_game(&self.user_id, &game_id).await?;
     Ok(game_id.clone())
   }

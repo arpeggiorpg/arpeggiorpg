@@ -31,7 +31,7 @@ pub trait PTStorage: Send + Sync {
   async fn add_user_player_game(&self, u: &UserID, g: &GameID) -> AEResult<()>;
 
   // Game management
-  async fn create_game(&self, g: &Game) -> AEResult<GameID>;
+  async fn create_game(&self, g: &Game, name: &str) -> AEResult<GameID>;
 
   /// Get metadata about a game. This data is stuff that we want to access
   /// frequently even without loading the full game (such as the game's name).
@@ -98,6 +98,10 @@ impl FSStorage {
 
   fn game_path(&self, game_id: &GameID) -> PathBuf {
     self.path.join("games").join(&game_id.to_string())
+  }
+
+  fn metadata_path(&self, game_id: &GameID) -> PathBuf {
+    self.game_path(game_id).join("metadata.json")
   }
 
   fn get_game_index(&self, game_id: &GameID) -> AEResult<GameIndex> {
@@ -181,19 +185,24 @@ impl PTStorage for FSStorage {
   }
 
   // Game management
-  async fn create_game(&self, game: &Game) -> AEResult<GameID> {
+  async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
     let game_id = GameID::gen();
-    let games_path = self.game_path(&game_id).join("0");
-    fs::create_dir_all(games_path.clone())?;
-    let game_file = fs::File::create(games_path.join("game.json"))?;
+    let snap_path = self.game_path(&game_id).join("0");
+    fs::create_dir_all(snap_path.clone())?;
+    let game_file = fs::File::create(snap_path.join("game.json"))?;
     serde_json::to_writer(game_file, game)?;
+
+    let metadata = GameMetadata { name: name.to_string() };
+    let metadata_file = fs::File::create(self.metadata_path(&game_id))?;
+    serde_json::to_writer(metadata_file, &metadata)?;
 
     Ok(game_id)
   }
 
   async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
-    let metadata_path = self.game_path(game_id).join("metadata.json");
-    let file = fs::File::open(metadata_path)?;
+    let metadata_path = self.metadata_path(game_id);
+    println!("Loading game path {:?}", metadata_path);
+    let file = fs::File::open(metadata_path.clone()).context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
   }
 

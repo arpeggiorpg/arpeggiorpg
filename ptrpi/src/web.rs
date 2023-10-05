@@ -69,8 +69,8 @@ async fn list_games(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Re
 }
 
 #[post("/create")]
-async fn create_game(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Responder {
-  let game_id = service.new_game().await?;
+async fn create_game(service: web::ReqData<Arc<AuthenticatedService>>, name: web::Json<String>) -> impl Responder {
+  let game_id = service.new_game(name.into_inner().to_string()).await?;
   let json = serde_json::json!({"game_id": game_id});
   string_json_response(serde_json::to_string(&json)?)
 }
