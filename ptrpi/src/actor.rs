@@ -1,5 +1,4 @@
 use std::{
-  path::{Path, PathBuf},
   sync::Arc,
   time::Duration, collections::HashMap,
 };
@@ -7,7 +6,6 @@ use std::{
 use anyhow::{anyhow, Context, Result as AEResult};
 use futures::channel::oneshot;
 use log::{debug, error, info};
-use thiserror;
 
 use tokio::{sync::Mutex, time::timeout};
 
@@ -143,14 +141,14 @@ impl GameService {
     Ok((game, game_index))
   }
 
-  pub async fn perform_command(&self, command: GameCommand) -> AEResult<String> {
+  pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {
     let log_cmd = command.clone();
     info!("perform_command:start: {:?}", &log_cmd);
-    let pandt::game::ChangedGame { game, logs } = self.game.perform_command(command)?;
-    self.storage.apply_game_logs(&self.game_id, &logs).await?;
+    let changed_game = self.game.perform_command(command)?;
+    self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
     self.ping_service.ping(&self.game_id).await?;
     debug!("perform_command:done: {:?}", &log_cmd);
-    game_to_string(&game)
+    Ok(changed_game)
   }
 
   pub async fn movement_options(

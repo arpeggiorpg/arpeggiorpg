@@ -2,22 +2,22 @@ import { Set, Map, List, ValueObject } from 'immutable';
 import * as Z from "zod";
 
 import type {
-  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
-  CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID, GameIndex,
-  GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets,
-  Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames,
-  UserID, Visibility, Volume, VolumeCondition,
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
+  ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
+  CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
+  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
+  GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
+  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  UserGames, UserID, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
-  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID, Class,
-  ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation, CreatureData,
-  CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice, Duration,  Energy,
-  FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID, GameIndex,
-  GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID, PotentialTargets,
-  Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserGames,
-  UserID, Visibility, Volume, VolumeCondition,
+  AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
+  ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
+  CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
+  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
+  GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
+  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  UserGames, UserID, Visibility, Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -533,10 +533,10 @@ export const decodeGame: Decoder<Game> = Z.object({
   active_scene: Z.string().nullable(),
 });
 
-export const decodeSendCommandResult: Decoder<[Game, Array<GameLog>]> = Z.tuple([
-  decodeGame,
-  Z.array(decodeGameLog)
-]);
+export const decodeChangedGame: Decoder<ChangedGame> = Z.object({
+  game: decodeGame,
+  logs: Z.array(decodeGameLog)
+});
 
 
 export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>): Decoder<RustResult<T, E>> {

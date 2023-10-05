@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::HashMap};
+use std::{sync::Arc};
 
 use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError, http::header};
 use actix_web_lab::middleware::{Next, from_fn};
@@ -96,8 +96,9 @@ async fn poll_game(service: web::ReqData<Arc<GameService>>, path: web::Path<(Str
 async fn execute(
   service: web::ReqData<Arc<GameService>>, command: web::Json<GameCommand>,
 ) -> impl Responder {
-  let x = service.perform_command(command.into_inner()).await?;
-  string_json_response(x)
+  let changed_game = service.perform_command(command.into_inner()).await;
+  let changed_game = changed_game.map_err(|e| format!("{e:?}"));
+  string_json_response(serde_json::to_string(&changed_game)?)
 }
 
 // async fn movement_options(
