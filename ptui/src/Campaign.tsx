@@ -18,7 +18,8 @@ import * as A from './Actions';
 import * as T from './PTTypes';
 
 export function Campaign() {
-  return <FolderTree name="Campaign" path={[]} start_open={true} />;
+  const name = M.useState(s => s.game.name);
+  return <FolderTree name={name} path={[]} start_open={true} />;
 }
 
 interface MultiItemSelectorProps {

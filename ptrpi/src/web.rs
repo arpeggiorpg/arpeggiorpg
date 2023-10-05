@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError, http::header};
 use actix_web_lab::middleware::{Next, from_fn};
