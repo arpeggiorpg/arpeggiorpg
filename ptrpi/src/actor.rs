@@ -9,7 +9,7 @@ use log::{debug, error, info};
 
 use tokio::{sync::Mutex, time::timeout};
 
-use crate::{types::{UserID, GameID, GameIndex, UserGames}, storage::PTStorage};
+use crate::{types::{UserID, GameID, GameIndex, UserGames, GameList}, storage::PTStorage};
 
 use pandt::types::{self, Game, GameCommand};
 
@@ -74,8 +74,18 @@ impl AuthenticatedService {
     Ok(game_id.clone())
   }
 
-  pub async fn list_games(&self) -> AEResult<UserGames> {
-    self.storage.list_user_games(&self.user_id).await
+  pub async fn list_games(&self) -> AEResult<GameList> {
+    // DAMNIT this is HORRIBLE, I have to completely rethink storage
+    let usergames = self.storage.list_user_games(&self.user_id).await?;
+    let mut gm_games = vec![];
+    for game_id in usergames.gm_games {
+      gm_games.push((game_id.clone(), self.storage.load_game(&game_id).await?.0.name));
+    }
+    let mut player_games = vec![];
+    for game_id in usergames.player_games {
+      player_games.push((game_id.clone(), self.storage.load_game(&game_id).await?.0.name));
+    }
+    Ok(GameList { gm_games, player_games })
   }
 
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GameService> {

@@ -1107,6 +1107,8 @@ pub struct ChangedGame {
 
 #[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Game {
+  #[serde(default = "default_game_name")]
+  pub name: String,
   pub current_combat: Option<Combat>,
   #[ts(type = "GameAbilities")]
   pub abilities: IndexedHashMap<Ability>,
@@ -1130,18 +1132,8 @@ pub struct Game {
   pub active_scene: Option<SceneID>,
 }
 
-/// The non-persistent data involved in running a game.
-pub struct Runtime {
-  pub app: App,
-  pub world: Option<CollisionWorld>,
-}
-
-/// A persistent data structure maintaining state for the whole app. It keeps track of the history
-/// of the whole game, and exposes the top-level methods that run simulations on the game.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, Default)]
-pub struct App {
-  pub current_game: Game,
-  pub snapshots: VecDeque<(Game, Vec<GameLog>)>,
+fn default_game_name() -> String {
+  return "Untitled Game".to_string()
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
@@ -1262,27 +1254,17 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
   pub class: &'game Class,
 }
 
-/// A newtype wrapper over App that has a special Serialize implementation, which includes extra
+/// A newtype wrapper over Game that has a special Serialize implementation, which includes extra
 /// data dynamically as a convenience for the client.
-pub struct RPIApp<'a>(pub &'a App);
-/// Like `RPIApp` for Game.
 pub struct RPIGame<'a>(pub &'a Game);
 
-impl<'a> Serialize for RPIApp<'a> {
-  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("App", 2)?;
-    let app = self.0;
-    str.serialize_field("current_game", &RPIGame(&app.current_game))?;
-    str.serialize_field("snapshots", &app.snapshots)?;
-    str.end()
-  }
-}
 
 impl<'a> Serialize for RPIGame<'a> {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 11)?;
+    let mut str = serializer.serialize_struct("Game", 12)?;
     let game = self.0;
 
+    str.serialize_field("name", &game.name)?;
     str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
     str.serialize_field(

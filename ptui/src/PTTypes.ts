@@ -6,18 +6,18 @@ import type {
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
-  GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
-  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  UserGames, UserID, Visibility, Volume, VolumeCondition,
+  GameList, GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, UserGames, UserID, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
-  GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player, PlayerID,
-  PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
-  UserGames, UserID, Visibility, Volume, VolumeCondition,
+  GameList, GameIndex, GameLog, HP, InventoryOwner, Item, ItemID, ModuleSource, Note, Player,
+  PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel,
+  TileSystem, UserGames, UserID, Visibility, Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -521,6 +521,7 @@ const decodeTileSystem: Decoder<TileSystem> = Z.union([
 ]);
 
 export const decodeGame: Decoder<Game> = Z.object({
+  name: Z.string(),
   current_combat: decodeCombat.nullable(),
   creatures: Z.record(decodeDynamicCreature).transform<Game["creatures"]>(Map),
   classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
@@ -551,6 +552,11 @@ export const decodeUserGames: Decoder<UserGames> = Z.object({
   gm_games: Z.array(Z.string()),
   player_games: Z.array(Z.string()),
 });
+
+export const decodeGameList: Decoder<GameList> = Z.object({
+  gm_games: Z.array(Z.tuple([Z.string(), Z.string()])),
+  player_games: Z.array(Z.tuple([Z.string(), Z.string()])),
+})
 
 export const decodeGameIndex: Decoder<GameIndex> = Z.object({
   game_idx: Z.number(),

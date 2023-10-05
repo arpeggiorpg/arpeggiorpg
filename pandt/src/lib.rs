@@ -8,7 +8,6 @@
 #[macro_use]
 extern crate uom;
 
-pub mod app;
 pub mod combat;
 pub mod creature;
 pub mod game;

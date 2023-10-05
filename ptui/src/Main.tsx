@@ -50,10 +50,10 @@ export function Main() {
 }
 
 function GameList() {
-  let [games, setGames] = React.useState<T.UserGames | null>(null);
+  let [games, setGames] = React.useState<T.GameList | null>(null);
   React.useEffect(() => {
     async function getGames() {
-      setGames(await ptfetch("/g/list", {}, T.decodeUserGames));
+      setGames(await ptfetch("/g/list", {}, T.decodeGameList));
     }
     getGames();
   }, []);
@@ -63,18 +63,18 @@ function GameList() {
     <>
       <h1>You are GM of these games</h1>
       <ul>
-        {games?.gm_games.map(gameId => (
+        {games?.gm_games.map(([gameId, name]) => (
           <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{gameId}</Link>
+            <Link to={`gm/${gameId}`}>{name}</Link>
           </li>
         ))}
         <li><button onClick={createGame}>Create New</button></li>
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
-        {games?.player_games.map(gameId => (
+        {games?.player_games.map(([gameId, name]) => (
           <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{gameId}</Link>
+            <Link to={`gm/${gameId}`}>{name}</Link>
           </li>
         ))}
       </ul>

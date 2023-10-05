@@ -34,3 +34,11 @@ pub struct UserGames {
   pub gm_games: Vec<GameID>,
   pub player_games: Vec<GameID>,
 }
+
+
+/// The result from listing a game. Includes a name (and maybe other data, eventually)
+#[derive(Clone, Serialize, Deserialize, Debug, TS)]
+pub struct GameList {
+  pub gm_games: Vec<(GameID, String)>,
+  pub player_games: Vec<(GameID, String)>,
+}
