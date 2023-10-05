@@ -112,7 +112,7 @@ async fn execute(
 
 async fn movement_options(
   Extension(service): Extension<Arc<GameService>>,
-  Path((scene_id, creature_id)): Path<(SceneID, CreatureID)>,
+  Path((_game_id, scene_id, creature_id)): Path<(String, SceneID, CreatureID)>,
 ) -> WebResult<Json<Vec<Point3>>> {
   Ok(Json(service.movement_options(scene_id, creature_id).await?))
 }
@@ -123,14 +123,14 @@ async fn combat_movement_options(Extension(service): Extension<Arc<GameService>>
 
 async fn target_options(
   Extension(service): Extension<Arc<GameService>>,
-  Path((scene_id, creature_id, ability_id)): Path<(SceneID, CreatureID, AbilityID)>,
+  Path((_game_id, scene_id, creature_id, ability_id)): Path<(String, SceneID, CreatureID, AbilityID)>,
 ) -> WebResult<Json<PotentialTargets>> {
   Ok(Json(service.target_options(scene_id, creature_id, ability_id).await?))
 }
 
 async fn preview_volume_targets(
   Extension(service): Extension<Arc<GameService>>,
-  Path((scene_id, creature_id, ability_id, x, y, z)): Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+  Path((_game_id, scene_id, creature_id, ability_id, x, y, z)): Path<(String, SceneID, CreatureID, AbilityID, i64, i64, i64)>,
 ) -> WebResult<Json<(Vec<CreatureID>, Vec<Point3>)>> {
   let point = Point3::new(x, y, z);
   let targets = service.preview_volume_targets(scene_id, creature_id, ability_id, point).await?;
