@@ -4,7 +4,7 @@
 // that for a while
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::large_enum_variant))]
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 use derive_more::{Add, Div, Mul, Sub};
 use error_chain::bail;

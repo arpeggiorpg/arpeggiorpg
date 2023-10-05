@@ -6,9 +6,7 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.73"
-actix-cors = "0.6.4"
-actix-web = "4.4.0"
-actix-web-lab = "0.19.1"
+axum = {version = "0.6.20"}
 env_logger = "0.7"
 error-chain = "0.12.1"
 foldertree = {version = "*", path = "../foldertree"}

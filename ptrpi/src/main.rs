@@ -12,8 +12,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use actix_cors::Cors;
-use actix_web::{middleware::Logger, App as WebApp};
 use clap::{Parser, Subcommand};
 use log::info;
 
@@ -56,17 +54,15 @@ async fn serve(storage_path: Option<PathBuf>, google_bucket: Option<String>, goo
     return Err(anyhow!("Need to pass one of storage-path or google-bucket"));
   };
 
-  let service = actor::AuthenticatableService::new(storage, google_client_id);
+  let service = Arc::new(actor::AuthenticatableService::new(storage, google_client_id));
 
-  let webservice = service.clone();
-  let server = actix_web::HttpServer::new(move || {
-    WebApp::new()
-      .wrap(Logger::default())
-      .wrap(Cors::permissive())
-      .configure(|c| web::router(service.clone(), c))
-  });
-  println!("Starting Actix Web server on port 1337.");
-  let _ = server.bind("0.0.0.0:1337")?.run().await;
+  let router = web::router(service.clone());
+
+  println!("Starting RPI server on port 1337.");
+  axum::Server::bind(&"0.0.0.0:1337".parse().unwrap())
+    .serve(router.into_make_service())
+    .await
+    .unwrap();
   Ok(())
 }
 
