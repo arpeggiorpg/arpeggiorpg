@@ -1,5 +1,4 @@
-use std::cmp;
-use std::collections::HashMap;
+use std::{cmp, collections::HashMap};
 
 use error_chain::bail;
 use num::Saturating;
@@ -330,9 +329,7 @@ fn conditions_able(conditions: &[AppliedCondition]) -> bool {
 
 #[cfg(test)]
 pub mod test {
-  use crate::creature::*;
-  use crate::game::test::*;
-  use crate::types::test::*;
+  use crate::{creature::*, game::test::*, types::test::*};
 
   use std::iter::FromIterator;
 

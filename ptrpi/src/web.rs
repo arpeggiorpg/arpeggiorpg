@@ -1,12 +1,21 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
-use axum::{http::{Request}, response::{Response, IntoResponse}, middleware::{from_fn, from_fn_with_state, Next}, extract::{State, Path}, Extension, routing::{get, post}, Json};
+use axum::{
+  extract::{Path, State},
+  http::Request,
+  middleware::{from_fn, from_fn_with_state, Next},
+  response::{IntoResponse, Response},
+  routing::{get, post},
+  Extension, Json,
+};
 use http::StatusCode;
 use log::error;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, RPIGame, SceneID, PotentialTargets};
+use pandt::types::{
+  AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIGame, SceneID,
+};
 
 use crate::{
   actor::{AuthenticatableService, AuthenticatedService, GameService},
@@ -21,15 +30,17 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     .route("/movement_options/:scene_id/:cid", get(movement_options))
     .route("/combat_movement_options", get(combat_movement_options))
     .route("/target_options/:scene_id/:cid/:abid", get(target_options))
-    .route("/preview_volume_targets/:scene_id/:service_id/:ability_id/:x/:y/:z", get(preview_volume_targets))
+    .route(
+      "/preview_volume_targets/:scene_id/:service_id/:ability_id/:x/:y/:z",
+      get(preview_volume_targets),
+    )
     .route_layer(from_fn(authorize_game));
 
   let auth_routes = axum::Router::new()
     .route("/list", get(list_games))
     .route("/create", post(create_game))
     .nest("/:game_id/gm/", game_routes)
-    .route_layer(from_fn_with_state(service.clone(), authenticate))
-    ;
+    .route_layer(from_fn_with_state(service.clone(), authenticate));
 
   let cors = CorsLayer::permissive();
   let trace = TraceLayer::new_for_http();
@@ -42,8 +53,7 @@ struct GameIDPath {
 }
 
 async fn authenticate<B>(
-  State(service): State<Arc<AuthenticatableService>>,
-  mut request: Request<B>, next: Next<B>,
+  State(service): State<Arc<AuthenticatableService>>, mut request: Request<B>, next: Next<B>,
 ) -> Result<Response, WebError> {
   let header =
     request.headers().get("x-pt-rpi-auth").ok_or(anyhow!("Need a x-pt-rpi-auth header"))?;
@@ -55,8 +65,8 @@ async fn authenticate<B>(
 
 async fn authorize_game<B>(
   Path(GameIDPath { game_id }): Path<GameIDPath>,
-  Extension(authenticated): Extension<Arc<AuthenticatedService>>,
-  mut request: Request<B>, next: Next<B>,
+  Extension(authenticated): Extension<Arc<AuthenticatedService>>, mut request: Request<B>,
+  next: Next<B>,
 ) -> Result<Response, WebError> {
   // TODO: return a 404 when the game doesn't exist.
   let game_id = game_id.parse().context("Parsing game_id as UUID")?;
@@ -65,22 +75,24 @@ async fn authorize_game<B>(
   Ok(next.run(request).await.into())
 }
 
-async fn list_games(Extension(service): Extension<Arc<AuthenticatedService>>) -> WebResult<Json<GameList>> {
+async fn list_games(
+  Extension(service): Extension<Arc<AuthenticatedService>>,
+) -> WebResult<Json<GameList>> {
   let games = service.list_games().await?;
   Ok(Json(games))
 }
 
 async fn create_game(
-  Extension(service): Extension<Arc<AuthenticatedService>>,
-  Json(name): Json<String>,
+  Extension(service): Extension<Arc<AuthenticatedService>>, Json(name): Json<String>,
 ) -> WebResult<Json<serde_json::Value>> {
   let game_id = service.new_game(name.to_string()).await?;
   let json = serde_json::json!({"game_id": game_id});
   Ok(Json(json))
 }
 
-
-async fn get_game(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<serde_json::Value>> {
+async fn get_game(
+  Extension(service): Extension<Arc<GameService>>,
+) -> WebResult<Json<serde_json::Value>> {
   let game = RPIGame(&service.game);
   let response = serde_json::json!({
     "game": game,
@@ -90,10 +102,10 @@ async fn get_game(Extension(service): Extension<Arc<GameService>>) -> WebResult<
 }
 
 async fn poll_game(
-  Extension(service): Extension<Arc<GameService>>, Path((_game_id, game_idx, log_idx)): Path<(String, usize, usize)>,
+  Extension(service): Extension<Arc<GameService>>,
+  Path((_game_id, game_idx, log_idx)): Path<(String, usize, usize)>,
 ) -> WebResult<Json<serde_json::Value>> {
-  let (game, game_index) =
-    service.poll_game(GameIndex { game_idx, log_idx }).await?;
+  let (game, game_index) = service.poll_game(GameIndex { game_idx, log_idx }).await?;
   let json = serde_json::json!({"game": RPIGame(&game), "index": game_index});
   Ok(Json(json))
 }
@@ -117,20 +129,35 @@ async fn movement_options(
   Ok(Json(service.movement_options(scene_id, creature_id).await?))
 }
 
-async fn combat_movement_options(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<Vec<Point3>>> {
+async fn combat_movement_options(
+  Extension(service): Extension<Arc<GameService>>,
+) -> WebResult<Json<Vec<Point3>>> {
   Ok(Json(service.combat_movement_options().await?))
 }
 
 async fn target_options(
   Extension(service): Extension<Arc<GameService>>,
-  Path((_game_id, scene_id, creature_id, ability_id)): Path<(String, SceneID, CreatureID, AbilityID)>,
+  Path((_game_id, scene_id, creature_id, ability_id)): Path<(
+    String,
+    SceneID,
+    CreatureID,
+    AbilityID,
+  )>,
 ) -> WebResult<Json<PotentialTargets>> {
   Ok(Json(service.target_options(scene_id, creature_id, ability_id).await?))
 }
 
 async fn preview_volume_targets(
   Extension(service): Extension<Arc<GameService>>,
-  Path((_game_id, scene_id, creature_id, ability_id, x, y, z)): Path<(String, SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+  Path((_game_id, scene_id, creature_id, ability_id, x, y, z)): Path<(
+    String,
+    SceneID,
+    CreatureID,
+    AbilityID,
+    i64,
+    i64,
+    i64,
+  )>,
 ) -> WebResult<Json<(Vec<CreatureID>, Vec<Point3>)>> {
   let point = Point3::new(x, y, z);
   let targets = service.preview_volume_targets(scene_id, creature_id, ability_id, point).await?;
@@ -170,8 +197,6 @@ async fn preview_volume_targets(
 //   string_json_response(service.save_module(path.into_inner(), folder_path.into_inner()).await?)
 // }
 
-
-
 // Make our own error that wraps `anyhow::Error`.
 struct WebError(anyhow::Error);
 
@@ -180,22 +205,16 @@ type WebResult<T> = std::result::Result<T, WebError>;
 // Tell axum how to convert `WebError` into a response.
 // We could theoretically downcast the error to return different status codes.
 impl IntoResponse for WebError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
+  fn into_response(self) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("Something went wrong: {}", self.0)).into_response()
+  }
 }
 
 // This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
 // `Result<_, WebError>`. That way you don't need to do that manually.
 impl<E> From<E> for WebError
 where
-    E: Into<anyhow::Error>,
+  E: Into<anyhow::Error>,
 {
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
+  fn from(err: E) -> Self { Self(err.into()) }
 }

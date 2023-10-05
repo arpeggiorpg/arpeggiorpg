@@ -1,13 +1,12 @@
-use std::cmp;
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
+use std::{
+  cmp,
+  collections::{HashMap, HashSet},
+  iter::FromIterator,
+};
 
 use error_chain::bail;
 
-use crate::combat::*;
-use crate::creature::ChangedCreature;
-use crate::grid::line_through_point;
-use crate::types::*;
+use crate::{combat::*, creature::ChangedCreature, grid::line_through_point, types::*};
 use foldertree::FolderPath;
 
 impl Game {
@@ -136,7 +135,9 @@ impl Game {
     }
     let game_abilities = HashSet::from_iter(self.abilities.keys().cloned());
     if all_abilities != game_abilities {
-      bail!(GameError::BuggyProgram(format!("Not all abilities were in the campaign! {all_abilities:?} VS {game_abilities:?}")));
+      bail!(GameError::BuggyProgram(format!(
+        "Not all abilities were in the campaign! {all_abilities:?} VS {game_abilities:?}"
+      )));
     }
     if all_classes != HashSet::from_iter(self.classes.keys().cloned()) {
       bail!("Not all classes were in the campaign!");
@@ -169,14 +170,12 @@ impl Game {
   pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
     use self::GameCommand::*;
     let change = match cmd {
-      LoadModule { ref name, ref path, source, game } => {
-        self.change_with(GameLog::LoadModule {
-          name: name.clone(),
-          module: game,
-          path: path.clone(),
-          source,
-        })
-      }
+      LoadModule { ref name, ref path, source, game } => self.change_with(GameLog::LoadModule {
+        name: name.clone(),
+        module: game,
+        path: path.clone(),
+        source,
+      }),
       SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
       // ** Player Management **
       RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
@@ -343,7 +342,12 @@ impl Game {
   ) -> Result<ChangedGame, GameError> {
     let creature = self.get_creature(creature_id)?;
     let (actual, success) = creature.creature.attribute_check(check)?;
-    self.change_with(GameLog::AttributeCheckResult { creature_id, attribute_check: check.clone(), actual, success})
+    self.change_with(GameLog::AttributeCheckResult {
+      creature_id,
+      attribute_check: check.clone(),
+      actual,
+      success,
+    })
   }
 
   pub fn path_creature(
@@ -1218,8 +1222,7 @@ impl Game {
   ) -> Result<PotentialTargets, GameError> {
     let ability = self.get_ability(ability_id)?;
 
-    use crate::types::Action as A;
-    use crate::types::CreatureTarget as CT;
+    use crate::types::{Action as A, CreatureTarget as CT};
     Ok(match ability.action {
       A::Creature { target: CT::Melee, .. } => {
         self.creatures_in_range(scene, creature_id, MELEE_RANGE)?
@@ -1318,14 +1321,11 @@ fn bug<T>(msg: &str) -> Result<T, GameError> { Err(GameError::BuggyProgram(msg.t
 
 #[cfg(test)]
 pub mod test {
-  use std::collections::HashSet;
-  use std::iter::FromIterator;
+  use std::{collections::HashSet, iter::FromIterator};
 
   use maplit::hashset;
 
-  use crate::combat::test::*;
-  use crate::game::*;
-  use crate::types::test::*;
+  use crate::{combat::test::*, game::*, types::test::*};
   use indexed::IndexedHashMap;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
@@ -1409,9 +1409,7 @@ pub mod test {
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result = game.perform_command(
-      GameCommand::StartCombat(t_scene_id(), vec![non]),
-    );
+    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]));
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1421,9 +1419,7 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result = game.perform_command(
-      GameCommand::StartCombat(t_scene_id(), vec![]),
-    );
+    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]));
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),

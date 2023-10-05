@@ -1,15 +1,15 @@
 use bresenham;
-use std::cmp;
-use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::{cmp, collections::HashSet, iter::FromIterator};
 
-use ncollide3d::na;
-use ncollide3d::na::{Isometry3, Vector3};
-use ncollide3d::pipeline::object::{CollisionGroups, GeometricQueryType};
-use ncollide3d::query::PointQuery;
-use ncollide3d::shape;
-use ncollide3d::shape::Cuboid;
-use ncollide3d::world;
+use ncollide3d::{
+  na,
+  na::{Isometry3, Vector3},
+  pipeline::object::{CollisionGroups, GeometricQueryType},
+  query::PointQuery,
+  shape,
+  shape::Cuboid,
+  world,
+};
 use num::range;
 use num_traits::Signed;
 use uom::si::length::{centimeter, meter};
@@ -385,9 +385,11 @@ fn volume_to_na_shape(volume: Volume) -> shape::ShapeHandle<f64> {
 // FOLLOWING COPIED FROM PATHFINDING CRATE
 // ***************************************
 use num_traits::Zero;
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap};
-use std::hash::Hash;
+use std::{
+  cmp::Ordering,
+  collections::{BinaryHeap, HashMap},
+  hash::Hash,
+};
 
 struct InvCmpHolder<K, P> {
   key: K,
@@ -481,8 +483,7 @@ where
 pub mod test {
   use maplit::hashmap;
 
-  use crate::grid::*;
-  use crate::types::*;
+  use crate::{grid::*, types::*};
 
   /// A map containing a single open block of terrain at 0,0,0
   fn box_map() -> Terrain { vec![Point3::new(0, 0, 0)] }

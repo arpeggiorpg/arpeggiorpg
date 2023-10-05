@@ -1,7 +1,4 @@
-use std::{
-  sync::Arc,
-  time::Duration, collections::HashMap,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result as AEResult};
 use futures::channel::oneshot;
@@ -9,7 +6,10 @@ use log::{debug, error, info};
 
 use tokio::{sync::Mutex, time::timeout};
 
-use crate::{types::{UserID, GameID, GameIndex, UserGames, GameList}, storage::PTStorage};
+use crate::{
+  storage::PTStorage,
+  types::{GameID, GameIndex, GameList, UserGames, UserID},
+};
 
 use pandt::types::{self, Game, GameCommand};
 
@@ -33,14 +33,21 @@ impl AuthenticatableService {
       storage,
       google_client_id,
       cached_certs: Arc::new(Mutex::new(google_signin::CachedCerts::new())),
-      ping_service: Arc::new(PingService::new())
+      ping_service: Arc::new(PingService::new()),
     }
   }
 
   /// Verify a google ID token and return an AuthenticatedService if it's valid.
   pub async fn authenticate(&self, google_id_token: String) -> AEResult<AuthenticatedService> {
-    let user_id = self.validate_google_token(&google_id_token).await.context(format!("Validating Google ID Token: {google_id_token:?}"))?;
-    return Ok(AuthenticatedService { user_id, storage: self.storage.clone(), ping_service: self.ping_service.clone() });
+    let user_id = self
+      .validate_google_token(&google_id_token)
+      .await
+      .context(format!("Validating Google ID Token: {google_id_token:?}"))?;
+    return Ok(AuthenticatedService {
+      user_id,
+      storage: self.storage.clone(),
+      ping_service: self.ping_service.clone(),
+    });
   }
 
   async fn validate_google_token(&self, id_token: &str) -> AEResult<UserID> {
@@ -51,11 +58,13 @@ impl AuthenticatableService {
     let id_info = client.verify(id_token, &certs).await?;
     let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
     let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
-    println!("**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}", id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry);
+    println!(
+      "**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
+      id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry
+    );
     Ok(UserID(format!("google_{}", id_info.sub)))
   }
 }
-
 
 /// AuthenticatedService is a capability layer that exposes functionality to authenticated users.
 /// One important responsibility is that this layer *authorizes* users to access specific games and
@@ -92,19 +101,35 @@ impl AuthenticatedService {
     if !games.gm_games.contains(game_id) {
       return Err(anyhow!(format!("User {:?} is not a GM of game {:?}", self.user_id, game_id)));
     }
-    let (game, game_index) = self.storage.load_game(game_id).await.context(format!("Loading game {game_id:?}"))?;
+    let (game, game_index) =
+      self.storage.load_game(game_id).await.context(format!("Loading game {game_id:?}"))?;
     // TODO Actually return a GMService!!!
-    Ok(GameService {storage: self.storage.clone(), game_id: game_id.clone(), game, game_index, ping_service: self.ping_service.clone()})
+    Ok(GameService {
+      storage: self.storage.clone(),
+      game_id: game_id.clone(),
+      game,
+      game_index,
+      ping_service: self.ping_service.clone(),
+    })
   }
 
   pub async fn player(&self, game_id: &GameID) -> AEResult<GameService> {
     let games = self.storage.list_user_games(&self.user_id).await?;
     if !games.player_games.contains(game_id) {
-      return Err(anyhow!(format!("User {:?} is not a Player of game {:?}", self.user_id, game_id)));
+      return Err(anyhow!(format!(
+        "User {:?} is not a Player of game {:?}",
+        self.user_id, game_id
+      )));
     }
     let (game, game_index) = self.storage.load_game(game_id).await?;
     // TODO Actually return a PlayerService!
-    Ok(GameService {storage: self.storage.clone(), game_id: game_id.clone(), game, game_index, ping_service: self.ping_service.clone()})
+    Ok(GameService {
+      storage: self.storage.clone(),
+      game_id: game_id.clone(),
+      game,
+      game_index,
+      ping_service: self.ping_service.clone(),
+    })
   }
 }
 
@@ -114,7 +139,7 @@ pub struct GameService {
   pub game: Game,
   pub game_index: GameIndex,
   pub game_id: GameID,
-  ping_service: Arc<PingService>
+  ping_service: Arc<PingService>,
 }
 
 impl GameService {
@@ -202,18 +227,12 @@ impl GameService {
   }
 }
 
-
-
-
-
 struct PingService {
   waiters: Mutex<HashMap<GameID, Vec<oneshot::Sender<()>>>>,
 }
 
 impl PingService {
-  pub fn new() -> PingService {
-    PingService { waiters: Mutex::new(HashMap::new())}
-  }
+  pub fn new() -> PingService { PingService { waiters: Mutex::new(HashMap::new()) } }
 
   pub async fn register_waiter(&self, game_id: &GameID, sender: oneshot::Sender<()>) {
     let mut waiters = self.waiters.lock().await;

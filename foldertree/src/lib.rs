@@ -4,8 +4,10 @@ extern crate thiserror;
 #[macro_use]
 extern crate serde;
 
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
+use std::{
+  collections::{HashMap, HashSet},
+  iter::FromIterator,
+};
 
 #[cfg(feature = "serde")]
 use serde::de;
@@ -461,11 +463,10 @@ extern crate serde_json;
 
 #[cfg(test)]
 mod test {
+  use crate::{FolderPath, FolderTree, FolderTreeError};
   #[cfg(feature = "serde")]
   use serde_json;
-  use std::collections::HashSet;
-  use std::iter::FromIterator;
-  use crate::{FolderPath, FolderTree, FolderTreeError};
+  use std::{collections::HashSet, iter::FromIterator};
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
 

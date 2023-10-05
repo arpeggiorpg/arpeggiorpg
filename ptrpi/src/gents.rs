@@ -1,9 +1,8 @@
-use std::fs::File;
-use std::io::prelude::*;
+use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
-use pandt::types as T;
 use crate::types as RT;
+use pandt::types as T;
 
 pub fn main() -> Result<(), anyhow::Error> {
   let mut file = File::create("../ptui/src/bindings/bindings.ts")?;

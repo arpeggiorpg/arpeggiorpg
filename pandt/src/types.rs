@@ -552,14 +552,8 @@ pub enum CreatureLog {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum CombatLog {
   // Consume some of the movement from the current combat-creatur
-  ConsumeMovement(
-    #[ts(type = "number")]
-    u32units::Length
-  ),
-  ChangeCreatureInitiative{
-    creature_id: CreatureID,
-    new_initiative: i16
-  },
+  ConsumeMovement(#[ts(type = "number")] u32units::Length),
+  ChangeCreatureInitiative { creature_id: CreatureID, new_initiative: i16 },
   EndTurn(CreatureID), // the end of this creature's turn
   ForceNextTurn,
   ForcePrevTurn,
@@ -595,7 +589,12 @@ pub enum GameLog {
   ChatFromGM(String),
   ChatFromPlayer(PlayerID, String),
 
-  AttributeCheckResult { creature_id: CreatureID, attribute_check: AttributeCheck, actual: u8, success: bool },
+  AttributeCheckResult {
+    creature_id: CreatureID,
+    attribute_check: AttributeCheck,
+    actual: u8,
+    success: bool,
+  },
 
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
@@ -1040,7 +1039,7 @@ pub struct CreatureCreation {
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 // I'm not calling this "Creature" in typescript just to emphasize that DynamicCreature is usually
 // what you want; this is only serialized directly in GameLog
-#[ts(rename="CreatureData")]
+#[ts(rename = "CreatureData")]
 pub struct Creature {
   pub id: CreatureID,
   pub name: String,
@@ -1252,7 +1251,6 @@ pub struct DynamicCreature<'creature, 'game: 'creature> {
 /// data dynamically as a convenience for the client.
 pub struct RPIGame<'a>(pub &'a Game);
 
-
 impl<'a> Serialize for RPIGame<'a> {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     let mut str = serializer.serialize_struct("Game", 11)?;
@@ -1304,7 +1302,6 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
       volume_conditions: self.volume_conditions(),
       can_act: self.can_act(),
       can_move: self.can_move(),
-
     };
     return SerializedCreature::serialize(&screature, serializer);
   }
@@ -1351,7 +1348,6 @@ pub struct SerializedCreature {
   pub volume_conditions: HashMap<ConditionID, AppliedCondition>,
   pub can_act: bool,
   pub can_move: bool,
-
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, TS, Default)]
@@ -1395,8 +1391,7 @@ impl Folder {
 
 #[cfg(test)]
 pub mod test {
-  use crate::grid::test::*;
-  use crate::types::*;
+  use crate::{grid::test::*, types::*};
   use maplit::hashmap;
   use std::iter::FromIterator;
 
