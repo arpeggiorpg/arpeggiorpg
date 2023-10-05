@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context};
 use http::StatusCode;
 use log::error;
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID, RPIGame};
+use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, SceneID, RPIGame};
 
 use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID, GameIndex}};
 
@@ -24,15 +24,15 @@ pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
           .service(get_game)
           .service(poll_game)
           .service(execute)
+          .service(movement_options)
+          .service(combat_movement_options)
+          .service(target_options)
+          .service(preview_volume_targets)
+
         )
         .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
       )
     )
-    // .route("movement_options/{scene_id}/{cid}", web::get().to(movement_options))
-    // .route("combat_movement_options", web::get().to(combat_movement_options))
-    // .route("target_options/{scene_id}/{cid}/{abid}", web::get().to(target_options))
-    // .route("preview_volume_targets/{scene_id}/{service_id}/{ability_id}/{x}/{y}/{z}",
-    //        web::post().to(preview_volume_targets))
     ;
 }
 
@@ -104,29 +104,34 @@ async fn execute(
   string_json_response(serde_json::to_string(&changed_game)?)
 }
 
-// async fn movement_options(
-//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID)>,
-// ) -> impl Responder {
-//   string_json_response(service.movement_options(path.0, path.1).await?)
-// }
 
-// async fn combat_movement_options(service: web::Data<AuthenticatableService>) -> impl Responder {
-//   string_json_response(service.combat_movement_options().await?)
-// }
+#[get("/movement_options/{scene_id}/{cid}")]
+async fn movement_options(
+  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID)>,
+) -> impl Responder {
+  string_json_response(serde_json::to_string(&service.movement_options(path.0, path.1).await?)?)
+}
 
-// async fn target_options(
-//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
-// ) -> impl Responder {
-//   string_json_response(service.target_options(path.0, path.1, path.2).await?)
-// }
+#[get("/combat_movement_options")]
+async fn combat_movement_options(service: web::ReqData<Arc<GameService>>) -> impl Responder {
+  string_json_response(serde_json::to_string(&service.combat_movement_options().await?)?)
+}
 
-// async fn preview_volume_targets(
-//   service: web::Data<AuthenticatableService>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
-// ) -> impl Responder {
-//   let point = Point3::new(path.3, path.4, path.5);
-//   let targets = service.preview_volume_targets(path.0, path.1, path.2, point).await?;
-//   string_json_response(serde_json::to_string(&targets)?)
-// }
+#[get("/target_options/{scene_id}/{cid}/{abid}")]
+async fn target_options(
+  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
+) -> impl Responder {
+  string_json_response(serde_json::to_string(&service.target_options(path.0, path.1, path.2).await?)?)
+}
+
+#[get("/preview_volume_targets/{scene_id}/{service_id}/{ability_id}/{x}/{y}/{z}")]
+async fn preview_volume_targets(
+  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+) -> impl Responder {
+  let point = Point3::new(path.3, path.4, path.5);
+  let targets = service.preview_volume_targets(path.0, path.1, path.2, point).await?;
+  string_json_response(serde_json::to_string(&targets)?)
+}
 
 // #[derive(serde::Deserialize)]
 // struct LoadIntoFolderPath {

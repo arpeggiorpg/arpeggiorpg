@@ -75,15 +75,14 @@ impl AuthenticatedService {
   }
 
   pub async fn list_games(&self) -> AEResult<GameList> {
-    // DAMNIT this is HORRIBLE, I have to completely rethink storage
     let usergames = self.storage.list_user_games(&self.user_id).await?;
     let mut gm_games = vec![];
     for game_id in usergames.gm_games {
-      gm_games.push((game_id.clone(), self.storage.load_game(&game_id).await?.0.name));
+      gm_games.push((game_id.clone(), self.storage.get_game_metadata(&game_id).await?));
     }
     let mut player_games = vec![];
     for game_id in usergames.player_games {
-      player_games.push((game_id.clone(), self.storage.load_game(&game_id).await?.0.name));
+      player_games.push((game_id.clone(), self.storage.get_game_metadata(&game_id).await?));
     }
     Ok(GameList { gm_games, player_games })
   }
@@ -163,21 +162,21 @@ impl GameService {
 
   pub async fn movement_options(
     &self, scene_id: types::SceneID, creature_id: types::CreatureID,
-  ) -> AEResult<String> {
+  ) -> AEResult<Vec<types::Point3>> {
     let options = self.game.get_movement_options(scene_id, creature_id)?;
-    Ok(serde_json::to_string(&options)?)
+    Ok(options)
   }
 
-  pub async fn combat_movement_options(&self) -> AEResult<String> {
+  pub async fn combat_movement_options(&self) -> AEResult<Vec<types::Point3>> {
     let options = self.game.get_combat()?.current_movement_options()?;
-    Ok(serde_json::to_string(&options)?)
+    Ok(options)
   }
 
   pub async fn target_options(
     &self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID,
-  ) -> AEResult<String> {
+  ) -> AEResult<types::PotentialTargets> {
     let options = self.game.get_target_options(scene_id, creature_id, ability_id)?;
-    Ok(serde_json::to_string(&options)?)
+    Ok(options)
   }
 
   pub async fn preview_volume_targets(

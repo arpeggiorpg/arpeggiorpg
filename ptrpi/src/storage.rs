@@ -1,19 +1,19 @@
-use std::{fs, io::Read, path::{PathBuf, Path}};
+use std::{fs, path::{PathBuf, Path}};
 
 use async_trait::async_trait;
 use anyhow::{Result as AEResult, Context};
 use google_cloud_storage::{
     client::{ClientConfig as StorageClientConfig, Client as StorageClient},
-    http::objects::{
-      download::Range,
-      get::GetObjectRequest,
-      list::ListObjectsRequest,
-      upload::{Media, UploadObjectRequest, UploadType},
-    },
+    // http::objects::{
+    //   download::Range,
+    //   get::GetObjectRequest,
+    //   list::ListObjectsRequest,
+    //   upload::{Media, UploadObjectRequest, UploadType},
+    // },
   };
 use log::info;
 
-use crate::types::{GameID, UserID, GameIndex, UserGames};
+use crate::types::{GameID, UserID, GameIndex, UserGames, GameMetadata};
 
 use pandt::types::{Game, GameLog};
 
@@ -33,6 +33,9 @@ pub trait PTStorage: Send + Sync {
   // Game management
   async fn create_game(&self, g: &Game) -> AEResult<GameID>;
 
+  /// Get metadata about a game. This data is stuff that we want to access
+  /// frequently even without loading the full game (such as the game's name).
+  async fn get_game_metadata(&self, g: &GameID) -> AEResult<GameMetadata>;
   /// Load the current state of a game
   async fn load_game(&self, g: &GameID) -> AEResult<(Game, GameIndex)>;
   async fn apply_game_logs(&self, g: &GameID, log: &[GameLog]) -> AEResult<GameIndex>;
@@ -186,6 +189,12 @@ impl PTStorage for FSStorage {
     serde_json::to_writer(game_file, game)?;
 
     Ok(game_id)
+  }
+
+  async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
+    let metadata_path = self.game_path(game_id).join("metadata.json");
+    let file = fs::File::open(metadata_path)?;
+    Ok(serde_json::from_reader(file)?)
   }
 
   /// Load the current state of a game

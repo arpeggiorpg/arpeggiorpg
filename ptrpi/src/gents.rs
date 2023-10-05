@@ -12,6 +12,7 @@ pub fn main() -> Result<(), anyhow::Error> {
     <RT::UserGames as TS>::decl(),
     <RT::GameID as TS>::decl(),
     <RT::GameList as TS>::decl(),
+    <RT::GameMetadata as TS>::decl(),
     <RT::UserID as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),

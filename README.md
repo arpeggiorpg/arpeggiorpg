@@ -20,7 +20,7 @@ be able to write arbitrary files to (for now).
 
 ```shell
 cd ptrpi
-cargo run -- --storage ./storage/
+cargo run -- serve --storage ./storage/
 ```
 
 This will start an RPI server which will load & save games to the `sample_games` directory, and
