@@ -1,10 +1,7 @@
 #[cfg(feature = "serde")]
 extern crate serde;
 
-use std::collections::HashMap;
-use std::fmt;
-use std::hash;
-use std::iter::FromIterator;
+use std::{collections::HashMap, fmt, hash, iter::FromIterator};
 
 #[cfg(feature = "serde")]
 use serde::de;

@@ -206,9 +206,7 @@ impl<'game> ChangedCombat<'game> {
 #[cfg(test)]
 pub mod test {
 
-  use crate::combat::*;
-  use crate::game::test::*;
-  use crate::types::test::*;
+  use crate::{combat::*, game::test::*, types::test::*};
 
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.
   pub fn t_combat() -> Game {

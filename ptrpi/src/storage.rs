@@ -1,26 +1,19 @@
-use std::{fs, path::{PathBuf, Path}};
+use std::{
+  fs,
+  path::{Path, PathBuf},
+};
 
+use anyhow::{Context, Result as AEResult};
 use async_trait::async_trait;
-use anyhow::{Result as AEResult, Context};
-use google_cloud_storage::{
-    client::{ClientConfig as StorageClientConfig, Client as StorageClient},
-    // http::objects::{
-    //   download::Range,
-    //   get::GetObjectRequest,
-    //   list::ListObjectsRequest,
-    //   upload::{Media, UploadObjectRequest, UploadType},
-    // },
-  };
+use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
 use log::info;
 
-use crate::types::{GameID, UserID, GameIndex, UserGames, GameMetadata};
+use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
 use pandt::types::{Game, GameLog};
 
-
 #[async_trait]
 pub trait PTStorage: Send + Sync {
-
   // User management
 
   // We might not need create_user; we can just have list_user_games or the others create it if it
@@ -47,15 +40,12 @@ pub trait PTStorage: Send + Sync {
   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game>;
 }
 
-
-
 pub struct CloudStorage {
   bucket: String,
   storage_client: StorageClient,
 }
 
 impl CloudStorage {
-
   pub async fn new(bucket: String) -> AEResult<CloudStorage> {
     let config = StorageClientConfig::default().with_auth().await?;
     let storage_client = StorageClient::new(config);
@@ -108,10 +98,14 @@ impl FSStorage {
     let game_path = self.game_path(game_id);
 
     // First, figure out what the latest snapshot index is in path/games/{game_id}/*
-    let snapshot_paths = fs::read_dir(&game_path).context(format!("Listing game path at {game_path:?}"))?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
-    let mut snapshot_indices: Vec<usize> = snapshot_paths.iter().filter_map(|path| {
-      path.file_name()?.to_str()?.parse::<usize>().ok()
-    }).collect();
+    let snapshot_paths = fs::read_dir(&game_path)
+      .context(format!("Listing game path at {game_path:?}"))?
+      .map(|res| res.map(|e| e.path()))
+      .collect::<Result<Vec<PathBuf>, _>>()?;
+    let mut snapshot_indices: Vec<usize> = snapshot_paths
+      .iter()
+      .filter_map(|path| path.file_name()?.to_str()?.parse::<usize>().ok())
+      .collect();
     snapshot_indices.sort();
     let game_idx = *snapshot_indices.last().unwrap_or(&0);
     let log_indices = self.get_log_indices(game_id, game_idx)?;
@@ -123,14 +117,24 @@ impl FSStorage {
 
   fn get_log_indices(&self, game_id: &GameID, snapshot_idx: usize) -> AEResult<Vec<usize>> {
     let snapshot_path = self.game_path(game_id).join(&snapshot_idx.to_string());
-    let log_paths = fs::read_dir(snapshot_path)?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
-    let mut log_indices: Vec<usize> = log_paths.iter().filter_map(|path| {
-      path.file_name()?.to_str()?.strip_prefix("log-")?.strip_suffix(".json")?.parse::<usize>().ok()
-    }).collect();
+    let log_paths = fs::read_dir(snapshot_path)?
+      .map(|res| res.map(|e| e.path()))
+      .collect::<Result<Vec<PathBuf>, _>>()?;
+    let mut log_indices: Vec<usize> = log_paths
+      .iter()
+      .filter_map(|path| {
+        path
+          .file_name()?
+          .to_str()?
+          .strip_prefix("log-")?
+          .strip_suffix(".json")?
+          .parse::<usize>()
+          .ok()
+      })
+      .collect();
     log_indices.sort();
     Ok(log_indices)
   }
-
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, thiserror::Error, Debug)]
@@ -155,7 +159,6 @@ root/
 
 #[async_trait]
 impl PTStorage for FSStorage {
-
   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     let json_file_path = self.user_game_path(user_id);
     let file = fs::File::open(json_file_path.clone());
@@ -163,7 +166,7 @@ impl PTStorage for FSStorage {
       Ok(file) => serde_json::from_reader(file)?,
       Err(err) => {
         info!("Couldn't load file {json_file_path:?}: {err:?}");
-        UserGames { gm_games: vec![], player_games: vec![]}
+        UserGames { gm_games: vec![], player_games: vec![] }
       }
     };
     Ok(user_games)
@@ -202,13 +205,13 @@ impl PTStorage for FSStorage {
   async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
     println!("Loading game path {:?}", metadata_path);
-    let file = fs::File::open(metadata_path.clone()).context(format!("Trying to open: {:?}", metadata_path))?;
+    let file = fs::File::open(metadata_path.clone())
+      .context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
   }
 
   /// Load the current state of a game
   async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
-
     let game_index = self.get_game_index(game_id)?;
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&game_index.game_idx.to_string());
@@ -237,21 +240,17 @@ impl PTStorage for FSStorage {
       serde_json::to_writer(file, log)?;
     }
 
-    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx})
+    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx })
   }
 
   /// Get recent logs for a game so we can show them to the user
   // I am pretty skeptical that this is the API we will end up with.
-  async fn get_recent_logs(&self, g: &GameID) -> AEResult<Vec<(GameIndex, GameLog)>> {
-    Ok(vec![])
-  }
+  async fn get_recent_logs(&self, g: &GameID) -> AEResult<Vec<(GameIndex, GameLog)>> { Ok(vec![]) }
   /// Roll back to a specific log index.
   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game> {
     Ok(Default::default())
   }
-
 }
-
 
 // impl CloudStorage {
 //   /// List the items in a particular prefix, returning a Vec<String> that *don't* contain the prefix
@@ -364,4 +363,3 @@ impl PTStorage for FSStorage {
 //     Ok(app)
 //   }
 // }
-

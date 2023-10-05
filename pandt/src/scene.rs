@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::grid::{make_world, query_world};
-use crate::types::*;
+use crate::{
+  grid::{make_world, query_world},
+  types::*,
+};
 
 impl Scene {
   pub fn create(creation: SceneCreation) -> Scene {
@@ -103,9 +105,10 @@ impl Scene {
 
 #[cfg(test)]
 mod test {
-  use crate::game::test::*;
-  use crate::types::test::*;
-  use crate::types::*;
+  use crate::{
+    game::test::*,
+    types::{test::*, *},
+  };
 
   #[test]
   fn creature_volume_conditions() {

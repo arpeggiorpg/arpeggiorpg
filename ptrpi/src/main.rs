@@ -2,20 +2,18 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
 
 mod actor;
-mod web;
-mod types;
-mod storage;
 mod gents;
+mod storage;
+mod types;
+mod web;
 
-use std::env;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use log::info;
 
-use crate::{storage::{PTStorage, FSStorage, CloudStorage}};
+use crate::storage::{CloudStorage, FSStorage, PTStorage};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -32,8 +30,9 @@ async fn main() -> Result<(), anyhow::Error> {
       gents::main()?;
       Ok(())
     }
-    Some(Commands::Serve{storage_path, google_bucket, google_client_id}) =>
-      serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await,
+    Some(Commands::Serve { storage_path, google_bucket, google_client_id }) => {
+      serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await
+    }
 
     None => {
       log::error!("Please provide a subcommand.");
@@ -42,11 +41,12 @@ async fn main() -> Result<(), anyhow::Error> {
   };
 }
 
-async fn serve(storage_path: Option<PathBuf>, google_bucket: Option<String>, google_client_id: String) -> anyhow::Result<()> {
+async fn serve(
+  storage_path: Option<PathBuf>, google_bucket: Option<String>, google_client_id: String,
+) -> anyhow::Result<()> {
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
 
-  let storage: Arc<dyn PTStorage> =
-  if let Some(storage_path) = storage_path {
+  let storage: Arc<dyn PTStorage> = if let Some(storage_path) = storage_path {
     Arc::new(FSStorage::new(storage_path))
   // } else if let Some(bucket) = opts.google_bucket {
   //   Arc::new(CloudStorage::new(bucket).await?)
@@ -75,18 +75,18 @@ struct Opts {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate typescript bindings
-    GenTS,
+  /// Generate typescript bindings
+  GenTS,
 
-    /// Run the PTRPI server
-    Serve {
-      #[arg(long, value_name = "FILE")]
-      storage_path: Option<PathBuf>,
+  /// Run the PTRPI server
+  Serve {
+    #[arg(long, value_name = "FILE")]
+    storage_path: Option<PathBuf>,
 
-      #[arg(long)]
-      google_bucket: Option<String>,
+    #[arg(long)]
+    google_bucket: Option<String>,
 
-      #[arg(long)]
-      google_client_id: String,
-    }
+    #[arg(long)]
+    google_client_id: String,
+  },
 }
