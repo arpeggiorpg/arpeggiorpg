@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context};
 use axum::{http::{Request}, response::{Response, IntoResponse}, middleware::{from_fn, from_fn_with_state, Next}, extract::{State, Path}, Extension, routing::{get, post}, Json};
 use http::StatusCode;
 use log::error;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, RPIGame, SceneID, PotentialTargets};
 
@@ -26,34 +27,18 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
   let auth_routes = axum::Router::new()
     .route("/list", get(list_games))
     .route("/create", post(create_game))
-    .nest("/:game_id", game_routes)
+    .nest("/:game_id/gm/", game_routes)
     .route_layer(from_fn_with_state(service.clone(), authenticate))
     ;
 
-  return axum::Router::new().nest("/g", auth_routes).with_state(service);
+  let cors = CorsLayer::permissive();
+  let trace = TraceLayer::new_for_http();
+  return axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace);
+}
 
-  // .app_data(web::Data::new(service))
-  // .service(
-  //   web::scope("g").wrap(from_fn(add_authenticated_to_req))
-  //   .service(list_games)
-  //   .service(create_game)
-  //   .service(
-  //     web::scope("{game_id}").wrap(from_fn(add_game_to_req))
-  //     .service(
-  //       web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
-  //       .service(get_game)
-  //       .service(poll_game)
-  //       .service(execute)
-  //       .service(movement_options)
-  //       .service(combat_movement_options)
-  //       .service(target_options)
-  //       .service(preview_volume_targets)
-
-  //     )
-  //     .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
-  //   )
-  // )
-  // ;
+#[derive(serde::Deserialize)]
+struct GameIDPath {
+  game_id: String,
 }
 
 async fn authenticate<B>(
@@ -61,7 +46,7 @@ async fn authenticate<B>(
   mut request: Request<B>, next: Next<B>,
 ) -> Result<Response, WebError> {
   let header =
-    request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
+    request.headers().get("x-pt-rpi-auth").ok_or(anyhow!("Need a x-pt-rpi-auth header"))?;
   let id_token = header.to_str()?;
   let authenticated = service.authenticate(id_token.to_string()).await?;
   request.extensions_mut().insert(Arc::new(authenticated));
@@ -69,9 +54,11 @@ async fn authenticate<B>(
 }
 
 async fn authorize_game<B>(
-  Path(game_id): Path<String>, Extension(authenticated): Extension<Arc<AuthenticatedService>>,
+  Path(GameIDPath { game_id }): Path<GameIDPath>,
+  Extension(authenticated): Extension<Arc<AuthenticatedService>>,
   mut request: Request<B>, next: Next<B>,
 ) -> Result<Response, WebError> {
+  // TODO: return a 404 when the game doesn't exist.
   let game_id = game_id.parse().context("Parsing game_id as UUID")?;
   let gm = authenticated.gm(&game_id).await?;
   request.extensions_mut().insert(Arc::new(gm));

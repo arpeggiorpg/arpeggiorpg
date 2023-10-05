@@ -36,10 +36,9 @@ async function ptfetch_<J>(
   if (!init) {
     init = {};
   }
-  init.credentials = 'include';
   const ptIdToken = getCookie("pt-id-token");
   if (ptIdToken)
-    init.headers = { ...init.headers, 'authorization': ptIdToken };
+    init.headers = { ...init.headers, 'x-pt-rpi-auth': ptIdToken };
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
