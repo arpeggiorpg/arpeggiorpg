@@ -225,11 +225,3 @@ impl PingService {
     Ok(())
   }
 }
-
-
-
-
-fn game_to_string(game: &Game) -> AEResult<String> {
-  Ok(serde_json::to_string(&types::RPIGame(game))?)
-}
-
