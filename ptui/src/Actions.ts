@@ -264,10 +264,10 @@ export async function fetchAbilityTargets(
   };
 }
 
-export async function createGame(): Promise<T.GameID> {
+export async function createGame(name: string): Promise<T.GameID> {
   const result = await ptfetch('/g/create', {
     method: "POST",
-    body: JSON.stringify("Cool New Game"),
+    body: JSON.stringify(name),
     headers: { "content-type": "application/json" },
   }, Z.object({ game_id: Z.string() }));
   return result.game_id;

@@ -14,6 +14,8 @@ import * as T from "./PTTypes";
 import { useState } from "./Model";
 import { GMMain } from "./GMView";
 import useSWR from "swr";
+import { ModalMaker } from "./CommonView";
+import { TextInput } from "./TextInput";
 
 export const router = createHashRouter([
   {
@@ -49,7 +51,6 @@ export function Main() {
 function GameList() {
   let {data: games, error, isLoading} = useSWR('g/list', () => ptfetch("/g/list", {}, T.decodeGameList), {suspense: true});
 
-  let navigate = useNavigate();
   return (
     <>
       <h1>You are GM of these games</h1>
@@ -59,7 +60,13 @@ function GameList() {
             <Link to={`gm/${gameId}`}>{meta.name}</Link>
           </li>
         ))}
-        <li><button onClick={createGame}>Create New</button></li>
+        <li>
+          <ModalMaker
+            button={clicker => <button onClick={clicker}>Create New</button>}
+            header={<>Create Game</>}
+            content={closer => <CreateGame closer={closer} />} />
+
+        </li>
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
@@ -72,11 +79,20 @@ function GameList() {
     </>
   );
 
-  async function createGame() {
-    let game_id = await A.createGame();
+}
+
+function CreateGame({closer}: {closer: () => void}) {
+  const navigate = useNavigate();
+
+  async function createGame(name: string) {
+    let game_id = await A.createGame(name);
     navigate(`/gm/${game_id}`);
   }
+
+  return <div><TextInput defaultValue="Name of your Game" onSubmit={createGame} onCancel={closer} /></div>
+
 }
+
 
 type ErrorBoundaryProps = {
   fallback: React.ReactElement;
