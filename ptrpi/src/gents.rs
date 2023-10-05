@@ -20,6 +20,7 @@ pub fn main() -> Result<(), anyhow::Error> {
     <T::AppliedCondition as TS>::decl(),
     <T::AttributeCheck as TS>::decl(),
     <T::AttrID as TS>::decl(),
+    <T::ChangedGame as TS>::decl(),
     <T::Class as TS>::decl(),
     <T::ClassID as TS>::decl(),
     <T::Combat as TS>::decl(),

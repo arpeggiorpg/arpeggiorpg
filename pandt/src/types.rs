@@ -1099,6 +1099,12 @@ impl DeriveKey for Creature {
   fn derive_key(&self) -> CreatureID { self.id }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, TS, Serialize, Deserialize)]
+pub struct ChangedGame {
+  pub game: Game,
+  pub logs: Vec<GameLog>,
+}
+
 #[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Game {
   pub current_combat: Option<Combat>,

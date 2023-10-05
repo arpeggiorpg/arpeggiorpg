@@ -169,7 +169,7 @@ impl<'game> CombatMove<'game> {
 
   /// Take a series of 1-square "steps". Diagonals are allowed, but consume an accurate amount of
   /// movement.
-  pub fn move_current(&self, pt: Point3) -> Result<crate::game::ChangedGame, GameError> {
+  pub fn move_current(&self, pt: Point3) -> Result<ChangedGame, GameError> {
     let (change, distance) = self.combat.game.path_creature_distance(
       self.combat.scene.id,
       self.combat.combat.current_creature_id(),
@@ -208,7 +208,6 @@ pub mod test {
 
   use crate::combat::*;
   use crate::game::test::*;
-  use crate::game::ChangedGame;
   use crate::types::test::*;
 
   /// Create a Test combat. Combat order is rogue, ranger, then cleric.

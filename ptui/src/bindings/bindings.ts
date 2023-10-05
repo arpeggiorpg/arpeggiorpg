@@ -30,6 +30,8 @@ export interface AttributeCheck { reliable: boolean, attr: AttrID, target: Skill
 
 export type AttrID = string;
 
+export interface ChangedGame { game: Game, logs: Array<GameLog>, }
+
 export interface Class { id: ClassID, name: string, abilities: Array<AbilityID>, conditions: Array<Condition>, color: string, }
 
 export type ClassID = string;

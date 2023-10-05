@@ -203,11 +203,11 @@ export async function sendCommand(cmd: T.GameCommand) {
       body: JSON.stringify(json),
       headers: { "content-type": "application/json" },
     },
-    T.decodeRustResult(T.decodeSendCommandResult, Z.string())
+    T.decodeRustResult(T.decodeChangedGame, Z.string())
   );
   switch (result.t) {
     case "Ok":
-      getState().refresh(result.result[0]);
+      getState().refresh(result.result.game);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
@@ -235,7 +235,7 @@ export async function sendCommandWithResult(cmd: T.GameCommand): Promise<T.RustR
       headers: { "content-type": "application/json" },
     },
     T.decodeRustResult(
-      T.decodeSendCommandResult.transform(([_, logs]) => logs),
+      T.decodeChangedGame.transform(cg => cg.logs),
       Z.string()
     ).parse
   );

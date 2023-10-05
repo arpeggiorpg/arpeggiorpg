@@ -1278,12 +1278,6 @@ impl Game {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChangedGame {
-  pub game: Game,
-  pub logs: Vec<GameLog>,
-}
-
 impl ChangedGame {
   pub fn apply(&self, log: &GameLog) -> Result<ChangedGame, GameError> {
     let mut new = self.clone();
