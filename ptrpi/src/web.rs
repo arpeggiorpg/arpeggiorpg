@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context};
 use http::StatusCode;
 use log::error;
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID};
+use pandt::types::{AbilityID, CreatureID, GameCommand, ModuleSource, Point3, SceneID, RPIGame};
 
 use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID, GameIndex}};
 
@@ -78,8 +78,9 @@ async fn create_game(service: web::ReqData<Arc<AuthenticatedService>>) -> impl R
 
 #[get("/")]
 async fn get_game(service: web::ReqData<Arc<GameService>>) -> impl Responder {
+  let game = RPIGame(&service.game);
   let response = serde_json::json!({
-    "game": service.game,
+    "game": game,
     "index": service.game_index,
   });
   string_json_response(serde_json::to_string(&response)?)
@@ -88,7 +89,7 @@ async fn get_game(service: web::ReqData<Arc<GameService>>) -> impl Responder {
 #[get("/poll/{game_idx}/{log_idx}")]
 async fn poll_game(service: web::ReqData<Arc<GameService>>, path: web::Path<(String, usize, usize)>) -> impl Responder {
   let (game, game_index) = service.poll_game(GameIndex {game_idx: path.1, log_idx: path.2}).await?;
-  let json = serde_json::json!({"game": game, "index": game_index});
+  let json = serde_json::json!({"game": RPIGame(&game), "index": game_index});
   string_json_response(serde_json::to_string(&json)?)
 }
 
@@ -97,7 +98,9 @@ async fn execute(
   service: web::ReqData<Arc<GameService>>, command: web::Json<GameCommand>,
 ) -> impl Responder {
   let changed_game = service.perform_command(command.into_inner()).await;
-  let changed_game = changed_game.map_err(|e| format!("{e:?}"));
+  let changed_game = changed_game
+    .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
+    .map_err(|e| format!("{e:?}"));
   string_json_response(serde_json::to_string(&changed_game)?)
 }
 
