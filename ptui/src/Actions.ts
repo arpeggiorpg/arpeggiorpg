@@ -39,7 +39,7 @@ async function ptfetch_<J>(
   init.credentials = 'include';
   const ptIdToken = getCookie("pt-id-token");
   if (ptIdToken)
-    init.headers = {...init.headers, 'authorization': ptIdToken};
+    init.headers = { ...init.headers, 'authorization': ptIdToken };
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
@@ -82,7 +82,7 @@ export async function startPoll(mode: "gm" | "player", gameId: string) {
   getState().refresh(result.game);
   getState().setGameId(gameId);
 
-  let {index} = result;
+  let { index } = result;
 
   while (true) {
     const url = `${gameUrl}poll/${index.game_idx}/${index.log_idx}`;
@@ -265,6 +265,10 @@ export async function fetchAbilityTargets(
 }
 
 export async function createGame(): Promise<T.GameID> {
-  const result = await ptfetch('/g/create', {method: "POST"}, Z.object({game_id: Z.string()}));
+  const result = await ptfetch('/g/create', {
+    method: "POST",
+    body: JSON.stringify("Cool New Game"),
+    headers: { "content-type": "application/json" },
+  }, Z.object({ game_id: Z.string() }));
   return result.game_id;
 }

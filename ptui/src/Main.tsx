@@ -27,9 +27,6 @@ export const router = createHashRouter([
 ]);
 
 export function Main() {
-  // const fetchStatus = M.useState(s => s.fetchStatus);
-  // kick off a fetch of the app
-
   const [token, setToken] = useCookie("pt-id-token");
 
   if (token && token.length > 1) {
