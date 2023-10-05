@@ -1,136 +1,153 @@
 use std::sync::Arc;
 
-use actix_web::{web, HttpMessage, HttpResponse, Responder, get, post, dev::{Service, ServiceRequest, ServiceResponse}, body::MessageBody, ResponseError, http::header};
-use actix_web_lab::middleware::{Next, from_fn};
 use anyhow::{anyhow, Context};
+use axum::{http::{Request}, response::{Response, IntoResponse}, middleware::{from_fn, from_fn_with_state, Next}, extract::{State, Path}, Extension, routing::{get, post}, Json};
 use http::StatusCode;
 use log::error;
 
-use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, SceneID, RPIGame};
+use pandt::types::{AbilityID, CreatureID, GameCommand, Point3, RPIGame, SceneID, PotentialTargets};
 
-use crate::{actor::{AuthenticatableService, GameService, AuthenticatedService}, types::{GameID, GameIndex}};
+use crate::{
+  actor::{AuthenticatableService, AuthenticatedService, GameService},
+  types::{GameID, GameIndex, GameList},
+};
 
-pub fn router(service:AuthenticatableService, config: &mut web::ServiceConfig) {
-  config
-    .app_data(web::Data::new(service))
-    .service(
-      web::scope("g").wrap(from_fn(add_authenticated_to_req))
-      .service(list_games)
-      .service(create_game)
-      .service(
-        web::scope("{game_id}").wrap(from_fn(add_game_to_req))
-        .service(
-          web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
-          .service(get_game)
-          .service(poll_game)
-          .service(execute)
-          .service(movement_options)
-          .service(combat_movement_options)
-          .service(target_options)
-          .service(preview_volume_targets)
+pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
+  let game_routes = axum::Router::new()
+    .route("/", get(get_game))
+    .route("/poll/:game_idx/:log_idx", get(poll_game))
+    .route("/execute", post(execute))
+    .route("/movement_options/:scene_id/:cid", get(movement_options))
+    .route("/combat_movement_options", get(combat_movement_options))
+    .route("/target_options/:scene_id/:cid/:abid", get(target_options))
+    .route("/preview_volume_targets/:scene_id/:service_id/:ability_id/:x/:y/:z", get(preview_volume_targets))
+    .route_layer(from_fn(authorize_game));
 
-        )
-        .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
-      )
-    )
+  let auth_routes = axum::Router::new()
+    .route("/list", get(list_games))
+    .route("/create", post(create_game))
+    .nest("/:game_id", game_routes)
+    .route_layer(from_fn_with_state(service.clone(), authenticate))
     ;
+
+  return axum::Router::new().nest("/g", auth_routes).with_state(service);
+
+  // .app_data(web::Data::new(service))
+  // .service(
+  //   web::scope("g").wrap(from_fn(add_authenticated_to_req))
+  //   .service(list_games)
+  //   .service(create_game)
+  //   .service(
+  //     web::scope("{game_id}").wrap(from_fn(add_game_to_req))
+  //     .service(
+  //       web::scope("gm").wrap_fn(|req, srv| {srv.call(req)})
+  //       .service(get_game)
+  //       .service(poll_game)
+  //       .service(execute)
+  //       .service(movement_options)
+  //       .service(combat_movement_options)
+  //       .service(target_options)
+  //       .service(preview_volume_targets)
+
+  //     )
+  //     .service(web::scope("player").wrap_fn(|req, srv| {srv.call(req)}))
+  //   )
+  // )
+  // ;
 }
 
-async fn add_authenticated_to_req(service: web::Data<AuthenticatableService>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-
-  async fn bettererror(service: Arc<AuthenticatableService>, request: &ServiceRequest) -> anyhow::Result<()> {
-    let header = request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
-    let id_token = header.to_str()?;
-    let authenticated = service.authenticate(id_token.to_string()).await?;
-    request.extensions_mut().insert(Arc::new(authenticated));
-    Ok(())
-  }
-  bettererror(service.into_inner(), &request).await.map_err(MyError::AnyhowError)?;
-  Ok(next.call(request).await?)
+async fn authenticate<B>(
+  State(service): State<Arc<AuthenticatableService>>,
+  mut request: Request<B>, next: Next<B>,
+) -> Result<Response, WebError> {
+  let header =
+    request.headers().get("Authorization").ok_or(anyhow!("Need an Authorization header"))?;
+  let id_token = header.to_str()?;
+  let authenticated = service.authenticate(id_token.to_string()).await?;
+  request.extensions_mut().insert(Arc::new(authenticated));
+  Ok(next.run(request).await.into())
 }
 
-async fn add_game_to_req(path: web::Path<String>, authenticated: web::ReqData<Arc<AuthenticatedService>>, request: ServiceRequest, next: Next<impl MessageBody>) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-
-  async fn bettererror(request: &ServiceRequest, authenticated: Arc<AuthenticatedService>, game_id: String) -> anyhow::Result<()> {
-    let game_id = game_id.parse().context("Parsing game_id as UUID")?;
-    let gm = authenticated.gm(&game_id).await?;
-    request.extensions_mut().insert(Arc::new(gm));
-    Ok(())
-  }
-  bettererror(&request, authenticated.into_inner(), path.into_inner()).await.map_err(MyError::AnyhowError)?;
-  Ok(next.call(request).await?)
+async fn authorize_game<B>(
+  Path(game_id): Path<String>, Extension(authenticated): Extension<Arc<AuthenticatedService>>,
+  mut request: Request<B>, next: Next<B>,
+) -> Result<Response, WebError> {
+  let game_id = game_id.parse().context("Parsing game_id as UUID")?;
+  let gm = authenticated.gm(&game_id).await?;
+  request.extensions_mut().insert(Arc::new(gm));
+  Ok(next.run(request).await.into())
 }
 
-#[get("/list")]
-async fn list_games(service: web::ReqData<Arc<AuthenticatedService>>) -> impl Responder {
+async fn list_games(Extension(service): Extension<Arc<AuthenticatedService>>) -> WebResult<Json<GameList>> {
   let games = service.list_games().await?;
-  let s = serde_json::to_string(&games)?;
-  string_json_response(s)
+  Ok(Json(games))
 }
 
-#[post("/create")]
-async fn create_game(service: web::ReqData<Arc<AuthenticatedService>>, name: web::Json<String>) -> impl Responder {
-  let game_id = service.new_game(name.into_inner().to_string()).await?;
+async fn create_game(
+  Extension(service): Extension<Arc<AuthenticatedService>>,
+  Json(name): Json<String>,
+) -> WebResult<Json<serde_json::Value>> {
+  let game_id = service.new_game(name.to_string()).await?;
   let json = serde_json::json!({"game_id": game_id});
-  string_json_response(serde_json::to_string(&json)?)
+  Ok(Json(json))
 }
 
 
-#[get("/")]
-async fn get_game(service: web::ReqData<Arc<GameService>>) -> impl Responder {
+async fn get_game(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<serde_json::Value>> {
   let game = RPIGame(&service.game);
   let response = serde_json::json!({
     "game": game,
     "index": service.game_index,
   });
-  string_json_response(serde_json::to_string(&response)?)
+  Ok(Json(response))
 }
 
-#[get("/poll/{game_idx}/{log_idx}")]
-async fn poll_game(service: web::ReqData<Arc<GameService>>, path: web::Path<(String, usize, usize)>) -> impl Responder {
-  let (game, game_index) = service.poll_game(GameIndex {game_idx: path.1, log_idx: path.2}).await?;
+async fn poll_game(
+  Extension(service): Extension<Arc<GameService>>, Path((_game_id, game_idx, log_idx)): Path<(String, usize, usize)>,
+) -> WebResult<Json<serde_json::Value>> {
+  let (game, game_index) =
+    service.poll_game(GameIndex { game_idx, log_idx }).await?;
   let json = serde_json::json!({"game": RPIGame(&game), "index": game_index});
-  string_json_response(serde_json::to_string(&json)?)
+  Ok(Json(json))
 }
 
-#[post("/execute")]
 async fn execute(
-  service: web::ReqData<Arc<GameService>>, command: web::Json<GameCommand>,
-) -> impl Responder {
-  let changed_game = service.perform_command(command.into_inner()).await;
+  Extension(service): Extension<Arc<GameService>>, Json(command): Json<GameCommand>,
+) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
+  // Note that this function actually serializes the result from calling
+  // perform_command into the JSON response -- there are no "?" operators here!
+  let changed_game = service.perform_command(command).await;
   let changed_game = changed_game
     .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
     .map_err(|e| format!("{e:?}"));
-  string_json_response(serde_json::to_string(&changed_game)?)
+  Ok(Json(changed_game))
 }
 
-
-#[get("/movement_options/{scene_id}/{cid}")]
 async fn movement_options(
-  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID)>,
-) -> impl Responder {
-  string_json_response(serde_json::to_string(&service.movement_options(path.0, path.1).await?)?)
+  Extension(service): Extension<Arc<GameService>>,
+  Path((scene_id, creature_id)): Path<(SceneID, CreatureID)>,
+) -> WebResult<Json<Vec<Point3>>> {
+  Ok(Json(service.movement_options(scene_id, creature_id).await?))
 }
 
-#[get("/combat_movement_options")]
-async fn combat_movement_options(service: web::ReqData<Arc<GameService>>) -> impl Responder {
-  string_json_response(serde_json::to_string(&service.combat_movement_options().await?)?)
+async fn combat_movement_options(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<Vec<Point3>>> {
+  Ok(Json(service.combat_movement_options().await?))
 }
 
-#[get("/target_options/{scene_id}/{cid}/{abid}")]
 async fn target_options(
-  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID, AbilityID)>,
-) -> impl Responder {
-  string_json_response(serde_json::to_string(&service.target_options(path.0, path.1, path.2).await?)?)
+  Extension(service): Extension<Arc<GameService>>,
+  Path((scene_id, creature_id, ability_id)): Path<(SceneID, CreatureID, AbilityID)>,
+) -> WebResult<Json<PotentialTargets>> {
+  Ok(Json(service.target_options(scene_id, creature_id, ability_id).await?))
 }
 
-#[get("/preview_volume_targets/{scene_id}/{service_id}/{ability_id}/{x}/{y}/{z}")]
 async fn preview_volume_targets(
-  service: web::ReqData<Arc<GameService>>, path: web::Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
-) -> impl Responder {
-  let point = Point3::new(path.3, path.4, path.5);
-  let targets = service.preview_volume_targets(path.0, path.1, path.2, point).await?;
-  string_json_response(serde_json::to_string(&targets)?)
+  Extension(service): Extension<Arc<GameService>>,
+  Path((scene_id, creature_id, ability_id, x, y, z)): Path<(SceneID, CreatureID, AbilityID, i64, i64, i64)>,
+) -> WebResult<Json<(Vec<CreatureID>, Vec<Point3>)>> {
+  let point = Point3::new(x, y, z);
+  let targets = service.preview_volume_targets(scene_id, creature_id, ability_id, point).await?;
+  Ok(Json(targets))
 }
 
 // #[derive(serde::Deserialize)]
@@ -166,39 +183,32 @@ async fn preview_volume_targets(
 //   string_json_response(service.save_module(path.into_inner(), folder_path.into_inner()).await?)
 // }
 
-fn string_json_response(body: String) -> Result<HttpResponse, MyError> {
-  Ok(HttpResponse::Ok().content_type("application/json").body(body))
-}
 
 
+// Make our own error that wraps `anyhow::Error`.
+struct WebError(anyhow::Error);
 
-#[derive(thiserror::Error, Debug)]
-pub enum MyError {
-    #[error("an unspecified internal error occurred: {0}")]
-    AnyhowError(#[from] anyhow::Error),
-    #[error("actix_web::Error: {0}")]
-    ActixWebError(#[from] actix_web::Error),
-    #[error("serde_json::Error: {0}")]
-    SerdeJsonError(#[from] serde_json::Error)
-}
+type WebResult<T> = std::result::Result<T, WebError>;
 
-impl ResponseError for MyError {
-
-  fn status_code(&self) -> StatusCode {
-    match &self {
-        Self::ActixWebError(e) => e.as_response_error().status_code(),
-        _ => StatusCode::INTERNAL_SERVER_ERROR,
+// Tell axum how to convert `WebError` into a response.
+// We could theoretically downcast the error to return different status codes.
+impl IntoResponse for WebError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
     }
-  }
+}
 
-  fn error_response(&self) -> HttpResponse {
-    let response = match &self {
-      Self::ActixWebError(e) => e.error_response(),
-      Self::AnyhowError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
-      Self::SerdeJsonError(e) => HttpResponse::build(self.status_code()).append_header(header::ContentType::plaintext()).body(format!("{:?}", e)),
-    };
-    error!("[RADIX] {response:?}");
-    response
-  }
-
+// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
+// `Result<_, WebError>`. That way you don't need to do that manually.
+impl<E> From<E> for WebError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
 }
