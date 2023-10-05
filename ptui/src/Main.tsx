@@ -11,13 +11,15 @@ import useCookie from "react-use-cookie";
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
-import { Campaign } from "./Campaign";
 import { useState } from "./Model";
 import { GMMain } from "./GMView";
 
 export const router = createHashRouter([
   {
     path: "/",
+    loader: async (): Promise<T.GameList> => {
+      return await ptfetch("/g/list", {}, T.decodeGameList);
+    },
     element: <Main />,
   },
   {
@@ -50,13 +52,7 @@ export function Main() {
 }
 
 function GameList() {
-  let [games, setGames] = React.useState<T.GameList | null>(null);
-  React.useEffect(() => {
-    async function getGames() {
-      setGames(await ptfetch("/g/list", {}, T.decodeGameList));
-    }
-    getGames();
-  }, []);
+  let games = useLoaderData() as T.GameList;
 
   let navigate = useNavigate();
   return (
