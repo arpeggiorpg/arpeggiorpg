@@ -1107,8 +1107,6 @@ pub struct ChangedGame {
 
 #[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
 pub struct Game {
-  #[serde(default = "default_game_name")]
-  pub name: String,
   pub current_combat: Option<Combat>,
   #[ts(type = "GameAbilities")]
   pub abilities: IndexedHashMap<Ability>,
@@ -1130,10 +1128,6 @@ pub struct Game {
   // goes.
   #[serde(default)]
   pub active_scene: Option<SceneID>,
-}
-
-fn default_game_name() -> String {
-  return "Untitled Game".to_string()
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize, TS)]
@@ -1261,10 +1255,9 @@ pub struct RPIGame<'a>(pub &'a Game);
 
 impl<'a> Serialize for RPIGame<'a> {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-    let mut str = serializer.serialize_struct("Game", 12)?;
+    let mut str = serializer.serialize_struct("Game", 11)?;
     let game = self.0;
 
-    str.serialize_field("name", &game.name)?;
     str.serialize_field("current_combat", &game.current_combat)?;
     str.serialize_field("abilities", &game.abilities)?;
     str.serialize_field(

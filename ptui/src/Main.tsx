@@ -6,20 +6,18 @@ import { createHashRouter, RouterProvider, Link, useLoaderData, useParams, redir
 import * as A from "./Actions";
 // import {startPoll, RPI_URL} from "./Actions";
 
-import useCookie from "react-use-cookie";
+import useCookie, { setCookie } from "react-use-cookie";
 
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
 import { useState } from "./Model";
 import { GMMain } from "./GMView";
+import useSWR from "swr";
 
 export const router = createHashRouter([
   {
     path: "/",
-    loader: async (): Promise<T.GameList> => {
-      return await ptfetch("/g/list", {}, T.decodeGameList);
-    },
     element: <Main />,
   },
   {
@@ -34,7 +32,7 @@ export function Main() {
 
   const [token, setToken] = useCookie("pt-id-token");
 
-  if (token) {
+  if (token && token.length > 1) {
     return (
       <div>
         <p>You're logged in! good job!</p>
@@ -52,25 +50,25 @@ export function Main() {
 }
 
 function GameList() {
-  let games = useLoaderData() as T.GameList;
+  let {data: games, error, isLoading} = useSWR('g/list', () => ptfetch("/g/list", {}, T.decodeGameList), {suspense: true});
 
   let navigate = useNavigate();
   return (
     <>
       <h1>You are GM of these games</h1>
       <ul>
-        {games?.gm_games.map(([gameId, name]) => (
+        {games?.gm_games.map(([gameId, meta]) => (
           <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{name}</Link>
+            <Link to={`gm/${gameId}`}>{meta.name}</Link>
           </li>
         ))}
         <li><button onClick={createGame}>Create New</button></li>
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
-        {games?.player_games.map(([gameId, name]) => (
+        {games?.player_games.map(([gameId, meta]) => (
           <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{name}</Link>
+            <Link to={`gm/${gameId}`}>{meta.name}</Link>
           </li>
         ))}
       </ul>

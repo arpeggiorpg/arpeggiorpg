@@ -103,7 +103,7 @@ export async function requestMove(cid: T.CreatureID) {
   const scene = getState().getFocusedScene();
   if (scene) {
     const result = await ptfetch(
-      `/movement_options/${scene.id}/${cid}`,
+      `${gameUrl()}/movement_options/${scene.id}/${cid}`,
       undefined,
       T.arrayOfPoint3,
     );
@@ -135,7 +135,7 @@ export function moveCombatCreature(dest: T.Point3) {
 }
 
 export async function requestCombatMovement() {
-  const options = await ptfetch("/combat_movement_options", undefined, T.arrayOfPoint3);
+  const options = await ptfetch(`${gameUrl()}/combat_movement_options`, undefined, T.arrayOfPoint3);
   getState().displayMovementOptions(options);
 }
 
@@ -165,39 +165,34 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
   getState().clearPotentialTargets();
 }
 
-export async function loadModule(opts: { path: T.FolderPath, name: string, source: T.ModuleSource }): Promise<void> {
-  const source = { "Module": "module", "SavedGame": "user" }[opts.source];
-  const url = `/saved_games/${source}/${opts.name}/load_into?path=${T.encodeFolderPath(opts.path)}`;
-  await ptfetch(url, { method: "POST" }, Z.any());
-}
+// export async function loadModule(opts: { path: T.FolderPath, name: string, source: T.ModuleSource }): Promise<void> {
+//   const source = { "Module": "module", "SavedGame": "user" }[opts.source];
+//   const url = `/saved_games/${source}/${opts.name}/load_into?path=${T.encodeFolderPath(opts.path)}`;
+//   await ptfetch(url, { method: "POST" }, Z.any());
+// }
 
-export async function fetchSavedGames(): Promise<{ games: Array<string>, modules: Array<string> }> {
-  const url = `/saved_games`;
-  const [modules, games] = await ptfetch(url, {}, Z.tuple([Z.array(Z.string()), Z.array(Z.string())]));
-  return { games, modules };
-}
+// export async function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
+//   const url = `/modules/${name}`;
+//   const opts = {
+//     method: 'POST',
+//     body: JSON.stringify(T.encodeFolderPath(path)),
+//     headers: { "content-type": "application/json" },
+//   };
+//   await ptfetch(url, opts, Z.any());
+// }
 
-export async function saveGame(game: string): Promise<undefined> {
-  const url = `/saved_games/user/${game}`;
-  await ptfetch(url, { method: 'POST' }, Z.any());
-}
-
-export async function exportModule(path: T.FolderPath, name: string): Promise<undefined> {
-  const url = `/modules/${name}`;
-  const opts = {
-    method: 'POST',
-    body: JSON.stringify(T.encodeFolderPath(path)),
-    headers: { "content-type": "application/json" },
-  };
-  await ptfetch(url, opts, Z.any());
+function gameUrl() {
+  let { gameId } = getState();
+  let mode = getState().playerId === undefined ? "gm" : "player";
+  return `/g/${gameId}/${mode}`;
 }
 
 export async function sendCommand(cmd: T.GameCommand) {
   const json = T.encodeGameCommand(cmd);
   console.log("[sendCommand:JSON]", json);
-  let {gameId} = getState();
+
   const result = await ptfetch(
-    `/g/${gameId}/gm/execute`,
+    `${gameUrl()}/execute`,
     {
       method: "POST",
       body: JSON.stringify(json),
@@ -243,7 +238,7 @@ export async function sendCommandWithResult(cmd: T.GameCommand): Promise<T.RustR
 }
 
 async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
-  const url = `/target_options/${scene_id}/${cid}/${ability_id}`;
+  const url = `${gameUrl()}/target_options/${scene_id}/${cid}/${ability_id}`;
   const options = await ptfetch(url, undefined, T.decodePotentialTargets);
   getState().displayPotentialTargets(cid, ability_id, options);
 }
@@ -261,7 +256,7 @@ export function requestCombatAbility(
 export async function fetchAbilityTargets(
   sceneId: T.SceneID, actorId: T.CreatureID, abilityId: T.AbilityID, point: T.Point3
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const url = `/preview_volume_targets/${sceneId}/${actorId}/${abilityId}/${point.x}/${point.y}/${point.z}`;
+  const url = `${gameUrl()}/preview_volume_targets/${sceneId}/${actorId}/${abilityId}/${point.x}/${point.y}/${point.z}`;
   const result = await ptfetch(url, { method: 'POST' }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
   return {
     creatures: result[0],

@@ -22,6 +22,12 @@ impl std::str::FromStr for GameID {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct UserID(pub String);
 
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
+pub struct GameMetadata {
+  pub name: String,
+}
+
+
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameIndex {
   pub game_idx: usize,
@@ -36,9 +42,9 @@ pub struct UserGames {
 }
 
 
-/// The result from listing a game. Includes a name (and maybe other data, eventually)
+/// The result from listing a game. Includes a name (and maybe other data)
 #[derive(Clone, Serialize, Deserialize, Debug, TS)]
 pub struct GameList {
-  pub gm_games: Vec<(GameID, String)>,
-  pub player_games: Vec<(GameID, String)>,
+  pub gm_games: Vec<(GameID, GameMetadata)>,
+  pub player_games: Vec<(GameID, GameMetadata)>,
 }
