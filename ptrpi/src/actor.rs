@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result as AEResult};
 use futures::channel::oneshot;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use tokio::{sync::Mutex, time::timeout};
 
@@ -58,8 +58,9 @@ impl AuthenticatableService {
     let id_info = client.verify(id_token, &certs).await?;
     let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
     let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
-    println!(
-      "**** What've we got here? email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
+    debug!(
+      target: "valid-token",
+      "email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
       id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry
     );
     Ok(UserID(format!("google_{}", id_info.sub)))
@@ -160,10 +161,8 @@ impl GameService {
     self.ping_service.register_waiter(&self.game_id, sender).await;
     let event = timeout(Duration::from_secs(30), receiver).await;
     match event {
-      Ok(x) => {
-        // propagate whatever error may have occurred from receiving the event... not sure what
-        // would cause this.
-        x?
+      Ok(_) => {
+        // The oneshot was canceled. I'm not really sure what this means or why it happens.
       }
       Err(_) => {
         // Timeout; just return the state of the app
