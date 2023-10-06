@@ -58,6 +58,8 @@ async fn authenticate<B>(
   let header =
     request.headers().get("x-pt-rpi-auth").ok_or(anyhow!("Need a x-pt-rpi-auth header"))?;
   let id_token = header.to_str()?;
+  // TODO: we should specifically handle the case where the token is valid but expired and return a
+  // special response so the client can refresh the token.
   let authenticated = service.authenticate(id_token.to_string()).await?;
   request.extensions_mut().insert(Arc::new(authenticated));
   Ok(next.run(request).await.into())

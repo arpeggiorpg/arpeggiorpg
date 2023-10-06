@@ -1,6 +1,14 @@
 import * as React from "react";
 
-import { createHashRouter, RouterProvider, Link, useLoaderData, useParams, redirect, useNavigate } from "react-router-dom";
+import {
+  createHashRouter,
+  RouterProvider,
+  Link,
+  useLoaderData,
+  useParams,
+  redirect,
+  useNavigate,
+} from "react-router-dom";
 
 // import * as M from "./Model";
 import * as A from "./Actions";
@@ -17,6 +25,8 @@ import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
 
+import jwt_decode, { JwtPayload } from "jwt-decode";
+
 export const router = createHashRouter([
   {
     path: "/",
@@ -24,12 +34,31 @@ export const router = createHashRouter([
   },
   {
     path: "/gm/:gameId",
-    element: <GMGame />
-  }
+    element: <GMGame />,
+  },
 ]);
 
 export function Main() {
   const [token, setToken] = useCookie("pt-id-token");
+
+  React.useEffect(() => {
+    if (token) {
+      try {
+        let decoded = jwt_decode<JwtPayload>(token);
+        if (typeof decoded.exp === "number") {
+          if (Date.now() >= decoded.exp * 1000) {
+            // TODO: Is there a way we can refresh the token without reauthenticating?
+            console.log("token has expired!");
+            throw new Error("reauthenticate");
+          }
+        } else {
+          throw new Error("reauthenticate");
+        }
+      } catch (e) {
+        setToken("");
+      }
+    }
+  }, [token]);
 
   if (token && token.length > 1) {
     return (
@@ -49,7 +78,13 @@ export function Main() {
 }
 
 function GameList() {
-  let {data: games, error, isLoading} = useSWR('g/list', () => ptfetch("/g/list", {}, T.decodeGameList), {suspense: true});
+  let {
+    data: games,
+    error,
+    isLoading,
+  } = useSWR("g/list", () => ptfetch("/g/list", {}, T.decodeGameList), {
+    suspense: true,
+  });
 
   return (
     <>
@@ -62,10 +97,10 @@ function GameList() {
         ))}
         <li>
           <ModalMaker
-            button={clicker => <button onClick={clicker}>Create New</button>}
+            button={(clicker) => <button onClick={clicker}>Create New</button>}
             header={<>Create Game</>}
-            content={closer => <CreateGame closer={closer} />} />
-
+            content={(closer) => <CreateGame closer={closer} />}
+          />
         </li>
       </ul>
       <h1>You are a player in these games</h1>
@@ -78,10 +113,9 @@ function GameList() {
       </ul>
     </>
   );
-
 }
 
-function CreateGame({closer}: {closer: () => void}) {
+function CreateGame({ closer }: { closer: () => void }) {
   const navigate = useNavigate();
 
   async function createGame(name: string) {
@@ -89,10 +123,16 @@ function CreateGame({closer}: {closer: () => void}) {
     navigate(`/gm/${game_id}`);
   }
 
-  return <div><TextInput defaultValue="Name of your Game" onSubmit={createGame} onCancel={closer} /></div>
-
+  return (
+    <div>
+      <TextInput
+        defaultValue="Name of your Game"
+        onSubmit={createGame}
+        onCancel={closer}
+      />
+    </div>
+  );
 }
-
 
 type ErrorBoundaryProps = {
   fallback: React.ReactElement;
@@ -126,15 +166,14 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-
 function GMGame() {
-  let { gameId } = useParams() as {gameId: string};
+  let { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
     A.startPoll("gm", gameId);
   }, []);
 
-  let game = useState(s => s.game);
+  let game = useState((s) => s.game);
 
   console.log("game", game);
   return <GMMain />;
