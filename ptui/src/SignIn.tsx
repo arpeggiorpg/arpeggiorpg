@@ -7,7 +7,7 @@ import * as A from "./Actions";
 
 export function SignIn(props: {signedIn: (s: string) => void}) {
   return (
-    <GoogleOAuthProvider clientId="328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <div
         style={{
           height: "500px",
