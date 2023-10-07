@@ -60,9 +60,9 @@ export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   if (!player) {
     return <div>Player {playerId} not found</div>;
   }
-  const map = scene
-    ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
-    : <div>No scene loaded</div>;
+  // const map = scene
+  //   ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
+  //   : <div>No scene loaded</div>;
   const tabs = [
     <CV.Tab key="Creatures" name="Creatures">
       <PlayerCreatures player={player} />
@@ -72,7 +72,7 @@ export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
     </CV.Tab>
   ];
   return <CV.TheLayout
-    map={map}
+    // map={map}
     bottom_right={<></>}// <CV.PlayerChat player_id={player.player_id} />}
     tabs={tabs} bar_width={325} menu_size="large"
     bottom_bar={<PlayerActionBar player={player} combat={combat} />} />;

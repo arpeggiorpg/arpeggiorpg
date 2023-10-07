@@ -263,7 +263,7 @@ const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
   Z.object({"SubfolderID": Z.string()}),
 ]);
 
-const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
+export const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
   if (strpath === "") {
     return [];
   } else if (strpath.startsWith("/")) {
