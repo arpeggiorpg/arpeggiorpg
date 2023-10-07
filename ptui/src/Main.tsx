@@ -53,7 +53,9 @@ export function Main() {
           </div>
         </div>
         <ErrorBoundary fallback={<div>ERROR OCCURRED</div>}>
-          <Outlet />
+          <React.Suspense>
+            <Outlet />
+          </React.Suspense>
         </ErrorBoundary>
       </div>
     );
@@ -63,7 +65,6 @@ export function Main() {
 }
 
 function GameList() {
-
 
   React.useEffect(() => {
     console.log('GameList MOUNT');
@@ -144,8 +145,9 @@ class ErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: any) {
-    console.error(error);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[ErrorBoundary error]", error);
+    console.log("Additional Stack:", info.componentStack);
   }
 
   render() {
