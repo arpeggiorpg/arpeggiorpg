@@ -145,7 +145,7 @@ impl AuthenticatedService {
 
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.
 pub struct GameService {
-  storage: Arc<dyn PTStorage>,
+  pub storage: Arc<dyn PTStorage>,
   pub game: Game,
   pub game_index: GameIndex,
   pub game_id: GameID,
@@ -159,11 +159,11 @@ impl GameService {
   // difficult for me.
 
   /// Wait for a Game to change and then return it.
-  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<(Game, GameIndex)> {
+  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
     // First, if the app has already changed, return it immediately.
     debug!("poll_game:start");
     if self.game_index != game_index {
-      return Ok((self.game.clone(), self.game_index));
+      return Ok(());
     }
     // Now, we wait.
     let (sender, receiver) = oneshot::channel();
@@ -180,7 +180,7 @@ impl GameService {
     // When this receiver gets pinged, we don't just want to return self.game -- we have to get the
     // latest state.
     let (game, game_index) = self.storage.load_game(&self.game_id).await?;
-    Ok((game, game_index))
+    Ok(())
   }
 
   pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {

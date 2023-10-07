@@ -45,8 +45,10 @@ async function ptfetch_<J>(
     const json = await decodeFetch(url, init, decoder);
     return json;
   } catch (e) {
-    const error = extract_error_details(e);
-    getState().setError(error);
+    if (!isAbortError(e)) {
+      const error = extract_error_details(e);
+      getState().setError(error);
+    }
     throw e;
   }
 
@@ -68,37 +70,65 @@ export function ptfetch<J>(url: string, init: RequestInit | undefined, decoder: 
   return ptfetch_(url, init, decoder.parse);
 }
 
-export async function startPoll(mode: "gm" | "player", gameId: string) {
-  // This is kinda dumb, but:
-  // - first, we fetch the entire Game
-  // - then, we start long-polling at /poll/{snapidx}/{logidx}
-  //
-  // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
-  // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
+export function startPoll(mode: "gm" | "player", gameId: string): () => void {
+  let polling = true;
 
-  // TODO: we need a way to cancel startPoll so that if the user navigates away from their current
-  // game, we stop polling it.
-  const gameUrl = `/g/${gameId}/${mode}/`;
-  let result = await ptfetch(gameUrl, undefined, T.decodeGameWithIndex);
-  getState().refresh(result.game);
-  getState().setGameId(gameId);
+  const controller = new AbortController();
+  const signal = controller.signal;
 
-  let { index } = result;
+  async function poll() {
+    // - first, fetch the entire Game
+    // - then, start long-polling at /poll/{snapidx}/{logidx}
+    //
+    // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
+    // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
+    const gameUrl = `/g/${gameId}/${mode}/`;
+    let result = await ptfetch(gameUrl, {}, T.decodeGameWithMetadata);
+    let state = getState();
+    state.refresh(result.game);
+    state.setGameId(gameId);
+    state.setGameName(result.metadata.name);
 
-  while (true) {
-    const url = `${gameUrl}poll/${index.game_idx}/${index.log_idx}`;
-    try {
-      console.log("gonna fetch");
-      let result = await ptfetch(url, {}, T.decodeGameWithIndex);
-      index = result.index;
-      getState().refresh(result.game);
-    } catch (e) {
-      console.error("oops got an error", e);
-      getState().setFetchStatus("Error");
-      await new Promise(res => setTimeout(res, 5000));
+    let { index } = result;
+
+    while (polling) {
+      const url = `${gameUrl}poll/${index.game_idx}/${index.log_idx}`;
+      try {
+        console.log("gonna fetch");
+        let result = await ptfetch(url, {signal}, T.decodeGameWithMetadata);
+        index = result.index;
+        getState().refresh(result.game);
+      } catch (e) {
+        if (isAbortError(e)) {
+          console.log("Request was cancelled intentionally");
+        } else {
+          console.error("oops got an error", e);
+          getState().setFetchStatus("Error");
+          await new Promise(res => setTimeout(res, 5000));
+        }
+      }
     }
+    console.log("Stopped polling because polling was set to false.");
+    state = getState();
+    state.setGameId(undefined);
+    state.setGameName(undefined);
+  }
+  poll();
+  return () => {
+    polling = false;
+    console.log("requested cancellation of poll");
+    controller.abort();
   }
 }
+
+function isAbortError(error: any): boolean {
+  return getattr(error, "name") === "AbortError"
+}
+
+function getattr(o: any, name: string): any {
+  return o && typeof o === "object" && name in o && o[name]
+}
+
 
 export async function requestMove(cid: T.CreatureID) {
   const scene = getState().getFocusedScene();

@@ -566,14 +566,16 @@ export const decodeGameIndex: Decoder<GameIndex> = Z.object({
   log_idx: Z.number(),
 });
 
-export interface GameWithIndex {
+export interface GameWithMetadata {
   game: Game;
   index: GameIndex;
+  metadata: GameMetadata;
 }
 
-export const decodeGameWithIndex: Decoder<GameWithIndex> = Z.object({
+export const decodeGameWithMetadata: Decoder<GameWithMetadata> = Z.object({
   game: decodeGame,
   index: decodeGameIndex,
+  metadata: decodeGameMetadata,
 });
 
 export function encodeGameCommand(cmd: GameCommand): object | string {

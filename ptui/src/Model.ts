@@ -15,12 +15,14 @@ export interface AppState {
   userToken: string | undefined;
   game: T.Game;
   gameId: T.GameID | undefined;
+  gameName: string | undefined;
   fetchStatus: FetchStatus;
 
   setUserToken: (s: string | undefined) => void;
 
   setFetchStatus: (s: FetchStatus) => void;
-  setGameId: (s: T.GameID) => void;
+  setGameId: (s: T.GameID | undefined) => void;
+  setGameName: (s: string | undefined) => void;
   refresh: (g: T.Game) => void;
 
   // utility functions for fetching state
@@ -51,11 +53,13 @@ const appSlice: Slice<AppState> = (set, get) => ({
   userToken: getCookie(ID_TOKEN_NAME),
   game: initialGame,
   gameId: undefined,
+  gameName: undefined,
   fetchStatus: "Unfetched",
 
   setUserToken: userToken => set(() => ({userToken})),
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
-  setGameId: (gameId: T.GameID) => set(() => ({gameId})),
+  setGameId: gameId => set(() => ({gameId})),
+  setGameName: gameName => set(() => ({gameName})),
   refresh: game => set(state => {
     const pid = state.playerId;
     if (pid) {
