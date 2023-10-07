@@ -6,12 +6,19 @@ import type { StateCreator } from "zustand";
 import { shallow } from 'zustand/shallow';
 
 import * as T from "./PTTypes";
+import { getCookie } from 'react-use-cookie';
+
+export const ID_TOKEN_NAME = "pt-id-token";
 
 export type FetchStatus = "Unfetched" | "Ready" | "Error";
 export interface AppState {
+  userToken: string | undefined;
   game: T.Game;
   gameId: T.GameID | undefined;
   fetchStatus: FetchStatus;
+
+  setUserToken: (s: string | undefined) => void;
+
   setFetchStatus: (s: FetchStatus) => void;
   setGameId: (s: T.GameID) => void;
   refresh: (g: T.Game) => void;
@@ -41,9 +48,12 @@ export interface AppState {
 }
 
 const appSlice: Slice<AppState> = (set, get) => ({
+  userToken: getCookie(ID_TOKEN_NAME),
   game: initialGame,
   gameId: undefined,
   fetchStatus: "Unfetched",
+
+  setUserToken: userToken => set(() => ({userToken})),
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
   setGameId: (gameId: T.GameID) => set(() => ({gameId})),
   refresh: game => set(state => {

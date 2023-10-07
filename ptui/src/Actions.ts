@@ -7,11 +7,9 @@ import * as Z from "zod";
 
 import * as T from "./PTTypes";
 import { getState } from "./Model";
-import { getCookie } from "react-use-cookie";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
-
 
 export async function decodeFetch<J>(
   url: string, init: RequestInit | undefined,
@@ -19,6 +17,10 @@ export async function decodeFetch<J>(
 ): Promise<J> {
   url = `${RPI_URL}${url}`;
   const result = await fetch(url, init);
+  if (result.status === 401) {
+    getState().setUserToken("");
+    throw new Error("401 from PT RPI");
+  }
   const json = await result.json();
   try {
     return decoder(json);
@@ -36,7 +38,7 @@ async function ptfetch_<J>(
   if (!init) {
     init = {};
   }
-  const ptIdToken = getCookie("pt-id-token");
+  const ptIdToken = getState().userToken;
   if (ptIdToken)
     init.headers = { ...init.headers, 'x-pt-rpi-auth': ptIdToken };
   try {
