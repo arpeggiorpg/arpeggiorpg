@@ -7,7 +7,7 @@ use axum::{
   middleware::{from_fn, from_fn_with_state, Next},
   response::{IntoResponse, Response},
   routing::{get, post},
-  Extension, Json,
+  Extension, Json, body,
 };
 use http::StatusCode;
 use log::error;
@@ -60,9 +60,19 @@ async fn authenticate<B>(
   let id_token = header.to_str()?;
   // TODO: we should specifically handle the case where the token is valid but expired and return a
   // special response so the client can refresh the token.
-  let authenticated = service.authenticate(id_token.to_string()).await?;
-  request.extensions_mut().insert(Arc::new(authenticated));
-  Ok(next.run(request).await.into())
+  let authenticated_result = service.authenticate(id_token.to_string()).await;
+  match authenticated_result {
+    Ok(authenticated) => {
+      request.extensions_mut().insert(Arc::new(authenticated));
+      Ok(next.run(request).await.into())
+    }
+    Err(_) => {
+      let body = body::boxed("auth failed".to_string());
+      let response = Response::builder().status(401).body(body)?;
+      Ok(response)
+    }
+  }
+
 }
 
 async fn authorize_game<B>(

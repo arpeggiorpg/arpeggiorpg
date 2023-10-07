@@ -4,8 +4,10 @@ import {
   GoogleOAuthProvider,
 } from "@react-oauth/google";
 import * as A from "./Actions";
+import * as M from "./Model";
+import { setCookie } from "react-use-cookie";
 
-export function SignIn(props: {signedIn: (s: string) => void}) {
+export function SignIn() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <div
@@ -25,7 +27,8 @@ export function SignIn(props: {signedIn: (s: string) => void}) {
     // 1. all requests to the backend need to have this credential passed down. So, should we put it in a cookie?
     console.log("credential response!", credentialResponse);
     if (credentialResponse.credential) {
-      props.signedIn(credentialResponse.credential);
+      M.getState().setUserToken(credentialResponse.credential);
+      setCookie(M.ID_TOKEN_NAME, credentialResponse.credential);
     } else {
       console.error("didn't get credentials???", credentialResponse);
     }

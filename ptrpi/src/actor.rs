@@ -13,6 +13,13 @@ use crate::{
 
 use pandt::types::{self, Game, GameCommand};
 
+#[derive(thiserror::Error, Debug)]
+#[error("Authentication Error")]
+pub struct AuthenticationError {
+  #[from]
+  pub from: anyhow::Error,
+}
+
 /// AuthenticatableService is a capability layer that hands out AuthenticatedServices to users who
 /// authenticate.
 #[derive(Clone)]
@@ -38,11 +45,13 @@ impl AuthenticatableService {
   }
 
   /// Verify a google ID token and return an AuthenticatedService if it's valid.
-  pub async fn authenticate(&self, google_id_token: String) -> AEResult<AuthenticatedService> {
+  pub async fn authenticate(&self, google_id_token: String) -> Result<AuthenticatedService, AuthenticationError> {
     let user_id = self
       .validate_google_token(&google_id_token)
       .await
-      .context(format!("Validating Google ID Token: {google_id_token:?}"))?;
+      .context(format!("Validating Google ID Token"))
+      .map_err(|e| AuthenticationError { from: e })
+      ?;
     return Ok(AuthenticatedService {
       user_id,
       storage: self.storage.clone(),

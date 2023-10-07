@@ -8,18 +8,16 @@ import {
   useParams,
   redirect,
   useNavigate,
+  Outlet,
 } from "react-router-dom";
 
-// import * as M from "./Model";
+import * as M from "./Model";
 import * as A from "./Actions";
 // import {startPoll, RPI_URL} from "./Actions";
-
-import useCookie, { setCookie } from "react-use-cookie";
 
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
-import { useState } from "./Model";
 import { GMMain } from "./GMView";
 import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
@@ -31,34 +29,18 @@ export const router = createHashRouter([
   {
     path: "/",
     element: <Main />,
-  },
-  {
-    path: "/gm/:gameId",
-    element: <GMGame />,
+    children: [
+      { index: true, element: <GameList />},
+      {
+        path: "/gm/:gameId",
+        element: <GMGame />,
+      },
+    ],
   },
 ]);
 
 export function Main() {
-  const [token, setToken] = useCookie("pt-id-token");
-
-  React.useEffect(() => {
-    if (token) {
-      try {
-        let decoded = jwt_decode<JwtPayload>(token);
-        if (typeof decoded.exp === "number") {
-          if (Date.now() >= decoded.exp * 1000) {
-            // TODO: Is there a way we can refresh the token without reauthenticating?
-            console.log("token has expired!");
-            throw new Error("reauthenticate");
-          }
-        } else {
-          throw new Error("reauthenticate");
-        }
-      } catch (e) {
-        setToken("");
-      }
-    }
-  }, [token]);
+  const token = M.useState(s => s.userToken);
 
   if (token && token.length > 1) {
     return (
@@ -66,14 +48,14 @@ export function Main() {
         <p>You're logged in! good job!</p>
 
         <ErrorBoundary fallback={<div>ERROR OCCURRED</div>}>
-          <GameList />
+          <Outlet />
         </ErrorBoundary>
 
-        <button onClick={() => setToken("")}>Log Off</button>
+        <button onClick={() => M.getState().setUserToken(undefined)}>Log Off</button>
       </div>
     );
   } else {
-    return <SignIn signedIn={setToken} />;
+    return <SignIn />;
   }
 }
 
@@ -173,7 +155,7 @@ function GMGame() {
     A.startPoll("gm", gameId);
   }, []);
 
-  let game = useState((s) => s.game);
+  let game = M.useState(s => s.game);
 
   console.log("game", game);
   return <GMMain />;
