@@ -24,7 +24,6 @@ export function SignIn() {
   );
 
   function onSignIn(credentialResponse: CredentialResponse) {
-    // 1. all requests to the backend need to have this credential passed down. So, should we put it in a cookie?
     console.log("credential response!", credentialResponse);
     if (credentialResponse.credential) {
       M.getState().setUserToken(credentialResponse.credential);

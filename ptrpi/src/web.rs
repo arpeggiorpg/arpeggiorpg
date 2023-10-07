@@ -49,7 +49,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
 
 #[derive(serde::Deserialize)]
 struct GameIDPath {
-  game_id: String,
+  game_id: GameID,
 }
 
 async fn authenticate<B>(
@@ -81,7 +81,6 @@ async fn authorize_game<B>(
   next: Next<B>,
 ) -> Result<Response, WebError> {
   // TODO: return a 404 when the game doesn't exist.
-  let game_id = game_id.parse().context("Parsing game_id as UUID")?;
   let gm = authenticated.gm(&game_id).await?;
   request.extensions_mut().insert(Arc::new(gm));
   Ok(next.run(request).await.into())
@@ -104,22 +103,26 @@ async fn create_game(
 
 async fn get_game(
   Extension(service): Extension<Arc<GameService>>,
+  Path(GameIDPath { game_id }): Path<GameIDPath>
 ) -> WebResult<Json<serde_json::Value>> {
-  let game = RPIGame(&service.game);
-  let response = serde_json::json!({
-    "game": game,
-    "index": service.game_index,
-  });
-  Ok(Json(response))
+  Ok(Json(_get_game(service, game_id).await?))
 }
 
 async fn poll_game(
   Extension(service): Extension<Arc<GameService>>,
-  Path((_game_id, game_idx, log_idx)): Path<(String, usize, usize)>,
+  Path((game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
 ) -> WebResult<Json<serde_json::Value>> {
-  let (game, game_index) = service.poll_game(GameIndex { game_idx, log_idx }).await?;
-  let json = serde_json::json!({"game": RPIGame(&game), "index": game_index});
-  Ok(Json(json))
+  service.poll_game(GameIndex { game_idx, log_idx }).await?;
+  Ok(Json(_get_game(service, game_id).await?))
+}
+
+async fn _get_game(service: Arc<GameService>, game_id: GameID) -> WebResult<serde_json::Value> {
+  let game = RPIGame(&service.game);
+  Ok(serde_json::json!({
+    "game": game,
+    "index": service.game_index,
+    "metadata": service.storage.get_game_metadata(&game_id).await?
+  }))
 }
 
 async fn execute(

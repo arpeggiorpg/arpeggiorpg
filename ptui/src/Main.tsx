@@ -2,18 +2,14 @@ import * as React from "react";
 
 import {
   createHashRouter,
-  RouterProvider,
   Link,
-  useLoaderData,
   useParams,
-  redirect,
   useNavigate,
   Outlet,
 } from "react-router-dom";
 
 import * as M from "./Model";
 import * as A from "./Actions";
-// import {startPoll, RPI_URL} from "./Actions";
 
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
@@ -23,14 +19,15 @@ import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
 
-import jwt_decode, { JwtPayload } from "jwt-decode";
 
+// I am using a hash router until I spend the time to figure out routing for the web server; from
+// what I've read it probably needs to be implemented with CloudFlare route rules or something.
 export const router = createHashRouter([
   {
     path: "/",
     element: <Main />,
     children: [
-      { index: true, element: <GameList />},
+      { index: true, element: <GameList /> },
       {
         path: "/gm/:gameId",
         element: <GMGame />,
@@ -41,17 +38,23 @@ export const router = createHashRouter([
 
 export function Main() {
   const token = M.useState(s => s.userToken);
+  const gameName = M.useState(s => s.gameName);
 
   if (token && token.length > 1) {
     return (
-      <div>
-        <p>You're logged in! good job!</p>
-
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <h1>Rpeggio {gameName}</h1>
+          <div className="rightNavThing">
+            <Link to="/">Game List</Link>
+            <button onClick={() => M.getState().setUserToken(undefined)}>
+              Log Off
+            </button>
+          </div>
+        </div>
         <ErrorBoundary fallback={<div>ERROR OCCURRED</div>}>
           <Outlet />
         </ErrorBoundary>
-
-        <button onClick={() => M.getState().setUserToken(undefined)}>Log Off</button>
       </div>
     );
   } else {
@@ -60,6 +63,13 @@ export function Main() {
 }
 
 function GameList() {
+
+
+  React.useEffect(() => {
+    console.log('GameList MOUNT');
+    return () => console.log('GameList UNMOUNT');
+  }, []);
+
   let {
     data: games,
     error,
@@ -89,7 +99,7 @@ function GameList() {
       <ul>
         {games?.player_games.map(([gameId, meta]) => (
           <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{meta.name}</Link>
+            <Link to={`player/${gameId}`}>{meta.name}</Link>
           </li>
         ))}
       </ul>
@@ -152,11 +162,13 @@ function GMGame() {
   let { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
-    A.startPoll("gm", gameId);
+    // startPoll returns a cancellation function, which we return here from the effect so react will
+    // call it when this component gets unmounted.
+    return A.startPoll("gm", gameId);
   }, []);
 
-  let game = M.useState(s => s.game);
+  let game = M.useState((s) => s.game);
 
-  console.log("game", game);
+  console.log("game!!!!", game);
   return <GMMain />;
 }

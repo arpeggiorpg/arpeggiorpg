@@ -6,7 +6,7 @@ use std::{
 use anyhow::{Context, Result as AEResult};
 use async_trait::async_trait;
 use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
-use log::info;
+use log::{info, debug};
 
 use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
@@ -204,7 +204,7 @@ impl PTStorage for FSStorage {
 
   async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
-    println!("Loading game path {:?}", metadata_path);
+    debug!(target: "load-metadata", "metadata={metadata_path:?}");
     let file = fs::File::open(metadata_path.clone())
       .context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
@@ -216,11 +216,14 @@ impl PTStorage for FSStorage {
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&game_index.game_idx.to_string());
 
+    debug!(target: "load-game", "filename={:?}", snapshot_path.join("game.json"));
     let file = fs::File::open(snapshot_path.join("game.json"))?;
     let mut game: Game = serde_json::from_reader(file)?;
     let log_indices = self.get_log_indices(game_id, game_index.game_idx)?;
     for log_idx in log_indices {
-      let file = fs::File::open(snapshot_path.join(&format!("log-{log_idx}.json")))?;
+      let filename = snapshot_path.join(&format!("log-{log_idx}.json"));
+      debug!(target: "load-log", "filename={filename:?}");
+      let file = fs::File::open(filename)?;
       let game_log: GameLog = serde_json::from_reader(file)?;
       game = game.apply_log(&game_log)?;
     }
