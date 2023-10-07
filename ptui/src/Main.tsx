@@ -14,11 +14,10 @@ import * as A from "./Actions";
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
-import { GMMain } from "./GMView";
+import { GMMain, GMMap } from "./GMView";
 import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
-
 
 // I am using a hash router until I spend the time to figure out routing for the web server; from
 // what I've read it probably needs to be implemented with CloudFlare route rules or something.
@@ -29,16 +28,20 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <GameList /> },
       {
-        path: "/gm/:gameId",
+        path: "gm/:gameId",
         element: <GMGame />,
+        children: [
+          { index: true, element: <div>Pick a scene!</div> },
+          { path: "campaign/*", element: <GMMap />}
+        ],
       },
     ],
   },
 ]);
 
 export function Main() {
-  const token = M.useState(s => s.userToken);
-  const gameName = M.useState(s => s.gameName);
+  const token = M.useState((s) => s.userToken);
+  const gameName = M.useState((s) => s.gameName);
 
   if (token && token.length > 1) {
     return (
@@ -65,10 +68,9 @@ export function Main() {
 }
 
 function GameList() {
-
   React.useEffect(() => {
-    console.log('GameList MOUNT');
-    return () => console.log('GameList UNMOUNT');
+    console.log("GameList MOUNT");
+    return () => console.log("GameList UNMOUNT");
   }, []);
 
   let {
@@ -161,7 +163,7 @@ class ErrorBoundary extends React.Component<
 }
 
 function GMGame() {
-  let { gameId } = useParams() as { gameId: string };
+  const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
     // startPoll returns a cancellation function, which we return here from the effect so react will

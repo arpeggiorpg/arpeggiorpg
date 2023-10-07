@@ -16,6 +16,7 @@ import * as GM from './GMComponents';
 import * as M from './Model';
 import * as A from './Actions';
 import * as T from './PTTypes';
+import { useNavigate } from 'react-router-dom';
 
 export function Campaign() {
   return <FolderTree name={"Campaign"} path={[]} start_open={true} />;
@@ -193,8 +194,7 @@ function FolderTree(props: FTProps) {
         const iid = object_to_item_id(obj);
         const variant = Object.keys(iid)[0] ?? "unknown";
         const iidvalue = Object.values(iid)[0] ?? "unknown";
-        return <TreeObject key={`${variant}/${iidvalue}`} object={obj} selecting={selecting}
-          />;
+        return <TreeObject path={path} key={`${variant}/${iidvalue}`} object={obj} selecting={selecting} />;
       }));
   }
 
@@ -365,35 +365,20 @@ function object_to_item_id(obj: FolderObject): T.FolderItemID {
   }
 }
 
-function activate_object(obj: FolderObject): void {
-  switch (obj.t) {
-    case "Scene":
-      M.getState().setGridFocus(obj.id);
-      return;
-    case "Creature":
-      M.getState().setSecondaryFocus({ t: "Creature", creature_id: obj.id });
-      return;
-    case "Note":
-      M.getState().setSecondaryFocus({ t: "Note", path: obj.path, name: obj.name });
-      return;
-    case "Item":
-      M.getState().setSecondaryFocus({ t: "Item", item_id: obj.id });
-      return;
-  }
-}
-
 
 interface TreeObjectProps {
   object: FolderObject;
   selecting: SelectableProps | undefined;
+  path: T.FolderPath;
 }
 
-function TreeObject({ object, selecting }: TreeObjectProps) {
+function TreeObject({ path, object, selecting }: TreeObjectProps) {
   const name = object.name;
+  let navigate = useNavigate();
 
   return <List.Item style={{ width: '100%' }}>
     <List.Icon name={object_icon(object.t)} />
-    <List.Content style={{ cursor: 'pointer', width: '100%' }} onClick={handler}>
+    <List.Content style={{ cursor: 'pointer', width: '100%' }} onClick={activate}>
       {
         selecting
           ? <Checkbox checked={selecting.is_selected(object.path, object_to_item_id(object))}
@@ -435,9 +420,23 @@ function TreeObject({ object, selecting }: TreeObjectProps) {
     </Dropdown>;
   }
 
-  function handler() {
+  function activate() {
     if (selecting) { return; }
-    return activate_object(object);
+    switch (object.t) {
+      case "Scene":
+        M.getState().setGridFocus(object.id);
+        navigate(`./campaign${T.encodeFolderPath(path)}/${name}`)
+        return;
+      case "Creature":
+        M.getState().setSecondaryFocus({ t: "Creature", creature_id: object.id });
+        return;
+      case "Note":
+        M.getState().setSecondaryFocus({ t: "Note", path: object.path, name: object.name });
+        return;
+      case "Item":
+        M.getState().setSecondaryFocus({ t: "Item", item_id: object.id });
+        return;
+    }
   }
 
   function onCheck(_: any, data: CheckboxProps) {
