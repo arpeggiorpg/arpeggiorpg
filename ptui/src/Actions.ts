@@ -19,7 +19,7 @@ export async function decodeFetch<J>(
   const result = await fetch(url, init);
   if (result.status === 401) {
     getState().setUserToken("");
-    throw new Error("401 from PT RPI");
+    throw new Http401Error("401 from PT RPI");
   }
   const json = await result.json();
   try {
@@ -27,6 +27,14 @@ export async function decodeFetch<J>(
   } catch (e) {
     console.error(e);
     throw { _pt_error: "JSON", original: e };
+  }
+}
+
+class Http401Error extends Error {
+  name: string;
+  constructor(message: string) {
+    super(message);
+    this.name = 'MyError';
   }
 }
 
@@ -45,7 +53,7 @@ async function ptfetch_<J>(
     const json = await decodeFetch(url, init, decoder);
     return json;
   } catch (e) {
-    if (!isAbortError(e)) {
+    if (!isAbortError(e) && !isHttp401Error(e)) {
       const error = extract_error_details(e);
       getState().setError(error);
     }
@@ -123,6 +131,10 @@ export function startPoll(mode: "gm" | "player", gameId: string): () => void {
 
 function isAbortError(error: any): boolean {
   return getattr(error, "name") === "AbortError"
+}
+
+function isHttp401Error(error: any): boolean {
+  return getattr(error, "name") === "Http401Error"
 }
 
 function getattr(o: any, name: string): any {
