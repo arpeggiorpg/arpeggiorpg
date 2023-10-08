@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context};
 use axum::{
@@ -10,11 +10,12 @@ use axum::{
   Extension, Json, body,
 };
 use http::StatusCode;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, trace::TraceLayer, classify::ServerErrorsFailureClass};
 
 use pandt::types::{
   AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIGame, SceneID,
 };
+use tracing::{error, Span};
 
 use crate::{
   actor::{AuthenticatableService, AuthenticatedService, GameService},
@@ -42,7 +43,18 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     .route_layer(from_fn_with_state(service.clone(), authenticate));
 
   let cors = CorsLayer::permissive();
-  let trace = TraceLayer::new_for_http();
+  let trace = TraceLayer::new_for_http()
+  // .on_failure(|error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
+  //   match error {
+  //     ServerErrorsFailureClass::StatusCode(code) => {
+  //       error!(event="StatusCode", code=code.to_string());
+  //     }
+  //     ServerErrorsFailureClass::Error(string) => {
+  //       error!(event="Error", string)
+  //     }
+  //   }
+  // })
+  ;
   return axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace);
 }
 
@@ -120,7 +132,7 @@ async fn _get_game(service: Arc<GameService>, game_id: GameID) -> WebResult<serd
   Ok(serde_json::json!({
     "game": game,
     "index": service.game_index,
-    "metadata": service.storage.get_game_metadata(&game_id).await?
+    "metadata": service.storage.load_game_metadata(&game_id).await?
   }))
 }
 
@@ -220,7 +232,8 @@ type WebResult<T> = std::result::Result<T, WebError>;
 // We could theoretically downcast the error to return different status codes.
 impl IntoResponse for WebError {
   fn into_response(self) -> Response {
-    (StatusCode::INTERNAL_SERVER_ERROR, format!("Something went wrong: {}", self.0)).into_response()
+    println!("{:?}", self.0);
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("Something went wrong: {:?}", self.0)).into_response()
   }
 }
 
