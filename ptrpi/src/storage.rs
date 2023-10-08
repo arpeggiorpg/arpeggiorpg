@@ -16,7 +16,7 @@ use pandt::types::{Game, GameLog};
 
 
 /// Load a Game from a PTStorage.
-pub async fn load_game(storage: Arc<impl PTStorage + ?Sized>, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
+pub async fn load_game<S: PTStorage + ?Sized>(storage: &S, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
   let game_index = storage.current_index(game_id).await?;
   let mut game = storage.load_game_snapshot(game_id, game_index.game_idx).await?;
   for log_idx in 0..=game_index.log_idx {
