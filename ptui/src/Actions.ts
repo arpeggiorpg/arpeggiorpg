@@ -245,7 +245,11 @@ export async function sendCommand(cmd: T.GameCommand) {
   );
   switch (result.t) {
     case "Ok":
-      getState().refresh(result.result.game);
+      // Let's not refresh the state from this execute call for now, since
+      // 1. I am observing some rubber-banding after executing commands
+      // 2. the poll will refresh the state of the game anyway (and so execute
+      //    probably shouldn't even return the new game state)
+      // getState().refresh(result.result.game);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
