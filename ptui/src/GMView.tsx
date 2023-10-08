@@ -87,6 +87,11 @@ export function GMMap() {
     const creaturesInMap = mapCreatures(scene, s);
     return { scene, creaturesInMap };
   });
+  React.useEffect(() => {
+    // We need to synchronize the scene from the path to the zustand store
+    console.log("setting grid focus to", scene?.id);
+    M.getState().setGridFocus(scene?.id);
+  }, [path, scene]);
   if (!scene) {
     return <div>Couldn't find scene {path}</div>;
   }

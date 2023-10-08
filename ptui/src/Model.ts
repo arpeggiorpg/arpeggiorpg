@@ -160,7 +160,7 @@ interface GridState {
   gridFocus?: GridFocus;
   // resetGrid is used in New Game
   resetGrid: () => void;
-  setGridFocus: (s: T.SceneID, l?: SceneLayerType) => void;
+  setGridFocus: (s: T.SceneID | undefined, l?: SceneLayerType) => void;
   activateObjects: (objects: GridObject[], coords: [number, number]) => void;
   activateContextMenu: (pt: T.Point3, coords: [number, number]) => void;
   clearContextMenu: () => void;
@@ -184,7 +184,10 @@ const gridSlice: Slice<GridState> = (set, get) => ({
   grid: defaultGrid,
   gridFocus: undefined,
   resetGrid: () => set(() => ({ grid: defaultGrid })),
-  setGridFocus: (scene_id: T.SceneID, t?: SceneLayerType) => set(() => {
+  setGridFocus: (scene_id, t?) => set(() => {
+    if (!scene_id) {
+      return { gridFocus: undefined };
+    }
     const scene = get().getGame().scenes.get(scene_id);
     let layer: SceneLayer | undefined = undefined;
     switch (t) {
