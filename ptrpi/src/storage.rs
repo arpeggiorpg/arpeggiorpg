@@ -1,12 +1,14 @@
 use std::{
+  collections::HashMap,
   fs,
-  path::{Path, PathBuf},
+  path::{Path, PathBuf}, sync::Arc,
 };
 
 use anyhow::{Context, Result as AEResult};
 use async_trait::async_trait;
 use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
 use tracing::{info, debug};
+use tokio::sync::Mutex;
 
 use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
@@ -40,71 +42,87 @@ pub trait PTStorage: Send + Sync {
   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game>;
 }
 
-// pub struct CacheStorage<S>  where S: PTStorage {
-//   storage: S,
-//   latest_game_cache: Arc<Mutex<HashMap<GameID, (GameIndex, Game)>>>
-// }
+pub struct CachedStorage<S> where S: PTStorage {
+  storage: S,
+  cache: Arc<Mutex<HashMap<GameID, (Game, GameIndex)>>>
+}
 
-// #[async_trait]
-// impl<S: PTStorage> PTStorage for CacheStorage<S> {
+impl<S: PTStorage> CachedStorage<S> {
+  pub fn new(storage: S) -> Self {
+    CachedStorage { storage, cache: Arc::new(Mutex::new(HashMap::new()))}
+  }
+}
 
-//   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
-//     Ok(self.storage.list_user_games(user_id).await?)
-//   }
 
-//   async fn add_user_gm_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-//     Ok(self.storage.add_user_gm_game(user_id, game_id).await?)
-//   }
-//   async fn add_user_player_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
-//     Ok(self.storage.add_user_player_game(user_id, game_id).await?)
-//   }
+// TODO for CACHING:
+// For one, this caching implementation totally fails in the face of multi-node scaling.
+// - apply_game_logs invalidates the cache for a game, but if there are multiple nodes, it's not
+//   invalidating all the caches. I think there are a couple of ways forward:
+//   - actually cache in Redis, where we *can* invalidate the cache for everyone
+//   - maybe improve the protocol so load_game can know if it's loading the *expected* version of the game
+//   - make it so load_game always looks up the latest GameIndex by hitting the backend
+// - We don't cache individual GameLogs, so any time the cache is invalidated, we have to reload
+//   GameLogs from disk. Fixing this will require a new Storage::load_game_log.
+#[async_trait]
+impl<S: PTStorage> PTStorage for CachedStorage<S> {
 
-//   // Game management
-//   async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
-//     let game_id = self.storage.create_game(game, name).await?;
-//     let cache = self.latest_game_cache.lock().await;
-//     cache.insert(game_id, (GameIndex { game_idx: 0, log_idx: 0}, game.clone()));
-//     Ok(game_id)
-//   }
+  async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
+    Ok(self.storage.list_user_games(user_id).await?)
+  }
 
-//   async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
-//     // We should probably cache here, BUT, this would need smarter cache invalidation since we don't
-//     // have a GameIndex to go along with it.
-//     Ok(self.storage.get_game_metadata(game_id).await?)
-//   }
+  async fn add_user_gm_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
+    Ok(self.storage.add_user_gm_game(user_id, game_id).await?)
+  }
+  async fn add_user_player_game(&self, user_id: &UserID, game_id: &GameID) -> AEResult<()> {
+    Ok(self.storage.add_user_player_game(user_id, game_id).await?)
+  }
 
-//   /// Load the current state of a game
-//   async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
-//     let cache = self.latest_game_cache.lock().await;
-//     cache.get()
+  // Game management
+  async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
+    let game_id = self.storage.create_game(game, name).await?;
+    let mut cache = self.cache.lock().await;
+    cache.insert(game_id.clone(), (game.clone(), GameIndex { game_idx: 0, log_idx: 0}));
+    Ok(game_id)
+  }
 
-//   }
+  async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
+    // We should probably cache here, BUT, this would need smarter cache invalidation since we don't
+    // have a GameIndex to go along with it.
+    Ok(self.storage.get_game_metadata(game_id).await?)
+  }
 
-//   async fn apply_game_logs(&self, game_id: &GameID, logs: &[GameLog]) -> AEResult<GameIndex> {
-//     let game_index = self.get_game_index(game_id)?;
-//     let snapshot_path = self.game_path(game_id).join(&game_index.game_idx.to_string());
+  /// Load the current state of a game
+  async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
+    let mut cache = self.cache.lock().await;
+    let cached_game = cache.get(game_id).cloned();
+    match cached_game {
+      Some(cached_game) => Ok(cached_game),
+      None => {
+        let game = self.storage.load_game(game_id).await?;
+        cache.insert(game_id.clone(), game.clone());
+        return Ok(game);
+      }
+    }
+  }
 
-//     // TODO: Actually implement snapshotting when we hit a limit on logs!
-//     let mut log_idx = game_index.log_idx;
-//     for log in logs {
-//       log_idx += 1;
-//       let log_path = snapshot_path.join(&format!("log-{log_idx}.json"));
-//       let file = fs::File::create(log_path)?;
-//       serde_json::to_writer(file, log)?;
-//     }
+  async fn apply_game_logs(&self, game_id: &GameID, logs: &[GameLog]) -> AEResult<GameIndex> {
+    let new_index = self.storage.apply_game_logs(game_id, logs).await?;
+    let mut cache = self.cache.lock().await;
+    cache.remove(game_id);
+    Ok(new_index)
+  }
 
-//     Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx })
-//   }
+  /// Get recent logs for a game so we can show them to the user
+  // I am pretty skeptical that this is the API we will end up with.
+  async fn get_recent_logs(&self, g: &GameID) -> AEResult<Vec<(GameIndex, GameLog)>> {
+    Ok(self.storage.get_recent_logs(g).await?)
+  }
+  /// Roll back to a specific log index.
+  async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game> {
+    Ok(self.storage.roll_back(g, game_idx).await?)
+  }
 
-//   /// Get recent logs for a game so we can show them to the user
-//   // I am pretty skeptical that this is the API we will end up with.
-//   async fn get_recent_logs(&self, g: &GameID) -> AEResult<Vec<(GameIndex, GameLog)>> { Ok(vec![]) }
-//   /// Roll back to a specific log index.
-//   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game> {
-//     Ok(Default::default())
-//   }
-
-// }
+}
 
 
 
