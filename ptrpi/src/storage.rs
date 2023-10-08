@@ -1,31 +1,33 @@
 use std::{
   collections::HashMap,
   fs,
-  path::{Path, PathBuf}, sync::Arc,
+  path::{Path, PathBuf},
+  sync::Arc,
 };
 
 use anyhow::{Context, Result as AEResult};
 use async_trait::async_trait;
 use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
-use tracing::{info, debug};
 use tokio::sync::Mutex;
+use tracing::{debug, info};
 
 use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
 use pandt::types::{Game, GameLog};
 
-
 /// Load a Game from a PTStorage.
-pub async fn load_game<S: PTStorage + ?Sized>(storage: &S, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
+pub async fn load_game<S: PTStorage + ?Sized>(
+  storage: &S, game_id: &GameID,
+) -> AEResult<(Game, GameIndex)> {
   let game_index = storage.current_index(game_id).await?;
   let mut game = storage.load_game_snapshot(game_id, game_index.game_idx).await?;
   for log_idx in 0..=game_index.log_idx {
-    let game_log = storage.load_game_log(game_id, GameIndex { game_idx: game_index.game_idx, log_idx }).await?;
+    let game_log =
+      storage.load_game_log(game_id, GameIndex { game_idx: game_index.game_idx, log_idx }).await?;
     game = game.apply_log(&game_log)?;
   }
   Ok((game, game_index))
 }
-
 
 #[async_trait]
 pub trait PTStorage: Send + Sync {
@@ -57,24 +59,25 @@ pub trait PTStorage: Send + Sync {
   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game>;
 }
 
-pub struct CachedStorage<S> where S: PTStorage {
+pub struct CachedStorage<S>
+where
+  S: PTStorage,
+{
   storage: S,
-  cache: Arc<Mutex<HashMap<GameID, CachedGame>>>
+  cache: Arc<Mutex<HashMap<GameID, CachedGame>>>,
 }
 
 struct CachedGame {
   game: Game,
   index: GameIndex,
-  logs: Vec<GameLog>,
+  logs: HashMap<usize, GameLog>,
 }
-
 
 impl<S: PTStorage> CachedStorage<S> {
   pub fn new(storage: S) -> Self {
-    CachedStorage { storage, cache: Arc::new(Mutex::new(HashMap::new()))}
+    CachedStorage { storage, cache: Arc::new(Mutex::new(HashMap::new())) }
   }
 }
-
 
 // TODO for CACHING:
 // For one, this caching implementation totally fails in the face of multi-node scaling.
@@ -87,7 +90,6 @@ impl<S: PTStorage> CachedStorage<S> {
 //   GameLogs from disk. Fixing this will require a new Storage::load_game_log.
 #[async_trait]
 impl<S: PTStorage> PTStorage for CachedStorage<S> {
-
   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     Ok(self.storage.list_user_games(user_id).await?)
   }
@@ -107,7 +109,11 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
   async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
     let game_id = self.storage.create_game(game, name).await?;
     let mut cache = self.cache.lock().await;
-    let cached_game = CachedGame { game: game.clone(), index: GameIndex { game_idx: 0, log_idx: 0}, logs: vec![]};
+    let cached_game = CachedGame {
+      game: game.clone(),
+      index: GameIndex { game_idx: 0, log_idx: 0 },
+      logs: HashMap::new(),
+    };
     cache.insert(game_id.clone(), cached_game);
     Ok(game_id)
   }
@@ -119,16 +125,22 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
   }
 
   async fn load_game_log(&self, game_id: &GameID, load_index: GameIndex) -> AEResult<GameLog> {
-    let cache = self.cache.lock().await;
-    let cached_game = cache.get(game_id);
-    if let Some(CachedGame {index, logs, ..}) = cached_game {
+    let mut cache = self.cache.lock().await;
+    let mut cached_game = cache.get_mut(game_id);
+    if let Some(CachedGame { index, logs, .. }) = cached_game {
       if index.game_idx == load_index.game_idx {
-        if logs.len() > load_index.log_idx {
-          return Ok(logs[load_index.log_idx].clone());
-        }// RADIX IMPLEMENT THESE ELSES!!!! we need to populate the cache
+        if logs.contains_key(&load_index.log_idx) {
+          return Ok(logs[&load_index.log_idx].clone());
+        }
+      } else {
+        // we have switched to a new snapshot; throw everything out?
       }
     }
-    Ok(self.storage.load_game_log(game_id, load_index).await?)
+    let log = self.storage.load_game_log(game_id, load_index).await?;
+    if let Some(cached_game) = cached_game {
+      cached_game.logs.insert(load_index.log_idx, log.clone());
+    }
+    Ok(log)
   }
 
   async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> AEResult<Game> {
@@ -138,7 +150,14 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
       Some(cached_game) => Ok(cached_game),
       None => {
         let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
-        cache.insert(game_id.clone(), CachedGame { game: game.clone(), index: GameIndex { game_idx: snapshot, log_idx: 0}, logs: vec![]});
+        cache.insert(
+          game_id.clone(),
+          CachedGame {
+            game: game.clone(),
+            index: GameIndex { game_idx: snapshot, log_idx: 0 },
+            logs: HashMap::new(),
+          },
+        );
         return Ok(game);
       }
     }
@@ -160,10 +179,7 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
   async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> AEResult<Game> {
     Ok(self.storage.roll_back(g, game_idx).await?)
   }
-
 }
-
-
 
 pub struct CloudStorage {
   bucket: String,
@@ -284,14 +300,13 @@ impl PTStorage for FSStorage {
     Ok(GameIndex { game_idx, log_idx })
   }
 
-
   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     let json_file_path = self.user_game_path(user_id);
     let file = fs::File::open(json_file_path.clone());
     let user_games = match file {
       Ok(file) => serde_json::from_reader(file)?,
       Err(err) => {
-        info!(event="no-user-file", json_file_path=json_file_path.to_str(), err=err.to_string());
+        info!(event = "no-user-file", ?json_file_path, ?err);
         UserGames { gm_games: vec![], player_games: vec![] }
       }
     };
@@ -331,7 +346,7 @@ impl PTStorage for FSStorage {
   async fn load_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
 
-    debug!(event="get-game-metadata", metadata_path=metadata_path.to_str());
+    debug!(event = "get-game-metadata", ?game_id, ?metadata_path);
     let file = fs::File::open(metadata_path.clone())
       .context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
@@ -341,8 +356,9 @@ impl PTStorage for FSStorage {
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&snapshot.to_string());
 
-    debug!(event="load-snapshot", filename=snapshot_path.join("game.json").to_str());
-    let file = fs::File::open(snapshot_path.join("game.json"))?;
+    let game_filename = snapshot_path.join("game.json");
+    debug!(event = "load-snapshot", ?game_filename);
+    let file = fs::File::open(game_filename)?;
     Ok(serde_json::from_reader(file)?)
   }
 
@@ -350,7 +366,7 @@ impl PTStorage for FSStorage {
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&index.game_idx.to_string());
     let filename = snapshot_path.join(&format!("log-{}.json", index.log_idx));
-    debug!(event = "load-log", filename=filename.to_str());
+    debug!(event = "load-log", ?game_id, ?index, ?filename);
     let file = fs::File::open(filename)?;
     Ok(serde_json::from_reader(file)?)
   }
@@ -368,7 +384,7 @@ impl PTStorage for FSStorage {
       log_idx += 1;
     }
 
-    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx - 1})
+    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx - 1 })
   }
 
   /// Get recent logs for a game so we can show them to the user
