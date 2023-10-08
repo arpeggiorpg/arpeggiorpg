@@ -14,6 +14,19 @@ use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
 use pandt::types::{Game, GameLog};
 
+
+/// Load a Game from a PTStorage.
+pub async fn load_game(storage: Arc<impl PTStorage + ?Sized>, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
+  let game_index = storage.current_index(game_id).await?;
+  let mut game = storage.load_game_snapshot(game_id, game_index.game_idx).await?;
+  for log_idx in 0..=game_index.log_idx {
+    let game_log = storage.load_game_log(game_id, GameIndex { game_idx: game_index.game_idx, log_idx }).await?;
+    game = game.apply_log(&game_log)?;
+  }
+  Ok((game, game_index))
+}
+
+
 #[async_trait]
 pub trait PTStorage: Send + Sync {
   // User management
@@ -30,10 +43,12 @@ pub trait PTStorage: Send + Sync {
 
   /// Get metadata about a game. This data is stuff that we want to access
   /// frequently even without loading the full game (such as the game's name).
-  async fn get_game_metadata(&self, g: &GameID) -> AEResult<GameMetadata>;
-  /// Load the current state of a game
-  async fn load_game(&self, g: &GameID) -> AEResult<(Game, GameIndex)>;
+  async fn load_game_metadata(&self, g: &GameID) -> AEResult<GameMetadata>;
+
+  async fn current_index(&self, game_id: &GameID) -> AEResult<GameIndex>;
   async fn apply_game_logs(&self, g: &GameID, log: &[GameLog]) -> AEResult<GameIndex>;
+  async fn load_game_snapshot(&self, g: &GameID, snapshot: usize) -> AEResult<Game>;
+  async fn load_game_log(&self, g: &GameID, i: GameIndex) -> AEResult<GameLog>;
 
   /// Get recent logs for a game so we can show them to the user
   // I am pretty skeptical that this is the API we will end up with.
@@ -44,8 +59,15 @@ pub trait PTStorage: Send + Sync {
 
 pub struct CachedStorage<S> where S: PTStorage {
   storage: S,
-  cache: Arc<Mutex<HashMap<GameID, (Game, GameIndex)>>>
+  cache: Arc<Mutex<HashMap<GameID, CachedGame>>>
 }
+
+struct CachedGame {
+  game: Game,
+  index: GameIndex,
+  logs: Vec<GameLog>,
+}
+
 
 impl<S: PTStorage> CachedStorage<S> {
   pub fn new(storage: S) -> Self {
@@ -77,29 +99,46 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
     Ok(self.storage.add_user_player_game(user_id, game_id).await?)
   }
 
+  async fn current_index(&self, game_id: &GameID) -> AEResult<GameIndex> {
+    Ok(self.storage.current_index(game_id).await?)
+  }
+
   // Game management
   async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
     let game_id = self.storage.create_game(game, name).await?;
     let mut cache = self.cache.lock().await;
-    cache.insert(game_id.clone(), (game.clone(), GameIndex { game_idx: 0, log_idx: 0}));
+    let cached_game = CachedGame { game: game.clone(), index: GameIndex { game_idx: 0, log_idx: 0}, logs: vec![]};
+    cache.insert(game_id.clone(), cached_game);
     Ok(game_id)
   }
 
-  async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
+  async fn load_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     // We should probably cache here, BUT, this would need smarter cache invalidation since we don't
     // have a GameIndex to go along with it.
-    Ok(self.storage.get_game_metadata(game_id).await?)
+    Ok(self.storage.load_game_metadata(game_id).await?)
   }
 
-  /// Load the current state of a game
-  async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
+  async fn load_game_log(&self, game_id: &GameID, load_index: GameIndex) -> AEResult<GameLog> {
+    let cache = self.cache.lock().await;
+    let cached_game = cache.get(game_id);
+    if let Some(CachedGame {index, logs, ..}) = cached_game {
+      if index.game_idx == load_index.game_idx {
+        if logs.len() > load_index.log_idx {
+          return Ok(logs[load_index.log_idx].clone());
+        }// RADIX IMPLEMENT THESE ELSES!!!! we need to populate the cache
+      }
+    }
+    Ok(self.storage.load_game_log(game_id, load_index).await?)
+  }
+
+  async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> AEResult<Game> {
     let mut cache = self.cache.lock().await;
-    let cached_game = cache.get(game_id).cloned();
+    let cached_game = cache.get(game_id).map(|cg| cg.game.clone());
     match cached_game {
       Some(cached_game) => Ok(cached_game),
       None => {
-        let game = self.storage.load_game(game_id).await?;
-        cache.insert(game_id.clone(), game.clone());
+        let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
+        cache.insert(game_id.clone(), CachedGame { game: game.clone(), index: GameIndex { game_idx: snapshot, log_idx: 0}, logs: vec![]});
         return Ok(game);
       }
     }
@@ -180,27 +219,6 @@ impl FSStorage {
     self.game_path(game_id).join("metadata.json")
   }
 
-  fn get_game_index(&self, game_id: &GameID) -> AEResult<GameIndex> {
-    let game_path = self.game_path(game_id);
-
-    // First, figure out what the latest snapshot index is in path/games/{game_id}/*
-    let snapshot_paths = fs::read_dir(&game_path)
-      .context(format!("Listing game path at {game_path:?}"))?
-      .map(|res| res.map(|e| e.path()))
-      .collect::<Result<Vec<PathBuf>, _>>()?;
-    let mut snapshot_indices: Vec<usize> = snapshot_paths
-      .iter()
-      .filter_map(|path| path.file_name()?.to_str()?.parse::<usize>().ok())
-      .collect();
-    snapshot_indices.sort();
-    let game_idx = *snapshot_indices.last().unwrap_or(&0);
-    let log_indices = self.get_log_indices(game_id, game_idx)?;
-
-    // Then, figure out what the latest log index is in path/games/{game_id}/{latest_snapshot_idx}/log-*.json
-    let log_idx = *log_indices.last().unwrap_or(&0);
-    Ok(GameIndex { game_idx, log_idx })
-  }
-
   fn get_log_indices(&self, game_id: &GameID, snapshot_idx: usize) -> AEResult<Vec<usize>> {
     let snapshot_path = self.game_path(game_id).join(&snapshot_idx.to_string());
     let log_paths = fs::read_dir(snapshot_path)?
@@ -245,6 +263,28 @@ root/
 
 #[async_trait]
 impl PTStorage for FSStorage {
+  async fn current_index(&self, game_id: &GameID) -> AEResult<GameIndex> {
+    let game_path = self.game_path(game_id);
+
+    // First, figure out what the latest snapshot index is in path/games/{game_id}/*
+    let snapshot_paths = fs::read_dir(&game_path)
+      .context(format!("Listing game path at {game_path:?}"))?
+      .map(|res| res.map(|e| e.path()))
+      .collect::<Result<Vec<PathBuf>, _>>()?;
+    let mut snapshot_indices: Vec<usize> = snapshot_paths
+      .iter()
+      .filter_map(|path| path.file_name()?.to_str()?.parse::<usize>().ok())
+      .collect();
+    snapshot_indices.sort();
+    let game_idx = *snapshot_indices.last().unwrap_or(&0);
+    let log_indices = self.get_log_indices(game_id, game_idx)?;
+
+    // Then, figure out what the latest log index is in path/games/{game_id}/{latest_snapshot_idx}/log-*.json
+    let log_idx = *log_indices.last().unwrap_or(&0);
+    Ok(GameIndex { game_idx, log_idx })
+  }
+
+
   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
     let json_file_path = self.user_game_path(user_id);
     let file = fs::File::open(json_file_path.clone());
@@ -288,7 +328,7 @@ impl PTStorage for FSStorage {
     Ok(game_id)
   }
 
-  async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
+  async fn load_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
 
     debug!(event="get-game-metadata", metadata_path=metadata_path.to_str());
@@ -297,40 +337,38 @@ impl PTStorage for FSStorage {
     Ok(serde_json::from_reader(file)?)
   }
 
-  /// Load the current state of a game
-  async fn load_game(&self, game_id: &GameID) -> AEResult<(Game, GameIndex)> {
-    let game_index = self.get_game_index(game_id)?;
+  async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> AEResult<Game> {
     let game_path = self.game_path(game_id);
-    let snapshot_path = game_path.join(&game_index.game_idx.to_string());
+    let snapshot_path = game_path.join(&snapshot.to_string());
 
     debug!(event="load-snapshot", filename=snapshot_path.join("game.json").to_str());
     let file = fs::File::open(snapshot_path.join("game.json"))?;
-    let mut game: Game = serde_json::from_reader(file)?;
-    let log_indices = self.get_log_indices(game_id, game_index.game_idx)?;
-    for log_idx in log_indices {
-      let filename = snapshot_path.join(&format!("log-{log_idx}.json"));
-      debug!(event = "load-log", filename=filename.to_str());
-      let file = fs::File::open(filename)?;
-      let game_log: GameLog = serde_json::from_reader(file)?;
-      game = game.apply_log(&game_log)?;
-    }
-    Ok((game, game_index))
+    Ok(serde_json::from_reader(file)?)
+  }
+
+  async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> AEResult<GameLog> {
+    let game_path = self.game_path(game_id);
+    let snapshot_path = game_path.join(&index.game_idx.to_string());
+    let filename = snapshot_path.join(&format!("log-{}.json", index.log_idx));
+    debug!(event = "load-log", filename=filename.to_str());
+    let file = fs::File::open(filename)?;
+    Ok(serde_json::from_reader(file)?)
   }
 
   async fn apply_game_logs(&self, game_id: &GameID, logs: &[GameLog]) -> AEResult<GameIndex> {
-    let game_index = self.get_game_index(game_id)?;
+    let game_index = self.current_index(game_id).await?;
     let snapshot_path = self.game_path(game_id).join(&game_index.game_idx.to_string());
 
     // TODO: Actually implement snapshotting when we hit a limit on logs!
     let mut log_idx = game_index.log_idx;
     for log in logs {
-      log_idx += 1;
       let log_path = snapshot_path.join(&format!("log-{log_idx}.json"));
       let file = fs::File::create(log_path)?;
       serde_json::to_writer(file, log)?;
+      log_idx += 1;
     }
 
-    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx })
+    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx - 1})
   }
 
   /// Get recent logs for a game so we can show them to the user
