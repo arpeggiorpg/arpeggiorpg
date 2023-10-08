@@ -11,7 +11,7 @@ use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
-use log::info;
+use tracing::{error, info};
 
 use crate::storage::{CloudStorage, FSStorage, PTStorage};
 
@@ -35,7 +35,7 @@ async fn main() -> Result<(), anyhow::Error> {
     }
 
     None => {
-      log::error!("Please provide a subcommand.");
+      error!("Please provide a subcommand.");
       Ok(())
     }
   };
@@ -58,7 +58,7 @@ async fn serve(
 
   let router = web::router(service.clone());
 
-  println!("Starting RPI server on port 1337.");
+  info!(event="listen-rpi", port=1337);
   axum::Server::bind(&"0.0.0.0:1337".parse().unwrap())
     .serve(router.into_make_service())
     .await

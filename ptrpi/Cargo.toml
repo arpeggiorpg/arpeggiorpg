@@ -14,7 +14,7 @@ anyhow = {version = "1.0.75", features = ["backtrace"]}
 thiserror = "1.0.48"
 futures = "0.3.1"
 http = "0.2.0"
-log = "0.4.20"
+tracing = { version = "0.1.37", features = ["attributes"]}
 pandt = {version = "*", path = "../pandt"}
 serde = "1.0"
 serde_derive = "1.0"
@@ -28,4 +28,6 @@ uom = {version = "0.35", default_features = false}
 uuid = { version = "0.8.1", features = ["v4", "serde"] }
 google-cloud-storage = "0.13.1"
 # Unfortunately this google-signin package seems pretty unmaintained.
+# I need to use the git version because the support for local verification of ID tokens is only in
+# an unreleased version.
 google-signin = { git = "https://github.com/wyyerd/google-signin-rs" }

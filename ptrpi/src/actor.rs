@@ -2,9 +2,8 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context, Result as AEResult};
 use futures::channel::oneshot;
-use log::{debug, error, info, warn};
-
 use tokio::{sync::Mutex, time::timeout};
+use tracing::{info, debug, error, instrument};
 
 use crate::{
   storage::PTStorage,
@@ -158,9 +157,9 @@ impl GameService {
   // difficult for me.
 
   /// Wait for a Game to change and then return it.
+  #[instrument(level = "debug", skip(self))]
   pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
     // First, if the app has already changed, return it immediately.
-    debug!("poll_game:start");
     if self.game_index != game_index {
       return Ok(());
     }
@@ -176,9 +175,6 @@ impl GameService {
         // Timeout; just return the state of the app
       }
     }
-    // When this receiver gets pinged, we don't just want to return self.game -- we have to get the
-    // latest state.
-    let (game, game_index) = self.storage.load_game(&self.game_id).await?;
     Ok(())
   }
 
