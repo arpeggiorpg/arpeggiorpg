@@ -10,7 +10,6 @@ use axum::{
   Extension, Json, body,
 };
 use http::StatusCode;
-use log::error;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use pandt::types::{
