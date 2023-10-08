@@ -13,7 +13,7 @@ use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use tracing::{error, info};
 
-use crate::storage::{CloudStorage, FSStorage, PTStorage};
+use crate::storage::{CloudStorage, FSStorage, PTStorage, CachedStorage};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -47,7 +47,7 @@ async fn serve(
   info!("Starting up the P&T Remote Programming Interface HTTP server!");
 
   let storage: Arc<dyn PTStorage> = if let Some(storage_path) = storage_path {
-    Arc::new(FSStorage::new(storage_path))
+    Arc::new(CachedStorage::new(FSStorage::new(storage_path)))
   // } else if let Some(bucket) = opts.google_bucket {
   //   Arc::new(CloudStorage::new(bucket).await?)
   } else {
