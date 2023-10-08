@@ -47,7 +47,7 @@ export function Main() {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <h1>Rpeggio {gameName}</h1>
+          <h1><Link to="/">ArpeggioRPG</Link> {gameName ? <span>— {gameName}</span> : null}</h1>
           <div className="rightNavThing">
             <Link to="/">Game List</Link>
             <button onClick={() => M.getState().setUserToken(undefined)}>

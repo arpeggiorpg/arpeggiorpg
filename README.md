@@ -1,8 +1,9 @@
-# P&T
+# ArpeggioRPG
 
-P&T is a table-top role-playing game. Think of a RPG like Dungeons & Dragons, but instead of needing
-books and character sheets, the app takes care of everything for you. It provides a tactical combat
-map and makes it easy for players and the Game Master to use their abilities and skills.
+ArpeggioRPG is a table-top role-playing game. Think of a RPG like Dungeons & Dragons, but instead of
+needing books and character sheets, the app takes care of everything for you. It provides a tools
+for Game Masters to create and organize their campaigns, and a tactical combat map that makes it
+easy for players and the Game Master to use their abilities and skills.
 
 # Status: Early development. Not a game yet.
 
