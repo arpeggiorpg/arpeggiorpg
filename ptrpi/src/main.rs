@@ -13,7 +13,7 @@ use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use tracing::{error, info};
 
-use crate::storage::{CloudStorage, FSStorage, PTStorage, CachedStorage};
+use crate::storage::{CachedStorage, CloudStorage, FSStorage, PTStorage};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -58,7 +58,7 @@ async fn serve(
 
   let router = web::router(service.clone());
 
-  info!(event="listen-rpi", port=1337);
+  info!(event = "listen-rpi", port = 1337);
   axum::Server::bind(&"0.0.0.0:1337".parse().unwrap())
     .serve(router.into_make_service())
     .await

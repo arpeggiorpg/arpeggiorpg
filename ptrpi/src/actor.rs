@@ -3,10 +3,10 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use anyhow::{anyhow, Context, Result as AEResult};
 use futures::channel::oneshot;
 use tokio::{sync::Mutex, time::timeout};
-use tracing::{info, debug, error, instrument};
+use tracing::{debug, error, info, instrument};
 
 use crate::{
-  storage::{PTStorage, load_game},
+  storage::{load_game, PTStorage},
   types::{GameID, GameIndex, GameList, UserGames, UserID},
 };
 
@@ -44,13 +44,14 @@ impl AuthenticatableService {
   }
 
   /// Verify a google ID token and return an AuthenticatedService if it's valid.
-  pub async fn authenticate(&self, google_id_token: String) -> Result<AuthenticatedService, AuthenticationError> {
+  pub async fn authenticate(
+    &self, google_id_token: String,
+  ) -> Result<AuthenticatedService, AuthenticationError> {
     let user_id = self
       .validate_google_token(&google_id_token)
       .await
       .context(format!("Validating Google ID Token"))
-      .map_err(|e| AuthenticationError { from: e })
-      ?;
+      .map_err(|e| AuthenticationError { from: e })?;
     return Ok(AuthenticatedService {
       user_id,
       storage: self.storage.clone(),

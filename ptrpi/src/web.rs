@@ -2,15 +2,16 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Context};
 use axum::{
+  body,
   extract::{Path, State},
   http::Request,
   middleware::{from_fn, from_fn_with_state, Next},
   response::{IntoResponse, Response},
   routing::{get, post},
-  Extension, Json, body,
+  Extension, Json,
 };
 use http::StatusCode;
-use tower_http::{cors::CorsLayer, trace::TraceLayer, classify::ServerErrorsFailureClass};
+use tower_http::{classify::ServerErrorsFailureClass, cors::CorsLayer, trace::TraceLayer};
 
 use pandt::types::{
   AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIGame, SceneID,
@@ -83,7 +84,6 @@ async fn authenticate<B>(
       Ok(response)
     }
   }
-
 }
 
 async fn authorize_game<B>(
@@ -113,8 +113,7 @@ async fn create_game(
 }
 
 async fn get_game(
-  Extension(service): Extension<Arc<GameService>>,
-  Path(GameIDPath { game_id }): Path<GameIDPath>
+  Extension(service): Extension<Arc<GameService>>, Path(GameIDPath { game_id }): Path<GameIDPath>,
 ) -> WebResult<Json<serde_json::Value>> {
   Ok(Json(_get_game(service, game_id).await?))
 }
@@ -233,7 +232,8 @@ type WebResult<T> = std::result::Result<T, WebError>;
 impl IntoResponse for WebError {
   fn into_response(self) -> Response {
     println!("{:?}", self.0);
-    (StatusCode::INTERNAL_SERVER_ERROR, format!("Something went wrong: {:?}", self.0)).into_response()
+    (StatusCode::INTERNAL_SERVER_ERROR, format!("Something went wrong: {:?}", self.0))
+      .into_response()
   }
 }
 
