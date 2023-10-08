@@ -204,7 +204,7 @@ impl PTStorage for FSStorage {
 
   async fn get_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
-    debug!(target: "load-metadata", "metadata={metadata_path:?}");
+    debug!("get_game_metadata metadata={metadata_path:?}");
     let file = fs::File::open(metadata_path.clone())
       .context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
@@ -216,13 +216,13 @@ impl PTStorage for FSStorage {
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(&game_index.game_idx.to_string());
 
-    debug!(target: "load-game", "filename={:?}", snapshot_path.join("game.json"));
+    debug!("filename={:?}", snapshot_path.join("game.json"));
     let file = fs::File::open(snapshot_path.join("game.json"))?;
     let mut game: Game = serde_json::from_reader(file)?;
     let log_indices = self.get_log_indices(game_id, game_index.game_idx)?;
     for log_idx in log_indices {
       let filename = snapshot_path.join(&format!("log-{log_idx}.json"));
-      debug!(target: "load-log", "filename={filename:?}");
+      debug!("filename={filename:?}");
       let file = fs::File::open(filename)?;
       let game_log: GameLog = serde_json::from_reader(file)?;
       game = game.apply_log(&game_log)?;

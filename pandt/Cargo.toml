@@ -16,7 +16,7 @@ error-chain = "0.12.1"
 thiserror = "1.0.48"
 foldertree = {version = "*", path = "../foldertree", features = ["serde"]}
 indexed = {version = "*", path = "../indexed", features = ["serde"]}
-log = "0.4.8"
+log = "0.4.20"
 maplit = "1.0.2"
 ncollide3d = "0.33"
 nonempty = {version = "*", path = "../nonempty", features = ["use_serde"]}

@@ -68,8 +68,7 @@ impl AuthenticatableService {
     let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
     let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
     debug!(
-      target: "valid-token",
-      "email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
+      "validate-token: email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
       id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry
     );
     Ok(UserID(format!("google_{}", id_info.sub)))
