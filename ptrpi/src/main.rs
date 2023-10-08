@@ -18,7 +18,7 @@ use crate::storage::{CloudStorage, FSStorage, PTStorage};
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
   if env::var("PANDT_LOG").is_err() {
-    env::set_var("PANDT_LOG", "info");
+    env::set_var("PANDT_LOG", "ptrpi=debug,info,tower_http::trace::make_span=debug");
   }
   let env = env_logger::Env::new().filter("PANDT_LOG").write_style("PANDT_LOG_STYLE");
   env_logger::init_from_env(env);
