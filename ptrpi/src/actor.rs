@@ -110,7 +110,7 @@ impl AuthenticatedService {
       return Err(anyhow!(format!("User {:?} is not a GM of game {:?}", self.user_id, game_id)));
     }
     let (game, game_index) =
-      load_game(self.storage.clone(), game_id).await.context(format!("Loading game {game_id:?}"))?;
+      load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?;
     // TODO Actually return a GMService!!!
     Ok(GameService {
       storage: self.storage.clone(),
@@ -129,7 +129,7 @@ impl AuthenticatedService {
         self.user_id, game_id
       )));
     }
-    let (game, game_index) = load_game(self.storage.clone(), game_id).await?;
+    let (game, game_index) = load_game(&*self.storage, game_id).await?;
     // TODO Actually return a PlayerService!
     Ok(GameService {
       storage: self.storage.clone(),
@@ -219,7 +219,7 @@ impl GameService {
   pub async fn load_into_folder(
     &self, game_id_to_load: &GameID, folder_path: foldertree::FolderPath,
   ) -> AEResult<String> {
-    let game_to_load = load_game(self.storage.clone(), game_id_to_load).await?;
+    let game_to_load = load_game(&*self.storage, game_id_to_load).await?;
     Ok("".to_string())
     // RADIX FIXME TODO: update the GameCommand for LoadModule.
     // let command = GameCommand::LoadModule {
