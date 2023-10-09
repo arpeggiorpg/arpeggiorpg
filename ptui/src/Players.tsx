@@ -127,9 +127,19 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
 import * as Z from 'zod';
 export function Invitations() {
   const gameId = M.useState(s => s.gameId);
-  const { data, isLoading } = useSWR(`/g/${gameId}/gm/invitations`, k => A.ptfetch(k, {}, Z.array(Z.string())));
+  const { data, isLoading, mutate} = useSWR(`/g/${gameId}/gm/invitations`, k => A.ptfetch(k, {}, Z.array(Z.string())));
 
   if (isLoading || !data) return <div>Loading invitations</div>;
 
-  return <ul>{data.map(i => <li>{i}</li>)}</ul>;
+  return <div>
+    <h1>Invitations</h1>
+    <ul>{data.map(i => <li>{i}</li>)}</ul>
+
+    <button onClick={generateNew}>Generate new invitation link</button>
+  </div>;
+
+  function generateNew() {
+    A.invite();
+    mutate();
+  }
 }
