@@ -25,7 +25,6 @@ async fn main() -> Result<(), anyhow::Error> {
     .with_env_filter(tracing_subscriber::EnvFilter::from_env("PANDT_LOG"))
     .init();
 
-
   let opts = Opts::parse();
 
   return match &opts.command {
