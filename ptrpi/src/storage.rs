@@ -86,8 +86,10 @@ impl<S: PTStorage> CachedStorage<S> {
 // - apply_game_logs invalidates the cache for a game, but if there are multiple nodes, it's not
 //   invalidating all the caches. I think there are a couple of ways forward:
 //   - actually cache in Redis, where we *can* invalidate the cache for everyone
-//   - maybe improve the protocol so load_game can know if it's loading the *expected* version of the game
-//   - make it so load_game always looks up the latest GameIndex by hitting the backend
+//   - maybe improve the protocol so load_game can know if it's loading the *expected* version of
+//     the game
+//   - since we will need to solve the problem of pinging all waiters across multiple nodes anyway,
+//     maybe we can use that same mechanism to invalidate caches on all nodes.
 #[async_trait]
 impl<S: PTStorage> PTStorage for CachedStorage<S> {
   async fn list_user_games(&self, user_id: &UserID) -> Result<UserGames> {
@@ -217,28 +219,6 @@ impl FSStorage {
   fn metadata_path(&self, game_id: &GameID) -> PathBuf {
     self.game_path(game_id).join("metadata.json")
   }
-
-  /// Get the next log index which should be written.
-  fn get_next_log_index(&self, game_id: &GameID, snapshot_idx: usize) -> Result<usize> {
-    let snapshot_path = self.game_path(game_id).join(&snapshot_idx.to_string());
-    let log_paths = fs::read_dir(snapshot_path)?
-      .map(|res| res.map(|e| e.path()))
-      .collect::<Result<Vec<PathBuf>, _>>()?;
-    let log_length: usize = log_paths
-      .iter()
-      .filter_map(|path| {
-        path
-          .file_name()?
-          .to_str()?
-          .strip_prefix("log-")?
-          .strip_suffix(".json")?
-          .parse::<usize>()
-          .ok()
-      })
-      .max()
-      .ok_or(anyhow!("Couldn't get max log"))?;
-    Ok(log_length + 1)
-  }
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, thiserror::Error, Debug)]
@@ -271,14 +251,30 @@ impl PTStorage for FSStorage {
       .context(format!("Listing game path at {game_path:?}"))?
       .map(|res| res.map(|e| e.path()))
       .collect::<Result<Vec<PathBuf>, _>>()?;
-    let mut snapshot_indices: Vec<usize> = snapshot_paths
+    let game_idx: usize = snapshot_paths
       .iter()
       .filter_map(|path| path.file_name()?.to_str()?.parse::<usize>().ok())
-      .collect();
-    snapshot_indices.sort();
-    let game_idx = *snapshot_indices.last().unwrap_or(&0);
-    let log_idx = self.get_next_log_index(game_id, game_idx)?;
-    Ok(GameIndex { game_idx, log_idx })
+      .max()
+      .unwrap_or(0);
+
+    let snapshot_path = self.game_path(game_id).join(&game_idx.to_string());
+    let log_paths = fs::read_dir(snapshot_path)?
+      .map(|res| res.map(|e| e.path()))
+      .collect::<Result<Vec<PathBuf>, _>>()?;
+    let log_length: usize = log_paths
+      .iter()
+      .filter_map(|path| {
+        path
+          .file_name()?
+          .to_str()?
+          .strip_prefix("log-")?
+          .strip_suffix(".json")?
+          .parse::<usize>()
+          .ok()
+      })
+      .max()
+      .unwrap_or(0);
+    Ok(GameIndex { game_idx, log_idx: log_length })
   }
 
   async fn list_user_games(&self, user_id: &UserID) -> Result<UserGames> {
