@@ -348,7 +348,13 @@ impl Storage for FSStorage {
   /// List all invitations associated with a game.
   async fn list_invitations(&self, game_id: &GameID) -> Result<Vec<Invitation>> {
     let invitations_path = self.game_path(game_id).join("invitations");
-    let invitation_paths = fs::read_dir(invitations_path)?
+    let invitation_paths = fs::read_dir(invitations_path);
+    if let Err(ref e) = invitation_paths {
+      if e.kind() == std::io::ErrorKind::NotFound {
+        return Ok(vec![]);
+      }
+    }
+    let invitation_paths = invitation_paths?
       .map(|res| res.map(|e| e.path()))
       .collect::<Result<Vec<PathBuf>, _>>()?;
     Ok(invitation_paths

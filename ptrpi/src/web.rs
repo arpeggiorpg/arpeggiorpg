@@ -35,6 +35,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
       "/preview_volume_targets/:scene_id/:service_id/:ability_id/:x/:y/:z",
       get(preview_volume_targets),
     )
+    .route("/invitations", get(list_invitations))
     .route_layer(from_fn(authorize_game));
 
   let auth_routes = axum::Router::new()
@@ -99,6 +100,10 @@ async fn list_games(
 ) -> WebResult<Json<GameList>> {
   let games = service.list_games().await?;
   Ok(Json(games))
+}
+
+async fn list_invitations(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<Vec<InvitationID>>> {
+  Ok(Json(service.list_invitations().await?))
 }
 
 async fn check_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>) -> WebResult<Json<bool>> {

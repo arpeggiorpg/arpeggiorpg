@@ -24,7 +24,10 @@ export function GMMain() {
       <GM.GMCombat />
     </CV.Tab>,
     <CV.Tab key="Players" name="Players">
-      <Players.Players />
+      <div style={{display: "flex", flexDirection: "column"}}>
+        <Players.Players />
+        <Players.Invitations />
+      </div>
     </CV.Tab>,
     // <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
   ];
