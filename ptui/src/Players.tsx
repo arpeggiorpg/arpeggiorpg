@@ -1,6 +1,7 @@
 import { Set } from "immutable";
 import * as React from "react";
-
+import useSWR from "swr";
+import * as Z from "zod";
 import { Button, List, Table } from "semantic-ui-react";
 
 import * as Campaign from "./Campaign";
@@ -8,14 +9,14 @@ import * as CV from "./CommonView";
 import * as M from "./Model";
 import * as A from "./Actions";
 import * as T from "./PTTypes";
-import useSWR from "swr";
-
 
 export function Players() {
   const players = M.useState((s) => s.getGame().players);
   const gm_scene = M.useState((s) => s.getFocusedScene());
   const player_creatures = M.useState((s) =>
-    players.valueSeq().toArray()
+    players
+      .valueSeq()
+      .toArray()
       .map((player) => {
         const scene = player.scene ? s.getScene(player.scene) : undefined;
         return {
@@ -97,9 +98,7 @@ export function Players() {
     return (
       <Button
         key={"set-" + player_id + scene_id}
-        onClick={() =>
-          A.sendCommand({ SetPlayerScene: [player_id, scene_id] })
-        }
+        onClick={() => A.sendCommand({ SetPlayerScene: [player_id, scene_id] })}
       >
         {text}
       </Button>
@@ -107,15 +106,18 @@ export function Players() {
   }
 }
 
-export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => void }) {
+export function GrantCreaturesToPlayer(props: {
+  player: T.Player;
+  onDone: () => void;
+}) {
   const { player, onDone } = props;
   return (
     <Campaign.MultiCreatureSelector
       already_selected={Set(player.creatures)}
       on_cancel={onDone}
-      on_selected={cids => {
+      on_selected={(cids) => {
         A.sendCommand({
-          GiveCreaturesToPlayer: [player.player_id, cids.toArray()]
+          GiveCreaturesToPlayer: [player.player_id, cids.toArray()],
         });
         onDone();
       }}
@@ -123,20 +125,33 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
   );
 }
 
-
-import * as Z from 'zod';
 export function Invitations() {
-  const gameId = M.useState(s => s.gameId);
-  const { data, isLoading, mutate} = useSWR(`/g/${gameId}/gm/invitations`, k => A.ptfetch(k, {}, Z.array(Z.string())));
+  const gameId = M.useState((s) => s.gameId);
+  const { data, isLoading, mutate } = useSWR(
+    `/g/${gameId}/gm/invitations`,
+    (k) => A.ptfetch(k, {}, Z.array(Z.string()))
+  );
 
   if (isLoading || !data) return <div>Loading invitations</div>;
 
-  return <div>
-    <h1>Invitations</h1>
-    <ul>{data.map(i => <li>{i}</li>)}</ul>
+  return (
+    <div>
+      <h1>Invitations</h1>
+      <ul>
+        {data.map(i => {
+          let link = new URL(`/invitations/${gameId}/${i}`, window.location.href).href
+          return (
+            <li key={link}>
+              <input type="text" value={link} readOnly={true} />
+            </li>
+          );
+        })}
+      </ul>
 
-    <button onClick={generateNew}>Generate new invitation link</button>
-  </div>;
+      <button onClick={generateNew}>Generate new invitation link</button>
+    </div>
+  );
+
 
   function generateNew() {
     A.invite();
