@@ -21,7 +21,7 @@ import {
   Segment,
 } from "semantic-ui-react";
 
-import * as History from './History';
+import * as History from "./History";
 import * as M from "./Model";
 import * as A from "./Actions";
 import * as T from "./PTTypes";
@@ -36,13 +36,11 @@ import { Outlet } from "react-router-dom";
  */
 const NARROW_THRESHOLD = 500;
 
-export function CreatureCard(
-  props: {
-    creature: T.Creature;
-    children?: JSX.Element | Array<JSX.Element>;
-    menu?: JSX.Element;
-  }
-) {
+export function CreatureCard(props: {
+  creature: T.Creature;
+  children?: JSX.Element | Array<JSX.Element>;
+  menu?: JSX.Element;
+}) {
   const creature = props.creature;
   return (
     <Segment style={{ width: "100%" }} raised={true}>
@@ -68,10 +66,11 @@ export function CreatureCard(
   );
 }
 
-function dynamicConditions(creature: T.Creature): Map<T.ConditionID, T.AppliedCondition> {
+function dynamicConditions(
+  creature: T.Creature
+): Map<T.ConditionID, T.AppliedCondition> {
   return creature.own_conditions.merge(creature.volume_conditions);
 }
-
 
 interface ClassIconProps {
   class_id: T.ClassID;
@@ -79,7 +78,7 @@ interface ClassIconProps {
 export function ClassIcon(props: ClassIconProps) {
   // XXX TODO: this should not hard-code class names! Instead the game data should have a
   // "game_emoji" property on class objects.
-  const class_ = M.useState(s => s.getClass(props.class_id));
+  const class_ = M.useState((s) => s.getClass(props.class_id));
   if (class_ === undefined) {
     return null;
   }
@@ -115,8 +114,14 @@ export function square_style(size: number, color?: string) {
   };
 }
 
-export function CreatureIcon({ size = 50, creature, }: { size?: number; creature: T.Creature; }) {
-  const classColor = M.useState(s => s.getClass(creature.class)?.color);
+export function CreatureIcon({
+  size = 50,
+  creature,
+}: {
+  size?: number;
+  creature: T.Creature;
+}) {
+  const classColor = M.useState((s) => s.getClass(creature.class)?.color);
   if (creature.icon_url !== "") {
     return <SquareImageIcon size={size} url={creature.icon_url} />;
   } else {
@@ -135,7 +140,11 @@ export function SquareImageIcon({
   return <img src={url} style={square_style(size)} />;
 }
 
-export function CollapsibleInventory({ creature }: { creature: T.Creature }): JSX.Element {
+export function CollapsibleInventory({
+  creature,
+}: {
+  creature: T.Creature;
+}): JSX.Element {
   return (
     <Accordion
       panels={[
@@ -154,7 +163,7 @@ interface CreatureInventoryProps {
 }
 export function CreatureInventory({ creature }: CreatureInventoryProps) {
   const inv = creature.inventory;
-  const items = M.useState(s => s.getItems(inv.keySeq().toArray()));
+  const items = M.useState((s) => s.getItems(inv.keySeq().toArray()));
 
   return (
     <List relaxed={true}>
@@ -266,7 +275,7 @@ export class RemoveItem extends React.Component<
         item_id: item.id,
         // RADIX FIXME this count should be bigint from the beginning
         count: BigInt(this.state.count),
-      }
+      },
     });
     onClose();
   }
@@ -352,19 +361,21 @@ interface GiveItemProps {
   giver: T.Creature;
   onClose: () => void;
 }
-export function GiveItem( props: GiveItemProps ) {
+export function GiveItem(props: GiveItemProps) {
   // WARNING: I am playing with fire by putting hook usage after conditional
   // returns. I *think* it is fine because the conditionals hopefully don't
   // change for any given mounting of this component.
   const { item, giver, onClose } = props;
-  const scene = M.useState(s => s.getFocusedScene());
+  const scene = M.useState((s) => s.getFocusedScene());
   if (!scene) {
     return <div>You can only transfer items in a scene.</div>;
   }
   const other_cids_in_scene = Set(scene.creatures.keySeq().toArray())
     .delete(giver.id)
     .toArray();
-  const other_creatures = M.useState(s => s.getCreatures(other_cids_in_scene));
+  const other_creatures = M.useState((s) =>
+    s.getCreatures(other_cids_in_scene)
+  );
   if (!other_creatures) {
     return <div>There is nobody in this scene to give items to.</div>;
   }
@@ -378,11 +389,11 @@ export function GiveItem( props: GiveItemProps ) {
   }
 
   // If this is the Player UI, we don't want to show invisible creatures:
-  const available_recipients = M.useState(s => s.playerId)
+  const available_recipients = M.useState((s) => s.playerId)
     ? other_creatures.filter((c) => {
-          const entry = scene.creatures.get(c.id);
-          return entry && entry[1] === "AllPlayers";
-        })
+        const entry = scene.creatures.get(c.id);
+        return entry && entry[1] === "AllPlayers";
+      })
     : other_creatures;
 
   return (
@@ -401,7 +412,7 @@ export function GiveItem( props: GiveItemProps ) {
         to: { Creature: recip.id },
         item_id: item.id,
         count: BigInt(count),
-      }
+      },
     });
     onClose();
   }
@@ -442,7 +453,8 @@ export function conditionIcon(cond: T.Condition): string {
   if (cond === "DoubleMaxMovement") return "🏃";
   if ("RecurringEffect" in cond) return "🔁";
   if ("AddDamageBuff" in cond) return "😈";
-  if ("ActivateAbility" in cond) return "Ability Activated: " + cond.ActivateAbility;
+  if ("ActivateAbility" in cond)
+    return "Ability Activated: " + cond.ActivateAbility;
   M.assertNever(cond);
 }
 
@@ -465,7 +477,7 @@ export class TabbedView extends React.Component<
 
   render() {
     let selected = this.state.selected;
-    const {tabs} = this.props
+    const { tabs } = this.props;
     tabs.forEach((item, index) => {
       if (item.props.name === this.props.selected_tab) {
         selected = index;
@@ -500,25 +512,25 @@ export class TabbedView extends React.Component<
         </Menu>
         <div style={{ position: "relative", height: "100%" }}>
           {tabs.map((child, index) => {
-            const style: React.CSSProperties =
-              index === selected
-                ? {}
-                : child.props.always_render
-                ? { zIndex: -100, visibility: "hidden" }
-                : { display: "none" };
-            return (
-              <div
-                key={child.props.name}
-                style={{
-                  position: "absolute",
-                  height: "100%",
-                  width: "100%",
-                  ...style,
-                }}
-              >
-                {child}
-              </div>
-            );
+            if (index === selected || child.props.always_render) {
+              let style = {};
+              if (index !== selected && child.props.always_render) {
+                style = { zIndex: -100, visibility: "hidden" };
+              }
+              return (
+                <div
+                  key={child.props.name}
+                  style={{
+                    position: "absolute",
+                    height: "100%",
+                    width: "100%",
+                    ...style,
+                  }}
+                >
+                  {child}
+                </div>
+              );
+            }
           })}
         </div>
       </div>
@@ -547,15 +559,15 @@ interface CombatProps {
   initiative?: (creature: T.Creature, init: number) => JSX.Element;
 }
 export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
-  const creaturesWithInit = M.useState(s => M.filterMap(
-    combat.creatures.data,
-    ([cid, init]) => {
-      const creature = s.getCreature(cid);
-      if (creature) {
-        return [creature, init];
-      }
-    }
-  ) as Array<[T.Creature, number]>);
+  const creaturesWithInit = M.useState(
+    (s) =>
+      M.filterMap(combat.creatures.data, ([cid, init]) => {
+        const creature = s.getCreature(cid);
+        if (creature) {
+          return [creature, init];
+        }
+      }) as Array<[T.Creature, number]>
+  );
 
   const Card = card ? card : CreatureCard;
   return (
@@ -588,26 +600,28 @@ export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
   );
 }
 
-export function ActionBar(props: { creatureId: T.CreatureID; combat?: T.Combat }) {
-  const creature = M.useState(s => s.getCreature(props.creatureId));
-  if (!creature) return <div>Can't find creature {props.creatureId}.</div>
-  let abilities = M.useState(s =>
+export function ActionBar(props: {
+  creatureId: T.CreatureID;
+  combat?: T.Combat;
+}) {
+  const creature = M.useState((s) => s.getCreature(props.creatureId));
+  if (!creature) return <div>Can't find creature {props.creatureId}.</div>;
+  let abilities = M.useState((s) =>
     sortBy(
-      M.filterMap(
-        Object.values(creature.abilities),
-        (abstatus) => {
-          const ability = s.getAbility(abstatus.ability_id);
-          if (ability) {
-            return { ability_id: abstatus.ability_id, ability };
-          }
+      M.filterMap(Object.values(creature.abilities), (abstatus) => {
+        const ability = s.getAbility(abstatus.ability_id);
+        if (ability) {
+          return { ability_id: abstatus.ability_id, ability };
         }
-      ),
-    abo => abo.ability.name));
+      }),
+      (abo) => abo.ability.name
+    )
+  );
 
   let abilityButtons;
   if (props.combat) {
     const combat = props.combat;
-    abilityButtons = abilities.map(abinfo => (
+    abilityButtons = abilities.map((abinfo) => (
       <AbilityButton
         key={abinfo.ability_id}
         creature={creature}
@@ -648,9 +662,13 @@ interface AbilityButtonProps {
 
 function AbilityButton(props: AbilityButtonProps): JSX.Element {
   const { abinfo, creature, scene_id } = props;
-  const onClick = () => A.requestCombatAbility(
-    creature.id, abinfo.ability_id, abinfo.ability, scene_id
-  );
+  const onClick = () =>
+    A.requestCombatAbility(
+      creature.id,
+      abinfo.ability_id,
+      abinfo.ability,
+      scene_id
+    );
   const disabled = creature.cur_energy < abinfo.ability.cost;
   return (
     <Button
@@ -707,16 +725,12 @@ export function ClickAway({
   );
 }
 
-export function ErrorModal(){
-  const error = M.useState(s => s.error);
+export function ErrorModal() {
+  const error = M.useState((s) => s.error);
   const clearError = () => M.getState().clearError();
   if (error) {
     return (
-      <Modal
-        dimmer="inverted"
-        open={true}
-        onClose={clearError}
-      >
+      <Modal dimmer="inverted" open={true} onClose={clearError}>
         <Modal.Header>Error</Modal.Header>
         <Modal.Content>
           <div>{error}</div>
@@ -757,9 +771,9 @@ export function TheLayout(props: TheLayoutProps) {
   // or just return an error. So we work around this by just disabling all sidebar actions.
   // There are still some other places this needs to be worked around, i.e. when generating actions
   // for the grid creature popup menu.
-  const movementOptions = M.useState(s => s.grid.movement_options);
-  const targetOptions = M.useState(s => s.grid.target_options);
-  const disable_bars = !!( movementOptions || targetOptions );
+  const movementOptions = M.useState((s) => s.grid.movement_options);
+  const targetOptions = M.useState((s) => s.grid.target_options);
+  const disable_bars = !!(movementOptions || targetOptions);
 
   const disable_div = disable_bars ? (
     <Dimmer active={true} inverted={true} />
@@ -804,9 +818,15 @@ export function TheLayout(props: TheLayoutProps) {
     force_map: boolean = false
   ) {
     const selected_tab = force_map ? "Map" : undefined;
-    const tabbed_view = <div style={{overflowY: "scroll"}}>
-      <TabbedView menu_size={menu_size} selected_tab={selected_tab} tabs={tabs} />
-      </div>;
+    const tabbed_view = (
+      <div style={{ overflowY: "scroll" }}>
+        <TabbedView
+          menu_size={menu_size}
+          selected_tab={selected_tab}
+          tabs={tabs}
+        />
+      </div>
+    );
     return extra !== undefined ? (
       <Panels.PanelGroup direction="vertical">
         <Panels.Panel>{tabbed_view}</Panels.Panel>
@@ -847,9 +867,7 @@ export function TheLayout(props: TheLayoutProps) {
       <div style={{ width: "100%", height: "100%", display: "flex" }}>
         {bottom_left || top_left ? left_bar() : null}
         <div style={{ flex: "1" }}>{middle}</div>
-        <div
-          style={{ position: "relative", width: bar_width, height: "100%" }}
-        >
+        <div style={{ position: "relative", width: bar_width, height: "100%" }}>
           {right_bar(tabs, bottom_right)}
           {disable_div}
         </div>
@@ -910,8 +928,11 @@ interface NoteEditorProps {
   afterSave?: (path: T.FolderPath, note: T.Note) => void;
 }
 
-export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) {
-
+export function NoteEditor({
+  path,
+  disallow_rename,
+  ...props
+}: NoteEditorProps) {
   // RADIX BIG OLD TODO
   // componentWillReceiveProps(nextProps: NoteEditorProps) {
   //   // Reasons this is called:
@@ -935,9 +956,11 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
   // }
 
   const [draftName, setDraftName] = React.useState(props.name);
-  const [draftContent, setDraftContent] = React.useState<string|undefined>(undefined);
+  const [draftContent, setDraftContent] = React.useState<string | undefined>(
+    undefined
+  );
 
-  const originalNote = M.useState(s => s.getNote(path, props.name));
+  const originalNote = M.useState((s) => s.getNote(path, props.name));
   const originalContent = originalNote?.content;
   const renderedContent = draftContent ?? originalContent ?? "";
 
@@ -952,9 +975,7 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
           <Toggler
             a={(edit) => (
               <div>
-                <strong>
-                  {draftName ?? "Enter a name"}
-                </strong>
+                <strong>{draftName ?? "Enter a name"}</strong>
                 {disallow_rename ? null : (
                   <Icon
                     onClick={edit}
@@ -1007,8 +1028,8 @@ export function NoteEditor({ path, disallow_rename, ...props}: NoteEditorProps) 
     }
     const newNote = { name: draftName, content };
     const cmd: T.GameCommand = originalNote
-      ? { EditNote: [path, originalNote.name, newNote]}
-      : {CreateNote: [path, newNote]};
+      ? { EditNote: [path, originalNote.name, newNote] }
+      : { CreateNote: [path, newNote] };
     A.sendCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);
@@ -1211,7 +1232,8 @@ function renderChat(log: T.GameLog): JSX.Element | undefined {
   if (typeof log !== "string") {
     if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
       const sender = "ChatFromPlayer" in log ? log.ChatFromPlayer[0] : "GM";
-      const message = "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
+      const message =
+        "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
       return (
         <span>
           &lt;
