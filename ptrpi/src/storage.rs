@@ -52,7 +52,9 @@ pub trait Storage: Send + Sync {
   // Invitation management
 
   /// Create a multi-use invitation to a game.
-  async fn invite(&self, u: &UserID, g: &GameID) -> Result<Invitation>;
+  async fn invite(&self, g: &GameID) -> Result<Invitation>;
+  /// Delete a previously created invitation.
+  async fn delete_invitation(&self, g: &GameID, i: &InvitationID) -> Result<()>;
   /// List all invitations associated with a game.
   async fn list_invitations(&self, g: &GameID) -> Result<Vec<Invitation>>;
   /// Check if an invitation exists. This is meant to allow the user to know if their link still
@@ -111,7 +113,6 @@ impl<S: Storage> CachedStorage<S> {
 #[async_trait]
 impl<S: Storage> Storage for CachedStorage<S> {
 
-
   async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> Result<GameLog> {
     let mut cache = self.cache.lock().await;
     let cached_game = cache.get_mut(game_id);
@@ -158,8 +159,11 @@ impl<S: Storage> Storage for CachedStorage<S> {
   async fn list_user_games(&self, user_id: &UserID) -> Result<Vec<GameProfile>> {
     Ok(self.storage.list_user_games(user_id).await?)
   }
-  async fn invite(&self, u: &UserID, g: &GameID) -> Result<Invitation> {
-    Ok(self.storage.invite(u, g).await?)
+  async fn invite(&self, g: &GameID) -> Result<Invitation> {
+    Ok(self.storage.invite(g).await?)
+  }
+  async fn delete_invitation(&self, g: &GameID, i: &InvitationID) -> Result<()> {
+    Ok(self.storage.delete_invitation(g, i).await?)
   }
   async fn list_invitations(&self, g: &GameID) -> Result<Vec<Invitation>> {
     Ok(self.storage.list_invitations(g).await?)
@@ -333,18 +337,28 @@ impl Storage for FSStorage {
   }
 
   /// Create a multi-use invitation to a game.
-  async fn invite(&self, user_id: &UserID, game_id: &GameID) -> Result<Invitation> {
+  async fn invite(&self, game_id: &GameID) -> Result<Invitation> {
     let invitations_path = self.game_path(game_id).join("invitations");
     fs::create_dir_all(&invitations_path)?;
     let invitation = Invitation { id: InvitationID::gen(), game_id: game_id.clone() };
+    // TODO FIXME AHHH!! audit all calls to `format!()` to generate files and replace them with
+    // safe_child
     let invitation_path = invitations_path.join(format!("invitation-{}", invitation.id.0));
-    info!(event="write-invite", ?invitation.id, ?invitation.game_id, ?user_id, ?invitation_path);
+    info!(event="write-invite", ?invitation.id, ?invitation.game_id, ?invitation_path);
     // Note that because all an Invitation is a (GameID, InvitationID) pair, we don't write any
     // content to this file. It's likely that eventually more data *will* be written (like a record
     // of which players we created from the invitation for record-keeping purposes).
     fs::File::create(invitation_path)?;
     Ok(invitation)
   }
+
+  async fn delete_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> Result<()> {
+    let invitations_path = self.game_path(game_id).join("invitations");
+    let invitation_path = invitations_path.join(format!("invitation-{}", invitation_id.0));
+    fs::remove_file(invitation_path)?;
+    Ok(())
+  }
+
   /// List all invitations associated with a game.
   async fn list_invitations(&self, game_id: &GameID) -> Result<Vec<Invitation>> {
     let invitations_path = self.game_path(game_id).join("invitations");

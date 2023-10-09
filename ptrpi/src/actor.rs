@@ -134,6 +134,9 @@ impl AuthenticatedService {
     })
   }
 
+  // While these take GameIDs, they cannot be part of GameService because GameService represents
+  // someone's already-authorized access to a Game, but you need to be able to check & accept
+  // invitations before you have access to a game!
   pub async fn check_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> AEResult<bool> {
     Ok(self.storage.check_invitation(game_id, invitation_id).await?)
   }
@@ -174,6 +177,10 @@ impl GameService {
       }
     }
     Ok(())
+  }
+
+  pub async fn invite(&self) -> AEResult<InvitationID> {
+    Ok(self.storage.invite(&self.game_id).await?.id)
   }
 
   pub async fn list_invitations(&self) -> AEResult<Vec<InvitationID>> {

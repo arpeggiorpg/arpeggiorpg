@@ -319,3 +319,9 @@ export async function createGame(name: string): Promise<T.GameID> {
   }, Z.object({ game_id: Z.string() }));
   return result.game_id;
 }
+
+export async function invite(): Promise<T.InvitationID> {
+  const gameId = getState().gameId;
+  if (!gameId) { throw new Error("Must be called in context of a game!"); }
+  return await ptfetch(`/g/${gameId}/gm/invitations`, {method: "POST"}, Z.string());
+}
