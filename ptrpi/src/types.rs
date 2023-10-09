@@ -25,6 +25,10 @@ pub struct GameMetadata {
   pub name: String,
 }
 
+/// The indices stored by GameIndex are a little weird.
+/// The game_idx (I should call this the snapshot_index) is the actual current snapshot index.
+/// The log_idx is actually the number of logs.
+/// So a GameIndex of 0/0 has one snapshot and no logs.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameIndex {
   pub game_idx: usize,
