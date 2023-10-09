@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import {
-  createHashRouter,
+  createBrowserRouter,
   Link,
   useParams,
   useNavigate,
@@ -19,9 +19,7 @@ import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
 
-// I am using a hash router until I spend the time to figure out routing for the web server; from
-// what I've read it probably needs to be implemented with CloudFlare route rules or something.
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <Main />,
