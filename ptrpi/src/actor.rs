@@ -6,7 +6,7 @@ use tokio::{sync::Mutex, time::timeout};
 use tracing::{debug, error, info, instrument};
 
 use crate::{
-  storage::{load_game, PTStorage},
+  storage::{load_game, Storage},
   types::{GameID, GameIndex, GameList, UserGames, UserID},
 };
 
@@ -23,7 +23,7 @@ pub struct AuthenticationError {
 /// authenticate.
 #[derive(Clone)]
 pub struct AuthenticatableService {
-  pub storage: Arc<dyn PTStorage>,
+  pub storage: Arc<dyn Storage>,
 
   ping_service: Arc<PingService>,
 
@@ -34,7 +34,7 @@ pub struct AuthenticatableService {
 }
 
 impl AuthenticatableService {
-  pub fn new(storage: Arc<dyn PTStorage>, google_client_id: String) -> AuthenticatableService {
+  pub fn new(storage: Arc<dyn Storage>, google_client_id: String) -> AuthenticatableService {
     AuthenticatableService {
       storage,
       google_client_id,
@@ -80,7 +80,7 @@ impl AuthenticatableService {
 /// hands out PlayerServices and GMServices.
 pub struct AuthenticatedService {
   pub user_id: UserID,
-  pub storage: Arc<dyn PTStorage>,
+  pub storage: Arc<dyn Storage>,
   ping_service: Arc<PingService>,
 }
 
@@ -144,7 +144,7 @@ impl AuthenticatedService {
 
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.
 pub struct GameService {
-  pub storage: Arc<dyn PTStorage>,
+  pub storage: Arc<dyn Storage>,
   pub game: Game,
   pub game_index: GameIndex,
   pub game_id: GameID,

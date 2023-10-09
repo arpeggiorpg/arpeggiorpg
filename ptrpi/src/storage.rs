@@ -15,8 +15,8 @@ use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
 use pandt::types::{Game, GameLog};
 
-/// Load a Game from a PTStorage.
-pub async fn load_game<S: PTStorage + ?Sized>(
+/// Load a Game from a Storage.
+pub async fn load_game<S: Storage + ?Sized>(
   storage: &S, game_id: &GameID,
 ) -> Result<(Game, GameIndex)> {
   let game_index = storage.current_index(game_id).await?;
@@ -32,8 +32,9 @@ pub async fn load_game<S: PTStorage + ?Sized>(
   Ok((game, game_index))
 }
 
+/// The Storage trait is the abstraction
 #[async_trait]
-pub trait PTStorage: Send + Sync {
+pub trait Storage: Send + Sync {
   // User management
 
   // We might not need create_user; we can just have list_user_games or the others create it if it
@@ -64,7 +65,7 @@ pub trait PTStorage: Send + Sync {
 
 pub struct CachedStorage<S>
 where
-  S: PTStorage,
+  S: Storage,
 {
   storage: S,
   cache: Arc<Mutex<HashMap<GameID, CachedGame>>>,
@@ -75,7 +76,7 @@ struct CachedGame {
   logs: HashMap<GameIndex, GameLog>,
 }
 
-impl<S: PTStorage> CachedStorage<S> {
+impl<S: Storage> CachedStorage<S> {
   pub fn new(storage: S) -> Self {
     CachedStorage { storage, cache: Arc::new(Mutex::new(HashMap::new())) }
   }
@@ -91,7 +92,7 @@ impl<S: PTStorage> CachedStorage<S> {
 //   - since we will need to solve the problem of pinging all waiters across multiple nodes anyway,
 //     maybe we can use that same mechanism to invalidate caches on all nodes.
 #[async_trait]
-impl<S: PTStorage> PTStorage for CachedStorage<S> {
+impl<S: Storage> Storage for CachedStorage<S> {
   async fn list_user_games(&self, user_id: &UserID) -> Result<UserGames> {
     Ok(self.storage.list_user_games(user_id).await?)
   }
@@ -180,7 +181,7 @@ impl CloudStorage {
   }
 }
 
-// impl PTStorage for CloudStorage {}
+// impl Storage for CloudStorage {}
 
 pub struct FSStorage {
   path: PathBuf,
@@ -242,7 +243,7 @@ root/
 */
 
 #[async_trait]
-impl PTStorage for FSStorage {
+impl Storage for FSStorage {
   async fn current_index(&self, game_id: &GameID) -> Result<GameIndex> {
     let game_path = self.game_path(game_id);
 
@@ -261,7 +262,7 @@ impl PTStorage for FSStorage {
     let log_paths = fs::read_dir(snapshot_path)?
       .map(|res| res.map(|e| e.path()))
       .collect::<Result<Vec<PathBuf>, _>>()?;
-    let log_length: usize = log_paths
+    let log_idx: usize = log_paths
       .iter()
       .filter_map(|path| {
         path
@@ -274,7 +275,7 @@ impl PTStorage for FSStorage {
       })
       .max()
       .unwrap_or(0);
-    Ok(GameIndex { game_idx, log_idx: log_length })
+    Ok(GameIndex { game_idx, log_idx: log_idx + 1})
   }
 
   async fn list_user_games(&self, user_id: &UserID) -> Result<UserGames> {
