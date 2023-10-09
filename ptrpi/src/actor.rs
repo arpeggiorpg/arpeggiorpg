@@ -154,11 +154,6 @@ pub struct GameService {
 }
 
 impl GameService {
-  // Okay, so all these methods have returned JSON strings. This kind of sucks. Ideally we could
-  // return references to live objects, but I have not been able to figure out how to do this. I am
-  // pretty sure the answer involves MappedMutexGuard, but combining that with RPIGame has been very
-  // difficult for me.
-
   /// Wait for a Game to change and then return it.
   #[instrument(level = "debug", skip(self))]
   pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
@@ -179,6 +174,10 @@ impl GameService {
       }
     }
     Ok(())
+  }
+
+  pub async fn list_invitations(&self) -> AEResult<Vec<InvitationID>> {
+    Ok(self.storage.list_invitations(&self.game_id).await?.into_iter().map(|i| i.id).collect())
   }
 
   pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {

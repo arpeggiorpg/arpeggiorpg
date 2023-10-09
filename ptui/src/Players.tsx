@@ -8,6 +8,7 @@ import * as CV from "./CommonView";
 import * as M from "./Model";
 import * as A from "./Actions";
 import * as T from "./PTTypes";
+import useSWR from "swr";
 
 
 export function Players() {
@@ -122,3 +123,13 @@ export function GrantCreaturesToPlayer(props: { player: T.Player; onDone: () => 
   );
 }
 
+
+import * as Z from 'zod';
+export function Invitations() {
+  const gameId = M.useState(s => s.gameId);
+  const { data, isLoading } = useSWR(`/g/${gameId}/gm/invitations`, k => A.ptfetch(k, {}, Z.array(Z.string())));
+
+  if (isLoading || !data) return <div>Loading invitations</div>;
+
+  return <ul>{data.map(i => <li>{i}</li>)}</ul>;
+}
