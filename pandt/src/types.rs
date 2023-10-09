@@ -239,6 +239,7 @@ impl Saturating for Energy {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize, TS)]
 pub struct PlayerID(pub String);
 
+#[macro_export]
 macro_rules! uuid_id {
   ($type: ident) => {
     #[derive(
@@ -251,9 +252,9 @@ macro_rules! uuid_id {
     }
 
     impl ::std::str::FromStr for $type {
-      type Err = GameError;
-      fn from_str(s: &str) -> Result<$type, GameError> {
-        Uuid::parse_str(s).map_err(|e| GameError::InvalidID(s.to_string(), e)).map($type)
+      type Err = $crate::types::GameError;
+      fn from_str(s: &str) -> Result<$type, $crate::types::GameError> {
+        Uuid::parse_str(s).map_err(|e| $crate::types::GameError::InvalidID(s.to_string(), e)).map($type)
       }
     }
   };

@@ -44,18 +44,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     .route_layer(from_fn_with_state(service.clone(), authenticate));
 
   let cors = CorsLayer::permissive();
-  let trace = TraceLayer::new_for_http()
-  // .on_failure(|error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
-  //   match error {
-  //     ServerErrorsFailureClass::StatusCode(code) => {
-  //       error!(event="StatusCode", code=code.to_string());
-  //     }
-  //     ServerErrorsFailureClass::Error(string) => {
-  //       error!(event="Error", string)
-  //     }
-  //   }
-  // })
-  ;
+  let trace = TraceLayer::new_for_http();
   return axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace);
 }
 
