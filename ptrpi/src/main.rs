@@ -12,6 +12,7 @@ use std::{env, path::PathBuf, sync::Arc};
 use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use tracing::{error, info};
+use tracing_subscriber;
 
 use crate::storage::{CachedStorage, CloudStorage, FSStorage, PTStorage};
 
@@ -20,8 +21,10 @@ async fn main() -> Result<(), anyhow::Error> {
   if env::var("PANDT_LOG").is_err() {
     env::set_var("PANDT_LOG", "info,ptrpi=debug,tower_http::trace::make_span=debug");
   }
-  let env = env_logger::Env::new().filter("PANDT_LOG").write_style("PANDT_LOG_STYLE");
-  env_logger::init_from_env(env);
+  tracing_subscriber::fmt()
+    .with_env_filter(tracing_subscriber::EnvFilter::from_env("PANDT_LOG"))
+    .init();
+
 
   let opts = Opts::parse();
 

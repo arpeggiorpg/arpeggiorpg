@@ -20,10 +20,11 @@ pub async fn load_game<S: PTStorage + ?Sized>(
   storage: &S, game_id: &GameID,
 ) -> AEResult<(Game, GameIndex)> {
   let game_index = storage.current_index(game_id).await?;
+  info!(event = "current_index", ?game_index);
   let mut game = storage.load_game_snapshot(game_id, game_index.game_idx).await?;
   // okay, this is kinda stupid: we should cache the *latest state* of the game and use it as long
   // as it matches the current GameIndex, so we don't need to re-apply these logs every time.
-  for log_idx in 0..=game_index.log_idx {
+  for log_idx in 0..game_index.log_idx {
     let game_log =
       storage.load_game_log(game_id, GameIndex { game_idx: game_index.game_idx, log_idx }).await?;
     game = game.apply_log(&game_log)?;
@@ -278,7 +279,7 @@ impl PTStorage for FSStorage {
     let log_indices = self.get_log_indices(game_id, game_idx)?;
 
     // Then, figure out what the latest log index is in path/games/{game_id}/{latest_snapshot_idx}/log-*.json
-    let log_idx = *log_indices.last().unwrap_or(&0);
+    let log_idx = log_indices.last().map(|x| x + 1).unwrap_or(0);
     Ok(GameIndex { game_idx, log_idx })
   }
 
@@ -328,7 +329,7 @@ impl PTStorage for FSStorage {
   async fn load_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
     let metadata_path = self.metadata_path(game_id);
 
-    debug!(event = "get-game-metadata", ?game_id, ?metadata_path);
+    debug!(event = "load-game-metadata", ?game_id, ?metadata_path);
     let file = fs::File::open(metadata_path.clone())
       .context(format!("Trying to open: {:?}", metadata_path))?;
     Ok(serde_json::from_reader(file)?)
@@ -361,13 +362,13 @@ impl PTStorage for FSStorage {
     let mut log_idx = game_index.log_idx;
     for log in logs {
       let log_path = snapshot_path.join(&format!("log-{log_idx}.json"));
-      debug!(event="write-log", ?game_id, game_index.game_idx, log_idx, ?log_path);
+      info!(event="write-log", ?game_id, game_index.game_idx, log_idx, ?log_path);
       let file = fs::File::create(log_path)?;
       serde_json::to_writer(file, log)?;
       log_idx += 1;
     }
 
-    Ok(GameIndex { game_idx: game_index.game_idx, log_idx: log_idx - 1 })
+    Ok(GameIndex { game_idx: game_index.game_idx, log_idx})
   }
 
   /// Get recent logs for a game so we can show them to the user
