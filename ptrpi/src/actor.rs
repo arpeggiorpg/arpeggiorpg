@@ -7,7 +7,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
   storage::{load_game, Storage},
-  types::{GameID, GameIndex, GameList, UserGames, UserID},
+  types::{GameID, GameIndex, GameList, UserID, Role},
 };
 
 use pandt::types::{self, Game, GameCommand};
@@ -87,31 +87,31 @@ pub struct AuthenticatedService {
 impl AuthenticatedService {
   pub async fn new_game(&self, name: String) -> AEResult<GameID> {
     let game: Game = Default::default();
-    let game_id = self.storage.create_game(&game, &name).await?;
-    self.storage.add_user_gm_game(&self.user_id, &game_id).await?;
+    let game_id = self.storage.create_game(&self.user_id, &game, &name).await?;
     Ok(game_id.clone())
   }
 
   pub async fn list_games(&self) -> AEResult<GameList> {
     let usergames = self.storage.list_user_games(&self.user_id).await?;
-    let mut gm_games = vec![];
-    for game_id in usergames.gm_games {
-      gm_games.push((game_id.clone(), self.storage.load_game_metadata(&game_id).await?));
+    let mut games = vec![];
+    for profile in usergames {
+      games.push((profile.clone(), self.storage.load_game_metadata(&profile.game_id).await?));
     }
-    let mut player_games = vec![];
-    for game_id in usergames.player_games {
-      player_games.push((game_id.clone(), self.storage.load_game_metadata(&game_id).await?));
+    Ok(GameList { games })
+  }
+
+  async fn find_game(&self, game_id: &GameID, role: Role) -> AEResult<(Game, GameIndex)> {
+    let games = self.storage.list_user_games(&self.user_id).await?;
+    for game in games {
+      if game.user_id == self.user_id && game.role == Role::GM {
+        return Ok(load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?);
+      }
     }
-    Ok(GameList { gm_games, player_games })
+    Err(anyhow!("User {:?} is not a {role:?} of game {game_id:?}", self.user_id))
   }
 
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GameService> {
-    let games = self.storage.list_user_games(&self.user_id).await?;
-    if !games.gm_games.contains(game_id) {
-      return Err(anyhow!(format!("User {:?} is not a GM of game {:?}", self.user_id, game_id)));
-    }
-    let (game, game_index) =
-      load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?;
+    let (game, game_index) = self.find_game(game_id, Role::GM).await?;
     // TODO Actually return a GMService!!!
     Ok(GameService {
       storage: self.storage.clone(),
@@ -123,15 +123,8 @@ impl AuthenticatedService {
   }
 
   pub async fn player(&self, game_id: &GameID) -> AEResult<GameService> {
-    let games = self.storage.list_user_games(&self.user_id).await?;
-    if !games.player_games.contains(game_id) {
-      return Err(anyhow!(format!(
-        "User {:?} is not a Player of game {:?}",
-        self.user_id, game_id
-      )));
-    }
-    let (game, game_index) = load_game(&*self.storage, game_id).await?;
-    // TODO Actually return a PlayerService!
+    let (game, game_index) = self.find_game(game_id, Role::Player).await?;
+    // TODO Actually return a PlayerService!!!
     Ok(GameService {
       storage: self.storage.clone(),
       game_id: game_id.clone(),
