@@ -8,10 +8,12 @@ pub fn main() -> Result<(), anyhow::Error> {
   let mut file = File::create("../ptui/src/bindings/bindings.ts")?;
   let decls = vec![
     <RT::GameIndex as TS>::decl(),
-    <RT::UserGames as TS>::decl(),
     <RT::GameID as TS>::decl(),
     <RT::GameList as TS>::decl(),
     <RT::GameMetadata as TS>::decl(),
+    <RT::GameProfile as TS>::decl(),
+    <RT::InvitationID as TS>::decl(),
+    <RT::Role as TS>::decl(),
     <RT::UserID as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),

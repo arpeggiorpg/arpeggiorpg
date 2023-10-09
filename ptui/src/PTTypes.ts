@@ -6,18 +6,18 @@ import type {
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
-  GameIndex, GameList, GameLog, GameMetadata, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, UserGames, UserID, Visibility, Volume, VolumeCondition,
+  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
-  GameIndex, GameList, GameLog, GameMetadata, HP, InventoryOwner, Item, ItemID, ModuleSource, Note,
-  Player, PlayerID, PotentialTargets, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget,
-  SkillLevel, TileSystem, UserGames, UserID, Visibility, Volume, VolumeCondition,
+  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
+  ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
+  SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -547,18 +547,23 @@ export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decode
     ]);
 }
 
-export const decodeUserGames: Decoder<UserGames> = Z.object({
-  gm_games: Z.array(Z.string()),
-  player_games: Z.array(Z.string()),
-});
-
 export const decodeGameMetadata: Decoder<GameMetadata> = Z.object({
   name: Z.string()
 });
 
+export const decodeRole: Decoder<Role> = Z.union([
+  Z.literal("GM"), Z.literal("Player")
+])
+
+export const decodeGameProfile: Decoder<GameProfile> = Z.object({
+  user_id: Z.string(),
+  game_id: Z.string(),
+  profile_name: Z.string(),
+  role: decodeRole,
+})
+
 export const decodeGameList: Decoder<GameList> = Z.object({
-  gm_games: Z.array(Z.tuple([Z.string(), decodeGameMetadata])),
-  player_games: Z.array(Z.tuple([Z.string(), decodeGameMetadata])),
+  games: Z.array(Z.tuple([decodeGameProfile, decodeGameMetadata])),
 });
 
 export const decodeGameIndex: Decoder<GameIndex> = Z.object({

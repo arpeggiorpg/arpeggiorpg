@@ -7,10 +7,10 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
   storage::{load_game, Storage},
-  types::{GameID, GameIndex, GameList, UserID, Role},
+  types::{GameID, GameIndex, GameList, UserID, Role, InvitationID, GameProfile},
 };
 
-use pandt::types::{self, Game, GameCommand};
+use pandt::types::{self, Game, GameCommand, PlayerID};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Authentication Error")]
@@ -133,6 +133,15 @@ impl AuthenticatedService {
       ping_service: self.ping_service.clone(),
     })
   }
+
+  pub async fn check_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> AEResult<bool> {
+    Ok(self.storage.check_invitation(game_id, invitation_id).await?)
+  }
+
+  pub async fn accept_invitation(&self, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> AEResult<GameProfile> {
+    Ok(self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?)
+  }
+
 }
 
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.

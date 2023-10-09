@@ -8,13 +8,17 @@ import type { Map } from 'immutable';
 
   export interface GameIndex { game_idx: number, log_idx: number, }
 
-export interface UserGames { gm_games: Array<GameID>, player_games: Array<GameID>, }
-
 export type GameID = string;
 
-export interface GameList { gm_games: Array<[GameID, GameMetadata]>, player_games: Array<[GameID, GameMetadata]>, }
+export interface GameList { games: Array<[GameProfile, GameMetadata]>, }
 
 export interface GameMetadata { name: string, }
+
+export interface GameProfile { user_id: UserID, game_id: GameID, profile_name: PlayerID, role: Role, }
+
+export type InvitationID = string;
+
+export type Role = "GM" | "Player";
 
 export type UserID = string;
 
