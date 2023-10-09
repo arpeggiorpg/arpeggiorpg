@@ -7,10 +7,10 @@ import {
   useNavigate,
   Outlet,
 } from "react-router-dom";
+import * as Z from "zod";
 
 import * as M from "./Model";
 import * as A from "./Actions";
-
 import { SignIn } from "./SignIn";
 import { ptfetch } from "./Actions";
 import * as T from "./PTTypes";
@@ -26,11 +26,15 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <GameList /> },
       {
+        path: "/invitations/:gameId/:invitationId",
+        element: <AcceptInvitation />,
+      },
+      {
         path: "gm/:gameId",
         element: <GMGame />,
         children: [
           { index: true, element: <div>Pick a scene!</div> },
-          { path: "campaign/*", element: <GMMap />}
+          { path: "campaign/*", element: <GMMap /> },
         ],
       },
     ],
@@ -45,7 +49,10 @@ export function Main() {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <h1><Link to="/">ArpeggioRPG</Link> {gameName ? <span>— {gameName}</span> : null}</h1>
+          <h1>
+            <Link to="/">ArpeggioRPG</Link>{" "}
+            {gameName ? <span>— {gameName}</span> : null}
+          </h1>
           <div className="rightNavThing">
             <Link to="/">Game List</Link>
             <button onClick={() => M.getState().setUserToken(undefined)}>
@@ -75,21 +82,22 @@ function GameList() {
     data: games,
     error,
     isLoading,
-  } = useSWR("g/list", () => ptfetch("/g/list", {}, T.decodeGameList), {
+  } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList), {
     suspense: true,
   });
 
-  let gm_games = games.games.filter(g => g[0].role === "GM");
-  let player_games = games.games.filter(g => g[0].role === "Player");
-
+  let gm_games = games.games.filter((g) => g[0].role === "GM");
+  let player_games = games.games.filter((g) => g[0].role === "Player");
 
   return (
     <>
       <h1>You are GM of these games</h1>
       <ul>
-        {gm_games.map(([{game_id, profile_name}, meta]) => (
+        {gm_games.map(([{ game_id, profile_name }, meta]) => (
           <li key={game_id}>
-            <Link to={`gm/${game_id}`}>{meta.name} (as {profile_name})</Link>
+            <Link to={`gm/${game_id}`}>
+              {meta.name} (as {profile_name})
+            </Link>
           </li>
         ))}
         <li>
@@ -102,9 +110,11 @@ function GameList() {
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
-        {player_games.map(([{game_id, profile_name}, meta]) => (
+        {player_games.map(([{ game_id, profile_name }, meta]) => (
           <li key={game_id}>
-            <Link to={`player/${game_id}`}>{meta.name} (as {profile_name})</Link>
+            <Link to={`player/${game_id}`}>
+              {meta.name} (as {profile_name})
+            </Link>
           </li>
         ))}
       </ul>
@@ -174,14 +184,62 @@ function GMGame() {
   }, []);
 
   let game = M.useState((s) => s.game);
-  let status = M.useState(s => s.fetchStatus);
+  let status = M.useState((s) => s.fetchStatus);
 
   console.log("game!!!!", game);
   if (status === "Ready") {
     return <GMMain />;
-  } else  if (status === "Unfetched") {
+  } else if (status === "Unfetched") {
     return <div>Loading game...</div>;
   } else if (status === "Error") {
     return <div>Error loading game!</div>;
+  }
+}
+
+function AcceptInvitation() {
+  const { gameId, invitationId } = useParams() as {
+    gameId: string;
+    invitationId: string;
+  };
+  const navigate = useNavigate();
+
+  const [profileName, setProfileName] = React.useState<string>("");
+
+  const { data: invitationExists, isLoading } = useSWR(
+    `/g/invitations/${gameId}/${invitationId}`,
+    (k) => ptfetch(k, {}, Z.boolean())
+  );
+  if (isLoading) {
+    return <div>Checking invitation...</div>;
+  }
+
+  if (invitationExists) {
+    return (
+      <div>
+        <p>Invitation checks out!</p>
+        <p>Wanna join? Enter a name!</p>
+        <input
+          type="text"
+          value={profileName}
+          onChange={(e) => setProfileName(e.target.value)}
+        />
+        <button onClick={accept}>Join as a player!</button>
+      </div>
+    );
+  } else {
+    return <div>Sorry, that invitation doesn't seem to exist.</div>;
+  }
+
+  async function accept() {
+    await ptfetch(
+      `/g/invitations/${gameId}/${invitationId}/accept`,
+      {
+        method: "POST",
+        body: JSON.stringify(profileName),
+        headers: { "content-type": "application/json" },
+      },
+      Z.any()
+    );
+    navigate(`/`);
   }
 }
