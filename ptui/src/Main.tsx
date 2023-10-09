@@ -172,7 +172,14 @@ function GMGame() {
   }, []);
 
   let game = M.useState((s) => s.game);
+  let status = M.useState(s => s.fetchStatus);
 
   console.log("game!!!!", game);
-  return <GMMain />;
+  if (status === "Ready") {
+    return <GMMain />;
+  } else  if (status === "Unfetched") {
+    return <div>Loading game...</div>;
+  } else if (status === "Error") {
+    return <div>Error loading game!</div>;
+  }
 }

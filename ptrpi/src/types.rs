@@ -25,7 +25,7 @@ pub struct GameMetadata {
   pub name: String,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameIndex {
   pub game_idx: usize,
   pub log_idx: usize,

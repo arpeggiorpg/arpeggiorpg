@@ -9,7 +9,7 @@ use anyhow::{Context, Result as AEResult};
 use async_trait::async_trait;
 use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
 use tokio::sync::Mutex;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::types::{GameID, GameIndex, GameMetadata, UserGames, UserID};
 
@@ -21,6 +21,8 @@ pub async fn load_game<S: PTStorage + ?Sized>(
 ) -> AEResult<(Game, GameIndex)> {
   let game_index = storage.current_index(game_id).await?;
   let mut game = storage.load_game_snapshot(game_id, game_index.game_idx).await?;
+  // okay, this is kinda stupid: we should cache the *latest state* of the game and use it as long
+  // as it matches the current GameIndex, so we don't need to re-apply these logs every time.
   for log_idx in 0..=game_index.log_idx {
     let game_log =
       storage.load_game_log(game_id, GameIndex { game_idx: game_index.game_idx, log_idx }).await?;
@@ -68,9 +70,8 @@ where
 }
 
 struct CachedGame {
-  game: Game,
-  index: GameIndex,
-  logs: HashMap<usize, GameLog>,
+  snapshots: HashMap<usize, Game>,
+  logs: HashMap<GameIndex, GameLog>,
 }
 
 impl<S: PTStorage> CachedStorage<S> {
@@ -86,8 +87,6 @@ impl<S: PTStorage> CachedStorage<S> {
 //   - actually cache in Redis, where we *can* invalidate the cache for everyone
 //   - maybe improve the protocol so load_game can know if it's loading the *expected* version of the game
 //   - make it so load_game always looks up the latest GameIndex by hitting the backend
-// - We don't cache individual GameLogs, so any time the cache is invalidated, we have to reload
-//   GameLogs from disk. Fixing this will require a new Storage::load_game_log.
 #[async_trait]
 impl<S: PTStorage> PTStorage for CachedStorage<S> {
   async fn list_user_games(&self, user_id: &UserID) -> AEResult<UserGames> {
@@ -107,15 +106,7 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
 
   // Game management
   async fn create_game(&self, game: &Game, name: &str) -> AEResult<GameID> {
-    let game_id = self.storage.create_game(game, name).await?;
-    let mut cache = self.cache.lock().await;
-    let cached_game = CachedGame {
-      game: game.clone(),
-      index: GameIndex { game_idx: 0, log_idx: 0 },
-      logs: HashMap::new(),
-    };
-    cache.insert(game_id.clone(), cached_game);
-    Ok(game_id)
+    Ok(self.storage.create_game(game, name).await?)
   }
 
   async fn load_game_metadata(&self, game_id: &GameID) -> AEResult<GameMetadata> {
@@ -124,50 +115,41 @@ impl<S: PTStorage> PTStorage for CachedStorage<S> {
     Ok(self.storage.load_game_metadata(game_id).await?)
   }
 
-  async fn load_game_log(&self, game_id: &GameID, load_index: GameIndex) -> AEResult<GameLog> {
+  async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> AEResult<GameLog> {
     let mut cache = self.cache.lock().await;
-    let mut cached_game = cache.get_mut(game_id);
-    if let Some(CachedGame { index, logs, .. }) = cached_game {
-      if index.game_idx == load_index.game_idx {
-        if logs.contains_key(&load_index.log_idx) {
-          return Ok(logs[&load_index.log_idx].clone());
-        }
-      } else {
-        // we have switched to a new snapshot; throw everything out?
+    let cached_game = cache.get_mut(game_id);
+    if let Some(CachedGame { logs, .. }) = cached_game {
+      if logs.contains_key(&index) {
+        return Ok(logs[&index].clone());
       }
     }
-    let log = self.storage.load_game_log(game_id, load_index).await?;
+    let log = self.storage.load_game_log(game_id, index).await?;
     if let Some(cached_game) = cached_game {
-      cached_game.logs.insert(load_index.log_idx, log.clone());
+      cached_game.logs.insert(index, log.clone());
+    } else {
+      warn!(event = "I think there should be a cached snapshot for this log already...", ?index);
     }
     Ok(log)
   }
 
   async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> AEResult<Game> {
     let mut cache = self.cache.lock().await;
-    let cached_game = cache.get(game_id).map(|cg| cg.game.clone());
-    match cached_game {
-      Some(cached_game) => Ok(cached_game),
-      None => {
-        let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
-        cache.insert(
-          game_id.clone(),
-          CachedGame {
-            game: game.clone(),
-            index: GameIndex { game_idx: snapshot, log_idx: 0 },
-            logs: HashMap::new(),
-          },
-        );
-        return Ok(game);
+    let cached_game = cache.get_mut(game_id);
+    if let Some(CachedGame { snapshots, .. }) = cached_game {
+      if snapshots.contains_key(&snapshot) {
+        return Ok(snapshots[&snapshot].clone());
       }
     }
+
+    let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
+    let mut snapshots = HashMap::new();
+    snapshots.insert(snapshot, game.clone());
+    cache.insert(game_id.clone(), CachedGame { snapshots, logs: HashMap::new() });
+    return Ok(game);
   }
 
   async fn apply_game_logs(&self, game_id: &GameID, logs: &[GameLog]) -> AEResult<GameIndex> {
-    let new_index = self.storage.apply_game_logs(game_id, logs).await?;
-    let mut cache = self.cache.lock().await;
-    cache.remove(game_id);
-    Ok(new_index)
+    Ok(self.storage.apply_game_logs(game_id, logs).await?)
   }
 
   /// Get recent logs for a game so we can show them to the user
@@ -379,6 +361,7 @@ impl PTStorage for FSStorage {
     let mut log_idx = game_index.log_idx;
     for log in logs {
       let log_path = snapshot_path.join(&format!("log-{log_idx}.json"));
+      debug!(event="write-log", ?game_id, game_index.game_idx, log_idx, ?log_path);
       let file = fs::File::create(log_path)?;
       serde_json::to_writer(file, log)?;
       log_idx += 1;
