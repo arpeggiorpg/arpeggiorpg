@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
 use axum::{
@@ -20,7 +20,7 @@ use tracing::{error, Span};
 
 use crate::{
   actor::{AuthenticatableService, AuthenticatedService, GameService},
-  types::{GameID, GameIndex, GameList},
+  types::{GameID, GameIndex, GameList, InvitationID, GameProfile},
 };
 
 pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
@@ -40,6 +40,8 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
   let auth_routes = axum::Router::new()
     .route("/list", get(list_games))
     .route("/create", post(create_game))
+    .route("/invitations/:game_id/:invitation_id", get(check_invitation))
+    .route("/invitations/:game_id/:invitation_id/accept", post(accept_invitation))
     .nest("/:game_id/gm/", game_routes)
     .route_layer(from_fn_with_state(service.clone(), authenticate));
 
@@ -51,6 +53,12 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
 #[derive(serde::Deserialize)]
 struct GameIDPath {
   game_id: GameID,
+}
+
+#[derive(serde::Deserialize)]
+struct InvitationPath {
+  game_id: GameID,
+  invitation_id: InvitationID
 }
 
 async fn authenticate<B>(
@@ -91,6 +99,17 @@ async fn list_games(
 ) -> WebResult<Json<GameList>> {
   let games = service.list_games().await?;
   Ok(Json(games))
+}
+
+async fn check_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>) -> WebResult<Json<bool>> {
+  let bool = service.check_invitation(&game_id, &invitation_id).await?;
+  Ok(Json(bool))
+}
+
+async fn accept_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>, Json(profile_name): Json<String>) -> WebResult<Json<GameProfile>> {
+  let player_id = pandt::types::PlayerID(profile_name);
+  let thing = service.accept_invitation(&game_id, &invitation_id, player_id).await?;
+  Ok(Json(thing))
 }
 
 async fn create_game(

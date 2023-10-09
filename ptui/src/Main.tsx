@@ -81,13 +81,17 @@ function GameList() {
     suspense: true,
   });
 
+  let gm_games = games.games.filter(g => g[0].role === "GM");
+  let player_games = games.games.filter(g => g[0].role === "Player");
+
+
   return (
     <>
       <h1>You are GM of these games</h1>
       <ul>
-        {games?.gm_games.map(([gameId, meta]) => (
-          <li key={gameId}>
-            <Link to={`gm/${gameId}`}>{meta.name}</Link>
+        {gm_games.map(([{game_id, profile_name}, meta]) => (
+          <li key={game_id}>
+            <Link to={`gm/${game_id}`}>{meta.name} (as {profile_name})</Link>
           </li>
         ))}
         <li>
@@ -100,9 +104,9 @@ function GameList() {
       </ul>
       <h1>You are a player in these games</h1>
       <ul>
-        {games?.player_games.map(([gameId, meta]) => (
-          <li key={gameId}>
-            <Link to={`player/${gameId}`}>{meta.name}</Link>
+        {player_games.map(([{game_id, profile_name}, meta]) => (
+          <li key={game_id}>
+            <Link to={`player/${game_id}`}>{meta.name} (as {profile_name})</Link>
           </li>
         ))}
       </ul>

@@ -8,6 +8,7 @@ use std::{
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
@@ -267,6 +268,21 @@ root/
         log-{log_index}.json - type GameLog
 */
 
+
+/// Like GameProfile, but without the UserID because that's implicit in the filename.
+#[derive(Serialize, Deserialize)]
+struct StoredProfile {
+  game_id: GameID,
+  role: Role,
+  profile_name: PlayerID,
+}
+
+impl StoredProfile {
+  fn into_game_profile(self, user_id: UserID) -> GameProfile {
+    GameProfile {user_id, game_id: self.game_id, role: self.role, profile_name: self.profile_name}
+  }
+}
+
 #[async_trait]
 impl Storage for FSStorage {
   async fn current_index(&self, game_id: &GameID) -> Result<GameIndex> {
@@ -306,14 +322,14 @@ impl Storage for FSStorage {
   async fn list_user_games(&self, user_id: &UserID) -> Result<Vec<GameProfile>> {
     let json_file_path = self.user_game_path(user_id);
     let file = fs::File::open(json_file_path.clone());
-    let user_games = match file {
+    let user_games: Vec<StoredProfile> = match file {
       Ok(file) => serde_json::from_reader(file)?,
       Err(err) => {
         info!(event = "no-user-file", ?json_file_path, ?err);
         vec![]
       }
     };
-    Ok(user_games)
+    Ok(user_games.into_iter().map(|x| x.into_game_profile(user_id.clone())).collect())
   }
 
   /// Create a multi-use invitation to a game.
@@ -326,7 +342,7 @@ impl Storage for FSStorage {
     // Note that because all an Invitation is a (GameID, InvitationID) pair, we don't write any
     // content to this file. It's likely that eventually more data *will* be written (like a record
     // of which players we created from the invitation for record-keeping purposes).
-    let file = fs::File::create(invitation_path)?;
+    fs::File::create(invitation_path)?;
     Ok(invitation)
   }
   /// List all invitations associated with a game.
@@ -360,7 +376,7 @@ impl Storage for FSStorage {
       Err(anyhow!("no invitation found"))?
     }
     let profile = GameProfile { user_id: user_id.clone(), game_id: game_id.clone(), profile_name, role: Role::Player};
-    self.add_profile(&profile);
+    self.add_profile(&profile).await?;
     Ok(profile)
   }
 
