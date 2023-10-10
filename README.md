@@ -30,7 +30,7 @@ automatically load up the `testgame.yaml` file as the initial state.
 To build the UI, you must have npm installed (ideally npm >=5).
 
 ```shell
-cd ptui
+cd ui
 npm install
 npm run dev
 ```

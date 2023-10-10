@@ -5,7 +5,7 @@ use ptrpi::types as RT;
 use pandt::types as T;
 
 pub fn main() -> Result<(), anyhow::Error> {
-  let mut file = File::create("../ptui/src/bindings/bindings.ts")?;
+  let mut file = File::create("../ui/src/bindings/bindings.ts")?;
   let decls = vec![
     <RT::GameIndex as TS>::decl(),
     <RT::GameID as TS>::decl(),
