@@ -1,7 +1,7 @@
 use std::{
   collections::HashMap,
   fs,
-  path::{Path, PathBuf},
+  path::PathBuf,
   sync::Arc,
 };
 
@@ -210,6 +210,26 @@ pub struct FSStorage {
   path: PathBuf,
 }
 
+trait SafeJoin {
+  /// *safe* version of Path::join
+  fn sjoin(&self, name: &str) -> Result<PathBuf, InsecurePathError>;
+}
+
+impl SafeJoin for PathBuf {
+  fn sjoin(&self, name: &str) -> Result<PathBuf, InsecurePathError> {
+    if name.contains('/') || name.contains(':') || name.contains('\\') {
+      return Err(InsecurePathError { name: name.to_string() });
+    }
+    let new_path = self.join(name);
+    for p in &new_path {
+      if p == "." || p == ".." {
+        return Err(InsecurePathError { name: name.to_string() });
+      }
+    }
+    Ok(new_path)
+  }
+}
+
 impl FSStorage {
   pub fn new(path: PathBuf) -> FSStorage {
     let users_path = path.join("users");
@@ -219,21 +239,8 @@ impl FSStorage {
     FSStorage { path }
   }
 
-  fn child_path(parent: &Path, name: &str) -> Result<PathBuf, InsecurePathError> {
-    if name.contains('/') || name.contains(':') || name.contains('\\') {
-      return Err(InsecurePathError { name: name.to_string() });
-    }
-    let new_path = parent.join(name);
-    for p in &new_path {
-      if p == "." || p == ".." {
-        return Err(InsecurePathError { name: name.to_string() });
-      }
-    }
-    Ok(new_path)
-  }
-
-  fn user_game_path(&self, user_id: &UserID) -> PathBuf {
-    self.path.join("users").join(format!("{}.json", user_id.0))
+  fn user_game_path(&self, user_id: &UserID) -> Result<PathBuf> {
+    Ok(self.path.join("users").sjoin(&format!("{}.json", user_id.0))?)
   }
 
   fn game_path(&self, game_id: &GameID) -> PathBuf {
@@ -247,7 +254,7 @@ impl FSStorage {
   async fn add_profile(&self, profile: &GameProfile) -> Result<()> {
     let mut user_games = self.list_user_games(&profile.user_id).await?;
     user_games.push(profile.clone());
-    let json_file_path = self.user_game_path(&profile.user_id);
+    let json_file_path = self.user_game_path(&profile.user_id)?;
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
   }
@@ -324,7 +331,7 @@ impl Storage for FSStorage {
   }
 
   async fn list_user_games(&self, user_id: &UserID) -> Result<Vec<GameProfile>> {
-    let json_file_path = self.user_game_path(user_id);
+    let json_file_path = self.user_game_path(user_id)?;
     let file = fs::File::open(json_file_path.clone());
     let user_games: Vec<StoredProfile> = match file {
       Ok(file) => serde_json::from_reader(file)?,
@@ -341,9 +348,7 @@ impl Storage for FSStorage {
     let invitations_path = self.game_path(game_id).join("invitations");
     fs::create_dir_all(&invitations_path)?;
     let invitation = Invitation { id: InvitationID::gen(), game_id: *game_id };
-    // TODO FIXME AHHH!! audit all calls to `format!()` to generate files and replace them with
-    // safe_child
-    let invitation_path = invitations_path.join(format!("invitation-{}", invitation.id.0));
+    let invitation_path = invitations_path.sjoin(&format!("invitation-{}", invitation.id.0))?;
     info!(event="write-invite", ?invitation.id, ?invitation.game_id, ?invitation_path);
     // Note that because all an Invitation is a (GameID, InvitationID) pair, we don't write any
     // content to this file. It's likely that eventually more data *will* be written (like a record
@@ -354,7 +359,7 @@ impl Storage for FSStorage {
 
   async fn delete_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> Result<()> {
     let invitations_path = self.game_path(game_id).join("invitations");
-    let invitation_path = invitations_path.join(format!("invitation-{}", invitation_id.0));
+    let invitation_path = invitations_path.sjoin(&format!("invitation-{}", invitation_id.0))?;
     fs::remove_file(invitation_path)?;
     Ok(())
   }
@@ -383,7 +388,7 @@ impl Storage for FSStorage {
 
   async fn check_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> Result<bool> {
     let invitation_path =
-      self.game_path(game_id).join("invitations").join(format!("invitation-{}", invitation_id.0));
+      self.game_path(game_id).join("invitations").sjoin(&format!("invitation-{}", invitation_id.0))?;
     Ok(invitation_path.exists())
   }
 
@@ -450,7 +455,7 @@ impl Storage for FSStorage {
   async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> Result<GameLog> {
     let game_path = self.game_path(game_id);
     let snapshot_path = game_path.join(index.game_idx.to_string());
-    let filename = snapshot_path.join(format!("log-{}.json", index.log_idx));
+    let filename = snapshot_path.sjoin(&format!("log-{}.json", index.log_idx))?;
     debug!(event = "load-log", ?game_id, ?index, ?filename);
     let file = fs::File::open(filename)?;
     Ok(serde_json::from_reader(file)?)
@@ -463,7 +468,7 @@ impl Storage for FSStorage {
     // TODO: Actually implement snapshotting when we hit a limit on logs!
     let mut log_idx = game_index.log_idx;
     for log in logs {
-      let log_path = snapshot_path.join(&format!("log-{log_idx}.json"));
+      let log_path = snapshot_path.sjoin(&format!("log-{log_idx}.json"))?;
       info!(event = "write-log", ?game_id, game_index.game_idx, log_idx, ?log_path);
       let file = fs::File::create(log_path)?;
       serde_json::to_writer(file, log)?;
