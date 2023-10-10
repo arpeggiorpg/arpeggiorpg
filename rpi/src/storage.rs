@@ -14,7 +14,7 @@ use tracing::{debug, info, warn};
 
 use crate::types::{GameID, GameIndex, GameMetadata, GameProfile, UserID, Invitation, InvitationID, Role};
 
-use pandt::types::{Game, GameLog, PlayerID};
+use arpeggio::types::{Game, GameLog, PlayerID};
 
 /// Load a Game from a Storage.
 pub async fn load_game<S: Storage + ?Sized>(

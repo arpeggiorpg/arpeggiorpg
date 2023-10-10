@@ -9,11 +9,11 @@ use rpi::{actor, storage::{CachedStorage, CloudStorage, FSStorage, Storage}, web
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-  if env::var("PANDT_LOG").is_err() {
-    env::set_var("PANDT_LOG", "info,ptrpi=debug,tower_http::trace::make_span=debug");
+  if env::var("ARPEGGIO_LOG").is_err() {
+    env::set_var("ARPEGGIO_LOG", "info,ptrpi=debug,tower_http::trace::make_span=debug");
   }
   tracing_subscriber::fmt()
-    .with_env_filter(tracing_subscriber::EnvFilter::from_env("PANDT_LOG"))
+    .with_env_filter(tracing_subscriber::EnvFilter::from_env("ARPEGGIO_LOG"))
     .init();
 
   let Opts { storage_path, google_bucket, google_client_id, } = Opts::parse();

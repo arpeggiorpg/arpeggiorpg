@@ -10,7 +10,7 @@ use crate::{
   types::{GameID, GameIndex, GameList, UserID, Role, InvitationID, GameProfile},
 };
 
-use pandt::types::{self, Game, GameCommand, PlayerID};
+use arpeggio::types::{self, Game, GameCommand, PlayerID};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Authentication Error")]
