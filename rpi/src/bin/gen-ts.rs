@@ -1,7 +1,7 @@
 use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
-use ptrpi::types as RT;
+use rpi::types as RT;
 use pandt::types as T;
 
 pub fn main() -> Result<(), anyhow::Error> {

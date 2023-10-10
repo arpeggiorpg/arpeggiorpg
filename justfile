@@ -1,5 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+
+# TODO: rename these google cloud registries from ptrpi to rpi, or something
 build-docker:
     docker build . -t us-east1-docker.pkg.dev/pandt-400420/ptrpi/ptrpi:latest
 

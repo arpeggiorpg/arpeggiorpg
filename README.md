@@ -16,11 +16,8 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 To start the backend (this defaults to serving on all network interfaces on port 1337):
 
-WARNING: the "--saved-games" argument specifies a directory that users of the web endpoint will
-be able to write arbitrary files to (for now).
-
 ```shell
-cd ptrpi
+cd rpi
 cargo run -- serve --storage ./storage/
 ```
 
