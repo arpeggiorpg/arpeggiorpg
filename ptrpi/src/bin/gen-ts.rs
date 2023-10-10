@@ -1,7 +1,7 @@
 use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
-use crate::types as RT;
+use ptrpi::types as RT;
 use pandt::types as T;
 
 pub fn main() -> Result<(), anyhow::Error> {
