@@ -1,8 +1,8 @@
 use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
-use rpi::types as RT;
 use arpeggio::types as T;
+use rpi::types as RT;
 
 pub fn main() -> Result<(), anyhow::Error> {
   let mut file = File::create("../ui/src/bindings/bindings.ts")?;

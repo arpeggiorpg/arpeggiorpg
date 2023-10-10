@@ -391,8 +391,12 @@ impl Game {
       FolderItemID::ItemID(iid) => node.items.insert(iid),
       FolderItemID::AbilityID(abid) => node.abilities.insert(abid),
       FolderItemID::ClassID(classid) => node.classes.insert(classid),
-      FolderItemID::SubfolderID(_) => return Err(GameError::BuggyProgram("Cannot link folders.".to_string())),
-      FolderItemID::NoteID(ref nid) => return Err(GameError::CannotLinkNotes(path.clone(), nid.clone())),
+      FolderItemID::SubfolderID(_) => {
+        return Err(GameError::BuggyProgram("Cannot link folders.".to_string()))
+      }
+      FolderItemID::NoteID(ref nid) => {
+        return Err(GameError::CannotLinkNotes(path.clone(), nid.clone()))
+      }
     };
     Ok(())
   }
@@ -404,7 +408,7 @@ impl Game {
       path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T,
     ) -> Result<(), GameError> {
       if !s.remove(key) {
-        return Err(GameError::FolderItemNotFound(path.clone(), item.clone()))
+        return Err(GameError::FolderItemNotFound(path.clone(), item.clone()));
       }
       Ok(())
     }
@@ -415,8 +419,12 @@ impl Game {
       FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
       FolderItemID::AbilityID(abid) => remove_set(path, item_id, &mut node.abilities, &abid)?,
       FolderItemID::ClassID(classid) => remove_set(path, item_id, &mut node.classes, &classid)?,
-      FolderItemID::SubfolderID(_) => return Err(GameError::BuggyProgram("Cannot unlink folders.".to_string())),
-      FolderItemID::NoteID(ref nid) => return Err(GameError::CannotLinkNotes(path.clone(), nid.clone())),
+      FolderItemID::SubfolderID(_) => {
+        return Err(GameError::BuggyProgram("Cannot unlink folders.".to_string()))
+      }
+      FolderItemID::NoteID(ref nid) => {
+        return Err(GameError::CannotLinkNotes(path.clone(), nid.clone()))
+      }
     };
     Ok(())
   }
@@ -474,7 +482,7 @@ impl Game {
     match *log {
       LoadModule { ref module, ref path, .. } => {
         if self.campaign.get(path).is_ok() {
-          return Err(GameError::FolderAlreadyExists(path.clone()))
+          return Err(GameError::FolderAlreadyExists(path.clone()));
         } else {
           self.import_module(path, module)?;
         }
@@ -485,7 +493,7 @@ impl Game {
       // Player stuff
       RegisterPlayer(ref pid) => {
         if self.players.contains_key(pid) {
-          return Err(GameError::PlayerAlreadyExists(pid.clone()))
+          return Err(GameError::PlayerAlreadyExists(pid.clone()));
         } else {
           self.players.insert(Player::new(pid.clone()));
         }

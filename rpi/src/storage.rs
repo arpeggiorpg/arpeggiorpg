@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 
-use crate::types::{GameID, GameIndex, GameMetadata, GameProfile, UserID, Invitation, InvitationID, Role};
+use crate::types::{
+  GameID, GameIndex, GameMetadata, GameProfile, Invitation, InvitationID, Role, UserID,
+};
 
 use arpeggio::types::{Game, GameLog, PlayerID};
 
@@ -61,7 +63,9 @@ pub trait Storage: Send + Sync {
   /// works before entering their player name.
   async fn check_invitation(&self, g: &GameID, i: &InvitationID) -> Result<bool>;
   /// Accept an invitation to create a new GameProfile, associating a user with a game.
-  async fn accept_invitation(&self, user_id: &UserID, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> Result<GameProfile>;
+  async fn accept_invitation(
+    &self, user_id: &UserID, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID,
+  ) -> Result<GameProfile>;
 
   /// Create a game, with an initial user as the GM.
   async fn create_game(&self, u: &UserID, g: &Game, name: &str) -> Result<GameID>;
@@ -112,7 +116,6 @@ impl<S: Storage> CachedStorage<S> {
 //     maybe we can use that same mechanism to invalidate caches on all nodes.
 #[async_trait]
 impl<S: Storage> Storage for CachedStorage<S> {
-
   async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> Result<GameLog> {
     let mut cache = self.cache.lock().await;
     let cached_game = cache.get_mut(game_id);
@@ -146,7 +149,6 @@ impl<S: Storage> Storage for CachedStorage<S> {
     return Ok(game);
   }
 
-
   // Pass-throughs:
   async fn load_game_metadata(&self, game_id: &GameID) -> Result<GameMetadata> {
     // We should probably cache here, BUT, this would need smarter cache invalidation since we don't
@@ -159,9 +161,7 @@ impl<S: Storage> Storage for CachedStorage<S> {
   async fn list_user_games(&self, user_id: &UserID) -> Result<Vec<GameProfile>> {
     Ok(self.storage.list_user_games(user_id).await?)
   }
-  async fn invite(&self, g: &GameID) -> Result<Invitation> {
-    Ok(self.storage.invite(g).await?)
-  }
+  async fn invite(&self, g: &GameID) -> Result<Invitation> { Ok(self.storage.invite(g).await?) }
   async fn delete_invitation(&self, g: &GameID, i: &InvitationID) -> Result<()> {
     Ok(self.storage.delete_invitation(g, i).await?)
   }
@@ -171,13 +171,15 @@ impl<S: Storage> Storage for CachedStorage<S> {
   async fn check_invitation(&self, g: &GameID, i: &InvitationID) -> Result<bool> {
     Ok(self.storage.check_invitation(g, i).await?)
   }
-  async fn accept_invitation(&self, user_id: &UserID, gid: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> Result<GameProfile> {
+  async fn accept_invitation(
+    &self, user_id: &UserID, gid: &GameID, invitation_id: &InvitationID, profile_name: PlayerID,
+  ) -> Result<GameProfile> {
     Ok(self.storage.accept_invitation(user_id, gid, invitation_id, profile_name).await?)
   }
   async fn current_index(&self, game_id: &GameID) -> Result<GameIndex> {
     Ok(self.storage.current_index(game_id).await?)
   }
-  async fn create_game(&self, user_id: &UserID,  game: &Game, name: &str) -> Result<GameID> {
+  async fn create_game(&self, user_id: &UserID, game: &Game, name: &str) -> Result<GameID> {
     Ok(self.storage.create_game(user_id, game, name).await?)
   }
   async fn get_recent_logs(&self, g: &GameID) -> Result<Vec<(GameIndex, GameLog)>> {
@@ -249,7 +251,6 @@ impl FSStorage {
     serde_json::to_writer(fs::File::create(json_file_path)?, &user_games)?;
     Ok(())
   }
-
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, thiserror::Error, Debug)]
@@ -272,7 +273,6 @@ root/
         log-{log_index}.json - type GameLog
 */
 
-
 /// Like GameProfile, but without the UserID because that's implicit in the filename.
 #[derive(Serialize, Deserialize)]
 struct StoredProfile {
@@ -283,7 +283,7 @@ struct StoredProfile {
 
 impl StoredProfile {
   fn into_game_profile(self, user_id: UserID) -> GameProfile {
-    GameProfile {user_id, game_id: self.game_id, role: self.role, profile_name: self.profile_name}
+    GameProfile { user_id, game_id: self.game_id, role: self.role, profile_name: self.profile_name }
   }
 }
 
@@ -320,7 +320,7 @@ impl Storage for FSStorage {
       })
       .max()
       .unwrap_or(0);
-    Ok(GameIndex { game_idx, log_idx: log_idx + 1})
+    Ok(GameIndex { game_idx, log_idx: log_idx + 1 })
   }
 
   async fn list_user_games(&self, user_id: &UserID) -> Result<Vec<GameProfile>> {
@@ -368,34 +368,39 @@ impl Storage for FSStorage {
         return Ok(vec![]);
       }
     }
-    let invitation_paths = invitation_paths?
-      .map(|res| res.map(|e| e.path()))
-      .collect::<Result<Vec<PathBuf>, _>>()?;
-    Ok(invitation_paths
-      .iter()
-      .filter_map(|path| {
-        path
-          .file_name()?
-          .to_str()?
-          .strip_prefix("invitation-")?
-          .parse::<InvitationID>()
-          .ok()
-      })
-      .map(|id| Invitation {id, game_id: game_id.clone()}).collect())
+    let invitation_paths =
+      invitation_paths?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<PathBuf>, _>>()?;
+    Ok(
+      invitation_paths
+        .iter()
+        .filter_map(|path| {
+          path.file_name()?.to_str()?.strip_prefix("invitation-")?.parse::<InvitationID>().ok()
+        })
+        .map(|id| Invitation { id, game_id: game_id.clone() })
+        .collect(),
+    )
   }
 
   async fn check_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> Result<bool> {
-    let invitation_path = self.game_path(game_id).join("invitations").join(format!("invitation-{}", invitation_id.0));
+    let invitation_path =
+      self.game_path(game_id).join("invitations").join(format!("invitation-{}", invitation_id.0));
     Ok(invitation_path.exists())
   }
 
   /// Accept an invitation to create a new GameProfile, associating a user with a game.
-  async fn accept_invitation(&self, user_id: &UserID, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> Result<GameProfile> {
+  async fn accept_invitation(
+    &self, user_id: &UserID, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID,
+  ) -> Result<GameProfile> {
     // first, let's just prove that the invitation exists:
     if !self.check_invitation(game_id, invitation_id).await? {
       Err(anyhow!("no invitation found"))?
     }
-    let profile = GameProfile { user_id: user_id.clone(), game_id: game_id.clone(), profile_name, role: Role::Player};
+    let profile = GameProfile {
+      user_id: user_id.clone(),
+      game_id: game_id.clone(),
+      profile_name,
+      role: Role::Player,
+    };
     self.add_profile(&profile).await?;
     Ok(profile)
   }
@@ -412,7 +417,12 @@ impl Storage for FSStorage {
     let metadata_file = fs::File::create(self.metadata_path(&game_id))?;
     serde_json::to_writer(metadata_file, &metadata)?;
 
-    let profile = GameProfile { user_id: user_id.clone(), game_id: game_id.clone(), profile_name: PlayerID("GM".to_string()), role: Role::GM };
+    let profile = GameProfile {
+      user_id: user_id.clone(),
+      game_id: game_id.clone(),
+      profile_name: PlayerID("GM".to_string()),
+      role: Role::GM,
+    };
     self.add_profile(&profile).await?;
 
     Ok(game_id)

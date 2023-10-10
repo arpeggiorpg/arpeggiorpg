@@ -5,7 +5,11 @@ use clap::Parser;
 use tracing::{error, info};
 use tracing_subscriber;
 
-use rpi::{actor, storage::{CachedStorage, CloudStorage, FSStorage, Storage}, web};
+use rpi::{
+  actor,
+  storage::{CachedStorage, CloudStorage, FSStorage, Storage},
+  web,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -16,7 +20,7 @@ async fn main() -> Result<(), anyhow::Error> {
     .with_env_filter(tracing_subscriber::EnvFilter::from_env("ARPEGGIO_LOG"))
     .init();
 
-  let Opts { storage_path, google_bucket, google_client_id, } = Opts::parse();
+  let Opts { storage_path, google_bucket, google_client_id } = Opts::parse();
 
   serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await
 }

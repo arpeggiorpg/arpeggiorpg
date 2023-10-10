@@ -80,7 +80,7 @@ impl ::std::str::FromStr for Point3 {
   fn from_str(path: &str) -> Result<Point3, GameError> {
     let segments: Vec<&str> = path.split('/').collect();
     if segments.len() != 3 {
-      return Err(GameError::BuggyProgram("Bad Point3 syntax".to_string()))
+      return Err(GameError::BuggyProgram("Bad Point3 syntax".to_string()));
     }
     match (segments[0].parse::<i64>(), segments[1].parse::<i64>(), segments[2].parse::<i64>()) {
       (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
@@ -253,7 +253,9 @@ macro_rules! uuid_id {
     impl ::std::str::FromStr for $type {
       type Err = $crate::types::GameError;
       fn from_str(s: &str) -> Result<$type, $crate::types::GameError> {
-        Uuid::parse_str(s).map_err(|e| $crate::types::GameError::InvalidID(s.to_string(), e)).map($type)
+        Uuid::parse_str(s)
+          .map_err(|e| $crate::types::GameError::InvalidID(s.to_string(), e))
+          .map($type)
       }
     }
   };

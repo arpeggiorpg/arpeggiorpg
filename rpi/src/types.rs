@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use arpeggio::{uuid_id, types::PlayerID};
+use arpeggio::{types::PlayerID, uuid_id};
 
 uuid_id!(GameID);
 uuid_id!(InvitationID);
@@ -41,7 +41,7 @@ pub struct GameProfile {
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS)]
 pub enum Role {
   GM,
-  Player
+  Player,
 }
 
 /// The result from listing a game. Includes a name (and maybe other data)
@@ -55,4 +55,3 @@ pub struct Invitation {
   pub id: InvitationID,
   pub game_id: GameID,
 }
-
