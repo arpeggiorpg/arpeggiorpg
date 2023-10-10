@@ -7,7 +7,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
   storage::{load_game, Storage},
-  types::{GameID, GameIndex, GameList, UserID, Role, InvitationID, GameProfile},
+  types::{GameID, GameIndex, GameList, GameProfile, InvitationID, Role, UserID},
 };
 
 use arpeggio::types::{self, Game, GameCommand, PlayerID};
@@ -104,7 +104,9 @@ impl AuthenticatedService {
     let games = self.storage.list_user_games(&self.user_id).await?;
     for game in games {
       if game.user_id == self.user_id && game.role == Role::GM {
-        return Ok(load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?);
+        return Ok(
+          load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?,
+        );
       }
     }
     Err(anyhow!("User {:?} is not a {role:?} of game {game_id:?}", self.user_id))
@@ -137,15 +139,20 @@ impl AuthenticatedService {
   // While these take GameIDs, they cannot be part of GameService because GameService represents
   // someone's already-authorized access to a Game, but you need to be able to check & accept
   // invitations before you have access to a game!
-  pub async fn check_invitation(&self, game_id: &GameID, invitation_id: &InvitationID) -> AEResult<bool> {
+  pub async fn check_invitation(
+    &self, game_id: &GameID, invitation_id: &InvitationID,
+  ) -> AEResult<bool> {
     Ok(self.storage.check_invitation(game_id, invitation_id).await?)
   }
 
-  pub async fn accept_invitation(&self, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> AEResult<GameProfile> {
+  pub async fn accept_invitation(
+    &self, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID,
+  ) -> AEResult<GameProfile> {
     // we need to tell the storage layer that we've accepted the invitation, but we also need to
     // register the player in the Game object itself.
 
-    let profile = self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?;
+    let profile =
+      self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?;
     let (game, _idx) = load_game(&*self.storage, game_id).await?;
 
     let command = GameCommand::RegisterPlayer(profile.profile_name.clone());
@@ -156,7 +163,6 @@ impl AuthenticatedService {
 
     Ok(profile)
   }
-
 }
 
 // TODO: GameService should not exist - it should be split into PlayerService and GMService.

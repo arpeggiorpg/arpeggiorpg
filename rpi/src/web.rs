@@ -20,7 +20,7 @@ use tracing::{error, Span};
 
 use crate::{
   actor::{AuthenticatableService, AuthenticatedService, GameService},
-  types::{GameID, GameIndex, GameList, InvitationID, GameProfile},
+  types::{GameID, GameIndex, GameList, GameProfile, InvitationID},
 };
 
 pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
@@ -59,7 +59,7 @@ struct GameIDPath {
 #[derive(serde::Deserialize)]
 struct InvitationPath {
   game_id: GameID,
-  invitation_id: InvitationID
+  invitation_id: InvitationID,
 }
 
 async fn authenticate<B>(
@@ -106,16 +106,25 @@ async fn invite(Extension(service): Extension<Arc<GameService>>) -> WebResult<Js
   Ok(Json(service.invite().await?))
 }
 
-async fn list_invitations(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<Vec<InvitationID>>> {
+async fn list_invitations(
+  Extension(service): Extension<Arc<GameService>>,
+) -> WebResult<Json<Vec<InvitationID>>> {
   Ok(Json(service.list_invitations().await?))
 }
 
-async fn check_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>) -> WebResult<Json<bool>> {
+async fn check_invitation(
+  Extension(service): Extension<Arc<AuthenticatedService>>,
+  Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>,
+) -> WebResult<Json<bool>> {
   let bool = service.check_invitation(&game_id, &invitation_id).await?;
   Ok(Json(bool))
 }
 
-async fn accept_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>, Json(profile_name): Json<String>) -> WebResult<Json<GameProfile>> {
+async fn accept_invitation(
+  Extension(service): Extension<Arc<AuthenticatedService>>,
+  Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>,
+  Json(profile_name): Json<String>,
+) -> WebResult<Json<GameProfile>> {
   let player_id = PlayerID(profile_name);
   let thing = service.accept_invitation(&game_id, &invitation_id, player_id).await?;
   Ok(Json(thing))

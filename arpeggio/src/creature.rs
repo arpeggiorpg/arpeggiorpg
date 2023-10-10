@@ -241,9 +241,9 @@ impl Creature {
             return Err(GameError::BuggyProgram(
               "Tried to decrease condition duration of an \
               interminate condition"
-                .to_string()
+                .to_string(),
             ));
-          },
+          }
           Duration::Rounds(ref mut dur) => *dur -= 1,
         }
       }
