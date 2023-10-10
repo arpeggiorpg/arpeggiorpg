@@ -244,9 +244,9 @@ impl GameService {
   }
 
   pub async fn load_into_folder(
-    &self, game_id_to_load: &GameID, folder_path: foldertree::FolderPath,
+    &self, game_id_to_load: &GameID, _folder_path: foldertree::FolderPath,
   ) -> AEResult<String> {
-    let game_to_load = load_game(&*self.storage, game_id_to_load).await?;
+    let _game_to_load = load_game(&*self.storage, game_id_to_load).await?;
     Ok("".to_string())
     // RADIX FIXME TODO: update the GameCommand for LoadModule.
     // let command = GameCommand::LoadModule {

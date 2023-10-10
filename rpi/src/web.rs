@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow};
 use axum::{
   body,
   extract::{Path, State},
@@ -11,12 +11,12 @@ use axum::{
   Extension, Json,
 };
 use http::StatusCode;
-use tower_http::{classify::ServerErrorsFailureClass, cors::CorsLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use arpeggio::types::{
   AbilityID, CreatureID, GameCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID,
 };
-use tracing::{error, Span};
+
 
 use crate::{
   actor::{AuthenticatableService, AuthenticatedService, GameService},

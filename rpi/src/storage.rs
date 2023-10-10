@@ -475,9 +475,9 @@ impl Storage for FSStorage {
 
   /// Get recent logs for a game so we can show them to the user
   // I am pretty skeptical that this is the API we will end up with.
-  async fn get_recent_logs(&self, g: &GameID) -> Result<Vec<(GameIndex, GameLog)>> { Ok(vec![]) }
+  async fn get_recent_logs(&self, _g: &GameID) -> Result<Vec<(GameIndex, GameLog)>> { Ok(vec![]) }
   /// Roll back to a specific log index.
-  async fn roll_back(&self, g: &GameID, game_idx: GameIndex) -> Result<Game> {
+  async fn roll_back(&self, _g: &GameID, _game_idx: GameIndex) -> Result<Game> {
     Ok(Default::default())
   }
 }
