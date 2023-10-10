@@ -2,12 +2,12 @@ use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use clap::Parser;
-use tracing::{error, info};
+use tracing::{info};
 use tracing_subscriber;
 
 use rpi::{
   actor,
-  storage::{CachedStorage, CloudStorage, FSStorage, Storage},
+  storage::{CachedStorage, FSStorage, Storage},
   web,
 };
 
@@ -26,7 +26,7 @@ async fn main() -> Result<(), anyhow::Error> {
 }
 
 async fn serve(
-  storage_path: Option<PathBuf>, google_bucket: Option<String>, google_client_id: String,
+  storage_path: Option<PathBuf>, _google_bucket: Option<String>, google_client_id: String,
 ) -> anyhow::Result<()> {
   info!("Starting up the Arpeggio Remote Programming Interface HTTP server!");
 
