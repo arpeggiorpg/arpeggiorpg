@@ -18,6 +18,7 @@ import { GMMain, GMMap } from "./GMView";
 import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
+import { PlayerGameView } from "./PlayerView";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
         path: "/invitations/:gameId/:invitationId",
         element: <AcceptInvitation />,
       },
+      { path: "player/:gameId", element: <PlayerGame /> },
       {
         path: "gm/:gameId",
         element: <GMGame />,
@@ -61,9 +63,7 @@ export function Main() {
           </div>
         </div>
         <ErrorBoundary fallback={<div>ERROR OCCURRED</div>}>
-          <React.Suspense>
-            <Outlet />
-          </React.Suspense>
+          <Outlet />
         </ErrorBoundary>
       </div>
     );
@@ -82,9 +82,11 @@ function GameList() {
     data: games,
     error,
     isLoading,
-  } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList), {
-    suspense: true,
-  });
+  } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
+
+  if (isLoading || !games) {
+    return <div>Loading games...</div>;
+  }
 
   let gm_games = games.games.filter((g) => g[0].role === "GM");
   let player_games = games.games.filter((g) => g[0].role === "Player");
@@ -174,14 +176,22 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function GMGame() {
+
+function usePoll(mode: "gm" | "player") {
   const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
     // startPoll returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
-    return A.startPoll("gm", gameId);
+    return A.startPoll(mode, gameId);
   }, []);
+
+  return gameId;
+}
+
+function GMGame() {
+
+  usePoll("gm");
 
   let game = M.useState((s) => s.game);
   let status = M.useState((s) => s.fetchStatus);
@@ -242,4 +252,25 @@ function AcceptInvitation() {
     );
     navigate(`/`);
   }
+}
+
+
+function PlayerGame() {
+  let gameId = usePoll("player");
+
+  let {
+    data: games,
+    error,
+    isLoading,
+  } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
+
+  if (isLoading || !games) {
+    return <div>Loading games...</div>;
+  }
+
+  const playerId = games.games.find(([profile, _meta]) => profile.game_id === gameId && profile.role === "Player")?.[0].profile_name;
+  if (!playerId) {
+    return <div>Sorry, couldn't find a player for you</div>;
+  }
+  return <PlayerGameView playerId={playerId} />;
 }
