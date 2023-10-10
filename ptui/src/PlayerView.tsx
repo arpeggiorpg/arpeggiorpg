@@ -10,45 +10,6 @@ import * as T from './PTTypes';
 import { Menu } from 'semantic-ui-react';
 
 
-export function PlayerMain() {
-  const playerId = M.useState(s => s.playerId);
-  if (playerId) {
-    return <PlayerGameView playerId={playerId} />;
-  } else {
-    return <PlayerLogin />
-  }
-}
-
-function PlayerLogin() {
-  const players = M.useState(s => s.getGame().players);
-  return <div style={{ display: "flex", justifyContent: "space-around" }}>
-    <div style={{ width: "600px" }}>
-      <h1>P&T</h1>
-      <p>Welcome to P&T!</p>
-      {players.count() > 0
-        ? <div>
-          <p>You can rejoin a session if you've already registered as a player.</p>
-          <Menu compact={true}>
-            {players.keySeq().toArray().map(pid =>
-              <Menu.Item key={pid}
-                onClick={() => M.getState().setPlayerId(pid)}
-                name={pid} />)
-            }
-          </Menu>
-        </div>
-        : <div>There are no players yet!</div>}
-      <p>You can register a new player.</p>
-      <CV.SingleInputForm buttonText="Register"
-        onSubmit={input => registerPlayer(input)} />
-    </div>
-  </div>;
-
-  function registerPlayer(name: string) {
-    A.sendCommand({ RegisterPlayer: name });
-    M.getState().setPlayerId(name);
-  }
-}
-
 export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   const {player, scene, mapCreatures} = M.useState(s => {
     const player = s.getGame().players.get(playerId);
