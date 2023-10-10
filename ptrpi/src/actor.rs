@@ -142,7 +142,19 @@ impl AuthenticatedService {
   }
 
   pub async fn accept_invitation(&self, game_id: &GameID, invitation_id: &InvitationID, profile_name: PlayerID) -> AEResult<GameProfile> {
-    Ok(self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?)
+    // we need to tell the storage layer that we've accepted the invitation, but we also need to
+    // register the player in the Game object itself.
+
+    let profile = self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?;
+    let (game, _idx) = load_game(&*self.storage, game_id).await?;
+
+    let command = GameCommand::RegisterPlayer(profile.profile_name.clone());
+    // Probably need to share this code with GMService.perform_command
+    let changed_game = game.perform_command(command)?;
+    self.storage.apply_game_logs(game_id, &changed_game.logs).await?;
+    self.ping_service.ping(game_id).await?;
+
+    Ok(profile)
   }
 
 }
