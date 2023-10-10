@@ -4,8 +4,6 @@ use std::{
   iter::FromIterator,
 };
 
-use error_chain::bail;
-
 use crate::{combat::*, creature::ChangedCreature, grid::line_through_point, types::*};
 use foldertree::FolderPath;
 
@@ -80,67 +78,67 @@ impl Game {
       let folder = self.campaign.get(folder_path).expect("walk_paths must return valid path");
       for sid in &folder.scenes {
         if all_scenes.contains(sid) {
-          bail!(GameError::SceneAlreadyExists(*sid));
+          return Err(GameError::SceneAlreadyExists(*sid));
         }
         if !self.scenes.contains_key(sid) {
-          bail!(GameError::SceneNotFound(*sid));
+          return Err(GameError::SceneNotFound(*sid));
         }
         all_scenes.insert(*sid);
       }
       for cid in &folder.creatures {
         if all_creatures.contains(cid) {
-          bail!(GameError::CreatureAlreadyExists(*cid));
+          return Err(GameError::CreatureAlreadyExists(*cid));
         }
         if !self.creatures.contains_key(cid) {
-          bail!(GameError::CreatureNotFound(cid.to_string()));
+          return Err(GameError::CreatureNotFound(cid.to_string()));
         }
         all_creatures.insert(*cid);
       }
       for iid in &folder.items {
         if all_items.contains(iid) {
-          bail!(GameError::ItemAlreadyExists(*iid));
+          return Err(GameError::ItemAlreadyExists(*iid));
         }
         if !self.items.contains_key(iid) {
-          bail!(GameError::ItemNotFound(*iid));
+          return Err(GameError::ItemNotFound(*iid));
         }
         all_items.insert(*iid);
       }
       for abid in &folder.abilities {
         if all_abilities.contains(abid) {
-          bail!(GameError::AbilityAlreadyExists(*abid));
+          return Err(GameError::AbilityAlreadyExists(*abid));
         }
         if !self.abilities.contains_key(abid) {
-          bail!(GameError::NoAbility(*abid));
+          return Err(GameError::NoAbility(*abid));
         }
         all_abilities.insert(*abid);
       }
       for classid in &folder.classes {
         if all_classes.contains(classid) {
-          bail!(GameError::ClassAlreadyExists(*classid));
+          return Err(GameError::ClassAlreadyExists(*classid));
         }
         if !self.classes.contains_key(classid) {
-          bail!(GameError::ClassNotFound(*classid));
+          return Err(GameError::ClassNotFound(*classid));
         }
         all_classes.insert(*classid);
       }
     }
     if all_scenes != HashSet::from_iter(self.scenes.keys().cloned()) {
-      bail!("Not all scenes were in the campaign!");
+      return Err(GameError::BuggyProgram("Not all scenes were in the campaign!".to_string()));
     }
     if all_creatures != HashSet::from_iter(self.creatures.keys().cloned()) {
-      bail!("Not all creatures were in the campaign!");
+      return Err(GameError::BuggyProgram("Not all creatures were in the campaign!".to_string()));
     }
     if all_items != HashSet::from_iter(self.items.keys().cloned()) {
-      bail!("Not all items were in the campaign!");
+      return Err(GameError::BuggyProgram("Not all items were in the campaign!".to_string()));
     }
     let game_abilities = HashSet::from_iter(self.abilities.keys().cloned());
     if all_abilities != game_abilities {
-      bail!(GameError::BuggyProgram(format!(
+      return Err(GameError::BuggyProgram(format!(
         "Not all abilities were in the campaign! {all_abilities:?} VS {game_abilities:?}"
       )));
     }
     if all_classes != HashSet::from_iter(self.classes.keys().cloned()) {
-      bail!("Not all classes were in the campaign!");
+      return Err(GameError::BuggyProgram("Not all classes were in the campaign!".to_string()));
     }
     Ok(())
   }
@@ -393,8 +391,8 @@ impl Game {
       FolderItemID::ItemID(iid) => node.items.insert(iid),
       FolderItemID::AbilityID(abid) => node.abilities.insert(abid),
       FolderItemID::ClassID(classid) => node.classes.insert(classid),
-      FolderItemID::SubfolderID(_) => bail!("Cannot link folders."),
-      FolderItemID::NoteID(ref nid) => bail!(GameError::CannotLinkNotes(path.clone(), nid.clone())),
+      FolderItemID::SubfolderID(_) => return Err(GameError::BuggyProgram("Cannot link folders.".to_string())),
+      FolderItemID::NoteID(ref nid) => return Err(GameError::CannotLinkNotes(path.clone(), nid.clone())),
     };
     Ok(())
   }
@@ -406,7 +404,7 @@ impl Game {
       path: &FolderPath, item: &FolderItemID, s: &mut ::std::collections::HashSet<T>, key: &T,
     ) -> Result<(), GameError> {
       if !s.remove(key) {
-        bail!(GameError::FolderItemNotFound(path.clone(), item.clone()))
+        return Err(GameError::FolderItemNotFound(path.clone(), item.clone()))
       }
       Ok(())
     }
@@ -417,8 +415,8 @@ impl Game {
       FolderItemID::ItemID(iid) => remove_set(path, item_id, &mut node.items, &iid)?,
       FolderItemID::AbilityID(abid) => remove_set(path, item_id, &mut node.abilities, &abid)?,
       FolderItemID::ClassID(classid) => remove_set(path, item_id, &mut node.classes, &classid)?,
-      FolderItemID::SubfolderID(_) => bail!("Cannot unlink folders."),
-      FolderItemID::NoteID(ref nid) => bail!(GameError::CannotLinkNotes(path.clone(), nid.clone())),
+      FolderItemID::SubfolderID(_) => return Err(GameError::BuggyProgram("Cannot unlink folders.".to_string())),
+      FolderItemID::NoteID(ref nid) => return Err(GameError::CannotLinkNotes(path.clone(), nid.clone())),
     };
     Ok(())
   }
@@ -476,7 +474,7 @@ impl Game {
     match *log {
       LoadModule { ref module, ref path, .. } => {
         if self.campaign.get(path).is_ok() {
-          bail!(GameError::FolderAlreadyExists(path.clone()))
+          return Err(GameError::FolderAlreadyExists(path.clone()))
         } else {
           self.import_module(path, module)?;
         }
@@ -487,7 +485,7 @@ impl Game {
       // Player stuff
       RegisterPlayer(ref pid) => {
         if self.players.contains_key(pid) {
-          bail!(GameError::PlayerAlreadyExists(pid.clone()))
+          return Err(GameError::PlayerAlreadyExists(pid.clone()))
         } else {
           self.players.insert(Player::new(pid.clone()));
         }
@@ -660,7 +658,7 @@ impl Game {
             // - disallow deleting if in combat
             if let Ok(combat) = self.get_combat() {
               if combat.scene.id == sid {
-                bail!(GameError::SceneInUse(sid));
+                return Err(GameError::SceneInUse(sid));
               }
             }
             for path in all_folders {
@@ -695,7 +693,7 @@ impl Game {
           FolderItemID::ClassID(classid) => {
             for cid in self.creatures.keys().cloned().collect::<Vec<CreatureID>>() {
               if self.get_creature(cid)?.creature.class == classid {
-                bail!("Class in use!");
+                return Err(GameError::BuggyProgram("Class in use!".to_string()));
               }
             }
             for path in all_folders {
@@ -802,7 +800,7 @@ impl Game {
       }
       SetSceneCreatureVisibility { scene_id, creature_id, ref visibility } => {
         if !self.get_scene(scene_id)?.creatures.contains_key(&creature_id) {
-          bail!(GameError::CreatureNotFound(creature_id.to_string()));
+          return Err(GameError::CreatureNotFound(creature_id.to_string()));
         }
         self
           .scenes
@@ -914,7 +912,7 @@ impl Game {
         let mut combat = self.current_combat.clone().ok_or(GameError::NotInCombat)?;
         self.check_creature_id(cid)?;
         if combat.creatures.iter().any(|&(c, _)| c == cid) {
-          bail!(GameError::AlreadyInCombat(cid));
+          return Err(GameError::AlreadyInCombat(cid));
         }
         combat.creatures.push((cid, init));
         self.current_combat = Some(combat);
@@ -1042,7 +1040,7 @@ impl Game {
     &self, scene: &Scene, cid: CreatureID, abid: AbilityID, target: DecidedTarget, in_combat: bool,
   ) -> Result<ChangedGame, GameError> {
     if !scene.creatures.contains_key(&cid) {
-      bail!(GameError::CreatureNotFound(cid.to_string()));
+      return Err(GameError::CreatureNotFound(cid.to_string()));
     }
     let creature = self.get_creature(cid)?;
     if creature.can_act() {
@@ -1093,7 +1091,7 @@ impl Game {
             };
             change = change.apply(&log)?;
           }
-          _ => bail!(GameError::BuggyProgram("Ugh".to_string())),
+          _ => return Err(GameError::BuggyProgram("Ugh".to_string())),
         }
         change
       }
@@ -1161,7 +1159,7 @@ impl Game {
         let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
         Ok(cids)
       }
-      _ => bail!(GameError::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
+      _ => return Err(GameError::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
     }
   }
 

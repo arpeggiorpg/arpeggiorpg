@@ -7,7 +7,6 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.73"
 axum = {version = "0.6.20"}
-error-chain = "0.12.1"
 foldertree = {version = "*", path = "../foldertree"}
 anyhow = {version = "1.0.75", features = ["backtrace"]}
 thiserror = "1.0.48"

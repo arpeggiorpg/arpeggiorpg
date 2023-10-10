@@ -7,7 +7,6 @@
 use std::collections::{HashMap, HashSet};
 
 use derive_more::{Add, Div, Mul, Sub};
-use error_chain::bail;
 use num::Saturating;
 use rand::Rng;
 use serde::{
@@ -81,11 +80,11 @@ impl ::std::str::FromStr for Point3 {
   fn from_str(path: &str) -> Result<Point3, GameError> {
     let segments: Vec<&str> = path.split('/').collect();
     if segments.len() != 3 {
-      bail!("Bad Point3 syntax")
+      return Err(GameError::BuggyProgram("Bad Point3 syntax".to_string()))
     }
     match (segments[0].parse::<i64>(), segments[1].parse::<i64>(), segments[2].parse::<i64>()) {
       (Ok(x), Ok(y), Ok(z)) => Ok(Point3::new(x, y, z)),
-      _ => bail!("Bad Point3 syntax"),
+      _ => Err(GameError::BuggyProgram("Bad Point3 syntax".to_string())),
     }
   }
 }
