@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use pandt::{uuid_id, types::PlayerID};
+use arpeggio::{uuid_id, types::PlayerID};
 
 uuid_id!(GameID);
 uuid_id!(InvitationID);

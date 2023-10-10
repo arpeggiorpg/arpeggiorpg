@@ -13,8 +13,8 @@ use axum::{
 use http::StatusCode;
 use tower_http::{classify::ServerErrorsFailureClass, cors::CorsLayer, trace::TraceLayer};
 
-use pandt::types::{
-  AbilityID, CreatureID, GameCommand, Point3, PotentialTargets, RPIGame, SceneID,
+use arpeggio::types::{
+  AbilityID, CreatureID, GameCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID,
 };
 use tracing::{error, Span};
 
@@ -116,7 +116,7 @@ async fn check_invitation(Extension(service): Extension<Arc<AuthenticatedService
 }
 
 async fn accept_invitation(Extension(service): Extension<Arc<AuthenticatedService>>, Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>, Json(profile_name): Json<String>) -> WebResult<Json<GameProfile>> {
-  let player_id = pandt::types::PlayerID(profile_name);
+  let player_id = PlayerID(profile_name);
   let thing = service.accept_invitation(&game_id, &invitation_id, player_id).await?;
   Ok(Json(thing))
 }
