@@ -251,6 +251,10 @@ impl GameService {
   }
 }
 
+/// The PingService coordinates the notification of all players in a game session so that they get
+/// instantly updated whenever a change happens to the game they're playing.
+// This should go away and be replaced with a CloudFlare Workers Durable Object using Hibernatable
+// WebSockets.
 struct PingService {
   waiters: Mutex<HashMap<GameID, Vec<oneshot::Sender<()>>>>,
 }

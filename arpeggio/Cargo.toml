@@ -12,7 +12,6 @@ serde_yaml = "0.8"
 [dependencies]
 bresenham = "0.1.1"
 derive_more = "0.99.2"
-error-chain = "0.12.1"
 thiserror = "1.0.48"
 foldertree = {version = "*", path = "../foldertree", features = ["serde"]}
 indexed = {version = "*", path = "../indexed", features = ["serde"]}

@@ -1,6 +1,5 @@
 use std::{cmp, collections::HashMap};
 
-use error_chain::bail;
 use num::Saturating;
 
 use crate::types::*;
@@ -238,11 +237,13 @@ impl Creature {
       CreatureLog::DecrementConditionRemaining(ref id) => {
         let cond = new.conditions.get_mut(id).ok_or_else(|| GameError::ConditionNotFound(*id))?;
         match cond.remaining {
-          Duration::Interminate => bail!(GameError::BuggyProgram(
-            "Tried to decrease condition duration of an \
-             interminate condition"
-              .to_string()
-          )),
+          Duration::Interminate => {
+            return Err(GameError::BuggyProgram(
+              "Tried to decrease condition duration of an \
+              interminate condition"
+                .to_string()
+            ));
+          },
           Duration::Rounds(ref mut dur) => *dur -= 1,
         }
       }

@@ -120,7 +120,6 @@ dependencies = [
  "bresenham",
  "criterion",
  "derive_more",
- "error-chain",
  "foldertree",
  "indexed",
  "maplit",
@@ -672,16 +671,6 @@ checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
 dependencies = [
  "cc",
  "libc",
-]
-
-[[package]]
-name = "error-chain"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
-dependencies = [
- "backtrace",
- "version_check",
 ]
 
 [[package]]
@@ -2043,7 +2032,6 @@ dependencies = [
  "async-trait",
  "axum",
  "clap 4.4.6",
- "error-chain",
  "foldertree",
  "futures",
  "google-cloud-storage",

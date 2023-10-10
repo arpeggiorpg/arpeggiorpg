@@ -1,6 +1,5 @@
 //! Simulation of combat.
 
-use error_chain::bail;
 use nonempty;
 use num::{Saturating, Zero};
 
@@ -31,7 +30,7 @@ impl<'game> DynamicCombat<'game> {
       }
       CombatLog::RerollInitiative(ref combatants) => {
         if new.creatures.get_cursor() != 0 {
-          bail!(GameError::MustRerollAtStartOfRound);
+          return Err(GameError::MustRerollAtStartOfRound);
         }
         new.creatures = sort_combatants(combatants.clone())?;
       }
