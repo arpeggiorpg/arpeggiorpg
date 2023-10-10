@@ -26,7 +26,7 @@ use crate::types::{
 // center, and are blocked by any solid terrain. This could be implemented by raycasting from
 // the origin to every point around the perimeter of the sphere.
 //
-// Abilities like D&D's "fireball" and P&T's "thorn patch" should be "wrap-around-corner" AoE
+// Abilities like D&D's "fireball" and Arpeggio's "thorn patch" should be "wrap-around-corner" AoE
 // effects: Fireball is a Sphere and Thorn Patch is a Circle or VerticalCylinder{height=1}.
 //
 // These "crawl" out from the origin point and can go anywhere within the radius that has a valid
@@ -304,8 +304,8 @@ impl TileSystem {
 }
 
 /// Make a `CollisionWorld` given some creatures and volume conditions.
-/// The factoring is a little sad; this is the only function in grid.rs that knows about these P&T
-/// types. Maybe I should just move this to collision.rs or something.
+/// The factoring is a little sad; this is the only function in grid.rs that knows about these
+/// Arpeggio types. Maybe I should just move this to collision.rs or something.
 pub fn make_world<'c, 'vc, CI, VCI>(creatures: CI, volume_conditions: VCI) -> CollisionWorld
 where
   CI: Iterator<Item = (&'c Creature, Point3)>,
