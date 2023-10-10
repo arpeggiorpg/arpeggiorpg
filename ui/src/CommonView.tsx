@@ -934,6 +934,7 @@ export function NoteEditor({
   ...props
 }: NoteEditorProps) {
   // RADIX BIG OLD TODO
+  // switching between two different notes is not updating the state properly!
   // componentWillReceiveProps(nextProps: NoteEditorProps) {
   //   // Reasons this is called:
   //   // 1. clicking on a different note while a note is already loaded. We get new path and/or name
