@@ -1,20 +1,11 @@
-// Actix-web passes requests by value even though we don't consume them. Ignore this in clippy.
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::needless_pass_by_value))]
-
-mod actor;
-mod gents;
-mod storage;
-mod types;
-mod web;
-
 use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use tracing::{error, info};
 use tracing_subscriber;
 
-use crate::storage::{CachedStorage, CloudStorage, FSStorage, Storage};
+use ptrpi::{actor, storage::{CachedStorage, CloudStorage, FSStorage, Storage}, web};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -25,22 +16,9 @@ async fn main() -> Result<(), anyhow::Error> {
     .with_env_filter(tracing_subscriber::EnvFilter::from_env("PANDT_LOG"))
     .init();
 
-  let opts = Opts::parse();
+  let Opts { storage_path, google_bucket, google_client_id, } = Opts::parse();
 
-  return match &opts.command {
-    Some(Commands::GenTS) => {
-      gents::main()?;
-      Ok(())
-    }
-    Some(Commands::Serve { storage_path, google_bucket, google_client_id }) => {
-      serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await
-    }
-
-    None => {
-      error!("Please provide a subcommand.");
-      Ok(())
-    }
-  };
+  serve(storage_path.clone(), google_bucket.clone(), google_client_id.clone()).await
 }
 
 async fn serve(
@@ -71,24 +49,12 @@ async fn serve(
 #[derive(Parser)]
 #[command()]
 struct Opts {
-  #[command(subcommand)]
-  command: Option<Commands>,
-}
+  #[arg(long, value_name = "FILE")]
+  storage_path: Option<PathBuf>,
 
-#[derive(Subcommand)]
-enum Commands {
-  /// Generate typescript bindings
-  GenTS,
+  #[arg(long)]
+  google_bucket: Option<String>,
 
-  /// Run the PTRPI server
-  Serve {
-    #[arg(long, value_name = "FILE")]
-    storage_path: Option<PathBuf>,
-
-    #[arg(long)]
-    google_bucket: Option<String>,
-
-    #[arg(long)]
-    google_client_id: String,
-  },
+  #[arg(long)]
+  google_client_id: String,
 }

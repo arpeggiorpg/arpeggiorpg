@@ -1,6 +1,6 @@
 #![recursion_limit = "256"]
 
-//! Phone and Tablet.
+// Arpeggio RPG core game simulation library
 
 // I don't know why I still need to use old-style extern crate for uom.
 // In types.rs we use "ISQ!", but replacing this `extern crate` with
