@@ -24,7 +24,7 @@ async fn main() -> Result<(), anyhow::Error> {
 async fn serve(
   storage_path: Option<PathBuf>, google_bucket: Option<String>, google_client_id: String,
 ) -> anyhow::Result<()> {
-  info!("Starting up the P&T Remote Programming Interface HTTP server!");
+  info!("Starting up the Arpeggio Remote Programming Interface HTTP server!");
 
   let storage: Arc<dyn Storage> = if let Some(storage_path) = storage_path {
     Arc::new(CachedStorage::new(FSStorage::new(storage_path)))
