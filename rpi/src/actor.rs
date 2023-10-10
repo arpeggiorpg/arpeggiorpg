@@ -50,13 +50,13 @@ impl AuthenticatableService {
     let user_id = self
       .validate_google_token(&google_id_token)
       .await
-      .context(format!("Validating Google ID Token"))
+      .context("Validating Google ID Token".to_string())
       .map_err(|e| AuthenticationError { from: e })?;
-    return Ok(AuthenticatedService {
+    Ok(AuthenticatedService {
       user_id,
       storage: self.storage.clone(),
       ping_service: self.ping_service.clone(),
-    });
+    })
   }
 
   async fn validate_google_token(&self, id_token: &str) -> AEResult<UserID> {
@@ -88,7 +88,7 @@ impl AuthenticatedService {
   pub async fn new_game(&self, name: String) -> AEResult<GameID> {
     let game: Game = Default::default();
     let game_id = self.storage.create_game(&self.user_id, &game, &name).await?;
-    Ok(game_id.clone())
+    Ok(game_id)
   }
 
   pub async fn list_games(&self) -> AEResult<GameList> {
@@ -104,9 +104,7 @@ impl AuthenticatedService {
     let games = self.storage.list_user_games(&self.user_id).await?;
     for game in games {
       if game.user_id == self.user_id && game.role == Role::GM {
-        return Ok(
-          load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"))?,
-        );
+        return load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"));
       }
     }
     Err(anyhow!("User {:?} is not a {role:?} of game {game_id:?}", self.user_id))
@@ -117,7 +115,7 @@ impl AuthenticatedService {
     // TODO Actually return a GMService!!!
     Ok(GameService {
       storage: self.storage.clone(),
-      game_id: game_id.clone(),
+      game_id: *game_id,
       game,
       game_index,
       ping_service: self.ping_service.clone(),
@@ -129,7 +127,7 @@ impl AuthenticatedService {
     // TODO Actually return a PlayerService!!!
     Ok(GameService {
       storage: self.storage.clone(),
-      game_id: game_id.clone(),
+      game_id: *game_id,
       game,
       game_index,
       ping_service: self.ping_service.clone(),
@@ -142,7 +140,7 @@ impl AuthenticatedService {
   pub async fn check_invitation(
     &self, game_id: &GameID, invitation_id: &InvitationID,
   ) -> AEResult<bool> {
-    Ok(self.storage.check_invitation(game_id, invitation_id).await?)
+    self.storage.check_invitation(game_id, invitation_id).await
   }
 
   pub async fn accept_invitation(
@@ -270,7 +268,7 @@ impl PingService {
 
   pub async fn register_waiter(&self, game_id: &GameID, sender: oneshot::Sender<()>) {
     let mut waiters = self.waiters.lock().await;
-    let game_waiters = waiters.entry(game_id.clone());
+    let game_waiters = waiters.entry(*game_id);
     game_waiters.and_modify(|v| v.push(sender)).or_insert(vec![]);
   }
 

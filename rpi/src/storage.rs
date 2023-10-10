@@ -145,7 +145,7 @@ impl<S: Storage> Storage for CachedStorage<S> {
     let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
     let mut snapshots = HashMap::new();
     snapshots.insert(snapshot, game.clone());
-    cache.insert(game_id.clone(), CachedGame { snapshots, logs: HashMap::new() });
+    cache.insert(*game_id, CachedGame { snapshots, logs: HashMap::new() });
     return Ok(game);
   }
 
@@ -214,8 +214,8 @@ impl FSStorage {
   pub fn new(path: PathBuf) -> FSStorage {
     let users_path = path.join("users");
     let games_path = path.join("games");
-    fs::create_dir_all(&users_path).expect("Couldn't create users path");
-    fs::create_dir_all(&games_path).expect("Couldn't create games path");
+    fs::create_dir_all(users_path).expect("Couldn't create users path");
+    fs::create_dir_all(games_path).expect("Couldn't create games path");
     FSStorage { path }
   }
 
@@ -237,7 +237,7 @@ impl FSStorage {
   }
 
   fn game_path(&self, game_id: &GameID) -> PathBuf {
-    self.path.join("games").join(&game_id.to_string())
+    self.path.join("games").join(game_id.to_string())
   }
 
   fn metadata_path(&self, game_id: &GameID) -> PathBuf {
@@ -303,7 +303,7 @@ impl Storage for FSStorage {
       .max()
       .unwrap_or(0);
 
-    let snapshot_path = self.game_path(game_id).join(&game_idx.to_string());
+    let snapshot_path = self.game_path(game_id).join(game_idx.to_string());
     let log_paths = fs::read_dir(snapshot_path)?
       .map(|res| res.map(|e| e.path()))
       .collect::<Result<Vec<PathBuf>, _>>()?;
@@ -340,7 +340,7 @@ impl Storage for FSStorage {
   async fn invite(&self, game_id: &GameID) -> Result<Invitation> {
     let invitations_path = self.game_path(game_id).join("invitations");
     fs::create_dir_all(&invitations_path)?;
-    let invitation = Invitation { id: InvitationID::gen(), game_id: game_id.clone() };
+    let invitation = Invitation { id: InvitationID::gen(), game_id: *game_id };
     // TODO FIXME AHHH!! audit all calls to `format!()` to generate files and replace them with
     // safe_child
     let invitation_path = invitations_path.join(format!("invitation-{}", invitation.id.0));
@@ -376,7 +376,7 @@ impl Storage for FSStorage {
         .filter_map(|path| {
           path.file_name()?.to_str()?.strip_prefix("invitation-")?.parse::<InvitationID>().ok()
         })
-        .map(|id| Invitation { id, game_id: game_id.clone() })
+        .map(|id| Invitation { id, game_id: *game_id })
         .collect(),
     )
   }
@@ -397,7 +397,7 @@ impl Storage for FSStorage {
     }
     let profile = GameProfile {
       user_id: user_id.clone(),
-      game_id: game_id.clone(),
+      game_id: *game_id,
       profile_name,
       role: Role::Player,
     };
@@ -419,7 +419,7 @@ impl Storage for FSStorage {
 
     let profile = GameProfile {
       user_id: user_id.clone(),
-      game_id: game_id.clone(),
+      game_id,
       profile_name: PlayerID("GM".to_string()),
       role: Role::GM,
     };
@@ -439,7 +439,7 @@ impl Storage for FSStorage {
 
   async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> Result<Game> {
     let game_path = self.game_path(game_id);
-    let snapshot_path = game_path.join(&snapshot.to_string());
+    let snapshot_path = game_path.join(snapshot.to_string());
 
     let game_filename = snapshot_path.join("game.json");
     debug!(event = "load-snapshot", ?game_filename);
@@ -449,8 +449,8 @@ impl Storage for FSStorage {
 
   async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> Result<GameLog> {
     let game_path = self.game_path(game_id);
-    let snapshot_path = game_path.join(&index.game_idx.to_string());
-    let filename = snapshot_path.join(&format!("log-{}.json", index.log_idx));
+    let snapshot_path = game_path.join(index.game_idx.to_string());
+    let filename = snapshot_path.join(format!("log-{}.json", index.log_idx));
     debug!(event = "load-log", ?game_id, ?index, ?filename);
     let file = fs::File::open(filename)?;
     Ok(serde_json::from_reader(file)?)
