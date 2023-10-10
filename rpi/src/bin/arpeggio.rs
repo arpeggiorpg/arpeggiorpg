@@ -3,7 +3,7 @@ use std::{env, path::PathBuf, sync::Arc};
 use anyhow::anyhow;
 use clap::Parser;
 use tracing::{info};
-use tracing_subscriber;
+
 
 use rpi::{
   actor,

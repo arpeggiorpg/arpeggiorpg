@@ -1167,7 +1167,7 @@ impl Game {
         let cids = cids.into_iter().filter(|cid| *cid != actor_id).collect();
         Ok(cids)
       }
-      _ => return Err(GameError::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
+      _ => Err(GameError::InvalidTargetForTargetSpec(target, DecidedTarget::Point(pt))),
     }
   }
 

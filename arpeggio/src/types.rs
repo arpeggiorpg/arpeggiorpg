@@ -1305,7 +1305,7 @@ impl<'creature, 'game: 'creature> Serialize for DynamicCreature<'creature, 'game
       can_act: self.can_act(),
       can_move: self.can_move(),
     };
-    return SerializedCreature::serialize(&screature, serializer);
+    SerializedCreature::serialize(&screature, serializer)
   }
 }
 

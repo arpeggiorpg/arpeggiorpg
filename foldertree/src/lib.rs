@@ -465,7 +465,7 @@ extern crate serde_json;
 mod test {
   use crate::{FolderPath, FolderTree, FolderTreeError};
   #[cfg(feature = "serde")]
-  use serde_json;
+  
   use std::{collections::HashSet, iter::FromIterator};
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
@@ -590,7 +590,7 @@ mod test {
       .unwrap();
     ftree.make_folder(&fpath(""), "home".to_string(), "home folder".to_string()).unwrap();
     ftree.move_folder(&fpath("/usr"), &fpath("/home")).unwrap();
-    for path in vec![fpath("/usr"), fpath("/usr/bin"), fpath("/usr/share")].iter() {
+    for path in [fpath("/usr"), fpath("/usr/bin"), fpath("/usr/share")].iter() {
       match ftree.get(path) {
         Err(FolderTreeError::FolderNotFound(p)) => assert_eq!(p, *path),
         x => panic!("Bad result: {:?}", x),

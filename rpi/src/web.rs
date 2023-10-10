@@ -48,7 +48,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
 
   let cors = CorsLayer::permissive();
   let trace = TraceLayer::new_for_http();
-  return axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace);
+  axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace)
 }
 
 #[derive(serde::Deserialize)]
@@ -74,7 +74,7 @@ async fn authenticate<B>(
   match authenticated_result {
     Ok(authenticated) => {
       request.extensions_mut().insert(Arc::new(authenticated));
-      Ok(next.run(request).await.into())
+      Ok(next.run(request).await)
     }
     Err(_) => {
       let body = body::boxed("auth failed".to_string());
@@ -92,7 +92,7 @@ async fn authorize_game<B>(
   // TODO: return a 404 when the game doesn't exist.
   let gm = authenticated.gm(&game_id).await?;
   request.extensions_mut().insert(Arc::new(gm));
-  Ok(next.run(request).await.into())
+  Ok(next.run(request).await)
 }
 
 async fn list_games(

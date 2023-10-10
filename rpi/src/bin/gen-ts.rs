@@ -83,5 +83,5 @@ pub fn main() -> Result<(), anyhow::Error> {
     file.write_all(decl.as_bytes())?;
     file.write_all(b"\n\n")?;
   }
-  return Ok(());
+  Ok(())
 }
