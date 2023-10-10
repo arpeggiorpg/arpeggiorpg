@@ -5,7 +5,7 @@ use clap::Parser;
 use tracing::{error, info};
 use tracing_subscriber;
 
-use ptrpi::{actor, storage::{CachedStorage, CloudStorage, FSStorage, Storage}, web};
+use rpi::{actor, storage::{CachedStorage, CloudStorage, FSStorage, Storage}, web};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
