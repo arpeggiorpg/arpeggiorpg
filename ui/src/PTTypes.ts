@@ -5,7 +5,7 @@ import type {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
-  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
+  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
   GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
   ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
   SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
@@ -14,7 +14,7 @@ export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
-  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GameCommand, GameID,
+  Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
   GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
   ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
   SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
@@ -100,40 +100,40 @@ export const decodePoint3 = Z.string().transform(parsePoint3);
 export const arrayOfPoint3 = Z.array(decodePoint3);
 
 export const decodePotentialTargets: Decoder<PotentialTargets> = Z.union([
-  Z.object({CreatureIDs: Z.array(Z.string())}),
-  Z.object({Points: Z.array(decodePoint3)})
+  Z.object({ CreatureIDs: Z.array(Z.string()) }),
+  Z.object({ Points: Z.array(decodePoint3) })
 ]);
 
 const decodeDice: Decoder<Dice> = Z.lazy(() => Z.union([
-  Z.object({Flat: Z.object({value: Z.number()})}),
-  Z.object({Expr: Z.object({num: Z.number(), size: Z.number()})}),
-  Z.object({Plus: Z.tuple([decodeDice, decodeDice])}),
-  Z.object({BestOf: Z.tuple([Z.number(), decodeDice])}),
+  Z.object({ Flat: Z.object({ value: Z.number() }) }),
+  Z.object({ Expr: Z.object({ num: Z.number(), size: Z.number() }) }),
+  Z.object({ Plus: Z.tuple([decodeDice, decodeDice]) }),
+  Z.object({ BestOf: Z.tuple([Z.number(), decodeDice]) }),
 ]));
 
 const decodeDuration: Decoder<Duration> = Z.union([
   Z.literal("Interminate"),
-  Z.object({Rounds: Z.number()}),
+  Z.object({ Rounds: Z.number() }),
 ]);
 
 const decodeEffect: Decoder<CreatureEffect> = Z.union([
-  Z.object({ApplyCondition: Z.tuple([decodeDuration, Z.lazy(() => decodeCondition)])}),
-  Z.object({Damage: decodeDice}),
-  Z.object({GenerateEnergy: Z.number()}),
-  Z.object({Heal: decodeDice}),
-  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeEffect))}),
+  Z.object({ ApplyCondition: Z.tuple([decodeDuration, Z.lazy(() => decodeCondition)]) }),
+  Z.object({ Damage: decodeDice }),
+  Z.object({ GenerateEnergy: Z.number() }),
+  Z.object({ Heal: decodeDice }),
+  Z.object({ MultiEffect: Z.array(Z.lazy(() => decodeEffect)) }),
 ]);
 
 const decodeCondition: Decoder<Condition> = Z.union([
   Z.literal("Dead"),
   Z.literal("DoubleMaxMovement"),
   Z.literal("Incapacitated"),
-  Z.object({ActivateAbility: Z.string()}),
-  Z.object({RecurringEffect: decodeEffect}),
+  Z.object({ ActivateAbility: Z.string() }),
+  Z.object({ RecurringEffect: decodeEffect }),
 ]);
 
 
-const decodeAppliedCondition: Decoder<AppliedCondition> = Z.object({ remaining: decodeDuration, condition: decodeCondition});
+const decodeAppliedCondition: Decoder<AppliedCondition> = Z.object({ remaining: decodeDuration, condition: decodeCondition });
 
 export const decodeSkillLevel: Decoder<SkillLevel> = Z.union([
   Z.literal("Inept"),
@@ -217,10 +217,10 @@ const decodeSceneCreation: Decoder<SceneCreation> = Z.object({
 });
 
 const decodeVolume: Decoder<Volume> = Z.union([
-  Z.object({Sphere: Z.number()}),
-  Z.object({Line: Z.object({vector: decodePoint3})}),
-  Z.object({VerticalCylinder: Z.object({ radius: Z.number(), height: Z.number()})}),
-  Z.object({AABB: decodeAABB}),
+  Z.object({ Sphere: Z.number() }),
+  Z.object({ Line: Z.object({ vector: decodePoint3 }) }),
+  Z.object({ VerticalCylinder: Z.object({ radius: Z.number(), height: Z.number() }) }),
+  Z.object({ AABB: decodeAABB }),
 ]);
 
 export const decodeVolumeCondition: Decoder<VolumeCondition> = Z.object({
@@ -254,13 +254,13 @@ export const decodeScene: Decoder<Scene> = Z.object({
 });
 
 const decodeFolderItemID: Decoder<FolderItemID> = Z.union([
-  Z.object({"SceneID": Z.string()}),
-  Z.object({"CreatureID": Z.string()}),
-  Z.object({"NoteID": Z.string()}),
-  Z.object({"ItemID": Z.string()}),
-  Z.object({"AbilityID": Z.string()}),
-  Z.object({"ClassID": Z.string()}),
-  Z.object({"SubfolderID": Z.string()}),
+  Z.object({ "SceneID": Z.string() }),
+  Z.object({ "CreatureID": Z.string() }),
+  Z.object({ "NoteID": Z.string() }),
+  Z.object({ "ItemID": Z.string() }),
+  Z.object({ "AbilityID": Z.string() }),
+  Z.object({ "ClassID": Z.string() }),
+  Z.object({ "SubfolderID": Z.string() }),
 ]);
 
 export const decodeFolderPath: Decoder<FolderPath> = Z.string().transform(strpath => {
@@ -284,46 +284,46 @@ const decodeNote: Decoder<Note> = Z.object({
 })
 
 export const decodeInventoryOwner: Decoder<InventoryOwner> = Z.union([
-  Z.object({Scene: Z.string()}),
-  Z.object({Creature: Z.string()}),
+  Z.object({ Scene: Z.string() }),
+  Z.object({ Creature: Z.string() }),
 ]);
 
 const decodeModuleSource: Decoder<ModuleSource> = Z.union([Z.literal("Module"), Z.literal("SavedGame")]);
 
 const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
-  Z.object({Damage: Z.object({hp: Z.number(), rolls: Z.array(Z.number())})}),
-  Z.object({Heal: Z.object({hp: Z.number(), rolls: Z.array(Z.number())})}),
-  Z.object({GenerateEnergy: Z.number()}),
-  Z.object({ReduceEnergy: Z.number()}),
-  Z.object({ApplyCondition: Z.object({id: Z.string(), duration: decodeDuration, condition: decodeCondition})}),
-  Z.object({DecrementConditionRemaining: Z.string()}),
-  Z.object({RemoveCondition: Z.string()}),
+  Z.object({ Damage: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
+  Z.object({ Heal: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
+  Z.object({ GenerateEnergy: Z.number() }),
+  Z.object({ ReduceEnergy: Z.number() }),
+  Z.object({ ApplyCondition: Z.object({ id: Z.string(), duration: decodeDuration, condition: decodeCondition }) }),
+  Z.object({ DecrementConditionRemaining: Z.string() }),
+  Z.object({ RemoveCondition: Z.string() }),
 ]);
 
 const decodeCombatLog: Decoder<CombatLog> = Z.union([
   Z.literal("ForceNextTurn"),
   Z.literal("ForcePrevTurn"),
-  Z.object({ConsumeMovement: Z.number()}),
-  Z.object({ChangeCreatureInitiative: Z.object({creature_id: Z.string(), new_initiative: Z.number()})}),
-  Z.object({EndTurn: Z.string()}),
-  Z.object({RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()]))}),
+  Z.object({ ConsumeMovement: Z.number() }),
+  Z.object({ ChangeCreatureInitiative: Z.object({ creature_id: Z.string(), new_initiative: Z.number() }) }),
+  Z.object({ EndTurn: Z.string() }),
+  Z.object({ RerollInitiative: Z.array(Z.tuple([Z.string(), Z.number()])) }),
 ]);
 
 export const decodeGameLog: Decoder<GameLog> = Z.union([
   Z.literal("StopCombat"),
-  Z.object({SetActiveScene: Z.string()}),
-  Z.object({RegisterPlayer: Z.string()}),
-  Z.object({UnregisterPlayer: Z.string()}),
-  Z.object({GiveCreaturesToPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}),
-  Z.object({RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())])}),
-  Z.object({SetPlayerScene: Z.tuple([Z.string(), Z.string().nullable()])}),
-  Z.object({ChatFromGM: Z.string()}),
-  Z.object({ChatFromPlayer: Z.tuple([Z.string(), Z.string()])}),
-  Z.object({StartCombat: Z.tuple([ Z.string(), Z.array(Z.tuple([Z.string(), Z.number()]))])}),
-  Z.object({CreateFolder: decodeFolderPath}),
-  Z.object({RenameFolder: Z.tuple([decodeFolderPath, Z.string()])}),
-  Z.object({DeleteFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID])}),
-  Z.object({MoveFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID, decodeFolderPath])}),
+  Z.object({ SetActiveScene: Z.string() }),
+  Z.object({ RegisterPlayer: Z.string() }),
+  Z.object({ UnregisterPlayer: Z.string() }),
+  Z.object({ GiveCreaturesToPlayer: Z.tuple([Z.string(), Z.array(Z.string())]) }),
+  Z.object({ RemoveCreaturesFromPlayer: Z.tuple([Z.string(), Z.array(Z.string())]) }),
+  Z.object({ SetPlayerScene: Z.tuple([Z.string(), Z.string().nullable()]) }),
+  Z.object({ ChatFromGM: Z.string() }),
+  Z.object({ ChatFromPlayer: Z.tuple([Z.string(), Z.string()]) }),
+  Z.object({ StartCombat: Z.tuple([Z.string(), Z.array(Z.tuple([Z.string(), Z.number()]))]) }),
+  Z.object({ CreateFolder: decodeFolderPath }),
+  Z.object({ RenameFolder: Z.tuple([decodeFolderPath, Z.string()]) }),
+  Z.object({ DeleteFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID]) }),
+  Z.object({ MoveFolderItem: Z.tuple([decodeFolderPath, decodeFolderItemID, decodeFolderPath]) }),
   Z.object({
     CopyFolderItem: Z.object({
       source: decodeFolderPath,
@@ -332,96 +332,126 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
       new_item_id: decodeFolderItemID,
     })
   }),
-  Z.object({CreateItem: Z.tuple([decodeFolderPath, decodeItem])}),
-  Z.object({EditItem: decodeItem}),
-  Z.object({CreateNote: Z.tuple([decodeFolderPath, decodeNote])}),
-  Z.object({EditNote: Z.tuple([decodeFolderPath, Z.string(), decodeNote])}),
-  Z.object({TransferItem: Z.object({
+  Z.object({ CreateItem: Z.tuple([decodeFolderPath, decodeItem]) }),
+  Z.object({ EditItem: decodeItem }),
+  Z.object({ CreateNote: Z.tuple([decodeFolderPath, decodeNote]) }),
+  Z.object({ EditNote: Z.tuple([decodeFolderPath, Z.string(), decodeNote]) }),
+  Z.object({
+    TransferItem: Z.object({
       from: decodeInventoryOwner,
       to: decodeInventoryOwner,
       item_id: Z.string(),
       count: Z.bigint(),
-  })}),
-  Z.object({RemoveItem: Z.object({
+    })
+  }),
+  Z.object({
+    RemoveItem: Z.object({
       owner: decodeInventoryOwner,
       item_id: Z.string(),
       count: Z.bigint(),
-  })}),
-  Z.object({SetItemCount: Z.object({
+    })
+  }),
+  Z.object({
+    SetItemCount: Z.object({
       owner: decodeInventoryOwner,
       item_id: Z.string(),
       count: Z.bigint(),
-  })}),
-  Z.object({CreateScene: Z.tuple([decodeFolderPath, decodeScene])}),
-  Z.object({EditSceneDetails: Z.object({ scene_id: Z.string(), details: decodeSceneCreation })}),
-  Z.object({SetSceneCreatureVisibility: Z.object({
+    })
+  }),
+  Z.object({ CreateScene: Z.tuple([decodeFolderPath, decodeScene]) }),
+  Z.object({ EditSceneDetails: Z.object({ scene_id: Z.string(), details: decodeSceneCreation }) }),
+  Z.object({
+    SetSceneCreatureVisibility: Z.object({
       scene_id: Z.string(),
       creature_id: Z.string(),
       visibility: decodeVisibility
-  })}),
-  Z.object({AddCreatureToScene: Z.object({
-    scene_id: Z.string(),
-    creature_id: Z.string(),
-    visibility: decodeVisibility,
-  })}),
-  Z.object({RemoveCreatureFromScene: Z.object({
-    scene_id: Z.string(),
-    creature_id: Z.string(),
-  })}),
-  Z.object({AddSceneChallenge: Z.object({
-    scene_id: Z.string(),
-    description: Z.string(),
-    challenge: decodeAttributeCheck,
-  })}),
-  Z.object({RemoveSceneChallenge: Z.object({
-    scene_id: Z.string(),
-    description: Z.string(),
-  })}),
-  Z.object({SetFocusedSceneCreatures: Z.object({
-    scene_id: Z.string(),
-    creatures: Z.array(Z.string()),
-  })}),
-  Z.object({RemoveSceneVolumeCondition: Z.object({
-    scene_id: Z.string(),
-    condition_id: Z.string(),
-  })}),
-  Z.object({EditSceneTerrain: Z.object({
-    scene_id: Z.string(),
-    terrain: decodeTerrain,
-  })}),
-  Z.object({EditSceneHighlights: Z.object({
-    scene_id: Z.string(),
-    highlights: decodeHighlights,
-  })}),
-  Z.object({EditSceneAnnotations: Z.object({
-    scene_id: Z.string(),
-    annotations: decodeAnnotations,
-  })}),
-  Z.object({EditSceneRelatedScenes: Z.object({
-    scene_id: Z.string(),
-    related_scenes: decodeSet(Z.string()),
-  })}),
-  Z.object({EditSceneSceneHotspots: Z.object({
-    scene_id: Z.string(),
-    scene_hotspots: decodeIMap(decodePoint3, Z.string()),
-  })}),
+    })
+  }),
+  Z.object({
+    AddCreatureToScene: Z.object({
+      scene_id: Z.string(),
+      creature_id: Z.string(),
+      visibility: decodeVisibility,
+    })
+  }),
+  Z.object({
+    RemoveCreatureFromScene: Z.object({
+      scene_id: Z.string(),
+      creature_id: Z.string(),
+    })
+  }),
+  Z.object({
+    AddSceneChallenge: Z.object({
+      scene_id: Z.string(),
+      description: Z.string(),
+      challenge: decodeAttributeCheck,
+    })
+  }),
+  Z.object({
+    RemoveSceneChallenge: Z.object({
+      scene_id: Z.string(),
+      description: Z.string(),
+    })
+  }),
+  Z.object({
+    SetFocusedSceneCreatures: Z.object({
+      scene_id: Z.string(),
+      creatures: Z.array(Z.string()),
+    })
+  }),
+  Z.object({
+    RemoveSceneVolumeCondition: Z.object({
+      scene_id: Z.string(),
+      condition_id: Z.string(),
+    })
+  }),
+  Z.object({
+    EditSceneTerrain: Z.object({
+      scene_id: Z.string(),
+      terrain: decodeTerrain,
+    })
+  }),
+  Z.object({
+    EditSceneHighlights: Z.object({
+      scene_id: Z.string(),
+      highlights: decodeHighlights,
+    })
+  }),
+  Z.object({
+    EditSceneAnnotations: Z.object({
+      scene_id: Z.string(),
+      annotations: decodeAnnotations,
+    })
+  }),
+  Z.object({
+    EditSceneRelatedScenes: Z.object({
+      scene_id: Z.string(),
+      related_scenes: decodeSet(Z.string()),
+    })
+  }),
+  Z.object({
+    EditSceneSceneHotspots: Z.object({
+      scene_id: Z.string(),
+      scene_hotspots: decodeIMap(decodePoint3, Z.string()),
+    })
+  }),
 
-  Z.object({SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3])}),
-  Z.object({PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)])}),
+  Z.object({ SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3]) }),
+  Z.object({ PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)]) }),
 
-  Z.object({CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData])}),
-  Z.object({EditCreatureDetails: Z.object({creature_id: Z.string(), details: decodeCreatureCreation})}),
-  Z.object({AddCreatureToCombat: Z.tuple([Z.string(), Z.number()])}),
-  Z.object({RemoveCreatureFromCombat: Z.string()}),
-  Z.object({CombatLog: decodeCombatLog}),
-  Z.object({CreatureLog: Z.tuple([Z.string(), decodeCreatureLog])}),
-  Z.object({AttributeCheckResult: Z.object({creature_id: Z.string(), attribute_check: decodeAttributeCheck, actual: Z.number(), success: Z.boolean()})}),
-  Z.object({Rollback: Z.tuple([Z.number(), Z.number()])}),
+  Z.object({ CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData]) }),
+  Z.object({ EditCreatureDetails: Z.object({ creature_id: Z.string(), details: decodeCreatureCreation }) }),
+  Z.object({ AddCreatureToCombat: Z.tuple([Z.string(), Z.number()]) }),
+  Z.object({ RemoveCreatureFromCombat: Z.string() }),
+  Z.object({ CombatLog: decodeCombatLog }),
+  Z.object({ CreatureLog: Z.tuple([Z.string(), decodeCreatureLog]) }),
+  Z.object({ AttributeCheckResult: Z.object({ creature_id: Z.string(), attribute_check: decodeAttributeCheck, actual: Z.number(), success: Z.boolean() }) }),
+  Z.object({ Rollback: Z.tuple([Z.number(), Z.number()]) }),
 
-  Z.object({LoadModule: Z.object({name: Z.string(), path: decodeFolderPath, source: decodeModuleSource, module: Z.lazy(() => decodeGame) })}),
+  Z.object({ LoadModule: Z.object({ name: Z.string(), path: decodeFolderPath, source: decodeModuleSource, module: Z.lazy(() => decodeGame) }) }),
 ]);
 
-if (typeof window !== 'undefined') { (window as any).decodeGameLog = decodeGameLog;}
+if (typeof window !== 'undefined') { (window as any).decodeGameLog = decodeGameLog; }
 
 const decodePlayer: Decoder<Player> = Z.object({
   player_id: Z.string(),
@@ -471,39 +501,43 @@ const decodeFolder: Decoder<Folder> = Z.object({
 const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
   Z.literal("Actor"),
   Z.literal("Melee"),
-  Z.object({Range: Z.number()}),
-  Z.object({SomeCreaturesInVolumeInRange: Z.object({
+  Z.object({ Range: Z.number() }),
+  Z.object({
+    SomeCreaturesInVolumeInRange: Z.object({
       volume: decodeVolume,
       maximum: Z.number(),
       range: Z.number(),
-    })}),
-    Z.object({AllCreaturesInVolumeInRange: Z.object({
+    })
+  }),
+  Z.object({
+    AllCreaturesInVolumeInRange: Z.object({
       volume: decodeVolume,
       range: Z.number(),
-    })}),
-    Z.object({LineFromActor: Z.object({ distance: Z.number() })})
+    })
+  }),
+  Z.object({ LineFromActor: Z.object({ distance: Z.number() }) })
 ]);
 
 export const decodeSceneTarget: Decoder<SceneTarget> =
-// Z.union([
-  Z.object({RangedVolume: Z.object({ volume: decodeVolume, range: Z.number()})});
+  // Z.union([
+  Z.object({ RangedVolume: Z.object({ volume: decodeVolume, range: Z.number() }) });
 // ]);
 
 const decodeCreatureEffect: Decoder<CreatureEffect> = Z.union([
-  Z.object({ApplyCondition: Z.tuple([decodeDuration, decodeCondition])}),
-  Z.object({Heal: decodeDice}),
-  Z.object({Damage: decodeDice}),
+  Z.object({ ApplyCondition: Z.tuple([decodeDuration, decodeCondition]) }),
+  Z.object({ Heal: decodeDice }),
+  Z.object({ Damage: decodeDice }),
   // GenerateEnergy should be dice, not number...
-  Z.object({GenerateEnergy: Z.number()}),
-  Z.object({MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect))}),
+  Z.object({ GenerateEnergy: Z.number() }),
+  Z.object({ MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect)) }),
 ]);
 const decodeSceneEffect: Decoder<SceneEffect> = // Z.union([
-  Z.object({CreateVolumeCondition: Z.object({duration: decodeDuration, condition: decodeCondition})});
+  Z.object({ CreateVolumeCondition: Z.object({ duration: decodeDuration, condition: decodeCondition }) });
 // ]);
 
 export const decodeAction: Decoder<Action> = Z.union([
-  Z.object({Creature: Z.object({effect: decodeCreatureEffect, target: decodeCreatureTarget})}),
-  Z.object({SceneVolume: Z.object({effect: decodeSceneEffect, target: decodeSceneTarget})}),
+  Z.object({ Creature: Z.object({ effect: decodeCreatureEffect, target: decodeCreatureTarget }) }),
+  Z.object({ SceneVolume: Z.object({ effect: decodeSceneEffect, target: decodeSceneTarget }) }),
 ]);
 
 
@@ -542,8 +576,8 @@ export const decodeChangedGame: Decoder<ChangedGame> = Z.object({
 export function decodeRustResult<T, E>(decode_ok: Decoder<T>, decode_err: Decoder<E>): Decoder<RustResult<T, E>> {
   return Z.union(
     [
-      Z.object({Ok: decode_ok}).transform(({Ok}): RustResult<T, E> => ({ t: "Ok", result: Ok as T})),
-      Z.object({Err: decode_err}).transform(({Err}): RustResult<T, E> => ({ t: "Err", error: Err as E})),
+      Z.object({ Ok: decode_ok }).transform(({ Ok }): RustResult<T, E> => ({ t: "Ok", result: Ok as T })),
+      Z.object({ Err: decode_err }).transform(({ Err }): RustResult<T, E> => ({ t: "Err", error: Err as E })),
     ]);
 }
 
@@ -583,7 +617,7 @@ export const decodeGameWithMetadata: Decoder<GameWithMetadata> = Z.object({
   metadata: decodeGameMetadata,
 });
 
-export function encodeGameCommand(cmd: GameCommand): object | string {
+export function encodeGMCommand(cmd: GMCommand): object | string {
   if (typeof cmd === "string") return cmd;
   // Any commands which contain data that needs encoded needs to be handled explicitly.
   // Unfortunately this is not type-checked.
@@ -652,9 +686,9 @@ export function encodeGameCommand(cmd: GameCommand): object | string {
       },
     };
   if ("CombatAct" in cmd)
-    return { CombatAct: [cmd.CombatAct[0], encodeDecidedTarget(cmd.CombatAct[1])] };
+    return { CombatAct: { ...cmd.CombatAct, target: encodeDecidedTarget(cmd.CombatAct.target) } };
   if ("PathCreature" in cmd)
-    return { PathCreature: [cmd.PathCreature[0], cmd.PathCreature[1], encodePoint3(cmd.PathCreature[2])] };
+    return { PathCreature: { ...cmd.PathCreature, destination: encodePoint3(cmd.PathCreature.destination) } };
   if ("SetCreaturePos" in cmd)
     return { SetCreaturePos: [cmd.SetCreaturePos[0], cmd.SetCreaturePos[1], encodePoint3(cmd.SetCreaturePos[2])] };
   if ("PathCurrentCombatCreature" in cmd)
@@ -679,7 +713,7 @@ export function encodeFolderPath(path: FolderPath): string {
 
 function encodeDecidedTarget(dt: DecidedTarget): object | string {
   if (typeof dt !== "string" && "Point" in dt) {
-    return {Point: encodePoint3(dt.Point)};
+    return { Point: encodePoint3(dt.Point) };
   }
   return dt;
 }

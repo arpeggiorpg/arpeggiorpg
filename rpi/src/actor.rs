@@ -10,7 +10,7 @@ use crate::{
   types::{GameID, GameIndex, GameList, GameMetadata, GameProfile, InvitationID, Role, UserID},
 };
 
-use arpeggio::types::{self, Game, GameCommand, PlayerID};
+use arpeggio::types::{self, Game, GMCommand, PlayerID, PlayerCommand};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Authentication Error")]
@@ -162,9 +162,9 @@ impl AuthenticatedService {
       self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?;
     let (game, _idx) = load_game(&*self.storage, game_id).await?;
 
-    let command = GameCommand::RegisterPlayer(profile.profile_name.clone());
+    let command = GMCommand::RegisterPlayer(profile.profile_name.clone());
     // Probably need to share this code with GMService.perform_command
-    let changed_game = game.perform_command(command)?;
+    let changed_game = game.perform_gm_command(command)?;
     self.storage.apply_game_logs(game_id, &changed_game.logs).await?;
     self.ping_service.ping(game_id).await?;
 
@@ -199,13 +199,13 @@ impl GMService {
     Ok(self.storage.list_invitations(&self.game_id).await?.into_iter().map(|i| i.id).collect())
   }
 
-  pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {
+  pub async fn perform_command(&self, command: GMCommand) -> AEResult<types::ChangedGame> {
     let log_cmd = command.clone();
-    info!("perform_command:start: {:?}", &log_cmd);
-    let changed_game = self.game.perform_command(command)?;
+    info!("perform_gm_command:start: {:?}", &log_cmd);
+    let changed_game = self.game.perform_gm_command(command)?;
     self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
     self.ping_service.ping(&self.game_id).await?;
-    debug!("perform_command:done: {:?}", &log_cmd);
+    debug!("perform_gm_command:done: {:?}", &log_cmd);
     Ok(changed_game)
   }
 
@@ -242,12 +242,12 @@ impl GMService {
   ) -> AEResult<String> {
     let _game_to_load = load_game(&*self.storage, game_id_to_load).await?;
     Ok("".to_string())
-    // RADIX FIXME TODO: update the GameCommand for LoadModule.
-    // let command = GameCommand::LoadModule {
+    // RADIX FIXME TODO: update the GMCommand for LoadModule.
+    // let command = GMCommand::LoadModule {
     //   game: game_to_load,
     //   path: folder_path,
     // };
-    // self.perform_command(command).await
+    // self.perform_gm_command(command).await
   }
 }
 
@@ -280,14 +280,13 @@ impl PlayerService {
     Ok(self.storage.list_invitations(&self.game_id).await?.into_iter().map(|i| i.id).collect())
   }
 
-  pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {
+  pub async fn perform_command(&self, command: PlayerCommand) -> AEResult<types::ChangedGame> {
     let log_cmd = command.clone();
-    info!("perform_command:start: {:?}", &log_cmd);
-    // TODO: we need PlayerCommand!
-    let changed_game = self.game.perform_command(command)?;
+    info!("perform_player_command:start: {:?}", &log_cmd);
+    let changed_game = self.game.perform_player_command(command)?;
     self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
     self.ping_service.ping(&self.game_id).await?;
-    debug!("perform_command:done: {:?}", &log_cmd);
+    debug!("perform_player_command:done: {:?}", &log_cmd);
     Ok(changed_game)
   }
 

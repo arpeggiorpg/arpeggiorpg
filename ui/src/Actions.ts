@@ -103,7 +103,7 @@ export function startPoll(mode: "gm" | "player", gameId: string): () => void {
       const url = `${gameUrl}poll/${index.game_idx}/${index.log_idx}`;
       try {
         console.log("gonna fetch");
-        let result = await ptfetch(url, {signal}, T.decodeGameWithMetadata);
+        let result = await ptfetch(url, { signal }, T.decodeGameWithMetadata);
         index = result.index;
         getState().refresh(result.game);
       } catch (e) {
@@ -156,11 +156,11 @@ export async function requestMove(cid: T.CreatureID) {
   }
 }
 
-export function moveCreature(creature_id: T.CreatureID, dest: T.Point3) {
+export function moveCreature(creature_id: T.CreatureID, destination: T.Point3) {
   getState().clearMovementOptions();
   const scene = getState().getFocusedScene();
   if (scene) {
-    sendCommand({ PathCreature: [scene.id, creature_id, dest] });
+    sendCommand({ PathCreature: { scene_id: scene.id, creature_id: creature_id, destination } });
   } else {
     throw new Error(`Tried moving when there is no scene`);
   }
@@ -194,7 +194,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   const { ability_id, options } = opts;
   if (!("CreatureIDs" in options)) { throw new Error(`Only support CreatureIDs for now`); }
   const target: T.DecidedTarget = { Creature: target_id };
-  sendCommand({ CombatAct: [ability_id, target] });
+  sendCommand({ CombatAct: { ability_id, target } });
   getState().clearPotentialTargets();
 }
 
@@ -206,7 +206,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
     throw new Error(`This function only works for abilities that use Points`);
   }
   const target: T.DecidedTarget = { Point: point };
-  sendCommand({ CombatAct: [ability_id, target] });
+  sendCommand({ CombatAct: { ability_id, target } });
   getState().clearPotentialTargets();
 }
 
@@ -235,8 +235,8 @@ function gameUrl() {
   return `/g/${gameId}/${mode}`;
 }
 
-export async function sendCommand(cmd: T.GameCommand) {
-  const json = T.encodeGameCommand(cmd);
+export async function sendCommand(cmd: T.GMCommand) {
+  const json = T.encodeGMCommand(cmd);
   console.log("[sendCommand:JSON]", json);
 
   const result = await ptfetch(
@@ -261,7 +261,7 @@ export async function sendCommand(cmd: T.GameCommand) {
   }
 }
 
-export function sendCommands(cmds: Array<T.GameCommand>) {
+export function sendCommands(cmds: Array<T.GMCommand>) {
   // TODO: I guess we could add an endpoint that handles multiple commands at once
   for (const cmd of cmds) {
     sendCommand(cmd);
@@ -271,8 +271,8 @@ export function sendCommands(cmds: Array<T.GameCommand>) {
 /// Send a Command and *don't* automatically handle errors, but instead return a future
 /// representing the result. This is useful for code which wants to send a command and interpret
 /// the resulting gamelogs.
-export async function sendCommandWithResult(cmd: T.GameCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
-  const json = T.encodeGameCommand(cmd);
+export async function sendCommandWithResult(cmd: T.GMCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
+  const json = T.encodeGMCommand(cmd);
   console.log("[sendCommand:JSON]", json);
   const rpi_result = decodeFetch(
     "/",
@@ -299,7 +299,7 @@ export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
-    return sendCommand({ CombatAct: [ability_id, "Actor"] });
+    return sendCommand({ CombatAct: { ability_id, target: "Actor" } });
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }
@@ -328,5 +328,5 @@ export async function createGame(name: string): Promise<T.GameID> {
 export async function invite(): Promise<T.InvitationID> {
   const gameId = getState().gameId;
   if (!gameId) { throw new Error("Must be called in context of a game!"); }
-  return await ptfetch(`/g/${gameId}/gm/invitations`, {method: "POST"}, Z.string());
+  return await ptfetch(`/g/${gameId}/gm/invitations`, { method: "POST" }, Z.string());
 }
