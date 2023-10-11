@@ -159,14 +159,22 @@ impl Game {
     self.abilities.get(&abid).ok_or_else(|| GameError::NoAbility(abid))
   }
 
-  /// Perform a GameCommand on the current Game.
+  /// Perform a PlayerCommand on the current Game.
+  pub fn perform_player_command(&self, cmd: PlayerCommand) -> Result<ChangedGame, GameError> {
+    // ChatFromPlayer(ref pid, ref msg) => {
+    //   self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned()))
+    // }
+    Err(GameError::BuggyProgram("lol nope".to_string()))
+  }
+
+  /// Perform a GMCommand on the current Game.
   ///
   /// The result includes a new Game instance and a Vec of GameLogs. These GameLogs should be a
   /// deterministic representation of the changes made to the Game, so they can be used to replay
   /// history and get the same exact result. An Undo operation can be implemented by rolling back to
   /// a previous game Snapshot and replaying until the desired GameLog.
-  pub fn perform_command(&self, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    use self::GameCommand::*;
+  pub fn perform_gm_command(&self, cmd: GMCommand) -> Result<ChangedGame, GameError> {
+    use self::GMCommand::*;
     let change = match cmd {
       LoadModule { ref name, ref path, source, game } => self.change_with(GameLog::LoadModule {
         name: name.clone(),
@@ -190,9 +198,6 @@ impl Game {
 
       // ** Chat **
       ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
-      ChatFromPlayer(ref pid, ref msg) => {
-        self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned()))
-      }
 
       // ** Attribute checks **
       AttributeCheck(cid, check) => self.attribute_check(cid, &check),
@@ -276,11 +281,15 @@ impl Game {
       EditCreatureDetails { creature_id, details } => {
         self.change_with(GameLog::EditCreatureDetails { creature_id, details })
       }
-      PathCreature(scene, cid, pt) => Ok(self.path_creature(scene, cid, pt)?.0),
+      PathCreature { scene_id, creature_id, destination } => {
+        Ok(self.path_creature(scene_id, creature_id, destination)?.0)
+      }
       SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
-      CombatAct(abid, dtarget) => self.combat_act(abid, dtarget),
-      ActCreature(scene, cid, abid, dtarget) => self.ooc_act(scene, cid, abid, dtarget),
+      CombatAct { ability_id, target } => self.combat_act(ability_id, target),
+      ActCreature { scene_id, creature_id, ability_id, target } => {
+        self.ooc_act(scene_id, creature_id, ability_id, target)
+      }
       EditSceneTerrain { scene_id, ref terrain } => {
         self.change_with(GameLog::EditSceneTerrain { scene_id, terrain: terrain.clone() })
       }
@@ -314,7 +323,7 @@ impl Game {
       }
       ForceNextTurn => self.change_with(GameLog::CombatLog(CombatLog::ForceNextTurn)),
       ForcePrevTurn => self.change_with(GameLog::CombatLog(CombatLog::ForcePrevTurn)),
-      Done => self.next_turn(),
+      EndTurn => self.next_turn(),
 
       // These are handled by the app before being passed to the Game:
       Rollback(..) => bug("Game Rollback"),
@@ -1335,11 +1344,11 @@ pub mod test {
   use indexed::IndexedHashMap;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-    t_perform(game, GameCommand::StartCombat(t_scene_id(), combatants))
+    t_perform(game, GMCommand::StartCombat(t_scene_id(), combatants))
   }
 
   pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
-    t_perform(game, GameCommand::CombatAct(ability_id, target))
+    t_perform(game, GMCommand::CombatAct { ability_id, target })
   }
 
   pub fn t_game() -> Game {
@@ -1405,17 +1414,17 @@ pub mod test {
     ])
   }
 
-  pub fn perf(game: &Game, cmd: GameCommand) -> Result<ChangedGame, GameError> {
-    game.perform_command(cmd)
+  pub fn perf(game: &Game, cmd: GMCommand) -> Result<ChangedGame, GameError> {
+    game.perform_gm_command(cmd)
   }
 
-  pub fn t_perform(game: &Game, cmd: GameCommand) -> Game { perf(game, cmd).unwrap().game }
+  pub fn t_perform(game: &Game, cmd: GMCommand) -> Game { perf(game, cmd).unwrap().game }
 
   #[test]
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![non]));
+    let result = game.perform_gm_command(GMCommand::StartCombat(t_scene_id(), vec![non]));
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1425,7 +1434,7 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result = game.perform_command(GameCommand::StartCombat(t_scene_id(), vec![]));
+    let result = game.perform_gm_command(GMCommand::StartCombat(t_scene_id(), vec![]));
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -1436,10 +1445,15 @@ pub mod test {
   fn stop_combat() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    let game =
-      t_perform(&game, GameCommand::CombatAct(abid_punch(), DecidedTarget::Creature(cid_ranger())));
+    let game = t_perform(
+      &game,
+      GMCommand::CombatAct {
+        ability_id: abid_punch(),
+        target: DecidedTarget::Creature(cid_ranger()),
+      },
+    );
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
-    let game = t_perform(&game, GameCommand::StopCombat);
+    let game = t_perform(&game, GMCommand::StopCombat);
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health(), HP(7));
   }
 
@@ -1447,7 +1461,7 @@ pub mod test {
   fn movement() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    t_perform(&game, GameCommand::PathCurrentCombatCreature(Point3::new(100, 0, 0)));
+    t_perform(&game, GMCommand::PathCurrentCombatCreature(Point3::new(100, 0, 0)));
   }
 
   #[test]
@@ -1458,7 +1472,7 @@ pub mod test {
       vec![cid_rogue(), cid_ranger(), cid_cleric()]
     );
     // move ranger to have an initiative higher than the rogue
-    let game = t_perform(&game, GameCommand::ChangeCreatureInitiative(cid_ranger(), 30));
+    let game = t_perform(&game, GMCommand::ChangeCreatureInitiative(cid_ranger(), 30));
     assert_eq!(
       game.get_combat().unwrap().combat.creature_ids(),
       vec![cid_ranger(), cid_rogue(), cid_cleric()]
@@ -1470,14 +1484,14 @@ pub mod test {
     let game = t_game();
     let game = t_perform(
       &game,
-      GameCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+      GMCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
     );
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid_punch(), DecidedTarget::Creature(cid_ranger()));
-      let game = t_perform(&game, GameCommand::Done);
-      let game = t_perform(&game, GameCommand::Done);
+      let game = t_perform(&game, GMCommand::EndTurn);
+      let game = t_perform(&game, GMCommand::EndTurn);
       let game = t_game_act(&game, abid_heal(), DecidedTarget::Creature(cid_ranger()));
-      let game = t_perform(&game, GameCommand::Done);
+      let game = t_perform(&game, GMCommand::EndTurn);
       Ok(game)
     };
     iter(&game).unwrap();
@@ -1489,16 +1503,16 @@ pub mod test {
     let game = t_game();
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1100, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1100, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::ActCreature(
-        t_scene_id(),
-        cid_cleric(),
-        abid_fireball(),
-        DecidedTarget::Point(Point3::new(0, 0, 0)),
-      ),
+      GMCommand::ActCreature {
+        scene_id: t_scene_id(),
+        creature_id: cid_cleric(),
+        ability_id: abid_fireball(),
+        target: DecidedTarget::Point(Point3::new(0, 0, 0)),
+      },
     );
     assert_eq!(game.get_creature(cid_rogue()).unwrap().creature.cur_health, HP(7));
     assert_eq!(game.get_creature(cid_ranger()).unwrap().creature.cur_health, HP(7));
@@ -1513,11 +1527,11 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 
@@ -1537,11 +1551,11 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
     );
 
     let scene = game.get_scene(t_scene_id()).unwrap();
@@ -1559,11 +1573,11 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(100, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(100, 0, 0)),
     );
     let game = t_perform(
       &game,
-      GameCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(200, 0, 0)),
+      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(200, 0, 0)),
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 

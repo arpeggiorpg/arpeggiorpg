@@ -14,7 +14,7 @@ use http::StatusCode;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use arpeggio::types::{
-  AbilityID, CreatureID, Game, GameCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID,
+  AbilityID, CreatureID, Game, GMCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID, PlayerCommand,
 };
 
 use crate::{
@@ -26,7 +26,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
   let gm_routes = axum::Router::new()
     .route("/", get(gm_get_game))
     .route("/poll/:game_idx/:log_idx", get(gm_poll_game))
-    .route("/execute", post(execute))
+    .route("/execute", post(perform_gm_command))
     .route("/movement_options/:scene_id/:cid", get(movement_options))
     .route("/combat_movement_options", get(combat_movement_options))
     .route("/target_options/:scene_id/:cid/:abid", get(target_options))
@@ -43,6 +43,7 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     // - maybe only include top-level objects (creatures, etc) that are in the current scene
     .route("/", get(player_get_game))
     .route("/poll/:game_idx/:log_idx", get(player_poll_game))
+    .route("/execute", post(perform_player_command))
     .route("/movement_options/:scene_id/:creature_id", get(player_movement_options))
     .route_layer(from_fn(authorize_player));
 
@@ -210,11 +211,24 @@ async fn _get_game(
   }))
 }
 
-async fn execute(
-  Extension(service): Extension<Arc<GMService>>, Json(command): Json<GameCommand>,
+async fn perform_gm_command(
+  Extension(service): Extension<Arc<GMService>>, Json(command): Json<GMCommand>,
 ) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
   // Note that this function actually serializes the result from calling
-  // perform_command into the JSON response -- there are no "?" operators here!
+  // perform_gm_command into the JSON response -- there are no "?" operators here!
+  let changed_game = service.perform_command(command).await;
+  let changed_game = changed_game
+    .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
+    .map_err(|e| format!("{e:?}"));
+  Ok(Json(changed_game))
+}
+
+async fn perform_player_command(
+  Extension(service): Extension<Arc<PlayerService>>, Json(command): Json<PlayerCommand>,
+) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
+  // Note that this function actually serializes the Result from calling perform_player_command into
+  // the JSON response, so that it will encode both the Ok and the Err -- there are no "?" operators
+  // here!
   let changed_game = service.perform_command(command).await;
   let changed_game = changed_game
     .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))

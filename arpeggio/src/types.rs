@@ -341,9 +341,52 @@ pub enum ModuleSource {
   SavedGame,
 }
 
-/// Top-level commands that can be sent from a client to affect the state of the app.
+/// Top-level commands that can be sent from a Player
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
-pub enum GameCommand {
+pub enum PlayerCommand {
+  // should these enums include PlayerID? probably not...
+  ChatFromPlayer(String),
+
+  EditNote {
+    // this FolderPath needs to be scoped to the player's area or something
+    path: FolderPath,
+    name: String,
+    note: Note,
+  },
+
+  // Out-of-combat actions:
+  // /// Use an Ability out of combat.
+  // ActCreature { // NYI
+  //   creature_id: CreatureID,
+  //   ability_id: AbilityID,
+  //   target: DecidedTarget,
+  // },
+  /// Move a creature along a path within a scene.
+  /// There must be a clear path according to the current loaded map. It doesn't matter whether
+  /// the creature is in combat.
+  PathCreature {
+    creature_id: CreatureID,
+    destination: Point3,
+  },
+
+  // In-combat actions:
+  /// Make the current creature use an ability.
+  CombatAct {
+    ability_id: AbilityID,
+    target: DecidedTarget,
+  },
+  /// Move the current creature in combat to a point.
+  /// There must be a clear path according to the current loaded map.
+  PathCurrentCombatCreature(Point3),
+  /// End the current creature's turn.
+  EndTurn,
+
+  // GiveItem or something should be here
+}
+
+/// Top-level commands that can be sent from a GM to affect the state of the game.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+pub enum GMCommand {
   LoadModule {
     name: String,
     source: ModuleSource,
@@ -352,7 +395,6 @@ pub enum GameCommand {
   },
 
   ChatFromGM(String),
-  ChatFromPlayer(PlayerID, String),
 
   AttributeCheck(CreatureID, AttributeCheck),
 
@@ -493,14 +535,22 @@ pub enum GameCommand {
 
   // ** Combat **
   /// Use an Ability out of combat.
-  ActCreature(SceneID, CreatureID, AbilityID, DecidedTarget),
+  ActCreature {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    ability_id: AbilityID,
+    target: DecidedTarget
+  },
   /// Make the current creature use an ability.
-  CombatAct(AbilityID, DecidedTarget),
+  CombatAct {
+    ability_id: AbilityID,
+    target: DecidedTarget,
+  },
   /// Move the current creature in combat to a point.
   /// There must be a clear path according to the current loaded map.
   PathCurrentCombatCreature(Point3),
   /// End the current creature's turn.
-  Done,
+  EndTurn,
 
   // ** Creature Manipulation **
   /// Create a new creature.
@@ -515,7 +565,11 @@ pub enum GameCommand {
   /// Move a creature along a path within a scene.
   /// There must be a clear path according to the current loaded map. It doesn't matter whether
   /// the creature is in combat.
-  PathCreature(SceneID, CreatureID, Point3),
+  PathCreature {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    destination: Point3,
+  },
 
   // ** Player Manipulation **
   /// Register a player as available for controlling a creature.
@@ -568,7 +622,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 
 /// Representation of a change to the game state. All change to the game happens via these values.
 /// Note that these represent *concrete* changes to the game, which will have deterministic results.
-/// i.e., randomness happens when processing `GameCommand`s, which then result in specific
+/// i.e., randomness happens when processing `GMCommand`s, which then result in specific
 /// `GameLog`s.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub enum GameLog {
@@ -755,7 +809,7 @@ pub enum GameError {
   #[error("The condition with ID {0:?} wasn't found.")]
   ConditionNotFound(ConditionID),
   #[error("Cannot process {0:?} in this state.")]
-  InvalidCommand(GameCommand),
+  InvalidCommand(GMCommand),
   #[error("The class {0:?} already exists.")]
   ClassAlreadyExists(ClassID),
   #[error("The class {0:?} was not found.")]

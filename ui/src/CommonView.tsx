@@ -642,7 +642,7 @@ export function ActionBar(props: {
 }
 
 function DoneButton(): JSX.Element {
-  const command: T.GameCommand = "Done";
+  const command: T.GMCommand = "EndTurn";
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
@@ -1029,7 +1029,7 @@ export function NoteEditor({
       return;
     }
     const newNote = { name: draftName, content };
-    const cmd: T.GameCommand = originalNote
+    const cmd: T.GMCommand = originalNote
       ? { EditNote: [path, originalNote.name, newNote] }
       : { CreateNote: [path, newNote] };
     A.sendCommand(cmd);
@@ -1157,7 +1157,7 @@ export class SingleInputForm extends React.Component<
 
 // interface GenericChatProps {
 //   renderLog: (input: T.GameLog) => JSX.Element | undefined;
-//   sendCommand: (input: string) => T.GameCommand;
+//   sendCommand: (input: string) => T.GMCommand;
 // }
 // export function GenericChat(props: GenericChatProps): JSX.Element {
 //   const { renderLog, sendCommand } = props;
@@ -1201,7 +1201,7 @@ export class SingleInputForm extends React.Component<
 
 // export function GMChat(): JSX.Element {
 //   const creatures = M.useState(s => s.getGame().creatures);
-//   const GMChatCmd = (message: string): T.GameCommand => ({ ChatFromGM: message });
+//   const GMChatCmd = (message: string): T.GMCommand => ({ ChatFromGM: message });
 //   return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
 
 //   function get_chat_line(log: T.GameLog) {
@@ -1220,7 +1220,7 @@ export class SingleInputForm extends React.Component<
 // }
 // export function PlayerChat(props: PlayerChatProps): JSX.Element {
 //   const { player_id } = props;
-//   const chatCmd = (message: string): T.GameCommand => ({
+//   const chatCmd = (message: string): T.GMCommand => ({
 //     ChatFromPlayer: [player_id, message],
 //   });
 //   return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;

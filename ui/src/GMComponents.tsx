@@ -238,7 +238,7 @@ function GMScenePlayers(props: { scene: T.Scene }) {
 
   function moveAll() {
     const pids = M.getState().game.players.keySeq().toArray();
-    const commands: T.GameCommand[] = pids.map(
+    const commands: T.GMCommand[] = pids.map(
       player_id => ({ SetPlayerScene: [player_id, scene.id] }));
     commands.push({ SetActiveScene: scene.id });
     A.sendCommands(commands);
@@ -658,11 +658,11 @@ function GMSceneCreatures(props: { scene: T.Scene }) {
               const new_cids = cids.subtract(existing_cids).toArray();
               const removed_cids = existing_cids.subtract(cids).toArray();
               const add_commands = new_cids.map(
-                (creature_id): T.GameCommand => ({
+                (creature_id): T.GMCommand => ({
                   AddCreatureToScene: { scene_id: scene.id, creature_id, visibility: "AllPlayers" }
                 }));
               const rem_commands = removed_cids.map(
-                (creature_id): T.GameCommand =>
+                (creature_id): T.GMCommand =>
                   ({ RemoveCreatureFromScene: { scene_id: scene.id, creature_id } }));
               A.sendCommands(add_commands.concat(rem_commands));
               toggler();
