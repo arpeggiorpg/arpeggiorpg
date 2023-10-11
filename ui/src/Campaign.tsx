@@ -236,7 +236,7 @@ function FolderTree(props: FTProps) {
       {path.length > 0
         ? <>
           <Dropdown.Item text="Delete this folder" icon="delete"
-            onClick={() => A.sendCommand(
+            onClick={() => A.sendGMCommand(
               {
                 DeleteFolderItem: [
                   path.slice(0, -1),
@@ -466,7 +466,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
 function copy({ copies }: { copies: number }) {
     const { source, item_id, onDone } = props;
     for (const _ of Array(5).keys()) {
-      A.sendCommand({ CopyFolderItem: {source, item_id, dest} });
+      A.sendGMCommand({ CopyFolderItem: {source, item_id, dest} });
     }
     onDone();
   }
@@ -480,7 +480,7 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   return <Button onClick={deleteIt}>Yes, really!</Button>;
 
   function deleteIt() {
-    A.sendCommand({ DeleteFolderItem: [location, item_id] });
+    A.sendGMCommand({ DeleteFolderItem: [location, item_id] });
     onDone();
   }
 }
@@ -613,7 +613,7 @@ function MoveFolderItem(props: MoveFolderItemProps) {
   </div>;
 
   function move(dest: T.FolderPath) {
-    A.sendCommand({ MoveFolderItem: [source, item_id, dest] });
+    A.sendGMCommand({ MoveFolderItem: [source, item_id, dest] });
     onDone();
   }
 }

@@ -6,18 +6,20 @@ import type {
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
-  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
+  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item,
+  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility,
+  Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
   ChangedGame, Class, ClassID, Combat, CombatLog, Condition, ConditionID, CreatureCreation,
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
-  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item, ItemID,
-  ModuleSource, Note, Player, PlayerID, PotentialTargets, Role, Scene, SceneCreation, SceneEffect,
-  SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility, Volume, VolumeCondition,
+  GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item,
+  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role, Scene,
+  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility,
+  Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
 export type { Creature };
@@ -616,6 +618,17 @@ export const decodeGameWithMetadata: Decoder<GameWithMetadata> = Z.object({
   index: decodeGameIndex,
   metadata: decodeGameMetadata,
 });
+
+export function encodePlayerCommand(cmd: PlayerCommand): object | string {
+  if (typeof cmd === "string") return cmd;
+  // Any commands which contain data that needs encoded needs to be handled explicitly.
+  // Unfortunately this is not type-checked.
+  if ("PathCreature" in cmd)
+    return { PathCreature: { ...cmd.PathCreature, destination: encodePoint3(cmd.PathCreature.destination) } };
+
+  return cmd;
+
+}
 
 export function encodeGMCommand(cmd: GMCommand): object | string {
   if (typeof cmd === "string") return cmd;
