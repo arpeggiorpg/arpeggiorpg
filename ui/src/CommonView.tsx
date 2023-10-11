@@ -27,7 +27,6 @@ import * as A from "./Actions";
 import * as T from "./PTTypes";
 import * as TextInput from "./TextInput";
 import { useWindowSize } from "./lib/hooks";
-import { Outlet } from "react-router-dom";
 
 /**
  * The threshold at which we switch from narrow to wide view.
@@ -751,6 +750,7 @@ interface TheLayoutProps {
   bar_width: number;
   menu_size: MenuSize;
   bottom_bar?: JSX.Element;
+  map: React.ReactElement;
 }
 export function TheLayout(props: TheLayoutProps) {
   const {
@@ -761,6 +761,7 @@ export function TheLayout(props: TheLayoutProps) {
     bar_width,
     menu_size,
     bottom_bar,
+    map,
   } = props;
   const window_size = useWindowSize();
 
@@ -784,7 +785,7 @@ export function TheLayout(props: TheLayoutProps) {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ flex: 1, position: "relative" }}>
         <div style={{ position: "absolute", width: "100%", height: "100%" }}>
-          <Outlet />
+          {map}
         </div>
       </div>
       <div
