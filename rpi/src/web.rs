@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
-  let game_routes = axum::Router::new()
+  let gm_routes = axum::Router::new()
     .route("/", get(get_game))
     .route("/poll/:game_idx/:log_idx", get(poll_game))
     .route("/execute", post(execute))
@@ -36,14 +36,23 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
       get(preview_volume_targets),
     )
     .route("/invitations", get(list_invitations).post(invite))
-    .route_layer(from_fn(authorize_game));
+    .route_layer(from_fn(authorize_gm));
+
+  let player_routes = axum::Router::new()
+    // TODO: These should not return entire RPIGames, but rather RPIPlayerGames, which:
+    // - don't have access to the campaign
+    // - maybe only include top-level objects (creatures, etc) that are in the current scene
+    .route("/", get(get_game))
+    .route("/poll/:game_idx/:log_idx", get(poll_game))
+    .route_layer(from_fn(authorize_player));
 
   let auth_routes = axum::Router::new()
     .route("/list", get(list_games))
     .route("/create", post(create_game))
     .route("/invitations/:game_id/:invitation_id", get(check_invitation))
     .route("/invitations/:game_id/:invitation_id/accept", post(accept_invitation))
-    .nest("/:game_id/gm/", game_routes)
+    .nest("/:game_id/gm/", gm_routes)
+    .nest("/:game_id/player/", player_routes)
     .route_layer(from_fn_with_state(service.clone(), authenticate));
 
   let cors = CorsLayer::permissive();
@@ -84,13 +93,24 @@ async fn authenticate<B>(
   }
 }
 
-async fn authorize_game<B>(
+async fn authorize_gm<B>(
   Path(GameIDPath { game_id }): Path<GameIDPath>,
   Extension(authenticated): Extension<Arc<AuthenticatedService>>, mut request: Request<B>,
   next: Next<B>,
 ) -> Result<Response, WebError> {
   // TODO: return a 404 when the game doesn't exist.
   let gm = authenticated.gm(&game_id).await?;
+  request.extensions_mut().insert(Arc::new(gm));
+  Ok(next.run(request).await)
+}
+
+async fn authorize_player<B>(
+  Path(GameIDPath { game_id }): Path<GameIDPath>,
+  Extension(authenticated): Extension<Arc<AuthenticatedService>>, mut request: Request<B>,
+  next: Next<B>,
+) -> Result<Response, WebError> {
+  // TODO: return a 404 when the game doesn't exist.
+  let gm = authenticated.player(&game_id).await?;
   request.extensions_mut().insert(Arc::new(gm));
   Ok(next.run(request).await)
 }

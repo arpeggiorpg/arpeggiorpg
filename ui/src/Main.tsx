@@ -73,11 +73,6 @@ export function Main() {
 }
 
 function GameList() {
-  React.useEffect(() => {
-    console.log("GameList MOUNT");
-    return () => console.log("GameList UNMOUNT");
-  }, []);
-
   let {
     data: games,
     error,
@@ -186,17 +181,14 @@ function usePoll(mode: "gm" | "player") {
     return A.startPoll(mode, gameId);
   }, []);
 
-  return gameId;
+  const status = M.useState((s) => s.fetchStatus);
+  return {gameId, status};
+
 }
 
 function GMGame() {
+  const {status} = usePoll("gm");
 
-  usePoll("gm");
-
-  let game = M.useState((s) => s.game);
-  let status = M.useState((s) => s.fetchStatus);
-
-  console.log("game!!!!", game);
   if (status === "Ready") {
     return <GMMain />;
   } else if (status === "Unfetched") {
@@ -256,16 +248,17 @@ function AcceptInvitation() {
 
 
 function PlayerGame() {
-  let gameId = usePoll("player");
+  const {gameId, status} = usePoll("player");
 
   let {
     data: games,
     error,
     isLoading,
   } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
+  console.log(isLoading, games, status);
 
-  if (isLoading || !games) {
-    return <div>Loading games...</div>;
+  if (isLoading || !games || status !== "Ready") {
+    return <div>Loading...</div>;
   }
 
   const playerId = games.games.find(([profile, _meta]) => profile.game_id === gameId && profile.role === "Player")?.[0].profile_name;

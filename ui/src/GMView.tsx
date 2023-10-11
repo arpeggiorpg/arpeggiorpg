@@ -44,6 +44,7 @@ export function GMMain() {
 
   return (
     <CV.TheLayout
+      map={<Outlet />}
       tabs={tabs}
       bottom_left={<Secondary />}
       top_left={
