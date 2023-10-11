@@ -158,11 +158,15 @@ export async function requestMove(cid: T.CreatureID) {
 
 export function moveCreature(creature_id: T.CreatureID, destination: T.Point3) {
   getState().clearMovementOptions();
-  const scene = getState().getFocusedScene();
-  if (scene) {
-    sendCommand({ PathCreature: { scene_id: scene.id, creature_id: creature_id, destination } });
+  if (getState().playerId) {
+    sendPlayerCommand({ PathCreature: { creature_id: creature_id, destination } });
   } else {
-    throw new Error(`Tried moving when there is no scene`);
+    const scene = getState().getFocusedScene();
+    if (scene) {
+      sendGMCommand({ PathCreature: { scene_id: scene.id, creature_id: creature_id, destination } });
+    } else {
+      throw new Error(`Tried moving when there is no scene`);
+    }
   }
 }
 
@@ -170,13 +174,13 @@ export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
   getState().clearMovementOptions();
   const scene = getState().getFocusedScene();
   if (scene) {
-    sendCommand({ SetCreaturePos: [scene.id, creature_id, dest] });
+    sendGMCommand({ SetCreaturePos: [scene.id, creature_id, dest] });
   }
 }
 
 export function moveCombatCreature(dest: T.Point3) {
   getState().clearMovementOptions();
-  sendCommand({ PathCurrentCombatCreature: dest });
+  sendGMCommand({ PathCurrentCombatCreature: dest });
 }
 
 export async function requestCombatMovement() {
@@ -194,7 +198,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   const { ability_id, options } = opts;
   if (!("CreatureIDs" in options)) { throw new Error(`Only support CreatureIDs for now`); }
   const target: T.DecidedTarget = { Creature: target_id };
-  sendCommand({ CombatAct: { ability_id, target } });
+  sendGMCommand({ CombatAct: { ability_id, target } });
   getState().clearPotentialTargets();
 }
 
@@ -206,7 +210,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
     throw new Error(`This function only works for abilities that use Points`);
   }
   const target: T.DecidedTarget = { Point: point };
-  sendCommand({ CombatAct: { ability_id, target } });
+  sendGMCommand({ CombatAct: { ability_id, target } });
   getState().clearPotentialTargets();
 }
 
@@ -231,13 +235,14 @@ function gameUrl() {
   if (!gameId) {
     throw new Error("Sorry, I lost the gameId somehow!?");
   }
+  // this should probably be explicitly passed to this function?
   let mode = getState().playerId === undefined ? "gm" : "player";
   return `/g/${gameId}/${mode}`;
 }
 
-export async function sendCommand(cmd: T.GMCommand) {
-  const json = T.encodeGMCommand(cmd);
-  console.log("[sendCommand:JSON]", json);
+export async function sendPlayerCommand(cmd: T.PlayerCommand) {
+  const json = T.encodePlayerCommand(cmd);
+  console.log("[sendPlayerCommand:JSON]", json);
 
   const result = await ptfetch(
     `${gameUrl()}/execute`,
@@ -261,19 +266,46 @@ export async function sendCommand(cmd: T.GMCommand) {
   }
 }
 
-export function sendCommands(cmds: Array<T.GMCommand>) {
+
+export async function sendGMCommand(cmd: T.GMCommand) {
+  const json = T.encodeGMCommand(cmd);
+  console.log("[sendGMCommand:JSON]", json);
+
+  const result = await ptfetch(
+    `${gameUrl()}/execute`,
+    {
+      method: "POST",
+      body: JSON.stringify(json),
+      headers: { "content-type": "application/json" },
+    },
+    T.decodeRustResult(T.decodeChangedGame, Z.string())
+  );
+  switch (result.t) {
+    case "Ok":
+      // Let's not refresh the state from this execute call for now, since
+      // 1. I am observing some rubber-banding after executing commands
+      // 2. the poll will refresh the state of the game anyway (and so execute
+      //    probably shouldn't even return the new game state)
+      // getState().refresh(result.result.game);
+      return;
+    case "Err":
+      throw { _pt_error: 'RPI', message: result.error };
+  }
+}
+
+export function sendGMCommands(cmds: Array<T.GMCommand>) {
   // TODO: I guess we could add an endpoint that handles multiple commands at once
   for (const cmd of cmds) {
-    sendCommand(cmd);
+    sendGMCommand(cmd);
   }
 }
 
 /// Send a Command and *don't* automatically handle errors, but instead return a future
 /// representing the result. This is useful for code which wants to send a command and interpret
 /// the resulting gamelogs.
-export async function sendCommandWithResult(cmd: T.GMCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
+export async function sendGMCommandWithResult(cmd: T.GMCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
   const json = T.encodeGMCommand(cmd);
-  console.log("[sendCommand:JSON]", json);
+  console.log("[sendGMCommand:JSON]", json);
   const rpi_result = decodeFetch(
     "/",
     {
@@ -299,7 +331,7 @@ export function requestCombatAbility(
   cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
-    return sendCommand({ CombatAct: { ability_id, target: "Actor" } });
+    return sendGMCommand({ CombatAct: { ability_id, target: "Actor" } });
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }

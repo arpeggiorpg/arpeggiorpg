@@ -268,7 +268,7 @@ export class RemoveItem extends React.Component<
     if (!this.state.count) {
       return;
     }
-    A.sendCommand({
+    A.sendGMCommand({
       RemoveItem: {
         owner: { Creature: creature.id },
         item_id: item.id,
@@ -405,7 +405,7 @@ export function GiveItem(props: GiveItemProps) {
   );
 
   function give(recip: T.Creature, count: number) {
-    A.sendCommand({
+    A.sendGMCommand({
       TransferItem: {
         from: { Creature: giver.id },
         to: { Creature: recip.id },
@@ -646,7 +646,7 @@ function DoneButton(): JSX.Element {
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => A.sendCommand(command)}
+      onClick={() => A.sendGMCommand(command)}
     >
       Done
     </Button>
@@ -1032,7 +1032,7 @@ export function NoteEditor({
     const cmd: T.GMCommand = originalNote
       ? { EditNote: [path, originalNote.name, newNote] }
       : { CreateNote: [path, newNote] };
-    A.sendCommand(cmd);
+    A.sendGMCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);
     }
@@ -1157,10 +1157,10 @@ export class SingleInputForm extends React.Component<
 
 // interface GenericChatProps {
 //   renderLog: (input: T.GameLog) => JSX.Element | undefined;
-//   sendCommand: (input: string) => T.GMCommand;
+//   sendGMCommand: (input: string) => T.GMCommand;
 // }
 // export function GenericChat(props: GenericChatProps): JSX.Element {
-//   const { renderLog, sendCommand } = props;
+//   const { renderLog, sendGMCommand } = props;
 //   const snapshots = M.useState(s => s.app.snapshots);
 //   return (
 //     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -1194,15 +1194,15 @@ export class SingleInputForm extends React.Component<
 //     </div>
 //   );
 //   function send(input: string) {
-//     const cmd = sendCommand(input);
-//     A.sendCommand(cmd);
+//     const cmd = sendGMCommand(input);
+//     A.sendGMCommand(cmd);
 //   }
 // }
 
 // export function GMChat(): JSX.Element {
 //   const creatures = M.useState(s => s.getGame().creatures);
 //   const GMChatCmd = (message: string): T.GMCommand => ({ ChatFromGM: message });
-//   return <GenericChat renderLog={get_chat_line} sendCommand={GMChatCmd} />;
+//   return <GenericChat renderLog={get_chat_line} sendGMCommand={GMChatCmd} />;
 
 //   function get_chat_line(log: T.GameLog) {
 //     const chatmsg = renderChat(log);
@@ -1223,7 +1223,7 @@ export class SingleInputForm extends React.Component<
 //   const chatCmd = (message: string): T.GMCommand => ({
 //     ChatFromPlayer: [player_id, message],
 //   });
-//   return <GenericChat renderLog={get_chat_line} sendCommand={chatCmd} />;
+//   return <GenericChat renderLog={get_chat_line} sendGMCommand={chatCmd} />;
 
 //   function get_chat_line(log: T.GameLog) {
 //     return renderChat(log);

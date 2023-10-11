@@ -385,7 +385,7 @@ export function SceneGrid(props: SceneGridProps) {
     const ann = scene.annotations.get(pt);
     const delet = () => {
       const annotations = scene.annotations.delete(pt);
-      A.sendCommand({ EditSceneAnnotations: {scene_id: scene.id, annotations} });
+      A.sendGMCommand({ EditSceneAnnotations: {scene_id: scene.id, annotations} });
       close();
     };
     if (ann) {
@@ -422,7 +422,7 @@ export function SceneGrid(props: SceneGridProps) {
   function volumeConditionMenu(
     closeMenu: () => void, scene: T.Scene, condition_id: T.ConditionID) {
     const onClick = () => {
-      A.sendCommand({ RemoveSceneVolumeCondition: {scene_id: scene.id, condition_id} });
+      A.sendGMCommand({ RemoveSceneVolumeCondition: {scene_id: scene.id, condition_id} });
       closeMenu();
     };
     // unimplemented!: put a name here
@@ -511,7 +511,7 @@ function SceneHotspotMenu(
   };
   const deleteHotspot = () => {
     const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
-    A.sendCommand({ EditSceneSceneHotspots: {scene_id: props.scene.id, scene_hotspots} });
+    A.sendGMCommand({ EditSceneSceneHotspots: {scene_id: props.scene.id, scene_hotspots} });
     props.closeMenu();
   };
   return <React.Fragment key="Scene-Hotspot">

@@ -160,11 +160,54 @@ impl Game {
   }
 
   /// Perform a PlayerCommand on the current Game.
-  pub fn perform_player_command(&self, cmd: PlayerCommand) -> Result<ChangedGame, GameError> {
-    // ChatFromPlayer(ref pid, ref msg) => {
-    //   self.change_with(GameLog::ChatFromPlayer(pid.to_owned(), msg.to_owned()))
-    // }
-    Err(GameError::BuggyProgram("lol nope".to_string()))
+  pub fn perform_player_command(
+    &self, player_id: PlayerID, cmd: PlayerCommand,
+  ) -> Result<ChangedGame, GameError> {
+    use self::PlayerCommand::*;
+    // I need to know which player is performing this command.
+    // - Sometimes I just need to know it for informational purposes, like ChatFromPlayer.
+    // - Sometimes I need to *authorize* actions, like in PathCreature: you
+    //   should only need to move creatures that you control.
+    let player =
+      self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
+    let change = match cmd {
+      ChatFromPlayer(message) => {
+        self.change_with(GameLog::ChatFromPlayer(player_id, message.to_owned()))
+      }
+      EditNote { path, name, note } => {
+        // The path here needs to be relative to a "/Players/{playerId}" folder or something
+        return Err(GameError::BuggyProgram("NYI".to_string()));
+      }
+      PathCreature { creature_id, destination } => {
+        let scene_id =
+          player.scene.ok_or(GameError::BuggyProgram(format!("Player isn't in a scene")))?;
+        let scene = self.get_scene(scene_id)?;
+        Ok(self.path_creature(scene.id, creature_id, destination)?.0)
+      }
+      CombatAct { ability_id, target } => {
+        self.auth_combat(&player)?;
+        self.combat_act(ability_id, target)
+      }
+      PathCurrentCombatCreature(destination) => {
+        self.auth_combat(&player)?;
+        self.get_combat()?.get_movement()?.move_current(destination)
+      }
+      EndTurn => {
+        self.auth_combat(&player)?;
+        self.next_turn()
+      }
+    };
+    Ok(change?)
+  }
+
+  /// Check that the player controls the current combat creature.
+  fn auth_combat(&self, player: &Player) -> Result<(), GameError> {
+    if !player.creatures.contains(&self.get_combat()?.combat.current_creature_id()) {
+      return Err(GameError::BuggyProgram(
+        "You don't control the current combat creature".to_string(),
+      ));
+    }
+    Ok(())
   }
 
   /// Perform a GMCommand on the current Game.

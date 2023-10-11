@@ -283,7 +283,7 @@ impl PlayerService {
   pub async fn perform_command(&self, command: PlayerCommand) -> AEResult<types::ChangedGame> {
     let log_cmd = command.clone();
     info!("perform_player_command:start: {:?}", &log_cmd);
-    let changed_game = self.game.perform_player_command(command)?;
+    let changed_game = self.game.perform_player_command(self.player_id.clone(), command)?;
     self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
     self.ping_service.ping(&self.game_id).await?;
     debug!("perform_player_command:done: {:?}", &log_cmd);

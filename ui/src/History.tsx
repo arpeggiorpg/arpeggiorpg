@@ -26,7 +26,7 @@ export function History(): JSX.Element {
             className="material-icons"
             onClick={() =>
               console.error("NYI")
-              // A.sendCommand({ Rollback: [log_index] })
+              // A.sendGMCommand({ Rollback: [log_index] })
             }
           >
             history

@@ -98,7 +98,7 @@ export function Players() {
     return (
       <Button
         key={"set-" + player_id + scene_id}
-        onClick={() => A.sendCommand({ SetPlayerScene: [player_id, scene_id] })}
+        onClick={() => A.sendGMCommand({ SetPlayerScene: [player_id, scene_id] })}
       >
         {text}
       </Button>
@@ -116,7 +116,7 @@ export function GrantCreaturesToPlayer(props: {
       already_selected={Set(player.creatures)}
       on_cancel={onDone}
       on_selected={(cids) => {
-        A.sendCommand({
+        A.sendGMCommand({
           GiveCreaturesToPlayer: [player.player_id, cids.toArray()],
         });
         onDone();
