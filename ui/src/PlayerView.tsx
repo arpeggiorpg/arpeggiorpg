@@ -19,7 +19,6 @@ export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   if (!player) {
     return <div>Player {playerId} not found</div>;
   }
-  console.log("scene?", scene);
   const map = scene
     ? <Grid.SceneGrid scene={scene} creatures={mapCreatures} />
     : <div>No scene loaded</div>;
@@ -51,33 +50,25 @@ function selectMapCreatures(state: M.AllStates, player: T.Player, scene: T.Scene
       // !: must exist in filterMapValues()
       if (scene.creatures.get(mapc.creature.id)![1] === "AllPlayers") {
         const actions = creatureMenuActions(state, player, mapc.creature);
-        return { ...mapc, actions: mapc.actions.merge(actions) };
+        return { ...mapc, actions: mapc.actions.concat(actions) };
       }
     }
   );
 }
 
-function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.Creature) {
-  let actions: Map<string, (cid: T.CreatureID) => void> = Map();
+function creatureMenuActions(state: M.AllStates, player: T.Player, creature: T.Creature): Grid.MapCreature["actions"] {
+  // Well, this function is *definitely* not returning identity-stable or even equatable return
+  // values, so this is going to force re-renders constantly.
+  const actions = [];
   const combat = state.getCombat();
-  const move = moveAction();
-  if (move) {
-    actions = actions.set("Walk", move);
+  if (combat) {
+    if (state.getCurrentCombatCreatureID() === creature.id) {
+      actions.push({actionName: "Combat Move", action: () => A.requestCombatMovement()});
+    }
+  } else if (player.creatures.includes(creature.id)) {
+    actions.push({actionName: "Walk", action: A.requestMove});
   }
   return actions;
-
-  function moveAction(): ((cid: T.CreatureID) => void) | undefined {
-    if (!player.creatures.includes(creature.id)) { return undefined; }
-    if (combat) {
-      if (state.getCurrentCombatCreatureID() === creature.id) {
-        return _ => A.requestCombatMovement();
-      } else {
-        return undefined;
-      }
-    } else {
-      return cid => A.requestMove(cid);
-    }
-  }
 }
 
 function PlayerCreatures(props: { player: T.Player }) {

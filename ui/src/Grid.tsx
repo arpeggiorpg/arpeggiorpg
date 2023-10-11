@@ -407,8 +407,8 @@ export function SceneGrid(props: SceneGridProps) {
         <Menu.Item key={creature.creature.id} header={true}>
           <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
         </Menu.Item>
-        {creature.actions.entrySeq().toArray().map(
-          ([actionName, action]) => {
+        {creature.actions.map(
+          ({actionName, action}) => {
             const onClick = () => { closeMenu(); action(creature_id); };
             return <Menu.Item key={actionName} onClick={() => onClick()}>
               {actionName}
@@ -639,7 +639,7 @@ export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
   class: T.Class;
-  actions: Map<string, (cid: T.CreatureID) => void>;
+  actions: {actionName: string, action: (cid: T.CreatureID) => void}[];
   visibility: T.Visibility;
 }
 
@@ -903,10 +903,10 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
       const [pos, vis] = scene.creatures.get(creature.id)!; // map over keys -> .get() is ok
       const class_ = state.getClass(creature.class);
       if (class_) {
-        let actions: Map<string, (cid: T.CreatureID) => void> = Map();
+        let actions = [];
         const target = targetAction(creature);
         if (target) {
-          actions = actions.set(target.name, target.action);
+          actions.push({actionName: target.name, action: target.action});
         }
         return { creature, pos, class: class_, actions, visibility: vis };
       }
