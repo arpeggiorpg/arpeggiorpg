@@ -7,7 +7,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
   storage::{load_game, Storage},
-  types::{GameID, GameIndex, GameList, GameProfile, InvitationID, Role, UserID, GameMetadata},
+  types::{GameID, GameIndex, GameList, GameMetadata, GameProfile, InvitationID, Role, UserID},
 };
 
 use arpeggio::types::{self, Game, GameCommand, PlayerID};
@@ -114,7 +114,6 @@ impl AuthenticatedService {
 
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GMService> {
     let (game, game_index) = self.find_game(game_id, Role::GM).await?;
-    // TODO Actually return a GMService!!!
     Ok(GMService {
       storage: self.storage.clone(),
       game_id: *game_id,
@@ -126,8 +125,16 @@ impl AuthenticatedService {
 
   pub async fn player(&self, game_id: &GameID) -> AEResult<PlayerService> {
     let (game, game_index) = self.find_game(game_id, Role::Player).await?;
-    // TODO Actually return a PlayerService!!!
+    let profiles = self.storage.list_user_games(&self.user_id).await?;
+    // this is unfortunate; our storage layer makes it possible to have multiple GameProfiles for
+    // the same UserID & game, but here we only get the first instead of letting the user select.
+    let profile = profiles
+      .into_iter()
+      .find(|profile| profile.game_id == *game_id && profile.role == Role::Player);
+    let profile = profile.ok_or(anyhow!("Couldn't find player ID for this game"))?;
+
     Ok(PlayerService {
+      player_id: profile.profile_name,
       storage: self.storage.clone(),
       game_id: *game_id,
       game,
@@ -174,13 +181,8 @@ pub struct GMService {
 }
 
 impl GMService {
-
   pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
-    Ok((
-      &self.game,
-      self.game_index,
-      self.storage.load_game_metadata(&self.game_id).await?
-    ))
+    Ok((&self.game, self.game_index, self.storage.load_game_metadata(&self.game_id).await?))
   }
 
   /// Wait for a Game to change and then return it.
@@ -250,6 +252,7 @@ impl GMService {
 }
 
 pub struct PlayerService {
+  pub player_id: PlayerID,
   pub storage: Arc<dyn Storage>,
   pub game: Game,
   pub game_index: GameIndex,
@@ -258,14 +261,9 @@ pub struct PlayerService {
 }
 
 impl PlayerService {
-
   pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
     // TODO: Don't return Game, return PlayerGame!
-    Ok((
-      &self.game,
-      self.game_index,
-      self.storage.load_game_metadata(&self.game_id).await?
-    ))
+    Ok((&self.game, self.game_index, self.storage.load_game_metadata(&self.game_id).await?))
   }
 
   /// Wait for a Game to change and then return it.
@@ -296,6 +294,12 @@ impl PlayerService {
   pub async fn movement_options(
     &self, scene_id: types::SceneID, creature_id: types::CreatureID,
   ) -> AEResult<Vec<types::Point3>> {
+    // we accept scene_id here, but it really has to be identical to the current player's focus.
+    let player =
+      self.game.players.get(&self.player_id).ok_or(anyhow!("playerID should be there"))?;
+    if player.scene != Some(scene_id) {
+      return Err(anyhow!("Player is not on this scene."));
+    }
 
     let options = self.game.get_movement_options(scene_id, creature_id)?;
     Ok(options)
@@ -321,7 +325,6 @@ impl PlayerService {
   //   let targets = self.game.preview_volume_targets(scene, actor_id, ability_id, point)?;
   //   Ok(targets)
   // }
-
 }
 
 /// The PingService coordinates the notification of all players in a game session so that they get
@@ -355,7 +358,9 @@ impl PingService {
   }
 }
 
-async fn poll_game(game_id: GameID, game_index: GameIndex, ping_service: &PingService) -> AEResult<()> {
+async fn poll_game(
+  game_id: GameID, game_index: GameIndex, ping_service: &PingService,
+) -> AEResult<()> {
   // First, if the app has already changed, return it immediately.
   if game_index != game_index {
     return Ok(());
