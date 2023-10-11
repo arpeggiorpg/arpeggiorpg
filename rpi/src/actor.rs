@@ -7,7 +7,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::{
   storage::{load_game, Storage},
-  types::{GameID, GameIndex, GameList, GameProfile, InvitationID, Role, UserID},
+  types::{GameID, GameIndex, GameList, GameProfile, InvitationID, Role, UserID, GameMetadata},
 };
 
 use arpeggio::types::{self, Game, GameCommand, PlayerID};
@@ -104,16 +104,18 @@ impl AuthenticatedService {
     let games = self.storage.list_user_games(&self.user_id).await?;
     for game in games {
       if game.user_id == self.user_id && game.role == Role::GM {
-        return load_game(&*self.storage, game_id).await.context(format!("Loading game {game_id:?}"));
+        return load_game(&*self.storage, game_id)
+          .await
+          .context(format!("Loading game {game_id:?}"));
       }
     }
     Err(anyhow!("User {:?} is not a {role:?} of game {game_id:?}", self.user_id))
   }
 
-  pub async fn gm(&self, game_id: &GameID) -> AEResult<GameService> {
+  pub async fn gm(&self, game_id: &GameID) -> AEResult<GMService> {
     let (game, game_index) = self.find_game(game_id, Role::GM).await?;
     // TODO Actually return a GMService!!!
-    Ok(GameService {
+    Ok(GMService {
       storage: self.storage.clone(),
       game_id: *game_id,
       game,
@@ -122,10 +124,10 @@ impl AuthenticatedService {
     })
   }
 
-  pub async fn player(&self, game_id: &GameID) -> AEResult<GameService> {
+  pub async fn player(&self, game_id: &GameID) -> AEResult<PlayerService> {
     let (game, game_index) = self.find_game(game_id, Role::Player).await?;
     // TODO Actually return a PlayerService!!!
-    Ok(GameService {
+    Ok(PlayerService {
       storage: self.storage.clone(),
       game_id: *game_id,
       game,
@@ -134,7 +136,7 @@ impl AuthenticatedService {
     })
   }
 
-  // While these take GameIDs, they cannot be part of GameService because GameService represents
+  // While these take GameIDs, they cannot be part of GMService because GMService represents
   // someone's already-authorized access to a Game, but you need to be able to check & accept
   // invitations before you have access to a game!
   pub async fn check_invitation(
@@ -163,8 +165,7 @@ impl AuthenticatedService {
   }
 }
 
-// TODO: GameService should not exist - it should be split into PlayerService and GMService.
-pub struct GameService {
+pub struct GMService {
   pub storage: Arc<dyn Storage>,
   pub game: Game,
   pub game_index: GameIndex,
@@ -172,27 +173,20 @@ pub struct GameService {
   ping_service: Arc<PingService>,
 }
 
-impl GameService {
+impl GMService {
+
+  pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
+    Ok((
+      &self.game,
+      self.game_index,
+      self.storage.load_game_metadata(&self.game_id).await?
+    ))
+  }
+
   /// Wait for a Game to change and then return it.
   #[instrument(level = "debug", skip(self))]
   pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
-    // First, if the app has already changed, return it immediately.
-    if self.game_index != game_index {
-      return Ok(());
-    }
-    // Now, we wait.
-    let (sender, receiver) = oneshot::channel();
-    self.ping_service.register_waiter(&self.game_id, sender).await;
-    let event = timeout(Duration::from_secs(30), receiver).await;
-    match event {
-      Ok(_) => {
-        // The oneshot was canceled. I'm not really sure what this means or why it happens.
-      }
-      Err(_) => {
-        // Timeout; just return the state of the app
-      }
-    }
-    Ok(())
+    Ok(poll_game(self.game_id, self.game_index, &*self.ping_service).await?)
   }
 
   pub async fn invite(&self) -> AEResult<InvitationID> {
@@ -255,6 +249,81 @@ impl GameService {
   }
 }
 
+pub struct PlayerService {
+  pub storage: Arc<dyn Storage>,
+  pub game: Game,
+  pub game_index: GameIndex,
+  pub game_id: GameID,
+  ping_service: Arc<PingService>,
+}
+
+impl PlayerService {
+
+  pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
+    // TODO: Don't return Game, return PlayerGame!
+    Ok((
+      &self.game,
+      self.game_index,
+      self.storage.load_game_metadata(&self.game_id).await?
+    ))
+  }
+
+  /// Wait for a Game to change and then return it.
+  #[instrument(level = "debug", skip(self))]
+  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
+    Ok(poll_game(self.game_id, game_index, &*self.ping_service.clone()).await?)
+  }
+
+  pub async fn invite(&self) -> AEResult<InvitationID> {
+    Ok(self.storage.invite(&self.game_id).await?.id)
+  }
+
+  pub async fn list_invitations(&self) -> AEResult<Vec<InvitationID>> {
+    Ok(self.storage.list_invitations(&self.game_id).await?.into_iter().map(|i| i.id).collect())
+  }
+
+  pub async fn perform_command(&self, command: GameCommand) -> AEResult<types::ChangedGame> {
+    let log_cmd = command.clone();
+    info!("perform_command:start: {:?}", &log_cmd);
+    // TODO: we need PlayerCommand!
+    let changed_game = self.game.perform_command(command)?;
+    self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
+    self.ping_service.ping(&self.game_id).await?;
+    debug!("perform_command:done: {:?}", &log_cmd);
+    Ok(changed_game)
+  }
+
+  pub async fn movement_options(
+    &self, scene_id: types::SceneID, creature_id: types::CreatureID,
+  ) -> AEResult<Vec<types::Point3>> {
+
+    let options = self.game.get_movement_options(scene_id, creature_id)?;
+    Ok(options)
+  }
+
+  // pub async fn combat_movement_options(&self) -> AEResult<Vec<types::Point3>> {
+  //   let options = self.game.get_combat()?.current_movement_options()?;
+  //   Ok(options)
+  // }
+
+  // pub async fn target_options(
+  //   &self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID,
+  // ) -> AEResult<types::PotentialTargets> {
+  //   let options = self.game.get_target_options(scene_id, creature_id, ability_id)?;
+  //   Ok(options)
+  // }
+
+  // pub async fn preview_volume_targets(
+  //   &self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID,
+  //   point: types::Point3,
+  // ) -> AEResult<(Vec<types::CreatureID>, Vec<types::Point3>)> {
+  //   let scene = self.game.get_scene(scene_id)?;
+  //   let targets = self.game.preview_volume_targets(scene, actor_id, ability_id, point)?;
+  //   Ok(targets)
+  // }
+
+}
+
 /// The PingService coordinates the notification of all players in a game session so that they get
 /// instantly updated whenever a change happens to the game they're playing.
 // This should go away and be replaced with a CloudFlare Workers Durable Object using Hibernatable
@@ -284,4 +353,24 @@ impl PingService {
     }
     Ok(())
   }
+}
+
+async fn poll_game(game_id: GameID, game_index: GameIndex, ping_service: &PingService) -> AEResult<()> {
+  // First, if the app has already changed, return it immediately.
+  if game_index != game_index {
+    return Ok(());
+  }
+  // Now, we wait.
+  let (sender, receiver) = oneshot::channel();
+  ping_service.register_waiter(&game_id, sender).await;
+  let event = timeout(Duration::from_secs(30), receiver).await;
+  match event {
+    Ok(_) => {
+      // The oneshot was canceled. I'm not really sure what this means or why it happens.
+    }
+    Err(_) => {
+      // Timeout; just return the state of the app
+    }
+  }
+  Ok(())
 }

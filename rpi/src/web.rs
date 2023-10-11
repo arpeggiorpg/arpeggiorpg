@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow};
+use anyhow::anyhow;
 use axum::{
   body,
   extract::{Path, State},
@@ -14,19 +14,18 @@ use http::StatusCode;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use arpeggio::types::{
-  AbilityID, CreatureID, GameCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID,
+  AbilityID, CreatureID, Game, GameCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID,
 };
 
-
 use crate::{
-  actor::{AuthenticatableService, AuthenticatedService, GameService},
-  types::{GameID, GameIndex, GameList, GameProfile, InvitationID},
+  actor::{AuthenticatableService, AuthenticatedService, GMService, PlayerService},
+  types::{GameID, GameIndex, GameList, GameMetadata, GameProfile, InvitationID},
 };
 
 pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
   let gm_routes = axum::Router::new()
-    .route("/", get(get_game))
-    .route("/poll/:game_idx/:log_idx", get(poll_game))
+    .route("/", get(gm_get_game))
+    .route("/poll/:game_idx/:log_idx", get(gm_poll_game))
     .route("/execute", post(execute))
     .route("/movement_options/:scene_id/:cid", get(movement_options))
     .route("/combat_movement_options", get(combat_movement_options))
@@ -42,8 +41,9 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     // TODO: These should not return entire RPIGames, but rather RPIPlayerGames, which:
     // - don't have access to the campaign
     // - maybe only include top-level objects (creatures, etc) that are in the current scene
-    .route("/", get(get_game))
-    .route("/poll/:game_idx/:log_idx", get(poll_game))
+    .route("/", get(player_get_game))
+    .route("/poll/:game_idx/:log_idx", get(player_poll_game))
+    .route("/movement_options/:scene_id/:creature_id", get(player_movement_options))
     .route_layer(from_fn(authorize_player));
 
   let auth_routes = axum::Router::new()
@@ -110,8 +110,8 @@ async fn authorize_player<B>(
   next: Next<B>,
 ) -> Result<Response, WebError> {
   // TODO: return a 404 when the game doesn't exist.
-  let gm = authenticated.player(&game_id).await?;
-  request.extensions_mut().insert(Arc::new(gm));
+  let player = authenticated.player(&game_id).await?;
+  request.extensions_mut().insert(Arc::new(player));
   Ok(next.run(request).await)
 }
 
@@ -122,12 +122,12 @@ async fn list_games(
   Ok(Json(games))
 }
 
-async fn invite(Extension(service): Extension<Arc<GameService>>) -> WebResult<Json<InvitationID>> {
+async fn invite(Extension(service): Extension<Arc<GMService>>) -> WebResult<Json<InvitationID>> {
   Ok(Json(service.invite().await?))
 }
 
 async fn list_invitations(
-  Extension(service): Extension<Arc<GameService>>,
+  Extension(service): Extension<Arc<GMService>>,
 ) -> WebResult<Json<Vec<InvitationID>>> {
   Ok(Json(service.list_invitations().await?))
 }
@@ -158,31 +158,60 @@ async fn create_game(
   Ok(Json(json))
 }
 
-async fn get_game(
-  Extension(service): Extension<Arc<GameService>>, Path(GameIDPath { game_id }): Path<GameIDPath>,
+async fn gm_get_game(
+  Extension(service): Extension<Arc<GMService>>,
 ) -> WebResult<Json<serde_json::Value>> {
-  Ok(Json(_get_game(service, game_id).await?))
+  let (game, index, metadata) = service.get_game().await?;
+  Ok(Json(_get_game(game, index, metadata).await?))
 }
 
-async fn poll_game(
-  Extension(service): Extension<Arc<GameService>>,
-  Path((game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
+async fn player_get_game(
+  Extension(service): Extension<Arc<PlayerService>>,
+) -> WebResult<Json<serde_json::Value>> {
+  // TODO: this needs to return just a subset of the game! (only the currently focused scene, and
+  // creatures etc available in that scene)
+  let (game, index, metadata) = service.get_game().await?;
+  Ok(Json(_get_game(game, index, metadata).await?))
+}
+
+async fn gm_poll_game(
+  Extension(service): Extension<Arc<GMService>>,
+  Path((_game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
 ) -> WebResult<Json<serde_json::Value>> {
   service.poll_game(GameIndex { game_idx, log_idx }).await?;
-  Ok(Json(_get_game(service, game_id).await?))
+  let (game, index, metadata) = service.get_game().await?;
+  Ok(Json(_get_game(game, index, metadata).await?))
 }
 
-async fn _get_game(service: Arc<GameService>, game_id: GameID) -> WebResult<serde_json::Value> {
-  let game = RPIGame(&service.game);
+async fn player_poll_game(
+  Extension(service): Extension<Arc<PlayerService>>,
+  Path((_game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
+) -> WebResult<Json<serde_json::Value>> {
+  // Ok, this is dumb because this function is identical to gm_poll_game except for using
+  // PlayerService I could switch to using a trait or something, where both GMService and
+  // PlayerService implement poll_game, BUT, I'm not sure if the interface is going to remain the
+  // same, so I'll duplicate it for now.
+  service.poll_game(GameIndex { game_idx, log_idx }).await?;
+  let (game, index, metadata) = service.get_game().await?;
+  Ok(Json(_get_game(game, index, metadata).await?))
+}
+
+async fn _get_game(
+  game: &Game, index: GameIndex, metadata: GameMetadata,
+) -> WebResult<serde_json::Value> {
+  // Unfortunately, I don't yet encode this type as a real Rust type, because RPIGame takes a
+  // reference to the Game, and I can't derive TS on structs that have parameterized lifetimes (I
+  // think?)
+  let game = RPIGame(game);
   Ok(serde_json::json!({
     "game": game,
-    "index": service.game_index,
-    "metadata": service.storage.load_game_metadata(&game_id).await?
+    "index": index,
+    "metadata": metadata
   }))
 }
 
 async fn execute(
-  Extension(service): Extension<Arc<GameService>>, Json(command): Json<GameCommand>,
+  Extension(service): Extension<Arc<GMService>>, Json(command): Json<GameCommand>,
 ) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
   // Note that this function actually serializes the result from calling
   // perform_command into the JSON response -- there are no "?" operators here!
@@ -194,20 +223,27 @@ async fn execute(
 }
 
 async fn movement_options(
-  Extension(service): Extension<Arc<GameService>>,
+  Extension(service): Extension<Arc<GMService>>,
   Path((_game_id, scene_id, creature_id)): Path<(String, SceneID, CreatureID)>,
 ) -> WebResult<Json<Vec<Point3>>> {
   Ok(Json(service.movement_options(scene_id, creature_id).await?))
 }
 
 async fn combat_movement_options(
-  Extension(service): Extension<Arc<GameService>>,
+  Extension(service): Extension<Arc<GMService>>,
 ) -> WebResult<Json<Vec<Point3>>> {
   Ok(Json(service.combat_movement_options().await?))
 }
 
+async fn player_movement_options(
+  Extension(service): Extension<Arc<PlayerService>>,
+  Path((_game_id, scene_id, creature_id)): Path<(String, SceneID, CreatureID)>,
+) -> WebResult<Json<Vec<Point3>>> {
+  Ok(Json(service.movement_options(scene_id, creature_id).await?))
+}
+
 async fn target_options(
-  Extension(service): Extension<Arc<GameService>>,
+  Extension(service): Extension<Arc<GMService>>,
   Path((_game_id, scene_id, creature_id, ability_id)): Path<(
     String,
     SceneID,
@@ -219,7 +255,7 @@ async fn target_options(
 }
 
 async fn preview_volume_targets(
-  Extension(service): Extension<Arc<GameService>>,
+  Extension(service): Extension<Arc<GMService>>,
   Path((_game_id, scene_id, creature_id, ability_id, x, y, z)): Path<(
     String,
     SceneID,
