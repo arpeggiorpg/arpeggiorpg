@@ -242,7 +242,7 @@ const defaultGrid = {
 
 interface PlayerState {
   playerId: T.PlayerID | undefined;
-  setPlayerId: (id: T.PlayerID) => void;
+  setPlayerId: (id: T.PlayerID | undefined) => void;
 }
 const playerSlice: Slice<PlayerState> = set => ({
   playerId: undefined,

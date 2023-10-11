@@ -257,11 +257,14 @@ function PlayerGame() {
   } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
   console.log(isLoading, games, status);
 
+  const playerId = games?.games.find(([profile, _meta]) => profile.game_id === gameId && profile.role === "Player")?.[0].profile_name;
+  React.useEffect(() => {
+    M.getState().setPlayerId(playerId);
+  }, [playerId])
   if (isLoading || !games || status !== "Ready") {
     return <div>Loading...</div>;
   }
 
-  const playerId = games.games.find(([profile, _meta]) => profile.game_id === gameId && profile.role === "Player")?.[0].profile_name;
   if (!playerId) {
     return <div>Sorry, couldn't find a player for you</div>;
   }
