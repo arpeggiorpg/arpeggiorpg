@@ -151,6 +151,8 @@ export async function requestMove(cid: T.CreatureID) {
       T.arrayOfPoint3,
     );
     getState().displayMovementOptions(result, cid);
+  } else {
+    console.error("requestMove: No scene!");
   }
 }
 
@@ -225,7 +227,10 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
 // }
 
 function gameUrl() {
-  let { gameId } = getState();
+  let gameId = getState().gameId;
+  if (!gameId) {
+    throw new Error("Sorry, I lost the gameId somehow!?");
+  }
   let mode = getState().playerId === undefined ? "gm" : "player";
   return `/g/${gameId}/${mode}`;
 }

@@ -153,7 +153,7 @@ function mapCreatures(
 ): { [index: string]: Grid.MapCreature } {
   return mapValues(Grid.mapCreatures(state, scene), (mapc) => ({
     ...mapc,
-    actions: mapc.actions.merge(
+    actions: mapc.actions.concat(
       creatureMenuActions(
         state,
         scene,
@@ -169,14 +169,15 @@ function creatureMenuActions(
   scene: T.Scene,
   combat: T.Combat | null,
   creature: T.Creature
-): Map<string, (cid: T.CreatureID) => void> {
-  let actions: Map<string, (cid: T.CreatureID) => void> = Map({
-    Walk: (cid: T.CreatureID) => A.requestMove(cid),
-    Teleport: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid),
-  });
+): Grid.MapCreature["actions"] {
+  const actions = [
+    {actionName: "Walk", action: (cid: T.CreatureID) => A.requestMove(cid)},
+    {actionName: "Teleport", action: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid)}
+  ];
   if (combat && state.getCurrentCombatCreatureID() === creature.id) {
-    actions = actions.merge({
-      "Combat-move": (_: T.CreatureID) => A.requestCombatMovement(),
+    actions.push({
+      actionName: "Combat-move",
+      action: (_: T.CreatureID) => A.requestCombatMovement(),
     });
   }
   return actions;
