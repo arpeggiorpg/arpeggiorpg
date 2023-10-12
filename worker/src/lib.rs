@@ -8,19 +8,25 @@ use worker::*;
 //   be an error handler in main that produces a custom Response.
 //   - The same is not true for the Durable Object. When I return an Err from
 //     the DO, it ends up in the HTTP response.
+
 // - Panics in the worker do not get printed anywhere, as far as I can tell, and
 //   they result in the same "The script will never generate a response" message.
 //   - Panics in the Durable Object are even worse; the DO seems to disappear
 //     from the face of the net and the Worker just hangs waiting from a
 //     response instead of getting some sort of error.
 
+// So, we can just use a panic hook to log the panics. However, I'm still concerned about the fact
+// that a panicking DO does not immediately return a 500 or even seem to drop the connection to the
+// waiting Worker. I'll have to see what the behavior is in actual production; maybe this is just a
+// behavior of the local dev environment.
 
-// The upshot is... I am really not sure if I can trust Workers-rs enough if I can't even *log*
-// panics, let alone recover from them.
+extern crate console_error_panic_hook;
+use std::panic;
 
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
+  panic::set_hook(Box::new(console_error_panic_hook::hook));
   console_log!("THE WORKER");
   let result = Router::new()
     .on_async("/durable/:message", |_req, ctx| async move {
@@ -58,7 +64,10 @@ pub struct ChatRoom {
 
 #[durable_object]
 impl DurableObject for ChatRoom {
-  fn new(state: State, env: Env) -> Self { Self { state, env } }
+  fn new(state: State, env: Env) -> Self {
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
+    Self { state, env }
+  }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     console_log!("[DO] start");
@@ -68,6 +77,7 @@ impl DurableObject for ChatRoom {
     if path == "/message" {
       let json = &req.json::<serde_json::Value>().await?;
       console_log!("[DO] JSON: {json:?}");
+      panic!("OH NO DO!");
       let message = json
         .get("message")
         .ok_or(Error::RustError("Can't find message in json body".to_string()))?;
