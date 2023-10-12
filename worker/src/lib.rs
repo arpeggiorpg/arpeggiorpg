@@ -3,18 +3,19 @@ use std::panic;
 use wasm_bindgen::JsValue;
 use worker::*;
 
-// Things I've learned about error-handling in workers-rs:
-// - any Err returned from the main worker doesn't seem to do anything other
-//   than "Error: The script will never generate a response.". So there *must*
-//   be an error handler in main that produces a custom Response.
-//   - The same is not true for the Durable Object. When I return an Err from
-//     the DO, it ends up in the HTTP response.
+use arpeggio::types::Game;
 
-// - Panics in the worker do not get printed anywhere, as far as I can tell, and
-//   they result in the same "The script will never generate a response" message.
-//   - Panics in the Durable Object are even worse; the DO seems to disappear
-//     from the face of the net and the Worker just hangs waiting from a
-//     response instead of getting some sort of error.
+// Things I've learned about error-handling in workers-rs:
+// - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
+//   will never generate a response.". So there *must* be an error handler in main that produces a
+//   custom Response.
+//   - The same is not true for the Durable Object. When I return an Err from the DO, it ends up in
+//     the HTTP response.
+
+// - Panics in the worker do not get printed anywhere, as far as I can tell, and they result in the
+//   same "The script will never generate a response" message.
+//   - Panics in the Durable Object are even worse; the DO seems to disappear from the face of the
+//     net and the Worker just hangs waiting from a response instead of getting some sort of error.
 
 // So, we can just use a panic hook to log the panics. However, I'm still concerned about the fact
 // that a panicking DO does not immediately return a 500 or even seem to drop the connection to the
@@ -43,6 +44,11 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
       init.with_headers(headers).with_method(Method::Post).with_body(Some(body));
       let req = Request::new_with_init("https://fake-host/message", &init)?;
       stub.fetch_with_request(req).await
+    })
+    .on_async("/arpeggio", |_req, ctx| async move {
+      let namespace = ctx.durable_object("CHATROOM")?;
+      let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
+      stub.fetch_with_str("https://fake-host/arpeggio").await
     })
     .run(req, env)
     .await;
@@ -87,6 +93,9 @@ impl DurableObject for ChatRoom {
         messages.into_iter().map(|m| format!("<li>{m}</li>")).collect::<Vec<String>>().concat();
       let html = format!("<html><body><ul>{messages}</ul></body></html>");
       return Response::from_html(html);
+    } else if path == "/arpeggio" {
+      let game: Game = Default::default();
+      return Response::from_json(&game);
     } else {
       return Response::error("bad URL to DO", 404);
     }
