@@ -8,7 +8,7 @@ use arpeggio::types::Game;
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
 //   will never generate a response.". So there *must* be an error handler in main that produces a
-//   custom Response.
+//   custom Response. (turns out I'm wrong: see `respond_with_errors`)
 //   - The same is not true for the Durable Object. When I return an Err from the DO, it ends up in
 //     the HTTP response.
 
@@ -22,9 +22,15 @@ use arpeggio::types::Game;
 // waiting Worker. I'll have to see what the behavior is in actual production; maybe this is just a
 // behavior of the local dev environment.
 
-#[event(fetch)]
-async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
+#[event(start)]
+fn start() {
   panic::set_hook(Box::new(console_error_panic_hook::hook));
+}
+
+
+#[event(fetch, respond_with_errors)]
+async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
+
   console_log!("THE WORKER");
   let result = Router::new()
     .on_async("/durable/:message", |_req, ctx| async move {
@@ -34,12 +40,11 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
       let mut headers = Headers::new();
       headers.set("content-type", "application/json")?;
       // I don't know why, but for some reason if I try to use
-      // serde_wasm_bindgen to generate this RequestInit body, I just end up
+      // serde_wasem_bindgen to generate this RequestInit body, I just end up
       // getting "[object Map]".
       let body = serde_json::json!({"message": message});
       let body = serde_json::to_string(&body)?;
       let body = JsValue::from_str(&body);
-      console_log!("what the hell is this body? {body:?}");
       let mut init = RequestInit::new();
       init.with_headers(headers).with_method(Method::Post).with_body(Some(body));
       let req = Request::new_with_init("https://fake-host/message", &init)?;
@@ -53,10 +58,7 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     .run(req, env)
     .await;
   console_log!("Done invoking DO?");
-  match result {
-    Ok(r) => Ok(r),
-    Err(e) => Response::error(e.to_string(), 500),
-  }
+  result
 }
 
 #[durable_object]
@@ -67,10 +69,8 @@ pub struct ChatRoom {
 
 #[durable_object]
 impl DurableObject for ChatRoom {
-  fn new(state: State, env: Env) -> Self {
-    panic::set_hook(Box::new(console_error_panic_hook::hook));
-    Self { state, env }
-  }
+
+  fn new(state: State, env: Env) -> Self { Self { state, env } }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     console_log!("[DO] start");
