@@ -158,7 +158,7 @@ impl Dice {
         let mut rng = rand::thread_rng();
 
         for _ in 0..num {
-          let val = rng.gen_range(1, i32::from(size) + 1);
+          let val = rng.gen_range(1..i32::from(size) + 1);
           result += val;
           intermediate.push(val as i16);
         }
@@ -247,7 +247,7 @@ macro_rules! uuid_id {
     pub struct $type(pub Uuid);
     impl $type {
       pub fn gen() -> $type { $type(Uuid::new_v4()) }
-      pub fn to_string(&self) -> String { self.0.to_hyphenated().to_string() }
+      pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
     }
 
     impl ::std::str::FromStr for $type {
