@@ -1,6 +1,7 @@
+use console_error_panic_hook;
+use std::panic;
 use wasm_bindgen::JsValue;
 use worker::*;
-
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other
@@ -19,10 +20,6 @@ use worker::*;
 // that a panicking DO does not immediately return a 500 or even seem to drop the connection to the
 // waiting Worker. I'll have to see what the behavior is in actual production; maybe this is just a
 // behavior of the local dev environment.
-
-extern crate console_error_panic_hook;
-use std::panic;
-
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
@@ -77,7 +74,6 @@ impl DurableObject for ChatRoom {
     if path == "/message" {
       let json = &req.json::<serde_json::Value>().await?;
       console_log!("[DO] JSON: {json:?}");
-      panic!("OH NO DO!");
       let message = json
         .get("message")
         .ok_or(Error::RustError("Can't find message in json body".to_string()))?;
