@@ -22,9 +22,9 @@ serde_yaml = "0.8"
 clap = {version = "4.4.6", features = ["derive"]}
 tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi-thread"]}
 tower-http = {version = "0.4.4", features = ["cors", "trace"]}
-ts-rs = {version = "6.1", features = ["serde-compat", "uuid-impl"]}
+ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
 uom = {version = "0.35", default_features = false}
-uuid = { version = "0.8.1", features = ["v4", "serde"] }
+uuid = { version = "1.1.2", features = ["v4", "serde"] }
 google-cloud-storage = "0.13.1"
 # Unfortunately this google-signin package seems pretty unmaintained.
 # I need to use the git version because the support for local verification of ID tokens is only in
