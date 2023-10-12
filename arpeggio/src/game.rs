@@ -164,10 +164,6 @@ impl Game {
     &self, player_id: PlayerID, cmd: PlayerCommand,
   ) -> Result<ChangedGame, GameError> {
     use self::PlayerCommand::*;
-    // I need to know which player is performing this command.
-    // - Sometimes I just need to know it for informational purposes, like ChatFromPlayer.
-    // - Sometimes I need to *authorize* actions, like in PathCreature: you
-    //   should only need to move creatures that you control.
     let player =
       self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
     let change = match cmd {
