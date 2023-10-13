@@ -4,5 +4,6 @@
 !nonempty
 !arpeggio
 !rpi
+!mtarp
 !Cargo.lock
 !Cargo.toml

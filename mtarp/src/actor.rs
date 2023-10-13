@@ -1,9 +1,7 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result as AEResult};
-use futures::channel::oneshot;
-use tokio::{sync::Mutex, time::timeout};
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, info};
 
 use crate::{
   storage::{load_game, Storage},
@@ -12,68 +10,6 @@ use crate::{
 
 use arpeggio::types::{self, Game, GMCommand, PlayerID, PlayerCommand};
 
-#[derive(thiserror::Error, Debug)]
-#[error("Authentication Error")]
-pub struct AuthenticationError {
-  #[from]
-  pub from: anyhow::Error,
-}
-
-/// AuthenticatableService is a capability layer that hands out AuthenticatedServices to users who
-/// authenticate.
-#[derive(Clone)]
-pub struct AuthenticatableService {
-  pub storage: Arc<dyn Storage>,
-
-  ping_service: Arc<PingService>,
-
-  /// This is google client ID
-  pub google_client_id: String,
-  /// Cached certs for use by google_signin
-  pub cached_certs: Arc<Mutex<google_signin::CachedCerts>>,
-}
-
-impl AuthenticatableService {
-  pub fn new(storage: Arc<dyn Storage>, google_client_id: String) -> AuthenticatableService {
-    AuthenticatableService {
-      storage,
-      google_client_id,
-      cached_certs: Arc::new(Mutex::new(google_signin::CachedCerts::new())),
-      ping_service: Arc::new(PingService::new()),
-    }
-  }
-
-  /// Verify a google ID token and return an AuthenticatedService if it's valid.
-  pub async fn authenticate(
-    &self, google_id_token: String,
-  ) -> Result<AuthenticatedService, AuthenticationError> {
-    let user_id = self
-      .validate_google_token(&google_id_token)
-      .await
-      .context("Validating Google ID Token".to_string())
-      .map_err(|e| AuthenticationError { from: e })?;
-    Ok(AuthenticatedService {
-      user_id,
-      storage: self.storage.clone(),
-      ping_service: self.ping_service.clone(),
-    })
-  }
-
-  async fn validate_google_token(&self, id_token: &str) -> AEResult<UserID> {
-    let mut certs = self.cached_certs.lock().await;
-    certs.refresh_if_needed().await?;
-    let mut client = google_signin::Client::new();
-    client.audiences.push(self.google_client_id.clone());
-    let id_info = client.verify(id_token, &certs).await?;
-    let expiry = std::time::UNIX_EPOCH + Duration::from_secs(id_info.exp);
-    let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
-    debug!(
-      "validate-token: email={:?} name={:?} sub={:?} expires={:?} expires IN: {:?}",
-      id_info.email, id_info.name, id_info.sub, id_info.exp, time_until_expiry
-    );
-    Ok(UserID(format!("google_{}", id_info.sub)))
-  }
-}
 
 /// AuthenticatedService is a capability layer that exposes functionality to authenticated users.
 /// One important responsibility is that this layer *authorizes* users to access specific games and
@@ -81,7 +17,6 @@ impl AuthenticatableService {
 pub struct AuthenticatedService {
   pub user_id: UserID,
   pub storage: Arc<dyn Storage>,
-  ping_service: Arc<PingService>,
 }
 
 impl AuthenticatedService {
@@ -119,7 +54,6 @@ impl AuthenticatedService {
       game_id: *game_id,
       game,
       game_index,
-      ping_service: self.ping_service.clone(),
     })
   }
 
@@ -139,7 +73,6 @@ impl AuthenticatedService {
       game_id: *game_id,
       game,
       game_index,
-      ping_service: self.ping_service.clone(),
     })
   }
 
@@ -166,7 +99,6 @@ impl AuthenticatedService {
     // Probably need to share this code with GMService.perform_command
     let changed_game = game.perform_gm_command(command)?;
     self.storage.apply_game_logs(game_id, &changed_game.logs).await?;
-    self.ping_service.ping(game_id).await?;
 
     Ok(profile)
   }
@@ -177,18 +109,11 @@ pub struct GMService {
   pub game: Game,
   pub game_index: GameIndex,
   pub game_id: GameID,
-  ping_service: Arc<PingService>,
 }
 
 impl GMService {
   pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
     Ok((&self.game, self.game_index, self.storage.load_game_metadata(&self.game_id).await?))
-  }
-
-  /// Wait for a Game to change and then return it.
-  #[instrument(level = "debug", skip(self))]
-  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
-    Ok(poll_game(self.game_id, self.game_index, &*self.ping_service).await?)
   }
 
   pub async fn invite(&self) -> AEResult<InvitationID> {
@@ -204,7 +129,6 @@ impl GMService {
     info!("perform_gm_command:start: {:?}", &log_cmd);
     let changed_game = self.game.perform_gm_command(command)?;
     self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
-    self.ping_service.ping(&self.game_id).await?;
     debug!("perform_gm_command:done: {:?}", &log_cmd);
     Ok(changed_game)
   }
@@ -257,19 +181,12 @@ pub struct PlayerService {
   pub game: Game,
   pub game_index: GameIndex,
   pub game_id: GameID,
-  ping_service: Arc<PingService>,
 }
 
 impl PlayerService {
   pub async fn get_game(&self) -> AEResult<(&Game, GameIndex, GameMetadata)> {
     // TODO: Don't return Game, return PlayerGame!
     Ok((&self.game, self.game_index, self.storage.load_game_metadata(&self.game_id).await?))
-  }
-
-  /// Wait for a Game to change and then return it.
-  #[instrument(level = "debug", skip(self))]
-  pub async fn poll_game(&self, game_index: GameIndex) -> AEResult<()> {
-    Ok(poll_game(self.game_id, game_index, &*self.ping_service.clone()).await?)
   }
 
   pub async fn invite(&self) -> AEResult<InvitationID> {
@@ -285,7 +202,6 @@ impl PlayerService {
     info!("perform_player_command:start: {:?}", &log_cmd);
     let changed_game = self.game.perform_player_command(self.player_id.clone(), command)?;
     self.storage.apply_game_logs(&self.game_id, &changed_game.logs).await?;
-    self.ping_service.ping(&self.game_id).await?;
     debug!("perform_player_command:done: {:?}", &log_cmd);
     Ok(changed_game)
   }
@@ -326,55 +242,3 @@ impl PlayerService {
   // }
 }
 
-/// The PingService coordinates the notification of all players in a game session so that they get
-/// instantly updated whenever a change happens to the game they're playing.
-// This should go away and be replaced with a CloudFlare Workers Durable Object using Hibernatable
-// WebSockets.
-struct PingService {
-  waiters: Mutex<HashMap<GameID, Vec<oneshot::Sender<()>>>>,
-}
-
-impl PingService {
-  pub fn new() -> PingService { PingService { waiters: Mutex::new(HashMap::new()) } }
-
-  pub async fn register_waiter(&self, game_id: &GameID, sender: oneshot::Sender<()>) {
-    let mut waiters = self.waiters.lock().await;
-    let game_waiters = waiters.entry(*game_id);
-    game_waiters.and_modify(|v| v.push(sender)).or_insert(vec![]);
-  }
-
-  pub async fn ping(&self, game_id: &GameID) -> AEResult<()> {
-    let mut waiters = self.waiters.lock().await;
-
-    if let Some(waiters) = waiters.get_mut(game_id) {
-      for sender in waiters.drain(0..) {
-        if let Err(e) = sender.send(()) {
-          error!("game_changed:receiver-unavailable when sending {:?}", e);
-        }
-      }
-    }
-    Ok(())
-  }
-}
-
-async fn poll_game(
-  game_id: GameID, game_index: GameIndex, ping_service: &PingService,
-) -> AEResult<()> {
-  // First, if the app has already changed, return it immediately.
-  if game_index != game_index {
-    return Ok(());
-  }
-  // Now, we wait.
-  let (sender, receiver) = oneshot::channel();
-  ping_service.register_waiter(&game_id, sender).await;
-  let event = timeout(Duration::from_secs(30), receiver).await;
-  match event {
-    Ok(_) => {
-      // The oneshot was canceled. I'm not really sure what this means or why it happens.
-    }
-    Err(_) => {
-      // Timeout; just return the state of the app
-    }
-  }
-  Ok(())
-}

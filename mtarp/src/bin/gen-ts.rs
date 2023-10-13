@@ -2,21 +2,21 @@ use std::{fs::File, io::prelude::*};
 use ts_rs::TS;
 
 use arpeggio::types as T;
-use rpi::types as RT;
+use mtarp::types as MT;
 
 pub fn main() -> Result<(), anyhow::Error> {
   let mut file = File::create("../ui/src/bindings/bindings.ts")?;
   let decls = vec![
     <foldertree::FolderPath as TS>::decl(),
     <foldertree::FolderTree<T::Folder> as TS>::decl(),
-    <RT::GameID as TS>::decl(),
-    <RT::GameIndex as TS>::decl(),
-    <RT::GameList as TS>::decl(),
-    <RT::GameMetadata as TS>::decl(),
-    <RT::GameProfile as TS>::decl(),
-    <RT::InvitationID as TS>::decl(),
-    <RT::Role as TS>::decl(),
-    <RT::UserID as TS>::decl(),
+    <MT::GameID as TS>::decl(),
+    <MT::GameIndex as TS>::decl(),
+    <MT::GameList as TS>::decl(),
+    <MT::GameMetadata as TS>::decl(),
+    <MT::GameProfile as TS>::decl(),
+    <MT::InvitationID as TS>::decl(),
+    <MT::Role as TS>::decl(),
+    <MT::UserID as TS>::decl(),
     <T::AABB as TS>::decl(),
     <T::Ability as TS>::decl(),
     <T::AbilityID as TS>::decl(),

@@ -17,12 +17,10 @@ MIT-licensed: http://opensource.org/licenses/MIT
 To start the backend (this defaults to serving on all network interfaces on port 1337):
 
 ```shell
-cd rpi
-cargo run -- serve --storage ./storage/
+cargo run -- --bin arpeggio --storage ./storage/
 ```
 
-This will start an RPI server which will load & save games to the `sample_games` directory, and
-automatically load up the `testgame.yaml` file as the initial state.
+This will start an RPI server which will load & save games to the `storage` directory.
 
 To build the UI, you must have npm installed (ideally npm >=5).
 
