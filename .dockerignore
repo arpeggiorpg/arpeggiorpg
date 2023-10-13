@@ -5,6 +5,7 @@
 !arpeggio
 !rpi
 !mtarp
-!worker # I don't want to include this in the Docker image, but I can't figure out how to make cargo-chef ok without it
+# I don't want to include "worker" in the Docker image, but I can't figure out how to make cargo-chef ok without it
+!worker
 !Cargo.lock
 !Cargo.toml
