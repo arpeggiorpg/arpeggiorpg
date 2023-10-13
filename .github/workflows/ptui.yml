@@ -1,4 +1,4 @@
-name: PTUI
+name: UI
 
 on: [push]
 
@@ -10,11 +10,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: NPM install
-      working-directory: ./ptui
+      working-directory: ./ui
       run: npm install
     - name: TypeScript Compiler
-      working-directory: ./ptui
+      working-directory: ./ui
       run: npm run typecheck
-    - name: PTUI Unit Tests
-      working-directory: ./ptui
+    - name: UI Unit Tests
+      working-directory: ./ui
       run: npm run test run
