@@ -1,0 +1,11 @@
+*
+!foldertree
+!indexed
+!nonempty
+!arpeggio
+!rpi
+!mtarp
+# I don't want to include "worker" in the Docker image, but I can't figure out how to make cargo-chef ok without it
+!worker
+!Cargo.lock
+!Cargo.toml
