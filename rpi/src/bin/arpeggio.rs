@@ -2,14 +2,11 @@ use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::anyhow;
 use clap::Parser;
-use tracing::{info};
+use tracing::info;
 
+use mtarp::storage::{CachedStorage, FSStorage, Storage};
 
-use rpi::{
-  actor,
-  storage::{CachedStorage, FSStorage, Storage},
-  web,
-};
+use rpi::{authn, web};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -38,9 +35,9 @@ async fn serve(
     return Err(anyhow!("Need to pass one of storage-path or google-bucket"));
   };
 
-  let service = Arc::new(actor::AuthenticatableService::new(storage, google_client_id));
+  let service = authn::AuthenticatableService::new(storage, google_client_id);
 
-  let router = web::router(service.clone());
+  let router = web::router(service);
 
   info!(event = "listen-rpi", port = 1337);
   axum::Server::bind(&"0.0.0.0:1337".parse().unwrap())

@@ -14,15 +14,21 @@ use http::StatusCode;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use arpeggio::types::{
-  AbilityID, CreatureID, Game, GMCommand, PlayerID, Point3, PotentialTargets, RPIGame, SceneID, PlayerCommand,
+  AbilityID, CreatureID, GMCommand, Game, PlayerCommand, PlayerID, Point3, PotentialTargets,
+  RPIGame, SceneID,
 };
 
-use crate::{
-  actor::{AuthenticatableService, AuthenticatedService, GMService, PlayerService},
+use mtarp::{
+  actor::{AuthenticatedService, GMService, PlayerService},
   types::{GameID, GameIndex, GameList, GameMetadata, GameProfile, InvitationID},
 };
 
-pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
+use crate::{authn::AuthenticatableService, waiters::PingService};
+
+pub fn router(authn: AuthenticatableService) -> axum::Router {
+  let waiters = PingService::new();
+  let state = Arc::new(AxumState { waiters, authn });
+
   let gm_routes = axum::Router::new()
     .route("/", get(gm_get_game))
     .route("/poll/:game_idx/:log_idx", get(gm_poll_game))
@@ -54,11 +60,17 @@ pub fn router(service: Arc<AuthenticatableService>) -> axum::Router {
     .route("/invitations/:game_id/:invitation_id/accept", post(accept_invitation))
     .nest("/:game_id/gm/", gm_routes)
     .nest("/:game_id/player/", player_routes)
-    .route_layer(from_fn_with_state(service.clone(), authenticate));
+    .route_layer(from_fn_with_state(state.clone(), authenticate));
 
   let cors = CorsLayer::permissive();
   let trace = TraceLayer::new_for_http();
-  axum::Router::new().nest("/g", auth_routes).with_state(service).layer(cors).layer(trace)
+
+  axum::Router::new().nest("/g", auth_routes).with_state(state.clone()).layer(cors).layer(trace)
+}
+
+struct AxumState {
+  authn: AuthenticatableService,
+  waiters: PingService,
 }
 
 #[derive(serde::Deserialize)]
@@ -73,14 +85,14 @@ struct InvitationPath {
 }
 
 async fn authenticate<B>(
-  State(service): State<Arc<AuthenticatableService>>, mut request: Request<B>, next: Next<B>,
+  State(state): State<Arc<AxumState>>, mut request: Request<B>, next: Next<B>,
 ) -> Result<Response, WebError> {
   let header =
     request.headers().get("x-pt-rpi-auth").ok_or(anyhow!("Need a x-pt-rpi-auth header"))?;
   let id_token = header.to_str()?;
   // TODO: we should specifically handle the case where the token is valid but expired and return a
   // special response so the client can refresh the token.
-  let authenticated_result = service.authenticate(id_token.to_string()).await;
+  let authenticated_result = state.authn.authenticate(id_token.to_string()).await;
   match authenticated_result {
     Ok(authenticated) => {
       request.extensions_mut().insert(Arc::new(authenticated));
@@ -142,12 +154,13 @@ async fn check_invitation(
 }
 
 async fn accept_invitation(
-  Extension(service): Extension<Arc<AuthenticatedService>>,
+  Extension(service): Extension<Arc<AuthenticatedService>>, State(state): State<Arc<AxumState>>,
   Path(InvitationPath { game_id, invitation_id }): Path<InvitationPath>,
   Json(profile_name): Json<String>,
 ) -> WebResult<Json<GameProfile>> {
   let player_id = PlayerID(profile_name);
   let thing = service.accept_invitation(&game_id, &invitation_id, player_id).await?;
+  state.waiters.ping(&game_id).await?;
   Ok(Json(thing))
 }
 
@@ -176,23 +189,23 @@ async fn player_get_game(
 }
 
 async fn gm_poll_game(
-  Extension(service): Extension<Arc<GMService>>,
-  Path((_game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
+  Extension(service): Extension<Arc<GMService>>, State(state): State<Arc<AxumState>>,
+  Path((game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
 ) -> WebResult<Json<serde_json::Value>> {
-  service.poll_game(GameIndex { game_idx, log_idx }).await?;
+  state.waiters.poll_game(game_id, GameIndex { game_idx, log_idx }).await?;
   let (game, index, metadata) = service.get_game().await?;
   Ok(Json(_get_game(game, index, metadata).await?))
 }
 
 async fn player_poll_game(
-  Extension(service): Extension<Arc<PlayerService>>,
-  Path((_game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
+  Extension(service): Extension<Arc<PlayerService>>, State(state): State<Arc<AxumState>>,
+  Path((game_id, game_idx, log_idx)): Path<(GameID, usize, usize)>,
 ) -> WebResult<Json<serde_json::Value>> {
   // Ok, this is dumb because this function is identical to gm_poll_game except for using
   // PlayerService I could switch to using a trait or something, where both GMService and
   // PlayerService implement poll_game, BUT, I'm not sure if the interface is going to remain the
   // same, so I'll duplicate it for now.
-  service.poll_game(GameIndex { game_idx, log_idx }).await?;
+  state.waiters.poll_game(game_id, GameIndex { game_idx, log_idx }).await?;
   let (game, index, metadata) = service.get_game().await?;
   Ok(Json(_get_game(game, index, metadata).await?))
 }
@@ -212,7 +225,8 @@ async fn _get_game(
 }
 
 async fn perform_gm_command(
-  Extension(service): Extension<Arc<GMService>>, Json(command): Json<GMCommand>,
+  Extension(service): Extension<Arc<GMService>>, State(state): State<Arc<AxumState>>,
+  Json(command): Json<GMCommand>,
 ) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
   // Note that this function actually serializes the result from calling
   // perform_gm_command into the JSON response -- there are no "?" operators here!
@@ -220,11 +234,13 @@ async fn perform_gm_command(
   let changed_game = changed_game
     .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
     .map_err(|e| format!("{e:?}"));
+  state.waiters.ping(&service.game_id).await?;
   Ok(Json(changed_game))
 }
 
 async fn perform_player_command(
-  Extension(service): Extension<Arc<PlayerService>>, Json(command): Json<PlayerCommand>,
+  Extension(service): Extension<Arc<PlayerService>>, State(state): State<Arc<AxumState>>,
+  Json(command): Json<PlayerCommand>,
 ) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
   // Note that this function actually serializes the Result from calling perform_player_command into
   // the JSON response, so that it will encode both the Ok and the Err -- there are no "?" operators
@@ -233,6 +249,7 @@ async fn perform_player_command(
   let changed_game = changed_game
     .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
     .map_err(|e| format!("{e:?}"));
+  state.waiters.ping(&service.game_id).await?;
   Ok(Json(changed_game))
 }
 

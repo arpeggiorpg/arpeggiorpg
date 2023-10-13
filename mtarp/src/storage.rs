@@ -2,14 +2,14 @@ use std::{
   collections::HashMap,
   fs,
   path::PathBuf,
-  sync::Arc,
+  sync::{Arc, MutexGuard},
 };
 
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
-use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
+// use google_cloud_storage::client::{Client as StorageClient, ClientConfig as StorageClientConfig};
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use std::sync::Mutex;
 use tracing::{debug, info, warn};
 
 use crate::types::{
@@ -94,6 +94,7 @@ where
   cache: Arc<Mutex<HashMap<GameID, CachedGame>>>,
 }
 
+#[derive(Clone)]
 struct CachedGame {
   snapshots: HashMap<usize, Game>,
   logs: HashMap<GameIndex, GameLog>,
@@ -102,6 +103,13 @@ struct CachedGame {
 impl<S: Storage> CachedStorage<S> {
   pub fn new(storage: S) -> Self {
     CachedStorage { storage, cache: Arc::new(Mutex::new(HashMap::new())) }
+  }
+
+  fn lock(&self) -> MutexGuard<'_, HashMap<GameID, CachedGame>> {
+    match self.cache.lock() {
+      Ok(v) => v,
+      Err(e) => e.into_inner()
+    }
   }
 }
 
@@ -116,17 +124,23 @@ impl<S: Storage> CachedStorage<S> {
 //     maybe we can use that same mechanism to invalidate caches on all nodes.
 #[async_trait]
 impl<S: Storage> Storage for CachedStorage<S> {
+
   async fn load_game_log(&self, game_id: &GameID, index: GameIndex) -> Result<GameLog> {
-    let mut cache = self.cache.lock().await;
-    let cached_game = cache.get_mut(game_id);
-    if let Some(CachedGame { logs, .. }) = cached_game {
-      if logs.contains_key(&index) {
-        return Ok(logs[&index].clone());
+    let cached_game = {
+      let cache = self.lock();
+      let cached_game = cache.get(game_id);
+      if let Some(CachedGame { logs, .. }) = cached_game {
+        if logs.contains_key(&index) {
+          return Ok(logs[&index].clone());
+        }
       }
-    }
+      cached_game.cloned()
+    };
     let log = self.storage.load_game_log(game_id, index).await?;
-    if let Some(cached_game) = cached_game {
+    if let Some(mut cached_game) = cached_game {
       cached_game.logs.insert(index, log.clone());
+      let mut cache = self.lock();
+      cache.insert(*game_id, cached_game);
     } else {
       warn!(event = "I think there should be a cached snapshot for this log already...", ?index);
     }
@@ -134,17 +148,21 @@ impl<S: Storage> Storage for CachedStorage<S> {
   }
 
   async fn load_game_snapshot(&self, game_id: &GameID, snapshot: usize) -> Result<Game> {
-    let mut cache = self.cache.lock().await;
-    let cached_game = cache.get_mut(game_id);
-    if let Some(CachedGame { snapshots, .. }) = cached_game {
-      if snapshots.contains_key(&snapshot) {
-        return Ok(snapshots[&snapshot].clone());
+
+    {
+      let cache = self.lock();
+      let cached_game = cache.get(game_id);
+      if let Some(CachedGame { snapshots, .. }) = cached_game {
+        if snapshots.contains_key(&snapshot) {
+          return Ok(snapshots[&snapshot].clone());
+        }
       }
     }
 
     let game = self.storage.load_game_snapshot(game_id, snapshot).await?;
     let mut snapshots = HashMap::new();
     snapshots.insert(snapshot, game.clone());
+    let mut cache = self.lock();
     cache.insert(*game_id, CachedGame { snapshots, logs: HashMap::new() });
     return Ok(game);
   }
@@ -190,19 +208,19 @@ impl<S: Storage> Storage for CachedStorage<S> {
   }
 }
 
-pub struct CloudStorage {
-  bucket: String,
-  storage_client: StorageClient,
-}
+// pub struct CloudStorage {
+//   bucket: String,
+//   storage_client: StorageClient,
+// }
 
-impl CloudStorage {
-  pub async fn new(bucket: String) -> Result<CloudStorage> {
-    let config = StorageClientConfig::default().with_auth().await?;
-    let storage_client = StorageClient::new(config);
+// impl CloudStorage {
+//   pub async fn new(bucket: String) -> Result<CloudStorage> {
+//     let config = StorageClientConfig::default().with_auth().await?;
+//     let storage_client = StorageClient::new(config);
 
-    Ok(CloudStorage { bucket, storage_client })
-  }
-}
+//     Ok(CloudStorage { bucket, storage_client })
+//   }
+// }
 
 // impl Storage for CloudStorage {}
 

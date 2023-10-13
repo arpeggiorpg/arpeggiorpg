@@ -1,3 +1,3 @@
 [workspace]
-members = ["foldertree", "indexed", "nonempty", "arpeggio", "rpi", "worker"]
+members = ["foldertree", "indexed", "nonempty", "arpeggio", "rpi", "worker", "mtarp"]
 resolver = "2"
