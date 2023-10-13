@@ -3268,6 +3268,7 @@ version = "0.1.0"
 dependencies = [
  "arpeggio",
  "console_error_panic_hook",
+ "futures-util",
  "getrandom",
  "mtarp",
  "serde-wasm-bindgen 0.6.0",

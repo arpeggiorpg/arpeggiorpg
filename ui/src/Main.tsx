@@ -43,6 +43,21 @@ export const router = createBrowserRouter([
   },
 ]);
 
+
+const ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
+
+ws.addEventListener("open", (event) => {
+  ws.send("Hello Server!");
+});
+
+// Listen for messages
+ws.addEventListener("message", (event) => {
+  console.log("Message from server ", event.data);
+});
+
+
+if (window) (window as any).ARPEGGIO_WS = ws;
+
 export function Main() {
   const token = M.useState((s) => s.userToken);
   const gameName = M.useState((s) => s.gameName);
