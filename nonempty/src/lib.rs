@@ -10,8 +10,7 @@ extern crate serde_derive;
 #[cfg(test)]
 extern crate serde_json;
 
-use std::error;
-use std::fmt;
+use std::{error, fmt};
 
 #[cfg(feature = "use_serde")]
 use serde::de;

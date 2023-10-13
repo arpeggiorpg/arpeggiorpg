@@ -3,7 +3,7 @@ WORKDIR /app
 
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN cargo chef prepare --recipe-path recipe.json --bin arpeggio
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
@@ -11,11 +11,11 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 # Build application
 COPY . .
-RUN cargo build --release --bin ptrpi
+RUN cargo build --release --bin arpeggio
 
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y libssl3 ca-certificates
 WORKDIR /app
-COPY --from=builder /app/target/release/ptrpi /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/ptrpi"]
+COPY --from=builder /app/target/release/arpeggio /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/arpeggio"]

@@ -5,3 +5,4 @@ tasks.json
 CIDFILE
 docker/cache
 artifacts
+rpi/storage
