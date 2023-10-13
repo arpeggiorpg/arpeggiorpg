@@ -2,6 +2,7 @@ use console_error_panic_hook;
 use std::panic;
 use wasm_bindgen::JsValue;
 use worker::*;
+use futures_util::stream::StreamExt;
 
 use arpeggio::types::Game;
 
@@ -23,15 +24,11 @@ use arpeggio::types::Game;
 // behavior of the local dev environment.
 
 #[event(start)]
-fn start() {
-  panic::set_hook(Box::new(console_error_panic_hook::hook));
-}
-
+fn start() { panic::set_hook(Box::new(console_error_panic_hook::hook)); }
 
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
-
-  console_log!("THE WORKER");
+  console_log!("[worker] Start");
   let result = Router::new()
     .on_async("/durable/:message", |_req, ctx| async move {
       let message = ctx.param("message").unwrap();
@@ -55,21 +52,49 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
       let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
       stub.fetch_with_str("https://fake-host/arpeggio").await
     })
+    .get("/websocket", |_, ctx| {
+      console_log!("[worker] WEBSOCKET");
+      let pair = WebSocketPair::new()?;
+      let server = pair.server;
+      server.accept()?;
+
+      wasm_bindgen_futures::spawn_local(async move {
+        let mut event_stream = server.events().expect("could not open stream");
+
+        while let Some(event) = event_stream.next().await {
+          match event.expect("received error in websocket") {
+            WebsocketEvent::Message(msg) => {
+              if let Some(text) = msg.text() {
+                console_log!("[worker] Echoing text: {text:?}");
+                server.send_with_str(text).expect("could not relay text");
+              }
+            }
+            WebsocketEvent::Close(_) => {
+              // Sets a key in a test KV so the integration tests can query if we
+              // actually got the close event. We can't use the shared dat a for this
+              // because miniflare resets that every request.
+              console_log!("[worker] Closed WebSocket");
+            }
+          }
+        }
+      });
+
+      Response::from_websocket(pair.client)
+    })
     .run(req, env)
     .await;
-  console_log!("Done invoking DO?");
+  console_log!("[worker] Done");
   result
 }
 
 #[durable_object]
 pub struct ChatRoom {
   state: State,
-  env: Env, // access `Env` across requests, use inside `fetch`
+  env: Env,
 }
 
 #[durable_object]
 impl DurableObject for ChatRoom {
-
   fn new(state: State, env: Env) -> Self { Self { state, env } }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
