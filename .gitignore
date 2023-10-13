@@ -6,3 +6,4 @@ CIDFILE
 docker/cache
 artifacts
 rpi/storage
+mprocs.yaml
