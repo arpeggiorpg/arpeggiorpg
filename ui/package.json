@@ -35,7 +35,7 @@
     "svg-pan-zoom": "^3.5.3",
     "swr": "^2.2.4",
     "type-safe-json-decoder": "^0.2.0",
-    "zod": "^3.22.2",
+    "zod": "^3.22.3",
     "zustand": "^4.4.1"
   },
   "devDependencies": {
