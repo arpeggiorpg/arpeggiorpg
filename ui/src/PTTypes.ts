@@ -86,7 +86,7 @@ export type RustResult<T, E> =
 
 // ** Decoders **
 
-type Decoder<T> = Z.ZodType<T, Z.ZodTypeDef, any>;
+export type Decoder<T> = Z.ZodType<T, Z.ZodTypeDef, any>;
 
 export function parsePoint3(str: string): Point3 {
   const segments = str.split("/");

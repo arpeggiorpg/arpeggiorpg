@@ -7,6 +7,7 @@ import * as Z from "zod";
 
 import * as T from "./PTTypes";
 import { getState } from "./Model";
+import { WEBSOCKETS_ENABLED, sendWSRequest } from "./wsrpi";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
 if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
@@ -270,23 +271,29 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
 export async function sendGMCommand(cmd: T.GMCommand) {
   const json = T.encodeGMCommand(cmd);
   console.log("[sendGMCommand:JSON]", json);
+  const decoder = T.decodeRustResult(T.decodeChangedGame, Z.string());
 
-  const result = await ptfetch(
-    `${gameUrl()}/execute`,
-    {
-      method: "POST",
-      body: JSON.stringify(json),
-      headers: { "content-type": "application/json" },
-    },
-    T.decodeRustResult(T.decodeChangedGame, Z.string())
-  );
+  const result = WEBSOCKETS_ENABLED
+    ? await sendWSRequest({ t: "GMCommand", command: json }, decoder)
+    : await ptfetch(
+      `${gameUrl()}/execute`,
+      {
+        method: "POST",
+        body: JSON.stringify(json),
+        headers: { "content-type": "application/json" },
+      },
+      decoder,
+    );
+
   switch (result.t) {
     case "Ok":
       // Let's not refresh the state from this execute call for now, since
       // 1. I am observing some rubber-banding after executing commands
       // 2. the poll will refresh the state of the game anyway (and so execute
       //    probably shouldn't even return the new game state)
-      // getState().refresh(result.result.game);
+      // RADIX: I have temporarily re-enabled this refreshing while experimenting with websockets.
+      // I still think executing commands should not return a new Game at all, just the logs.
+      getState().refresh(result.result.game);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };

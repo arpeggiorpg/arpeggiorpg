@@ -56,10 +56,10 @@ const appSlice: Slice<AppState> = (set, get) => ({
   gameName: undefined,
   fetchStatus: "Unfetched",
 
-  setUserToken: userToken => set(() => ({userToken})),
+  setUserToken: userToken => set(() => ({ userToken })),
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
-  setGameId: gameId => set(() => ({gameId})),
-  setGameName: gameName => set(() => ({gameName})),
+  setGameId: gameId => set(() => ({ gameId })),
+  setGameName: gameName => set(() => ({ gameName })),
   refresh: game => set(state => {
     const pid = state.playerId;
     if (pid) {

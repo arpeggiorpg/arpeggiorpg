@@ -5,7 +5,8 @@ use wasm_bindgen::JsValue;
 use worker::*;
 
 use arpeggio::types::Game;
-use mtarp::actor::GMService;
+
+mod wsrpi;
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
@@ -140,18 +141,10 @@ impl DurableObject for ChatRoom {
         let mut event_stream = server.events().expect("could not open stream");
 
         while let Some(event) = event_stream.next().await {
-          match event.expect("received error in websocket") {
-            WebsocketEvent::Message(msg) => {
-              if let Some(text) = msg.text() {
-                console_log!("[worker] Echoing text: {text:?}");
-                server.send_with_str(text).expect("could not relay text");
-              }
-            }
-            WebsocketEvent::Close(_) => {
-              // Sets a key in a test KV so the integration tests can query if we
-              // actually got the close event. We can't use the shared dat a for this
-              // because miniflare resets that every request.
-              console_log!("[worker] Closed WebSocket");
+          if let Err(e) = wsrpi::handle_event(&server, event.expect("received error in websocket")).await {
+            console_error!("Error handling event. Disconnecting. {e:?}");
+            if let Err(e) = server.close(Some(1011), Some(format!("{e:?}"))) {
+              console_error!("error disconnecting websocket? {e:?}");
             }
           }
         }

@@ -3266,11 +3266,13 @@ dependencies = [
 name = "worker-rust"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "arpeggio",
  "console_error_panic_hook",
  "futures-util",
  "getrandom",
  "mtarp",
+ "serde",
  "serde-wasm-bindgen 0.6.0",
  "serde_json",
  "worker",
