@@ -15,7 +15,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use arpeggio::types::{
   AbilityID, CreatureID, GMCommand, Game, PlayerCommand, PlayerID, Point3, PotentialTargets,
-  RPIGame, SceneID,
+  RPIGame, SceneID, GameLog,
 };
 
 use mtarp::{
@@ -227,12 +227,12 @@ async fn _get_game(
 async fn perform_gm_command(
   Extension(service): Extension<Arc<GMService>>, State(state): State<Arc<AxumState>>,
   Json(command): Json<GMCommand>,
-) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
+) -> WebResult<Json<std::result::Result<Vec<GameLog>, String>>> {
   // Note that this function actually serializes the result from calling
   // perform_gm_command into the JSON response -- there are no "?" operators here!
   let changed_game = service.perform_command(command).await;
   let changed_game = changed_game
-    .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
+    .map(|cg| cg.logs)
     .map_err(|e| format!("{e:?}"));
   state.waiters.ping(&service.game_id).await?;
   Ok(Json(changed_game))
@@ -241,13 +241,13 @@ async fn perform_gm_command(
 async fn perform_player_command(
   Extension(service): Extension<Arc<PlayerService>>, State(state): State<Arc<AxumState>>,
   Json(command): Json<PlayerCommand>,
-) -> WebResult<Json<std::result::Result<serde_json::Value, String>>> {
+) -> WebResult<Json<std::result::Result<Vec<GameLog>, String>>> {
   // Note that this function actually serializes the Result from calling perform_player_command into
   // the JSON response, so that it will encode both the Ok and the Err -- there are no "?" operators
   // here!
   let changed_game = service.perform_command(command).await;
   let changed_game = changed_game
-    .map(|cg| serde_json::json!({"game": RPIGame(&cg.game), "logs": cg.logs}))
+    .map(|cg| cg.logs)
     .map_err(|e| format!("{e:?}"));
   state.waiters.ping(&service.game_id).await?;
   Ok(Json(changed_game))

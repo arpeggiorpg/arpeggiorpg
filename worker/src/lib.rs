@@ -170,11 +170,3 @@ impl DurableObject for ArpeggioGame {
     }
   }
 }
-
-fn handle_errors(result: anyhow::Result<()>) {
-  // TODO: clean up the session!
-  if let Err(e) = result {
-    console_error!("Error: {e:?}");
-  }
-}
-

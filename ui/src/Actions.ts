@@ -286,17 +286,14 @@ export async function sendGMCommand(cmd: T.GMCommand) {
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
       },
-      T.decodeRustResult(T.decodeChangedGame, Z.string())
+      T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
     );
   }
 
   switch (result.t) {
     case "Ok":
-      // Let's not refresh the state from this execute call for now, since
-      // 1. I am observing some rubber-banding after executing commands
-      // 2. the poll will refresh the state of the game anyway (and so execute
-      //    probably shouldn't even return the new game state)
-      // getState().refresh(result.result.game);
+      // Theoretically we could do something with the returned GameLogs, but we don't need to
+      // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
