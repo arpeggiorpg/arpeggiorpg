@@ -19,6 +19,7 @@ import useSWR from "swr";
 import { ModalMaker } from "./CommonView";
 import { TextInput } from "./TextInput";
 import { PlayerGameView } from "./PlayerView";
+import * as WS from "./wsrpi";
 
 export const router = createBrowserRouter([
   {
@@ -177,21 +178,15 @@ function usePoll(mode: "gm" | "player") {
   const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
-    const ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/game/${gameId}`);
-
-    ws.addEventListener("open", (event) => {
-      ws.send("Hello Server!");
-    });
-
-    // Listen for messages
-    ws.addEventListener("message", (event) => {
-      console.log("Message from server ", event.data);
-    });
 
     // startPoll returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
-    return A.startPoll(mode, gameId);
-  }, []);
+    if (WS.WEBSOCKETS_ENABLED) {
+      return WS.connect(gameId);
+    } else {
+      return A.startPoll(mode, gameId);
+    }
+  }, [gameId]);
 
   const status = M.useState((s) => s.fetchStatus);
   return {gameId, status};
