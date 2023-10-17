@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::anyhow;
-use futures_channel::mpsc::UnboundedSender;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -9,6 +8,8 @@ use worker::{console_error, console_log, WebSocket, WebsocketEvent};
 
 use arpeggio::types::{ChangedGame, GMCommand, Game};
 use mtarp::actor::GMService;
+
+use crate::Sessions;
 
 #[derive(Deserialize)]
 struct WSRequest {
@@ -26,11 +27,11 @@ enum WSCommand {
 pub struct GameSession {
   game: Arc<Mutex<Game>>,
   socket: WebSocket,
-  tx: UnboundedSender<String>
+  sessions: Sessions,
 }
 
 impl GameSession {
-  pub fn new(game: Arc<Mutex<Game>>, socket: WebSocket, tx: UnboundedSender<String>) -> Self { Self { game, socket, tx} }
+  pub fn new(game: Arc<Mutex<Game>>, socket: WebSocket, sessions: Sessions) -> Self { Self { game, socket, sessions} }
 
   pub async fn run(&self) {
     let mut event_stream = self.socket.events().expect("could not open stream");
@@ -95,7 +96,12 @@ impl GameSession {
 
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
-    self.tx.unbounded_send(s)?;
+    // TODO: ignore poison
+    let sessions = self.sessions.read().map_err(anyhow_str)?;
+    console_log!("Broadcasting a message to {:?} clients", sessions.len());
+    for socket in sessions.iter() {
+      socket.send_with_str(s.clone()).map_err(anyhow_str)?;
+    }
     Ok(())
   }
 
@@ -103,4 +109,11 @@ impl GameSession {
     let s = serde_json::to_string::<T>(value)?;
     Ok(self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))?)
   }
+}
+
+/// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
+/// errors about how a *mut u8 might escape an async closure or something. So this converts the
+/// error to a string before converting it to an anyhow Error.
+fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error {
+  anyhow!("{e:?}")
 }

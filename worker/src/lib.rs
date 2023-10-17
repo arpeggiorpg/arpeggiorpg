@@ -3,8 +3,6 @@ use std::{
   sync::{Arc, Mutex, RwLock},
 };
 
-use anyhow::anyhow;
-use futures_channel::mpsc::UnboundedReceiver;
 use futures_util::stream::StreamExt;
 use wasm_bindgen::JsValue;
 use worker::*;
@@ -105,8 +103,11 @@ pub struct ArpeggioGame {
   state: State,
   env: Env,
   game: Arc<Mutex<Game>>,
-  sessions: Arc<RwLock<Vec<WebSocket>>>,
+  sessions: Sessions,
 }
+
+
+pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
@@ -152,17 +153,16 @@ impl DurableObject for ArpeggioGame {
 
       // TODO: ignore poison
       self.sessions.write().expect("poison").push(server.clone());
-      let (tx, rx) = futures_channel::mpsc::unbounded::<String>();
-      let session = GameSession::new(self.game.clone(), server, tx);
+      let session = GameSession::new(self.game.clone(), server, self.sessions.clone());
       wasm_bindgen_futures::spawn_local(async move {
         session.run().await;
       });
 
-      // make a copy of the sessions Arc so that our asynchronous task doesn't need to touch "self"
-      let sessions = self.sessions.clone();
-      wasm_bindgen_futures::spawn_local(async move {
-        handle_errors(broadcaster(sessions, rx).await);
-      });
+      // // make a copy of the sessions Arc so that our asynchronous task doesn't need to touch "self"
+      // let sessions = self.sessions.clone();
+      // wasm_bindgen_futures::spawn_local(async move {
+      //   handle_errors(broadcaster(sessions, rx).await);
+      // });
 
       Response::from_websocket(pair.client)
     } else {
@@ -178,19 +178,3 @@ fn handle_errors(result: anyhow::Result<()>) {
   }
 }
 
-async fn broadcaster(sessions: Arc<RwLock<Vec<WebSocket>>>, mut rx: UnboundedReceiver<String>) -> anyhow::Result<()> {
-  while let Some(event) = rx.next().await {
-    // TODO: ignore poison
-    let sessions = sessions.read().map_err(anyhow_str)?;
-    console_log!("Broadcasting a message to {:?} clients", sessions.len());
-    for socket in sessions.iter() {
-      socket.send_with_str(event.clone()).map_err(anyhow_str)?;
-    }
-  }
-  Ok(())
-}
-
-
-fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error {
-  anyhow!("{e:?}")
-}

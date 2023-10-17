@@ -3269,7 +3269,6 @@ dependencies = [
  "anyhow",
  "arpeggio",
  "console_error_panic_hook",
- "futures-channel",
  "futures-util",
  "getrandom",
  "mtarp",
