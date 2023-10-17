@@ -1,10 +1,11 @@
 use console_error_panic_hook;
+use futures_util::stream::StreamExt;
 use std::panic;
 use wasm_bindgen::JsValue;
 use worker::*;
-use futures_util::stream::StreamExt;
 
 use arpeggio::types::Game;
+use mtarp::actor::GMService;
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
@@ -81,6 +82,13 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 
       Response::from_websocket(pair.client)
     })
+    .on_async("/game/:id", |req, ctx| async move {
+      let id = ctx.param("id").expect("id should exist because it's in the route");
+      console_log!("[worker] GAME {id}");
+      let namespace = ctx.durable_object("CHATROOM")?;
+      let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
+      return Ok(stub.fetch_with_request(req).await?);
+    })
     .run(req, env)
     .await;
   console_log!("[worker] Done");
@@ -121,6 +129,35 @@ impl DurableObject for ChatRoom {
     } else if path == "/arpeggio" {
       let game: Game = Default::default();
       return Response::from_json(&game);
+    } else if path.starts_with("/game") {
+      console_log!("[DO] GAME {path}");
+      console_log!("[worker] WEBSOCKET");
+      let pair = WebSocketPair::new()?;
+      let server = pair.server;
+      server.accept()?;
+
+      wasm_bindgen_futures::spawn_local(async move {
+        let mut event_stream = server.events().expect("could not open stream");
+
+        while let Some(event) = event_stream.next().await {
+          match event.expect("received error in websocket") {
+            WebsocketEvent::Message(msg) => {
+              if let Some(text) = msg.text() {
+                console_log!("[worker] Echoing text: {text:?}");
+                server.send_with_str(text).expect("could not relay text");
+              }
+            }
+            WebsocketEvent::Close(_) => {
+              // Sets a key in a test KV so the integration tests can query if we
+              // actually got the close event. We can't use the shared dat a for this
+              // because miniflare resets that every request.
+              console_log!("[worker] Closed WebSocket");
+            }
+          }
+        }
+      });
+
+      Response::from_websocket(pair.client)
     } else {
       return Response::error("bad URL to DO", 404);
     }

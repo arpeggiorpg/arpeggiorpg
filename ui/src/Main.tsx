@@ -44,20 +44,6 @@ export const router = createBrowserRouter([
 ]);
 
 
-const ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
-
-ws.addEventListener("open", (event) => {
-  ws.send("Hello Server!");
-});
-
-// Listen for messages
-ws.addEventListener("message", (event) => {
-  console.log("Message from server ", event.data);
-});
-
-
-if (window) (window as any).ARPEGGIO_WS = ws;
-
 export function Main() {
   const token = M.useState((s) => s.userToken);
   const gameName = M.useState((s) => s.gameName);
@@ -191,6 +177,17 @@ function usePoll(mode: "gm" | "player") {
   const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
+    const ws = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/game/${gameId}`);
+
+    ws.addEventListener("open", (event) => {
+      ws.send("Hello Server!");
+    });
+
+    // Listen for messages
+    ws.addEventListener("message", (event) => {
+      console.log("Message from server ", event.data);
+    });
+
     // startPoll returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
     return A.startPoll(mode, gameId);
