@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::anyhow;
+use futures_channel::mpsc::UnboundedSender;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -25,10 +26,11 @@ enum WSCommand {
 pub struct GameSession {
   game: Arc<Mutex<Game>>,
   socket: WebSocket,
+  tx: UnboundedSender<String>
 }
 
 impl GameSession {
-  pub fn new(game: Arc<Mutex<Game>>, socket: WebSocket) -> Self { Self { game, socket } }
+  pub fn new(game: Arc<Mutex<Game>>, socket: WebSocket, tx: UnboundedSender<String>) -> Self { Self { game, socket, tx} }
 
   pub async fn run(&self) {
     let mut event_stream = self.socket.events().expect("could not open stream");
@@ -36,7 +38,7 @@ impl GameSession {
     while let Some(event) = event_stream.next().await {
       if let Err(e) = self.handle_event(event.expect("received error in websocket")).await {
         console_error!("Error handling event. Disconnecting. {e:?}");
-        if let Err(e) = self.socket.close(Some(1011), Some(format!("{e:?}"))) {
+        if let Err(e) = self.socket.close(Some(4000), Some(format!("{e:?}"))) {
           console_error!("error disconnecting websocket? {e:?}");
         }
       }
@@ -80,7 +82,8 @@ impl GameSession {
         let changed_game = game.perform_gm_command(command).map_err(|e| format!("{e:?}"));
         let result = match changed_game {
           Ok(ChangedGame { logs, game: new_game }) => {
-            *game = new_game;
+            *game = new_game.clone();
+            self.broadcast(&json!({"t": "refresh_game", "game": new_game}))?;
             Ok(logs)
           }
           Err(e) => Err(format!("{e:?}")),
@@ -88,6 +91,12 @@ impl GameSession {
         Ok(serde_json::to_value(result)?)
       }
     }
+  }
+
+  fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
+    let s = serde_json::to_string::<T>(value)?;
+    self.tx.unbounded_send(s)?;
+    Ok(())
   }
 
   fn send<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {

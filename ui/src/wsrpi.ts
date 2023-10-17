@@ -9,7 +9,7 @@ export type WSCommand =
   | { t: "GetGame" }
   // GMCommand's command is a *post-serialization* GMCommand, not a T.GMCommand. This is confusing.
   // :-(
-  | { t: "GMCommand", command: string | object}
+  | { t: "GMCommand", command: string | object }
   ;
 
 // I considered storing these in Zustand, but you will *never* use a selector hook to access them,
@@ -69,7 +69,12 @@ function handleWSEvent(event: MessageEvent<string>) {
       handler(parsed);
     }
   } else {
-    // Handle server-sent events like GameUpdate
-    console.info("Got an unexpected message from the server:", parsed)
+    // Handle server-sent events
+    if ("t" in parsed && parsed["t"] === "refresh_game" && "game" in parsed) {
+      const game = T.decodeGame.parse(parsed["game"]);
+      M.getState().refresh(game);
+    } else {
+      console.info("Got an unexpected message from the server:", parsed)
+    }
   }
 }

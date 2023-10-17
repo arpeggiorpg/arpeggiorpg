@@ -1,9 +1,11 @@
-use console_error_panic_hook;
-use futures_util::stream::StreamExt;
 use std::{
   panic,
-  sync::{Arc, Mutex},
+  sync::{Arc, Mutex, RwLock},
 };
+
+use anyhow::anyhow;
+use futures_channel::mpsc::UnboundedReceiver;
+use futures_util::stream::StreamExt;
 use wasm_bindgen::JsValue;
 use worker::*;
 
@@ -103,16 +105,19 @@ pub struct ArpeggioGame {
   state: State,
   env: Env,
   game: Arc<Mutex<Game>>,
+  sessions: Arc<RwLock<Vec<WebSocket>>>,
 }
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
-  fn new(state: State, env: Env) -> Self { Self { state, env, game: Default::default() } }
+  fn new(state: State, env: Env) -> Self {
+    Self { state, env, game: Default::default(), sessions: Arc::new(RwLock::new(vec![])) }
+  }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     console_log!("[DO] start");
     let path = req.path();
-    console_log!("[DO] method={:?} path={path:?} headers={:?}", req.method(), req.headers());
+    console_log!("[DO] method={:?} path={path:?}", req.method());
     let mut storage = self.state.storage();
     if path == "/message" {
       let json = &req.json::<serde_json::Value>().await?;
@@ -140,11 +145,23 @@ impl DurableObject for ArpeggioGame {
       let server = pair.server;
       server.accept()?;
 
-      let game = self.game.clone();
+      // We have *two* asynchronous tasks here:
+      // 1. listen for messages from the client and act on the game
+      // 2. listen for broadcasts from the first task and sends a message to all sessions
+      // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
+      // TODO: ignore poison
+      self.sessions.write().expect("poison").push(server.clone());
+      let (tx, rx) = futures_channel::mpsc::unbounded::<String>();
+      let session = GameSession::new(self.game.clone(), server, tx);
       wasm_bindgen_futures::spawn_local(async move {
-        let live_game = GameSession::new(game.clone(), server);
-        live_game.run().await;
+        session.run().await;
+      });
+
+      // make a copy of the sessions Arc so that our asynchronous task doesn't need to touch "self"
+      let sessions = self.sessions.clone();
+      wasm_bindgen_futures::spawn_local(async move {
+        handle_errors(broadcaster(sessions, rx).await);
       });
 
       Response::from_websocket(pair.client)
@@ -152,4 +169,28 @@ impl DurableObject for ArpeggioGame {
       return Response::error("bad URL to DO", 404);
     }
   }
+}
+
+fn handle_errors(result: anyhow::Result<()>) {
+  // TODO: clean up the session!
+  if let Err(e) = result {
+    console_error!("Error: {e:?}");
+  }
+}
+
+async fn broadcaster(sessions: Arc<RwLock<Vec<WebSocket>>>, mut rx: UnboundedReceiver<String>) -> anyhow::Result<()> {
+  while let Some(event) = rx.next().await {
+    // TODO: ignore poison
+    let sessions = sessions.read().map_err(anyhow_str)?;
+    console_log!("Broadcasting a message to {:?} clients", sessions.len());
+    for socket in sessions.iter() {
+      socket.send_with_str(event.clone()).map_err(anyhow_str)?;
+    }
+  }
+  Ok(())
+}
+
+
+fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error {
+  anyhow!("{e:?}")
 }
