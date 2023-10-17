@@ -8,9 +8,9 @@ command = "cargo install -q worker-build && worker-build --release"
 
 [durable_objects]
 bindings = [
-  { name = "CHATROOM", class_name = "ChatRoom" } # the `class_name` uses the Rust struct identifier name
+  { name = "ARPEGGIOGAME", class_name = "ArpeggioGame" }
 ]
 
 [[migrations]]
 tag = "v1" # Should be unique for each entry
-new_classes = ["ChatRoom"] # Array of new classes
+new_classes = ["ArpeggioGame"] # Array of new classes

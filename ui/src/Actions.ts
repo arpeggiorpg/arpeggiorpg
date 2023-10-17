@@ -271,19 +271,24 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
 export async function sendGMCommand(cmd: T.GMCommand) {
   const json = T.encodeGMCommand(cmd);
   console.log("[sendGMCommand:JSON]", json);
-  const decoder = T.decodeRustResult(T.decodeChangedGame, Z.string());
 
-  const result = WEBSOCKETS_ENABLED
-    ? await sendWSRequest({ t: "GMCommand", command: json }, decoder)
-    : await ptfetch(
+  let result;
+  if (WEBSOCKETS_ENABLED) {
+    result = await sendWSRequest(
+      { t: "GMCommand", command: json },
+      T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
+    );
+  } else {
+    result = await ptfetch(
       `${gameUrl()}/execute`,
       {
         method: "POST",
         body: JSON.stringify(json),
         headers: { "content-type": "application/json" },
       },
-      decoder,
+      T.decodeRustResult(T.decodeChangedGame, Z.string())
     );
+  }
 
   switch (result.t) {
     case "Ok":
@@ -291,9 +296,7 @@ export async function sendGMCommand(cmd: T.GMCommand) {
       // 1. I am observing some rubber-banding after executing commands
       // 2. the poll will refresh the state of the game anyway (and so execute
       //    probably shouldn't even return the new game state)
-      // RADIX: I have temporarily re-enabled this refreshing while experimenting with websockets.
-      // I still think executing commands should not return a new Game at all, just the logs.
-      getState().refresh(result.result.game);
+      // getState().refresh(result.result.game);
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };

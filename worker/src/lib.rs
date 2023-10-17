@@ -1,10 +1,15 @@
 use console_error_panic_hook;
 use futures_util::stream::StreamExt;
-use std::panic;
+use std::{
+  panic,
+  sync::{Arc, Mutex},
+};
 use wasm_bindgen::JsValue;
 use worker::*;
 
 use arpeggio::types::Game;
+
+use crate::wsrpi::GameSession;
 
 mod wsrpi;
 
@@ -34,7 +39,7 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
   let result = Router::new()
     .on_async("/durable/:message", |_req, ctx| async move {
       let message = ctx.param("message").unwrap();
-      let namespace = ctx.durable_object("CHATROOM")?;
+      let namespace = ctx.durable_object("ARPEGGIOGAME")?;
       let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
       let mut headers = Headers::new();
       headers.set("content-type", "application/json")?;
@@ -50,7 +55,7 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
       stub.fetch_with_request(req).await
     })
     .on_async("/arpeggio", |_req, ctx| async move {
-      let namespace = ctx.durable_object("CHATROOM")?;
+      let namespace = ctx.durable_object("ARPEGGIOGAME")?;
       let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
       stub.fetch_with_str("https://fake-host/arpeggio").await
     })
@@ -72,9 +77,6 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
               }
             }
             WebsocketEvent::Close(_) => {
-              // Sets a key in a test KV so the integration tests can query if we
-              // actually got the close event. We can't use the shared dat a for this
-              // because miniflare resets that every request.
               console_log!("[worker] Closed WebSocket");
             }
           }
@@ -86,8 +88,8 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     .on_async("/game/:id", |req, ctx| async move {
       let id = ctx.param("id").expect("id should exist because it's in the route");
       console_log!("[worker] GAME {id}");
-      let namespace = ctx.durable_object("CHATROOM")?;
-      let stub = namespace.id_from_name("chatty-b")?.get_stub()?;
+      let namespace = ctx.durable_object("ARPEGGIOGAME")?;
+      let stub = namespace.id_from_name(id)?.get_stub()?;
       return Ok(stub.fetch_with_request(req).await?);
     })
     .run(req, env)
@@ -97,14 +99,15 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 }
 
 #[durable_object]
-pub struct ChatRoom {
+pub struct ArpeggioGame {
   state: State,
   env: Env,
+  game: Arc<Mutex<Game>>,
 }
 
 #[durable_object]
-impl DurableObject for ChatRoom {
-  fn new(state: State, env: Env) -> Self { Self { state, env } }
+impl DurableObject for ArpeggioGame {
+  fn new(state: State, env: Env) -> Self { Self { state, env, game: Default::default() } }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     console_log!("[DO] start");
@@ -137,17 +140,11 @@ impl DurableObject for ChatRoom {
       let server = pair.server;
       server.accept()?;
 
-      wasm_bindgen_futures::spawn_local(async move {
-        let mut event_stream = server.events().expect("could not open stream");
+      let game = self.game.clone();
 
-        while let Some(event) = event_stream.next().await {
-          if let Err(e) = wsrpi::handle_event(&server, event.expect("received error in websocket")).await {
-            console_error!("Error handling event. Disconnecting. {e:?}");
-            if let Err(e) = server.close(Some(1011), Some(format!("{e:?}"))) {
-              console_error!("error disconnecting websocket? {e:?}");
-            }
-          }
-        }
+      wasm_bindgen_futures::spawn_local(async move {
+        let live_game = GameSession::new(game.clone(), server);
+        live_game.run().await;
       });
 
       Response::from_websocket(pair.client)
