@@ -2,6 +2,7 @@
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import { RPIGameRequest } from "./bindings/bindings";
+import { sendRequest } from "./Actions";
 
 export const WEBSOCKETS_ENABLED = typeof import.meta.env.VITE_WEBSOCKET_URL !== "undefined"
 
@@ -33,7 +34,7 @@ export function connect(gameId: string) {
 
   webSocket.addEventListener("open", async (event) => {
     console.log("connected to WebSocket. initiating GetGame");
-    const game = await sendWSRequest({ t: "GMGetGame" }, T.decodeGame);
+    const game = await sendRequest({ t: "GMGetGame" }, T.decodeGame);
     console.log("got the game.", game);
     M.getState().refresh(game);
   });

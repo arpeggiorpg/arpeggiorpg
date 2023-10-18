@@ -6,7 +6,7 @@
 import * as Z from "zod";
 
 import * as T from "./PTTypes";
-import { getState } from "./Model";
+import { assertNever, getState } from "./Model";
 import { WEBSOCKETS_ENABLED, sendWSRequest } from "./wsrpi";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
@@ -243,25 +243,34 @@ function gameUrl() {
   return `/g/${gameId}/${mode}`;
 }
 
-function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>): Promise<T> {
+export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>): Promise<T> {
 
   if (WEBSOCKETS_ENABLED) {
     return sendWSRequest(request, decoder);
   } else {
     switch (request.t) {
+      case "GMGetGame":
+        return get("/");
       case "GMCommand":
-        return post("/execute");
+        return execute();
       case "PlayerCommand":
-        return post("/execute");
-      default:
-        throw new Error(`Unsupported request: ${request}`);
+        return execute();
+      case "GMMovementOptions":
+        return get(`/movement_options/${request.scene_id}/${request.creature_id}`);
     }
   }
 
-  function post(suffix: string) {
-    let body = JSON.stringify(T.encodeRPIGameRequest(request));
+  function get(suffix: string) {
+    return ptfetch(`${gameUrl()}${suffix}`, {}, decoder);
+  }
+
+  function execute() {
+    const encoded = T.encodeRPIGameRequest(request);
+    if (!("command" in encoded)) { throw new Error("This isn't a command"); }
+    const command = encoded.command;
+    const body = JSON.stringify(command);
     return ptfetch(
-      `${gameUrl()}${suffix}`,
+      `${gameUrl()}/execute`,
       {
         method: "POST", headers: { "content-type": "application/json" },
         body
