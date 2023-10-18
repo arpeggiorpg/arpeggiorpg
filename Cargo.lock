@@ -3269,6 +3269,7 @@ dependencies = [
  "anyhow",
  "arpeggio",
  "console_error_panic_hook",
+ "foldertree",
  "futures-util",
  "getrandom",
  "mtarp",

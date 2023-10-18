@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use anyhow::anyhow;
 use futures_util::stream::StreamExt;
@@ -6,32 +6,27 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::{console_error, console_log, WebSocket, WebsocketEvent};
 
-use arpeggio::types::{ChangedGame, GMCommand, Game};
-use mtarp::actor::GMService;
+use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
+use mtarp::types::RPIGameRequest;
 
 use crate::Sessions;
 
+/// A representation of a request received from a websocket. It has an ID so we can send a response
+/// and the client can match them up.
 #[derive(Deserialize)]
 struct WSRequest {
-  command: WSCommand,
+  request: RPIGameRequest,
   id: String,
 }
 
-#[derive(Deserialize)]
-#[serde(tag = "t")]
-enum WSCommand {
-  GetGame,
-  GMCommand { command: GMCommand },
-}
-
 pub struct GameSession {
-  game: Arc<Mutex<Game>>,
+  game: Arc<RwLock<Game>>,
   socket: WebSocket,
   sessions: Sessions,
 }
 
 impl GameSession {
-  pub fn new(game: Arc<Mutex<Game>>, socket: WebSocket, sessions: Sessions) -> Self { Self { game, socket, sessions} }
+  pub fn new(game: Arc<RwLock<Game>>, socket: WebSocket, sessions: Sessions) -> Self { Self { game, socket, sessions} }
 
   pub async fn run(&self) {
     let mut event_stream = self.socket.events().expect("could not open stream");
@@ -55,13 +50,16 @@ impl GameSession {
           match request {
             Ok(request) => {
               let request_id = request.id.clone();
-              match self.handle_request(request).await {
+              console_log!("About to handle request");
+              let response = self.handle_request(request).await;
+              console_log!("Handled request: {response:?}");
+              match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
                 Err(e) => self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?,
               }
             }
             Err(e) => self.send(
-              // If I separated parsing of the frames-with-ids from the WSCommand JSON, I would be
+              // If I separated parsing of the frames-with-ids from the WSRequest JSON, I would be
               // able to send this error back with the ID of the request (assuming it had one).
               &json!({"websocket_error": format!("Couldn't parse as a WSRequest: {e:?}")}),
             )?,
@@ -76,22 +74,48 @@ impl GameSession {
   }
 
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
-    match request.command {
-      WSCommand::GetGame => Ok(serde_json::to_value(&self.game.lock().expect("no poison").clone())?),
-      WSCommand::GMCommand { command } => {
-        let mut game = self.game.lock().expect("no poison");
-        let changed_game = game.perform_gm_command(command).map_err(|e| format!("{e:?}"));
-        let result = match changed_game {
-          Ok(ChangedGame { logs, game: new_game }) => {
-            *game = new_game.clone();
-            self.broadcast(&json!({"t": "refresh_game", "game": new_game}))?;
-            Ok(logs)
-          }
-          Err(e) => Err(format!("{e:?}")),
+    use RPIGameRequest::*;
+    match request.request {
+      GMGetGame => {
+        let game = self.game.read().expect("no poison").clone();
+        let rpi_game = RPIGame(&game);
+        Ok(serde_json::to_value(&rpi_game)?)
+      }
+      PlayerCommand { command } => {
+        let changed_game = {
+          let game = self.game.read().expect("no poison");
+          game.perform_player_command(todo!("player ID"), command)
         };
-        Ok(serde_json::to_value(result)?)
+        self.change_game(changed_game)
+      }
+      GMCommand { command } => {
+        let changed_game = {
+          let game = self.game.read().expect("no poison");
+          game.perform_gm_command(command)
+        };
+        self.change_game(changed_game)
+      }
+      GMMovementOptions { scene_id, creature_id } => {
+        let game = self.game.read().expect("no poison");
+        let options = game.get_movement_options(scene_id, creature_id)?;
+        Ok(serde_json::to_value(options)?)
       }
     }
+  }
+
+  fn change_game(&self, changed_game: Result<ChangedGame, GameError>) -> anyhow::Result<serde_json::Value> {
+    let changed_game = changed_game.map_err(|e| format!("{e:?}"));
+    let result = match changed_game {
+      Ok(ChangedGame { logs, game: new_game }) => {
+        let mut game = self.game.write().expect("no poison");
+        *game = new_game.clone();
+        let rpi_game = RPIGame(&game);
+        self.broadcast(&json!({"t": "refresh_game", "game": rpi_game}))?;
+        Ok(logs)
+      }
+      Err(e) => Err(format!("{e:?}")),
+    };
+    Ok(serde_json::to_value(result)?)
   }
 
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {

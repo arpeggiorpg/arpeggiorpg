@@ -23,7 +23,7 @@ num-traits = "0.2.10"
 rand = "0.8.5"
 serde = "1.0.8"
 serde_derive = "1.0.8"
-uuid = { version = "1.1.2", features = ["v4", "serde"] }
+uuid = { workspace = true }
 ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
 
 [dependencies.uom]

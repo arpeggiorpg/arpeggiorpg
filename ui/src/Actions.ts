@@ -143,15 +143,17 @@ function getattr(o: any, name: string): any {
 }
 
 
-export async function requestMove(cid: T.CreatureID) {
+export async function requestMove(creature_id: T.CreatureID) {
   const scene = getState().getFocusedScene();
   if (scene) {
-    const result = await ptfetch(
-      `${gameUrl()}/movement_options/${scene.id}/${cid}`,
-      undefined,
+    let scene_id = scene.id;
+    // let t = getState().playerId ? "PlayerMovementOptions" : "GMMovementOptions";
+    let t: T.RPIGameRequest["t"] = "GMMovementOptions"; // TODO: PlayerMovementOptions
+    const result = await sendRequest(
+      { t, scene_id, creature_id },
       T.arrayOfPoint3,
     );
-    getState().displayMovementOptions(result, cid);
+    getState().displayMovementOptions(result, creature_id);
   } else {
     console.error("requestMove: No scene!");
   }
@@ -241,54 +243,59 @@ function gameUrl() {
   return `/g/${gameId}/${mode}`;
 }
 
-export async function sendPlayerCommand(cmd: T.PlayerCommand) {
-  const json = T.encodePlayerCommand(cmd);
-  console.log("[sendPlayerCommand:JSON]", json);
+function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>): Promise<T> {
 
-  const result = await ptfetch(
-    `${gameUrl()}/execute`,
-    {
-      method: "POST",
-      body: JSON.stringify(json),
-      headers: { "content-type": "application/json" },
-    },
-    T.decodeRustResult(T.decodeChangedGame, Z.string())
+  if (WEBSOCKETS_ENABLED) {
+    return sendWSRequest(request, decoder);
+  } else {
+    switch (request.t) {
+      case "GMCommand":
+        return post("/execute");
+      case "PlayerCommand":
+        return post("/execute");
+      default:
+        throw new Error(`Unsupported request: ${request}`);
+    }
+  }
+
+  function post(suffix: string) {
+    let body = JSON.stringify(T.encodeRPIGameRequest(request));
+    return ptfetch(
+      `${gameUrl()}${suffix}`,
+      {
+        method: "POST", headers: { "content-type": "application/json" },
+        body
+      },
+      decoder
+    );
+  }
+}
+
+
+
+export async function sendPlayerCommand(cmd: T.PlayerCommand) {
+  console.log("[sendPlayerCommand:JSON]", cmd);
+  const result = await sendRequest(
+    { t: "PlayerCommand", command: cmd },
+    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
   );
+
   switch (result.t) {
     case "Ok":
-      // Let's not refresh the state from this execute call for now, since
-      // 1. I am observing some rubber-banding after executing commands
-      // 2. the poll will refresh the state of the game anyway (and so execute
-      //    probably shouldn't even return the new game state)
-      // getState().refresh(result.result.game);
+      // Theoretically we could do something with the returned GameLogs, but we don't need to
+      // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
       return;
     case "Err":
       throw { _pt_error: 'RPI', message: result.error };
   }
 }
 
-
 export async function sendGMCommand(cmd: T.GMCommand) {
-  const json = T.encodeGMCommand(cmd);
-  console.log("[sendGMCommand:JSON]", json);
-
-  let result;
-  if (WEBSOCKETS_ENABLED) {
-    result = await sendWSRequest(
-      { t: "GMCommand", command: json },
-      T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
-    );
-  } else {
-    result = await ptfetch(
-      `${gameUrl()}/execute`,
-      {
-        method: "POST",
-        body: JSON.stringify(json),
-        headers: { "content-type": "application/json" },
-      },
-      T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
-    );
-  }
+  console.log("[sendGMCommand:JSON]", cmd);
+  const result = await sendRequest(
+    { t: "GMCommand", command: cmd },
+    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
+  );
 
   switch (result.t) {
     case "Ok":

@@ -1,6 +1,6 @@
 use std::{
   panic,
-  sync::{Arc, Mutex, RwLock},
+  sync::{Arc, RwLock},
 };
 
 use futures_util::stream::StreamExt;
@@ -102,17 +102,30 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
 pub struct ArpeggioGame {
   state: State,
   env: Env,
-  game: Arc<Mutex<Game>>,
+  game: Arc<RwLock<Game>>,
   sessions: Sessions,
 }
-
 
 pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, env: Env) -> Self {
-    Self { state, env, game: Default::default(), sessions: Arc::new(RwLock::new(vec![])) }
+    // until we can load modules from R2, let's create a Class here so we can create creatures and
+    // stuff
+    let mut game: Game = Default::default();
+    let class_id = arpeggio::types::ClassID::gen();
+    game.classes.insert(arpeggio::types::Class {
+      id: class_id.clone(),
+      name: "Wizard".to_string(),
+      abilities: vec![],
+      conditions: vec![],
+      color: "#00f".to_string(),
+    });
+    let root = game.campaign.get_mut(&foldertree::FolderPath::from_vec(vec![])).expect("root must exist");
+    root.classes.insert(class_id);
+
+    Self { state, env, game: Arc::new(RwLock::new(game)), sessions: Arc::new(RwLock::new(vec![])) }
   }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {

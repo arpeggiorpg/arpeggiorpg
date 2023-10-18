@@ -26,7 +26,7 @@ tokio = {version = "1.32", features = ["time", "sync", "rt", "macros", "rt-multi
 tower-http = {version = "0.4.4", features = ["cors", "trace"]}
 ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
 uom = {version = "0.35", default_features = false}
-uuid = { version = "1.1.2", features = ["v4", "serde"] }
+uuid = { workspace = true }
 google-cloud-storage = "0.13.1"
 # Unfortunately this google-signin package seems pretty unmaintained.
 # I need to use the git version because the support for local verification of ID tokens is only in

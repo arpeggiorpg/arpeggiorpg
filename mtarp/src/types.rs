@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use arpeggio::{types::PlayerID, uuid_id};
+use arpeggio::{types::{PlayerID, GMCommand, PlayerCommand, CreatureID, SceneID}, uuid_id};
 
 uuid_id!(GameID);
 uuid_id!(InvitationID);
@@ -54,4 +54,16 @@ pub struct GameList {
 pub struct Invitation {
   pub id: InvitationID,
   pub game_id: GameID,
+}
+
+/// The various kinds of requests that a frontend can make of the RPI in the context of a game.
+/// These are scoped to a specific game, so you won't see things like "Auth" or "ListGames" here,
+/// just the commands that related to one specific game.
+#[derive(Deserialize, TS, Debug)]
+#[serde(tag = "t")]
+pub enum RPIGameRequest {
+  GMGetGame,
+  GMMovementOptions { scene_id: SceneID, creature_id: CreatureID },
+  GMCommand { command: GMCommand },
+  PlayerCommand { command: PlayerCommand },
 }

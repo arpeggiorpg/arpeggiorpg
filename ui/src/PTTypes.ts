@@ -7,9 +7,9 @@ import type {
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
   GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item,
-  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility,
-  Volume, VolumeCondition,
+  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role,
+  RPIGameRequest, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  UserID, Visibility, Volume, VolumeCondition,
 } from "./bindings/bindings";
 export {
   AABB, Ability, AbilityID, AbilityStatus, Action, AppliedCondition, AttributeCheck, AttrID,
@@ -17,11 +17,12 @@ export {
   CreatureData, CreatureEffect, CreatureID, CreatureLog, CreatureTarget, DecidedTarget, Dice,
   Duration, Energy, FolderItemID, FolderNode, FolderPath, FolderTree, Game, GMCommand, GameID,
   GameIndex, GameList, GameLog, GameMetadata, GameProfile, HP, InventoryOwner, InvitationID, Item,
-  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role, Scene,
-  SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem, UserID, Visibility,
-  Volume, VolumeCondition,
+  ItemID, ModuleSource, Note, Player, PlayerCommand, PlayerID, PotentialTargets, Role,
+  RPIGameRequest, Scene, SceneCreation, SceneEffect, SceneID, SceneTarget, SkillLevel, TileSystem,
+  UserID, Visibility, Volume, VolumeCondition,
 };
 import { DynamicCreature as Creature } from "./bindings/bindings";
+import { assertNever } from './Model';
 export type { Creature };
 
 export type Color = string;
@@ -628,6 +629,16 @@ export function encodePlayerCommand(cmd: PlayerCommand): object | string {
 
   return cmd;
 
+}
+
+export function encodeRPIGameRequest(request: RPIGameRequest): object {
+  console.log("hello?", request);
+  if (request.t === "GMCommand") {
+    console.log("encoding GMCommand?", request, encodeGMCommand(request.command));
+    return { ...request, command: encodeGMCommand(request.command) };
+  } else {
+    return request;
+  }
 }
 
 export function encodeGMCommand(cmd: GMCommand): object | string {

@@ -23,6 +23,8 @@ mtarp = {version = "*", path = "../mtarp"}
 getrandom = {version = "0.2.9", features = ["js"]}
 futures-util = { version = "0.3.28", default-features = false }
 # futures-channel = "0.3.28"
+# uuid = { workspace = true }
+foldertree = { path = "../foldertree" }
 
 [profile.release]
 lto = true

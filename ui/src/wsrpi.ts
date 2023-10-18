@@ -1,29 +1,22 @@
 
 import * as M from "./Model";
 import * as T from "./PTTypes";
+import { RPIGameRequest } from "./bindings/bindings";
 
 export const WEBSOCKETS_ENABLED = typeof import.meta.env.VITE_WEBSOCKET_URL !== "undefined"
-
-// TODO: BIND
-export type WSCommand =
-  | { t: "GetGame" }
-  // GMCommand's command is a *post-serialization* GMCommand, not a T.GMCommand. This is confusing.
-  // :-(
-  | { t: "GMCommand", command: string | object }
-  ;
 
 // I considered storing these in Zustand, but you will *never* use a selector hook to access them,
 // so really, so I think global variables are the best representation.
 const _requests: Record<string, (o: any) => void> = {};
 let webSocket: WebSocket | undefined;
 
-export function sendWSRequest<T>(command: WSCommand, parser: T.Decoder<T>): Promise<T> {
+export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>): Promise<T> {
   let id = crypto.randomUUID();
-  let commandWithId = { id, command };
+  let requestWithId = { id, request: T.encodeRPIGameRequest(request) };
   if (!webSocket) {
     throw new Error("Not connected to a websocket!");
   }
-  webSocket.send(JSON.stringify(commandWithId));
+  webSocket.send(JSON.stringify(requestWithId));
   return new Promise((res, rej) => {
     _requests[id] = data => {
       console.log("handler invoked with", data);
@@ -40,7 +33,7 @@ export function connect(gameId: string) {
 
   webSocket.addEventListener("open", async (event) => {
     console.log("connected to WebSocket. initiating GetGame");
-    const game = await sendWSRequest({ t: "GetGame" }, T.decodeGame);
+    const game = await sendWSRequest({ t: "GMGetGame" }, T.decodeGame);
     console.log("got the game.", game);
     M.getState().refresh(game);
   });
