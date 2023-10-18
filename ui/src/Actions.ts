@@ -65,7 +65,6 @@ async function ptfetch_<J>(
     if (error._pt_error) {
       switch (error._pt_error) {
         case "JSON": return `Failed to decode JSON ${error.original}`;
-        // RADIX: is "RPI" actually produced anywhere?
         case "RPI": return `Error received from server ${error.message}`;
         default: return `Unknown error ${error.toString()}`;
       }
@@ -279,8 +278,6 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
     );
   }
 }
-
-
 
 export async function sendPlayerCommand(cmd: T.PlayerCommand) {
   console.log("[sendPlayerCommand:JSON]", cmd);

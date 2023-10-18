@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use worker::{console_error, console_log, WebSocket, WebsocketEvent};
+use worker::{console_error, console_log, State, WebSocket, WebsocketEvent};
 
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
 use mtarp::types::RPIGameRequest;
@@ -20,13 +20,17 @@ struct WSRequest {
 }
 
 pub struct GameSession {
-  game: Arc<RwLock<Game>>,
+  state: Arc<State>,
   socket: WebSocket,
   sessions: Sessions,
 }
 
 impl GameSession {
-  pub fn new(game: Arc<RwLock<Game>>, socket: WebSocket, sessions: Sessions) -> Self { Self { game, socket, sessions} }
+  pub fn new(
+    state: Arc<State>, socket: WebSocket, sessions: Sessions,
+  ) -> Self {
+    Self { state, socket, sessions }
+  }
 
   pub async fn run(&self) {
     let mut event_stream = self.socket.events().expect("could not open stream");
@@ -74,48 +78,53 @@ impl GameSession {
   }
 
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
+    let game: Game = self.state.storage().get("THE_GAME").await.map_err(anyhow_str)?;
+
     use RPIGameRequest::*;
     match request.request {
       GMGetGame => {
-        let game = self.game.read().expect("no poison").clone();
+        let game = game.clone();
         let rpi_game = RPIGame(&game);
         Ok(serde_json::to_value(&rpi_game)?)
       }
       PlayerCommand { command } => {
         let changed_game = {
-          let game = self.game.read().expect("no poison");
           game.perform_player_command(todo!("player ID"), command)
         };
-        self.change_game(changed_game)
+        self.change_game(changed_game).await
       }
       GMCommand { command } => {
         let changed_game = {
-          let game = self.game.read().expect("no poison");
           game.perform_gm_command(command)
         };
-        self.change_game(changed_game)
+        self.change_game(changed_game).await
       }
       GMMovementOptions { scene_id, creature_id } => {
-        let game = self.game.read().expect("no poison");
         let options = game.get_movement_options(scene_id, creature_id)?;
         Ok(serde_json::to_value(options)?)
       }
     }
   }
 
-  fn change_game(&self, changed_game: Result<ChangedGame, GameError>) -> anyhow::Result<serde_json::Value> {
+  async fn change_game(
+    &self, changed_game: Result<ChangedGame, GameError>,
+  ) -> anyhow::Result<serde_json::Value> {
     let changed_game = changed_game.map_err(|e| format!("{e:?}"));
     let result = match changed_game {
       Ok(ChangedGame { logs, game: new_game }) => {
-        let mut game = self.game.write().expect("no poison");
-        *game = new_game.clone();
-        let rpi_game = RPIGame(&game);
+        self.store_game(new_game.clone()).await?;
+        let rpi_game = RPIGame(&new_game);
         self.broadcast(&json!({"t": "refresh_game", "game": rpi_game}))?;
         Ok(logs)
       }
       Err(e) => Err(format!("{e:?}")),
     };
     Ok(serde_json::to_value(result)?)
+  }
+
+  async fn store_game(&self, game: Game) -> anyhow::Result<()>{
+    self.state.storage().put("THE_GAME", game).await.map_err(anyhow_str)?;
+    Ok(())
   }
 
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
@@ -138,6 +147,4 @@ impl GameSession {
 /// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
 /// errors about how a *mut u8 might escape an async closure or something. So this converts the
 /// error to a string before converting it to an anyhow Error.
-fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error {
-  anyhow!("{e:?}")
-}
+fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
