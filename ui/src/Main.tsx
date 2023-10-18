@@ -44,7 +44,6 @@ export const router = createBrowserRouter([
   },
 ]);
 
-
 export function Main() {
   const token = M.useState((s) => s.userToken);
   const gameName = M.useState((s) => s.gameName);
@@ -124,11 +123,6 @@ function GameList() {
 function CreateGame({ closer }: { closer: () => void }) {
   const navigate = useNavigate();
 
-  async function createGame(name: string) {
-    let game_id = await A.createGame(name);
-    navigate(`/gm/${game_id}`);
-  }
-
   return (
     <div>
       <TextInput
@@ -138,6 +132,11 @@ function CreateGame({ closer }: { closer: () => void }) {
       />
     </div>
   );
+
+  async function createGame(name: string) {
+    let game_id = await A.createGame(name);
+    navigate(`/gm/${game_id}`);
+  }
 }
 
 type ErrorBoundaryProps = {
@@ -173,12 +172,10 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-
 function usePoll(mode: "gm" | "player") {
   const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
-
     // startPoll returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
     if (WS.WEBSOCKETS_ENABLED) {
@@ -189,12 +186,11 @@ function usePoll(mode: "gm" | "player") {
   }, [gameId]);
 
   const status = M.useState((s) => s.fetchStatus);
-  return {gameId, status};
-
+  return { gameId, status };
 }
 
 function GMGame() {
-  const {status} = usePoll("gm");
+  const { status } = usePoll("gm");
 
   if (status === "Ready") {
     return <GMMain />;
@@ -253,9 +249,8 @@ function AcceptInvitation() {
   }
 }
 
-
 function PlayerGame() {
-  const {gameId, status} = usePoll("player");
+  const { gameId, status } = usePoll("player");
 
   let {
     data: games,
@@ -264,10 +259,13 @@ function PlayerGame() {
   } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
   console.log(isLoading, games, status);
 
-  const playerId = games?.games.find(([profile, _meta]) => profile.game_id === gameId && profile.role === "Player")?.[0].profile_name;
+  const playerId = games?.games.find(
+    ([profile, _meta]) =>
+      profile.game_id === gameId && profile.role === "Player"
+  )?.[0].profile_name;
   React.useEffect(() => {
     M.getState().setPlayerId(playerId);
-  }, [playerId])
+  }, [playerId]);
   if (isLoading || !games || status !== "Ready") {
     return <div>Loading...</div>;
   }

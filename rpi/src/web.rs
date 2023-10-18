@@ -88,7 +88,7 @@ async fn authenticate<B>(
   State(state): State<Arc<AxumState>>, mut request: Request<B>, next: Next<B>,
 ) -> Result<Response, WebError> {
   let header =
-    request.headers().get("x-pt-rpi-auth").ok_or(anyhow!("Need a x-pt-rpi-auth header"))?;
+    request.headers().get("x-arpeggio-auth").ok_or(anyhow!("Need a x-arpeggio-auth header"))?;
   let id_token = header.to_str()?;
   // TODO: we should specifically handle the case where the token is valid but expired and return a
   // special response so the client can refresh the token.

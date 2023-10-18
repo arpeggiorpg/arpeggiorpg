@@ -3,6 +3,8 @@ use std::{
   sync::{Arc, RwLock},
 };
 
+use mtarp::types::GameID;
+use serde_json::json;
 use worker::*;
 
 mod wsrpi;
@@ -31,6 +33,15 @@ fn start() { panic::set_hook(Box::new(console_error_panic_hook::hook)); }
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
   console_log!("[worker] Start");
   let result = Router::new()
+    .on_async("/g/create", |req, ctx| async move {
+      let json = json!({"game_id": GameID::gen().to_string()});
+      Response::from_json(&json)
+    })
+    .on_async("/g/list", |req, ctx| async move {
+      let games: Vec<String> = vec![];
+      let json = json!({"games": games});
+      Response::from_json(&json)
+    })
     .on_async("/game/:id", |req, ctx| async move {
       // TODO: Authenticate the user!
       // TODO: Authorize that the user has access to the game!
@@ -42,19 +53,19 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
       // and would mean the type of GameID would have to change from wrapping UUIDs to instead
       // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
       let stub = namespace.id_from_name(id)?.get_stub()?;
-      return Ok(stub.fetch_with_request(req).await?);
+      Ok(stub.fetch_with_request(req).await?)
     })
     .run(req, env)
     .await;
   console_log!("[worker] Done");
-  result
+  let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
+  result.and_then(move |r| r.with_cors(&cors))
 }
 
 #[durable_object]
 pub struct ArpeggioGame {
   state: Arc<State>,
   env: Env,
-  // game: Arc<RwLock<Game>>,
   sessions: Sessions,
 }
 

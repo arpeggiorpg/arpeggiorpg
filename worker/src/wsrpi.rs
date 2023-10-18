@@ -54,7 +54,7 @@ impl GameSession {
               let request_id = request.id.clone();
               console_log!("About to handle request");
               let response = self.handle_request(request).await;
-              console_log!("Handled request: {response:?}");
+              // console_log!("Handled request: {response:?}");
               match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
                 Err(e) => self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?,
@@ -147,7 +147,9 @@ impl GameSession {
 
   /// Write an entire Game to Durable Object storage.
   async fn store_game(&self, game: Game) -> anyhow::Result<()> {
-    // TODO: snapshots & logs!
+    // TODO: snapshots & logs! We could automatically look up the current snapshots in the database,
+    // but unfortunately there is no way to list the keys in the database without also retrieving
+    // the values.
     //
     // NOTE: Durable Objects support "write coalescing", where you can run multiple PUT operations
     // without awaiting and they will be merged into one "transaction". Here's the thing: I'm not

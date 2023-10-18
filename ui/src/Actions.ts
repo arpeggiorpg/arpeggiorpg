@@ -47,9 +47,9 @@ async function ptfetch_<J>(
   if (!init) {
     init = {};
   }
-  const ptIdToken = getState().userToken;
-  if (ptIdToken)
-    init.headers = { ...init.headers, 'x-pt-rpi-auth': ptIdToken };
+  const idToken = getState().userToken;
+  if (idToken)
+    init.headers = { ...init.headers, 'x-arpeggio-auth': idToken };
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
