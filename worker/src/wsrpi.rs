@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use worker::{console_error, console_log, State, WebSocket, WebsocketEvent};
+use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
 
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
 use mtarp::types::RPIGameRequest;
@@ -26,9 +26,7 @@ pub struct GameSession {
 }
 
 impl GameSession {
-  pub fn new(
-    state: Arc<State>, socket: WebSocket, sessions: Sessions,
-  ) -> Self {
+  pub fn new(state: Arc<State>, socket: WebSocket, sessions: Sessions) -> Self {
     Self { state, socket, sessions }
   }
 
@@ -78,7 +76,7 @@ impl GameSession {
   }
 
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
-    let game: Game = self.state.storage().get("THE_GAME").await.map_err(anyhow_str)?;
+    let game = self.load_game().await?;
 
     use RPIGameRequest::*;
     match request.request {
@@ -88,15 +86,11 @@ impl GameSession {
         Ok(serde_json::to_value(&rpi_game)?)
       }
       PlayerCommand { command } => {
-        let changed_game = {
-          game.perform_player_command(todo!("player ID"), command)
-        };
+        let changed_game = { game.perform_player_command(todo!("player ID"), command) };
         self.change_game(changed_game).await
       }
       GMCommand { command } => {
-        let changed_game = {
-          game.perform_gm_command(command)
-        };
+        let changed_game = { game.perform_gm_command(command) };
         self.change_game(changed_game).await
       }
       GMMovementOptions { scene_id, creature_id } => {
@@ -122,8 +116,52 @@ impl GameSession {
     Ok(serde_json::to_value(result)?)
   }
 
-  async fn store_game(&self, game: Game) -> anyhow::Result<()>{
-    self.state.storage().put("THE_GAME", game).await.map_err(anyhow_str)?;
+  // ## Storage in Durable Objects
+  // DO gives us a KV store, where the size of values is pretty significantly limited (128kB). This
+  // requires us to break up a game into little pieces. I considered splitting up each object in a
+  // game (scenes, notes, etc) into their own key (e.g. "{snapshot_idx}-scene-{scene_id}"), but that
+  // seems like unnecessarily complexity when we can just serialize the entire game and split it
+  // into 128kB chunks, with keys like "snap-{snapshot_idx}-chunk-{chunk_idx}". dealing with smaller chunks
+  // might be less memory intensive but I doubt that will be a problem.
+
+  async fn load_game(&self) -> anyhow::Result<Game> {
+    let snapshot_idx = 0;
+    let items = self
+      .state
+      .storage()
+      .list_with_options(ListOptions::new().prefix(&format!("snapshot-{snapshot_idx}-chunk-")))
+      .await
+      .map_err(anyhow_str)?;
+    console_log!("[RADIX] KEYS: {items:?}");
+    let mut serialized_game = String::new();
+    for key in items.keys() {
+      let key = key.map_err(anyhow_str)?;
+      let value = items.get(&key);
+      // console_log!("KV? {key:?} {value:?}");
+      let chunk: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
+      serialized_game.push_str(&chunk);
+    }
+    let game: Game = serde_json::from_str(&serialized_game)?;
+    Ok(game)
+  }
+
+  /// Write an entire Game to Durable Object storage.
+  async fn store_game(&self, game: Game) -> anyhow::Result<()> {
+    // TODO: snapshots & logs!
+    //
+    // NOTE: Durable Objects support "write coalescing", where you can run multiple PUT operations
+    // without awaiting and they will be merged into one "transaction". Here's the thing: I'm not
+    // sure this works with the Rust bindings. But we should try something like that. There is also
+    // a method called "transaction" which takes a closure to do this explicitly, but that's not
+    // exposed in the Rust workers API yet.
+    let snapshot_idx = 0; // TODO: calculate next snapshot IDX
+    let mut storage = self.state.storage();
+    // we should probably use something other than serde_json.
+    let serialized_game = serde_json::to_string(&game)?;
+    storage
+      .put(&format!("snapshot-{snapshot_idx}-chunk-0"), serialized_game)
+      .await
+      .map_err(anyhow_str)?;
     Ok(())
   }
 
