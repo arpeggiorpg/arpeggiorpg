@@ -8,7 +8,7 @@ import { shallow } from 'zustand/shallow';
 import * as T from "./PTTypes";
 import { getCookie } from 'react-use-cookie';
 
-export const ID_TOKEN_NAME = "pt-id-token";
+export const ID_TOKEN_NAME = "arpeggio-token";
 
 export type FetchStatus = "Unfetched" | "Ready" | "Error";
 export interface AppState {

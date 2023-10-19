@@ -14,3 +14,7 @@ bindings = [
 [[migrations]]
 tag = "v1" # Should be unique for each entry
 new_classes = ["ArpeggioGame"] # Array of new classes
+
+
+[vars]
+GOOGLE_CLIENT_ID = "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com"

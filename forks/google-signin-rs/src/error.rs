@@ -1,12 +1,11 @@
 use std::{self, fmt, io};
-use hyper;
 use serde_json;
 
 /// A network or validation error
 #[derive(Debug)]
 pub enum Error {
     DecodeJson(serde_json::Error),
-    JSONWebToken(jsonwebtoken::errors::Error),
+    JSONWebToken(Box<dyn std::error::Error + Send + Sync + 'static>),
     ConnectionError(Box<dyn std::error::Error + Send + Sync + 'static>),
     InvalidKey,
     InvalidToken,
@@ -46,20 +45,21 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<hyper::Error> for Error {
-    fn from(err: hyper::Error) -> Error {
-        Error::ConnectionError(Box::new(err))
-    }
-}
-
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Error {
         Error::DecodeJson(err)
     }
 }
 
-impl From<jsonwebtoken::errors::Error> for Error {
-    fn from(err: jsonwebtoken::errors::Error) -> Error {
-        Error::JSONWebToken(err)
+impl From<jwt_compact::ParseError> for Error {
+    fn from(err: jwt_compact::ParseError) -> Error {
+        Error::JSONWebToken(Box::new(err))
+    }
+}
+
+
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Error {
+        Error::ConnectionError(Box::new(err))
     }
 }

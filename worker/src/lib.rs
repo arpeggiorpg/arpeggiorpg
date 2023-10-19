@@ -1,11 +1,15 @@
 use std::{
   panic,
   sync::{Arc, RwLock},
+  time::{Duration, UNIX_EPOCH},
 };
 
-use mtarp::types::GameID;
+use anyhow::anyhow;
+use mtarp::types::{GameID, UserID};
 use serde_json::json;
 use worker::*;
+
+use google_signin;
 
 mod wsrpi;
 
@@ -31,7 +35,29 @@ fn start() { panic::set_hook(Box::new(console_error_panic_hook::hook)); }
 
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
-  console_log!("[worker] Start");
+  console_log!("[worker] Start {} {:?}", req.path(), req.headers());
+
+  let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
+
+  let id_token = req.headers().get("x-arpeggio-auth")?;
+  if id_token.is_none() {
+    console_error!("No arpeggio auth header!");
+    // TODO: if this is a websocket connection request, this response isn't
+    // going to do anything useful.
+    return Response::from_json(&json!({"error": "need x-arpeggio-auth"})).and_then(|r| r.with_cors(&cors));
+  }
+
+  let id_token = id_token.unwrap();
+  let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+  // let mut certs = google_signin::CachedCerts::new();
+  // let mut client = google_signin::Client::new();
+
+  // client.audiences.push(client_id);
+  // let id_info = client.verify(&id_token, &certs).await.unwrap();
+
+  validate_google_token(&id_token, client_id)
+    .await
+    .map_err(|e| Error::RustError(format!("{e:?}")))?;
   let result = Router::new()
     .on_async("/g/create", |req, ctx| async move {
       let json = json!({"game_id": GameID::gen().to_string()});
@@ -58,7 +84,6 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     .run(req, env)
     .await;
   console_log!("[worker] Done");
-  let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
   result.and_then(move |r| r.with_cors(&cors))
 }
 
@@ -74,11 +99,7 @@ pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
 #[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, env: Env) -> Self {
-    Self {
-      state: Arc::new(state),
-      env,
-      sessions: Arc::new(RwLock::new(vec![])),
-    }
+    Self { state: Arc::new(state), env, sessions: Arc::new(RwLock::new(vec![])) }
   }
 
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
@@ -109,3 +130,28 @@ impl DurableObject for ArpeggioGame {
     }
   }
 }
+
+async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
+  let mut certs = google_signin::CachedCerts::new();
+  // let mut certs = self.cached_certs.lock().await;
+  certs.refresh_if_needed().await?;
+  let mut client = google_signin::Client::new();
+  client.audiences.push(client_id);
+  let claims = client.verify(id_token, &certs).await?;
+  // let expiry = UNIX_EPOCH + Duration::from_secs(id_info.exp);
+  // let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
+  console_log!(
+    "validate-token: email={:?} name={:?} sub={:?} expires={:?} ",
+    claims.custom.email,
+    claims.custom.name,
+    claims.custom.sub,
+    claims.expiration,
+    // time_until_expiry
+  );
+  Ok(UserID(format!("google_{}", claims.custom.sub)))
+}
+
+/// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
+/// errors about how a *mut u8 might escape an async closure or something. So this converts the
+/// error to a string before converting it to an anyhow Error.
+pub fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }

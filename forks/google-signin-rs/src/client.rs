@@ -1,13 +1,5 @@
-use hyper::{
-    body::Buf,
-    client::{Client as HyperClient, HttpConnector},
-};
-#[cfg(feature = "with-openssl")]
-use hyper_openssl::HttpsConnector;
-#[cfg(feature = "with-hypertls")]
-use hyper_tls::HttpsConnector;
+use reqwest;
 use serde;
-use serde_json;
 
 use std::collections::btree_map::Range;
 use std::collections::BTreeMap;
@@ -15,13 +7,13 @@ use std::ops::{
     Bound,
     Bound::{Included, Unbounded},
 };
-use std::time::{Duration, Instant};
+use std::time::{Duration};
+use instant::Instant;
 
 use crate::error::Error;
 use crate::token::IdInfo;
 
 pub struct Client {
-    client: HyperClient<HttpsConnector<HttpConnector>>,
     pub audiences: Vec<String>,
     pub hosted_domains: Vec<String>,
 }
@@ -104,18 +96,10 @@ impl CachedCerts {
     }
 }
 
+
 impl Client {
     pub fn new() -> Client {
-        #[cfg(feature = "with-hypertls")]
-        let ssl = HttpsConnector::new();
-        #[cfg(feature = "with-openssl")]
-        let ssl = HttpsConnector::new().expect("unable to build HttpsConnector");
-        let client = HyperClient::builder()
-            .http2_max_frame_size(0x2000)
-            .pool_max_idle_per_host(0)
-            .build(ssl);
         Client {
-            client,
             audiences: vec![],
             hosted_domains: vec![],
         }
@@ -129,25 +113,45 @@ impl Client {
         &self,
         id_token: &str,
         cached_certs: &CachedCerts,
-    ) -> Result<IdInfo, Error> {
-        let unverified_header = jsonwebtoken::decode_header(&id_token)?;
+    ) -> Result<jwt_compact::Claims<IdInfo>, Error> {
 
-        use jsonwebtoken::{Algorithm, DecodingKey, Validation};
+        // RADIX TODO: obviously this function needs to be returning Errors instead of panicking
+        use jwt_compact::prelude::*;
+        let untrusted_token = UntrustedToken::new(&id_token)?;
+        web_sys::console::log_1(&format!("UNTRUSTED TOKEN: header={:?}   claims={:?}", untrusted_token.header(), untrusted_token.deserialize_claims_unchecked::<serde_json::Value>()).into());
 
-        for (_, cert) in cached_certs.get_range(&unverified_header.kid)? {
+        for (_, cert) in cached_certs.get_range(&untrusted_token.header().key_id)? {
             // Check each certificate
 
-            let mut validation = Validation::new(Algorithm::RS256);
-            validation.set_audience(&self.audiences);
-            let token_data = jsonwebtoken::decode::<IdInfo>(
-                &id_token,
-                &DecodingKey::from_rsa_components(&cert.n, &cert.e),
-                &validation,
-            )?;
+            // let mut validation = Validation::new(Algorithm::RS256);
+            let alg = jwt_compact::alg::StrongAlg(jwt_compact::alg::Rsa::rs256());
 
-            token_data.claims.verify(self)?;
+            // jwt_compact doesn't have explicit support for validating audience. But I'm not sure
+            // why google-signin-rs was doing this anyway, because it also verifies the audience in
+            // IdInfo.verify.
 
-            return Ok(token_data.claims);
+            // validation.set_audience(&self.audiences);
+
+            // We have base64-encoded N and E components; jwt_compact wants
+            // BigUInts.
+            use base64::{engine::general_purpose::URL_SAFE, Engine};
+            let n = URL_SAFE.decode(&cert.n).expect("cert.n must be base64");
+            let e = URL_SAFE.decode(&cert.e).expect("cert.e must be base64");
+            let key = jwt_compact::alg::RsaPublicKey::new(num_bigint::BigUint::from_bytes_be(&n), num_bigint::BigUint::from_bytes_be(&e)).expect("trying to construct an RSA key");
+            let key = jwt_compact::alg::StrongKey::try_from(key).expect("key isn't strong");
+            let validator = alg.validator(&key);
+            let token_data: Token<IdInfo> = validator.validate(&untrusted_token).expect("couldn't validate token :-(");
+            // let token_data = jsonwebtoken::decode::<IdInfo>(
+            //     &id_token,
+            //     &DecodingKey::from_rsa_components(&cert.n, &cert.e),
+            //     &validation,
+            // )?;
+
+            let claims = token_data.claims();
+            claims.validate_expiration(&jwt_compact::TimeOptions::default()).expect("bad expiration!");
+            claims.custom.verify(self)?;
+
+            return Ok(claims.clone());
         }
 
         Err(Error::InvalidToken)
@@ -164,7 +168,7 @@ impl Client {
     pub async fn get_slow_unverified(
         &self,
         id_token: &str,
-    ) -> Result<IdInfo<String, String>, Error> {
+    ) -> Result<IdInfo<String>, Error> {
         self.get_any(
             &format!(
                 "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token={}",
@@ -180,8 +184,7 @@ impl Client {
         url: &str,
         cache: &mut Option<Instant>,
     ) -> Result<T, Error> {
-        let url = url.parse().unwrap();
-        let response = self.client.get(url).await.unwrap();
+        let response = reqwest::get(url).await?;
 
         let status = response.status().as_u16();
         match status {
@@ -204,7 +207,6 @@ impl Client {
             }
         }
 
-        let body = hyper::body::aggregate(response).await?;
-        Ok(serde_json::from_reader(body.reader())?)
+        Ok(response.json().await?)
     }
 }

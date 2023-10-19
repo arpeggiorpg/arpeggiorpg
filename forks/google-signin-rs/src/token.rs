@@ -1,15 +1,18 @@
 use crate::client::Client;
 use crate::error::Error;
 
-#[derive(Debug, Deserialize)]
-pub struct IdInfo<EF=bool, TM=u64> {
+#[derive(Debug, Deserialize, Clone)]
+pub struct IdInfo<
+    EF=bool,
+    // TM=u64
+> {
     /// These six fields are included in all Google ID Tokens.
     pub iss: String,
     pub sub: String,
     pub azp: String,
     pub aud: String,
-    pub iat: TM,
-    pub exp: TM,
+    // pub issued_at: TM,
+    // pub expiration: TM,
 
     /// This value indicates the user belongs to a Google Hosted Domain
     pub hd: Option<String>,

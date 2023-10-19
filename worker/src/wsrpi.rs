@@ -9,7 +9,7 @@ use worker::{console_error, console_log, ListOptions, State, WebSocket, Websocke
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
 use mtarp::types::RPIGameRequest;
 
-use crate::Sessions;
+use crate::{Sessions, anyhow_str};
 
 /// A representation of a request received from a websocket. It has an ID so we can send a response
 /// and the client can match them up.
@@ -183,8 +183,3 @@ impl GameSession {
     Ok(self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))?)
   }
 }
-
-/// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
-/// errors about how a *mut u8 might escape an async closure or something. So this converts the
-/// error to a string before converting it to an anyhow Error.
-fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
