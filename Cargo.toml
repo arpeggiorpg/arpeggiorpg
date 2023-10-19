@@ -10,3 +10,7 @@ serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 uuid = { version = "1.1.2", features = ["v4", "serde"] }
+# Unfortunately this google-signin package seems pretty unmaintained.
+# I need to use the git version because the support for local verification of ID tokens is only in
+# an unreleased version.
+google-signin = { path = "./forks/google-signin-rs" }

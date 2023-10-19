@@ -28,7 +28,4 @@ ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
 uom = {version = "0.35", default_features = false}
 uuid = { workspace = true }
 google-cloud-storage = "0.13.1"
-# Unfortunately this google-signin package seems pretty unmaintained.
-# I need to use the git version because the support for local verification of ID tokens is only in
-# an unreleased version.
-google-signin = { git = "https://github.com/wyyerd/google-signin-rs" }
+google-signin = { workspace = true }
