@@ -1,8 +1,4 @@
-use std::{
-  panic,
-  sync::{Arc, RwLock},
-  time::{Duration, UNIX_EPOCH},
-};
+use std::sync::{Arc, RwLock};
 
 use anyhow::anyhow;
 use mtarp::types::{GameID, UserID};
@@ -31,7 +27,7 @@ mod wsrpi;
 // behavior of the local dev environment.
 
 #[event(start)]
-fn start() { panic::set_hook(Box::new(console_error_panic_hook::hook)); }
+fn start() { console_error_panic_hook::set_once(); }
 
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
@@ -44,20 +40,22 @@ async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
     console_error!("No arpeggio auth header!");
     // TODO: if this is a websocket connection request, this response isn't
     // going to do anything useful.
-    return Response::from_json(&json!({"error": "need x-arpeggio-auth"})).and_then(|r| r.with_cors(&cors));
+    return Response::from_json(&json!({"error": "need x-arpeggio-auth"}))
+      .and_then(|r| r.with_cors(&cors));
   }
 
   let id_token = id_token.unwrap();
   let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
-  // let mut certs = google_signin::CachedCerts::new();
-  // let mut client = google_signin::Client::new();
 
-  // client.audiences.push(client_id);
-  // let id_info = client.verify(&id_token, &certs).await.unwrap();
+  // TODO: Radix! Okay, so we can't do this for websocket connections, because websocket connections
+  // don't have HTTP request headers, so we don't have the token!
+  let validation_result = validate_google_token(&id_token, client_id).await;
+  if let Err(e) = validation_result {
+    console_log!("token is invalid; returning 401 {e:?}");
+    return Response::error("Invalid token", 401).and_then(|r| r.with_cors(&cors));
+  }
+  let user_id = validation_result.unwrap();
 
-  validate_google_token(&id_token, client_id)
-    .await
-    .map_err(|e| Error::RustError(format!("{e:?}")))?;
   let result = Router::new()
     .on_async("/g/create", |req, ctx| async move {
       let json = json!({"game_id": GameID::gen().to_string()});
@@ -140,15 +138,16 @@ async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Res
   let claims = client.verify(id_token, &certs).await?;
   // let expiry = UNIX_EPOCH + Duration::from_secs(id_info.exp);
   // let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
+  let custom = claims.custom;
   console_log!(
     "validate-token: email={:?} name={:?} sub={:?} expires={:?} ",
-    claims.custom.email,
-    claims.custom.name,
-    claims.custom.sub,
+    custom.email,
+    custom.name,
+    custom.sub,
     claims.expiration,
     // time_until_expiry
   );
-  Ok(UserID(format!("google_{}", claims.custom.sub)))
+  Ok(UserID(format!("google_{}", custom.sub)))
 }
 
 /// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
