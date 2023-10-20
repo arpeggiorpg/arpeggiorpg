@@ -1,5 +1,5 @@
 use std::{
-  collections::HashMap,
+  collections::{HashMap, HashSet},
   sync::{Arc, Mutex, RwLock},
 };
 
@@ -66,46 +66,37 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
   let user_id = validation_result.unwrap();
 
-  if path.starts_with("/request-websocket") {
-    return request_websocket(req, env, user_id).await;
-  } else if path == "/g/create" {
-    // TODO: obviously this needs to *actually* create a
-    let json = json!({"game_id": GameID::gen().to_string()});
-    return Response::from_json(&json);
-  } else if path == "/g/list" {
-    let games: Vec<String> = vec![];
-    let json = json!({"games": games});
-    return Response::from_json(&json);
-  } else {
-    return Response::error("No route matched", 404);
+  match path.split("/").collect::<Vec<_>>()[1..] {
+    ["request-websocket", game_id] => request_websocket(req, env, game_id, user_id).await,
+    ["g", "create"] => {
+      // TODO: obviously this needs to *actually* create a
+      let json = json!({"game_id": GameID::gen().to_string()});
+      Response::from_json(&json)
+    }
+    ["g", "list"] => {
+      let games: Vec<String> = vec![];
+      let json = json!({"games": games});
+      Response::from_json(&json)
+    }
+    _ => Response::error(format!("Not route matched {path:?}"), 404),
   }
 }
 
-async fn request_websocket(req: Request, env: Env, user_id: UserID) -> Result<Response> {
-  let path = req.path();
-  let game_id = path.split("/").nth(2).ok_or(Error::RustError("bad path".to_string()))?;
-  let uuid = Uuid::new_v4();
-  // TODO: Authorize the user's ability to access this game.
+
+/// Generate a token that grants the bearer to connect to a Game with a WebSocket.
+///
+/// This works around the fact that browsers don't send any authentication headers with WebSocket
+/// requests, by requiring this regular HTTP request that can be authenticated normally to generate
+/// a temporary token that is then used to create the WebSocket connection.
+async fn request_websocket(
+  req: Request, env: Env, game_id: &str, user_id: UserID,
+) -> Result<Response> {
+  // TODO: check the game list and ensure that the user_id has access to this game. Otherwise,
+  // anyone can spam requests for game IDs which will *create* Durable Objects and run up my bills!
   let game_id: GameID = game_id.parse().map_err(rust_error)?;
-  let db = env.d1("DB")?;
-  let statement =
-    db.prepare("INSERT INTO websocket_tokens (token, user_id, game_id) VALUES (?, ?, ?)");
-  let statement = statement.bind(&[
-    uuid.to_string().into(),
-    user_id.to_string().into(),
-    game_id.to_string().into(),
-  ])?;
-  statement.run().await?;
-
-  // WS_TOKENS.lock().expect("poison").insert(uuid, (user_id.clone().to_owned(), game_id));
-  return Response::from_json(&json!({"token": uuid.to_string()}));
-}
-
-
-#[derive(Deserialize)]
-struct WsToken {
-  user_id: UserID,
-  game_id: GameID,
+  let namespace = env.durable_object("ARPEGGIOGAME")?;
+  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+  stub.fetch_with_request(req).await
 }
 
 async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
@@ -114,44 +105,40 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   // authn & authz, which returns a temporary token that is then passed here, in the request that
   // creates the websocket.
 
+
+  // NOTE: It's possible for a bad actor to spam requests to this endpoint to cause allocation of
+  // infinite Durable Objects since there isn't any authz happening here for the user having access
+  // to the game *before* we send the request on to the Durable Object. This is because browsers
+  // can't send any sort of headers with WebSocket connections (so we can't check x-arpeggio-auth),
+  // and also because of the way I've implemented the websocket token system (where the Durable
+  // Object itself owns those tokens).
+  //
+  // Theoretically I could use JWTs for the tokens, which would allow this Worker code to verify
+  // that the user has access to the game before passing it on, but for now I don't think the
+  // ability to create empty DOs is a problem.
+
   let path = req.path();
-  let ws_token = path.split("/").nth(2).ok_or(rust_error("bad path"))?;
-
-  let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
-  let (user_id, game_id) = {
-    let db = env.d1("DB")?;
-    // TODO: we need to clean up old tokens if people hit /request-websocket without following it up
-    // with a request to /ws/.
-    // TODO: Consider, instead of using D1 for this, we could probably just use in-memory storage in the Durable Object...
-    let statement = db.prepare("SELECT user_id, game_id FROM websocket_tokens WHERE token = ?");
-    let statement = statement.bind(&[ws_token.to_string().into()])?;
-    let row = statement.first::<WsToken>(None).await?;
-    match row {
-      Some(row) => {
-        let statement = db.prepare("DELETE FROM websocket_tokens WHERE token = ?");
-        let statement = statement.bind(&[ws_token.to_string().into()])?;
-        statement.run().await?;
-        (row.user_id, row.game_id)
-      }
-      None => return Response::error("Couldn't find WS token", 404),
-    }
-  };
-
-  console_log!("[worker] GAME {game_id:?}");
-  let namespace = env.durable_object("ARPEGGIOGAME")?;
-  // We should probably make GameIDs actually be the Durable Object ID and use
-  // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
-  // and would mean the type of GameID would have to change from wrapping UUIDs to instead
-  // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
-  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
-  return Ok(stub.fetch_with_request(req).await?);
+  if let Some(game_id) = path.splitn(4, "/").nth(2) {
+    console_log!("[worker] GAME {game_id:?}");
+    let namespace = env.durable_object("ARPEGGIOGAME")?;
+    // We should probably make GameIDs actually be the Durable Object ID and use
+    // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
+    // and would mean the type of GameID would have to change from wrapping UUIDs to instead
+    // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
+    let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+    stub.fetch_with_request(req).await
+  } else {
+    Response::error("Bad path", 404)
+  }
 }
+
 
 #[durable_object]
 pub struct ArpeggioGame {
   state: Arc<State>,
   env: Env,
   sessions: Sessions,
+  ws_tokens: HashSet<Uuid>,
 }
 
 pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
@@ -159,34 +146,57 @@ pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
 #[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, env: Env) -> Self {
-    Self { state: Arc::new(state), env, sessions: Arc::new(RwLock::new(vec![])) }
+    Self {
+      state: Arc::new(state),
+      env,
+      sessions: Arc::new(RwLock::new(vec![])),
+      ws_tokens: HashSet::new(),
+    }
   }
 
-  async fn fetch(&mut self, mut req: Request) -> Result<Response> {
+  async fn fetch(&mut self, req: Request) -> Result<Response> {
     let path = req.path();
     console_log!("[DO] method={:?} path={path:?}", req.method());
-    if path.starts_with("/ws") {
-      console_log!("[DO] GAME {path}");
-      console_log!("[worker] WEBSOCKET");
-      let pair = WebSocketPair::new()?;
-      let server = pair.server;
-      server.accept()?;
+    match path.split("/").collect::<Vec<_>>()[1..] {
+      ["request-websocket", _] => {
+        // Theoretically, the worker should have already authenticated & authorized the user, so we
+        // just need to store & return a token.
+        let token = Uuid::new_v4();
+        self.ws_tokens.insert(token);
+        Response::from_json(&json!({"token": token}))
+      }
+      ["ws", _, ws_token] => {
+        let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
+        if self.ws_tokens.contains(&ws_token) {
 
-      // We have *two* asynchronous tasks here:
-      // 1. listen for messages from the client and act on the game
-      // 2. listen for broadcasts from the first task and sends a message to all sessions
-      // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
+          console_log!("[DO] GAME {path}");
+          console_log!("[worker] WEBSOCKET");
+          let pair = WebSocketPair::new()?;
+          let server = pair.server;
+          server.accept()?;
 
-      // TODO: ignore poison
-      self.sessions.write().expect("poison").push(server.clone());
-      let session = wsrpi::GameSession::new(self.state.clone(), server, self.sessions.clone());
-      wasm_bindgen_futures::spawn_local(async move {
-        session.run().await;
-      });
+          // We have *two* asynchronous tasks here:
+          // 1. listen for messages from the client and act on the game
+          // 2. listen for broadcasts from the first task and sends a message to all sessions
+          // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
-      Response::from_websocket(pair.client)
-    } else {
-      return Response::error("bad URL to DO", 404);
+          // TODO: ignore poison
+          self.sessions.write().expect("poison").push(server.clone());
+          let session = wsrpi::GameSession::new(self.state.clone(), server, self.sessions.clone());
+          wasm_bindgen_futures::spawn_local(async move {
+            session.run().await;
+          });
+
+          Response::from_websocket(pair.client)
+        } else {
+          console_log!("Bad WS token {path:?}");
+          Response::error("Bad WS token", 404)
+        }
+      }
+      _ => {
+        console_log!("Bad URL to DO: {path:?}");
+        Response::error(format!("bad URL to DO: {path:?}"), 404)
+      }
     }
   }
 }

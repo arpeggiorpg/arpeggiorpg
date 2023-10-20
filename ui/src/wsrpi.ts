@@ -37,7 +37,7 @@ export function connect(gameId: string) {
   async function theAsyncFunction() {
     // First, we need to request a websocket token.
     let {token} = await A.ptfetch(`/request-websocket/${gameId}`, {}, Z.object({token: Z.string()}));
-    webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${token}`);
+    webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
 
     webSocket.addEventListener("open", async (event) => {
       console.log("connected to WebSocket. initiating GetGame");
