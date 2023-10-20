@@ -4,7 +4,8 @@ use std::{
 };
 
 use anyhow::anyhow;
-use mtarp::types::{GameID, UserID};
+use arpeggio::types::PlayerID;
+use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde_json::json;
@@ -68,20 +69,11 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
 
   match path.split("/").collect::<Vec<_>>()[1..] {
     ["request-websocket", game_id] => request_websocket(req, env, game_id, user_id).await,
-    ["g", "create"] => {
-      // TODO: obviously this needs to *actually* create a
-      let json = json!({"game_id": GameID::gen().to_string()});
-      Response::from_json(&json)
-    }
-    ["g", "list"] => {
-      let games: Vec<String> = vec![];
-      let json = json!({"games": games});
-      Response::from_json(&json)
-    }
+    ["g", "create"] => create_game(req, env, user_id).await,
+    ["g", "list"] => list_games(req, env, user_id).await,
     _ => Response::error(format!("Not route matched {path:?}"), 404),
   }
 }
-
 
 /// Generate a token that grants the bearer to connect to a Game with a WebSocket.
 ///
@@ -104,7 +96,6 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   // system where the client sends a regular HTTP request to /request-websocket/{game_id} to do
   // authn & authz, which returns a temporary token that is then passed here, in the request that
   // creates the websocket.
-
 
   // NOTE: It's possible for a bad actor to spam requests to this endpoint to cause allocation of
   // infinite Durable Objects since there isn't any authz happening here for the user having access
@@ -132,6 +123,57 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   }
 }
 
+/// Create a game
+async fn create_game(req: Request, env: Env, user_id: UserID) -> Result<Response> {
+  let game_id = GameID::gen().to_string();
+  let db = env.d1("DB")?;
+  let statement =
+    db.prepare("INSERT INTO user_games (user_id, game_id, profile_name, role) VALUES (?, ?, ?, ?)");
+  let statement = statement.bind(&[
+    user_id.to_string().into(),
+    game_id.to_string().into(),
+    "GM".into(),
+    "GM".into(),
+  ])?;
+  statement.run().await?;
+  let json = json!({"game_id": game_id});
+  Response::from_json(&json)
+}
+
+/// List games
+async fn list_games(req: Request, env: Env, user_id: UserID) -> Result<Response> {
+  let db = env.d1("DB")?;
+  let statement =
+    db.prepare("SELECT UG.user_id, UG.game_id, UG.profile_name, UG.role, meta.name FROM user_games UG, game_metadata meta WHERE UG.game_id = meta.game_id AND user_id = ?");
+  let statement = statement.bind(&[user_id.to_string().into()])?;
+  let profiles: Vec<GameInfo> = statement.all().await?.results()?;
+  let list = GameList {
+    games: profiles
+      .into_iter()
+      .map(|r| {
+        (
+          GameProfile {
+            user_id: r.user_id,
+            game_id: r.game_id,
+            profile_name: r.profile_name,
+            role: r.role,
+          },
+          GameMetadata { name: r.name },
+        )
+      })
+      .collect::<Vec<_>>(),
+  };
+  return Response::from_json(&list);
+
+  #[derive(Deserialize)]
+  struct GameInfo {
+    user_id: UserID,
+    game_id: GameID,
+    profile_name: PlayerID,
+    role: Role,
+    name: String,
+  }
+}
 
 #[durable_object]
 pub struct ArpeggioGame {
@@ -167,8 +209,7 @@ impl DurableObject for ArpeggioGame {
       }
       ["ws", _, ws_token] => {
         let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
-        if self.ws_tokens.contains(&ws_token) {
-
+        if self.ws_tokens.remove(&ws_token) {
           console_log!("[DO] GAME {path}");
           console_log!("[worker] WEBSOCKET");
           let pair = WebSocketPair::new()?;

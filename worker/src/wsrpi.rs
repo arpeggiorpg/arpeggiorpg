@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -13,7 +13,7 @@ use crate::{Sessions, anyhow_str};
 
 /// A representation of a request received from a websocket. It has an ID so we can send a response
 /// and the client can match them up.
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WSRequest {
   request: RPIGameRequest,
   id: String,
@@ -52,12 +52,15 @@ impl GameSession {
           match request {
             Ok(request) => {
               let request_id = request.id.clone();
-              console_log!("About to handle request");
+              console_log!("About to handle request {request:?}");
               let response = self.handle_request(request).await;
               // console_log!("Handled request: {response:?}");
               match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
-                Err(e) => self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?,
+                Err(e) => {
+                  console_error!("Error while handling request: {e:?}");
+                  self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
+                }
               }
             }
             Err(e) => self.send(
@@ -131,7 +134,11 @@ impl GameSession {
       .storage()
       .list_with_options(ListOptions::new().prefix(&format!("snapshot-{snapshot_idx}-chunk-")))
       .await
-      .map_err(anyhow_str)?;
+      .map_err(anyhow_str).context("Listing DO storage")?;
+    if items.size() == 0 {
+      // This is a new game!
+      return Ok(Default::default());
+    }
     let mut serialized_game = String::new();
     for key in items.keys() {
       let key = key.map_err(anyhow_str)?;
