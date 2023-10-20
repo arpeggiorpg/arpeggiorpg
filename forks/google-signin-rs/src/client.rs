@@ -1,3 +1,4 @@
+use jwt_compact::alg::{RsaPublicKey, StrongKey};
 use reqwest;
 use serde;
 
@@ -20,11 +21,11 @@ pub struct Client {
 
 #[derive(Debug, Clone, Deserialize)]
 struct CertsObject {
-    keys: Vec<Cert>,
+    keys: Vec<JsonCert>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct Cert {
+struct JsonCert {
     kid: String,
     e: String,
     kty: String,
@@ -37,7 +38,7 @@ type Key = String;
 
 #[derive(Clone)]
 pub struct CachedCerts {
-    keys: BTreeMap<Key, Cert>,
+    keys: BTreeMap<Key, StrongKey<RsaPublicKey>>,
     pub expiry: Option<Instant>,
 }
 
@@ -53,7 +54,7 @@ impl CachedCerts {
         "https://www.googleapis.com/oauth2/v2/certs"
     }
 
-    fn get_range<'a>(&'a self, kid: &Option<String>) -> Result<Range<'a, Key, Cert>, Error> {
+    fn get_range<'a>(&'a self, kid: &Option<String>) -> Result<Range<'a, Key, StrongKey<RsaPublicKey>>, Error> {
         match kid {
             None => Ok(self
                 .keys
@@ -86,10 +87,19 @@ impl CachedCerts {
 
         let client = Client::new();
         let certs: CertsObject = client.get_any(Self::certs_url(), &mut self.expiry).await?;
+
         self.keys = BTreeMap::new();
 
         for cert in certs.keys {
-            self.keys.insert(cert.kid.clone(), cert);
+            // We have base64-encoded N and E components; jwt_compact wants
+            // BigUInts.
+            use base64::{engine::general_purpose::URL_SAFE, Engine};
+            let n = URL_SAFE.decode(&cert.n).expect("parsing cert.n");
+            let e = URL_SAFE.decode(&cert.e).expect("parsing cert.e");
+            let key = jwt_compact::alg::RsaPublicKey::new(num_bigint::BigUint::from_bytes_be(&n), num_bigint::BigUint::from_bytes_be(&e)).expect("constructing RsaPublicKey");
+            let key = jwt_compact::alg::StrongKey::try_from(key).expect("constructing StrongKey");
+
+            self.keys.insert(cert.kid.clone(), key);
         }
 
         Ok(true)
@@ -118,9 +128,8 @@ impl Client {
         // RADIX TODO: obviously this function needs to be returning Errors instead of panicking
         use jwt_compact::prelude::*;
         let untrusted_token = UntrustedToken::new(&id_token)?;
-        web_sys::console::log_1(&format!("UNTRUSTED TOKEN: header={:?}   claims={:?}", untrusted_token.header(), untrusted_token.deserialize_claims_unchecked::<serde_json::Value>()).into());
 
-        for (_, cert) in cached_certs.get_range(&untrusted_token.header().key_id)? {
+        for (_, key) in cached_certs.get_range(&untrusted_token.header().key_id)? {
             // Check each certificate
 
             // let mut validation = Validation::new(Algorithm::RS256);
@@ -132,15 +141,8 @@ impl Client {
 
             // validation.set_audience(&self.audiences);
 
-            // We have base64-encoded N and E components; jwt_compact wants
-            // BigUInts.
-            use base64::{engine::general_purpose::URL_SAFE, Engine};
-            let n = URL_SAFE.decode(&cert.n).expect("cert.n must be base64");
-            let e = URL_SAFE.decode(&cert.e).expect("cert.e must be base64");
-            let key = jwt_compact::alg::RsaPublicKey::new(num_bigint::BigUint::from_bytes_be(&n), num_bigint::BigUint::from_bytes_be(&e)).expect("trying to construct an RSA key");
-            let key = jwt_compact::alg::StrongKey::try_from(key).expect("key isn't strong");
             let validator = alg.validator(&key);
-            let token_data: Token<IdInfo> = validator.validate(&untrusted_token).expect("couldn't validate token :-(");
+            let token_data: Token<IdInfo> = validator.validate(&untrusted_token).map_err(|e| Error::InvalidToken)?;
             // let token_data = jsonwebtoken::decode::<IdInfo>(
             //     &id_token,
             //     &DecodingKey::from_rsa_components(&cert.n, &cert.e),
@@ -148,7 +150,7 @@ impl Client {
             // )?;
 
             let claims = token_data.claims();
-            claims.validate_expiration(&jwt_compact::TimeOptions::default()).expect("bad expiration!");
+            claims.validate_expiration(&jwt_compact::TimeOptions::default()).map_err(|e| Error::ExpiredToken)?;
             claims.custom.verify(self)?;
 
             return Ok(claims.clone());

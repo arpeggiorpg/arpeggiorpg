@@ -12,6 +12,7 @@ pub enum Error {
     InvalidIssuer,
     InvalidAudience,
     InvalidHostedDomain,
+    ExpiredToken,
 }
 
 impl std::error::Error for Error {
@@ -35,6 +36,7 @@ impl fmt::Display for Error {
             Error::InvalidIssuer => f.write_str("Token was not issued by google"),
             Error::InvalidAudience => f.write_str("Token is for a different google application"),
             Error::InvalidHostedDomain => f.write_str("User is not a member of the hosted domain(s)"),
+            Error::ExpiredToken => f.write_str("Token is expired"),
         }
     }
 }

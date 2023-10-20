@@ -1002,7 +1002,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "web-sys",
 ]
 
 [[package]]
