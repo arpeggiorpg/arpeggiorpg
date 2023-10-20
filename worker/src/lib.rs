@@ -6,6 +6,7 @@ use std::{
 use anyhow::anyhow;
 use mtarp::types::{GameID, UserID};
 use once_cell::sync::Lazy;
+use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 use worker::*;
@@ -33,12 +34,6 @@ mod wsrpi;
 
 #[event(start)]
 fn start() { console_error_panic_hook::set_once(); }
-
-// Temporary in-memory storage for WebSocket tokens, which represent a user's authorization to
-// create a websocket to an ArpeggioGame DO.
-// TODO: is there a way we can avoid allocating this in the Durable Object?
-static WS_TOKENS: Lazy<Arc<Mutex<HashMap<uuid::Uuid, (UserID, GameID)>>>> =
-  Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
@@ -72,12 +67,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   let user_id = validation_result.unwrap();
 
   if path.starts_with("/request-websocket") {
-    let game_id = path.split("/").nth(2).ok_or(Error::RustError("bad path".to_string()))?;
-    let uuid = Uuid::new_v4();
-    // TODO: Authorize the user's ability to access this game.
-    let game_id = game_id.parse().map_err(rust_error)?;
-    WS_TOKENS.lock().expect("poison").insert(uuid, (user_id.clone().to_owned(), game_id));
-    return Response::from_json(&json!({"token": uuid.to_string()}));
+    return request_websocket(req, env, user_id).await;
   } else if path == "/g/create" {
     // TODO: obviously this needs to *actually* create a
     let json = json!({"game_id": GameID::gen().to_string()});
@@ -91,6 +81,33 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
 }
 
+async fn request_websocket(req: Request, env: Env, user_id: UserID) -> Result<Response> {
+  let path = req.path();
+  let game_id = path.split("/").nth(2).ok_or(Error::RustError("bad path".to_string()))?;
+  let uuid = Uuid::new_v4();
+  // TODO: Authorize the user's ability to access this game.
+  let game_id: GameID = game_id.parse().map_err(rust_error)?;
+  let db = env.d1("DB")?;
+  let statement =
+    db.prepare("INSERT INTO websocket_tokens (token, user_id, game_id) VALUES (?, ?, ?)");
+  let statement = statement.bind(&[
+    uuid.to_string().into(),
+    user_id.to_string().into(),
+    game_id.to_string().into(),
+  ])?;
+  statement.run().await?;
+
+  // WS_TOKENS.lock().expect("poison").insert(uuid, (user_id.clone().to_owned(), game_id));
+  return Response::from_json(&json!({"token": uuid.to_string()}));
+}
+
+
+#[derive(Deserialize)]
+struct WsToken {
+  user_id: UserID,
+  game_id: GameID,
+}
+
 async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   // This is a WebSocket request. CORS & authentication are meaningless here. We use a token
   // system where the client sends a regular HTTP request to /request-websocket/{game_id} to do
@@ -102,14 +119,24 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
 
   let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
   let (user_id, game_id) = {
-    let mut tokens = WS_TOKENS.lock().expect("poison");
-    // We remove the token from the hashmap as soon as you try to use it. TODO: we need to clean
-    // up old tokens if people hit /request-websocket without following it up with a request to
-    // /ws/
-    tokens.remove(&ws_token).ok_or(Error::RustError("couldn't find WS token".to_string()))?.clone()
+    let db = env.d1("DB")?;
+    // TODO: we need to clean up old tokens if people hit /request-websocket without following it up
+    // with a request to /ws/.
+    // TODO: Consider, instead of using D1 for this, we could probably just use in-memory storage in the Durable Object...
+    let statement = db.prepare("SELECT user_id, game_id FROM websocket_tokens WHERE token = ?");
+    let statement = statement.bind(&[ws_token.to_string().into()])?;
+    let row = statement.first::<WsToken>(None).await?;
+    match row {
+      Some(row) => {
+        let statement = db.prepare("DELETE FROM websocket_tokens WHERE token = ?");
+        let statement = statement.bind(&[ws_token.to_string().into()])?;
+        statement.run().await?;
+        (row.user_id, row.game_id)
+      }
+      None => return Response::error("Couldn't find WS token", 404),
+    }
   };
 
-  // let id = ctx.param("id").expect("id should exist because it's in the route");
   console_log!("[worker] GAME {game_id:?}");
   let namespace = env.durable_object("ARPEGGIOGAME")?;
   // We should probably make GameIDs actually be the Durable Object ID and use

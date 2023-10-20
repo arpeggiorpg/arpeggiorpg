@@ -132,12 +132,10 @@ impl GameSession {
       .list_with_options(ListOptions::new().prefix(&format!("snapshot-{snapshot_idx}-chunk-")))
       .await
       .map_err(anyhow_str)?;
-    console_log!("[RADIX] KEYS: {items:?}");
     let mut serialized_game = String::new();
     for key in items.keys() {
       let key = key.map_err(anyhow_str)?;
       let value = items.get(&key);
-      // console_log!("KV? {key:?} {value:?}");
       let chunk: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
       serialized_game.push_str(&chunk);
     }

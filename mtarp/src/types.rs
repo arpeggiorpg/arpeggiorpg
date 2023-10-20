@@ -11,6 +11,12 @@ uuid_id!(InvitationID);
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct UserID(pub String);
 
+impl UserID {
+  pub fn to_string(&self) -> String {
+    self.0.clone()
+  }
+}
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameMetadata {
   pub name: String,
