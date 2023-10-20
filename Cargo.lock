@@ -3386,9 +3386,11 @@ dependencies = [
  "getrandom",
  "google-signin",
  "mtarp",
+ "once_cell",
  "serde",
  "serde-wasm-bindgen 0.6.0",
  "serde_json",
+ "uuid",
  "worker",
 ]
 

@@ -1,8 +1,13 @@
-use std::sync::{Arc, RwLock};
+use std::{
+  collections::HashMap,
+  sync::{Arc, Mutex, RwLock},
+};
 
 use anyhow::anyhow;
 use mtarp::types::{GameID, UserID};
+use once_cell::sync::Lazy;
 use serde_json::json;
+use uuid::Uuid;
 use worker::*;
 
 use google_signin;
@@ -29,60 +34,90 @@ mod wsrpi;
 #[event(start)]
 fn start() { console_error_panic_hook::set_once(); }
 
+// Temporary in-memory storage for WebSocket tokens, which represent a user's authorization to
+// create a websocket to an ArpeggioGame DO.
+// TODO: is there a way we can avoid allocating this in the Durable Object?
+static WS_TOKENS: Lazy<Arc<Mutex<HashMap<uuid::Uuid, (UserID, GameID)>>>> =
+  Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
   console_log!("[worker] Start {} {:?}", req.path(), req.headers());
 
-  let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
+  if req.path().starts_with("/ws/") {
+    // WebSocket requests can't go through the entire HTTP rigmarole
+    return forward_websocket(req, env).await;
+  }
 
+  let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
+  return http_routes(req, env).await.and_then(|r| r.with_cors(&cors));
+}
+
+async fn http_routes(req: Request, env: Env) -> Result<Response> {
+  let path = req.path();
   let id_token = req.headers().get("x-arpeggio-auth")?;
   if id_token.is_none() {
     console_error!("No arpeggio auth header!");
-    // TODO: if this is a websocket connection request, this response isn't
-    // going to do anything useful.
-    return Response::from_json(&json!({"error": "need x-arpeggio-auth"}))
-      .and_then(|r| r.with_cors(&cors));
+    return Response::from_json(&json!({"error": "need x-arpeggio-auth"}));
   }
 
   let id_token = id_token.unwrap();
   let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
 
-  // TODO: Radix! Okay, so we can't do this for websocket connections, because websocket connections
-  // don't have HTTP request headers, so we don't have the token!
   let validation_result = validate_google_token(&id_token, client_id).await;
   if let Err(e) = validation_result {
     console_log!("token is invalid; returning 401 {e:?}");
-    return Response::error("Invalid token", 401).and_then(|r| r.with_cors(&cors));
+    return Response::error("Invalid token", 401);
   }
   let user_id = validation_result.unwrap();
 
-  let result = Router::new()
-    .on_async("/g/create", |req, ctx| async move {
-      let json = json!({"game_id": GameID::gen().to_string()});
-      Response::from_json(&json)
-    })
-    .on_async("/g/list", |req, ctx| async move {
-      let games: Vec<String> = vec![];
-      let json = json!({"games": games});
-      Response::from_json(&json)
-    })
-    .on_async("/game/:id", |req, ctx| async move {
-      // TODO: Authenticate the user!
-      // TODO: Authorize that the user has access to the game!
-      let id = ctx.param("id").expect("id should exist because it's in the route");
-      console_log!("[worker] GAME {id}");
-      let namespace = ctx.durable_object("ARPEGGIOGAME")?;
-      // We should probably make GameIDs actually be the Durable Object ID and use
-      // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
-      // and would mean the type of GameID would have to change from wrapping UUIDs to instead
-      // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
-      let stub = namespace.id_from_name(id)?.get_stub()?;
-      Ok(stub.fetch_with_request(req).await?)
-    })
-    .run(req, env)
-    .await;
-  console_log!("[worker] Done");
-  result.and_then(move |r| r.with_cors(&cors))
+  if path.starts_with("/request-websocket") {
+    let game_id = path.split("/").nth(2).ok_or(Error::RustError("bad path".to_string()))?;
+    let uuid = Uuid::new_v4();
+    // TODO: Authorize the user's ability to access this game.
+    let game_id = game_id.parse().map_err(rust_error)?;
+    WS_TOKENS.lock().expect("poison").insert(uuid, (user_id.clone().to_owned(), game_id));
+    return Response::from_json(&json!({"token": uuid.to_string()}));
+  } else if path == "/g/create" {
+    // TODO: obviously this needs to *actually* create a
+    let json = json!({"game_id": GameID::gen().to_string()});
+    return Response::from_json(&json);
+  } else if path == "/g/list" {
+    let games: Vec<String> = vec![];
+    let json = json!({"games": games});
+    return Response::from_json(&json);
+  } else {
+    return Response::error("No route matched", 404);
+  }
+}
+
+async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
+  // This is a WebSocket request. CORS & authentication are meaningless here. We use a token
+  // system where the client sends a regular HTTP request to /request-websocket/{game_id} to do
+  // authn & authz, which returns a temporary token that is then passed here, in the request that
+  // creates the websocket.
+
+  let path = req.path();
+  let ws_token = path.split("/").nth(2).ok_or(rust_error("bad path"))?;
+
+  let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
+  let (user_id, game_id) = {
+    let mut tokens = WS_TOKENS.lock().expect("poison");
+    // We remove the token from the hashmap as soon as you try to use it. TODO: we need to clean
+    // up old tokens if people hit /request-websocket without following it up with a request to
+    // /ws/
+    tokens.remove(&ws_token).ok_or(Error::RustError("couldn't find WS token".to_string()))?.clone()
+  };
+
+  // let id = ctx.param("id").expect("id should exist because it's in the route");
+  console_log!("[worker] GAME {game_id:?}");
+  let namespace = env.durable_object("ARPEGGIOGAME")?;
+  // We should probably make GameIDs actually be the Durable Object ID and use
+  // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
+  // and would mean the type of GameID would have to change from wrapping UUIDs to instead
+  // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
+  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+  return Ok(stub.fetch_with_request(req).await?);
 }
 
 #[durable_object]
@@ -103,7 +138,7 @@ impl DurableObject for ArpeggioGame {
   async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     let path = req.path();
     console_log!("[DO] method={:?} path={path:?}", req.method());
-    if path.starts_with("/game") {
+    if path.starts_with("/ws") {
       console_log!("[DO] GAME {path}");
       console_log!("[worker] WEBSOCKET");
       let pair = WebSocketPair::new()?;
@@ -154,3 +189,5 @@ async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Res
 /// errors about how a *mut u8 might escape an async closure or something. So this converts the
 /// error to a string before converting it to an anyhow Error.
 pub fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }
+
+fn rust_error<T: std::fmt::Debug>(e: T) -> Error { Error::RustError(format!("{e:?}")) }
