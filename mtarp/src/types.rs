@@ -44,7 +44,7 @@ pub struct GameProfile {
   pub role: Role,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
 pub enum Role {
   GM,
   Player,

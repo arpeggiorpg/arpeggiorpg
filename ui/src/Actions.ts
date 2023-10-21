@@ -78,7 +78,7 @@ export function ptfetch<J>(url: string, init: RequestInit | undefined, decoder: 
   return ptfetch_(url, init, decoder.parse);
 }
 
-export function startPoll(mode: "gm" | "player", gameId: string): () => void {
+export function startPoll(mode: T.Role, gameId: string): () => void {
   let polling = true;
 
   const controller = new AbortController();
@@ -90,7 +90,7 @@ export function startPoll(mode: "gm" | "player", gameId: string): () => void {
     //
     // Why not just start long-polling at `/poll/0/0`? Because if the server has a freshly loaded
     // game, it will be at index 0/0, and so won't return immediately when you poll 0/0.
-    const gameUrl = `/g/${gameId}/${mode}/`;
+    const gameUrl = `/g/${gameId}/${mode.toLowerCase}/`;
     let result = await ptfetch(gameUrl, {}, T.decodeGameWithMetadata);
     let state = getState();
     state.refresh(result.game);

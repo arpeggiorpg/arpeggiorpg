@@ -172,14 +172,14 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function usePoll(mode: "gm" | "player") {
+function usePoll(mode: T.Role) {
   const { gameId } = useParams() as { gameId: string };
 
   React.useEffect(() => {
     // startPoll returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
     if (WS.WEBSOCKETS_ENABLED) {
-      return WS.connect(gameId);
+      return WS.connect(gameId, mode);
     } else {
       return A.startPoll(mode, gameId);
     }
@@ -190,7 +190,7 @@ function usePoll(mode: "gm" | "player") {
 }
 
 function GMGame() {
-  const { status } = usePoll("gm");
+  const { status } = usePoll("GM");
 
   if (status === "Ready") {
     return <GMMain />;
@@ -250,7 +250,7 @@ function AcceptInvitation() {
 }
 
 function PlayerGame() {
-  const { gameId, status } = usePoll("player");
+  const { gameId, status } = usePoll("Player");
 
   let {
     data: games,

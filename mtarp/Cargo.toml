@@ -24,3 +24,4 @@ ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
 # Why do I have this uom dependency here?
 uom = {version = "0.35", default_features = false}
 uuid = { workspace = true }
+strum = { workspace = true }

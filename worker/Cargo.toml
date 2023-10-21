@@ -26,8 +26,7 @@ futures-util = { version = "0.3.28", default-features = false }
 uuid = { workspace = true }
 foldertree = { path = "../foldertree" }
 google-signin = { workspace = true }
-once_cell = {workspace = true}
-
+strum = {workspace = true}
 
 [profile.release]
 lto = true

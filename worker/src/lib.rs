@@ -1,19 +1,17 @@
 use std::{
-  collections::{HashMap, HashSet},
-  sync::{Arc, Mutex, RwLock},
+  collections::HashSet,
+  sync::{Arc, RwLock},
 };
 
 use anyhow::anyhow;
-use arpeggio::types::PlayerID;
 use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
-use once_cell::sync::Lazy;
-use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 use worker::*;
 
 use google_signin;
 
+mod storage;
 mod wsrpi;
 
 // Things I've learned about error-handling in workers-rs:
@@ -68,10 +66,12 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   let user_id = validation_result.unwrap();
 
   match path.split("/").collect::<Vec<_>>()[1..] {
-    ["request-websocket", game_id] => request_websocket(req, env, game_id, user_id).await,
+    ["request-websocket", game_id, role] => {
+      request_websocket(req, env, game_id, user_id, role).await
+    }
     ["g", "create"] => create_game(req, env, user_id).await,
     ["g", "list"] => list_games(req, env, user_id).await,
-    _ => Response::error(format!("Not route matched {path:?}"), 404),
+    _ => Response::error(format!("No route matched {path:?}"), 404),
   }
 }
 
@@ -81,14 +81,18 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
 /// requests, by requiring this regular HTTP request that can be authenticated normally to generate
 /// a temporary token that is then used to create the WebSocket connection.
 async fn request_websocket(
-  req: Request, env: Env, game_id: &str, user_id: UserID,
+  req: Request, env: Env, game_id: &str, user_id: UserID, role: &str,
 ) -> Result<Response> {
-  // TODO: check the game list and ensure that the user_id has access to this game. Otherwise,
-  // anyone can spam requests for game IDs which will *create* Durable Objects and run up my bills!
   let game_id: GameID = game_id.parse().map_err(rust_error)?;
-  let namespace = env.durable_object("ARPEGGIOGAME")?;
-  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
-  stub.fetch_with_request(req).await
+  let role: Role = role.parse().map_err(rust_error)?;
+  let has_game = storage::check_game_access(&env, user_id, game_id, role).await?;
+  if has_game {
+    let namespace = env.durable_object("ARPEGGIOGAME")?;
+    let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+    stub.fetch_with_request(req).await
+  } else {
+    Response::error("You don't have access to this game", 401)
+  }
 }
 
 async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
@@ -125,30 +129,18 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
 
 /// Create a game
 async fn create_game(req: Request, env: Env, user_id: UserID) -> Result<Response> {
-  let game_id = GameID::gen().to_string();
-  let db = env.d1("DB")?;
-  let statement =
-    db.prepare("INSERT INTO user_games (user_id, game_id, profile_name, role) VALUES (?, ?, ?, ?)");
-  let statement = statement.bind(&[
-    user_id.to_string().into(),
-    game_id.to_string().into(),
-    "GM".into(),
-    "GM".into(),
-  ])?;
-  statement.run().await?;
+  let game_id = GameID::gen();
+  storage::create_game(&env, game_id, user_id).await?;
   let json = json!({"game_id": game_id});
   Response::from_json(&json)
 }
 
 /// List games
 async fn list_games(req: Request, env: Env, user_id: UserID) -> Result<Response> {
-  let db = env.d1("DB")?;
-  let statement =
-    db.prepare("SELECT UG.user_id, UG.game_id, UG.profile_name, UG.role, meta.name FROM user_games UG, game_metadata meta WHERE UG.game_id = meta.game_id AND user_id = ?");
-  let statement = statement.bind(&[user_id.to_string().into()])?;
-  let profiles: Vec<GameInfo> = statement.all().await?.results()?;
+  let game_infos = storage::list_games_with_names(&env, user_id).await?;
+
   let list = GameList {
-    games: profiles
+    games: game_infos
       .into_iter()
       .map(|r| {
         (
@@ -164,15 +156,6 @@ async fn list_games(req: Request, env: Env, user_id: UserID) -> Result<Response>
       .collect::<Vec<_>>(),
   };
   return Response::from_json(&list);
-
-  #[derive(Deserialize)]
-  struct GameInfo {
-    user_id: UserID,
-    game_id: GameID,
-    profile_name: PlayerID,
-    role: Role,
-    name: String,
-  }
 }
 
 #[durable_object]
@@ -200,9 +183,10 @@ impl DurableObject for ArpeggioGame {
     let path = req.path();
     console_log!("[DO] method={:?} path={path:?}", req.method());
     match path.split("/").collect::<Vec<_>>()[1..] {
-      ["request-websocket", _] => {
+      ["request-websocket", _game_id, _role] => {
         // Theoretically, the worker should have already authenticated & authorized the user, so we
         // just need to store & return a token.
+        // TODO: remember `role` so we can have Player vs GM stuff
         let token = Uuid::new_v4();
         self.ws_tokens.insert(token);
         Response::from_json(&json!({"token": token}))

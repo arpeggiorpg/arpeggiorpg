@@ -30,13 +30,13 @@ export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>):
 }
 
 
-export function connect(gameId: string) {
+export function connect(gameId: string, mode: T.Role) {
   console.log("[CONNECT]", gameId);
   M.getState().setGameId(gameId);
 
   async function theAsyncFunction() {
     // First, we need to request a websocket token.
-    let {token} = await A.ptfetch(`/request-websocket/${gameId}`, {}, Z.object({token: Z.string()}));
+    let {token} = await A.ptfetch(`/request-websocket/${gameId}/${mode}`, {}, Z.object({token: Z.string()}));
     webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
 
     webSocket.addEventListener("open", async (event) => {
