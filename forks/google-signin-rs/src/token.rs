@@ -28,7 +28,7 @@ pub struct IdInfo<
     pub locale: Option<String>,
 }
 
-impl IdInfo {
+impl<T> IdInfo<T> {
     // Check the issuer, audiences, and (optionally) hosted domains of the IdInfo.
     //
     // Returns an error if the client has no configured audiences.

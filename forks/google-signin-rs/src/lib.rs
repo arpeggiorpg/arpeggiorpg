@@ -31,7 +31,7 @@
 //! let mut certs_cache = google_signin::CachedCerts::new();
 //! // Recommended: Let the crate handle everything for you
 //! let id_info = client.verify(&request.token, &mut certs_cache).await.expect("Expected token to be valid");
-//! println!("Success! Signed-in as {}", id_info.sub);
+//! println!("Success! Signed-in as {}", id_info.custom.sub);
 //!
 //! // Alternative: Inspect the ID before verifying it
 //! let id_info = client.get_slow_unverified(&request.token).await.expect("Expected token to exist");
