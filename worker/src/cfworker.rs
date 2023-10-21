@@ -20,6 +20,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
   }
 
   let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
+  // TODO: If http_routes returns an Error, we are not applying cors headers.
   return http_routes(req, env).await.and_then(|r| r.with_cors(&cors));
 }
 
@@ -135,9 +136,11 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
 }
 
 /// Create a game
-async fn create_game(_req: Request, env: Env, user_id: UserID) -> Result<Response> {
+async fn create_game(mut req: Request, env: Env, user_id: UserID) -> Result<Response> {
   let game_id = GameID::gen();
-  storage::create_game(&env, game_id, user_id).await?;
+  let name: String = req.json().await?;
+
+  storage::create_game(&env, game_id, user_id, name).await?;
   let json = json!({"game_id": game_id});
   Response::from_json(&json)
 }

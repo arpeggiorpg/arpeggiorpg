@@ -22,10 +22,12 @@ pub struct GameInfo {
   pub name: String,
 }
 
-pub async fn create_game(env: &Env, game_id: GameID, user_id: UserID) -> worker::Result<()> {
-  // Amusingly, we don't need to actually create a game here, just say that the
-  // user has access to it.
+pub async fn create_game(env: &Env, game_id: GameID, user_id: UserID, name: String) -> worker::Result<()> {
   create_profile(env, game_id, user_id, PlayerID("GM".to_string()), Role::GM).await?;
+  let db = env.d1("DB")?;
+  let statement = db.prepare("INSERT INTO game_metadata (game_id, name) VALUES (?, ?)");
+  let statement = statement.bind(&[game_id.to_string().into(), name.into()])?;
+  statement.run().await?;
   Ok(())
 }
 
