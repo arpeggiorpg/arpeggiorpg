@@ -7,7 +7,7 @@ use serde_json::json;
 use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
 
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
-use mtarp::types::RPIGameRequest;
+use mtarp::types::{InvitationID, RPIGameRequest};
 
 use crate::{anyhow_str, durablegame::Sessions};
 
@@ -81,6 +81,8 @@ impl GameSession {
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
     let game = self.load_game().await?;
 
+    // TODO!!!! RADIX!!!! Split up this method into Player and GM methods (and
+    // common ones, I guess), and actually check authorization!
     use RPIGameRequest::*;
     match request.request {
       GMGetGame => {
@@ -113,7 +115,65 @@ impl GameSession {
         let result = game.preview_volume_targets(scene, creature_id, ability_id, point)?;
         Ok(serde_json::to_value(result)?)
       }
+
+      GMGenerateInvitation => {
+        let invitation_id = self.create_invitation().await?;
+        Ok(serde_json::to_value(invitation_id)?)
+      }
+      GMListInvitations => {
+        let invitations = self.list_invitations().await?;
+        Ok(serde_json::to_value(invitations)?)
+      }
+      GMDeleteInvitation { invitation_id } => {
+        let invitations = self.delete_invitation(invitation_id).await?;
+        Ok(serde_json::to_value(invitations)?)
+      }
     }
+  }
+
+  async fn create_invitation(&self) -> anyhow::Result<InvitationID> {
+    let mut storage = self.state.storage();
+    let invitation_id = InvitationID::gen();
+
+    let invitations = storage.get("invitations").await;
+    let mut invitations: Vec<InvitationID> = match invitations {
+      Ok(r) => r,
+      Err(e) => vec![]
+    };
+    invitations.push(invitation_id);
+    storage.put("invitations", invitations).await.map_err(anyhow_str)?;
+    Ok(invitation_id)
+  }
+
+  async fn list_invitations(&self) -> anyhow::Result<Vec<InvitationID>> {
+    let invitations = self.state.storage().get("invitations").await;
+    let invitations: Vec<InvitationID> =  match invitations {
+      Ok(invitations) => invitations,
+      Err(e) => vec![],
+    };
+    Ok(invitations)
+  }
+
+  async fn delete_invitation(&self, invitation_id: InvitationID) -> anyhow::Result<Vec<InvitationID>> {
+    let invitations = self.state.storage().get("invitations").await;
+    let mut invitations: Vec<InvitationID> = match invitations {
+      Ok(r) => r,
+      Err(e) => vec![]
+    };
+    invitations.retain_mut(|inv| inv != &invitation_id);
+    self.state.storage().put("invitations", invitations.clone()).await.map_err(anyhow_str)?;
+    Ok(invitations)
+  }
+
+  /// List all storage items with a prefix
+  async fn list_prefix(&self, prefix: &str) -> anyhow::Result<worker::js_sys::Map> {
+    let storage = self.state.storage();
+    let items = storage
+      .list_with_options(ListOptions::new().prefix(prefix))
+      .await
+      .map_err(anyhow_str)
+      .context(format!("Listing objects with prefix {prefix:?}"))?;
+    Ok(items)
   }
 
   async fn change_game(
@@ -139,15 +199,10 @@ impl GameSession {
   // seems like unnecessarily complexity when we can just serialize the entire game and split it
   // into 128kB chunks, with keys like "snap-{snapshot_idx}-chunk-{chunk_idx}". dealing with smaller chunks
   // might be less memory intensive but I doubt that will be a problem.
-
   async fn load_game(&self) -> anyhow::Result<Game> {
     let snapshot_idx = 0;
-    let items = self
-      .state
-      .storage()
-      .list_with_options(ListOptions::new().prefix(&format!("snapshot-{snapshot_idx}-chunk-")))
-      .await
-      .map_err(anyhow_str).context("Listing DO storage")?;
+    let items = self.list_prefix(&format!("snapshot-{snapshot_idx}-chunk-")).await?;
+
     if items.size() == 0 {
       // This is a new game!
       return Ok(Default::default());

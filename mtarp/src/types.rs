@@ -75,6 +75,14 @@ pub enum RPIGameRequest {
   GMCommand {
     command: GMCommand,
   },
+
+  // GM Commands for managing invitations happen here in the RPIGameRequest, but the check/accept
+  // operations happen on regular HTTP endpoints, because you can't get a websocket to a game unless
+  // you're authorized already.
+  GMGenerateInvitation,
+  GMListInvitations,
+  GMDeleteInvitation { invitation_id: InvitationID },
+
   PlayerCommand {
     command: PlayerCommand,
   },
@@ -98,4 +106,5 @@ pub enum RPIGameRequest {
     ability_id: AbilityID,
     point: Point3,
   },
+
 }

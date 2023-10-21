@@ -260,6 +260,8 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
         return get(`/target_options/${request.scene_id}/${request.creature_id}/${request.ability_id}`);
       case "PreviewVolumeTargets":
         return get(`/preview_volume_targets/${request.scene_id}/${request.creature_id}/${request.ability_id}/${request.point.x}/${request.point.y}/${request.point.z}`);
+      default:
+        throw new Error("I don't think I care about this any more");
     }
   }
 
@@ -382,5 +384,5 @@ export async function createGame(name: string): Promise<T.GameID> {
 export async function invite(): Promise<T.InvitationID> {
   const gameId = getState().gameId;
   if (!gameId) { throw new Error("Must be called in context of a game!"); }
-  return await ptfetch(`/g/${gameId}/gm/invitations`, { method: "POST" }, Z.string());
+  return await sendRequest({t: "GMGenerateInvitation"}, Z.string());
 }

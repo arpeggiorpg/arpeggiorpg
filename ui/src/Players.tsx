@@ -98,7 +98,9 @@ export function Players() {
     return (
       <Button
         key={"set-" + player_id + scene_id}
-        onClick={() => A.sendGMCommand({ SetPlayerScene: [player_id, scene_id] })}
+        onClick={() =>
+          A.sendGMCommand({ SetPlayerScene: [player_id, scene_id] })
+        }
       >
         {text}
       </Button>
@@ -129,7 +131,7 @@ export function Invitations() {
   const gameId = M.useState((s) => s.gameId);
   const { data, isLoading, mutate } = useSWR(
     `/g/${gameId}/gm/invitations`,
-    (k) => A.ptfetch(k, {}, Z.array(Z.string()))
+    () => A.sendRequest({ t: "GMListInvitations" }, Z.array(Z.string()))
   );
 
   if (isLoading || !data) return <div>Loading invitations</div>;
@@ -138,8 +140,11 @@ export function Invitations() {
     <div>
       <h1>Invitations</h1>
       <ul>
-        {data.map(i => {
-          let link = new URL(`/invitations/${gameId}/${i}`, window.location.href).href
+        {data.map((i) => {
+          let link = new URL(
+            `/invitations/${gameId}/${i}`,
+            window.location.href
+          ).href;
           return (
             <li key={link}>
               <input type="text" value={link} readOnly={true} />
@@ -151,7 +156,6 @@ export function Invitations() {
       <button onClick={generateNew}>Generate new invitation link</button>
     </div>
   );
-
 
   function generateNew() {
     A.invite();
