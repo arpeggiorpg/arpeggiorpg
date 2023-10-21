@@ -219,26 +219,4 @@ impl PlayerService {
     let options = self.game.get_movement_options(scene_id, creature_id)?;
     Ok(options)
   }
-
-  // pub async fn combat_movement_options(&self) -> AEResult<Vec<types::Point3>> {
-  //   let options = self.game.get_combat()?.current_movement_options()?;
-  //   Ok(options)
-  // }
-
-  // pub async fn target_options(
-  //   &self, scene_id: types::SceneID, creature_id: types::CreatureID, ability_id: types::AbilityID,
-  // ) -> AEResult<types::PotentialTargets> {
-  //   let options = self.game.get_target_options(scene_id, creature_id, ability_id)?;
-  //   Ok(options)
-  // }
-
-  // pub async fn preview_volume_targets(
-  //   &self, scene_id: types::SceneID, actor_id: types::CreatureID, ability_id: types::AbilityID,
-  //   point: types::Point3,
-  // ) -> AEResult<(Vec<types::CreatureID>, Vec<types::Point3>)> {
-  //   let scene = self.game.get_scene(scene_id)?;
-  //   let targets = self.game.preview_volume_targets(scene, actor_id, ability_id, point)?;
-  //   Ok(targets)
-  // }
 }
-

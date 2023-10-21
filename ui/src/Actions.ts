@@ -146,10 +146,8 @@ export async function requestMove(creature_id: T.CreatureID) {
   const scene = getState().getFocusedScene();
   if (scene) {
     let scene_id = scene.id;
-    // let t = getState().playerId ? "PlayerMovementOptions" : "GMMovementOptions";
-    let t: T.RPIGameRequest["t"] = "GMMovementOptions"; // TODO: PlayerMovementOptions
     const result = await sendRequest(
-      { t, scene_id, creature_id },
+      { t: "MovementOptions", scene_id, creature_id },
       T.arrayOfPoint3,
     );
     getState().displayMovementOptions(result, creature_id);
@@ -186,7 +184,7 @@ export function moveCombatCreature(dest: T.Point3) {
 }
 
 export async function requestCombatMovement() {
-  const options = await ptfetch(`${gameUrl()}/combat_movement_options`, undefined, T.arrayOfPoint3);
+  const options = await sendRequest({ t: "CombatMovementOptions" }, T.arrayOfPoint3);
   getState().displayMovementOptions(options);
 }
 
@@ -254,8 +252,11 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
         return execute();
       case "PlayerCommand":
         return execute();
-      case "GMMovementOptions":
+      case "MovementOptions":
         return get(`/movement_options/${request.scene_id}/${request.creature_id}`);
+      case "CombatMovementOptions":
+        return get(`/combat_movement_options`);
+
     }
   }
 

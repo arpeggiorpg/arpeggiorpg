@@ -27,7 +27,7 @@ export type InvitationID = string;
 
 export type Role = "GM" | "Player";
 
-export type RPIGameRequest = { "t": "GMGetGame" } | { "t": "GMMovementOptions", scene_id: SceneID, creature_id: CreatureID, } | { "t": "GMCommand", command: GMCommand, } | { "t": "PlayerCommand", command: PlayerCommand, };
+export type RPIGameRequest = { "t": "GMGetGame" } | { "t": "GMCommand", command: GMCommand, } | { "t": "PlayerCommand", command: PlayerCommand, } | { "t": "MovementOptions", scene_id: SceneID, creature_id: CreatureID, } | { "t": "CombatMovementOptions" };
 
 export type UserID = string;
 

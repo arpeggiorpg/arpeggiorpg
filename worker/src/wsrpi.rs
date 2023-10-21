@@ -96,8 +96,12 @@ impl GameSession {
         let changed_game = { game.perform_gm_command(command) };
         self.change_game(changed_game).await
       }
-      GMMovementOptions { scene_id, creature_id } => {
+      MovementOptions { scene_id, creature_id } => {
         let options = game.get_movement_options(scene_id, creature_id)?;
+        Ok(serde_json::to_value(options)?)
+      }
+      CombatMovementOptions => {
+        let options = game.get_combat()?.current_movement_options()?;
         Ok(serde_json::to_value(options)?)
       }
     }

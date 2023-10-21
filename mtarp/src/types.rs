@@ -69,7 +69,15 @@ pub struct Invitation {
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
   GMGetGame,
-  GMMovementOptions { scene_id: SceneID, creature_id: CreatureID },
   GMCommand { command: GMCommand },
   PlayerCommand { command: PlayerCommand },
+
+  // These things *technically* could be split up into GM and Player variants,
+  // but it's not really a big deal if players can view movement & target
+  // options for other creatures
+
+  MovementOptions { scene_id: SceneID, creature_id: CreatureID },
+  CombatMovementOptions
+  // TargetOptions { scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID }
+  // PreviewVolumeTargets { scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, point: Point3}
 }
