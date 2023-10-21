@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -9,11 +9,11 @@ use worker::{console_error, console_log, ListOptions, State, WebSocket, Websocke
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
 use mtarp::types::RPIGameRequest;
 
-use crate::Sessions;
+use crate::{anyhow_str, durablegame::Sessions};
 
 /// A representation of a request received from a websocket. It has an ID so we can send a response
 /// and the client can match them up.
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WSRequest {
   request: RPIGameRequest,
   id: String,
@@ -52,12 +52,15 @@ impl GameSession {
           match request {
             Ok(request) => {
               let request_id = request.id.clone();
-              console_log!("About to handle request");
+              console_log!("About to handle request {request:?}");
               let response = self.handle_request(request).await;
               // console_log!("Handled request: {response:?}");
               match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
-                Err(e) => self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?,
+                Err(e) => {
+                  console_error!("Error while handling request: {e:?}");
+                  self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
+                }
               }
             }
             Err(e) => self.send(
@@ -131,13 +134,15 @@ impl GameSession {
       .storage()
       .list_with_options(ListOptions::new().prefix(&format!("snapshot-{snapshot_idx}-chunk-")))
       .await
-      .map_err(anyhow_str)?;
-    console_log!("[RADIX] KEYS: {items:?}");
+      .map_err(anyhow_str).context("Listing DO storage")?;
+    if items.size() == 0 {
+      // This is a new game!
+      return Ok(Default::default());
+    }
     let mut serialized_game = String::new();
     for key in items.keys() {
       let key = key.map_err(anyhow_str)?;
       let value = items.get(&key);
-      // console_log!("KV? {key:?} {value:?}");
       let chunk: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
       serialized_game.push_str(&chunk);
     }
@@ -183,8 +188,3 @@ impl GameSession {
     Ok(self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))?)
   }
 }
-
-/// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
-/// errors about how a *mut u8 might escape an async closure or something. So this converts the
-/// error to a string before converting it to an anyhow Error.
-fn anyhow_str<T: std::fmt::Debug>(e: T) -> anyhow::Error { anyhow!("{e:?}") }

@@ -1,0 +1,29 @@
+[package]
+name = "google-signin"
+edition = "2021"
+version = "0.4.0"
+description = "API bindings for Google Sign-In"
+authors = ["Kevin Stenerson <kstenerson@developers.wyyerd.com>"]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/wyyerd/google-signin-rs"
+documentation = "https://docs.rs/google-signin"
+keywords = ["google", "signin", "oauth", "oauth2", "api"]
+categories = ["api-bindings"]
+
+[dependencies]
+reqwest = { version = "0.11.22", features = ["json"] }
+bytes = "^1.1"
+serde = "^1.0"
+serde_derive = "^1.0"
+serde_json = "^1.0"
+jwt-compact = {version="^0.8.0", features = ["rsa", "clock"]}
+cache_control = "0.1.0"
+base64 = "0.21.4"
+num-bigint-dig = "0.8.4"
+num-traits = "0.2.17"
+instant = { version = "0.1", features = ["wasm-bindgen"]}
+
+[dev-dependencies]
+# tokio = { version = "1", features = ["full"] }
+futures = "0.3"

@@ -1,4 +1,6 @@
+import * as Z from "zod";
 
+import * as A from "./Actions";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import { RPIGameRequest } from "./bindings/bindings";
@@ -28,21 +30,29 @@ export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>):
 }
 
 
-export function connect(gameId: string) {
+export function connect(gameId: string, mode: T.Role) {
+  console.log("[CONNECT]", gameId);
   M.getState().setGameId(gameId);
-  webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/game/${gameId}`);
 
-  webSocket.addEventListener("open", async (event) => {
-    console.log("connected to WebSocket. initiating GetGame");
-    const game = await sendRequest({ t: "GMGetGame" }, T.decodeGame);
-    console.log("got the game.", game);
-    M.getState().refresh(game);
-  });
+  async function theAsyncFunction() {
+    // First, we need to request a websocket token.
+    let {token} = await A.ptfetch(`/request-websocket/${gameId}/${mode}`, {}, Z.object({token: Z.string()}));
+    webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
 
-  webSocket.addEventListener("message", (event) => {
-    console.log("Message from server ", event);
-    handleWSEvent(event);
-  });
+    webSocket.addEventListener("open", async (event) => {
+      console.log("connected to WebSocket. initiating GetGame");
+      const game = await sendRequest({ t: "GMGetGame" }, T.decodeGame);
+      console.log("got the game.", game);
+      M.getState().refresh(game);
+    });
+
+    webSocket.addEventListener("message", (event) => {
+      console.log("Message from server ", event);
+      handleWSEvent(event);
+    });
+  }
+
+  theAsyncFunction();
 
   return () => {
     console.log("Cleaning up WebSocket");

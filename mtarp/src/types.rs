@@ -11,6 +11,12 @@ uuid_id!(InvitationID);
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct UserID(pub String);
 
+impl UserID {
+  pub fn to_string(&self) -> String {
+    self.0.clone()
+  }
+}
+
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
 pub struct GameMetadata {
   pub name: String,
@@ -38,7 +44,7 @@ pub struct GameProfile {
   pub role: Role,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
 pub enum Role {
   GM,
   Player,
