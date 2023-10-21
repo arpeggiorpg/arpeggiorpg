@@ -9,7 +9,7 @@ use worker::{console_error, console_log, ListOptions, State, WebSocket, Websocke
 use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
 use mtarp::types::RPIGameRequest;
 
-use crate::{Sessions, anyhow_str};
+use crate::{anyhow_str, durablegame::Sessions};
 
 /// A representation of a request received from a websocket. It has an ID so we can send a response
 /// and the client can match them up.
