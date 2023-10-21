@@ -1,6 +1,6 @@
 name: Docker
 
-on: [push]
+on: [workflow-dispatch] # disabling since I've switched to workers
 
 jobs:
   build:
