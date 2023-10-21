@@ -4,6 +4,6 @@ import analyze from 'rollup-plugin-analyzer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "./",
+  base: "/",
   plugins: [react(), analyze({limit: 20})],
 })
