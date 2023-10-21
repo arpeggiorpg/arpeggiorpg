@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use arpeggio::{types::{PlayerID, GMCommand, PlayerCommand, CreatureID, SceneID}, uuid_id};
+use arpeggio::{
+  types::{AbilityID, CreatureID, GMCommand, PlayerCommand, PlayerID, Point3, SceneID},
+  uuid_id,
+};
 
 uuid_id!(GameID);
 uuid_id!(InvitationID);
@@ -12,9 +15,7 @@ uuid_id!(InvitationID);
 pub struct UserID(pub String);
 
 impl UserID {
-  pub fn to_string(&self) -> String {
-    self.0.clone()
-  }
+  pub fn to_string(&self) -> String { self.0.clone() }
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug, Default, TS)]
@@ -44,7 +45,9 @@ pub struct GameProfile {
   pub role: Role,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display)]
+#[derive(
+  Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug, TS, strum::EnumString, strum::Display,
+)]
 pub enum Role {
   GM,
   Player,
@@ -69,15 +72,30 @@ pub struct Invitation {
 #[serde(tag = "t")]
 pub enum RPIGameRequest {
   GMGetGame,
-  GMCommand { command: GMCommand },
-  PlayerCommand { command: PlayerCommand },
+  GMCommand {
+    command: GMCommand,
+  },
+  PlayerCommand {
+    command: PlayerCommand,
+  },
 
   // These things *technically* could be split up into GM and Player variants,
   // but it's not really a big deal if players can view movement & target
   // options for other creatures
-
-  MovementOptions { scene_id: SceneID, creature_id: CreatureID },
-  CombatMovementOptions
-  // TargetOptions { scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID }
-  // PreviewVolumeTargets { scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, point: Point3}
+  MovementOptions {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+  },
+  CombatMovementOptions,
+  TargetOptions {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    ability_id: AbilityID,
+  },
+  PreviewVolumeTargets {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    ability_id: AbilityID,
+    point: Point3,
+  },
 }

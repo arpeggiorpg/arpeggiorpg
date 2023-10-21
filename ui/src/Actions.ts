@@ -256,7 +256,10 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
         return get(`/movement_options/${request.scene_id}/${request.creature_id}`);
       case "CombatMovementOptions":
         return get(`/combat_movement_options`);
-
+      case "TargetOptions":
+        return get(`/target_options/${request.scene_id}/${request.creature_id}/${request.ability_id}`);
+      case "PreviewVolumeTargets":
+        return get(`/preview_volume_targets/${request.scene_id}/${request.creature_id}/${request.ability_id}/${request.point.x}/${request.point.y}/${request.point.z}`);
     }
   }
 
@@ -342,10 +345,9 @@ export async function sendGMCommandWithResult(cmd: T.GMCommand): Promise<T.RustR
   return rpi_result;
 }
 
-async function selectAbility(scene_id: T.SceneID, cid: T.CreatureID, ability_id: T.AbilityID) {
-  const url = `${gameUrl()}/target_options/${scene_id}/${cid}/${ability_id}`;
-  const options = await ptfetch(url, undefined, T.decodePotentialTargets);
-  getState().displayPotentialTargets(cid, ability_id, options);
+async function selectAbility(scene_id: T.SceneID, creature_id: T.CreatureID, ability_id: T.AbilityID) {
+  let options = await sendRequest({ t: "TargetOptions", scene_id, creature_id, ability_id }, T.decodePotentialTargets);
+  getState().displayPotentialTargets(creature_id, ability_id, options);
 }
 
 export function requestCombatAbility(
@@ -359,10 +361,9 @@ export function requestCombatAbility(
 }
 
 export async function fetchAbilityTargets(
-  sceneId: T.SceneID, actorId: T.CreatureID, abilityId: T.AbilityID, point: T.Point3
+  scene_id: T.SceneID, creature_id: T.CreatureID, ability_id: T.AbilityID, point: T.Point3
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const url = `${gameUrl()}/preview_volume_targets/${sceneId}/${actorId}/${abilityId}/${point.x}/${point.y}/${point.z}`;
-  const result = await ptfetch(url, { method: 'POST' }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
+  const result = await sendRequest({ t: "PreviewVolumeTargets", scene_id, creature_id, ability_id, point }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
   return {
     creatures: result[0],
     points: result[1],

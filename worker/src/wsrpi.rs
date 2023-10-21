@@ -104,6 +104,15 @@ impl GameSession {
         let options = game.get_combat()?.current_movement_options()?;
         Ok(serde_json::to_value(options)?)
       }
+      TargetOptions { scene_id, creature_id, ability_id } => {
+        let options = game.get_target_options(scene_id, creature_id, ability_id)?;
+        Ok(serde_json::to_value(options)?)
+      }
+      PreviewVolumeTargets { scene_id, creature_id, ability_id, point } => {
+        let scene = game.get_scene(scene_id)?;
+        let result = game.preview_volume_targets(scene, creature_id, ability_id, point)?;
+        Ok(serde_json::to_value(result)?)
+      }
     }
   }
 
