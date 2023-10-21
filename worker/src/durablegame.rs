@@ -1,9 +1,10 @@
 use std::{
-  collections::HashSet,
+  collections::{HashMap, HashSet},
   sync::{Arc, RwLock},
 };
 
-use mtarp::types::InvitationID;
+use arpeggio::types::PlayerID;
+use mtarp::types::{InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
 use worker::{
@@ -17,7 +18,12 @@ use crate::{rust_error, wsrpi};
 pub struct ArpeggioGame {
   state: Arc<State>,
   sessions: Sessions,
-  ws_tokens: HashSet<Uuid>,
+  ws_tokens: HashMap<Uuid, WSUser>,
+}
+
+struct WSUser {
+  role: Role,
+  player_id: PlayerID,
 }
 
 pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
@@ -28,25 +34,31 @@ impl DurableObject for ArpeggioGame {
     Self {
       state: Arc::new(state),
       sessions: Arc::new(RwLock::new(vec![])),
-      ws_tokens: HashSet::new(),
+      ws_tokens: HashMap::new(),
     }
   }
 
-  async fn fetch(&mut self, req: Request) -> Result<Response> {
+  async fn fetch(&mut self, mut req: Request) -> Result<Response> {
     let path = req.path();
     console_log!("[DO] method={:?} path={path:?}", req.method());
     match path.split("/").collect::<Vec<_>>()[1..] {
-      ["request-websocket", _game_id, _role] => {
-        // Theoretically, the worker should have already authenticated & authorized the user, so we
-        // just need to store & return a token.
-        // TODO: remember `role` so we can have Player vs GM stuff
+      ["request-websocket", _game_id, role, player_id] => {
+        // The worker has already authenticated & authorized the user, so we just need to store &
+        // return a token.
         let token = Uuid::new_v4();
-        self.ws_tokens.insert(token);
+        let role = role.parse().map_err(rust_error)?;
+        // Unfortunately, neither `worker` nor `url` have accessors for path segments that do URL
+        // decoding. WTF?
+        let player_id =
+          percent_encoding::percent_decode_str(player_id).decode_utf8().map_err(rust_error)?;
+        let player_id: PlayerID = PlayerID(player_id.to_string());
+        console_log!("Ok what the heck is this player ID {player_id:?}");
+        self.ws_tokens.insert(token, WSUser { role, player_id });
         Response::from_json(&json!({"token": token}))
       }
       ["ws", _, ws_token] => {
         let ws_token: Uuid = ws_token.parse().map_err(rust_error)?;
-        if self.ws_tokens.remove(&ws_token) {
+        if let Some(ws_user) = self.ws_tokens.remove(&ws_token) {
           console_log!("[DO] GAME {path}");
           console_log!("[worker] WEBSOCKET");
           let pair = WebSocketPair::new()?;
@@ -60,7 +72,13 @@ impl DurableObject for ArpeggioGame {
 
           // TODO: ignore poison
           self.sessions.write().expect("poison").push(server.clone());
-          let session = wsrpi::GameSession::new(self.state.clone(), server, self.sessions.clone());
+          let session = wsrpi::GameSession::new(
+            self.state.clone(),
+            server,
+            self.sessions.clone(),
+            ws_user.role,
+            ws_user.player_id,
+          );
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
           });

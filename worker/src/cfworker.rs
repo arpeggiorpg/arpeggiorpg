@@ -63,9 +63,10 @@ async fn accept_invitation(
   mut req: Request, env: Env, user_id: UserID, game_id: &str, invitation_id: &str,
 ) -> Result<Response> {
   // first, check that the invitation is valid
-  let namespace = env.durable_object("ARPEGGIOGAME")?;
-  let stub = namespace.id_from_name(game_id)?.get_stub()?;
-  let mut check_response = stub.fetch_with_str(&format!("https://fake-host/g/invitations/{game_id}/{invitation_id}")).await?;
+  let stub = durable_object(&env, game_id)?;
+  let mut check_response = stub
+    .fetch_with_str(&format!("https://fake-host/g/invitations/{game_id}/{invitation_id}"))
+    .await?;
   let check_response: bool = check_response.json().await?;
 
   if check_response {
@@ -88,18 +89,31 @@ async fn request_websocket(
 ) -> Result<Response> {
   let game_id: GameID = game_id.parse().map_err(rust_error)?;
   let role: Role = role.parse().map_err(rust_error)?;
-  let has_game = storage::check_game_access(&env, user_id, game_id, role).await?;
-  if has_game {
-    forward_to_do(req, env, game_id).await
+  let profile = storage::check_game_access(&env, user_id, game_id, role).await?;
+  if let Some(profile) = profile {
+    let stub = durable_object(&env, &game_id.to_string())?;
+    let player_id = profile.profile_name;
+    let mut url = worker::Url::parse("https://fake-host")?;
+    // Url::set_path does percent-encoding, so we should be safe to put arbitrary player IDs here.
+    url.set_path(&format!("request-websocket/{}/{role}/{}", game_id.to_string(), player_id.0));
+    stub.fetch_with_str(url.as_str()).await
   } else {
     Response::error("You don't have access to this game", 401)
   }
 }
 
+fn durable_object(env: &Env, game_id: &str) -> Result<worker::Stub> {
+  // We should probably make GameIDs actually be the Durable Object ID and use
+  // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
+  // and would mean the type of GameID would have to change from wrapping UUIDs to instead
+  // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
+  let namespace = env.durable_object("ARPEGGIOGAME")?;
+  namespace.id_from_name(&game_id.to_string())?.get_stub()
+}
+
 /// Forward a simple request to the ArpeggioGame durable object
 async fn forward_to_do(req: Request, env: Env, game_id: GameID) -> Result<Response> {
-  let namespace = env.durable_object("ARPEGGIOGAME")?;
-  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+  let stub = durable_object(&env, &game_id.to_string())?;
   stub.fetch_with_request(req).await
 }
 
@@ -123,12 +137,7 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   let path = req.path();
   if let Some(game_id) = path.splitn(4, "/").nth(2) {
     console_log!("[worker] GAME {game_id:?}");
-    let namespace = env.durable_object("ARPEGGIOGAME")?;
-    // We should probably make GameIDs actually be the Durable Object ID and use
-    // namespace.id_from_string? This requires us to allocate the IDs with namespace.unique_id()
-    // and would mean the type of GameID would have to change from wrapping UUIDs to instead
-    // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
-    let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+    let stub = durable_object(&env, game_id)?;
     stub.fetch_with_request(req).await
   } else {
     Response::error("Bad path", 404)

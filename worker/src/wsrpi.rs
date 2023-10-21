@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
 
-use arpeggio::types::{ChangedGame, Game, GameError, RPIGame};
-use mtarp::types::{InvitationID, RPIGameRequest};
+use arpeggio::types::{ChangedGame, Game, GameError, PlayerID, RPIGame};
+use mtarp::types::{InvitationID, RPIGameRequest, Role};
 
 use crate::{anyhow_str, durablegame::Sessions};
 
@@ -23,11 +23,15 @@ pub struct GameSession {
   state: Arc<State>,
   socket: WebSocket,
   sessions: Sessions,
+  role: Role,
+  player_id: PlayerID,
 }
 
 impl GameSession {
-  pub fn new(state: Arc<State>, socket: WebSocket, sessions: Sessions) -> Self {
-    Self { state, socket, sessions }
+  pub fn new(
+    state: Arc<State>, socket: WebSocket, sessions: Sessions, role: Role, player_id: PlayerID,
+  ) -> Self {
+    Self { state, socket, sessions, role, player_id }
   }
 
   pub async fn run(&self) {
@@ -138,7 +142,7 @@ impl GameSession {
     let invitations = storage.get("invitations").await;
     let mut invitations: Vec<InvitationID> = match invitations {
       Ok(r) => r,
-      Err(e) => vec![]
+      Err(e) => vec![],
     };
     invitations.push(invitation_id);
     storage.put("invitations", invitations).await.map_err(anyhow_str)?;
@@ -147,18 +151,20 @@ impl GameSession {
 
   async fn list_invitations(&self) -> anyhow::Result<Vec<InvitationID>> {
     let invitations = self.state.storage().get("invitations").await;
-    let invitations: Vec<InvitationID> =  match invitations {
+    let invitations: Vec<InvitationID> = match invitations {
       Ok(invitations) => invitations,
       Err(e) => vec![],
     };
     Ok(invitations)
   }
 
-  async fn delete_invitation(&self, invitation_id: InvitationID) -> anyhow::Result<Vec<InvitationID>> {
+  async fn delete_invitation(
+    &self, invitation_id: InvitationID,
+  ) -> anyhow::Result<Vec<InvitationID>> {
     let invitations = self.state.storage().get("invitations").await;
     let mut invitations: Vec<InvitationID> = match invitations {
       Ok(r) => r,
-      Err(e) => vec![]
+      Err(e) => vec![],
     };
     invitations.retain_mut(|inv| inv != &invitation_id);
     self.state.storage().put("invitations", invitations.clone()).await.map_err(anyhow_str)?;

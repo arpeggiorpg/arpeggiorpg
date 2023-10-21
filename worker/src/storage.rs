@@ -2,7 +2,7 @@ use serde::Deserialize;
 use worker::Env;
 
 use arpeggio::types::PlayerID;
-use mtarp::types::{GameID, Role, UserID};
+use mtarp::types::{GameID, Role, UserID, GameProfile};
 
 pub async fn list_games_with_names(env: &Env, user_id: UserID) -> worker::Result<Vec<GameInfo>> {
   let db = env.d1("DB")?;
@@ -33,20 +33,16 @@ pub async fn create_game(env: &Env, game_id: GameID, user_id: UserID, name: Stri
 
 pub async fn check_game_access(
   env: &Env, user_id: UserID, game_id: GameID, role: Role,
-) -> worker::Result<bool> {
+) -> worker::Result<Option<GameProfile>> {
   let db = env.d1("DB")?;
   let statement =
-    db.prepare("SELECT 1 as access FROM user_games WHERE user_id = ? AND game_id = ? AND role = ?");
+    db.prepare("SELECT user_id, game_id, profile_name, role FROM user_games WHERE user_id = ? AND game_id = ? AND role = ?");
   let statement = statement.bind(&[
     user_id.to_string().into(),
     game_id.to_string().into(),
     role.to_string().into(),
   ])?;
-  if let Some(1) = statement.first(Some("access")).await? {
-    Ok(true)
-  } else {
-    Ok(false)
-  }
+  Ok(statement.first(None).await?)
 }
 
 pub async fn create_profile(

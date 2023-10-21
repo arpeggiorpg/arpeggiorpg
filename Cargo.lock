@@ -3409,6 +3409,7 @@ dependencies = [
  "getrandom",
  "google-signin",
  "mtarp",
+ "percent-encoding",
  "serde",
  "serde-wasm-bindgen 0.6.0",
  "serde_json",
