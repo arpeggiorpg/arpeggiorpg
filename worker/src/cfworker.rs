@@ -5,8 +5,12 @@ use worker::{console_error, console_log, event, Context, Cors, Env, Request, Res
 use crate::{rust_error, storage};
 use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
 
+
+
+/// The main cloudflare Worker for Arpeggio. Handles routes for listing &
+/// creating games, etc, and forwarding websockets to the Durable Object.
 #[event(fetch, respond_with_errors)]
-async fn main(req: Request, env: Env, ctx: Context) -> Result<Response> {
+async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
   console_log!("[worker] Start {} {:?}", req.path(), req.headers());
 
   if req.path().starts_with("/ws/") {
@@ -99,7 +103,7 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
 }
 
 /// Create a game
-async fn create_game(req: Request, env: Env, user_id: UserID) -> Result<Response> {
+async fn create_game(_req: Request, env: Env, user_id: UserID) -> Result<Response> {
   let game_id = GameID::gen();
   storage::create_game(&env, game_id, user_id).await?;
   let json = json!({"game_id": game_id});
@@ -107,7 +111,7 @@ async fn create_game(req: Request, env: Env, user_id: UserID) -> Result<Response
 }
 
 /// List games
-async fn list_games(req: Request, env: Env, user_id: UserID) -> Result<Response> {
+async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response> {
   let game_infos = storage::list_games_with_names(&env, user_id).await?;
 
   let list = GameList {
