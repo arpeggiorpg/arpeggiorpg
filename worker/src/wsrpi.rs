@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
 
-use arpeggio::types::{ChangedGame, Game, GameError, PlayerID, RPIGame};
+use arpeggio::types::{ChangedGame, GMCommand, Game, GameError, PlayerID, RPIGame};
 use mtarp::types::{InvitationID, RPIGameRequest, Role};
 
 use crate::{anyhow_str, durablegame::Sessions};
@@ -35,6 +35,10 @@ impl GameSession {
   }
 
   pub async fn run(&self) {
+    if let Err(e) = self.ensure_player().await {
+      console_error!("Error ensuring player: {e:?}");
+    }
+    // TODO: get rid of panics, they will kill the game for everyone!
     let mut event_stream = self.socket.events().expect("could not open stream");
 
     while let Some(event) = event_stream.next().await {
@@ -45,6 +49,20 @@ impl GameSession {
         }
       }
     }
+  }
+
+  async fn ensure_player(&self) -> anyhow::Result<()> {
+    // If this a new player, let's make sure they're registered in the Game state.
+    if self.role == Role::GM {
+      return Ok(());
+    }
+    let game = self.load_game().await?;
+    if !game.players.contains_key(&self.player_id) {
+      let changed_game =
+        game.perform_gm_command(GMCommand::RegisterPlayer(self.player_id.clone()))?;
+      self.store_game(changed_game.game).await?;
+    }
+    Ok(())
   }
 
   pub async fn handle_event(&self, event: WebsocketEvent) -> anyhow::Result<()> {
@@ -83,55 +101,58 @@ impl GameSession {
   }
 
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
+    // TODO: we should not need to load the game on every operation; we should instead just store an
+    // Arc<RefCell(?)<Game>>  in-memory in the durable object.
     let game = self.load_game().await?;
 
-    // TODO!!!! RADIX!!!! Split up this method into Player and GM methods (and
-    // common ones, I guess), and actually check authorization!
     use RPIGameRequest::*;
-    match request.request {
-      GMGetGame => {
+    match (self.role, request.request) {
+      (_, GMGetGame) => {
+        // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
+        // gets information about the current scene. This is going to be a big change, though.
         let game = game.clone();
         let rpi_game = RPIGame(&game);
         Ok(serde_json::to_value(&rpi_game)?)
       }
-      PlayerCommand { command } => {
+      (Role::Player, PlayerCommand { command }) => {
         let changed_game = { game.perform_player_command(todo!("player ID"), command) };
         self.change_game(changed_game).await
       }
-      GMCommand { command } => {
+      (Role::GM, GMCommand { command }) => {
         let changed_game = { game.perform_gm_command(command) };
         self.change_game(changed_game).await
       }
-      MovementOptions { scene_id, creature_id } => {
+      (_, MovementOptions { scene_id, creature_id }) => {
         let options = game.get_movement_options(scene_id, creature_id)?;
         Ok(serde_json::to_value(options)?)
       }
-      CombatMovementOptions => {
+      (_, CombatMovementOptions) => {
         let options = game.get_combat()?.current_movement_options()?;
         Ok(serde_json::to_value(options)?)
       }
-      TargetOptions { scene_id, creature_id, ability_id } => {
+      (_, TargetOptions { scene_id, creature_id, ability_id }) => {
         let options = game.get_target_options(scene_id, creature_id, ability_id)?;
         Ok(serde_json::to_value(options)?)
       }
-      PreviewVolumeTargets { scene_id, creature_id, ability_id, point } => {
+      (_, PreviewVolumeTargets { scene_id, creature_id, ability_id, point }) => {
         let scene = game.get_scene(scene_id)?;
         let result = game.preview_volume_targets(scene, creature_id, ability_id, point)?;
         Ok(serde_json::to_value(result)?)
       }
 
-      GMGenerateInvitation => {
+      (Role::GM, GMGenerateInvitation) => {
         let invitation_id = self.create_invitation().await?;
         Ok(serde_json::to_value(invitation_id)?)
       }
-      GMListInvitations => {
+      (Role::GM, GMListInvitations) => {
         let invitations = self.list_invitations().await?;
         Ok(serde_json::to_value(invitations)?)
       }
-      GMDeleteInvitation { invitation_id } => {
+      (Role::GM, GMDeleteInvitation { invitation_id }) => {
         let invitations = self.delete_invitation(invitation_id).await?;
         Ok(serde_json::to_value(invitations)?)
       }
+      _ => Err(anyhow!("You can't run that command as that role."))
     }
   }
 
