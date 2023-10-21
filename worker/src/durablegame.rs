@@ -3,14 +3,15 @@ use std::{
   sync::{Arc, RwLock},
 };
 
+use mtarp::types::InvitationID;
 use serde_json::json;
 use uuid::Uuid;
 use worker::{
   async_trait, console_log, durable_object, js_sys, wasm_bindgen, wasm_bindgen_futures, worker_sys,
-  Env, Request, Response, Result, State, WebSocket, WebSocketPair,
+  Env, Method, Request, Response, Result, State, WebSocket, WebSocketPair,
 };
 
-use crate::{wsrpi, rust_error};
+use crate::{rust_error, wsrpi};
 
 #[durable_object]
 pub struct ArpeggioGame {
@@ -70,10 +71,26 @@ impl DurableObject for ArpeggioGame {
           Response::error("Bad WS token", 404)
         }
       }
+      ["g", "invitations", _game_id, invitation_id] if req.method() == Method::Get => {
+        self.check_invitation(req, invitation_id).await
+      }
       _ => {
         console_log!("Bad URL to DO: {path:?}");
         Response::error(format!("bad URL to DO: {path:?}"), 404)
       }
     }
+  }
+}
+
+impl ArpeggioGame {
+  async fn check_invitation(&self, req: Request, invitation_id: &str) -> Result<Response> {
+    let invitation_id = invitation_id.parse().map_err(rust_error)?;
+    let storage = self.state.storage();
+    let invitations = storage.get("invitations").await;
+    let invitations: Vec<InvitationID> = match invitations {
+      Ok(r) => r,
+      Err(e) => vec![],
+    };
+    Response::from_json(&json!(invitations.contains(&invitation_id)))
   }
 }

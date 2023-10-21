@@ -1,17 +1,18 @@
+use arpeggio::types::PlayerID;
 use google_signin;
 use serde_json::json;
-use worker::{console_error, console_log, event, Context, Cors, Env, Request, Response, Result};
+use worker::{
+  console_error, console_log, event, Context, Cors, Env, Method, Request, Response, Result,
+};
 
 use crate::{rust_error, storage};
 use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
-
-
 
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
 /// creating games, etc, and forwarding websockets to the Durable Object.
 #[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-  console_log!("[worker] Start {} {:?}", req.path(), req.headers());
+  console_log!("[worker] Start {}", req.path());
 
   if req.path().starts_with("/ws/") {
     // WebSocket requests can't go through the entire HTTP rigmarole
@@ -46,8 +47,34 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
     }
     ["g", "create"] => create_game(req, env, user_id).await,
     ["g", "list"] => list_games(req, env, user_id).await,
+    ["g", "invitations", game_id, _invitation_id] if req.method() == Method::Get => {
+      let game_id: GameID = game_id.parse().map_err(rust_error)?;
+      forward_to_do(req, env, game_id).await
+    }
+    ["g", "invitations", game_id, invitation_id, "accept"] if req.method() == Method::Post => {
+      accept_invitation(req, env, user_id, game_id, invitation_id).await
+    }
     _ => Response::error(format!("No route matched {path:?}"), 404),
   }
+}
+
+async fn accept_invitation(
+  mut req: Request, env: Env, user_id: UserID, game_id: &str, invitation_id: &str,
+) -> Result<Response> {
+  // first, check that the invitation is valid
+  let namespace = env.durable_object("ARPEGGIOGAME")?;
+  let stub = namespace.id_from_name(game_id)?.get_stub()?;
+  let mut check_response = stub.fetch_with_str(&format!("https://fake-host/g/invitations/{game_id}/{invitation_id}")).await?;
+  let check_response: bool = check_response.json().await?;
+
+  if check_response {
+    // cool! let's create a profile. The profile name is passed in the request body.
+    let profile_name: String = req.json().await?;
+    let game_id: GameID = game_id.parse().map_err(rust_error)?;
+    storage::create_profile(&env, game_id, user_id, PlayerID(profile_name), Role::Player).await?;
+  }
+
+  Response::from_json(&json!({"cool": true}))
 }
 
 /// Generate a token that grants the bearer to connect to a Game with a WebSocket.
@@ -62,12 +89,17 @@ async fn request_websocket(
   let role: Role = role.parse().map_err(rust_error)?;
   let has_game = storage::check_game_access(&env, user_id, game_id, role).await?;
   if has_game {
-    let namespace = env.durable_object("ARPEGGIOGAME")?;
-    let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
-    stub.fetch_with_request(req).await
+    forward_to_do(req, env, game_id).await
   } else {
     Response::error("You don't have access to this game", 401)
   }
+}
+
+/// Forward a simple request to the ArpeggioGame durable object
+async fn forward_to_do(req: Request, env: Env, game_id: GameID) -> Result<Response> {
+  let namespace = env.durable_object("ARPEGGIOGAME")?;
+  let stub = namespace.id_from_name(&game_id.to_string())?.get_stub()?;
+  stub.fetch_with_request(req).await
 }
 
 async fn forward_websocket(req: Request, env: Env) -> Result<Response> {

@@ -23,16 +23,9 @@ pub struct GameInfo {
 }
 
 pub async fn create_game(env: &Env, game_id: GameID, user_id: UserID) -> worker::Result<()> {
-  let db = env.d1("DB")?;
-  let statement =
-    db.prepare("INSERT INTO user_games (user_id, game_id, profile_name, role) VALUES (?, ?, ?, ?)");
-  let statement = statement.bind(&[
-    user_id.to_string().into(),
-    game_id.to_string().into(),
-    "GM".into(),
-    "GM".into(),
-  ])?;
-  statement.run().await?;
+  // Amusingly, we don't need to actually create a game here, just say that the
+  // user has access to it.
+  create_profile(env, game_id, user_id, PlayerID("GM".to_string()), Role::GM).await?;
   Ok(())
 }
 
@@ -52,4 +45,20 @@ pub async fn check_game_access(
   } else {
     Ok(false)
   }
+}
+
+pub async fn create_profile(
+  env: &Env, game_id: GameID, user_id: UserID, profile_name: PlayerID, role: Role,
+) -> worker::Result<()> {
+  let db = env.d1("DB")?;
+  let statement =
+    db.prepare("INSERT INTO user_games (user_id, game_id, profile_name, role) VALUES (?, ?, ?, ?)");
+  let statement = statement.bind(&[
+    user_id.to_string().into(),
+    game_id.to_string().into(),
+    profile_name.0.to_string().into(),
+    role.to_string().into(),
+  ])?;
+  statement.run().await?;
+  Ok(())
 }
