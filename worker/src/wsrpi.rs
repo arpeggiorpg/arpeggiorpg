@@ -269,7 +269,7 @@ impl GameSession {
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
     // TODO: ignore poison
-    let sessions = self.sessions.read().map_err(anyhow_str)?;
+    let sessions = self.sessions.borrow();
     console_log!("Broadcasting a message to {:?} clients", sessions.len());
     for socket in sessions.iter() {
       socket.send_with_str(s.clone()).map_err(anyhow_str)?;

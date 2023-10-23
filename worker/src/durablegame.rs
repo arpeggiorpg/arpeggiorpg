@@ -1,6 +1,6 @@
 use std::{
   collections::{HashMap, HashSet},
-  sync::{Arc, RwLock},
+  sync::{Arc, RwLock}, cell::RefCell,
 };
 
 use arpeggio::types::PlayerID;
@@ -26,14 +26,14 @@ struct WSUser {
   player_id: PlayerID,
 }
 
-pub type Sessions = Arc<RwLock<Vec<WebSocket>>>;
+pub type Sessions = Arc<RefCell<Vec<WebSocket>>>;
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, _env: Env) -> Self {
     Self {
       state: Arc::new(state),
-      sessions: Arc::new(RwLock::new(vec![])),
+      sessions: Arc::new(RefCell::new(vec![])),
       ws_tokens: HashMap::new(),
     }
   }
@@ -71,7 +71,7 @@ impl DurableObject for ArpeggioGame {
           // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
           // TODO: ignore poison
-          self.sessions.write().expect("poison").push(server.clone());
+          self.sessions.borrow_mut().push(server.clone());
           let session = wsrpi::GameSession::new(
             self.state.clone(),
             server,
