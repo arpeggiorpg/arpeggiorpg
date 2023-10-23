@@ -125,7 +125,6 @@ impl Client {
         cached_certs: &CachedCerts,
     ) -> Result<jwt_compact::Claims<IdInfo>, Error> {
 
-        // RADIX TODO: obviously this function needs to be returning Errors instead of panicking
         use jwt_compact::prelude::*;
         let untrusted_token = UntrustedToken::new(&id_token)?;
 

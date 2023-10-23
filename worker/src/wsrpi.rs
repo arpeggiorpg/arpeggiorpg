@@ -110,16 +110,15 @@ impl GameSession {
       (_, GMGetGame) => {
         // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
         // gets information about the current scene. This is going to be a big change, though.
-        let game = game.clone();
         let rpi_game = RPIGame(&game);
         Ok(serde_json::to_value(&rpi_game)?)
       }
       (Role::Player, PlayerCommand { command }) => {
-        let changed_game = { game.perform_player_command(todo!("player ID"), command) };
+        let changed_game = game.perform_player_command(self.player_id.clone(), command);
         self.change_game(changed_game).await
       }
       (Role::GM, GMCommand { command }) => {
-        let changed_game = { game.perform_gm_command(command) };
+        let changed_game = game.perform_gm_command(command);
         self.change_game(changed_game).await
       }
       (_, MovementOptions { scene_id, creature_id }) => {
