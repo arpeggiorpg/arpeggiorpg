@@ -1,7 +1,4 @@
-use std::{
-  collections::{HashMap, HashSet},
-  sync::{Arc, RwLock}, cell::RefCell,
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use arpeggio::types::PlayerID;
 use mtarp::types::{InvitationID, Role};
@@ -16,7 +13,7 @@ use crate::{rust_error, wsrpi};
 
 #[durable_object]
 pub struct ArpeggioGame {
-  state: Arc<State>,
+  state: Rc<State>,
   sessions: Sessions,
   ws_tokens: HashMap<Uuid, WSUser>,
 }
@@ -26,14 +23,14 @@ struct WSUser {
   player_id: PlayerID,
 }
 
-pub type Sessions = Arc<RefCell<Vec<WebSocket>>>;
+pub type Sessions = Rc<RefCell<Vec<WebSocket>>>;
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
   fn new(state: State, _env: Env) -> Self {
     Self {
-      state: Arc::new(state),
-      sessions: Arc::new(RefCell::new(vec![])),
+      state: Rc::new(state),
+      sessions: Rc::new(RefCell::new(vec![])),
       ws_tokens: HashMap::new(),
     }
   }

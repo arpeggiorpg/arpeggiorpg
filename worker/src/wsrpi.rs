@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::rc::Rc;
 
 use anyhow::{anyhow, Context};
 use futures_util::stream::StreamExt;
@@ -20,7 +20,7 @@ struct WSRequest {
 }
 
 pub struct GameSession {
-  state: Arc<State>,
+  state: Rc<State>,
   socket: WebSocket,
   sessions: Sessions,
   role: Role,
@@ -29,7 +29,7 @@ pub struct GameSession {
 
 impl GameSession {
   pub fn new(
-    state: Arc<State>, socket: WebSocket, sessions: Sessions, role: Role, player_id: PlayerID,
+    state: Rc<State>, socket: WebSocket, sessions: Sessions, role: Role, player_id: PlayerID,
   ) -> Self {
     Self { state, socket, sessions, role, player_id }
   }
@@ -151,7 +151,7 @@ impl GameSession {
         let invitations = self.delete_invitation(invitation_id).await?;
         Ok(serde_json::to_value(invitations)?)
       }
-      _ => Err(anyhow!("You can't run that command as that role."))
+      _ => Err(anyhow!("You can't run that command as that role.")),
     }
   }
 
