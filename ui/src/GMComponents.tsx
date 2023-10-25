@@ -1095,18 +1095,43 @@ export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
 //   }
 // }
 
-// export function ImportModule(props: { path: T.FolderPath; onDone: () => void }) {
-//   const { path, onDone } = props;
-//   return <Form>
-//     <GameList onSelect={(source, name) => {
-//       const suffixed_path = path.concat(name);
-//       A.loadModule({path: suffixed_path, name, source});
-//       onDone();
-//     }} />
-//     <Form.Button onClick={onDone}>Cancel</Form.Button>
-//   </Form>;
-// }
 
+export function ImportModule(props: {
+  path: T.FolderPath;
+  onDone: () => void;
+}) {
+  const { path, onDone } = props;
+  return (
+    <div>
+      <input type="file" id="input" accept=".arpeggiogame" onChange={upload} />
+    </div>
+  );
+
+  function upload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget?.files?.[0];
+    if (!file) {
+      console.error("No file?");
+      return;
+    }
+    console.log("UPLOAD", file.name);
+    var reader = new FileReader();
+    reader.readAsText(file, "UTF-8");
+    reader.onload = (event: ProgressEvent<FileReader>) => {
+      if (!event.target || !event.target.result) {
+        console.error("Couldn't read file contents?");
+        return;
+      }
+      // readAsText guarantees that event.target.result will be string.
+      let content = event.target.result as string;
+      let json = JSON.parse(content);
+      console.log("uploading:", path.concat(file.name), json);
+      A.sendGMCommand(
+        {"LoadModule": {name: file.name, source: "Module", path: path.concat(file.name), game: json}}
+      );
+      onDone();
+    };
+  }
+}
 
 interface AddSceneHotspotProps {
   scene: T.Scene;

@@ -386,3 +386,4 @@ export async function invite(): Promise<T.InvitationID> {
   if (!gameId) { throw new Error("Must be called in context of a game!"); }
   return await sendRequest({t: "GMGenerateInvitation"}, Z.string());
 }
+

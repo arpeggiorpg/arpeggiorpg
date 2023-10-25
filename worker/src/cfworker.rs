@@ -179,13 +179,10 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
 
 async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {
   let mut certs = google_signin::CachedCerts::new();
-  // let mut certs = self.cached_certs.lock().await;
   certs.refresh_if_needed().await?;
   let mut client = google_signin::Client::new();
   client.audiences.push(client_id);
   let claims = client.verify(id_token, &certs).await?;
-  // let expiry = UNIX_EPOCH + Duration::from_secs(id_info.exp);
-  // let time_until_expiry = expiry.duration_since(std::time::SystemTime::now());
   let custom = claims.custom;
   console_log!(
     "validate-token: email={:?} name={:?} sub={:?} expires={:?} ",
@@ -193,7 +190,6 @@ async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Res
     custom.name,
     custom.sub,
     claims.expiration,
-    // time_until_expiry
   );
   Ok(UserID(format!("google_{}", custom.sub)))
 }
