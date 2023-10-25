@@ -1,24 +1,18 @@
 import * as React from "react";
 
-import {
-  createBrowserRouter,
-  Link,
-  useParams,
-  useNavigate,
-  Outlet,
-} from "react-router-dom";
+import { createBrowserRouter, Link, Outlet, useNavigate, useParams } from "react-router-dom";
 import * as Z from "zod";
 
-import * as M from "./Model";
-import * as A from "./Actions";
-import { SignIn } from "./SignIn";
-import { ptfetch } from "./Actions";
-import * as T from "./PTTypes";
-import { GMMain, GMMap } from "./GMView";
 import useSWR from "swr";
+import * as A from "./Actions";
+import { ptfetch } from "./Actions";
 import { ModalMaker } from "./CommonView";
-import { TextInput } from "./TextInput";
+import { GMMain, GMMap } from "./GMView";
+import * as M from "./Model";
 import { PlayerGameView } from "./PlayerView";
+import * as T from "./PTTypes";
+import { SignIn } from "./SignIn";
+import { TextInput } from "./TextInput";
 import * as WS from "./wsrpi";
 
 export const router = createBrowserRouter([
@@ -53,8 +47,7 @@ export function Main() {
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <h1>
-            <Link to="/">ArpeggioRPG</Link>{" "}
-            {gameName ? <span>— {gameName}</span> : null}
+            <Link to="/">ArpeggioRPG</Link> {gameName ? <span>— {gameName}</span> : null}
           </h1>
           <div className="rightNavThing">
             <Link to="/">Game List</Link>
@@ -212,7 +205,7 @@ function AcceptInvitation() {
 
   const { data: invitationExists, isLoading } = useSWR(
     `/g/invitations/${gameId}/${invitationId}`,
-    (k) => ptfetch(k, {}, Z.boolean())
+    (k) => ptfetch(k, {}, Z.boolean()),
   );
   if (isLoading) {
     return <div>Checking invitation...</div>;
@@ -243,7 +236,7 @@ function AcceptInvitation() {
         body: JSON.stringify(profileName),
         headers: { "content-type": "application/json" },
       },
-      Z.any()
+      Z.any(),
     );
     navigate(`/`);
   }
@@ -260,8 +253,7 @@ function PlayerGame() {
   console.log(isLoading, games, status);
 
   const playerId = games?.games.find(
-    ([profile, _meta]) =>
-      profile.game_id === gameId && profile.role === "Player"
+    ([profile, _meta]) => profile.game_id === gameId && profile.role === "Player",
   )?.[0].profile_name;
   React.useEffect(() => {
     M.getState().setPlayerId(playerId);

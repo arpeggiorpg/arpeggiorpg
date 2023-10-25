@@ -1,27 +1,27 @@
 [package]
 name = "mtarp"
-description = "Multi-Tenant Arpeggio -- the types & behavior for managing a service that runs multiple games simultaneously."
 version = "0.1.0"
 authors = ["Christopher Armstrong"]
 edition = "2021"
+description = "Multi-Tenant Arpeggio -- the types & behavior for managing a service that runs multiple games simultaneously."
 
 [dependencies]
+anyhow = { workspace = true }
+arpeggio = { version = "*", path = "../arpeggio" }
 async-trait = "0.1.73"
-foldertree = {version = "*", path = "../foldertree"}
-anyhow = {workspace = true}
-thiserror = "1.0.48"
+clap = { version = "4.4.6", features = ["derive"] }
+foldertree = { version = "*", path = "../foldertree" }
 futures = "0.3.1"
 http = "0.2.0"
-tracing = { version = "0.1.37", features = ["attributes"]}
-tracing-subscriber = {version = "0.3.17", features = ["env-filter", "json"]}
-arpeggio = {version = "*", path = "../arpeggio"}
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
-clap = {version = "4.4.6", features = ["derive"]}
-ts-rs = {version = "7.0.0", features = ["serde-compat", "uuid-impl"]}
-# Why do I have this uom dependency here?
-uom = {version = "0.35", default_features = false}
-uuid = { workspace = true }
 strum = { workspace = true }
+thiserror = "1.0.48"
+tracing = { version = "0.1.37", features = ["attributes"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
+# Why do I have this uom dependency here?
+uom = { version = "0.35", default_features = false }
+uuid = { workspace = true }

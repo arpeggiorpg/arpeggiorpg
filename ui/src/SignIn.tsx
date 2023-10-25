@@ -1,11 +1,7 @@
-import {
-  CredentialResponse,
-  GoogleLogin,
-  GoogleOAuthProvider,
-} from "@react-oauth/google";
+import { CredentialResponse, GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { setCookie } from "react-use-cookie";
 import * as A from "./Actions";
 import * as M from "./Model";
-import { setCookie } from "react-use-cookie";
 
 export function SignIn() {
   return (

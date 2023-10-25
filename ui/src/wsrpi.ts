@@ -1,12 +1,12 @@
 import * as Z from "zod";
 
 import * as A from "./Actions";
+import { sendRequest } from "./Actions";
+import { RPIGameRequest } from "./bindings/bindings";
 import * as M from "./Model";
 import * as T from "./PTTypes";
-import { RPIGameRequest } from "./bindings/bindings";
-import { sendRequest } from "./Actions";
 
-export const WEBSOCKETS_ENABLED = typeof import.meta.env.VITE_WEBSOCKET_URL !== "undefined"
+export const WEBSOCKETS_ENABLED = typeof import.meta.env.VITE_WEBSOCKET_URL !== "undefined";
 
 // I considered storing these in Zustand, but you will *never* use a selector hook to access them,
 // so really, so I think global variables are the best representation.
@@ -24,11 +24,9 @@ export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>):
     _requests[id] = data => {
       console.log("handler invoked with", data);
       res(parser.parse(data.payload));
-    }
+    };
   });
-
 }
-
 
 export function connect(gameId: string, mode: T.Role) {
   console.log("[CONNECT]", gameId);
@@ -36,7 +34,11 @@ export function connect(gameId: string, mode: T.Role) {
 
   async function theAsyncFunction() {
     // First, we need to request a websocket token.
-    let {token} = await A.ptfetch(`/request-websocket/${gameId}/${mode}`, {}, Z.object({token: Z.string()}));
+    let { token } = await A.ptfetch(
+      `/request-websocket/${gameId}/${mode}`,
+      {},
+      Z.object({ token: Z.string() }),
+    );
     webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
 
     webSocket.addEventListener("open", async (event) => {
@@ -59,8 +61,7 @@ export function connect(gameId: string, mode: T.Role) {
     const ws = webSocket;
     webSocket = undefined;
     ws?.close();
-  }
-
+  };
 }
 
 function handleWSEvent(event: MessageEvent<string>) {
@@ -78,7 +79,7 @@ function handleWSEvent(event: MessageEvent<string>) {
       const game = T.decodeGame.parse(parsed["game"]);
       M.getState().refresh(game);
     } else {
-      console.info("Got an unexpected message from the server:", parsed)
+      console.info("Got an unexpected message from the server:", parsed);
     }
   }
 }

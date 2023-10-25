@@ -9,7 +9,6 @@ interface TextInputProps {
 }
 
 export class TextInput extends React.Component<TextInputProps, { value: string }> {
-
   private input: HTMLInputElement | undefined;
 
   constructor(props: TextInputProps) {
@@ -17,7 +16,9 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
     this.state = { value: props.defaultValue };
   }
 
-  cancel(): void { this.props.onCancel(this.state.value); }
+  cancel(): void {
+    this.props.onCancel(this.state.value);
+  }
 
   handleKeyDown(this: TextInput, event: React.KeyboardEvent<HTMLInputElement>): void {
     if (event.keyCode === 13) {
@@ -44,17 +45,24 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
     }
   }
 
-  componentDidMount() { if (this.input !== undefined) { this.input.select(); } }
+  componentDidMount() {
+    if (this.input !== undefined) this.input.select();
+  }
 
   render() {
-    return <input type="text"
-      autoFocus={true}
-      ref={input => { if (input !== null) { this.input = input; } }}
-      value={this.state.value}
-      onChange={e => this.handleInput(e)}
-      onKeyDown={e => this.handleKeyDown(e)}
-      onBlur={() => this.cancel()}
-      style={this.props.style}
-    />;
+    return (
+      <input
+        type="text"
+        autoFocus={true}
+        ref={input => {
+          if (input !== null) this.input = input;
+        }}
+        value={this.state.value}
+        onChange={e => this.handleInput(e)}
+        onKeyDown={e => this.handleKeyDown(e)}
+        onBlur={() => this.cancel()}
+        style={this.props.style}
+      />
+    );
   }
 }

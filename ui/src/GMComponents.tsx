@@ -1,23 +1,40 @@
 /// GM-only components
-import {Map, Set} from 'immutable';
-import sortBy from 'lodash/sortBy';
-import capitalize from 'lodash/capitalize';
-import * as React from 'react';
-import TwitterPicker from 'react-color/lib/components/twitter/Twitter';
+import { Map, Set } from "immutable";
+import capitalize from "lodash/capitalize";
+import sortBy from "lodash/sortBy";
+import * as React from "react";
+import TwitterPicker from "react-color/lib/components/twitter/Twitter";
 
 import {
-  Button, Card, Checkbox, Dimmer, Dropdown, Form, Header, Icon, Input, Item, Label, List, Loader,
-  Menu, Message, Popup, Segment, Tab, Table
-} from 'semantic-ui-react';
+  Button,
+  Card,
+  Checkbox,
+  Dimmer,
+  Dropdown,
+  Form,
+  Header,
+  Icon,
+  Input,
+  Item,
+  Label,
+  List,
+  Loader,
+  Menu,
+  Message,
+  Popup,
+  Segment,
+  Tab,
+  Table,
+} from "semantic-ui-react";
 
-import * as Campaign from './Campaign';
-import * as CV from './CommonView';
-import { CoolForm, NumericInput, PlaintextInput, Submit } from './CoolForm';
-import * as Dice from './Dice';
-import * as M from './Model';
-import * as A from './Actions';
-import * as T from './PTTypes';
-import * as TextInput from './TextInput';
+import * as A from "./Actions";
+import * as Campaign from "./Campaign";
+import * as CV from "./CommonView";
+import { CoolForm, NumericInput, PlaintextInput, Submit } from "./CoolForm";
+import * as Dice from "./Dice";
+import * as M from "./Model";
+import * as T from "./PTTypes";
+import * as TextInput from "./TextInput";
 
 export function GMScene({ scene }: { scene: T.Scene }) {
   const scenePlayers = M.useState(s => s.getGame().players.count(p => p.scene === scene.id));
@@ -26,77 +43,108 @@ export function GMScene({ scene }: { scene: T.Scene }) {
   const linked_scenes_count = scene.related_scenes.count() + scene.scene_hotspots.count();
 
   const panes = [
-    menuItem("Background", () =>
-      <EditSceneBackground scene={scene} onDone={() => undefined} />),
-    menuItem("Terrain", () =>
-      <SceneTerrain scene={scene} />,
-      "Terrain"),
-    menuItem('Highlights', () => <SceneHighlights scene={scene} />,
-      "Highlights"),
-    menuItem('Volumes', () => <GMSceneVolumes scene={scene} />, "Volumes"),
-    menuItem('Creatures', () => <GMSceneCreatures scene={scene} />,
-      undefined, scene.creatures.count().toString()),
+    menuItem("Background", () => <EditSceneBackground scene={scene} onDone={() => undefined} />),
+    menuItem("Terrain", () => <SceneTerrain scene={scene} />, "Terrain"),
+    menuItem("Highlights", () => <SceneHighlights scene={scene} />, "Highlights"),
+    menuItem("Volumes", () => <GMSceneVolumes scene={scene} />, "Volumes"),
+    menuItem(
+      "Creatures",
+      () => <GMSceneCreatures scene={scene} />,
+      undefined,
+      scene.creatures.count().toString(),
+    ),
     menuItem("Players", () => <GMScenePlayers scene={scene} />, undefined, player_count),
-    menuItem('Items', () => <GMSceneInventory scene={scene} />,
-      undefined, scene.inventory.count().toString()),
-    menuItem('Challenges', () => <GMSceneChallenges scene={scene} />,
-      undefined, scene.attribute_checks.count().toString()),
-    menuItem('Linked Scenes', () => <LinkedScenes scene={scene} />, "LinkedScenes",
-      linked_scenes_count.toString())
+    menuItem(
+      "Items",
+      () => <GMSceneInventory scene={scene} />,
+      undefined,
+      scene.inventory.count().toString(),
+    ),
+    menuItem(
+      "Challenges",
+      () => <GMSceneChallenges scene={scene} />,
+      undefined,
+      scene.attribute_checks.count().toString(),
+    ),
+    menuItem(
+      "Linked Scenes",
+      () => <LinkedScenes scene={scene} />,
+      "LinkedScenes",
+      linked_scenes_count.toString(),
+    ),
   ];
 
-  return <Segment>
-    <CV.Toggler
-      a={open => <Header>
-        {scene.name}
-        <Icon name='edit' style={{ float: 'right', cursor: 'pointer' }} onClick={open} />
-      </Header>}
-      b={close => <EditSceneName scene={scene} onDone={close} />}
-    />
+  return (
+    <Segment>
+      <CV.Toggler
+        a={open => (
+          <Header>
+            {scene.name}
+            <Icon name="edit" style={{ float: "right", cursor: "pointer" }} onClick={open} />
+          </Header>
+        )}
+        b={close => <EditSceneName scene={scene} onDone={close} />}
+      />
 
-    <Tab panes={panes}
-      defaultActiveIndex={-1}
-      onTabChange={(_, data) => {
-        const menuItem: { menuItem: string; layer?: M.SceneLayerType } =
-          data.panes![data.activeIndex as number] as any;
-        // unimplemented!: disable tab-switching when Terrain is unsaved
-        M.getState().setGridFocus(scene.id, menuItem.layer);
-      }}
-      menu={{
-        size: 'small',
-        secondary: true,
-        style: { justifyContent: "center", flexWrap: "wrap" },
-      }} />
-  </Segment>;
+      <Tab
+        panes={panes}
+        defaultActiveIndex={-1}
+        onTabChange={(_, data) => {
+          const menuItem: { menuItem: string; layer?: M.SceneLayerType } = data
+            .panes![data.activeIndex as number] as any;
+          // unimplemented!: disable tab-switching when Terrain is unsaved
+          M.getState().setGridFocus(scene.id, menuItem.layer);
+        }}
+        menu={{
+          size: "small",
+          secondary: true,
+          style: { justifyContent: "center", flexWrap: "wrap" },
+        }}
+      />
+    </Segment>
+  );
 
   function menuItem(
-    name: string, content: () => JSX.Element, layer?: M.SceneLayerType, detail?: string) {
+    name: string,
+    content: () => JSX.Element,
+    layer?: M.SceneLayerType,
+    detail?: string,
+  ) {
     const item = detail
-      ? <Menu.Item key={name}>
-        {name}
-        <Label basic={true} color='grey' circular={true} size='mini'>{detail}</Label>
-      </Menu.Item>
+      ? (
+        <Menu.Item key={name}>
+          {name}
+          <Label basic={true} color="grey" circular={true} size="mini">{detail}</Label>
+        </Menu.Item>
+      )
       : name;
     return { menuItem: item, layer, render: content };
   }
 }
 
-interface CreateSceneProps { path: T.FolderPath; onDone: () => void; }
-export function CreateScene({path, onDone}: CreateSceneProps) {
-  return <div>
-    <CoolForm>
-      <PlaintextInput label="Name" name="name" default="" nonEmpty={true} />
-      <PlaintextInput label="Background image URL" name="background_image_url" default="" />
-      <Submit onClick={d => create(d as any)}>Create</Submit>
-    </CoolForm>
-  </div >;
+interface CreateSceneProps {
+  path: T.FolderPath;
+  onDone: () => void;
+}
+export function CreateScene({ path, onDone }: CreateSceneProps) {
+  return (
+    <div>
+      <CoolForm>
+        <PlaintextInput label="Name" name="name" default="" nonEmpty={true} />
+        <PlaintextInput label="Background image URL" name="background_image_url" default="" />
+        <Submit onClick={d => create(d as any)}>Create</Submit>
+      </CoolForm>
+    </div>
+  );
 
   function create(data: { name: string; background_image_url: string }) {
     const { name, background_image_url } = data;
     // since we don't have a visual response to setting image url/offset/scale, I'll just leave
     // default values here and the user can edit the map after creation
     const spec = {
-      name, background_image_url, background_image_offset: null,
+      name,
+      background_image_url,
+      background_image_offset: null,
       background_image_scale: [0, 0] as [number, number],
     };
     A.sendGMCommand({ CreateScene: [path, spec] });
@@ -105,12 +153,15 @@ export function CreateScene({path, onDone}: CreateSceneProps) {
 }
 
 function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
-  return <TextInput.TextInput
-    onSubmit={name => save(name)}
-    onCancel={props.onDone}
-    defaultValue={props.scene.name} />;
+  return (
+    <TextInput.TextInput
+      onSubmit={name => save(name)}
+      onCancel={props.onDone}
+      defaultValue={props.scene.name}
+    />
+  );
 
-    function save(name: string) {
+  function save(name: string) {
     const scene = props.scene;
     A.sendGMCommand({
       EditSceneDetails: {
@@ -121,64 +172,93 @@ function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
           background_image_offset: scene.background_image_offset,
           background_image_scale: scene.background_image_scale,
         },
-      }
+      },
     });
     props.onDone();
   }
 }
 
-function EditSceneBackground({scene, onDone}: { scene: T.Scene; onDone: () => void }) {
+function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone: () => void }) {
   const [pinned, setPinned] = React.useState(scene.background_image_offset !== undefined);
-  return <CoolForm>
-    <PlaintextInput label="Background Image URL" name="background_image_url"
-      default={scene.background_image_url} />
-    <Form.Checkbox label='Pin to map' checked={pinned}
-      onChange={(_, d) => setPinned(d.checked as boolean)} />
-    <Form.Group>
-      <NumericInput label="Scale X (cm)" name="scale_x" min={0}
-        style={{ width: "100px" }}
-        default={scene.background_image_scale[0]} />
-      <NumericInput label="Scale Y (cm)" name="scale_y" min={0}
-        style={{ width: "100px" }}
-        default={scene.background_image_scale[1]} />
-    </Form.Group>
-    <Form.Group>
-      <NumericInput label="Offset X (cm)" name="offset_x"
-        style={{ width: "100px" }}
-        default={scene.background_image_offset ? scene.background_image_offset[0] : 0} />
-      <NumericInput label="Offset Y (cm)" name="offset_y"
-        style={{ width: "100px" }}
-        default={scene.background_image_offset ? scene.background_image_offset[1] : 0} />
-    </Form.Group>
-    <Submit onClick={save}>Save</Submit>
-  </CoolForm>;
+  return (
+    <CoolForm>
+      <PlaintextInput
+        label="Background Image URL"
+        name="background_image_url"
+        default={scene.background_image_url}
+      />
+      <Form.Checkbox
+        label="Pin to map"
+        checked={pinned}
+        onChange={(_, d) => setPinned(d.checked as boolean)}
+      />
+      <Form.Group>
+        <NumericInput
+          label="Scale X (cm)"
+          name="scale_x"
+          min={0}
+          style={{ width: "100px" }}
+          default={scene.background_image_scale[0]}
+        />
+        <NumericInput
+          label="Scale Y (cm)"
+          name="scale_y"
+          min={0}
+          style={{ width: "100px" }}
+          default={scene.background_image_scale[1]}
+        />
+      </Form.Group>
+      <Form.Group>
+        <NumericInput
+          label="Offset X (cm)"
+          name="offset_x"
+          style={{ width: "100px" }}
+          default={scene.background_image_offset ? scene.background_image_offset[0] : 0}
+        />
+        <NumericInput
+          label="Offset Y (cm)"
+          name="offset_y"
+          style={{ width: "100px" }}
+          default={scene.background_image_offset ? scene.background_image_offset[1] : 0}
+        />
+      </Form.Group>
+      <Submit onClick={save}>Save</Submit>
+    </CoolForm>
+  );
 
   function save(data: any) {
     const { background_image_url, scale_x, scale_y, offset_x, offset_y } = data;
     const background_image_scale: [number, number] = [scale_x, scale_y];
     const background_image_offset: [number, number] | null = pinned
-      ? [offset_x, offset_y] : null;
+      ? [offset_x, offset_y]
+      : null;
     const details = {
-      name: scene.name, background_image_url, background_image_scale, background_image_offset,
+      name: scene.name,
+      background_image_url,
+      background_image_scale,
+      background_image_offset,
     };
-    A.sendGMCommand({ EditSceneDetails: {scene_id: scene.id, details } });
+    A.sendGMCommand({ EditSceneDetails: { scene_id: scene.id, details } });
     onDone();
   }
 }
 
 function SceneTerrain(props: { scene: T.Scene }) {
   const { scene } = props;
-  return <div>Edit the terrain on the map and then
-    <Button onClick={saveTerrain}>Save</Button> or
-    <Button onClick={cancelTerrain}>Cancel</Button>
-  </div>;
+  return (
+    <div>
+      Edit the terrain on the map and then
+      <Button onClick={saveTerrain}>Save</Button> or
+      <Button onClick={cancelTerrain}>Cancel</Button>
+    </div>
+  );
 
   function saveTerrain() {
-    const {gridFocus, setGridFocus} = M.getState();
-    if (gridFocus?.layer?.t !== "Terrain") { return; }
+    const { gridFocus, setGridFocus } = M.getState();
+    if (gridFocus?.layer?.t !== "Terrain") return;
     const scene_id = gridFocus.scene_id;
     const terrain = gridFocus.layer.terrain;
-    A.sendGMCommand({ EditSceneTerrain: {scene_id, terrain }});
+    A.sendGMCommand({ EditSceneTerrain: { scene_id, terrain } });
     // RADIX: why am I setting focus here?
     setGridFocus(scene.id);
   }
@@ -192,28 +272,34 @@ function SceneHighlights(props: { scene: T.Scene }) {
   const allPlayers = M.useState(s => s.grid.object_visibility === "AllPlayers");
   const highlightColor = M.useState(s => s.grid.highlight_color);
 
-  const vis_checkbox = <Checkbox label="Visible to all players?" checked={allPlayers}
-    onChange={
-      (_, d) => M.getState().setObjectVisibility(d.checked ? "AllPlayers" : "GMOnly")
-    } />;
+  const vis_checkbox = (
+    <Checkbox
+      label="Visible to all players?"
+      checked={allPlayers}
+      onChange={(_, d) => M.getState().setObjectVisibility(d.checked ? "AllPlayers" : "GMOnly")}
+    />
+  );
 
-  return <div>
-    {vis_checkbox}
-    <TwitterPicker
-      triangle="hide"
-      color={highlightColor}
-      onChange={color => M.getState().setHighlightColor(color.hex)} />
-    Edit the highlights on the map and then
-  <Button onClick={saveObjects}>Save</Button> or
-  <Button onClick={cancelObjects}>Cancel</Button>
-  </div>;
+  return (
+    <div>
+      {vis_checkbox}
+      <TwitterPicker
+        triangle="hide"
+        color={highlightColor}
+        onChange={color => M.getState().setHighlightColor(color.hex)}
+      />
+      Edit the highlights on the map and then
+      <Button onClick={saveObjects}>Save</Button> or
+      <Button onClick={cancelObjects}>Cancel</Button>
+    </div>
+  );
 
   function saveObjects() {
-    const {gridFocus, setGridFocus} = M.getState();
-    if (gridFocus?.layer?.t !== "Highlights") { return; }
+    const { gridFocus, setGridFocus } = M.getState();
+    if (gridFocus?.layer?.t !== "Highlights") return;
     const scene_id = gridFocus.scene_id;
     const highlights = gridFocus.layer.highlights;
-    A.sendGMCommand({ EditSceneHighlights: {scene_id, highlights } });
+    A.sendGMCommand({ EditSceneHighlights: { scene_id, highlights } });
     // RADIX: Why am I setting focus here?
     setGridFocus(scene.id);
   }
@@ -225,118 +311,146 @@ function SceneHighlights(props: { scene: T.Scene }) {
 function GMScenePlayers(props: { scene: T.Scene }) {
   const { scene } = props;
   const players_here = M.useState(
-    s => s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id)
+    s => s.getGame().players.valueSeq().toArray().filter(player => player.scene === scene.id),
   );
-  return <List relaxed={true}>
-    <List.Item>
-      <Button onClick={() => moveAll()}>Set as Active Scene and move all players</Button>
-    </List.Item>
-    {players_here.map(player =>
-      <List.Item key={player.player_id}>{player.player_id}</List.Item>)
-    }
-  </List>;
+  return (
+    <List relaxed={true}>
+      <List.Item>
+        <Button onClick={() => moveAll()}>Set as Active Scene and move all players</Button>
+      </List.Item>
+      {players_here.map(player => <List.Item key={player.player_id}>{player.player_id}</List.Item>)}
+    </List>
+  );
 
   function moveAll() {
     const pids = M.getState().game.players.keySeq().toArray();
     const commands: T.GMCommand[] = pids.map(
-      player_id => ({ SetPlayerScene: [player_id, scene.id] }));
+      player_id => ({ SetPlayerScene: [player_id, scene.id] }),
+    );
     commands.push({ SetActiveScene: scene.id });
     A.sendGMCommands(commands);
   }
-};
+}
 
 function GMSceneVolumes(_: { scene: T.Scene }) {
   // TODO: add volumes manually
   return <div>Interact with volumes on the grid.</div>;
 }
 
-
-interface LinkedScenesProps { scene: T.Scene; }
+interface LinkedScenesProps {
+  scene: T.Scene;
+}
 function LinkedScenes(props: LinkedScenesProps) {
   const { scene } = props;
   const relatedScenes = M.useState(s => s.getScenes(scene.related_scenes.toArray()));
   // TODO: this is inefficient without deep-equality on scenes (I don't *think* zustand "shallow" equality will work)
   const scenes = M.useState(s => s.getGame().scenes);
   const hotspotScenes = sortBy(
-    M.filterMap(scene.scene_hotspots.entrySeq().toArray(),
+    M.filterMap(
+      scene.scene_hotspots.entrySeq().toArray(),
       ([pos, scene_id]): [T.Scene, T.Point3] | undefined => {
         const hsScene = scenes.get(scene_id);
-        if (hsScene) { return [hsScene, pos]; }
-      }),
-    ([s, _]) => s.name);
+        if (hsScene) return [hsScene, pos];
+      },
+    ),
+    ([s, _]) => s.name,
+  );
   const focusScene = (scene: T.Scene) => () => M.getState().setGridFocus(scene.id);
-  return <List>
-    <List.Item>
-      <List.Header>
-        Related Scenes
-        <CV.ModalMaker
-          button={open => <List.Icon name="edit" style={{ cursor: 'pointer' }} onClick={open} />}
-          header={<>Add or Remove related scenes</>}
-          content={close =>
-            <Campaign.MultiSceneSelector already_selected={scene.related_scenes}
-              on_cancel={close}
-              on_selected={related_scenes => {
-                A.sendGMCommand(
-                  { EditSceneRelatedScenes: {scene_id: scene.id, related_scenes} }
-                );
-                close();
-              }}
-            />}
-        />
-      </List.Header>
-    </List.Item>
-    {relatedScenes.map(scene =>
-      <List.Item key={`r:${scene.id}`}
-        style={{ cursor: 'pointer' }}
-        onClick={focusScene(scene)}>
-        {scene.name}
-      </List.Item>)}
-    <List.Item><List.Header>Hotspot Scenes</List.Header></List.Item>
-    {hotspotScenes.map(([scene, point]) =>
-      <List.Item key={`h:${scene.id}`}
-        style={{ cursor: 'pointer' }}
-        onClick={focusScene(scene)}>
-        {scene.name} ({T.encodePoint3(point)})
-    </List.Item>)}
-  </List>;
+  return (
+    <List>
+      <List.Item>
+        <List.Header>
+          Related Scenes
+          <CV.ModalMaker
+            button={open => <List.Icon name="edit" style={{ cursor: "pointer" }} onClick={open} />}
+            header={<>Add or Remove related scenes</>}
+            content={close => (
+              <Campaign.MultiSceneSelector
+                already_selected={scene.related_scenes}
+                on_cancel={close}
+                on_selected={related_scenes => {
+                  A.sendGMCommand(
+                    { EditSceneRelatedScenes: { scene_id: scene.id, related_scenes } },
+                  );
+                  close();
+                }}
+              />
+            )}
+          />
+        </List.Header>
+      </List.Item>
+      {relatedScenes.map(scene => (
+        <List.Item key={`r:${scene.id}`} style={{ cursor: "pointer" }} onClick={focusScene(scene)}>
+          {scene.name}
+        </List.Item>
+      ))}
+      <List.Item>
+        <List.Header>Hotspot Scenes</List.Header>
+      </List.Item>
+      {hotspotScenes.map(([scene, point]) => (
+        <List.Item key={`h:${scene.id}`} style={{ cursor: "pointer" }} onClick={focusScene(scene)}>
+          {scene.name} ({T.encodePoint3(point)})
+        </List.Item>
+      ))}
+    </List>
+  );
 }
 
 function GMSceneChallenges({ scene }: { scene: T.Scene }) {
   const challenges = scene.attribute_checks.entrySeq().sortBy(([desc, _]) => desc);
-  return <List relaxed={true}>
-    <List.Item key="add">
-      <CV.ModalMaker
-        button={open => <Icon name="add" onClick={open} style={{ cursor: 'pointer' }} />}
-        header={<span>Add challenge to {scene.name}</span>}
-        content={close => <AddChallengeToScene scene={scene} onClose={close} />}
-      />
-    </List.Item>
-    {challenges.map(([description, challenge]) => {
-      return <List.Item key={`challenge:${description}`}>
+  return (
+    <List relaxed={true}>
+      <List.Item key="add">
         <CV.ModalMaker
-          button={open => <Item.Header style={{ cursor: 'pointer' }} onClick={open}>
-            {description}
-            <Dropdown style={{ float: 'right' }}
-              icon="caret down" className="right" floating={true} pointing={true}>
-              <Dropdown.Menu>
-                <Dropdown.Header content={description} />
-                <Dropdown.Item content="Delete"
-                  onClick={() => A.sendGMCommand(
-                    { RemoveSceneChallenge: { scene_id: scene.id, description } })}
-                />
-              </Dropdown.Menu>
-            </Dropdown>
-          </Item.Header>}
-          header={<span>Challenge</span>}
-          content={close => <GMChallenge scene={scene} description={description}
-            challenge={challenge} onClose={close} />}
+          button={open => <Icon name="add" onClick={open} style={{ cursor: "pointer" }} />}
+          header={<span>Add challenge to {scene.name}</span>}
+          content={close => <AddChallengeToScene scene={scene} onClose={close} />}
         />
-        <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
-      </List.Item>;
-    }
-    )}
-  </List>;
-  }
+      </List.Item>
+      {challenges.map(([description, challenge]) => {
+        return (
+          <List.Item key={`challenge:${description}`}>
+            <CV.ModalMaker
+              button={open => (
+                <Item.Header style={{ cursor: "pointer" }} onClick={open}>
+                  {description}
+                  <Dropdown
+                    style={{ float: "right" }}
+                    icon="caret down"
+                    className="right"
+                    floating={true}
+                    pointing={true}
+                  >
+                    <Dropdown.Menu>
+                      <Dropdown.Header content={description} />
+                      <Dropdown.Item
+                        content="Delete"
+                        onClick={() =>
+                          A.sendGMCommand(
+                            { RemoveSceneChallenge: { scene_id: scene.id, description } },
+                          )}
+                      />
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </Item.Header>
+              )}
+              header={<span>Challenge</span>}
+              content={close => (
+                <GMChallenge
+                  scene={scene}
+                  description={description}
+                  challenge={challenge}
+                  onClose={close}
+                />
+              )}
+            />
+            <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
+          </List.Item>
+        );
+      })}
+    </List>
+  );
+}
 
 interface GMChallengeProps {
   scene: T.Scene;
@@ -346,72 +460,83 @@ interface GMChallengeProps {
 }
 function GMChallenge(props: GMChallengeProps) {
   const [creatureIds, setCreatureIds] = React.useState<Set<T.CreatureID>>(Set());
-  const [results, setResults] = React.useState<Map<T.CreatureID, GameChallengeResult> | undefined>(undefined);
+  const [results, setResults] = React.useState<Map<T.CreatureID, GameChallengeResult> | undefined>(
+    undefined,
+  );
   const { scene, description, challenge, onClose } = props;
-  const creatureResults = M.useState(s => results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result })));
-  return <div>
-    <List>
-      <List.Item>
-        <Item.Header>{description}</Item.Header>
-        <Item.Content>
-          <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
-        </Item.Content>
-      </List.Item>
-    </List>
-    <Header>Select creatures to challenge</Header>
-    <SelectSceneCreatures
-      scene={scene}
-      selections={creatureIds}
-      add={cid => setCreatureIds(creatureIds.add(cid))}
-      remove={cid => setCreatureIds(creatureIds.delete(cid))} />
-    <Button.Group>
-      {results === undefined ? <Button onClick={() => performChallenge()}>Challenge</Button> : null}
-      <Button onClick={onClose}>{results === undefined ? "Cancel" : "Close"}</Button>
-    </Button.Group>
+  const creatureResults = M.useState(s =>
+    results?.entrySeq().toArray().map(([cid, result]) => ({ creature: s.getCreature(cid), result }))
+  );
+  return (
+    <div>
+      <List>
+        <List.Item>
+          <Item.Header>{description}</Item.Header>
+          <Item.Content>
+            <Item.Description>{CV.describeChallenge(challenge)}</Item.Description>
+          </Item.Content>
+        </List.Item>
+      </List>
+      <Header>Select creatures to challenge</Header>
+      <SelectSceneCreatures
+        scene={scene}
+        selections={creatureIds}
+        add={cid => setCreatureIds(creatureIds.add(cid))}
+        remove={cid => setCreatureIds(creatureIds.delete(cid))}
+      />
+      <Button.Group>
+        {results === undefined
+          ? <Button onClick={() => performChallenge()}>Challenge</Button>
+          : null}
+        <Button onClick={onClose}>{results === undefined ? "Cancel" : "Close"}</Button>
+      </Button.Group>
 
-    {results === undefined ? null :
-      results.count() !== creatureIds.count()
+      {results === undefined
+        ? null
+        : results.count() !== creatureIds.count()
         ? <Loader />
-        : <Table celled={true}>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>Creature</Table.HeaderCell>
-              <Table.HeaderCell>Creature's Skill</Table.HeaderCell>
-              <Table.HeaderCell>Roll</Table.HeaderCell>
-              <Table.HeaderCell>Success?</Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {creatureResults?.map(({creature, result}) => {
-              const creature_name = creature ? creature.name : "Creature disappeared!";
-              const creature_skill_level = creature
-                ? creature.attributes.get(challenge.attr)
-                : 'Creature does not have attribute';
-              return <Table.Row key={creature?.id}>
-                <Table.Cell>{creature_name}</Table.Cell>
-                <Table.Cell>{creature_skill_level}</Table.Cell>
-                <ChallengeResponse result={result} />
-              </Table.Row>;
-            }
-            )}
-          </Table.Body>
-        </Table>
-    }
-  </div>;
+        : (
+          <Table celled={true}>
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell>Creature</Table.HeaderCell>
+                <Table.HeaderCell>Creature's Skill</Table.HeaderCell>
+                <Table.HeaderCell>Roll</Table.HeaderCell>
+                <Table.HeaderCell>Success?</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {creatureResults?.map(({ creature, result }) => {
+                const creature_name = creature ? creature.name : "Creature disappeared!";
+                const creature_skill_level = creature
+                  ? creature.attributes.get(challenge.attr)
+                  : "Creature does not have attribute";
+                return (
+                  <Table.Row key={creature?.id}>
+                    <Table.Cell>{creature_name}</Table.Cell>
+                    <Table.Cell>{creature_skill_level}</Table.Cell>
+                    <ChallengeResponse result={result} />
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+        )}
+    </div>
+  );
 
   async function performChallenge() {
-    const promises =
-      creatureIds.toArray().map(
-        async (creatureId): Promise<[string, GameChallengeResult]> => {
-          const result = await A.sendGMCommandWithResult({ AttributeCheck: [creatureId, challenge] });
-          const creatureResponse: GameChallengeResult =
-            (result.t !== "Ok")
-              ? {t: "ChallengeResponseError", msg: result.error}
-              : M.hasAtLeast(result.result, 1)
-                ? {t: "ChallengeResponse", log: result.result[0]}
-                : {t: "ChallengeResponseError", msg: `Got unexpected results: ${results}`};
-          return [creatureId, creatureResponse];
-        });
+    const promises = creatureIds.toArray().map(
+      async (creatureId): Promise<[string, GameChallengeResult]> => {
+        const result = await A.sendGMCommandWithResult({ AttributeCheck: [creatureId, challenge] });
+        const creatureResponse: GameChallengeResult = (result.t !== "Ok")
+          ? { t: "ChallengeResponseError", msg: result.error }
+          : M.hasAtLeast(result.result, 1)
+          ? { t: "ChallengeResponse", log: result.result[0] }
+          : { t: "ChallengeResponseError", msg: `Got unexpected results: ${results}` };
+        return [creatureId, creatureResponse];
+      },
+    );
 
     setResults(Map());
     const gathered = await Promise.all(promises);
@@ -419,148 +544,190 @@ function GMChallenge(props: GMChallengeProps) {
   }
 }
 
-function ChallengeResponse({result}: {result: GameChallengeResult}) {
-  if (result.t === "ChallengeResponseError")
+function ChallengeResponse({ result }: { result: GameChallengeResult }) {
+  if (result.t === "ChallengeResponseError") {
     return <Table.Cell colSpan={2}>{result.msg}</Table.Cell>;
+  }
   const { log } = result;
-  if (typeof log === "string" || !("AttributeCheckResult" in log))
+  if (typeof log === "string" || !("AttributeCheckResult" in log)) {
     return <Table.Cell colSpan={2}>BUG: Got weird GameLog {JSON.stringify(log)}</Table.Cell>;
+  }
 
   const { AttributeCheckResult } = log;
   return [
-    <Table.Cell key='roll'>{AttributeCheckResult.actual}</Table.Cell>,
-    <Table.Cell key='success'>{AttributeCheckResult.success ? '😃' : '😡'}</Table.Cell>
+    <Table.Cell key="roll">{AttributeCheckResult.actual}</Table.Cell>,
+    <Table.Cell key="success">{AttributeCheckResult.success ? "😃" : "😡"}</Table.Cell>,
   ];
 }
 
-type GameChallengeResult = {t: "ChallengeResponseError", msg: string} | {t: "ChallengeResponse", log: T.GameLog};
+type GameChallengeResult = { t: "ChallengeResponseError"; msg: string } | {
+  t: "ChallengeResponse";
+  log: T.GameLog;
+};
 
 function AddChallengeToScene(props: { scene: T.Scene; onClose: () => void }) {
-  const [description, setDescription] = React.useState('');
-  const [attr, setAttr] = React.useState<T.AttrID>('strength');
+  const [description, setDescription] = React.useState("");
+  const [attr, setAttr] = React.useState<T.AttrID>("strength");
   const [reliable, setReliable] = React.useState(false);
-  const [target, setTarget] = React.useState<T.SkillLevel>('Inept');
+  const [target, setTarget] = React.useState<T.SkillLevel>("Inept");
   const { onClose } = props;
   // TODO: Store attributes on the Game and stop hardcoding them here
-  const attr_options = ['strength', 'finesse', 'magic', 'perception'].map(attr =>
-    ({ key: attr, text: capitalize(attr), value: attr }));
-  const skill_level_options = T.SKILL_LEVELS.map(level =>
-    ({ key: level, text: level, value: level }));
-  return <Form>
-    <Form.Input label="Description" onChange={(_, d) => setDescription(d.value)} />
-    <Form.Group>
-      <Form.Select label="Attribute" options={attr_options}
-        onChange={(_, d) => setAttr(d.value as T.AttrID)} />
-      <Form.Select label="Difficulty" options={skill_level_options}
-        value={target}
-        onChange={(_, d) => setTarget(d.value as T.SkillLevel)} />
-    </Form.Group>
-    <Form.Checkbox label='Reliable?' checked={reliable}
-      onChange={(_, d) => setReliable(!!d.checked)} />
-    <Form.Group>
-      <Form.Button onClick={save}>Save</Form.Button>
-      <Form.Button onClick={onClose}>Cancel</Form.Button>
-    </Form.Group>
-  </Form >;
+  const attr_options = ["strength", "finesse", "magic", "perception"].map(attr => ({
+    key: attr,
+    text: capitalize(attr),
+    value: attr,
+  }));
+  const skill_level_options = T.SKILL_LEVELS.map(level => ({
+    key: level,
+    text: level,
+    value: level,
+  }));
+  return (
+    <Form>
+      <Form.Input label="Description" onChange={(_, d) => setDescription(d.value)} />
+      <Form.Group>
+        <Form.Select
+          label="Attribute"
+          options={attr_options}
+          onChange={(_, d) => setAttr(d.value as T.AttrID)}
+        />
+        <Form.Select
+          label="Difficulty"
+          options={skill_level_options}
+          value={target}
+          onChange={(_, d) => setTarget(d.value as T.SkillLevel)}
+        />
+      </Form.Group>
+      <Form.Checkbox
+        label="Reliable?"
+        checked={reliable}
+        onChange={(_, d) => setReliable(!!d.checked)}
+      />
+      <Form.Group>
+        <Form.Button onClick={save}>Save</Form.Button>
+        <Form.Button onClick={onClose}>Cancel</Form.Button>
+      </Form.Group>
+    </Form>
+  );
 
   function save() {
     const { scene } = props;
     const challenge = { attr, target, reliable };
     A.sendGMCommand(
       {
-        AddSceneChallenge: {scene_id: scene.id, description, challenge },
-      });
+        AddSceneChallenge: { scene_id: scene.id, description, challenge },
+      },
+    );
     onClose();
   }
 }
 
 function GMSceneInventory({ scene }: { scene: T.Scene }) {
   const inventory = M.useState(s => s.getSceneInventory(scene));
-  return <div>
-    <List relaxed={true}>
-      <List.Item key="add">
-        <List.Content>
-          <CV.ModalMaker
-            button={open =>
-              <Button onClick={open}>Add</Button>}
-            header={<span>Add items to {scene.name}</span>}
-            content={close => <AddItemsToScene scene={scene} onClose={close} />} />
-        </List.Content>
-      </List.Item>
-      {inventory.map(([item, count]) =>
-        <List.Item key={`item:${item.id}`}>
-          {item.name}
-          <div style={{ float: 'right', display: 'flex' }}>
-            <SceneItemCountEditor scene={scene} item={item} count={count} />
-            <Dropdown
-              icon="caret down" className="right" floating={true} pointing={true}>
-              <Dropdown.Menu>
-                <Dropdown.Header content={item.name} />
-                <CV.ModalMaker
-                  button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
-                  header={<span>Give {item.name} from {scene.name}</span>}
-                  content={close =>
-                    <GiveItemFromScene scene={scene} item={item} onClose={close} />} />
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
+  return (
+    <div>
+      <List relaxed={true}>
+        <List.Item key="add">
+          <List.Content>
+            <CV.ModalMaker
+              button={open => <Button onClick={open}>Add</Button>}
+              header={<span>Add items to {scene.name}</span>}
+              content={close => <AddItemsToScene scene={scene} onClose={close} />}
+            />
+          </List.Content>
         </List.Item>
-      )}
-    </List>
-  </div>;
+        {inventory.map(([item, count]) => (
+          <List.Item key={`item:${item.id}`}>
+            {item.name}
+            <div style={{ float: "right", display: "flex" }}>
+              <SceneItemCountEditor scene={scene} item={item} count={count} />
+              <Dropdown
+                icon="caret down"
+                className="right"
+                floating={true}
+                pointing={true}
+              >
+                <Dropdown.Menu>
+                  <Dropdown.Header content={item.name} />
+                  <CV.ModalMaker
+                    button={toggler => <Dropdown.Item onClick={toggler} content="Give" />}
+                    header={<span>Give {item.name} from {scene.name}</span>}
+                    content={close => (
+                      <GiveItemFromScene scene={scene} item={item} onClose={close} />
+                    )}
+                  />
+                </Dropdown.Menu>
+              </Dropdown>
+            </div>
+          </List.Item>
+        ))}
+      </List>
+    </div>
+  );
 }
 
 function GMCreatureInventory({ creature }: { creature: T.Creature }) {
   const inv = creature.inventory;
   const items = M.useState(s => s.getItems(inv.keySeq().toArray()));
 
-  return <>
-    <h3>Inventory - {creature.name}</h3>
-    <List relaxed={true}>
-      <List.Item key="add">
-        <CV.ModalMaker
-          button={pop => <Button onClick={pop}>Add</Button>}
-          header={<span>Add items to {creature.name}</span>}
-          content={close => <AddItemsToCreature creature={creature} onClose={close} />}
-        />
-      </List.Item>
-      {items.map(item => {
-        const count = inv.get(item.id);
-        if (!count) { return; }
-        return <List.Item key={`item:${item.id}`}>
-          {item.name}
-          <div style={{ float: 'right', display: 'flex' }}>
-            <CreatureItemCountEditor creature={creature} item={item} count={count} />
-            <Dropdown icon='caret down'
-              className='right' pointing={true} floating={true}>
-              <Dropdown.Menu>
-                <Dropdown.Header content={item.name} />
-                <CV.ModalMaker
-                  button={open => <Dropdown.Item onClick={open} content='Give' />}
-                  header={<span>Give {item.name}</span>}
-                  content={close => <CV.GiveItem giver={creature} item={item} onClose={close} />} />
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
-        </List.Item>;
-      }
-      )}
-    </List>
-  </>;
+  return (
+    <>
+      <h3>Inventory - {creature.name}</h3>
+      <List relaxed={true}>
+        <List.Item key="add">
+          <CV.ModalMaker
+            button={pop => <Button onClick={pop}>Add</Button>}
+            header={<span>Add items to {creature.name}</span>}
+            content={close => <AddItemsToCreature creature={creature} onClose={close} />}
+          />
+        </List.Item>
+        {items.map(item => {
+          const count = inv.get(item.id);
+          if (!count) return;
+          return (
+            <List.Item key={`item:${item.id}`}>
+              {item.name}
+              <div style={{ float: "right", display: "flex" }}>
+                <CreatureItemCountEditor creature={creature} item={item} count={count} />
+                <Dropdown icon="caret down" className="right" pointing={true} floating={true}>
+                  <Dropdown.Menu>
+                    <Dropdown.Header content={item.name} />
+                    <CV.ModalMaker
+                      button={open => <Dropdown.Item onClick={open} content="Give" />}
+                      header={<span>Give {item.name}</span>}
+                      content={close => (
+                        <CV.GiveItem giver={creature} item={item} onClose={close} />
+                      )}
+                    />
+                  </Dropdown.Menu>
+                </Dropdown>
+              </div>
+            </List.Item>
+          );
+        })}
+      </List>
+    </>
+  );
 }
-
 
 function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
   const { value, save } = props;
-  const edit = (to_view: CV.ToggleFunc) =>
-    <TextInput.TextInput defaultValue={value.toString()} numbersOnly={true}
-      onSubmit={input => { save(Number(input)); to_view(); }} onCancel={to_view}
-    />;
-  const view = (to_edit: CV.ToggleFunc) =>
-    <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{value}</Label>;
+  const edit = (to_view: CV.ToggleFunc) => (
+    <TextInput.TextInput
+      defaultValue={value.toString()}
+      numbersOnly={true}
+      onSubmit={input => {
+        save(Number(input));
+        to_view();
+      }}
+      onCancel={to_view}
+    />
+  );
+  const view = (to_edit: CV.ToggleFunc) => (
+    <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{value}</Label>
+  );
   return <CV.Toggler a={view} b={edit} />;
 }
-
 
 function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: number }) {
   const { scene, item, count } = props;
@@ -568,7 +735,8 @@ function SceneItemCountEditor(props: { scene: T.Scene; item: T.Item; count: numb
 
   function save(num: number) {
     A.sendGMCommand(
-      { SetItemCount: { owner: { Scene: scene.id }, item_id: item.id, count: BigInt(num) }});
+      { SetItemCount: { owner: { Scene: scene.id }, item_id: item.id, count: BigInt(num) } },
+    );
   }
 }
 
@@ -578,25 +746,32 @@ function CreatureItemCountEditor(props: { creature: T.Creature; item: T.Item; co
 
   function save(num: number) {
     A.sendGMCommand(
-      { SetItemCount: { owner: { Creature: creature.id }, item_id: item.id, count: BigInt(num) } });
+      { SetItemCount: { owner: { Creature: creature.id }, item_id: item.id, count: BigInt(num) } },
+    );
   }
 }
 
 function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () => void }) {
   const { scene, item, onClose } = props;
   const available_count = scene.inventory.get(item.id);
-  if (!available_count) { return <div>Lost item {item.name}!</div>; }
+  if (!available_count) return <div>Lost item {item.name}!</div>;
   const availableRecipients = M.useState(s => s.getSceneCreatures(scene));
-  return <CV.TransferItemsToRecipientForm
-    available_count={available_count}
-    available_recipients={availableRecipients}
-    onGive={give}
-    onClose={onClose} />;
+  return (
+    <CV.TransferItemsToRecipientForm
+      available_count={available_count}
+      available_recipients={availableRecipients}
+      onGive={give}
+      onClose={onClose}
+    />
+  );
   function give(recip: T.Creature, count: number) {
-    A.sendGMCommand( {
+    A.sendGMCommand({
       "TransferItem": {
-        from: { Scene: scene.id }, to: { Creature: recip.id }, item_id: item.id, count: BigInt(count),
-      }
+        from: { Scene: scene.id },
+        to: { Creature: recip.id },
+        item_id: item.id,
+        count: BigInt(count),
+      },
     });
     onClose();
   }
@@ -604,34 +779,41 @@ function GiveItemFromScene(props: { scene: T.Scene; item: T.Item; onClose: () =>
 
 function AddItemsToScene(props: { scene: T.Scene; onClose: () => void }) {
   const { scene, onClose } = props;
-  return <Campaign.MultiItemSelector require_selected={scene.inventory.keySeq().toSet()}
-    on_selected={item_ids => {
-      const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
-      for (const item_id of new_items.toArray()) {
-        A.sendGMCommand(
-          { SetItemCount: {owner: { Scene: scene.id }, item_id, count: 1n }});
-      }
-      onClose();
-    }}
-    on_cancel={onClose}
-  />;
+  return (
+    <Campaign.MultiItemSelector
+      require_selected={scene.inventory.keySeq().toSet()}
+      on_selected={item_ids => {
+        const new_items = item_ids.subtract(scene.inventory.keySeq().toSet());
+        for (const item_id of new_items.toArray()) {
+          A.sendGMCommand(
+            { SetItemCount: { owner: { Scene: scene.id }, item_id, count: 1n } },
+          );
+        }
+        onClose();
+      }}
+      on_cancel={onClose}
+    />
+  );
 }
 
 function AddItemsToCreature(props: { creature: T.Creature; onClose: () => void }) {
   const { creature, onClose } = props;
-  return <Campaign.MultiItemSelector require_selected={creature.inventory.keySeq().toSet()}
-    on_selected={item_ids => {
-      const new_items = item_ids.subtract(creature.inventory.keySeq().toSet());
-      for (const item_id of new_items.toArray()) {
-        A.sendGMCommand(
-          { SetItemCount: {owner: { Creature: creature.id }, item_id, count: 1n }});
-      }
-      onClose();
-    }}
-    on_cancel={onClose}
-  />;
+  return (
+    <Campaign.MultiItemSelector
+      require_selected={creature.inventory.keySeq().toSet()}
+      on_selected={item_ids => {
+        const new_items = item_ids.subtract(creature.inventory.keySeq().toSet());
+        for (const item_id of new_items.toArray()) {
+          A.sendGMCommand(
+            { SetItemCount: { owner: { Creature: creature.id }, item_id, count: 1n } },
+          );
+        }
+        onClose();
+      }}
+      on_cancel={onClose}
+    />
+  );
 }
-
 
 interface GMSceneCreaturesDerivedProps {
   creatures: Array<T.Creature>;
@@ -640,73 +822,100 @@ interface GMSceneCreaturesDerivedProps {
 function GMSceneCreatures(props: { scene: T.Scene }) {
   const { scene } = props;
 
-  const creatures = M.useState(s => s.getSceneCreatures(scene).map(c => ({creature: c, inCombat: s.creatureIsInCombat(c.id)})));
+  const creatures = M.useState(s =>
+    s.getSceneCreatures(scene).map(c => ({ creature: c, inCombat: s.creatureIsInCombat(c.id) }))
+  );
   const isCombatScene = M.useState(s => s.getCombat()?.scene === scene.id);
 
-  console.log('[EXPENSIVE:GMSceneCreatures]');
-  return <List relaxed={true}>
-    <List.Item key="add">
-      <List.Content>
-        <CV.ModalMaker
-          button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
-          header={<span>Change creatures in {scene.name}</span>}
-          content={toggler => <Campaign.MultiCreatureSelector
-            already_selected={scene.creatures.keySeq().toSet()}
-            on_cancel={toggler}
-            on_selected={cids => {
-              const existing_cids = Set(scene.creatures.keySeq());
-              const new_cids = cids.subtract(existing_cids).toArray();
-              const removed_cids = existing_cids.subtract(cids).toArray();
-              const add_commands = new_cids.map(
-                (creature_id): T.GMCommand => ({
-                  AddCreatureToScene: { scene_id: scene.id, creature_id, visibility: "AllPlayers" }
-                }));
-              const rem_commands = removed_cids.map(
-                (creature_id): T.GMCommand =>
-                  ({ RemoveCreatureFromScene: { scene_id: scene.id, creature_id } }));
-              A.sendGMCommands(add_commands.concat(rem_commands));
-              toggler();
-            }
-            } />} />
-      </List.Content>
-    </List.Item>
-    {creatures.map(({creature, inCombat}) => {
-      const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
-      const vis_desc = vis === 'GMOnly'
-        ? 'Only visible to the GM' : 'Visible to all players';
-      return <List.Item key={`cid:${creature.id}`}>
-        <List.Content floated='left'><CV.ClassIcon class_id={creature.class} /></List.Content>
-        {creature.name}
-        <List.Content floated='right'>
-          <Popup
-            trigger={<Icon name='eye'
-              style={{ cursor: "pointer", color: vis === 'GMOnly' ? 'grey' : 'black' }}
-              onClick={() => {
-                const new_vis: T.Visibility =
-                  vis === "GMOnly" ? "AllPlayers" : "GMOnly";
-                  console.log("CLICK", new_vis);
-                A.sendGMCommand({
-                  SetSceneCreatureVisibility: {
-                    scene_id: scene.id, creature_id: creature.id, visibility: new_vis
-                  }
-                });
-              }} />}
-            content={vis_desc}
+  console.log("[EXPENSIVE:GMSceneCreatures]");
+  return (
+    <List relaxed={true}>
+      <List.Item key="add">
+        <List.Content>
+          <CV.ModalMaker
+            button={toggler => <Button onClick={toggler}>Add or Remove</Button>}
+            header={<span>Change creatures in {scene.name}</span>}
+            content={toggler => (
+              <Campaign.MultiCreatureSelector
+                already_selected={scene.creatures.keySeq().toSet()}
+                on_cancel={toggler}
+                on_selected={cids => {
+                  const existing_cids = Set(scene.creatures.keySeq());
+                  const new_cids = cids.subtract(existing_cids).toArray();
+                  const removed_cids = existing_cids.subtract(cids).toArray();
+                  const add_commands = new_cids.map(
+                    (creature_id): T.GMCommand => ({
+                      AddCreatureToScene: {
+                        scene_id: scene.id,
+                        creature_id,
+                        visibility: "AllPlayers",
+                      },
+                    }),
+                  );
+                  const rem_commands = removed_cids.map(
+                    (creature_id): T.GMCommand => ({
+                      RemoveCreatureFromScene: { scene_id: scene.id, creature_id },
+                    }),
+                  );
+                  A.sendGMCommands(add_commands.concat(rem_commands));
+                  toggler();
+                }}
+              />
+            )}
           />
-          <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
-            <Dropdown.Menu>
-              <Dropdown.Header content={creature.name} />
-              {isCombatScene && inCombat
-                ? <Dropdown.Item content="Add to Combat" onClick={() => addToCombat(creature)} />
-                : null
-              }
-            </Dropdown.Menu>
-          </Dropdown>
         </List.Content>
-      </List.Item>;
-    }
-    )}
-  </List>;
+      </List.Item>
+      {creatures.map(({ creature, inCombat }) => {
+        const vis = scene.creatures.get(creature.id)![1]; // !: must exist in map()
+        const vis_desc = vis === "GMOnly"
+          ? "Only visible to the GM"
+          : "Visible to all players";
+        return (
+          <List.Item key={`cid:${creature.id}`}>
+            <List.Content floated="left">
+              <CV.ClassIcon class_id={creature.class} />
+            </List.Content>
+            {creature.name}
+            <List.Content floated="right">
+              <Popup
+                trigger={
+                  <Icon
+                    name="eye"
+                    style={{ cursor: "pointer", color: vis === "GMOnly" ? "grey" : "black" }}
+                    onClick={() => {
+                      const new_vis: T.Visibility = vis === "GMOnly" ? "AllPlayers" : "GMOnly";
+                      console.log("CLICK", new_vis);
+                      A.sendGMCommand({
+                        SetSceneCreatureVisibility: {
+                          scene_id: scene.id,
+                          creature_id: creature.id,
+                          visibility: new_vis,
+                        },
+                      });
+                    }}
+                  />
+                }
+                content={vis_desc}
+              />
+              <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+                <Dropdown.Menu>
+                  <Dropdown.Header content={creature.name} />
+                  {isCombatScene && inCombat
+                    ? (
+                      <Dropdown.Item
+                        content="Add to Combat"
+                        onClick={() => addToCombat(creature)}
+                      />
+                    )
+                    : null}
+                </Dropdown.Menu>
+              </Dropdown>
+            </List.Content>
+          </List.Item>
+        );
+      })}
+    </List>
+  );
 
   function addToCombat(creature: T.Creature) {
     A.sendGMCommand({ AddCreatureToCombat: creature.id });
@@ -723,41 +932,51 @@ export function GMCombat() {
     return startCombat;
   }
 
-  return <div>
-    <GMCombatHeader combat={combat} />
-    <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
-  </div>;
+  return (
+    <div>
+      <GMCombatHeader combat={combat} />
+      <CV.Combat combat={combat} card={GMCombatCreatureCard} initiative={initiative} />
+    </div>
+  );
 
   function initiative(creature: T.Creature, init: number) {
     return <CV.Toggler a={view} b={edit} />;
 
     function view(toggle: CV.ToggleFunc) {
-      return <div style={{ cursor: "pointer", textDecoration: "underline dotted" }}
-        onClick={toggle}
-      >{init}</div>;
+      return (
+        <div style={{ cursor: "pointer", textDecoration: "underline dotted" }} onClick={toggle}>
+          {init}
+        </div>
+      );
     }
     function edit(toggle: CV.ToggleFunc) {
-      return <TextInput.TextInput defaultValue={init.toString()} style={{ width: "25px" }}
-        numbersOnly={true}
-        onCancel={toggle}
-        onSubmit={input => { toggle(); changeInit(creature, input); }} />;
+      return (
+        <TextInput.TextInput
+          defaultValue={init.toString()}
+          style={{ width: "25px" }}
+          numbersOnly={true}
+          onCancel={toggle}
+          onSubmit={input => {
+            toggle();
+            changeInit(creature, input);
+          }}
+        />
+      );
     }
   }
 
   function changeInit(creature: T.Creature, new_init: string) {
     const new_init_num = Number(new_init);
-    A.sendGMCommand( {
-      ChangeCreatureInitiative: [creature.id, new_init_num]
+    A.sendGMCommand({
+      ChangeCreatureInitiative: [creature.id, new_init_num],
     });
   }
 }
-
 
 function StartCombat(props: { scene: T.Scene }) {
   const sceneCreatureIDs = M.useState(s => s.getSceneCreatures(props.scene).map(c => c.id));
   // TODO: clean up this mess. Should this be a useEffect? I hate useEffect!
   const [selected, setSelected] = React.useState<Set<T.CreatureID>>(Set(sceneCreatureIDs));
-
 
   // componentWillReceiveProps(nextProps: { scene: T.Scene } & M.ReduxProps) {
   //   const scene_creatures = nextProps.scene.creatures.keySeq().toSet();
@@ -766,16 +985,24 @@ function StartCombat(props: { scene: T.Scene }) {
   // }
 
   const { scene } = props;
-  return <div>
-    <Button
-      onClick={() => A.sendGMCommand(
-        { StartCombat: [scene.id, selected.toArray()] })}
-    >Start combat</Button>
-    <SelectSceneCreatures scene={scene}
-      selections={selected}
-      add={cid => setSelected(selected.add(cid))}
-      remove={cid => setSelected(selected.delete(cid))} />
-  </div>;
+  return (
+    <div>
+      <Button
+        onClick={() =>
+          A.sendGMCommand(
+            { StartCombat: [scene.id, selected.toArray()] },
+          )}
+      >
+        Start combat
+      </Button>
+      <SelectSceneCreatures
+        scene={scene}
+        selections={selected}
+        add={cid => setSelected(selected.add(cid))}
+        remove={cid => setSelected(selected.delete(cid))}
+      />
+    </div>
+  );
 }
 
 interface SelectSceneCreaturesProps {
@@ -787,91 +1014,111 @@ interface SelectSceneCreaturesProps {
 function SelectSceneCreatures(props: SelectSceneCreaturesProps) {
   const { scene, add, remove, selections } = props;
   const creatures = M.useState(s => s.getSceneCreatures(scene));
-  return <List relaxed={true}>
-    {
-      creatures.map(creature =>
+  return (
+    <List relaxed={true}>
+      {creatures.map(creature => (
         <List.Item key={creature.id} style={{ display: "flex", flexDirection: "row" }}>
-          <input type="checkbox" checked={selections.includes(creature.id)}
-            onChange={nv => nv.currentTarget.checked ? add(creature.id) : remove(creature.id)} />
+          <input
+            type="checkbox"
+            checked={selections.includes(creature.id)}
+            onChange={nv =>
+              nv.currentTarget.checked ? add(creature.id) : remove(creature.id)}
+          />
           <CV.ClassIcon class_id={creature.class} />
           {creature.name}
-        </List.Item>)
-    }</List>;
+        </List.Item>
+      ))}
+    </List>
+  );
 }
-
 
 function GMCombatHeader({ combat }: { combat: T.Combat }) {
   const scene = M.useState(s => s.getScene(combat.scene));
 
-  return <Segment>
-    {
-      scene
-        ?
-        <div><span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
-        <a href="#" onClick={() => M.getState().setGridFocus(scene.id)}>
-            {scene.name}
-          </a>
-          <Button onClick={() => A.sendGMCommand( "StopCombat" )}>
-            Stop combat
-          </Button>
-        </div>
-        :
-        <div>Lost scene!</div>
-    }
-  </Segment>;
+  return (
+    <Segment>
+      {scene
+        ? (
+          <div>
+            <span style={{ fontWeight: "bold" }}>Scene:</span>&nbsp;
+            <a href="#" onClick={() => M.getState().setGridFocus(scene.id)}>
+              {scene.name}
+            </a>
+            <Button onClick={() => A.sendGMCommand("StopCombat")}>
+              Stop combat
+            </Button>
+          </div>
+        )
+        : <div>Lost scene!</div>}
+    </Segment>
+  );
 }
 
 /// A customized CreatureCard that renders an editable note in the content area.
 function GMCreatureCard(props: { creature: T.Creature; menu_items?: Array<JSX.Element> }) {
-  const menu = <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
-    <Dropdown.Menu>
-      <Dropdown.Header content={props.creature.name} />
-      <CV.ModalMaker
-        button={toggler => <Dropdown.Item onClick={toggler} content="Edit" />}
-        header={<span>Edit {props.creature.name}</span>}
-        content={toggler => <GMEditCreature creature={props.creature} onClose={toggler} />} />
-      {props.menu_items}
-    </Dropdown.Menu>
-  </Dropdown>;
-  return <CV.CreatureCard creature={props.creature} menu={menu}>
-    <CreatureNote creature={props.creature} />
-  </CV.CreatureCard>;
+  const menu = (
+    <Dropdown icon="caret down" className="right" floating={true} pointing={true}>
+      <Dropdown.Menu>
+        <Dropdown.Header content={props.creature.name} />
+        <CV.ModalMaker
+          button={toggler => <Dropdown.Item onClick={toggler} content="Edit" />}
+          header={<span>Edit {props.creature.name}</span>}
+          content={toggler => <GMEditCreature creature={props.creature} onClose={toggler} />}
+        />
+        {props.menu_items}
+      </Dropdown.Menu>
+    </Dropdown>
+  );
+  return (
+    <CV.CreatureCard creature={props.creature} menu={menu}>
+      <CreatureNote creature={props.creature} />
+    </CV.CreatureCard>
+  );
 }
 
 function GMCombatCreatureCard(props: { creature: T.Creature }) {
   const { creature } = props;
   const menu_items = [
-    <Dropdown.Item key="Remove from Combat" onClick={removeFromCombat} text="Remove from Combat" />
+    <Dropdown.Item key="Remove from Combat" onClick={removeFromCombat} text="Remove from Combat" />,
   ];
 
   return <GMCreatureCard creature={creature} menu_items={menu_items} />;
 
   function removeFromCombat() {
-    A.sendGMCommand( { RemoveCreatureFromCombat: creature.id });
+    A.sendGMCommand({ RemoveCreatureFromCombat: creature.id });
   }
 }
-
 
 /// A single-line editable creature note
 function CreatureNote({ creature }: { creature: T.Creature }) {
   function view(toggle: CV.ToggleFunc) {
-    return <div
-      style={{ cursor: "pointer", textDecoration: "underline dotted" }}
-      onClick={toggle}>
-      {creature.note}
-    </div>;
+    return (
+      <div
+        style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+        onClick={toggle}
+      >
+        {creature.note}
+      </div>
+    );
   }
   function edit(toggle: CV.ToggleFunc) {
-    return <TextInput.TextInput defaultValue={creature.note}
-      onCancel={toggle}
-      onSubmit={input => { toggle(); submitNote(input); }} />;
+    return (
+      <TextInput.TextInput
+        defaultValue={creature.note}
+        onCancel={toggle}
+        onSubmit={input => {
+          toggle();
+          submitNote(input);
+        }}
+      />
+    );
   }
 
   return <CV.Toggler a={view} b={edit} />;
 
   function submitNote(note: string) {
     const details = { ...creature, note };
-    A.sendGMCommand( { EditCreatureDetails: {creature_id: creature.id, details} });
+    A.sendGMCommand({ EditCreatureDetails: { creature_id: creature.id, details } });
   }
 }
 
@@ -883,7 +1130,7 @@ export function CreateFolder(props: { path: T.FolderPath; onDone: () => void }) 
     const new_path = path.slice();
     new_path.push(input);
     onDone();
-    return A.sendGMCommand( { CreateFolder: new_path });
+    return A.sendGMCommand({ CreateFolder: new_path });
   }
 }
 
@@ -893,16 +1140,27 @@ interface GMCreateCreatureProps {
 }
 export function CreateCreature(props: GMCreateCreatureProps) {
   const { path } = props;
-  const init: T.Dice = { Expr: {num: 1, size: 20 }};
+  const init: T.Dice = { Expr: { num: 1, size: 20 } };
   const creature_data = {
-    name: "", note: "", bio: "", portrait_url: "", initiative: init, class: "",
-    size: { x: 1, y: 1, z: 1 }, icon_url: "",
+    name: "",
+    note: "",
+    bio: "",
+    portrait_url: "",
+    initiative: init,
+    class: "",
+    size: { x: 1, y: 1, z: 1 },
+    icon_url: "",
   };
-  return <EditCreatureData creature={creature_data}
-    onSave={cdata => save(cdata)} onClose={props.onClose} />;
+  return (
+    <EditCreatureData
+      creature={creature_data}
+      onSave={cdata => save(cdata)}
+      onClose={props.onClose}
+    />
+  );
 
   function save(cdata: T.CreatureCreation) {
-    A.sendGMCommand( { CreateCreature: [path, cdata] });
+    A.sendGMCommand({ CreateCreature: [path, cdata] });
   }
 }
 
@@ -915,7 +1173,7 @@ function GMEditCreature(props: GMEditCreatureProps) {
   return <EditCreatureData creature={creature} onSave={c => save(c)} onClose={onClose} />;
 
   function save(details: T.CreatureCreation) {
-    A.sendGMCommand( { EditCreatureDetails: {creature_id: creature.id, details}});
+    A.sendGMCommand({ EditCreatureDetails: { creature_id: creature.id, details } });
     onClose();
   }
 }
@@ -931,87 +1189,107 @@ function EditCreatureData(props: EditCreatureDataProps) {
   const [name, set_name] = React.useState(props.creature.name);
   const [note, set_note] = React.useState(props.creature.note);
   const [bio, set_bio] = React.useState(props.creature.bio);
-  const [initiative_string, set_initiative_string] = React.useState(Dice.format(props.creature.initiative));
+  const [initiative_string, set_initiative_string] = React.useState(
+    Dice.format(props.creature.initiative),
+  );
   const [class_, set_class] = React.useState(props.creature.class);
   const [size, set_size] = React.useState<number>(props.creature.size.x);
   const [icon_url, set_icon_url] = React.useState(props.creature.icon_url);
 
   const { onClose } = props;
   const parsed_initiative = Dice.maybeParse(initiative_string);
-  const classes = M.useState(s => s.getGame().classes.valueSeq().toArray().map(class_ =>
-    ({
+  const classes = M.useState(s =>
+    s.getGame().classes.valueSeq().toArray().map(class_ => ({
       key: class_.id,
       // it's probably not good to return elements from useState
-      text: <><CV.ClassIcon class_id={class_.id} />{class_.name}</>,
+      text: (
+        <>
+          <CV.ClassIcon class_id={class_.id} />
+          {class_.name}
+        </>
+      ),
       value: class_.id,
-    })));
-  const form_ok = parsed_initiative.status
+    }))
+  );
+  const form_ok = parsed_initiative.status;
   return (
     <Form error={!parsed_initiative.status}>
       <Form.Group>
-        <Form.Field style={{flex: "3"}}>
+        <Form.Field style={{ flex: "3" }}>
           <Form.Input label="Name" value={name} onChange={(_, data) => set_name(data.value)} />
         </Form.Field>
         <Form.Field style={{ flex: 2 }}>
-          <Form.Select label='Class' value={class_}
-            options={classes} placeholder='Class'
-            onChange={(_, data) => set_class(data.value as string)} />
+          <Form.Select
+            label="Class"
+            value={class_}
+            options={classes}
+            placeholder="Class"
+            onChange={(_, data) => set_class(data.value as string)}
+          />
         </Form.Field>
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
           <label>Icon Image URL:</label>
-          <Input fluid={true}
-            value={icon_url}
-            onChange={(_, data) => set_icon_url(data.value)} />
+          <Input fluid={true} value={icon_url} onChange={(_, data) => set_icon_url(data.value)} />
         </Form.Field>
-        {icon_url ? <CV.SquareImageIcon url={icon_url} />
+        {icon_url
+          ? <CV.SquareImageIcon url={icon_url} />
           : "Enter an URL for preview"}
       </Form.Group>
       <Form.Group style={{ width: "100%" }}>
         <Form.Field style={{ flex: "1" }}>
           <label>Portrait Image URL:</label>
-          <Input fluid={true}
+          <Input
+            fluid={true}
             value={portrait_url}
-            onChange={(_, data) => set_portrait_url(data.value)} />
+            onChange={(_, data) => set_portrait_url(data.value)}
+          />
         </Form.Field>
-        {portrait_url ? <img src={portrait_url} />
+        {portrait_url
+          ? <img src={portrait_url} />
           : "Enter an URL for preview"}
       </Form.Group>
-      <Form.Input label="Note" value={note}
-        onChange={(_, data) => set_note(data.value)} />
+      <Form.Input label="Note" value={note} onChange={(_, data) => set_note(data.value)} />
       <Form.Group>
         <Form.Field style={{ flex: 3 }}>
-          <Form.Input label="Initiative" error={!parsed_initiative.status}
+          <Form.Input
+            label="Initiative"
+            error={!parsed_initiative.status}
             value={initiative_string}
-            onChange={(_, data) => set_initiative_string(data.value)} />
+            onChange={(_, data) => set_initiative_string(data.value)}
+          />
         </Form.Field>
         <Form.Field style={{ flex: 2 }}>
-          <Form.Select label="Size"
+          <Form.Select
+            label="Size"
             value={size}
             onChange={(_, data) => set_size(Number(data.value))}
             options={[
-              { key: 'medium', text: 'Medium', value: 1 },
-              { key: 'large', text: 'Large', value: 2 },
-              { key: 'huge', text: 'Huge', value: 3 },
+              { key: "medium", text: "Medium", value: 1 },
+              { key: "large", text: "Large", value: 2 },
+              { key: "huge", text: "Huge", value: 3 },
             ]}
           />
         </Form.Field>
       </Form.Group>
-      {
-        parsed_initiative.status
-          ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
-          :
+      {parsed_initiative.status
+        ? <Message>Parsed dice as {Dice.format(parsed_initiative.value)}</Message>
+        : (
           <Message error={true}>
             <Message.Header>Couldn't parse dice expression</Message.Header>
             <Message.Content>
-              Expected {parsed_initiative.expected} at
-                line {parsed_initiative.index.line}, column {parsed_initiative.index.column}
+              Expected {parsed_initiative.expected} at line {parsed_initiative.index.line}, column
+              {" "}
+              {parsed_initiative.index.column}
             </Message.Content>
           </Message>
-      }
-      <Form.TextArea label="Bio" value={bio}
-        onChange={(_, data) => data.value && set_bio(data.value as string)} />
+        )}
+      <Form.TextArea
+        label="Bio"
+        value={bio}
+        onChange={(_, data) => data.value && set_bio(data.value as string)}
+      />
       <Form.Group>
         <Form.Button disabled={!form_ok} onClick={save}>
           Save
@@ -1023,9 +1301,11 @@ function EditCreatureData(props: EditCreatureDataProps) {
 
   function save() {
     const creature = {
-      name, class: class_,
+      name,
+      class: class_,
       portrait_url,
-      note, bio,
+      note,
+      bio,
       initiative: Dice.parse(initiative_string),
       size: { x: size, y: size, z: size },
       icon_url,
@@ -1035,7 +1315,10 @@ function EditCreatureData(props: EditCreatureDataProps) {
   }
 }
 
-interface GMCreateItemProps { path: T.FolderPath; onClose: () => void; }
+interface GMCreateItemProps {
+  path: T.FolderPath;
+  onClose: () => void;
+}
 export function GMCreateItem(props: GMCreateItemProps) {
   return <CV.SingleInputForm buttonText="Create" onSubmit={input => save(input)} />;
 
@@ -1045,44 +1328,52 @@ export function GMCreateItem(props: GMCreateItemProps) {
   }
 }
 
-
 export function GMViewItem({ itemId }: { itemId: T.ItemID }) {
   const item = M.useState(s => s.getItem(itemId));
   if (!item) return <div>Item {itemId} not found!</div>;
-  const viewName = (edit: CV.ToggleFunc) =>
+  const viewName = (edit: CV.ToggleFunc) => (
     <Card.Header>
-      {item.name} <Icon onClick={edit} style={{ cursor: 'pointer', float: 'right' }} name='edit' />
-    </Card.Header>;
-  const editName = (view: CV.ToggleFunc) =>
-    <Card.Header><TextInput.TextInput defaultValue={item.name} onCancel={view}
-      onSubmit={input => {
-        A.sendGMCommand( { EditItem: { ...item, name: input } });
-        view();
-      }} />
-    </Card.Header>;
-  return <Card>
-    <Card.Content>
-      <CV.Toggler a={viewName} b={editName} />
-    </Card.Content>
-    <Card.Content extra={true}>
-      <div className="ui buttons">
-        <Button>Give to Creature (NYI)</Button>
-      </div>
-    </Card.Content>
-  </Card>;
+      {item.name} <Icon onClick={edit} style={{ cursor: "pointer", float: "right" }} name="edit" />
+    </Card.Header>
+  );
+  const editName = (view: CV.ToggleFunc) => (
+    <Card.Header>
+      <TextInput.TextInput
+        defaultValue={item.name}
+        onCancel={view}
+        onSubmit={input => {
+          A.sendGMCommand({ EditItem: { ...item, name: input } });
+          view();
+        }}
+      />
+    </Card.Header>
+  );
+  return (
+    <Card>
+      <Card.Content>
+        <CV.Toggler a={viewName} b={editName} />
+      </Card.Content>
+      <Card.Content extra={true}>
+        <div className="ui buttons">
+          <Button>Give to Creature (NYI)</Button>
+        </div>
+      </Card.Content>
+    </Card>
+  );
 }
-
 
 export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
   const creature = M.useState(s => s.getCreature(creatureId));
   if (!creature) {
     return <div>Can't find creature {creatureId}</div>;
   }
-  return <div>
-    <GMCreatureCard creature={creature} />
-    <GMCreatureInventory creature={creature} />
-    <Segment>{creature.bio}</Segment>
-  </div>;
+  return (
+    <div>
+      <GMCreatureCard creature={creature} />
+      <GMCreatureInventory creature={creature} />
+      <Segment>{creature.bio}</Segment>
+    </div>
+  );
 }
 
 // export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {
@@ -1094,7 +1385,6 @@ export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
 //     A.exportModule(path, game);
 //   }
 // }
-
 
 export function ImportModule(props: {
   path: T.FolderPath;
@@ -1126,7 +1416,14 @@ export function ImportModule(props: {
       let json = JSON.parse(content);
       console.log("uploading:", path.concat(file.name), json);
       A.sendGMCommand(
-        {"LoadModule": {name: file.name, source: "Module", path: path.concat(file.name), game: json}}
+        {
+          "LoadModule": {
+            name: file.name,
+            source: "Module",
+            path: path.concat(file.name),
+            game: json,
+          },
+        },
       );
       onDone();
     };
@@ -1145,9 +1442,8 @@ export function AddSceneHotspot(props: AddSceneHotspotProps) {
   function select(sid: T.SceneID) {
     onClose();
     const scene_hotspots = scene.scene_hotspots.set(pt, sid);
-    A.sendGMCommand({ EditSceneSceneHotspots: {scene_id: scene.id, scene_hotspots}});
+    A.sendGMCommand({ EditSceneSceneHotspots: { scene_id: scene.id, scene_hotspots } });
   }
-
 }
 
 interface AddAnnotationProps {
@@ -1160,14 +1456,19 @@ export function AddAnnotation(props: AddAnnotationProps) {
   const [allPlayers, setAllPlayers] = React.useState(false);
   const { pt, onClose, scene } = props;
   const annotate = (text: string) => {
-    const vis: T.Visibility = allPlayers ?  "AllPlayers" : "GMOnly";
+    const vis: T.Visibility = allPlayers ? "AllPlayers" : "GMOnly";
     const annotations = scene.annotations.set(pt, [text, vis]);
-    A.sendGMCommand({ EditSceneAnnotations: {scene_id: scene.id, annotations} });
+    A.sendGMCommand({ EditSceneAnnotations: { scene_id: scene.id, annotations } });
     onClose();
   };
-  return <>
-    <Checkbox label="Visible to all players?" checked={allPlayers}
-      onChange={(_, d) => setAllPlayers(d.checked === true)} />
-    <CV.SingleInputForm buttonText="Annotate" onSubmit={annotate} />
-  </>;
+  return (
+    <>
+      <Checkbox
+        label="Visible to all players?"
+        checked={allPlayers}
+        onChange={(_, d) => setAllPlayers(d.checked === true)}
+      />
+      <CV.SingleInputForm buttonText="Annotate" onSubmit={annotate} />
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 import { Map, Set } from "immutable";
-import sortBy from "lodash/sortBy";
 import capitalize from "lodash/capitalize";
+import sortBy from "lodash/sortBy";
 import * as React from "react";
 import * as Panels from "react-resizable-panels";
 
@@ -21,12 +21,12 @@ import {
   Segment,
 } from "semantic-ui-react";
 
-import * as History from "./History";
-import * as M from "./Model";
 import * as A from "./Actions";
+import * as History from "./History";
+import { useWindowSize } from "./lib/hooks";
+import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as TextInput from "./TextInput";
-import { useWindowSize } from "./lib/hooks";
 
 /**
  * The threshold at which we switch from narrow to wide view.
@@ -66,7 +66,7 @@ export function CreatureCard(props: {
 }
 
 function dynamicConditions(
-  creature: T.Creature
+  creature: T.Creature,
 ): Map<T.ConditionID, T.AppliedCondition> {
   return creature.own_conditions.merge(creature.volume_conditions);
 }
@@ -188,18 +188,12 @@ export function CreatureInventory({ creature }: CreatureInventoryProps) {
                 <Dropdown.Menu>
                   <Dropdown.Header content={item.name} />
                   <ModalMaker
-                    button={(open) => (
-                      <Dropdown.Item onClick={open} content="Give" />
-                    )}
+                    button={(open) => <Dropdown.Item onClick={open} content="Give" />}
                     header={<span>Give {item.name}</span>}
-                    content={(close) => (
-                      <GiveItem giver={creature} item={item} onClose={close} />
-                    )}
+                    content={(close) => <GiveItem giver={creature} item={item} onClose={close} />}
                   />
                   <ModalMaker
-                    button={(open) => (
-                      <Dropdown.Item onClick={open} content="Remove" />
-                    )}
+                    button={(open) => <Dropdown.Item onClick={open} content="Remove" />}
                     header={<span>Remove {item.name}</span>}
                     content={(close) => (
                       <RemoveItem
@@ -241,8 +235,8 @@ export class RemoveItem extends React.Component<
     return (
       <Form>
         <Message>
-          You have {creature.inventory.get(item.id)} of this item. How many
-          would you like to remove?
+          You have {creature.inventory.get(item.id)}{" "}
+          of this item. How many would you like to remove?
         </Message>
         <PositiveIntegerInput
           label="count"
@@ -307,8 +301,8 @@ export class TransferItemsToRecipientForm extends React.Component<
     return (
       <Form>
         <Message>
-          There {available_count === 1 ? "is" : "are"} {available_count} of this
-          item. How many would you like to give?
+          There {available_count === 1 ? "is" : "are"} {available_count}{" "}
+          of this item. How many would you like to give?
         </Message>
         <Form.Group>
           <PositiveIntegerInput
@@ -321,9 +315,7 @@ export class TransferItemsToRecipientForm extends React.Component<
             label="Recipient"
             options={creature_options}
             placeholder="Select a Recipient"
-            onChange={(_, ev) =>
-              this.setState({ receiver: ev.value as T.CreatureID })
-            }
+            onChange={(_, ev) => this.setState({ receiver: ev.value as T.CreatureID })}
           />
         </Form.Group>
         <Form.Group>
@@ -346,7 +338,7 @@ export class TransferItemsToRecipientForm extends React.Component<
     if (!receiver) {
       console.log(
         "[TransferItemsToRecipientForm.give] Receiver has disappeared",
-        receiver_id
+        receiver_id,
       );
       this.props.onClose();
       return;
@@ -372,9 +364,7 @@ export function GiveItem(props: GiveItemProps) {
   const other_cids_in_scene = Set(scene.creatures.keySeq().toArray())
     .delete(giver.id)
     .toArray();
-  const other_creatures = M.useState((s) =>
-    s.getCreatures(other_cids_in_scene)
-  );
+  const other_creatures = M.useState((s) => s.getCreatures(other_cids_in_scene));
   if (!other_creatures) {
     return <div>There is nobody in this scene to give items to.</div>;
   }
@@ -390,9 +380,9 @@ export function GiveItem(props: GiveItemProps) {
   // If this is the Player UI, we don't want to show invisible creatures:
   const available_recipients = M.useState((s) => s.playerId)
     ? other_creatures.filter((c) => {
-        const entry = scene.creatures.get(c.id);
-        return entry && entry[1] === "AllPlayers";
-      })
+      const entry = scene.creatures.get(c.id);
+      return entry && entry[1] === "AllPlayers";
+    })
     : other_creatures;
 
   return (
@@ -452,8 +442,9 @@ export function conditionIcon(cond: T.Condition): string {
   if (cond === "DoubleMaxMovement") return "🏃";
   if ("RecurringEffect" in cond) return "🔁";
   if ("AddDamageBuff" in cond) return "😈";
-  if ("ActivateAbility" in cond)
+  if ("ActivateAbility" in cond) {
     return "Ability Activated: " + cond.ActivateAbility;
+  }
   M.assertNever(cond);
 }
 
@@ -565,7 +556,7 @@ export function Combat({ combat, card, initiative }: CombatProps): JSX.Element {
         if (creature) {
           return [creature, init];
         }
-      }) as Array<[T.Creature, number]>
+      }) as Array<[T.Creature, number]>,
   );
 
   const Card = card ? card : CreatureCard;
@@ -613,7 +604,7 @@ export function ActionBar(props: {
           return { ability_id: abstatus.ability_id, ability };
         }
       }),
-      (abo) => abo.ability.name
+      (abo) => abo.ability.name,
     )
   );
 
@@ -666,7 +657,7 @@ function AbilityButton(props: AbilityButtonProps): JSX.Element {
       creature.id,
       abinfo.ability_id,
       abinfo.ability,
-      scene_id
+      scene_id,
     );
   const disabled = creature.cur_energy < abinfo.ability.cost;
   return (
@@ -776,9 +767,7 @@ export function TheLayout(props: TheLayoutProps) {
   const targetOptions = M.useState((s) => s.grid.target_options);
   const disable_bars = !!(movementOptions || targetOptions);
 
-  const disable_div = disable_bars ? (
-    <Dimmer active={true} inverted={true} />
-  ) : null;
+  const disable_div = disable_bars ? <Dimmer active={true} inverted={true} /> : null;
 
   const middle = (
     // all this relative/absolute crap is because chrome has a stupid flexbox model
@@ -816,7 +805,7 @@ export function TheLayout(props: TheLayoutProps) {
   function right_bar(
     tabs: Array<JSX.Element>,
     extra?: JSX.Element,
-    force_map: boolean = false
+    force_map: boolean = false,
   ) {
     const selected_tab = force_map ? "Map" : undefined;
     const tabbed_view = (
@@ -828,17 +817,17 @@ export function TheLayout(props: TheLayoutProps) {
         />
       </div>
     );
-    return extra !== undefined ? (
-      <Panels.PanelGroup direction="vertical">
-        <Panels.Panel>{tabbed_view}</Panels.Panel>
-        <Panels.PanelResizeHandle>
-          <hr />
-        </Panels.PanelResizeHandle>
-        <Panels.Panel>{extra}</Panels.Panel>
-      </Panels.PanelGroup>
-    ) : (
-      tabbed_view
-    );
+    return extra !== undefined
+      ? (
+        <Panels.PanelGroup direction="vertical">
+          <Panels.Panel>{tabbed_view}</Panels.Panel>
+          <Panels.PanelResizeHandle>
+            <hr />
+          </Panels.PanelResizeHandle>
+          <Panels.Panel>{extra}</Panels.Panel>
+        </Panels.PanelGroup>
+      )
+      : tabbed_view;
   }
 
   function left_bar() {
@@ -880,7 +869,7 @@ export function TheLayout(props: TheLayoutProps) {
     const amended_tabs = tabs.concat(
       <Tab key="Map" name="Map" always_render={true}>
         {middle}
-      </Tab>
+      </Tab>,
     );
     const scale = width / bar_width;
     return (
@@ -959,7 +948,7 @@ export function NoteEditor({
 
   const [draftName, setDraftName] = React.useState(props.name);
   const [draftContent, setDraftContent] = React.useState<string | undefined>(
-    undefined
+    undefined,
   );
 
   const originalNote = M.useState((s) => s.getNote(path, props.name));
@@ -1000,10 +989,8 @@ export function NoteEditor({
           />
         </div>
         <Button
-          disabled={
-            draftName === undefined ||
-            (renderedContent === originalContent && draftName === props.name)
-          }
+          disabled={draftName === undefined
+            || (renderedContent === originalContent && draftName === props.name)}
           onClick={submit}
         >
           Save
@@ -1234,8 +1221,7 @@ function renderChat(log: T.GameLog): JSX.Element | undefined {
   if (typeof log !== "string") {
     if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
       const sender = "ChatFromPlayer" in log ? log.ChatFromPlayer[0] : "GM";
-      const message =
-        "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
+      const message = "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
       return (
         <span>
           &lt;

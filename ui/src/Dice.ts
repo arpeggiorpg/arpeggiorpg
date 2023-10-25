@@ -1,6 +1,6 @@
-import P from 'parsimmon';
-import * as T from './PTTypes';
+import P from "parsimmon";
 import * as M from "./Model";
+import * as T from "./PTTypes";
 
 function spaced<X>(parser: P.Parser<X>): P.Parser<X> {
   return P.optWhitespace.then(parser).skip(P.optWhitespace);
@@ -8,46 +8,51 @@ function spaced<X>(parser: P.Parser<X>): P.Parser<X> {
 
 const dicep = P.lazy(() => dicep_);
 
-const digits: P.Parser<number> =
-  spaced(
-    P.digits
-      .map(Number)
-      .desc('number'));
-const flat: P.Parser<T.Dice> =
-  spaced(
-    digits
-      .map(value => ({ Flat: { value } }))
-      .desc('Flat'));
-const expr: P.Parser<T.Dice> =
-  spaced(
-    P.seq(spaced(digits).skip(spaced(P.string('d'))), spaced(digits))
-      .map(([num, size]): T.Dice => ({ Expr: { num, size } }))
-      .desc('Expr'));
+const digits: P.Parser<number> = spaced(
+  P.digits
+    .map(Number)
+    .desc("number"),
+);
+const flat: P.Parser<T.Dice> = spaced(
+  digits
+    .map(value => ({ Flat: { value } }))
+    .desc("Flat"),
+);
+const expr: P.Parser<T.Dice> = spaced(
+  P.seq(spaced(digits).skip(spaced(P.string("d"))), spaced(digits))
+    .map(([num, size]): T.Dice => ({ Expr: { num, size } }))
+    .desc("Expr"),
+);
 
-const plus: P.Parser<T.Dice> =
-  spaced(
-    P.seq(spaced(expr).skip(spaced(P.string('+'))), spaced(dicep))
-      .map(([left, right]): T.Dice => ({ Plus: [left, right] }))
-      .desc('Plus'));
+const plus: P.Parser<T.Dice> = spaced(
+  P.seq(spaced(expr).skip(spaced(P.string("+"))), spaced(dicep))
+    .map(([left, right]): T.Dice => ({ Plus: [left, right] }))
+    .desc("Plus"),
+);
 
 const minus: P.Parser<T.Dice> =
   // TODO: the data model doesn't support subtraction *in general* --
   // i.e. 1d20-1d8 is not representable, but we can support 1d20-2 at least.
   spaced(
-    P.seq(spaced(expr).skip(spaced(P.string('-'))), spaced(digits))
+    P.seq(spaced(expr).skip(spaced(P.string("-"))), spaced(digits))
       .map(([left, num]): T.Dice => ({ Plus: [left, { Flat: { value: -num } }] }))
-      .desc('Minus'));
+      .desc("Minus"),
+  );
 
 const sum = P.alt(plus, minus);
 
-const bestof: P.Parser<T.Dice> =
-  spaced(
-    P.seq(
-      spaced(P.string("BestOf")), spaced(P.string("(")),
-      spaced(digits),
-      spaced(P.string(",")), spaced(dicep), spaced(P.string(")")))
-      .map(([_, _2, num, _3, dice]): T.Dice => ({ BestOf: [num, dice] }))
-      .desc("BestOf"));
+const bestof: P.Parser<T.Dice> = spaced(
+  P.seq(
+    spaced(P.string("BestOf")),
+    spaced(P.string("(")),
+    spaced(digits),
+    spaced(P.string(",")),
+    spaced(dicep),
+    spaced(P.string(")")),
+  )
+    .map(([_, _2, num, _3, dice]): T.Dice => ({ BestOf: [num, dice] }))
+    .desc("BestOf"),
+);
 
 const dicep_ = P.alt(bestof, sum, expr, flat);
 
@@ -67,7 +72,7 @@ export function format(d: T.Dice): string {
     if ("Flat" in right && right.Flat.value < 0) {
       return (format(left) + "-" + (-right.Flat.value));
     } else {
-      return format(d.Plus[0]) + "+" + format(d.Plus[1]);;
+      return format(d.Plus[0]) + "+" + format(d.Plus[1]);
     }
   }
   if ("BestOf" in d) {

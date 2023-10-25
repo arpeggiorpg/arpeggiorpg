@@ -5,16 +5,14 @@ compatibility_date = "2023-03-22"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
-
 [durable_objects]
 bindings = [
-  { name = "ARPEGGIOGAME", class_name = "ArpeggioGame" }
+  { name = "ARPEGGIOGAME", class_name = "ArpeggioGame" },
 ]
 
 [[migrations]]
 tag = "v1" # Should be unique for each entry
 new_classes = ["ArpeggioGame"] # Array of new classes
-
 
 [vars]
 GOOGLE_CLIENT_ID = "328154234071-c7una5er0n385sdgvih81ngbkgp1l7nj.apps.googleusercontent.com"

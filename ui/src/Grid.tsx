@@ -1,26 +1,28 @@
-import { Map } from 'immutable';
-import sortBy from "lodash/sortBy";
+import { Map } from "immutable";
 import range from "lodash/range";
+import sortBy from "lodash/sortBy";
 import * as React from "react";
 
-import { Button, Menu } from 'semantic-ui-react';
+import { Button, Menu } from "semantic-ui-react";
 
+import * as A from "./Actions";
 import * as CV from "./CommonView";
 import * as GM from "./GMComponents";
 import * as M from "./Model";
-import * as A from "./Actions";
 import * as T from "./PTTypes";
-import * as SPZ from './SVGPanZoom';
+import * as SPZ from "./SVGPanZoom";
 
-interface Obj<T> { [index: string]: T; }
+interface Obj<T> {
+  [index: string]: T;
+}
 
 interface SceneGridProps {
   scene: T.Scene;
   creatures: Obj<MapCreature>;
 }
 export function SceneGrid(props: SceneGridProps) {
-  const [targetingPoint, setTargetingPoint] = React.useState<T.Point3|undefined>();
-  const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[]|undefined>();
+  const [targetingPoint, setTargetingPoint] = React.useState<T.Point3 | undefined>();
+  const [affectedPoints, setAffectedPoints] = React.useState<T.Point3[] | undefined>();
   const [affectedCreatures, setAffectedCreatures] = React.useState<T.CreatureID[] | undefined>();
   const [painting, setPainting] = React.useState<"Opening" | "Closing" | undefined>();
 
@@ -31,12 +33,12 @@ export function SceneGrid(props: SceneGridProps) {
 
   const menu = grid.active_objects.objects.length !== 0
     ? renderGridObjectMenu(grid.active_objects)
-    : grid.context_menu ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
-      : null;
+    : grid.context_menu
+    ? contextMenu(grid.context_menu.pt, grid.context_menu.coords)
+    : null;
 
   const target_els = grid.target_options
-    ? getTargetTiles(grid.target_options.options,
-      point => targetClicked(point))
+    ? getTargetTiles(grid.target_options.options, point => targetClicked(point))
     : [];
 
   const layer = focus?.layer;
@@ -44,10 +46,16 @@ export function SceneGrid(props: SceneGridProps) {
 
   const [bg_width, bg_height] = scene.background_image_scale;
   const background_image = scene.background_image_url && scene.background_image_offset
-    ? <image xlinkHref={scene.background_image_url} width={bg_width ? bg_width : undefined}
-      height={bg_height ? bg_height : undefined}
-      x={scene.background_image_offset[0]} y={scene.background_image_offset[1]}
-      preserveAspectRatio="none" />
+    ? (
+      <image
+        xlinkHref={scene.background_image_url}
+        width={bg_width ? bg_width : undefined}
+        height={bg_height ? bg_height : undefined}
+        x={scene.background_image_offset[0]}
+        y={scene.background_image_offset[1]}
+        preserveAspectRatio="none"
+      />
+    )
     : null;
   const static_background = scene.background_image_url && !scene.background_image_offset
     ? `url(${scene.background_image_url})`
@@ -56,7 +64,8 @@ export function SceneGrid(props: SceneGridProps) {
   const current_terrain = layer && layer.t === "Terrain" ? layer.terrain : scene.terrain;
   const open_terrain_color = scene.background_image_url ? "transparent" : "white";
   const closed_terrain_els = layer && layer.t === "Terrain"
-    ? getClosedTerrain(current_terrain) : null;
+    ? getClosedTerrain(current_terrain)
+    : null;
   const open_terrain_els = current_terrain.map(pt => tile(open_terrain_color, "base-terrain", pt));
 
   const highlights = layer && layer.t === "Highlights"
@@ -71,120 +80,136 @@ export function SceneGrid(props: SceneGridProps) {
     : getVolumeConditions();
 
   const annotations_style = layer
-    && (layer.t === "Terrain" || layer.t === "Highlights")
+      && (layer.t === "Terrain" || layer.t === "Highlights")
     ? disable_style
     : {};
   const highlights_style = layer && (layer.t !== "Highlights") ? disable_style : {};
   const volumes_style = layer && layer.t !== "Volumes" ? disable_style : {};
   const scene_hotspots_style = layer && layer.t !== "LinkedScenes" ? disable_style : {};
 
-  return <div style={{ width: "100%", height: "100%" }}>
-    <div style={{
-      height: '45px', display: 'flex',
-      justifyContent: 'space-between', alignItems: 'center',
-    }}>
-      {topBar()}
-    </div>
-    {menu}
-    <SPZ.SVGPanZoom
-      id="pt-grid"
-      preserveAspectRatio="xMinYMid slice"
-      style={{
-        width: "100%", height: "100%", backgroundColor: "rgb(215, 215, 215)",
-        backgroundImage: static_background,
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "contain",
-      }}
-      onMouseDown={ev => {
-        if (ev.button !== 0 || ev.ctrlKey) { return; }
-        if (layer && layer.t === "Terrain") {
+  return (
+    <div style={{ width: "100%", height: "100%" }}>
+      <div
+        style={{
+          height: "45px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        {topBar()}
+      </div>
+      {menu}
+      <SPZ.SVGPanZoom
+        id="pt-grid"
+        preserveAspectRatio="xMinYMid slice"
+        style={{
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgb(215, 215, 215)",
+          backgroundImage: static_background,
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "contain",
+        }}
+        onMouseDown={ev => {
+          if (ev.button !== 0 || ev.ctrlKey) return;
+          if (layer && layer.t === "Terrain") {
+            const pt = getPoint3AtMouse(ev);
+            const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
+            setPainting(painting);
+          }
+        }}
+        onMouseMove={ev => {
+          if (!layer || layer.t !== "Terrain" || painting === undefined) return;
+          // make sure we've actually got the mouse down before trying to paint
+          if (ev.buttons !== 1) {
+            setPainting(undefined);
+            return;
+          }
           const pt = getPoint3AtMouse(ev);
-          const painting = layer.terrain.contains(pt) ? "Closing" : "Opening";
-          setPainting(painting);
-        }
-      }}
-      onMouseMove={ev => {
-        if (!layer || layer.t !== "Terrain" || painting === undefined) { return; }
-        // make sure we've actually got the mouse down before trying to paint
-        if (ev.buttons !== 1) {
+          let terrain;
+          switch (painting) {
+            case "Opening": {
+              if (layer.terrain.contains(pt)) return;
+              terrain = layer.terrain.add(pt);
+              break;
+            }
+            case "Closing": {
+              if (!layer.terrain.contains(pt)) return;
+              terrain = layer.terrain.remove(pt);
+              break;
+            }
+            default:
+              return;
+          }
+          M.getState().setTerrain(terrain);
+        }}
+        onMouseUp={ev => {
+          if (!layer || layer.t !== "Terrain" || painting === undefined) return;
+          const pt = getPoint3AtMouse(ev);
+          switch (painting) {
+            case "Opening": {
+              if (layer.terrain.contains(pt)) return;
+              M.getState().setTerrain(layer.terrain.add(pt));
+              break;
+            }
+            case "Closing": {
+              if (!layer.terrain.contains(pt)) return;
+              M.getState().setTerrain(layer.terrain.remove(pt));
+              break;
+            }
+          }
           setPainting(undefined);
-          return;
-        }
-        const pt = getPoint3AtMouse(ev);
-        let terrain;
-        switch (painting) {
-          case "Opening": {
-            if (layer.terrain.contains(pt)) { return; }
-            terrain = layer.terrain.add(pt);
-            break;
+        }}
+        onMouseLeave={() => setPainting(undefined)}
+        onContextMenu={ev => {
+          ev.preventDefault();
+          const pt = getPoint3AtMouse(ev);
+          if (playerID === undefined) {
+            M.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
           }
-          case "Closing": {
-            if (!layer.terrain.contains(pt)) { return; }
-            terrain = layer.terrain.remove(pt);
-            break;
-          }
-          default: return;
-        }
-        M.getState().setTerrain(terrain);
-      }}
-      onMouseUp={ev => {
-        if (!layer || layer.t !== "Terrain" || painting === undefined) { return; }
-        const pt = getPoint3AtMouse(ev);
-        switch (painting) {
-          case "Opening": {
-            if (layer.terrain.contains(pt)) { return; }
-            M.getState().setTerrain(layer.terrain.add(pt));
-            break;
-          }
-          case "Closing": {
-            if (!layer.terrain.contains(pt)) { return; }
-            M.getState().setTerrain(layer.terrain.remove(pt));
-            break;
-          }
-        }
-        setPainting(undefined);
-      }}
-      onMouseLeave={() => setPainting(undefined)}
-      onContextMenu={ev => {
-        ev.preventDefault();
-        const pt = getPoint3AtMouse(ev);
-        if (playerID === undefined) {
-          M.getState().activateContextMenu(pt, [ev.clientX, ev.clientY]);
-        }
-      }}
-      shouldPan={ev => {
-        if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) { return false; }
-        const objects = findPTObjects(ev);
-        return objects.length === 0;
-      }}
-    >
-      {background_image}
-      <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
-      <g id="volume-conditions" style={volumes_style}>{volumes}</g>
-      <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
-      <g id="creatures" style={disable_style}>{getCreatures()}</g>
-      <g id="highlights" style={highlights_style}>{highlights}</g>
-      <g id="annotations" style={annotations_style}>{annotations}</g>
-      <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
-      <g id="targets" style={disable_style}>{target_els}</g>
-      <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
-      <g id="targeted-volume" style={disable_style}><DrawTargetedVolume /></g>
-    </SPZ.SVGPanZoom>
-  </div>;
+        }}
+        shouldPan={ev => {
+          if (layer && (layer.t === "Terrain" || layer.t === "Highlights")) return false;
+          const objects = findPTObjects(ev);
+          return objects.length === 0;
+        }}
+      >
+        {background_image}
+        <g id="terrain">{closed_terrain_els}{open_terrain_els}</g>
+        <g id="volume-conditions" style={volumes_style}>{volumes}</g>
+        <g id="scene_hotspots" style={scene_hotspots_style}>{scene_hotspots}</g>
+        <g id="creatures" style={disable_style}>{getCreatures()}</g>
+        <g id="highlights" style={highlights_style}>{highlights}</g>
+        <g id="annotations" style={annotations_style}>{annotations}</g>
+        <g id="movement-targets" style={disable_style}>{getMovementTargets()}</g>
+        <g id="targets" style={disable_style}>{target_els}</g>
+        <g id="affected" style={disable_style}>{getAffectedTiles()}</g>
+        <g id="targeted-volume" style={disable_style}>
+          <DrawTargetedVolume />
+        </g>
+      </SPZ.SVGPanZoom>
+    </div>
+  );
 
   function getSceneHotspots() {
     return props.scene.scene_hotspots.entrySeq().toArray().map(
-      ([pos, scene_id]) =>
-        <SceneHotSpot key={`scene-hotspot-${scene_id}-${pos.toString()}`}
-          pos={pos} scene_id={scene_id} />
+      ([pos, scene_id]) => (
+        <SceneHotSpot
+          key={`scene-hotspot-${scene_id}-${pos.toString()}`}
+          pos={pos}
+          scene_id={scene_id}
+        />
+      ),
     );
   }
 
   function getMovementTargets() {
     const move = grid.movement_options;
     return move
-      ? move.options.map(pt => <MovementTarget key={pt.toString()} cid={move.cid} pt={pt}
-        teleport={move.teleport} />)
+      ? move.options.map(pt => (
+        <MovementTarget key={pt.toString()} cid={move.cid} pt={pt} teleport={move.teleport} />
+      ))
       : null;
   }
 
@@ -192,23 +217,26 @@ export function SceneGrid(props: SceneGridProps) {
     const creatures = sortBy(props.creatures, c => -c.creature.size.x);
     return Object.values(creatures).map(c => {
       const highlight = affectedCreatures?.includes(c.creature.id)
-        ? "red" : undefined;
+        ? "red"
+        : undefined;
       return <GridCreature key={c.creature.id} creature={c} highlight={highlight} />;
     });
   }
 
   function getClosedTerrain(terrain: T.Terrain) {
-    const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
-      pt => {
-        if (terrain.contains(pt)) { return; }
-        const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
-        return <rect {...tprops} style={{ cursor: 'pointer' }}
-          key={pointKey("closed", pt)} />;
-      });
+    const closed_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)), pt => {
+      if (terrain.contains(pt)) return;
+      const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.5);
+      return <rect {...tprops} style={{ cursor: "pointer" }} key={pointKey("closed", pt)} />;
+    });
     return closed_tiles;
   }
 
-  function getHighlights(highlights: T.Highlights, player_id?: T.PlayerID, onClick?: (pt: T.Point3) => void) {
+  function getHighlights(
+    highlights: T.Highlights,
+    player_id?: T.PlayerID,
+    onClick?: (pt: T.Point3) => void,
+  ) {
     return highlights.entrySeq().map(([pt, [color, vis]]) => {
       const gmonly = vis === "GMOnly";
       if (gmonly && player_id) {
@@ -216,18 +244,20 @@ export function SceneGrid(props: SceneGridProps) {
       }
       const tprops = tile_props<SVGRectElement>(color, pt, { x: 1, y: 1 }, 0.5);
       const clicker = onClick !== undefined ? () => onClick(pt) : undefined;
-      return <g
-        key={pointKey("highlight", pt)}
-        style={{
-          pointerEvents: onClick ? undefined : "none"
-        }}
-        onClick={clicker}
-      >
-        <rect {...tprops} />
-        {gmonly
-          ? eyeball(pt)
-          : null}
-      </g>;
+      return (
+        <g
+          key={pointKey("highlight", pt)}
+          style={{
+            pointerEvents: onClick ? undefined : "none",
+          }}
+          onClick={clicker}
+        >
+          <rect {...tprops} />
+          {gmonly
+            ? eyeball(pt)
+            : null}
+        </g>
+      );
     });
   }
 
@@ -241,82 +271,103 @@ export function SceneGrid(props: SceneGridProps) {
       M.getState().setHighlights(highlights.set(pt, [color, vis]));
     }
     const highlighted_tiles = getHighlights(highlights, undefined, pt => removeHighlight(pt));
-    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)),
-      pt => {
-        if (highlights.has(pt)) { return; }
-        const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.0);
-        return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
-      });
+    const empty_tiles = M.filterMap(nearby_points(new T.Point3(0, 0, 0)), pt => {
+      if (highlights.has(pt)) return;
+      const tprops = tile_props<SVGRectElement>("black", pt, { x: 1, y: 1 }, 0.0);
+      return <rect key={pointKey("non-high", pt)} {...tprops} onClick={() => addHighlight(pt)} />;
+    });
 
-    return <>
-      <g key="existing-highlights" id="existing-highlights">{highlighted_tiles}</g>,
-      <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>
-    </>;
+    return (
+      <>
+        <g key="existing-highlights" id="existing-highlights">{highlighted_tiles}</g>,
+        <g key="empty-highlights" id="empty-highlights">{empty_tiles}</g>
+      </>
+    );
   }
 
   function getAnnotations(
-    annotations: T.Annotations, player_id?: T.PlayerID, specialClick?: (pt: T.Point3) => void) {
-    return M.filterMap(annotations.entrySeq().toArray(),
-      ([pt, [note, vis]]) => {
-        if (note !== "") {
-          return <Annotation key={pointKey("annotation", pt)} pt={pt} vis={vis}
+    annotations: T.Annotations,
+    player_id?: T.PlayerID,
+    specialClick?: (pt: T.Point3) => void,
+  ) {
+    return M.filterMap(annotations.entrySeq().toArray(), ([pt, [note, vis]]) => {
+      if (note !== "") {
+        return (
+          <Annotation
+            key={pointKey("annotation", pt)}
+            pt={pt}
+            vis={vis}
             specialClick={specialClick}
-            player_id={player_id} />;
-        }
-      });
+            player_id={player_id}
+          />
+        );
+      }
+    });
   }
 
   function getEditableVolumes(): Array<JSX.Element> | undefined {
     return getVolumeConditions(0.5, (vcid, _, me) => {
       const coords: [number, number] = [me.pageX, me.pageY];
       M.getState().activateObjects([{ t: "VolumeCondition", id: vcid }], coords);
-    }
-    );
+    });
   }
 
   function getVolumeConditions(
     fillOpacity: number = 0.1,
-    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<any>) => void
-      = () => undefined
+    onClick: (id: T.ConditionID, vc: T.VolumeCondition, evt: React.MouseEvent<any>) => void = () =>
+      undefined,
   ): Array<JSX.Element> | undefined {
     return props.scene.volume_conditions.entrySeq().map(([id, vol_cond]) =>
-      svgVolume(id, vol_cond.volume, vol_cond.point,
-        {
-          fill: "green", fillOpacity: `${fillOpacity}`, strokeOpacity: "0.5",
-          style: { pointerEvents: "auto" },
-          onClick: me => onClick(id, vol_cond, me),
-        })).toArray();
+      svgVolume(id, vol_cond.volume, vol_cond.point, {
+        fill: "green",
+        fillOpacity: `${fillOpacity}`,
+        strokeOpacity: "0.5",
+        style: { pointerEvents: "auto" },
+        onClick: me => onClick(id, vol_cond, me),
+      })
+    ).toArray();
   }
 
   function DrawTargetedVolume() {
     const { scene } = props;
     const options = grid.target_options;
-    if (!options) { return; }
-    if (!targetingPoint) { return; }
+    if (!options) return;
+    if (!targetingPoint) return;
     const ability_id = options.ability_id;
     const ability = M.useState(s => s.getAbility(ability_id));
-    if (!ability) { return; }
+    if (!ability) return;
     const action = ability.action;
 
     if ("Creature" in action) {
       if (typeof action.Creature.target === "string") return;
       if ("AllCreaturesInVolumeInRange" in action.Creature.target) {
-        return svgVolume("target-volume", action.Creature.target.AllCreaturesInVolumeInRange.volume, targetingPoint);
+        return svgVolume(
+          "target-volume",
+          action.Creature.target.AllCreaturesInVolumeInRange.volume,
+          targetingPoint,
+        );
       }
       if ("LineFromActor" in action.Creature.target) {
         // TODO: do we need to do something with LineFromActor.distance?
         const caster_pos = getCreaturePos(scene, options.cid);
-        if (!caster_pos) { return; }
-        return <line x1={caster_pos.x + 50} y1={caster_pos.y + 50}
-          x2={targetingPoint.x + 50} y2={targetingPoint.y + 50}
-          style={{ pointerEvents: "none" }}
-          strokeWidth="3" stroke="black" />;
+        if (!caster_pos) return;
+        return (
+          <line
+            x1={caster_pos.x + 50}
+            y1={caster_pos.y + 50}
+            x2={targetingPoint.x + 50}
+            y2={targetingPoint.y + 50}
+            style={{ pointerEvents: "none" }}
+            strokeWidth="3"
+            stroke="black"
+          />
+        );
       }
     } else if ("SceneVolume" in action) {
       return svgVolume(
         "target-volume",
         action.SceneVolume.target.RangedVolume.volume,
-        targetingPoint
+        targetingPoint,
       );
     }
   }
@@ -324,7 +375,7 @@ export function SceneGrid(props: SceneGridProps) {
   async function targetClicked(point: T.Point3) {
     const options = grid.target_options!;
     const ability = M.getState().getAbility(options.ability_id);
-    if (!ability) { return; }
+    if (!ability) return;
 
     if ("Creature" in ability.action) {
       const creatureTarget = ability.action.Creature.target;
@@ -349,94 +400,133 @@ export function SceneGrid(props: SceneGridProps) {
       }
     }
     setTargetingPoint(point);
-    const {points, creatures} = await A.fetchAbilityTargets(props.scene.id, options.cid, options.ability_id, point);
+    const { points, creatures } = await A.fetchAbilityTargets(
+      props.scene.id,
+      options.cid,
+      options.ability_id,
+      point,
+    );
     setAffectedPoints(points);
     setAffectedCreatures(creatures);
   }
 
   function contextMenu(pt: T.Point3, coords: [number, number]) {
     const close = () => M.getState().clearContextMenu();
-    return <PopupMenu coords={coords} onClose={close}>
-      <ContextMenu scene={props.scene} pt={pt} onClose={close} />
-    </PopupMenu>;
+    return (
+      <PopupMenu coords={coords} onClose={close}>
+        <ContextMenu scene={props.scene} pt={pt} onClose={close} />
+      </PopupMenu>
+    );
   }
 
   function renderGridObjectMenu(arg: { objects: Array<M.GridObject>; coords: [number, number] }) {
     const { objects, coords } = arg;
     const { scene, creatures } = props;
     const close = () => M.getState().clearContextMenu();
-    return <PopupMenu coords={coords} onClose={close}>
-      <Menu vertical={true}>
-        {objects.map(obj => {
-          switch (obj.t) {
-            case "Annotation": return annotationMenu(close, scene, obj.pt);
-            case "SceneHotSpot":
-              return <SceneHotspotMenu closeMenu={close} scene={scene} target_scene_id={obj.scene_id} pt={obj.pt} />;
-            case "Creature": return creatureMenu(close, creatures, obj.id);
-            case "VolumeCondition": return volumeConditionMenu(close, scene, obj.id);
-          }
-        }
-        )}
-      </Menu>
-    </PopupMenu>;
+    return (
+      <PopupMenu coords={coords} onClose={close}>
+        <Menu vertical={true}>
+          {objects.map(obj => {
+            switch (obj.t) {
+              case "Annotation":
+                return annotationMenu(close, scene, obj.pt);
+              case "SceneHotSpot":
+                return (
+                  <SceneHotspotMenu
+                    closeMenu={close}
+                    scene={scene}
+                    target_scene_id={obj.scene_id}
+                    pt={obj.pt}
+                  />
+                );
+              case "Creature":
+                return creatureMenu(close, creatures, obj.id);
+              case "VolumeCondition":
+                return volumeConditionMenu(close, scene, obj.id);
+            }
+          })}
+        </Menu>
+      </PopupMenu>
+    );
   }
 
   function annotationMenu(close: () => void, scene: T.Scene, pt: T.Point3) {
     const ann = scene.annotations.get(pt);
     const delet = () => {
       const annotations = scene.annotations.delete(pt);
-      A.sendGMCommand({ EditSceneAnnotations: {scene_id: scene.id, annotations} });
+      A.sendGMCommand({ EditSceneAnnotations: { scene_id: scene.id, annotations } });
       close();
     };
     if (ann) {
-      return <>
-        <Menu.Item key="ANN">
-          <Menu.Header>Annotation: {ann[0]}</Menu.Header>
-        </Menu.Item>
-        {playerID ? null :
-          <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
-      </>;
+      return (
+        <>
+          <Menu.Item key="ANN">
+            <Menu.Header>Annotation: {ann[0]}</Menu.Header>
+          </Menu.Item>
+          {playerID
+            ? null
+            : <Menu.Item onClick={delet}>Delete this annotation</Menu.Item>}
+        </>
+      );
     }
     return;
   }
 
-  function creatureMenu(closeMenu: () => void, creatures: Obj<MapCreature>, creature_id: T.CreatureID) {
+  function creatureMenu(
+    closeMenu: () => void,
+    creatures: Obj<MapCreature>,
+    creature_id: T.CreatureID,
+  ) {
     const creature = creatures[creature_id];
     if (creature) {
-      return <React.Fragment key={`creature-menu-${creature.creature.id}`}>
-        <Menu.Item key={creature.creature.id} header={true}>
-          <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
-        </Menu.Item>
-        {creature.actions.map(
-          ({actionName, action}) => {
-            const onClick = () => { closeMenu(); action(creature_id); };
-            return <Menu.Item key={actionName} onClick={() => onClick()}>
-              {actionName}
-            </Menu.Item>;
-          })}
-      </React.Fragment>;
+      return (
+        <React.Fragment key={`creature-menu-${creature.creature.id}`}>
+          <Menu.Item key={creature.creature.id} header={true}>
+            <CV.ClassIcon class_id={creature.creature.class} /> {creature.creature.name}
+          </Menu.Item>
+          {creature.actions.map(
+            ({ actionName, action }) => {
+              const onClick = () => {
+                closeMenu();
+                action(creature_id);
+              };
+              return (
+                <Menu.Item key={actionName} onClick={() => onClick()}>
+                  {actionName}
+                </Menu.Item>
+              );
+            },
+          )}
+        </React.Fragment>
+      );
     }
     return;
   }
 
   function volumeConditionMenu(
-    closeMenu: () => void, scene: T.Scene, condition_id: T.ConditionID) {
+    closeMenu: () => void,
+    scene: T.Scene,
+    condition_id: T.ConditionID,
+  ) {
     const onClick = () => {
-      A.sendGMCommand({ RemoveSceneVolumeCondition: {scene_id: scene.id, condition_id} });
+      A.sendGMCommand({ RemoveSceneVolumeCondition: { scene_id: scene.id, condition_id } });
       closeMenu();
     };
     // unimplemented!: put a name here
-    return <>
-      <Menu.Item key="Header" header={true}>Condition</Menu.Item>
-      <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
-    </>;
+    return (
+      <>
+        <Menu.Item key="Header" header={true}>Condition</Menu.Item>
+        <Menu.Item key="Remove VC" onClick={() => onClick()}>Remove</Menu.Item>
+      </>
+    );
   }
 
   function getTargetTiles(
     options: T.PotentialTargets,
-    onClick: (pt: T.Point3) => void): JSX.Element[] | undefined {
+    onClick: (pt: T.Point3) => void,
+  ): JSX.Element[] | undefined {
     if ("CreatureIDs" in options) {
-      return undefined
+      return undefined;
     } else if ("Points" in options) {
       return options.Points.map(pt => {
         const rprops = tile_props<SVGRectElement>("pink", pt, { x: 1, y: 1 }, 0.3);
@@ -449,37 +539,53 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function getAffectedTiles(): JSX.Element[] | undefined {
-    if (!affectedPoints) { return; }
+    if (!affectedPoints) return;
     return affectedPoints.map(
       pt => {
         const rprops = tile_props<SVGRectElement>("red", pt, { x: 1, y: 1 }, 0.5);
-        return <rect key={pointKey("affected", pt)}
-          style={{ pointerEvents: "none" }}
-          {...rprops} />;
-      }
+        return (
+          <rect
+            key={pointKey("affected", pt)}
+            style={{ pointerEvents: "none" }}
+            {...rprops}
+          />
+        );
+      },
     );
   }
 
   function topBar(): JSX.Element {
     if (targetingPoint) {
-      return <div>Proceed with action?
-        <Button onClick={() => executePointTargetedAbility()}>Act</Button>
-        <Button onClick={() => clearTargets()}>Cancel</Button>
-      </div>;
+      return (
+        <div>
+          Proceed with action?
+          <Button onClick={() => executePointTargetedAbility()}>Act</Button>
+          <Button onClick={() => clearTargets()}>Cancel</Button>
+        </div>
+      );
     }
 
     if (grid.movement_options) {
-      return <div>Select a destination or
-       <Button onClick={() => M.getState().clearMovementOptions()}>Cancel</Button>
-      </div>;
+      return (
+        <div>
+          Select a destination or
+          <Button onClick={() => M.getState().clearMovementOptions()}>Cancel</Button>
+        </div>
+      );
     }
     if (grid.target_options) {
-      return <div>Select a target or
-      <Button onClick={() => M.getState().clearPotentialTargets()}>Cancel</Button>
-      </div>;
+      return (
+        <div>
+          Select a target or
+          <Button onClick={() => M.getState().clearPotentialTargets()}>Cancel</Button>
+        </div>
+      );
     }
-    return <div>Drag to pan, mousewheel to zoom, click objects for more options,
-      right-click to add things.</div>;
+    return (
+      <div>
+        Drag to pan, mousewheel to zoom, click objects for more options, right-click to add things.
+      </div>
+    );
   }
 
   function clearTargets() {
@@ -489,7 +595,7 @@ export function SceneGrid(props: SceneGridProps) {
   }
 
   function executePointTargetedAbility() {
-    if (!targetingPoint) { return; }
+    if (!targetingPoint) return;
     A.executeCombatPointTargetedAbility(targetingPoint);
     clearTargets();
   }
@@ -499,30 +605,36 @@ function getCreaturePos(scene: T.Scene, creature_id: T.CreatureID): T.Point3 | u
   return M.optMap(scene.creatures.get(creature_id), ([pos, _]) => pos);
 }
 
-
 function SceneHotspotMenu(
-  props: {closeMenu: () => void, scene: T.Scene, target_scene_id: T.SceneID, pt: T.Point3}) {
+  props: { closeMenu: () => void; scene: T.Scene; target_scene_id: T.SceneID; pt: T.Point3 },
+) {
   const playerId = M.useState(s => s.playerId);
   const linked_scene = M.useState(s => s.getScene(props.target_scene_id));
-  if (!linked_scene) { return; }
+  if (!linked_scene) return;
   const jumpScene = () => {
     M.getState().setGridFocus(linked_scene.id);
     props.closeMenu();
   };
   const deleteHotspot = () => {
     const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
-    A.sendGMCommand({ EditSceneSceneHotspots: {scene_id: props.scene.id, scene_hotspots} });
+    A.sendGMCommand({ EditSceneSceneHotspots: { scene_id: props.scene.id, scene_hotspots } });
     props.closeMenu();
   };
-  return <React.Fragment key="Scene-Hotspot">
-    <Menu.Item><Menu.Header>Scene Hotspot</Menu.Header></Menu.Item>
-    <Menu.Item style={{ cursor: 'pointer' }} onClick={jumpScene}>
-      {linked_scene.name}
-    </Menu.Item>
-    {playerId ? null : <Menu.Item style={{ cursor: 'pointer' }} onClick={deleteHotspot}>
-      Delete Hotspot
-    </Menu.Item>}
-  </React.Fragment>;
+  return (
+    <React.Fragment key="Scene-Hotspot">
+      <Menu.Item>
+        <Menu.Header>Scene Hotspot</Menu.Header>
+      </Menu.Item>
+      <Menu.Item style={{ cursor: "pointer" }} onClick={jumpScene}>
+        {linked_scene.name}
+      </Menu.Item>
+      {playerId ? null : (
+        <Menu.Item style={{ cursor: "pointer" }} onClick={deleteHotspot}>
+          Delete Hotspot
+        </Menu.Item>
+      )}
+    </React.Fragment>
+  );
 }
 
 function getPoint3AtMouse(event: React.MouseEvent<any>) {
@@ -536,7 +648,7 @@ function getPoint3AtMouse(event: React.MouseEvent<any>) {
   // The cursor point, translated into svg coordinates
   const ctm = g.getScreenCTM();
   if (!ctm) {
-    throw new Error()
+    throw new Error();
   }
   const cursorpt = pt.matrixTransform(ctm.inverse());
   const x = Math.floor(cursorpt.x / 100) * 100;
@@ -544,13 +656,14 @@ function getPoint3AtMouse(event: React.MouseEvent<any>) {
   return new T.Point3(x, y, 0);
 }
 
-
 interface ContextMenuProps {
   scene: T.Scene;
   pt: T.Point3;
   onClose: () => void;
 }
-interface ContextMenuState { visible: boolean; }
+interface ContextMenuState {
+  visible: boolean;
+}
 class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
   constructor(props: ContextMenuProps) {
     super(props);
@@ -558,34 +671,55 @@ class ContextMenu extends React.Component<ContextMenuProps, ContextMenuState> {
   }
   render() {
     const { scene, pt, onClose } = this.props;
-    const hideAnd = (open: () => void) => () => { this.setState({ visible: false }); open(); };
+    const hideAnd = (open: () => void) => () => {
+      this.setState({ visible: false });
+      open();
+    };
     // TODO: oh crap, this popup should probably only happen for GMs.
     const items: Array<[string, (c: () => void) => JSX.Element]> = [
-      ["Add Scene Hotspot",
-        close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
+      ["Add Scene Hotspot", close => <GM.AddSceneHotspot scene={scene} pt={pt} onClose={close} />],
       ["Add Annotation", close => <GM.AddAnnotation scene={scene} pt={pt} onClose={close} />],
     ];
-    return <Menu vertical={true} style={{ display: this.state.visible ? 'block' : 'none' }}>
-      {items.map(([title, comp]) => <CV.ModalMaker
-        key={title}
-        button={open =>
-          <Menu.Item style={{ cursor: 'pointer' }} onClick={hideAnd(open)}>
-            {title}</Menu.Item>}
-        header={<>{title}</>}
-        content={comp}
-        onClose={onClose}
-      />)}
-    </Menu>;
+    return (
+      <Menu vertical={true} style={{ display: this.state.visible ? "block" : "none" }}>
+        {items.map(([title, comp]) => (
+          <CV.ModalMaker
+            key={title}
+            button={open => (
+              <Menu.Item style={{ cursor: "pointer" }} onClick={hideAnd(open)}>
+                {title}
+              </Menu.Item>
+            )}
+            header={<>{title}</>}
+            content={comp}
+            onClose={onClose}
+          />
+        ))}
+      </Menu>
+    );
   }
 }
 
 function svgVolume(
-  key: string, volume: T.Volume, pt: T.Point3, props?: React.SVGProps<SVGCircleElement>
+  key: string,
+  volume: T.Volume,
+  pt: T.Point3,
+  props?: React.SVGProps<SVGCircleElement>,
 ): JSX.Element {
   if ("Sphere" in volume) {
-    return <circle key={key} cx={pt.x + 50} cy={pt.y + 50} r={volume.Sphere}
+    return (
+      <circle
+        key={key}
+        cx={pt.x + 50}
+        cy={pt.y + 50}
+        r={volume.Sphere}
         style={{ pointerEvents: "none" }}
-        strokeWidth={3} stroke="black" fill="none" {...props} />;
+        strokeWidth={3}
+        stroke="black"
+        fill="none"
+        {...props}
+      />
+    );
   }
   console.log("unimplemented! svgvolume for", volume);
   return <g key={key} />;
@@ -595,29 +729,47 @@ function eyeball(pt: T.Point3): JSX.Element {
   return <text x={pt.x} y={pt.y} dominantBaseline="hanging" fontSize="25px">👁️</text>;
 }
 
-
-interface SceneHotSpotProps { scene_id: T.SceneID; pos: T.Point3; }
+interface SceneHotSpotProps {
+  scene_id: T.SceneID;
+  pos: T.Point3;
+}
 function SceneHotSpot(props: SceneHotSpotProps) {
   const { pos, scene_id } = props;
   const tprops = bare_tile_props(pos);
   const element = React.useRef<SVGRectElement>(null);
 
-  const onClick = (ev: React.MouseEvent<any>) => element.current && activateGridObjects(ev, element.current);
+  const onClick = (ev: React.MouseEvent<any>) =>
+    element.current && activateGridObjects(ev, element.current);
   const reflection_props = {
-    'data-pt-type': 'scene-hotspot', 'data-pt-scene-id': scene_id,
-    'data-pt-pos': T.encodePoint3(pos),
+    "data-pt-type": "scene-hotspot",
+    "data-pt-scene-id": scene_id,
+    "data-pt-pos": T.encodePoint3(pos),
   };
-  return <g>
-    <rect {...tprops} onClick={onClick} style={{ cursor: 'pointer' }} fillOpacity="0"
-      ref={element}
-      {...reflection_props} />
-    <text
-      style={{ pointerEvents: "none" }}
-      x={pos.x + 50} y={pos.y}
-      dominantBaseline="hanging"
-      textAnchor="middle"
-      fontSize="65px" stroke="black" strokeWidth="2px" fill="white">🔗</text>
-  </g>;
+  return (
+    <g>
+      <rect
+        {...tprops}
+        onClick={onClick}
+        style={{ cursor: "pointer" }}
+        fillOpacity="0"
+        ref={element}
+        {...reflection_props}
+      />
+      <text
+        style={{ pointerEvents: "none" }}
+        x={pos.x + 50}
+        y={pos.y}
+        dominantBaseline="hanging"
+        textAnchor="middle"
+        fontSize="65px"
+        stroke="black"
+        strokeWidth="2px"
+        fill="white"
+      >
+        🔗
+      </text>
+    </g>
+  );
 }
 
 interface PopupMenuProps {
@@ -627,19 +779,22 @@ interface PopupMenuProps {
 }
 function PopupMenu(props: PopupMenuProps): JSX.Element {
   const { coords, onClose, children } = props;
-  return <CV.ClickAway onClick={onClose}>
-    <div
-      style={{ position: "fixed", left: coords[0], top: coords[1] }}>
-      {children}
-    </div>
-  </CV.ClickAway>;
+  return (
+    <CV.ClickAway onClick={onClose}>
+      <div
+        style={{ position: "fixed", left: coords[0], top: coords[1] }}
+      >
+        {children}
+      </div>
+    </CV.ClickAway>
+  );
 }
 
 export interface MapCreature {
   creature: T.Creature;
   pos: T.Point3;
   class: T.Class;
-  actions: {actionName: string, action: (cid: T.CreatureID) => void}[];
+  actions: { actionName: string; action: (cid: T.CreatureID) => void }[];
   visibility: T.Visibility;
 }
 
@@ -682,21 +837,36 @@ function Annotation(props: AnnotationProps): JSX.Element | null {
     }
   };
 
-  const reflection_props = { 'data-pt-type': "annotation", 'data-pt-pos': T.encodePoint3(pt) };
-  return <g>
-    <rect width="100" height="100" x={pt.x} y={pt.y} fillOpacity="0"
-      ref={element} onClick={onClick}
-      style={{ cursor: 'pointer' }}
-      {...reflection_props}
-    />
-    <text
-      style={{ pointerEvents: "none" }}
-      dominantBaseline="hanging"
-      textAnchor="middle"
-      x={pt.x + 50} y={pt.y}
-      fontSize="100px" stroke="black" strokeWidth="2px" fill="white">*</text>
-    {vis === "GMOnly" ? eyeball(pt) : null}
-  </g>;
+  const reflection_props = { "data-pt-type": "annotation", "data-pt-pos": T.encodePoint3(pt) };
+  return (
+    <g>
+      <rect
+        width="100"
+        height="100"
+        x={pt.x}
+        y={pt.y}
+        fillOpacity="0"
+        ref={element}
+        onClick={onClick}
+        style={{ cursor: "pointer" }}
+        {...reflection_props}
+      />
+      <text
+        style={{ pointerEvents: "none" }}
+        dominantBaseline="hanging"
+        textAnchor="middle"
+        x={pt.x + 50}
+        y={pt.y}
+        fontSize="100px"
+        stroke="black"
+        strokeWidth="2px"
+        fill="white"
+      >
+        *
+      </text>
+      {vis === "GMOnly" ? eyeball(pt) : null}
+    </g>
+  );
 }
 
 function activateGridObjects(event: React.MouseEvent<any>, element: MySVGElement) {
@@ -707,38 +877,43 @@ function activateGridObjects(event: React.MouseEvent<any>, element: MySVGElement
 
 function findPTObjects(event: React.MouseEvent<any>): Array<M.GridObject> {
   return findElementsAtPoint(
-    event.pageX, event.pageY,
+    event.pageX,
+    event.pageY,
     (el): M.GridObject | undefined => {
-      const type = el.getAttribute('data-pt-type');
+      const type = el.getAttribute("data-pt-type");
       if (type) {
         switch (type) {
           case "creature": {
-            const id = el.getAttribute('data-pt-id');
-            if (!id) { return; }
+            const id = el.getAttribute("data-pt-id");
+            if (!id) return;
             return { t: "Creature", id };
           }
           case "annotation": {
-            const pt = el.getAttribute('data-pt-pos');
-            if (!pt) { return; }
+            const pt = el.getAttribute("data-pt-pos");
+            if (!pt) return;
             return { t: "Annotation", pt: T.parsePoint3(pt) };
           }
           case "scene-hotspot": {
-            const scene_id = el.getAttribute('data-pt-scene-id');
-            const pt = el.getAttribute('data-pt-pos');
-            if (!scene_id || !pt) { return; }
+            const scene_id = el.getAttribute("data-pt-scene-id");
+            const pt = el.getAttribute("data-pt-pos");
+            if (!scene_id || !pt) return;
             return { t: "SceneHotSpot", scene_id, pt: T.parsePoint3(pt) };
           }
         }
       }
     },
-    'svg');
+    "svg",
+  );
 }
 
 /**
  * Find all elements under a specific coordinate.
  */
 function findElementsAtPoint<R>(
-  x: number, y: number, filterNode: (el: SVGElement) => (R | undefined), stopAt: string = 'html'
+  x: number,
+  y: number,
+  filterNode: (el: SVGElement) => R | undefined,
+  stopAt: string = "html",
 ): Array<R> {
   const results: Array<R> = [];
   const dirtied: Array<{ el: SVGElement; oldPE: string | null }> = [];
@@ -752,8 +927,8 @@ function findElementsAtPoint<R>(
     // attribute, and unfortunately there is no generic version of
     // elementFromPoint that does a type-check.
     el = document.elementFromPoint(x, y) as SVGElement | null;
-    if (!el) { break; }
-    if (el.tagName === stopAt) { break; }
+    if (!el) break;
+    if (el.tagName === stopAt) break;
     const result = filterNode(el);
     if (result) {
       results.push(result);
@@ -762,13 +937,13 @@ function findElementsAtPoint<R>(
     // pointerEvents enabled. So, in order to find the next one behind this one,
     // we have to disable pointer events and loop. Later, we restore all the
     // pointerEvents values.
-    if (el.style.pointerEvents !== 'none') {
+    if (el.style.pointerEvents !== "none") {
       dirtied.push({ el, oldPE: el.style.pointerEvents });
-      el.style.pointerEvents = 'none';
+      el.style.pointerEvents = "none";
     }
   }
   for (const { el, oldPE } of dirtied) {
-    el.style.pointerEvents = oldPE || '';
+    el.style.pointerEvents = oldPE || "";
   }
   return results;
 }
@@ -784,7 +959,8 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
       activateGridObjects(event, element.current);
     } else {
       console.log("NO ELEMENT!!!!!!!!!!", element);
-    }}
+    }
+  };
 
   const highlightProps: React.SVGAttributes<SVGGraphicsElement> = {};
   if (combat && currentCreatureId === creature.creature.id) {
@@ -805,12 +981,13 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
   }
 
   const opacity = (creature.visibility === "GMOnly") ? "0.4" : "1.0";
-  const reflection_props = { 'data-pt-type': "creature", 'data-pt-id': creature.creature.id };
+  const reflection_props = { "data-pt-type": "creature", "data-pt-id": creature.creature.id };
 
-  return <g key={creature.creature.id} opacity={opacity} onClick={onClick}
-    style={{ cursor: 'pointer' }}>
-    {contents()}
-  </g>;
+  return (
+    <g key={creature.creature.id} opacity={opacity} onClick={onClick} style={{ cursor: "pointer" }}>
+      {contents()}
+    </g>
+  );
 
   function contents() {
     if (creature.creature.icon_url !== "") {
@@ -818,45 +995,89 @@ function GridCreature({ creature, highlight }: { creature: MapCreature; highligh
       const bare_props = bare_tile_props<SVGRectElement>(creature.pos, creature.creature.size);
       // we need to use the old-fashioned ref callback syntax here to avoid some
       // type errors. This is a workaround that is still type-safe.
-      return <>
-        <image key="image" ref={e => {element.current = e}} xlinkHref={creature.creature.icon_url} {...props} />
-        <rect key="rect" {...bare_props} {...reflection_props} {...highlightProps} fillOpacity="0" />
-      </>;
+      return (
+        <>
+          <image
+            key="image"
+            ref={e => {
+              element.current = e;
+            }}
+            xlinkHref={creature.creature.icon_url}
+            {...props}
+          />
+          <rect
+            key="rect"
+            {...bare_props}
+            {...reflection_props}
+            {...highlightProps}
+            fillOpacity="0"
+          />
+        </>
+      );
     } else {
-      const props = tile_props<SVGRectElement>(creature.class.color, creature.pos, creature.creature.size);
-      return <>
-        <rect ref={e => {element.current = e}} {...props}
-          {...reflection_props}
-          {...highlightProps} />
-        <text style={{ pointerEvents: "none" }} fontSize="50"
-          x={creature.pos.x + 50} y={creature.pos.y}
-          dominantBaseline="hanging"
-          textAnchor="middle">
-          {creature.creature.name.slice(0, 4)}
-        </text>
-      </>;
+      const props = tile_props<SVGRectElement>(
+        creature.class.color,
+        creature.pos,
+        creature.creature.size,
+      );
+      return (
+        <>
+          <rect
+            ref={e => {
+              element.current = e;
+            }}
+            {...props}
+            {...reflection_props}
+            {...highlightProps}
+          />
+          <text
+            style={{ pointerEvents: "none" }}
+            fontSize="50"
+            x={creature.pos.x + 50}
+            y={creature.pos.y}
+            dominantBaseline="hanging"
+            textAnchor="middle"
+          >
+            {creature.creature.name.slice(0, 4)}
+          </text>
+        </>
+      );
     }
   }
 }
 
-function tile(color: string, keyPrefix: string, pos: T.Point3, size?: { x: number; y: number })
-  : JSX.Element {
+function tile(
+  color: string,
+  keyPrefix: string,
+  pos: T.Point3,
+  size?: { x: number; y: number },
+): JSX.Element {
   const props = tile_props<SVGRectElement>(color, pos, size);
   return <rect key={pointKey(keyPrefix, pos)} {...props} />;
 }
 
 function bare_tile_props<T>(pt: T.Point3, size = { x: 1, y: 1 }): React.SVGProps<T> {
   return {
-    width: 100 * size.x, height: 100 * size.y,
-    rx: 5, ry: 5,
-    x: pt.x, y: pt.y,
+    width: 100 * size.x,
+    height: 100 * size.y,
+    rx: 5,
+    ry: 5,
+    x: pt.x,
+    y: pt.y,
   };
 }
 
-function tile_props<T>(color: string, pt: T.Point3, size = { x: 1, y: 1 }, opacity: number = 1):
-  React.SVGProps<T> {
+function tile_props<T>(
+  color: string,
+  pt: T.Point3,
+  size = { x: 1, y: 1 },
+  opacity: number = 1,
+): React.SVGProps<T> {
   return {
-    ...bare_tile_props<T>(pt, size), stroke: "black", strokeWidth: 1, fill: color,
+    ...bare_tile_props<T>(pt, size),
+    stroke: "black",
+    strokeWidth: 1,
+    fill: color,
     fillOpacity: opacity,
   };
 }
@@ -906,29 +1127,33 @@ export function mapCreatures(state: M.AllStates, scene: T.Scene): { [index: stri
         let actions = [];
         const target = targetAction(creature);
         if (target) {
-          actions.push({actionName: target.name, action: target.action});
+          actions.push({ actionName: target.name, action: target.action });
         }
         return { creature, pos, class: class_, actions, visibility: vis };
       }
-    });
+    },
+  );
   const result: { [index: string]: MapCreature } = {};
   for (const creature of creatures) {
     result[creature.creature.id] = creature;
   }
   return result;
 
-  function targetAction(creature: T.Creature)
-    : { name: string; action: ((cid: T.CreatureID) => void) } | undefined {
+  function targetAction(
+    creature: T.Creature,
+  ): { name: string; action: (cid: T.CreatureID) => void } | undefined {
     if (targetOptions) {
       const { ability_id, options } = targetOptions;
-      if (!("CreatureIDs" in options)) { return undefined; }
+      if (!("CreatureIDs" in options)) return undefined;
       // this is quadratic (TODO: switch options.cids to a hashmap)
       if (options.CreatureIDs.includes(creature.id)) {
         const ability = state.getAbility(ability_id);
         if (ability) {
           return {
             name: `${ability.name} this creature`,
-            action: cid => { A.executeCombatAbility(cid); },
+            action: cid => {
+              A.executeCombatAbility(cid);
+            },
           };
         }
       }

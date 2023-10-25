@@ -1,8 +1,8 @@
-import { Map, Set, List } from 'immutable';
-import { expect, describe, test } from 'vitest'
+import { List, Map, Set } from "immutable";
+import { describe, expect, test } from "vitest";
 
-import * as M from '../Model';
-import * as T from '../PTTypes';
+import * as M from "../Model";
+import * as T from "../PTTypes";
 
 function assertEq<T>(a: T, b: T, msg?: string) {
   expect(a).toEqual(b);
@@ -15,13 +15,14 @@ function assertRaises(f: () => void, msg?: string) {
 test("SkillLevel", () => {
   assertRaises(() => T.decodeSkillLevel.parse("Foo"));
   assertEq(T.decodeSkillLevel.parse("Skilled"), "Skilled");
-})
+});
 
 test("random junk", () => {
   const exAttrCheck: T.AttributeCheck = { reliable: false, attr: "finesse", target: "Skilled" };
   assertEq(
     T.decodeAttributeCheck.parse(exAttrCheck),
-    exAttrCheck);
+    exAttrCheck,
+  );
   const gameLogTests: [any, T.GameLog][] = [
     // ["StopCombat", "StopCombat"],
     [
@@ -30,9 +31,23 @@ test("random junk", () => {
     ],
     [{ "CreateFolder": "/foo/bar" }, { "CreateFolder": ["foo", "bar"] }],
     [
-      { "AttributeCheckResult": { creature_id: "coolCreature", attribute_check: exAttrCheck, actual: 50, success: true} },
-      { "AttributeCheckResult": { creature_id: "coolCreature", attribute_check: exAttrCheck, actual: 50, success: true} },
-    ]
+      {
+        "AttributeCheckResult": {
+          creature_id: "coolCreature",
+          attribute_check: exAttrCheck,
+          actual: 50,
+          success: true,
+        },
+      },
+      {
+        "AttributeCheckResult": {
+          creature_id: "coolCreature",
+          attribute_check: exAttrCheck,
+          actual: 50,
+          success: true,
+        },
+      },
+    ],
   ];
   for (const [x, y] of gameLogTests) {
     assertEq<T.GameLog>(T.decodeGameLog.parse(x), y);
@@ -68,7 +83,9 @@ test("random junk", () => {
     highlights: Map(),
     annotations: Map(),
     creatures: Map<T.CreatureID, [T.Point3, T.Visibility]>().set(
-      "Creature ID", [new T.Point3(0, 0, 0), "GMOnly"]),
+      "Creature ID",
+      [new T.Point3(0, 0, 0), "GMOnly"],
+    ),
     attribute_checks: Map({ "Do a backflip": exAttrCheck }),
     inventory: Map(),
     background_image_url: "",
@@ -80,7 +97,6 @@ test("random junk", () => {
     related_scenes: Set(),
   };
   assertEq(T.decodeScene.parse(sceneJSON), exScene);
-
 });
 
 describe("PTTypes", () => {
@@ -91,16 +107,22 @@ describe("PTTypes", () => {
   });
 
   test("decodeAction", () => {
-    const action = { "SceneVolume": { "effect": {CreateVolumeCondition: {duration: "Interminate", condition: "DoubleMaxMovement" }}, "target": ranged_volume_target } };
+    const action = {
+      "SceneVolume": {
+        "effect": {
+          CreateVolumeCondition: { duration: "Interminate", condition: "DoubleMaxMovement" },
+        },
+        "target": ranged_volume_target,
+      },
+    };
     T.decodeAction.parse(action);
   });
 
   test("decodeInventoryOwner", () => {
     assertEq(
       T.decodeInventoryOwner.parse({ Creature: "FOO" }),
-      { Creature: "FOO" }
+      { Creature: "FOO" },
     );
-
   });
 
   test("Decoding a super-basic creature", () => {
@@ -125,7 +147,9 @@ describe("PTTypes", () => {
       portrait_url: "",
       icon_url: "",
       attributes: {},
-      initiative: { BestOf: [2, { Plus: [{ Expr: { num: 1, size: 20 } }, { Flat: { value: 4 } }] }] },
+      initiative: {
+        BestOf: [2, { Plus: [{ Expr: { num: 1, size: 20 } }, { Flat: { value: 4 } }] }],
+      },
       size: { x: 1, y: 1, z: 1 },
       inventory: {},
       bio: "",
@@ -144,8 +168,8 @@ describe("filterMap", () => {
     expect(
       M.filterMap(
         ["0", "one", "2", "3"],
-        Number)
+        Number,
+      ),
     ).toEqual([2, 3]);
   });
 });
-

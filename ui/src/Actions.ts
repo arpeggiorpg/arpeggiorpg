@@ -5,16 +5,17 @@
 
 import * as Z from "zod";
 
-import * as T from "./PTTypes";
 import { assertNever, getState } from "./Model";
-import { WEBSOCKETS_ENABLED, sendWSRequest } from "./wsrpi";
+import * as T from "./PTTypes";
+import { sendWSRequest, WEBSOCKETS_ENABLED } from "./wsrpi";
 
 export const RPI_URL = import.meta.env.VITE_RPI_URL;
-if (!RPI_URL) { console.error("No VITE_RPI_URL was defined!!!"); }
+if (!RPI_URL) console.error("No VITE_RPI_URL was defined!!!");
 
 export async function decodeFetch<J>(
-  url: string, init: RequestInit | undefined,
-  decoder: (json: object) => J
+  url: string,
+  init: RequestInit | undefined,
+  decoder: (json: object) => J,
 ): Promise<J> {
   url = `${RPI_URL}${url}`;
   const result = await fetch(url, init);
@@ -35,21 +36,22 @@ class Http401Error extends Error {
   name: string;
   constructor(message: string) {
     super(message);
-    this.name = 'MyError';
+    this.name = "MyError";
   }
 }
 
 async function ptfetch_<J>(
   url: string,
   init: RequestInit | undefined,
-  decoder: (json: object) => J
+  decoder: (json: object) => J,
 ): Promise<J> {
   if (!init) {
     init = {};
   }
   const idToken = getState().userToken;
-  if (idToken)
-    init.headers = { ...init.headers, 'x-arpeggio-auth': idToken };
+  if (idToken) {
+    init.headers = { ...init.headers, "x-arpeggio-auth": idToken };
+  }
   try {
     const json = await decodeFetch(url, init, decoder);
     return json;
@@ -64,9 +66,12 @@ async function ptfetch_<J>(
   function extract_error_details(error: any): string {
     if (error._pt_error) {
       switch (error._pt_error) {
-        case "JSON": return `Failed to decode JSON ${error.original}`;
-        case "RPI": return `Error received from server ${error.message}`;
-        default: return `Unknown error ${error.toString()}`;
+        case "JSON":
+          return `Failed to decode JSON ${error.original}`;
+        case "RPI":
+          return `Error received from server ${error.message}`;
+        default:
+          return `Unknown error ${error.toString()}`;
       }
     } else {
       return `Unknown error ${error.toString()}`;
@@ -74,7 +79,11 @@ async function ptfetch_<J>(
   }
 }
 
-export function ptfetch<J>(url: string, init: RequestInit | undefined, decoder: { parse: (json: object) => J }): Promise<J> {
+export function ptfetch<J>(
+  url: string,
+  init: RequestInit | undefined,
+  decoder: { parse: (json: object) => J },
+): Promise<J> {
   return ptfetch_(url, init, decoder.parse);
 }
 
@@ -126,21 +135,20 @@ export function startPoll(mode: T.Role, gameId: string): () => void {
     polling = false;
     console.log("requested cancellation of poll");
     controller.abort();
-  }
+  };
 }
 
 function isAbortError(error: any): boolean {
-  return getattr(error, "name") === "AbortError"
+  return getattr(error, "name") === "AbortError";
 }
 
 function isHttp401Error(error: any): boolean {
-  return getattr(error, "name") === "Http401Error"
+  return getattr(error, "name") === "Http401Error";
 }
 
 function getattr(o: any, name: string): any {
-  return o && typeof o === "object" && name in o && o[name]
+  return o && typeof o === "object" && name in o && o[name];
 }
-
 
 export async function requestMove(creature_id: T.CreatureID) {
   const scene = getState().getFocusedScene();
@@ -163,7 +171,9 @@ export function moveCreature(creature_id: T.CreatureID, destination: T.Point3) {
   } else {
     const scene = getState().getFocusedScene();
     if (scene) {
-      sendGMCommand({ PathCreature: { scene_id: scene.id, creature_id: creature_id, destination } });
+      sendGMCommand({
+        PathCreature: { scene_id: scene.id, creature_id: creature_id, destination },
+      });
     } else {
       throw new Error(`Tried moving when there is no scene`);
     }
@@ -188,15 +198,14 @@ export async function requestCombatMovement() {
   getState().displayMovementOptions(options);
 }
 
-
 /* Execute an ability that has already been selected, with a target.
  * This relies on the state being set up ahead of time: we must have a target_options already.
  */
 export async function executeCombatAbility(target_id: T.CreatureID) {
   const opts = getState().grid.target_options;
-  if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+  if (!opts) throw new Error(`Can't execute an ability if we haven't selected it first.`);
   const { ability_id, options } = opts;
-  if (!("CreatureIDs" in options)) { throw new Error(`Only support CreatureIDs for now`); }
+  if (!("CreatureIDs" in options)) throw new Error(`Only support CreatureIDs for now`);
   const target: T.DecidedTarget = { Creature: target_id };
   sendGMCommand({ CombatAct: { ability_id, target } });
   getState().clearPotentialTargets();
@@ -204,7 +213,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
 
 export function executeCombatPointTargetedAbility(point: T.Point3) {
   const opts = getState().grid.target_options;
-  if (!opts) { throw new Error(`Can't execute an ability if we haven't selected it first.`); }
+  if (!opts) throw new Error(`Can't execute an ability if we haven't selected it first.`);
   const { ability_id, options } = opts;
   if (!("Points" in options)) {
     throw new Error(`This function only works for abilities that use Points`);
@@ -241,7 +250,6 @@ function gameUrl() {
 }
 
 export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>): Promise<T> {
-
   if (WEBSOCKETS_ENABLED) {
     return sendWSRequest(request, decoder);
   } else {
@@ -257,9 +265,13 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
       case "CombatMovementOptions":
         return get(`/combat_movement_options`);
       case "TargetOptions":
-        return get(`/target_options/${request.scene_id}/${request.creature_id}/${request.ability_id}`);
+        return get(
+          `/target_options/${request.scene_id}/${request.creature_id}/${request.ability_id}`,
+        );
       case "PreviewVolumeTargets":
-        return get(`/preview_volume_targets/${request.scene_id}/${request.creature_id}/${request.ability_id}/${request.point.x}/${request.point.y}/${request.point.z}`);
+        return get(
+          `/preview_volume_targets/${request.scene_id}/${request.creature_id}/${request.ability_id}/${request.point.x}/${request.point.y}/${request.point.z}`,
+        );
       default:
         throw new Error("I don't think I care about this any more");
     }
@@ -271,16 +283,17 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
 
   function execute() {
     const encoded = T.encodeRPIGameRequest(request);
-    if (!("command" in encoded)) { throw new Error("This isn't a command"); }
+    if (!("command" in encoded)) throw new Error("This isn't a command");
     const command = encoded.command;
     const body = JSON.stringify(command);
     return ptfetch(
       `${gameUrl()}/execute`,
       {
-        method: "POST", headers: { "content-type": "application/json" },
-        body
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
       },
-      decoder
+      decoder,
     );
   }
 }
@@ -289,7 +302,7 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
   console.log("[sendPlayerCommand:JSON]", cmd);
   const result = await sendRequest(
     { t: "PlayerCommand", command: cmd },
-    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
+    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string()),
   );
 
   switch (result.t) {
@@ -298,7 +311,7 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
       // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
       return;
     case "Err":
-      throw { _pt_error: 'RPI', message: result.error };
+      throw { _pt_error: "RPI", message: result.error };
   }
 }
 
@@ -306,7 +319,7 @@ export async function sendGMCommand(cmd: T.GMCommand) {
   console.log("[sendGMCommand:JSON]", cmd);
   const result = await sendRequest(
     { t: "GMCommand", command: cmd },
-    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string())
+    T.decodeRustResult(Z.array(T.decodeGameLog), Z.string()),
   );
 
   switch (result.t) {
@@ -315,7 +328,7 @@ export async function sendGMCommand(cmd: T.GMCommand) {
       // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
       return;
     case "Err":
-      throw { _pt_error: 'RPI', message: result.error };
+      throw { _pt_error: "RPI", message: result.error };
   }
 }
 
@@ -329,7 +342,9 @@ export function sendGMCommands(cmds: Array<T.GMCommand>) {
 /// Send a Command and *don't* automatically handle errors, but instead return a future
 /// representing the result. This is useful for code which wants to send a command and interpret
 /// the resulting gamelogs.
-export async function sendGMCommandWithResult(cmd: T.GMCommand): Promise<T.RustResult<Array<T.GameLog>, string>> {
+export async function sendGMCommandWithResult(
+  cmd: T.GMCommand,
+): Promise<T.RustResult<Array<T.GameLog>, string>> {
   const json = T.encodeGMCommand(cmd);
   console.log("[sendGMCommand:JSON]", json);
   const rpi_result = decodeFetch(
@@ -341,19 +356,29 @@ export async function sendGMCommandWithResult(cmd: T.GMCommand): Promise<T.RustR
     },
     T.decodeRustResult(
       T.decodeChangedGame.transform(cg => cg.logs),
-      Z.string()
-    ).parse
+      Z.string(),
+    ).parse,
   );
   return rpi_result;
 }
 
-async function selectAbility(scene_id: T.SceneID, creature_id: T.CreatureID, ability_id: T.AbilityID) {
-  let options = await sendRequest({ t: "TargetOptions", scene_id, creature_id, ability_id }, T.decodePotentialTargets);
+async function selectAbility(
+  scene_id: T.SceneID,
+  creature_id: T.CreatureID,
+  ability_id: T.AbilityID,
+) {
+  let options = await sendRequest(
+    { t: "TargetOptions", scene_id, creature_id, ability_id },
+    T.decodePotentialTargets,
+  );
   getState().displayPotentialTargets(creature_id, ability_id, options);
 }
 
 export function requestCombatAbility(
-  cid: T.CreatureID, ability_id: T.AbilityID, ability: T.Ability, scene_id: T.SceneID
+  cid: T.CreatureID,
+  ability_id: T.AbilityID,
+  ability: T.Ability,
+  scene_id: T.SceneID,
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
     return sendGMCommand({ CombatAct: { ability_id, target: "Actor" } });
@@ -363,9 +388,18 @@ export function requestCombatAbility(
 }
 
 export async function fetchAbilityTargets(
-  scene_id: T.SceneID, creature_id: T.CreatureID, ability_id: T.AbilityID, point: T.Point3
+  scene_id: T.SceneID,
+  creature_id: T.CreatureID,
+  ability_id: T.AbilityID,
+  point: T.Point3,
 ): Promise<{ points: Array<T.Point3>; creatures: Array<T.CreatureID> }> {
-  const result = await sendRequest({ t: "PreviewVolumeTargets", scene_id, creature_id, ability_id, point }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
+  const result = await sendRequest({
+    t: "PreviewVolumeTargets",
+    scene_id,
+    creature_id,
+    ability_id,
+    point,
+  }, Z.tuple([Z.array(Z.string()), Z.array(T.decodePoint3)]));
   return {
     creatures: result[0],
     points: result[1],
@@ -373,7 +407,7 @@ export async function fetchAbilityTargets(
 }
 
 export async function createGame(name: string): Promise<T.GameID> {
-  const result = await ptfetch('/g/create', {
+  const result = await ptfetch("/g/create", {
     method: "POST",
     body: JSON.stringify(name),
     headers: { "content-type": "application/json" },
@@ -383,7 +417,6 @@ export async function createGame(name: string): Promise<T.GameID> {
 
 export async function invite(): Promise<T.InvitationID> {
   const gameId = getState().gameId;
-  if (!gameId) { throw new Error("Must be called in context of a game!"); }
-  return await sendRequest({t: "GMGenerateInvitation"}, Z.string());
+  if (!gameId) throw new Error("Must be called in context of a game!");
+  return await sendRequest({ t: "GMGenerateInvitation" }, Z.string());
 }
-

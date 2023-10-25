@@ -1,6 +1,6 @@
-import { expect, describe, test } from 'vitest'
+import { describe, expect, test } from "vitest";
 
-import * as D from '../Dice';
+import * as D from "../Dice";
 
 describe("dice parsing", () => {
   test("parses a number", () => {
@@ -21,7 +21,7 @@ describe("dice parsing", () => {
         Plus: [
           { Expr: { num: 1, size: 20 } },
           { Expr: { num: 5, size: 8 } },
-        ]
+        ],
       });
   });
   test("parses a minus", () => {
@@ -43,7 +43,6 @@ describe("dice parsing", () => {
   });
 });
 
-
 describe("Dice formatting", () => {
   test("formats a Flat", () => {
     expect(D.format({ Flat: { value: 50 } }))
@@ -60,9 +59,9 @@ describe("Dice formatting", () => {
   test("formats a negative Plus", () => {
     expect(D.format({ Plus: [{ Expr: { num: 50, size: 100 } }, { Flat: { value: -5 } }] }))
       .toEqual("50d100-5");
-  })
+  });
   test("formats a BestOf", () => {
     expect(D.format({ BestOf: [20, { Expr: { num: 50, size: 100 } }] }))
       .toEqual("BestOf(20, 50d100)");
-  })
+  });
 });

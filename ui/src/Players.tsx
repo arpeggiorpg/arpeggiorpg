@@ -1,13 +1,13 @@
 import { Set } from "immutable";
 import * as React from "react";
+import { Button, List, Table } from "semantic-ui-react";
 import useSWR from "swr";
 import * as Z from "zod";
-import { Button, List, Table } from "semantic-ui-react";
 
+import * as A from "./Actions";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
 import * as M from "./Model";
-import * as A from "./Actions";
 import * as T from "./PTTypes";
 
 export function Players() {
@@ -42,12 +42,12 @@ export function Players() {
           const sceneButtons = [];
           if (playa.player.scene) {
             sceneButtons.push(
-              setSceneButton(playa.id, "Remove from Scene", null)
+              setSceneButton(playa.id, "Remove from Scene", null),
             );
           }
           if (gm_scene && playa.player.scene !== gm_scene.id) {
             sceneButtons.push(
-              setSceneButton(playa.id, "Move to this scene", gm_scene.id)
+              setSceneButton(playa.id, "Move to this scene", gm_scene.id),
             );
           }
 
@@ -70,9 +70,7 @@ export function Players() {
                 <Button.Group vertical={true}>
                   {sceneButtons}
                   <CV.ModalMaker
-                    button={(open) => (
-                      <Button onClick={open}>Grant creatures</Button>
-                    )}
+                    button={(open) => <Button onClick={open}>Grant creatures</Button>}
                     header={<span>Grant creatures to {playa.id}</span>}
                     content={(close) => (
                       <GrantCreaturesToPlayer
@@ -93,14 +91,12 @@ export function Players() {
   function setSceneButton(
     player_id: T.PlayerID,
     text: string,
-    scene_id: T.SceneID | null
+    scene_id: T.SceneID | null,
   ): JSX.Element {
     return (
       <Button
         key={"set-" + player_id + scene_id}
-        onClick={() =>
-          A.sendGMCommand({ SetPlayerScene: [player_id, scene_id] })
-        }
+        onClick={() => A.sendGMCommand({ SetPlayerScene: [player_id, scene_id] })}
       >
         {text}
       </Button>
@@ -131,7 +127,7 @@ export function Invitations() {
   const gameId = M.useState((s) => s.gameId);
   const { data, isLoading, mutate } = useSWR(
     `/g/${gameId}/gm/invitations`,
-    () => A.sendRequest({ t: "GMListInvitations" }, Z.array(Z.string()))
+    () => A.sendRequest({ t: "GMListInvitations" }, Z.array(Z.string())),
   );
 
   if (isLoading || !data) return <div>Loading invitations</div>;
@@ -143,7 +139,7 @@ export function Invitations() {
         {data.map((i) => {
           let link = new URL(
             `/invitations/${gameId}/${i}`,
-            window.location.href
+            window.location.href,
           ).href;
           return (
             <li key={link}>

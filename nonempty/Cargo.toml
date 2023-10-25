@@ -10,5 +10,5 @@ use_serde = ["serde", "serde_derive"]
 serde_json = "1.0"
 
 [dependencies]
-serde = {version = "1.0", optional = true}
-serde_derive = {version = "1.0", optional = true}
+serde = { version = "1.0", optional = true }
+serde_derive = { version = "1.0", optional = true }

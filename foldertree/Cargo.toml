@@ -5,9 +5,9 @@ authors = ["Christopher Armstrong"]
 edition = "2021"
 
 [dependencies]
+serde = { version = "1.0", optional = true, features = ["derive"] }
 thiserror = "1.0.48"
-serde = {version = "1.0", optional = true, features = ["derive"]}
-ts-rs = {version = "7.0.0"}
+ts-rs = { version = "7.0.0" }
 
 [dev-dependencies]
 serde_json = "1.0"

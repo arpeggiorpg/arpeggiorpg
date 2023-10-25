@@ -2,16 +2,16 @@ import { Map } from "immutable";
 import mapValues from "lodash/mapValues";
 import * as React from "react";
 
+import { Outlet, useParams } from "react-router-dom";
+import * as A from "./Actions";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
 import * as GM from "./GMComponents";
 import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
-import * as A from "./Actions";
 import * as Players from "./Players";
 import * as T from "./PTTypes";
-import { Outlet, useParams } from "react-router-dom";
 
 export function GMMain() {
   const scene = M.useState((s) => s.getFocusedScene());
@@ -24,7 +24,7 @@ export function GMMain() {
       <GM.GMCombat />
     </CV.Tab>,
     <CV.Tab key="Players" name="Players">
-      <div style={{display: "flex", flexDirection: "column"}}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         <Players.Players />
         <Players.Invitations />
       </div>
@@ -33,24 +33,19 @@ export function GMMain() {
   ];
 
   const combat = M.useState((s) => s.getCombat());
-  const currentCreatureInCombat = M.useState((s) =>
-    s.getCurrentCombatCreatureID()
-  );
+  const currentCreatureInCombat = M.useState((s) => s.getCurrentCombatCreatureID());
 
-  const bottom_bar =
-    combat && currentCreatureInCombat ? (
-      <CV.ActionBar creatureId={currentCreatureInCombat} combat={combat} />
-    ) : undefined;
+  const bottom_bar = combat && currentCreatureInCombat
+    ? <CV.ActionBar creatureId={currentCreatureInCombat} combat={combat} />
+    : undefined;
 
   return (
     <CV.TheLayout
       map={<Outlet />}
       tabs={tabs}
       bottom_left={<Secondary />}
-      top_left={
-        scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>
-      }
-      bottom_right={<></>} //<CV.GMChat />}
+      top_left={scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>}
+      bottom_right={<></>} // <CV.GMChat />}
       bar_width={450}
       menu_size="tiny"
       bottom_bar={bottom_bar}
@@ -71,8 +66,7 @@ function Secondary() {
           name={focus2.name}
           // We need to refocus with the new name after a note gets renamed:
           afterSave={(path, note) =>
-            M.getState().setSecondaryFocus({ t: "Note", path, name: note.name })
-          }
+            M.getState().setSecondaryFocus({ t: "Note", path, name: note.name })}
         />
       );
     case "Creature":
@@ -104,7 +98,7 @@ export function GMMap() {
 
 function getSceneFromPath(
   state: M.AllStates,
-  pathstr: string
+  pathstr: string,
 ): T.Scene | undefined {
   let path: T.FolderPath;
   try {
@@ -149,7 +143,7 @@ function getFolder(tree: T.Folder, path: T.FolderPath): T.Folder | undefined {
  */
 function mapCreatures(
   scene: T.Scene,
-  state: M.AllStates
+  state: M.AllStates,
 ): { [index: string]: Grid.MapCreature } {
   return mapValues(Grid.mapCreatures(state, scene), (mapc) => ({
     ...mapc,
@@ -158,8 +152,8 @@ function mapCreatures(
         state,
         scene,
         state.getGame().current_combat,
-        mapc.creature
-      )
+        mapc.creature,
+      ),
     ),
   }));
 }
@@ -168,11 +162,11 @@ function creatureMenuActions(
   state: M.AllStates,
   scene: T.Scene,
   combat: T.Combat | null,
-  creature: T.Creature
+  creature: T.Creature,
 ): Grid.MapCreature["actions"] {
   const actions = [
-    {actionName: "Walk", action: (cid: T.CreatureID) => A.requestMove(cid)},
-    {actionName: "Teleport", action: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid)}
+    { actionName: "Walk", action: (cid: T.CreatureID) => A.requestMove(cid) },
+    { actionName: "Teleport", action: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid) },
   ];
   if (combat && state.getCurrentCombatCreatureID() === creature.id) {
     actions.push({

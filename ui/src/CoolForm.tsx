@@ -4,29 +4,39 @@
  * TODO: Delete this code and probably replace with Formik or something.
  */
 
-import LD from 'lodash';
-import * as React from 'react';
-import { Button, Form, Input, Message } from 'semantic-ui-react';
+import LD from "lodash";
+import * as React from "react";
+import { Button, Form, Input, Message } from "semantic-ui-react";
 
-interface BaseInputProps { label: string; name: string; style?: any; }
+interface BaseInputProps {
+  label: string;
+  name: string;
+  style?: any;
+}
 
 interface CoolTextInputProps extends BaseInputProps {
-  default: string; style?: any;
+  default: string;
+  style?: any;
   nonEmpty?: boolean;
 }
-export class PlaintextInput extends React.Component<CoolTextInputProps> { }
+export class PlaintextInput extends React.Component<CoolTextInputProps> {}
 
-interface CoolNumericProps extends BaseInputProps { default: number; min?: number; }
-export class NumericInput extends React.Component<CoolNumericProps> { }
+interface CoolNumericProps extends BaseInputProps {
+  default: number;
+  min?: number;
+}
+export class NumericInput extends React.Component<CoolNumericProps> {}
 
 interface CoolSubmitProps {
   onClick: (data: { [index: string]: any }) => void;
   children: React.ReactNode;
   disabled?: boolean;
 }
-export class Submit extends React.Component<CoolSubmitProps> { }
+export class Submit extends React.Component<CoolSubmitProps> {}
 
-interface CoolFormState { data: { [index: string]: { type: string; value: any; extra: any } }; }
+interface CoolFormState {
+  data: { [index: string]: { type: string; value: any; extra: any } };
+}
 
 export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormState> {
   constructor(props: { children: React.ReactNode }) {
@@ -38,7 +48,8 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
           {
             const props = input.props as CoolTextInputProps;
             data[props.name] = {
-              type: "text", value: props.default,
+              type: "text",
+              value: props.default,
               extra: { nonEmpty: props.nonEmpty },
             };
           }
@@ -47,7 +58,8 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
           {
             const props = input.props as CoolNumericProps;
             data[props.name] = {
-              type: "numeric", value: props.default,
+              type: "numeric",
+              value: props.default,
               extra: { min: props.min },
             };
           }
@@ -58,9 +70,10 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
   }
 
   walkChildren(
-    children: any, handleInput: (el: React.ReactElement<BaseInputProps>) => any,
-    handleSubmit: (el: React.ReactElement<CoolSubmitProps>) => any):
-    Array<React.ReactNode> {
+    children: any,
+    handleInput: (el: React.ReactElement<BaseInputProps>) => any,
+    handleSubmit: (el: React.ReactElement<CoolSubmitProps>) => any,
+  ): Array<React.ReactNode> {
     return React.Children.map(children, child => {
       if (typeof child === "object" && child.type) {
         switch (child.type) {
@@ -70,12 +83,14 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
           case Submit:
             return handleSubmit(child);
           default:
-            if (!(React.isValidElement(child) && (child.props as any).children)) { return child; }
-            return React.cloneElement(child as any,
-              {
-                children: this.walkChildren(
-                  (child.props as any).children, handleInput, handleSubmit),
-              });
+            if (!(React.isValidElement(child) && (child.props as any).children)) return child;
+            return React.cloneElement(child as any, {
+              children: this.walkChildren(
+                (child.props as any).children,
+                handleInput,
+                handleSubmit,
+              ),
+            });
         }
       }
     });
@@ -83,30 +98,40 @@ export class CoolForm extends React.Component<React.PropsWithChildren, CoolFormS
 
   render(): JSX.Element {
     const errors = this.getErrors();
-    return <Form error={true}>{this.walkChildren(this.props.children,
-      el => {
-        const error = errors[el.props.name];
-        return <Form.Field style={el.props.style} error={error !== undefined}>
-          <label>{el.props.label}</label>
-          <Input value={this.state.data[el.props.name]!.value}
-            style={el.props.style}
-            onChange={(_, d) => this.setState({
-              data: {
-                ...this.state.data, [el.props.name]: {
-                  ...this.state.data[el.props.name]!,
-                  value: d.value,
-                },
-              },
-            })
-            } />
-          {error ? <Message error={true}>{error}</Message> : null}
-        </Form.Field>;
-      },
-      submit => <Button disabled={submit.props.disabled || !this.validate()}
-        onClick={() => this.submit(submit.props.onClick)}>
-        {submit.props.children}
-      </Button>)}
-    </Form>;
+    return (
+      <Form error={true}>
+        {this.walkChildren(this.props.children, el => {
+          const error = errors[el.props.name];
+          return (
+            <Form.Field style={el.props.style} error={error !== undefined}>
+              <label>{el.props.label}</label>
+              <Input
+                value={this.state.data[el.props.name]!.value}
+                style={el.props.style}
+                onChange={(_, d) =>
+                  this.setState({
+                    data: {
+                      ...this.state.data,
+                      [el.props.name]: {
+                        ...this.state.data[el.props.name]!,
+                        value: d.value,
+                      },
+                    },
+                  })}
+              />
+              {error ? <Message error={true}>{error}</Message> : null}
+            </Form.Field>
+          );
+        }, submit => (
+          <Button
+            disabled={submit.props.disabled || !this.validate()}
+            onClick={() => this.submit(submit.props.onClick)}
+          >
+            {submit.props.children}
+          </Button>
+        ))}
+      </Form>
+    );
   }
 
   submit(onClick: (data: { [index: string]: any }) => void) {

@@ -3,8 +3,8 @@ import { createRoot, Root } from "react-dom/client";
 
 import { router } from "./Main";
 
-import { RPI_URL } from "./Actions";
 import { RouterProvider } from "react-router-dom";
+import { RPI_URL } from "./Actions";
 
 let root: Root | undefined;
 
@@ -14,10 +14,11 @@ async function PT_renderMain(id: string) {
     console.error("where's the root!");
     return;
   }
-  if (!root)
+  if (!root) {
     root = createRoot(el);
+  }
   if (!RPI_URL) {
-    return <h1 style={{color: "red"}}>DEPLOYMENT FAILED: VITE_RPI_URL is not set</h1>
+    return <h1 style={{ color: "red" }}>DEPLOYMENT FAILED: VITE_RPI_URL is not set</h1>;
   }
   root.render(<RouterProvider router={router} />);
 }
