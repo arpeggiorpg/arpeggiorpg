@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::{RefCell, Cell}, collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
 use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
@@ -6,9 +6,9 @@ use mtarp::types::{InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
 use worker::{
-  async_trait, console_error, console_log, console_warn, durable_object, js_sys, wasm_bindgen,
+  async_trait, console_error, console_log, durable_object, js_sys, wasm_bindgen,
   wasm_bindgen_futures, worker_sys, Env, ListOptions, Method, Request, Response, Result, State,
-  Storage, WebSocket, WebSocketPair,
+  WebSocket, WebSocketPair,
 };
 
 use crate::{anyhow_str, rust_error, wsrpi};
@@ -133,8 +133,8 @@ impl ArpeggioGame {
 
 pub struct GameStorage {
   state: Rc<State>,
-  current_snapshot_idx: RefCell<usize>,
-  next_log_idx: RefCell<usize>,
+  current_snapshot_idx: Cell<usize>,
+  next_log_idx: Cell<usize>,
   cached_game: Rc<RefCell<Game>>,
 }
 
@@ -164,8 +164,8 @@ impl GameStorage {
     };
     let game_storage = Self {
       state,
-      current_snapshot_idx: RefCell::new(0),
-      next_log_idx: RefCell::new(next_log_idx),
+      current_snapshot_idx: Cell::new(0),
+      next_log_idx: Cell::new(next_log_idx),
       cached_game: Rc::new(RefCell::new(game)),
     };
     Ok(game_storage)
@@ -222,13 +222,13 @@ impl GameStorage {
       let serialized_log = serde_json::to_string(&log)?;
       let key = format!(
         "log-{:09}-idx-{:09}",
-        self.current_snapshot_idx.borrow(),
-        self.next_log_idx.borrow(),
+        self.current_snapshot_idx.get(),
+        self.next_log_idx.get(),
       );
       console_log!("Storing log {key:?}");
       self.state.storage().put(&key, serialized_log).await.map_err(anyhow_str)?;
 
-      *self.next_log_idx.borrow_mut() += 1;
+      self.next_log_idx.set(self.next_log_idx.get() + 1);
     }
     *self.cached_game.borrow_mut() = changed_game.game;
 
@@ -248,7 +248,10 @@ impl GameStorage {
     let invitations = self.state.storage().get("invitations").await;
     let invitations: Vec<InvitationID> = match invitations {
       Ok(invitations) => invitations,
-      Err(e) => vec![],
+      Err(e) => {
+        console_error!("Error listing invitations: {e:?}");
+        vec![]
+      }
     };
     Ok(invitations)
   }
