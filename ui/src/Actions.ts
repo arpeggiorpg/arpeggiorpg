@@ -300,6 +300,7 @@ export function sendRequest<T>(request: T.RPIGameRequest, decoder: T.Decoder<T>)
 
 export async function sendPlayerCommand(cmd: T.PlayerCommand) {
   console.log("[sendPlayerCommand:JSON]", cmd);
+  const json = T.encodePlayerCommand(cmd);
   const result = await sendRequest(
     { t: "PlayerCommand", command: cmd },
     T.decodeRustResult(Z.array(T.decodeGameLog), Z.string()),

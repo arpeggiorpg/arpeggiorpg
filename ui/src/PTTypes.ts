@@ -165,7 +165,7 @@ export function folderPathToString(path: FolderPath): string {
 }
 
 export class Point3 implements ValueObject {
-  constructor(public x: number, public y: number, public z: number) {}
+  constructor(public x: number, public y: number, public z: number) { }
 
   equals(other: Point3): boolean {
     return this.x === other.x && this.y === other.y && this.z === other.z;
@@ -791,8 +791,9 @@ export function encodePlayerCommand(cmd: PlayerCommand): object | string {
 export function encodeRPIGameRequest(request: RPIGameRequest): object {
   console.log("hello?", request);
   if (request.t === "GMCommand") {
-    console.log("encoding GMCommand?", request, encodeGMCommand(request.command));
     return { ...request, command: encodeGMCommand(request.command) };
+  } else if (request.t === "PlayerCommand") {
+    return { ...request, command: encodePlayerCommand(request.command) };
   } else {
     return request;
   }
