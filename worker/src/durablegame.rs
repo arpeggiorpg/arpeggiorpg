@@ -131,6 +131,16 @@ impl ArpeggioGame {
   }
 }
 
+
+/// The state of the game.
+///
+/// The cool thing that Durable Objects give us is that we can keep the Game in memory, just loading
+/// it when the DO wakes up. Of course, during normal play the DO will go to sleep and wake up many
+/// times, but while it *is* awake we only need to save logs and update the in-memory game.
+///
+/// This is really the whole reason I wanted to use CF Durable Objects for Arpeggio. I don't need to
+/// worry about distributed caching or distributed event queues for notifications when a game object
+/// changes; everyone's connected to the same live game object.
 pub struct GameStorage {
   state: Rc<State>,
   current_snapshot_idx: Cell<usize>,
