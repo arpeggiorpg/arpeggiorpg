@@ -3,6 +3,7 @@ import * as React from "react";
 import { createBrowserRouter, Link, Outlet, useNavigate, useParams } from "react-router-dom";
 import * as Z from "zod";
 
+import { Modal } from "semantic-ui-react";
 import useSWR from "swr";
 import * as A from "./Actions";
 import { ptfetch } from "./Actions";
@@ -165,33 +166,46 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-function usePoll(mode: T.Role) {
+function Connector(props: { role: T.Role } & React.PropsWithChildren) {
   const { gameId } = useParams() as { gameId: string };
+  const [connectionCount, setConnectionCount] = React.useState(0);
 
   React.useEffect(() => {
-    // startPoll returns a cancellation function, which we return here from the effect so react will
+    // connect returns a cancellation function, which we return here from the effect so react will
     // call it when this component gets unmounted.
-    if (WS.WEBSOCKETS_ENABLED) {
-      return WS.connect(gameId, mode);
-    } else {
-      return A.startPoll(mode, gameId);
-    }
-  }, [gameId]);
+    return WS.connect(gameId, props.role);
+  }, [gameId, connectionCount]);
 
-  const status = M.useState((s) => s.fetchStatus);
-  return { gameId, status };
+  const status = M.useState((s) => s.socketStatus);
+  const reconnect = () => setConnectionCount(connectionCount + 1);
+
+  return (
+    <>
+      {status === "closed"
+        ? (
+          <Modal open={true}>
+            <Modal.Header>Connection is inactive</Modal.Header>
+            <Modal.Content>
+              Connection is inactive (most likely due to idle timeout; I'm just trying to avoid
+              running up a big server bill!)
+            </Modal.Content>
+            <Modal.Actions>
+              <button onClick={reconnect}>Reconnect</button>
+            </Modal.Actions>
+          </Modal>
+        )
+        : null}
+      {props.children}
+    </>
+  );
 }
 
 function GMGame() {
-  const { status } = usePoll("GM");
-
-  if (status === "Ready") {
-    return <GMMain />;
-  } else if (status === "Unfetched") {
-    return <div>Loading game...</div>;
-  } else if (status === "Error") {
-    return <div>Error loading game!</div>;
-  }
+  return (
+    <Connector role="GM">
+      <GMMain />
+    </Connector>
+  );
 }
 
 function AcceptInvitation() {
@@ -243,14 +257,13 @@ function AcceptInvitation() {
 }
 
 function PlayerGame() {
-  const { gameId, status } = usePoll("Player");
-
   let {
     data: games,
     error,
     isLoading,
   } = useSWR("/g/list", (k) => ptfetch(k, {}, T.decodeGameList));
-  console.log(isLoading, games, status);
+  let gameId = M.useState(s => s.gameId);
+  console.log("[PlayerGame]", { isLoading, games, gameId });
 
   const playerId = games?.games.find(
     ([profile, _meta]) => profile.game_id === gameId && profile.role === "Player",
@@ -258,12 +271,18 @@ function PlayerGame() {
   React.useEffect(() => {
     M.getState().setPlayerId(playerId);
   }, [playerId]);
-  if (isLoading || !games || status !== "Ready") {
+
+  if (isLoading || !games) {
     return <div>Loading...</div>;
   }
 
   if (!playerId) {
     return <div>Sorry, couldn't find a player for you</div>;
   }
-  return <PlayerGameView playerId={playerId} />;
+
+  return (
+    <Connector role="Player">
+      <PlayerGameView playerId={playerId} />
+    </Connector>
+  );
 }

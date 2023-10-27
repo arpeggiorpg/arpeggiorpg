@@ -12,6 +12,8 @@ export const WEBSOCKETS_ENABLED = typeof import.meta.env.VITE_WEBSOCKET_URL !== 
 // so really, so I think global variables are the best representation.
 const _requests: Record<string, (o: any) => void> = {};
 let webSocket: WebSocket | undefined;
+let timeout: NodeJS.Timeout;
+const IDLE_TIMEOUT = 10 * 60;
 
 export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>): Promise<T> {
   let id = crypto.randomUUID();
@@ -40,8 +42,12 @@ export function connect(gameId: string, mode: T.Role) {
       Z.object({ token: Z.string() }),
     );
     webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
+    if (window) { (window as any).arpeggioSocket = webSocket; }
+
 
     webSocket.addEventListener("open", async (event) => {
+      resetTimeout();
+      M.getState().setSocketStatus("open");
       console.log("connected to WebSocket. initiating GetGame");
       const game = await sendRequest({ t: "GMGetGame" }, T.decodeGame);
       console.log("got the game.", game);
@@ -49,8 +55,13 @@ export function connect(gameId: string, mode: T.Role) {
     });
 
     webSocket.addEventListener("message", (event) => {
+      resetTimeout();
       console.log("Message from server ", event);
       handleWSEvent(event);
+    });
+    webSocket.addEventListener("close", event => {
+      console.log("WebSocket is closed.");
+      M.getState().setSocketStatus("closed");
     });
   }
 
@@ -58,10 +69,20 @@ export function connect(gameId: string, mode: T.Role) {
 
   return () => {
     console.log("Cleaning up WebSocket");
+    M.getState().setSocketStatus("unconnected");
     const ws = webSocket;
     webSocket = undefined;
     ws?.close();
   };
+}
+
+function resetTimeout() {
+  clearTimeout(timeout);
+  timeout = setTimeout(() => {
+    console.log("Idle timeout, shutting down webSocket", webSocket);
+    webSocket?.close();
+    console.log("what's the state?", webSocket?.readyState);
+  }, IDLE_TIMEOUT * 1000);
 }
 
 function handleWSEvent(event: MessageEvent<string>) {

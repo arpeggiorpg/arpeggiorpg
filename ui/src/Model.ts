@@ -11,12 +11,17 @@ import * as T from "./PTTypes";
 export const ID_TOKEN_NAME = "arpeggio-token";
 
 export type FetchStatus = "Unfetched" | "Ready" | "Error";
+export type SocketStatus = "unconnected" | "open" | "closed";
 export interface AppState {
   userToken: string | undefined;
   game: T.Game;
   gameId: T.GameID | undefined;
   gameName: string | undefined;
   fetchStatus: FetchStatus;
+
+  socketStatus: SocketStatus;
+
+  setSocketStatus: (s: SocketStatus) => void;
 
   setUserToken: (s: string | undefined) => void;
 
@@ -55,6 +60,9 @@ const appSlice: Slice<AppState> = (set, get) => ({
   gameId: undefined,
   gameName: undefined,
   fetchStatus: "Unfetched",
+  socketStatus: "unconnected",
+
+  setSocketStatus: socketStatus => set(() => ({ socketStatus })),
 
   setUserToken: userToken => set(() => ({ userToken })),
   setFetchStatus: fetchStatus => set(() => ({ fetchStatus })),
