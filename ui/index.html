@@ -47,12 +47,22 @@
     }
 
     /* Work around https://github.com/Semantic-Org/Semantic-UI/issues/3070 */
-    .ui.inverted > .ui.modal > .close {
+    .ui.inverted>.ui.modal>.close {
       color: #000;
       top: 0px;
       right: 0px;
     }
   </style>
+
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <!-- <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(function (OneSignal) {
+      OneSignal.init({
+        appId: "f7ce62c9-356d-4886-90b1-d373715e397c",
+      });
+    });
+  </script> -->
 
 </head>
 
