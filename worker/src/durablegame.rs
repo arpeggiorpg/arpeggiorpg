@@ -13,6 +13,7 @@ use worker::{
 
 use crate::{anyhow_str, rust_error, wsrpi};
 
+
 #[durable_object]
 pub struct ArpeggioGame {
   state: Rc<State>,
@@ -21,9 +22,10 @@ pub struct ArpeggioGame {
   ws_tokens: HashMap<Uuid, WSUser>,
 }
 
-struct WSUser {
-  role: Role,
-  player_id: PlayerID,
+#[derive(Debug, Clone)]
+pub struct WSUser {
+  pub role: Role,
+  pub player_id: PlayerID,
 }
 
 pub type Sessions = Rc<RefCell<Vec<WebSocket>>>;
@@ -81,6 +83,10 @@ impl ArpeggioGame {
           console_log!("[worker] WEBSOCKET");
           let pair = WebSocketPair::new().map_err(anyhow_str)?;
           let server = pair.server;
+          // To avoid racking up DO bills, let's close the socket after a while in case someone
+          // leaves their browser on the page. This should NOT be necessary! We should be using
+          // Hibernatable Websockets!
+
           server.accept().map_err(anyhow_str)?;
 
           // We have *two* asynchronous tasks here:
@@ -93,11 +99,11 @@ impl ArpeggioGame {
             game_storage,
             server,
             self.sessions.clone(),
-            ws_user.role,
-            ws_user.player_id,
+            ws_user,
           );
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
+            console_log!("Okayyyy. I'm done with my taaaaask.");
           });
 
           Response::from_websocket(pair.client).map_err(anyhow_str)

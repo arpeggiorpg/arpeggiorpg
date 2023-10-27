@@ -802,6 +802,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 
 [[package]]
+name = "gloo-timers"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbb143cf96099802033e0d4f4963b19fd2e0b728bcf076cd9cf7f6634f092994"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "google-signin"
 version = "0.4.0"
 dependencies = [
@@ -2944,6 +2954,7 @@ dependencies = [
  "foldertree",
  "futures-util",
  "getrandom",
+ "gloo-timers",
  "google-signin",
  "mtarp",
  "percent-encoding",

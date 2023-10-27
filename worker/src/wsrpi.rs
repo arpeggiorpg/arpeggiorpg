@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use anyhow::{anyhow, Context};
 use futures_util::stream::StreamExt;
+use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
@@ -11,8 +12,10 @@ use mtarp::types::{InvitationID, RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
-  durablegame::{GameStorage, Sessions},
+  durablegame::{GameStorage, Sessions, WSUser},
 };
+
+const IDLE_TIMEOUT: u32 = 10 * 60;
 
 /// A representation of a request received from a websocket. It has an ID so we can send a response
 /// and the client can match them up.
@@ -26,45 +29,66 @@ pub struct GameSession {
   game_storage: Rc<GameStorage>,
   socket: WebSocket,
   sessions: Sessions,
-  role: Role,
-  player_id: PlayerID,
+  ws_user: WSUser,
+  timeout: RefCell<Timeout>,
 }
 
 impl GameSession {
   pub fn new(
-    game_storage: Rc<GameStorage>, socket: WebSocket, sessions: Sessions, role: Role,
-    player_id: PlayerID,
+    game_storage: Rc<GameStorage>, socket: WebSocket, sessions: Sessions, ws_user: WSUser,
   ) -> Self {
-    Self { game_storage, socket, sessions, role, player_id }
+    let timeout = mk_timeout(socket.clone(), ws_user.clone());
+    Self { game_storage, socket, sessions, ws_user, timeout: RefCell::new(timeout) }
   }
 
   pub async fn run(&self) {
-    if let Err(e) = self.ensure_player().await {
-      console_error!("Error ensuring player: {e:?}");
+    if let Err(e) = self.handle_stream().await {
+      console_error!("Error handling stream. {e:?}");
     }
-    // TODO: get rid of panics, they will kill the game for everyone!
-    let mut event_stream = self.socket.events().expect("could not open stream");
+  }
+
+  pub async fn handle_stream(&self) -> anyhow::Result<()> {
+    self.ensure_player().await?;
+    let mut event_stream = self.socket.events().map_err(anyhow_str)?;
 
     while let Some(event) = event_stream.next().await {
-      if let Err(e) = self.handle_event(event.expect("received error in websocket")).await {
-        console_error!("Error handling event. Disconnecting. {e:?}");
-        if let Err(e) = self.socket.close(Some(4000), Some(format!("{e:?}"))) {
-          console_error!("error disconnecting websocket? {e:?}");
+      let event = event.map_err(anyhow_str)?;
+      // every time we receive an event, we need to restart the timeout
+      self.reset_timeout();
+      match self.handle_event(event).await {
+        Ok(true) => {
+          console_log!("handle_event said we're shutting down. Stopping reading stream.");
+          return Ok(());
+        }
+        Ok(false) => {}
+        Err(e) => {
+          console_error!("Error handling event. Disconnecting. {e:?}");
+          if let Err(e) = self.socket.close(Some(4000), Some(format!("{e:?}"))) {
+            console_error!("error disconnecting websocket? {e:?}");
+          }
         }
       }
     }
+    Ok(())
+  }
+
+  fn reset_timeout(&self) {
+    let new_timeout = mk_timeout(self.socket.clone(), self.ws_user.clone());
+    let old_timeout = self.timeout.replace(new_timeout);
+    console_log!("Refreshing timeout for {:?}", self.ws_user);
+    old_timeout.cancel();
   }
 
   async fn ensure_player(&self) -> anyhow::Result<()> {
     // If this a new player, let's make sure they're registered in the Game state.
-    if self.role == Role::GM {
+    if self.ws_user.role == Role::GM {
       return Ok(());
     }
     let changed_game = {
       let game = self.game_storage.game();
-      if !game.players.contains_key(&self.player_id) {
+      if !game.players.contains_key(&self.ws_user.player_id) {
         let changed_game =
-          game.perform_gm_command(GMCommand::RegisterPlayer(self.player_id.clone()))?;
+          game.perform_gm_command(GMCommand::RegisterPlayer(self.ws_user.player_id.clone()))?;
         Some(changed_game)
       } else {
         None
@@ -76,7 +100,7 @@ impl GameSession {
     Ok(())
   }
 
-  pub async fn handle_event(&self, event: WebsocketEvent) -> anyhow::Result<()> {
+  pub async fn handle_event(&self, event: WebsocketEvent) -> anyhow::Result<bool> {
     match event {
       WebsocketEvent::Message(msg) => {
         if let Some(text) = msg.text() {
@@ -104,11 +128,13 @@ impl GameSession {
           }
         }
       }
-      WebsocketEvent::Close(_) => {
-        console_log!("[worker] Closed WebSocket");
+      WebsocketEvent::Close(ce) => {
+        console_log!("[worker] Closed WebSocket. {ce:?}");
+        self.socket.close(Some(1000), Some("closing as requested")).map_err(anyhow_str)?;
+        return Ok(true);
       }
     }
-    Ok(())
+    Ok(false)
   }
 
   async fn handle_request(&self, request: WSRequest) -> anyhow::Result<serde_json::Value> {
@@ -116,7 +142,7 @@ impl GameSession {
     // Arc<RefCell(?)<Game>>  in-memory in the durable object.
     let game = self.game_storage.game();
     use RPIGameRequest::*;
-    match (self.role, request.request) {
+    match (self.ws_user.role, request.request) {
       (_, GMGetGame) => {
         // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
         // gets information about the current scene. This is going to be a big change, though.
@@ -124,7 +150,7 @@ impl GameSession {
         Ok(serde_json::to_value(&rpi_game)?)
       }
       (Role::Player, PlayerCommand { command }) => {
-        let changed_game = game.perform_player_command(self.player_id.clone(), command);
+        let changed_game = game.perform_player_command(self.ws_user.player_id.clone(), command);
         self.change_game(changed_game).await
       }
       (Role::GM, GMCommand { command }) => {
@@ -183,12 +209,15 @@ impl GameSession {
 
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
-    // TODO: ignore poison
-    let sessions = self.sessions.borrow();
+    let mut sessions = self.sessions.borrow_mut();
     console_log!("Broadcasting a message to {:?} clients", sessions.len());
-    for socket in sessions.iter() {
-      socket.send_with_str(s.clone()).map_err(anyhow_str)?;
-    }
+    sessions.retain_mut(|socket| match socket.send_with_str(s.clone()) {
+      Ok(_) => true,
+      Err(e) => {
+        console_error!("Error sending to socket: {e:?}");
+        false
+      }
+    });
     Ok(())
   }
 
@@ -196,4 +225,13 @@ impl GameSession {
     let s = serde_json::to_string::<T>(value)?;
     Ok(self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))?)
   }
+}
+
+fn mk_timeout(socket: WebSocket, ws_user: WSUser) -> Timeout {
+  Timeout::new(IDLE_TIMEOUT * 1000, move || {
+    console_log!("Closing websocket due to idle timeout: user {ws_user:?}");
+    if let Err(e) = socket.close(Some(4000), Some("idle timeout")) {
+      console_error!("Error closing socket due to timeout? {e:?}");
+    }
+  })
 }
