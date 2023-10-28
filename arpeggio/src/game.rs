@@ -313,6 +313,10 @@ impl Game {
         self.change_with(GameLog::RemoveSceneVolumeCondition { scene_id, condition_id })
       }
 
+      // ** Classes & Abilities **
+      CreateClass { path, class } => self.change_with(GameLog::CreateClass { path, class }),
+      EditClass { class_id, class } => self.change_with(GameLog::EditClass { class_id, class }),
+
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
         self.change_with(GameLog::CreateCreature(path, creature))
@@ -838,6 +842,7 @@ impl Game {
         self.set_item_count(owner, item_id, count)?;
       }
 
+      // ** Scenes **
       CreateScene(ref path, ref rscene) => {
         let scene = rscene.clone();
         self.scenes.try_insert(scene).ok_or_else(|| GameError::SceneAlreadyExists(rscene.id))?;
@@ -946,6 +951,30 @@ impl Game {
           .mutate(&scene_id, move |s| s.scene_hotspots = scene_hotspots.clone())
           .ok_or_else(|| GameError::SceneNotFound(scene_id))?;
       }
+
+      // ** Classes & Abilities **
+      CreateClass { ref path, ref class } => {
+        let id = ClassID::gen();
+        let class = Class {
+          id,
+          name: class.name.clone(),
+          abilities: class.abilities.clone(),
+          conditions: class.conditions.clone(),
+          color: class.color.clone(),
+        };
+        self.classes.insert(class);
+        self.link_folder_item(&path, &FolderItemID::ClassID(id))?;
+      }
+      EditClass { class_id, ref class } => {
+        self.classes.mutate(&class_id, move |c| {
+          c.name = class.name.clone();
+          c.abilities = class.abilities.clone();
+          c.conditions = class.conditions.clone();
+          c.color = class.color.clone();
+        });
+      }
+
+      // ** Creatures **
       CreateCreature(ref path, ref rc) => {
         let c = rc.clone();
         self.creatures.try_insert(c).ok_or_else(|| GameError::CreatureAlreadyExists(rc.id()))?;

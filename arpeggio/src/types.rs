@@ -552,6 +552,10 @@ pub enum GMCommand {
   /// End the current creature's turn.
   EndTurn,
 
+  // ** Classes & Abilities **
+  CreateClass { path: FolderPath, class: ClassCreation },
+  EditClass { class_id: ClassID, class: ClassCreation },
+
   // ** Creature Manipulation **
   /// Create a new creature.
   CreateCreature(FolderPath, CreatureCreation),
@@ -770,6 +774,10 @@ pub enum GameLog {
 
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
+
+  CreateClass { path: FolderPath, class: ClassCreation },
+  EditClass { class_id: ClassID, class: ClassCreation },
+
   CreateCreature(FolderPath, Creature),
   EditCreatureDetails {
     creature_id: CreatureID,
@@ -1054,6 +1062,18 @@ impl DeriveKey for AbilityStatus {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct Class {
   pub id: ClassID,
+  pub name: String,
+  /// A list of abilities that this class can use.
+  pub abilities: Vec<AbilityID>,
+  /// A list of conditions which will be *permanently* applied to any creature in this class.
+  pub conditions: Vec<Condition>,
+  /// An SVG-compatible color specifier
+  pub color: Color,
+}
+
+/// A specification for creating or editing a class.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+pub struct ClassCreation {
   pub name: String,
   /// A list of abilities that this class can use.
   pub abilities: Vec<AbilityID>,
