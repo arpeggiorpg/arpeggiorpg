@@ -29,7 +29,7 @@ export function GMMain() {
         <Players.Invitations />
       </div>
     </CV.Tab>,
-    // <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
+    <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
   ];
 
   const combat = M.useState((s) => s.getCombat());

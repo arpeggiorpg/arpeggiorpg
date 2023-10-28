@@ -6,8 +6,7 @@ import * as M from "./Model";
 import * as T from "./PTTypes";
 
 export function History(): JSX.Element {
-  // const snapshots = M.useState(s => s.app.snapshots);
-  const logs: T.GameLog[] = [];
+  const logs = M.useState(s => s.recentLogs).map(l => l[1]);
   const creatures = M.useState((s) => s.getGame().creatures);
   console.log("[EXPENSIVE:History.render]");
   return (
