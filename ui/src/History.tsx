@@ -222,6 +222,22 @@ export function GameLog(props: {
   if ("LoadModule" in log) {
     return <div>Loaded module {log.LoadModule.name}</div>;
   }
+  if ("AddVolumeCondition" in log) {
+    return <div>Added volume condition</div>;
+  }
+  if ("CreateClass" in log) {
+    return <div>Created class</div>;
+  }
+  if ("EditClass" in log) {
+    return <div>Edited class</div>;
+  }
+  if ("CreateAbility" in log) {
+    return <div>Created ability</div>;
+  }
+  if ("EditAbility" in log) {
+    return <div>Edited ability</div>;
+  }
+  M.assertNever(log);
 }
 
 function combat_log(log: T.CombatLog) {

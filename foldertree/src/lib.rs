@@ -465,7 +465,6 @@ extern crate serde_json;
 mod test {
   use crate::{FolderPath, FolderTree, FolderTreeError};
   #[cfg(feature = "serde")]
-
   use std::{collections::HashSet, iter::FromIterator};
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }

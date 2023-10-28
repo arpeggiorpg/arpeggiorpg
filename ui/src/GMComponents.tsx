@@ -1378,14 +1378,28 @@ export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
 
 export function ClassEditor({ classId }: { classId: T.ClassID }) {
   const class_ = M.useState(s => s.getClass(classId));
+  const [classText, setClassText] = React.useState(JSON.stringify(class_, null, 2));
 
-  return <div>{JSON.stringify(class_)}</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <textarea
+        style={{ height: "200px" }}
+        onChange={e => setClassText(e.target.value)}
+        value={classText}
+      />
+      <button onClick={saveClass}>Save</button>
+    </div>
+  );
+
+  function saveClass() {
+    A.sendGMCommand({ EditClass: { class_id: classId, class: JSON.parse(classText) } });
+  }
 }
 
 export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
   const ability = M.useState(s => s.getAbility(abilityId));
 
-  return <div>{JSON.stringify(ability)}</div>;
+  return <div>{JSON.stringify(ability, null, 2)}</div>;
 }
 
 // export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {

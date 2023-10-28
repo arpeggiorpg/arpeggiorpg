@@ -4,6 +4,7 @@ import * as Z from "zod";
 import type {
   AABB,
   Ability,
+  AbilityCreation,
   AbilityID,
   AbilityStatus,
   Action,
@@ -12,6 +13,7 @@ import type {
   AttrID,
   ChangedGame,
   Class,
+  ClassCreation,
   ClassID,
   Combat,
   CombatLog,
@@ -67,6 +69,7 @@ import type {
 export {
   AABB,
   Ability,
+  AbilityCreation,
   AbilityID,
   AbilityStatus,
   Action,
@@ -75,6 +78,7 @@ export {
   AttrID,
   ChangedGame,
   Class,
+  ClassCreation,
   ClassID,
   Combat,
   CombatLog,
@@ -410,6 +414,13 @@ const decodeModuleSource: Decoder<ModuleSource> = Z.union([
   Z.literal("SavedGame"),
 ]);
 
+const decodeClassCreation: Decoder<ClassCreation> = Z.object({
+  name: Z.string(),
+  color: Z.string(),
+  abilities: Z.array(Z.string()),
+  conditions: Z.array(decodeCondition),
+});
+
 const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
   Z.object({ Damage: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
   Z.object({ Heal: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
@@ -566,6 +577,9 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
 
   Z.object({ SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3]) }),
   Z.object({ PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)]) }),
+
+  Z.object({ CreateClass: Z.object({ path: decodeFolderPath, class: decodeClassCreation }) }),
+  Z.object({ EditClass: Z.object({ class_id: Z.string(), class: decodeClassCreation }) }),
 
   Z.object({ CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData]) }),
   Z.object({
