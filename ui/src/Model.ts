@@ -90,7 +90,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
     let recentLogs = state.recentLogs;
     recentLogs = recentLogs.concat(logs);
     // only keep 100 logs around in-memory
-    recentLogs = recentLogs.slice(0, recentLogs.length - 100);
+    recentLogs = recentLogs.slice(recentLogs.length - 100);
     return {recentLogs};
   }),
 
