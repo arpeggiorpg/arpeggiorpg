@@ -316,6 +316,10 @@ impl Game {
       // ** Classes & Abilities **
       CreateClass { path, class } => self.change_with(GameLog::CreateClass { path, class }),
       EditClass { class_id, class } => self.change_with(GameLog::EditClass { class_id, class }),
+      CreateAbility { path, ability } => self.change_with(GameLog::CreateAbility { path, ability }),
+      EditAbility { ability_id, ability } => {
+        self.change_with(GameLog::EditAbility { ability_id, ability })
+      }
 
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
@@ -971,6 +975,26 @@ impl Game {
           c.abilities = class.abilities.clone();
           c.conditions = class.conditions.clone();
           c.color = class.color.clone();
+        });
+      }
+      CreateAbility { ref path, ref ability } => {
+        let id = AbilityID::gen();
+        let ability = Ability {
+          id,
+          name: ability.name.clone(),
+          cost: ability.cost,
+          action: ability.action.clone(),
+          usable_ooc: ability.usable_ooc
+        };
+        self.abilities.insert(ability);
+        self.link_folder_item(&path, &FolderItemID::AbilityID(id))?;
+      }
+      EditAbility { ability_id, ref ability } => {
+        self.abilities.mutate(&ability_id, move |a| {
+          a.name = ability.name.clone();
+          a.cost = ability.cost;
+          a.action = ability.action.clone();
+          a.usable_ooc = ability.usable_ooc;
         });
       }
 

@@ -555,6 +555,8 @@ pub enum GMCommand {
   // ** Classes & Abilities **
   CreateClass { path: FolderPath, class: ClassCreation },
   EditClass { class_id: ClassID, class: ClassCreation },
+  CreateAbility { path: FolderPath, ability: AbilityCreation },
+  EditAbility { ability_id: AbilityID, ability: AbilityCreation },
 
   // ** Creature Manipulation **
   /// Create a new creature.
@@ -775,8 +777,13 @@ pub enum GameLog {
   StartCombat(SceneID, Vec<(CreatureID, i16)>),
   StopCombat,
 
+  // ** Classes & Abilities **
   CreateClass { path: FolderPath, class: ClassCreation },
   EditClass { class_id: ClassID, class: ClassCreation },
+  CreateAbility { path: FolderPath, ability: AbilityCreation },
+  EditAbility { ability_id: AbilityID, ability: AbilityCreation },
+
+  // ** Creatures **
 
   CreateCreature(FolderPath, Creature),
   EditCreatureDetails {
@@ -905,6 +912,15 @@ pub enum PotentialTargets {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct Ability {
+  pub id: AbilityID,
+  pub name: String,
+  pub cost: Energy,
+  pub action: Action,
+  pub usable_ooc: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+pub struct AbilityCreation {
   pub id: AbilityID,
   pub name: String,
   pub cost: Energy,
