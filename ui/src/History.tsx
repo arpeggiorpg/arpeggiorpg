@@ -21,10 +21,12 @@ export function History(): JSX.Element {
           key={log_index.toString()}
         >
           <GameLog log={log} creatures={creatures} />
-          {/* We need to reimplement Rollback. This used to be implemented at the "App" level,
+          {
+            /* We need to reimplement Rollback. This used to be implemented at the "App" level,
             * which no longer exists. Rollback should not be a GameCommand, but rather an
             * RPIGameRequest variant.
-            */}
+            */
+          }
           {
             /* <button
             className="material-icons"
@@ -208,7 +210,7 @@ export function GameLog(props: {
   if ("CombatLog" in log) return combat_log(log.CombatLog);
   if ("StopCombat" in log) return <div>Combat stopped.</div>;
   if ("CreatureLog" in log) {
-    return creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
+    return <CreatureLog creatureId={log.CreatureLog[0]} log={log.CreatureLog[1]} />;
   }
   if ("Rollback" in log) {
     return (
@@ -240,12 +242,9 @@ function combat_log(log: T.CombatLog) {
   M.assertNever(log);
 }
 
-export function creature_log(
-  creatures: Map<T.CreatureID, T.Creature>,
-  creature_id: T.CreatureID,
-  log: T.CreatureLog,
-): JSX.Element {
-  const creature = creatures.get(creature_id);
+export function CreatureLog(props: { creatureId: T.CreatureID; log: T.CreatureLog }) {
+  const { creatureId, log } = props;
+  const creature = M.useState(s => s.getCreature(creatureId));
   const creature_name = <strong>{creature ? creature.name : "a creature"}</strong>;
   if ("Damage" in log) {
     return (

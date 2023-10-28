@@ -1180,21 +1180,6 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
   );
 }
 
-// interface PlayerChatProps {
-//   player_id: T.PlayerID;
-// }
-// export function PlayerChat(props: PlayerChatProps): JSX.Element {
-//   const { player_id } = props;
-//   const chatCmd = (message: string): T.GMCommand => ({
-//     ChatFromPlayer: [player_id, message],
-//   });
-//   return <GenericChat renderLog={get_chat_line} sendGMCommand={chatCmd} />;
-
-//   function get_chat_line(log: T.GameLog) {
-//     return renderChat(log);
-//   }
-// }
-
 export function ChatLog({ log }: { log: T.GameLog }) {
   if (typeof log !== "string") {
     if ("ChatFromPlayer" in log || "ChatFromGM" in log) {

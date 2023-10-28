@@ -276,13 +276,15 @@ function PlayerGame() {
     return <div>Loading...</div>;
   }
 
-  if (!playerId) {
-    return <div>Sorry, couldn't find a player for you</div>;
-  }
+  // if (!playerId) {
+  //   return <div>Sorry, couldn't find a player for you</div>;
+  // }
 
   return (
     <Connector role="Player">
-      <PlayerGameView playerId={playerId} />
+      {playerId
+        ? <PlayerGameView playerId={playerId} />
+        : <div>Loading. or maybe we can't find your player. Who knows?</div>}
     </Connector>
   );
 }

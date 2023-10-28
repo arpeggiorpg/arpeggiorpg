@@ -180,7 +180,6 @@ function creatureMenuActions(
 
 
 export function GMChat(): JSX.Element {
-  const creatures = M.useState(s => s.getGame().creatures);
   return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
 
   function get_chat_line(log: T.GameLog) {
@@ -189,7 +188,7 @@ export function GMChat(): JSX.Element {
         return <CV.ChatLog log={log} />
       }
       if ("CreatureLog" in log) {
-        return History.creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
+        return <History.CreatureLog creatureId={log.CreatureLog[0]} log={log.CreatureLog[1]} />;
       }
     }
   }

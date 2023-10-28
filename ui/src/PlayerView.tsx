@@ -4,6 +4,7 @@ import * as React from "react";
 import * as A from "./Actions";
 import * as CV from "./CommonView";
 import * as Grid from "./Grid";
+import * as History from "./History";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 
@@ -32,7 +33,7 @@ export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   return (
     <CV.TheLayout
       map={map}
-      bottom_right={<></>} // <CV.PlayerChat player_id={player.player_id} />}
+      bottom_right={<PlayerChat player_id={player.player_id} />}
       tabs={tabs}
       bar_width={325}
       menu_size="large"
@@ -133,5 +134,28 @@ function PlayerActionBar(props: { player: T.Player; combat: T.Combat | null }) {
     }
   } else {
     return <div>TODO: out-of-combat actions</div>;
+  }
+}
+
+interface PlayerChatProps {
+  player_id: T.PlayerID;
+}
+export function PlayerChat(props: PlayerChatProps): JSX.Element {
+  const { player_id } = props;
+  return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
+
+  function get_chat_line(log: T.GameLog) {
+    if (typeof log !== "string") {
+      if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
+        return <CV.ChatLog log={log} />;
+      }
+      if ("CreatureLog" in log) {
+        return <History.CreatureLog creatureId={log.CreatureLog[0]} log={log.CreatureLog[1]} />;
+      }
+    }
+  }
+
+  function sendChat(line: string) {
+    A.sendPlayerCommand({ ChatFromPlayer: line });
   }
 }
