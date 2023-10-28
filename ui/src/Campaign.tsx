@@ -573,6 +573,11 @@ function TreeObject({ path, object, selecting }: TreeObjectProps) {
       case "Item":
         M.getState().setSecondaryFocus({ t: "Item", item_id: object.id });
         return;
+      case "Class":
+        M.getState().setSecondaryFocus({t: "Class", class_id: object.id });
+        return;
+      case "Ability":
+        M.getState().setSecondaryFocus({t: "Ability", ability_id: object.id });
     }
   }
 

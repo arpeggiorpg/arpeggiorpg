@@ -73,7 +73,12 @@ function Secondary() {
       return <GM.CreatureFocus creatureId={focus2.creature_id} />;
     case "Item":
       return <GM.GMViewItem itemId={focus2.item_id} />;
+    case "Class":
+      return <div>Focusin' on a class! NYI!</div>;
+    case "Ability":
+      return <div>Focusin' on an Ability! NYI!</div>;
   }
+  M.assertNever(focus2);
 }
 
 export function GMMap() {

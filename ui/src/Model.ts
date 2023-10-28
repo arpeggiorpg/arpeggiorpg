@@ -373,8 +373,8 @@ export interface GridFocus {
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined }
-  | { t: "Class", path: T.FolderPath }
-  | { t: "Ability", path: T.FolderPath }
+  | { t: "Class", class_id: T.ClassID }
+  | { t: "Ability", ability_id: T.AbilityID }
   | { t: "Creature"; creature_id: T.CreatureID }
   | { t: "Item"; item_id: T.ItemID };
 
