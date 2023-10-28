@@ -1376,6 +1376,18 @@ export function CreatureFocus({ creatureId }: { creatureId: T.CreatureID }) {
   );
 }
 
+export function ClassEditor({ classId }: { classId: T.ClassID }) {
+  const class_ = M.useState(s => s.getClass(classId));
+
+  return <div>{JSON.stringify(class_)}</div>;
+}
+
+export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
+  const ability = M.useState(s => s.getAbility(abilityId));
+
+  return <div>{JSON.stringify(ability)}</div>;
+}
+
 // export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {
 //   const { path, onDone } = props;
 //   return <div>

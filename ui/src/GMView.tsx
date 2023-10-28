@@ -29,7 +29,9 @@ export function GMMain() {
         <Players.Invitations />
       </div>
     </CV.Tab>,
-    <CV.Tab key="History" name="History"><History.History /></CV.Tab>,
+    <CV.Tab key="History" name="History">
+      <History.History />
+    </CV.Tab>,
   ];
 
   const combat = M.useState((s) => s.getCombat());
@@ -74,9 +76,9 @@ function Secondary() {
     case "Item":
       return <GM.GMViewItem itemId={focus2.item_id} />;
     case "Class":
-      return <div>Focusin' on a class! NYI!</div>;
+      return <GM.ClassEditor classId={focus2.class_id} />;
     case "Ability":
-      return <div>Focusin' on an Ability! NYI!</div>;
+      return <GM.AbilityEditor abilityId={focus2.ability_id} />;
   }
   M.assertNever(focus2);
 }
@@ -135,7 +137,6 @@ function getSceneFromPath(
   console.error("Couldn't find scene with name", sceneName);
 }
 
-
 /** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
  */
 function mapCreatures(
@@ -174,15 +175,13 @@ function creatureMenuActions(
   return actions;
 }
 
-
-
 export function GMChat(): JSX.Element {
   return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
 
   function get_chat_line(log: T.GameLog) {
     if (typeof log !== "string") {
       if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
-        return <CV.ChatLog log={log} />
+        return <CV.ChatLog log={log} />;
       }
       if ("CreatureLog" in log) {
         return <History.CreatureLog creatureId={log.CreatureLog[0]} log={log.CreatureLog[1]} />;
@@ -191,6 +190,6 @@ export function GMChat(): JSX.Element {
   }
 
   function sendChat(line: string) {
-    A.sendGMCommand({ChatFromGM: line});
+    A.sendGMCommand({ ChatFromGM: line });
   }
 }
