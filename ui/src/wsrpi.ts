@@ -49,9 +49,13 @@ export function connect(gameId: string, mode: T.Role) {
       resetTimeout();
       M.getState().setSocketStatus("open");
       console.log("connected to WebSocket. initiating GetGame");
-      const game = await sendRequest({ t: "GMGetGame" }, T.decodeGame);
+      const { logs, game } = await sendRequest(
+        { t: "GMGetGame" },
+        Z.object({ logs: T.decodeGameLogs, game: T.decodeGame })
+      );
       console.log("got the game.", game);
       M.getState().refresh(game);
+      M.getState().setRecentLogs(logs);
     });
 
     webSocket.addEventListener("message", (event) => {
@@ -96,9 +100,11 @@ function handleWSEvent(event: MessageEvent<string>) {
     }
   } else {
     // Handle server-sent events
-    if ("t" in parsed && parsed["t"] === "refresh_game" && "game" in parsed) {
-      const game = T.decodeGame.parse(parsed["game"]);
+    if ("t" in parsed && parsed["t"] === "refresh_game") {
+      let decoder = Z.object({game: T.decodeGame, logs: T.decodeGameLogs});
+      let {game, logs} = decoder.parse(parsed);
       M.getState().refresh(game);
+      M.getState().addLogs(logs);
     } else {
       console.info("Got an unexpected message from the server:", parsed);
     }

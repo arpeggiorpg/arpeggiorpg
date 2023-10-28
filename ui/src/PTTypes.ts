@@ -165,7 +165,7 @@ export function folderPathToString(path: FolderPath): string {
 }
 
 export class Point3 implements ValueObject {
-  constructor(public x: number, public y: number, public z: number) { }
+  constructor(public x: number, public y: number, public z: number) {}
 
   equals(other: Point3): boolean {
     return this.x === other.x && this.y === other.y && this.z === other.z;
@@ -590,7 +590,11 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
       name: Z.string(),
       path: decodeFolderPath,
       source: decodeModuleSource,
-      module: Z.lazy(() => decodeGame),
+      // We can't use decodeGame for `module` because this isn't an "RPIGame", which is what
+      // decodeGame actually decodes. However, we also don't actually care about the game content;
+      // if we ever have a use-case we can implement a real decoder.
+      //
+      // module: Z.lazy(() => decodeGame),
     }),
   }),
 ]);
@@ -771,6 +775,10 @@ export const decodeGameWithMetadata: Decoder<GameWithMetadata> = Z.object({
   index: decodeGameIndex,
   metadata: decodeGameMetadata,
 });
+
+export const decodeGameLogs: Decoder<[GameIndex, GameLog][]> = Z.array(
+  Z.tuple([decodeGameIndex, decodeGameLog]),
+);
 
 export function encodePlayerCommand(cmd: PlayerCommand): object | string {
   if (typeof cmd === "string") return cmd;

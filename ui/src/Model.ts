@@ -17,9 +17,13 @@ export interface AppState {
   game: T.Game;
   gameId: T.GameID | undefined;
   gameName: string | undefined;
+  recentLogs: [T.GameIndex, T.GameLog][];
   fetchStatus: FetchStatus;
 
   socketStatus: SocketStatus;
+
+  setRecentLogs: (recentLogs: [T.GameIndex, T.GameLog][]) => void;
+  addLogs: (logs: [T.GameIndex, T.GameLog][]) => void;
 
   setSocketStatus: (s: SocketStatus) => void;
 
@@ -59,6 +63,7 @@ const appSlice: Slice<AppState> = (set, get) => ({
   game: initialGame,
   gameId: undefined,
   gameName: undefined,
+  recentLogs: [],
   fetchStatus: "Unfetched",
   socketStatus: "unconnected",
 
@@ -80,6 +85,14 @@ const appSlice: Slice<AppState> = (set, get) => ({
       }
       return { game, fetchStatus: "Ready" };
     }),
+  setRecentLogs: recentLogs => set(() => ({recentLogs})),
+  addLogs: logs => set(state => {
+    let recentLogs = state.recentLogs;
+    recentLogs = recentLogs.concat(logs);
+    // only keep 100 logs around in-memory
+    recentLogs = recentLogs.slice(0, recentLogs.length - 100);
+    return {recentLogs};
+  }),
 
   getItem: iid => get().getGame().items[iid],
   getItems: iids =>

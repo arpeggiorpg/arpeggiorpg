@@ -45,7 +45,7 @@ export function GMMain() {
       tabs={tabs}
       bottom_left={<Secondary />}
       top_left={scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>}
-      bottom_right={<></>} // <CV.GMChat />}
+      bottom_right={<GMChat />}
       bar_width={450}
       menu_size="tiny"
       bottom_bar={bottom_bar}
@@ -175,4 +175,26 @@ function creatureMenuActions(
     });
   }
   return actions;
+}
+
+
+
+export function GMChat(): JSX.Element {
+  const creatures = M.useState(s => s.getGame().creatures);
+  return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
+
+  function get_chat_line(log: T.GameLog) {
+    if (typeof log !== "string") {
+      if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
+        return <CV.ChatLog log={log} />
+      }
+      if ("CreatureLog" in log) {
+        return History.creature_log(creatures, log.CreatureLog[0], log.CreatureLog[1]);
+      }
+    }
+  }
+
+  function sendChat(line: string) {
+    A.sendGMCommand({ChatFromGM: line});
+  }
 }
