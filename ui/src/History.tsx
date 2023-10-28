@@ -21,15 +21,20 @@ export function History(): JSX.Element {
           key={log_index.toString()}
         >
           <GameLog log={log} creatures={creatures} />
-          <button
+          {/* We need to reimplement Rollback. This used to be implemented at the "App" level,
+            * which no longer exists. Rollback should not be a GameCommand, but rather an
+            * RPIGameRequest variant.
+            */}
+          {
+            /* <button
             className="material-icons"
             onClick={
-              () => console.error("NYI")
-              // A.sendGMCommand({ Rollback: [log_index] })
+              A.sendGMCommand({ Rollback: [log_index] })
             }
           >
             history
-          </button>
+          </button> */
+          }
         </div>
       ))}
     </div>
