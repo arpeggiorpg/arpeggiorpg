@@ -114,7 +114,7 @@ impl<T> FolderTree<T> {
   /// Remove a folder node. The folder must not have any children. The node data for the folder
   /// will be returned.
   pub fn remove(&mut self, path: &FolderPath) -> Result<T, FolderTreeError> {
-    if self.get_children(path)?.is_empty() {
+    if !self.get_children(path)?.is_empty() {
       return Err(FolderTreeError::FolderNotEmpty(path.clone()));
     }
     match path.up() {
@@ -465,7 +465,7 @@ extern crate serde_json;
 mod test {
   use crate::{FolderPath, FolderTree, FolderTreeError};
   #[cfg(feature = "serde")]
-  
+
   use std::{collections::HashSet, iter::FromIterator};
 
   fn fpath(s: &str) -> FolderPath { s.parse().expect("Couldn't parse string as FolderPath") }
