@@ -1,4 +1,3 @@
-import { Map } from "immutable";
 import * as React from "react";
 
 import * as A from "./Actions";

@@ -109,7 +109,7 @@ function getSceneFromPath(
   }
   console.log("[getSceneFromPath]", path);
   let sceneName = path.at(-1);
-  let folder = getFolder(state.game.campaign, path.slice(0, -1));
+  let folder = M.getFolder(state.game.campaign, path.slice(0, -1));
   if (!folder) {
     console.error("Couldn't find folder", path.slice(0, -1));
     return;
@@ -130,14 +130,6 @@ function getSceneFromPath(
   console.error("Couldn't find scene with name", sceneName);
 }
 
-function getFolder(tree: T.Folder, path: T.FolderPath): T.Folder | undefined {
-  for (const seg of path) {
-    let child = tree.children.get(seg);
-    if (!child) return;
-    tree = child;
-  }
-  return tree;
-}
 
 /** Create `MapCreature`s for all creatures in a scene, and annotate them with GM-specific actions.
  */

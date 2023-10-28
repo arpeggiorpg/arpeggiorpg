@@ -373,6 +373,8 @@ export interface GridFocus {
 
 export type SecondaryFocus =
   | { t: "Note"; path: T.FolderPath; name: string | undefined }
+  | { t: "Class", path: T.FolderPath }
+  | { t: "Ability", path: T.FolderPath }
   | { t: "Creature"; creature_id: T.CreatureID }
   | { t: "Item"; item_id: T.ItemID };
 
@@ -428,4 +430,15 @@ export function hasAtLeast<T extends readonly any[], L extends number>(
 // this is a workaround for https://stackoverflow.com/questions/60834196/union-types-typescript-complains-function-lacks-ending-return-statement-and-re
 export function assertNever(x: never): never {
   throw new Error("Unexpected object: " + x);
+}
+
+
+
+export function getFolder(tree: T.Folder, path: T.FolderPath): T.Folder | undefined {
+  for (const seg of path) {
+    let child = tree.children.get(seg);
+    if (!child) return;
+    tree = child;
+  }
+  return tree;
 }
