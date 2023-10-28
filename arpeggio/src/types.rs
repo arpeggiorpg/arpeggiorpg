@@ -921,7 +921,6 @@ pub struct Ability {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 pub struct AbilityCreation {
-  pub id: AbilityID,
   pub name: String,
   pub cost: Energy,
   pub action: Action,

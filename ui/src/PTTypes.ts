@@ -414,12 +414,136 @@ const decodeModuleSource: Decoder<ModuleSource> = Z.union([
   Z.literal("SavedGame"),
 ]);
 
+const decodePlayer: Decoder<Player> = Z.object({
+  player_id: Z.string(),
+  scene: Z.string().nullable(),
+  creatures: Z.array(Z.string()),
+});
+
+const decodeClass: Decoder<Class> = Z.object({
+  id: Z.string(),
+  name: Z.string(),
+  color: Z.string(),
+  abilities: Z.array(Z.string()),
+  conditions: Z.array(decodeCondition),
+});
+
 const decodeClassCreation: Decoder<ClassCreation> = Z.object({
   name: Z.string(),
   color: Z.string(),
   abilities: Z.array(Z.string()),
   conditions: Z.array(decodeCondition),
 });
+
+export interface NonEmpty {
+  cursor: number;
+  data: Array<[CreatureID, number]>;
+}
+function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
+  return Z.object({
+    cursor: Z.number(),
+    data: Z.array(valueDecoder),
+  });
+}
+
+const decodeCombat: Decoder<Combat> = Z.object({
+  scene: Z.string(),
+  creatures: decodeNonEmpty(Z.tuple([Z.string(), Z.number()])),
+  movement_used: Z.number(),
+});
+
+const decodeFolderNode: Decoder<FolderNode> = Z.object({
+  scenes: Z.array(Z.string()),
+  creatures: Z.array(Z.string()),
+  items: Z.array(Z.string()),
+  notes: Z.record(decodeNote),
+  abilities: Z.array(Z.string()),
+  classes: Z.array(Z.string()),
+});
+
+const decodeFolder: Decoder<Folder> = Z.object({
+  data: decodeFolderNode,
+  children: Z.record(Z.lazy(() => decodeFolder)).transform<Folder["children"]>(Map),
+});
+
+const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
+  Z.literal("Actor"),
+  Z.literal("Melee"),
+  Z.object({ Range: Z.number() }),
+  Z.object({
+    SomeCreaturesInVolumeInRange: Z.object({
+      volume: decodeVolume,
+      maximum: Z.number(),
+      range: Z.number(),
+    }),
+  }),
+  Z.object({
+    AllCreaturesInVolumeInRange: Z.object({
+      volume: decodeVolume,
+      range: Z.number(),
+    }),
+  }),
+  Z.object({ LineFromActor: Z.object({ distance: Z.number() }) }),
+]);
+
+export const decodeSceneTarget: Decoder<SceneTarget> =
+  // Z.union([
+  Z.object({ RangedVolume: Z.object({ volume: decodeVolume, range: Z.number() }) });
+// ]);
+
+const decodeCreatureEffect: Decoder<CreatureEffect> = Z.union([
+  Z.object({ ApplyCondition: Z.tuple([decodeDuration, decodeCondition]) }),
+  Z.object({ Heal: decodeDice }),
+  Z.object({ Damage: decodeDice }),
+  // GenerateEnergy should be dice, not number...
+  Z.object({ GenerateEnergy: Z.number() }),
+  Z.object({ MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect)) }),
+]);
+const decodeSceneEffect: Decoder<SceneEffect> = // Z.union([
+  Z.object({
+    CreateVolumeCondition: Z.object({ duration: decodeDuration, condition: decodeCondition }),
+  });
+// ]);
+
+export const decodeAction: Decoder<Action> = Z.union([
+  Z.object({ Creature: Z.object({ effect: decodeCreatureEffect, target: decodeCreatureTarget }) }),
+  Z.object({ SceneVolume: Z.object({ effect: decodeSceneEffect, target: decodeSceneTarget }) }),
+]);
+
+const decodeAbility: Decoder<Ability> = Z.object({
+  name: Z.string(),
+  id: Z.string(),
+  action: decodeAction,
+  cost: Z.number(),
+  usable_ooc: Z.boolean(),
+});
+
+const decodeAbilityCreation: Decoder<AbilityCreation> = Z.object({
+  name: Z.string(),
+  action: decodeAction,
+  cost: Z.number(),
+  usable_ooc: Z.boolean(),
+});
+
+const decodeTileSystem: Decoder<TileSystem> = Z.union([
+  Z.literal("Realistic"),
+  Z.literal("DnD"),
+]);
+
+export const decodeGame: Decoder<Game> = Z.object({
+  current_combat: decodeCombat.nullable(),
+  creatures: Z.record(decodeDynamicCreature).transform<Game["creatures"]>(Map),
+  classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
+  items: Z.record(decodeItem),
+  scenes: Z.record(decodeScene).transform<Game["scenes"]>(Map),
+  abilities: Z.record(decodeAbility),
+  campaign: decodeFolder,
+  players: Z.record(decodePlayer).transform<Game["players"]>(Map),
+  tile_system: decodeTileSystem,
+  active_scene: Z.string().nullable(),
+});
+
+
 
 const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
   Z.object({ Damage: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
@@ -581,6 +705,9 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
   Z.object({ CreateClass: Z.object({ path: decodeFolderPath, class: decodeClassCreation }) }),
   Z.object({ EditClass: Z.object({ class_id: Z.string(), class: decodeClassCreation }) }),
 
+  Z.object({ CreateAbility: Z.object({ path: decodeFolderPath, ability: decodeAbilityCreation }) }),
+  Z.object({ EditAbility: Z.object({ ability_id: Z.string(), ability: decodeAbilityCreation }) }),
+
   Z.object({ CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData]) }),
   Z.object({
     EditCreatureDetails: Z.object({ creature_id: Z.string(), details: decodeCreatureCreation }),
@@ -614,121 +741,6 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
 ]);
 
 if (typeof window !== "undefined") (window as any).decodeGameLog = decodeGameLog;
-
-const decodePlayer: Decoder<Player> = Z.object({
-  player_id: Z.string(),
-  scene: Z.string().nullable(),
-  creatures: Z.array(Z.string()),
-});
-
-const decodeClass: Decoder<Class> = Z.object({
-  id: Z.string(),
-  name: Z.string(),
-  color: Z.string(),
-  abilities: Z.array(Z.string()),
-  conditions: Z.array(decodeCondition),
-});
-
-export interface NonEmpty {
-  cursor: number;
-  data: Array<[CreatureID, number]>;
-}
-function decodeNonEmpty<T>(valueDecoder: Decoder<T>): Decoder<{ cursor: number; data: Array<T> }> {
-  return Z.object({
-    cursor: Z.number(),
-    data: Z.array(valueDecoder),
-  });
-}
-
-const decodeCombat: Decoder<Combat> = Z.object({
-  scene: Z.string(),
-  creatures: decodeNonEmpty(Z.tuple([Z.string(), Z.number()])),
-  movement_used: Z.number(),
-});
-
-const decodeFolderNode: Decoder<FolderNode> = Z.object({
-  scenes: Z.array(Z.string()),
-  creatures: Z.array(Z.string()),
-  items: Z.array(Z.string()),
-  notes: Z.record(decodeNote),
-  abilities: Z.array(Z.string()),
-  classes: Z.array(Z.string()),
-});
-
-const decodeFolder: Decoder<Folder> = Z.object({
-  data: decodeFolderNode,
-  children: Z.record(Z.lazy(() => decodeFolder)).transform<Folder["children"]>(Map),
-});
-
-const decodeCreatureTarget: Decoder<CreatureTarget> = Z.union([
-  Z.literal("Actor"),
-  Z.literal("Melee"),
-  Z.object({ Range: Z.number() }),
-  Z.object({
-    SomeCreaturesInVolumeInRange: Z.object({
-      volume: decodeVolume,
-      maximum: Z.number(),
-      range: Z.number(),
-    }),
-  }),
-  Z.object({
-    AllCreaturesInVolumeInRange: Z.object({
-      volume: decodeVolume,
-      range: Z.number(),
-    }),
-  }),
-  Z.object({ LineFromActor: Z.object({ distance: Z.number() }) }),
-]);
-
-export const decodeSceneTarget: Decoder<SceneTarget> =
-  // Z.union([
-  Z.object({ RangedVolume: Z.object({ volume: decodeVolume, range: Z.number() }) });
-// ]);
-
-const decodeCreatureEffect: Decoder<CreatureEffect> = Z.union([
-  Z.object({ ApplyCondition: Z.tuple([decodeDuration, decodeCondition]) }),
-  Z.object({ Heal: decodeDice }),
-  Z.object({ Damage: decodeDice }),
-  // GenerateEnergy should be dice, not number...
-  Z.object({ GenerateEnergy: Z.number() }),
-  Z.object({ MultiEffect: Z.array(Z.lazy(() => decodeCreatureEffect)) }),
-]);
-const decodeSceneEffect: Decoder<SceneEffect> = // Z.union([
-  Z.object({
-    CreateVolumeCondition: Z.object({ duration: decodeDuration, condition: decodeCondition }),
-  });
-// ]);
-
-export const decodeAction: Decoder<Action> = Z.union([
-  Z.object({ Creature: Z.object({ effect: decodeCreatureEffect, target: decodeCreatureTarget }) }),
-  Z.object({ SceneVolume: Z.object({ effect: decodeSceneEffect, target: decodeSceneTarget }) }),
-]);
-
-const decodeAbility: Decoder<Ability> = Z.object({
-  name: Z.string(),
-  id: Z.string(),
-  action: decodeAction,
-  cost: Z.number(),
-  usable_ooc: Z.boolean(),
-});
-
-const decodeTileSystem: Decoder<TileSystem> = Z.union([
-  Z.literal("Realistic"),
-  Z.literal("DnD"),
-]);
-
-export const decodeGame: Decoder<Game> = Z.object({
-  current_combat: decodeCombat.nullable(),
-  creatures: Z.record(decodeDynamicCreature).transform<Game["creatures"]>(Map),
-  classes: Z.record(decodeClass).transform<Game["classes"]>(Map),
-  items: Z.record(decodeItem),
-  scenes: Z.record(decodeScene).transform<Game["scenes"]>(Map),
-  abilities: Z.record(decodeAbility),
-  campaign: decodeFolder,
-  players: Z.record(decodePlayer).transform<Game["players"]>(Map),
-  tile_system: decodeTileSystem,
-  active_scene: Z.string().nullable(),
-});
 
 export const decodeChangedGame: Decoder<ChangedGame> = Z.object({
   game: decodeGame,

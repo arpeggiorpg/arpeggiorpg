@@ -1398,8 +1398,22 @@ export function ClassEditor({ classId }: { classId: T.ClassID }) {
 
 export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
   const ability = M.useState(s => s.getAbility(abilityId));
+  const [abilityText, setAbilityText] = React.useState(JSON.stringify(ability, null, 2));
 
-  return <div>{JSON.stringify(ability, null, 2)}</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <textarea
+        style={{ height: "200px" }}
+        onChange={e => setAbilityText(e.target.value)}
+        value={abilityText}
+      />
+      <button onClick={saveAbility}>Save</button>
+    </div>
+  );
+
+  function saveAbility() {
+    A.sendGMCommand({ EditAbility: { ability_id: abilityId, ability: JSON.parse(abilityText) } });
+  }
 }
 
 // export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {

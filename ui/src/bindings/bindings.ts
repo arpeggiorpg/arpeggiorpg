@@ -35,7 +35,7 @@ export interface AABB { x: number, y: number, z: number, }
 
 export interface Ability { id: AbilityID, name: string, cost: Energy, action: Action, usable_ooc: boolean, }
 
-export interface AbilityCreation { id: AbilityID, name: string, cost: Energy, action: Action, usable_ooc: boolean, }
+export interface AbilityCreation { name: string, cost: Energy, action: Action, usable_ooc: boolean, }
 
 export type AbilityID = string;
 
