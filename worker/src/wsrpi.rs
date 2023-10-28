@@ -5,10 +5,10 @@ use futures_util::stream::StreamExt;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use worker::{console_error, console_log, ListOptions, State, WebSocket, WebsocketEvent};
+use worker::{console_error, console_log, WebSocket, WebsocketEvent};
 
-use arpeggio::types::{ChangedGame, GMCommand, Game, GameError, PlayerID, RPIGame};
-use mtarp::types::{InvitationID, RPIGameRequest, Role};
+use arpeggio::types::{ChangedGame, GMCommand, GameError, RPIGame};
+use mtarp::types::{RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
@@ -146,8 +146,12 @@ impl GameSession {
       (_, GMGetGame) => {
         // RADIX: TODO: we need separate GMGetGame and PlayerGetGame commands, where the player only
         // gets information about the current scene. This is going to be a big change, though.
+
+        // RADIX TODO! Include the last 100 GameLogs here, keyed by GameIndexes. I guess this means
+        // we should probably store the last 100 GameLogs in GameStorage, probably in a VecDeque.
         let rpi_game = RPIGame(&game);
-        Ok(serde_json::to_value(&rpi_game)?)
+        let json = json!({"game": rpi_game, "logs": self.game_storage.recent_logs()});
+        Ok(serde_json::to_value(json)?)
       }
       (Role::Player, PlayerCommand { command }) => {
         let changed_game = game.perform_player_command(self.ws_user.player_id.clone(), command);
@@ -197,9 +201,9 @@ impl GameSession {
     let changed_game = changed_game.map_err(|e| format!("{e:?}"));
     let result = match changed_game {
       Ok(changed_game) => {
-        self.game_storage.store_game(changed_game.clone()).await?;
+        let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
         let rpi_game = RPIGame(&changed_game.game);
-        self.broadcast(&json!({"t": "refresh_game", "game": rpi_game}))?;
+        self.broadcast(&json!({"t": "refresh_game", "game": rpi_game, "logs": logs_with_indices}))?;
         Ok(changed_game.logs)
       }
       Err(e) => Err(format!("{e:?}")),

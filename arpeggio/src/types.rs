@@ -629,6 +629,7 @@ pub enum GameLog {
   LoadModule {
     name: String,
     source: ModuleSource,
+    #[ts(skip)]
     module: Game,
     path: FolderPath,
   },

@@ -1,8 +1,12 @@
-use std::{cell::{RefCell, Cell}, collections::HashMap, rc::Rc};
+use std::{
+  cell::{Cell, RefCell},
+  collections::{HashMap, VecDeque},
+  rc::Rc,
+};
 
 use anyhow::{anyhow, Context};
 use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
-use mtarp::types::{InvitationID, Role};
+use mtarp::types::{GameIndex, InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
 use worker::{
@@ -12,7 +16,6 @@ use worker::{
 };
 
 use crate::{anyhow_str, rust_error, wsrpi};
-
 
 #[durable_object]
 pub struct ArpeggioGame {
@@ -95,12 +98,8 @@ impl ArpeggioGame {
           // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
           self.sessions.borrow_mut().push(server.clone());
-          let session = wsrpi::GameSession::new(
-            game_storage,
-            server,
-            self.sessions.clone(),
-            ws_user,
-          );
+          let session =
+            wsrpi::GameSession::new(game_storage, server, self.sessions.clone(), ws_user);
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
             console_log!("Okayyyy. I'm done with my taaaaask.");
@@ -137,7 +136,7 @@ impl ArpeggioGame {
   }
 }
 
-
+type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;
 /// The state of the game.
 ///
 /// The cool thing that Durable Objects give us is that we can keep the Game in memory, just loading
@@ -152,7 +151,11 @@ pub struct GameStorage {
   current_snapshot_idx: Cell<usize>,
   next_log_idx: Cell<usize>,
   cached_game: Rc<RefCell<Game>>,
+  recent_logs: Rc<RefCell<RecentGameLogs>>,
 }
+
+
+const RECENT_LOGS_SIZE: usize = 100;
 
 /// ## Storage in Durable Objects
 /// DO gives us a KV store, where the size of values is pretty significantly limited (128kB). It
@@ -160,36 +163,36 @@ pub struct GameStorage {
 /// storage API for Durable Objects within a few months, so I am not going to bother trying to make
 /// this storage system too robust for now; it's far too onerous.
 impl GameStorage {
-
-  pub fn game(&self) -> Game {
-    self.cached_game.borrow().clone()
-  }
+  pub fn game(&self) -> Game { self.cached_game.borrow().clone() }
+  pub fn recent_logs(&self) -> RecentGameLogs { self.recent_logs.borrow().clone() }
 
   async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
 
-    let (game, next_log_idx) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
+    let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
       Ok(game_str) => {
         let game = serde_json::from_str(&game_str)?;
         Self::load_logs(state.clone(), game).await?
       }
       Err(e) => {
         console_error!("ERROR: Loading game failed: {e:?}");
-        (Default::default(), 0)
+        (Default::default(), VecDeque::new())
       }
     };
+    let next_log_idx = recent_logs.iter().last().map(|l| l.0.log_idx + 1).unwrap_or(0);
     let game_storage = Self {
       state,
       current_snapshot_idx: Cell::new(0),
       next_log_idx: Cell::new(next_log_idx),
       cached_game: Rc::new(RefCell::new(game)),
+      recent_logs: Rc::new(RefCell::new(recent_logs)),
     };
     Ok(game_storage)
   }
 
   /// log keys are like "log-{snapshot_idx}-idx-{log_idx}"
 
-  async fn load_logs(state: Rc<State>, mut game: Game) -> anyhow::Result<(Game, usize)> {
+  async fn load_logs(state: Rc<State>, mut game: Game) -> anyhow::Result<(Game, RecentGameLogs)> {
     // Here's another super annoying deficiency of the DO "list" API: it doesn't return an iterator,
     // but the entire result set all at once as a javascript Map! So, we have to manually do
     // batching to avoid loading too much stuff into memory at once.
@@ -197,11 +200,11 @@ impl GameStorage {
     let storage = state.storage();
     let list_options = ListOptions::new().prefix("log-");
     let items = storage.list_with_options(list_options).await.map_err(anyhow_str)?;
+    let mut recent_logs = VecDeque::new();
     if items.size() == 0 {
-      return Ok((game, 0));
+      return Ok((game, recent_logs));
     }
     console_log!("Loading Logs: Found {} items", items.size());
-    let mut last_log_idx = 0;
     for key in items.keys() {
       let key = key.map_err(anyhow_str)?;
       let value = items.get(&key);
@@ -213,18 +216,24 @@ impl GameStorage {
           anyhow!("Failed parsing GameLog as JSON:\ncontent: {value:?}\nerror: {e:?}")
         })?;
         game = game.apply_log(&log)?;
-        last_log_idx = log_idx_str.parse()?;
+        let log_idx = log_idx_str.parse()?;
+        if recent_logs.len() >= RECENT_LOGS_SIZE {
+          recent_logs.pop_front();
+        }
+        recent_logs.push_back((GameIndex { game_idx: 0, log_idx }, log));
       } else {
         console_log!("Don't know what this log is: {key:?}");
       }
     }
 
-    Ok((game, last_log_idx + 1))
+    Ok((game, recent_logs))
   }
 
   /// Upate Game storage with changes from a changed_game. Updates the locally cached Game as well
   /// as writing new logs to storage.
-  pub async fn store_game(&self, changed_game: ChangedGame) -> anyhow::Result<()> {
+  pub async fn store_game(
+    &self, changed_game: ChangedGame,
+  ) -> anyhow::Result<Vec<(GameIndex, GameLog)>> {
     // NOTE: Durable Objects support "write coalescing", where you can run multiple PUT operations
     // without awaiting and they will be merged into one "transaction". Here's the thing: I'm not
     // sure this works with the Rust bindings. But we should try something like that. There is also
@@ -234,21 +243,24 @@ impl GameStorage {
     // we could probably use something more compact than JSON...
 
     // TODO: We could occasionally produce a new snapshot... or just wait for SQLite
+    let mut logs_with_indices = vec![];
     for log in changed_game.logs {
       let serialized_log = serde_json::to_string(&log)?;
-      let key = format!(
-        "log-{:09}-idx-{:09}",
-        self.current_snapshot_idx.get(),
-        self.next_log_idx.get(),
-      );
+      let key =
+        format!("log-{:09}-idx-{:09}", self.current_snapshot_idx.get(), self.next_log_idx.get());
       console_log!("Storing log {key:?}");
       self.state.storage().put(&key, serialized_log).await.map_err(anyhow_str)?;
+      logs_with_indices.push((GameIndex { game_idx: 0, log_idx: self.next_log_idx.get() }, log));
 
       self.next_log_idx.set(self.next_log_idx.get() + 1);
     }
     *self.cached_game.borrow_mut() = changed_game.game;
+    let mut recent_logs = self.recent_logs.borrow_mut();
+    recent_logs.extend(logs_with_indices.iter().cloned());
+    let drain_to = recent_logs.len().saturating_sub(RECENT_LOGS_SIZE);
+    recent_logs.drain(0..drain_to);
 
-    Ok(())
+    Ok(logs_with_indices)
   }
 
   pub async fn create_invitation(&self) -> anyhow::Result<InvitationID> {
