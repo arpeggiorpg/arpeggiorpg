@@ -124,7 +124,7 @@ impl GameSession {
               // This is a little involved because we try to send the request ID back with the error
               // response, so we have to retry parsing it as a Value.
               let error_response =
-                json!({"error": format!("Couldn't parse as a WSRequest: {e:?}")});
+                json!({"error": format!("Couldn't parse as a WSRequest: {e}")});
               let mut error_response = error_response.as_object().unwrap().clone();
               if let Ok(value) =
                 serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text)
@@ -134,6 +134,7 @@ impl GameSession {
                   value.get("id").unwrap_or(&serde_json::Value::Null).clone(),
                 );
               }
+              console_error!("{error_response:?}");
               self.send(&error_response)?;
             }
           }

@@ -543,8 +543,6 @@ export const decodeGame: Decoder<Game> = Z.object({
   active_scene: Z.string().nullable(),
 });
 
-
-
 const decodeCreatureLog: Decoder<CreatureLog> = Z.union([
   Z.object({ Damage: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
   Z.object({ Heal: Z.object({ hp: Z.number(), rolls: Z.array(Z.number()) }) }),
@@ -864,6 +862,13 @@ export function encodeGMCommand(cmd: GMCommand): object | string {
       DeleteFolderItem: [encodeFolderPath(cmd.DeleteFolderItem[0]), cmd.DeleteFolderItem[1]],
     };
   }
+  if ("CreateClass" in cmd) {
+    return { CreateClass: { ...cmd.CreateClass, path: encodeFolderPath(cmd.CreateClass.path) } };
+  }
+  if ("CreateAbility" in cmd) {
+    return { CreateAbility: { ...cmd.CreateAbility, path: encodeFolderPath(cmd.CreateAbility.path) } };
+  }
+
   if ("CreateCreature" in cmd) {
     return { CreateCreature: [encodeFolderPath(cmd.CreateCreature[0]), cmd.CreateCreature[1]] };
   }
