@@ -204,51 +204,6 @@ function FolderTree(props: FTProps) {
 
   const objects = M.useState(s => useFolderTreeData(s, path, folder, selecting));
 
-  const children = [
-    section("Notes", objects.note_objects),
-    section("Classes", objects.class_objects),
-    section("Abilities", objects.ability_objects),
-    section("Scenes", objects.scene_objects),
-    section("Creatures", objects.creature_objects),
-    section("Items", objects.item_objects),
-  ];
-  function divider(name: string) {
-    return (
-      <Divider
-        horizontal={true}
-        fitted={true}
-        key={`${name}-div`}
-        style={{
-          fontSize: "70%",
-          color: "gray",
-          marginBottom: "4px",
-          marginTop: "4px",
-          width: "200px",
-        }}
-      >
-        {name}
-      </Divider>
-    );
-  }
-  function section(name: string, objects: Array<FolderObject>) {
-    if (objects.length === 0) return [];
-    return [divider(name)].concat(
-      objects.map(obj => {
-        const iid = object_to_item_id(obj);
-        const variant = Object.keys(iid)[0] ?? "unknown";
-        const iidvalue = Object.values(iid)[0] ?? "unknown";
-        return (
-          <TreeObject
-            path={path}
-            key={`${variant}/${iidvalue}`}
-            object={obj}
-            selecting={selecting}
-          />
-        );
-      }),
-    );
-  }
-
   const subfolders = Array.from(folder.children.keys()).sort().map(
     name => (
       <FolderTree
@@ -259,7 +214,53 @@ function FolderTree(props: FTProps) {
       />
     ),
   );
-  const folder_menu = (
+  const allObjects: [string, FolderObject[]][] = [
+    ["Notes", objects.note_objects],
+    ["Classes", objects.class_objects],
+    ["Abilities", objects.ability_objects],
+    ["Scenes", objects.scene_objects],
+    ["Creatures", objects.creature_objects],
+    ["Items", objects.item_objects],
+  ];
+  const list_item = (
+    <List.Item>
+      <List.Icon name={expanded ? "folder open" : "folder"} />
+      <List.Content style={{ width: "100%" }}>
+        <List.Header style={{ cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
+          {props.name}
+          {expanded ? <FolderMenu path={path} /> : null}
+        </List.Header>
+        {expanded
+          ? (
+            <List.List>
+              {allObjects.map(([name, objects]) => (
+                <ObjectTypeSection
+                  key={name}
+                  name={name}
+                  objects={objects}
+                  path={path}
+                  selecting={selecting}
+                />
+              ))}
+
+              {subfolders.length > 0 ? <SectionHeader name="Folders" /> : null}
+              {subfolders}
+            </List.List>
+          )
+          : null}
+      </List.Content>
+    </List.Item>
+  );
+
+  if (path.length === 0) {
+    return <List size="large">{list_item}</List>;
+  } else {
+    return list_item;
+  }
+}
+
+function FolderMenu({ path }: { path: T.FolderPath }) {
+  return (
     <Dropdown icon="ellipsis horizontal">
       <Dropdown.Menu>
         <Dropdown.Header content={T.folderPathToString(path)} />
@@ -282,6 +283,32 @@ function FolderTree(props: FTProps) {
           text="Create Note"
           onClick={() => M.getState().setSecondaryFocus({ t: "Note", path, name: undefined })}
         />
+        {/* <Dropdown.Item
+          icon={object_icon("Class")}
+          text="Create Class"
+          onClick={async () => {
+            const result = await A.sendGMCommand({
+              CreateClass: {
+                path,
+                class: {
+                  name: "New Class",
+                  abilities: [],
+                  conditions: [],
+                  color: "white",
+                },
+              },
+            });
+            const createClassLog = result.find(log =>
+              typeof log !== "string" && "CreateClass" in log
+            );
+            if (!createClassLog || !(typeof createClassLog !== "string" && "CreateClass" in createClassLog)) {
+              console.error("I just created a class but I didn't get a CreateClass log...");
+              return;
+            }
+
+            M.getState().setSecondaryFocus({ t: "Class", class_id: createClassLog.CreateClass.class});
+          }}
+        /> */}
         <CV.ModalMaker
           button={toggler => (
             <Dropdown.Item icon={object_icon("Item")} text="Create Item" onClick={toggler} />
@@ -360,32 +387,54 @@ function FolderTree(props: FTProps) {
       </Dropdown.Menu>
     </Dropdown>
   );
-  const list_item = (
-    <List.Item>
-      <List.Icon name={expanded ? "folder open" : "folder"} />
-      <List.Content style={{ width: "100%" }}>
-        <List.Header style={{ cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
-          {props.name}
-          {expanded ? folder_menu : null}
-        </List.Header>
-        {expanded
-          ? (
-            <List.List>
-              {children}
-              {subfolders.length > 0 ? divider("Folders") : null}
-              {subfolders}
-            </List.List>
-          )
-          : null}
-      </List.Content>
-    </List.Item>
-  );
+}
 
-  if (path.length === 0) {
-    return <List size="large">{list_item}</List>;
-  } else {
-    return list_item;
-  }
+function ObjectTypeSection(
+  { name, objects, path, selecting }: {
+    name: string;
+    objects: Array<FolderObject>;
+    path: T.FolderPath;
+    selecting?: SelectableProps;
+  },
+) {
+  if (objects.length === 0) return [];
+  return (
+    <>
+      <SectionHeader name={name} />
+      {objects.map(obj => {
+        const iid = object_to_item_id(obj);
+        const variant = Object.keys(iid)[0] ?? "unknown";
+        const iidvalue = Object.values(iid)[0] ?? "unknown";
+        return (
+          <TreeObject
+            path={path}
+            key={`${variant}/${iidvalue}`}
+            object={obj}
+            selecting={selecting}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function SectionHeader({ name }: { name: string }) {
+  return (
+    <Divider
+      horizontal={true}
+      fitted={true}
+      key={`${name}-div`}
+      style={{
+        fontSize: "70%",
+        color: "gray",
+        marginBottom: "4px",
+        marginTop: "4px",
+        width: "200px",
+      }}
+    >
+      {name}
+    </Divider>
+  );
 }
 
 interface FTData {
@@ -574,10 +623,10 @@ function TreeObject({ path, object, selecting }: TreeObjectProps) {
         M.getState().setSecondaryFocus({ t: "Item", item_id: object.id });
         return;
       case "Class":
-        M.getState().setSecondaryFocus({t: "Class", class_id: object.id });
+        M.getState().setSecondaryFocus({ t: "Class", class_id: object.id });
         return;
       case "Ability":
-        M.getState().setSecondaryFocus({t: "Ability", ability_id: object.id });
+        M.getState().setSecondaryFocus({ t: "Ability", ability_id: object.id });
     }
   }
 
