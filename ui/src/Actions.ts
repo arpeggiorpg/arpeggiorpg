@@ -316,7 +316,7 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
   }
 }
 
-export async function sendGMCommand(cmd: T.GMCommand) {
+export async function sendGMCommand(cmd: T.GMCommand): Promise<T.GameLog[]> {
   console.log("[sendGMCommand:JSON]", cmd);
   const result = await sendRequest(
     { t: "GMCommand", command: cmd },
@@ -327,7 +327,7 @@ export async function sendGMCommand(cmd: T.GMCommand) {
     case "Ok":
       // Theoretically we could do something with the returned GameLogs, but we don't need to
       // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
-      return;
+      return result.result;
     case "Err":
       throw { _pt_error: "RPI", message: result.error };
   }
