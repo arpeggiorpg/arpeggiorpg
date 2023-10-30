@@ -314,11 +314,31 @@ impl Game {
       }
 
       // ** Classes & Abilities **
-      CreateClass { path, class } => self.change_with(GameLog::CreateClass { path, class }),
-      EditClass { class_id, class } => self.change_with(GameLog::EditClass { class_id, class }),
-      CreateAbility { path, ability } => self.change_with(GameLog::CreateAbility { path, ability }),
-      EditAbility { ability_id, ability } => {
-        self.change_with(GameLog::EditAbility { ability_id, ability })
+      CreateClass { path, class } => {
+        let id = ClassID::gen();
+        let class = Class {
+          id,
+          name: class.name.clone(),
+          abilities: class.abilities.clone(),
+          conditions: class.conditions.clone(),
+          color: class.color.clone(),
+        };
+        self.change_with(GameLog::CreateClass { path, class })
+      }
+      EditClass { class } => self.change_with(GameLog::EditClass { class }),
+      CreateAbility { path, ability } => {
+        let id = AbilityID::gen();
+        let ability = Ability {
+          id,
+          name: ability.name.clone(),
+          cost: ability.cost,
+          action: ability.action.clone(),
+          usable_ooc: ability.usable_ooc
+        };
+        self.change_with(GameLog::CreateAbility { path, ability })
+      }
+      EditAbility { ability } => {
+        self.change_with(GameLog::EditAbility { ability })
       }
 
       CreateCreature(path, spec) => {
@@ -534,6 +554,10 @@ impl Game {
   // This is done so that we don't have to worry about `self` vs `newgame` -- all
   // manipulations here work on &mut self.
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
+
+    // HEY! Maintainer note! Don't use a call to *ID::gen(), or any other random or side-effecting
+    // functions! All of that stuff should be resolved in perform_command. This function MUST be
+    // purely deterministic.
     use self::GameLog::*;
     match *log {
       LoadModule { ref module, ref path, .. } => {
@@ -958,19 +982,11 @@ impl Game {
 
       // ** Classes & Abilities **
       CreateClass { ref path, ref class } => {
-        let id = ClassID::gen();
-        let class = Class {
-          id,
-          name: class.name.clone(),
-          abilities: class.abilities.clone(),
-          conditions: class.conditions.clone(),
-          color: class.color.clone(),
-        };
-        self.classes.insert(class);
-        self.link_folder_item(&path, &FolderItemID::ClassID(id))?;
+        self.classes.insert(class.clone());
+        self.link_folder_item(&path, &FolderItemID::ClassID(class.id))?;
       }
-      EditClass { class_id, ref class } => {
-        self.classes.mutate(&class_id, move |c| {
+      EditClass { ref class } => {
+        self.classes.mutate(&class.id, move |c| {
           c.name = class.name.clone();
           c.abilities = class.abilities.clone();
           c.conditions = class.conditions.clone();
@@ -978,19 +994,11 @@ impl Game {
         });
       }
       CreateAbility { ref path, ref ability } => {
-        let id = AbilityID::gen();
-        let ability = Ability {
-          id,
-          name: ability.name.clone(),
-          cost: ability.cost,
-          action: ability.action.clone(),
-          usable_ooc: ability.usable_ooc
-        };
-        self.abilities.insert(ability);
-        self.link_folder_item(&path, &FolderItemID::AbilityID(id))?;
+        self.abilities.insert(ability.clone());
+        self.link_folder_item(&path, &FolderItemID::AbilityID(ability.id))?;
       }
-      EditAbility { ability_id, ref ability } => {
-        self.abilities.mutate(&ability_id, move |a| {
+      EditAbility { ref ability } => {
+        self.abilities.mutate(&ability.id, move |a| {
           a.name = ability.name.clone();
           a.cost = ability.cost;
           a.action = ability.action.clone();

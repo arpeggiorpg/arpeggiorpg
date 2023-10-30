@@ -702,11 +702,11 @@ export const decodeGameLog: Decoder<GameLog> = Z.union([
   Z.object({ SetCreaturePos: Z.tuple([Z.string(), Z.string(), decodePoint3]) }),
   Z.object({ PathCreature: Z.tuple([Z.string(), Z.string(), Z.array(decodePoint3)]) }),
 
-  Z.object({ CreateClass: Z.object({ path: decodeFolderPath, class: decodeClassCreation }) }),
-  Z.object({ EditClass: Z.object({ class_id: Z.string(), class: decodeClassCreation }) }),
+  Z.object({ CreateClass: Z.object({ path: decodeFolderPath, class: decodeClass }) }),
+  Z.object({ EditClass: Z.object({ class: decodeClass }) }),
 
-  Z.object({ CreateAbility: Z.object({ path: decodeFolderPath, ability: decodeAbilityCreation }) }),
-  Z.object({ EditAbility: Z.object({ ability_id: Z.string(), ability: decodeAbilityCreation }) }),
+  Z.object({ CreateAbility: Z.object({ path: decodeFolderPath, ability: decodeAbility }) }),
+  Z.object({ EditAbility: Z.object({ ability: decodeAbility }) }),
 
   Z.object({ CreateCreature: Z.tuple([decodeFolderPath, decodeCreatureData]) }),
   Z.object({

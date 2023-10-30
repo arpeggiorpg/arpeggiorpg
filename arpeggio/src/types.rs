@@ -554,9 +554,9 @@ pub enum GMCommand {
 
   // ** Classes & Abilities **
   CreateClass { path: FolderPath, class: ClassCreation },
-  EditClass { class_id: ClassID, class: ClassCreation },
+  EditClass { class: Class },
   CreateAbility { path: FolderPath, ability: AbilityCreation },
-  EditAbility { ability_id: AbilityID, ability: AbilityCreation },
+  EditAbility {ability: Ability },
 
   // ** Creature Manipulation **
   /// Create a new creature.
@@ -778,10 +778,10 @@ pub enum GameLog {
   StopCombat,
 
   // ** Classes & Abilities **
-  CreateClass { path: FolderPath, class: ClassCreation },
-  EditClass { class_id: ClassID, class: ClassCreation },
-  CreateAbility { path: FolderPath, ability: AbilityCreation },
-  EditAbility { ability_id: AbilityID, ability: AbilityCreation },
+  CreateClass { path: FolderPath, class: Class },
+  EditClass { class: Class },
+  CreateAbility { path: FolderPath, ability: Ability },
+  EditAbility { ability: Ability },
 
   // ** Creatures **
 
