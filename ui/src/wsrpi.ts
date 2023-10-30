@@ -25,7 +25,11 @@ export function sendWSRequest<T>(request: RPIGameRequest, parser: T.Decoder<T>):
   return new Promise((res, rej) => {
     _requests[id] = data => {
       console.log("handler invoked with", data);
-      res(parser.parse(data.payload));
+      if ("error" in data) {
+        rej(data.error);
+      } else {
+        res(parser.parse(data.payload));
+      }
     };
   });
 }

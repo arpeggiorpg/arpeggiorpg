@@ -154,7 +154,6 @@ pub struct GameStorage {
   recent_logs: Rc<RefCell<RecentGameLogs>>,
 }
 
-
 const RECENT_LOGS_SIZE: usize = 100;
 
 /// ## Storage in Durable Objects
@@ -169,7 +168,13 @@ impl GameStorage {
   async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
 
-    let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
+    let (game, recent_logs) = match state
+      .storage()
+      .get::<String>("snapshot-0-chunk-0")
+      .await
+      .map_err(anyhow_str)
+      .context("fetching snapshot-0-chunk-0")
+    {
       Ok(game_str) => {
         let game = serde_json::from_str(&game_str)?;
         Self::load_logs(state.clone(), game).await?

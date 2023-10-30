@@ -283,7 +283,7 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
           text="Create Note"
           onClick={() => M.getState().setSecondaryFocus({ t: "Note", path, name: undefined })}
         />
-        {/* <Dropdown.Item
+        <Dropdown.Item
           icon={object_icon("Class")}
           text="Create Class"
           onClick={async () => {
@@ -298,6 +298,7 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
                 },
               },
             });
+            // bit of annoying typescript junk here
             const createClassLog = result.find(log =>
               typeof log !== "string" && "CreateClass" in log
             );
@@ -306,9 +307,9 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
               return;
             }
 
-            M.getState().setSecondaryFocus({ t: "Class", class_id: createClassLog.CreateClass.class});
+            M.getState().setSecondaryFocus({ t: "Class", class_id: createClassLog.CreateClass.class.id});
           }}
-        /> */}
+        />
         <CV.ModalMaker
           button={toggler => (
             <Dropdown.Item icon={object_icon("Item")} text="Create Item" onClick={toggler} />

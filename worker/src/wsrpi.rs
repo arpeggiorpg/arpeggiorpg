@@ -120,11 +120,22 @@ impl GameSession {
                 }
               }
             }
-            Err(e) => self.send(
-              // If I separated parsing of the frames-with-ids from the WSRequest JSON, I would be
-              // able to send this error back with the ID of the request (assuming it had one).
-              &json!({"websocket_error": format!("Couldn't parse as a WSRequest: {e:?}")}),
-            )?,
+            Err(e) => {
+              // This is a little involved because we try to send the request ID back with the error
+              // response, so we have to retry parsing it as a Value.
+              let error_response =
+                json!({"error": format!("Couldn't parse as a WSRequest: {e:?}")});
+              let mut error_response = error_response.as_object().unwrap().clone();
+              if let Ok(value) =
+                serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text)
+              {
+                error_response.insert(
+                  "id".to_string(),
+                  value.get("id").unwrap_or(&serde_json::Value::Null).clone(),
+                );
+              }
+              self.send(&error_response)?;
+            }
           }
         }
       }
@@ -203,7 +214,8 @@ impl GameSession {
       Ok(changed_game) => {
         let logs_with_indices = self.game_storage.store_game(changed_game.clone()).await?;
         let rpi_game = RPIGame(&changed_game.game);
-        self.broadcast(&json!({"t": "refresh_game", "game": rpi_game, "logs": logs_with_indices}))?;
+        self
+          .broadcast(&json!({"t": "refresh_game", "game": rpi_game, "logs": logs_with_indices}))?;
         Ok(changed_game.logs)
       }
       Err(e) => Err(format!("{e:?}")),
