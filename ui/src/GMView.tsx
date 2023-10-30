@@ -163,6 +163,11 @@ function creatureMenuActions(
   creature: T.Creature,
 ): Grid.MapCreature["actions"] {
   const actions = [
+    {
+      actionName: "View Creature",
+      action: (cid: T.CreatureID) =>
+        M.getState().setSecondaryFocus({ t: "Creature", creature_id: cid }),
+    },
     { actionName: "Walk", action: (cid: T.CreatureID) => A.requestMove(cid) },
     { actionName: "Teleport", action: (cid: T.CreatureID) => Grid.requestTeleport(scene, cid) },
   ];
