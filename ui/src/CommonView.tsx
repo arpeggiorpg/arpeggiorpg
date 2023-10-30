@@ -923,35 +923,17 @@ export function NoteEditor({
   disallow_rename,
   ...props
 }: NoteEditorProps) {
-  // RADIX BIG OLD TODO
-  // switching between two different notes is not updating the state properly!
-  // componentWillReceiveProps(nextProps: NoteEditorProps) {
-  //   // Reasons this is called:
-  //   // 1. clicking on a different note while a note is already loaded. We get new path and/or name
-  //   // 2. new data from the server. We need to make sure we're displaying the latest data as long as
-  //   //    user hasn't made any changes to the content.
-  //   if (
-  //     !M.isEqual(
-  //       [this.props.path, this.props.name],
-  //       [nextProps.path, nextProps.name]
-  //     )
-  //   ) {
-  //     this.setState({ name: nextProps.name, content: undefined });
-  //   }
-  //   if (nextProps.name !== undefined) {
-  //     const existing = nextProps.ptui.getNote(nextProps.path, nextProps.name);
-  //     if (existing !== undefined && existing.content === this.state.content) {
-  //       this.setState({ content: undefined });
-  //     }
-  //   }
-  // }
-
   const [draftName, setDraftName] = React.useState(props.name);
   const [draftContent, setDraftContent] = React.useState<string | undefined>(
     undefined,
   );
 
   const originalNote = M.useState((s) => s.getNote(path, props.name));
+
+  React.useEffect(() => {
+    setDraftName(props.name);
+    setDraftContent(undefined);
+  }, [path, props.name]);
   const originalContent = originalNote?.content;
   const renderedContent = draftContent ?? originalContent ?? "";
 
