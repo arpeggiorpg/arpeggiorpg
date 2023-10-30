@@ -302,12 +302,58 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
             const createClassLog = result.find(log =>
               typeof log !== "string" && "CreateClass" in log
             );
-            if (!createClassLog || !(typeof createClassLog !== "string" && "CreateClass" in createClassLog)) {
+            if (
+              !createClassLog
+              || !(typeof createClassLog !== "string" && "CreateClass" in createClassLog)
+            ) {
               console.error("I just created a class but I didn't get a CreateClass log...");
               return;
             }
 
-            M.getState().setSecondaryFocus({ t: "Class", class_id: createClassLog.CreateClass.class.id});
+            M.getState().setSecondaryFocus({
+              t: "Class",
+              class_id: createClassLog.CreateClass.class.id,
+            });
+          }}
+        />
+        <Dropdown.Item
+          icon={object_icon("Ability")}
+          text="Create Ability"
+          onClick={async () => {
+            const result = await A.sendGMCommand({
+              CreateAbility: {
+                path,
+                ability: {
+                  name: "New Ability",
+                  cost: 0,
+                  action: {
+                    Creature: {
+                      effect: {
+                        Damage: { Flat: { value: 1 } },
+                      },
+                      target: "Melee",
+                    },
+                  },
+                  usable_ooc: false,
+                },
+              },
+            });
+            // bit of annoying typescript junk here
+            const createAbilityLog = result.find(log =>
+              typeof log !== "string" && "CreateAbility" in log
+            );
+            if (
+              !createAbilityLog
+              || !(typeof createAbilityLog !== "string" && "CreateAbility" in createAbilityLog)
+            ) {
+              console.error("I just created a Ability but I didn't get a CreateAbility log...");
+              return;
+            }
+
+            M.getState().setSecondaryFocus({
+              t: "Ability",
+              ability_id: createAbilityLog.CreateAbility.ability.id,
+            });
           }}
         />
         <CV.ModalMaker
