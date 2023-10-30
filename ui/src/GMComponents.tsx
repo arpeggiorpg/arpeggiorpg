@@ -1392,7 +1392,7 @@ export function ClassEditor({ classId }: { classId: T.ClassID }) {
   );
 
   function saveClass() {
-    A.sendGMCommand({ EditClass: { class_id: classId, class: JSON.parse(classText) } });
+    A.sendGMCommand({ EditClass: { class: T.decodeClass.parse(JSON.parse(classText)) } });
   }
 }
 
@@ -1412,7 +1412,7 @@ export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
   );
 
   function saveAbility() {
-    A.sendGMCommand({ EditAbility: { ability_id: abilityId, ability: JSON.parse(abilityText) } });
+    A.sendGMCommand({ EditAbility: { ability: T.decodeAbility.parse(JSON.parse(abilityText)) } });
   }
 }
 

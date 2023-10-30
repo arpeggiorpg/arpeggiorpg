@@ -420,7 +420,7 @@ const decodePlayer: Decoder<Player> = Z.object({
   creatures: Z.array(Z.string()),
 });
 
-const decodeClass: Decoder<Class> = Z.object({
+export const decodeClass: Decoder<Class> = Z.object({
   id: Z.string(),
   name: Z.string(),
   color: Z.string(),
@@ -510,7 +510,7 @@ export const decodeAction: Decoder<Action> = Z.union([
   Z.object({ SceneVolume: Z.object({ effect: decodeSceneEffect, target: decodeSceneTarget }) }),
 ]);
 
-const decodeAbility: Decoder<Ability> = Z.object({
+export const decodeAbility: Decoder<Ability> = Z.object({
   name: Z.string(),
   id: Z.string(),
   action: decodeAction,
