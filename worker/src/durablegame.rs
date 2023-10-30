@@ -9,6 +9,7 @@ use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
 use mtarp::types::{GameIndex, InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
+use wasm_bindgen::JsError;
 use worker::{
   async_trait, console_error, console_log, durable_object, js_sys, wasm_bindgen,
   wasm_bindgen_futures, worker_sys, Env, ListOptions, Method, Request, Response, Result, State,
@@ -168,20 +169,26 @@ impl GameStorage {
   async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
 
-    let (game, recent_logs) = match state
-      .storage()
-      .get::<String>("snapshot-0-chunk-0")
-      .await
-      .map_err(anyhow_str)
-      .context("fetching snapshot-0-chunk-0")
-    {
+    let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
       Ok(game_str) => {
         let game = serde_json::from_str(&game_str)?;
         Self::load_logs(state.clone(), game).await?
       }
       Err(e) => {
         console_error!("ERROR: Loading game failed: {e:?}");
-        (Default::default(), VecDeque::new())
+        match e {
+          worker::Error::JsError(e) if e == "No such value in storage." => {
+            console_log!("No initial snapshot. This is a new game!");
+            let default_game = Default::default();
+            state
+              .storage()
+              .put("snapshot-0-chunk-0", serde_json::to_string(&default_game)?)
+              .await
+              .map_err(anyhow_str)?;
+            (default_game, VecDeque::new())
+          }
+          _ => return Err(anyhow_str(e)),
+        }
       }
     };
     let next_log_idx = recent_logs.iter().last().map(|l| l.0.log_idx + 1).unwrap_or(0);
@@ -196,7 +203,6 @@ impl GameStorage {
   }
 
   /// log keys are like "log-{snapshot_idx}-idx-{log_idx}"
-
   async fn load_logs(state: Rc<State>, mut game: Game) -> anyhow::Result<(Game, RecentGameLogs)> {
     // Here's another super annoying deficiency of the DO "list" API: it doesn't return an iterator,
     // but the entire result set all at once as a javascript Map! So, we have to manually do
