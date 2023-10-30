@@ -1380,6 +1380,11 @@ export function ClassEditor({ classId }: { classId: T.ClassID }) {
   const class_ = M.useState(s => s.getClass(classId));
   const [classText, setClassText] = React.useState(JSON.stringify(class_, null, 2));
 
+  // Ugh I hate useEffect :(
+  React.useEffect(() => {
+    setClassText(JSON.stringify(class_, null, 2));
+  }, [classId]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <textarea
@@ -1399,6 +1404,10 @@ export function ClassEditor({ classId }: { classId: T.ClassID }) {
 export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
   const ability = M.useState(s => s.getAbility(abilityId));
   const [abilityText, setAbilityText] = React.useState(JSON.stringify(ability, null, 2));
+
+  React.useEffect(() => {
+    setAbilityText(JSON.stringify(ability, null, 2));
+  }, [abilityId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
