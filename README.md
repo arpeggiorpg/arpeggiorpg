@@ -1,3 +1,6 @@
+<p align="center"><img width="312" alt="image" src="https://github.com/arpeggiorpg/arpeggiorpg/assets/227068/76d4f48d-b0dc-4523-85fc-3c1188cbad1f"></p>
+
+
 # ArpeggioRPG
 
 ArpeggioRPG is a table-top role-playing game. Think of a RPG like Dungeons & Dragons, but instead of
