@@ -168,7 +168,7 @@ impl Game {
       self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
     let change = match cmd {
       ChatFromPlayer(message) => {
-        self.change_with(GameLog::ChatFromPlayer(player_id, message.to_owned()))
+        self.change_with(GameLog::ChatFromPlayer { player_id, message: message.to_owned() })
       }
       EditNote { path, name, note } => {
         // The path here needs to be relative to a "/Players/{playerId}" folder or something
@@ -221,29 +221,37 @@ impl Game {
         path: path.clone(),
         source,
       }),
-      SetActiveScene(m_sid) => self.change_with(GameLog::SetActiveScene(m_sid)),
+      SetActiveScene(id) => self.change_with(GameLog::SetActiveScene { id }),
       // ** Player Management **
-      RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer(pid.clone())),
+      RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer { id: pid.clone() }),
       GiveCreaturesToPlayer(ref pid, ref cids) => {
-        self.change_with(GameLog::GiveCreaturesToPlayer(pid.clone(), cids.clone()))
+        self.change_with(GameLog::GiveCreaturesToPlayer {
+          player_id: pid.clone(),
+          creature_ids: cids.clone(),
+        })
       }
-      UnregisterPlayer(ref pid) => self.change_with(GameLog::UnregisterPlayer(pid.clone())),
+      UnregisterPlayer(ref pid) => self.change_with(GameLog::UnregisterPlayer { id: pid.clone() }),
       RemoveCreaturesFromPlayer(ref pid, ref cids) => {
-        self.change_with(GameLog::RemoveCreaturesFromPlayer(pid.clone(), cids.clone()))
+        self.change_with(GameLog::RemoveCreaturesFromPlayer {
+          player_id: pid.clone(),
+          creature_ids: cids.clone(),
+        })
       }
-      SetPlayerScene(ref pid, opt_sid) => {
-        self.change_with(GameLog::SetPlayerScene(pid.clone(), opt_sid))
+      SetPlayerScene(ref pid, scene_id) => {
+        self.change_with(GameLog::SetPlayerScene { player_id: pid.clone(), scene_id })
       }
 
       // ** Chat **
-      ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM(msg.to_owned())),
+      ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM { message: msg.to_owned() }),
 
       // ** Attribute checks **
       AttributeCheck(cid, check) => self.attribute_check(cid, &check),
       // ** Folder Management **
-      CreateFolder(path) => self.change_with(GameLog::CreateFolder(path)),
-      RenameFolder(path, name) => self.change_with(GameLog::RenameFolder(path, name)),
-      MoveFolderItem(src, item, dst) => self.change_with(GameLog::MoveFolderItem(src, item, dst)),
+      CreateFolder(path) => self.change_with(GameLog::CreateFolder { path }),
+      RenameFolder(path, new_name) => self.change_with(GameLog::RenameFolder { path, new_name }),
+      MoveFolderItem(source, item_id, destination) => {
+        self.change_with(GameLog::MoveFolderItem { source, item_id, destination })
+      }
       CopyFolderItem { source, item_id, dest } => {
         let new_item_id = match item_id {
           FolderItemID::CreatureID(_) => FolderItemID::CreatureID(CreatureID::gen()),
@@ -255,16 +263,20 @@ impl Game {
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
       }
-      DeleteFolderItem(path, item_id) => self.change_with(GameLog::DeleteFolderItem(path, item_id)),
+      DeleteFolderItem(path, item_id) => {
+        self.change_with(GameLog::DeleteFolderItem { path, item_id })
+      }
 
       CreateItem(path, name) => {
         let item = Item { id: ItemID::gen(), name };
-        self.change_with(GameLog::CreateItem(path, item))
+        self.change_with(GameLog::CreateItem { path, item })
       }
-      EditItem(item) => self.change_with(GameLog::EditItem(item)),
+      EditItem(item) => self.change_with(GameLog::EditItem { item }),
 
-      CreateNote(path, note) => self.change_with(GameLog::CreateNote(path, note)),
-      EditNote(path, orig, new) => self.change_with(GameLog::EditNote(path, orig, new)),
+      CreateNote(path, note) => self.change_with(GameLog::CreateNote { path, note }),
+      EditNote(path, original_name, note) => {
+        self.change_with(GameLog::EditNote { path, original_name, note })
+      }
 
       // ** Inventory Management **
       TransferItem { from, to, item_id, count } => {
@@ -280,7 +292,7 @@ impl Game {
 
       CreateScene(path, sc) => {
         let scene = Scene::create(sc);
-        self.change_with(GameLog::CreateScene(path, scene))
+        self.change_with(GameLog::CreateScene { path, scene })
       }
       EditSceneDetails { scene_id, details } => {
         self.change_with(GameLog::EditSceneDetails { scene_id, details })
@@ -333,17 +345,15 @@ impl Game {
           name: ability.name.clone(),
           cost: ability.cost,
           action: ability.action.clone(),
-          usable_ooc: ability.usable_ooc
+          usable_ooc: ability.usable_ooc,
         };
         self.change_with(GameLog::CreateAbility { path, ability })
       }
-      EditAbility { ability } => {
-        self.change_with(GameLog::EditAbility { ability })
-      }
+      EditAbility { ability } => self.change_with(GameLog::EditAbility { ability }),
 
       CreateCreature(path, spec) => {
         let creature = Creature::create(&spec);
-        self.change_with(GameLog::CreateCreature(path, creature))
+        self.change_with(GameLog::CreateCreature { path, creature })
       }
       EditCreatureDetails { creature_id, details } => {
         self.change_with(GameLog::EditCreatureDetails { creature_id, details })
@@ -351,7 +361,9 @@ impl Game {
       PathCreature { scene_id, creature_id, destination } => {
         Ok(self.path_creature(scene_id, creature_id, destination)?.0)
       }
-      SetCreaturePos(scene, cid, pt) => self.change_with(GameLog::SetCreaturePos(scene, cid, pt)),
+      SetCreaturePos(scene_id, creature_id, pos) => {
+        self.change_with(GameLog::SetCreaturePos { scene_id, creature_id, pos })
+      }
       PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
       CombatAct { ability_id, target } => self.combat_act(ability_id, target),
       ActCreature { scene_id, creature_id, ability_id, target } => {
@@ -380,7 +392,7 @@ impl Game {
       StartCombat(scene, cids) => self.start_combat(scene, cids),
       StopCombat => self.change_with(GameLog::StopCombat),
       AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
-      RemoveCreatureFromCombat(cid) => self.change_with(GameLog::RemoveCreatureFromCombat(cid)),
+      RemoveCreatureFromCombat(id) => self.change_with(GameLog::RemoveCreatureFromCombat { id }),
       RerollCombatInitiative => self.change().apply_combat(|c| c.reroll_initiative()),
       ChangeCreatureInitiative(creature_id, new_initiative) => {
         self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative {
@@ -401,14 +413,14 @@ impl Game {
   fn start_combat(
     &self, scene_id: SceneID, cids: Vec<CreatureID>,
   ) -> Result<ChangedGame, GameError> {
-    let cids_with_inits = Combat::roll_initiative(self, cids)?;
-    self.change_with(GameLog::StartCombat(scene_id, cids_with_inits))
+    let combatants = Combat::roll_initiative(self, cids)?;
+    self.change_with(GameLog::StartCombat { scene_id, combatants })
   }
 
-  fn add_creature_to_combat(&self, cid: CreatureID) -> Result<ChangedGame, GameError> {
-    let creature = self.get_creature(cid)?;
-    let init = creature.creature.initiative.roll().1 as i16;
-    self.change_with(GameLog::AddCreatureToCombat(cid, init))
+  fn add_creature_to_combat(&self, creature_id: CreatureID) -> Result<ChangedGame, GameError> {
+    let creature = self.get_creature(creature_id)?;
+    let initiative = creature.creature.initiative.roll().1 as i16;
+    self.change_with(GameLog::AddCreatureToCombat { creature_id, initiative })
   }
 
   fn attribute_check(
@@ -432,14 +444,14 @@ impl Game {
   }
 
   pub fn path_creature_distance(
-    &self, scene_id: SceneID, cid: CreatureID, pt: Point3, max_distance: u32units::Length,
+    &self, scene_id: SceneID, creature_id: CreatureID, pt: Point3, max_distance: u32units::Length,
   ) -> Result<(ChangedGame, u32units::Length), GameError> {
     let scene = self.get_scene(scene_id)?;
-    let creature = self.get_creature(cid)?;
-    let (pts, distance) = self
+    let creature = self.get_creature(creature_id)?;
+    let (path, distance) = self
       .tile_system
       .find_path(
-        scene.get_pos(cid)?,
+        scene.get_pos(creature_id)?,
         max_distance,
         &scene.terrain,
         Volume::AABB(creature.creature.size),
@@ -448,7 +460,7 @@ impl Game {
       .ok_or(GameError::NoPathFound)?;
     debug_assert!(distance <= max_distance);
 
-    let change = self.change_with(GameLog::PathCreature(scene_id, cid, pts))?;
+    let change = self.change_with(GameLog::PathCreature { scene_id, creature_id, path })?;
     Ok((change, distance))
   }
 
@@ -554,7 +566,6 @@ impl Game {
   // This is done so that we don't have to worry about `self` vs `newgame` -- all
   // manipulations here work on &mut self.
   fn apply_log_mut(&mut self, log: &GameLog) -> Result<(), GameError> {
-
     // HEY! Maintainer note! Don't use a call to *ID::gen(), or any other random or side-effecting
     // functions! All of that stuff should be resolved in perform_command. This function MUST be
     // purely deterministic.
@@ -568,97 +579,99 @@ impl Game {
         }
       }
 
-      SetActiveScene(m_sid) => self.active_scene = m_sid,
+      SetActiveScene { id } => self.active_scene = id,
 
       // Player stuff
-      RegisterPlayer(ref pid) => {
-        if self.players.contains_key(pid) {
-          return Err(GameError::PlayerAlreadyExists(pid.clone()));
+      RegisterPlayer { ref id } => {
+        if self.players.contains_key(id) {
+          return Err(GameError::PlayerAlreadyExists(id.clone()));
         } else {
-          self.players.insert(Player::new(pid.clone()));
+          self.players.insert(Player::new(id.clone()));
         }
       }
 
-      UnregisterPlayer(ref pid) => {
-        self.players.remove(pid).ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+      UnregisterPlayer { ref id } => {
+        self.players.remove(id).ok_or_else(|| GameError::PlayerNotFound(id.clone()))?;
       }
 
-      GiveCreaturesToPlayer(ref pid, ref cids) => {
-        for cid in cids {
+      GiveCreaturesToPlayer { ref player_id, ref creature_ids } => {
+        for cid in creature_ids {
           self.check_creature_id(*cid)?;
         }
         self
           .players
-          .mutate(pid, |p| p.creatures.extend(cids))
-          .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+          .mutate(player_id, |p| p.creatures.extend(creature_ids))
+          .ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
       }
 
-      RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+      RemoveCreaturesFromPlayer { ref player_id, ref creature_ids } => {
         self
           .players
-          .mutate(pid, |p| {
-            for cid in cids {
+          .mutate(player_id, |p| {
+            for cid in creature_ids {
               p.creatures.remove(cid);
             }
           })
-          .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+          .ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
       }
 
-      SetPlayerScene(ref pid, scene) => {
+      SetPlayerScene { ref player_id, scene_id } => {
         self
           .players
-          .mutate(pid, move |p| p.scene = scene)
-          .ok_or_else(|| GameError::PlayerNotFound(pid.clone()))?;
+          .mutate(player_id, move |p| p.scene = scene_id)
+          .ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
       }
 
       // purely informational
-      ChatFromGM(..) | ChatFromPlayer(..) | AttributeCheckResult { .. } => {}
+      ChatFromGM { .. } | ChatFromPlayer { .. } | AttributeCheckResult { .. } => {}
 
       // purely informational
-      CreateFolder(ref path) => self.campaign.make_folders(path, Folder::new()),
-      RenameFolder(ref path, ref name) => self.campaign.rename_folder(path, name.clone())?,
-      MoveFolderItem(ref src, ref item_id, ref dst) => match *item_id {
+      CreateFolder { ref path } => self.campaign.make_folders(path, Folder::new()),
+      RenameFolder { ref path, ref new_name } => {
+        self.campaign.rename_folder(path, new_name.clone())?
+      }
+      MoveFolderItem { ref source, ref item_id, ref destination } => match *item_id {
         FolderItemID::NoteID(ref name) => {
-          let note = self.campaign.get_mut(src)?.notes.remove(name).ok_or_else(|| {
-            GameError::FolderItemNotFound(src.clone(), FolderItemID::NoteID(name.clone()))
+          let note = self.campaign.get_mut(source)?.notes.remove(name).ok_or_else(|| {
+            GameError::FolderItemNotFound(source.clone(), FolderItemID::NoteID(name.clone()))
           })?;
-          self.campaign.get_mut(dst)?.notes.insert(note);
+          self.campaign.get_mut(destination)?.notes.insert(note);
         }
         FolderItemID::SubfolderID(ref name) => {
-          self.campaign.move_folder(&src.child(name.clone()), dst)?;
+          self.campaign.move_folder(&source.child(name.clone()), destination)?;
         }
         _ => {
-          self.unlink_folder_item(src, item_id)?;
-          self.link_folder_item(dst, item_id)?;
+          self.unlink_folder_item(source, item_id)?;
+          self.link_folder_item(destination, item_id)?;
         }
       },
       CopyFolderItem { ref item_id, ref dest, ref new_item_id, .. } => match (item_id, new_item_id)
       {
         (&FolderItemID::CreatureID(id), &FolderItemID::CreatureID(new_id)) => {
-          let mut new_creature = self.get_creature(id)?.creature.clone();
-          new_creature.id = new_id;
-          self.apply_log_mut(&CreateCreature(dest.clone(), new_creature))?;
+          let mut creature = self.get_creature(id)?.creature.clone();
+          creature.id = new_id;
+          self.apply_log_mut(&CreateCreature { path: dest.clone(), creature })?;
         }
         (&FolderItemID::CreatureID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::SceneID(id), &FolderItemID::SceneID(new_id)) => {
-          let mut new_scene = self.get_scene(id)?.clone();
-          new_scene.id = new_id;
-          self.apply_log_mut(&CreateScene(dest.clone(), new_scene))?;
+          let mut scene = self.get_scene(id)?.clone();
+          scene.id = new_id;
+          self.apply_log_mut(&CreateScene { path: dest.clone(), scene })?;
         }
         (&FolderItemID::SceneID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::ItemID(id), &FolderItemID::ItemID(new_id)) => {
-          let mut new_item = self.get_item(id)?.clone();
-          new_item.id = new_id;
-          self.apply_log_mut(&CreateItem(dest.clone(), new_item))?;
+          let mut item = self.get_item(id)?.clone();
+          item.id = new_id;
+          self.apply_log_mut(&CreateItem { path: dest.clone(), item })?;
         }
         (&FolderItemID::ItemID(_), _) => panic!("Mismatched folder item ID!"),
         (&FolderItemID::AbilityID(id), &FolderItemID::AbilityID(new_id)) => {
-          let mut new_ability =
+          let mut ability =
             self.abilities.get(&id).ok_or_else(|| GameError::NoAbility(id))?.clone();
-          new_ability.id = new_id;
+          ability.id = new_id;
           self
             .abilities
-            .try_insert(new_ability)
+            .try_insert(ability)
             .ok_or_else(|| GameError::AbilityAlreadyExists(new_id))?;
           self.link_folder_item(dest, &FolderItemID::AbilityID(new_id))?;
         }
@@ -677,7 +690,7 @@ impl Game {
         (&FolderItemID::SubfolderID(_), _) => unimplemented!("Can't Copy subfolders"),
         (&FolderItemID::NoteID(_), _) => unimplemented!("Can't clone notes... yet?"),
       },
-      DeleteFolderItem(ref path, ref item_id) => {
+      DeleteFolderItem { ref path, ref item_id } => {
         // because we're being paranoid, we're walking ALL folder paths and checking if the given
         // item ID is found in ANY of them and cleaning it up.
         let all_folders: Vec<FolderPath> =
@@ -796,60 +809,78 @@ impl Game {
             // referents are cleaned up.
             let path = path.child(name.to_string());
             for child_folder in self.campaign.get_children(&path)?.clone() {
-              self.apply_log_mut(&DeleteFolderItem(
-                path.clone(),
-                FolderItemID::SubfolderID(child_folder.clone()),
-              ))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::SubfolderID(child_folder.clone()),
+              })?;
             }
             let node = self.campaign.get(&path)?.clone();
             for scene_id in node.scenes {
-              self
-                .apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::SceneID(scene_id)))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::SceneID(scene_id),
+              })?;
             }
             for cid in node.creatures {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::CreatureID(cid)))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::CreatureID(cid),
+              })?;
             }
             for iid in node.items {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ItemID(iid)))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::ItemID(iid),
+              })?;
             }
             for abid in node.abilities {
-              self.apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::AbilityID(abid)))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::AbilityID(abid),
+              })?;
             }
             for classid in node.classes {
-              self
-                .apply_log_mut(&DeleteFolderItem(path.clone(), FolderItemID::ClassID(classid)))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::ClassID(classid),
+              })?;
             }
             for nname in node.notes.keys() {
-              self.apply_log_mut(&DeleteFolderItem(
-                path.clone(),
-                FolderItemID::NoteID(nname.clone()),
-              ))?;
+              self.apply_log_mut(&DeleteFolderItem {
+                path: path.clone(),
+                item_id: FolderItemID::NoteID(nname.clone()),
+              })?;
             }
             self.campaign.remove(&path)?;
           }
         }
       }
 
-      CreateItem(ref path, ref ritem) => {
-        let item = ritem.clone();
-        self.items.try_insert(item).ok_or_else(|| GameError::ItemAlreadyExists(ritem.id))?;
-        self.link_folder_item(path, &FolderItemID::ItemID(ritem.id))?;
+      CreateItem { ref path, ref item } => {
+        let item = item.clone();
+        self.items.try_insert(item).ok_or_else(|| GameError::ItemAlreadyExists(item.id))?;
+        self.link_folder_item(path, &FolderItemID::ItemID(item.id))?;
       }
-      EditItem(ref item) => {
+      EditItem { ref item } => {
         self
           .items
           .mutate(&item.id, move |i| *i = item.clone())
           .ok_or_else(|| GameError::ItemNotFound(item.id))?;
       }
 
-      CreateNote(ref path, ref note) => {
+      CreateNote { ref path, ref note } => {
         self.campaign.get_mut(path)?.notes.insert(note.clone());
       }
-      EditNote(ref path, ref name, ref new_note) => {
+      EditNote { ref path, ref original_name, note: ref new_note } => {
         let node = self.campaign.get_mut(path)?;
-        node.notes.mutate(name, move |note| *note = new_note.clone()).ok_or_else(|| {
-          GameError::FolderItemNotFound(path.clone(), FolderItemID::NoteID(name.to_string()))
-        })?;
+        node.notes.mutate(original_name, move |note| *note = new_note.clone()).ok_or_else(
+          || {
+            GameError::FolderItemNotFound(
+              path.clone(),
+              FolderItemID::NoteID(original_name.to_string()),
+            )
+          },
+        )?;
       }
 
       // ** Inventory Management **
@@ -871,10 +902,10 @@ impl Game {
       }
 
       // ** Scenes **
-      CreateScene(ref path, ref rscene) => {
-        let scene = rscene.clone();
-        self.scenes.try_insert(scene).ok_or_else(|| GameError::SceneAlreadyExists(rscene.id))?;
-        self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
+      CreateScene { ref path, ref scene } => {
+        let scene = scene.clone();
+        self.scenes.try_insert(scene).ok_or_else(|| GameError::SceneAlreadyExists(scene.id))?;
+        self.link_folder_item(path, &FolderItemID::SceneID(scene.id))?;
       }
       EditSceneDetails { scene_id, ref details } => {
         self
@@ -1007,10 +1038,13 @@ impl Game {
       }
 
       // ** Creatures **
-      CreateCreature(ref path, ref rc) => {
-        let c = rc.clone();
-        self.creatures.try_insert(c).ok_or_else(|| GameError::CreatureAlreadyExists(rc.id()))?;
-        self.link_folder_item(path, &FolderItemID::CreatureID(rc.id()))?;
+      CreateCreature { ref path, ref creature } => {
+        let creature = creature.clone();
+        self
+          .creatures
+          .try_insert(creature)
+          .ok_or_else(|| GameError::CreatureAlreadyExists(creature.id()))?;
+        self.link_folder_item(path, &FolderItemID::CreatureID(creature.id()))?;
       }
       EditCreatureDetails { creature_id, ref details } => {
         let mutated = self.creatures.mutate(&creature_id, move |c| {
@@ -1025,49 +1059,49 @@ impl Game {
         });
         mutated.ok_or_else(|| GameError::CreatureNotFound(creature_id.to_string()))?;
       }
-      AddCreatureToCombat(cid, init) => {
+      AddCreatureToCombat { creature_id, initiative } => {
         let mut combat = self.current_combat.clone().ok_or(GameError::NotInCombat)?;
-        self.check_creature_id(cid)?;
-        if combat.creatures.iter().any(|&(c, _)| c == cid) {
-          return Err(GameError::AlreadyInCombat(cid));
+        self.check_creature_id(creature_id)?;
+        if combat.creatures.iter().any(|&(c, _)| c == creature_id) {
+          return Err(GameError::AlreadyInCombat(creature_id));
         }
-        combat.creatures.push((cid, init));
+        combat.creatures.push((creature_id, initiative));
         self.current_combat = Some(combat);
       }
-      RemoveCreatureFromCombat(cid) => {
+      RemoveCreatureFromCombat { id } => {
         let combat = {
           let combat = self.get_combat()?;
-          combat.remove_from_combat(cid)?
+          combat.remove_from_combat(id)?
         };
         self.current_combat = combat;
       }
       CombatLog(ref cl) => {
         self.current_combat = Some(self.get_combat()?.apply_log(cl)?);
       }
-      CreatureLog(cid, ref cl) => {
-        let creature = self.get_creature(cid)?.creature.apply_log(cl)?;
-        self.creatures.mutate(&cid, |c| *c = creature);
+      CreatureLog { creature_id, ref log } => {
+        let creature = self.get_creature(creature_id)?.creature.apply_log(log)?;
+        self.creatures.mutate(&creature_id, |c| *c = creature);
       }
-      StartCombat(ref scene, ref cids_with_init) => {
-        for &(cid, _) in cids_with_init {
+      StartCombat { ref scene_id, ref combatants } => {
+        for &(cid, _) in combatants {
           self.check_creature_id(cid)?;
         }
-        self.check_scene(*scene)?;
-        self.current_combat = Some(Combat::new(*scene, cids_with_init.clone())?);
+        self.check_scene(*scene_id)?;
+        self.current_combat = Some(Combat::new(*scene_id, combatants.clone())?);
       }
       StopCombat => {
         self.current_combat.take().ok_or(GameError::NotInCombat)?;
       }
-      SetCreaturePos(ref scene_id, ref cid, ref pt) => {
-        let scene = self.get_scene(*scene_id)?.set_pos(*cid, *pt)?;
+      SetCreaturePos { ref scene_id, ref creature_id, ref pos } => {
+        let scene = self.get_scene(*scene_id)?.set_pos(*creature_id, *pos)?;
         self.scenes.insert(scene);
       }
-      PathCreature(ref scene_id, ref cid, ref pts) => {
+      PathCreature { ref scene_id, ref creature_id, ref path } => {
         let scene = {
           let scene = self.get_scene(*scene_id)?;
-          let current_pos = scene.get_pos(*cid)?;
-          let dest = pts.last().cloned().unwrap_or(current_pos);
-          scene.set_pos(*cid, dest)?
+          let current_pos = scene.get_pos(*creature_id)?;
+          let dest = path.last().cloned().unwrap_or(current_pos);
+          scene.set_pos(*creature_id, dest)?
         };
         self.scenes.insert(scene);
       }
@@ -1084,7 +1118,7 @@ impl Game {
       }
 
       // Things that are handled at the App level
-      Rollback(..) => {
+      Rollback { .. } => {
         return bug("GameLog Rollback");
       }
     }
