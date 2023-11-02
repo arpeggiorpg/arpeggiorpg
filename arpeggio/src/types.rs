@@ -380,7 +380,6 @@ pub enum PlayerCommand {
   PathCurrentCombatCreature(Point3),
   /// End the current creature's turn.
   EndTurn,
-
   // GiveItem or something should be here
 }
 
@@ -539,7 +538,7 @@ pub enum GMCommand {
     scene_id: SceneID,
     creature_id: CreatureID,
     ability_id: AbilityID,
-    target: DecidedTarget
+    target: DecidedTarget,
   },
   /// Make the current creature use an ability.
   CombatAct {
@@ -553,10 +552,20 @@ pub enum GMCommand {
   EndTurn,
 
   // ** Classes & Abilities **
-  CreateClass { path: FolderPath, class: ClassCreation },
-  EditClass { class: Class },
-  CreateAbility { path: FolderPath, ability: AbilityCreation },
-  EditAbility {ability: Ability },
+  CreateClass {
+    path: FolderPath,
+    class: ClassCreation,
+  },
+  EditClass {
+    class: Class,
+  },
+  CreateAbility {
+    path: FolderPath,
+    ability: AbilityCreation,
+  },
+  EditAbility {
+    ability: Ability,
+  },
 
   // ** Creature Manipulation **
   /// Create a new creature.
@@ -599,31 +608,43 @@ pub enum GMCommand {
 
 /// A representation of state change in a Creature. See `GameLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "t")]
 pub enum CreatureLog {
   Damage { hp: HP, rolls: Vec<i16> },
   Heal { hp: HP, rolls: Vec<i16> },
   GenerateEnergy(Energy),
   ReduceEnergy(Energy),
   ApplyCondition { id: ConditionID, duration: Duration, condition: Condition },
-  DecrementConditionRemaining(ConditionID),
-  RemoveCondition(ConditionID),
+  DecrementConditionRemaining { id: ConditionID },
+  RemoveCondition { id: ConditionID },
 }
 
 // TODO: get rid of CombatLog, it's dumb... unless we ever support multiple Combats?
 /// Representation of state changes in a Combat. See `GameLog`.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "t")]
 pub enum CombatLog {
   // Consume some of the movement from the current combat-creatur
-  ConsumeMovement(#[ts(type = "number")] u32units::Length),
-  ChangeCreatureInitiative { creature_id: CreatureID, new_initiative: i16 },
-  EndTurn(CreatureID), // the end of this creature's turn
+  ConsumeMovement {
+    #[ts(type = "number")]
+    movement: u32units::Length,
+  },
+  ChangeCreatureInitiative {
+    creature_id: CreatureID,
+    new_initiative: i16,
+  },
+  EndTurn {
+    creature_id: CreatureID,
+  }, // the end of this creature's turn
   ForceNextTurn,
   ForcePrevTurn,
-  RerollInitiative(Vec<(CreatureID, i16)>),
+  RerollInitiative {
+    initiatives: Vec<(CreatureID, i16)>,
+  },
 }
 
-pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
-  ls.into_iter().map(|l| GameLog::CreatureLog(cid, l)).collect()
+pub fn creature_logs_into_game_logs(creature_id: CreatureID, ls: Vec<CreatureLog>) -> Vec<GameLog> {
+  ls.into_iter().map(|log| GameLog::CreatureLog { creature_id, log }).collect()
 }
 
 /// Representation of a change to the game state. All change to the game happens via these values.
@@ -631,6 +652,7 @@ pub fn creature_logs_into_game_logs(cid: CreatureID, ls: Vec<CreatureLog>) -> Ve
 /// i.e., randomness happens when processing `GMCommand`s, which then result in specific
 /// `GameLog`s.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "t")]
 pub enum GameLog {
   LoadModule {
     name: String,
@@ -640,17 +662,37 @@ pub enum GameLog {
     path: FolderPath,
   },
 
-  SetActiveScene(Option<SceneID>),
+  SetActiveScene {
+    id: Option<SceneID>,
+  },
 
   // ** Player Manipulation **
-  RegisterPlayer(PlayerID),
-  GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
-  UnregisterPlayer(PlayerID),
-  RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
-  SetPlayerScene(PlayerID, Option<SceneID>),
+  RegisterPlayer {
+    id: PlayerID,
+  },
+  GiveCreaturesToPlayer {
+    player_id: PlayerID,
+    creature_ids: Vec<CreatureID>,
+  },
+  UnregisterPlayer {
+    id: PlayerID,
+  },
+  RemoveCreaturesFromPlayer {
+    player_id: PlayerID,
+    creature_ids: Vec<CreatureID>,
+  },
+  SetPlayerScene {
+    player_id: PlayerID,
+    scene_id: Option<SceneID>,
+  },
 
-  ChatFromGM(String),
-  ChatFromPlayer(PlayerID, String),
+  ChatFromGM {
+    message: String,
+  },
+  ChatFromPlayer {
+    player_id: PlayerID,
+    message: String,
+  },
 
   AttributeCheckResult {
     creature_id: CreatureID,
@@ -661,22 +703,46 @@ pub enum GameLog {
 
   // ** Folder Management **
   /// Create a folder, given segments leading to it.
-  CreateFolder(FolderPath),
-  RenameFolder(FolderPath, String),
-  MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  CreateFolder {
+    path: FolderPath,
+  },
+  RenameFolder {
+    path: FolderPath,
+    new_name: String,
+  },
+  MoveFolderItem {
+    source: FolderPath,
+    item_id: FolderItemID,
+    destination: FolderPath,
+  },
   CopyFolderItem {
     source: FolderPath,
     item_id: FolderItemID,
     dest: FolderPath,
     new_item_id: FolderItemID,
   },
-  DeleteFolderItem(FolderPath, FolderItemID),
+  DeleteFolderItem {
+    path: FolderPath,
+    item_id: FolderItemID,
+  },
 
-  CreateItem(FolderPath, Item),
-  EditItem(Item),
+  CreateItem {
+    path: FolderPath,
+    item: Item,
+  },
+  EditItem {
+    item: Item,
+  },
 
-  CreateNote(FolderPath, Note),
-  EditNote(FolderPath, String, Note),
+  CreateNote {
+    path: FolderPath,
+    note: Note,
+  },
+  EditNote {
+    path: FolderPath,
+    original_name: String,
+    note: Note,
+  },
 
   // ** Inventory management **
   TransferItem {
@@ -696,7 +762,10 @@ pub enum GameLog {
     count: u64,
   },
 
-  CreateScene(FolderPath, Scene),
+  CreateScene {
+    path: FolderPath,
+    scene: Scene,
+  },
   EditSceneDetails {
     scene_id: SceneID,
     details: SceneCreation,
@@ -761,9 +830,20 @@ pub enum GameLog {
 
   CombatLog(CombatLog),
   /// A creature log wrapped in a game log.
-  CreatureLog(CreatureID, CreatureLog),
-  SetCreaturePos(SceneID, CreatureID, Point3),
-  PathCreature(SceneID, CreatureID, Vec<Point3>),
+  CreatureLog {
+    creature_id: CreatureID,
+    log: CreatureLog,
+  },
+  SetCreaturePos {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    pos: Point3,
+  },
+  PathCreature {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    path: Vec<Point3>,
+  },
 
   AddVolumeCondition {
     scene_id: SceneID,
@@ -774,26 +854,49 @@ pub enum GameLog {
     duration: Duration,
   },
 
-  StartCombat(SceneID, Vec<(CreatureID, i16)>),
+  StartCombat {
+    scene_id: SceneID,
+    combatants: Vec<(CreatureID, i16)>,
+  },
   StopCombat,
 
   // ** Classes & Abilities **
-  CreateClass { path: FolderPath, class: Class },
-  EditClass { class: Class },
-  CreateAbility { path: FolderPath, ability: Ability },
-  EditAbility { ability: Ability },
+  CreateClass {
+    path: FolderPath,
+    class: Class,
+  },
+  EditClass {
+    class: Class,
+  },
+  CreateAbility {
+    path: FolderPath,
+    ability: Ability,
+  },
+  EditAbility {
+    ability: Ability,
+  },
 
   // ** Creatures **
-
-  CreateCreature(FolderPath, Creature),
+  CreateCreature {
+    path: FolderPath,
+    creature: Creature,
+  },
   EditCreatureDetails {
     creature_id: CreatureID,
     details: CreatureCreation,
   },
-  AddCreatureToCombat(CreatureID, i16),
-  RemoveCreatureFromCombat(CreatureID),
-  /// Indexes into snapshots and logs.
-  Rollback(usize, usize),
+  AddCreatureToCombat {
+    creature_id: CreatureID,
+    initiative: i16,
+  },
+  RemoveCreatureFromCombat {
+    id: CreatureID,
+  },
+  Rollback {
+    // This is purely informational?
+    snapshot_index: usize,
+    log_index: usize,
+  },
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
