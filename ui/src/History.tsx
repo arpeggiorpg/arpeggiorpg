@@ -49,8 +49,6 @@ export function GameLog(props: {
 }) {
   const { log, creatures } = props;
   switch (log.t) {
-    case "StopCombat":
-      return <div>Combat stopped.</div>;
     case "SetActiveScene":
       return <div>Set the active scene</div>;
     case "RegisterPlayer": {
