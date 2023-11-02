@@ -565,7 +565,7 @@ const decodeCombatLog: Decoder<CombatLog> = Z.discriminatedUnion("t", [
   Z.object({
     t: Z.literal("ChangeCreatureInitiative"),
     creature_id: Z.string(),
-    new_initiative: Z.number(),
+    initiative: Z.number(),
   }),
   Z.object({ t: Z.literal("EndTurn"), creature_id: Z.string() }),
   Z.object({
@@ -741,7 +741,7 @@ export const decodeGameLog: Decoder<GameLog> = Z.discriminatedUnion("t", [
     creature_id: Z.string(),
     initiative: Z.number(),
   }),
-  Z.object({ t: Z.literal("RemoveCreatureFromCombat"), id: Z.string() }),
+  Z.object({ t: Z.literal("RemoveCreatureFromCombat"), creature_id: Z.string() }),
   Z.object({ t: Z.literal("CombatLog"), log: decodeCombatLog }),
   Z.object({ t: Z.literal("CreatureLog"), creature_id: Z.string(), log: decodeCreatureLog }),
   Z.object({
@@ -831,16 +831,14 @@ export const decodeGameLogs: Decoder<[GameIndex, GameLog][]> = Z.array(
   Z.tuple([decodeGameIndex, decodeGameLog]),
 );
 
-export function encodePlayerCommand(cmd: PlayerCommand): object | string {
+export function encodePlayerCommand(cmd: PlayerCommand): object {
   if (typeof cmd === "string") return cmd;
   // Any commands which contain data that needs encoded needs to be handled explicitly.
   // Unfortunately this is not type-checked.
-  if ("PathCreature" in cmd) {
+  if (cmd.t === "PathCreature") {
     return {
-      PathCreature: {
-        ...cmd.PathCreature,
-        destination: encodePoint3(cmd.PathCreature.destination),
-      },
+      ...cmd,
+      destination: encodePoint3(cmd.destination),
     };
   }
 
@@ -858,135 +856,73 @@ export function encodeRPIGameRequest(request: RPIGameRequest): object {
   }
 }
 
-export function encodeGMCommand(cmd: GMCommand): object | string {
-  if (typeof cmd === "string") return cmd;
+export function encodeGMCommand(cmd: GMCommand): object {
   // Any commands which contain data that needs encoded needs to be handled explicitly.
   // Unfortunately this is not type-checked.
 
-  if ("CreateFolder" in cmd) {
-    return { CreateFolder: encodeFolderPath(cmd.CreateFolder) };
-  }
-  if ("MoveFolderItem" in cmd) {
-    return {
-      MoveFolderItem: [
-        encodeFolderPath(cmd.MoveFolderItem[0]),
-        cmd.MoveFolderItem[1],
-        encodeFolderPath(cmd.MoveFolderItem[2]),
-      ],
-    };
-  }
-  if ("CopyFolderItem" in cmd) {
-    return {
-      CopyFolderItem: {
-        ...cmd.CopyFolderItem,
-        source: encodeFolderPath(cmd.CopyFolderItem.source),
-        dest: encodeFolderPath(cmd.CopyFolderItem.dest),
-      },
-    };
-  }
-  if ("DeleteFolderItem" in cmd) {
-    return {
-      DeleteFolderItem: [encodeFolderPath(cmd.DeleteFolderItem[0]), cmd.DeleteFolderItem[1]],
-    };
-  }
-  if ("CreateClass" in cmd) {
-    return { CreateClass: { ...cmd.CreateClass, path: encodeFolderPath(cmd.CreateClass.path) } };
-  }
-  if ("CreateAbility" in cmd) {
-    return {
-      CreateAbility: { ...cmd.CreateAbility, path: encodeFolderPath(cmd.CreateAbility.path) },
-    };
-  }
-
-  if ("CreateCreature" in cmd) {
-    return { CreateCreature: [encodeFolderPath(cmd.CreateCreature[0]), cmd.CreateCreature[1]] };
-  }
-  if ("CreateItem" in cmd) {
-    return { CreateItem: [encodeFolderPath(cmd.CreateItem[0]), cmd.CreateItem[1]] };
-  }
-  if ("CreateNote" in cmd) {
-    return { CreateNote: [encodeFolderPath(cmd.CreateNote[0]), cmd.CreateNote[1]] };
-  }
-  if ("EditNote" in cmd) {
-    return { EditNote: [encodeFolderPath(cmd.EditNote[0]), cmd.EditNote[1], cmd.EditNote[2]] };
-  }
-  if ("CreateScene" in cmd) {
-    return { CreateScene: [encodeFolderPath(cmd.CreateScene[0]), cmd.CreateScene[1]] };
-  }
-  if ("EditSceneTerrain" in cmd) {
-    return {
-      EditSceneTerrain: {
-        ...cmd.EditSceneTerrain,
-        terrain: cmd.EditSceneTerrain.terrain.map(encodePoint3),
-      },
-    };
-  }
-  if ("EditSceneHighlights" in cmd) {
-    return {
-      EditSceneHighlights: {
-        ...cmd.EditSceneHighlights,
-        highlights: cmd.EditSceneHighlights.highlights.mapEntries(
-          ([point, [color, vis]]) => [encodePoint3(point), [color, vis]],
-        ).toJS(),
-      },
-    };
-  }
-  if ("EditSceneAnnotations" in cmd) {
-    return {
-      EditSceneAnnotations: {
-        ...cmd.EditSceneAnnotations,
-        annotations: cmd.EditSceneAnnotations.annotations.mapEntries(
-          ([point, [annotation, vis]]) => [encodePoint3(point), [annotation, vis]],
-        ).toJS(),
-      },
-    };
-  }
-  if ("EditSceneRelatedScenes" in cmd) {
-    return {
-      EditSceneRelatedScenes: {
-        ...cmd.EditSceneRelatedScenes,
-        related_scenes: cmd.EditSceneRelatedScenes.related_scenes.toArray(),
-      },
-    };
-  }
-  if ("EditSceneSceneHotspots" in cmd) {
-    return {
-      EditSceneSceneHotspots: {
-        ...cmd.EditSceneSceneHotspots,
-        scene_hotspots: cmd.EditSceneSceneHotspots.scene_hotspots.mapKeys(encodePoint3).toJS(),
-      },
-    };
-  }
-  if ("CombatAct" in cmd) {
-    return { CombatAct: { ...cmd.CombatAct, target: encodeDecidedTarget(cmd.CombatAct.target) } };
-  }
-  if ("PathCreature" in cmd) {
-    return {
-      PathCreature: {
-        ...cmd.PathCreature,
-        destination: encodePoint3(cmd.PathCreature.destination),
-      },
-    };
-  }
-  if ("SetCreaturePos" in cmd) {
-    return {
-      SetCreaturePos: [
-        cmd.SetCreaturePos[0],
-        cmd.SetCreaturePos[1],
-        encodePoint3(cmd.SetCreaturePos[2]),
-      ],
-    };
-  }
-  if ("PathCurrentCombatCreature" in cmd) {
-    return { PathCurrentCombatCreature: encodePoint3(cmd.PathCurrentCombatCreature) };
-  }
-  if ("LoadModule" in cmd) {
-    return {
-      LoadModule: {
-        ...cmd.LoadModule,
-        path: encodeFolderPath(cmd.LoadModule.path),
-      },
-    };
+  switch (cmd.t) {
+    case "CreateFolder":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "MoveFolderItem": {
+      return {
+        ...cmd,
+        source: encodeFolderPath(cmd.source),
+        destination: encodeFolderPath(cmd.destination),
+      };
+    }
+    case "CopyFolderItem": {
+      return {
+        ...cmd,
+        source: encodeFolderPath(cmd.source),
+        dest: encodeFolderPath(cmd.dest),
+      };
+    }
+    case "DeleteFolderItem":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateClass":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateAbility":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateCreature":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateItem":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateNote":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "EditNote":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "CreateScene":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
+    case "EditSceneTerrain":
+      return { ...cmd, terrain: cmd.terrain.map(encodePoint3) };
+    case "EditSceneHighlights":
+      return {
+        ...cmd,
+        highlights: cmd.highlights.mapEntries((
+          [point, [color, vis]],
+        ) => [encodePoint3(point), [color, vis]]).toJS(),
+      };
+    case "EditSceneAnnotations":
+      return {
+        ...cmd,
+        annotations: cmd.annotations.mapEntries((
+          [point, [annotation, vis]],
+        ) => [encodePoint3(point), [annotation, vis]]).toJS(),
+      };
+    case "EditSceneRelatedScenes":
+      return { ...cmd, related_scenes: cmd.related_scenes.toArray() };
+    case "EditSceneSceneHotspots":
+      return { ...cmd, scene_hotspots: cmd.scene_hotspots.mapKeys(encodePoint3).toJS() };
+    case "CombatAct":
+      return { ...cmd, target: encodeDecidedTarget(cmd.target) };
+    case "PathCreature":
+      return { ...cmd, destination: encodePoint3(cmd.destination) };
+    case "SetCreaturePos":
+      return { ...cmd, pos: encodePoint3(cmd.pos) };
+    case "PathCurrentCombatCreature":
+      return { ...cmd, destination: encodePoint3(cmd.destination) };
+    case "LoadModule":
+      return { ...cmd, path: encodeFolderPath(cmd.path) };
   }
   return cmd;
 }

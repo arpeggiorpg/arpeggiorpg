@@ -343,9 +343,12 @@ pub enum ModuleSource {
 
 /// Top-level commands that can be sent from a Player
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "t")]
 pub enum PlayerCommand {
   // should these enums include PlayerID? probably not...
-  ChatFromPlayer(String),
+  ChatFromPlayer {
+    message: String,
+  },
 
   EditNote {
     // this FolderPath needs to be scoped to the player's area or something
@@ -377,7 +380,9 @@ pub enum PlayerCommand {
   },
   /// Move the current creature in combat to a point.
   /// There must be a clear path according to the current loaded map.
-  PathCurrentCombatCreature(Point3),
+  PathCurrentCombatCreature {
+    destination: Point3,
+  },
   /// End the current creature's turn.
   EndTurn,
   // GiveItem or something should be here
@@ -385,6 +390,7 @@ pub enum PlayerCommand {
 
 /// Top-level commands that can be sent from a GM to affect the state of the game.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "t")]
 pub enum GMCommand {
   LoadModule {
     name: String,
@@ -393,34 +399,63 @@ pub enum GMCommand {
     path: FolderPath,
   },
 
-  ChatFromGM(String),
+  ChatFromGM {
+    message: String,
+  },
 
-  AttributeCheck(CreatureID, AttributeCheck),
+  AttributeCheck {
+    creature_id: CreatureID,
+    attribute_check: AttributeCheck,
+  },
 
   /// Create a folder, given segments leading to it.
-  CreateFolder(FolderPath),
+  CreateFolder {
+    path: FolderPath,
+  },
   /// Rename a folder.
-  RenameFolder(FolderPath, String),
+  RenameFolder {
+    path: FolderPath,
+    new_name: String,
+  },
 
   /// Move some object from one folder to another.
-  MoveFolderItem(FolderPath, FolderItemID, FolderPath),
+  MoveFolderItem {
+    source: FolderPath,
+    item_id: FolderItemID,
+    destination: FolderPath,
+  },
   /// Copy an object to a folder. It's okay to copy it to the same folder.
   CopyFolderItem {
     source: FolderPath,
     item_id: FolderItemID,
     dest: FolderPath,
   },
-  DeleteFolderItem(FolderPath, FolderItemID),
+  DeleteFolderItem {
+    path: FolderPath,
+    item_id: FolderItemID,
+  },
 
   /// Create an Item in a folder. (this will probably take an ItemCreation in the future)
-  CreateItem(FolderPath, String),
+  CreateItem {
+    path: FolderPath,
+    name: String,
+  },
   /// Edit an Item. The ID in the given Item must match an existing Item.
-  EditItem(Item),
+  EditItem {
+    item: Item,
+  },
 
   /// Create a Note inside of a Folder.
-  CreateNote(FolderPath, Note),
+  CreateNote {
+    path: FolderPath,
+    note: Note,
+  },
   /// Rename a Note inside of a Folder.
-  EditNote(FolderPath, String, Note),
+  EditNote {
+    path: FolderPath,
+    original_name: String,
+    note: Note,
+  },
 
   // ** Inventory management **
   // These work for creatures or scenes
@@ -443,7 +478,10 @@ pub enum GMCommand {
 
   // ** Scene management **
   /// Create a Scene.
-  CreateScene(FolderPath, SceneCreation),
+  CreateScene {
+    path: FolderPath,
+    scene: SceneCreation,
+  },
   EditSceneDetails {
     scene_id: SceneID,
     details: SceneCreation,
@@ -514,15 +552,25 @@ pub enum GMCommand {
 
   // ** Combat management **
   /// Start a combat with the specified creatures.
-  StartCombat(SceneID, Vec<CreatureID>),
+  StartCombat {
+    scene_id: SceneID,
+    combatants: Vec<CreatureID>,
+  },
   /// Stop the current combat.
   StopCombat,
   /// Add a creature to combat.
-  AddCreatureToCombat(CreatureID),
+  AddCreatureToCombat {
+    creature_id: CreatureID,
+  },
   /// Remove a creature from combat.
-  RemoveCreatureFromCombat(CreatureID),
+  RemoveCreatureFromCombat {
+    creature_id: CreatureID,
+  },
   /// Modify a creature's order in the combat list.
-  ChangeCreatureInitiative(CreatureID, i16),
+  ChangeCreatureInitiative {
+    creature_id: CreatureID,
+    initiative: i16,
+  },
   /// Reroll initiative for all creatures in combat, and sort the combat list
   RerollCombatInitiative,
   /// Move to the next creature in the initiative list. This does *not* run any end-of-turn or
@@ -547,7 +595,9 @@ pub enum GMCommand {
   },
   /// Move the current creature in combat to a point.
   /// There must be a clear path according to the current loaded map.
-  PathCurrentCombatCreature(Point3),
+  PathCurrentCombatCreature {
+    destination: Point3,
+  },
   /// End the current creature's turn.
   EndTurn,
 
@@ -569,14 +619,21 @@ pub enum GMCommand {
 
   // ** Creature Manipulation **
   /// Create a new creature.
-  CreateCreature(FolderPath, CreatureCreation),
+  CreateCreature {
+    path: FolderPath,
+    creature: CreatureCreation,
+  },
   /// Edit an existing creature.
   EditCreatureDetails {
     creature_id: CreatureID,
     details: CreatureCreation,
   },
   /// Assign a creature's position within a scene.
-  SetCreaturePos(SceneID, CreatureID, Point3),
+  SetCreaturePos {
+    scene_id: SceneID,
+    creature_id: CreatureID,
+    pos: Point3,
+  },
   /// Move a creature along a path within a scene.
   /// There must be a clear path according to the current loaded map. It doesn't matter whether
   /// the creature is in combat.
@@ -588,22 +645,40 @@ pub enum GMCommand {
 
   // ** Player Manipulation **
   /// Register a player as available for controlling a creature.
-  RegisterPlayer(PlayerID),
+  RegisterPlayer {
+    id: PlayerID,
+  },
   /// Give control of a creature to a player.
-  GiveCreaturesToPlayer(PlayerID, Vec<CreatureID>),
+  GiveCreaturesToPlayer {
+    player_id: PlayerID,
+    creature_ids: Vec<CreatureID>,
+  },
   /// Remove a player from the game, allowing all of their creatures to be given to other players.
-  UnregisterPlayer(PlayerID),
+  UnregisterPlayer {
+    id: PlayerID,
+  },
   /// Remove control of a creature from a player.
-  RemoveCreaturesFromPlayer(PlayerID, Vec<CreatureID>),
+  RemoveCreaturesFromPlayer {
+    player_id: PlayerID,
+    creature_ids: Vec<CreatureID>,
+  },
   /// Move a player to a particular scene, so they only see what's happening in that scene.
   /// Note that this doesn't have any affect on a player's *characters*.
   /// The scene name can be None (null) to not show any scene to the player.
-  SetPlayerScene(PlayerID, Option<SceneID>),
+  SetPlayerScene {
+    player_id: PlayerID,
+    scene_id: Option<SceneID>,
+  },
 
-  SetActiveScene(Option<SceneID>),
+  SetActiveScene {
+    id: Option<SceneID>,
+  },
 
   /// Roll back to a specific snapshot + log index
-  Rollback(usize, usize),
+  Rollback {
+    snapshot_index: usize,
+    log_index: usize,
+  },
 }
 
 /// A representation of state change in a Creature. See `GameLog`.
@@ -631,7 +706,7 @@ pub enum CombatLog {
   },
   ChangeCreatureInitiative {
     creature_id: CreatureID,
-    new_initiative: i16,
+    initiative: i16,
   },
   EndTurn {
     creature_id: CreatureID,
@@ -892,7 +967,7 @@ pub enum GameLog {
     initiative: i16,
   },
   RemoveCreatureFromCombat {
-    id: CreatureID,
+    creature_id: CreatureID,
   },
   Rollback {
     // This is purely informational?

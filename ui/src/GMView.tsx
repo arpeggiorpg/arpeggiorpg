@@ -192,7 +192,7 @@ export function GMChat(): JSX.Element {
     }
   }
 
-  function sendChat(line: string) {
-    A.sendGMCommand({ ChatFromGM: line });
+  function sendChat(message: string) {
+    A.sendGMCommand({ t: "ChatFromGM", message });
   }
 }

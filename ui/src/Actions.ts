@@ -167,12 +167,15 @@ export async function requestMove(creature_id: T.CreatureID) {
 export function moveCreature(creature_id: T.CreatureID, destination: T.Point3) {
   getState().clearMovementOptions();
   if (getState().playerId) {
-    sendPlayerCommand({ PathCreature: { creature_id: creature_id, destination } });
+    sendPlayerCommand({ t: "PathCreature", creature_id: creature_id, destination });
   } else {
     const scene = getState().getFocusedScene();
     if (scene) {
       sendGMCommand({
-        PathCreature: { scene_id: scene.id, creature_id: creature_id, destination },
+        t: "PathCreature",
+        scene_id: scene.id,
+        creature_id: creature_id,
+        destination,
       });
     } else {
       throw new Error(`Tried moving when there is no scene`);
@@ -180,17 +183,17 @@ export function moveCreature(creature_id: T.CreatureID, destination: T.Point3) {
   }
 }
 
-export function setCreaturePos(creature_id: T.CreatureID, dest: T.Point3) {
+export function setCreaturePos(creature_id: T.CreatureID, pos: T.Point3) {
   getState().clearMovementOptions();
   const scene = getState().getFocusedScene();
   if (scene) {
-    sendGMCommand({ SetCreaturePos: [scene.id, creature_id, dest] });
+    sendGMCommand({ t: "SetCreaturePos", scene_id: scene.id, creature_id: creature_id, pos });
   }
 }
 
-export function moveCombatCreature(dest: T.Point3) {
+export function moveCombatCreature(destination: T.Point3) {
   getState().clearMovementOptions();
-  sendGMCommand({ PathCurrentCombatCreature: dest });
+  sendGMCommand({ t: "PathCurrentCombatCreature", destination });
 }
 
 export async function requestCombatMovement() {
@@ -207,7 +210,7 @@ export async function executeCombatAbility(target_id: T.CreatureID) {
   const { ability_id, options } = opts;
   if (!("CreatureIDs" in options)) throw new Error(`Only support CreatureIDs for now`);
   const target: T.DecidedTarget = { Creature: target_id };
-  sendGMCommand({ CombatAct: { ability_id, target } });
+  sendGMCommand({ t: "CombatAct", ability_id, target });
   getState().clearPotentialTargets();
 }
 
@@ -219,7 +222,7 @@ export function executeCombatPointTargetedAbility(point: T.Point3) {
     throw new Error(`This function only works for abilities that use Points`);
   }
   const target: T.DecidedTarget = { Point: point };
-  sendGMCommand({ CombatAct: { ability_id, target } });
+  sendGMCommand({ t: "CombatAct", ability_id, target });
   getState().clearPotentialTargets();
 }
 
@@ -382,7 +385,7 @@ export function requestCombatAbility(
   scene_id: T.SceneID,
 ) {
   if ("Creature" in ability.action && "Actor" in ability.action.Creature) {
-    return sendGMCommand({ CombatAct: { ability_id, target: "Actor" } });
+    return sendGMCommand({ t: "CombatAct", ability_id, target: "Actor" });
   } else {
     return selectAbility(scene_id, cid, ability_id);
   }

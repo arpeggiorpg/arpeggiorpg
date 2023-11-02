@@ -454,7 +454,7 @@ export function SceneGrid(props: SceneGridProps) {
     const ann = scene.annotations.get(pt);
     const delet = () => {
       const annotations = scene.annotations.delete(pt);
-      A.sendGMCommand({ EditSceneAnnotations: { scene_id: scene.id, annotations } });
+      A.sendGMCommand({ t: "EditSceneAnnotations", scene_id: scene.id, annotations });
       close();
     };
     if (ann) {
@@ -509,7 +509,7 @@ export function SceneGrid(props: SceneGridProps) {
     condition_id: T.ConditionID,
   ) {
     const onClick = () => {
-      A.sendGMCommand({ RemoveSceneVolumeCondition: { scene_id: scene.id, condition_id } });
+      A.sendGMCommand({ t: "RemoveSceneVolumeCondition", scene_id: scene.id, condition_id });
       closeMenu();
     };
     // unimplemented!: put a name here
@@ -617,7 +617,7 @@ function SceneHotspotMenu(
   };
   const deleteHotspot = () => {
     const scene_hotspots = props.scene.scene_hotspots.remove(props.pt);
-    A.sendGMCommand({ EditSceneSceneHotspots: { scene_id: props.scene.id, scene_hotspots } });
+    A.sendGMCommand({ t: "EditSceneSceneHotspots", scene_id: props.scene.id, scene_hotspots });
     props.closeMenu();
   };
   return (

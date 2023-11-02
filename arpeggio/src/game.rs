@@ -167,7 +167,7 @@ impl Game {
     let player =
       self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
     let change = match cmd {
-      ChatFromPlayer(message) => {
+      ChatFromPlayer { message } => {
         self.change_with(GameLog::ChatFromPlayer { player_id, message: message.to_owned() })
       }
       EditNote { path, name, note } => {
@@ -184,7 +184,7 @@ impl Game {
         self.auth_combat(&player)?;
         self.combat_act(ability_id, target)
       }
-      PathCurrentCombatCreature(destination) => {
+      PathCurrentCombatCreature { destination } => {
         self.auth_combat(&player)?;
         self.get_combat()?.get_movement()?.move_current(destination)
       }
@@ -221,35 +221,39 @@ impl Game {
         path: path.clone(),
         source,
       }),
-      SetActiveScene(id) => self.change_with(GameLog::SetActiveScene { id }),
+      SetActiveScene { id } => self.change_with(GameLog::SetActiveScene { id }),
       // ** Player Management **
-      RegisterPlayer(ref pid) => self.change_with(GameLog::RegisterPlayer { id: pid.clone() }),
-      GiveCreaturesToPlayer(ref pid, ref cids) => {
+      RegisterPlayer { ref id } => self.change_with(GameLog::RegisterPlayer { id: id.clone() }),
+      GiveCreaturesToPlayer { ref player_id, ref creature_ids } => {
         self.change_with(GameLog::GiveCreaturesToPlayer {
-          player_id: pid.clone(),
-          creature_ids: cids.clone(),
+          player_id: player_id.clone(),
+          creature_ids: creature_ids.clone(),
         })
       }
-      UnregisterPlayer(ref pid) => self.change_with(GameLog::UnregisterPlayer { id: pid.clone() }),
-      RemoveCreaturesFromPlayer(ref pid, ref cids) => {
+      UnregisterPlayer { ref id } => self.change_with(GameLog::UnregisterPlayer { id: id.clone() }),
+      RemoveCreaturesFromPlayer { ref player_id, ref creature_ids } => {
         self.change_with(GameLog::RemoveCreaturesFromPlayer {
-          player_id: pid.clone(),
-          creature_ids: cids.clone(),
+          player_id: player_id.clone(),
+          creature_ids: creature_ids.clone(),
         })
       }
-      SetPlayerScene(ref pid, scene_id) => {
-        self.change_with(GameLog::SetPlayerScene { player_id: pid.clone(), scene_id })
+      SetPlayerScene { ref player_id, scene_id } => {
+        self.change_with(GameLog::SetPlayerScene { player_id: player_id.clone(), scene_id })
       }
 
       // ** Chat **
-      ChatFromGM(ref msg) => self.change_with(GameLog::ChatFromGM { message: msg.to_owned() }),
+      ChatFromGM { ref message } => {
+        self.change_with(GameLog::ChatFromGM { message: message.to_owned() })
+      }
 
       // ** Attribute checks **
-      AttributeCheck(cid, check) => self.attribute_check(cid, &check),
+      AttributeCheck { creature_id, attribute_check } => {
+        self.attribute_check(creature_id, &attribute_check)
+      }
       // ** Folder Management **
-      CreateFolder(path) => self.change_with(GameLog::CreateFolder { path }),
-      RenameFolder(path, new_name) => self.change_with(GameLog::RenameFolder { path, new_name }),
-      MoveFolderItem(source, item_id, destination) => {
+      CreateFolder { path } => self.change_with(GameLog::CreateFolder { path }),
+      RenameFolder { path, new_name } => self.change_with(GameLog::RenameFolder { path, new_name }),
+      MoveFolderItem { source, item_id, destination } => {
         self.change_with(GameLog::MoveFolderItem { source, item_id, destination })
       }
       CopyFolderItem { source, item_id, dest } => {
@@ -263,18 +267,18 @@ impl Game {
         };
         self.change_with(GameLog::CopyFolderItem { source, item_id, dest, new_item_id })
       }
-      DeleteFolderItem(path, item_id) => {
+      DeleteFolderItem { path, item_id } => {
         self.change_with(GameLog::DeleteFolderItem { path, item_id })
       }
 
-      CreateItem(path, name) => {
+      CreateItem { path, name } => {
         let item = Item { id: ItemID::gen(), name };
         self.change_with(GameLog::CreateItem { path, item })
       }
-      EditItem(item) => self.change_with(GameLog::EditItem { item }),
+      EditItem { item } => self.change_with(GameLog::EditItem { item }),
 
-      CreateNote(path, note) => self.change_with(GameLog::CreateNote { path, note }),
-      EditNote(path, original_name, note) => {
+      CreateNote { path, note } => self.change_with(GameLog::CreateNote { path, note }),
+      EditNote { path, original_name, note } => {
         self.change_with(GameLog::EditNote { path, original_name, note })
       }
 
@@ -290,8 +294,8 @@ impl Game {
         self.change_with(GameLog::SetItemCount { owner, item_id, count })
       }
 
-      CreateScene(path, sc) => {
-        let scene = Scene::create(sc);
+      CreateScene { path, scene } => {
+        let scene = Scene::create(scene);
         self.change_with(GameLog::CreateScene { path, scene })
       }
       EditSceneDetails { scene_id, details } => {
@@ -351,8 +355,8 @@ impl Game {
       }
       EditAbility { ability } => self.change_with(GameLog::EditAbility { ability }),
 
-      CreateCreature(path, spec) => {
-        let creature = Creature::create(&spec);
+      CreateCreature { path, creature } => {
+        let creature = Creature::create(&creature);
         self.change_with(GameLog::CreateCreature { path, creature })
       }
       EditCreatureDetails { creature_id, details } => {
@@ -361,10 +365,12 @@ impl Game {
       PathCreature { scene_id, creature_id, destination } => {
         Ok(self.path_creature(scene_id, creature_id, destination)?.0)
       }
-      SetCreaturePos(scene_id, creature_id, pos) => {
+      SetCreaturePos { scene_id, creature_id, pos } => {
         self.change_with(GameLog::SetCreaturePos { scene_id, creature_id, pos })
       }
-      PathCurrentCombatCreature(pt) => self.get_combat()?.get_movement()?.move_current(pt),
+      PathCurrentCombatCreature { destination } => {
+        self.get_combat()?.get_movement()?.move_current(destination)
+      }
       CombatAct { ability_id, target } => self.combat_act(ability_id, target),
       ActCreature { scene_id, creature_id, ability_id, target } => {
         self.ooc_act(scene_id, creature_id, ability_id, target)
@@ -389,14 +395,16 @@ impl Game {
           scene_hotspots: scene_hotspots.clone(),
         })
       }
-      StartCombat(scene, cids) => self.start_combat(scene, cids),
+      StartCombat { scene_id, combatants } => self.start_combat(scene_id, combatants),
       StopCombat => self.change_with(GameLog::StopCombat),
-      AddCreatureToCombat(cid) => self.add_creature_to_combat(cid),
-      RemoveCreatureFromCombat(id) => self.change_with(GameLog::RemoveCreatureFromCombat { id }),
+      AddCreatureToCombat { creature_id } => self.add_creature_to_combat(creature_id),
+      RemoveCreatureFromCombat { creature_id } => {
+        self.change_with(GameLog::RemoveCreatureFromCombat { creature_id })
+      }
       RerollCombatInitiative => self.change().apply_combat(|c| c.reroll_initiative()),
-      ChangeCreatureInitiative(creature_id, new_initiative) => {
+      ChangeCreatureInitiative { creature_id, initiative } => {
         self.change_with(GameLog::CombatLog {
-          log: CombatLog::ChangeCreatureInitiative { creature_id, new_initiative },
+          log: CombatLog::ChangeCreatureInitiative { creature_id, initiative },
         })
       }
       ForceNextTurn => self.change_with(GameLog::CombatLog { log: CombatLog::ForceNextTurn }),
@@ -404,7 +412,7 @@ impl Game {
       EndTurn => self.next_turn(),
 
       // These are handled by the app before being passed to the Game:
-      Rollback(..) => bug("Game Rollback"),
+      Rollback { .. } => bug("Game Rollback"),
     }?;
     Ok(change)
   }
@@ -1067,10 +1075,10 @@ impl Game {
         combat.creatures.push((creature_id, initiative));
         self.current_combat = Some(combat);
       }
-      RemoveCreatureFromCombat { id } => {
+      RemoveCreatureFromCombat { creature_id } => {
         let combat = {
           let combat = self.get_combat()?;
-          combat.remove_from_combat(id)?
+          combat.remove_from_combat(creature_id)?
         };
         self.current_combat = combat;
       }
@@ -1477,7 +1485,7 @@ pub mod test {
   use indexed::IndexedHashMap;
 
   pub fn t_start_combat(game: &Game, combatants: Vec<CreatureID>) -> Game {
-    t_perform(game, GMCommand::StartCombat(t_scene_id(), combatants))
+    t_perform(game, GMCommand::StartCombat { scene_id: t_scene_id(), combatants })
   }
 
   pub fn t_game_act(game: &Game, ability_id: AbilityID, target: DecidedTarget) -> Game {
@@ -1557,7 +1565,8 @@ pub mod test {
   fn start_combat_not_found() {
     let game = t_game();
     let non = CreatureID::gen();
-    let result = game.perform_gm_command(GMCommand::StartCombat(t_scene_id(), vec![non]));
+    let result = game
+      .perform_gm_command(GMCommand::StartCombat { scene_id: t_scene_id(), combatants: vec![non] });
     match result {
       Err(GameError::CreatureNotFound(id)) => assert_eq!(id, non.to_string()),
       x => panic!("Unexpected result: {:?}", x),
@@ -1567,7 +1576,8 @@ pub mod test {
   #[test]
   fn combat_must_have_creatures() {
     let game = t_game();
-    let result = game.perform_gm_command(GMCommand::StartCombat(t_scene_id(), vec![]));
+    let result = game
+      .perform_gm_command(GMCommand::StartCombat { scene_id: t_scene_id(), combatants: vec![] });
     match result {
       Err(GameError::CombatMustHaveCreatures) => {}
       x => panic!("Unexpected result: {:?}", x),
@@ -1594,7 +1604,7 @@ pub mod test {
   fn movement() {
     let game = t_game();
     let game = t_start_combat(&game, vec![cid_rogue(), cid_ranger(), cid_cleric()]);
-    t_perform(&game, GMCommand::PathCurrentCombatCreature(Point3::new(100, 0, 0)));
+    t_perform(&game, GMCommand::PathCurrentCombatCreature { destination: Point3::new(100, 0, 0) });
   }
 
   #[test]
@@ -1605,7 +1615,10 @@ pub mod test {
       vec![cid_rogue(), cid_ranger(), cid_cleric()]
     );
     // move ranger to have an initiative higher than the rogue
-    let game = t_perform(&game, GMCommand::ChangeCreatureInitiative(cid_ranger(), 30));
+    let game = t_perform(
+      &game,
+      GMCommand::ChangeCreatureInitiative { creature_id: cid_ranger(), initiative: 30 },
+    );
     assert_eq!(
       game.get_combat().unwrap().combat.creature_ids(),
       vec![cid_ranger(), cid_rogue(), cid_cleric()]
@@ -1617,7 +1630,10 @@ pub mod test {
     let game = t_game();
     let game = t_perform(
       &game,
-      GMCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+      GMCommand::StartCombat {
+        scene_id: t_scene_id(),
+        combatants: vec![cid_rogue(), cid_ranger(), cid_cleric()],
+      },
     );
     let iter = |game: &Game| -> Result<Game, GameError> {
       let game = t_game_act(game, abid_punch(), DecidedTarget::Creature(cid_ranger()));
@@ -1636,7 +1652,11 @@ pub mod test {
     let game = t_game();
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(1100, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_cleric(),
+        pos: Point3::new(1100, 0, 0),
+      },
     );
     let game = t_perform(
       &game,
@@ -1660,11 +1680,19 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_rogue(),
+        pos: Point3::new(500, 0, 0),
+      },
     );
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_cleric(),
+        pos: Point3::new(600, 0, 0),
+      },
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 
@@ -1684,11 +1712,19 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_rogue(),
+        pos: Point3::new(500, 0, 0),
+      },
     );
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(600, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_cleric(),
+        pos: Point3::new(600, 0, 0),
+      },
     );
 
     let scene = game.get_scene(t_scene_id()).unwrap();
@@ -1706,11 +1742,19 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(100, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_rogue(),
+        pos: Point3::new(100, 0, 0),
+      },
     );
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_cleric(), Point3::new(200, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_cleric(),
+        pos: Point3::new(200, 0, 0),
+      },
     );
     let scene = game.get_scene(t_scene_id()).unwrap();
 

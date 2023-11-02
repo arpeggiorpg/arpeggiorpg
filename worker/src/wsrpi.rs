@@ -87,8 +87,8 @@ impl GameSession {
     let changed_game = {
       let game = self.game_storage.game();
       if !game.players.contains_key(&self.ws_user.player_id) {
-        let changed_game =
-          game.perform_gm_command(GMCommand::RegisterPlayer(self.ws_user.player_id.clone()))?;
+        let changed_game = game
+          .perform_gm_command(GMCommand::RegisterPlayer { id: self.ws_user.player_id.clone() })?;
         Some(changed_game)
       } else {
         None
@@ -123,8 +123,7 @@ impl GameSession {
             Err(e) => {
               // This is a little involved because we try to send the request ID back with the error
               // response, so we have to retry parsing it as a Value.
-              let error_response =
-                json!({"error": format!("Couldn't parse as a WSRequest: {e}")});
+              let error_response = json!({"error": format!("Couldn't parse as a WSRequest: {e}")});
               let mut error_response = error_response.as_object().unwrap().clone();
               if let Ok(value) =
                 serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&text)

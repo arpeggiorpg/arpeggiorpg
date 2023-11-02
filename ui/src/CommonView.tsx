@@ -263,12 +263,11 @@ export class RemoveItem extends React.Component<
       return;
     }
     A.sendGMCommand({
-      RemoveItem: {
-        owner: { Creature: creature.id },
-        item_id: item.id,
-        // RADIX FIXME this count should be bigint from the beginning
-        count: BigInt(this.state.count),
-      },
+      t: "RemoveItem",
+      owner: { Creature: creature.id },
+      item_id: item.id,
+      // RADIX FIXME this count should be bigint from the beginning
+      count: BigInt(this.state.count),
     });
     onClose();
   }
@@ -396,12 +395,11 @@ export function GiveItem(props: GiveItemProps) {
 
   function give(recip: T.Creature, count: number) {
     A.sendGMCommand({
-      TransferItem: {
-        from: { Creature: giver.id },
-        to: { Creature: recip.id },
-        item_id: item.id,
-        count: BigInt(count),
-      },
+      t: "TransferItem",
+      from: { Creature: giver.id },
+      to: { Creature: recip.id },
+      item_id: item.id,
+      count: BigInt(count),
     });
     onClose();
   }
@@ -633,11 +631,10 @@ export function ActionBar(props: {
 }
 
 function DoneButton(): JSX.Element {
-  const command: T.GMCommand = "EndTurn";
   return (
     <Button
       style={{ height: "50px", flex: "1" }}
-      onClick={() => A.sendGMCommand(command)}
+      onClick={() => A.sendGMCommand({ t: "EndTurn" })}
     >
       Done
     </Button>
@@ -999,8 +996,8 @@ export function NoteEditor({
     }
     const newNote = { name: draftName, content };
     const cmd: T.GMCommand = originalNote
-      ? { EditNote: [path, originalNote.name, newNote] }
-      : { CreateNote: [path, newNote] };
+      ? { t: "EditNote", path, original_name: originalNote.name, note: newNote }
+      : { t: "CreateNote", path, note: newNote };
     A.sendGMCommand(cmd);
     if (afterSave) {
       afterSave(path, newNote);

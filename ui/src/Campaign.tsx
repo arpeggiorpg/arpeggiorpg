@@ -288,14 +288,13 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
           text="Create Class"
           onClick={async () => {
             const result = await A.sendGMCommand({
-              CreateClass: {
-                path,
-                class: {
-                  name: "New Class",
-                  abilities: [],
-                  conditions: [],
-                  color: "white",
-                },
+              t: "CreateClass",
+              path,
+              class: {
+                name: "New Class",
+                abilities: [],
+                conditions: [],
+                color: "white",
               },
             });
             // bit of annoying typescript junk here
@@ -316,21 +315,20 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
           text="Create Ability"
           onClick={async () => {
             const result = await A.sendGMCommand({
-              CreateAbility: {
-                path,
-                ability: {
-                  name: "New Ability",
-                  cost: 0,
-                  action: {
-                    Creature: {
-                      effect: {
-                        Damage: { Flat: { value: 1 } },
-                      },
-                      target: "Melee",
+              t: "CreateAbility",
+              path,
+              ability: {
+                name: "New Ability",
+                cost: 0,
+                action: {
+                  Creature: {
+                    effect: {
+                      Damage: { Flat: { value: 1 } },
                     },
+                    target: "Melee",
                   },
-                  usable_ooc: false,
                 },
+                usable_ooc: false,
               },
             });
             const createAbilityLog = result.find(log => log.t === "CreateAbility");
@@ -371,11 +369,10 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
                 onClick={() =>
                   A.sendGMCommand(
                     {
-                      DeleteFolderItem: [
-                        path.slice(0, -1),
-                        // "!": we KNOW this isn't [] (see conditional above)
-                        { SubfolderID: path.at(-1)! },
-                      ],
+                      t: "DeleteFolderItem",
+                      path: path.slice(0, -1),
+                      // "!": we KNOW this isn't [] (see conditional above)
+                      item_id: { SubfolderID: path.at(-1)! },
                     },
                   )}
               />
@@ -710,7 +707,7 @@ function CopyFolderItem(props: CopyFolderItemProps) {
   function copy({ copies }: { copies: number }) {
     const { source, item_id, onDone } = props;
     for (const _ of Array(5).keys()) {
-      A.sendGMCommand({ CopyFolderItem: { source, item_id, dest } });
+      A.sendGMCommand({ t: "CopyFolderItem", source, item_id, dest });
     }
     onDone();
   }
@@ -726,7 +723,7 @@ function DeleteFolderItem(props: DeleteFolderItemProps) {
   return <Button onClick={deleteIt}>Yes, really!</Button>;
 
   function deleteIt() {
-    A.sendGMCommand({ DeleteFolderItem: [location, item_id] });
+    A.sendGMCommand({ t: "DeleteFolderItem", path: location, item_id });
     onDone();
   }
 }
@@ -882,8 +879,8 @@ function MoveFolderItem(props: MoveFolderItemProps) {
     </div>
   );
 
-  function move(dest: T.FolderPath) {
-    A.sendGMCommand({ MoveFolderItem: [source, item_id, dest] });
+  function move(destination: T.FolderPath) {
+    A.sendGMCommand({ t: "MoveFolderItem", source, item_id, destination });
     onDone();
   }
 }

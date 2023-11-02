@@ -34,9 +34,9 @@ impl<'game> DynamicCombat<'game> {
         }
         new.creatures = sort_combatants(combatants.clone())?;
       }
-      CombatLog::ChangeCreatureInitiative { creature_id, new_initiative } => {
+      CombatLog::ChangeCreatureInitiative { creature_id, initiative } => {
         let cursor = new.creatures.get_cursor();
-        let update_init = |&(c, i)| if c == creature_id { (c, new_initiative) } else { (c, i) };
+        let update_init = |&(c, i)| if c == creature_id { (c, initiative) } else { (c, i) };
         let creatures_with_inits =
           sort_combatants(new.creatures.iter().map(update_init).collect())?;
         new.creatures = creatures_with_inits;
@@ -213,7 +213,10 @@ pub mod test {
     let game = t_game();
     t_perform(
       &game,
-      GMCommand::StartCombat(t_scene_id(), vec![cid_rogue(), cid_ranger(), cid_cleric()]),
+      GMCommand::StartCombat {
+        scene_id: t_scene_id(),
+        combatants: vec![cid_rogue(), cid_ranger(), cid_cleric()],
+      },
     )
   }
 
@@ -229,7 +232,11 @@ pub mod test {
     let game = t_combat();
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(200, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_ranger(),
+        pos: Point3::new(200, 0, 0),
+      },
     );
     match t_act(&game, abid_punch(), DecidedTarget::Creature(cid_ranger())) {
       Err(GameError::CreatureOutOfRange(cid)) => assert_eq!(cid, cid_ranger()),
@@ -244,7 +251,11 @@ pub mod test {
     let game = t_perform(&game, GMCommand::EndTurn);
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_ranger(), Point3::new(500, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_ranger(),
+        pos: Point3::new(500, 0, 0),
+      },
     );
     let _: DynamicCombat = t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_ranger()))
       .unwrap()
@@ -288,7 +299,11 @@ pub mod test {
     let game = t_perform(&game, GMCommand::EndTurn);
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(600, 0, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_rogue(),
+        pos: Point3::new(600, 0, 0),
+      },
     );
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
       Err(GameError::CreatureOutOfRange(cid)) => assert_eq!(cid, cid_rogue()),
@@ -297,7 +312,11 @@ pub mod test {
 
     let game = t_perform(
       &game,
-      GMCommand::SetCreaturePos(t_scene_id(), cid_rogue(), Point3::new(500, 300, 0)),
+      GMCommand::SetCreaturePos {
+        scene_id: t_scene_id(),
+        creature_id: cid_rogue(),
+        pos: Point3::new(500, 300, 0),
+      },
     );
     // d((500,300,0), (0,0,0)).round() is still 500 so it's still in range
     match t_act(&game, abid_shoot(), DecidedTarget::Creature(cid_rogue())) {
@@ -318,17 +337,24 @@ pub mod test {
   #[test]
   fn move_some_at_a_time() {
     let game = t_combat();
-    let game = t_perform(&game, GMCommand::PathCurrentCombatCreature(Point3::new(500, 0, 0)));
+    let game = t_perform(
+      &game,
+      GMCommand::PathCurrentCombatCreature { destination: Point3::new(500, 0, 0) },
+    );
     assert_eq!(
       game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(500, 0, 0)
     );
-    let game = t_perform(&game, GMCommand::PathCurrentCombatCreature(Point3::new(1000, 0, 0)));
+    let game = t_perform(
+      &game,
+      GMCommand::PathCurrentCombatCreature { destination: Point3::new(1000, 0, 0) },
+    );
     assert_eq!(
       game.get_scene(t_scene_id()).unwrap().get_pos(cid_rogue()).unwrap(),
       Point3::new(1000, 0, 0)
     );
-    match perf(&game, GMCommand::PathCurrentCombatCreature(Point3::new(1100, 0, 0))) {
+    match perf(&game, GMCommand::PathCurrentCombatCreature { destination: Point3::new(1100, 0, 0) })
+    {
       Err(GameError::NoPathFound) => {}
       x => panic!("Unexpected result: {:?}", x),
     }

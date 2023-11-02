@@ -8,8 +8,7 @@ use crate::{
   types::{GameID, GameIndex, GameList, GameMetadata, GameProfile, InvitationID, Role, UserID},
 };
 
-use arpeggio::types::{self, Game, GMCommand, PlayerID, PlayerCommand};
-
+use arpeggio::types::{self, GMCommand, Game, PlayerCommand, PlayerID};
 
 /// AuthenticatedService is a capability layer that exposes functionality to authenticated users.
 /// One important responsibility is that this layer *authorizes* users to access specific games and
@@ -49,12 +48,7 @@ impl AuthenticatedService {
 
   pub async fn gm(&self, game_id: &GameID) -> AEResult<GMService> {
     let (game, game_index) = self.find_game(game_id, Role::GM).await?;
-    Ok(GMService {
-      storage: self.storage.clone(),
-      game_id: *game_id,
-      game,
-      game_index,
-    })
+    Ok(GMService { storage: self.storage.clone(), game_id: *game_id, game, game_index })
   }
 
   pub async fn player(&self, game_id: &GameID) -> AEResult<PlayerService> {
@@ -95,7 +89,7 @@ impl AuthenticatedService {
       self.storage.accept_invitation(&self.user_id, game_id, invitation_id, profile_name).await?;
     let (game, _idx) = load_game(&*self.storage, game_id).await?;
 
-    let command = GMCommand::RegisterPlayer(profile.profile_name.clone());
+    let command = GMCommand::RegisterPlayer { id: profile.profile_name.clone() };
     // Probably need to share this code with GMService.perform_command
     let changed_game = game.perform_gm_command(command)?;
     self.storage.apply_game_logs(game_id, &changed_game.logs).await?;

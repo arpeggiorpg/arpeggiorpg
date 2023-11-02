@@ -153,6 +153,6 @@ export function PlayerChat(props: PlayerChatProps): JSX.Element {
   }
 
   function sendChat(line: string) {
-    A.sendPlayerCommand({ ChatFromPlayer: line });
+    A.sendPlayerCommand({ t: "ChatFromPlayer", message: line });
   }
 }
