@@ -32,6 +32,9 @@ export function GMMain() {
     <CV.Tab key="History" name="History">
       <History.History />
     </CV.Tab>,
+    <CV.Tab key="Extras" name="Extras">
+      <GMExtras />
+    </CV.Tab>,
   ];
 
   const combat = M.useState((s) => s.getCombat());
@@ -52,6 +55,15 @@ export function GMMain() {
       menu_size="tiny"
       bottom_bar={bottom_bar}
     />
+  );
+}
+
+function GMExtras() {
+  return (
+    <>
+      <h2>Download game</h2>
+      <GM.ExportGame />
+    </>
   );
 }
 

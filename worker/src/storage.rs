@@ -2,7 +2,7 @@ use serde::Deserialize;
 use worker::Env;
 
 use arpeggio::types::PlayerID;
-use mtarp::types::{GameID, Role, UserID, GameProfile};
+use mtarp::types::{GameID, GameProfile, Role, UserID, GameMetadata};
 
 pub async fn list_games_with_names(env: &Env, user_id: UserID) -> worker::Result<Vec<GameInfo>> {
   let db = env.d1("DB")?;
@@ -11,6 +11,14 @@ pub async fn list_games_with_names(env: &Env, user_id: UserID) -> worker::Result
   let statement = statement.bind(&[user_id.to_string().into()])?;
   let game_infos: Vec<GameInfo> = statement.all().await?.results()?;
   Ok(game_infos)
+}
+
+pub async fn get_game_metadata(env: &Env, game_id: GameID) -> worker::Result<Option<GameMetadata>> {
+  let db = env.d1("DB")?;
+  let statement = db.prepare("SELECT meta.name FROM game_metadata meta WHERE meta.game_id = ?");
+  let statement = statement.bind(&[game_id.to_string().into()])?;
+  let meta: Option<GameMetadata> = statement.first(None).await?;
+  Ok(meta)
 }
 
 #[derive(Deserialize)]
@@ -22,7 +30,9 @@ pub struct GameInfo {
   pub name: String,
 }
 
-pub async fn create_game(env: &Env, game_id: GameID, user_id: UserID, name: String) -> worker::Result<()> {
+pub async fn create_game(
+  env: &Env, game_id: GameID, user_id: UserID, name: String,
+) -> worker::Result<()> {
   create_profile(env, game_id, user_id, PlayerID("GM".to_string()), Role::GM).await?;
   let db = env.d1("DB")?;
   let statement = db.prepare("INSERT INTO game_metadata (game_id, name) VALUES (?, ?)");

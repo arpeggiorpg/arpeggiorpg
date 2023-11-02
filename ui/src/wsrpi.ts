@@ -46,20 +46,20 @@ export function connect(gameId: string, mode: T.Role) {
       Z.object({ token: Z.string() }),
     );
     webSocket = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL + `/ws/${gameId}/${token}`);
-    if (window) { (window as any).arpeggioSocket = webSocket; }
-
+    if (window) (window as any).arpeggioSocket = webSocket;
 
     webSocket.addEventListener("open", async (event) => {
       resetTimeout();
       M.getState().setSocketStatus("open");
       console.log("connected to WebSocket. initiating GetGame");
-      const { logs, game } = await sendRequest(
+      const { logs, game, metadata } = await sendRequest(
         { t: "GMGetGame" },
-        Z.object({ logs: T.decodeGameLogs, game: T.decodeGame })
+        Z.object({ logs: T.decodeGameLogs, game: T.decodeGame, metadata: T.decodeGameMetadata }),
       );
       console.log("got the game.", game);
       M.getState().refresh(game);
       M.getState().setRecentLogs(logs);
+      M.getState().setGameName(metadata.name);
     });
 
     webSocket.addEventListener("message", (event) => {
@@ -77,7 +77,10 @@ export function connect(gameId: string, mode: T.Role) {
 
   return () => {
     console.log("Cleaning up WebSocket");
-    M.getState().setSocketStatus("unconnected");
+    const state = M.getState();
+    state.setSocketStatus("unconnected");
+    state.setGameName(undefined);
+    state.setRecentLogs([]);
     const ws = webSocket;
     webSocket = undefined;
     ws?.close();
@@ -105,8 +108,8 @@ function handleWSEvent(event: MessageEvent<string>) {
   } else {
     // Handle server-sent events
     if ("t" in parsed && parsed["t"] === "refresh_game") {
-      let decoder = Z.object({game: T.decodeGame, logs: T.decodeGameLogs});
-      let {game, logs} = decoder.parse(parsed);
+      let decoder = Z.object({ game: T.decodeGame, logs: T.decodeGameLogs });
+      let { game, logs } = decoder.parse(parsed);
       M.getState().refresh(game);
       M.getState().addLogs(logs);
     } else {

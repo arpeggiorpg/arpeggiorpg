@@ -8,7 +8,7 @@ use serde_json::json;
 use worker::{console_error, console_log, WebSocket, WebsocketEvent};
 
 use arpeggio::types::{ChangedGame, GMCommand, GameError, RPIGame};
-use mtarp::types::{RPIGameRequest, Role};
+use mtarp::types::{GameMetadata, RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
@@ -31,14 +31,17 @@ pub struct GameSession {
   sessions: Sessions,
   ws_user: WSUser,
   timeout: RefCell<Timeout>,
+  // We will want this to be Rc<RefCell<GameMetadata>> once we start supporting renaming games
+  metadata: GameMetadata,
 }
 
 impl GameSession {
   pub fn new(
     game_storage: Rc<GameStorage>, socket: WebSocket, sessions: Sessions, ws_user: WSUser,
+    metadata: GameMetadata,
   ) -> Self {
     let timeout = mk_timeout(socket.clone(), ws_user.clone());
-    Self { game_storage, socket, sessions, ws_user, timeout: RefCell::new(timeout) }
+    Self { game_storage, socket, sessions, ws_user, timeout: RefCell::new(timeout), metadata }
   }
 
   pub async fn run(&self) {
@@ -161,7 +164,7 @@ impl GameSession {
         // RADIX TODO! Include the last 100 GameLogs here, keyed by GameIndexes. I guess this means
         // we should probably store the last 100 GameLogs in GameStorage, probably in a VecDeque.
         let rpi_game = RPIGame(&game);
-        let json = json!({"game": rpi_game, "logs": self.game_storage.recent_logs()});
+        let json = json!({"game": rpi_game, "logs": self.game_storage.recent_logs(), "metadata": self.metadata});
         Ok(serde_json::to_value(json)?)
       }
       (Role::Player, PlayerCommand { command }) => {

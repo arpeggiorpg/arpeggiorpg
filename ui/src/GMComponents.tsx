@@ -26,6 +26,7 @@ import {
   Tab,
   Table,
 } from "semantic-ui-react";
+import * as Z from "zod";
 
 import * as A from "./Actions";
 import * as Campaign from "./Campaign";
@@ -35,6 +36,7 @@ import * as Dice from "./Dice";
 import * as M from "./Model";
 import * as T from "./PTTypes";
 import * as TextInput from "./TextInput";
+import { sendWSRequest } from "./wsrpi";
 
 export function GMScene({ scene }: { scene: T.Scene }) {
   const scenePlayers = M.useState(s => s.getGame().players.count(p => p.scene === scene.id));
@@ -1424,15 +1426,45 @@ export function AbilityEditor({ abilityId }: { abilityId: T.ClassID }) {
   }
 }
 
-// export function ExportModule(props: { path: T.FolderPath; onDone: () => void }) {
-//   const { path, onDone } = props;
-//   return <div>
-//     <SaveGameishForm onClose={onDone} save={save} />
-//   </div>;
-//   function save(game: string) {
-//     A.exportModule(path, game);
-//   }
-// }
+export function ExportGame(props: { onDone?: () => void }) {
+  const { onDone } = props;
+  return <div>
+    <button onClick={getIt}>Download</button>
+  </div>;
+
+  async function getIt() {
+    const name = M.getState().gameName || "Untitled";
+    const filename = `${name}.arpeggiogame`;
+    const response = await sendWSRequest({t: "GMGetGame"}, Z.object({game: Z.any()}));
+    console.log("response!", response);
+    if (!response.game) {
+      console.error("couldn't find a game in response", response);
+    }
+    const file = new File([JSON.stringify(response.game, null, 2)], filename);
+    downloadFile(file);
+    onDone && onDone();
+  }
+
+  function downloadFile(file: File) {
+    // Create a link and set the URL using `createObjectURL`
+    const link = document.createElement("a");
+    link.style.display = "none";
+    link.href = URL.createObjectURL(file);
+    link.download = file.name;
+
+    // It needs to be added to the DOM so it can be clicked
+    document.body.appendChild(link);
+    link.click();
+
+    // To make this work on Firefox we need to wait
+    // a little while before removing it.
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+      link.parentNode!.removeChild(link);
+    }, 0);
+  }
+
+}
 
 export function ImportModule(props: {
   path: T.FolderPath;

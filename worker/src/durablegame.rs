@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{anyhow, Context};
 use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
-use mtarp::types::{GameIndex, InvitationID, Role};
+use mtarp::types::{GameID, GameIndex, GameMetadata, InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
 use worker::{
@@ -15,7 +15,7 @@ use worker::{
   WebSocket, WebSocketPair,
 };
 
-use crate::{anyhow_str, rust_error, wsrpi};
+use crate::{anyhow_str, rust_error, storage, wsrpi};
 
 #[durable_object]
 pub struct ArpeggioGame {
@@ -23,6 +23,8 @@ pub struct ArpeggioGame {
   game_storage: Option<Rc<GameStorage>>,
   sessions: Sessions,
   ws_tokens: HashMap<Uuid, WSUser>,
+  metadata: Option<GameMetadata>,
+  env: Env,
 }
 
 #[derive(Debug, Clone)]
@@ -35,12 +37,14 @@ pub type Sessions = Rc<RefCell<Vec<WebSocket>>>;
 
 #[durable_object]
 impl DurableObject for ArpeggioGame {
-  fn new(state: State, _env: Env) -> Self {
+  fn new(state: State, env: Env) -> Self {
     Self {
       game_storage: None,
       state: Rc::new(state),
       sessions: Rc::new(RefCell::new(vec![])),
       ws_tokens: HashMap::new(),
+      metadata: None,
+      env,
     }
   }
 
@@ -80,11 +84,24 @@ impl ArpeggioGame {
         self.ws_tokens.insert(token, WSUser { role, player_id });
         Response::from_json(&json!({"token": token})).map_err(anyhow_str)
       }
-      ["ws", _, ws_token] => {
+      ["ws", game_id, ws_token] => {
         let ws_token: Uuid = ws_token.parse()?;
         if let Some(ws_user) = self.ws_tokens.remove(&ws_token) {
           console_log!("[DO] GAME {path}");
-          console_log!("[worker] WEBSOCKET");
+          let game_id = game_id.parse::<GameID>()?;
+          let metadata = match &self.metadata {
+            Some(metadata) => metadata.clone(),
+            None => {
+              let metadata = storage::get_game_metadata(&self.env, game_id)
+                .await
+                .map_err(anyhow_str)?
+                .ok_or(anyhow!("No metadata!?"))?;
+              self.metadata = Some(metadata.clone());
+              metadata
+            }
+          };
+          console_log!("[DO] game_id={game_id:?} metadata={metadata:?}");
+
           let pair = WebSocketPair::new().map_err(anyhow_str)?;
           let server = pair.server;
           // To avoid racking up DO bills, let's close the socket after a while in case someone
@@ -100,7 +117,7 @@ impl ArpeggioGame {
 
           self.sessions.borrow_mut().push(server.clone());
           let session =
-            wsrpi::GameSession::new(game_storage, server, self.sessions.clone(), ws_user);
+            wsrpi::GameSession::new(game_storage, server, self.sessions.clone(), ws_user, metadata);
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
             console_log!("Okayyyy. I'm done with my taaaaask.");
@@ -168,7 +185,6 @@ impl GameStorage {
 
   async fn load(state: Rc<State>) -> anyhow::Result<Self> {
     // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
-
     let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
       Ok(game_str) => {
         let game = serde_json::from_str(&game_str)?;

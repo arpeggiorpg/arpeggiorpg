@@ -398,19 +398,11 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
           )
           : null}
 
-        {
-          /* <CV.ModalMaker
-        button={open =>
-          <Dropdown.Item text="Export as module" icon="upload" onClick={open} />}
-        header={<span>Export folder</span>}
-        content={close => <GM.ExportModule path={path} onDone={close} />} />
-        */
-        }
         <CV.ModalMaker
           button={open => (
             <Dropdown.Item
               text="Import module here"
-              icon="download"
+              icon="upload"
               onClick={open}
             />
           )}
