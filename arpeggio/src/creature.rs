@@ -103,9 +103,10 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
         Duration::Interminate => {}
         Duration::Rounds(remaining) => {
           if remaining > 0 {
-            changes = changes.apply(&CreatureLog::DecrementConditionRemaining(condition_id))?;
+            changes =
+              changes.apply(&CreatureLog::DecrementConditionRemaining { id: condition_id })?;
           } else {
-            changes = changes.apply(&CreatureLog::RemoveCondition(condition_id))?;
+            changes = changes.apply(&CreatureLog::RemoveCondition { id: condition_id })?;
           }
         }
       }
@@ -116,7 +117,7 @@ impl<'creature, 'game: 'creature> DynamicCreature<'creature, 'game> {
   fn generate_energy(&self, nrg: Energy) -> Vec<CreatureLog> {
     let delta = self.creature.max_energy - self.creature.cur_energy;
     if delta > Energy(0) {
-      vec![CreatureLog::GenerateEnergy(cmp::min(delta, nrg))]
+      vec![CreatureLog::GenerateEnergy { energy: cmp::min(delta, nrg) }]
     } else {
       vec![]
     }
@@ -221,20 +222,20 @@ impl Creature {
       CreatureLog::Heal { ref hp, .. } => {
         new.cur_health = cmp::min(new.cur_health.saturating_add(*hp), new.max_health)
       }
-      CreatureLog::GenerateEnergy(ref nrg) => {
-        new.cur_energy = cmp::min(new.cur_energy.saturating_add(*nrg), new.max_energy)
+      CreatureLog::GenerateEnergy { ref energy } => {
+        new.cur_energy = cmp::min(new.cur_energy.saturating_add(*energy), new.max_energy)
       }
-      CreatureLog::ReduceEnergy(ref nrg) => {
-        if *nrg > new.cur_energy {
-          return Err(GameError::NotEnoughEnergy(*nrg));
+      CreatureLog::ReduceEnergy { ref energy } => {
+        if *energy > new.cur_energy {
+          return Err(GameError::NotEnoughEnergy(*energy));
         } else {
-          new.cur_energy = new.cur_energy - *nrg;
+          new.cur_energy = new.cur_energy - *energy;
         }
       }
       CreatureLog::ApplyCondition { ref id, ref duration, ref condition } => {
         new.conditions.insert(*id, condition.apply(*duration));
       }
-      CreatureLog::DecrementConditionRemaining(ref id) => {
+      CreatureLog::DecrementConditionRemaining { ref id } => {
         let cond = new.conditions.get_mut(id).ok_or_else(|| GameError::ConditionNotFound(*id))?;
         match cond.remaining {
           Duration::Interminate => {
@@ -247,7 +248,7 @@ impl Creature {
           Duration::Rounds(ref mut dur) => *dur -= 1,
         }
       }
-      CreatureLog::RemoveCondition(ref id) => {
+      CreatureLog::RemoveCondition { ref id } => {
         new.conditions.remove(id).ok_or_else(|| GameError::ConditionNotFound(*id))?;
       }
     }
@@ -258,8 +259,8 @@ impl Creature {
 
   pub fn cur_health(&self) -> HP { self.cur_health }
 
-  pub fn reduce_energy(&self, delta: Energy) -> Result<ChangedCreature, GameError> {
-    self.change_with(CreatureLog::ReduceEnergy(delta))
+  pub fn reduce_energy(&self, energy: Energy) -> Result<ChangedCreature, GameError> {
+    self.change_with(CreatureLog::ReduceEnergy { energy })
   }
 
   pub fn change(&self) -> ChangedCreature {

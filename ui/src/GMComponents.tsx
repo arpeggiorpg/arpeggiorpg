@@ -549,14 +549,13 @@ function ChallengeResponse({ result }: { result: GameChallengeResult }) {
     return <Table.Cell colSpan={2}>{result.msg}</Table.Cell>;
   }
   const { log } = result;
-  if (typeof log === "string" || !("AttributeCheckResult" in log)) {
+  if (log.t !== "AttributeCheckResult") {
     return <Table.Cell colSpan={2}>BUG: Got weird GameLog {JSON.stringify(log)}</Table.Cell>;
   }
 
-  const { AttributeCheckResult } = log;
   return [
-    <Table.Cell key="roll">{AttributeCheckResult.actual}</Table.Cell>,
-    <Table.Cell key="success">{AttributeCheckResult.success ? "😃" : "😡"}</Table.Cell>,
+    <Table.Cell key="roll">{log.actual}</Table.Cell>,
+    <Table.Cell key="success">{log.success ? "😃" : "😡"}</Table.Cell>,
   ];
 }
 

@@ -299,20 +299,15 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
               },
             });
             // bit of annoying typescript junk here
-            const createClassLog = result.find(log =>
-              typeof log !== "string" && "CreateClass" in log
-            );
-            if (
-              !createClassLog
-              || !(typeof createClassLog !== "string" && "CreateClass" in createClassLog)
-            ) {
+            const createClassLog = result.find(log => log.t === "CreateClass");
+            if (!createClassLog || createClassLog.t !== "CreateClass") {
               console.error("I just created a class but I didn't get a CreateClass log...");
               return;
             }
 
             M.getState().setSecondaryFocus({
               t: "Class",
-              class_id: createClassLog.CreateClass.class.id,
+              class_id: createClassLog.class.id,
             });
           }}
         />
@@ -338,21 +333,15 @@ function FolderMenu({ path }: { path: T.FolderPath }) {
                 },
               },
             });
-            // bit of annoying typescript junk here
-            const createAbilityLog = result.find(log =>
-              typeof log !== "string" && "CreateAbility" in log
-            );
-            if (
-              !createAbilityLog
-              || !(typeof createAbilityLog !== "string" && "CreateAbility" in createAbilityLog)
-            ) {
+            const createAbilityLog = result.find(log => log.t === "CreateAbility");
+            if (!createAbilityLog || createAbilityLog.t !== "CreateAbility") {
               console.error("I just created a Ability but I didn't get a CreateAbility log...");
               return;
             }
 
             M.getState().setSecondaryFocus({
               t: "Ability",
-              ability_id: createAbilityLog.CreateAbility.ability.id,
+              ability_id: createAbilityLog.ability.id,
             });
           }}
         />

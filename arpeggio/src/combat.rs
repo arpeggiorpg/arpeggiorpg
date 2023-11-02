@@ -20,15 +20,15 @@ impl<'game> DynamicCombat<'game> {
   pub fn apply_log(&self, l: &CombatLog) -> Result<Combat, GameError> {
     let mut new = self.combat.clone();
     match *l {
-      CombatLog::ConsumeMovement(distance) => {
+      CombatLog::ConsumeMovement { distance } => {
         new.movement_used += distance;
       }
-      CombatLog::EndTurn(ref cid) => {
-        assert_eq!(*cid, new.current_creature_id());
+      CombatLog::EndTurn { ref creature_id } => {
+        assert_eq!(*creature_id, new.current_creature_id());
         new.creatures.next_circular();
         new.movement_used = Zero::zero();
       }
-      CombatLog::RerollInitiative(ref combatants) => {
+      CombatLog::RerollInitiative { ref combatants } => {
         if new.creatures.get_cursor() != 0 {
           return Err(GameError::MustRerollAtStartOfRound);
         }
@@ -55,7 +55,8 @@ impl<'game> DynamicCombat<'game> {
   }
 
   pub fn next_turn(&self) -> Result<ChangedCombat<'game>, GameError> {
-    let change = self.change_with(CombatLog::EndTurn(self.current_creature()?.id()))?;
+    let change =
+      self.change_with(CombatLog::EndTurn { creature_id: self.current_creature()?.id() })?;
     Ok(change)
   }
 
@@ -85,7 +86,7 @@ impl<'game> DynamicCombat<'game> {
   pub fn reroll_initiative(&self) -> Result<ChangedCombat<'game>, GameError> {
     let cids = self.combat.creature_ids();
     let combatants = Combat::roll_initiative(self.game, cids)?;
-    self.change_with(CombatLog::RerollInitiative(combatants))
+    self.change_with(CombatLog::RerollInitiative { combatants })
   }
 
   pub fn change(&self) -> ChangedCombat<'game> {
@@ -175,7 +176,7 @@ impl<'game> CombatMove<'game> {
       pt,
       self.movement_left,
     )?;
-    change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement(distance)))
+    change.apply_combat(|c| c.change_with(CombatLog::ConsumeMovement { distance }))
   }
 }
 

@@ -184,13 +184,11 @@ export function GMChat(): JSX.Element {
   return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
 
   function get_chat_line(log: T.GameLog) {
-    if (typeof log !== "string") {
-      if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
-        return <CV.ChatLog log={log} />;
-      }
-      if ("CreatureLog" in log) {
-        return <History.CreatureLog creatureId={log.CreatureLog[0]} log={log.CreatureLog[1]} />;
-      }
+    if (log.t === "ChatFromPlayer" || log.t === "ChatFromGM") {
+      return <CV.ChatLog log={log} />;
+    }
+    if (log.t === "CreatureLog") {
+      return <History.CreatureLog creatureId={log.creature_id} log={log.log} />;
     }
   }
 

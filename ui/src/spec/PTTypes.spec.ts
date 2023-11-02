@@ -24,28 +24,26 @@ test("random junk", () => {
     exAttrCheck,
   );
   const gameLogTests: [any, T.GameLog][] = [
-    // ["StopCombat", "StopCombat"],
+    [{ t: "StopCombat" }, { t: "StopCombat" }],
     [
-      { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
-      { "StartCombat": ["coolScene", [["coolCreature", 5]]] },
+      { t: "StartCombat", scene_id: "coolScene", combatants: [["coolCreature", 5]] },
+      { t: "StartCombat", scene_id: "coolScene", combatants: [["coolCreature", 5]] },
     ],
-    [{ "CreateFolder": "/foo/bar" }, { "CreateFolder": ["foo", "bar"] }],
+    [{ t: "CreateFolder", path: "/foo/bar" }, { t: "CreateFolder", path: ["foo", "bar"] }],
     [
       {
-        "AttributeCheckResult": {
-          creature_id: "coolCreature",
-          attribute_check: exAttrCheck,
-          actual: 50,
-          success: true,
-        },
+        t: "AttributeCheckResult",
+        creature_id: "coolCreature",
+        attribute_check: exAttrCheck,
+        actual: 50,
+        success: true,
       },
       {
-        "AttributeCheckResult": {
-          creature_id: "coolCreature",
-          attribute_check: exAttrCheck,
-          actual: 50,
-          success: true,
-        },
+        t: "AttributeCheckResult",
+        creature_id: "coolCreature",
+        attribute_check: exAttrCheck,
+        actual: 50,
+        success: true,
       },
     ],
   ];

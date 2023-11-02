@@ -612,8 +612,8 @@ pub enum GMCommand {
 pub enum CreatureLog {
   Damage { hp: HP, rolls: Vec<i16> },
   Heal { hp: HP, rolls: Vec<i16> },
-  GenerateEnergy(Energy),
-  ReduceEnergy(Energy),
+  GenerateEnergy { energy: Energy },
+  ReduceEnergy { energy: Energy },
   ApplyCondition { id: ConditionID, duration: Duration, condition: Condition },
   DecrementConditionRemaining { id: ConditionID },
   RemoveCondition { id: ConditionID },
@@ -627,7 +627,7 @@ pub enum CombatLog {
   // Consume some of the movement from the current combat-creatur
   ConsumeMovement {
     #[ts(type = "number")]
-    movement: u32units::Length,
+    distance: u32units::Length,
   },
   ChangeCreatureInitiative {
     creature_id: CreatureID,
@@ -639,7 +639,7 @@ pub enum CombatLog {
   ForceNextTurn,
   ForcePrevTurn,
   RerollInitiative {
-    initiatives: Vec<(CreatureID, i16)>,
+    combatants: Vec<(CreatureID, i16)>,
   },
 }
 
@@ -828,7 +828,9 @@ pub enum GameLog {
     scene_hotspots: HashMap<Point3, SceneID>,
   },
 
-  CombatLog(CombatLog),
+  CombatLog {
+    log: CombatLog,
+  },
   /// A creature log wrapped in a game log.
   CreatureLog {
     creature_id: CreatureID,
@@ -900,7 +902,7 @@ pub enum GameLog {
 }
 
 pub fn combat_logs_into_game_logs(ls: Vec<CombatLog>) -> Vec<GameLog> {
-  ls.into_iter().map(GameLog::CombatLog).collect()
+  ls.into_iter().map(|log| GameLog::CombatLog { log }).collect()
 }
 
 #[derive(Debug, Error)]

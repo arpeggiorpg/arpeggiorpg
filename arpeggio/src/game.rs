@@ -395,13 +395,12 @@ impl Game {
       RemoveCreatureFromCombat(id) => self.change_with(GameLog::RemoveCreatureFromCombat { id }),
       RerollCombatInitiative => self.change().apply_combat(|c| c.reroll_initiative()),
       ChangeCreatureInitiative(creature_id, new_initiative) => {
-        self.change_with(GameLog::CombatLog(CombatLog::ChangeCreatureInitiative {
-          creature_id,
-          new_initiative,
-        }))
+        self.change_with(GameLog::CombatLog {
+          log: CombatLog::ChangeCreatureInitiative { creature_id, new_initiative },
+        })
       }
-      ForceNextTurn => self.change_with(GameLog::CombatLog(CombatLog::ForceNextTurn)),
-      ForcePrevTurn => self.change_with(GameLog::CombatLog(CombatLog::ForcePrevTurn)),
+      ForceNextTurn => self.change_with(GameLog::CombatLog { log: CombatLog::ForceNextTurn }),
+      ForcePrevTurn => self.change_with(GameLog::CombatLog { log: CombatLog::ForcePrevTurn }),
       EndTurn => self.next_turn(),
 
       // These are handled by the app before being passed to the Game:
@@ -856,10 +855,10 @@ impl Game {
         }
       }
 
-      CreateItem { ref path, ref item } => {
-        let item = item.clone();
-        self.items.try_insert(item).ok_or_else(|| GameError::ItemAlreadyExists(item.id))?;
-        self.link_folder_item(path, &FolderItemID::ItemID(item.id))?;
+      CreateItem { ref path, item: ref ritem } => {
+        let item = ritem.clone();
+        self.items.try_insert(item).ok_or_else(|| GameError::ItemAlreadyExists(ritem.id))?;
+        self.link_folder_item(path, &FolderItemID::ItemID(ritem.id))?;
       }
       EditItem { ref item } => {
         self
@@ -902,10 +901,10 @@ impl Game {
       }
 
       // ** Scenes **
-      CreateScene { ref path, ref scene } => {
-        let scene = scene.clone();
-        self.scenes.try_insert(scene).ok_or_else(|| GameError::SceneAlreadyExists(scene.id))?;
-        self.link_folder_item(path, &FolderItemID::SceneID(scene.id))?;
+      CreateScene { ref path, scene: ref rscene } => {
+        let scene = rscene.clone();
+        self.scenes.try_insert(scene).ok_or_else(|| GameError::SceneAlreadyExists(rscene.id))?;
+        self.link_folder_item(path, &FolderItemID::SceneID(rscene.id))?;
       }
       EditSceneDetails { scene_id, ref details } => {
         self
@@ -1038,13 +1037,13 @@ impl Game {
       }
 
       // ** Creatures **
-      CreateCreature { ref path, ref creature } => {
-        let creature = creature.clone();
+      CreateCreature { ref path, creature: ref rcreature } => {
+        let creature = rcreature.clone();
         self
           .creatures
           .try_insert(creature)
-          .ok_or_else(|| GameError::CreatureAlreadyExists(creature.id()))?;
-        self.link_folder_item(path, &FolderItemID::CreatureID(creature.id()))?;
+          .ok_or_else(|| GameError::CreatureAlreadyExists(rcreature.id()))?;
+        self.link_folder_item(path, &FolderItemID::CreatureID(rcreature.id()))?;
       }
       EditCreatureDetails { creature_id, ref details } => {
         let mutated = self.creatures.mutate(&creature_id, move |c| {
@@ -1075,8 +1074,8 @@ impl Game {
         };
         self.current_combat = combat;
       }
-      CombatLog(ref cl) => {
-        self.current_combat = Some(self.get_combat()?.apply_log(cl)?);
+      CombatLog { ref log } => {
+        self.current_combat = Some(self.get_combat()?.apply_log(log)?);
       }
       CreatureLog { creature_id, ref log } => {
         let creature = self.get_creature(creature_id)?.creature.apply_log(log)?;

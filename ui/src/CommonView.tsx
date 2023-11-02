@@ -1163,17 +1163,15 @@ export function GenericChat(props: GenericChatProps): JSX.Element {
 }
 
 export function ChatLog({ log }: { log: T.GameLog }) {
-  if (typeof log !== "string") {
-    if ("ChatFromPlayer" in log || "ChatFromGM" in log) {
-      const sender = "ChatFromPlayer" in log ? log.ChatFromPlayer[0] : "GM";
-      const message = "ChatFromPlayer" in log ? log.ChatFromPlayer[1] : log.ChatFromGM;
-      return (
-        <span>
-          &lt;
-          <strong>{sender}</strong>
-          &gt; {message}
-        </span>
-      );
-    }
+  if (log.t === "ChatFromPlayer" || log.t === "ChatFromGM") {
+    const sender = log.t === "ChatFromPlayer" ? log.player_id : "GM";
+    const message = log.message;
+    return (
+      <span>
+        &lt;
+        <strong>{sender}</strong>
+        &gt; {message}
+      </span>
+    );
   }
 }
