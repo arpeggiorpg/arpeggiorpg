@@ -22,7 +22,7 @@ num-traits = "0.2.10"
 rand = "0.8.5"
 serde = "1.0.8"
 serde_derive = "1.0.8"
-thiserror = "1.0.48"
+thiserror = { workspace = true }
 ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
 uuid = { workspace = true }
 

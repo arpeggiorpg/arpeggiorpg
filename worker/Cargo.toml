@@ -29,6 +29,7 @@ strum = { workspace = true }
 # futures-channel = "0.3.28"
 uuid = { workspace = true }
 worker = { version = "0.0.18", features = ["d1"] }
+thiserror = { workspace = true }
 
 [profile.release]
 lto = true

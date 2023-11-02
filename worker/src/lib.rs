@@ -2,9 +2,10 @@ use anyhow::anyhow;
 use worker::*;
 
 mod cfworker;
+mod domigrations;
+mod durablegame;
 mod storage;
 mod wsrpi;
-mod durablegame;
 
 // Things I've learned about error-handling in workers-rs:
 // - any Err returned from the main worker doesn't seem to do anything other than "Error: The script
@@ -25,7 +26,6 @@ mod durablegame;
 
 #[event(start)]
 fn start() { console_error_panic_hook::set_once(); }
-
 
 /// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
 /// errors about how a *mut u8 might escape an async closure or something. So this converts the

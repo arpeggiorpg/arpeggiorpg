@@ -9,7 +9,6 @@ use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
 use mtarp::types::{GameIndex, InvitationID, Role};
 use serde_json::json;
 use uuid::Uuid;
-use wasm_bindgen::JsError;
 use worker::{
   async_trait, console_error, console_log, durable_object, js_sys, wasm_bindgen,
   wasm_bindgen_futures, worker_sys, Env, ListOptions, Method, Request, Response, Result, State,
@@ -46,6 +45,7 @@ impl DurableObject for ArpeggioGame {
   }
 
   async fn fetch(&mut self, req: Request) -> Result<Response> {
+    crate::domigrations::migrate(self.state.storage()).await.map_err(rust_error)?;
     let game_storage = match self.game_storage {
       Some(ref game_storage) => game_storage.clone(),
       None => {
