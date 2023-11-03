@@ -36,7 +36,7 @@ class Http401Error extends Error {
   name: string;
   constructor(message: string) {
     super(message);
-    this.name = "MyError";
+    this.name = "Http401Error";
   }
 }
 
