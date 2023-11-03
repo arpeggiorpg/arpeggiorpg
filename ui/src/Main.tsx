@@ -8,13 +8,14 @@ import useSWR from "swr";
 import * as A from "./Actions";
 import { ptfetch } from "./Actions";
 import { ModalMaker } from "./CommonView";
-import { GMMain, GMMap } from "./GMView";
 import * as M from "./Model";
-import { PlayerGameView } from "./PlayerView";
 import * as T from "./PTTypes";
 import { SignIn } from "./SignIn";
 import { TextInput } from "./TextInput";
 import * as WS from "./wsrpi";
+
+const GMMain = React.lazy(() => import("./GMView").then(GMV => ({ default: GMV.GMMain })));
+const GMMap = React.lazy(() => import("./GMView").then(GMV => ({ default: GMV.GMMap })));
 
 export const router = createBrowserRouter([
   {
@@ -32,7 +33,14 @@ export const router = createBrowserRouter([
         element: <GMGame />,
         children: [
           { index: true, element: <div>Pick a scene!</div> },
-          { path: "campaign/*", element: <GMMap /> },
+          {
+            path: "campaign/*",
+            element: (
+              <React.Suspense fallback={<div>Loading...</div>}>
+                <GMMap />
+              </React.Suspense>
+            ),
+          },
         ],
       },
     ],
@@ -203,7 +211,9 @@ function Connector(props: { role: T.Role } & React.PropsWithChildren) {
 function GMGame() {
   return (
     <Connector role="GM">
-      <GMMain />
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <GMMain />
+      </React.Suspense>
     </Connector>
   );
 }
@@ -256,6 +266,14 @@ function AcceptInvitation() {
   }
 }
 
+const PlayerGameView = React.lazy(() =>
+  import("./PlayerView").then(pv => {
+    console.log("what have I got here?? pv", pv);
+    console.log("and PlayerGameView?", pv.PlayerGameView);
+    return { default: pv.PlayerGameView };
+  })
+);
+
 function PlayerGame() {
   let {
     data: games,
@@ -276,15 +294,13 @@ function PlayerGame() {
     return <div>Loading...</div>;
   }
 
-  // if (!playerId) {
-  //   return <div>Sorry, couldn't find a player for you</div>;
-  // }
-
   return (
     <Connector role="Player">
-      {playerId
-        ? <PlayerGameView playerId={playerId} />
-        : <div>Loading. or maybe we can't find your player. Who knows?</div>}
+      <React.Suspense fallback={<div>Loading...</div>}>
+        {playerId
+          ? <PlayerGameView playerId={playerId} />
+          : <div>Loading. or maybe we can't find your player. Who knows?</div>}
+      </React.Suspense>
     </Connector>
   );
 }
