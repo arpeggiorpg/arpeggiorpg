@@ -14,7 +14,7 @@ export function SignIn() {
           alignItems: "center",
         }}
       >
-        <GoogleLogin onSuccess={onSignIn} onError={onError} />
+        <GoogleLogin onSuccess={onSignIn} onError={onError} auto_select />
       </div>
     </GoogleOAuthProvider>
   );
