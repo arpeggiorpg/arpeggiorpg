@@ -8,7 +8,7 @@ import { RPI_URL } from "./Actions";
 
 let root: Root | undefined;
 
-async function PT_renderMain(id: string) {
+async function renderMain(id: string) {
   const el = document.getElementById(id);
   if (!el) {
     console.error("where's the root!");
@@ -23,4 +23,4 @@ async function PT_renderMain(id: string) {
   root.render(<RouterProvider router={router} />);
 }
 
-PT_renderMain("react-main");
+renderMain("react-main");
