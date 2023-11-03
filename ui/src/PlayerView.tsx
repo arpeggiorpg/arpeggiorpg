@@ -1,4 +1,5 @@
 import * as React from "react";
+import useSWR from "swr";
 
 import * as A from "./Actions";
 import * as CV from "./CommonView";
@@ -6,8 +7,9 @@ import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
 import * as T from "./PTTypes";
+import Connector from "./Connector";
 
-export function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
+function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   const { player, scene, mapCreatures } = M.useState(s => {
     const player = s.getGame().players.get(playerId);
     const scene = player?.scene ? s.getScene(player.scene) : undefined;
@@ -139,7 +141,7 @@ function PlayerActionBar(props: { player: T.Player; combat: T.Combat | null }) {
 interface PlayerChatProps {
   player_id: T.PlayerID;
 }
-export function PlayerChat(props: PlayerChatProps): JSX.Element {
+function PlayerChat(props: PlayerChatProps): JSX.Element {
   const { player_id } = props;
   return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
 
@@ -155,4 +157,33 @@ export function PlayerChat(props: PlayerChatProps): JSX.Element {
   function sendChat(line: string) {
     A.sendPlayerCommand({ t: "ChatFromPlayer", message: line });
   }
+}
+
+export default function PlayerView() {
+  let {
+    data: games,
+    error,
+    isLoading,
+  } = useSWR("/g/list", (k) => A.ptfetch(k, {}, T.decodeGameList));
+  let gameId = M.useState(s => s.gameId);
+  console.log("[PlayerGame]", { isLoading, games, gameId });
+
+  const playerId = games?.games.find(
+    ([profile, _meta]) => profile.game_id === gameId && profile.role === "Player",
+  )?.[0].profile_name;
+  React.useEffect(() => {
+    M.getState().setPlayerId(playerId);
+  }, [playerId]);
+
+  if (isLoading || !games) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <Connector role="Player">
+      {playerId
+        ? <PlayerGameView playerId={playerId} />
+        : <div>Loading. or maybe we can't find your player. Who knows?</div>}
+    </Connector>
+  );
 }

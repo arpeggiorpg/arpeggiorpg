@@ -12,8 +12,20 @@ import * as History from "./History";
 import * as M from "./Model";
 import * as Players from "./Players";
 import * as T from "./PTTypes";
+import Connector from "./Connector";
 
-export function GMMain() {
+export default function GMView() {
+  return (
+    <Connector role="GM">
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <GMMain />
+      </React.Suspense>
+    </Connector>
+  );
+}
+
+
+function GMMain() {
   const scene = M.useState((s) => s.getFocusedScene());
 
   const tabs = [
@@ -192,7 +204,7 @@ function creatureMenuActions(
   return actions;
 }
 
-export function GMChat(): JSX.Element {
+function GMChat(): JSX.Element {
   return <CV.GenericChat renderLog={get_chat_line} sendChat={sendChat} />;
 
   function get_chat_line(log: T.GameLog) {
@@ -208,3 +220,5 @@ export function GMChat(): JSX.Element {
     A.sendGMCommand({ t: "ChatFromGM", message });
   }
 }
+
+
