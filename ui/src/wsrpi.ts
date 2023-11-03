@@ -79,7 +79,7 @@ export function connect(gameId: string, mode: T.Role) {
 
   theAsyncFunction();
 
-  return async () => {
+  return () => {
     console.log("Cleaning up WebSocket");
     const state = M.getState();
     state.setGameName(undefined);
