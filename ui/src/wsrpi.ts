@@ -38,8 +38,12 @@ export function connect(gameId: string, mode: T.Role) {
   console.log("[CONNECT]", gameId);
   M.getState().setGameId(gameId);
 
+  let intentionalStop = false;
+
+  // This connect() function needs to synchronously return a callback that can be used to clean up
+  // the connection, so we do all of our async work in this inner function.
   async function theAsyncFunction() {
-    // First, we need to request a websocket token.
+    // We need to request a websocket token, which allows the server to validate our credentials.
     let { token } = await A.ptfetch(
       `/request-websocket/${gameId}/${mode}`,
       {},
@@ -69,21 +73,21 @@ export function connect(gameId: string, mode: T.Role) {
     });
     webSocket.addEventListener("close", event => {
       console.log("WebSocket is closed.");
-      M.getState().setSocketStatus("closed");
+      M.getState().setSocketStatus(intentionalStop ? "unconnected" : "closed");
     });
   }
 
   theAsyncFunction();
 
-  return () => {
+  return async () => {
     console.log("Cleaning up WebSocket");
     const state = M.getState();
-    state.setSocketStatus("unconnected");
     state.setGameName(undefined);
     state.setRecentLogs([]);
     const ws = webSocket;
     webSocket = undefined;
     ws?.close();
+    intentionalStop = true;
   };
 }
 
