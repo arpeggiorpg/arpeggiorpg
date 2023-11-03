@@ -42,7 +42,14 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
   let user_id = validation_result.unwrap();
 
-  match path.split("/").collect::<Vec<_>>()[1..] {
+  let parts = &path.split("/").collect::<Vec<_>>()[1..];
+  match parts {
+    ["superuser", rest @ ..] => {
+      if !storage::check_superuser(&env, user_id).await? {
+        return Response::error("You ain't super", 401);
+      }
+      superuser_routes(env, rest).await
+    }
     ["request-websocket", game_id, role] => {
       request_websocket(req, env, game_id, user_id, role).await
     }
@@ -57,6 +64,18 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
     }
     _ => Response::error(format!("No route matched {path:?}"), 404),
   }
+}
+
+async fn superuser_routes(env: Env, path: &[&str]) -> Result<Response> {
+  match path {
+    ["games"] => superuser_games(env).await,
+    _ => Response::error(format!("No route matched {path:?}"), 404),
+  }
+}
+
+async fn superuser_games(env: Env) -> Result<Response> {
+  let games = storage::list_all_games(&env).await?;
+  Response::from_json(&json!({"games": games}))
 }
 
 async fn accept_invitation(
