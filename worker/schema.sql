@@ -1,9 +1,17 @@
 /* remember to include NOT NULL directives when creating new tables! */
 
+/* Also: Don't put semicolons in comments! Wrangler has a bug. */
+
 CREATE TABLE IF NOT EXISTS game_metadata (
     game_id text PRIMARY KEY NOT NULL,
     name text NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS superusers (
+    user_id text PRIMARY KEY NOT NULL
+);
+
+INSERT OR IGNORE INTO superusers (user_id) VALUES ('google_105096330625444095578');
 
 
 CREATE TABLE IF NOT EXISTS user_games (
