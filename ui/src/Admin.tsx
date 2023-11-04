@@ -45,11 +45,11 @@ function Dump({ id }: { id: T.GameID }) {
   return (
     <div>
       <h2>Game {id}</h2>
-      <ul>
-        <pre>
-      {Object.entries(data).map(([key, value]) => <li key={key}>{key}: {JSON.stringify(value)}</li>)}
+      <div>
+        <pre style={{whiteSpace: "pre-wrap"}}>
+          {JSON.stringify(data, Object.keys(data).sort(), 2)}
         </pre>
-      </ul>
+      </div>
     </div>
   );
 }
