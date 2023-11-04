@@ -71,6 +71,7 @@ impl ArpeggioGame {
     console_log!("[DO] method={:?} path={path:?}", req.method());
 
     match path.split("/").collect::<Vec<_>>()[1..] {
+      ["superuser", "dump", _game_id] => dump_storage(&self.state).await,
       ["request-websocket", _game_id, role, player_id] => {
         // The worker has already authenticated & authorized the user, so we just need to store &
         // return a token.
@@ -152,6 +153,21 @@ impl ArpeggioGame {
     };
     Response::from_json(&json!(invitations.contains(&invitation_id))).map_err(anyhow_str)
   }
+}
+
+async fn dump_storage(state: &State) -> anyhow::Result<Response> {
+  // TODO: STREAM!
+  let mut result = HashMap::new();
+  let items = state.storage().list().await.map_err(anyhow_str)?;
+  for key in items.keys() {
+    let key = key.map_err(anyhow_str).context("just resolving the key...")?;
+    let value = items.get(&key);
+    console_log!("dumping key/value {:?} {:?}", key, value);
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(value).map_err(anyhow_str).context("parsing the value as a Value")?;
+    let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str).context("parsing the key as a string")?;
+    result.insert(key, value);
+  }
+  Response::from_json(&result).map_err(anyhow_str)
 }
 
 type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;

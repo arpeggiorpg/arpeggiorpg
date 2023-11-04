@@ -48,7 +48,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
       if !storage::check_superuser(&env, user_id).await? {
         return Response::error("You ain't super", 401);
       }
-      superuser_routes(env, rest).await
+      superuser_routes(req, env, rest).await
     }
     ["request-websocket", game_id, role] => {
       request_websocket(req, env, game_id, user_id, role).await
@@ -66,9 +66,13 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
 }
 
-async fn superuser_routes(env: Env, path: &[&str]) -> Result<Response> {
+async fn superuser_routes(req: Request, env: Env, path: &[&str]) -> Result<Response> {
   match path {
     ["games"] => superuser_games(env).await,
+    ["dump", game_id] => {
+      let game_id: GameID = game_id.parse().map_err(rust_error)?;
+      forward_to_do(req, env, game_id).await
+    }
     _ => Response::error(format!("No route matched {path:?}"), 404),
   }
 }
