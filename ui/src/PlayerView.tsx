@@ -3,11 +3,11 @@ import useSWR from "swr";
 
 import * as A from "./Actions";
 import * as CV from "./CommonView";
+import Connector from "./Connector";
 import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
 import * as T from "./PTTypes";
-import Connector from "./Connector";
 
 function PlayerGameView({ playerId }: { playerId: T.PlayerID }) {
   const { player, scene, mapCreatures } = M.useState(s => {
@@ -164,7 +164,11 @@ export default function PlayerView() {
     data: games,
     error,
     isLoading,
-  } = useSWR("/g/list", (k) => A.ptfetch(k, {}, T.decodeGameList));
+  } = useSWR("/g/list", (k) => A.ptfetch(k, {}, T.decodeGameList), {
+    revalidateIfStale: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
   let gameId = M.useState(s => s.gameId);
   console.log("[PlayerGame]", { isLoading, games, gameId });
 
