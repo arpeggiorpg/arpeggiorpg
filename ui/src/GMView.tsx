@@ -27,15 +27,17 @@ export default function GMView() {
 
 function GMMain() {
   const scene = M.useState((s) => s.getFocusedScene());
+  const numPlayers = M.useState(s => s.game.players.count());
+  const combatActive = M.useState(s => !!s.game.current_combat);
 
   const tabs = [
     <CV.Tab key="Campaign" name="Campaign">
       <Campaign.Campaign />
     </CV.Tab>,
-    <CV.Tab key="Combat" name="Combat">
+    <CV.Tab key="Combat" name={`Combat ${combatActive ? "(!)" : ""}`}>
       <GM.GMCombat />
     </CV.Tab>,
-    <CV.Tab key="Players" name="Players">
+    <CV.Tab key="Players" name={`Players (${numPlayers})`}>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <Players.Players />
         <Players.Invitations />

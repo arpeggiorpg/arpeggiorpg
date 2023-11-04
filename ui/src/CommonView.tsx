@@ -490,12 +490,13 @@ export class TabbedView extends React.Component<
           secondary={true}
         >
           {tabs.map((child, index) => (
-            <Menu.Item
+            <a
+              className={`item ${selected === index ? "active" : ""}`}
               key={child.props.name}
-              name={child.props.name}
-              active={selected === index}
               onClick={() => this.setState({ selected: index })}
-            />
+            >
+              {child.props.name}
+            </a>
           ))}
         </Menu>
         <div style={{ position: "relative", height: "100%" }}>
