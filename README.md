@@ -1,5 +1,3 @@
-<p align="center"><img width="312" alt="image" src="https://github.com/arpeggiorpg/arpeggiorpg/assets/227068/76d4f48d-b0dc-4523-85fc-3c1188cbad1f"></p>
-
 
 # ArpeggioRPG
 
@@ -17,15 +15,15 @@ MIT-licensed: http://opensource.org/licenses/MIT
 
 # Building/running (for dev/test)
 
-To start the backend (this defaults to serving on all network interfaces on port 1337):
+To start the backend, which is implemented as a CloudFlare worker written in Rust:
 
 ```shell
-cargo run -- --bin arpeggio --storage ./storage/
+cd worker
+npm install
+npm run dev
 ```
 
-This will start an RPI server which will load & save games to the `storage` directory.
-
-To build the UI, you must have npm installed (ideally npm >=5).
+Then start the frontend:
 
 ```shell
 cd ui
@@ -33,4 +31,4 @@ npm install
 npm run dev
 ```
 
-That will start the frontend server. Hit it at http://localhost:5173/
+Hit it at http://localhost:5173/
