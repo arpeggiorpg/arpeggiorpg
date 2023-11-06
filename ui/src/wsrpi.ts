@@ -104,10 +104,14 @@ function handleWSEvent(event: MessageEvent<string>) {
   const parsed = JSON.parse(event.data);
   if ("id" in parsed) {
     const id = parsed["id"];
-    const handler = _requests[id];
-    if (handler) {
-      delete _requests[id];
-      handler(parsed);
+    if ("error" in parsed) {
+      M.getState().setError(parsed["error"]);
+    } else {
+      const handler = _requests[id];
+      if (handler) {
+        delete _requests[id];
+        handler(parsed);
+      }
     }
   } else {
     // Handle server-sent events
