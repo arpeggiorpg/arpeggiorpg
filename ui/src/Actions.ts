@@ -315,6 +315,7 @@ export async function sendPlayerCommand(cmd: T.PlayerCommand) {
       // because the poll (or websocket) is going to refresh the state of the game instantly anyway.
       return;
     case "Err":
+      getState().setError(result.error);
       throw { _pt_error: "RPI", message: result.error };
   }
 }
