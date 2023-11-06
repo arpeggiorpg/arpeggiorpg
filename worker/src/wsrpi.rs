@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow};
 use futures_util::stream::StreamExt;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
@@ -244,7 +244,7 @@ impl GameSession {
 
   fn send<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
-    Ok(self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))?)
+    self.socket.send_with_str(s).map_err(|e| anyhow!(format!("{e:?}")))
   }
 }
 

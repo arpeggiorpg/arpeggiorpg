@@ -1,5 +1,5 @@
 use arpeggio::types::PlayerID;
-use google_signin;
+
 use serde_json::json;
 use tracing::{error, info};
 use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
@@ -21,7 +21,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
   let cors = Cors::new().with_origins(vec!["*"]).with_allowed_headers(vec!["*"]);
   // TODO: If http_routes returns an Error, we are not applying cors headers.
-  return http_routes(req, env).await.and_then(|r| r.with_cors(&cors));
+  http_routes(req, env).await.and_then(|r| r.with_cors(&cors))
 }
 
 async fn http_routes(req: Request, env: Env) -> Result<Response> {
@@ -46,7 +46,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   }
   let user_id = validation_result.unwrap();
 
-  let parts = &path.split("/").collect::<Vec<_>>()[1..];
+  let parts = &path.split('/').collect::<Vec<_>>()[1..];
   match parts {
     ["superuser", rest @ ..] => {
       if !storage::check_superuser(&env, user_id).await? {
@@ -112,7 +112,7 @@ async fn accept_invitation(
 /// requests, by requiring this regular HTTP request that can be authenticated normally to generate
 /// a temporary token that is then used to create the WebSocket connection.
 async fn request_websocket(
-  req: Request, env: Env, game_id: &str, user_id: UserID, role: &str,
+  _req: Request, env: Env, game_id: &str, user_id: UserID, role: &str,
 ) -> Result<Response> {
   let game_id: GameID = game_id.parse().map_err(rust_error)?;
   let role: Role = role.parse().map_err(rust_error)?;
@@ -135,7 +135,7 @@ fn durable_object(env: &Env, game_id: &str) -> Result<worker::Stub> {
   // and would mean the type of GameID would have to change from wrapping UUIDs to instead
   // wrapping u256s (or more likely, [u8; 32]. or, more likely, String :P).
   let namespace = env.durable_object("ARPEGGIOGAME")?;
-  namespace.id_from_name(&game_id.to_string())?.get_stub()
+  namespace.id_from_name(game_id)?.get_stub()
 }
 
 /// Forward a simple request to the ArpeggioGame durable object
@@ -162,7 +162,7 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
   // ability to create empty DOs is a problem.
 
   let path = req.path();
-  if let Some(game_id) = path.splitn(4, "/").nth(2) {
+  if let Some(game_id) = path.split('/').nth(2) {
     info!(event = "forward-websocket", ?game_id);
     let stub = durable_object(&env, game_id)?;
     stub.fetch_with_request(req).await
@@ -201,7 +201,7 @@ async fn list_games(_req: Request, env: Env, user_id: UserID) -> Result<Response
       })
       .collect::<Vec<_>>(),
   };
-  return Response::from_json(&list);
+  Response::from_json(&list)
 }
 
 async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Result<UserID> {

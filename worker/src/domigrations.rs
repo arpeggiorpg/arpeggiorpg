@@ -1,6 +1,6 @@
 use crate::anyhow_str;
-use anyhow::Context;
-use worker::{ListOptions, Storage};
+
+use worker::{Storage};
 use tracing::{info};
 
 const VERSION_KEY: &str = "DURABLEGAME_VERSION";
@@ -17,7 +17,7 @@ pub async fn migrate(storage: Storage) -> anyhow::Result<()> {
   }
 }
 
-async fn migrate_from(mut storage: Storage, current_version: usize) -> anyhow::Result<()> {
+async fn migrate_from(_storage: Storage, current_version: usize) -> anyhow::Result<()> {
   // Rust doesn't allow us to have an array of async function pointers, so... I guess we just have
   // to write some imperative code here instead of iterating through an array of migration
   // functions.

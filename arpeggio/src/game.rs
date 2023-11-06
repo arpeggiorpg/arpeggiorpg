@@ -161,7 +161,7 @@ impl Game {
 
   fn player_path(&self, suffix: FolderPath, player_id: &PlayerID) -> (FolderPath, Option<GameLog>) {
     let mut path = vec!["Players".to_string(), player_id.0.clone()];
-    path.extend(suffix.into_vec().into_iter());
+    path.extend(suffix.into_vec());
     let path: FolderPath = path.into();
 
     if let Err(FolderTreeError::FolderNotFound(_)) = self.campaign.get(&path) {
@@ -178,7 +178,8 @@ impl Game {
     use self::PlayerCommand::*;
     let player =
       self.players.get(&player_id).ok_or_else(|| GameError::PlayerNotFound(player_id.clone()))?;
-    let change = match cmd {
+    
+    match cmd {
       ChatFromPlayer { message } => {
         self.change_with(GameLog::ChatFromPlayer { player_id, message: message.to_owned() })
       }
@@ -198,24 +199,23 @@ impl Game {
       }
       PathCreature { creature_id, destination } => {
         let scene_id =
-          player.scene.ok_or(GameError::BuggyProgram(format!("Player isn't in a scene")))?;
+          player.scene.ok_or(GameError::BuggyProgram("Player isn't in a scene".to_string()))?;
         let scene = self.get_scene(scene_id)?;
         Ok(self.path_creature(scene.id, creature_id, destination)?.0)
       }
       CombatAct { ability_id, target } => {
-        self.auth_combat(&player)?;
+        self.auth_combat(player)?;
         self.combat_act(ability_id, target)
       }
       PathCurrentCombatCreature { destination } => {
-        self.auth_combat(&player)?;
+        self.auth_combat(player)?;
         self.get_combat()?.get_movement()?.move_current(destination)
       }
       EndTurn => {
-        self.auth_combat(&player)?;
+        self.auth_combat(player)?;
         self.next_turn()
       }
-    };
-    Ok(change?)
+    }
   }
 
   /// Check that the player controls the current combat creature.
@@ -1043,7 +1043,7 @@ impl Game {
       // ** Classes & Abilities **
       CreateClass { ref path, ref class } => {
         self.classes.insert(class.clone());
-        self.link_folder_item(&path, &FolderItemID::ClassID(class.id))?;
+        self.link_folder_item(path, &FolderItemID::ClassID(class.id))?;
       }
       EditClass { ref class } => {
         self.classes.mutate(&class.id, move |c| {
@@ -1055,7 +1055,7 @@ impl Game {
       }
       CreateAbility { ref path, ref ability } => {
         self.abilities.insert(ability.clone());
-        self.link_folder_item(&path, &FolderItemID::AbilityID(ability.id))?;
+        self.link_folder_item(path, &FolderItemID::AbilityID(ability.id))?;
       }
       EditAbility { ref ability } => {
         self.abilities.mutate(&ability.id, move |a| {

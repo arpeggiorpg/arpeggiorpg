@@ -40,12 +40,12 @@ impl<T> IdInfo<T> {
         }
 
         // Check the token belongs to the application(s)
-        if client.audiences.len() > 0 && !client.audiences.contains(&self.aud) {
+        if !client.audiences.is_empty() && !client.audiences.contains(&self.aud) {
             return Err(Error::InvalidAudience);
         }
 
         // Check the token belongs to the hosted domain(s)
-        if client.hosted_domains.len() > 0 {
+        if !client.hosted_domains.is_empty() {
             match self.hd {
                 Some(ref domain) if client.hosted_domains.contains(domain) => {}
                 _ => { return Err(Error::InvalidHostedDomain); }

@@ -60,7 +60,7 @@ impl DurableObject for ArpeggioGame {
         rc_storage
       }
     };
-    Ok(self.route(req, game_storage).await.map_err(rust_error)?)
+    self.route(req, game_storage).await.map_err(rust_error)
   }
 }
 
@@ -71,7 +71,7 @@ impl ArpeggioGame {
     let path = req.path();
     info!(event="request", method=?req.method(), path=?path);
 
-    match path.split("/").collect::<Vec<_>>()[1..] {
+    match path.split('/').collect::<Vec<_>>()[1..] {
       ["superuser", "dump", _game_id] => dump_storage(&self.state).await,
       ["request-websocket", _game_id, role, player_id] => {
         // The worker has already authenticated & authorized the user, so we just need to store &
@@ -261,7 +261,7 @@ impl GameStorage {
       let value: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
       let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str)?;
       info!(event="found-log", ?key);
-      if let ["log", _, "idx", log_idx_str] = key.split("-").collect::<Vec<_>>()[..] {
+      if let ["log", _, "idx", log_idx_str] = key.split('-').collect::<Vec<_>>()[..] {
         let log: GameLog = serde_json::from_str(&value).map_err(|e| {
           anyhow!("Failed parsing GameLog as JSON:\ncontent: {value:?}\nerror: {e:?}")
         })?;

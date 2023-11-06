@@ -83,7 +83,7 @@ pub async fn check_game_access(
     game_id.to_string().into(),
     role.to_string().into(),
   ])?;
-  Ok(statement.first(None).await?)
+  statement.first(None).await
 }
 
 pub async fn create_profile(

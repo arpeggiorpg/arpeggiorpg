@@ -1,6 +1,6 @@
 use jwt_compact::alg::{RsaPublicKey, StrongKey};
-use reqwest;
-use serde;
+
+
 
 use std::collections::btree_map::Range;
 use std::collections::BTreeMap;
@@ -140,8 +140,8 @@ impl Client {
 
             // validation.set_audience(&self.audiences);
 
-            let validator = alg.validator(&key);
-            let token_data: Token<IdInfo> = validator.validate(&untrusted_token).map_err(|e| Error::InvalidToken)?;
+            let validator = alg.validator(key);
+            let token_data: Token<IdInfo> = validator.validate(&untrusted_token).map_err(|_e| Error::InvalidToken)?;
             // let token_data = jsonwebtoken::decode::<IdInfo>(
             //     &id_token,
             //     &DecodingKey::from_rsa_components(&cert.n, &cert.e),
@@ -149,7 +149,7 @@ impl Client {
             // )?;
 
             let claims = token_data.claims();
-            claims.validate_expiration(&jwt_compact::TimeOptions::default()).map_err(|e| Error::ExpiredToken)?;
+            claims.validate_expiration(&jwt_compact::TimeOptions::default()).map_err(|_e| Error::ExpiredToken)?;
             claims.custom.verify(self)?;
 
             return Ok(claims.clone());
