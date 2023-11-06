@@ -1,5 +1,7 @@
+<p align="center"><img width="500" src="https://github.com/arpeggiorpg/arpeggiorpg/assets/227068/622c375c-3f34-4373-8b76-65eb98937837"></p>
 
 # ArpeggioRPG
+
 
 ArpeggioRPG is a table-top role-playing game. Think of a RPG like Dungeons & Dragons, but instead of
 needing books and character sheets, the app takes care of everything for you. It provides a tools
