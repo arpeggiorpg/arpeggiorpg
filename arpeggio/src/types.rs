@@ -350,10 +350,15 @@ pub enum PlayerCommand {
     message: String,
   },
 
+  CreateNote {
+    path: FolderPath,
+    note: Note,
+  },
+
   EditNote {
     // this FolderPath needs to be scoped to the player's area or something
     path: FolderPath,
-    name: String,
+    original_name: String,
     note: Note,
   },
 

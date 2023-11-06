@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{combat::*, creature::ChangedCreature, grid::line_through_point, types::*};
-use foldertree::FolderPath;
+use foldertree::{FolderPath, FolderTreeError};
 
 impl Game {
   pub fn export_module(&self, export_path: &FolderPath) -> Result<Game, GameError> {
@@ -159,6 +159,18 @@ impl Game {
     self.abilities.get(&abid).ok_or_else(|| GameError::NoAbility(abid))
   }
 
+  fn player_path(&self, suffix: FolderPath, player_id: &PlayerID) -> (FolderPath, Option<GameLog>) {
+    let mut path = vec!["Players".to_string(), player_id.0.clone()];
+    path.extend(suffix.into_vec().into_iter());
+    let path: FolderPath = path.into();
+
+    if let Err(FolderTreeError::FolderNotFound(_)) = self.campaign.get(&path) {
+      (path.clone(), Some(GameLog::CreateFolder { path }))
+    } else {
+      (path, None)
+    }
+  }
+
   /// Perform a PlayerCommand on the current Game.
   pub fn perform_player_command(
     &self, player_id: PlayerID, cmd: PlayerCommand,
@@ -170,9 +182,19 @@ impl Game {
       ChatFromPlayer { message } => {
         self.change_with(GameLog::ChatFromPlayer { player_id, message: message.to_owned() })
       }
-      EditNote { path, name, note } => {
-        // The path here needs to be relative to a "/Players/{playerId}" folder or something
-        return Err(GameError::BuggyProgram("NYI".to_string()));
+      CreateNote { path, note } => {
+        let (path, log) = self.player_path(path, &player_id);
+        let mut logs = log.into_iter().collect::<Vec<_>>();
+        logs.push(GameLog::CreateNote { path: path.clone(), note });
+        self.change_with_logs(logs)
+      }
+      EditNote { path, original_name, note } => {
+        let (path, log) = self.player_path(path, &player_id);
+        // we *could* add a new log called PlayerEditNote that includes the player_id, but that's
+        // not strictly necessary; it would only be for informational purposes.
+        let mut logs = vec![GameLog::EditNote { path, original_name, note }];
+        logs.extend(log);
+        self.change_with_logs(logs)
       }
       PathCreature { creature_id, destination } => {
         let scene_id =
@@ -1434,6 +1456,14 @@ impl Game {
   pub fn change_with(&self, log: GameLog) -> Result<ChangedGame, GameError> {
     let game = self.apply_log(&log)?;
     Ok(ChangedGame { game, logs: vec![log] })
+  }
+
+  pub fn change_with_logs(&self, logs: Vec<GameLog>) -> Result<ChangedGame, GameError> {
+    let mut game = self.clone();
+    for log in logs.iter() {
+      game = game.apply_log(log)?;
+    }
+    Ok(ChangedGame { game, logs })
   }
 }
 
