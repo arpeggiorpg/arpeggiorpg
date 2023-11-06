@@ -23,6 +23,7 @@ rand = "0.8.5"
 serde = "1.0.8"
 serde_derive = "1.0.8"
 thiserror = { workspace = true }
+tracing = { workspace = true }
 ts-rs = { version = "7.0.0", features = ["serde-compat", "uuid-impl"] }
 uuid = { workspace = true }
 

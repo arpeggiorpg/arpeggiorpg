@@ -8,11 +8,11 @@ use anyhow::{anyhow, Context};
 use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
 use mtarp::types::{GameID, GameIndex, GameMetadata, InvitationID, Role};
 use serde_json::json;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use worker::{
-  async_trait, console_error, console_log, durable_object, js_sys, wasm_bindgen,
-  wasm_bindgen_futures, worker_sys, Env, ListOptions, Method, Request, Response, Result, State,
-  WebSocket, WebSocketPair,
+  async_trait, durable_object, js_sys, wasm_bindgen, wasm_bindgen_futures, worker_sys, Env,
+  ListOptions, Method, Request, Response, Result, State, WebSocket, WebSocketPair,
 };
 
 use crate::{anyhow_str, rust_error, storage, wsrpi};
@@ -48,6 +48,7 @@ impl DurableObject for ArpeggioGame {
     }
   }
 
+  #[tracing::instrument(name = "DO", skip(self, req))]
   async fn fetch(&mut self, req: Request) -> Result<Response> {
     crate::domigrations::migrate(self.state.storage()).await.map_err(rust_error)?;
     let game_storage = match self.game_storage {
@@ -68,7 +69,7 @@ impl ArpeggioGame {
     &mut self, req: Request, game_storage: Rc<GameStorage>,
   ) -> anyhow::Result<Response> {
     let path = req.path();
-    console_log!("[DO] method={:?} path={path:?}", req.method());
+    info!(event="request", method=?req.method(), path=?path);
 
     match path.split("/").collect::<Vec<_>>()[1..] {
       ["superuser", "dump", _game_id] => dump_storage(&self.state).await,
@@ -81,14 +82,14 @@ impl ArpeggioGame {
         // decoding. WTF?
         let player_id = percent_encoding::percent_decode_str(player_id).decode_utf8()?;
         let player_id: PlayerID = PlayerID(player_id.to_string());
-        console_log!("Ok what the heck is this player ID {player_id:?}");
+        info!(event="request-websocket", ?player_id);
         self.ws_tokens.insert(token, WSUser { role, player_id });
         Response::from_json(&json!({"token": token})).map_err(anyhow_str)
       }
       ["ws", game_id, ws_token] => {
         let ws_token: Uuid = ws_token.parse()?;
         if let Some(ws_user) = self.ws_tokens.remove(&ws_token) {
-          console_log!("[DO] GAME {path}");
+          info!(event="ws-connect", ?path, ?game_id);
           let game_id = game_id.parse::<GameID>()?;
           let metadata = match &self.metadata {
             Some(metadata) => metadata.clone(),
@@ -101,7 +102,7 @@ impl ArpeggioGame {
               metadata
             }
           };
-          console_log!("[DO] game_id={game_id:?} metadata={metadata:?}");
+          info!(event="ws-game-metadata", ?metadata);
 
           let pair = WebSocketPair::new().map_err(anyhow_str)?;
           let server = pair.server;
@@ -121,12 +122,12 @@ impl ArpeggioGame {
             wsrpi::GameSession::new(game_storage, server, self.sessions.clone(), ws_user, metadata);
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
-            console_log!("Okayyyy. I'm done with my taaaaask.");
+            info!(event = "ws-session-done");
           });
 
           Response::from_websocket(pair.client).map_err(anyhow_str)
         } else {
-          console_log!("Bad WS token {path:?}");
+          error!(event = "invalid-ws-token", ?ws_token);
           Response::error("Bad WS token", 404).map_err(anyhow_str)
         }
       }
@@ -134,7 +135,7 @@ impl ArpeggioGame {
         self.check_invitation(req, invitation_id).await
       }
       _ => {
-        console_log!("Bad URL to DO: {path:?}");
+        error!(event = "unknown-route", ?path);
         Response::error(format!("bad URL to DO: {path:?}"), 404).map_err(anyhow_str)
       }
     }
@@ -147,7 +148,7 @@ impl ArpeggioGame {
     let invitations: Vec<InvitationID> = match invitations {
       Ok(r) => r,
       Err(e) => {
-        console_error!("Error getting invitations: {e:?}");
+        error!(event = "invitation-fetch-error", ?e);
         vec![]
       }
     };
@@ -162,9 +163,13 @@ async fn dump_storage(state: &State) -> anyhow::Result<Response> {
   for key in items.keys() {
     let key = key.map_err(anyhow_str).context("just resolving the key...")?;
     let value = items.get(&key);
-    console_log!("dumping key/value {:?} {:?}", key, value);
-    let value: serde_json::Value = serde_wasm_bindgen::from_value(value).map_err(anyhow_str).context("parsing the value as a Value")?;
-    let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str).context("parsing the key as a string")?;
+    info!(event = "dump-storage-key-value", ?key, ?value);
+    let value: serde_json::Value = serde_wasm_bindgen::from_value(value)
+      .map_err(anyhow_str)
+      .context("parsing the value as a Value")?;
+    let key: String = serde_wasm_bindgen::from_value(key)
+      .map_err(anyhow_str)
+      .context("parsing the key as a string")?;
     result.insert(key, value);
   }
   Response::from_json(&result).map_err(anyhow_str)
@@ -207,10 +212,9 @@ impl GameStorage {
         Self::load_logs(state.clone(), game).await?
       }
       Err(e) => {
-        console_error!("ERROR: Loading game failed: {e:?}");
         match e {
           worker::Error::JsError(e) if e == "No such value in storage." => {
-            console_log!("No initial snapshot. This is a new game!");
+            info!(event="new-game");
             let default_game = Default::default();
             state
               .storage()
@@ -219,7 +223,10 @@ impl GameStorage {
               .map_err(anyhow_str)?;
             (default_game, VecDeque::new())
           }
-          _ => return Err(anyhow_str(e)),
+          _ => {
+            error!(event="error-fetching-game", ?e);
+            return Err(anyhow_str(e));
+          }
         }
       }
     };
@@ -247,13 +254,13 @@ impl GameStorage {
     if items.size() == 0 {
       return Ok((game, recent_logs));
     }
-    console_log!("Loading Logs: Found {} items", items.size());
+    info!(event="loading-logs", num=items.size());
     for key in items.keys() {
       let key = key.map_err(anyhow_str)?;
       let value = items.get(&key);
       let value: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
       let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str)?;
-      console_log!("found a log {key:?}");
+      info!(event="found-log", ?key);
       if let ["log", _, "idx", log_idx_str] = key.split("-").collect::<Vec<_>>()[..] {
         let log: GameLog = serde_json::from_str(&value).map_err(|e| {
           anyhow!("Failed parsing GameLog as JSON:\ncontent: {value:?}\nerror: {e:?}")
@@ -265,7 +272,7 @@ impl GameStorage {
         }
         recent_logs.push_back((GameIndex { game_idx: 0, log_idx }, log));
       } else {
-        console_log!("Don't know what this log is: {key:?}");
+        warn!(event="unknown-log-key", ?key);
       }
     }
 
@@ -291,7 +298,7 @@ impl GameStorage {
       let serialized_log = serde_json::to_string(&log)?;
       let key =
         format!("log-{:09}-idx-{:09}", self.current_snapshot_idx.get(), self.next_log_idx.get());
-      console_log!("Storing log {key:?}");
+      info!(event="storing-log", ?key);
       self.state.storage().put(&key, serialized_log).await.map_err(anyhow_str)?;
       logs_with_indices.push((GameIndex { game_idx: 0, log_idx: self.next_log_idx.get() }, log));
 
@@ -320,7 +327,7 @@ impl GameStorage {
     let invitations: Vec<InvitationID> = match invitations {
       Ok(invitations) => invitations,
       Err(e) => {
-        console_error!("Error listing invitations: {e:?}");
+        error!(event="error-listing-invitations", ?e);
         vec![]
       }
     };

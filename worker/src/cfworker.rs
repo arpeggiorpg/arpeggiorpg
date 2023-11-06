@@ -1,9 +1,8 @@
 use arpeggio::types::PlayerID;
 use google_signin;
 use serde_json::json;
-use worker::{
-  console_error, console_log, event, Context, Cors, Env, Method, Request, Response, Result,
-};
+use tracing::{error, info};
+use worker::{event, Context, Cors, Env, Method, Request, Response, Result};
 
 use crate::{rust_error, storage};
 use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
@@ -11,8 +10,9 @@ use mtarp::types::{GameID, GameList, GameMetadata, GameProfile, Role, UserID};
 /// The main cloudflare Worker for Arpeggio. Handles routes for listing &
 /// creating games, etc, and forwarding websockets to the Durable Object.
 #[event(fetch, respond_with_errors)]
+#[tracing::instrument(name = "worker", skip(req, env, _ctx), fields(method = ?req.method(), path = req.path()))]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-  console_log!("[worker] Start {}", req.path());
+  info!(event = "start", path = ?req.path());
 
   if req.path().starts_with("/ws/") {
     // WebSocket requests can't go through the entire HTTP rigmarole
@@ -28,7 +28,11 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
   let path = req.path();
   let id_token = req.headers().get("x-arpeggio-auth")?;
   if id_token.is_none() {
-    console_error!("No arpeggio auth header!");
+    // RADIX TODO: so I'm pretty confused... apparently OPTIONS request is hitting this. It's
+    // working fine with me returning this error, probably because I'm using from_json here and not
+    // Response::error... but it makes me think that I should be handling OPTIONS explicitly by just
+    // returning an empty response with the CORS options headers.
+    error!(event = "missing-auth", method=?req.method());
     return Response::from_json(&json!({"error": "need x-arpeggio-auth"}));
   }
 
@@ -37,7 +41,7 @@ async fn http_routes(req: Request, env: Env) -> Result<Response> {
 
   let validation_result = validate_google_token(&id_token, client_id).await;
   if let Err(e) = validation_result {
-    console_log!("token is invalid; returning 401 {e:?}");
+    info!(event = "invalid-token", ?e);
     return Response::error("Invalid token", 401);
   }
   let user_id = validation_result.unwrap();
@@ -159,7 +163,7 @@ async fn forward_websocket(req: Request, env: Env) -> Result<Response> {
 
   let path = req.path();
   if let Some(game_id) = path.splitn(4, "/").nth(2) {
-    console_log!("[worker] GAME {game_id:?}");
+    info!(event = "forward-websocket", ?game_id);
     let stub = durable_object(&env, game_id)?;
     stub.fetch_with_request(req).await
   } else {
@@ -207,12 +211,8 @@ async fn validate_google_token(id_token: &str, client_id: String) -> anyhow::Res
   client.audiences.push(client_id);
   let claims = client.verify(id_token, &certs).await?;
   let custom = claims.custom;
-  console_log!(
-    "validate-token: email={:?} name={:?} sub={:?} expires={:?} ",
-    custom.email,
-    custom.name,
-    custom.sub,
-    claims.expiration,
+  info!(
+    event="validate-token", email=?custom.email, name=?custom.name, sub=?custom.sub, expires=?claims.expiration,
   );
   Ok(UserID(format!("google_{}", custom.sub)))
 }

@@ -5,7 +5,8 @@ use futures_util::stream::StreamExt;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use worker::{console_error, console_log, WebSocket, WebsocketEvent};
+use worker::{WebSocket, WebsocketEvent};
+use tracing::{info, error};
 
 use arpeggio::types::{ChangedGame, GMCommand, GameError, RPIGame};
 use mtarp::types::{GameMetadata, RPIGameRequest, Role};
@@ -44,9 +45,10 @@ impl GameSession {
     Self { game_storage, socket, sessions, ws_user, timeout: RefCell::new(timeout), metadata }
   }
 
+  #[tracing::instrument(name="GameSession", skip(self))]
   pub async fn run(&self) {
     if let Err(e) = self.handle_stream().await {
-      console_error!("Error handling stream. {e:?}");
+      error!(event="handle-stream-error", ?e);
     }
   }
 
@@ -60,14 +62,14 @@ impl GameSession {
       self.reset_timeout();
       match self.handle_event(event).await {
         Ok(true) => {
-          console_log!("handle_event said we're shutting down. Stopping reading stream.");
+          info!(event="graceful-shutdown");
           return Ok(());
         }
         Ok(false) => {}
         Err(e) => {
-          console_error!("Error handling event. Disconnecting. {e:?}");
+          error!(event="error-handling-event", ?e);
           if let Err(e) = self.socket.close(Some(4000), Some(format!("{e:?}"))) {
-            console_error!("error disconnecting websocket? {e:?}");
+            error!(event="error-disconnecting", ?e);
           }
         }
       }
@@ -78,7 +80,7 @@ impl GameSession {
   fn reset_timeout(&self) {
     let new_timeout = mk_timeout(self.socket.clone(), self.ws_user.clone());
     let old_timeout = self.timeout.replace(new_timeout);
-    console_log!("Refreshing timeout for {:?}", self.ws_user);
+    info!(event="refresh-timeout", ?self.ws_user);
     old_timeout.cancel();
   }
 
@@ -107,18 +109,18 @@ impl GameSession {
     match event {
       WebsocketEvent::Message(msg) => {
         if let Some(text) = msg.text() {
-          console_log!("[wsrpi] handling event: {text:?}");
+          info!(event="handle-event", text);
           let request: serde_json::Result<WSRequest> = serde_json::from_str(&text);
           match request {
             Ok(request) => {
               let request_id = request.id.clone();
-              console_log!("About to handle request {request:?}");
+              info!(event="handling-request", ?request);
               let response = self.handle_request(request).await;
               // console_log!("Handled request: {response:?}");
               match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
                 Err(e) => {
-                  console_error!("Error while handling request: {e:?}");
+                  error!(event="error-handling-request", ?e);
                   self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
                 }
               }
@@ -136,14 +138,14 @@ impl GameSession {
                   value.get("id").unwrap_or(&serde_json::Value::Null).clone(),
                 );
               }
-              console_error!("{error_response:?}");
+              error!(event="error-response", ?error_response);
               self.send(&error_response)?;
             }
           }
         }
       }
-      WebsocketEvent::Close(ce) => {
-        console_log!("[worker] Closed WebSocket. {ce:?}");
+      WebsocketEvent::Close(close_event) => {
+        info!(event="reciprocating-close", ?close_event);
         self.socket.close(Some(1000), Some("closing as requested")).map_err(anyhow_str)?;
         return Ok(true);
       }
@@ -229,11 +231,11 @@ impl GameSession {
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
     let mut sessions = self.sessions.borrow_mut();
-    console_log!("Broadcasting a message to {:?} clients", sessions.len());
+    info!(event="broadcast", num_clients = sessions.len());
     sessions.retain_mut(|socket| match socket.send_with_str(s.clone()) {
       Ok(_) => true,
       Err(e) => {
-        console_error!("Error sending to socket: {e:?}");
+        error!(event="broadcast-error", ?e);
         false
       }
     });
@@ -248,9 +250,9 @@ impl GameSession {
 
 fn mk_timeout(socket: WebSocket, ws_user: WSUser) -> Timeout {
   Timeout::new(IDLE_TIMEOUT * 1000, move || {
-    console_log!("Closing websocket due to idle timeout: user {ws_user:?}");
+    info!(event="idle-close", ?ws_user);
     if let Err(e) = socket.close(Some(4000), Some("idle timeout")) {
-      console_error!("Error closing socket due to timeout? {e:?}");
+      error!(event="timeout-close-error", ?e);
     }
   })
 }

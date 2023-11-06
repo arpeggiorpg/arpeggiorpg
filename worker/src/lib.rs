@@ -1,4 +1,9 @@
 use anyhow::anyhow;
+use tracing_subscriber::{
+  fmt::{format::Pretty, time::UtcTime},
+  prelude::*,
+};
+use tracing_web::{performance_layer, MakeConsoleWriter};
 use worker::*;
 
 mod cfworker;
@@ -25,7 +30,16 @@ mod wsrpi;
 // behavior of the local dev environment.
 
 #[event(start)]
-fn start() { console_error_panic_hook::set_once(); }
+fn start() {
+  console_error_panic_hook::set_once();
+  let fmt_layer = tracing_subscriber::fmt::layer()
+    .json()
+    .with_ansi(false) // Only partially supported across JavaScript runtimes
+    .with_timer(UtcTime::rfc_3339()) // std::time is not available in browsers
+    .with_writer(MakeConsoleWriter); // write events to the console
+  let perf_layer = performance_layer().with_details_from_fields(Pretty::default());
+  tracing_subscriber::registry().with(fmt_layer).with(perf_layer).init();
+}
 
 /// For some reason I can't just convert a workers::Error to an anyhow::Error because I get crazy
 /// errors about how a *mut u8 might escape an async closure or something. So this converts the
