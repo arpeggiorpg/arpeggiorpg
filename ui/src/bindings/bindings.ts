@@ -109,7 +109,7 @@ export interface Note { name: string, content: string, }
 
 export interface Player { player_id: PlayerID, scene: SceneID | null, creatures: Array<CreatureID>, }
 
-export type PlayerCommand = { "t": "ChatFromPlayer", message: string, } | { "t": "EditNote", path: FolderPath, name: string, note: Note, } | { "t": "PathCreature", creature_id: CreatureID, destination: Point3, } | { "t": "CombatAct", ability_id: AbilityID, target: DecidedTarget, } | { "t": "PathCurrentCombatCreature", destination: Point3, } | { "t": "EndTurn" };
+export type PlayerCommand = { "t": "ChatFromPlayer", message: string, } | { "t": "CreateNote", path: FolderPath, note: Note, } | { "t": "EditNote", path: FolderPath, original_name: string, note: Note, } | { "t": "PathCreature", creature_id: CreatureID, destination: Point3, } | { "t": "CombatAct", ability_id: AbilityID, target: DecidedTarget, } | { "t": "PathCurrentCombatCreature", destination: Point3, } | { "t": "EndTurn" };
 
 export type PlayerID = string;
 

@@ -6,13 +6,13 @@ import { Outlet, useParams } from "react-router-dom";
 import * as A from "./Actions";
 import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
+import Connector from "./Connector";
 import * as GM from "./GMComponents";
 import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
 import * as Players from "./Players";
 import * as T from "./PTTypes";
-import Connector from "./Connector";
 
 export default function GMView() {
   return (
@@ -23,7 +23,6 @@ export default function GMView() {
     </Connector>
   );
 }
-
 
 function GMMain() {
   const scene = M.useState((s) => s.getFocusedScene());
@@ -93,8 +92,7 @@ function Secondary() {
           path={focus2.path}
           name={focus2.name}
           // We need to refocus with the new name after a note gets renamed:
-          afterSave={(path, note) =>
-            M.getState().setSecondaryFocus({ t: "Note", path, name: note.name })}
+          saveNote={saveNote}
         />
       );
     case "Creature":
@@ -107,6 +105,11 @@ function Secondary() {
       return <GM.AbilityEditor abilityId={focus2.ability_id} />;
   }
   M.assertNever(focus2);
+
+  function saveNote(thingy: CV.CreateOrEdit, path: T.FolderPath, note: T.Note) {
+    A.sendGMCommand({ ...thingy, path, note });
+    M.getState().setSecondaryFocus({ t: "Note", path, name: note.name });
+  }
 }
 
 export function GMMap() {
@@ -222,5 +225,3 @@ function GMChat(): JSX.Element {
     A.sendGMCommand({ t: "ChatFromGM", message });
   }
 }
-
-

@@ -832,9 +832,14 @@ export const decodeGameLogs: Decoder<[GameIndex, GameLog][]> = Z.array(
 );
 
 export function encodePlayerCommand(cmd: PlayerCommand): object {
-  if (typeof cmd === "string") return cmd;
   // Any commands which contain data that needs encoded needs to be handled explicitly.
   // Unfortunately this is not type-checked.
+  if (cmd.t === "CreateNote") {
+    return { ...cmd, path: encodeFolderPath(cmd.path) };
+  }
+  if (cmd.t === "EditNote") {
+    return { ...cmd, path: encodeFolderPath(cmd.path) };
+  }
   if (cmd.t === "PathCreature") {
     return {
       ...cmd,

@@ -905,15 +905,19 @@ export function MaterialIcon(props: React.PropsWithChildren) {
  * The Note Editor
  * Complexities:
  * - The `name` prop may be undefined if we're creating a new note.
- * - Focusing on notes is done by name, since there is no ID. So if we rename a note, we must
- *   re-focus it as well. That's what afterSave is for.
  * - Player notes can't be renamed, hence disallow_rename.
  */
+
+export type CreateOrEdit = { t: "CreateNote" } | { t: "EditNote"; original_name: string };
 interface NoteEditorProps {
   path: T.FolderPath;
   name: string | undefined;
   disallow_rename?: boolean;
-  afterSave?: (path: T.FolderPath, note: T.Note) => void;
+  saveNote: (
+    thingy: CreateOrEdit,
+    path: T.FolderPath,
+    note: T.Note,
+  ) => void;
 }
 
 export function NoteEditor({
@@ -985,7 +989,7 @@ export function NoteEditor({
   );
 
   function submit() {
-    const { afterSave } = props;
+    const { saveNote } = props;
     if (!draftName) {
       console.log("[NoteEditorComp.submit] I have no name");
       return;
@@ -995,14 +999,11 @@ export function NoteEditor({
       console.log("[NoteEditorComp.submit] No content to save");
       return;
     }
-    const newNote = { name: draftName, content };
-    const cmd: T.GMCommand = originalNote
-      ? { t: "EditNote", path, original_name: originalNote.name, note: newNote }
-      : { t: "CreateNote", path, note: newNote };
-    A.sendGMCommand(cmd);
-    if (afterSave) {
-      afterSave(path, newNote);
-    }
+    const newNote: T.Note = { name: draftName, content };
+    const thingy: CreateOrEdit = originalNote
+      ? { t: "EditNote", original_name: originalNote.name }
+      : { t: "CreateNote" };
+    saveNote(thingy, path, newNote);
   }
 }
 
