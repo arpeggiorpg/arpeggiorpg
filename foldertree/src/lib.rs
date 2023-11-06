@@ -250,6 +250,9 @@ impl FolderPath {
   }
 
   pub fn from_vec(segs: Vec<String>) -> FolderPath { FolderPath(segs) }
+  pub fn into_vec(self) -> Vec<String> {
+    self.0
+  }
 
   pub fn root() -> FolderPath { FolderPath::from_vec(vec![]) }
 
@@ -276,6 +279,18 @@ impl FolderPath {
       Err(FolderTreeError::NonAncestor(ancestor.clone(), self.clone()))
     }
   }
+}
+
+impl From<FolderPath> for Vec<String> {
+    fn from(value: FolderPath) -> Self {
+        value.0
+    }
+}
+
+impl From<Vec<String>> for FolderPath {
+    fn from(value: Vec<String>) -> Self {
+        FolderPath::from_vec(value)
+    }
 }
 
 impl ::std::str::FromStr for FolderPath {
