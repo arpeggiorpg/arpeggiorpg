@@ -1,21 +1,19 @@
-use std::{
-  cell::{Cell, RefCell},
-  collections::{HashMap, VecDeque},
-  rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use anyhow::{anyhow, Context};
-use arpeggio::types::{ChangedGame, Game, GameLog, PlayerID};
-use mtarp::types::{GameID, GameIndex, GameMetadata, InvitationID, Role};
+use arpeggio::types::PlayerID;
+use mtarp::types::{GameID, GameMetadata, InvitationID, Role};
 use serde_json::json;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 use worker::{
-  async_trait, durable_object, js_sys, wasm_bindgen, wasm_bindgen_futures, worker_sys, Env,
-  ListOptions, Method, Request, Response, Result, State, WebSocket, WebSocketPair,
+  async_trait, durable_object, js_sys, wasm_bindgen, wasm_bindgen_futures, worker_sys, Env, Method,
+  Request, Response, Result, State, WebSocket, WebSocketPair,
 };
 
-use crate::{anyhow_str, rust_error, storage, wsrpi};
+use crate::{
+  anyhow_str, durablestorage::GameStorage, images::CFImageService, rust_error, storage, wsrpi,
+};
 
 #[durable_object]
 pub struct ArpeggioGame {
@@ -82,14 +80,14 @@ impl ArpeggioGame {
         // decoding. WTF?
         let player_id = percent_encoding::percent_decode_str(player_id).decode_utf8()?;
         let player_id: PlayerID = PlayerID(player_id.to_string());
-        info!(event="request-websocket", ?player_id);
+        info!(event = "request-websocket", ?player_id);
         self.ws_tokens.insert(token, WSUser { role, player_id });
         Response::from_json(&json!({"token": token})).map_err(anyhow_str)
       }
       ["ws", game_id, ws_token] => {
         let ws_token: Uuid = ws_token.parse()?;
         if let Some(ws_user) = self.ws_tokens.remove(&ws_token) {
-          info!(event="ws-connect", ?path, ?game_id);
+          info!(event = "ws-connect", ?path, ?game_id);
           let game_id = game_id.parse::<GameID>()?;
           let metadata = match &self.metadata {
             Some(metadata) => metadata.clone(),
@@ -102,7 +100,7 @@ impl ArpeggioGame {
               metadata
             }
           };
-          info!(event="ws-game-metadata", ?metadata);
+          info!(event = "ws-game-metadata", ?metadata);
 
           let pair = WebSocketPair::new().map_err(anyhow_str)?;
           let server = pair.server;
@@ -118,8 +116,19 @@ impl ArpeggioGame {
           // Maybe there's a simpler way to do this that doesn't involve a channel and two tasks?
 
           self.sessions.borrow_mut().push(server.clone());
-          let session =
-            wsrpi::GameSession::new(game_storage, server, self.sessions.clone(), ws_user, metadata);
+
+          let account_id = self.env.var("CF_ACCOUNT_ID").map_err(anyhow_str)?.to_string();
+          let image_delivery_prefix =
+            self.env.var("CF_IMAGE_DELIVERY_PREFIX").map_err(anyhow_str)?.to_string();
+          let image_service = CFImageService::new(account_id, &image_delivery_prefix, game_id)?;
+          let session = wsrpi::GameSession::new(
+            image_service,
+            game_storage,
+            server,
+            self.sessions.clone(),
+            ws_user,
+            metadata,
+          );
           wasm_bindgen_futures::spawn_local(async move {
             session.run().await;
             info!(event = "ws-session-done");
@@ -173,173 +182,4 @@ async fn dump_storage(state: &State) -> anyhow::Result<Response> {
     result.insert(key, value);
   }
   Response::from_json(&result).map_err(anyhow_str)
-}
-
-type RecentGameLogs = VecDeque<(GameIndex, GameLog)>;
-/// The state of the game.
-///
-/// The cool thing that Durable Objects give us is that we can keep the Game in memory, just loading
-/// it when the DO wakes up. Of course, during normal play the DO will go to sleep and wake up many
-/// times, but while it *is* awake we only need to save logs and update the in-memory game.
-///
-/// This is really the whole reason I wanted to use CF Durable Objects for Arpeggio. I don't need to
-/// worry about distributed caching or distributed event queues for notifications when a game object
-/// changes; everyone's connected to the same live game object.
-pub struct GameStorage {
-  state: Rc<State>,
-  current_snapshot_idx: Cell<usize>,
-  next_log_idx: Cell<usize>,
-  cached_game: Rc<RefCell<Game>>,
-  recent_logs: Rc<RefCell<RecentGameLogs>>,
-}
-
-const RECENT_LOGS_SIZE: usize = 100;
-
-/// ## Storage in Durable Objects
-/// DO gives us a KV store, where the size of values is pretty significantly limited (128kB). It
-/// turns out that CloudFlare is (hopefully) going to be releasing local a local SQLite-based
-/// storage API for Durable Objects within a few months, so I am not going to bother trying to make
-/// this storage system too robust for now; it's far too onerous.
-impl GameStorage {
-  pub fn game(&self) -> Game { self.cached_game.borrow().clone() }
-  pub fn recent_logs(&self) -> RecentGameLogs { self.recent_logs.borrow().clone() }
-
-  async fn load(state: Rc<State>) -> anyhow::Result<Self> {
-    // TODO: support muiltple snapshots? Or maybe just wait until SQLite support exists...
-    let (game, recent_logs) = match state.storage().get::<String>("snapshot-0-chunk-0").await {
-      Ok(game_str) => {
-        let game = serde_json::from_str(&game_str)?;
-        Self::load_logs(state.clone(), game).await?
-      }
-      Err(e) => {
-        match e {
-          worker::Error::JsError(e) if e == "No such value in storage." => {
-            info!(event="new-game");
-            let default_game = Default::default();
-            state
-              .storage()
-              .put("snapshot-0-chunk-0", serde_json::to_string(&default_game)?)
-              .await
-              .map_err(anyhow_str)?;
-            (default_game, VecDeque::new())
-          }
-          _ => {
-            error!(event="error-fetching-game", ?e);
-            return Err(anyhow_str(e));
-          }
-        }
-      }
-    };
-    let next_log_idx = recent_logs.iter().last().map(|l| l.0.log_idx + 1).unwrap_or(0);
-    let game_storage = Self {
-      state,
-      current_snapshot_idx: Cell::new(0),
-      next_log_idx: Cell::new(next_log_idx),
-      cached_game: Rc::new(RefCell::new(game)),
-      recent_logs: Rc::new(RefCell::new(recent_logs)),
-    };
-    Ok(game_storage)
-  }
-
-  /// log keys are like "log-{snapshot_idx}-idx-{log_idx}"
-  async fn load_logs(state: Rc<State>, mut game: Game) -> anyhow::Result<(Game, RecentGameLogs)> {
-    // Here's another super annoying deficiency of the DO "list" API: it doesn't return an iterator,
-    // but the entire result set all at once as a javascript Map! So, we have to manually do
-    // batching to avoid loading too much stuff into memory at once.
-
-    let storage = state.storage();
-    let list_options = ListOptions::new().prefix("log-");
-    let items = storage.list_with_options(list_options).await.map_err(anyhow_str)?;
-    let mut recent_logs = VecDeque::new();
-    if items.size() == 0 {
-      return Ok((game, recent_logs));
-    }
-    info!(event="loading-logs", num=items.size());
-    for key in items.keys() {
-      let key = key.map_err(anyhow_str)?;
-      let value = items.get(&key);
-      let value: String = serde_wasm_bindgen::from_value(value).map_err(anyhow_str)?;
-      let key: String = serde_wasm_bindgen::from_value(key).map_err(anyhow_str)?;
-      info!(event="found-log", ?key);
-      if let ["log", _, "idx", log_idx_str] = key.split('-').collect::<Vec<_>>()[..] {
-        let log: GameLog = serde_json::from_str(&value).map_err(|e| {
-          anyhow!("Failed parsing GameLog as JSON:\ncontent: {value:?}\nerror: {e:?}")
-        })?;
-        game = game.apply_log(&log)?;
-        let log_idx = log_idx_str.parse()?;
-        if recent_logs.len() >= RECENT_LOGS_SIZE {
-          recent_logs.pop_front();
-        }
-        recent_logs.push_back((GameIndex { game_idx: 0, log_idx }, log));
-      } else {
-        warn!(event="unknown-log-key", ?key);
-      }
-    }
-
-    Ok((game, recent_logs))
-  }
-
-  /// Upate Game storage with changes from a changed_game. Updates the locally cached Game as well
-  /// as writing new logs to storage.
-  pub async fn store_game(
-    &self, changed_game: ChangedGame,
-  ) -> anyhow::Result<Vec<(GameIndex, GameLog)>> {
-    // NOTE: Durable Objects support "write coalescing", where you can run multiple PUT operations
-    // without awaiting and they will be merged into one "transaction". Here's the thing: I'm not
-    // sure this works with the Rust bindings. But we should try something like that. There is also
-    // a method called "transaction" which takes a closure to do this explicitly, but that's not
-    // exposed in the Rust workers API yet.
-
-    // we could probably use something more compact than JSON...
-
-    // TODO: We could occasionally produce a new snapshot... or just wait for SQLite
-    let mut logs_with_indices = vec![];
-    for log in changed_game.logs {
-      let serialized_log = serde_json::to_string(&log)?;
-      let key =
-        format!("log-{:09}-idx-{:09}", self.current_snapshot_idx.get(), self.next_log_idx.get());
-      info!(event="storing-log", ?key);
-      self.state.storage().put(&key, serialized_log).await.map_err(anyhow_str)?;
-      logs_with_indices.push((GameIndex { game_idx: 0, log_idx: self.next_log_idx.get() }, log));
-
-      self.next_log_idx.set(self.next_log_idx.get() + 1);
-    }
-    *self.cached_game.borrow_mut() = changed_game.game;
-    let mut recent_logs = self.recent_logs.borrow_mut();
-    recent_logs.extend(logs_with_indices.iter().cloned());
-    let drain_to = recent_logs.len().saturating_sub(RECENT_LOGS_SIZE);
-    recent_logs.drain(0..drain_to);
-
-    Ok(logs_with_indices)
-  }
-
-  pub async fn create_invitation(&self) -> anyhow::Result<InvitationID> {
-    let invitation_id = InvitationID::gen();
-
-    let mut invitations = self.list_invitations().await?;
-    invitations.push(invitation_id);
-    self.state.storage().put("invitations", invitations).await.map_err(anyhow_str)?;
-    Ok(invitation_id)
-  }
-
-  pub async fn list_invitations(&self) -> anyhow::Result<Vec<InvitationID>> {
-    let invitations = self.state.storage().get("invitations").await;
-    let invitations: Vec<InvitationID> = match invitations {
-      Ok(invitations) => invitations,
-      Err(e) => {
-        error!(event="error-listing-invitations", ?e);
-        vec![]
-      }
-    };
-    Ok(invitations)
-  }
-
-  pub async fn delete_invitation(
-    &self, invitation_id: InvitationID,
-  ) -> anyhow::Result<Vec<InvitationID>> {
-    let mut invitations = self.list_invitations().await?;
-    invitations.retain_mut(|inv| inv != &invitation_id);
-    self.state.storage().put("invitations", invitations.clone()).await.map_err(anyhow_str)?;
-    Ok(invitations)
-  }
 }

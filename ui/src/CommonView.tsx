@@ -22,7 +22,6 @@ import {
 } from "semantic-ui-react";
 
 import * as A from "./Actions";
-import * as History from "./History";
 import { useWindowSize } from "./lib/hooks";
 import * as M from "./Model";
 import * as T from "./PTTypes";
@@ -818,11 +817,11 @@ export function TheLayout(props: TheLayoutProps) {
     return extra !== undefined
       ? (
         <Panels.PanelGroup direction="vertical">
-          <Panels.Panel>{tabbed_view}</Panels.Panel>
+          <Panels.Panel style={{ overflowY: "auto" }}>{tabbed_view}</Panels.Panel>
           <Panels.PanelResizeHandle>
             <hr />
           </Panels.PanelResizeHandle>
-          <Panels.Panel>{extra}</Panels.Panel>
+          <Panels.Panel style={{ overflowY: "auto" }}>{extra}</Panels.Panel>
         </Panels.PanelGroup>
       )
       : tabbed_view;
@@ -839,11 +838,11 @@ export function TheLayout(props: TheLayoutProps) {
         }}
       >
         <Panels.PanelGroup direction="vertical">
-          <Panels.Panel>{top_left}</Panels.Panel>
+          <Panels.Panel style={{ overflowY: "auto" }}>{top_left}</Panels.Panel>
           <Panels.PanelResizeHandle>
             <hr />
           </Panels.PanelResizeHandle>
-          <Panels.Panel>{bottom_left}</Panels.Panel>
+          <Panels.Panel style={{ overflowY: "auto" }}>{bottom_left}</Panels.Panel>
         </Panels.PanelGroup>
         {disable_div}
       </div>

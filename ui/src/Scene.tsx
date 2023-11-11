@@ -20,6 +20,7 @@ import {
   Tab,
   Table,
 } from "semantic-ui-react";
+import * as Z from "zod";
 
 import * as A from "./Actions";
 import * as Campaign from "./Campaign";
@@ -143,49 +144,64 @@ export function EditSceneName(props: { scene: T.Scene; onDone: () => void }) {
 export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone: () => void }) {
   const [pinned, setPinned] = React.useState(scene.background_image_offset !== undefined);
   return (
-    <CoolForm>
-      <PlaintextInput
-        label="Background Image URL"
-        name="background_image_url"
-        default={scene.background_image_url}
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {scene.background_image_url
+        ? (
+          <>
+            <h3>Preview</h3>
+            <img
+              style={{ width: "90%", marginLeft: "auto", marginRight: "auto" }}
+              src={scene.background_image_url}
+            />
+          </>
+        )
+        : null}
+
+      <CV.ModalMaker
+        button={click => <Button onClick={click}>Upload Image</Button>}
+        header={<>Upload Image</>}
+        content={closer => <BackgroundImageUpload scene={scene} onClose={closer} />}
       />
-      <Form.Checkbox
-        label="Pin to map"
-        checked={pinned}
-        onChange={(_, d) => setPinned(d.checked as boolean)}
-      />
-      <Form.Group>
-        <NumericInput
-          label="Scale X (cm)"
-          name="scale_x"
-          min={0}
-          style={{ width: "100px" }}
-          default={scene.background_image_scale[0]}
+
+      <CoolForm>
+        <Form.Checkbox
+          label="Pin to map"
+          checked={pinned}
+          onChange={(_, d) => setPinned(d.checked as boolean)}
         />
-        <NumericInput
-          label="Scale Y (cm)"
-          name="scale_y"
-          min={0}
-          style={{ width: "100px" }}
-          default={scene.background_image_scale[1]}
-        />
-      </Form.Group>
-      <Form.Group>
-        <NumericInput
-          label="Offset X (cm)"
-          name="offset_x"
-          style={{ width: "100px" }}
-          default={scene.background_image_offset ? scene.background_image_offset[0] : 0}
-        />
-        <NumericInput
-          label="Offset Y (cm)"
-          name="offset_y"
-          style={{ width: "100px" }}
-          default={scene.background_image_offset ? scene.background_image_offset[1] : 0}
-        />
-      </Form.Group>
-      <Submit onClick={save}>Save</Submit>
-    </CoolForm>
+        <Form.Group>
+          <NumericInput
+            label="Scale X (cm)"
+            name="scale_x"
+            min={0}
+            style={{ width: "100px" }}
+            default={scene.background_image_scale[0]}
+          />
+          <NumericInput
+            label="Scale Y (cm)"
+            name="scale_y"
+            min={0}
+            style={{ width: "100px" }}
+            default={scene.background_image_scale[1]}
+          />
+        </Form.Group>
+        <Form.Group>
+          <NumericInput
+            label="Offset X (cm)"
+            name="offset_x"
+            style={{ width: "100px" }}
+            default={scene.background_image_offset ? scene.background_image_offset[0] : 0}
+          />
+          <NumericInput
+            label="Offset Y (cm)"
+            name="offset_y"
+            style={{ width: "100px" }}
+            default={scene.background_image_offset ? scene.background_image_offset[1] : 0}
+          />
+        </Form.Group>
+        <Submit onClick={save}>Save</Submit>
+      </CoolForm>
+    </div>
   );
 
   function save(data: any) {
@@ -202,6 +218,40 @@ export function EditSceneBackground({ scene, onDone }: { scene: T.Scene; onDone:
     };
     A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
     onDone();
+  }
+}
+
+function BackgroundImageUpload({ scene, onClose }: { scene: T.Scene; onClose: () => void }) {
+  const [type, setType] = React.useState<null | "URL" | "upload">(null);
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ alignSelf: "center", display: "flex", flexDirection: "row", margin: "5px" }}>
+        <Button onClick={() => setType("upload")}>Upload Image</Button>
+        <Button onClick={() => setType("URL")}>Paste URL</Button>
+      </div>
+      {type === "URL"
+        ? (
+          <TextInput
+            defaultValue={scene.background_image_url || "Enter URL"}
+            onSubmit={uploadBackgroundFromURL}
+          />
+        )
+        : type === "upload"
+        ? <>OK</>
+        : null}
+    </div>
+  );
+  async function uploadBackgroundFromURL(url: string) {
+    let result = await A.sendRequest(
+      { t: "UploadImageFromURL", url, purpose: { t: "BackgroundImage" } },
+      Z.object({ image_url: Z.string() }),
+    );
+    const details = {
+      ...scene,
+      background_image_url: result.image_url,
+    };
+
+    A.sendGMCommand({ t: "EditSceneDetails", scene_id: scene.id, details });
   }
 }
 

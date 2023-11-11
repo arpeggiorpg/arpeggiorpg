@@ -9,6 +9,8 @@ use worker::*;
 mod cfworker;
 mod domigrations;
 mod durablegame;
+mod durablestorage;
+mod images;
 mod storage;
 mod wsrpi;
 

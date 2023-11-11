@@ -250,6 +250,12 @@ macro_rules! uuid_id {
       pub fn to_string(&self) -> String { self.0.hyphenated().to_string() }
     }
 
+    impl std::fmt::Display for $type {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+      }
+    }
+
     impl ::std::str::FromStr for $type {
       type Err = $crate::types::GameError;
       fn from_str(s: &str) -> Result<$type, $crate::types::GameError> {

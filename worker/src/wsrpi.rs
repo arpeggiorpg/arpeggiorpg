@@ -1,19 +1,21 @@
 use std::{cell::RefCell, rc::Rc};
 
-use anyhow::{anyhow};
+use anyhow::anyhow;
 use futures_util::stream::StreamExt;
 use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::{error, info};
 use worker::{WebSocket, WebsocketEvent};
-use tracing::{info, error};
 
 use arpeggio::types::{ChangedGame, GMCommand, GameError, RPIGame};
 use mtarp::types::{GameMetadata, RPIGameRequest, Role};
 
 use crate::{
   anyhow_str,
-  durablegame::{GameStorage, Sessions, WSUser},
+  durablegame::{Sessions, WSUser},
+  durablestorage::GameStorage,
+  images::CFImageService,
 };
 
 const IDLE_TIMEOUT: u32 = 10 * 60;
@@ -27,6 +29,7 @@ struct WSRequest {
 }
 
 pub struct GameSession {
+  image_service: CFImageService,
   game_storage: Rc<GameStorage>,
   socket: WebSocket,
   sessions: Sessions,
@@ -38,17 +41,25 @@ pub struct GameSession {
 
 impl GameSession {
   pub fn new(
-    game_storage: Rc<GameStorage>, socket: WebSocket, sessions: Sessions, ws_user: WSUser,
-    metadata: GameMetadata,
+    image_service: CFImageService, game_storage: Rc<GameStorage>, socket: WebSocket,
+    sessions: Sessions, ws_user: WSUser, metadata: GameMetadata,
   ) -> Self {
     let timeout = mk_timeout(socket.clone(), ws_user.clone());
-    Self { game_storage, socket, sessions, ws_user, timeout: RefCell::new(timeout), metadata }
+    Self {
+      image_service,
+      game_storage,
+      socket,
+      sessions,
+      ws_user,
+      timeout: RefCell::new(timeout),
+      metadata,
+    }
   }
 
-  #[tracing::instrument(name="GameSession", skip(self))]
+  #[tracing::instrument(name = "GameSession", skip(self))]
   pub async fn run(&self) {
     if let Err(e) = self.handle_stream().await {
-      error!(event="handle-stream-error", ?e);
+      error!(event = "handle-stream-error", ?e);
     }
   }
 
@@ -62,14 +73,14 @@ impl GameSession {
       self.reset_timeout();
       match self.handle_event(event).await {
         Ok(true) => {
-          info!(event="graceful-shutdown");
+          info!(event = "graceful-shutdown");
           return Ok(());
         }
         Ok(false) => {}
         Err(e) => {
-          error!(event="error-handling-event", ?e);
+          error!(event = "error-handling-event", ?e);
           if let Err(e) = self.socket.close(Some(4000), Some(format!("{e:?}"))) {
-            error!(event="error-disconnecting", ?e);
+            error!(event = "error-disconnecting", ?e);
           }
         }
       }
@@ -109,18 +120,18 @@ impl GameSession {
     match event {
       WebsocketEvent::Message(msg) => {
         if let Some(text) = msg.text() {
-          info!(event="handle-event", text);
+          info!(event = "handle-event", text);
           let request: serde_json::Result<WSRequest> = serde_json::from_str(&text);
           match request {
             Ok(request) => {
               let request_id = request.id.clone();
-              info!(event="handling-request", ?request);
+              info!(event = "handling-request", ?request);
               let response = self.handle_request(request).await;
               // console_log!("Handled request: {response:?}");
               match response {
                 Ok(result) => self.send(&json!({"id": request_id, "payload": &result}))?,
                 Err(e) => {
-                  error!(event="error-handling-request", ?e);
+                  error!(event = "error-handling-request", ?e);
                   self.send(&json!({"id": request_id, "error": format!("{e:?}")}))?
                 }
               }
@@ -138,14 +149,14 @@ impl GameSession {
                   value.get("id").unwrap_or(&serde_json::Value::Null).clone(),
                 );
               }
-              error!(event="error-response", ?error_response);
+              error!(event = "error-response", ?error_response);
               self.send(&error_response)?;
             }
           }
         }
       }
       WebsocketEvent::Close(close_event) => {
-        info!(event="reciprocating-close", ?close_event);
+        info!(event = "reciprocating-close", ?close_event);
         self.socket.close(Some(1000), Some("closing as requested")).map_err(anyhow_str)?;
         return Ok(true);
       }
@@ -207,6 +218,19 @@ impl GameSession {
         let invitations = self.game_storage.delete_invitation(invitation_id).await?;
         Ok(serde_json::to_value(invitations)?)
       }
+      (role, UploadImageFromURL { url, purpose }) => {
+        let url = self.image_service.upload_from_url(&url, purpose).await?;
+        self.game_storage.register_image(&url, purpose).await?;
+
+        let response = json!({"image_url": url.to_string()});
+        Ok(serde_json::to_value(response)?)
+      }
+      (role, RequestUploadImage { purpose }) => {
+        let pending_image = self.image_service.request_upload_image(purpose).await?;
+        self.game_storage.register_image(&pending_image.final_url, purpose).await?;
+        let response = json!({"upload_url": pending_image.upload_url.to_string()});
+        Ok(serde_json::to_value(response)?)
+      }
       _ => Err(anyhow!("You can't run that command as that role.")),
     }
   }
@@ -231,11 +255,11 @@ impl GameSession {
   fn broadcast<T: Serialize>(&self, value: &T) -> anyhow::Result<()> {
     let s = serde_json::to_string::<T>(value)?;
     let mut sessions = self.sessions.borrow_mut();
-    info!(event="broadcast", num_clients = sessions.len());
+    info!(event = "broadcast", num_clients = sessions.len());
     sessions.retain_mut(|socket| match socket.send_with_str(s.clone()) {
       Ok(_) => true,
       Err(e) => {
-        error!(event="broadcast-error", ?e);
+        error!(event = "broadcast-error", ?e);
         false
       }
     });
@@ -250,9 +274,9 @@ impl GameSession {
 
 fn mk_timeout(socket: WebSocket, ws_user: WSUser) -> Timeout {
   Timeout::new(IDLE_TIMEOUT * 1000, move || {
-    info!(event="idle-close", ?ws_user);
+    info!(event = "idle-close", ?ws_user);
     if let Err(e) = socket.close(Some(4000), Some("idle timeout")) {
-      error!(event="timeout-close-error", ?e);
+      error!(event = "timeout-close-error", ?e);
     }
   })
 }

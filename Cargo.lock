@@ -2870,6 +2870,7 @@ dependencies = [
  "google-oauth",
  "mtarp",
  "percent-encoding",
+ "reqwest",
  "serde",
  "serde-wasm-bindgen 0.6.1",
  "serde_json",

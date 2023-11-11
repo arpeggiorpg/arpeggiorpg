@@ -27,9 +27,11 @@ export type InvitationID = string;
 
 export type Role = "GM" | "Player";
 
-export type RPIGameRequest = { "t": "GMGetGame" } | { "t": "GMCommand", command: GMCommand, } | { "t": "GMGenerateInvitation" } | { "t": "GMListInvitations" } | { "t": "GMDeleteInvitation", invitation_id: InvitationID, } | { "t": "PlayerCommand", command: PlayerCommand, } | { "t": "MovementOptions", scene_id: SceneID, creature_id: CreatureID, } | { "t": "CombatMovementOptions" } | { "t": "TargetOptions", scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, } | { "t": "PreviewVolumeTargets", scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, point: Point3, };
+export type RPIGameRequest = { "t": "GMGetGame" } | { "t": "GMCommand", command: GMCommand, } | { "t": "GMGenerateInvitation" } | { "t": "GMListInvitations" } | { "t": "GMDeleteInvitation", invitation_id: InvitationID, } | { "t": "UploadImageFromURL", url: string, purpose: ImageType, } | { "t": "RequestUploadImage", purpose: ImageType, } | { "t": "PlayerCommand", command: PlayerCommand, } | { "t": "MovementOptions", scene_id: SceneID, creature_id: CreatureID, } | { "t": "CombatMovementOptions" } | { "t": "TargetOptions", scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, } | { "t": "PreviewVolumeTargets", scene_id: SceneID, creature_id: CreatureID, ability_id: AbilityID, point: Point3, };
 
 export type UserID = string;
+
+export type ImageType = { "t": "BackgroundImage" } | { "t": "CreatureIcon" };
 
 export interface AABB { x: number, y: number, z: number, }
 

@@ -7,7 +7,7 @@ interface TextInputProps {
   defaultValue: string;
   style?: object;
   onSubmit: (input: string) => void;
-  onCancel: (input: string) => void;
+  onCancel?: (input: string) => void;
   numbersOnly?: boolean;
 }
 
@@ -20,7 +20,7 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
   }
 
   cancel(): void {
-    this.props.onCancel(this.state.value);
+    this.props.onCancel && this.props.onCancel(this.state.value);
   }
 
   handleKeyDown(this: TextInput, event: React.KeyboardEvent<HTMLInputElement>): void {
