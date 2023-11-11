@@ -795,6 +795,7 @@ dependencies = [
 [[package]]
 name = "google-oauth"
 version = "1.5.0"
+source = "git+https://github.com/radix/google-oauth/?rev=e85809ad00683e4382a282b515fa67a46b76d4ae#e85809ad00683e4382a282b515fa67a46b76d4ae"
 dependencies = [
  "anyhow",
  "async-rwlock",
