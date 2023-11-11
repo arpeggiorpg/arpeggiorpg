@@ -8,6 +8,7 @@ import * as Campaign from "./Campaign";
 import * as CV from "./CommonView";
 import Connector from "./Connector";
 import * as GM from "./GMComponents";
+import * as Scene from "./Scene";
 import * as Grid from "./Grid";
 import * as History from "./History";
 import * as M from "./Model";
@@ -62,7 +63,7 @@ function GMMain() {
       map={<Outlet />}
       tabs={tabs}
       bottom_left={<Secondary />}
-      top_left={scene ? <GM.GMScene scene={scene} /> : <div>Select a scene</div>}
+      top_left={scene ? <Scene.GMScene scene={scene} /> : <div>Select a scene</div>}
       bottom_right={<GMChat />}
       bar_width={450}
       menu_size="tiny"

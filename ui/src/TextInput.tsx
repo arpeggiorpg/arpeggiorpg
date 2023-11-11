@@ -1,4 +1,7 @@
 import * as React from "react";
+import { Label } from "semantic-ui-react";
+
+import * as CV from "./CommonView";
 
 interface TextInputProps {
   defaultValue: string;
@@ -65,4 +68,24 @@ export class TextInput extends React.Component<TextInputProps, { value: string }
       />
     );
   }
+}
+
+
+export function EditableNumericLabel(props: { value: number; save: (num: number) => void }) {
+  const { value, save } = props;
+  const edit = (to_view: CV.ToggleFunc) => (
+    <TextInput
+      defaultValue={value.toString()}
+      numbersOnly={true}
+      onSubmit={input => {
+        save(Number(input));
+        to_view();
+      }}
+      onCancel={to_view}
+    />
+  );
+  const view = (to_edit: CV.ToggleFunc) => (
+    <Label circular={true} onClick={to_edit} style={{ cursor: "pointer" }}>{value}</Label>
+  );
+  return <CV.Toggler a={view} b={edit} />;
 }
